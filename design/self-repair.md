@@ -25,7 +25,7 @@ out yet), which rungs apply, and who acts at each.
 | Class | Failures | Idempotent? | Rungs |
 |---|---|---|---|
 | **Start** (never ran) | no folder; no copy of the repository; a clone that failed; git busy (a lock); the computer away or the wrong one; its agent missing or signed out (D363); its limit out (D297) | Yes: nothing ran, nothing went out | retry, repair, rethink, ask. **Built** (limit: D297's own) |
-| **Mid-run** (it ran) | the agent's process gone (crash, restart); a stuck loop; context overflow (compaction failed); tool errors; a phone or computer that went away (D293's grace); a network blip; the limit mid-turn (D297) | **No**: it may have sent, posted or paid; never resend a turn blindly | resume from the session or checkpoint (built: recovery, principle 13); hand over (D297, D446); the stall rule's nudge then **rethink** (built, D473); ask |
+| **Mid-run** (it ran) | the agent's process gone (crash, restart); a stuck loop (a long round is never judged stuck from the time alone: D481 hands its facts to the partner, `cls: "round"`, never shown as mending or counted as a failure); context overflow (compaction failed); tool errors; a phone or computer that went away (D293's grace); a network blip; the limit mid-turn (D297) | **No**: it may have sent, posted or paid; never resend a turn blindly | resume from the session or checkpoint (built: recovery, principle 13); hand over (D297, D446); the stall rule's nudge then **rethink** (built, D473); ask |
 | **Finish** | claims done but isn't (D450's checks, `done?`'s ref check) | n/a | the task sent back by the partner (built); asked when it needs judgment |
 | **Partner** | its turn stuck; its harness session gone; the prompt cache expired; a tool call failing; a Bridge or connector error; update all failing; a bad turn (D462's promise-only line) | Its outgoing messages: yes by D106's outbox; its turns: re-run only before anything went out | the turn watchdog (10 min, interrupt); a gone session rebuilt from the Log (principle 1); D435's hold and re-run; D402's back-off and stop for a watched account; D462's settling line. **Counting** is D473's (below) |
 | **Data and state** | a Log inconsistency; a duplicate open (D472); a card out of step with the runner | n/a | repaired at the source (D472); invariants checked by the soak (`packages/soak`) |
@@ -87,6 +87,35 @@ minutes); nothing for a task opened more than a day ago (a restart failing an ol
 The card's 没能开始 and its buttons (D395, D415) remain the truth while a task is failed; a
 mend that lands within the push batch is never pushed (D372's note). A failure the partner
 couldn't fix is a 等你 in the brief, with the partner's fix as the button (D467's grammar).
+
+## Waits and what a task owns (D483)
+
+A task that rests is mid-run: the failure that hurts is silence, a wait that can never end or news
+that never reaches it (hel, task b7gw6r2e, 6 h 22 min, research/208). Four invariants, in code:
+
+- **A look reads the whole answer.** A check's output is read and evaluated whole (up to 16 MB,
+  `CHECK_READ_MAX`); only what is passed on or logged is cut (64 KB, 4 KB, a 200-character summary).
+- **A look that can't be evaluated is a fact, not "unmet".** An answer that isn't JSON for its path,
+  one too large, or a command that can't run where it looks ends the wait (`cantTell`) and wakes the
+  task with what happened, its check and what its last looks saw. Only a computer that is away is
+  looked at again (the wait goes on when it is back). A routine's watch backs off as before.
+- **Every wait ends, and whoever waits hears why.** A check, event or judged wait with no until of
+  its own lasts a day for a task, a week for the partner. When it runs out, the task is told (the
+  same facts) and decides: wait again with a look that reads only what it needs, carry on, or report
+  needs_input. Code never asks the person; the partner hears the task's report. The keeper of a task
+  in rounds (D427) never re-arms a look that ran out or couldn't be read: that is the task's choice;
+  the rounds go on as a round at their rhythm, which wakes the task.
+- **What a task owns wakes it.** A task declares a pull request it opened or took over
+  (`checkpoint.owns`, `owner/repo#123`); Ducter looks at it every 5 minutes where the task works
+  (its gh): new comments, reviews, CI ending on the head, a push that isn't one of its checkpointed
+  commits, merged or closed (then the watch ends), and another task's report whose evidence names
+  the same PR. What is new goes to the task as one message of facts, after its turn when it is in
+  one (`owned_news` keeps the cursor across restarts). The partner's `[live]` line says what each
+  task owns.
+
+A resume refused because the session store spells the folder differently (agy lists a workspace
+URI, percent-encoded) is a start that lost its session; the directory's identity now holds every
+spelling (raw, percent-encoded, a file URI, NFC/NFD), in a patch to OAR until OAR has it.
 
 ## The partner's own robustness
 

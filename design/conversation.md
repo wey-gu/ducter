@@ -60,8 +60,8 @@ A task's question reaches the user only through the partner, in its own words (`
 
 **The zh copy, read against the humanizer standard (D129)** (old → new):
 这件不会自己动，等你定 → 你说好，我再做。 · 你不回的话，{t}后我会{action}，之后也能撤销。 →
-{t}后你没回，我就{action}，之后还能改回来。 · 你不回的话，我会先停着等你。 → 你没回之前，我先放着。 ·
-马上按默认做 → 这就照原计划做 · 已经说好 → 你说：{Go 的字} · 先等等了 → 你说：先等等 · 已回复：{x} →
+{t}后你没回，我就{action}，之后还能改回来。 · 你不回的话，我会先停着等你。 → 你没回之前，我先放着。 (D482: each default now starts 不回的话，…: 不回的话，我先放着，等你回。) ·
+马上按默认做 → 这就照原计划做 · 已经说好 → 你说：{Go 的字} · 先等等了 → 你说：先等等（D482: 你说：先不用） · 已回复：{x} →
 你说：{x} · 按默认做了 → 你没回，我照原计划做了 · 回复这件事… → 说说你的想法… · 在看那件事做到哪了… →
 在看做到哪了… · 在跟那件事说… → 在把你的话带过去… · 不确定做成没有，看一下 → 不确定成没成，你看一眼 ·
 说一句话就能开始。要做的事交给我，需要你的时候我会来问。 → 想做什么，跟我说一句就行。需要你的时候，我会来问你。 ·
@@ -404,6 +404,37 @@ was tried and what is left. The partner finds another way first (the repository 
 another agent, another computer) and says nothing about the failure; a fix that worked needs no
 word. Only when no way can work, or the task comes back a second time, it asks once, in one line,
 with the one real fix. No error text and no list of what failed ever reach the conversation.
+
+## A question answered anywhere is answered everywhere (D481)
+
+**Who and what they feel.** The heavy developer has the Mac app, the phone and a chat app open on
+the same home. Before: on hel (2026-11-23) a card answered on one window at 01:05 still showed open
+on another, with 你没回之前，我先放着 under it; they read it as Ducter not listening. After: a tap or a
+reply anywhere closes the card on every window at once; a window that was asleep closes it as it
+wakes. Nothing to learn: it is how a messaging app already behaves.
+
+**One source of truth.** The home's Decisions holds which questions are open. Every On hand
+snapshot carries `openAsks` (their ids and the Log seq it is as of). Every surface on a client
+derives from its one store: the card in the conversation (and its sheet), On hand's rows and the
+等你 count (the Dock badge, the menu bar), a partner's own asks, the opened task's page. A client
+closes any question it holds open that isn't in `openAsks` and was asked at or before its `asOf`
+(shown 在别处答过了 / Answered somewhere else), and asks the home (`asks_get`) for the events of those
+and of any open one it doesn't hold; the home's own resolution then replaces the stand-in. A
+question asked after the snapshot is never closed by it.
+
+**Ways a question closes.** Go, Hold or a reply (any window, a chat app, a reply quoting it), its
+default by time, and by what happened (`by: "ended"`, 不用回了 / No answer needed now): its task
+finished or was set aside for another, or a loop card's moment passed (D427's watchdog). Ended
+closes are never forwarded and wake nobody.
+
+**Reconnects.** A hello with a cursor replays every event since it, page after page; before D481
+one page (5,000) was all a long-away client got, and its live events then moved its cursor past
+the gap for good.
+
+**Words are never lost.** A reply typed into a card answered elsewhere: sent, the home logs it as
+a normal message quoting the card (never a second answer); still in the box, the card keeps it
+under its answer with **作为消息发给我 / Send it to me as a message** and **不发了 / Discard**. Go
+or Hold on such a card does nothing but bring this window the home's answer.
 
 ## The living message (principle 7)
 

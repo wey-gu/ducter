@@ -29,6 +29,11 @@ export type Seed =
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
+  // D483: the seeded task declared it owns this PR (its checkpoint's owns), so Ducter watches it for it.
+  | { owns: { task: string; pr: string } }
+  // D483: the seeded task's own wait ended without its condition (ran out, or its look couldn't be
+  // read), as core logs it: its looks first, then the end; core then tells the task with the facts.
+  | { waitEnded: { task: string; reason: string; argv: string[]; path: string; looks: string[]; cantTell?: string } }
   // D478: the runner's record that a seeded task's agent hit its usage limit (resets at HH:MM local).
   | { limitHit: { task: string; harness: string; resetsAt: string } }
   // D193 (scenario.phone): a call on the line whose other side asks the user something (its card is up).
@@ -127,7 +132,10 @@ export type Step =
   | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } }
   // D477 (scenario.world): the seeded task's start failed this way, and its card is what core's own
   // places port makes of it (as the runner asks it), then core's mender acts on it for real.
-  | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } };
+  | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } }
+  // D481: the seeded task, in rounds, has been on this round a long time: its steps are logged (oldest
+  // first, minutes ago), then core's loop keeper hands it to the partner with these facts.
+  | { longRound: { task: string; sinceMin: number; everyMin: number; reason: string; earlier: number[]; steps: { minAgo: number; text: string; kind?: "state" | "said" }[]; waits?: string[] } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -280,6 +288,12 @@ export interface Expect {
     carriedOn?: { task: string; harness?: string; notHarness?: string };
     /** D479: every tool a task opened in the run is handed fits the model families its agent sends tools to (harness-facts toolSchema). */
     toolsFit?: boolean;
+    /** D486: the person's words were passed to this partner (by name), and what was passed matches. */
+    passedTo?: { name: string; require?: RegExp[] };
+    /** D486: nothing was passed to another partner. */
+    noPass?: boolean;
+    /** D486: a partner was made with this name (and what it looks after matches). */
+    made?: { name: string; about?: RegExp };
   };
 }
 
@@ -390,7 +404,15 @@ export interface Scenario {
    * D312: the partner under test is a second partner with this name, on its own view of core (its
    * own conversation); the seed goes into the default partner's conversation, which it never sees.
    */
-  second?: { name: string };
+  second?: { name: string; /** D486: what it looks after (the person's words). */ about?: string };
+  /**
+   * D486: the person's other partners beside the one under test (the default, unless `second`):
+   * each with what it looks after, words in its own conversation and tasks it owns, none of which
+   * the partner under test sees. The first is p2 (p3 with `second`).
+   */
+  others?: { name: string; about?: string; says?: { user: string; ai: string }[]; tasks?: string[] }[];
+  /** D486: what the default partner looks after (with `second` or `others`). */
+  defaultAbout?: string;
   /**
    * D376: the person's other computers beside the home ("local"), as the [devices] line shows them;
    * task_switch's move to one is recorded, never made.

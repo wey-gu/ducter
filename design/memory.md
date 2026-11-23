@@ -397,7 +397,7 @@ any of it: nothing to set up, no line, no card. Restraint holds: the partner nev
 *Who and how it feels:* the person who told Ducter on Monday that the dentist moved to Thursday asks on
 Wednesday for a reminder before "Wednesday's dentist"; the partner says it moved, as a friend would, instead of
 setting the wrong reminder. The consumer hears their own preferences kept without saying them again; the fresh
-user, with nothing in Mem yet, sees nothing. Every personal AI research/209 read loads a bounded core memory into
+user, with nothing in Mem yet, sees nothing. Every personal AI research/210 read loads a bounded core memory into
 each fresh session; the partner used to know the person only when it chose to search.
 
 - **What** (`partner/src/known.ts`): D444's about-set (`about()`, D321's rule: preferences from anyone Mem names,

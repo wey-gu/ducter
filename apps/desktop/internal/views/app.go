@@ -76,6 +76,9 @@ type App struct {
 	mailboxOpening map[string]bool
 	// mailboxChoosing is the in-place choice open under one agent's row (D480), or nil.
 	mailboxChoosing *mailboxChoice
+	// mailboxAsked is the agents whose Spaces this window looked up by itself when Agent messaging
+	// showed (D489: once each, read only).
+	mailboxAsked map[string]bool
 	// peerSpoken and peerOrigin (D470): the request lines the partner's next words say, and the
 	// message each stands over.
 	peerSpoken map[int64]bool
@@ -871,6 +874,25 @@ func (a *App) sendMessage(text string) {
 	a.list.ScrollToEnd()
 }
 
+// sendLeftDraft (D481) sends the words left in a card's reply box after it
+// was answered elsewhere, as a message quoting the card.
+func (a *App) sendLeftDraft(d *store.DecisionState, text string) {
+	a.nextClient++
+	id := fmt.Sprintf("c%d-%d", a.Now().UnixMilli(), a.nextClient)
+	var reply *replyTo
+	if d.Seq > 0 {
+		q := d.Said
+		if q == "" {
+			q = d.Question
+		}
+		reply = &replyTo{seq: d.Seq, from: "partner", quote: q}
+	}
+	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, sent: true, reply: reply})
+	a.thinkingSince = a.Now()
+	a.markRead()
+	a.send(protocol.Send{T: "send", Text: text, ClientID: id, Reply: reply.want()})
+}
+
 // Decide answers a decision.
 func (a *App) Decide(id, option, text string) {
 	if d := a.S.Decisions[id]; d != nil {
@@ -1130,6 +1152,12 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		// on_hand closes the replay that follows a welcome.
 		if a.inDoubt != nil {
 			a.settleInDoubt()
+		}
+		// D481: questions this window and the home disagree about: the home's own events for them.
+		if a.S.Welcomed {
+			if ids := a.S.TakeAsksWanted(); len(ids) > 0 {
+				a.send(protocol.AsksGet{T: "asks_get", IDs: ids})
+			}
 		}
 	}
 	a.Applied(f)

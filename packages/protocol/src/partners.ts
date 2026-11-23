@@ -23,6 +23,18 @@ export interface PartnerInfo {
   look: PartnerLook;
   /** Open questions in this partner's own conversation; its tasks' are On hand's (shared). */
   asks: number;
+  /** D486: what it looks after, in the person's own words ("家里的事、看病、孩子"); absent: not said. */
+  about?: string;
+}
+
+/** D486: what a partner looks after: one short line in the person's words, trimmed, at most this long. */
+export const PARTNER_ABOUT_MAX = 120;
+
+/** D486: a partner's "looks after" line as kept: one line, trimmed, clipped; "" when nothing was said. */
+export function cleanAbout(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const one = v.replace(/[\p{Cc}\p{Cf}]/gu, " ").replace(/\s+/g, " ").trim();
+  return [...one].slice(0, PARTNER_ABOUT_MAX).join("");
 }
 
 /** The conversation stream of a partner: the default's is "channel", every other's "channel:<id>". */

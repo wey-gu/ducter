@@ -263,6 +263,12 @@ test("a computer asleep: the round is tried again, and once late past its grace 
   await flush();
   expect(b.woke).toHaveLength(1); // one catch-up once it can
   expect(og(b)?.health).toBeUndefined();
+  // D481: its card closes by itself once its moment passed, on every window (openAsks).
+  b.clock.advance(SWEEP_MS);
+  await flush();
+  const id = cards(b)[0]!.decisionId;
+  expect(b.core.decisions.resolution(id)).toMatchObject({ by: "ended", settled: true });
+  expect(b.core.tasks.onHand().openAsks?.ids).not.toContain(id);
 });
 
 test("a quota wait: late with when it resets, and no card (the limit's own line says it)", async () => {
@@ -455,4 +461,81 @@ test("D429: routine_list's ready lines, zh and en", async () => {
   expect(sayOngoing({ ...base, health: { state: "late", why: "quota", resetsAt: "2026-11-20T07:35:00Z" } }, "en", now, "UTC")).toBe("“Review requests on nowledge-co” (a round every 45 minutes) is out of allowance and carries on at 07:35.");
   expect(sayOngoing({ ...base, state: "paused" }, "zh", now, "UTC")).toBe("「Review requests on nowledge-co」暂停了。");
   expect(sayOngoing({ kind: "routine", id: "w", title: "整理上周的周报", state: "resting", cadence: "每周一 10:00（跟着你的时区）", nextAt: "2026-11-23T02:00:00Z", runs: [], startedAt: "2026-11-01T00:00:00Z" }, "zh", now, "Asia/Shanghai")).toBe("「整理上周的周报」在跑，每周一 10:00，下次 周一 10:00，按时。");
+});
+
+// D481: hel, 2026-11-23: a healthy loop waiting on Prow CI was asked about as "比平时久太多，可能卡住了"
+// from the time alone. Now a long round is never a card or a health of its own: the partner gets its facts.
+test("D481: a round that runs long is handed to the partner with its facts (a mend of class round), never a card", async () => {
+  const b = boot();
+  const woke: string[] = [];
+  b.core.setPartner({ onTrigger: (e) => void woke.push(e.kind) });
+  open(b);
+  await waitFor(b, "swj3zc4w");
+  await flush();
+  b.clock.advance(45 * MIN);
+  await flush();
+  expect(b.woke).toHaveLength(1);
+  // The round goes on for hours, working and waiting on CI, with steps all along.
+  for (let i = 0; i < 8; i++) {
+    b.core.tasks.setState("swj3zc4w", "working", "hot", "PR #10932 最新提交的三项 Prow CI 检查还在跑");
+    b.core.log.append({ stream: "task:swj3zc4w", origin: "task", kind: "task_event", body: { taskId: "swj3zc4w", role: "assistant", text: `CI 第 ${i + 1} 次查看：还在跑` } });
+    b.clock.advance(30 * MIN);
+    await flush();
+  }
+  expect(cards(b)).toHaveLength(0); // never "可能卡住了" from the time alone
+  expect(og(b)?.health).toBeUndefined(); // nor "这一轮跑得太久了" on its Ongoing card
+  const looks = b.core.log.read({ stream: "task:swj3zc4w", kinds: ["mend"], limit: 10 }).map((e) => e.body as Bodies["mend"]);
+  expect(looks).toHaveLength(1); // once a round
+  expect(looks[0]).toMatchObject({ cls: "round", rung: "rethink", round: { everyMs: 45 * MIN } });
+  expect(looks[0]!.round!.steps.some((s) => s.text.includes("Prow CI"))).toBe(true);
+  expect(looks[0]!.round!.steps.some((s) => s.text.startsWith("said: CI"))).toBe(true);
+  expect(woke).toContain("mend"); // the partner looks
+  expect(b.core.tasks.onHand().tasks.find((c) => c.taskId === "swj3zc4w")?.mending).toBeUndefined();
+});
+
+// D483: hel, 2026-11-22 19:30. A task in rounds whose round is a look (check-runs at its head),
+// armed with an until; the look ran out at 19:30:00, and 20 s later the keeper armed the same look
+// again with no until, which idled 5.5 h. Now the task is told what its looks saw and decides; the
+// keeper never arms that look again by itself; a round at its rhythm wakes the task.
+test("D483: a look that ran out goes to the task with its facts; the keeper never re-arms it blindly", async () => {
+  const pending = JSON.stringify({ total_count: 3, check_runs: [{ name: "ci/mem-bazel", status: "in_progress" }] });
+  const b = boot({ core: { work: { exec: async () => ({ exitCode: 0, stdout: pending }), minEveryMs: 1000, restartLookMs: 10 } } });
+  const id = "pr10932";
+  open(b, id, "在 hel 上审改 mem 长文案并开 PR，CI 过了再告诉我");
+  const look = { argv: ["gh", "api", "repos/o/r/commits/e2b8b625ff/check-runs"], succeedWhen: { path: "check_runs[].status", equals: "completed" } };
+  const call = (until?: string) => b.core.mcp.call({ role: "task", taskId: id } as never, "wait_for", { reason: "PR #10932 最新提交的三项 CI 检查全部完成", check: look, everyMinutes: 3, ...(until ? { untilISO: until } : {}) }) as Promise<{ ok: boolean }>;
+  // Rounds: it rests on its look, is woken once, and arms it again (a loop from its rounds).
+  expect((await call()).ok).toBe(true);
+  turnEnd(b, id);
+  await flush();
+  const first = armed(b, id)[0]!;
+  b.core.work.waiters.cancel(first.waiterId, { by: "system" });
+  b.core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...first, state: "fired" } });
+  await flush();
+  b.core.tasks.setState(id, "working", "hot");
+  expect((await call(new Date(b.clock.now() + 50 * MIN).toISOString())).ok).toBe(true);
+  turnEnd(b, id);
+  await flush();
+  expect(loop(b, id)?.look?.check?.argv).toEqual(look.argv);
+  const before = b.woke.length;
+  for (let i = 0; i < 50; i++) {
+    b.clock.advance(MIN);
+    await flush();
+  }
+  const told = b.woke.slice(before).at(-1);
+  expect(told?.text).toStartWith("没等到：「PR #10932 最新提交的三项 CI 检查全部完成」到 ");
+  expect(told?.text).toContain("0 of 1 match (1 in_progress)");
+  expect(b.core.tasks.get(id)!.attention).not.toBe("needs_you");
+  // Its turn ends without arming anything: the keeper brings a round at its rhythm, never the look.
+  turnEnd(b, id);
+  b.clock.advance(SETTLE_MS + 1000);
+  await flush();
+  const next = armed(b, id);
+  expect(next.length).toBe(1);
+  expect(next[0]!.check).toBeUndefined();
+  expect(next[0]!.at).toBeDefined();
+  // The task arms a new look of its own: its choice, and it carries an until.
+  b.core.tasks.setState(id, "working", "hot");
+  expect((await call()).ok).toBe(true);
+  expect(armed(b, id).find((w) => w.check)?.until).toBeDefined();
 });

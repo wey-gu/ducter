@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -19,10 +19,13 @@ conversations separate), D31 (projects and devices are the user's) and principle
   no switch, no stone. The second partner appears only after the person makes one. Value: 好用,
   zero concepts until wanted.
 
-**How it starts.** Settings › 伙伴, one row: **再加一个伙伴 / Add a partner**, with one line of
-help (one for work and one for home, or one per person). The form asks two things: a name and
-a colour. Nothing else (D24: creating one is light). Afterwards the bar shows the new partner's
-stone beside the name; one click shows its conversation.
+**How it starts.** By talking: 「再给我做一个管家里事的伙伴，叫它小家」 makes it at once (the partner
+tool, D486), and the reply says its stone is beside the name. Or Settings › 伙伴, one row: **再加一个
+伙伴 / Add a partner**, with one line of help (one for work and one for home, or one per person). The
+form asks three things: a name, **它管什么 / What it looks after** (optional, the person's words) and a
+colour (D24: creating one is light). Settings' foot, with one partner, says it can be asked for in
+words. Afterwards the bar shows the new partner's stone beside the name; one click shows its
+conversation.
 
 ## Shared and isolated
 
@@ -30,11 +33,11 @@ stone beside the name; one click shows its conversation.
 |---|---|---|
 | Log | one database | its conversation: the default's is `channel`, another's `channel:<id>` (task streams are the tasks') |
 | Conversation | | yes: its words, questions, replies; another partner never reads them (isolated by default, D24) |
-| Memory (Mem) | | its own Mem identity (D18, D141); a second partner's is `ducter-<id>`, bound once Mem answers (D312) |
+| Memory (Mem) | the person's own profile in the one Mem (every partner's L1 reads it) | its own Mem identity (D18, D141); a second partner's is `ducter-<id>`, bound once Mem answers (D312), its bundle (profile and its own rules) read into its L1 at its session's start (D486) |
 | Tasks, routines | listed together in On hand | owned by the partner that opened them (D31: `card.persona`) |
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
-| Settings | notifications, quiet hours, look and sound, devices | its name, look; later its own talk and memory switches |
+| Settings | notifications, quiet hours, look and sound, devices | its name, look, what it looks after (D486); later its own talk and memory switches |
 | Chat apps (Telegram, Slack, iMessage) | | the default partner only, for now |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
@@ -93,9 +96,33 @@ A family that needs privacy from each other needs separate homes.
   first look nobody has.
 - At most four partners on a home (the default and three).
 
-## What's built (the first slice, a preview)
+## Partners know each other, and hand over (D486)
 
-Behind `DUCTER_PARTNERS=preview` on the home (off by default; `startCore({ partners })` in tests,
+- **What it looks after.** Each partner has one line in the person's words (at most 120 characters):
+  asked when it is made, shown under its name in Settings (**管：{about} / Looks after: {about}**),
+  changed there (**改一下 / Change**) or by talking. It is in that partner's own L1.
+- **The `[partners]` line.** While there is more than one partner, every partner's turn carries who
+  it is and the others: their names, what each looks after, how many of their own questions wait.
+  Never their conversations, tasks or memory. So a partner can say "that's 小家's, want me to pass
+  it on?" without having seen anything of 小家's.
+- **The partner tool.** `make` (the person asked for one), `pass` (words the person means for another
+  partner, by name or by asking to tell it), `set` (rename one, change what it looks after). The
+  model judges whose a request is; code guards four at most, unique names, never to itself.
+  Removing is Settings' only (two taps).
+- **Passed words** land in the other partner's conversation as the person's (`user_msg.passed`),
+  with a small line over the bubble: **{name} 转过来的 / Passed on by {name}** (a tap shows that
+  partner). That partner wakes and answers there; the one that passed them says one line and never
+  claims the answer.
+- **Removing.** **移除 / Remove** on its row asks **移除{name}？ / Remove {name}?**, with **它的对话会
+  留着，它的任务交给{default}。/ Its conversation is kept, and {default} takes over its tasks.** Its
+  session ends; its conversation stays in the Log; its tasks and routines are the default's; a
+  device showing it shows the default's; its id is never given again. The default can't be removed.
+- **The same world.** A second partner's `[devices]` line has the home's agents, the code on each
+  computer and the agents' limits, as the default's does.
+
+## What's built
+
+On every home (`DUCTER_PARTNERS=off` turns it off; `startCore({ partners })` in tests,
 `DEMO_PARTNERS=1` in the demo). Built:
 
 - Protocol: `partners.ts` (looks, `channelOf`, `partnerOfStream`, names, `needsAcross`), frames
@@ -110,7 +137,7 @@ Behind `DUCTER_PARTNERS=preview` on the home (off by default; `startCore({ partn
 
 ## A second partner answers (D312)
 
-Built, still in the preview:
+Built:
 
 - **Its own session.** The same partner code on its own view of core (`core/src/partner-view.ts`):
   `channel` and `partner` are its `channel:<id>` and `partner:<id>`; it sees only its own tasks,
@@ -136,18 +163,11 @@ Built, still in the preview:
 
 ## What's left
 
-1. **Its L1 from Mem.** Its identity text is built by Ducter; reading its own Mem identity's bundle
-   (owner profile, rules) as the default does is left.
-2. **Bridge per partner.** Bridge stays the default's connection.
-3. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
-4. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
-5. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.
-6. **Removing a partner**, and what happens to its conversation and tasks (kept in the Log; its
-   tasks move to the default).
-7. **The Mac renames another partner** (the web does; the Mac renames only the default).
-8. **iPhone and Android shells**: they show the web client, so they inherit it; not checked on a
-   device.
-9. **Linking partners** (one may ask another): product-model §8.
-10. **Comprehension test of the stone** with naive raters; the clay-character upgrade.
-11. **The full partner eval** at merge (D175): D312 ran only its two scenarios
-    (`second-partner-name`, `second-partner-apart`) with `--only`.
+1. **Bridge per partner.** Bridge stays the default's connection.
+2. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
+3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
+4. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.
+5. **The CLI** talks to the default partner only.
+6. **iPhone and Android shells** show the web client, so they inherit it; not checked on a device.
+7. **Comprehension test of the stone** with naive raters; the clay-character upgrade.
+8. **A live run** with two real partner sessions on one home.

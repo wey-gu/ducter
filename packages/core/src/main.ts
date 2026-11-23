@@ -1,7 +1,7 @@
 // `bun run up`: boots core, then runner and partner (stubs if they're missing or fail).
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "./core.ts";
-import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
+import { DEFAULT_IDENTITY, loadPersona, readBundle } from "./persona.ts";
 import { bindMemIdentity, nmemRunner, readMemIdentity, refreshLane, renameMemIdentity } from "./mem-identity.ts";
 import { homedir } from "node:os";
 import { mkdirSync } from "node:fs";
@@ -211,6 +211,12 @@ export async function main(mods: BootModules = {}) {
     core.setPartnerFactory(async (view, id, o) => {
       mkdirSync(o.dir, { recursive: true });
       bindPartnerMem(core, id);
+      // D486: its own Mem identity's bundle (the person's profile, its own rules) in its L1, read
+      // once its session starts (bounded: a slow Mem leaves it with Ducter's own words).
+      if (view.persona.mem && process.env.DUCTER_MEMORY !== "off") {
+        const b = await readBundle({ timeoutMs: 6_000, mem: view.persona.mem });
+        core.setPartnerBundle(id, b?.identity);
+      }
       // Its own Mem identity or nothing: until it is bound, it neither recalls nor saves.
       const nmem = process.env.DUCTER_MEMORY === "off" ? undefined : make.createNmemClient?.({ identity: () => view.persona.mem });
       const memory = nmem && make.noMemory

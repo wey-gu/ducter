@@ -612,6 +612,9 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		if e.User.App != nil {
 			a.userAppLine(c, itoa(e.FirstSeq), e.User.App)
 		}
+		if e.User.Passed != nil {
+			a.passedLine(c, itoa(e.FirstSeq), e.User.Passed.From)
+		}
 		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
@@ -854,10 +857,15 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	if d.RoutineID != "" && d.Resolved == nil {
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}
-	if d.Resolved == nil && d.SignIn == nil {
-		uiText(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
-	}
 	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
+	if d.Resolved == nil && d.SignIn == nil {
+		if genericAsk(d) {
+			st.under = a.defaultBelow(c, d) // D482: the default once, under the row
+			a.whereLines(c, d)
+		} else {
+			uiText(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
+		}
+	}
 	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
 		// Details sits after Reply…, a text button like it.
 		st.after = func() {

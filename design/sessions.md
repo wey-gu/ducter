@@ -135,6 +135,18 @@ plus its own judgement.
   with the title, the state and who does it under it; the turns, the rail's rows (44) and the
   workbench's header close up; the type scale and the reading measure stay.
 
+## Sharing a task (D484)
+
+**分享 / Share** in the opened task's bar (every width) sends where the task stands, in words anyone
+can read: its name, the state sentence (what it waits on, else its state), its last report, its PR,
+one fact a line, then the link that opens it in the person's own Ducter (only their own devices
+can). On a phone with the system's share sheet (a coarse pointer, a secure page) that sheet opens;
+elsewhere **分享这个任务 / Share this task** shows **会发出去的 / What it sends** as selectable text with
+**复制 / Copy**, **复制链接 / Copy link**, **用别的应用分享… / Share with another app…** when there is
+one, and says the link opens only on the person's own devices. A plain-http home has no clipboard
+API: copying falls back to the selected field, else says to press and hold. Keys are hidden. No
+export: a transcript file would carry commands and paths a person rarely means to send.
+
 ## 做过的事 / Past tasks as the list of every task
 
 Unchanged where D285 holds; added:

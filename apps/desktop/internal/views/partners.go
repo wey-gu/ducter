@@ -5,7 +5,10 @@ package views
 // more, the conversation bar's face sits on its partner's own clay stone,
 // the others sit beside the name as small stones (a dot when one has
 // something waiting), and a click on one shows its conversation. Settings
-// › 伙伴 lists them, changes a look and adds one (a name and a colour).
+// › 伙伴 lists them, changes a look and adds one (a name, what it looks
+// after and a colour). D486: what each looks after shows under its name, a
+// partner's name and that line change in place, and another partner is
+// removed in two clicks (its conversation stays).
 
 import (
 	"fmt"
@@ -23,9 +26,15 @@ import (
 type partnersUI struct {
 	adding  bool
 	name    string
+	about   string
 	look    string
 	focused bool
 	cid     string
+	// D486: the row being changed (its name and line), or asked about removing.
+	editing   string
+	editName  string
+	editAbout string
+	removing  string
 }
 
 // manyPartners: more than one partner, so the bar shows whose this is.
@@ -191,8 +200,50 @@ func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
 	}
 }
 
+// passedLine is the small line over the person's words that another
+// partner passed on (D486): who passed them; a click shows that partner.
+func (a *App) passedLine(c *ui.Context, key, from string) {
+	t := a.T
+	var p *protocol.PartnerInfo
+	for i := range a.S.Partners {
+		if a.S.Partners[i].ID == from {
+			p = &a.S.Partners[i]
+		}
+	}
+	words := a.L.T("partners.passed.gone")
+	if p != nil {
+		words = a.L.T("partners.passed", p.Name)
+	}
+	ui.Row(c.Key("passed:" + key)).Children(func() {
+		ui.Spacer(c)
+		b := ui.Row(c.Key("b")).Gap(6).AlignItems(ui.Center).Padding(2, t.S2).Radius(999).Background(t.Sunken).Label(words)
+		if p != nil {
+			b.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+		}
+		b.Children(func() {
+			if p != nil {
+				a.stone(c, "passed-"+key, p.Look, 14)
+			}
+			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+		})
+		if p != nil && b.Clicked() {
+			a.SwitchPartner(p.ID)
+		}
+	})
+}
+
 // partnerSwitch is the other partners beside the name in the bar.
 func (a *App) partnerSwitch(c *ui.Context) {
+	// D486: the partner this window showed was removed: it shows the default's.
+	if id := a.S.Persona; id != "" && id != protocol.DefaultPartner && a.S.Partners != nil && a.S.Welcomed {
+		found := false
+		for _, p := range a.S.Partners {
+			found = found || p.ID == id
+		}
+		if !found {
+			a.SwitchPartner(protocol.DefaultPartner)
+		}
+	}
 	if !a.manyPartners() {
 		return
 	}
@@ -255,28 +306,85 @@ func (a *App) partnersGroup(c *ui.Context) {
 	many := a.manyPartners()
 	if ans := a.S.PartnerAnswer; ans != nil && ans.ClientID == ps.cid && ps.cid != "" && ans.WbError == "" && ps.adding {
 		a.partner.toast, a.partner.toastAt, a.partner.toastTone = a.L.T("partners.added", strings.TrimSpace(ps.name)), a.Now(), noticeDone
-		ps.adding, ps.name, ps.cid = false, "", ""
+		ps.adding, ps.name, ps.about, ps.cid = false, "", "", ""
 	}
-	note := a.L.T("partners.preview")
+	note := a.L.T("partners.say")
 	if many {
-		note = a.L.T("partners.help") + "\n" + note
+		note = a.L.T("partners.help")
 	}
 	a.group(c, "partners", a.L.T("partners.title"), note, func() {
 		if many {
 			for _, p := range a.S.Partners {
 				a.sep(c)
-				id := p.ID
-				ui.Row(c.Key("partner-row:"+p.ID)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Children(func() {
-					a.stone(c, "row-"+p.ID, p.Look, 40)
+				id, p := p.ID, p
+				if ps.removing == id {
+					ui.Row(c.Key("partner-removing:"+id)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Role(ui.RoleGroup).Label(a.L.T("partners.remove.ask", p.Name)).Children(func() {
+						a.stone(c, "row-"+id, p.Look, 40)
+						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
+							uiText(c, a.L.T("partners.remove.ask", p.Name)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
+							uiText(c, a.L.T("partners.remove.what", a.defaultName())).FontSize(t.SM).TextColor(t.InkMuted)
+						})
+						if a.button(c, a.L.T("partners.remove.keep"), btnText, t.ControlSM, t.Surface) {
+							ps.removing = ""
+						}
+						if a.button(c, a.L.T("partners.remove.go"), btnSecondary, t.ControlSM, t.Surface) {
+							ps.removing = ""
+							a.send(protocol.PartnerRemove{T: "partner_remove", ID: id, ClientID: fmt.Sprintf("pr-%d", time.Now().UnixNano())})
+						}
+					})
+					continue
+				}
+				save := func() {
+					patch := protocol.PartnerSet{T: "partner_set", ID: id}
+					changed := false
+					if n := strings.TrimSpace(ps.editName); n != "" && n != p.Name {
+						if id == protocol.DefaultPartner {
+							a.SetSettings(protocol.SettingsPatch{Name: &n})
+						} else {
+							patch.Name, changed = n, true
+						}
+					}
+					if ab := strings.TrimSpace(ps.editAbout); ab != p.About {
+						patch.About, changed = &ab, true
+					}
+					if changed {
+						a.send(patch)
+					}
+					ps.editing = ""
+				}
+				ui.Row(c.Key("partner-row:"+id)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Children(func() {
+					a.stone(c, "row-"+id, p.Look, 40)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
-						uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
+						if ps.editing == id {
+							ui.TextInput(c.Key("input:partner-name:"+id), &ps.editName).Label(a.L.T("partners.rename")).
+								FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
+							ui.TextInput(c.Key("input:partner-about:"+id), &ps.editAbout).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
+								FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
+						} else {
+							uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
+							if p.About != "" {
+								uiText(c, a.L.T("partners.about.shown", p.About)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+							}
+						}
 						if p.ID == shown {
 							uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
 						}
-						if l := a.lookPick(c, p.ID, p.Look); l != "" && l != p.Look {
+						if l := a.lookPick(c, id, p.Look); l != "" && l != p.Look {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
 						}
 					})
+					if ps.editing == id {
+						if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
+							save()
+						}
+						return
+					}
+					if a.button(c, a.L.T("partners.change"), btnText, t.ControlSM, t.Surface) {
+						ps.editing, ps.editName, ps.editAbout, ps.removing = id, p.Name, p.About, ""
+					}
+					if id != protocol.DefaultPartner && a.button(c, a.L.T("partners.remove"), btnText, t.ControlSM, t.Surface) {
+						ps.removing, ps.editing = id, ""
+					}
 					if p.ID != shown && a.button(c, a.L.T("partners.switch", p.Name), btnSecondary, t.ControlSM, t.Surface) {
 						a.SwitchPartner(id)
 					}
@@ -311,7 +419,7 @@ func (a *App) partnersGroup(c *ui.Context) {
 				return
 			}
 			ps.cid = fmt.Sprintf("pa-%d", time.Now().UnixNano())
-			a.send(protocol.PartnerAdd{T: "partner_add", Name: ps.name, Look: ps.look, ClientID: ps.cid})
+			a.send(protocol.PartnerAdd{T: "partner_add", Name: ps.name, Look: ps.look, About: strings.TrimSpace(ps.about), ClientID: ps.cid})
 		}
 		ui.Column(c.Key("partner-add")).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
 			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
@@ -326,6 +434,9 @@ func (a *App) partnersGroup(c *ui.Context) {
 					}
 				})
 			})
+			uiText(c, a.L.T("partners.about")).FontSize(t.SM).TextColor(t.InkMuted)
+			ui.TextInput(c.Key("input:partner-add-about"), &ps.about).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
+				FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(320).OnSubmit(add)
 			uiText(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
 			if l := a.lookPick(c, "add", ps.look); l != "" {
 				ps.look = l

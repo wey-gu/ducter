@@ -100,6 +100,7 @@ export function repairReport(events: LogEvent[], o: { now: number; weeks: number
       case "mend": {
         const m = e.body as MendBody;
         const w = weekOf(e.ts);
+        if (m.cls === "round") break; // D481: a long round looked at is no failure and no repair
         if (m.rung === "rethink") {
           if (ep) ep.rethought = true;
           if (w) {

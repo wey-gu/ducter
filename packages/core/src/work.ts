@@ -19,6 +19,7 @@ import { isActive, type CoreRegistry } from "./registry.ts";
 import { createRoutines, type Routines } from "./routines.ts";
 import { createUntils, type Untils } from "./until.ts";
 import { createLoops, type Loops } from "./loops.ts";
+import { createOwned, type Owned } from "./owned.ts";
 import { createWaiters, kindOf, type Judge, type WaiterDeps, type Waiters } from "./waiters.ts";
 import type { WorkFrames } from "./ws.ts";
 
@@ -28,6 +29,8 @@ export interface Work {
   routines: Routines;
   /** D427: tasks in rounds, kept going by Ducter. */
   loops: Loops;
+  /** D483: what tasks own outside (their PRs), watched for them. */
+  owned: Owned;
   frames: WorkFrames;
   /** On hand plus what only these parts know (looks, routine views). */
   decorate(o: OnHand): OnHand;
@@ -50,6 +53,8 @@ export interface WorkOptions {
   minEveryMs?: number;
   judgeMinMs?: number;
   restartLookMs?: number;
+  /** D483: how often owned PRs are looked at (tests). */
+  ownedEveryMs?: number;
   defaultZone?: string;
   /** D427: the language the person talks in now (the keeper's cards). */
   lang?: () => import("@ducter/protocol").LangTag;
@@ -89,6 +94,10 @@ const W = {
     overSeen: "等到了：「{reason}」（{seen}）。接着做。",
     deadline: "等到最后也没等到：{reason}",
     wont: "没等到：「{reason}」，{unmet}。看看接下来怎么做。",
+    // D483: a wait that ran out, or whose look can't be read, is handed back with what it saw.
+    ranOut: "没等到：「{reason}」到 {until} 还没成立，现在什么都没在等。{facts}\n接下来由你判断：还值得等就用 wait_for 重新设一个（给 untilISO；查看只读你需要的那部分，比如 gh api … --jq），不用等了就接着做；只有用户能决定时，用 report_to_main 报 needs_input。",
+    cantTell: "没等到：「{reason}」，这次查看判断不了：{why}。现在什么都没在等。{facts}\n接下来由你判断：自己看一眼现在的情况，需要的话用 wait_for 换一个读得出来的查看（只读你需要的那部分，比如 gh api … --jq），或者接着做。",
+    facts: "查看：{check}。最近几次看到：{looks}。",
     // D429: a task in rounds: a round's end is progress, never done (Ducter brings the next one).
     round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。",
     roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
@@ -99,6 +108,9 @@ const W = {
     overSeen: 'The wait is over: "{reason}" ({seen}). Carry on.',
     deadline: "Waited until the deadline: {reason}",
     wont: 'This won\'t happen: "{reason}": {unmet}. Decide what to do next.',
+    ranOut: 'The wait ran out: "{reason}" still didn\'t hold at {until}, and nothing is waiting now. {facts}\nDecide what is next: if it is still worth waiting for, call wait_for again (with untilISO, and a look that reads only what you need, e.g. gh api … --jq); if not, carry on; report needs_input only when the user alone can decide.',
+    cantTell: 'The wait ended: "{reason}": its look can\'t tell: {why}. Nothing is waiting now. {facts}\nDecide what is next: look at it yourself now, and if you still need to wait, call wait_for with a look that can be read (only what you need, e.g. gh api … --jq), or carry on.',
+    facts: "Its look: {check}. Its latest looks saw: {looks}.",
     round: "This is one round of your rounds: when it is done, report_to_main with state progress, never done; Ducter wakes you for the next one.",
     roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds. Ducter wakes you for the next one.',
   },
@@ -141,7 +153,7 @@ export function createWork(o: WorkOptions): Work {
     if (!link) return { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };
     if (!link.online()) return { ok: false, met: false, summary: `${link.name} can't be reached`, error: "offline" };
     try {
-      return await link.call<CheckResult>("check", { spec: { ...spec, ...(cwd ? { cwd } : {}) } }, 30_000);
+      return await link.call<CheckResult>("check", { spec: { ...spec, ...(cwd ? { cwd } : {}) }, ...(outputMax ? { outputMax } : {}) }, 30_000);
     } catch (err) {
       return { ok: false, met: false, summary: (err as Error).message, error: (err as Error).message };
     }
@@ -196,7 +208,18 @@ export function createWork(o: WorkOptions): Work {
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
+  const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
   const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone, ...(o.loopsWhere ? { where: o.loopsWhere } : {}) });
+
+  /** D483: what a wait's last looks saw (they are logged only when what they saw changed), oldest first. */
+  const looksOf = (w: Bodies["waiter"]): string => {
+    const looks = log
+      .read({ stream: `task:${w.taskId}`, kinds: ["waiter_look"], limit: 400 })
+      .filter((e) => (e.body as Bodies["waiter_look"]).waiterId === w.waiterId)
+      .slice(-3)
+      .map((e) => `${e.ts.slice(11, 16)} UTC ${(e.body as Bodies["waiter_look"]).summary}`);
+    return looks.length ? looks.join("; ") : w.observed ?? "nothing yet";
+  };
 
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
   const unsubscribe = log.subscribe((e) => {
@@ -227,8 +250,21 @@ export function createWork(o: WorkOptions): Work {
           console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`);
           loops.wakeFailed(w.taskId!, (err as Error).message);
         });
-    } else if (w.state === "expired") {
-      tasks.setState(w.taskId, "needs_you", card.residency, fill(wordsOf(w.reason).deadline, { reason: w.reason }));
+    } else if (w.state === "expired" || (w.state === "cancelled" && w.cantTell)) {
+      // D483: the task is told what happened, with what its looks saw, and decides; the person is
+      // asked only when the task (or the partner) judges so. If it can't be told, its card says it.
+      const c = wordsOf(w.reason);
+      const facts = fill(c.facts, { check: w.check ? `${describeCheck(w.check)} (met when ${describePredicate(w.check.succeedWhen)})` : w.event ? `${w.event.service} ${w.event.trigger}` : "-", looks: looksOf(w) });
+      const text = w.cantTell ? fill(c.cantTell, { reason: w.reason, why: w.cantTell, facts }) : fill(c.ranOut, { reason: w.reason, until: w.until ?? "", facts });
+      const deadline = () => tasks.setState(w.taskId!, "needs_you", card.residency, fill(c.deadline, { reason: w.reason }));
+      if (card.attention === "blocked") tasks.setState(w.taskId, "working", card.residency);
+      const r = o.runner();
+      if (!r) deadline();
+      else
+        void r.send(w.taskId, text, undefined, "partner").catch((err) => {
+          console.warn(`[work] could not tell ${w.taskId} its wait ended: ${(err as Error).message}`);
+          deadline();
+        });
     } else if (w.state === "cancelled" && card.attention === "blocked" && !w.replacedBy) {
       tasks.setState(w.taskId, "working", card.residency);
       // D144: it can no longer come true: the task hears why and decides what is next.
@@ -385,7 +421,7 @@ export function createWork(o: WorkOptions): Work {
     event: eventSchema,
     judge: { type: "string", description: "Only when code can't decide: a yes/no question a cheap model answers over what the check or event fetched (是不是域名续费的提醒邮件？). Rate-limited, only on change." },
     everyMinutes: { type: "number", description: "How often to look (default 5, at least 1). CI ≈ 2–5, mail ≈ 5, a page ≈ 15–60" },
-    untilISO: { type: "string", description: "Give up at this time (ISO); the user is asked then. Default none; set one for anything that may never happen" },
+    untilISO: { type: "string", description: "Stop waiting at this time (ISO); default a day for a task's wait, a week otherwise. Then, or when a look can't be read, whoever waits is told what the looks saw and decides" },
     unmetSays: { type: "string", description: "With check.failWhen: what happened if it can no longer come true, plain, in the user's language (有一项检查挂了 / a check failed). Shown on On hand after 没等到 / Didn't happen" },
   };
   mcp.register(
@@ -535,6 +571,7 @@ export function createWork(o: WorkOptions): Work {
     untils,
     routines,
     loops,
+    owned,
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
@@ -562,6 +599,7 @@ export function createWork(o: WorkOptions): Work {
     stop() {
       unsubscribe();
       loops.stop();
+      owned.stop();
       routines.stop();
       untils.stopAll();
       waiters.stop();

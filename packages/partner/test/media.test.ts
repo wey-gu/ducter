@@ -19,7 +19,7 @@ function setup(script: Script, opts: { harness?: "deepseek-harness" } = {}) {
   fc.core.media = media;
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: undefined, ...(opts.harness ? { harness: opts.harness } : {}) });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {}, memory: undefined, ...(opts.harness ? { harness: opts.harness } : {}) });
   const user = (text: string, refs: MediaRef[] = []) =>
     partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text, ...(refs.length ? { media: refs } : {}) } }));
   return { fc, fr, partner, user, media };

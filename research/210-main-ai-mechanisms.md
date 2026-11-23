@@ -1,4 +1,4 @@
-# 209 · How open personal AIs build their main AI on existing harnesses (D487)
+# 210 · How open personal AIs build their main AI on existing harnesses (D487)
 
 > 2026-11-23. The author: 「我们要让我们的 ai 智能、可靠、聪明、高效、有灵性、有帮助、有情绪价值」 and
 > 「这里对 main ai 在现有 harness 上的各种设计机制和处理是重要的参考」. Four open-source personal-AI

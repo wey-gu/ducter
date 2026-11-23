@@ -1,20 +1,11 @@
 // D451: 第一次 / The first time: one line under the thing, once on the first thing on the screen,
 // met on the home so no other device shows it; the same words as the Mac.
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { FIRST_MEETS, type Settings } from "@ducter/protocol";
 import { firstMeetWords } from "../src/i18n-first-meet.ts";
 
-const mac = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/firstmeet.go"), "utf8");
-const goTable = (name: string) => {
-  const body = mac.split(`var ${name} = Table{`)[1]!.split("\n}")[0]!;
-  return Object.fromEntries([...body.matchAll(/^\s*"([^"]+)":\s*"((?:[^"\\]|\\.)*)",$/gm)].map((m) => [m[1], JSON.parse(`"${m[2]}"`)]));
-};
-
-test("the web's words are the Mac's, key for key, one line for every moment", () => {
-  expect(goTable("zhFirstMeet")).toEqual(firstMeetWords.zh);
-  expect(goTable("enFirstMeet")).toEqual(firstMeetWords.en);
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).
+test("one line for every moment", () => {
   expect(Object.keys(firstMeetWords.zh).sort()).toEqual(FIRST_MEETS.map((m) => `first.${m}`).sort());
 });
 

@@ -2,7 +2,7 @@
 // showed 没成 with 再试一次 only, each attempt "没能开始", the reason nowhere: an on_hand snapshot
 // rebuilt the task's state without its cant. The page, each attempt and the brief now say the real
 // reason with the real fix first. The Mac's d472_test.go checks the same.
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import type { CantStart } from "@ducter/protocol";
 import { noteOf } from "@ducter/protocol/src/transcript.ts";
 import { strings } from "../src/i18n.ts";
@@ -10,13 +10,21 @@ import { strings } from "../src/i18n.ts";
 const NO_FOLDER: CantStart = { why: "no_folder", computer: "Hetzner Server", what: "mem", path: "/root/dev/mem", device: "local", harness: "antigravity", cloneHere: true, pickHere: true };
 const card = (cant: CantStart) => ({ taskId: "smx2jjb3", persona: "default", title: "在 hel 用 Gemini 审改 Mem 长文案并开 PR", project: "", place: { kind: "folder", device: "local", path: "/root/dev/mem" }, harness: "antigravity", attention: "failed", residency: "archived", openedAt: "2026-11-22T02:59:30.000Z", updatedAt: "2026-11-22T02:59:31.000Z", reason: "x", cant });
 
+// The page is one module-wide app: leave no computers behind for the next file (D488: d467, run
+// after this file in another order, read them).
+afterAll(async () => {
+  const { A } = await import("../src/app.ts");
+  A.devices = [];
+  A.S.tasks.clear();
+});
+
 async function app(lang: "zh" | "en" = "zh") {
   const { A } = await import("../src/app.ts");
   const sent: any[] = [];
   A.L = strings(lang);
   A.send = (f: unknown) => void sent.push(f);
   A.S.tasks.clear();
-  A.devices = [{ id: "home_hel", name: "Hetzner Server", home: true, state: "awake" } as any, { id: "dev_mac", name: "Macbook Pro M3", state: "awake" } as any];
+  A.devices = [{ id: "home_hel", name: "Hetzner Server", home: true, state: "awake", harnesses: [] } as any, { id: "dev_mac", name: "Macbook Pro M3", state: "awake", harnesses: [] } as any];
   return { A, sent };
 }
 

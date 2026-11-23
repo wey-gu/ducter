@@ -187,6 +187,8 @@ export interface WsDeps {
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
+  /** D486: removes another partner (core's: its session ends too); absent: partners.remove alone. */
+  removePartner?: (id: string) => { ok: true } | { ok: false; error: import("./partners.ts").PartnerError };
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
@@ -583,6 +585,8 @@ export function createWsHandler(deps: WsDeps) {
       for (const s of sockets) {
         if (!s.data.live) continue;
         if (s.data.buf.length) send(s, { t: "events", events: s.data.buf.splice(0) });
+        // D486: the partner it showed was removed: it shows the default's (the client says hello again).
+        if (s.data.partner && !deps.partners?.has(s.data.partner)) delete s.data.partner;
         send(s, partnersFrame(s));
       }
     }, batchMs);
@@ -801,11 +805,19 @@ export function createWsHandler(deps: WsDeps) {
         if (deps.home) send(ws, deps.home.ways());
         // Channel only: task streams are pulled with task_history.
         const stream = channelOf(ws.data.partner);
-        const events =
-          f.cursor != null && f.cursor >= 0
-            ? log.read({ stream, fromSeq: f.cursor + 1, limit: REPLAY_MAX })
-            : log.read({ stream, limit: REPLAY_FRESH });
-        send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
+        // D481: everything since the cursor, in frames of REPLAY_MAX. Before, one read of the first
+        // REPLAY_MAX was all a long-away client got: what came after it (a resolution among it) never
+        // arrived, and the live events moved its cursor past the gap for good.
+        const asChannel = (evs: LogEvent[]) => dropSuperseded(evs).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" }));
+        if (f.cursor != null && f.cursor >= 0) {
+          let from = f.cursor + 1;
+          for (;;) {
+            const page = log.read({ stream, fromSeq: from, limit: REPLAY_MAX });
+            send(ws, { t: "events", events: asChannel(page) });
+            if (page.length < REPLAY_MAX) break;
+            from = page[page.length - 1]!.seq + 1;
+          }
+        } else send(ws, { t: "events", events: asChannel(log.read({ stream, limit: REPLAY_FRESH })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         if (deps.pins && !ws.data.partner) send(ws, pinsFrame());
         if (deps.apps && !ws.data.partner) send(ws, appsFrame());
@@ -855,7 +867,7 @@ export function createWsHandler(deps: WsDeps) {
         // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
         // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
-        if (ws.data.partner) {
+        if (ws.data.partner && deps.partners?.has(ws.data.partner)) {
           logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), stream: channelOf(ws.data.partner) });
           return;
         }
@@ -871,13 +883,20 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "partner_add": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look });
+        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look, ...(f.about !== undefined ? { about: f.about } : {}) });
         // A made one: every socket hears it (onChange); this one also gets its clientId back.
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_set": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}) });
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}) });
+        return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
+      }
+      case "partner_remove": {
+        if (!deps.partners) throw new Error("partners unavailable");
+        const id = String(f.id ?? "");
+        const r = deps.removePartner ? deps.removePartner(id) : deps.partners.remove(id);
+        if (ws.data.partner === id && r.ok) delete ws.data.partner;
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "channel_status": {
@@ -903,6 +922,17 @@ export function createWsHandler(deps: WsDeps) {
           else throw new Error("a key card is answered with the key or 不给 / Don't give");
           return;
         }
+        // D481: answered already, somewhere else (another window, a chat app, its default, its task
+        // ending): this client learns how at once, and words typed into its reply box are not lost:
+        // they go to the partner as a message quoting the card.
+        if (decisions.get(f.decisionId) && !decisions.isPending(f.decisionId)) {
+          const seqs = decisions.seqsOf(f.decisionId);
+          const r = decisions.resolution(f.decisionId);
+          const text = f.option === "reply" ? String(f.text ?? "").trim() : "";
+          if (text && text !== r?.text?.trim() && seqs[0]) logUserMessage(log, decisions, { text, reply: { seq: seqs[0] }, stream: channelOf(ws.data.partner) });
+          send(ws, { t: "events", events: seqs.flatMap((s) => log.read({ fromSeq: s, limit: 1 })).flatMap((e) => forSocket(ws, e) ?? []) });
+          return;
+        }
         const pay = deps.autofill?.fill;
         if (f.option === "go" && pay?.needsCvc(f.decisionId)) {
           if (!f.cvc) throw new Error("this payment needs the card's security code");
@@ -915,6 +945,15 @@ export function createWsHandler(deps: WsDeps) {
         // D382: 晚点再问我 / Ask me later (until), or 现在就定 / Decide now (null).
         const until = f.until === null ? null : Date.parse(String(f.until ?? ""));
         decisions.later(f.decisionId, until);
+        return;
+      }
+      case "asks_get": {
+        // D481: the questions a client and On hand's openAsks disagree about: each one's own events
+        // (its decision, later/back/seen, its resolution), in seq order, in one events frame.
+        const ids = Array.isArray(f.ids) ? f.ids.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
+        const seqs = [...new Set(ids.flatMap((id) => decisions.seqsOf(id)))].sort((a, b) => a - b);
+        const events = seqs.flatMap((s) => log.read({ fromSeq: s, limit: 1 })).flatMap((e) => forSocket(ws, e) ?? []);
+        send(ws, { t: "events", events });
         return;
       }
       case "key_add": {

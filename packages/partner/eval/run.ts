@@ -584,7 +584,23 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     await core.taskSources.look();
     await core.taskSources.pile.sort("daily");
   }
-  if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
+  if (sc.second && !core.partners.add({ name: sc.second.name, ...(sc.second.about ? { about: sc.second.about } : {}) }).ok) throw new Error("second partner: not added");
+  if (sc.defaultAbout && !core.partners.set("default", { about: sc.defaultAbout }).ok) throw new Error("default partner: about not set");
+  // D486: the person's other partners, with their own words and tasks (never seen by the one under test).
+  for (const o of sc.others ?? []) {
+    const r = core.partners.add({ name: o.name, ...(o.about ? { about: o.about } : {}) });
+    if (!r.ok) throw new Error(`other partner ${o.name}: ${r.error}`);
+    const conv = `channel:${r.partner.id}`;
+    for (const x of o.says ?? []) {
+      const u = core.log.append({ stream: conv, origin: "user", kind: "user_msg", persona: r.partner.id, body: { text: x.user } });
+      core.log.append({ stream: conv, origin: "partner", kind: "ai_msg", persona: r.partner.id, body: { text: x.ai, replyTo: u.seq } });
+    }
+    for (const title of o.tasks ?? []) {
+      const taskId = shortId();
+      core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", persona: r.partner.id, body: { taskId, title, project: "", place: { kind: "none" }, harness: "claude-code", brief: title } });
+      core.log.append({ stream: conv, origin: "partner", kind: "job_status", persona: r.partner.id, body: { jobId: `job_${taskId}`, text: title, state: "running", taskId } });
+    }
+  }
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
@@ -778,6 +794,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       // D478: the runner's own record of a task's agent hitting its usage limit (D297), as it logs it.
       const taskId = idOf.get(s.limitHit.task)!;
       core.log.append({ stream: `task:${taskId}`, origin: "runner", kind: "task_event", body: { taskId, role: "system", from: "runner", text: "usage limit", raw: { limit: { harness: s.limitHit.harness, failure: "quota", resetsAt: nextAt(s.limitHit.resetsAt) } } } } as never);
+    } else if ("owns" in s) {
+      const taskId = idOf.get(s.owns.task)!;
+      core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "checkpoint", body: { taskId, text: "opened the PR", owns: [s.owns.pr] } });
+    } else if ("waitEnded" in s) {
+      const taskId = idOf.get(s.waitEnded.task)!;
+      const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), taskId, reason: s.waitEnded.reason, kind: "check", check: { argv: s.waitEnded.argv, succeedWhen: { path: s.waitEnded.path, equals: "completed" } }, everyMs: 180_000, until: new Date(Date.now() - 1000).toISOString(), state: "armed" };
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: w });
+      for (const summary of s.waitEnded.looks) core.log.append({ stream: `task:${taskId}`, origin: "waiter", kind: "waiter_look", body: { waiterId: w.waiterId, taskId, ok: true, met: false, summary } });
+      // observed: the last look that could be read (as core keeps it); the unreadable one is cantTell.
+      const last = s.waitEnded.cantTell ? s.waitEnded.looks.filter((l) => !/^not JSON/.test(l)).at(-1) : s.waitEnded.looks.at(-1);
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...w, ...(s.waitEnded.cantTell ? { state: "cancelled", cantTell: s.waitEnded.cantTell } : { state: "expired" }), ...(last ? { observed: last } : {}) } });
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -934,6 +961,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("asks" in s) lines.push(`(earlier) under that message the app shows its lines: ${s.asks.lines.map((l, i) => `${i + 1}. ${l.words} (task "${l.task}")`).join("; ")}`);
     else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
     else if ("limitHit" in s) lines.push(`(earlier) task "${s.limitHit.task}"'s agent ${s.limitHit.harness} hit its usage limit (resets at ${s.limitHit.resetsAt})`);
+    else if ("owns" in s) lines.push(`(earlier) task "${s.owns.task}" opened ${s.owns.pr} and Ducter watches it for that task`);
+    else if ("waitEnded" in s) lines.push(`(earlier) task "${s.waitEnded.task}"'s own wait "${s.waitEnded.reason}" ended without its condition (${s.waitEnded.cantTell ? `its look couldn't be read: ${s.waitEnded.cantTell}` : "it ran out"}); Ducter told that task, with what its looks saw, and it decides what is next`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   if (sc.second)
@@ -1071,6 +1100,7 @@ function describeStep(st: Step): string {
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   if ("todosNew" in st) return `a look at GitHub found newly assigned issues: ${st.todosNew.refs.join(", ")}${st.todosNew.taken ? " (under the user's standing go: they start without asking)" : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
+  if ("longRound" in st) return `task "${st.longRound.task}" (in rounds every ${st.longRound.everyMin} min) has been on this round for ${st.longRound.sinceMin} min; Ducter's loop keeper handed its facts to the partner to look at (nothing is known to be wrong)`;
   if ("cantStart" in st) return `task "${st.cantStart.task}" couldn't start (${st.cantStart.line}); Ducter's own ladder had nothing left to try, so it handed the task to the partner`;
   if ("startFailed" in st) return `task "${st.startFailed.task}" couldn't start (${st.startFailed.why}${st.startFailed.path ? ` at ${st.startFailed.path}` : ""}${st.startFailed.detail ? `; its agent said: "${st.startFailed.detail}"` : ""}); Ducter's own mender then acted (any restart it made is listed as an opened task by Ducter)`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
@@ -1123,6 +1153,18 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
     });
     core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
+  } else if ("longRound" in st) {
+    // D481: the round's steps as the runner logs them, then the keeper's hand-over (the mend it appends).
+    const x = st.longRound;
+    const taskId = tid(x.task);
+    const ago = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+    const steps = x.steps.map((s) => ({ at: ago(s.minAgo), text: s.kind === "said" ? `said: ${s.text}` : `blocked: ${s.text}` }));
+    for (const s of x.steps) {
+      if (s.kind === "said") core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "assistant", text: s.text } });
+      else core.tasks.setState(taskId, "blocked", "hot", s.text);
+    }
+    core.tasks.setState(taskId, "working", "hot");
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "mend", body: { taskId, cls: "round", rung: "rethink", attempt: 1, tried: [], state: "ok", round: { since: ago(x.sinceMin), everyMs: x.everyMin * 60_000, reason: x.reason, earlier: x.earlier, steps, ...(x.waits?.length ? { waits: x.waits } : {}) } } });
   } else if ("cantStart" in st) {
     // D473: the runner's failed start as it lands; core's mender reacts (here: hands it to the partner).
     core.tasks.setState(tid(st.cantStart.task), "failed", "archived", st.cantStart.line, st.cantStart.cant);
@@ -1414,6 +1456,21 @@ function checkOutcome(r: RunResult, o: NonNullable<Expect["outcome"]>): string[]
     // Carrying on a task already on that repository counts too (a task_send to it).
     const sentOn = r.sent.some((s) => r.opened.length === 0 && s.key && sc.seed?.some((x) => "task" in x && x.task.key === s.key && x.task.repo && (sc.world?.repos?.[sc.world.home.name] ?? []).some((y) => y.path === x.task.repo && remoteKey(y.origin) === want)));
     if (!r.opened.some(onRepo) && !sentOn) fails.push(`no work on ${o.repo} (got ${JSON.stringify(r.opened.map((x) => x.place))})`);
+  }
+  // D486: what went to another partner, by the partner tool.
+  const partnerCalls = r.tools.filter((t) => /(^|__)partner$/.test(t.name)).map((t) => (t.input ?? {}) as { do?: string; to?: string; name?: string; about?: string; text?: string });
+  const passes = partnerCalls.filter((c) => c.do === "pass");
+  if (o.passedTo) {
+    const want = o.passedTo.name.toLowerCase();
+    const to = passes.filter((c) => String(c.to ?? "").trim().toLowerCase() === want);
+    if (!to.length) fails.push(`nothing passed to ${o.passedTo.name} (passes: ${JSON.stringify(passes)})`);
+    for (const re of o.passedTo.require ?? []) if (!to.some((c) => re.test(String(c.text ?? "")))) fails.push(`what was passed to ${o.passedTo.name} lacks ${re}`);
+  }
+  if (o.noPass && passes.length) fails.push(`passed to another partner: ${JSON.stringify(passes)}`);
+  if (o.made) {
+    const m = partnerCalls.filter((c) => c.do === "make" && String(c.name ?? "").trim() === o.made!.name);
+    if (!m.length) fails.push(`no partner made called ${o.made.name} (calls: ${JSON.stringify(partnerCalls)})`);
+    else if (o.made.about && !m.some((c) => o.made!.about!.test(String(c.about ?? "")))) fails.push(`${o.made.name} was made without what it looks after (${o.made.about})`);
   }
   if (o.toolsFit) {
     if (!r.opened.length) fails.push("no task opened, so no tools to check");

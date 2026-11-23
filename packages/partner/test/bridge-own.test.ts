@@ -163,9 +163,9 @@ describe("D418: nmem 0.10.121's shapes (a stub with the real answers)", () => {
   test("a reply Mem turns down is failed, not unknown; a call cut off is unknown", async () => {
     const dir = tmp();
     const bin = join(dir, "nmem");
-    writeFileSync(bin, `#!/bin/sh\ncat >/dev/null\ncase "$*" in\n  *"bm-plain"*) echo '{"error":"message reference not found","outcome_unknown":false}'; exit 1 ;;\n  *"bm-usage"*) echo "error: unexpected argument '--x' found" >&2; exit 2 ;;\n  *"bm-slow"*) sleep 8 ;;\nesac\n`);
+    writeFileSync(bin, `#!/bin/sh\ncat >/dev/null\ncase "$*" in\n  *"bm-plain"*) echo '{"error":"message reference not found","outcome_unknown":false}'; exit 1 ;;\n  *"bm-usage"*) echo "error: unexpected argument '--x' found" >&2; exit 2 ;;\n  *"bm-slow"*) exec sleep 8 ;;\nesac\n`);
     chmodSync(bin, 0o755);
-    const c = createNmemBridge({ context: "ducter", bin, env: {}, timeoutMs: 2000 });
+    const c = createNmemBridge({ context: "ducter", bin, env: {}, timeoutMs: 500 });
     expect(await c.reply("bm-plain", "x")).toMatchObject({ ok: false, reason: "refused" });
     expect(await c.reply("bm-usage", "x")).toMatchObject({ ok: false, reason: "refused" });
     expect(await c.reply("bm-slow", "x")).toMatchObject({ ok: false, reason: "unavailable" });

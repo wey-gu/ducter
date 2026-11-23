@@ -9,7 +9,7 @@ import { reachRows } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 
 const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
-const KEYS = ["peers.way.back.yes", "peers.way.back.no", "peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
+const KEYS = ["peers.st.both", "peers.st.oneway","peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
 
 describe("能找到{name}的 with Mem's contact list (D444)", () => {
   const dev = { id: "local", name: "Mac", home: true, harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] };
@@ -24,25 +24,19 @@ describe("能找到{name}的 with Mem's contact list (D444)", () => {
   });
   test("the line says what Mem said, and pi's stays its own", () => {
     const m = src("memory.tsx");
-    // D470: what Mem said is the way back, drawn and said (peers.way.back.*); pi's stays its own line.
-    expect(m).toMatch(/r\.can === "none" \? t\("peers\.reach\.none"\)/);
-    expect(m).toMatch(/t\(`peers\.way\.back\.\$\{w\.back\}`, name\)/);
+    // D489: what Mem said is said as what the person gets (peers.st.*); pi and Antigravity share their own row.
+    expect(m).toContain("t(`peers.st.${st}`)");
+    expect(m).toContain('r.can === "relay" || r.can === "none"');
     expect(m).toMatch(/A\.bridge\?\.mailboxes\)/);
   });
 });
 
 describe("the words, both languages, the same on the Mac", () => {
-  const go = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/memory.go"), "utf8");
-  for (const lang of ["zh", "en"] as const)
-    test(lang, () => {
-      for (const k of KEYS) {
-        const w = memoryWords[lang][k];
-        expect(w, k).toBeTruthy();
-        expect(go, `${lang} ${k}`).toContain(`${JSON.stringify(k)}:`);
-        expect(go, `${lang} ${k}`).toContain(JSON.stringify(w));
-      }
-      expect(memoryWords.zh["peers.way.back.yes"]!.replace("%s", "Ducter")).toBe("Ducter能找到它");
-    });
+  // The Mac's memory.go equals memoryWords, key for key: words.test.ts (D488).
+  test("every D444 word in zh and en", () => {
+    for (const lang of ["zh", "en"] as const) for (const k of KEYS) expect(memoryWords[lang][k], `${lang} ${k}`).toBeTruthy();
+    expect(memoryWords.zh["peers.st.both"]).toBe("能把事交给我，也收得到我的回话");
+  });
   test("别记这个 is the fresh line's button, and the Memory pane says it can be said", () => {
     const i18n = src("i18n.ts");
     expect(i18n).toContain('"memory.undo": "别记这个"');

@@ -93,6 +93,11 @@ if (MODEL) {
     if (lost.length) console.log(`  missed: ${lost.join(", ")}`);
     const dropped = said.filter((x) => !offered.includes(x));
     if (dropped.length) console.log(`  offered by the model but failed code's checks: ${dropped.join(", ")}`);
+    // D482: what the model wrote for each of those, so a budget miss is seen, not guessed.
+    for (const x of dropped) {
+      const sp = r.spots.find((s) => fixtureOf(cut.find((l: Lead) => l.id === s.id)?.key ?? "") === x);
+      if (sp) console.log(`    ${x}: ${JSON.stringify(sp.text ?? "")} (${(sp.text ?? "").length} chars) go ${JSON.stringify(sp.go ?? "")}`);
+    }
     runs[`${MODEL}-${lang}`] = { offered, wrong, lost, dropped, ...s, lines: cands.map((c) => ({ id: fixtureOf(c.key.replace(/^wide:/, "")), text: c.words.zh, go: c.step?.goLabel.zh, origin: lang === "zh" ? c.origin?.zh : c.origin?.en })) };
   }
 }

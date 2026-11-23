@@ -17,9 +17,12 @@
 //   - Only the person ends it: dropping the task, 不再跑 / End on its card, "别跑了" through the
 //     partner (routine_change), or a stop said to the task itself; or the end condition they gave
 //     ("直到 #10473 合并"), which the task's done report then means.
-//   - A watchdog: a round overdue past its grace, one running far past its rhythm, or three failed
-//     rounds in a row is said once, plainly, on a card whose Go runs a round now.
-import type { Bodies, LangTag, LogEvent, OngoingHealth, TaskLoopBody, WaiterView } from "@ducter/protocol";
+//   - A watchdog: a round overdue past its grace (its computer asleep, its wake lost) or three failed
+//     rounds in a row is said once, plainly, on a card whose Go runs a round now; the card closes by
+//     itself once that is no longer so (D481). A round that only runs long is never said from the
+//     time alone (D481, principle 21): the partner gets its facts (its steps, what it waits on, how
+//     long its earlier rounds took) on a `mend` hand-over of class "round", looks, and judges.
+import type { Bodies, LangTag, LogEvent, OngoingHealth, RoundFacts, TaskLoopBody, WaiterView } from "@ducter/protocol";
 import { fill, words } from "@ducter/protocol";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -38,8 +41,14 @@ export const SETTLE_MS = 20_000;
 export const RETRY_WAKE_MS = 10 * MIN;
 /** A round this overdue is late (and said once): half its rhythm, between 15 min and an hour. */
 export const graceOf = (everyMs: number | undefined) => Math.min(HOUR, Math.max(15 * MIN, Math.round((everyMs ?? 30 * MIN) / 2)));
-/** A round running this long is stuck: three rhythms, at least two hours. */
-export const stuckOf = (everyMs: number | undefined) => Math.max(2 * HOUR, 3 * (everyMs ?? HOUR));
+/**
+ * D481: a round going this long is handed to the partner to look at (three rhythms, at least two
+ * hours). A budget for when to look, never a verdict: how long CI or a review takes is the
+ * partner's to judge from the facts; nothing is said to the person from the time alone.
+ */
+export const lookAfterOf = (everyMs: number | undefined) => Math.max(2 * HOUR, 3 * (everyMs ?? HOUR));
+/** D481: a long round is looked at again only after this much more (one hand-over a round, then at most this often). */
+export const LOOK_AGAIN_MS = 6 * HOUR;
 /** Failed rounds in a row before it is said. */
 export const FAILS_TO_TELL = 3;
 /** How far back a loop stopped by mistake is brought back on start. */
@@ -76,7 +85,6 @@ export function saysStop(text: string): boolean {
 const W = {
   zh: {
     late: "「{title}」该 {due} 跑一轮，已经晚了 {min} 分钟：{why}",
-    stuck: "「{title}」这一轮从 {since} 跑到现在，比平时久太多，可能卡住了。",
     failing: "「{title}」最近 {n} 轮都没做成：{why}。它还会照常再试。",
     back: "「{title}」{at} 被误停了，已经接着跑，下一轮 {next}。",
     asleep: "{dev} 睡着了或连不上。醒了会马上补跑一轮。",
@@ -88,7 +96,6 @@ const W = {
   },
   en: {
     late: "“{title}” was due for a round at {due} and is {min} min late: {why}",
-    stuck: "“{title}” has been on this round since {since}, far longer than usual. It may be stuck.",
     failing: "“{title}” hasn't worked for its last {n} rounds: {why}. It will keep trying on its rhythm.",
     back: "“{title}” stopped by mistake at {at}. It's running again; next round {next}.",
     asleep: "{dev} is asleep or can't be reached. It catches up with one round as soon as it's back.",
@@ -143,8 +150,11 @@ interface State {
   failWhy?: string;
   wakeFail?: { at: number; error: string; asleep: boolean; dev?: string };
   told?: number; // when the watchdog last said something about it
+  looked?: { round: number; at: number }; // D481: the round last handed to the partner to look at, and when
   endedAt?: number;
   settle?: unknown; // the timer after a turn's end
+  /** D483: its own look ended without its condition (ran out, or its look can't be read): the task was told and decides; Ducter never arms that look again by itself. */
+  spent?: boolean;
 }
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -170,6 +180,7 @@ export function createLoops(o: {
   const loops = new Map<string, State>();
   const told = new Map<string, string>(); // decisionId -> taskId (the watchdog's open cards)
   const moveOf = new Map<string, string>(); // D429: decisionId -> the awake computer its Go moves the task to
+  const toldAs = new Map<string, OngoingHealth["state"]>(); // D481: what each open card said (late or failing)
   const firedSeen = new Set<string>(); // tasks whose own wait fired at least once (rounds)
   let stopped = false;
   // The keeper's own arms (a lost round, a retry, Run now, a new rhythm): not the task's pace.
@@ -234,9 +245,11 @@ export function createLoops(o: {
     rest(b.taskId, b.reason);
     let at: string | undefined;
     try {
-      if (b.look) {
+      if (b.look && !s.spent) {
         armOwn({ reason: b.reason, taskId: b.taskId, ...b.look });
       } else {
+        // D483: a look that ran out or couldn't be read is the task's to re-arm (it was told what its
+        // looks saw); the promise of rounds is kept by a round at its rhythm, which wakes the task.
         const due = Math.max(now + MIN, (s.lastFire ?? now) + (b.everyMs ?? 45 * MIN));
         at = iso(due);
         armOwn({ reason: b.reason, taskId: b.taskId, at, wakes: "task" });
@@ -275,7 +288,7 @@ export function createLoops(o: {
   function askedSince(taskId: string, at: number): boolean {
     return log
       .read({ stream: `task:${taskId}`, kinds: ["task_event"], limit: 40 })
-      .some((e) => Date.parse(e.ts) > at && (e.body as Bodies["task_event"]).role === "user" && !/^(到时间了|等到了|It's time|The wait is over)/.test(String((e.body as Bodies["task_event"]).text ?? "")));
+      .some((e) => Date.parse(e.ts) > at && (e.body as Bodies["task_event"]).role === "user" && !/^(到时间了|等到了|没等到|It's time|The wait is over|The wait ran out|The wait ended|This won't happen)/.test(String((e.body as Bodies["task_event"]).text ?? "")));
   }
 
   // ---------- the Log ----------
@@ -286,6 +299,11 @@ export function createLoops(o: {
       if (!own(w)) return;
       const taskId = w.taskId!;
       const at = Date.parse(e.ts);
+      if (w.state === "expired" || (w.state === "cancelled" && w.cantTell)) {
+        const s = loops.get(taskId);
+        if (s && kindOf(w) !== "timer") s.spent = true;
+        return;
+      }
       if (w.state === "fired") {
         firedSeen.add(taskId);
         const s = loops.get(taskId);
@@ -295,6 +313,7 @@ export function createLoops(o: {
       }
       if (w.state !== "armed" || arming || mine.has(w.waiterId)) return;
       let s = loops.get(taskId);
+      if (s && kindOf(w) !== "timer") s.spent = false; // the task armed a look of its own again
       if (!s || s.b.state === "ended") {
         // Ended: it starts again only when someone asked the task to go on since (接着跑).
         if (s?.b.state === "ended" && !(s.endedAt !== undefined && askedSince(taskId, s.endedAt))) return;
@@ -386,8 +405,7 @@ export function createLoops(o: {
         return { state: "late", why: s.wakeFail.asleep ? "asleep" : "lost", lateMin, ...(s.wakeFail.dev ? { detail: s.wakeFail.dev } : {}), ...(to ? { fix: "move" as const, moveTo: to } : { fix: "run_now" as const }) };
       }
     }
-    // A round going far longer than its rhythm.
-    if ((c.attention === "working" || c.attention === "queued") && s.lastFire && (s.lastHot ?? 0) >= s.lastFire && now - s.lastFire > stuckOf(b.everyMs)) return { state: "late", why: "stuck", since: iso(s.lastFire), lateMin: Math.round((now - s.lastFire) / MIN), fix: "run_now" };
+    // D481: a round that only runs long is no health of its own (the partner looks: lookLong).
     if (s.fails >= FAILS_TO_TELL) return { state: "failing", why: "failed", fails: s.fails, ...(s.failWhy ? { detail: s.failWhy } : {}), fix: "run_now" };
     // Shown only for a real stop by mistake (when it stopped is known), not a round re-armed after a restart.
     const back = b.back?.stoppedAt && now - Date.parse(b.back.at) < BACK_SHOWN_MS ? b.back : undefined;
@@ -403,8 +421,7 @@ export function createLoops(o: {
     const w = words(W, lang());
     const title = titleOf(s.b.taskId);
     let question: string;
-    if (h.why === "stuck") question = fill(w.stuck, { title, since: hm(Date.parse(h.since ?? iso(now))) });
-    else if (h.state === "failing") question = fill(w.failing, { title, n: String(h.fails ?? FAILS_TO_TELL), why: (h.detail ?? "").replace(/[。.！!]+$/, "") });
+    if (h.state === "failing") question = fill(w.failing, { title, n: String(h.fails ?? FAILS_TO_TELL), why: (h.detail ?? "").replace(/[。.！!]+$/, "") });
     else {
       const dev = h.detail;
       const why = h.why !== "asleep" ? w.unknown : dev && h.moveTo ? fill(w.asleepMove, { dev, to: h.moveTo.name }) : dev ? fill(w.asleep, { dev }) : w.asleepAny;
@@ -413,10 +430,79 @@ export function createLoops(o: {
     s.told = now;
     const decisionId = `d_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
     told.set(decisionId, s.b.taskId);
+    toldAs.set(decisionId, h.state);
     // D429: asleep with another computer awake: Go moves it there (the person's tap is the go); else Go runs a round now.
     const move = h.fix === "move" && h.moveTo ? h.moveTo.device : undefined;
     if (move) moveOf.set(decisionId, move);
     log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId, question, goLabel: move ? w.move : w.runNow, defaultOption: "hold", reversible: true, loop: { taskId: s.b.taskId, ...(move ? { move } : {}) } } });
+  }
+
+  /** D481: the watchdog's cards whose moment passed (the round started, a round worked, the loop or its task ended) close by themselves. */
+  function settleTold() {
+    for (const [decisionId, taskId] of [...told]) {
+      const s = loops.get(taskId);
+      const c = tasks.get(taskId);
+      const h = s && s.b.state === "on" && c && !GONE.has(c.attention) ? healthOf(s) : undefined;
+      const as = toldAs.get(decisionId);
+      if (h && (h.state === "late" || h.state === "failing") && (!as || as === h.state)) continue;
+      told.delete(decisionId);
+      toldAs.delete(decisionId);
+      moveOf.delete(decisionId);
+      log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "hold", by: "ended", settled: true } });
+    }
+  }
+
+  /** D481: what the keeper knows of a round that runs long: facts for the partner, never a verdict. */
+  function factsOf(s: State): RoundFacts {
+    const taskId = s.b.taskId;
+    const since = s.lastFire ?? clock.now();
+    // Its earlier rounds: from each wake of its own to the next wait it armed (its round's end).
+    const ws = log.read({ kinds: ["waiter"], limit: 2000 }).filter((e) => own(e.body as Bodies["waiter"], taskId));
+    const earlier: number[] = [];
+    let fired: number | undefined;
+    for (const e of ws) {
+      const w = e.body as Bodies["waiter"];
+      const at = Date.parse(e.ts);
+      if (w.state === "fired") fired = at;
+      else if (w.state === "armed" && fired !== undefined && at < since) (earlier.push(Math.max(1, Math.round((at - fired) / MIN))), (fired = undefined));
+    }
+    const evs = log.read({ stream: `task:${taskId}`, kinds: ["task_state", "task_event", "report"], limit: 200 });
+    const steps: RoundFacts["steps"] = [];
+    let report: RoundFacts["report"];
+    for (const e of evs) {
+      if (e.kind === "task_state") {
+        const b = e.body as Bodies["task_state"];
+        if (b.reason) steps.push({ at: e.ts, text: `${b.attention}: ${b.reason.slice(0, 200)}` });
+      } else if (e.kind === "report") {
+        const b = e.body as Bodies["report"];
+        if (Date.parse(e.ts) >= since) report = { at: e.ts, state: b.state, summary: b.summary.slice(0, 300) };
+      } else {
+        const b = e.body as Bodies["task_event"];
+        if (b.role === "assistant" && b.text?.trim()) steps.push({ at: e.ts, text: `said: ${b.text.trim().slice(0, 200)}` });
+        else if (b.role === "tool" && b.tool?.name) steps.push({ at: e.ts, text: `used ${b.tool.name}${b.tool.ok === false ? " (it failed)" : ""}` });
+      }
+    }
+    const waits = waiters
+      .views()
+      .filter((v) => v.state === "armed" && v.taskId === taskId)
+      .map((v) => v.reason)
+      .filter(Boolean);
+    return { since: iso(since), ...(s.b.everyMs ? { everyMs: s.b.everyMs } : {}), ...(s.b.reason ? { reason: s.b.reason } : {}), ...(earlier.length ? { earlier: earlier.slice(-6) } : {}), steps: steps.slice(-8), ...(waits.length ? { waits: waits.slice(0, 3) } : {}), ...(report ? { report } : {}) };
+  }
+
+  /**
+   * D481: a round going on past its look budget is handed to the partner with its facts (a `mend`
+   * of class "round"): it looks at the steps and judges. Once a round, then at most every LOOK_AGAIN_MS.
+   */
+  function lookLong(s: State) {
+    const c = tasks.get(s.b.taskId);
+    if (!c || !s.lastFire || !(c.attention === "working" || c.attention === "queued") || (s.lastHot ?? 0) < s.lastFire) return;
+    const now = clock.now();
+    if (now - s.lastFire <= lookAfterOf(s.b.everyMs)) return;
+    if (s.looked && s.looked.round === s.lastFire && now - s.looked.at < LOOK_AGAIN_MS) return;
+    s.looked = { round: s.lastFire, at: now };
+    const attempt = log.read({ stream: `task:${s.b.taskId}`, kinds: ["mend"], limit: 200 }).length + 1;
+    log.append({ stream: `task:${s.b.taskId}`, origin: "system", kind: "mend", body: { taskId: s.b.taskId, cls: "round", rung: "rethink", attempt, tried: [], state: "ok", round: factsOf(s) } });
   }
 
   function sweep() {
@@ -426,7 +512,9 @@ export function createLoops(o: {
       ensure(s);
       const h = healthOf(s);
       if (h && (h.state === "late" || h.state === "failing") && h.why !== "quota") tell(s, h);
+      lookLong(s);
     }
+    settleTold();
   }
 
   function runNow(taskId: string): boolean {
@@ -465,8 +553,12 @@ export function createLoops(o: {
   const att = new Map<string, string>();
   const failsOf = new Map<string, { n: number; why: string }>();
   const lastArmed = new Map<string, { ts: string; w: Bodies["waiter"] }>();
-  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_loop", "waiter", "task_state", "decision", "decision_resolved", "report"] })) {
-    if (e.kind === "task_loop") {
+  const lookedAt = new Map<string, number>(); // D481: the latest long-round hand-over per task
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_loop", "waiter", "task_state", "decision", "decision_resolved", "report", "mend"] })) {
+    if (e.kind === "mend") {
+      const m = e.body as Bodies["mend"];
+      if (m.cls === "round") lookedAt.set(m.taskId, Date.parse(e.ts));
+    } else if (e.kind === "task_loop") {
       const b = e.body as TaskLoopBody;
       const prev = loops.get(b.taskId);
       loops.set(b.taskId, prev ? { ...prev, b } : { b, fails: 0 });
@@ -493,9 +585,13 @@ export function createLoops(o: {
     } else told.delete((e.body as Bodies["decision_resolved"]).decisionId), moveOf.delete((e.body as Bodies["decision_resolved"]).decisionId);
   }
   for (const [taskId, s] of loops) {
+    const end = lastOwnEnd.get(taskId);
+    if (end && kindOf(end.w) !== "timer" && (end.state === "expired" || (end.state === "cancelled" && end.w.cantTell))) s.spent = true;
     s.lastFire = firedAt.get(taskId);
     s.lastHot = hotAt.get(taskId);
     if (failsOf.has(taskId)) (s.fails = failsOf.get(taskId)!.n), (s.failWhy = failsOf.get(taskId)!.why);
+    const looked = lookedAt.get(taskId);
+    if (looked !== undefined && s.lastFire !== undefined && looked >= s.lastFire) s.looked = { round: s.lastFire, at: looked };
   }
   // Loops from before D427: a task that kept going in rounds has no record yet. Kept now; one that
   // a round's "done" (or a failure) stopped within the last week comes back, said once.

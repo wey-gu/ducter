@@ -30,7 +30,7 @@ line.
   own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `ASKS_RECALL`, `HOW_KNOW`,
   `CLAIMS_CHOICE`, `ONE_TIME`, `ASKS_ABOUT_ME`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
   `startProblem`'s buckets, ranking weights (phase 2c).
-- **The main-AI mechanisms research/209 ranked after D487's** (§3, items 3–9), each with its eval first and an
+- **The main-AI mechanisms research/210 ranked after D487's** (§3, items 3–9), each with its eval first and an
   A/B read with `eval:compare`: memory_add records the person's own words it rests on, checked verbatim, its content
   declarative, never a claim that a tool or computer can't do something (in place of `ONE_TIME`); `ASKS_RECALL`
   (a budget of two stated in the result), `POINTS_AT_THREAD` (past conversations read with every search) and
@@ -72,7 +72,14 @@ line.
 
 ## Agent messaging, after D470 (`bridge.md` "Who reaches whom…")
 
-- **Open its mailbox, run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
+- **Mem's side of the one tap (D489).** `research/private/bridge-feedback-2026-11-23.md`: a nameable personal
+  Space, a consented enable by a trusted local app, Bridge in the pi and Antigravity plugins, identity-scoped
+  contexts, a watch that delivers in seconds, a mailbox-changed event. Trigger: the author sends it and Mem ships
+  any of them; then drop the offer (or its look) where Mem makes it unneeded.
+- **The pane's row says "done" the moment the mailbox opens.** Trigger: Mem emits a mailbox-changed event (item 6);
+  until then the row turns at the next contact read (D444).
+
+- **Let it hear back (D489; was Open its mailbox), run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
   The task writes Mem-side (`nmem bridge setup --enable` in that agent's own context); check the brief's steps
   against Mem's then-current help, and that the row turns both ways after Mem's next contact read.
 - **A sender's daily use shown** (of SENDER_DAILY, TRUSTED_DAILY) in its thread's head. Trigger: a sender is set
@@ -440,15 +447,15 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       and a scratch VPS and watch it reach the partner's first words. Trigger: the author's next
       session with a spare machine.
 
-## A second partner (D309, D312, `personas.md`)
+## Several partners (D309, D312, D486, `personas.md`)
 
-- **D312 follow-ups:** the full partner eval at merge (only `second-partner-name` and
-  `second-partner-apart` ran, with `--only`); a live run with two real partner sessions on one home
-  before the preview flag comes off; its L1 from its own Mem identity's bundle; Bridge, forgetting
-  and correcting per partner. Trigger: before the preview flag comes off.
-- Per-partner talk, memory and accounts; a chat app bound to a partner; removing a partner; the
-  Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
-  character per partner. Trigger: the author reviews the preview.
+- A live run with two real partner sessions on one home (make by talking, pass, remove). Trigger: the
+  author's next session on a real home.
+- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; a chat app
+  bound to a partner; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
+  these on a home with several partners.
+- The stone's comprehension test with naive raters, then a clay character per partner. Trigger: the
+  author reviews D486.
 
 ## Trusted at a glance (D433, `bridge.md` "Trusted at a glance", research/183)
 
@@ -494,7 +501,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
       leaves the Noted line as kept). Trigger: it happens once.
 - [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.
-      Trigger: the second partner leaves preview.
+      Trigger: D486 took partners out of preview: next time memory take-back is touched.
 - [ ] The partner's reply to "你都记得我些什么？" offering the one row to fix (a tap opening that memory on the Memory
       page). Trigger: the author asks to fix something right after asking.
 - [ ] Send research/191 §asks to Mem. Trigger: the author approves the draft.
@@ -2556,7 +2563,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **A naive-rater test of 置顶 / Pin** (three users, zh and en: what happens when you tap it, what
   取消置顶 does). Trigger: before the author reviews D381, or the first misread.
 - **The Mac's Unpin has no Undo** (the web's toast has 撤销). Trigger: the Mac's toast taking an action.
-- **A second partner's pins** (preview, D309). Trigger: the second partner out of preview.
+- **A second partner's pins** (D309). Trigger: D486 took partners out of preview: a person pins in a second partner's conversation.
 - **A routine keeps a pin current** ("every morning, the PRs waiting on me" as a pinned table that
   refreshes itself): a routine's run reports to the partner, who writes the block with its pin.
   Trigger: the first person who asks for it; this is the next step of "your own small apps".
@@ -2907,6 +2914,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **A partner turn that timed out is re-run by itself** (today the watchdog interrupts and the words wait for the next turn). *Trigger:* one live case of a message left unanswered after a timeout.
 - **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
 - **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.
+- **D483 live checks.** On hel: a PR task's check-runs wait over a failed CI with a long log (fires, or tells the task), an expired wait (the task told, nothing asked by code), a review comment and CI's end on an owned PR (one message each look), and a resume in a Chinese-named worktree (the old Antigravity session comes back). *Trigger:* the next release on hel.
+- **OAR's directory identity upstream.** `patches/@botiverse%2Foar@0.124.0.patch` makes `sameDirectory` hold percent-encoded, file-URI and NFD spellings; ask OAR to take it and drop the patch. Verify agy's `session/list` spelling on hel (INFERRED from the task's diagnosis). *Trigger:* the next OAR bump (the patch is pinned to 0.124.0 and fails the install on another version).
+- **Owned beyond PRs.** `checkpoint.owns` takes pull requests only; an issue, a deploy, a release or a doc a task owns could wake it the same way. A routine's watch whose look can't be read still backs off silently (D245's rule); say it on the routine's card. *Trigger:* a live case of a task missing news about an issue or a release it owns, or a routine stuck on an unreadable look.
+- **Own comments.** A comment the task itself posted (as the person's gh account) wakes it once with its own words; Ducter can't tell it from the person's comment by the account. *Trigger:* a task woken by its own comments more than once a day in `ducter repairs` or the Log.
 
 ## Opening the page never blank (D474)
 
@@ -2923,3 +2934,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Try again said back.** 再试一次 says its line at once; when the source still doesn't answer the row
   stays 连不上 with no second word (D404: a retry that met the same lack says so). Trigger: a person taps it
   twice.
+
+## The opened task on a phone (D484)
+
+- [ ] **The Mac in step.** The Mac's opened task still shows a provider's raw error as the agent's
+  words (its transcript is Go, `views/transcript*.go`), has no Share, and keeps ⋯ to 取消任务: port
+  `providerError`/`foldErrors` (`apps/web/src/task-words.ts`, `transcript.tsx`), the PR chip under
+  the waitline, Share (NSSharingServicePicker with the same lines), and 查看草稿 PR for a PR already
+  opened; the keys are `i18n-d484.ts`'s. *Trigger:* the author's review of D484 on the web.
+- [ ] **The iOS Simulator walk** of the phone's bar, Share (the system sheet only shows there, on a
+  secure page) and 这个任务. Chrome's emulation stood in. *Trigger:* the next phone pass.
+- [ ] **发出去的 / What went out** still prints `gh pr create …` as a command: say what it did (开了
+  草稿 PR #212, a link) from the command's own output. *Trigger:* the next opened-task pass.
+- [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
+  is a scroll away when the transcript is long; the end line says the wait but not the PR.
+  *Trigger:* the author asks for the head on open, or the PR in the end line.

@@ -12,14 +12,7 @@ test("one name per look", () => {
   for (const l of PARTNER_LOOKS) expect(partnersWords.zh[`partners.look.${l}`]).toBeTruthy();
 });
 
-test("the Mac says the same words under the same keys", () => {
-  const mac = readFileSync(new URL("../../desktop/internal/i18n/partners.go", import.meta.url), "utf8");
-  for (const lang of ["zh", "en"] as const)
-    for (const [k, v] of Object.entries(partnersWords[lang])) {
-      expect(mac).toContain(`"${k}":`);
-      expect(mac).toContain(JSON.stringify(v));
-    }
-});
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).
 
 test("each look is a token in light and dark, and components never hold a colour", () => {
   const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");

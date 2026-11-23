@@ -33,6 +33,7 @@ import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type
 import { manyComputers, taskWhere } from "./where.ts";
 import { rangeOf, topsOf } from "./vlist.ts";
 import { Menu, MenuItem } from "./menu.tsx";
+import { providerError, providerErrorKey } from "./task-words.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
@@ -57,63 +58,9 @@ export function shortVerb(l: string): boolean {
   return han > 0 ? han <= 6 && words <= 2 : words <= 3;
 }
 
-/** A task's title as a card says it: what it is, without the parenthetical details. */
-export function shortTitle(title: string): string {
-  let s = title.trim();
-  for (const [o, c] of [["（", "）"], ["(", ")"], ["【", "】"], ["[", "]"]] as const) {
-    for (;;) {
-      const i = s.indexOf(o);
-      if (i < 0) break;
-      const j = s.indexOf(c, i);
-      if (j < 0) break;
-      const cut = `${s.slice(0, i)} ${s.slice(j + c.length)}`.trim();
-      if (!cut) break;
-      s = cut;
-    }
-  }
-  s = s.split(/\s+/).join(" ").replace(/[ ,，:：\-—]+$/, "");
-  s = untrail(s);
-  return s || title.trim();
-}
-
-/** D471: words a title can't end on once a source cut it ("…with the…"): English function words. */
-const DANGLING = new Set(["a", "an", "the", "and", "or", "of", "to", "for", "with", "on", "in", "at", "by", "from", "into", "when", "that", "which", "is", "are", "was", "were", "be", "as", "but", "if", "its", "it", "this", "their", "your", "our", "under", "over", "about", "after", "before", "against", "between", "during", "without", "within", "via", "while", "than", "so", "because", "not", "has", "have"]);
-
-/**
- * D471: a title that arrived already cut (a GitHub issue's, a source's: "Reconcile the orbit
- * plugin's tail offsets with the…") is said whole up to its last real word, never cut again: the ellipsis
- * and the dangling function words before it go. Han text keeps its words as they are.
- */
-export function untrail(title: string): string {
-  let s = title.trim();
-  if (!/(…|\.\.\.)$/.test(s)) return s;
-  s = s.replace(/\s*(…|\.\.\.)$/, "").replace(/[ ,，:：;；\-—]+$/, "");
-  const words = s.split(" ");
-  while (words.length > 2 && DANGLING.has(words.at(-1)!.toLowerCase())) words.pop();
-  return words.join(" ").replace(/[ ,，:：;；\-—]+$/, "");
-}
-
-/**
- * D471: a name said inside a sentence, at most `max` characters (Han count 2 for the eye): cut at a
- * word's end (a space, or Han punctuation), never inside a word; "…" only when it was cut.
- */
-export function sayName(title: string, max = 28): string {
-  const s = shortTitle(title) || title.trim();
-  const width = (x: string) => [...x].reduce((n, ch) => n + (/[㐀-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
-  if (width(s) <= max) return s;
-  const cs = [...s];
-  let out = "";
-  let lastBreak = 0;
-  for (const ch of cs) {
-    if (width(out + ch) > max - 1) break;
-    out += ch;
-    if (/[\s，、：；。,;:]/.test(ch) || /[㐀-鿿]/.test(ch)) lastBreak = out.length;
-  }
-  // Latin text ends at the last space; Han text may end at any character (each is a word).
-  const lastSpace = out.lastIndexOf(" ");
-  const cut = /[㐀-鿿]/.test(out.slice(-1)) ? out.length : lastSpace > out.length / 2 ? lastSpace : lastBreak > out.length / 2 ? lastBreak : out.length;
-  return `${out.slice(0, cut).replace(/[\s，、：；。,;:\-—]+$/, "")}…`;
-}
+// D471, D482: how a name is said is one implementation, shared with the home (packages/protocol/src/names.ts).
+import { sayName, shortTitle, untrail } from "@ducter/protocol";
+export { sayName, shortTitle, untrail };
 
 /** A step's summary in words: "在 Chrome 里打开 appstoreconnect.apple.com". */
 export function stepWords(st: Step): string {
@@ -602,7 +549,9 @@ function noteName(b: Extract<Block, { k: "note" }>): string {
 
 /** The agent's words (D271): then one quiet line, 保存了进度 when it saved them, and on hover its
  *  time, how long its turn worked and Copy. */
-function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }>; took?: string }) {
+function Voice({ task, b, took, times }: { task: Task; b: Extract<Block, { k: "voice" }>; took?: string; times?: number }) {
+  const err = providerError(b.text);
+  if (err) return <ErrVoice task={task} b={b} code={err.code} times={times ?? 1} />;
   const ms = tsOf(task, b.seq);
   const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
   return (
@@ -623,6 +572,62 @@ function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }
   );
 }
 
+
+/**
+ * D484: a provider's raw error that an agent printed as its words (a warning sign, then "INVALID_ARGUMENT (code 400):
+ * * GenerateContentRequest.tools[0]…") is said as a failed step: who refused and its code apart,
+ * how many times in a row, and the original verbatim behind 看看为什么. Never a headline of JSON.
+ */
+function ErrVoice({ task, b, code, times }: { task: Task; b: Extract<Block, { k: "voice" }>; code: number; times: number }) {
+  const [open, setOpen] = useState(false);
+  const who = harnessName(harnessOf(task)) || t("note.computer");
+  const line = t(providerErrorKey(code), who);
+  return (
+    <div class="sline perr">
+      <div class="step bad">
+        {GLYPHS.error!()}
+        <span class="sum" title={line}>
+          {line}
+        </span>
+        <code class="subj mono">{code}</code>
+        {times > 1 && <span class="times">{t("perr.times", times)}</span>}
+      </div>
+      <button type="button" class="qlink perr-why" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? t("perr.hide") : t("perr.why")}
+      </button>
+      {open && <Output text={b.text.replace(/^\s*\u26A0\uFE0F?\s*/, "")} />}
+    </div>
+  );
+}
+
+/**
+ * D484: a provider's error said again in the same turn (the nudge after it got the same answer) is
+ * one line with how many times; the runner's own "something went wrong" right after it says
+ * nothing the line doesn't.
+ */
+export function foldErrors(body: Block[]): { b: Block; times: number }[] {
+  const out: { b: Block; times: number }[] = [];
+  let lastErr: { b: Block; times: number } | undefined;
+  for (const b of body) {
+    if (b.k === "voice" && providerError(b.text)) {
+      if (lastErr && (lastErr.b as { text: string }).text === b.text) {
+        lastErr.times++;
+        continue;
+      }
+      out.push((lastErr = { b, times: 1 }));
+      continue;
+    }
+    if (b.k === "note" && b.say === "error" && lastErr) continue;
+    // "It stopped without reporting back" then "it stopped without saying how it went, so I'm
+    // working out how to carry on": the second says the first and what comes next.
+    const prev = out.at(-1)?.b;
+    if (b.k === "note" && b.say === "mend_stall" && prev?.k === "note" && prev.say === "stalled") out.pop();
+    if (b.k !== "note") lastErr = undefined;
+    out.push({ b, times: 1 });
+  }
+  return out;
+}
+
 /** D349: it saved its progress, its own note: only 保存了进度, its time on hover, never the note. */
 function Saved({ task, b }: { task: Task; b: Extract<Block, { k: "saved" }> }) {
   const ms = tsOf(task, b.seq);
@@ -637,10 +642,10 @@ function Saved({ task, b }: { task: Task; b: Extract<Block, { k: "saved" }> }) {
   );
 }
 
-function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boolean; took?: string }) {
+function BlockView({ task, b, live, took, times }: { task: Task; b: Block; live?: boolean; took?: string; times?: number }) {
   switch (b.k) {
     case "voice":
-      return <Voice task={task} b={b} took={took} />;
+      return <Voice task={task} b={b} took={took} times={times} />;
     case "saved":
       return <Saved task={task} b={b} />;
     case "steps": {
@@ -802,7 +807,7 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   const to = body.length ? tsOf(task, lastSeq(body.at(-1)!)) : NaN;
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
   const worked = !live && Number.isFinite(from) && Number.isFinite(to) && to > from ? t("turn.worked", took) : "";
-  const draw = (bs: Block[]) => bs.map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} />);
+  const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} />);
   if (!foldable) return <>{draw(body)}</>;
   return (
     <>

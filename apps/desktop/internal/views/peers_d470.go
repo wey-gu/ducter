@@ -12,8 +12,8 @@ import (
 )
 
 // D470: 和你的其他 agent 通信 / Talk with your other agents in Settings' voice (D469). The head is the
-// partner saying who reaches it; 谁能找到谁 / Who reaches whom is a picture per agent (its coin, the
-// two ways drawn and said, the partner in its pose) with each broken way's real fix; 来往 / Back and
+// partner saying who reaches it; 你的 agent / Your agents is a literal row per agent (D489: what it can
+// do with the partner, its one-tap offer under it when its answers can't reach it); 来往 / Back and
 // forth is a thread per agent with what came of each exchange; 谁能让我做什么 / Who may ask me what
 // says the rules in code. The web's: memory.tsx and mem-view.ts (reachWays, exchangeThreads,
 // trustOf, spokenPeers).
@@ -353,12 +353,26 @@ func (a *App) peersSay() string {
 	if peersPhase(a.S.Bridge, on) != "on" {
 		return a.L.T("say.peers")
 	}
-	both, one, notYet := reachSplit(a.peersReachRows())
+	reach, one, notYet := reachSplit(a.peersReachRows())
+	// D489: both ways only where Mem said so; an agent whose way back Mem hasn't told is said as what it does.
+	var both, to []reachRow
+	for _, r := range reach {
+		if standing(r) == "both" {
+			both = append(both, r)
+		} else {
+			to = append(to, r)
+		}
+	}
 	switch {
+	case len(both) == 0 && len(one) == 0 && len(to) > 0:
+		return a.L.T("say.peers.to", a.listWords(toolsOf(to)))
+	case len(both) > 0 && len(one) > 0:
+		// D489: one agent a tap from hearing back is said as the step it is, beside the ones that work.
+		return a.L.T("say.peers.mixed", a.listWords(toolsOf(both)), a.listWords(toolsOf(one)))
 	case len(both) > 0:
 		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
 	case len(one) > 0:
-		return a.L.T("say.peers.oneway")
+		return a.L.T("say.peers.oneway", a.listWords(toolsOf(one)))
 	case len(notYet) > 0:
 		return a.L.T("say.peers.notyet")
 	}
@@ -382,7 +396,7 @@ func toolsOf(rows []reachRow) []string {
 	return out
 }
 
-// openMailbox is 打开它的信箱 / Open its mailbox: one task on that computer opens the agent's
+// openMailbox is 让它收到回话 / Let it hear back (D489): one task on that computer opens the agent's
 // Nowledge Mem mailbox (the tap is its Go), in the Space the person chose in place (D480).
 func (a *App) openMailbox(device, harness string, space *protocol.MailboxSpaceRef) {
 	if a.mailboxOpening == nil {
@@ -393,162 +407,140 @@ func (a *App) openMailbox(device, harness string, space *protocol.MailboxSpaceRe
 	a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: device, Harness: harness, What: "mailbox", Space: space})
 }
 
-// drawLinkWay is one way between an agent and the partner (never a font's arrow): solid with its
-// head when it goes; dashed with none while it doesn't.
-func drawLinkWay(col ui.Color, state string, back bool) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		y := r.Y + r.H/2
-		l, rt := r.X+2, r.X+r.W-2
-		if state != "yes" {
-			var m ui.Path
-			for x := l + 2; x < rt-2; x += 16 {
-				e := x + 9
-				if e > rt-2 {
-					e = rt - 2
-				}
-				m.MoveTo(x, y)
-				m.LineTo(e, y)
-			}
-			p.StrokePath(&m, 2, col)
-			return
-		}
-		drawWay(col, back)(p, r)
+// standing is how one agent stands with the partner, said as what the person gets (D489; the web's
+// standing in mem-view.ts): both, oneway (it hands work, the answers can't reach it), to (the way
+// back unknown), install, unknown, relay (no Bridge in its Mem plugin; Ducter's tasks on it carry
+// messages), none (no Bridge in its Mem plugin: Mem's to add).
+func standing(r reachRow) string {
+	if r.Can == "relay" || r.Can == "none" {
+		return r.Can
 	}
+	w := reachWays(r)
+	if w.To == "yes" {
+		switch w.Back {
+		case "yes":
+			return "both"
+		case "no":
+			return "oneway"
+		}
+		return "to"
+	}
+	if r.Can == "install" {
+		return "install"
+	}
+	return "unknown"
 }
 
-// peersMap is 谁能找到谁 / Who reaches whom: one link row per agent the person runs.
-func (a *App) peersMap(c *ui.Context, name string) {
+// peersAgents is 你的 agent / Your agents (D489): a literal row per agent whose Mem plugin carries
+// Bridge (its coin, its name, what it can do with the partner, when it last came; never a
+// diagram), the ones whose plugin doesn't on one quiet row, and under an agent whose answers can't
+// reach it, its one-tap offer. Showing the pane looks up that agent's Spaces once (read only), so
+// the offer already says where its answers would go.
+func (a *App) peersAgents(c *ui.Context, name string) {
 	rows := a.peersReachRows()
 	if len(rows) == 0 {
 		return
 	}
-	a.group(c, "peers-map", a.L.T("peers.map.title"), "", func() {
-		for _, r := range rows {
-			a.peerLinkRow(c, r, name)
+	var bridged, rest []reachRow
+	for _, r := range rows {
+		if r.Can == "relay" || r.Can == "none" {
+			rest = append(rest, r)
+		} else {
+			bridged = append(bridged, r)
+		}
+	}
+	for _, r := range bridged {
+		key := r.Device + ":" + r.Harness
+		if standing(r) != "oneway" || r.Device == "" || a.mailboxOpening[key] {
+			continue
+		}
+		if a.mailboxChoosing == nil && !a.mailboxAsked[key] {
+			if a.mailboxAsked == nil {
+				a.mailboxAsked = map[string]bool{}
+			}
+			a.mailboxAsked[key] = true
+			a.chooseMailbox(r.Device, r.Harness)
+		}
+		break
+	}
+	a.group(c, "peers-agents", a.L.T("peers.agents.title"), "", func() {
+		for _, r := range bridged {
+			a.peerAgentRow(c, r)
+		}
+		if len(rest) > 0 {
+			a.noBridgeRow(c, rest, name)
 		}
 	})
 }
 
-// peerLinkRow is one agent: its coin and name (and when it last came), the two ways said and drawn,
-// the partner in its pose (its flag when the link is half-broken), and under it why and the fix.
-func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
+// peerAgentRow is one agent: its coin, its name, what it can do with the partner, at the right edge when
+// it last came (or 装上 when Mem's plugin is missing there); under it, its offer when the answers
+// can't reach it.
+func (a *App) peerAgentRow(c *ui.Context, r reachRow) {
 	t := a.T
-	w := reachWays(r)
+	st := standing(r)
 	opening := r.Device != "" && a.mailboxOpening[r.Device+":"+r.Harness]
-	broken := w.Fix == "mailbox" && !opening
-	where := r.DeviceName
-	if where == "" {
-		where = r.Device
-	}
-	choosing := a.mailboxChoosing != nil && a.mailboxChoosing.Device == r.Device && a.mailboxChoosing.Harness == r.Harness
-	why := ""
-	switch {
-	case w.Fix == "mailbox" && opening:
-		why = a.L.T("peers.why.opening")
-	case w.Fix == "mailbox":
-		why = a.L.T("peers.why.mailbox", where)
-	case w.Fix == "install":
-		why = a.L.T("peers.why.install")
-	case r.Can == "unknown":
-		why = a.L.T("peers.why.unknown")
-	case r.Can == "none":
-		why = a.L.T("peers.reach.none")
-	case r.Can == "relay":
-		why = a.L.T("peers.reach.relay", name, r.Tool)
+	line := a.L.T("peers.st." + st)
+	if opening {
+		line = a.L.T("peers.st.opening")
 	}
 	last := ""
-	if r.Last != "" && w.To == "yes" {
+	if r.Last != "" && st != "install" && st != "unknown" {
 		if s := a.agoLong(r.Last); s != "" {
 			last = a.L.T("peers.last", s)
 		}
 	}
-	pose := theme.Idle
+	var control func()
 	switch {
-	case broken:
-		pose = theme.NeedsYou
-	case w.To == "yes" && w.Back == "yes":
-		pose = theme.Done
+	case st == "install" && r.Device != "":
+		control = func() {
+			if a.buttonFor(c, a.L.T("peers.try.plugin.go"), r.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
+			}
+		}
+	case last != "":
+		control = func() { uiText(c, last).FontSize(t.SM).TextColor(t.InkMuted).SingleLine() }
 	}
-	wayInk := func(s string) ui.Color {
-		switch {
-		case s == "yes":
-			return t.InkSoft
-		case s == "no" && broken:
-			return t.NeedsYou.Ink
-		case s == "no":
-			return t.InkMuted
-		}
-		return t.Line
+	a.tileRow(c, "agent:"+r.Harness, a.toolTile(c, r.Tool), r.Tool, line, control)
+	if st == "oneway" && r.Device != "" && !opening {
+		a.textBlock(c, "hear:"+r.Harness, func() { a.hearBack(c, r) })
 	}
-	labelInk := func(s string) ui.Color {
-		switch {
-		case s == "yes":
-			return t.InkSoft
-		case s == "no" && broken:
-			return t.NeedsYou.Ink
-		}
-		return t.InkMuted
+}
+
+// noBridgeRow is the agents whose own Mem plugin carries no Bridge, together: what Ducter's tasks on
+// them can do, never drawn as a fault.
+func (a *App) noBridgeRow(c *ui.Context, rows []reachRow, name string) {
+	relay := false
+	var tools []string
+	for _, r := range rows {
+		relay = relay || r.Can == "relay"
+		tools = append(tools, r.Tool)
 	}
-	toL, backL := a.L.T("peers.way.to."+w.To, name), a.L.T("peers.way.back."+w.Back, name)
-	a.sep(c)
-	ui.Column(c.Key("link:"+r.Harness)).Gap(t.S2).Padding(t.S4, t.S5).Role(ui.RoleGroup).Label(r.Tool + ": " + toL + "; " + backL).Children(func() {
-		end := func(key string, body func()) {
-			ui.Column(c.Key(key)).Width(96).Shrink(0).Gap(4).AlignItems(ui.Center).Children(body)
-		}
-		ui.Row(c.Key("pic")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			end("agent", func() {
-				a.clayTile(c, coinArt(r.Harness, r.Can == "none"), false)()
-				uiText(c, r.Tool).FontSize(t.SM).FontWeight(600).TextAlign(ui.Center)
-				if last != "" {
-					uiText(c, last).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center)
+	one := ""
+	if len(rows) == 1 {
+		one = ".one"
+	}
+	line := a.L.T("peers.st.none" + one)
+	if relay {
+		line = a.L.T("peers.st.relay"+one, name)
+	}
+	tile := func() {
+		ui.Row(c.Key("nb-coins")).Width(44).Height(40).Shrink(0).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+			size := float32(28)
+			if len(rows) > 1 {
+				size = 26
+			}
+			for i, r := range rows {
+				if i > 0 {
+					ui.Box(c).Width(0).Margin(0, 0, 0, -12)
 				}
-			})
-			ui.Column(c.Key("ways")).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).AccessHidden(true).Children(func() {
-				label := func(s, st string) {
-					wgt := 600
-					if st != "yes" {
-						wgt = 500
-					}
-					uiText(c, s).FontSize(t.SM).FontWeight(wgt).TextColor(labelInk(st)).TextAlign(ui.Center)
-				}
-				ui.Column(c.Key("to")).Gap(2).Children(func() {
-					label(toL, w.To)
-					ui.Box(c).Height(12).Draw(drawLinkWay(wayInk(w.To), w.To, false))
-				})
-				ui.Column(c.Key("back")).Gap(2).Children(func() {
-					ui.Box(c).Height(12).Draw(drawLinkWay(wayInk(w.Back), w.Back, true))
-					label(backL, w.Back)
-				})
-			})
-			end("me", func() {
-				a.avatar(c, pose, 40)
-				uiText(c, name).FontSize(t.SM).FontWeight(600).TextAlign(ui.Center)
-			})
-		})
-		if why == "" {
-			return
-		}
-		ink := t.InkSoft
-		if broken {
-			ink = t.NeedsYou.Ink
-		}
-		ui.Row(c.Key("why")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 96+t.S3).Children(func() {
-			uiText(c, keepWords(autospace(why))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(ink).Grow(1).Basis(rowWordsMin).MinWidth(0)
-			switch {
-			case broken && !choosing:
-				if a.buttonFor(c, a.L.T("peers.fix.mailbox"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
-					a.chooseMailbox(r.Device, r.Harness)
-				}
-			case w.Fix == "install":
-				if a.buttonFor(c, a.L.T("peers.try.plugin.go"), r.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
+				if bmp := theme.Clay(coinArt(r.Harness, false)); bmp != nil {
+					ui.Image(c, bmp).Size(size, size)
 				}
 			}
 		})
-		if choosing {
-			a.mailboxChoice(c, r, where)
-		}
-	})
+	}
+	a.tileRow(c, "agents-nobridge", tile, a.listWords(tools), line, nil)
 }
 
 // exTaskTitle is a task's title, clipped (D448, D470).

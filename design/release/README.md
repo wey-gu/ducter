@@ -260,7 +260,7 @@ so it needs no identity at all. To check the path without a release, run `ios.ym
 
 ## Ducter CI (`ci.yml`)
 
-These jobs run in parallel (ts and android on Linux, go on macOS), and take a few minutes. macOS minutes cost 10x on a
+These jobs run in parallel (ts and android on Linux, go and go-views on macOS), and take a few minutes. macOS minutes cost 10x on a
 private repo.
 
 - **ts:** `bun install --frozen-lockfile`, `bun run typecheck` (both tsconfigs), rebuilds
@@ -271,7 +271,10 @@ private repo.
   whoever changes the persona or a partner tool runs `bun run eval:partner --model haiku`
   (about $1) and commits the results with the change.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
-  `go test`. MyGo calls AppKit through purego, not cgo, so all of it runs on Linux.
+  `go test` of every package but the views, plus the view tests named `Test[A-K]...`. MyGo calls
+  AppKit through purego, not cgo, so all of it runs on Linux.
+- **go-views** (macOS): the rest of the view tests (`-skip '^Test[A-K]'`), beside go, so the
+  longest package runs in two halves (D488).
 - **android** (`apps/android`): its JVM unit tests and a debug APK, signed with Gradle's debug
   key (D178).
 - **`ios.yml`:** an unsigned Release archive on macos-26, only when `apps/ios/**` changes.

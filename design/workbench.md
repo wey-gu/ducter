@@ -35,7 +35,9 @@ with while an agent works, hidden until asked for.
 - **Its edge (D244)** paints nothing at rest: the workbench's deeper ground (`bg-deep`) is the edge. Hovered, a 4 × 40 grip in `line-2`; dragged or focused, `ink-muted`. The arrows move it with a keyboard.
 - **Nothing to show (D244):** when the workbench is open and its pages go (the preview stopped, the browser or the phone was put down), it does not close by itself or go blank: it shows a launcher, **这里会出现什么 / What shows up here**, the pages it can hold as clay tiles with their drawn marks and when each appears (**它在文件夹里做事时 / When it works in a folder**, **它开了网页时 / When it serves a page**, **它用 Ducter 的浏览器时 / When it uses Ducter's browser**, **它用手机或模拟器时 / When it uses a phone or simulator**, **它做出图片、文件或链接时 / When it makes pictures, files or links**). A page that has something is raised and opens; the rest are dashed outlines.
 - **Open or closed, and the page shown**, are this device's own (localStorage), never synced: a
-  workbench open on the Mac doesn't open on the phone.
+  workbench open on the Mac doesn't open on the phone. On a phone it is open for the task it was
+  opened on, never over the next task opened (D484); a task that couldn't start has no Changes or
+  Files (its folder may not exist).
 
 ## Pages (each only when it has something)
 
@@ -82,9 +84,13 @@ Phone page had it fixed to 它在用); **接手** mid-step reads **这一步做�
 
 ## 工作副本 / Working copy at the task's top (D220)
 
-A button in the task's header shows the branch (repo) or the folder's name (folder) with a drawn
-mark (only the mark on a phone). It opens a popover (a sheet on a phone) of rows, each only when it
-has something: the computer; the folder (`~/…`, selectable, Copy path; on the Mac, Open in the
+On a wide screen a button in the task's header shows the branch (repo) or the folder's name
+(folder) with a drawn mark, and opens a popover. On a phone (under 700) the bar holds only the
+task's own actions, each 44 points (D484): **分享 / Share**, the workbench when it has something, and
+**⋯**, which opens **这个任务 / This task**, a framed sheet with the task's name, these same rows, then
+**查看 PR #{n}** (a PR the agent opened), **打开工作台**, **换谁来做** and **取消任务**; the places are one
+Back away. (The branch mark alone read as a share glyph, and its sheet, a bare `.sheet` without
+research/123's frame, drew as a sliver in the header.) The rows, each only when it has something: the computer; the folder (`~/…`, selectable, Copy path; on the Mac, Open in the
 editor used last, D198); the branch and the base it came off; the changes against the base
 (opening the workbench's Changes; the workbench's live list when loaded, else the card's count);
 Open draft PR / Merge into {base} under the result card's rule, or what became of them; and who

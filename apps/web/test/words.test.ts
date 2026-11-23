@@ -85,7 +85,9 @@ describe("the web client's words", () => {
     expect(families).toEqual([]);
   });
 
-  test("a table the Mac mirrors whole has the Mac's keys and words", async () => {
+  test("a table the Mac mirrors whole is the Mac's, language for language, key for key", async () => {
+    // D488: one table-driven check for every mirrored table (it was also re-checked, weaker or the
+    // same, in groups, asks, first-meet, voice, partners and d475's own tests).
     const mirrors: [string, string, string][] = [
       ["i18n-starts.ts", "starts", "starts.go"],
       ["i18n-rich.ts", "richWords", "rich.go"],
@@ -94,13 +96,25 @@ describe("the web client's words", () => {
       ["i18n-onhand.ts", "onhandWords", "onhand.go"],
       ["i18n-memory.ts", "memoryWords", "memory.go"],
       ["i18n-taskview.ts", "taskviewWords", "taskview.go"],
+      ["i18n-groups.ts", "groupWords", "groups.go"],
+      ["i18n-asks.ts", "asksWords", "asks.go"],
+      ["i18n-first-meet.ts", "firstMeetWords", "firstmeet.go"],
+      ["i18n-voice.ts", "voiceWords", "voice.go"],
+      ["i18n-partners.ts", "partnersWords", "partners.go"],
+      ["i18n-d475.ts", "d475Words", "settings_d475.go"],
     ];
+    /** A Go file's zh… and en… tables, parsed as the Mac reads them. */
+    const goTables = (mac: string) => {
+      const out = { zh: {} as Record<string, string>, en: {} as Record<string, string> };
+      for (const m of mac.matchAll(/^var (zh|en)\w* = Table\{\n([\s\S]*?)\n\}/gm))
+        for (const [, k, v] of m[2]!.matchAll(/^\s*"([^"]+)":\s*("(?:[^"\\]|\\.)*"),\s*(?:\/\/.*)?$/gm)) out[m[1] as "zh" | "en"][k!] = JSON.parse(v!);
+      return out;
+    };
     for (const [file, name, go] of mirrors) {
       const table = (await import(join(src, file)))[name] as Table;
-      const mac = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n", go), "utf8");
-      const macKeys = [...new Set([...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]!))].sort();
-      expect(macKeys, go).toEqual(Object.keys(table.zh).sort());
-      for (const [k, v] of Object.entries({ ...table.zh, ...table.en })) expect(mac, `${go} ${k}`).toContain(`"${k}":`), expect(mac, `${go} ${k}`).toContain(JSON.stringify(v));
+      const mac = goTables(readFileSync(join(import.meta.dir, "../../desktop/internal/i18n", go), "utf8"));
+      expect(mac.zh, `${go} zh`).toEqual(table.zh);
+      expect(mac.en, `${go} en`).toEqual(table.en);
     }
   });
 });

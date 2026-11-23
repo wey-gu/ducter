@@ -77,6 +77,10 @@ type DecisionState struct {
 	// Said is a task's question in the partner's own words (D129), once
 	// the partner has said it; the task's wording stays in Question.
 	Said string
+	// Elsewhere (D481): On hand says it is no longer open at the home and
+	// this window missed how: closed here at once (Resolved holds a
+	// stand-in) until the home's own resolution (asks_get) replaces it.
+	Elsewhere bool
 }
 
 // Send is text the user sent straight into a task, and how it was
@@ -481,7 +485,11 @@ type Store struct {
 	// asksWaiting (D426) holds lines that came before their message was
 	// loaded (a history page), until it is.
 	asksWaiting map[int64]*protocol.Asks
-	OnHand      *protocol.OnHand
+	// asksAsked, asksWanted (D481): the questions asked for (asks_get) on
+	// this socket, and those to ask for now.
+	asksAsked  map[string]bool
+	asksWanted []string
+	OnHand     *protocol.OnHand
 	// AwayNow (D454) are the tasks and groups removed from On hand in this
 	// window, before the home's next On hand says so.
 	AwayNow map[string]bool
@@ -683,6 +691,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "welcome":
 		s.Persona, s.HeadSeq, s.Machine = f.Persona, f.HeadSeq, f.Machine
 		s.Welcomed = true
+		s.asksAsked, s.asksWanted = nil, nil // D481: a new socket asks again for what it still lacks
 		// D284: a new socket: what a task's history missed meanwhile is asked
 		// again when it opens, and a request the old socket carried is gone.
 		for _, t := range s.Tasks {
@@ -1169,6 +1178,62 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 			t.LastReport = card.LastReport
 		}
 	}
+	if o.OpenAsks != nil {
+		s.reconcileAsks(o.OpenAsks)
+	}
+}
+
+// reconcileAsks (D481): On hand's openAsks is the one source of truth for
+// "open". A question held open here that the home no longer has open,
+// asked at or before the snapshot, closes now (its resolution was missed);
+// one open at the home that isn't held here is asked for. Either way the
+// home's own events follow (asks_get).
+func (s *Store) reconcileAsks(a *protocol.OpenAsks) {
+	open := map[string]bool{}
+	for _, id := range a.IDs {
+		open[id] = true
+	}
+	want := func(id string) {
+		if s.asksAsked[id] {
+			return
+		}
+		if s.asksAsked == nil {
+			s.asksAsked = map[string]bool{}
+		}
+		s.asksAsked[id] = true
+		s.asksWanted = append(s.asksWanted, id)
+	}
+	ids := make([]string, 0, len(s.Decisions))
+	for id := range s.Decisions {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		d := s.Decisions[id]
+		if d.Resolved != nil || open[id] || d.Seq > a.AsOf {
+			continue
+		}
+		opt := d.Pending
+		if opt == "" {
+			opt = "hold"
+		}
+		d.Resolved = &protocol.DecisionResolved{DecisionID: id, Option: opt, By: "ended", Settled: true}
+		d.Pending, d.Elsewhere = "", true
+		want(id)
+	}
+	for _, id := range a.IDs {
+		if d := s.Decisions[id]; d == nil || d.Question == "" {
+			want(id)
+		}
+	}
+}
+
+// TakeAsksWanted (D481) are the questions to ask the home for now
+// (asks_get), each once a socket.
+func (s *Store) TakeAsksWanted() []string {
+	out := s.asksWanted
+	s.asksWanted = nil
+	return out
 }
 
 // ApplyEvent applies one Log event, from the live stream or a history.
@@ -1637,6 +1702,7 @@ func (s *Store) resolve(r *protocol.DecisionResolved) {
 	}
 	d.Resolved = r
 	d.Pending = ""
+	d.Elsewhere = false
 }
 
 // newWorkAfterAction clears a task's merge (or draft PR) once a done item

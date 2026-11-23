@@ -48,7 +48,8 @@ import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { gatherLeads, modelSpotter } from "./proactive/wider.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
-import { openPartners, type Partners } from "./partners.ts";
+import { openPartners, type Partners, type PartnerError } from "./partners.ts";
+import { registerPartnerTool } from "./partner-tool.ts";
 import { DEFAULT_PARTNER, channelOf, isOtherChannel } from "@ducter/protocol/src/partners.ts";
 import { asSeenBy, createWhose, partnerView } from "./partner-view.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
@@ -201,7 +202,7 @@ export interface CoreOptions {
   port?: number; // 0 = random (tests)
   hostname?: string; // default env DUCTER_HOST or 127.0.0.1; anything else is an explicit choice
   persona?: Persona;
-  /** D309: more than one partner (tests); default: DUCTER_PARTNERS=preview. */
+  /** D309: more than one partner (tests); D486 default: on unless DUCTER_PARTNERS=off. */
   partners?: boolean;
   clock?: Clock;
   defaultDelayMs?: number;
@@ -304,7 +305,7 @@ export interface CoreOptions {
   /** The machine's platform as Devices sees it (tests: "linux"). */
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
-  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
+  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; monthTokens?: number; zone?: string };
   /** D458 test seam: a fake Mem the offers read (the partner sets the real one with setMemLook). */
@@ -418,6 +419,10 @@ export interface Core extends CoreApi {
   setPartnerMem(id: string, mem: MemIdentity | undefined): void;
   /** D312: the other partners' sessions running now, by id (tests). */
   partnerSessions(): Map<string, Partner>;
+  /** D486: another partner's own Mem bundle as identity text (main.ts reads it at its session's start). */
+  setPartnerBundle(id: string, text: string | undefined): void;
+  /** D486: removes another partner: its session ends, its conversation stays, its tasks become the default's. */
+  removePartner(id: string): { ok: true } | { ok: false; error: PartnerError };
 }
 
 /** D312: makes another partner's session on its own view of core. */
@@ -431,7 +436,8 @@ export function triggersPartner(e: LogEvent): boolean {
   // D380: a quick web look came back (its answer, or why a browsing task should take it).
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
   // D236: a question answered by a reply wakes it through the reply, which says so.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
+  // D481: a question closed by what happened (by "ended") wakes nobody.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended";
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
@@ -453,7 +459,8 @@ export function triggersPartner(e: LogEvent): boolean {
     // when it matters (no reset time and nobody else to take it), once.
     if (w.limit) return w.state === "armed" && !!w.limit.tell;
     if (w.wakes === "task") return false; // D267: the task's own timer wakes the task
-    if (w.state === "expired") return true;
+    // D483: a task's own wait that runs out goes back to the task, which decides; the partner hears its report.
+    if (w.state === "expired") return !w.taskId;
     // D145: it can no longer come true (a check failed): said once, by the partner.
     if (w.state === "cancelled" && w.unmet && e.origin === "waiter" && !w.taskId) return true;
     return w.state === "fired" && !(w.taskId && (w.check || w.event));
@@ -572,6 +579,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const mcpSecret = loadSecret(dataDir);
   const mcp = createMcpHub({ secret: mcpSecret });
   registerCoreTools(mcp, log, tasks, partners.on() ? whose : undefined);
+  // D486: make, pass to and rename partners from the conversation.
+  if (partners.on()) registerPartnerTool(mcp, { log, partners });
   // D312: a task's tool calls carry the partner it is for (its memory_search is that partner's).
   mcp.setTaskPersona((taskId) => {
     const p = whose.ofTask(taskId);
@@ -617,6 +626,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     persona: persona.id,
     exec: opts.work?.exec,
     minEveryMs: opts.work?.minEveryMs,
+    ownedEveryMs: opts.work?.ownedEveryMs,
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
@@ -797,7 +807,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const last = log.read({ stream: `task:${c.taskId}`, kinds: ["mend", "task_state", "report"], limit: 1 })[0];
       if (last?.kind !== "mend") return c;
       const b = last.body as Bodies["mend"];
-      if (b.state !== "going" || b.rung === "rethink") return c;
+      if (b.state !== "going" || b.rung === "rethink" || b.cls === "round") return c;
       return { ...c, mending: { cls: b.cls, ...(b.how ? { how: b.how } : {}), ...(b.name ? { name: b.name } : {}) } };
     }),
   });
@@ -810,7 +820,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
     const asks: PartnerAsk[] = partners.questions();
     const groups = taskGroups.list().filter((g) => !onHandAway.isGroup(g.id));
-    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}) };
+    // D481: every question open at the home, as of now: the one source of truth every client closes its stale cards by.
+    const openAsks = { ids: decisions.openIds(), asOf: log.head() };
+    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), openAsks };
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
@@ -892,6 +904,17 @@ export function startCore(opts: CoreOptions = {}): Core {
   let factory: PartnerFactory | undefined;
   const views = new Map<string, CoreApi>();
   const partnerDir = (id: string) => join(dataDir, "partners", id);
+  /** D486: removes another partner: its session ends; its conversation stays in the Log; its tasks and routines are the default's now. */
+  const removeOther = (id: string): { ok: true } | { ok: false; error: PartnerError } => {
+    const r = partners.remove(id);
+    if (!r.ok) return r;
+    const p = sessions.get(id) as (Partner & { close?: () => Promise<void> | void }) | undefined;
+    sessions.delete(id);
+    views.delete(id);
+    bundleOf.delete(id);
+    void Promise.resolve(p?.close?.()).catch((err) => console.warn(`[core] closing partner ${id}:`, (err as Error).message));
+    return { ok: true };
+  };
   const startOther = (id: string, boot: boolean) => {
     if (!factory || sessions.has(id) || starting.has(id)) return;
     starting.set(id, []);
@@ -1179,11 +1202,18 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D458: the default partner's own read of Mem (memory_search's path), for the morning's offers; read-only.
   let memLookRef: MemLookPort | undefined = opts.memLook;
   api.setMemLook = (m) => void (memLookRef = m ?? opts.memLook);
-  /** The L1 identity of another partner: its own name, and that the person has others. */
+  // D486: who the person's partners are, for every partner's [partners] line (the view sets `me`).
+  if (partners.on()) api.partnersNow = () => ({ me: DEFAULT_PARTNER, list: partners.list() });
+  // D486: another partner's own Mem bundle (the person's profile, its own rules), read at its session's start.
+  const bundleOf = new Map<string, string>();
+  /** The L1 identity of another partner: its own name, what it looks after, that the person has others, and its own Mem bundle. */
   const identityOf = (id: string) => {
-    const name = partners.nameOf(id);
+    const me = partners.get(id);
+    const name = me?.name ?? partners.nameOf(id);
     const others = partners.list().filter((p) => p.id !== id).map((p) => p.name);
-    return otherIdentity(name, others);
+    const base = otherIdentity(name, others, me?.about);
+    const bundle = bundleOf.get(id);
+    return bundle ? `${base}\n\n${bundle}` : base;
   };
   function viewOf(id: string): CoreApi {
     let v = views.get(id);
@@ -1308,6 +1338,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // projects (with their origin when kept) and the repositories tasks worked in (a clone's address),
   // never a place that turned out not to be there. A fact to place work by; nothing here decides.
   api.agentLimits = () => agentLimits.now();
+  // D483: what each task owns outside (its PRs), for the partner's [live] line.
+  api.owned = () => work.owned.all();
   // D478, D479: a task_open that records `replaces` retires that task (replaces.ts): by its id, never by title.
   log.subscribe((e) => {
     if (e.kind !== "task_open" || e.origin !== "partner") return;
@@ -1482,6 +1514,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
+    removePartner: (id: string) => removeOther(id),
     core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
@@ -2402,6 +2435,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     setPartnerMem(id, mem) {
       memOf.set(id, mem);
     },
+    setPartnerBundle(id, text) {
+      if (text?.trim()) bundleOf.set(id, text.trim());
+      else bundleOf.delete(id);
+    },
+    removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
     async stop() {
       ws.stop();

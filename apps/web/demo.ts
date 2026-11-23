@@ -304,12 +304,18 @@ if (process.env.DEMO_PEER === "history" && memOn) {
 // D309: DEMO_PARTNERS=1: a second partner for home, with its own conversation and one question
 // waiting there (the bar's count is one across partners; its stone carries a dot).
 if (process.env.DEMO_PARTNERS === "1") {
-  const home = core.partners.add({ name: zh ? "小家" : "Home", look: "sage" });
+  const home = core.partners.add({ name: zh ? "小家" : "Home", look: "sage", about: zh ? "家里的事、看病、孩子" : "home, the doctor, the kids" });
+  core.partners.set("default", { about: zh ? "工作、代码和发布" : "work, code and releases" });
   if (home.ok) {
     const s = `channel:${home.partner.id}`;
     const m = log.append({ stream: s, origin: "user", kind: "user_msg", body: { text: zh ? "周六上午带小米去看牙，帮我约一下社区那家诊所" : "Book Mia a dentist appointment at the clinic down the road, Saturday morning" } });
     log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "诊所周六上午还有 9:30 和 10:45 两个号。9:30 那个离游泳课近一点。" : "The clinic has 9:30 and 10:45 open on Saturday morning. 9:30 sits closer to her swimming lesson.", replyTo: m.seq } });
     log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_home_dentist", question: zh ? "约周六 9:30 吗？" : "Book Saturday at 9:30?", goLabel: zh ? "约 9:30" : "Book 9:30", defaultOption: "hold", reversible: true } });
+    // D486: words the person said to the work partner, passed on to the home one.
+    const said = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "跟小家说一声，周六下午提醒我带小米去打疫苗" : "Tell Home to remind me about Mia's vaccine on Saturday afternoon" } });
+    log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "好，转给小家了，它会在它那边回你。" : "Done, I passed it to Home. It'll answer you there.", replyTo: said.seq } });
+    const passed = log.append({ stream: s, origin: "user", kind: "user_msg", persona: home.partner.id, body: { text: zh ? "周六下午提醒我带小米去打疫苗" : "Remind me about Mia's vaccine on Saturday afternoon", passed: { from: "default" } } });
+    log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "记下了，周六下午两点提醒你。" : "Noted. I'll remind you at 2 on Saturday afternoon.", replyTo: passed.seq } });
     // D312: the work partner's own question too: On hand lists it while the home partner is shown.
     log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_work_standup", question: zh ? "明早的站会挪到十点吗？" : "Move tomorrow's stand-up to 10?", goLabel: zh ? "挪到十点" : "Move to 10", defaultOption: "hold", reversible: true } });
     // D312: a task the home partner opened (On hand shows its stone), at work.

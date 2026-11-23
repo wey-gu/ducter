@@ -550,6 +550,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   };
 
   const endLine = (r: Bodies["decision_resolved"], d: Bodies["decision"] | undefined) => {
+    if (r.by === "ended") return W.settled(); // D481: closed by what happened
     if (r.by === "default") return W.byDefault();
     if (r.option === "go") return W.said(W.go(d?.goLabel ?? ""));
     if (r.option === "hold") return W.said(W.hold());

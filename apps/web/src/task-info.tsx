@@ -106,22 +106,11 @@ const lastPart = (s: string) => s.replace(/\/+$/, "").split("/").at(-1) ?? "";
 
 // ---------- the popover / sheet ----------
 
-function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
+/** What the working copy is and holds (the rows, the PR acts, who has worked on it): the popover's
+ *  body on a wide screen, part of the phone's 这个任务 sheet (D484). */
+export function InfoContent({ task, onClose }: { task: Task; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const narrow = typeof matchMedia === "function" && !matchMedia("(min-width: 700px)").matches;
-  useEffect(() => {
-    A.history(task.id);
-    const key = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());
-    const down = (e: PointerEvent) => {
-      const el = box.current;
-      if (el && !el.contains(e.target as Node) && !(e.target as HTMLElement).closest?.(".info-btn")) onClose();
-    };
-    addEventListener("keydown", key, true);
-    addEventListener("pointerdown", down, true);
-    box.current?.focus({ preventScroll: true });
-    return () => (removeEventListener("keydown", key, true), removeEventListener("pointerdown", down, true));
-  }, []);
+  useEffect(() => void A.history(task.id), [task.id]);
   const p = placeOf(task) as { kind: string; device?: string; repoPath?: string; worktree?: string; branch?: string; baseBranch?: string; path?: string };
   const base = p.baseBranch || "main";
   const path = p.kind === "repo" ? p.worktree || p.repoPath || "" : p.path || "";
@@ -144,9 +133,8 @@ function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
   const copy = () => {
     void navigator.clipboard?.writeText(path).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1600)));
   };
-  const body = (
-    <div ref={box} tabIndex={-1} class={`info-pop${narrow ? " as-sheet sheet" : ""}`} role="dialog" aria-label={t("info.about")}>
-      {narrow && <div class="grab" />}
+  return (
+    <>
       <dl class="info-rows">
         <div class="info-row">
           <dt>
@@ -236,14 +224,29 @@ function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
           </ol>
         </section>
       )}
-    </div>
-  );
-  return narrow ? (
-    <>
-      <div class="scrim" onClick={onClose} />
-      {body}
     </>
-  ) : (
-    body
+  );
+}
+
+/** Wide: a popover under the header's button. A phone never opens it: there the rows are in the
+ *  ⋯ sheet (D484), whose frame fits the screen (the bare `.sheet` it used to be, without
+ *  research/123's frame, drew as a sliver in the header under a grey scrim). */
+function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());
+    const down = (e: PointerEvent) => {
+      const el = box.current;
+      if (el && !el.contains(e.target as Node) && !(e.target as HTMLElement).closest?.(".info-btn")) onClose();
+    };
+    addEventListener("keydown", key, true);
+    addEventListener("pointerdown", down, true);
+    box.current?.focus({ preventScroll: true });
+    return () => (removeEventListener("keydown", key, true), removeEventListener("pointerdown", down, true));
+  }, []);
+  return (
+    <div ref={box} tabIndex={-1} class="info-pop" role="dialog" aria-label={t("info.about")}>
+      <InfoContent task={task} onClose={onClose} />
+    </div>
   );
 }

@@ -61,9 +61,11 @@ brows when something needs you. Other themes render the same states in their own
 - **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
   stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
   D73).
-- **Decision buttons:** primary `Go / 好`, or the action itself in sentence case ("Rebase";
-  zh "好，rebase"), as a dark press-down pebble button; secondary `Hold / 先等等` as a light press-down button; tertiary
-  `Reply… / 回复…` as a text button. No seals or stamps (D22).
+- **Decision buttons (D482):** primary `Go / 好`, or the action itself in sentence case ("Rebase";
+  zh "好，rebase"), as a dark press-down pebble button, **first** in the row; after it, quiet text:
+  `Not now / 先不用`, `Reply… / 回复…`, `Ask me later / 晚点再问我`; under them the default, once. Reply…
+  opens its field in place of the row (Send where Go stood, Cancel; Enter, Esc). At phone width the Go
+  is the full width at 44 and the quiet ways sit under it. No seals or stamps (D22).
 
 ## Components and tokens (canonical; polish pass 2026-11-09)
 
@@ -411,7 +413,7 @@ task's Details (D74).
 
 | Kind | Look | Allowed |
 |---|---|---|
-| Primary | ink clay | the one decision of a card or sheet (Go, Merge, Update all), last in its row, at most one per group; never in a bar |
+| Primary | ink clay | the one decision of a card or sheet (Go, Merge, Update all), last in its row, at most one per group; never in a bar. An ask's Go leads its row instead (D482) |
 | Secondary | cream clay | the other choices of a card or sheet (Hold, Not now); in a bar, **at most one worded one** (the place's primary action, e.g. 新建) and Update, at 36 (D270) |
 | Accent | orange clay | send, and the equip; nothing else |
 | Quiet text | flat ink, a tint under it on hover | crumbs, Reply…, Details, Cancel, 都按默认; every other action in a bar (branch, 工作台, ⋯, watch, full screen), pressed in while open; the conversation's counts link; never the way to a place |
@@ -480,6 +482,7 @@ A new control is added to the set (and to this table) before it is used.
 | A bar button: a place's own action, the way to another place, Update (D262) | `navButton` (`components.go`), `placeNav`, `newTaskButton` (`chrome.go`) | `NavBtn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228; as a quiet text link with its chevron, 打开 BotFather, D283) | `button` then `openLink` (`abilities.go`); `quietLink` then `openLink` | `LinkBtn` (kind `text` for the quiet link) |
+| A page named in running words that must wrap inside its column (a source under 怎么知道的, D482) | `wrapLink` (`finds.go`): underlined words, a link to the reader | `TextLink` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | 怎么做到的 / How it works: an explanation one quiet tap away, under a row, a group's note or a pane's lede note (D424) | `how`, `explainedRow`, `groupHow`, `ledeHow` (`settings.go`) | `How`; `Toggle`'s `how` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |

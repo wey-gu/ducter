@@ -40,6 +40,17 @@ export interface Decisions {
    * decision_resolved and the forward). Returned once; core hands them over when the runner is wired.
    */
   takeUnforwarded(): { taskId: string; text: string; decisionId: string; from: "user" | "ducter" }[];
+  /** D481: every question open now (On hand's openAsks: the one source of truth for "open"). */
+  openIds(): string[];
+  /** D481: the Log seqs that make a question what it is: its decision event, then its later/back/seen and its resolution. */
+  seqsOf(decisionId: string): number[];
+  /** D481: the resolution of a question, once it has one. */
+  resolution(decisionId: string): Bodies["decision_resolved"] | undefined;
+  /**
+   * D481: closed by what happened, not by an answer (its task finished or was replaced, a loop card
+   * whose moment passed): by "ended", never forwarded, no attention flip. False when it wasn't open.
+   */
+  close(decisionId: string): boolean;
   stop(): void;
 }
 
@@ -136,6 +147,14 @@ export function createDecisions(opts: {
   // first read past that seq (the conversation seen on any client), then runs its first length.
   const unseen = new Map<string, number>();
   let readTo = 0;
+  // D481: each question's own events (its decision, later/back/seen, its resolution) by seq, and its resolution.
+  const seqs = new Map<string, number[]>();
+  const answers = new Map<string, Bodies["decision_resolved"]>();
+  const note = (id: string, seq: number) => {
+    const l = seqs.get(id);
+    if (!l) return void seqs.set(id, [seq]);
+    if (!l.includes(seq)) l.push(seq);
+  };
 
   const setAttention = (taskId: string, attention: Attention, reason?: string) => {
     const c = tasks.get(taskId);
@@ -261,6 +280,8 @@ export function createDecisions(opts: {
     unseen.delete(r.decisionId);
     const d = all.get(r.decisionId);
     if (!d) return;
+    // D481: closed by what happened (its task ended): nothing to forward, no card to move.
+    if (r.by === "ended") return void silent.delete(r.decisionId);
     // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
     // partner (decision_resolved is a trigger); nothing to forward, no card to move.
     if (!d.taskId) return;
@@ -364,6 +385,8 @@ export function createDecisions(opts: {
       readTo = Math.max(readTo, (e.body as Bodies["read_receipt"]).upToSeq);
       continue;
     }
+    note((e.body as { decisionId: string }).decisionId, e.seq);
+    if (e.kind === "decision_resolved") answers.set((e.body as Bodies["decision_resolved"]).decisionId, e.body as Bodies["decision_resolved"]);
     if (e.kind === "decision_seen") {
       const b = e.body as Bodies["decision_seen"];
       unseen.delete(b.decisionId);
@@ -414,7 +437,19 @@ export function createDecisions(opts: {
     if (!handed) unforwarded.push({ taskId, text, decisionId: d.decisionId, from: forwardFrom(e.body) });
   }
 
+  /** D481: a task that finished (done, or set aside for another) asks nothing any more. */
+  const ENDS = new Set<Attention>(["done", "done_claimed", "superseded"]);
+  const closeEnded = (taskId: string) => {
+    for (const id of tasks.pendingDecisions(taskId)) if (all.has(id) && !resolved.has(id)) api.close(id);
+  };
+
   const unsubscribe = log.subscribe((e) => {
+    if (e.kind === "decision" || e.kind === "decision_resolved" || e.kind === "decision_later" || e.kind === "decision_back" || e.kind === "decision_seen") note((e.body as { decisionId: string }).decisionId, e.seq);
+    if (e.kind === "decision_resolved") answers.set((e.body as Bodies["decision_resolved"]).decisionId, e.body as Bodies["decision_resolved"]);
+    if (e.kind === "task_state" && ENDS.has((e.body as Bodies["task_state"]).attention)) {
+      const taskId = (e.body as Bodies["task_state"]).taskId;
+      queueMicrotask(() => ENDS.has(tasks.get(taskId)?.attention as Attention) && closeEnded(taskId));
+    }
     if (e.kind === "report") onReport(e.body as Bodies["report"]);
     else if (e.kind === "decision") {
       const d = e.body as Bodies["decision"];
@@ -444,6 +479,8 @@ export function createDecisions(opts: {
   queueMicrotask(() => {
     for (const id of [...laterAt.keys()]) armWake(id);
     seen(); // read past its return while down (the countdown was never logged): it runs from now
+    // D481: a task that finished with a question still open (before D481 nothing closed it): closed now.
+    for (const d of all.values()) if (d.taskId && !resolved.has(d.decisionId) && ENDS.has(tasks.get(d.taskId)?.attention as Attention)) api.close(d.decisionId);
   });
 
   const api: Decisions = {
@@ -490,6 +527,15 @@ export function createDecisions(opts: {
     },
     laterUntil: (id) => (resolved.has(id) ? undefined : laterAt.get(id)),
     takeUnforwarded: () => unforwarded.splice(0),
+    openIds: () => [...all.keys()].filter((id) => !resolved.has(id)),
+    seqsOf: (id) => [...(seqs.get(id) ?? [])].sort((a, b) => a - b),
+    resolution: (id) => answers.get(id),
+    close(decisionId) {
+      if (!all.has(decisionId) || resolved.has(decisionId)) return false;
+      silent.add(decisionId);
+      log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "hold", by: "ended", settled: true } });
+      return true;
+    },
     get: (id) => all.get(id),
     isPending: (id) => all.has(id) && !resolved.has(id),
     pendingOf: (taskId) => tasks.pendingDecisions(taskId).filter((id) => all.has(id) && !resolved.has(id)),

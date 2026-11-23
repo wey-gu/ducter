@@ -365,6 +365,21 @@ export function reachWays(r: Pick<ReachRow, "can" | "box" | "device">): Ways {
   return { to: "no", back: "no" }; // none, relay: the person's own sessions of it can't pass messages
 }
 
+/**
+ * D489: how one agent stands with the partner, said as what the person gets: both (it hands the partner
+ * work and hears back), oneway (it hands work, the answers can't reach it: one tap fixes it where Ducter
+ * knows the computer), to (it hands work; Mem hasn't said about the way back), install (Mem's plugin is
+ * missing), unknown (Mem's check hasn't said), relay (no Bridge in its Mem plugin, but Ducter's own tasks
+ * on it pass messages through Ducter), none (no Bridge in its Mem plugin: Mem's to add, nothing to fix).
+ */
+export type Standing = "both" | "oneway" | "to" | "install" | "unknown" | "relay" | "none";
+export function standing(r: Pick<ReachRow, "can" | "box" | "device">): Standing {
+  if (r.can === "relay" || r.can === "none") return r.can;
+  const w = reachWays(r);
+  if (w.to === "yes") return w.back === "yes" ? "both" : w.back === "no" ? "oneway" : "to";
+  return r.can === "install" ? "install" : "unknown";
+}
+
 /** D470: the rows split by how they stand: both ways, one way (it reaches the partner, the answers can't go back), not yet. */
 export function reachSplit(rows: readonly ReachRow[]): { both: ReachRow[]; oneWay: ReachRow[]; notYet: ReachRow[] } {
   const both: ReachRow[] = [];

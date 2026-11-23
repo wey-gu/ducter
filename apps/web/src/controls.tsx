@@ -145,6 +145,17 @@ export function LinkBtn(p: { kind: "primary" | "secondary" | "text"; size?: "sm"
   );
 }
 
+/** D482: a page named in running words (a source under 怎么知道的): underlined words that wrap
+ *  inside their column, never a one-line button past the card's edge; its chevron after them. */
+export function TextLink(p: { href: string; label: string; class?: string }) {
+  return (
+    <a class={`tlink${p.class ? ` ${p.class}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer">
+      {p.label}
+      <Chev cls="btn-chev" />
+    </a>
+  );
+}
+
 /** The one drawn chevron (D211, D213): every text link, button or row that opens more ends in it,
  *  in its text's ink; it turns down while what it opens is open (open, or an aria-expanded parent);
  *  back points the way back. Never a font's › ‹ ⌄: iOS draws some of those as an emoji or a

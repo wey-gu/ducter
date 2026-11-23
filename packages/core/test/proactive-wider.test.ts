@@ -143,7 +143,7 @@ test("with no model, only code's joins are offered", () => {
   const leads = taskLeads(input({ tasks: [merged, noticed], refs: [{ ref: "a/b#10562", label: "#10562", title: "Batch fsync", state: "open" }] }));
   const cs = codeCandidates(leads, "zh");
   expect(cs.map((c) => c.kind)).toEqual(["next_step"]);
-  expect(cs[0]!.words.zh).toBe("「WAL group commit」合进去了，它的后续 #10562 还开着。");
+  expect(cs[0]!.words.zh).toBe("「WAL group commit」合进去了，它的后续 #10562 还开着，要我接着做吗？");
 });
 
 test("terms: a later line about the same thing overlaps; tool names read plainly", () => {

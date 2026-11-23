@@ -533,6 +533,12 @@ under a link that isn't whole), **来往** (a thread per agent, each exchange wi
 (the rules in code and the muted), then **试试看**. Overview's **也能找我** adds the agents after the chat apps,
 each part opening its pane. Full words in `bridge.md` "Who reaches whom…" and D470.
 
+D489 (the author: 「这个 bridge 是什么情况？」): **谁能找到谁** is now **你的 agent / Your agents**, a literal row
+per agent saying what it can do as what the person gets (no arrows, no red); pi and Antigravity one quiet row;
+the one-way agent's offer under its row with the Space already in it (**让它收到回话**, **换一个空间**). The head
+says it in the plain ink (the pane carries no needs line; Overview's 等你 stays), and the switch's last line
+says what the pane is for. `bridge.md` "Your agents, said as what you get…".
+
 ## Pane by pane, again (D475)
 
 The author's bar: every pane loved, full of feeling, easy, smooth, elegant; and the phone first-class.

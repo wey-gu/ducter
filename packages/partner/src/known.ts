@@ -1,5 +1,5 @@
 // D487: what the person's memory holds about them, in front of the partner at the start of every
-// session, before it judges anything. Every personal AI built on an agent harness that research/209
+// session, before it judges anything. Every personal AI built on an agent harness that research/210
 // read loads a bounded core memory into each fresh session; Ducter's partner saw the person's
 // durable facts only when it chose to search, and a small model often doesn't (the moved dentist
 // appointment, wp-mem-contradiction-zh). This is a fact the partner sees, never a classifier: no

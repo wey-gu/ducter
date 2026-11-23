@@ -336,7 +336,8 @@ export interface Bodies {
   // outside data, never the person's own words or instructions.
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef };
+  // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string } };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -442,7 +443,9 @@ export interface Bodies {
   // plugin in): it reads as done (已装好 / Installed), never as a default taken.
   // D413 posted: a review round's card settled because every draft on it went under a standing
   // permission the person said (shown 按你说的，直接发了 / Posted, as you said).
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
+  // D481 by "ended": closed by what happened, not by an answer (its task finished or was replaced,
+  // a loop's card whose moment passed); never forwarded, read as 不用回了 / No longer needed.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -537,7 +540,14 @@ export interface Bodies {
     /** D439: set by Ducter (never the task): the document it shows was checked page by page; `left` is what is still so. */
     doc?: import("./doc-bar.ts").DocCheck;
   };
-  checkpoint: { taskId: string; text: string; gitRef?: string };
+  /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
+  checkpoint: { taskId: string; text: string; gitRef?: string; owns?: string[] };
+  /**
+   * D483: news about a PR a task owns, as told to it (its comments, reviews, CI's end, a push, merged
+   * or closed, another task's report naming it), and what was told up to then (`seen`: the cursor a
+   * restart picks up from). news [] is the first look, which only learns where it stands.
+   */
+  owned_news: { taskId: string; pr: string; news: string[]; seen: OwnedSeen };
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
   // New task, the partner when it took one, or a standing go).
   task_bound: { taskId: string; item: SourceItemRef | null; by: "you" | "partner" | "rule" };
@@ -616,6 +626,12 @@ export interface Bodies {
     unmet?: string;
     /** D394: "cancelled" because the task armed its next timer: a task has one timer of its own, the newest. */
     replacedBy?: string;
+    /**
+     * D483: "cancelled" because a look can't be evaluated (its answer isn't JSON for its path, is
+     * too large, or the command can't run where it looks): what happened, plainly (<= 300 chars).
+     * A task's wait wakes the task with it; never a wait that looks on in vain.
+     */
+    cantTell?: string;
   };
   // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
   // on the task's stream (task waiters) or the channel. Clients fold them into Details.
@@ -1039,6 +1055,13 @@ export interface OnHand {
   groups?: TaskGroupView[];
   /** D454: tasks the person removed from On hand (移走): a client that also builds its board from the Log leaves them out. */
   away?: string[];
+  /**
+   * D481: every question still open at the home (the one source of truth for "open"), as of Log
+   * seq asOf. A client closes any question it holds open that isn't here and was asked at or before
+   * asOf (it missed the resolution), and asks the home (asks_get) for the ones here it doesn't hold.
+   * Offers and put-off questions count as open.
+   */
+  openAsks?: { ids: string[]; asOf: number };
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -1312,6 +1335,10 @@ export type ClientFrame =
   // D382: 晚点再问我 / Ask me later: put the question off to `until` (ISO); null brings it back now
   // (现在就定 / Decide now).
   | { t: "later"; decisionId: string; until: string | null }
+  // D481: questions this client and the home's On hand disagree about (open at the home but unknown
+  // here, or open here but closed at the home): the home answers with one events frame holding each
+  // one's decision event and its resolution, so every surface agrees with the home.
+  | { t: "asks_get"; ids: string[] }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
   // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said
@@ -1450,8 +1477,11 @@ export type ClientFrame =
   // (name, look); partner_set renames one or changes its look (the default's name is settings_set's).
   // Switching is a new hello with persona: the socket then shows that partner's conversation.
   | { t: "partners" }
-  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
-  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
+  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  // D486: removes another partner (never the default): its conversation stays in the Log, unread;
+  // its tasks and routines become the default's; a device showing it shows the default's.
+  | { t: "partner_remove"; id: string; clientId?: string }
   | { t: "settings_set"; patch: SettingsPatch }
   | { t: "memory_forget"; seq: number }
   // D329: 撤销 / Undo on a fresh 记下了 / Noted line: the save is taken back at once (archived in Mem,
@@ -3092,6 +3122,22 @@ export interface BridgeView {
 export const endedUnmet = (w: Pick<Bodies["waiter"], "state" | "unmet" | "taskId" | "routineId">): boolean =>
   !w.taskId && !w.routineId && (w.state === "expired" || (w.state === "cancelled" && Boolean(w.unmet)));
 
+/** D483: what Ducter told a task about a PR it owns, up to now (core/src/owned.ts). */
+export interface OwnedSeen {
+  /** When the task declared it: comments from before are not news. */
+  since: string;
+  head?: string;
+  /** The head whose CI ending was told. */
+  ciFor?: string;
+  state?: "open" | "closed" | "merged";
+  /** Comment and review ids already told (bounded). */
+  ids?: string[];
+}
+
+/** D483: how long a wait with no until of its own lasts: every wait ends, and whoever waits hears why. */
+export const TASK_WAIT_UNTIL_MS = 24 * 60 * 60_000;
+export const PARTNER_WAIT_UNTIL_MS = 7 * 24 * 60 * 60_000;
+
 export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
@@ -3139,3 +3185,4 @@ export interface LendFrame {
   device?: string;
   name?: string;
 }
+export * from "./names.ts";

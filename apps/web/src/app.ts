@@ -835,7 +835,7 @@ class AppState {
       // D480: the answer for the row still open (a later tap elsewhere wins).
       const c = this.mailboxChoosing;
       if (!c || c.device !== f.device || c.harness !== f.harness) return;
-      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend ?? f.look.spaces?.[0]?.id };
+      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend };
       return void this.changed();
     }
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
@@ -982,6 +982,11 @@ class AppState {
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
+    // D481: questions this page and the home disagree about: the home's own events for them.
+    if (f.t === "on_hand" && this.S.welcomed && this.conn) {
+      const ids = this.S.takeAsksWanted();
+      if (ids.length) this.send({ t: "asks_get", ids });
+    }
     // D209: the last screen follows what the home sent (on_hand closes a replay: caught up).
     if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
     if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
@@ -2018,7 +2023,12 @@ class AppState {
       }
     }
     // The partner this page asked for is gone (or never was): the home showed the default's.
-    if (this.partnerShown !== f.shown && !f.partners.some((p) => p.id === this.partnerShown)) savePartner((this.partnerShown = f.shown));
+    // D486: one removed while it was shown: this page starts over on the default's conversation.
+    if (this.partnerShown !== f.shown && !f.partners.some((p) => p.id === this.partnerShown)) {
+      const wasShowing = this.S.persona === this.partnerShown;
+      if (wasShowing && f.partners.some((p) => p.id === DEFAULT_PARTNER)) return void this.switchPartner(DEFAULT_PARTNER);
+      savePartner((this.partnerShown = f.shown));
+    }
     const shown = f.partners.find((p) => p.id === f.shown);
     if (shown && shown.name !== this.S.personaName) this.S.personaName = shown.name;
     this.changed();
@@ -2043,17 +2053,31 @@ class AppState {
     this.changed();
   }
 
-  /** D309: 再加一个伙伴 / Add a partner. */
-  addPartner(name: string, look: PartnerLook) {
+  /** D309: 再加一个伙伴 / Add a partner; D486: with what it looks after. */
+  addPartner(name: string, look: PartnerLook, about = "") {
     const cid = `pa-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "add", name: name.trim() };
-    this.send({ t: "partner_add", name, look, clientId: cid });
+    this.send({ t: "partner_add", name, look, ...(about.trim() ? { about: about.trim() } : {}), clientId: cid });
+    this.changed();
+  }
+
+  /** D486: removes another partner (its conversation stays; its tasks become the default's). */
+  removePartner(id: string) {
+    if (id === DEFAULT_PARTNER) return;
+    const cid = `pr-${Date.now().toString(36)}`;
+    this.partnerAsk = { cid, kind: "set" };
+    this.send({ t: "partner_remove", id, clientId: cid });
     this.changed();
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook }) {
-    if (id === DEFAULT_PARTNER && patch.name) return this.setSettings({ name: patch.name });
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string }) {
+    if (id === DEFAULT_PARTNER && patch.name) {
+      this.setSettings({ name: patch.name });
+      const { name: _n, ...rest } = patch;
+      if (!Object.keys(rest).length) return;
+      patch = rest;
+    }
     const cid = `ps-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "set" };
     if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));
@@ -2313,7 +2337,7 @@ class AppState {
     this.changed();
   }
   /**
-   * D470, D480: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem
+   * D470, D480, D489: 让它收到回话 / Let it hear back: one task on that device opens the agent's Nowledge Mem
    * mailbox (the tap is its Go), in the Space the person chose in place (never asked again by the task).
    */
   openMailbox(device: string, harness: string, space?: { id: string; label: string }) {
@@ -2340,6 +2364,8 @@ class AppState {
     this.mailboxChoosing = undefined;
     this.changed();
   }
+  /** D489: the agents whose Spaces this window already looked up by itself when the pane showed (once each). */
+  mailboxAsked = new Set<string>();
   /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */
   mailboxOpening = new Set<string>();
   /** D470: the request lines the partner's next words already say (hidden), and the message each one stands over (origin). */
@@ -3235,6 +3261,19 @@ class AppState {
     haptic(option === "go" ? "success" : "light");
     this.markRead();
     this.send({ t: "decide", decisionId: id, option, ...(text ? { text } : {}) });
+    this.changed();
+  }
+
+  /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
+  sendLeftDraft(d: DecisionState, text: string) {
+    this.replyDraft.delete(d.decisionId);
+    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const reply: Replying | undefined = d.seq ? { seq: d.seq, from: "partner", quote: (d.said || d.question).slice(0, 120) } : undefined;
+    this.pending.push({ clientId, text, ...(reply ? { reply } : {}) });
+    this.thinkingSince = Date.now();
+    this.markRead();
+    this.send({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) });
+    haptic("light");
     this.changed();
   }
 

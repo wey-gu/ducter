@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.19 - 2026-11-23
+
+<!-- whats-new
+zh: 提问卡和早安消息更好读；手机上的任务页重新做了
+en: Clearer questions and morning notes; the task view on phones, redone
+-->
+
+**Questions and the morning note**
+- Every question reads the same way everywhere: one main button that says what happens, then
+  Not now, Reply and Ask me later; what happens if you don't answer is said once, in the card.
+- Offers in the morning note sound like your partner: what it noticed, then what it would do.
+- Sources wrap instead of running off the card, and long titles are never cut mid-word.
+
+**An opened task on your phone**
+- The top says where it stands and what it is waiting for, with the pull request one tap away.
+- The share button shares a few plain lines anyone can read: the task, where it stands, its last
+  report and links. More holds the computer, folder, branch and changes.
+- A provider error shows as one line with its code; the full text is behind "Why".
+- The workbench opens only for the task you opened it on.
+
 ## 0.1.18 - 2026-11-23
 
 <!-- whats-new

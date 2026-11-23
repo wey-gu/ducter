@@ -41,6 +41,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   Ducter's own phone for apps.
 - **[Add a computer](add-a-computer.md):** lend a server at home, a NAS, a cloud machine or
   another Mac to your Ducter with one line, so tasks can run there.
+- **[Move Ducter to another computer](move.md):** see first what moving Ducter to a new Mac or
+  a server would carry over, what you'd sign in to again and what follows by itself.
 - **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with
   and who does the tasks, how it talks, when it may come to you and what it remembers, and the
   app's own settings and menus.

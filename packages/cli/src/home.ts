@@ -140,7 +140,7 @@ export const homeJson = (t: Target) => (t.kind === "local" ? { kind: "local" as 
 
 export type CommandClass = "machine" | "home" | "self";
 
-const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "reach", "report", "key"]);
+const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "tailscale", "reach", "report", "key", "move"]);
 const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices", "ability", "browser", "proactive", "repairs"]);
 
 /**

@@ -29,6 +29,7 @@ import { cmdReach } from "./reach-cmd.ts";
 import { cmdWorker, pickWay } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
+import { cmdMove } from "./move.ts";
 import { osText, versionsText, writeReport } from "./report.ts";
 import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
@@ -81,6 +82,7 @@ export function helpText(t: T): string {
     cmd("reach", t("help.reach")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
+    cmd("move", t("help.move")),
     cmd("uninstall", t("help.uninstall")),
     cmd("report", t("help.report")),
     cmd("update", t("help.update")),
@@ -109,6 +111,7 @@ export function helpText(t: T): string {
     opt("--yes", t("help.yes")),
     opt("--check", t("help.check")),
     opt("--to <version>", t("help.to")),
+    opt("--plan", t("help.plan")),
     opt("--include-conversation", t("help.includeConversation")),
     opt("--out <dir>", t("help.out")),
   ].join("\n");
@@ -594,9 +597,25 @@ export async function run(argv: string[]): Promise<number | "running"> {
     }
     if (!args.json) console.log(targetLine(t, ctx.target, style));
   }
-  // Neither creates the data folder: one takes it away, the other only reads it.
+  // None creates the data folder: one takes it away, the others only read it.
   if (args.command === "uninstall") return cmdUninstall(ctx);
   if (args.command === "report") return cmdReport(ctx);
+  if (args.command === "move")
+    // D504: the plan only, read-only; the AI agents and GitHub's CLI are asked if they're signed in.
+    return cmdMove({
+      t,
+      dataDir,
+      json: args.json,
+      plan: Boolean(args.plan),
+      ...(args.to ? { to: args.to } : {}),
+      computer: thisComputer(),
+      platform: process.platform,
+      probe: async () => {
+        const agents = await installedAgents(dataDir);
+        const gh = host.which("gh") ? (await host.run(["gh", "auth", "status"], 5000)).code === 0 : false;
+        return { ...(agents ? { agents } : {}), github: gh };
+      },
+    });
   host.writable(dataDir); // creates it; doctor reports if it can't
   host.pairedDevices = () => {
     try {

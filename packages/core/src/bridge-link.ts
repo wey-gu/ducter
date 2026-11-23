@@ -422,6 +422,15 @@ export interface BridgeLink extends BridgeLinkApi {
   };
   /** Mem became usable here after an install or a sign-in: core binds the persona's identity. */
   onMemReady(fn: () => void): () => void;
+  /**
+   * D494: a helper's own address: its Mem identity enrolled (or brought up to date, when Ducter
+   * enrolled it) with its name and card, then the home's one connection for it in the person's own
+   * place, confirmed by a passive setup. Only Mem's identity inbox (nmem 0.10.121+) reads it in every
+   * Space; on an older nmem it waits, said so.
+   */
+  connectAs(agentId: string, name: string, card: string): Promise<{ ok: true; context: string; connectionId: string; spaceId: string } | { ok: false; why: "waiting" | "refused"; detail: string }>;
+  /** D494: ends one of the home's own connections (a stopped helper's). True when Mem says it is ended. */
+  revokeConnection(connectionId: string): Promise<boolean>;
 }
 
 /** Runs one install or update command (an argument vector); undefined when it can't start. */
@@ -539,9 +548,14 @@ export function createBridgeLink(opts: {
     return !!h && !!tag && h.tag === tag && h.home === homeSlug(opts.home());
   };
   /** D324: other homes' active connections for the identity (one a revoke from here didn't end is stuck). */
+  // D494: only a home's own connection is a receiver: Ducter's label for it (`<identity>-on-<home>-…`,
+  // or the bare identity a home used before D324). A task's agent that set up a Bridge session as the
+  // partner's identity (hel, 2026-11-23: Codex's plugin, `client_label: "codex"`, made 4 s after the
+  // task started) is not another computer receiving, and is never offered for 只留这台.
+  const homeConn = (c: MemConnection, agent: string) => c.label === agent || !!labelHome(c.label, agent);
   const othersIn = (conns: MemConnection[] | undefined, r: BridgeConnectionRecord | undefined, agent: string) =>
     (conns ?? [])
-      .filter((c) => c.active && !ownConn(c, r, agent))
+      .filter((c) => c.active && !ownConn(c, r, agent) && homeConn(c, agent))
       .map((c) => {
         const h = labelHome(c.label, agent);
         return { label: c.label, connectionId: c.connectionId, ...(h ? { home: h.home } : {}), ...(stuck.has(c.connectionId) ? { stuck: true as const } : {}), ...(c.seenAt ? { seenAt: c.seenAt } : {}) };
@@ -1107,6 +1121,53 @@ export function createBridgeLink(opts: {
         opening = false;
         changed();
       }
+    },
+    async connectAs(agentId, name, card) {
+      if (!ID.test(agentId)) return { ok: false, why: "refused", detail: "not an identity Mem takes" };
+      if (opts.memoryOn && !opts.memoryOn()) return { ok: false, why: "waiting", detail: "memory is off" };
+      const p = await look();
+      if (!p) return { ok: false, why: "waiting", detail: "no Nowledge Mem here" };
+      if (!p.supported) return { ok: false, why: "waiting", detail: `nmem ${p.version ?? "?"} is too old` };
+      if (!p.signedIn) return { ok: false, why: "waiting", detail: "Nowledge Mem isn't signed in" };
+      if (!p.space) return { ok: false, why: "waiting", detail: "no personal Space" };
+      if (!(await wideInbox())) return { ok: false, why: "waiting", detail: "this nmem has no identity inbox (0.10.121 or later)" };
+      // Its identity: enrolled by Ducter with its name and card; one Ducter enrolled before is kept current.
+      const shown = await run(["agents", "show", agentId]);
+      const sj = shown && shown.code === 0 ? jsonIn(shown.out)[0] : undefined;
+      const a = sj?.agent ?? sj?.profile ?? sj;
+      const missing = !shown || shown.code !== 0 || !a || typeof a !== "object" || errorCodeIn(shown.out, shown.err) === "not_found" || sj?.error === "not_found";
+      if (missing) {
+        const e = await run(["agents", "enroll", agentId, "--name", name, "--source-app", "ducter", "--description", card]);
+        if (!e || e.code !== 0) return { ok: false, why: e ? "refused" : "waiting", detail: e ? detailIn(e.out, e.err) : "nmem didn't start" };
+      } else if ((a.source_app ?? a.sourceApp) === "ducter") {
+        await run(["agents", "set", agentId, "--name", name, "--description", card]);
+      } else return { ok: false, why: "refused", detail: "that identity is someone else's" };
+      const conns = await listConns(p.space.id, agentId, p.version);
+      const ctx = contextFor(agentId, conns);
+      const mine = conns?.find((c) => c.active && c.label === ctx);
+      const label = /--device-label\b/.test(await helpOf(["bridge", "connections", "connect"])) ? opts.home().trim().slice(0, 64) : "";
+      let connectionId = mine?.connectionId;
+      if (!connectionId) {
+        const c = await run(["bridge", "connections", "connect", "--space-id", p.space.id, "--agent-id", agentId, "--context", ctx, ...(label ? ["--device-label", label] : [])]);
+        const j = c && c.code === 0 ? jsonIn(c.out)[0] : undefined;
+        const conn = j?.connection;
+        if (!(j?.state === "connected" && conn?.agent_id === agentId && conn?.state === "active" && typeof conn?.connection_id === "string")) {
+          const code = c ? errorCodeIn(c.out, c.err) : undefined;
+          const why = code && REFUSALS[code] && REFUSALS[code] !== "unavailable" && REFUSALS[code] !== "unknown" ? "refused" : "waiting";
+          return { ok: false, why, detail: !c ? "nmem didn't start" : code ? `Nowledge Mem: ${code.replace(/^cloud_bridge_setup_/, "")}` : detailIn(c.out, c.err) };
+        }
+        connectionId = conn.connection_id as string;
+      }
+      // Passive: the saved context acts as the helper (never --enable).
+      const s = await run(["--agent-context", ctx, "bridge", "setup"]);
+      const said = s && s.code === 0 ? (jsonIn(s.out)[0]?.endpoint?.address?.agent_id ?? jsonIn(s.out)[0]?.identity?.agent_id) : undefined;
+      if (!s || s.code !== 0 || (said !== undefined && said !== agentId)) return { ok: false, why: "waiting", detail: s ? detailIn(s.out, s.err) : "nmem didn't start" };
+      return { ok: true, context: ctx, connectionId: connectionId!, spaceId: p.space.id };
+    },
+    async revokeConnection(connectionId) {
+      const v = await run(["bridge", "connections", "revoke", connectionId]);
+      const j = v && v.code === 0 ? jsonIn(v.out)[0] : undefined;
+      return (j?.connection?.connection_id === connectionId && j?.connection?.state === "revoked") || (!!v && errorCodeIn(v.out, v.err) === "cloud_bridge_setup_connection_revoked");
     },
     memSignedIn: () => !!probe?.supported && probe.signedIn,
     memUpdate: {

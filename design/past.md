@@ -108,6 +108,10 @@ field's words are shared with the first tab. `made.md`.
 
 ## 一直在跑的 / Ongoing
 
+> D494: a helper (`bridge.md` "Helpers") is not listed here yet: it starts on mail, not time, and lives in
+> Settings › Agent 通信; each piece of work it takes is a task, and one that repeats is a task in rounds
+> here as any other. Listing helpers here too is in `todo.md`.
+
 The second tab: what keeps going on its own. Two kinds, one set of gestures.
 
 | Kind | What it is | Its runs |

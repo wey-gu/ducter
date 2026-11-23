@@ -1480,6 +1480,26 @@ type AgentUpdateReq struct {
 // Mem's own `nmem connect --tool` there where Mem has one for that agent and
 // its plugin is absent (D375), else one task on that device follows Mem's
 // own setup guide. Answered with mem_plugin_result (OK, TaskID, Reason).
+// HelperView is one helper as Settings › Agent 通信 shows it (D494).
+type HelperView struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	About string `json:"about"`
+	// State "on" | "stopped"; Mem "connecting" | "ready" | "waiting" | "refused".
+	State  string `json:"state"`
+	Mem    string `json:"mem"`
+	Detail string `json:"detail,omitempty"`
+	Open   int    `json:"open"`
+	Week   int    `json:"week"`
+}
+
+// HelperToggle is 停下 / Stop ("helper_stop") or 接着收 / Take work again
+// ("helper_resume") on a helper's row (D494): the tap is the Go.
+type HelperToggle struct {
+	T  string `json:"t"`
+	ID string `json:"id"`
+}
+
 type MemPluginInstall struct {
 	T       string `json:"t"` // "mem_plugin_install"
 	Device  string `json:"device"`
@@ -2815,6 +2835,9 @@ type ServerFrame struct {
 	// OwnAgents (D332): the AI agents the person runs themselves on the
 	// home (their records' file times); 和你的其他 agent 通信 shows for them.
 	OwnAgents []string `json:"ownAgents,omitempty"`
+	// Helpers (D494): the home's helpers, named addresses of the person's in
+	// Bridge their other agents hand work to; Agent 通信 shows them.
+	Helpers []HelperView `json:"helpers,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules []RuleView `json:"rules,omitempty"`
 	// pins (D381): what is pinned, newest first; Refused: why a pin didn't

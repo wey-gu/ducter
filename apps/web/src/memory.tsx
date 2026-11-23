@@ -1042,6 +1042,47 @@ function PeersAgents({ name }: { name: string }) {
   );
 }
 
+/**
+ * D494: 你的帮手 / Your helpers, while there are any: each one's name (what the person's agents find it by
+ * in Nowledge Mem), what it takes in the person's words, where its address stands, the work on hand and
+ * this week's, each its own element; 停下 / Stop (its address closes; work on hand keeps going) and
+ * 接着收 / Take work again. Its tile is its first letter on the sunken pebble: no metaphor.
+ */
+export function PeersHelpers() {
+  const hs = A.helpers;
+  if (!hs.length) return null;
+  const state = (h: (typeof hs)[number]) => (h.state === "stopped" ? "stopped" : h.mem);
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.helpers.title")}</h3>
+      <Group class="mem-g peers-helpers" label={t("peers.helpers.title")}>
+        {hs.map((h) => (
+          <div key={h.id} class="chat-row tiled helper-row">
+            <Tile>
+              <span class="mem-tool-letter">{[...h.name][0]?.toUpperCase()}</span>
+            </Tile>
+            <span class="grow">
+              <b>{h.name}</b>
+              {h.about && <small class="helper-about">{t("peers.helper.takes", h.about)}</small>}
+              <small class={`helper-state ${state(h)}`} title={h.detail}>
+                {t(`peers.helper.${state(h)}`)}
+              </small>
+              {(h.open > 0 || h.week > 0) && (
+                <span class="helper-counts">
+                  {h.open > 0 && <small>{t("peers.helper.open", h.open)}</small>}
+                  {h.week > 0 && <small>{t("peers.helper.week", h.week)}</small>}
+                </span>
+              )}
+            </span>
+            <Btn kind="text" size="sm" label={t(h.state === "stopped" ? "peers.helper.resume" : "peers.helper.stop")} about={h.name} onClick={() => A.stopHelper(h.id, h.state === "stopped")} />
+          </div>
+        ))}
+        <GFoot note={t("peers.helpers.foot")} />
+      </Group>
+    </section>
+  );
+}
+
 /** D470: what came of an exchange, in the partner's words, and the ink it is said in. */
 function exLine(x: PeerExchange): { text: string; tone?: "needs" | "bad" } {
   const o = x.outcome;
@@ -1296,6 +1337,7 @@ export function PeersPage() {
           {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
           {b?.state === "connected" && b.notices && <PeersNotices name={name} />}
           <PeersAgents name={name} />
+          <PeersHelpers />
           <PeersThreads name={name} threads={threads} p={p} />
           <PeersRules p={p} />
           {threads.length > 0 && <PeersTry name={name} />}

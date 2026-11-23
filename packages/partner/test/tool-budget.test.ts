@@ -136,7 +136,7 @@ test("the persona and the partner's tools are what the last eval judged", async 
 // D448: agent_message is listed only for a task Ducter carries messages for (Bridge on, an agent whose
 // Mem plugin has no Bridge of its own): such a task's list grows by it, under its own ceiling; a
 // Claude Code task's list stays the same.
-test("a task Ducter carries messages for: agent_message is listed for it alone, still under a ceiling", async () => {
+test("a task Ducter carries messages for: agent_message is listed for it, still under a ceiling", async () => {
   const d = mkdtempSync(join(tmpdir(), "ducter-tools-relay-"));
   const c = startCore({ dataDir: d, port: 0, push: false, platform: "darwin" });
   registerTaskTools(c as never, {});
@@ -151,10 +151,13 @@ test("a task Ducter carries messages for: agent_message is listed for it alone, 
     };
     c.log.append({ stream: "task:tp", origin: "partner", kind: "task_open", body: { taskId: "tp", title: "x", project: "", place: { kind: "none" }, harness: "pi", brief: "x" } });
     c.log.append({ stream: "task:tc", origin: "partner", kind: "task_open", body: { taskId: "tc", title: "x", project: "", place: { kind: "none" }, harness: "claude-code", brief: "x" } });
+    c.log.append({ stream: "task:tb", origin: "partner", kind: "task_open", body: { taskId: "tb", title: "x", project: "", place: { kind: "browser" } as never, harness: "claude-code", brief: "x" } });
     const pi = await listFor("tp");
     expect(pi.map((t) => t.name).sort()).toEqual([...TASK_TOOLS, "agent_message"].sort());
     expect(JSON.stringify(pi).length).toBeLessThan(CEILING.taskRelayed);
-    expect((await listFor("tc")).map((t) => t.name).sort()).toEqual(TASK_TOOLS);
+    // D494: a Claude Code task too (the home receives for every task); never a browser task (D62).
+    expect((await listFor("tc")).map((t) => t.name).sort()).toEqual([...TASK_TOOLS, "agent_message"].sort());
+    expect((await listFor("tb")).map((t) => t.name)).not.toContain("agent_message");
   } finally {
     await p.close();
     await c.stop();

@@ -109,6 +109,8 @@ export interface WsDeps {
   lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
   bridgeLink?: import("./bridge-link.ts").BridgeLink;
+  /** D494: the home's helpers as Settings › Agent 通信 shows them, and their stop and resume. */
+  helpers?: { views(): import("@ducter/protocol").HelperView[]; stop(id: string): Promise<unknown>; resume(id: string): unknown };
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
@@ -358,7 +360,8 @@ export function createWsHandler(deps: WsDeps) {
     refreshBrainModels(now.harness);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}) };
+    const helpers = deps.helpers?.views() ?? [];
+    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}), ...(helpers.length ? { helpers } : {}) };
   };
   /** A fresh settings frame to these subscribers, from a change rather than a frame they sent. */
   const pushSettings = (subs: ServerWebSocket<WsData>[]) => {
@@ -1346,6 +1349,14 @@ export function createWsHandler(deps: WsDeps) {
           return send(ws, { t: "anywhere_setup_result", ok: r.state !== "failed", step: r });
         }
         return send(ws, { t: "anywhere_setup_result", ok: false, reason: "failed", detail: "op" });
+      }
+      case "helper_stop":
+      case "helper_resume": {
+        // D494: the person's tap on a helper's row is the Go; the settings frame follows the change.
+        if (!deps.helpers || typeof f.id !== "string") throw new Error("helpers are not available");
+        ws.data.settings = true;
+        await (f.t === "helper_stop" ? deps.helpers.stop(f.id) : deps.helpers.resume(f.id));
+        return;
       }
       case "bridge_connect":
       case "bridge_only_here":

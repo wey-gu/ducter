@@ -174,6 +174,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		a.peersStuck(c, b, name)
 		a.peersNotices(c, b, name)
 		a.peersAgents(c, name)
+		a.peersHelpers(c)
 		threads := exchangeThreads(peerFeed(a.S.Channel, a.S.TaskPeers), a.S.OutOps, a.S.Decisions, 3)
 		a.peersThreads(c, name, threads, p)
 		a.peersRules(c, p)

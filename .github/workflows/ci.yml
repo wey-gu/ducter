@@ -1,9 +1,10 @@
 name: CI
 
-# Every PR and every push to main. Three jobs in parallel, a few minutes each:
+# Every PR and every push to main. Four jobs in parallel, a few minutes each:
 #   ts  bun test (0 failures), both tsc configs, the committed web bundle is fresh, Markdown links
 #       resolve, no work evidence in git
-#   go  apps/desktop: gofmt, go vet (darwin + linux), go test, and a darwin build
+#   go  apps/desktop: gofmt, go vet (darwin + linux), go test, and a darwin build; go-views runs
+#       the second half of the view tests beside it (D488)
 #   android  apps/android: its unit tests and a debug APK (D178)
 # The Go job runs on macOS, the app's only platform: its view tests measure text with the real
 # font stack and use macOS tools (plutil). On Linux the same layout measured differently and
@@ -113,8 +114,31 @@ jobs:
       - name: go build (darwin/arm64, the app's target)
         run: go build -trimpath -o /dev/null .
 
-      - name: go test
-        run: go test ./...
+      # The view tests are most of this job (about 4 of its 5 minutes, one package run serially), so
+      # they are split in two (D488): Test[A-K] here with every other package, the rest in go-views.
+      # The two -run/-skip patterns are each other's complement, so no test is left out.
+      - name: go test (all but the views, and views Test[A-K])
+        run: |
+          go test $(go list ./... | grep -v '/internal/views$')
+          go test ./internal/views -run '^Test[A-K]'
+
+  go-views:
+    name: desktop (Go views, the rest)
+    runs-on: macos-15
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/desktop/go.mod
+          cache-dependency-path: apps/desktop/go.sum
+
+      - name: go test (views, all but Test[A-K])
+        run: go test ./internal/views -skip '^Test[A-K]'
 
   android:
     name: Android app (unit tests, debug APK)

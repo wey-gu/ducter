@@ -32,17 +32,11 @@ describe("能找到{name}的 with Mem's contact list (D444)", () => {
 });
 
 describe("the words, both languages, the same on the Mac", () => {
-  const go = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/memory.go"), "utf8");
-  for (const lang of ["zh", "en"] as const)
-    test(lang, () => {
-      for (const k of KEYS) {
-        const w = memoryWords[lang][k];
-        expect(w, k).toBeTruthy();
-        expect(go, `${lang} ${k}`).toContain(`${JSON.stringify(k)}:`);
-        expect(go, `${lang} ${k}`).toContain(JSON.stringify(w));
-      }
-      expect(memoryWords.zh["peers.way.back.yes"]!.replace("%s", "Ducter")).toBe("Ducter能找到它");
-    });
+  // The Mac's memory.go equals memoryWords, key for key: words.test.ts (D488).
+  test("every D444 word in zh and en", () => {
+    for (const lang of ["zh", "en"] as const) for (const k of KEYS) expect(memoryWords[lang][k], `${lang} ${k}`).toBeTruthy();
+    expect(memoryWords.zh["peers.way.back.yes"]!.replace("%s", "Ducter")).toBe("Ducter能找到它");
+  });
   test("别记这个 is the fresh line's button, and the Memory pane says it can be said", () => {
     const i18n = src("i18n.ts");
     expect(i18n).toContain('"memory.undo": "别记这个"');

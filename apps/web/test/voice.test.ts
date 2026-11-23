@@ -1,9 +1,7 @@
 // D305: hold to talk and read aloud, with a fake recognizer and a fake voice (never the real
 // microphone or speakers): the first-use card, keep / send / drop / tap / nothing heard, denied
-// and unavailable, the reply read aloud after a message sent by voice, and the words tables.
-import { beforeEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { voiceWords } from "../src/i18n-voice.ts";
+// and unavailable, the reply read aloud after a message sent by voice, and the words (their Mac parity is words.test.ts').
+import { describe, expect, test } from "bun:test";
 import { chunks, FakeRecognizer, FakeSpeaker, levelOfRms, pickVoice, whyOfWebError } from "../src/voice-engine.ts";
 import { VoiceCtl } from "../src/voice.tsx";
 
@@ -170,16 +168,4 @@ describe("engines", () => {
   });
 });
 
-describe("words", () => {
-  beforeEach(() => mem.clear());
-  test("the web's and the Mac's tables are the same", () => {
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/voice.go", import.meta.url), "utf8");
-    for (const lang of ["zh", "en"] as const) {
-      const start = mac.indexOf(`var ${lang}Voice = Table{`);
-      const block = mac.slice(start, mac.indexOf("\n}\n", start));
-      const go: Record<string, string> = {};
-      for (const m of block.matchAll(/^\s*"([^"]+)":\s+("(?:[^"\\]|\\.)*"),$/gm)) go[m[1]!] = JSON.parse(m[2]!);
-      expect(go).toEqual(voiceWords[lang]);
-    }
-  });
-});
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).

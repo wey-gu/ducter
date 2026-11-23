@@ -1,23 +1,12 @@
 // D360: 分组 / Groups on On hand: the words equal the Mac's, and the board places a group in its most
 // urgent member's section, folds the rest, and says a stopped line in its own words.
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { Attention, TaskGroupView } from "@ducter/protocol";
 import { groupWords } from "../src/i18n-groups.ts";
 import { boardGroups, foldedRows, groupCount, markOf } from "../src/groups-view.ts";
 import { format } from "../src/i18n.ts";
 
-const mac = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/groups.go"), "utf8");
-const goTable = (name: string) => {
-  const body = mac.split(`var ${name} = Table{`)[1]!.split("\n}")[0]!;
-  return Object.fromEntries([...body.matchAll(/^\s*"([^"]+)":\s*"((?:[^"\\]|\\.)*)",$/gm)].map((m) => [m[1], JSON.parse(`"${m[2]}"`)]));
-};
-
-test("the web's group words are the Mac's, key for key", () => {
-  expect(goTable("zhGroups")).toEqual(groupWords.zh);
-  expect(goTable("enGroups")).toEqual(groupWords.en);
-});
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).
 
 // D430: no counter noun anywhere on the card; the count is the conversation's, shown only while
 // something is done and something is left.

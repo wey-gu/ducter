@@ -16,7 +16,7 @@ function setup(script: Script) {
   const fc = fakeCore(clock, mkdtempSync(join(tmpdir(), "ducter-continue-")));
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {} });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {} });
   const user = (text: string) => partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));
   return { fc, fr, partner, user, clock };
 }

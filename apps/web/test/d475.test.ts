@@ -4,7 +4,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { d475Words } from "../src/i18n-d475.ts";
 import { strings } from "../src/i18n.ts";
 
 const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
@@ -97,12 +96,4 @@ describe("the phone and the tiles (D475)", () => {
   });
 });
 
-describe("the Mac's words, key for key (D475)", () => {
-  const go = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/settings_d475.go"), "utf8");
-  const table = (name: string) => {
-    const body = go.split(`var ${name} = Table{`)[1]!.split("\n}")[0]!;
-    return Object.fromEntries([...body.matchAll(/^\s*"([^"]+)":\s*"((?:[^"\\]|\\.)*)",$/gm)].map((m) => [m[1]!, JSON.parse(`"${m[2]}"`)]));
-  };
-  test("zh", () => expect(d475Words.zh).toEqual(table("zhD475")));
-  test("en", () => expect(d475Words.en).toEqual(table("enD475")));
-});
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).

@@ -10,16 +10,7 @@ import { asksWords } from "../src/i18n-asks.ts";
 import { format } from "../src/i18n.ts";
 import { Store } from "../src/store.ts";
 
-const mac = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/asks.go"), "utf8");
-const goTable = (name: string) => {
-  const body = mac.split(`var ${name} = Table{`)[1]!.split("\n}")[0]!;
-  return Object.fromEntries([...body.matchAll(/^\s*"([^"]+)":\s*"((?:[^"\\]|\\.)*)",$/gm)].map((m) => [m[1], JSON.parse(`"${m[2]}"`)]));
-};
-
-test("the web's words are the Mac's, key for key", () => {
-  expect(goTable("zhAsks")).toEqual(asksWords.zh);
-  expect(goTable("enAsks")).toEqual(asksWords.en);
-});
+// The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).
 
 test("the count reads naturally, with no counter word to learn", () => {
   expect(format(asksWords.zh["asks.count"]!, [3, 1])).toBe("好了 3 个，还有 1 个");

@@ -5551,12 +5551,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async idle() {
       // D380: a quick web look out is work still to say: its answer wakes a turn when it lands.
-      while (running || looks.size) {
-        if (running) await running;
-        else {
-          await Promise.allSettled([...looks.values()].map((l) => l.done));
-          await new Promise((r) => setTimeout(r, 0));
+      // A turn that just ended may have queued the next one on a later tick: settle a tick and
+      // look again, so idle never answers between two queued turns (raced on CI).
+      for (;;) {
+        while (running || looks.size) {
+          if (running) await running;
+          else {
+            await Promise.allSettled([...looks.values()].map((l) => l.done));
+            await new Promise((r) => setTimeout(r, 0));
+          }
         }
+        await new Promise((r) => setTimeout(r, 0));
+        if (!running && !looks.size) return;
       }
     },
     async close() {

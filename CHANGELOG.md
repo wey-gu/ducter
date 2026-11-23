@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.23 - 2026-11-23
+
+<!-- whats-new
+zh: 一键拷贝整条消息；伙伴话更少、问得更准
+en: Copy a whole message in one tap; your partner says less and asks only what matters
+-->
+
+**Copy a whole message**
+- On the computer, every message has a Copy button beside Reply when you point at it; on the
+  phone, press and hold. In a task, the line under its answer ends in Copy.
+- What you copy keeps its formatting: headings and lists in a notes app or document, the
+  plain source in an editor, a terminal or another agent. The button says Copied.
+
+**Says less, asks less**
+- Your partner answers first and as long as the question needs: one line for where things
+  stand, one or two for a result.
+- It asks only when your answer changes what happens next, and not for things it or a task
+  can just do, or that a card is already asking.
+
+**Remembers what you actually said**
+- What it saves to Nowledge Mem rests on your own words, and a one-time instruction stays
+  one-time. When it says it will come back to you with something, it does.
+
+**The decision card, tidied**
+- The card lines up with the message box, the task's title is not repeated inside the task,
+  and the line under the buttons says what happens if you don't answer, quoting the button.
+
 ## 0.1.22 - 2026-11-23
 
 <!-- whats-new

@@ -167,11 +167,33 @@ intents (all three let code or a classifier decide meaning; principle 21).
 
 ## 4. Built in this slice (D487): #1 and #2
 
+`partner/src/known.ts` (the block, its read, its refs), `partner/eval/compare.ts` (`bun run eval:compare`).
 Results, and the same-window A/B, in §5.
 
-## 5. Results
+## 5. Results (VERIFIED, haiku partner and judge, 2026-11-23, `eval:compare`)
 
-(Filled in after the runs.)
+| | main (0.1.18, clean export) | branch (final) |
+|---|---|---|
+| full eval without the puzzles, 244 cases | 184, 190, 182 (mean 185.3) | 192, 194 (mean 193.0) |
+| within-side flips | 66 | 50 |
+| world puzzles, 20 | 18, 17, 17 | 17, 18 |
+| `wp-mem-contradiction-zh` | 0 / 3 | 2 / 2 |
+| memory category + that puzzle, 21 | 15, 16 | 16, 16 |
+
+The branch passes 59 cases more often and 43 less often (sign test p = 0.14): better in direction, not
+proven by two runs. The one case that fails on every branch run and passes on every main run has no
+memories (identical input). Three wordings were tried on the way (D487 in `decisions.md`): "act on
+it" set a reminder without asking; "ask before acting on either" asked; carrying D444's answer shape fixed
+"what do you know about me". The partner on Codex and a live Mem were not run.
+
+## 6. What it means
+
+- A fact in front of the model beats a search it must think to make: the contradiction puzzle went from
+  never to always with no change to the persona or the tools.
+- The wording of a fenced block is behaviour: each clause was found by a run, and each touched only the
+  cases it named.
+- Two runs a side still can't prove a 3 % difference; the comparison script makes that visible instead of
+  letting two totals decide.
 
 ## Summary
 

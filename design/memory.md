@@ -409,8 +409,10 @@ each fresh session; the partner used to know the person only when it chose to se
   goes without it and the next turn carries it); a warm session never waits.
 - **In the partner's context:** one L4 block, once per session and again only when what it holds changes (its
   key), fenced as data: you simply know these; when one bears on this message (a day, a time, a place, a person,
-  how they want it done), act on it or say it in a few words; a newer one wins over an older one it contradicts;
-  never list them or say you read memory; `memory_search` for what isn't here. No word of the person's decides
+  how they want it done), use that one in a few words and say nothing of the others; when it disagrees with what
+  they say now, say so and ask which holds before acting on either; a newer one wins over an older one; asked what
+  it knows about them, D444's shape (at most three short sentences, the few that matter, never a list); never say
+  it read memory; `memory_search` for what isn't here. No word of the person's decides
   whether it shows (principle 21).
 - **The 想起了 line (D304):** a reply that leaned on one ends with its ref (`[[k2]]`); code resolves it against
   this session's known set exactly as a search's `m` refs, and the same quiet line names it.

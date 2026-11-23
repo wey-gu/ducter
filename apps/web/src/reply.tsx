@@ -8,9 +8,10 @@
 import { clipQuote, isImage, plainWords, type MediaRef, type ReplyRef } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A, type Replying } from "./app.ts";
-import { copyAndSay } from "./conv-copy.ts";
+import { copyAndSay, copyMessage } from "./conv-copy.ts";
+import { CopyButton } from "./copy-button.tsx";
 import { when } from "./format.ts";
-import { copyText, COPY_GLYPH, forReading } from "./markdown.ts";
+import { COPY_GLYPH, readingWords } from "./markdown.ts";
 import { haptic } from "./native.ts";
 import type { Entry } from "./store.ts";
 import { Menu as DMenu, MenuItem } from "./menu.tsx";
@@ -155,11 +156,12 @@ interface Menu {
   link?: string;
 }
 
-/** D254: a message's words as they go to the clipboard: its source, not what the screen drew. */
+/** D254, D492: a message's words as they go to the clipboard: its source as written (the
+ *  partner's Markdown), not what the screen drew. */
 export function sourceOf(e: Entry | undefined): string | undefined {
   if (!e) return undefined;
   if (e.user) return e.user.text;
-  if (e.ai) return copyText(e.ai.text);
+  if (e.ai) return e.ai.text;
   if (e.job?.ack) return e.job.ack.text;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
@@ -173,6 +175,14 @@ const entryAt = (el: HTMLElement): Entry | undefined => {
   const seq = Number(el.closest<HTMLElement>("[data-seq]")?.dataset.seq);
   return Number.isFinite(seq) ? A.S.channel.find((e) => e.firstSeq === seq) : undefined;
 };
+
+/** The whole message a [data-reply] element is: its source when the row has one; else the words
+ *  as drawn, paragraphs kept (innerText). */
+export function messageText(el: HTMLElement): string {
+  const e = el.dataset.reply?.includes("/") ? undefined : entryAt(el);
+  const drawn = el.querySelector<HTMLElement>(".bubble, .words, .ask-words") ?? el;
+  return (sourceOf(e) ?? drawn.innerText ?? drawn.textContent ?? "").trim();
+}
 
 /** D254: on a touch screen a long press opens Ducter's menu, not the system's selection. */
 export const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
@@ -206,13 +216,7 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
       }
       s = undefined;
     };
-    // The source when the row has one; else the words as drawn, paragraphs kept (innerText).
-    const textOf = (el: HTMLElement) => {
-      const e = el.dataset.reply?.includes("/") ? undefined : entryAt(el);
-      const drawn = el.querySelector<HTMLElement>(".bubble, .words, .ask-words") ?? el;
-      return (sourceOf(e) ?? drawn.innerText ?? drawn.textContent ?? "").trim();
-    };
-    const menuAt = (el: HTMLElement, x: number, y: number, key: string, link?: string): Menu => ({ x, y, key, text: textOf(el), ts: entryAt(el)?.ev.ts, ...(link ? { link } : {}) });
+    const menuAt = (el: HTMLElement, x: number, y: number, key: string, link?: string): Menu => ({ x, y, key, text: messageText(el), ts: entryAt(el)?.ev.ts, ...(link ? { link } : {}) });
     const down = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       const el = (ev.target as HTMLElement).closest<HTMLElement>("[data-reply]");
@@ -347,7 +351,7 @@ export function ReplyMenu({ menu }: { menu?: Menu }) {
           <span>{replyWord(r)}</span>
         </MenuItem>
       )}
-      <MenuItem onClick={() => (closeMenu(), void copyAndSay(menu.text, said))}>
+      <MenuItem onClick={() => (closeMenu(), void copyMessage(menu.text, said))}>
         <span class="menu-glyph" dangerouslySetInnerHTML={{ __html: COPY_GLYPH }} />
         <span>{t("reply.copy")}</span>
       </MenuItem>
@@ -368,7 +372,7 @@ export function ReplyMenu({ menu }: { menu?: Menu }) {
         </MenuItem>
       )}
       {coarse() && (
-        <MenuItem onClick={() => (closeMenu(), (selecting = forReading(menu.text)), A.changed())}>
+        <MenuItem onClick={() => (closeMenu(), (selecting = readingWords(menu.text)), A.changed())}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M5 6h14M5 12h9M5 18h11" />
             <path d="M18 14v7" />
@@ -414,13 +418,20 @@ export function SelectText() {
 /** D256: the reply pebble. With a mouse, while the pointer is over something that can be replied
  *  to, one small clay pebble rests in the gutter beside it (left of the person's, right of the
  *  partner's, outside a note's card beside a find), its ledge on the bottom line; on the pebble
- *  itself it says 回复 / Reply. Touch has the swipe and the long-press menu instead. */
-export function HoverReply({ k }: { k?: string }) {
+ *  itself it says 回复 / Reply. D492: 拷贝 / Copy rests over it, the whole message (not for
+ *  pictures alone); on a partner's message 朗读 / Read aloud over that. Touch has the swipe and
+ *  the long-press menu instead. */
+export function HoverReply({ k, copy = true }: { k?: string; copy?: boolean }) {
   if (!k) return null;
   const r = targets.get(k);
   return (
     <>
     {r?.from === "partner" && !r.findId && <HoverRead seq={r.seq} k={k} />}
+    {/* D492: 拷贝 / Copy, the whole message, the pebble over the reply's. */}
+    {copy && <CopyButton cls="hover-reply hover-copy" text={(b) => {
+      const el = b.closest<HTMLElement>("[data-reply]");
+      return el ? messageText(el) : undefined;
+    }} />}
     <button
       type="button"
       class="hover-reply"

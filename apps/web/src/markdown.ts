@@ -50,17 +50,16 @@ export const COPY_GLYPH =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="3"/><path d="M5 15V7a3 3 0 0 1 3-3h7"/></svg>';
 
 /**
- * A message as it goes to the clipboard (D254): the words as written, without the marks that only
- * style them (bold, italic, headings), a link as "words (address)", code and its fences kept (a
- * developer pastes them into a chat or a terminal, and plain words read the same either way).
+ * A message's words to read and pick a part from (选择文字 / Select text, D254): without the marks
+ * that only style them (bold, italic, headings) or the fences, a link as "words (address)". The
+ * clipboard takes the Markdown as written instead (D492, conv-copy.ts copyMessage).
  */
-export function copyText(src: string): string {
+export function readingWords(src: string): string {
   const out: string[] = [];
   let fenced = false;
   for (const line of src.replace(/\r\n?/g, "\n").split("\n")) {
     if (/^\s*```/.test(line)) {
       fenced = !fenced;
-      out.push(line);
       continue;
     }
     if (fenced) {
@@ -78,13 +77,6 @@ export function copyText(src: string): string {
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-
-/** The same words to read and pick from (选择文字 / Select text): the fences go too. */
-export const forReading = (copied: string) =>
-  copied
-    .replace(/^\s*```.*$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 
 function render(src: string, copy?: string): string {
   const lines = src.replace(/\r\n?/g, "\n").split("\n");

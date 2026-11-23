@@ -133,6 +133,8 @@ type App struct {
 	// a line or a copy it hands to the next frame.
 	fileView            *fileViewState
 	fileToast, copyText string
+	// copied is the copy button that copied last (D492), for 已拷贝 in place.
+	copied copiedState
 	// devicesAsked: the where line (D157) asked for devices once on its own.
 	devicesAsked bool
 	// bridgeHere: 改由这台收 / 只留这台 was tapped once and asks in place (D324).

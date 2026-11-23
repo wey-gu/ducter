@@ -63,5 +63,14 @@ describe("On hand with its character back (D315)", () => {
     expect(src).toContain('.replace(/[。．.！!；;，,]+$/u, "")');
     const label = "等你登录后继续。".replace(/[。．.！!；;，,]+$/u, "");
     expect(A.L.t("decision.default.go", "26 分钟", label)).not.toContain("。，");
+    // D493: the sentence quotes the Go button as it reads (one 就), in zh and en; a Go naming no action quotes nothing.
+    const { defaultInfo } = await import("../src/views.tsx");
+    const now = Date.now();
+    const d = { decisionId: "d1", question: "q", goLabel: "30 分钟后再试", defaultOption: "go", reversible: true, defaultAt: new Date(now + 26 * 60_000).toISOString() } as never;
+    expect(defaultInfo(d, now).line).toBe("不回的话，26 分钟后我就按「好，30 分钟后再试」办，之后还能改回来。");
+    A.L = strings("en");
+    expect(defaultInfo({ ...(d as object), goLabel: "Try again in 30 minutes" } as never, now).line).toBe("If you don't answer, in 26 min I'll go with “Try again in 30 minutes”. It can be undone.");
+    expect(defaultInfo({ ...(d as object), goLabel: "Wait until the build on the other machine has finished" } as never, now).line).toBe(A.L.t("decision.default.goon", "26 min"));
+    A.L = strings("zh");
   });
 });

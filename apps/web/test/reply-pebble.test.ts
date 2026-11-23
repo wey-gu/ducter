@@ -27,6 +27,13 @@ describe("the reply pebble sits in the gutter, never on what it replies to", () 
     expect(rule(".find > .ftext > .hover-reply")).toContain("left: calc(100% + 22px)");
     expect(src("finds.tsx")).toMatch(/<div class="ftext">[\s\S]*?<HoverReply k=\{rk\} \/>[\s\S]*?<\/div>/);
   });
+  test("D492: Copy rests over the reply's pebble, Read aloud over that; never for pictures alone", () => {
+    expect(rule(".hover-reply.hover-copy")).toContain("bottom: 39px");
+    expect(rule(".find > .ftext > .hover-reply.hover-copy")).toContain("bottom: 34px");
+    expect(rule(".partner > .bubble > .hover-read")).toContain("bottom: 75px");
+    expect(src("reply.tsx")).toContain('{copy && <CopyButton cls="hover-reply hover-copy"');
+    expect(src("views.tsx")).toContain("<HoverReply k={rk} copy={false} />");
+  });
   test("pictures alone: left of the pictures, by their own width", () => {
     expect(rule(".user-m > .hover-reply")).toContain("right: calc(var(--pics-w) + 8px)");
   });

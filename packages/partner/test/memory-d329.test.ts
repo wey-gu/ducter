@@ -153,7 +153,7 @@ describe("the partner", () => {
     const fc = fakeCore(clock, tmp());
     (fc.core as any).settings = { get: () => ({ memory: true }), setForgetter() {}, setMemState() {}, setMemHooks: (h: unknown) => (hooks = h), memChanged() {} };
     const fr = fakeRunner(async (_i, s) => {
-      await fc.callTool("memory_add", { title: "周报周五发", content: "周五下午发" });
+      await fc.callTool("memory_add", { title: "周报周五发", content: "周五下午发", said: "周报周五发" });
       s.say("好。");
       s.end();
     });

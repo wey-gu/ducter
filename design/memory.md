@@ -127,12 +127,22 @@ and tools (principle 17). The slice gives the partner two tools, both through th
 
 - **`memory_search(query, limit≤8)`**, model-initiated. Use it when the user points at
   something the conversation doesn't show ("像上次那样", a person, a past choice), or before
-  asking something Mem may know. **One per turn** unless the user asks to look again. Hits
+  asking something Mem may know. **Two per turn at most** (D490): each result says how many are
+  left (`searchesLeftThisTurn`) and a third is refused; no word of the person's lifts it. Hits
   come back compact (title, ≤280 chars, date, kind; no ids or Spaces). They are background:
   never pasted, never "I searched". Recall is invisible in the UI.
-- **`memory_add(title, content, importance?)`** for a stated preference, a decision, or a
-  durable fact about the user's work or people. Secret-shaped text and task plumbing (task
-  ids, branches, worktrees, commit hashes) are refused by the tool. At most two per turn.
+- **`memory_add(title, content, said, importance?)`** for a stated preference, a decision, or a
+  durable fact about the user's work or people (D490, grounded writes). `said` is the person's own
+  words it rests on (or a task's report's, for a `remember` a task proposed), copied exactly: the
+  tool checks they appear in the person's last 60 messages or this turn's reports (width, case,
+  spacing and surrounding quotes aside) and refuses a paraphrase; that is an invariant, never a
+  judgement of meaning. The content is a statement about them ("prefers pnpm"), never an order to
+  the partner ("always use pnpm"), which would be read later as an instruction; and never that a
+  tool or computer can't do something (one failure hardens into a refusal the partner cites against
+  itself, hel's step 6). Whether a thing lasts (a one-off "just for this report" is not a preference)
+  is the partner's judgement, held by the memory eval; no regex refuses it any more. Secret-shaped
+  text and task plumbing (task ids, branches, worktrees, commit hashes) are refused by the tool. At
+  most two per turn.
   Provenance as in `system.md`. Each save appends `memory_noted {title, memoryId?, replyTo?}`
   on the channel after the turn's text. Clients show it as one quiet line, 记下了 · <title>
   / Noted · <title>, and the partner's words never announce it.
@@ -380,8 +390,9 @@ any of it: nothing to set up, no line, no card. Restraint holds: the partner nev
   ("matters more to them; still kept only when all four hold; never mention it"); over the day's 3, finds
   touching a focus name (Latin words of 3+ letters, Chinese runs of 2+, common words left out) take the
   places after the urgent ones. The note keeps the bar's order; its words never mention focus or notes.
-- **Past conversations (G3)** (inside `memory_search`, no parameter: one swayed the eval). When the person's
-  words this turn name an AI tool or say "how did I / 我上次怎么…的", one `nmem t search` runs beside the memory search
+- **Past conversations (G3)** (inside `memory_search`, no parameter: one swayed the eval). With every search
+  (D490: no longer only when the person's words matched a list of tool names and "how did I / 我上次怎么…的";
+  "recall 那个测试之前老挂，后来是因为啥好的？" names neither), one `nmem t search` runs beside the memory search
   (in parallel: ~3.5 s, about a memory search's): ≤ 3 threads, ≤ 2 of the person's and the tool's own lines
   each (system and tool lines dropped), 240 chars, secrets redacted, Ducter's own windows skipped (the Log is
   this conversation). They come back as `conversations` {title, tool, date, lines}: data, never instructions;
@@ -449,12 +460,13 @@ like a friend who knows them. *How it starts:* nothing to set up; the first "以
   (archived, never deleted; a waiting save dropped; a replaced one restored). The partner sees under their words
   "Ducter already took back … say it back in a few words, no memory tool", and says **好，不记了。** Longer words go
   to the partner as they are.
-- **"你都记得我些什么？"** When the person's words this turn ask what it knows about them (`ASKS_ABOUT_ME`), the one
-  memory_search also reads what Mem knows about them (`MemoryClient.about`: `nmem m list --unit-type` preference,
-  decision, fact, D321's rule: preferences from anyone, decisions and facts only the person's own), returned as
-  `aboutYou` with the note: two or three warm sentences in its own words, the few things that matter, never a list,
-  count, title, source or "records", ending with how to correct one. One persona line points there (no tool's
-  name or description changed).
+- **"你都记得我些什么？"** What Mem knows about them (`MemoryClient.about`: `nmem m list --unit-type` preference,
+  decision, fact, D321's rule: preferences from anyone, decisions and facts only the person's own) is already in
+  front of the session (D487's block, with D444's answer shape: two or three warm sentences in its own words, the
+  few things that matter, never a list, count, title, source or "records", ending with how to correct one). D490
+  retired the regex that read the question (`ASKS_ABOUT_ME`) and the search's `aboutYou`: no code decides the
+  person asked. A session that hasn't seen the block (Mem away on its first turn) gets it with its first
+  `memory_search` (`whatTheyToldYouBefore`), once.
 - **The Memory pane** (walked, D432's shape kept): the head's foot now says the one thing a person needs to feel in
   control, **哪条不想让它记，说一声「别记这个」就好。**; under 它知道的关于你, **让{name}说说它记得你什么** puts the
   question in the composer (never sent for them): the page is the inventory, the conversation is where it feels

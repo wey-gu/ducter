@@ -11,6 +11,16 @@ from the Log, so a restart keeps it. A fixed **Replies in** language wins. Tasks
 task's `language` tag), and a result said in another language is held back and said again once
 (D154). Lines Ducter's code writes itself come from zh/en tables through the fallback chain.
 
+**How the partner speaks (D491).** Written as behaviour, not adjectives, at the top of the
+persona and held for every reply: the reply's size follows the question's weight (a status or a
+yes/no is one sentence, a result or a choice one or two, more only for depth asked for); the
+answer comes first, with no lead-in, recap or closing line; a question only when the person's
+answer changes what happens and nothing in view settles it, then one; never an offer of what a
+task, a wait, a card or Ducter is already doing; one subject per reply. The lines Ducter writes
+for the partner say whose a thing is (a task's own wait that ended is the task's to redo), and a
+line that is not a question never reads as one (the checkout's pay card asks for the person; a
+blocked task asks nothing).
+
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
 
@@ -19,13 +29,18 @@ human opens them.
    (D120). OpenAI documents that models invent results for calls still pending. The task starts
    with the ack, from the streamed head of its `task_open` call, not after the brief
    (`quiet-conversation.md`).
-   **A line that only promises (D462).** A line that only says what the partner is about to do
-   ("我去查…", "I'll set up…") is settled by what comes next, on every agent: before `task_open`
-   or `task_send` it is the ack; before any other call it waits, and a line written after the
-   call says it instead (Codex writes such a preamble before nearly every call); a second
-   promise before the call replaces the first, so the ack is still one sentence. Said with no
-   call at all, nothing started: it is held for one correction round that asks for the call
-   (its line then goes out as that call's ack) or an "OK" (it goes out as it was). Each of the
+   **Lines around calls, and promises (D462, D490).** Where a line stands decides what it is, never
+   its words: before `task_open` or `task_send` it is the ack; before any other call that does
+   something it waits, and a line written after the call says it instead (Codex writes a preamble
+   before nearly every call; the persona says so as a fact); before a lookup, or a call whose own
+   card is what the person sees (ask, routine_propose), it goes out first. A line that promises to come back later carries
+   the partner's own **[[later]]** mark (hidden). With nothing in that turn that brings it back (a
+   task opened or sent to, a wait, a routine, a card), it is held for one correction round that asks
+   for the call (its line then goes out as that call's ack) or an "OK" (it goes out as it was).
+   Kept by tasks, the promise is recorded (state.json, five at most, three days) and shown as a fact
+   (`[what you told them you'd come back to them with; still owed]`) on the turn one of its tasks ends
+   in and whenever the person writes, until a turn after its tasks ended has said something. No code
+   reads the words for a promise (D490 retired `PROMISE_RE`). Each of the
    agent's own messages stays its own line (the runner splits text by the agent's message id),
    and a ducter-ui block written as a message of its own, or bare, or after words on the same
    line, joins the line it belongs to.
@@ -385,12 +400,26 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
   front. Sending takes the line away.
 - **Read means seen.** The conversation counts as read only while its end is in view.
 - **The place is kept** while On hand or a task has the phone's screen.
-- **Copy.** Long press (touch) or right click on a message: its time, **回复 / Reply**, **拷贝 /
-  Copy** (the message as written: styling marks out, links as "words (address)", code kept), on a
-  link **拷贝链接 / Copy link**, and on a touch screen **选择文字 / Select text** (the words on a sheet
-  where the system's own selection works; **全部拷贝 / Copy all**, **完成 / Done**). With words
-  selected (Mac, wide web) Copy is the selection's. Each code block has its own quiet **拷贝**
-  (**已拷贝** for a moment). A copy says **已拷贝 / Copied** with a light tap, or that it couldn't.
+- **Copy (D492).** A whole message is one press away wherever it is read:
+  - *With a mouse*, the pebbles beside a message (D256's gutter) carry **拷贝 / Copy** with the copy
+    mark: on the web a column, Reply on the message's bottom line, Copy over it, **朗读 / Read
+    aloud** over that on a partner's message; on the Mac a row, Reply, Copy, Read aloud. Every
+    bubble that can be replied to has it; pictures alone have none.
+  - *Long press (touch) or right click* opens the message menu: its time, **回复 / Reply**, **拷贝 /
+    Copy**, on a link **拷贝链接 / Copy link**, and on a touch screen **选择文字 / Select text** (the
+    words to read on a sheet where the system's own selection works, without styling marks or
+    fences; **全部拷贝 / Copy all**, **完成 / Done**). With words selected (Mac, wide web) Copy is the
+    selection's.
+  - *In an opened task*, the quiet line under the agent's words (its time, how long its turn
+    worked) ends in **拷贝** with the copy mark. A finished turn's last words, its answer, keep
+    that line in view; earlier words show it on hover; a touch screen always. On the Mac its
+    right-click has Copy too.
+  - *What it copies:* the message's Markdown as written, and the same message formatted beside it
+    (a rich editor keeps headings, lists, bold and code; an editor, a terminal or another agent
+    gets the source). Each code block also has its own quiet **拷贝**.
+  - *What it says:* the button pressed turns to the drawn check and **已拷贝 / Copied** for a
+    moment, with a light tap; a menu that closed says **已拷贝** in the toast; a copy that failed
+    says so, with Select text.
 - **The draft is kept** when the app is closed, until it is sent.
 - **Not here:** editing a sent message (the partner already acted on it; say a correction), read
   ticks, reactions. Find in the conversation is in `todo.md`.

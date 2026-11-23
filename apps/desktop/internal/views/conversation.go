@@ -529,6 +529,7 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 	hov := rt != nil && row.Hovered()
 	row.Children(func() {
 		ui.Spacer(c)
+		a.hoverCopy(c, rt, hov, -1) // D492
 		a.hoverReply(c, rt, hov, -1)
 		r := t.BubbleRadius
 		tr := r[1]
@@ -589,6 +590,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			hov := rt != nil && row.Hovered()
 			row.Children(func() {
 				ui.Spacer(c)
+				a.hoverCopy(c, rt, hov, -1) // D492: none for pictures alone
 				a.hoverReply(c, rt, hov, -1)
 				ui.Column(c).Gap(t.S1).AlignItems(ui.End).MinWidth(0).Children(func() {
 					a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")
@@ -807,15 +809,17 @@ func (a *App) timeLineBefore(prev, e *store.Entry) bool {
 }
 
 // decisionCard is one ask in the conversation: the asking task's title
-// as plain small words (nothing for the partner's own asks), the
-// question, its default, and Go / Hold / Reply… / Details.
+// as plain small words (nothing for the partner's own asks, nor inside its
+// own task, where the title already heads the page: D493), the question,
+// its default, and Go / Hold / Reply… / Details.
 func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Column(c).Padding(t.S5-4, t.S5-2).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
+	id := firstNonEmpty(taskID, d.TaskID)
+	ui.Column(c).Padding(t.S5).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker)
-		} else if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
+		} else if task := a.S.Task(id); task != nil && task.Title() != "" && !(a.Route == RouteTask && a.TaskID == id) {
 			uiText(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 		}
 		a.decisionBody(c, d, taskID)
@@ -849,7 +853,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		return
 	}
 	question := a.questionOf(d)
-	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
+	a.heading(c, keepTail(autospace(question)), t.XL).LineHeight(1.35)
 	if d.Look != nil && d.Resolved == nil {
 		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
 	}
@@ -874,7 +878,8 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 			}
 		}
 	}
-	ui.Column(c).Padding(t.S1, 0, 0, 0).Children(func() { a.decisionButtons(c, d, st) })
+	// D493: the question 16 above the row (the card's gap of 10 and 6 more).
+	ui.Column(c).Padding(t.S4-(t.S2+2), 0, 0, 0).Children(func() { a.decisionButtons(c, d, st) })
 }
 
 func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {

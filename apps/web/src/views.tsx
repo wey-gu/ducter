@@ -305,7 +305,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
 
 // ---------- decisions ----------
 
-function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
+export function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
   if (d.asker) return { line: t("peer.default") }; // silence never answers for the user (D164)
   if (d.saying) return { line: t("decision.saying.default") }; // D379: nothing waits on it; unanswered, it still goes by their words
   if (!d.reversible) return { line: t("decision.no_default") };
@@ -313,10 +313,12 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };
   const left = at - now;
   if (left <= 0) return { line: t("decision.default.due"), frac: 0 };
-  // D315: the label sits mid-sentence, so its own full stop goes ("等你登录后继续。，之后还能改回来。").
-  let label = (d.goLabel ?? "").trim().replace(/[。．.！!；;，,]+$/u, "");
-  if (!label) return { line: t("decision.default.goon", duration(A.L, left)) };
-  if (!A.L.style.spaced && label.charCodeAt(0) < 0x80) label = " " + label;
+  // D493: the sentence quotes the Go button exactly as it reads (按「好，30 分钟后再试」办 / go with "Try
+  // again in 30 minutes"), never splices the model's label in as a verb ("29 分钟后我就 30 分钟后再试");
+  // a Go that names no action (好 / Go) has nothing to quote: 我就接着做 / I'll go ahead.
+  // D315: only its own end mark goes ("等你登录后继续。，之后还能改回来。").
+  const label = goLabel(d).trim().replace(/[。．.！!；;，,]+$/u, "");
+  if (!label || label === t("decision.go")) return { line: t("decision.default.goon", duration(A.L, left)) };
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? undefined : Math.max(0, Math.min(1, left / (at - asked)));
   return { line: t("decision.default.go", duration(A.L, left), label), frac };
@@ -413,16 +415,20 @@ function DecideRow({ d, about, sm, foot, dflt = true }: { d: DecisionState; abou
       ) : (
         <div class="dk-acts" role="group" aria-describedby={lineId}>
           <Btn kind="primary" size={size} label={d.asker ? d.goLabel : goLabel(d)} about={about} onClick={() => A.decide(id, "go")} />
-          {d.asker?.other ? (
-            // X1: its second option, answered in its own words (a reply), never Hold.
-            <Btn kind="text" size={size} label={d.asker.other} about={about} onClick={() => A.decide(id, "reply", d.asker!.other)} />
-          ) : (
-            <Btn kind="text" size={size} label={holdWords(d)} about={about} onClick={() => A.decide(id, "hold")} />
-          )}
-          <button class={`btn text${sm ? " sm" : ""}`} data-dk-reply={id} aria-expanded={false} aria-label={spoken(A.L, t("decision.reply"), about)} onClick={toggleReply}>
-            <span class="lbl">{t("decision.reply")}</span>
-          </button>
-          <LaterButton d={d} about={about} size={size} />
+          {/* D493: the quiet ways wrap as one group: beside the Go, or under it with the first word's
+              letters at the card's edge (never one word alone on a line, indented by its padding). */}
+          <span class="dk-quiet">
+            {d.asker?.other ? (
+              // X1: its second option, answered in its own words (a reply), never Hold.
+              <Btn kind="text" size={size} label={d.asker.other} about={about} onClick={() => A.decide(id, "reply", d.asker!.other)} />
+            ) : (
+              <Btn kind="text" size={size} label={holdWords(d)} about={about} onClick={() => A.decide(id, "hold")} />
+            )}
+            <button class={`btn text${sm ? " sm" : ""}`} data-dk-reply={id} aria-expanded={false} aria-label={spoken(A.L, t("decision.reply"), about)} onClick={toggleReply}>
+              <span class="lbl">{t("decision.reply")}</span>
+            </button>
+            <LaterButton d={d} about={about} size={size} />
+          </span>
         </div>
       )}
       {dflt ? <DefaultRow d={d} id={lineId}>{foot}</DefaultRow> : foot && <div class="dl dk-default" id={lineId}>{foot}</div>}
@@ -1433,7 +1439,7 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     return (
       <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq} style={picsAspect(e.user.media)}>
         <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
-        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} />}
+        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} copy={false} />}
       </div>
     );
   }

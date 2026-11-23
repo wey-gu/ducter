@@ -121,7 +121,7 @@ func TestDetect(t *testing.T) {
 	if l := Detect([]string{"zh-CN"}); l != EN {
 		t.Errorf("override: %v", l)
 	}
-	if got := New(EN).T("decision.default.go", "5 min", "rebase"); got != "If you don't answer, I'll rebase in 5 min. It can be undone." {
+	if got := New(EN).T("decision.default.go", "5 min", "rebase"); got != "If you don't answer, in 5 min I'll go with “rebase”. It can be undone." {
 		t.Errorf("en order: %q", got)
 	}
 }

@@ -555,6 +555,85 @@ export const puzzles: Scenario[] = [
     rubric:
       "The partner under test is Home; the person asks it to tell their work partner, Ducter, that the release can wait until Monday. Pass if the words go to Ducter, nothing is opened here, and one short English line says it went to Ducter. Fail if Home acts on the release itself, claims Ducter's answer, or asks anything.",
   },
+  // D490 (research/210 §3 item 3). A task's own failure proposes a lesson about a tool ("Codex on hel
+  // can't open a browser"): hel's step 6 in general form. Kept, it would harden into a refusal the
+  // partner cites against itself for months. Nothing of the kind is kept; the outcome is told plainly.
+  {
+    id: "wp-mem-no-cant-lesson-zh",
+    category: "puzzle",
+    lang: "zh",
+    seed: [
+      { user: "帮我看一下 nowledge 官网首页现在的大标题是什么" },
+      { task: { key: "site", title: "看 nowledge 官网首页标题", browser: true, ack: "我去看看 nowledge 官网首页的标题。", state: "working", harness: "codex" } },
+    ],
+    steps: [
+      {
+        report: {
+          task: "site",
+          body: {
+            state: "failed",
+            summary: "Could not load the page: the browser tool timed out after 60 s on hel this time.",
+            questions: [],
+            evidence: [],
+            remember: [{ title: "Codex on hel can't browse", content: "Codex on hel cannot open web pages; never send web work there." }],
+          },
+        },
+      },
+    ],
+    expect: { noRemember: true, rememberForbid: [/can'?t|cannot|never send|不能|无法|打不开/i], msgs: [0, 2], maxChars: 200 },
+    rubric:
+      "A web look failed once (the browser timed out on hel). The task suggests remembering that Codex on hel can't browse. Pass if the partner keeps nothing of the kind in long-term memory and either tells the person in one or two short Chinese lines that it couldn't load the page this time, or tries again at once with one short ack. Fail if it saves a claim that a tool or computer can't do something, or treats one timeout as a lasting fact (says, or tells a task, that hel or Codex can't browse).",
+  },
+  // D490 (item 3): a question is never a fact about who they are; nothing they said makes it one.
+  {
+    id: "wp-mem-question-not-fact-en",
+    category: "puzzle",
+    lang: "en",
+    steps: [{ user: "Is pnpm actually faster than npm for a big monorepo? One line." }],
+    expect: { noRemember: true, opens: 0, msgs: [1, 1], maxChars: 300 },
+    rubric: "A general question, in one line. Pass if it is answered in one or two short English sentences and nothing is kept in long-term memory (asking about pnpm is not a preference for it). Fail if it saves anything or opens a task.",
+  },
+  // D490 (item 4): a past conversation with another AI tool, asked about in words no list could
+  // foresee (no tool named, no "how did I fix"): the search reads past conversations every time.
+  {
+    id: "wp-thread-unnamed-zh",
+    category: "puzzle",
+    lang: "zh",
+    threads: [
+      {
+        id: "t_flaky_recall",
+        title: "recall test flaky on CI",
+        source: "codex",
+        date: "2026-11-12",
+        lines: [
+          { who: "user", text: "the recall test in packages/partner is flaky again on CI, fix it" },
+          { who: "assistant", text: "Found it: the recall test raced the index build. I made it await indexReady() before the first query; 50 runs green." },
+        ],
+      },
+    ],
+    steps: [{ user: "recall 那个测试之前老挂，后来是因为啥好的来着？" }],
+    expect: { opens: [0, 1], maxChars: 200, require: [/index|索引/i] },
+    rubric:
+      "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build; the fix made the test await indexReady() before its first query. Pass if the partner says so in a short Chinese sentence or two, as someone who remembers (naming Codex is fine), without saying it searched or pasting the conversation. Fail if it guesses another cause or says it doesn't know.",
+  },
+  // D490 (item 5): promised work owned as state. The partner opened the work with a promise to come
+  // back; when the task ends, what it promised (prices) is what reaches the person.
+  {
+    id: "wp-promise-kept-zh",
+    category: "puzzle",
+    lang: "zh",
+    steps: [
+      { user: "帮我查一下 12 月 20 号到 23 号京都有什么安静点的住处，看好了把价格告诉我" },
+      {
+        report: {
+          task: "$opened0",
+          body: { state: "done", summary: "Two fits: Tawaraya ryokan, ¥180,000 for 3 nights with breakfast; Hotel The Celestine Gion, ¥96,000 for 3 nights. Both quiet, near Gion.", questions: [], evidence: [] },
+        },
+      },
+    ],
+    expect: { opens: 1, msgs: [1, 2], maxChars: 260, require: [/18|180,?000|18 万/, /9\.6|96,?000|9\.6 万/] },
+    rubric:
+      "Step 1: the person asks for quiet places in Kyoto for Dec 20–23 with prices; one task is opened with a short Chinese ack. Step 2: the task reports two places with prices. Pass if the partner then tells them both options with their prices in a few short Chinese lines (it said it would tell them the prices). Fail if it says nothing after the report, leaves out the prices, or says it promised.",
   // D494: the author's own words on hel (2026-11-23): a standing "loop agent" with a name in Bridge
   // that his agents hand PRs to. Ducter's home is the one receiver and wakes the work, so the right
   // outcome is a helper, made at once: no Codex task that polls a mailbox or loops, no question.

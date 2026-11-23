@@ -163,12 +163,15 @@ describe("push copy", () => {
   const now = Date.parse("2026-11-09T00:00:00Z");
 
   test("quotes the question and the card's default line exactly", () => {
-    expect(defaultLine(d, "zh", now)).toBe("30 分钟后你没回，我就 rebase，之后还能改回来。");
-    expect(defaultLine(d, "en", now)).toBe("If you don't answer, I'll rebase in 30 min. It can be undone.");
+    expect(defaultLine(d, "zh", now)).toBe("30 分钟后你没回，我就按「rebase」办，之后还能改回来。");
+    expect(defaultLine(d, "en", now)).toBe("If you don't answer, in 30 min I'll go with “rebase”. It can be undone.");
     expect(defaultLine({ ...d, reversible: false }, "zh", now)).toBe("你说好，我再做。");
     const m = decisionMessage(d, { persona: "Ducter", task: "修 fix-ci", locale: "zh", platform: "android", now });
     expect(m.title).toBe("修 fix-ci");
-    expect(m.body).toBe("要 rebase 吗？ 30 分钟后你没回，我就 rebase，之后还能改回来。");
+    // D493: the default quotes the Go button as the push shows it (iOS shows none: the option itself).
+    expect(m.body).toBe("要 rebase 吗？ 30 分钟后你没回，我就按「好，rebase」办，之后还能改回来。");
+    expect(decisionMessage(d, { persona: "Ducter", locale: "zh", platform: "ios", now }).body).toBe("要 rebase 吗？ 30 分钟后你没回，我就按「rebase」办，之后还能改回来。");
+    expect(defaultLine({ ...d, goLabel: "" }, "zh", now)).toBe("30 分钟后你没回，我就接着做，之后还能改回来。");
     expect(m.url).toBe("app#d=d1");
   });
 

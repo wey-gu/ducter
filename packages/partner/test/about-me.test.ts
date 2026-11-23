@@ -1,14 +1,15 @@
-// D444: "你都记得我些什么？" / "what do you know about me?" is answered from what Mem knows about the
-// person (D321's set: their preferences, and the decisions and facts they saved or told the partner),
-// not from a semantic search for "me"; and 别记这个, taken back by Ducter, is said under their words.
+// D444, D487, D490: "你都记得我些什么？" / "what do you know about me?" is answered from what Mem knows about
+// the person (D321's set: their preferences, and the decisions and facts they saved or told the partner),
+// which the session already holds (D487's block): no code reads the question's words (D490 retired
+// ASKS_ABOUT_ME). A session that missed the block gets it with its first search. And 别记这个, taken back by
+// Ducter, is said under their words.
 import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LogEvent } from "../../protocol/src/index.ts";
 import { createPartner } from "../src/index.ts";
-import { aboutHits } from "../src/memory.ts";
-import { ASKS_ABOUT_ME } from "../src/partner.ts";
+import { aboutHits, type MemoryClient } from "../src/memory.ts";
 import { renderTrigger, takenBackLine, type RenderCtx } from "../src/render.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner, type Script } from "./fakes.ts";
 
@@ -20,11 +21,6 @@ const SEED = [
   { id: "m_ctx", title: "nowledge-co/mem#10358 working notes", content: "…", kind: "context", source: "codex" },
 ];
 
-test("the words that ask what it knows about them", () => {
-  for (const s of ["你都记得我些什么？", "你了解我多少", "你对我有多少了解", "你都知道我什么", "What do you know about me?", "What do you actually know about me?", "how well do you know me", "What have you learned about me so far?"]) expect([s, ASKS_ABOUT_ME.test(s)]).toEqual([s, true]);
-  for (const s of ["你记得上次那个 PR 吗", "我都记得什么来着", "what do you know about Rust lifetimes?", "周报哪天发？"]) expect([s, ASKS_ABOUT_ME.test(s)]).toEqual([s, false]);
-});
-
 test("about the person: preferences from anyone; decisions and facts only theirs; never another tool's working notes", () => {
   expect(aboutHits(SEED.filter((m) => m.kind === "preference"), "preference").map((h) => h.title)).toEqual(["周报每周五下午发，发给产品组", "JS 项目一律用 pnpm"]);
   expect(aboutHits(SEED.filter((m) => m.kind === "decision"), "decision").map((h) => h.title)).toEqual(["Ducter 词汇：伙伴不是上下级"]);
@@ -32,47 +28,58 @@ test("about the person: preferences from anyone; decisions and facts only theirs
   expect(aboutHits([{ title: "x", source: "github-pr-123" }], "preference")).toEqual([]);
 });
 
-function setup(script: Script) {
+function setup(script: Script, wrap: (m: MemoryClient) => MemoryClient = (m) => m) {
   const clock = new FakeClock();
   const fc = fakeCore(clock, mkdtempSync(join(tmpdir(), "ducter-about-me-")));
-  const fr = fakeRunner(script);
+  const inputs: string[] = [];
+  const fr = fakeRunner(async (i, s, n) => {
+    inputs.push(i);
+    await script(i, s, n);
+  });
   fr.bindCards(fc.cards);
   const mem = fakeMemory(SEED);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: mem.memory });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: wrap(mem.memory) });
   const user = (text: string) => partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));
-  return { fc, partner, user, mem };
+  return { fc, partner, user, mem, inputs };
 }
 
-test("asked what it knows about them: memory_search answers with aboutYou and how to say it", async () => {
+test("asked what it knows about them: the session already holds it, with how to say it; no second read", async () => {
   let r: any;
-  const { partner, user, fc, mem } = setup(async (_i, s) => {
+  const { partner, user, fc, mem, inputs } = setup(async (_i, s) => {
     r = await fc.callTool("memory_search", { query: "me" });
     s.say("你周报是周五下午发给产品组的，JS 项目只用 pnpm。哪条不对、或者不想让我记着，跟我说一声就好。");
     s.end();
   });
   user("你都记得我些什么？");
   await partner.idle();
-  // D487: one read for what the session is given, one for the answer.
-  expect(mem.abouts.length).toBe(2);
-  expect(r.aboutYou.map((x: { title: string }) => x.title)).toEqual(["周报每周五下午发，发给产品组", "JS 项目一律用 pnpm", "Ducter 词汇：伙伴不是上下级"]);
-  expect(JSON.stringify(r)).not.toContain("m_week"); // never Mem's id
-  expect(r.note).toMatch(/at most three short sentences/);
-  expect(r.note).toMatch(/Never a list, a count/);
-  expect(r.results).toBeUndefined();
+  expect(mem.abouts.length).toBe(1); // D487: the session's own read, whatever the words
+  expect(inputs[0]).toContain("周报每周五下午发，发给产品组");
+  expect(inputs[0]).toContain("Ducter 词汇：伙伴不是上下级");
+  expect(inputs[0]).not.toContain("Use HawDB's WAL v2 format");
+  expect(inputs[0]).toMatch(/at most three short sentences/);
+  expect(inputs[0]).not.toContain("m_week"); // never Mem's id
+  expect(r.whatTheyToldYouBefore).toBeUndefined();
+  expect(r.searchesLeftThisTurn).toBe(1);
 });
 
-test("any other question: no aboutYou, the search as before", async () => {
-  let r: any;
-  const { partner, user, fc, mem } = setup(async (_i, s) => {
-    r = await fc.callTool("memory_search", { query: "周报" });
-    s.say("周五下午。");
-    s.end();
-  });
-  user("周报哪天发？");
+test("a session that missed it (Mem away at its first turn): its first search carries it, once", async () => {
+  const rs: any[] = [];
+  let first = true;
+  const { partner, user, fc, inputs } = setup(
+    async (_i, s) => {
+      rs.push(await fc.callTool("memory_search", { query: "me" }));
+      rs.push(await fc.callTool("memory_search", { query: "周报" }));
+      s.end();
+    },
+    (m) => ({ ...m, about: () => (first ? ((first = false), Promise.resolve({ ok: false as const, reason: "unavailable" as const, message: "away" })) : m.about!()) }),
+  );
+  user("你都记得我些什么？");
   await partner.idle();
-  expect(mem.abouts.length).toBe(1); // D487: only the session's own read
-  expect(r.aboutYou).toBeUndefined();
-  expect(r.results.length).toBeGreaterThan(0);
+  expect(inputs[0]).not.toContain("周报每周五下午发");
+  expect(rs[0].whatTheyToldYouBefore).toContain("周报每周五下午发，发给产品组");
+  expect(rs[0].whatTheyToldYouBefore).toMatch(/at most three short sentences/);
+  expect(rs[1].whatTheyToldYouBefore).toBeUndefined();
+  expect(rs[1].searchesLeftThisTurn).toBe(0);
 });
 
 test("别记这个: the partner sees under their words what Ducter took back", () => {

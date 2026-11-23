@@ -94,12 +94,14 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 			ft := uiText(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(words)
 			a.replyMenu(c, ft, rt, f.Text)
 			out := t.S4 - 2 + a.pebbleGap()
-			// Wide enough for the pebble with its word; it grows away from the card.
-			reach := out + pebbleSize + 72
+			// Wide enough for the pebbles (D492: Copy after Reply) with a word; they grow away from the card.
+			reach := out + 2*pebbleSize + a.pebbleGap() + 72
 			ui.Row(c.Key("bridge:"+f.FindID)).Absolute().Right(-reach).Bottom(-2).Width(reach).Height(pebbleSize).Padding(0, 0, 0, out).
-				Justify(ui.Start).AlignItems(ui.Center).AccessHidden(!hov).Children(func() {
-				if hov {
+				Justify(ui.Start).AlignItems(ui.Center).Gap(a.pebbleGap()).AccessHidden(!hov).Children(func() {
+				ck := "hover-copy:" + rt.key()
+				if done := a.justCopied(c, ck); hov || done {
 					a.replyButton(c, rt, 1)
+					a.copyPebble(c, ck, f.Text, 1, done)
 				}
 			})
 		})

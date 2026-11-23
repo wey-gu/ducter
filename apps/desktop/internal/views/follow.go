@@ -1,53 +1,10 @@
 package views
 
 import (
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
 )
-
-var (
-	cpHeading = regexp.MustCompile(`^#{1,6}\s+`)
-	cpBullet  = regexp.MustCompile(`^(\s*)[*•]\s+`)
-	cpLink    = regexp.MustCompile(`\[([^\]\n]+)\]\((https?://[^\s)]+)\)`)
-	cpBold    = regexp.MustCompile(`\*\*([^*\n]+)\*\*`)
-	cpItalic  = regexp.MustCompile(`(^|[^*\w])\*([^*\n]+)\*([^*\w]|$)`)
-	cpFence   = regexp.MustCompile("^\\s*```")
-	cpBlanks  = regexp.MustCompile(`\n{3,}`)
-)
-
-// copyText is a message as it goes to the clipboard (D254): the words as
-// written, without the marks that only style them (bold, italic,
-// headings), a link as "words (address)", code and its fences kept. The
-// web's is the same (apps/web/src/markdown.ts copyText).
-func copyText(src string) string {
-	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
-	fenced := false
-	for i, l := range lines {
-		if cpFence.MatchString(l) {
-			fenced = !fenced
-			continue
-		}
-		if fenced {
-			continue
-		}
-		l = cpHeading.ReplaceAllString(l, "")
-		l = cpBullet.ReplaceAllString(l, "$1- ")
-		l = cpLink.ReplaceAllStringFunc(l, func(m string) string {
-			p := cpLink.FindStringSubmatch(m)
-			if p[1] == p[2] {
-				return p[2]
-			}
-			return p[1] + " (" + p[2] + ")"
-		})
-		l = cpBold.ReplaceAllString(l, "$1")
-		l = cpItalic.ReplaceAllString(cpItalic.ReplaceAllString(l, "$1$2$3"), "$1$2$3")
-		lines[i] = l
-	}
-	return strings.TrimSpace(cpBlanks.ReplaceAllString(strings.Join(lines, "\n"), "\n\n"))
-}
 
 // D254: the conversation keeps your place (design/conversation.md
 // "Keeping your place"). MyGo's List follows its end while it shows it

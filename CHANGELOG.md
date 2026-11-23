@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.26 - 2026-11-24
+
+<!-- whats-new
+zh: 手头的事重新整理：一眼看清在做、在等和一直在跑的
+en: On hand, re-seen: what's moving, waiting and running on a rhythm
+-->
+
+**On hand, re-seen**
+- A working task shows a small mark that beats each time it takes a step, instead of a line
+  with ticks. Its time counts from when it last picked up, not from when it opened.
+- Loops have their own section, Ongoing, with their rhythm and the round in progress or the
+  next one.
+- Every line reads as a sentence in your language ("Ran 3 commands, read 2 files"), never a
+  bare command. A step that failed and was got past no longer shows in red.
+- From GitHub, the PRs waiting for your review come first; then pick a few for Ducter to do,
+  instead of all of them at once.
+
 ## 0.1.25 - 2026-11-24
 
 <!-- whats-new

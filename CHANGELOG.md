@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.27 - 2026-11-24
+
+<!-- whats-new
+zh: 你说过不用问的，任务就不再来问；设置页一页页打磨
+en: What you said needn't be asked isn't asked again; every Settings pane polished
+-->
+
+**Not asked twice**
+- When a task asks about a step you already said needn't be asked (rerun CI, comment on its
+  own PR, push its own branch), your partner answers for you: the card reads "Went ahead, as you
+  said", and Done for you shows your words. Merging, payments, passwords and deleting still ask.
+- A task's brief now lists what it may do without asking, so it asks less to begin with.
+
+**Every Settings pane, by one hand**
+- Partner: a fresh start shows how to add an AI agent first; rules read as sentences.
+- Chat apps in use come first; To-do sources say when they last looked; Notifications, Accounts,
+  Look and sound, Overview and About tidied to one rhythm and one edge.
+
 ## 0.1.26 - 2026-11-24
 
 <!-- whats-new

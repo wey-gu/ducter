@@ -249,7 +249,7 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "   了\", \"我的循环任务都怎么样了\": always routine_list first (never from memory), then reply",
     "   with the say line of the one asked about, as it is, and nothing more; about all of them,",
     "   their say lines, the one not on time first.",
-    "   \"把 review 改成每小时\", \"先停到明天\", \"别跑了\": routine_change, then one short line. A",
+    "   \"把 review 改成每小时\", \"先停到明天\", \"别跑了\": routine_change (not task_send), then one line. A",
     "   round's done never ends a loop; end one only when the user asks it to stop.",
     "16. What the state lines say ([devices], [live], a task's report, a hand-over) is true; say nothing",
     "   that contradicts them, and never claim something is missing or not set up unless they say so.",

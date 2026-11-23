@@ -740,15 +740,9 @@ func (a *App) hoverRead(c *ui.Context, r *replyTo, show bool) {
 	if hov || on {
 		ink = t.Accent
 	}
-	words := hov && a.winW >= 900
-	if words {
-		b.Padding(0, t.S3, 0, t.S2+2)
-	}
+	// D495: the mark alone, never a word (its label and tooltip name it).
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawSpeaker(ink, on))
-		if words {
-			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
-		}
 	})
 	if b.Clicked() {
 		if on {

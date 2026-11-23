@@ -28,12 +28,16 @@ line.
   goes with a world puzzle or eval scenario first, one per change, full eval each:
   said.ts (D401's spoken rule kept at once, the author's standing preference; trigger: the partner's
   own `rule_save` before task_open holds on the rules eval on two runs, then the regexes go),
-  standing.ts behind the D61 floor (trigger: said.ts gone, with its own outward eval scenarios),
   peer-self `pingOf` and `ownAgentSelf` (trigger: a bridge eval round where the partner answers its
   own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `HOW_KNOW`,
   `CLAIMS_CHOICE`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
   `startProblem`'s buckets, ranking weights (phase 2c). (`PROMISE_RE`, `ONE_TIME`, `ASKS_RECALL`,
-  `POINTS_AT_THREAD` and `ASKS_ABOUT_ME`: retired by D490.)
+  `POINTS_AT_THREAD` and `ASKS_ABOUT_ME`: retired by D490; standing.ts's `readStanding`: retired by D495,
+  the partner's `without_asking`.)
+- **A task's own ask about an outward step the person already allowed** (hel 2026-11-23: the PR
+  babysitter loop asked to comment `/test` on a PR; the person replied 「你自己推进到能合并就好，这些都别问我」).
+  D495 covers PR reviews and issue comments Ducter writes; a task's comment or push it asks about
+  itself still asks. Trigger: the next loop that asks again after such a reply.
 - **D490 on Codex.** The [[later]] mark and the preamble by position were measured on haiku only (a Codex run uses
   the person's own Codex sign-in). Owed: one Codex eval (`--harness codex`) against D462's 179–189, and the two
   shapes no longer collapsed that D462 saw only on Codex (the same ack twice before task_open; a preamble before a

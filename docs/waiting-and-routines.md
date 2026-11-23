@@ -43,8 +43,9 @@ read each one before you say Go, and nothing is posted before you do. If you'd r
 ask, say so once ("just post the reviews, don't ask me"): from then on its reviews go straight
 to GitHub, the first time with one line listing what went, every one in Done for you. It is
 listed in Settings › Partner under "Without asking", where Take back ends it (or say "ask me
-before posting reviews"). A pull request that only mentions you, or one in a place it hasn't
-looked before, still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Ongoing,
+before posting reviews"). Saying it to a review that runs every so often works the same way
+("keep posting the reviews yourself"), and every round after that posts on its own, pull
+requests that only mention you included. One in a place it hasn't looked before still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Ongoing,
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 

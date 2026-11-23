@@ -1,6 +1,6 @@
 // D413: 不用问我的 / Without asking. A review routine on nowledge-co with two drafts on its round card;
-// then the author's own words (hel, 2026-11-19, read only): 「review 做好了直接发别和我确认」. Ducter keeps
-// it at once, posts what waited (the card settles), says the one first-time line with links, and
+// then the author's own words (hel, 2026-11-19, read only): 「review 做好了直接发别和我确认」. The partner
+// keeps it (D495: without_asking, scripted here), posts what waited (the card settles), says the one first-time line with links, and
 // Settings › Partner lists it under 要不要先问 with 收回. A fake gh (never the real GitHub), a stub
 // runner (no model; the partner's one-line answer is scripted as the eval's pass looks).
 //   DUCTER_PORT=7997 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-standing.ts
@@ -39,7 +39,10 @@ await core.mcp.call({ role: "task", taskId: id } as never, "review_report", {
   ],
 });
 await Bun.sleep(50);
-say("user", zh ? "review 做好了直接发别和我确认" : "Just post the reviews when they're done, don't ask me.");
+const words = zh ? "review 做好了直接发别和我确认" : "Just post the reviews when they're done, don't ask me.";
+const heard = say("user", words);
+// D495: the partner records it with without_asking (scripted here: no model).
+core.standing.hear(`tool:${heard.seq}`, { kind: "grant", action: "pr_review", quote: words }, heard.ts, heard.seq);
 await Bun.sleep(300);
 say("partner", zh ? "好，以后评审写完直接发到 GitHub，不再问你。在「替你做过的」里都看得到，想收回说一声。" : "Got it: from now on reviews go straight to GitHub without asking. Each one is in Done for you; say so to take it back.");
 console.log(`[demo] standing: ${JSON.stringify(core.standing.list())}; posted ${gh.reviews.length}`);

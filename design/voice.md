@@ -105,7 +105,8 @@ not over https, the service unreachable, an app too old for voice (the page asks
 ## Read aloud
 
 - **朗读 / Read aloud** in a partner message's menu (D254's: its time, Reply, Copy, **朗读**,
-  Copy link, Select text), and on a wide screen a quiet speaker mark beside the hover actions.
+  Copy link, Select text), and on a wide screen a quiet speaker mark beside the hover actions
+  (the mark alone, no word on it, D495).
   While it reads: **停止朗读 / Stop reading**, and the message's bubble carries a small meter.
   Starting another stops the first.
 - **What is read:** `speakable(text)`: the words as a person reads them; rich blocks (D303) are

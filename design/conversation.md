@@ -344,8 +344,10 @@ gives way to a scroll on 10pt up, down or left, and never starts within 28pt of 
 back gesture); long press opens the message menu (D254: its time, **回复 / Reply**, **拷贝 / Copy**, see "Keeping your place and copying"). Wide screen with a mouse (D256):
 pointing at a message shows the reply pebble, a small clay pebble in the gutter beside it (left of
 the user's bubble, right of the partner's, outside a note's card beside a find), resting on the
-message's bottom line and never on a bubble's or a card's content; on the pebble itself it says
-**回复 / Reply**. Right click opens the same menu, and a selected part of the partner's words
+message's bottom line and never on a bubble's or a card's content. The pebble is the mark alone
+(D495): pointing at it tints the mark, nothing else; no word appears on it or beside it, it never
+grows, and the message's own words, colour and place never change on hover. Its name (**回复 /
+Reply**) is its accessible label and the system's own tooltip after the usual delay. Right click opens the same menu, and a selected part of the partner's words
 offers **回复这段 / Reply to this part**. The Mac: the same pebble. Touch has no pebble: the swipe
 reveals it. Esc or the × puts a
 reply away (**不回复了 / Cancel reply**).
@@ -417,9 +419,10 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
   - *What it copies:* the message's Markdown as written, and the same message formatted beside it
     (a rich editor keeps headings, lists, bold and code; an editor, a terminal or another agent
     gets the source). Each code block also has its own quiet **拷贝**.
-  - *What it says:* the button pressed turns to the drawn check and **已拷贝 / Copied** for a
-    moment, with a light tap; a menu that closed says **已拷贝** in the toast; a copy that failed
-    says so, with Select text.
+  - *What it says:* the task's Copy button turns to the drawn check and **已拷贝 / Copied** for a
+    moment, with a light tap; a conversation pebble turns to the drawn check alone in the done ink
+    (D495: no word on a pebble; **已拷贝** is its label); a menu that closed says **已拷贝** in the
+    toast; a copy that failed says so, with Select text.
 - **The draft is kept** when the app is closed, until it is sent.
 - **Not here:** editing a sent message (the partner already acted on it; say a correction), read
   ticks, reactions. Find in the conversation is in `todo.md`.

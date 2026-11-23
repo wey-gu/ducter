@@ -1,5 +1,6 @@
 // D413: 不用问我的 / Without asking. Something the person said Ducter may do for them from now on
-// without asking each time ("review 做好了直接发别和我确认"), kept at once in their words, listed in
+// without asking each time ("review 做好了直接发别和我确认"), kept in their words (D495: recorded by the
+// partner with its without_asking tool, the words checked as theirs; no code reads meaning), listed in
 // Settings › Partner under 要不要先问, and taken back with one tap or one sentence. Only actions Ducter
 // can honour through its audited write path are kept; the floor (paying, passwords and sign-ins,
 // anything an untrusted source asked for, deleting) is never a standing permission.
@@ -18,7 +19,8 @@ export interface StandingView {
   action: StandingAction;
   /**
    * Where it holds: these GitHub owners (orgs or users). Absent: wherever the review routine looks.
-   * A PR only mentioning the person (not asking for their review) is never in it.
+   * D495: every PR the routine reviews there, a mention too (the routine reviews what the person
+   * asked it to; code never narrows what they said).
    */
   orgs?: string[];
   /** The person's own words, the clause that said it. */

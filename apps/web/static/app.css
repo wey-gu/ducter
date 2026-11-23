@@ -9454,7 +9454,7 @@ button.imprint:focus-visible {
    replied to (left of the person's, right of the partner's, outside a note's card beside a find),
    its ledge on the bottom line, never on a bubble's or a card's content. The secondary button's
    clay at a pebble's size: rim, seam, a 3px ledge, a slightly uneven round. It settles in from the
-   bubble's side, says 回复 on itself while pointed at (wide windows), presses onto its ledge. */
+   bubble's side and presses onto its ledge; the mark alone, no word on it (D495). */
 .user[data-reply],
 .user-m[data-reply],
 .user-m > .user,
@@ -9565,17 +9565,8 @@ button.imprint:focus-visible {
     outline-offset: 3px;
   }
 }
-/* On the pebble itself, in a window with room, it says its word (growing away from the bubble). */
-@media (hover: hover) and (pointer: fine) and (min-width: 900px) {
-  .hover-reply:hover,
-  .hover-reply:focus-visible {
-    padding: 0 11px 0 9px;
-  }
-  .hover-reply:hover .w,
-  .hover-reply:focus-visible .w {
-    display: inline;
-  }
-}
+/* D495: the pebble never says its word on itself and never grows: the mark alone, its name the
+   aria-label and the browser's delayed tooltip. */
 @keyframes pebble-in {
   from {
     opacity: 0;

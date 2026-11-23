@@ -43,6 +43,16 @@ describe("the reply pebble sits in the gutter, never on what it replies to", () 
   test("touch never shows it (the swipe and the menu reply there)", () => {
     expect(rule(".hover-reply")).toContain("display: none");
   });
+  test("D495: the mark alone: no word appears on a pebble and it never grows; its name is the label and title", () => {
+    expect(css).not.toMatch(/\.hover-reply:hover \.w/);
+    expect(css).not.toMatch(/\.hover-reply:hover,\n\s*\.hover-reply:focus-visible \{\n\s*padding/);
+    const hover = src("reply.tsx").slice(src("reply.tsx").indexOf("export function HoverReply"), src("reply.tsx").indexOf("export function PartReply"));
+    expect(hover).not.toContain('class="w"');
+    expect(hover.match(/title=\{/g)?.length).toBe(2);
+    const copy = src("copy-button.tsx");
+    expect(copy).toContain('const pebble = cls.includes("hover-reply");');
+    expect(copy).toContain("{!pebble && (");
+  });
   test("reduced motion: no settle", () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\n {2}\.hover-reply,\n {2}\.hover-reply:hover \{\n {4}animation: none !important;/);
   });

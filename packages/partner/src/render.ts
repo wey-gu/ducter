@@ -196,8 +196,6 @@ export interface RenderCtx {
   follows?(seq: number): Follows | undefined;
   /** D401: the rules Ducter kept from this user message by itself (who does which work), still kept. */
   kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
-  /** D413: what Ducter did with this user message's words about asking first (不用问我的 / Without asking). */
-  standing?(seq: number): StandingHeard[];
   /** D437: the 这类不用复查 rule Ducter kept from this user message (no second look for that kind of work). */
   noLook?(seq: number): { text: string; kinds?: string[] } | undefined;
   /** D444: the memories Ducter took back at these words of the user's (别记这个). */
@@ -215,32 +213,6 @@ export function asksLines(a: { lines: AskLine[] }, ctx: Pick<RenderCtx, "taskTit
   return a.lines
     .map((l, i) => `${i + 1}. "${clip(l.words, 60)}" ${l.taskId ? `task ${l.taskId}` : "held in line"}: ${ASK_STATE_WORDS[l.state]}${l.note ? ` (${clip(l.note, 80)})` : ""}`)
     .join("; ");
-}
-
-/** D413: what one sentence about asking first came to (core/src/standing.ts Heard). */
-export type StandingHeard =
-  | { kind: "kept"; standing: { text: string; orgs?: string[] } }
-  | { kind: "revoked"; text: string }
-  | { kind: "floor"; what: "pay" | "secret" | "delete" }
-  | { kind: "unsupported"; what: string };
-
-const FLOOR_WHY = {
-  pay: "every payment waits for their own Go each time, because money can't be taken back",
-  secret: "passwords, codes and sign-ins stay theirs: no task types or keeps one for them",
-  delete: "deleting can't be undone, so each one is asked",
-} as const;
-
-/** D413: one line under the user's words: what Ducter did with what they said about asking first. */
-export function standingLine(h: StandingHeard[]): string {
-  return h
-    .map((x) => {
-      if (x.kind === "kept")
-        return `  (Ducter already kept this as the user's standing permission, listed under 不用问我的 / Without asking: "${clip(x.standing.text, 90)}": PR reviews go to GitHub without asking${x.standing.orgs?.length ? ` on ${x.standing.orgs.join(", ")}` : ""}. The review routine posts its drafts there from now on and asks only for the rest; each one is in 替你做过的 / Done for you. It holds now. No card, no ask, no rule_save: say it back in one short line, e.g. "好，以后评审写完直接发到 GitHub，不再问你。在「替你做过的」里都看得到，想收回说一声。")`;
-      if (x.kind === "revoked") return `  (Ducter took back the standing permission "${clip(x.text, 90)}": reviews are asked about before posting again. Say so in one short line.)`;
-      if (x.kind === "floor") return `  (They asked not to be asked about this. It is on the floor Ducter never makes standing: ${FLOOR_WHY[x.what]}. Nothing was kept. Say that real reason plainly in one or two short lines, never as an unexplained rule.)`;
-      return `  (They asked not to be asked before "${clip(x.what, 40)}". Ducter can keep that only for posting PR reviews so far, so this one still asks each time. Say that plainly as the real reason (what Ducter can't do yet), not as a rule.)`;
-    })
-    .join("\n");
 }
 
 /** D437: one line under the user's words: Ducter kept their 这类不用复查 as a rule by itself. */
@@ -414,10 +386,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
           ? `[decision resolved: reply]${about} ${b.text}${pics} (the user answered by replying to your question; already forwarded to the task)`
           : `[your question answered: reply]${about} · user: ${b.text}${pics} (they answered by replying to it)`;
       }
-      // D413: what Ducter did with what they said about asking first.
-      const heard = e.seq > 0 ? (ctx.standing?.(e.seq) ?? []) : [];
-      const sl = heard.length ? `\n${standingLine(heard)}` : "";
-      if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}${sl}`, ...replyAbout(b.reply, ctx)].join("\n");
+      if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}`, ...replyAbout(b.reply, ctx)].join("\n");
       // D373: what the conversation was on just before, so a follow-up carries that task on.
       const f = e.seq > 0 ? ctx.follows?.(e.seq) : undefined;
       // D401: what Ducter kept from these words as the user's rule, by itself.
@@ -429,7 +398,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const nl = e.seq > 0 ? ctx.noLook?.(e.seq) : undefined;
       // D444: 别记这个, taken back by Ducter.
       const tb = e.seq > 0 ? (ctx.takenBack?.(e.seq) ?? []) : [];
-      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${nl ? `\n${noLookLine(nl)}` : ""}${tb.length ? `\n${takenBackLine(tb)}` : ""}${sl}${al}${f ? `\n${followsLine(f)}` : ""}`;
+      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${nl ? `\n${noLookLine(nl)}` : ""}${tb.length ? `\n${takenBackLine(tb)}` : ""}${al}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];

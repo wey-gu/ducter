@@ -17,6 +17,9 @@ export const COPIED_MS = 1600;
 
 /** A button that copies `text(itself)` (read when pressed, so a long message is never held twice). */
 export function CopyButton({ text, cls }: { text: (button: HTMLElement) => string | undefined; cls: string }) {
+  // D495: a hover pebble is the mark alone (the check once copied); its word is the label and the
+  // browser's delayed tooltip, never text on it. The task's quiet line keeps its word in view.
+  const pebble = cls.includes("hover-reply");
   const [done, setDone] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -26,6 +29,7 @@ export function CopyButton({ text, cls }: { text: (button: HTMLElement) => strin
       type="button"
       class={`${cls}${done ? " done" : ""}`}
       aria-label={word}
+      title={pebble ? word : undefined}
       onClick={(ev) => {
         ev.stopPropagation();
         const md = text(ev.currentTarget as HTMLElement);
@@ -39,9 +43,11 @@ export function CopyButton({ text, cls }: { text: (button: HTMLElement) => strin
       }}
     >
       <span class="g" aria-hidden="true" dangerouslySetInnerHTML={{ __html: done ? CHECK_GLYPH : COPY_GLYPH }} />
-      <span class="w" aria-hidden="true">
-        {word}
-      </span>
+      {!pebble && (
+        <span class="w" aria-hidden="true">
+          {word}
+        </span>
+      )}
     </button>
   );
 }

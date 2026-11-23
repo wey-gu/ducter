@@ -13,7 +13,9 @@ package views
 
 import (
 	"math"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -43,12 +45,55 @@ type heldStep struct {
 }
 
 // stepsHeld is the steps this Mac holds for a task, oldest first (at most
-// 400), the card's latest among them.
+// 400), the card's latest among them. On hand asks for it several times a
+// frame per row, so the decoded steps are kept per task until its held
+// events change (a frame never decodes 400 events again).
 func stepsHeld(task *store.Task) []heldStep {
-	var out []heldStep
+	out := heldOf(task)
+	if task.Card != nil && task.Card.Latest != nil {
+		l := *task.Card.Latest
+		if len(out) == 0 || out[len(out)-1].ev.Seq < l.Seq {
+			out = append(slices.Clip(out), heldStep{at: store.ParseTime(l.TS), ev: l})
+		}
+	}
+	return out
+}
+
+// heldKey is what a task's held steps are read from: its newest 400 events,
+// by where that run sits and its bounds (an event's seq never changes what it is).
+type heldKey struct {
+	base        *protocol.LogEvent
+	n           int
+	first, last int64
+}
+
+type heldMemo struct {
+	key heldKey
+	out []heldStep
+}
+
+var (
+	heldMu    sync.Mutex
+	heldCache = map[*store.Task]heldMemo{}
+)
+
+// heldOf is the steps among a task's newest 400 held events, decoded once
+// per change; callers never write into what it returns.
+func heldOf(task *store.Task) []heldStep {
 	from := max(0, len(task.Events)-400)
-	for i := from; i < len(task.Events); i++ {
-		e := task.Events[i]
+	evs := task.Events[from:]
+	if len(evs) == 0 {
+		return nil
+	}
+	key := heldKey{base: &evs[0], n: len(evs), first: evs[0].Seq, last: evs[len(evs)-1].Seq}
+	heldMu.Lock()
+	m, ok := heldCache[task]
+	heldMu.Unlock()
+	if ok && m.key == key {
+		return m.out
+	}
+	var out []heldStep
+	for _, e := range evs {
 		if e.Kind != protocol.KindTaskEvent {
 			continue
 		}
@@ -61,12 +106,13 @@ func stepsHeld(task *store.Task) []heldStep {
 		}
 		out = append(out, heldStep{at: store.ParseTime(e.TS), ev: e})
 	}
-	if task.Card != nil && task.Card.Latest != nil {
-		l := *task.Card.Latest
-		if len(out) == 0 || out[len(out)-1].ev.Seq < l.Seq {
-			out = append(out, heldStep{at: store.ParseTime(l.TS), ev: l})
-		}
+	out = slices.Clip(out)
+	heldMu.Lock()
+	if len(heldCache) > 400 {
+		clear(heldCache)
 	}
+	heldCache[task] = heldMemo{key: key, out: out}
+	heldMu.Unlock()
 	return out
 }
 

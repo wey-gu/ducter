@@ -851,7 +851,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		return
 	}
 	question := a.questionOf(d)
-	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
+	a.heading(c, keepTail(autospace(question)), t.XL).LineHeight(1.35)
 	if d.Look != nil && d.Resolved == nil {
 		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
 	}

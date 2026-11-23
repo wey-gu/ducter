@@ -537,9 +537,11 @@ export function createChannels(deps: ChannelDeps): Channels {
       text = said + openLine(kind, d.decisionId);
       buttons = openButton(d.decisionId);
     } else {
-      text = `${said}\n\n_${defaultLine(d, deps.lang(), clock.now())}_`;
+      // D493: the default quotes the Go button as it reads there; with no buttons (WeChat), the option.
+      const buttoned = !!live.get(kind)?.ch.caps.buttons;
+      text = `${said}\n\n_${defaultLine(d, deps.lang(), clock.now(), buttoned && d.goLabel ? W.go(d.goLabel) : undefined)}_`;
       // No buttons there (WeChat): say which words answer it; the hub reads them (GO_WORDS).
-      if (!live.get(kind)?.ch.caps.buttons) text += `\n\n${W.reply(d.goLabel)}`;
+      if (!buttoned) text += `\n\n${W.reply(d.goLabel)}`;
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
     void say(kind, text, { buttons, seq }).then((ids) => {

@@ -305,7 +305,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
 
 // ---------- decisions ----------
 
-function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
+export function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
   if (d.asker) return { line: t("peer.default") }; // silence never answers for the user (D164)
   if (d.saying) return { line: t("decision.saying.default") }; // D379: nothing waits on it; unanswered, it still goes by their words
   if (!d.reversible) return { line: t("decision.no_default") };
@@ -313,12 +313,12 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };
   const left = at - now;
   if (left <= 0) return { line: t("decision.default.due"), frac: 0 };
-  // D315: the label sits mid-sentence, so its own full stop goes ("等你登录后继续。，之后还能改回来。").
-  // D493: the model wrote the label, so the sentence quotes it as the option it is (按「30 分钟后再试」办 /
-  // go with "Try again in 30 minutes"), never splices it in as a verb: a label with a time of its own
-  // read "29 分钟后我就 30 分钟后再试".
-  const label = (d.goLabel ?? "").trim().replace(/[。．.！!；;，,]+$/u, "");
-  if (!label) return { line: t("decision.default.goon", duration(A.L, left)) };
+  // D493: the sentence quotes the Go button exactly as it reads (按「好，30 分钟后再试」办 / go with "Try
+  // again in 30 minutes"), never splices the model's label in as a verb ("29 分钟后我就 30 分钟后再试");
+  // a Go that names no action (好 / Go) has nothing to quote: 我就接着做 / I'll go ahead.
+  // D315: only its own end mark goes ("等你登录后继续。，之后还能改回来。").
+  const label = goLabel(d).trim().replace(/[。．.！!；;，,]+$/u, "");
+  if (!label || label === t("decision.go")) return { line: t("decision.default.goon", duration(A.L, left)) };
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? undefined : Math.max(0, Math.min(1, left / (at - asked)));
   return { line: t("decision.default.go", duration(A.L, left), label), frac };

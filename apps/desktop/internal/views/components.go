@@ -1069,19 +1069,15 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	} else {
 		c.After(left % time.Minute)
 	}
-	label := d.GoLabel
-	if d.Closing != nil { // D157: the closing card's Go, in the reader's words
-		label = a.L.T("move.closing.go")
-	}
-	// D315: the label sits mid-sentence: its own full stop would read
-	// "等你登录后继续。，之后还能改回来。".
-	label = strings.TrimRight(strings.TrimSpace(label), "。．.！!；;，,")
-	if label == "" {
+	// D493: the sentence quotes the Go button exactly as it reads (按「好，30
+	// 分钟后再试」办 / go with "Try again in 30 minutes"), never splices the
+	// model's label in as a verb ("29 分钟后我就 30 分钟后再试"); a Go that
+	// names no action (好 / Go) has nothing to quote: 我就接着做 / I'll go ahead.
+	// D315: only its own end mark goes ("等你登录后继续。，").
+	label := strings.TrimRight(strings.TrimSpace(a.goLabel(d)), "。．.！!；;，,")
+	if label == "" || label == a.L.T("decision.go") {
 		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}
-	// D493: the model wrote the label, so the sentence quotes it as the
-	// option it is (按「30 分钟后再试」办 / go with "Try again in 30 minutes"),
-	// never splices it in as a verb ("29 分钟后我就 30 分钟后再试").
 	return a.L.T("decision.default.go", a.duration(left+time.Second*59/60), label)
 }
 

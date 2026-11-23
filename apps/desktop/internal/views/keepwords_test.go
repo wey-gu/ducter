@@ -21,4 +21,12 @@ func TestKeepWords(t *testing.T) {
 	if strings.ReplaceAll(got, "⁠", "") != "修 compaction 测试" {
 		t.Fatalf("text changed: %q", got)
 	}
+	// D493: a question's last characters stay together, never 「吗？」 alone.
+	q := "信箱的登录页一直转圈，像是 Mem 那边还没起来。要我过一会儿再试吗？"
+	if got := keepTail(q); !strings.HasSuffix(got, "再⁠试⁠吗⁠？") || unjoin(got) != q {
+		t.Fatalf("tail not kept: %q", got)
+	}
+	if got := keepTail("Shall I try again in a while?"); got != "Shall I try again in a while?" {
+		t.Fatalf("latin tail: %q", got)
+	}
 }

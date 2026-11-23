@@ -481,7 +481,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			q = rep.Questions[0].Text
 		}
 		if q != "" {
-			a.heading(c, autospace(q), t.LG).LineHeight(1.4).MaxLines(4).Tooltip(q)
+			a.heading(c, keepTail(autospace(q)), t.LG).LineHeight(1.4).MaxLines(4).Tooltip(q)
 		}
 		if d != nil {
 			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
@@ -766,7 +766,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 				uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			})
 		}
-		a.heading(c, autospace(a.questionOf(d)), t.LG).LineHeight(1.4).MaxLines(4)
+		a.heading(c, keepTail(autospace(a.questionOf(d))), t.LG).LineHeight(1.4).MaxLines(4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}

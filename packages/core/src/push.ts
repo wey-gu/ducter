@@ -273,8 +273,9 @@ export function quietEndsAt(at: number, q: Quiet | null): number {
 const COPY = {
   zh: {
     go: "好",
-    // D493: the label is the model's words, quoted as the option it is, never spliced in as a verb.
+    // D493: the Go button's words as they read, quoted, never the model's label spliced in as a verb.
     defaultGo: (inText: string, label: string) => `${inText}后你没回，我就按「${label}」办，之后还能改回来。`,
+    defaultGoOn: (inText: string) => `${inText}后你没回，我就接着做，之后还能改回来。`,
     defaultHold: "你没回之前，我先放着。",
     noDefault: "你说好，我再做。",
     min: (n: number) => `${n} 分钟`,
@@ -297,6 +298,7 @@ const COPY = {
   en: {
     go: "Go",
     defaultGo: (inText: string, label: string) => `If you don't answer, in ${inText} I'll go with “${label}”. It can be undone.`,
+    defaultGoOn: (inText: string) => `If you don't answer, I'll go ahead in ${inText}. It can be undone.`,
     defaultHold: "I'll leave it until you answer.",
     noDefault: "I'll do it once you say so.",
     min: (n: number) => `${n} min`,
@@ -341,13 +343,17 @@ function inWords(ms: number, c: (typeof COPY)["zh"]) {
   return m < 60 ? c.min(m) : c.hour(Math.round(m / 60));
 }
 
-/** The default line, the same words the cards use (decision.default.*). */
-export function defaultLine(d: Bodies["decision"], locale: LangTag, now: number): string {
+/** The default line, the same words the cards use (decision.default.*). D493: it quotes `shown`, the
+ *  Go button's words as that place shows them (else the option itself, where no button stands); a Go
+ *  naming no action has nothing to quote. Only the label's own end mark goes (D315). */
+export function defaultLine(d: Bodies["decision"], locale: LangTag, now: number, shown?: string): string {
   const c = copy(locale);
   if (!d.reversible) return c.noDefault;
   const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
   if (d.defaultOption !== "go" || Number.isNaN(at)) return c.defaultHold;
-  return c.defaultGo(inWords(at - now, c), d.goLabel || c.go);
+  const label = (shown ?? d.goLabel ?? "").trim().replace(/[。．.！!；;，,]+$/u, "");
+  if (!label || label === c.go) return c.defaultGoOn(inWords(at - now, c));
+  return c.defaultGo(inWords(at - now, c), label);
 }
 
 /** D273: who asks, by what it is and where it works: "Claude Code（~/dev/ducter）问你". */
@@ -376,7 +382,7 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // already says it comes from Ducter, so the partner's name is the title only when nothing else is.
   const msg: PushMessage = {
     title: peer ?? partnerTitle(o.task, o.who, o.locale) ?? o.who ?? o.persona,
-    body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now)}`,
+    body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now, o.platform !== "ios" && !d.call ? goTitle(d, c) : undefined)}`,
     tag: `d:${d.decisionId}`,
     url: `app#d=${encodeURIComponent(d.decisionId)}`,
     decisionId: d.decisionId,
@@ -384,8 +390,13 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // iOS shows no action buttons on web push (D52 Q11): tap opens the decision.
   // An outside agent's question is answered on its card (its options are its own), never "Hold".
   // A call's Go card is answered on the card, after seeing who, what and the cost (D189 (4)).
-  if (o.platform !== "ios" && !d.asker && !d.call) msg.actions = [{ action: "go", title: d.goLabel ? fill(c.goWith, { label: d.goLabel }) : c.go }, { action: "hold", title: c.hold }];
+  if (o.platform !== "ios" && !d.asker && !d.call) msg.actions = [{ action: "go", title: goTitle(d, c) }, { action: "hold", title: c.hold }];
   return msg;
+}
+
+/** A push's Go button as it reads: 好，rebase / Go: rebase, else 好 / Go. */
+function goTitle(d: Bodies["decision"], c: (typeof COPY)["zh"]): string {
+  return d.goLabel ? fill(c.goWith, { label: d.goLabel }) : c.go;
 }
 
 export function doneMessage(t: { taskId: string; title: string; summary?: string; failed?: boolean }, o: { persona: string; locale: LangTag; who?: string }): PushMessage {

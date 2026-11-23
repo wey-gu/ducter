@@ -284,7 +284,9 @@ func shortVerb(l string) bool {
 	if han > 0 {
 		return han <= 6 && words <= 2
 	}
-	return words <= 3
+	// D493: an action as long as zh's six characters ("30 分钟后再试" is
+	// "Try again in 30 minutes"), a button's words, not a sentence.
+	return words <= 5 && len(l) <= 28
 }
 
 // elapsed is a running time as a clock reads it: 4:05, 1:02:09.

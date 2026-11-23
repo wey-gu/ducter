@@ -142,7 +142,7 @@ func (a *App) paneSay(tab, lede string) string {
 	case TabNotify:
 		return a.notifySay()
 	case TabLook:
-		return a.L.T("say.look")
+		return a.lookSay()
 	case TabTodos:
 		return a.todosSay()
 	case TabChats:
@@ -156,6 +156,25 @@ func (a *App) paneSay(tab, lede string) string {
 }
 
 // D475: each pane's head is what is true there now, never what the pane is for.
+
+// lookSay (D501): the theme, the light and the window's language, read back.
+func (a *App) lookSay() string {
+	paper, lang := "system", "auto"
+	if a.Local != nil {
+		paper, lang = a.Local.Appearance(), a.Local.Lang()
+	}
+	if paper != "light" && paper != "dark" {
+		paper = "system"
+	}
+	if lang != "zh" && lang != "en" {
+		lang = "auto"
+	}
+	theme := a.L.T("settings.look.pebble")
+	if paper == "system" && lang == "auto" {
+		return a.L.T("say.look.auto", theme)
+	}
+	return a.L.T("say.look", theme, a.L.T("say.look.paper."+paper), a.L.T("say.look.lang."+lang))
+}
 
 // notifySay: whether it sends notifications, and when it stays quiet.
 func (a *App) notifySay() string {

@@ -2104,8 +2104,9 @@ function Hello() {
   const words = (w: { zh: string; en: string }) => byLang(w, A.L.lang);
   const visit = f?.visit === "returning" ? "back" : "first";
   const hi = t(`hello.${visit}.${dayPart(new Date().getHours())}`, A.S.personaName);
-  const starters = f?.starters.map((s) => words(s.words)).filter(Boolean) ?? [];
-  for (let i = 1; starters.length < 3; i++) starters.push(t(`suggest.${i}`));
+  // D501: never the same starter twice (a key on each button, and two alike read as a mistake).
+  const starters = [...new Set(f?.starters.map((s) => words(s.words)).filter(Boolean) ?? [])];
+  for (let i = 1; starters.length < 3 && i <= 3; i++) if (!starters.includes(t(`suggest.${i}`))) starters.push(t(`suggest.${i}`));
   const news = f?.news;
   const typing = A.draft.trim() !== "";
   return (
@@ -3147,7 +3148,7 @@ function Accounts() {
   return (
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
-      <div class="small sub">{t("acct.lede", A.S.personaName)}</div>
+      <div class="small sub">{t("acct.lede")}</div>
       {offer && <OoOffer oo={oo!} />}
       {!offer && oo?.selfHosted && !usedOo && (
         <div class="acct-oo">

@@ -26,7 +26,7 @@ On the left is a row of tabs; the one you pick shows on the right. Settings open
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
 | **Agent messaging** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
-| **Notifications** | When it comes to you, quiet hours, and how long it waits if you don't answer |
+| **Notifications** | When I come to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Passwords & cards** | Sign-ins, cards, your details and keys, for signing in, paying and filling in addresses; locked on your computer |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
@@ -78,7 +78,7 @@ At the top is your partner, its name and one line: where it lives and what it th
 
 - **Its name.** Click **Rename**, type a new name, and press Return. The new name shows at once
   in every window and on your phone.
-- **What it thinks with.** The AI agent your partner itself runs on (Claude Code, Codex,
+- **What I think with.** The AI agent your partner itself runs on (Claude Code, Codex,
   DeepSeek Harness or pi, whichever are signed in there), with how much of its limit is left. When
   you haven't picked one, your partner uses Claude Code if it is signed in, else Codex, else
   DeepSeek Harness, else pi. When the one it thinks with runs out of its limit, another signed-in
@@ -125,7 +125,7 @@ At the top is your partner, its name and one line: where it lives and what it th
   when the limit comes back. Turn on **Hand it to another AI agent right away** and another
   signed-in AI agent on the same computer carries on at once instead. The same switch is under a
   task's limit card. It shows once an AI agent does tasks; with only one, it says the task waits.
-- **How it talks.** **Follow me** answers in whatever language you write in: Korean gets
+- **How I talk.** **Same as yours** answers in whatever language you write in: Korean gets
   Korean, Spanish gets Spanish. A message with no language of its own, like "OK" or a thumbs-up,
   keeps the one you were using. Pick a language (简体中文, 繁體中文, English, 日本語, 한국어,
   Español and more under **Other language…**) and it always answers in that one. Ducter's own
@@ -137,7 +137,7 @@ At the top is your partner, its name and one line: where it lives and what it th
   names, folders, times and your first and last words, with keys hidden. Turn it off and nothing is
   read, and what was read is forgotten. If you chose **Don't show {agent} here** or **Leave this
   folder out**, each is listed here with **Show again**.
-- **On its own, or asks you first.** Two short lists. On its own: it edits a copy (never your
+- **On my own, or ask you first.** Two short lists. On its own: it edits a copy (never your
   originals), reads your files, looks things up, and goes with defaults that can be undone if you
   don't answer. Asks you first: anything sent to people, anything it can't undo, signing in, and
   paying. Paying and signing in always ask. Tell your partner reviews may go without asking ("just
@@ -194,7 +194,7 @@ What your partner remembers about you has its own section, **Memory**.
 - At the top, **{name} remembers you**, how much it noted this week, and the **Remember things**
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
   notes anything, in the conversation or in its tasks; what it noted stays.
-- **What it knows about you** groups what Nowledge Mem holds about you: **How you like things**,
+- **What I know about you** groups what Nowledge Mem holds about you: **How you like things**,
   **What you decided** and **What it knows**. What you told it is the usual source, so those lines
   say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You
   saved it**, or **Nowledge Mem drew it from your conversations**). Tap a line to **Fix** its words or
@@ -261,7 +261,7 @@ replaced comes back); later, **Forget** asks first. If Nowledge Mem is away just
 back**, and it does, by itself.
 
 Once a week, in the first morning note of the week, one line offers to show what it noted about you
-in the last seven days. **Show me** opens **What it learned this week**: mark a line **Right**,
+in the last seven days. **Have a look** opens **What I learned this week**: mark a line **Right**,
 **Fix** its words (the fix goes back to Nowledge Mem), or **Forget** it.
 
 ## Talk with your other agents
@@ -271,7 +271,7 @@ terminal, a desktop app or your editor), can message your partner through Nowled
 your partner can message it back. **Talk with your other agents** is where that lives: your agents
 hand your partner work, or send it what needs your call, and your partner asks them things for you.
 It shows in Settings, as **Agent messaging**, once Ducter sees you use such an agent; otherwise the
-end of the **Partner** page has one line, **Show me**, that opens it.
+end of the **Partner** page has one line, **Have a look**, that opens it.
 
 They find each other through Nowledge Mem, which is free; an agent joins in once Nowledge Mem's
 plugin is in it. If Nowledge Mem isn't on your computer yet, the page puts it in and signs you in,
@@ -329,7 +329,7 @@ examples, one each way, each with a small copy button.
 Each thread's head names the agent and what it may ask. **Who may ask me what** says the rules:
 
 - **Your own agents** may hand your partner work; it asks you before starting a task, unless you
-  said one may go straight ahead (then up to 5 tasks a day, and **Ask me first** takes that back).
+  said one may go straight ahead (then up to 5 tasks a day, and **Ask you first** takes that back).
   Up to 20 messages a day each.
 - **Teammates' agents** are ignored by default. The first time one comes, your partner asks you;
   even when you let it through, it may only ask questions, never hand your partner work.
@@ -377,8 +377,8 @@ Under the title your partner says how it reaches you now (for example *When some
 a notification, never in your quiet hours.*). At the top, a preview shows a notification from your partner
 as you would get it: its question, how long it waits before going with its suggestion, and your quiet
 hours under it. Once you have accounts, a second, smaller notification under it shows what your partner
-sends when it notices something by itself, and it follows **When it notices something**: the urgent one
-right away, or one note in the morning; with **Only when I ask** there is none, and a line says it keeps
+sends when it notices something by itself, and it follows **When I notice something**: the urgent one
+right away, or one note in the morning; with **Only when you ask** there is none, and a line says it keeps
 what it notices until you ask. The preview changes as you change anything on the page, and with
 notifications off it shows where the question waits instead.
 
@@ -393,10 +393,10 @@ notifications off it shows where the question waits instead.
 - When you change quiet hours or how long it waits, your partner answers in one short line under
   it (like *Got it: if you don't answer, I'll go with the default after 1 hour.*), which goes away
   by itself.
-- **When it notices something** (once you have accounts, under **What it finds**): how your partner tells you what it
+- **When I notice something** (once you have accounts, under **What I find**): how your partner tells you what it
   noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** (until you choose) or **Only when I
-  ask**; see [When it notices something](accounts.md#when-it-notices-something).
-  Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read
+  ask**; see [When I notice something](accounts.md#when-i-notice-something).
+  Under it, **What I looked at today** shows, in numbers only, what it looked at, what it read
   closely and why it said nothing about the rest (not urgent, waiting for the morning message,
   not worth interrupting you for, today's three already said). If it can't read your mail
   closely, for example because the AI agent it thinks with isn't installed, a line says so

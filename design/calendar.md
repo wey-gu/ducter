@@ -73,7 +73,7 @@ Per D166 and D192: a tile per calendar account, **日历 / Calendar**, then whos
   you pick: time, title, place and who's coming**.
 - **先问你 / Asks first:** **添加、更改、取消日程，回复邀请** / **Adding, moving or cancelling events,
   answering invitations**.
-- 自己留意 / Watch on its own, as for every tile.
+- 自己留意 / Watch on my own, as for every tile.
 - **看哪些日历 / Calendars it reads:** one row per calendar inside the account: the calendar's own
   colour as an 8 px dot (a data colour, never a fill), its name (the main one is **主日历 / Main
   calendar**), a muted note for **节假日 · 只显示名字 / Holidays · names only**, **生日 · 只显示名字 /

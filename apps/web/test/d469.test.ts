@@ -136,7 +136,7 @@ test("the Mac says the same words under the same keys (D469)", async () => {
     .join("\n");
   for (const lang of ["zh", "en"] as const)
     for (const [k, v] of Object.entries(settingsHome[lang])) {
-      if (k === "say.phone") continue; // the web's own page (这台手机 / 这台电脑)
+      if (k === "say.phone" || k === "say.phone.auto") continue; // the web's own page (这台手机 / 这台电脑)
       expect(mac).toContain(`"${k}":`);
       expect(mac).toContain(JSON.stringify(v));
     }

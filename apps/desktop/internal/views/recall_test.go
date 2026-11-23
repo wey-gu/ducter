@@ -107,7 +107,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	for _, s := range []string{"它想起的这条", "你跟它说的", "11 月 10 日", "这次的回答用到了它。", "在 Nowledge Mem 里打开"} {
+	for _, s := range []string{"我想起的这条", "你跟我说的", "11 月 10 日", "这次的回答用到了它。", "在 Nowledge Mem 里打开"} {
 		if !tt.HasText(s) {
 			t.Errorf("the card lacks %q", s)
 		}
@@ -116,7 +116,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("忘掉「周报每周五下午发，发给 Nowledge 全组」？它以后不会再想起。") {
+	if !tt.HasText("忘掉「周报每周五下午发，发给 Nowledge 全组」？我以后不会再想起。") {
 		t.Fatalf("Forget doesn't ask first: %q", tt.Texts())
 	}
 	*sent = nil
@@ -148,7 +148,7 @@ func TestLearnedListConfirmsAndCorrects(t *testing.T) {
 		t.Fatalf("the week's rows: %#v", rows)
 	}
 	noted := notedSeedWords[i18n.EN]
-	if !tt.HasText("What it learned this week") || !tt.HasText(noted[0]) || tt.HasText(noted[3]) {
+	if !tt.HasText("What I learned this week") || !tt.HasText(noted[0]) || tt.HasText(noted[3]) {
 		t.Fatalf("the list: %q", tt.Texts())
 	}
 	if !tt.HasText("Checked") {

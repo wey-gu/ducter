@@ -631,7 +631,7 @@ func (a *App) tasksGroup(c *ui.Context) {
 				}
 			}
 			if h.Harness == b.Harness && h.CanBePartner {
-				lines = append(lines, a.L.T("loadout.acct.thinks", name))
+				lines = append(lines, a.L.T("loadout.acct.thinks"))
 			}
 			var control func()
 			if len(ready) > 1 {

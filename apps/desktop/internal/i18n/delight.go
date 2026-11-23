@@ -35,11 +35,11 @@ var enDelight = Table{
 	"todos.what.new.tell":          "A word in the conversation.",
 	"todos.what.new.take":          "They start by themselves, up to 5 a day.",
 	"todos.what.new.quiet":         "Looked at when you ask.",
-	"todos.what.done.ask":          "It asks before commenting on the issue.",
+	"todos.what.done.ask":          "I ask before commenting on the issue.",
 	"todos.what.done.comment":      "It comments; closing still asks.",
 	"todos.what.done.close":        "It comments and closes the issue.",
 	"todos.what.done.tick":         "Ticked off in your note; untick to undo.",
-	"todos.what.done.ask.obsidian": "It asks before ticking it off.",
+	"todos.what.done.ask.obsidian": "I ask before ticking it off.",
 	"todos.what.done.leave":        "Your note stays as it is.",
 }
 

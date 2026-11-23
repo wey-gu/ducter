@@ -202,7 +202,7 @@ whether Mem forgets or the line only leaves the list; nothing another tool saved
 
 **Memory, on:** (1) one group: the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in
 the done ink (or **这周还没有新记的**), the switch at the right edge; its foot says what the switch does.
-(2)–(3) are D321's now ("What it knows about you" below): the groups by kind, the search, the other tools as a
+(2)–(3) are D321's now ("What I know about you" below): the groups by kind, the search, the other tools as a
 count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), its head saying Mem's own health (D375, "Mem's own health" below); **记在哪儿**,
 **它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
 version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
@@ -245,10 +245,10 @@ read is never shown; only the one memory that changed an answer is.
   strips every mark before logging the words (`takeRecallMark`), resolves the first against this turn's
   refs only, and logs `memory_recalled {memoryId, title, by, from?, date?, aboutSeq, replyTo?}` right
   after the message. No new tool and no persona change (the tool list's fingerprint is unchanged).
-- **Tapped:** 它想起的这条 / What it remembered: title, source and date as separate facts, 忘掉 (asks; for
+- **Tapped:** 我想起的这条 / What I remembered: title, source and date as separate facts, 忘掉 (asks; for
   another tool's: "…，{tool} 那边也一样"), 在 Nowledge Mem 里打开 (Mem's site; a link to the one memory is
   todo). A forgotten line is hidden everywhere (`MemView.forgotten`: the hidden seqs among `memory_recalled`).
-- **这周记下的 / What it learned this week.** The week's first morning note (Monday's, or the first after a
+- **这周记下的 / What I learned this week.** The week's first morning note (Monday's, or the first after a
   missed Monday; `ProactiveState.learnedWeek`) carries `learned: {count}` when anything was noted in the
   last 7 days and memory is on; never in the push; on a quiet Monday the note is just 早。 and the line. The
   sheet lists the week's noted lines: 对 (`memory_confirm`, kept as `confirmed`), 改 (`memory_correct` →
@@ -261,7 +261,7 @@ read is never shown; only the one memory that changed an answer is.
 - **Measured** (partner eval, haiku, `--only`): `mem-source-used-zh`, `mem-source-tool-en`,
   `mem-source-none-en` pass; the full eval is to be rerun at merge.
 
-## What it knows about you (D321, 2026-11-17)
+## What I know about you (D321, 2026-11-17)
 
 The author on v0.0.65's Memory page: "这里的 memory 到底怎么用？符合我们的情绪价值极度顺滑优雅的标准么？" The
 honest answer was no. The page was an inventory: a count, one week's line, other tools' raw working-note titles
@@ -281,7 +281,7 @@ settings, is what builds trust).
   correct it), 惊喜 (it knew what Codex learned about me).
 - **The consumer personal-AI user.** *Moment:* "book it like last time" works, and they wonder what else it knows.
   *Before:* the faint creepiness of an assistant that remembers without saying what (research/112 §3). *After:*
-  "它知道的关于你" in plain groups, each line saying where it came from (你跟它说的 · Codex 记的 · Nowledge Mem 从你的
+  "我知道的关于你" in plain groups, each line saying where it came from (你跟我说的 · Codex 记的 · Nowledge Mem 从你的
   对话里整理的), and a search when they want to check one thing. *Feel:* 好用, 放心.
 - **The fresh user.** *Moment:* the first time something it remembered changes an answer (D304's 想起了 line).
   *How it starts:* nothing to set up; before Mem, D295's two steps stay. With Mem and nothing known yet, the page
@@ -305,11 +305,11 @@ the other tools too) · 惊喜 (what another tool learned about you, by its name
 
 ### The page (both clients, wide and phone)
 
-Order: the head group (unchanged, plus **看看这周的** at its foot when anything is new); **它知道的关于你** with its
+Order: the head group (unchanged, plus **看看这周的** at its foot when anything is new); **我知道的关于你** with its
 note and the search; the groups by Mem's own kind, each with its caption in small ink (**你喜欢的做法** preference,
 **你定下的** decision, **它知道的事** fact, **别的** other; a lone 别的 is not captioned, D459), a row each: another
 tool's coin when it came from one, the title, the source as the line only when it isn't the person's own words
-(**{tool} 记的 / 你自己记的 / Nowledge Mem 从你的对话里整理的**; D459: 你跟它说的 is the usual source, said once in the
+(**{tool} 记的 / 你自己记的 / Nowledge Mem 从你的对话里整理的**; D459: 你跟我说的 is the usual source, said once in the
 section's note, never a dot and the same line on every row), the age at the right. Tapped, the row opens in place: **不对？改一下，或者让
 它忘掉。** with **改** and **忘掉**. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
 (**N 条以上** when the whole read was this week), and the foot that says why they aren't listed. Then the
@@ -468,7 +468,7 @@ like a friend who knows them. *How it starts:* nothing to set up; the first "以
   person asked. A session that hasn't seen the block (Mem away on its first turn) gets it with its first
   `memory_search` (`whatTheyToldYouBefore`), once.
 - **The Memory pane** (walked, D432's shape kept): the head's foot now says the one thing a person needs to feel in
-  control, **哪条不想让它记，说一声「别记这个」就好。**; under 它知道的关于你, **让{name}说说它记得你什么** puts the
+  control, **哪条不想让我记，说一声「别记这个」就好。**; under 我知道的关于你, **让{name}说说记得你什么** puts the
   question in the composer (never sent for them): the page is the inventory, the conversation is where it feels
   like being known.
 - **Measured:** unit tests over fakes (core `mem-takeback.test.ts`, partner `about-me.test.ts`, web
@@ -496,7 +496,7 @@ Settings › 记忆 now carries the few that change what the partner and every o
   total only, to know whether more waits), `rules list`. At most every 10 minutes while the page is viewed,
   in the background, gated like the glance (memory on, Mem connected, never on a test without a fake nmem).
   Only titles, days and a rule's words travel; a memory's contents never leave Mem.
-- **What is shown**, after 它知道的关于你 / What it knows about you: **Nowledge Mem 想跟你确认 / Nowledge Mem
+- **What is shown**, after 我知道的关于你 / What I know about you: **Nowledge Mem 想跟你确认 / Nowledge Mem
   would like to check**, at most 3 contradictions (newest first: the two titles, earlier first) and 2 learned
   draft rules (title and words). Mem's own suggestion is the primary button (a contradiction's
   `recommended_action`; a learned rule's 用上 / Use it), the others quiet. Nothing waiting and nothing more:

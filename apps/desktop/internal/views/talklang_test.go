@@ -22,7 +22,7 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 	// D307: the key, the hand-off and the records groups sit above it now.
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("How it talks, Follow me"); err != nil {
+	if err := tt.Click("How I talk, Same as yours"); err != nil {
 		t.Fatalf("no reply-language pill: %v in %q", err, tt.Texts())
 	}
 	tt.Frame()

@@ -59,7 +59,11 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 	t := a.T
 	a.sep(c)
 	ui.Row(c.Key("head:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
-		a.tileCol(c, tile)
+		// D501: with nothing to draw (Partner's 还没有能想事情的 AI agent) the words sit on the
+		// text edge, as on the web, never beside an empty tile column.
+		if tile != nil {
+			a.tileCol(c, tile)
+		}
 		a.wordsThenControl(c, func() {
 			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
 			if line != "" {

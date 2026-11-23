@@ -111,7 +111,7 @@ Calls use your partner's voice. To use **your** voice instead:
 
 1. Under **Tuwa**, in the **Your voice** row, tap **Record on Tuwa**. Tuwa's own page opens:
    you agree there and read a short text aloud.
-2. Back in Ducter, tap **I've recorded it**, then turn on **Call in my voice**.
+2. Back in Ducter, tap **Done recording**, then turn on **Call in my voice**.
 
 Even in your voice, the call says it is your AI assistant speaking in your voice. Your voice is stored
 by Tuwa's voice provider, in China. **Delete my voice** asks Tuwa to delete it. Only ever your own

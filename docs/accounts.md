@@ -96,7 +96,7 @@ with a switch. A row only says how Ducter reads it when that differs from the pl
 read says **Not read**. When you flip a switch, your partner says in one short line what that
 means, and the line goes away by itself.
 
-- **Watch on its own** (the switch): on, Ducter looks at this app by itself (once you said yes,
+- **Watch on my own** (the switch): on, Ducter looks at this app by itself (once you said yes,
   below). For Discord and Slack it looks only at @-mentions and direct messages.
 - **Can't read it**: Ducter tried and this connection can't give it what it looks for, so it
   stopped looking and says so here instead of staying quiet. OOMOL's Discord connection is a bot:
@@ -111,12 +111,12 @@ means, and the line goes away by itself.
 Tap a row to see what it reads, what it always asks you first, when it last looked, and **Don't
 let Ducter read this one**: nothing reads that account, not even when you ask.
 
-The group's last line says where your mail passes, with **What it read** (today, one line per
+The group's last line says where your mail passes, with **What I read** (today, one line per
 look: how many, and what it looked at; never what the mail said) and **Stop using …**, which asks
 before it does anything. **Connect another account service** at the end of the groups adds
 another place.
 
-## When it notices something
+## When I notice something
 
 Once you add an account, your partner keeps an eye on it. It can't see your whole life, so it
 can't know which of the things it notices will matter to you; it offers what might help, quietly,
@@ -140,7 +140,7 @@ You can change the same choice any time in **Settings › Notifications**:
   more** (at most six; ten a day with what joins it while you're in the app). Anything urgent comes
   right away (at most three a day). On a day with nothing worth saying it sends nothing and shows
   nothing: no news is good news.
-- **Only when I ask**: it doesn't look by itself.
+- **Only when you ask**: it doesn't look by itself.
 
 The morning message can also offer things that don't come from your accounts, each with a line
 under it saying where the idea came from:
@@ -201,7 +201,7 @@ quiet just because you didn't answer. Unread messages never make it stop. At nig
 said so for a kind ("wake me if a flight changes").
 
 It doesn't tell you how much it read or list what it skipped. Ask "anything else?" and it tells
-you what it left out; **What it read** under **⋯** on the card shows each look, and **What it
+you what it left out; **What I read** under **⋯** on the card shows each look, and **What it
 looked at today** under **Notifications** shows why it stayed quiet (see
 [Settings](settings.md)).
 

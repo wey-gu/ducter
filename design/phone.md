@@ -118,7 +118,7 @@ approved 3 times in 14 days.
 - **Ducter's voice (default).** Tuwa's phone agent is named after the partner at connect. The line
   opens: "this is {partner}, {owner}'s AI assistant, calling for {owner}".
 - **The owner's voice.** Phone card › 你的声音 / Your voice › **去 Tuwa 录 / Record on Tuwa** opens Tuwa's
-  recording page; the owner agrees and reads aloud there. **我录好了 / I've recorded it** reads it back.
+  recording page; the owner agrees and reads aloud there. **录好了 / Done recording** reads it back.
   **用我的声音打 / Call in my voice** and **删除我的声音 / Delete my voice** pass Tuwa's confirmation with
   the owner's tap. The opening still says it is an AI speaking in the owner's voice.
 - **Only the owner's voice, ever.** Consent wording on the card: the voice is stored by Tuwa's voice

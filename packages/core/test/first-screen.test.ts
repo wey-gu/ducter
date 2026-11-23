@@ -169,3 +169,13 @@ test("a second partner introduces itself and starts from what it looks after", (
   expect(t.starters.some((x) => x.words.zh.includes("查社区游泳馆周日的课"))).toBe(true);
   expect(t.line.en).toBe("I can't see what you tell Ducter; what you tell me stays here. Just say the word.");
 });
+
+// D501: seen in the iOS Simulator: "plan" picked the very words of the last starter, so 多比's
+// first meeting offered 你能帮我做些什么？举三个例子 twice. On every day of a fortnight, no starter twice.
+test("a second partner's starters never repeat", () => {
+  for (let d = 0; d < 14; d++) {
+    const s = partnerScreen({ ...base({ now: new Date(NOW.getTime() + d * 86_400_000) }), about: "读书", defaultName: "Ducter" });
+    const zh = s.starters.map((x) => x.words.zh);
+    expect(new Set(zh).size).toBe(zh.length);
+  }
+});

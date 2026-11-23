@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -69,16 +70,20 @@ func sentences(s string) []string {
 // suggestions are the starters of the empty conversation: 3–4, life
 // first, from what the home knows (D149), else everyday ones.
 func (a *App) suggestions() []string {
+	// D501: never the same starter twice.
 	var out []string
-	if f := a.S.First; f != nil {
-		for _, s := range f.Starters {
-			if w := strings.TrimSpace(a.words(s.Words)); w != "" {
-				out = append(out, w)
-			}
+	add := func(w string) {
+		if w != "" && !slices.Contains(out, w) {
+			out = append(out, w)
 		}
 	}
-	for i := 1; len(out) < 3; i++ {
-		out = append(out, a.L.T(fmt.Sprintf("suggest.%d", i)))
+	if f := a.S.First; f != nil {
+		for _, s := range f.Starters {
+			add(strings.TrimSpace(a.words(s.Words)))
+		}
+	}
+	for i := 1; len(out) < 3 && i <= 3; i++ {
+		add(a.L.T(fmt.Sprintf("suggest.%d", i)))
 	}
 	return out
 }

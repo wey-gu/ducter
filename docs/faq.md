@@ -175,7 +175,7 @@ default: for Codex, the `model` in your `~/.codex/config.toml`. Change that, or 
 
 ### Can my partner itself use another model?
 
-Yes. In **Settings › Partner**, under **What it thinks with**, **Which model** lists the models
+Yes. In **Settings › Partner**, under **What I think with**, **Which model** lists the models
 your AI agent offers on the computer Ducter runs on: Codex's own list (GPT-6.2-Sol,
 GPT-6.2-Astra, …) or Claude Code's. Tap one; your partner uses it from your next message, and
 keeps its name, what it remembers and your conversation.
@@ -344,7 +344,7 @@ Yes. You choose a name the first time you open Ducter, and you can change it any
 ### Which languages does it speak?
 
 English and Chinese. The app follows your system language, and your partner answers in the
-language you write in, unless you pick one under **Partner › How it talks**.
+language you write in, unless you pick one under **Partner › How I talk**.
 
 ### Can my family or team share one Ducter?
 

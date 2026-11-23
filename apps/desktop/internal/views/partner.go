@@ -620,7 +620,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 	}
 	a.saidLine(c, "acct-stop")  // D404: a source stopped is answered once, where it was
 	a.saidLine(c, "acct-added") // D468: and a source added, in the same place
-	title, lede := a.L.T("acct.title"), a.L.T("acct.lede", a.personaName())
+	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
 	if sources {
 		title, lede = "", ""
 	}

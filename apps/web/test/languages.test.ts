@@ -48,8 +48,8 @@ describe("the interface: any tag, a table by its chain (D292)", () => {
     const ko = strings("ko");
     expect(ko.lang).toBe("en");
     expect(ko.locale).toBe("ko");
-    expect(ko.t("partner.talk.auto")).toBe("Follow me");
-    expect(strings("zh-Hant").t("partner.talk.auto")).toBe("跟着我");
+    expect(ko.t("partner.talk.auto")).toBe("Same as yours");
+    expect(strings("zh-Hant").t("partner.talk.auto")).toBe("跟着你");
   });
   test("the browser's languages pick the first with a table", () => {
     expect(detectLang(["ko-KR", "zh-CN"])).toBe("zh");
@@ -64,7 +64,7 @@ describe("the interface: any tag, a table by its chain (D292)", () => {
     expect(en.n("test.n", 1)).toBe("1 task");
     expect(en.n("test.n", 3)).toBe("3 tasks");
     expect(strings("ko").n("test.n", 1)).toBe("1 task"); // English words, English plural rules
-    expect(en.n("partner.talk.auto", 2)).toBe("Follow me"); // no plural forms: the key itself
+    expect(en.n("partner.talk.auto", 2)).toBe("Same as yours"); // no plural forms: the key itself
     delete TABLES.en["test.n.one"];
     delete TABLES.en["test.n.other"];
     expect(en.num(12345)).toBe("12,345");
@@ -106,7 +106,7 @@ describe("replies in any language (D292)", () => {
     const v = await import("../src/views.tsx");
     A.L = strings("en");
     const opts = v.talkOptions("auto");
-    expect(opts[0]).toEqual({ v: "auto", label: "Follow me" });
+    expect(opts[0]).toEqual({ v: "auto", label: "Same as yours" });
     const labels = opts.map((o) => o.label);
     for (const n of ["简体中文", "繁體中文", "English", "日本語", "한국어", "Español"]) expect(labels).toContain(n);
     expect(opts.at(-1)!.label).toBe("Other language…");
@@ -114,7 +114,7 @@ describe("replies in any language (D292)", () => {
     const sv = v.talkOptions("sv");
     expect(sv.find((o) => o.v === "sv")?.label).toBe("Svenska");
     A.L = strings("zh");
-    expect(v.talkOptions("auto")[0]!.label).toBe("跟着我");
+    expect(v.talkOptions("auto")[0]!.label).toBe("跟着你");
     expect(v.talkOptions("auto").at(-1)!.label).toBe("其他语言…");
     A.L = strings("en");
   });

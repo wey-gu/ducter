@@ -256,7 +256,7 @@ Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by co
 | **快到了 / Coming up** (D243) | A flight or a train within 36 hours: when, from where, when to be there (2 h for a flight); a booking confirmed by mail for a time today | mail + calendar (a flight in the calendar is a booking) | the morning note; **now** within 30 h | check the flight's status (Go) | yes |
 | **你用的服务 / A service you use** (D243) | Maintenance on their production within 48 h, joined with their trip that day; an outage now; a job failing twice in three days, or once on production; a product they use shutting down within six weeks; a security alert (the bar decides). A building's or a shop's routine notice stays below the bar; one CI run failing on a branch is not a find | service notices in mail | the morning note; **now** for production within 30 h, an outage, a job failing three times | read the notice and say what to prepare / what is failing (Go) | yes |
 | **之前说的有变 / An update to what I told you** (D243) | A later notice undoes or changes something already said (a shutdown called off, a flight moved after the heads-up) | mail + the finds already said | **now** | — | yes |
-| **你说过的 / Something you said** (D281) | In the conversation, not the accounts: a reminder they asked for (提醒我… / remind me…) that no wait of the partner's keeps; something they said they'd do on a day (我明天要… / I need to … on Friday); the partner's own promise to remind, in answer to the person, with no wait behind it. Never: a recurring ask (a routine's), a question, a guess or a state, the past, a forwarded message | the person's own lines and the partner's (`proactive/said.ts`, code, no model) | at its minute when it has a time (**提醒你：{what}。 / Reminder: {what}.**); else first in that day's morning note, outside the 3 (**你昨天说今天要{what}。 / Yesterday you said you'd {what} today.**); an ask with no day the next morning. An ask goes in every mode, 不用主动找我 too; a thing they'd do never with it. Not said within 12 h of its moment: let go | — (How I know is their own line: **你说的：「…」 / You said: "…"**) | yes |
+| **你说过的 / Something you said** (D281) | In the conversation, not the accounts: a reminder they asked for (提醒我… / remind me…) that no wait of the partner's keeps; something they said they'd do on a day (我明天要… / I need to … on Friday); the partner's own promise to remind, in answer to the person, with no wait behind it. Never: a recurring ask (a routine's), a question, a guess or a state, the past, a forwarded message | the person's own lines and the partner's (`proactive/said.ts`, code, no model) | at its minute when it has a time (**提醒你：{what}。 / Reminder: {what}.**); else first in that day's morning note, outside the 3 (**你昨天说今天要{what}。 / Yesterday you said you'd {what} today.**); an ask with no day the next morning. An ask goes in every mode, 等你来问 too; a thing they'd do never with it. Not said within 12 h of its moment: let go | — (How I know is their own line: **你说的：「…」 / You said: "…"**) | yes |
 
 Kinds left out on purpose: newsletters, receipts, shipping updates that say it all in the
 subject, "you have N unread", social notifications, anything GitHub or the calendar already
@@ -391,7 +391,7 @@ mirrored in Settings › 通知 (什么时候找你):
 | **只说急的 / Only urgent** | Only the "Now" rung and 开会前 (D226); no morning note |
 | **每天最多 3 条 / Up to 3 a day** (a restraint the person chose) | Morning note with ≤ 3 offers at the old floor (50), plus "Now" in its own room of 3 (D243) |
 | **有用就说 / Whenever useful** (default, also before the person chose: D250, D453) | Offers batched into the note and fold-ins: up to 6 a note (3 in full), 10 a day, ranked by what was taken up; "Now" in its own room of 3 |
-| **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
+| **等你来问 / Only when you ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
 
 **Where the mode came from (D250)** is kept with it: `default` (never chosen; the chips say
 **你还没选过，先这样：…**), `chosen` (any chip, in a note or in Settings, even the one already on),
@@ -410,13 +410,13 @@ morning (or its date) it fades: resolved hold by default, its words in the muted
 已跳过, nothing said. A "now" find stays an ask. An urgent find of a kind whose interrupt bar the
 person's Holds raised past its cost comes as an offer instead (folded in, never pushed).
 
-### 5.1 Why it stayed quiet: 今天看了什么 / What it looked at today (D226)
+### 5.1 Why it stayed quiet: 今天看了什么 / What I looked at today (D226)
 
 *Who:* anyone who chose a mode and has heard nothing; the heavy developer checking it works.
 *Feels:* before, "is it even on?"; after, 放心: it looked, and here is why it said nothing, or what
 is broken. *First time:* under the chips in Settings › 通知 / Notifications, one quiet button.
 
-- **Closed:** the button **今天看了什么 / What it looked at today** only. If reading closely is
+- **Closed:** the button **今天看了什么 / What I looked at today** only. If reading closely is
   failing, one line shows above it without opening, in plain words: **没法细读你的信：这台电脑上没装
   {agent}，现在只看得到标题。** (also `signed_out`, `no_agent`, `failed`).
 - **Open** (in place, the sunken panel 看了哪些 uses), counts only, one line each, only lines
@@ -556,12 +556,12 @@ minds being left alone (放心). The partner answering "你这周提醒得怎么
 - **Mem** gets only durable gists the partner is confident about ("Lina 在 mem 组，PR 常找你
   review"), with the usual **记下了 / Noted** line and provenance, under the existing **记住事情**
   switch. Never a quote from a mail.
-- **Per account:** each app in the card has **自己留意 / Watch on its own** (on by default for
+- **Per account:** each app in the card has **自己留意 / Watch on my own** (on by default for
   mail, calendar, GitHub; Discord and Slack watch only @-mentions and DMs). Off, it is read only
   when asked. **不让 Ducter 看这个 / Don't let Ducter read this one** excludes an account
   entirely (the existing `policy.deny`, now with a control).
 - **Reading is logged and visible on asking:** the card's status line says only the plain state
-  (D173), and **看了哪些 / What it read** under ⋯ opens today's reads (the `connection_call`
+  (D173), and **看了哪些 / What I read** under ⋯ opens today's reads (the `connection_call`
   summaries) in place; counts live only there.
 - **The honest line** stays on every card: where mail passes (OOMOL's servers, or your own
   machine) and **它读到的内容会给你的 AI 账号看，别人拿不到。**
@@ -582,7 +582,7 @@ minds being left alone (放心). The partner answering "你这周提醒得怎么
 tokens), shown in the card's detail as **这个月用了 3%**. Triage and the judge both count; a judge
 call is shared by the sources its candidates came from, and cache reads count at a tenth (D174).
 At the budget that source drops to **只说急的** for the rest of the month (the others don't) and
-says so once. "Only when I ask" costs nothing.
+says so once. "Only when you ask" costs nothing.
 
 ## 11. The first account: one moment, one question
 
@@ -642,7 +642,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
 4. **Tap a tile → its detail in place** (never a floating layer), in three bands (D192): the app's
    mark, **Gmail**, **wey@nowledge.co · 最后看过：2 分钟前** (nothing when it never looked); then
    **会看** · **新邮件的发件人、标题和开头几行；要细看才读全文** and **先问你** · **发信、回复、存草稿、改标签、
-   删除** as a label column beside the words; the **自己留意 / Watch on its own** switch (Discord: **只看 @你
+   删除** as a label column beside the words; the **自己留意 / Watch on my own** switch (Discord: **只看 @你
    和私信**); **这个月用了 3%** when watching; at the foot, quiet: **不让 Ducter 看这个** (and for
    oo: **要退出登录，去 oo 里**). A calendar tile adds a fourth band, **看哪些日历 / Calendars it
    reads**, one switch per calendar in that account (D222, `calendar.md` §4).
@@ -650,7 +650,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    it notices something**; with a single source the page reads as one sheet.
 6. **One connection line, last:** where what it reads passes, worded by what the card holds
    (**经过 oo · 邮件和消息会经过 OOMOL 的服务器 / Through oo · your emails and messages pass through
-   OOMOL's servers**, D192), then one row: **看了哪些 / What it read** (opens in place: today's reads,
+   OOMOL's servers**, D192), then one row: **看了哪些 / What I read** (opens in place: today's reads,
    one line each, and the honest line about the AI account) at the start and the foot's stop at the end.
 7. **Foot:** one destructive text button, **不用 oo 里的账号了 / Stop using the accounts in oo**,
    confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。** ·
@@ -697,8 +697,8 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 
 | Key | zh | en |
 |---|---|---|
-| ★ `proactive.title` | 发现了就说 | When it notices something |
-| ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 条 · 有用就说 · 不用主动找我 | Only urgent · Up to 3 a day · Whenever useful · Only when I ask |
+| ★ `proactive.title` | 发现了就说 | When I notice something |
+| ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 条 · 有用就说 · 等你来问 | Only urgent · Up to 3 a day · Whenever useful · Only when you ask |
 | ★ `note.open` | 早。 | Morning. |
 | ★ `note.left_out` (the partner's, said only when asked; never on screen) | 没说的：{list}；还有 {n} 条没说 | Left out: {list}; {n} more not said |
 | ★ `find.useful` · `find.mute` | 有用 · 这类不用告诉我 | Useful · Don't tell me this kind |
@@ -718,13 +718,13 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `card.status.asked` | 你问起来才去看 | Reads only when you ask |
 | ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
 | ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |
-| ★ `tile.watch` · `tile.mentions` | 自己留意 · 只看 @你 和私信 | Watch on its own · Only @-mentions and DMs |
+| ★ `tile.watch` · `tile.mentions` | 自己留意 · 只看 @你 和私信 | Watch on my own · Only @-mentions and DMs |
 | `tile.trouble.unsupported` · `tile.trouble.reconnect` (D402) | 读不了 · 要重新连接 | Can't read it · Connect it again |
 | `tile.trouble.unsupported.chat` | 这个连接还读不到 @你 和私信，所以 Ducter 没在看它。是还不支持，不是你哪里没设好。 | This connection can't read @-mentions or DMs yet, so Ducter isn't watching it. It isn't supported yet; nothing is wrong on your side. |
 | `tile.trouble.reconnect.note` · `.go` | {source} 说这个账号要重新连接一下才读得到。连好以后 Ducter 会自己接着看。 · 去 {source} 重新连接 | {source} says this account needs connecting again before it can be read. Once it's connected, Ducter picks up watching by itself. · Connect again in {source} |
 | ★ `tile.exclude` · `tile.signout_oo` | 不让 Ducter 看这个 · 要退出登录，去 oo 里 | Don't let Ducter read this one · Sign out in oo |
 | ★ `tile.more.oo` | 在 oo 里再连一个 | Connect another in oo |
-| ★ `card.read_list` | 看了哪些 | What it read |
+| ★ `card.read_list` | 看了哪些 | What I read |
 | ★ `card.stop` · `card.stop.ask` | 不用 {name} 了 · 不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。 | Stop using {name} · Once stopped, it can't read these accounts. What it noted stays in Memory, where you can forget it. |
 | ★ `card.budget` | 这个月用了 {p}% | {p}% of this month's budget used |
 | `acct.remove.ask` (built) | 移除 {name}？Ducter 就看不到这些账号了。 | Remove {name}? Ducter won't read these accounts anymore. |

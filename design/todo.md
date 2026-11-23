@@ -11,13 +11,26 @@ line.
 
 ## Settings, after D500 (`settings.md` "Every pane, by one hand")
 
-- [ ] **Rows say 它 under a head that says 我.** Every pane's head is the partner speaking (D469); its
-  rows still speak of it as 它 (D330), e.g. Chat apps' **你在 Telegram 里说的，它就在那儿回。** under
-  **在 Telegram、微信里也能找我**. One voice per pane, through the change loop (which rows may say 我,
-  and the en "it" / "I" with them). *Trigger:* the author's review of D500, or a rater reads two speakers.
-- [ ] **Look and sound's head states, not describes** (D475's rule): the theme, the light and the
-  language read back (**这台 Mac 上是 Pebble，浅色深色跟着系统。**). *Trigger:* the next Look and sound change.
-- [ ] **The author's review of D500** on the Mac and the phone (`.shots/d500/after`).
+- [x] **Rows say 它 under a head that says 我.** Done by D501 (`settings.md` "One voice").
+- [x] **Look and sound's head states, not describes.** Done by D501.
+- [ ] **The author's review of D500 and D501** on the Mac and the phone (`.shots/d500/after`,
+  `.shots/d501/{after,ios}`).
+- [ ] **A rater pass on D501's choices in the partner's voice** (**说一声 / Say so**, **等你来问 / Only when you
+  ask**, **跟着你 / Same as yours**): does a person read them as theirs to tap? Default: kept. *Trigger:* the
+  author's review, or a rater reads them as the partner's own.
+
+## The phone in the iOS Simulator, after D501 (`settings.md` "The phone in the iOS Simulator")
+
+- [ ] **正在连接… after a bundle or appearance change.** Twice a launch right after the page's bundle or the
+  Simulator's appearance changed stayed on 正在连接… for over 10 s; three plain relaunches connected within
+  4 s. Look with the page's own log (the Debug shell relays `console.warn`) for whether the first socket
+  opens at all. *Trigger:* seen on a real iPhone, or the next phone release.
+- [ ] **A first meeting taller than the screen opens at its end**, the figure's head under the bar (a second
+  partner with the notification card under its starters). Default: open at the top while nothing was said.
+  *Trigger:* the author's review of D501's shots.
+- [ ] **Touch walked on iOS:** a long press on a message (D492; read in code only), the keyboard over the
+  composer and a sheet, overscroll. The Simulator can't be touched from the shell. *Trigger:* a driver that
+  can tap the Simulator, or a real iPhone in hand.
 
 ## On hand, after D498 (`on-hand.md`, research/216)
 
@@ -31,7 +44,7 @@ line.
   rounds out and a board with only rounds says they keep their rhythm. Trigger: the author reads it as wrong.
 - [ ] **An Ongoing row's own gestures on the board** (Pause, Run now, How often on hover or ⋯), today on
   the opened task and the Ongoing tab only. Trigger: the author reaches for them on On hand.
-- [ ] **The iOS Simulator** for the phone board (dark zh), as D471 owed. Trigger: the next phone release.
+- [x] **The iOS Simulator** for the phone board (dark zh), as D471 owed. Done by D501 (`.shots/d501/ios/05-onhand-zh-dark.png`).
 
 ## Several partners, after D497 (`personas.md`, research/215)
 
@@ -46,8 +59,9 @@ line.
   a partner-tool change, so a D175 eval. Trigger: the author asks for richer first meetings.
 - [ ] **On hand's figure** is the shown partner's clay though the board is everyone's: a neutral figure
   or the default's. Trigger: the author's review of D497's shots.
-- [ ] **The iPhone and Android shells** inherit the web; check the pills and the first meeting on a
-  device (iOS Simulator). Trigger: the next phone release.
+- [ ] **The iPhone and Android shells** inherit the web; the iPhone app's pills and first meeting were seen
+  in the iOS Simulator by D501 (`.shots/d501/ios/01` to `04`; the repeated starter and the small faces
+  fixed); the Android app's are owed. Trigger: the next Android release.
 
 ## Copying a message, after D492 (`conversation.md` "Keeping your place and copying")
 
@@ -1147,7 +1161,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       with no default. Re-run the eval's ask scenarios after.
 - [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
 
-### What it thinks with, and who does the tasks (D89, D90)
+### What I think with, and who does the tasks (D89, D90)
 
 - [x] **The partner runs on `Settings.brain`** (harnesses, D85) and a live session ends at the
       next message after a switch (ai-loadout): unit (fake runner) and end to end on OAR's
@@ -2006,7 +2020,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       through AppKit on the status item's button; checked only by building, not read aloud yet.
 - [ ] Sign in, install and sign out from a Devices account card in the real Ducter.app (the
       card's sheet reuses the first run's jobs). Trigger: the same throwaway account as above.
-- [ ] Rules (F1) on the Partner page: let "On its own, or asks you first" be changed, not only
+- [ ] Rules (F1) on the Partner page: let "On my own, or ask you first" be changed, not only
       read. Trigger: F1 has a flow and a decision.
 - [ ] The partner's name in its live session: a rename reaches new sessions (the identity is
       rewritten); the session already open keeps the old name until it restarts. Trigger: a

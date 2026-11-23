@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.25 - 2026-11-24
+
+<!-- whats-new
+zh: 每个伙伴都有自己的颜色；任务看得到 PR 上的评审
+en: Each partner its own colour; tasks see their PR's reviews
+-->
+
+**Several partners, each itself**
+- Every partner has its own clay colour, and the others sit in the bar with their own
+  needs-you count. The count under a name is that partner's own; your total stays on the Dock
+  and in On hand.
+- A notification opens the right partner. Switch with ⌥⌘1 to ⌥⌘4 or Find anything.
+- A new partner introduces itself the first time: what it looks after, and that what you tell
+  it stays with it.
+
+**Tasks see where their PR stands**
+- Every look at a task's PR reads its reviews, approvals and checks, including reviews written
+  before it started waiting. A change request wakes the task to address it; a wait that can't
+  come true no longer runs for a day.
+- Sent out lists what went out in plain words ("Opened PR #10847", "Pushed to …"), never
+  commands, and local edits are not counted.
+- Branch names end at a word.
+
+**A standing go is kept**
+- Tell your partner to post reviews without asking and it records that once; every round of
+  the loop then posts, including PRs that mention you, and each shows in Done for you. Take it
+  back any time. Payments, passwords and deleting are never covered.
+
+**Quieter messages**
+- Pointing at a message shows only its small buttons. No words appear and nothing moves.
+
 ## 0.1.24 - 2026-11-23
 
 <!-- whats-new

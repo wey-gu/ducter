@@ -35,7 +35,7 @@ async function boot() {
     if (prompt.includes("<about>")) return { text: JSON.stringify({ found: rows.filter((r) => /istill|提炼/.test(r.title)).map((r) => ({ id: r.id, sure: "high" })) }), tokens: 1 };
     return { text: JSON.stringify(rows.map((r) => (/\?$/.test(r.title) ? { id: r.id, group: "decide", why: "要你定", ask: "重试吗？", pick: "hand", subject: "记忆提炼" } : /长对话/.test(r.title) ? { id: r.id, group: "later", why: "改动大", subject: "记忆提炼" } : { id: r.id, group: "do", why: "说得清楚", size: "small", subject: /istill/.test(r.title) ? "记忆提炼" : "登录" }))), tokens: 1 };
   };
-  const core = startCore({ dataDir: d, port: 0, push: false, platform: "darwin", taskSources: { ghRun: gh.run, ghEnv: {}, home: join(d, "no-home"), pollMs: 3_600_000, ask } });
+  const core = startCore({ dataDir: d, port: 0, push: false, platform: "darwin", taskSources: { ghRun: gh.run, ghEnv: {}, home: join(d, "no-home"), pollMs: 3_600_000, ask }, deviceProbes: { harnesses: async () => [{ harness: "claude-code", loggedIn: true, installed: true }] as never } });
   const fr = fakeRunner(() => {});
   core.setRunner(fr.runner as never);
   const p = createPartner(core as never, fr.runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });

@@ -19,7 +19,7 @@ afterEach(async () => {
 
 test("a second partner's own session answers in its name, on its own role and folder; the default's never sees it", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ducter-p2-"));
-  const core: Core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", partners: true });
+  const core: Core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", partners: true, deviceProbes: { harnesses: async () => [{ harness: "claude-code", loggedIn: true, installed: true }] as never } });
   stops.push(() => rmSync(dir, { recursive: true, force: true }), () => core.stop());
   core.partners.add({ name: "小家" });
 

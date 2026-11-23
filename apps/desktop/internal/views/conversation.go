@@ -281,7 +281,7 @@ func (a *App) helloNews(c *ui.Context, n *protocol.FirstNews) {
 
 func (a *App) header(c *ui.Context) {
 	t := a.T
-	b := a.S.Board()
+	b := a.barBoard() // D497: the line under a partner's name speaks for that partner
 	if a.Status == client.Connecting && a.S.Persona == "" {
 		c.After(connectQuiet) // the quiet first second ends on its own
 	}
@@ -299,10 +299,7 @@ func (a *App) header(c *ui.Context) {
 			// The clay partner, 44 points: it breathes and blinks (D77).
 			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)
 			a.lookAround(c, face) // D290: it glances round as you come back
-			// D309: with more than one partner, the face sits on its own clay stone.
-			if p := a.shownPartner(); p != nil {
-				face.Size(48, 48).Radius(24).Background(t.Looks[p.Look]).Border(1, t.LookRim).Clip().AlignItems(ui.Center).Justify(ui.End)
-			}
+			// D497: with more than one partner, the figure is in its own clay (theme.UseLook).
 			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
 			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
 				name := uiText(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
@@ -371,7 +368,7 @@ func (a *App) summaryFilter(b store.Board) (filter int, ok bool) {
 		return 0, false
 	}
 	n := [4]int{
-		a.needsAcross(b),
+		a.barNeeds(b),
 		len(b.Lanes[store.LaneWorking]),
 		len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()),
 		a.doneToday(b),
@@ -428,7 +425,7 @@ func (a *App) countParts(b store.Board) []string {
 			parts = append(parts, a.L.T("header.held.soon"))
 		}
 	}
-	if n := a.needsAcross(b); n > 0 {
+	if n := a.barNeeds(b); n > 0 {
 		parts = append(parts, a.L.T("header.needs", n))
 	}
 	// Thinking is said where the reply will appear (the presence row,

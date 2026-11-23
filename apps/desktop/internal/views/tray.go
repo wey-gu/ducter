@@ -63,11 +63,24 @@ func (a *App) trayPartners() []TrayPartner {
 	var out []TrayPartner
 	shown := a.shownPartnerID()
 	for _, p := range a.S.Partners {
-		if p.ID != shown && p.Asks > 0 {
-			out = append(out, TrayPartner{ID: p.ID, Label: a.L.T("partners.switch.asks", p.Name, p.Asks)})
+		if n := a.partnerNeeds(p); p.ID != shown && n > 0 {
+			out = append(out, TrayPartner{ID: p.ID, Label: a.L.T("partners.switch.asks", p.Name, n)})
 		}
 	}
 	return out
+}
+
+// NeedsYouPartner is the partner a needs-you notification is about when it
+// is another than the one shown (D497: a click on it shows that partner's
+// conversation), "" else.
+func (a *App) NeedsYouPartner() string {
+	if !a.manyPartners() || len(a.partnerDecisions()) > 0 || len(a.barBoard().Lanes[store.LaneNeedsYou]) > 0 {
+		return ""
+	}
+	if ps := a.trayPartners(); len(ps) > 0 {
+		return ps[0].ID
+	}
+	return ""
 }
 
 // needsWho is the partner a needs-you notification names (D309): the

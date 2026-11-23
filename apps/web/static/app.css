@@ -13916,94 +13916,88 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (prefers-reduced-motion: reduce) { .chat-qr { transition: none; } }
 
-/* D309: 伙伴们 / Your partners. Each partner's look is a clay stone its face sits on: a token per
-   theme, light and dark, never a colour in a component (partners.tsx; the Mac's theme Look*). */
-:root {
-  --look-sand: #f1dcc0;
-  --look-sage: #d3e6cb;
-  --look-sky: #cfe2f3;
-  --look-plum: #ead5ea;
-  --look-apricot: #ffd9b8;
-  --look-rim: rgba(43, 33, 24, 0.08);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --look-sand: #4a3a2a;
-    --look-sage: #30452f;
-    --look-sky: #263d53;
-    --look-plum: #45304a;
-    --look-apricot: #573622;
-    --look-rim: rgba(246, 235, 221, 0.08);
-  }
-}
-:root[data-theme="dark"] {
-  --look-sand: #4a3a2a;
-  --look-sage: #30452f;
-  --look-sky: #263d53;
-  --look-plum: #45304a;
-  --look-apricot: #573622;
-  --look-rim: rgba(246, 235, 221, 0.08);
-}
-[data-look="sand"] { --look: var(--look-sand); }
-[data-look="sage"] { --look: var(--look-sage); }
-[data-look="sky"] { --look: var(--look-sky); }
-[data-look="plum"] { --look: var(--look-plum); }
-[data-look="apricot"] { --look: var(--look-apricot); }
+/* D309, D497: 伙伴们 / Your partners. Each partner is the same clay figure in its own clay: a look
+   recolours the art (hue-rotate then saturate, packages/protocol/src/partners.ts LOOK_CLAY; the
+   Mac's theme.LookClay), never a colour in a component. The page's own figure is in the shown
+   partner's clay (main.tsx sets data-clay on <html>); a face elsewhere carries its own data-look. */
+[data-look="sage"], :root[data-clay="sage"] { --clay: hue-rotate(95deg) saturate(0.62); }
+[data-look="sky"], :root[data-clay="sky"] { --clay: hue-rotate(175deg) saturate(0.85); }
+[data-look="plum"], :root[data-clay="plum"] { --clay: hue-rotate(255deg) saturate(0.7); }
+[data-look="apricot"], :root[data-clay="apricot"] { --clay: hue-rotate(-28deg) saturate(1); }
+[data-look="sand"] { --clay: none; }
+img[src$="art/idle.webp"], img[src$="art/idle_closed.webp"], img[src$="art/working.webp"], img[src$="art/needsyou.webp"],
+img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.webp"] { filter: var(--clay, none); }
 .stone {
   flex: none;
   display: inline-flex;
   align-items: flex-end;
   justify-content: center;
-  border-radius: 50%;
-  background: var(--look);
-  box-shadow: inset 0 0 0 1px var(--look-rim);
-  overflow: hidden;
 }
 .stone img {
-  width: 82%;
+  width: 100%;
   height: auto;
-  margin-bottom: 4%;
   pointer-events: none;
-}
-.top .who-face[data-look] {
-  border-radius: 50%;
-  background: var(--look);
-  box-shadow: inset 0 0 0 1px var(--look-rim);
-  padding: 2px;
+  filter: var(--clay, none);
 }
 .top .partner-switch {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: 4px;
+  margin-left: 10px;
   flex: none;
+  min-width: 0;
 }
 .top .partner-pick {
   position: relative;
   display: flex;
-  padding: 2px;
-  border-radius: 50%;
-  background: none;
-  transition: transform 0.15s ease;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 2px 10px 2px 4px;
+  border-radius: 999px;
+  background: var(--surface-sunken, var(--sunken));
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.top .partner-pick .partner-name { overflow: hidden; text-overflow: ellipsis; max-width: 8em; }
+.top .partner-pick .partner-n {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 @media (hover: hover) {
-  .top .partner-pick:hover {
-    transform: translateY(-1px);
-  }
+  .top .partner-pick:hover { color: var(--ink); background: color-mix(in srgb, var(--surface-sunken, var(--sunken)) 92%, var(--ink)); }
 }
 .top .partner-pick:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.top .partner-dot {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg);
+/* A phone's bar: the face and the number; the name is its label. */
+@media (max-width: 600px) {
+  .top .who-words { flex: 1 1 auto; min-width: 5.5em; }
+  .top .who:has(.partner-switch) .sum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* One fact, whole, never a cut one: the first (what needs you comes first); the rest is in its label. */
+  .top .who:has(.partner-switch) .sum .facts { flex-wrap: nowrap; }
+  .top .who:has(.partner-switch) .sum .facts > span:not(:first-child) { display: none; }
+  /* Nothing to count: with the others beside it, a phone says nothing rather than a cut sentence. */
+  .top .who:has(.partner-switch) .sum.none { display: none; }
+  .top .partner-switch { margin-left: 2px; gap: 2px; }
+  .top .partner-pick { width: 32px; height: 32px; padding: 0; justify-content: center; background: none; }
+  .top .partner-pick .partner-name { display: none; }
+  .top .partner-pick .partner-n { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 0.625rem; box-shadow: 0 0 0 2px var(--bg); }
 }
 .partners-set .partner-row {
   align-items: center;
@@ -14022,15 +14016,21 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   padding: 2px 0;
 }
 .look-chip {
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--look);
-  box-shadow: inset 0 0 0 1px var(--look-rim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
   padding: 0;
 }
+@media (hover: hover) {
+  .look-chip:hover { background: var(--surface-sunken, var(--sunken)); }
+}
 .look-chip.on {
-  box-shadow: inset 0 0 0 1px var(--look-rim), 0 0 0 2px var(--bg), 0 0 0 4px var(--ink-soft);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--ink-soft);
 }
 .look-chip:focus-visible {
   outline: 2px solid var(--accent);
@@ -14064,7 +14064,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   padding: var(--s3) var(--s4);
   border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--look-rim), 0 1px 0 var(--look-rim);
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 0 var(--line);
   color: var(--ink);
   text-align: left;
 }
@@ -14088,7 +14088,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .other-ask .go { color: var(--ink-soft); flex: none; }
 @media (hover: hover) {
-  .other-ask:hover { box-shadow: inset 0 0 0 1px var(--look-rim), 0 2px 0 var(--look-rim); }
+  .other-ask:hover { box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
 }
 .other-ask:focus-visible {
   outline: 2px solid var(--accent);

@@ -3,6 +3,7 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { PARTNER_LOOKS } from "@ducter/protocol";
+import { LOOK_CLAY } from "@ducter/protocol/src/partners.ts";
 import { strings } from "../src/i18n.ts";
 import { partnersWords } from "../src/i18n-partners.ts";
 
@@ -14,17 +15,27 @@ test("one name per look", () => {
 
 // The words equal the Mac's, key for key: words.test.ts checks every mirrored table (D488).
 
-test("each look is a token in light and dark, and components never hold a colour", () => {
+test("D497: each look recolours the clay figure by the protocol's one table, and components never hold a colour", () => {
   const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");
-  const tail = css.slice(css.indexOf("/* D309"));
-  for (const l of PARTNER_LOOKS) expect(tail.match(new RegExp(`--look-${l}:`, "g"))?.length).toBe(3); // light, dark media, data-theme dark
+  for (const l of PARTNER_LOOKS) {
+    const c = LOOK_CLAY[l];
+    if (c.hue === 0 && c.sat === 1) continue;
+    expect(css).toContain(`[data-look="${l}"], :root[data-clay="${l}"] { --clay: hue-rotate(${c.hue}deg) saturate(${c.sat}); }`);
+  }
   expect(src("partners.tsx")).not.toMatch(/#[0-9a-f]{6}/i);
 });
 
-test("the bar's count is one across partners, and a page asks the home for the partner it shows", () => {
+test("the bar's line speaks for the partner it sits under; each other partner's face carries its own number", () => {
   const app = src("app.ts");
   expect(app).toContain("needsAcross(");
+  expect(app).toContain("barBoard()");
+  expect(app).toMatch(/partnerNeeds\(p: PartnerInfo\)/);
+  expect(src("partners.tsx")).toContain("A.partnerNeeds(p)");
   expect(app).toMatch(/persona: this\.partnerShown/);
   // The last screen of another partner is never painted as this one's.
   expect(app).toContain("g.persona !== this.partnerShown");
+});
+
+test("D497: a push about another partner's question shows that partner first (#p=<id>/d=<id>)", () => {
+  expect(src("app.ts")).toContain("^#p=([^/]{1,64})\\/(.+)$");
 });

@@ -15,6 +15,7 @@ import { join } from "node:path";
 import type { Bodies, LangTag, LogEvent } from "@ducter/protocol";
 import { fill, normalizeTag, words } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
+import { isOtherChannel, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { APNS_PREFIX, type ApnsSender } from "./apns.ts";
@@ -368,8 +369,10 @@ function partnerTitle(task: string | undefined, who: string | undefined, locale:
   return task && who ? fill(copy(locale).partnerTask, { who, task }) : task;
 }
 
-export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: LangTag; platform: string; now: number; /** D309: whose (only with more than one partner). */ who?: string }): PushMessage {
+export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: LangTag; platform: string; now: number; /** D309: whose (only with more than one partner). */ who?: string; /** D497: another partner's own question: its tap shows that partner. */ pid?: string }): PushMessage {
   const c = copy(o.locale);
+  // D497: #p=<partner>/d=<id>: the app shows that partner's conversation, then the question.
+  const at = `app#${o.pid && o.who ? `p=${encodeURIComponent(o.pid)}/` : ""}d=${encodeURIComponent(d.decisionId)}`;
   // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
   // never answers for the user (the card's own default line).
   const peer = d.asker ? askerLine(d.asker.agent, d.asker.where, o.locale) : undefined;
@@ -377,14 +380,14 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // the owner's own words or a choice on the card), time-sensitive so it comes through.
   if (d.call?.kind === "question")
     // D291: the title says what it is about on its own; the app's name already says it comes from Ducter.
-    return { title: c.askingTitle, body: `${d.question} ${c.onTheLine}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
+    return { title: c.askingTitle, body: `${d.question} ${c.onTheLine}`, tag: `d:${d.decisionId}`, url: at, decisionId: d.decisionId, level: "time-sensitive" };
   // D291: the title says what it is about on its own (who asks, or the task); the app's own name
   // already says it comes from Ducter, so the partner's name is the title only when nothing else is.
   const msg: PushMessage = {
     title: peer ?? partnerTitle(o.task, o.who, o.locale) ?? o.who ?? o.persona,
     body: `${d.question} ${d.asker ? c.peerWaits : defaultLine(d, o.locale, o.now, o.platform !== "ios" && !d.call ? goTitle(d, c) : undefined)}`,
     tag: `d:${d.decisionId}`,
-    url: `app#d=${encodeURIComponent(d.decisionId)}`,
+    url: at,
     decisionId: d.decisionId,
   };
   // iOS shows no action buttons on web push (D52 Q11): tap opens the decision.
@@ -488,7 +491,12 @@ interface Item {
   done?: { taskId: string; title: string; summary?: string; failed?: boolean };
   /** D309: whose it is, said only on a home with more than one partner. */
   who?: string;
+  /** D497: a question in another partner's conversation: its tap shows that conversation first. */
+  pid?: string;
 }
+
+/** D497: the partner whose own conversation a question is in, when it is another than the default's. */
+const otherPartner = (e: LogEvent): string | undefined => (isOtherChannel(e.stream) ? partnerOfStream(e.stream) : undefined);
 
 export interface Pusher {
   /** What would go out now (for tests and /api/push/test). */
@@ -579,7 +587,7 @@ export function createPusher(opts: {
         if (list.length > 1 || morning) msg = coalescedMessage(list.length, { persona, locale: s.locale, morning });
         else if (list[0]!.kind === "decision") {
           const d = list[0]!.decision!;
-          msg = decisionMessage(d, { persona, task: d.taskId ? opts.taskTitle(d.taskId) : undefined, locale: s.locale, platform: s.platform, now: clock.now(), ...(list[0]!.who ? { who: list[0]!.who } : {}) });
+          msg = decisionMessage(d, { persona, task: d.taskId ? opts.taskTitle(d.taskId) : undefined, locale: s.locale, platform: s.platform, now: clock.now(), ...(list[0]!.who ? { who: list[0]!.who } : {}), ...(list[0]!.pid ? { pid: list[0]!.pid } : {}) });
         } else msg = doneMessage(list[0]!.done!, { persona, locale: s.locale, ...(list[0]!.who ? { who: list[0]!.who } : {}) });
         return sendPush(s, msg, v, opts.fetcher, "high", opts.apns);
       }),
@@ -635,12 +643,14 @@ export function createPusher(opts: {
           const key = `d:${d.decisionId}`;
           if (!enabled || pushed.has(key)) return;
           const who = opts.partnerOf?.(e);
-          const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d, ...(who ? { who } : {}) };
+          const pid = otherPartner(e);
+          const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d, ...(who ? { who } : {}), ...(who && pid ? { pid } : {}) };
           running = running.then(() => deliver([it], false, true)).catch((err) => console.warn(`[push] call question: ${(err as Error).message}`));
           return;
         }
         const who = opts.partnerOf?.(e);
-        add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d, ...(who ? { who } : {}) });
+        const pid = otherPartner(e);
+        add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d, ...(who ? { who } : {}), ...(who && pid ? { pid } : {}) });
         return;
       }
       case "user_msg":
@@ -667,7 +677,8 @@ export function createPusher(opts: {
         const d = asked.get(b.decisionId) ?? opts.decisionOf?.(b.decisionId);
         if (!d || d.findId) return;
         const who = opts.partnerOf?.(e);
-        add({ key: `d:${b.decisionId}:${e.seq}`, seq: e.seq, kind: "decision", decision: untimed(d), ...(who ? { who } : {}) });
+        const pid = otherPartner(e);
+        add({ key: `d:${b.decisionId}:${e.seq}`, seq: e.seq, kind: "decision", decision: untimed(d), ...(who ? { who } : {}), ...(who && pid ? { pid } : {}) });
         return;
       }
       case "read_receipt":

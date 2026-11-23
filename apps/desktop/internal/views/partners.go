@@ -1,10 +1,10 @@
 package views
 
 // D309: 伙伴们 / Your partners (design/personas.md), the same as the web's
-// (apps/web/src/partners.tsx). With one partner nothing here shows. With
-// more, the conversation bar's face sits on its partner's own clay stone,
-// the others sit beside the name as small stones (a dot when one has
-// something waiting), and a click on one shows its conversation. Settings
+// (apps/web/src/partners.tsx). With one partner nothing here shows. D497:
+// with more, each partner is the clay figure in its own clay (theme.LookClay),
+// the others sit beside the shown one in the bar as face, name and their
+// own number, and a click on one (or ⌥⌘1–⌥⌘4) shows its conversation. Settings
 // › 伙伴 lists them, changes a look and adds one (a name, what it looks
 // after and a colour). D486: what each looks after shows under its name, a
 // partner's name and that line change in place, and another partner is
@@ -51,6 +51,15 @@ func (a *App) shownPartnerID() string {
 	return protocol.DefaultPartner
 }
 
+// shownLook is the shown partner's look, "" with one partner (D497: the
+// figure is then the art as drawn, whatever look the default was given).
+func (a *App) shownLook() string {
+	if p := a.shownPartner(); p != nil {
+		return p.Look
+	}
+	return ""
+}
+
 // shownPartner is the shown partner as the partners frame says it (nil with one).
 func (a *App) shownPartner() *protocol.PartnerInfo {
 	if !a.manyPartners() {
@@ -86,6 +95,58 @@ func (a *App) needsAcross(b store.Board) int {
 	return protocol.NeedsAcross(len(b.Lanes[store.LaneNeedsYou])+len(a.partnerDecisions()), a.S.Partners, a.shownPartnerID())
 }
 
+// taskPartner is whose a task is: its card's partner, else the default's.
+func (a *App) taskPartner(t *store.Task) string {
+	if t != nil && t.Card != nil && a.partnerByID(t.Card.Persona) != nil {
+		return t.Card.Persona
+	}
+	return protocol.DefaultPartner
+}
+
+// barBoard is the board the bar's counts line speaks for (D497): with more
+// than one partner, the shown partner's own tasks, since the line sits
+// under its name and every other partner's own number is on its face
+// beside it; with one, all of it. The person's one count (D309) stays on
+// the Dock badge, the menu bar and On hand.
+func (a *App) barBoard() store.Board {
+	b := a.S.Board()
+	if !a.manyPartners() {
+		return b
+	}
+	shown := a.shownPartnerID()
+	out := store.Board{Counts: b.Counts}
+	for i, lane := range b.Lanes {
+		for _, t := range lane {
+			if a.taskPartner(t) == shown {
+				out.Lanes[i] = append(out.Lanes[i], t)
+			}
+		}
+	}
+	return out
+}
+
+// barNeeds is the needs-you count the bar's line says: with more than one
+// partner the shown one's own (its tasks and its conversation's
+// questions), else the person's one count.
+func (a *App) barNeeds(b store.Board) int {
+	if !a.manyPartners() {
+		return a.needsAcross(b)
+	}
+	return len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+}
+
+// partnerNeeds is what waits on the person from another partner (D497):
+// its own conversation's questions and its tasks that need them.
+func (a *App) partnerNeeds(p protocol.PartnerInfo) int {
+	n := p.Asks
+	for _, t := range a.S.Board().Lanes[store.LaneNeedsYou] {
+		if a.taskPartner(t) == p.ID {
+			n++
+		}
+	}
+	return n
+}
+
 // SwitchPartner shows another partner's conversation: the window starts
 // over on it with a new hello; the next launch and reconnects keep it.
 func (a *App) SwitchPartner(id string) {
@@ -117,16 +178,20 @@ func (a *App) SwitchPartner(id string) {
 // each connect): "" for the default.
 func (a *App) PartnerFor() string { return a.Local.Partner() }
 
-// stone is a partner's look: its clay face on its own colour.
+// stone is a partner's face: the clay figure in its own clay (D497; it
+// was the face on a coloured disc, D309), still, standing on the box's
+// bottom edge. The name "stone" stays for the code; nothing on screen says it.
 func (a *App) stone(c *ui.Context, key, look string, size float32) ui.Element {
-	t := a.T
-	bg, ok := t.Looks[look]
-	if !ok {
-		bg = t.Looks["sand"]
-	}
-	box := ui.Box(c.Key("stone:"+key)).Size(size, size).Radius(size/2).Background(bg).Border(1, t.LookRim).Clip().
-		AlignItems(ui.Center).Justify(ui.End).Shrink(0)
-	box.Children(func() { a.partnerFace(c, "stone-"+key, theme.Idle, size*0.8) })
+	box := ui.Box(c.Key("stone:"+key)).Size(size, size).AlignItems(ui.Center).Justify(ui.End).Shrink(0).AccessHidden(true)
+	box.Draw(func(pt *ui.Painter, r ui.Rect) {
+		bmp := theme.FaceAs(look, theme.Idle, size*2)
+		if bmp == nil {
+			return
+		}
+		at := fitIn(bmp, r)
+		at.Y = r.Y + r.H - at.H
+		pt.Image(bmp, at, ui.Contain)
+	})
 	return box
 }
 
@@ -232,7 +297,10 @@ func (a *App) passedLine(c *ui.Context, key, from string) {
 	})
 }
 
-// partnerSwitch is the other partners beside the name in the bar.
+// partnerSwitch is the other partners beside the shown one in the bar
+// (D497): each its own face in its own clay and its name, never a bare
+// face behind a tooltip; one with its own questions waiting carries their
+// number. Hover says what it looks after. ⌥⌘1–⌥⌘4 switch too.
 func (a *App) partnerSwitch(c *ui.Context) {
 	// D486: the partner this window showed was removed: it shows the default's.
 	if id := a.S.Persona; id != "" && id != protocol.DefaultPartner && a.S.Partners != nil && a.S.Welcomed {
@@ -249,21 +317,35 @@ func (a *App) partnerSwitch(c *ui.Context) {
 	}
 	t := a.T
 	shown := a.shownPartnerID()
-	ui.Row(c.Key("partner-switch")).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Role(ui.RoleGroup).Label(a.L.T("partners.title")).Children(func() {
-		for _, p := range a.S.Partners {
+	ui.Row(c.Key("partner-switch")).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Margin(0, 0, 0, t.S3).Role(ui.RoleGroup).Label(a.L.T("partners.title")).Children(func() {
+		for i, p := range a.S.Partners {
 			if p.ID == shown {
 				continue
 			}
+			needs := a.partnerNeeds(p)
 			label := a.L.T("partners.switch", p.Name)
-			if p.Asks > 0 {
-				label = a.L.T("partners.switch.asks", p.Name, p.Asks)
+			if needs > 0 {
+				label = a.L.T("partners.switch.asks", p.Name, needs)
+			}
+			tip := label + " (⌥⌘" + fmt.Sprint(i+1) + ")"
+			if p.About != "" {
+				tip += "\n" + a.L.T("partners.about.shown", p.About)
 			}
 			id := p.ID
-			b := ui.Box(c.Key("pick:"+p.ID)).Padding(2, 2).Radius(18).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Tooltip(label).Focusable()
+			b := ui.Row(c.Key("pick:"+p.ID)).Gap(6).AlignItems(ui.Center).Padding(2, t.S2+2, 2, 3).Radius(999).Height(30).
+				Background(t.SurfaceSunken).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Tooltip(tip).Focusable()
+			ink := t.InkSoft
+			if b.Hovered() || b.Pressed() {
+				b.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
+				ink = t.Ink
+			}
 			b.Children(func() {
-				a.stone(c, "pick-"+p.ID, p.Look, 28)
-				if p.Asks > 0 {
-					ui.Box(c.Key("dot:"+p.ID)).Size(9, 9).Radius(4.5).Background(t.Accent).Border(2, t.Bg).Absolute().Top(1).Right(1).AccessHidden(true)
+				a.stone(c, "pick-"+p.ID, p.Look, 24)
+				uiText(c, p.Name).FontSize(13).FontWeight(600).TextColor(ink).SingleLine().AccessHidden(true)
+				if needs > 0 {
+					ui.Box(c.Key("n:"+p.ID)).MinWidth(18).Height(18).Padding(0, 5).Radius(9).Background(t.NeedsYou.Surface).AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true).Children(func() {
+						uiText(c, fmt.Sprint(needs)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+					})
 				}
 			})
 			if b.Clicked() {
@@ -273,7 +355,22 @@ func (a *App) partnerSwitch(c *ui.Context) {
 	})
 }
 
-// lookPick is the five colours, the chosen one ringed; it returns the one clicked or "".
+// partnerKeys: ⌥⌘1–⌥⌘4 show the first to fourth partner (D497), in the
+// order Settings lists them, the default first.
+func (a *App) partnerKeys(c *ui.Context) {
+	if !a.manyPartners() {
+		return
+	}
+	for i, k := range []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4} {
+		if i < len(a.S.Partners) && c.Shortcut(ui.Cmd|ui.Alt, k) {
+			a.SwitchPartner(a.S.Partners[i].ID)
+			return
+		}
+	}
+}
+
+// lookPick is the five clays (D497: the figure in each, not a swatch), the
+// chosen one ringed; it returns the one clicked or "".
 func (a *App) lookPick(c *ui.Context, key, value string) string {
 	t := a.T
 	hit := ""
@@ -281,11 +378,14 @@ func (a *App) lookPick(c *ui.Context, key, value string) string {
 		for _, l := range protocol.PartnerLooks {
 			on := l == value
 			name := a.L.T("partners.look." + l)
-			chip := ui.Box(c.Key("look:"+key+":"+l)).Size(22, 22).Radius(11).Background(t.Looks[l]).Border(1, t.LookRim).
+			chip := ui.Box(c.Key("look:"+key+":"+l)).Size(34, 34).Radius(17).Padding(3).AlignItems(ui.Center).Justify(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(name).Tooltip(name).AccessSelected(on).Focusable()
 			if on {
-				chip.Border(2, t.InkSoft)
+				chip.Border(2, t.InkSoft).Background(t.Surface)
+			} else if chip.Hovered() {
+				chip.Background(t.SurfaceSunken)
 			}
+			chip.Children(func() { a.stone(c, "lk-"+key+"-"+l, l, 24) })
 			if chip.Clicked() {
 				hit = l
 			}

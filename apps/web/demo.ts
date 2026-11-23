@@ -310,7 +310,7 @@ if (process.env.DEMO_PARTNERS === "1") {
     const s = `channel:${home.partner.id}`;
     const m = log.append({ stream: s, origin: "user", kind: "user_msg", body: { text: zh ? "周六上午带小米去看牙，帮我约一下社区那家诊所" : "Book Mia a dentist appointment at the clinic down the road, Saturday morning" } });
     log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "诊所周六上午还有 9:30 和 10:45 两个号。9:30 那个离游泳课近一点。" : "The clinic has 9:30 and 10:45 open on Saturday morning. 9:30 sits closer to her swimming lesson.", replyTo: m.seq } });
-    log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_home_dentist", question: zh ? "约周六 9:30 吗？" : "Book Saturday at 9:30?", goLabel: zh ? "约 9:30" : "Book 9:30", defaultOption: "hold", reversible: true } });
+    log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_home_dentist", question: zh ? "约周六 9:30 吗？" : "Book Saturday at 9:30?", goLabel: zh ? "就约这个" : "Book it", defaultOption: "hold", reversible: true } });
     // D486: words the person said to the work partner, passed on to the home one.
     const said = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "跟小家说一声，周六下午提醒我带小米去打疫苗" : "Tell Home to remind me about Mia's vaccine on Saturday afternoon" } });
     log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "好，转给小家了，它会在它那边回你。" : "Done, I passed it to Home. It'll answer you there.", replyTo: said.seq } });
@@ -324,6 +324,9 @@ if (process.env.DEMO_PARTNERS === "1") {
     hv.log.append({ stream: "task:t_home1", origin: "task", kind: "report", body: { taskId: "t_home1", state: "progress", summary: zh ? "在看游泳馆的课表" : "Reading the pool's timetable", questions: [], evidence: [] } });
     await tick();
   }
+  // D497: DEMO_PARTNER_NEW=1: a third partner the person made but never talked to (its empty
+  // conversation is its first meeting: who it is, what it looks after, its own starters).
+  if (process.env.DEMO_PARTNER_NEW === "1") core.partners.add({ name: zh ? "多比" : "Dobby", look: "sky", about: zh ? "读书、跑步和周末的安排" : "reading, running and weekend plans" });
 }
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so

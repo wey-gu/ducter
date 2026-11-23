@@ -28,7 +28,7 @@
 | Internal | Shown (中 / EN) | Meaning |
 |---|---|---|
 | persona, main AI | its **name** (default "Ducter"); as a category 伙伴 / Partner | Whoever you're talking to |
-| more than one persona (D309, D312, D486) | Settings › 伙伴's **伙伴们 / Your partners** · **再加一个伙伴 / Add a partner** (help **比如一个管工作、一个管家里，或者家里每人一个。/ One for work and one for home, say, or one for each person in the family.**) · **叫它什么 / Its name** · **它管什么 / What it looks after** (placeholder **比如：家里的事、看病、孩子 / For example: home, the doctor, the kids**; shown **管：{about} / Looks after: {about}**) · **改一下 / Change** · **移除 / Remove**, **移除{name}？ / Remove {name}?**, **它的对话会留着，它的任务交给{default}。/ Its conversation is kept, and {default} takes over its tasks.**, **留着 / Keep** · over passed words **{name} 转过来的 / Passed on by {name}** (gone: **另一个伙伴转过来的 / Passed on by another partner**) · Settings' foot with one partner **也可以直接跟我说：「再给我做一个管家里事的伙伴」。/ Or just tell me: "make me another partner for things at home".** · **它的颜色 / Its colour** (**沙色 / Sand**, **青苔 / Sage**, **天蓝 / Sky**, **梅子 / Plum**, **杏色 / Apricot**) · **加上 / Add** · **不加了 / Cancel** · **正在聊 / Talking now** · **换到{name} / Switch to {name}** (with something waiting: **换到{name}，有 {n} 个等你 / Switch to {name}, {n} need you**) · **{name} 来了。/ {name} is here.** · On hand's row for another partner's own question **{name} 问你 / {name} asks you** (D312); a push's title **{name}：{task} / {name}: {task}** | Shown only once there is a second partner (the add row and the foot show with one). Its look is a clay **stone** behind its face (never a word in the UI). Never "persona", "profile", "account", "agent" |
+| more than one persona (D309, D312, D486, D497) | Settings › 伙伴's **伙伴们 / Your partners** · **再加一个伙伴 / Add a partner** (help **比如一个管工作、一个管家里，或者家里每人一个。/ One for work and one for home, say, or one for each person in the family.**) · **叫它什么 / Its name** · **它管什么 / What it looks after** (placeholder **比如：家里的事、看病、孩子 / For example: home, the doctor, the kids**; shown **管：{about} / Looks after: {about}**) · **改一下 / Change** · **移除 / Remove**, **移除{name}？ / Remove {name}?**, **它的对话会留着，它的任务交给{default}。/ Its conversation is kept, and {default} takes over its tasks.**, **留着 / Keep** · over passed words **{name} 转过来的 / Passed on by {name}** (gone: **另一个伙伴转过来的 / Passed on by another partner**) · Settings' foot with one partner **也可以直接跟我说：「再给我做一个管家里事的伙伴」。/ Or just tell me: "make me another partner for things at home".** · **它的颜色 / Its colour** (D497: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**, **梅子 / Plum**, **珊瑚 / Coral**) · **加上 / Add** · **不加了 / Cancel** · **正在聊 / Talking now** · **换到{name} / Switch to {name}** (with something waiting: **换到{name}，有 {n} 个等你 / Switch to {name}, {n} need you**) · **{name} 来了。/ {name} is here.** · On hand's row for another partner's own question **{name} 问你 / {name} asks you** (D312); a push's title **{name}：{task} / {name}: {task}** · D497: its first meeting **我管{about}。跟{default}说的我看不到，你跟我说的只在这儿。/ I look after {about}. I can't see what you tell {default}; what you tell me stays here.** (no about: **跟{default}说的我看不到，你跟我说的只在这儿。说一句就行。/ I can't see what you tell {default}; what you tell me stays here. Just say the word.**); 键盘's **第 1 到第 4 个伙伴 / The first to fourth partner** (⌥⌘1–⌥⌘4) | Shown only once there is a second partner (the add row and the foot show with one). D497: its look is the clay figure in its own clay (never a word in the UI); the others sit in the bar as face, name and their own number. Never "persona", "profile", "account", "agent" |
 | Log, channel | (hidden) "对话 / the conversation" | |
 | job | (no card; just an ack and a status line) | Any work not answered at once. Executed in turn, in a fork, or in a window (principle 6) |
 | web look (D380; the first fork) | (no name of its own: the waiting line **在网上查… / Looking it up on the web…**, then the answer naming its site) | One live fact from the public web (the weather, a version, one price), looked up in seconds beside the conversation by a session holding only web tools; no card, no row in On hand; what it can't settle goes to a browsing task, said in one line (**网上一下没查准，我开个任务仔细查：… / A quick look didn't settle it, so a task is checking properly: …**) |
@@ -484,16 +484,20 @@ Two primitives plus one property cover every case.
   The identity is bound once (the user's own if they set one, else Ducter's `ducter`) and
   survives a rename: the name is only its label (D141).
 - **Attention is the person's.** On hand aggregates every persona: each row and card carries its
-  persona's stone, and another persona's own questions are listed there too (D312). Conversations
+  persona's face in its own clay, and another persona's own questions are listed there too (D312). Conversations
   stay separate.
 - **Isolated by default.** A persona reads or asks another only after the user links them.
   Its conversation is its own Log stream (`channel` for the default, `channel:<id>` for another);
   a client shows one at a time and never receives another's words, only its count (D309).
-- **One count, one board.** The needs-you count is one across personas; On hand stays one board.
+- **One count, one board.** The needs-you count is one across personas (the Dock badge, the menu
+  bar, On hand); the bar's line under a partner's name says that partner's, each other partner's
+  face beside it its own (D497). On hand stays one board.
   A push and the Mac's menu bar name whose it is once there is more than one (D309).
-- **Recognizable at a glance:** its face on its own clay stone, a look token (`sand` `sage` `sky`
-  `plum` `apricot`, light and dark); a clay character per persona later (D309, `personas.md`).
-- **Creating one is light:** a name and a colour, in Settings › 伙伴 (D309); at most four. It
+- **Recognizable at a glance:** the same clay figure in its own clay, a look token (`sand` `sage`
+  `sky` `plum` `apricot`) that recolours every state of the art, and its name beside it; a clay
+  character per persona later (D497, research/215, `personas.md`).
+- **Creating one is light:** a name, what it looks after and a colour, in Settings › 伙伴 or by
+  asking (D309, D486); at most four. Its empty conversation is its first meeting (D497). It
   answers in its own session from its first message, with its own Mem identity (`ducter-<id>`)
   once Mem answers; whatever belongs to its tasks, questions, waits and routines lands in its own
   conversation (D312). Mem's birth-draft flow is later (`personas.md`).

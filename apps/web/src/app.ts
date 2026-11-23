@@ -2009,6 +2009,25 @@ class AppState {
     return (this.S.onHand?.asks ?? []).filter((a) => a.persona !== shown && this.partners!.some((p) => p.id === a.persona));
   }
 
+  /** D497: whose a task is: its card's partner, else the default's. */
+  taskPartner(t: { card?: { persona?: string } }): string {
+    const p = t.card?.persona;
+    return p && this.partners?.some((x) => x.id === p) ? p : DEFAULT_PARTNER;
+  }
+
+  /** D497: the board the bar's counts line speaks for: the shown partner's own tasks with more than one partner. */
+  barBoard(): ReturnType<Store["board"]> {
+    const b = this.S.board();
+    if (!this.manyPartners()) return b;
+    const shown = this.S.persona || this.partnerShown || DEFAULT_PARTNER;
+    return { ...b, lanes: b.lanes.map((l) => l.filter((t) => this.taskPartner(t) === shown)) } as ReturnType<Store["board"]>;
+  }
+
+  /** D497: what waits on the person from another partner: its own questions and its tasks that need them. */
+  partnerNeeds(p: PartnerInfo): number {
+    return p.asks + this.S.board().lanes[LANE.needs]!.filter((t) => this.taskPartner(t) === p.id).length;
+  }
+
   /** D309: the partner shown, as the partners frame says it (undefined with one partner). */
   shownPartner(): PartnerInfo | undefined {
     if (!this.manyPartners()) return undefined;
@@ -2739,6 +2758,14 @@ class AppState {
 
   /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification), #settings. */
   fromHash(hash = location.hash) {
+    // D497: a push about another partner's own question names it first: #p=<partner>/d=<id>.
+    const pm = /^#p=([^/]{1,64})\/(.+)$/.exec(hash);
+    if (pm) {
+      const id = decodeURIComponent(pm[1]!);
+      hash = `#${pm[2]}`;
+      if (this.partners) this.switchPartner(id);
+      else if (id !== this.partnerShown) savePartner((this.partnerShown = id)); // before the first hello
+    }
     const task = /^#task=(.+)$/.exec(hash);
     const d = /^#d=(.+)$/.exec(hash);
     if (task) {
@@ -3470,7 +3497,7 @@ class AppState {
     // D209: painted from the last screen, the line it showed then stands until the home answers
     // (a second at most), rather than "connecting" on every open.
     if (!this.S.welcomed && !this.fromGlance) return { words: L.t("conn.connecting"), link: false, filter: 0 };
-    const b = this.S.board();
+    const b = this.barBoard();
     const parts: string[] = [];
     const kinds: number[] = [];
     const add = (kind: number, words: string) => (parts.push(words), kinds.push(kind));
@@ -3479,14 +3506,17 @@ class AppState {
     // sent meanwhile is never met by silence alone.
     const held = this.brainNow?.held;
     if (held?.waits) add(0, held.resetKnown ? L.t("header.held", stamp(L, held.until)) : L.t("header.held.soon"));
-    const needs = needsAcross(b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length, this.partners, this.S.persona || this.partnerShown);
+    // D497: with more than one partner the line speaks for the partner it sits under (the others' own
+    // numbers are on their faces beside it); with one, it is the person's one count (D309).
+    const here = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
+    const needs = this.manyPartners() ? here : needsAcross(here, this.partners, this.S.persona || this.partnerShown);
     if (needs) add(1, L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) add(2, L.t("header.working", b.lanes[LANE.working]!.length));
     // What it waits for is felt here, not in the conversation (D104, D115).
     const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
     if (waiting && parts.length < 2) add(3, L.t("header.waiting", waiting));
-    const done = this.doneToday();
+    const done = doneTodayOf(b.lanes[LANE.done]!);
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
     return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };

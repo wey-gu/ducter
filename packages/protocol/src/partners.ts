@@ -9,12 +9,25 @@ export const DEFAULT_PARTNER = "default";
 export const PARTNERS_MAX = 4;
 
 /**
- * A partner's look: which clay stone its face sits on (design/personas.md "Look"). A token name,
- * never a colour: each theme says the colour, light and dark (web app.css --look-*, Mac theme Look*).
- * "sand" is the default partner's own, the Pebble clay it has always had.
+ * A partner's look: the colour of its own clay (design/personas.md "Look", D497). A token name,
+ * never a colour: the character is the same clay figure, recoloured by LOOK_CLAY. "sand" is the
+ * default partner's own, the orange Pebble clay it has always had.
  */
 export const PARTNER_LOOKS = ["sand", "sage", "sky", "plum", "apricot"] as const;
 export type PartnerLook = (typeof PARTNER_LOOKS)[number];
+
+/**
+ * D497: how each look recolours the clay figure: a hue turn (degrees) and a saturation, applied as
+ * CSS's `hue-rotate()` then `saturate()` (web app.css --clay) and the same sRGB matrices on the Mac
+ * (theme.Tinted). The default's sand is the art as drawn. "apricot" keeps its id; it reads as coral.
+ */
+export const LOOK_CLAY: Record<PartnerLook, { hue: number; sat: number }> = {
+  sand: { hue: 0, sat: 1 },
+  sage: { hue: 95, sat: 0.62 },
+  sky: { hue: 175, sat: 0.85 },
+  plum: { hue: 255, sat: 0.7 },
+  apricot: { hue: -28, sat: 1 },
+};
 
 /** One partner as every client sees it. asks: its conversation's own open questions (not its tasks'). */
 export interface PartnerInfo {

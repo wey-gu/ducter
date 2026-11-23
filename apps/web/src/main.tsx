@@ -16,6 +16,7 @@ import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.
 import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
+import { partnerKey } from "./partners.tsx";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
@@ -62,6 +63,9 @@ function App() {
     if (inApp()) tellApp({ base: base.href, locale: lang, personaName: A.S.personaName });
   }, [lang]);
   const r = A.route;
+  // D497: the page's clay figure is in the shown partner's own clay (app.css --clay); one partner: as drawn.
+  const clay = A.shownPartner()?.look ?? "";
+  if (typeof document !== "undefined" && (document.documentElement.dataset.clay ?? "") !== clay) document.documentElement.dataset.clay = clay;
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
   const wide = useWide();
@@ -298,6 +302,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", openKey);
   addEventListener("keydown", walkKey);
   addEventListener("keydown", nthKey);
+  addEventListener("keydown", partnerKey); // D497: ⌥⌘1–⌥⌘4
   addEventListener("keydown", keysKey);
   addEventListener("keydown", densityKey); // D457
   // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a

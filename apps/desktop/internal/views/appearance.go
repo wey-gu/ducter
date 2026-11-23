@@ -41,6 +41,7 @@ func (a *App) followAppearance(c *ui.Context) bool {
 	ap := &a.appear
 	dark := a.wantDark(c.Theme())
 	defer func() { theme.UseDarkArt(a.T.Dark) }()
+	theme.UseLook(a.shownLook()) // D497: the figure is in the shown partner's own clay
 	if !ap.known || dark != ap.dark {
 		first := !ap.known
 		ap.known, ap.dark = true, dark

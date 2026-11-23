@@ -45,7 +45,7 @@ func Art(p Presence, px float32) *ui.Bitmap {
 	if px > 160 {
 		size = 400
 	}
-	return load(fmt.Sprintf("art/ducter_%s@%d.png", p, size))
+	return loadAs(fmt.Sprintf("art/ducter_%s@%d.png", p, size), shownLook())
 }
 
 // Face is the character in a presence cut to its own outline (no square
@@ -58,7 +58,7 @@ func Face(p Presence, px float32) *ui.Bitmap {
 	if px > 128 {
 		size = 256
 	}
-	return load(fmt.Sprintf("art/crop/ducter_%s@%d.png", p, size))
+	return loadAs(fmt.Sprintf("art/crop/ducter_%s@%d.png", p, size), shownLook())
 }
 
 // Lid is an eyelid's box over the idle face's eye (the eye and its
@@ -82,7 +82,7 @@ func FaceClosed(px float32) *ui.Bitmap {
 	if px > 128 {
 		size = 256
 	}
-	return load(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size))
+	return loadAs(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size), shownLook())
 }
 
 // ArtClosed is the square idle art with its eyes closed, the size
@@ -92,7 +92,7 @@ func ArtClosed(px float32) *ui.Bitmap {
 	if px > 160 {
 		size = 400
 	}
-	return load(fmt.Sprintf("art/ducter_idle_closed@%d.png", size))
+	return loadAs(fmt.Sprintf("art/ducter_idle_closed@%d.png", size), shownLook())
 }
 
 // IdleSquareContent is where the cropped idle art sits in the square

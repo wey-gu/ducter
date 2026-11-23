@@ -24,7 +24,7 @@ import type { SettingsStore } from "./settings.ts";
 import type { RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
-import { firstScreen, starters, type FirstScreenInput } from "./first-screen.ts";
+import { firstScreen, partnerScreen, starters, type FirstScreenInput } from "./first-screen.ts";
 import { firstWords, forgetFirstWords, lookWords } from "./first-words.ts";
 import { addKey } from "./api-key.ts";
 import { keyWords, normalizeTag } from "@ducter/protocol";
@@ -640,7 +640,24 @@ export function createWsHandler(deps: WsDeps) {
   };
 
   // D149: what the empty conversation says, from names and metadata the home already has.
-  const firstScreenFor = async (tz?: string): Promise<FirstScreen> => {
+  const firstScreenFor = async (tz?: string, partner?: string): Promise<FirstScreen> => {
+    // D497: a second partner's empty conversation says who it is and starts from its own part.
+    const other = partner && partner !== DEFAULT_PARTNER ? deps.partners?.get(partner) : undefined;
+    if (other) {
+      const own = tasks.list().filter((t) => t.persona === other.id);
+      return partnerScreen({
+        tasks: own,
+        onHand: { missed: [] },
+        noted: [],
+        apps: [],
+        computers: [],
+        talked: log.read({ stream: channelOf(other.id), kinds: ["user_msg"], limit: 1 }).length > 0,
+        now: new Date(),
+        ...(tz ? { tz } : {}),
+        about: other.about ?? "",
+        defaultName: deps.partners?.nameOf(DEFAULT_PARTNER) || core.persona.name,
+      });
+    }
     const noted = deps.settings ? (await deps.settings.view()).mem.noted : [];
     const apps: FirstScreenInput["apps"] = [];
     for (const c of deps.connections?.view() ?? []) {
@@ -745,7 +762,7 @@ export function createWsHandler(deps: WsDeps) {
   const refreshFirstScreens = () => {
     for (const ws of sockets) {
       if (!ws.data.live || ws.data.client === "cli" || ws.data.client === "handset") continue;
-      void firstScreenFor(ws.data.tz)
+      void firstScreenFor(ws.data.tz, ws.data.partner)
         .then((first) => sockets.has(ws) && send(ws, { t: "first_screen", first }))
         .catch(() => undefined);
     }
@@ -836,7 +853,7 @@ export function createWsHandler(deps: WsDeps) {
         // The empty conversation's words (D149), for the apps only; a failure leaves the client's own.
         if (f.client !== "cli") deps.proactive?.()?.hello(typeof f.tz === "string" ? f.tz : undefined);
         if (f.client !== "cli")
-          void firstScreenFor(f.tz)
+          void firstScreenFor(f.tz, ws.data.partner)
             .then(async (first) => {
               if (!sockets.has(ws)) return;
               send(ws, { t: "first_screen", first });

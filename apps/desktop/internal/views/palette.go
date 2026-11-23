@@ -81,6 +81,29 @@ type palState struct {
 
 // palPlaces are the places 去 / Go to offers.
 func (a *App) palPlaces() []palPlace {
+	return append(a.palPartners(), a.palPlainPlaces()...)
+}
+
+// palPartners (D497): with more than one partner, each other partner is a
+// place to go: 换到{name} / Switch to {name}, with its key.
+func (a *App) palPartners() []palPlace {
+	if !a.manyPartners() {
+		return nil
+	}
+	var out []palPlace
+	shown := a.shownPartnerID()
+	for i, p := range a.S.Partners {
+		if p.ID != shown && i < 4 {
+			out = append(out, palPlace{palPartner + p.ID, a.L.T("partners.switch", p.Name), fmt.Sprintf("⌥⌘%d", i+1)})
+		}
+	}
+	return out
+}
+
+// palPartner starts a palette place that is a partner.
+const palPartner = "partner:"
+
+func (a *App) palPlainPlaces() []palPlace {
 	return []palPlace{
 		{"conv", a.L.T("pal.go.conv"), "⌘1"},
 		{"onhand", a.L.T("pal.go.onhand"), "⌘2"},
@@ -203,6 +226,10 @@ func (a *App) palClose() {
 // palGoTo opens a place.
 func (a *App) palGoTo(id string) {
 	a.palClose()
+	if strings.HasPrefix(id, palPartner) {
+		a.SwitchPartner(strings.TrimPrefix(id, palPartner))
+		return
+	}
 	switch id {
 	case "conv":
 		a.Route = RouteConversation

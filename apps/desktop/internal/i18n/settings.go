@@ -50,7 +50,7 @@ var zhSettings = Table{
 
 	"settings.look.group":    "外观",
 	"settings.lang.group":    "语言和对话",
-	"settings.lang.help":     "只改这个窗口。它跟你说话用什么语言，在「伙伴」里改。",
+	"settings.lang.help":     "只改这个窗口；回你用的语言在「伙伴」里。",
 	"settings.sound.row":     "开场的声音",
 	"settings.sound.play":    "试听",
 	"settings.sound.stop":    "停止",
@@ -124,7 +124,7 @@ var enSettings = Table{
 
 	"settings.look.group":    "Look",
 	"settings.lang.group":    "Language and conversation",
-	"settings.lang.help":     "This window only. The language it talks to you in is under Partner.",
+	"settings.lang.help":     "This window only; the language it replies in is under Partner.",
 	"settings.sound.row":     "The intro's sound",
 	"settings.sound.play":    "Play",
 	"settings.sound.stop":    "Stop",

@@ -3461,8 +3461,8 @@ function SettingsSheet() {
           {page === "partner" && (
             <>
               <NameRow />
-              {/* D309: 伙伴们 / Your partners, on a home that offers more than one. */}
-              <PartnersSection />
+              {/* D309: 伙伴们 / Your partners, on a home that offers more than one; first when there are several (D500). */}
+              <PartnersSection at="top" />
               {/* D322: one story: what it thinks with, who does the tasks, adding another AI (a key too), then the hand-off (D297). */}
               <ThinksSection />
               <TasksSection />
@@ -3471,6 +3471,8 @@ function SettingsSheet() {
               <TalkSettings />
               <RecordsSettings />
               <TrustSettings />
+              {/* D500: with one partner, adding another is the page's last group. */}
+              <PartnersSection at="foot" />
               {/* D332: one quiet line for someone Ducter hasn't seen run AI agents of their own. */}
               <PeersInvite />
             </>

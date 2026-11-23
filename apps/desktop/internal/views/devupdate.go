@@ -280,6 +280,17 @@ func (a *App) updateReason(reason string) string {
 	return a.L.T("devup.why.failed")
 }
 
+// anyBehind: some computer has a newer version waiting (the About head then
+// says so, not 每台电脑上的我都是最新的).
+func (a *App) anyBehind() bool {
+	for i := range a.S.Devices {
+		if behind(&a.S.Devices[i]) {
+			return true
+		}
+	}
+	return false
+}
+
 // upToDate never says "latest" without when it was read: 已经是最新的, and
 // beside it 3 小时前检查过 / Checked 3 hours ago, two facts (D291).
 func (a *App) upToDate(u *protocol.DeviceUpdate) (string, string) {
@@ -504,7 +515,8 @@ func (a *App) updateSection(c *ui.Context) {
 	if len(shown) == 0 {
 		return
 	}
-	a.group(c, "versions", a.L.T("settings.versions.title"), a.L.T("settings.versions.note", a.S.PersonaName), func() {
+	// D500: no note: the title says what the card is (its note said it again).
+	a.group(c, "versions", a.L.T("settings.versions.title"), "", func() {
 		home := homeDevice(shown)
 		for _, dv := range shown {
 			a.versionRow(c, dv, dv == home)
@@ -562,6 +574,13 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			// D399: said once, on the home's row; a computer that does tasks is current with it and
 			// says nothing (three rows of the same words were a wall).
 			words, _ := a.upToDate(u) // one phrase, 刚看过，已经是最新的 (D296)
+			if !a.anyBehind() {
+				// D500: the pane's head already says every computer is current; the row says when it looked.
+				words = a.L.T("settings.versions.looked.now")
+				if at := store.ParseTime(u.CheckedAt); !at.IsZero() && a.Now().Sub(at) >= 2*time.Minute {
+					words = a.L.T("settings.versions.looked", a.agoLong(u.CheckedAt))
+				}
+			}
 			a.sideStatus(c, words, sideMuted)
 		}
 	}

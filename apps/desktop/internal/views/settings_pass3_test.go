@@ -131,7 +131,7 @@ func pass3Height(tab string) int {
 	switch tab {
 	case TabPartner, TabAccounts, TabTodos:
 		return 2600
-	case TabMemory, TabAutofill, TabLook, TabChats:
+	case TabMemory, TabAutofill, TabLook, TabChats, TabHome:
 		return 2000
 	}
 	return 1400

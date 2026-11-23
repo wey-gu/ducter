@@ -15,8 +15,8 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D475: every Settings pane in its scope (all but Overview, Memory and Agent messaging) at the window's
-// usual 1280 and its narrowest 760, against apps/web/demo-settings-real.ts (DEMO_NEEDS=1 for the
+// D475, D500: every Settings pane but Memory and Agent messaging at the window's usual 1280 and its
+// narrowest 760 (DUCTER_SHOTS_WIDTHS overrides), against apps/web/demo-settings-real.ts (DEMO_NEEDS=1 for the
 // "needs" state). Each shot is cut below the pane's last drawn text.
 //
 //	DUCTER_SHELL_URL=ws://127.0.0.1:7751/ws DUCTER_SHELL_LANG=zh DUCTER_SHOTS_DIR=<.shots/d475/after> \
@@ -51,7 +51,7 @@ func TestD475Shots(t *testing.T) {
 			h.tt.Advance(200 * time.Millisecond)
 		}
 	}
-	tabs := []string{TabPartner, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
+	tabs := []string{TabHome, TabPartner, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
 	if only := os.Getenv("DUCTER_SHOTS_TABS"); only != "" {
 		tabs = strings.Split(only, ",")
 	}
@@ -59,7 +59,16 @@ func TestD475Shots(t *testing.T) {
 		h.app.openTab(tab)
 		h.until("settings", func() bool { return h.app.S.Settings != nil })
 		settle()
-		for _, w := range []int{1280, 760} {
+		widths := []int{1280, 760}
+		if ws := os.Getenv("DUCTER_SHOTS_WIDTHS"); ws != "" {
+			widths = nil
+			for _, f := range strings.Split(ws, ",") {
+				var n int
+				fmt.Sscan(f, &n)
+				widths = append(widths, n)
+			}
+		}
+		for _, w := range widths {
 			h.tt.SetSize(w, pass3Height(tab))
 			settle()
 			name := fmt.Sprintf("mac-%d-%s-%s-%s-%s", w, lang, paper, state, tab)

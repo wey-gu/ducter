@@ -596,7 +596,8 @@ func (a *App) placesMap(c *ui.Context) {
 		}
 	}
 	ui.Column(c.Key("places")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
-		uiText(c.Key("places-label"), a.L.T("home.map")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S2)
+		// D500: a section head like every pane's (sectionHead): the text edge, the soft ink.
+		uiText(c.Key("places-label"), a.L.T("home.map")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(0, t.S5).Role(ui.RoleHeading)
 		ui.Row(c.Key("places-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
 			for _, p := range places {
 				p := p
@@ -660,7 +661,7 @@ func (a *App) accountPlaces(c *ui.Context) {
 		return
 	}
 	ui.Column(c.Key("accts")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
-		uiText(c.Key("accts-label"), a.L.T("home.accts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S2)
+		uiText(c.Key("accts-label"), a.L.T("home.accts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(0, t.S5).Role(ui.RoleHeading)
 		ui.Row(c.Key("accts-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
 			for _, cv := range list {
 				cv := cv

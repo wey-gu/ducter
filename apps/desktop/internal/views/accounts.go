@@ -86,7 +86,12 @@ func (a *App) proactiveSection(c *ui.Context, key string, day bool) {
 	sel, labels, note := a.proactiveSel(st)
 	// D469: a choice of a few is a row (D432): its title and what the choice means on the text
 	// column, the choice at the right edge; never an untitled slab of chips.
-	a.group(c, "proactive:"+key, "", "", func() {
+	// D500: on Notifications its group has a heading like the two around it.
+	head := ""
+	if day {
+		head = a.L.T("proactive.group")
+	}
+	a.group(c, "proactive:"+key, head, "", func() {
 		a.row(c, "proactive:"+key, a.L.T("proactive.title"), a.L.T(note), func() {
 			if i := a.choices(c, "proactive-"+key, a.L.T("proactive.title"), labels, sel); i >= 0 {
 				st.Proactive = protocol.ProactiveModes[i]

@@ -21213,3 +21213,34 @@ html[data-text-size="large"] .brand-mark > svg {
 .helper-row .helper-state.refused { color: var(--ink-soft); }
 .helper-row .helper-counts { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
 .helper-row .helper-counts small { margin-top: 2px; }
+
+/* D500: every Settings pane by one hand. The Overview's section heads sit on the text edge in the soft
+   ink like every group's head (they were 8px in and muted); the home card's face and its words stand on
+   one line, as on the Mac; Notifications' 今天看了什么 is a row like the Mac's (its title on the text
+   edge, the chevron at the right edge), not a small link indented past the row above it. */
+.set-map .map-label {
+  padding: 0 var(--set-in, var(--s4));
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+.set-map .map-here {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.proactive-sec .quiet-day {
+  padding: var(--s3) var(--set-in, var(--s4));
+}
+.proactive-sec .quiet-day > .btn.text {
+  align-self: stretch;
+  justify-content: space-between;
+  padding-inline: 0;
+  min-height: 44px;
+  font-size: var(--md);
+  font-weight: 700;
+  color: var(--ink);
+}
+.set-page.pushed .proactive-sec > h3 + .set-card { margin-top: 0; }
+.set-invite > .grow { flex: 1; min-width: 0; }
+/* D500: a row's line never leaves one character alone on its last line (说。, 听。, 改。 on a phone). */
+.set-page small, .set-page .small, .set-page .g-note, .pane-says .ps-say { text-wrap: pretty; }

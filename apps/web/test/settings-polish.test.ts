@@ -47,3 +47,22 @@ test("This phone doesn't say its title again under its card", () => {
   expect(src("../src/views.tsx")).not.toContain("settings.phone.note");
   expect(src("../src/voice.tsx")).not.toContain(`<b>{t("voice.settings")}</b>`);
 });
+
+// D500: every pane by one hand. Chat apps in use stand first and keep their order while the page is
+// open; a rule's arrow is said in words; the defaults say 交给 / go to.
+test("chat apps in use first, the order held while the page is open", async () => {
+  const { chatOrder } = await import("../src/channels.tsx");
+  const v = (kind: string, state: string) => ({ kind, state }) as never;
+  const first = chatOrder([v("telegram", "linked"), v("slack", "off"), v("wechat", "linked")], []);
+  expect(first.map((x: { kind: string }) => x.kind)).toEqual(["telegram", "wechat", "slack"]);
+  // Slack being set up keeps its place under the person.
+  const held = chatOrder([v("telegram", "linked"), v("slack", "starting"), v("wechat", "linked")], ["telegram", "wechat", "slack"]);
+  expect(held.map((x: { kind: string }) => x.kind)).toEqual(["telegram", "wechat", "slack"]);
+});
+
+test("no text arrows in the rules' words", () => {
+  for (const lang of ["zh", "en"] as const) {
+    expect(strings(lang).t("loadout.default.errand", "Codex")).not.toContain("→");
+    expect(strings(lang).t("loadout.default.rest", "Codex")).not.toContain("→");
+  }
+});

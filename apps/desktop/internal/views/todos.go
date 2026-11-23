@@ -209,7 +209,13 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			}
 			return
 		}
-		a.footRow(c, "src-end:"+s.ID, "", func() {
+		// D500: the last line says when it last looked (alive, and fresh), its 移除 at the right
+		// edge, so Remove no longer stands alone on a row of its own.
+		looked := ""
+		if s.State == "ok" && s.CheckedAt != "" {
+			looked = a.L.T("todos.looked", a.agoLong(s.CheckedAt))
+		}
+		a.footRow(c, "src-end:"+s.ID, looked, func() {
 			if a.quietDanger(c, "src-remove:"+s.ID, a.L.T("todos.remove"), name) {
 				a.todos.removing = s.ID
 			}

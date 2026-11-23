@@ -103,7 +103,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	}
 	st := a.S.Settings
 	a.partnerToast(c)
-	a.partnersGroup(c) // D309: 伙伴们 / Your partners
+	a.partnersGroup(c, true) // D309: 伙伴们 / Your partners, first when there are several (D500)
 	// D322: one story. What it thinks with, who does the tasks, one place
 	// to add another AI, then when a limit runs out (D297, D307).
 	a.thinksGroup(c)
@@ -114,7 +114,8 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
 	a.saidLine(c, "trust")
-	a.peersInvite(c) // D332: one quiet line, for someone not seen running agents of their own
+	a.partnersGroup(c, false) // D500: with one partner, adding another comes last
+	a.peersInvite(c)          // D332: one quiet line, for someone not seen running agents of their own
 	// D257: what it remembers and 和你的其他 agent 通信 are tabs of their own (memory.go).
 }
 

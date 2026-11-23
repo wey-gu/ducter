@@ -242,23 +242,27 @@ function AddForm({ done }: { done: () => void }) {
 }
 
 /** Settings › 伙伴's 伙伴们 / Your partners: shown only on a home that offers more than one. */
-export function PartnersSection() {
+/** D500: with several partners the group leads the page (who is who); with one it is the page's last
+ *  group, after everything about the one there is (the fresh user meets it last, personas.md). */
+export function PartnersSection({ at }: { at: "top" | "foot" }) {
   const [openedAt, setOpenedAt] = useState(0);
   if (!A.partners) return null;
   const ps = A.partners;
   const full = ps.length >= 4;
   const many = ps.length > 1;
+  if ((at === "top") !== many) return null;
   // A partner added since the form opened closes it.
   const open = openedAt > 0 && !(A.partnerAddedAt >= openedAt);
   const setAdding = (on: boolean) => setOpenedAt(on ? Date.now() : 0);
   return (
     <section class="set partners-set">
       <h3>{t("partners.title")}</h3>
+      {/* D289: a group's note sits under its heading, never under the card. */}
+      <p class="g-note">{many ? t("partners.help") : t("partners.say")}</p>
       <div class="set-card">
         {many && ps.map((p) => <PartnerRow key={p.id} p={p} />)}
         {open ? <AddForm done={() => setAdding(false)} /> : !full && <AddRow label={t("partners.add")} help={t("partners.add.help")} onClick={() => ((A.partnerAsk = undefined), setAdding(true))} />}
       </div>
-      <p class="small set-foot">{many ? t("partners.help") : t("partners.say")}</p>
     </section>
   );
 }

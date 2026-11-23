@@ -226,7 +226,8 @@ export function DensityRow() {
   return (
     <div class="set-item">
       <b>{t("density.title")}</b>
-      <small>{t("density.help")}</small>
+      {/* D500: the shortcut only where there is a keyboard. */}
+      <small>{t(typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? "density.help.touch" : "density.help")}</small>
       <Seg label={t("density.title")} value={cur} options={(["comfortable", "compact"] as const).map((v) => ({ v, label: t(`density.${v}`) }))} onPick={(v) => (setDensity(v), cheer())} />
     </div>
   );

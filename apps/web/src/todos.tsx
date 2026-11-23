@@ -490,7 +490,11 @@ function SourceCard({ v }: { v: SourceView }) {
       </div>
       <SourceFilters v={v} />
       <div class="chat-foot">
-        <span class="grow">{(v.state === "signed_out" || v.state === "no_tool") && !A.ghTodo && <Btn kind="secondary" size="sm" label={t("todos.signin")} about="GitHub" onClick={() => A.ntGhStart("local", "todos")} />}</span>
+        <span class="grow">
+          {(v.state === "signed_out" || v.state === "no_tool") && !A.ghTodo && <Btn kind="secondary" size="sm" label={t("todos.signin")} about="GitHub" onClick={() => A.ntGhStart("local", "todos")} />}
+          {/* D500: when it last looked, beside 移除, so Remove never stands alone on its row. */}
+          {v.state === "ok" && v.checkedAt && !asking && <small class="muted">{t("todos.looked", ago(A.L, v.checkedAt))}</small>}
+        </span>
         {asking ? (
           <span class="ask-in-place">
             <small>{t("todos.remove.ask", name)}</small>

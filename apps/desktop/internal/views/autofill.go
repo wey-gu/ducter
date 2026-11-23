@@ -130,7 +130,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "signin", &x)
 				continue
 			}
-			a.afRow(c, "signin:"+x.ID, a.afMonogram(c, "signin:"+x.ID, x.Site), x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
+			a.afRow(c, "signin:"+x.ID, a.afMonogram(c, "signin:"+x.ID, firstNonEmpty(x.Label, x.Site)), x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
 		}
 		if s.editing == "signin:new" {
 			a.afForm(c, "signin", nil)
@@ -259,7 +259,8 @@ func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark st
 	}
 }
 
-// D475: a saved thing is drawn as itself, as on the web: a sign-in is its site's first letter on a
+// D475: a saved thing is drawn as itself, as on the web: a sign-in is its name's first letter (D500: the
+// name beside it, so 铁路 12306 is 铁, never 1 from 12306.cn) on a
 // clay pebble, a card a small card in its network's tone with its last four, details and keys their
 // mark on the same pebble. Every tile keeps the 40 column, so the words keep one text edge.
 func (a *App) afPebble(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.Painter, r ui.Rect)) func() {

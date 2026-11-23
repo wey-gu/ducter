@@ -291,11 +291,14 @@ export function partnerScreen(i: PartnerScreenInput): FirstScreen {
   const byNew = [...i.tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const working = byNew.find((t) => t.attention === "working" || t.attention === "blocked" || t.attention === "needs_you");
   if (working) out.push({ kind: "task", key: `task:${working.taskId}`, words: w(`「${short(working.title)}」做到哪了？`, `How far along is “${short(working.title)}”?`) });
+  const can = w("你能帮我做些什么？举三个例子", "What can you do for me? Give me three examples");
   for (const k of rotate(["reminder", "plan", "trip"] as const, day)) {
     if (out.length >= STARTERS - 1) break;
-    out.push({ kind: "everyday", key: `everyday:${k}`, words: pick(EVERYDAY[k], day, k) });
+    // D501: "plan" can pick the very words of the last starter; never the same starter twice.
+    const words = EVERYDAY[k].filter((x) => x.zh !== can.zh);
+    out.push({ kind: "everyday", key: `everyday:${k}`, words: pick(words, day, k) });
   }
-  out.push({ kind: "everyday", key: "can", words: w("你能帮我做些什么？举三个例子", "What can you do for me? Give me three examples") });
+  out.push({ kind: "everyday", key: "can", words: can });
   const returning = i.talked || i.tasks.length > 0;
   const n = returning ? news(i) : undefined;
   return { visit: returning ? "returning" : "first", line, ...(n ? { news: n } : {}), starters: out.map((c) => ({ id: c.key, kind: c.kind, words: c.words })) };

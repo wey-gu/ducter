@@ -17,6 +17,7 @@ import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook, peersOneWay, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
+import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
 import { Avatar } from "./views.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -150,8 +151,12 @@ export function paneSay(page: SettingsPage): string {
       return autofillSay();
     case "peers":
       return peersSay();
-    case "phone":
-      return t("say.phone");
+    case "phone": {
+      // D501: the theme, the light and these screens' language, read back.
+      const paper = savedPaper(), lang = A.uiLang;
+      if (paper === "system" && lang === "auto") return t("say.phone.auto", "Pebble");
+      return t("say.phone", "Pebble", t(`say.look.paper.${paper}`), t(`say.look.lang.${lang}`));
+    }
   }
   return "";
 }

@@ -443,7 +443,7 @@ Why the others wait:
 - **How it starts.** After the user said 好 to requests from the same own agent twice within 14 days, the partner
   asks once, beside the next such request:
   **以后你的 terminal-claude 发来的活，直接接？ / Take work from your terminal-claude without asking from now on?**
-  · **直接接 / Take it directly** · **仍然先问我 / Keep asking me** (default). Declined: never offered again for
+  · **直接接 / Take it directly** · **仍然先问你 / Keep asking you** (default). Declined: never offered again for
   that agent.
 - **The rule** shows where D161's learned rules are (Settings › 伙伴): **你的 terminal-claude 发来的活直接接 · 你接过两次以后定的
   / Work from your terminal-claude starts without asking · set after you took it twice**, with **改回先问我 / Stop**.
@@ -1221,7 +1221,7 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
 The coherence pass over Settings read Memory and Agent messaging as the three users (`settings.md` "One hand,
 every pane"): H wants who can talk to whom at a glance, C wants to feel known and never watched, F needs one
 sentence per screen. The two panes now read as one story told twice: **Memory** opens with **{name} 记得你** /
-**这周新记了 5 条** / its switch / **哪条不想让它记，说一声「别记这个」就好。**; **Agent messaging** opened the same way (until D470: now the partner's sentence, then the switch, below)
+**这周新记了 5 条** / its switch / **哪条不想让我记，说一声「别记这个」就好。**; **Agent messaging** opened the same way (until D470: now the partner's sentence, then the switch, below)
 with **你的 agent 能找到{name}** / **这周来往了 3 次** / its switch / **它们交来的事、要你定的事，都会出现在你们的对话里。**
 (off: **你的 agent 现在找不到{name}** / **关着时，{name}也不会去问它们。** / **之前的来往都还在你们的对话里。**). Then who
 can reach it, said plainly per tool, then what came and went. Memory's Nowledge Mem group says **你的其他 agent 也通过它

@@ -189,10 +189,10 @@ Each source has **When a new one comes**; the line under it says what the one yo
 The source's last line says when Ducter last looked (*Looked just now*), with **Remove** beside it; it
 asks once, and tasks already taken stay.
 
-- **Tell me** (GitHub's default): your partner mentions new ones in one short line, and asks which to
+- **Say so** (GitHub's default): your partner mentions new ones in one short line, and asks which to
   take.
-- **Don't tell me** (Obsidian's default): it waits until you ask.
-- **Take it directly**: new ones start without asking, up to five a day. Your partner offers this once,
+- **Stay quiet** (Obsidian's default): it waits until you ask.
+- **Take it on**: new ones start without asking, up to five a day. Your partner offers this once,
   after a couple you took from the same place have finished well.
 
 ## When it's done
@@ -203,7 +203,7 @@ asks once, and tasks already taken stay.
   Closing an issue still asks, unless you choose **Comment and close** in Settings. Every comment ends
   with "Written with Ducter", so your teammates know.
 - **Obsidian:** the line is ticked, with today's date, the way the Tasks plugin writes it. Nobody else
-  sees your vault, so this happens by itself; choose **Ask me** or **Leave it** if you prefer. Repeating
+  sees your vault, so this happens by itself; choose **Ask you first** or **Leave it** if you prefer. Repeating
   to-dos are left for you to tick in Obsidian, so Obsidian can make the next one. If you have the note
   open and are typing, it waits and tries again.
 

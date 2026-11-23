@@ -21244,3 +21244,15 @@ html[data-text-size="large"] .brand-mark > svg {
 .set-invite > .grow { flex: 1; min-width: 0; }
 /* D500: a row's line never leaves one character alone on its last line (说。, 听。, 改。 on a phone). */
 .set-page small, .set-page .small, .set-page .g-note, .pane-says .ps-say { text-wrap: pretty; }
+/* D501: 你的设备 / Your devices: a hairline between devices from the name's edge to the row's end, as every
+   other list in Settings (D500 noted it); a pressed row's ground covers it. */
+.plist > .li-row + .li-row { position: relative; }
+.plist > .li-row + .li-row::before { content: ""; position: absolute; top: 0; inset-inline: 56px 10px; border-top: 1px solid var(--line); pointer-events: none; }
+.plist > .li-row:active::before, .plist > .li-row:active + .li-row::before { opacity: 0; }
+/* D501: seen in the iOS Simulator: on a phone the bar's other partners are 32 x 32 faces 2 apart. Each
+   takes a finger's 44 tall (D311's invisible box), and the gap grows to 6 so each face's box reaches 3
+   into it and never into its neighbour's; the faces look the same. */
+@media (max-width: 600px) {
+  .top .partner-switch { gap: 6px; }
+  .top .partner-pick::before { content: ""; position: absolute; inset: -6px -3px; }
+}

@@ -118,7 +118,7 @@ sunken tray and a 128-pt coin breaking D289's grid; three stacked lines under th
 
 ### The cases, and what the pane says in each
 
-| Case | 想事情用 / What it thinks with | 做事的 / Who does the tasks | 再添一个 AI agent / Add another AI agent | 额度用完的时候 |
+| Case | 想事情用 / What I think with | 做事的 / Who does the tasks | 再添一个 AI agent / Add another AI agent | 额度用完的时候 |
 |---|---|---|---|---|
 | **First run, none signed in** | One row: **还没有能想事情的 AI agent**, **在下面登录一个，或者贴一个 API 密钥。** | Not shown (nothing to say that the row above didn't) | Its note says what it unlocks (**…就能开始想事情、做事**); a row per agent to install or sign in, then the key | Not shown: no limit can run out |
 | **One agent** (the author: Codex on a server) | The agent, its model (or **用它自己默认的模型**), its limit when it reports one; no Switch, no reassurance | One line on the paper: **现在每个任务都由 Codex 来做。** (its row would repeat the one above) | **有了第二个，Ducter 就能按事情挑；一个的额度用完了，另一个接着做。**; Claude Code **去装上** / **去登录**; the key | The switch, and **现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。** |
@@ -441,12 +441,12 @@ one shape kept:
 |---|---|
 | Memory's switch is its first group's head row; Agent messaging's sat in a last card of its own, its words pushed in by an empty tile column, its title the lede again | **A pane's one switch is its first group's head row** (Memory, Agent messaging): its mark, who it is about, this week in a few words (**这周新记了 5 条**, **这周来往了 3 次**, done ink when there is any), the switch at the right edge, and where it shows up as the group's last line; the said line under that group |
 | Who can reach the partner came after Recently | **Who, then what happened:** 能找到{name}的 before 最近, then 试试看 |
-| Every memory row a 10-point dot and **你跟它说的**, six times | **A row speaks only when it differs (D399):** what the person told it is said once in the section's note; a row from another tool says so with that tool's coin; a lone 别的 / Other is not titled |
+| Every memory row a 10-point dot and **你跟我说的**, six times | **A row speaks only when it differs (D399):** what the person told it is said once in the section's note; a row from another tool says so with that tool's coin; a lone 别的 / Other is not titled |
 | A row's title ending in 。 (全部的都在 Nowledge Mem 里。) | A title is a phrase, never a sentence with a full stop |
 | A line to run: a sunken tint on the Mac, the ink's slab with **$** on the web | One look (`lendCopy` kind `line`, web `CopyLine kind="line"`): the ink's slab, the accent's $, bold mono; a check and a sentence to say stay on the sunken tint |
 | The web's Memory, Notifications and Accounts had no lede; Agent messaging drew its own | Every pane's lede sits under its title on both clients (web `PANE_LEDE`); To-do sources, Chat apps and Passwords & cards keep theirs with their lede note |
 | Forgetting or fixing a memory in Settings said nothing (every other change has the partner's word) | **好，忘掉「…」。 / 好，改成「…」。** under the section, D296's said line |
-| Memory's notes two sentences each (D424 says one clause) | One: **哪条不想让它记，说一声「别记这个」就好。**; off: **记下的都还在 Nowledge Mem 里，一条没删；再打开就接着用。** |
+| Memory's notes two sentences each (D424 says one clause) | One: **哪条不想让我记，说一声「别记这个」就好。**; off: **记下的都还在 Nowledge Mem 里，一条没删；再打开就接着用。** |
 | Memory and Agent messaging read as two products of one Mem | Memory's Nowledge Mem group says **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** whenever Agent messaging is shown |
 | The Mac's `explainedRow` kept its control beside squeezed words at 760 | It drops the control under the words as `row` and `tileRow` do (D445) |
 
@@ -596,7 +596,7 @@ own head contradicts, an edge a few points off, a control alone on a row.
 | 2 | 伙伴 / Partner | Rules read as code: **跑腿的事 → Claude Code（Sonnet）**, **写代码和别的事 → Codex**, and a rule the partner wrote (**后端的事 → Codex**) | The defaults in words: **跑腿的事交给 {agent} / Errands go to {agent}**, **写代码和别的事交给 {agent} / Code and everything else goes to {agent}**; a rule's arrow is said as **：/ :** on screen (the partner's tool text is unchanged) |
 | 3 | 聊天软件 / Chat apps | Slack, never set up, stood between Telegram and WeChat, both linked: the pane read as linked, not, linked | The apps in use first, then those resting until chosen; the order is fixed when the pane opens, so an app being set up never jumps |
 | 4 | 待办来源 / To-do sources | **移除** stood alone on a row of its own under each source (D468's and D475's leftover); **新的来了**'s line began **新的来了，…**, **做完以后**'s **做完…**: the line said its title again | The source's last line says when it last looked (**刚刚看过 / Looked just now**, **10 分钟前看过**) with **移除** at its right edge; the lines say only what the choice does (**在对话里跟你说一声。**, **先问你，再在 issue 下留言。**, **在笔记里勾掉；想撤回，把勾点掉就行。**) |
-| 5 | 通知 / Notifications | 发现了就说's card was the only one without a heading, between 什么时候找你 and 你没回的时候; its line wrapped one character onto its last line (说。); on the web 今天看了什么 was a small link indented past the row above | The card's heading **自己发现的事 / What it finds**; the lines shorter (**早上一起说，最多 3 条；急的随时说。**); 今天看了什么 a row on the web as on the Mac (its title on the text edge, the chevron at the right edge) |
+| 5 | 通知 / Notifications | 发现了就说's card was the only one without a heading, between 什么时候找你 and 你没回的时候; its line wrapped one character onto its last line (说。); on the web 今天看了什么 was a small link indented past the row above | The card's heading **自己发现的事 / What I find**; the lines shorter (**早上一起说，最多 3 条；急的随时说。**); 今天看了什么 a row on the web as on the Mac (its title on the text edge, the chevron at the right edge) |
 | 6 | 概览 / Overview, 在哪儿运行 / Where it runs | The card grids' headings (你的电脑和手机, 你的账号在哪儿) sat 16 points left of every other heading, in the muted ink; on the web the home card's face stood on a line of its own above **你们的对话在这儿** | The headings on the text edge in the soft ink, as every group's (`sectionHead`); the face and its words on one line on the web, as on the Mac |
 | 7 | 关于 / About | The versions card's note said its title again (**Ducter 和帮它做事的电脑，各自是什么版本。** under **各台电脑上的 Ducter**); the home's row said **10 分钟前看过，已经是最新的** under a head that had just said **每台电脑上的我都是最新的。** | No note; while every computer is current the home's row says only when it looked (**刚看过**, **10 分钟前看过**); with an update waiting it says as before |
 | 8 | 账号 / Accounts | Its first group was **它能看的** under a head in the partner's own voice (**我在留意 6 个账号…**): 它 and 我 for the same partner a line apart | **能看的 / Can read**, Overview's own label |
@@ -610,17 +610,46 @@ dark theme on every pane (no finding of its own).
 
 ### Not changed, noted
 
-- **它 under a head that says 我.** Every pane's head is the partner speaking (D469), and the rows below
-  still speak of it as 它 (D330): **你在 Telegram 里说的，它就在那儿回。** under **在 Telegram、微信里也能找我**.
-  Rewording every row is its own change (`todo.md`).
-- **Look and sound's head describes the pane** (**我在这台 Mac 上的样子、语言和声音。**), where D475 asks for
-  the state; a head that reads the theme, the light and the language back is owed (`todo.md`).
-- The web's 你的设备 list still has no hairlines between devices (D311); the web lists a computer that is only
-  a window on Overview (Siweis-MacBook-Pro) where the Mac doesn't.
+- The web lists a computer that is only a window on Overview (Siweis-MacBook-Pro) where the Mac doesn't.
+  (Rows under a first-person head, Look and sound's head and the web's device hairlines: D501, below.)
+
+## One voice (D501)
+
+Every pane's head is the partner speaking (D469). D501 makes the whole pane one speaker:
+
+- **我 / I is the partner, and only the partner.** Heads, ledes, lines and group titles that speak of it say
+  我 / I: **想事情用 / What I think with**, **怎么说话 / How I talk**, **什么时候找你 / When I come to you**,
+  **自己发现的事 / What I find**, **我能看的邮件、日历和别的账号**, **你在 Telegram 里说的，我就在那儿回。**,
+  **日历连上了，可以问我「今天有什么安排」。**, **护照、生日、住址我只替你填，看不到。**, **我知道的关于你**.
+- **你 / you is the person, and only the person.** A choice or a button they tap names the act and, when it
+  needs a person, says 你 / you: **说一声 / Say so**, **直接接下 / Take it on**, **不用说 / Stay quiet**,
+  **先问你 / Ask you first**, **仍然先问你 / Keep asking you**, **等你来问 / Only when you ask**,
+  **跟着你 / Same as yours**, **录好了 / Done recording**, **Have a look**. Never 我 / me meaning the person.
+- **它 / it is never the partner.** An account, a calendar, a key, a phone, a connection still are.
+- **Kept as they are:** a line the person sends (the preview's **明天早上提醒我看 PR**) is their own words; pane
+  names are the glossary's (**在哪儿运行 / Where it runs**); a line naming the partner among others keeps
+  the name.
+- **Look and sound's head states the pane** (D475): **这台 Mac 上是 Pebble，深浅和语言都跟着系统。**; with a
+  choice made, **这台 Mac 上是 Pebble，一直是深色，界面用中文。**; the web's own page **这台设备上是…**. It
+  changes the moment a choice does.
+- **Nothing to draw, no tile column:** the fresh Partner pane's **还没有能想事情的 AI agent** sits on the text
+  edge on the Mac as on the web.
+- **你的设备 / Your devices on the web:** a hairline between devices from the name's edge, as every list.
+
+### The phone in the iOS Simulator (D501)
+
+The iPhone app built for the Simulator (iPhone 17 Pro, iOS 26.3), each demo core paired on its own port,
+light, dark and accessibility-large text (`.shots/d501/ios/`): the conversation with several partners, a
+second partner's first meeting, On hand, every Settings pane, the decision card in a task and in the
+conversation. Fixed: the first meeting's repeated starter, and the bar's partner faces under a finger's 44.
+Kept: safe areas, dynamic type, no glyph drawn as an emoji, 44-tall text buttons on the decision card. Owed
+(`todo.md`): a launch that once sat on **正在连接…** after the bundle or the appearance changed; a long first
+meeting opening scrolled past the figure; a long press, the keyboard and overscroll, which the Simulator
+can't be touched for from the shell.
 
 ## Not done
 
-- D475's own: the iOS Simulator walk (Chrome's device emulation with touch stood in); Chat apps' quiet
+- D475's own: Chat apps' quiet
   actions each on a line of their own on a phone; Where it runs'
   cards say what each computer is doing only when the home reports it (the demo reports none); the
   author's review.

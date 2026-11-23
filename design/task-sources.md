@@ -40,22 +40,22 @@ conventions, and gives two owners for one field, so conflicts need rules. One ow
   the take was skipped and the brief names exactly one open issue: `bindStaged`'s fallback).
 - **New task:** **从待办里选 / Pick from your to-dos** lists the open ones (search, due dates, 在做 for one that
   has a live task: picking it opens that task, never a second one). The pick fills the words and binds.
-- **New ones (新的来了):** **告诉我 / Tell me** (GitHub's default): a look that finds new ones wakes the
-  partner, at most once per source per 3 hours, and it offers them in one line. **不用说 / Don't tell me**
-  (Obsidian's default: a personal list churns; it waits to be asked). **直接接下 / Take it directly**: the
+- **New ones (新的来了):** **说一声 / Say so** (GitHub's default): a look that finds new ones wakes the
+  partner, at most once per source per 3 hours, and it offers them in one line. **不用说 / Stay quiet**
+  (Obsidian's default: a personal list churns; it waits to be asked). **直接接下 / Take it on**: the
   standing go, at most 5 a day per source; the sixth is offered.
 - **The standing go is learned, X2's way:** after two to-dos the person took from one source in 14 days
   finished well (D395: never at the take, never beside a task that couldn't start or failed), one card
   once, when the second finishes: **以后 GitHub 上标给你的，直接接下？** (Obsidian: **以后 Obsidian 里的待办，直接接下？**) with
-  **直接接下 / Take it directly** and **仍然先问我 / Keep asking me** (default Hold). Settings shows **你接下过两次以后定的**.
+  **直接接下 / Take it on** and **仍然先问你 / Keep asking you** (default Hold). Settings shows **你接下过两次以后定的**.
 - A task taken under the standing go still asks before anything outward, like any task.
 
 ## 4. Out: writing back
 
 | App | Default when the task is done | What goes out | Consent |
 |---|---|---|---|
-| GitHub (shared, seen by others) | **先问我 / Ask me** | One comment, written by the partner in the issue's own language (an English issue gets no Chinese comment: the tool refuses one), with the PR link; close only when the work fully resolves it | A card the first times (**在 {repo}#{n} 下留言？** with the comment whole; Go **留言** or **留言并关掉**, Hold **暂不留言**). After two Go'd comments in 14 days, once: **以后在 GitHub 上做完的，直接留言？**. **留言 / Comment**: comments by itself; closing still asks (**关掉 {repo}#{n}？**). **留言并关掉 / Comment and close**: both by itself, set only by the person in Settings |
-| Obsidian (local, the person's own) | **勾掉 / Tick it off** | The line's `[ ]` → `[x]` and ` ✅ YYYY-MM-DD` (before a `^block` id), as the Tasks plugin would | None asked: it is their own file, seen by nobody else, and undone by unticking. **先问我** and **不动它 / Leave it** are one tap away. A repeating line (🔁) is never ticked here (the plugin makes the next one when the person ticks it) |
+| GitHub (shared, seen by others) | **先问你 / Ask you first** | One comment, written by the partner in the issue's own language (an English issue gets no Chinese comment: the tool refuses one), with the PR link; close only when the work fully resolves it | A card the first times (**在 {repo}#{n} 下留言？** with the comment whole; Go **留言** or **留言并关掉**, Hold **暂不留言**). After two Go'd comments in 14 days, once: **以后在 GitHub 上做完的，直接留言？**. **留言 / Comment**: comments by itself; closing still asks (**关掉 {repo}#{n}？**). **留言并关掉 / Comment and close**: both by itself, set only by the person in Settings |
+| Obsidian (local, the person's own) | **勾掉 / Tick it off** | The line's `[ ]` → `[x]` and ` ✅ YYYY-MM-DD` (before a `^block` id), as the Tasks plugin would | None asked: it is their own file, seen by nobody else, and undone by unticking. **先问你** and **不动它 / Leave it** are one tap away. A repeating line (🔁) is never ticked here (the plugin makes the next one when the person ticks it) |
 
 Every write is a `source_write` event (the gate's say: `go` with its decision, `rule`, or `undo`) and is
 in **替你做过的 / Done for you**: a comment as sent (发出的), a close or tick as changed (改动), with the Go or
@@ -150,7 +150,7 @@ three (§6) only showed it. Evidence for the look and the words: `research/130-t
 | Decide | **一个个定** | one question each, **交给{name} · 可以关掉 · 先放着**, the suggestion marked **建议** | `pile_choose`: handed over, moved to the closable ones, or left. Never a Log decision |
 | Close | **过目** | each closable one with **会留一句** and **留着**; **关掉这 n 个，各留一句** | one `decision` (src `batch`, every line) resolved Go by the person where it was given; per issue a comment then a close as *not planned*, each a `source_write` (`by: go`); the count drops at each close |
 | Pre-read | the two newest PRs waiting for review, by themselves (at most 6 a day), or **看看** | on the card **我看过了** · **2 处问题** · **1 条建议**; the sheet with the drafted comments, **不发这条**, **发出这 n 条** | the PR's diff (cut at 60 KB) and the repository's own review guide when its folder is on the home, to the cheapest model; sent as one `COMMENT` review (`source_write` op `review`), never a verdict on the PR (only comments) |
-| Morning | the morning note, unless 只说急的 or 不用主动找我 | a find **你的待办**: **昨天替你清掉了 4 个。今天能替你清掉这 3 个。**, the three under 怎么知道的, Go **交给{name}** | `proactive.morningFinds` → `pile.morning`: once a day, an offer (D453: never needs-you, fades; unanswered mornings never stop it); a yes in words is `todos do=hand picks=true` |
+| Morning | the morning note, unless 只说急的 or 等你来问 | a find **你的待办**: **昨天替你清掉了 4 个。今天能替你清掉这 3 个。**, the three under 怎么知道的, Go **交给{name}** | `proactive.morningFinds` → `pile.morning`: once a day, an offer (D453: never needs-you, fades; unanswered mornings never stop it); a yes in words is `todos do=hand picks=true` |
 
 The numbers: the pile's count is GitHub's search total (§7), ticked down at once by each close or
 tick Ducter writes; **今天替你清掉 n 个** counts the to-dos Ducter closed or ticked for the person that

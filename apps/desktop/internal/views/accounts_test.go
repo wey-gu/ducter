@@ -93,7 +93,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt.Frame()
 	app.cards().stopping = "c1"
 	tt.Frame()
-	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") {
+	if !tt.HasText("停用以后，我就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") {
 		t.Errorf("stop doesn't ask first")
 	}
 }

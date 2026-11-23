@@ -50,7 +50,7 @@ func TestPartnerPage(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "先问你", "付钱"} {
+	for _, want := range []string{"小鸭", "怎么说话", "跟着你", "先问你", "付钱"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -61,7 +61,7 @@ func TestPartnerPage(t *testing.T) {
 	}
 	tt.Click("记忆")
 	tt.Frame()
-	for _, want := range []string{"小鸭记得你", "记住事情", "它知道的关于你", "测试统一用假时钟", "Nowledge Mem"} {
+	for _, want := range []string{"小鸭记得你", "记住事情", "我知道的关于你", "测试统一用假时钟", "Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}

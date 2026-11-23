@@ -72,7 +72,7 @@ to every 4 hours). You can ask too: "how is my loop doing?" (one line back: how 
 > I need to renew the passport on Wednesday.
 
 Ask for a reminder and it comes at that time, in your own words: **Reminder: pay the landlord.**
-Name a day without a time and it comes that morning; with no day at all, the next morning. This holds even if you chose **Only when I ask** in [Settings](settings.md), because you
+Name a day without a time and it comes that morning; with no day at all, the next morning. This holds even if you chose **Only when you ask** in [Settings](settings.md), because you
 asked.
 
 When you mention something you'll do on a given day, the morning message that day starts with it:

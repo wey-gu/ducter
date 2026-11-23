@@ -92,6 +92,7 @@ func TestD475Shots(t *testing.T) {
 			}
 			_ = png.Encode(f, img)
 			f.Close()
+			_ = os.WriteFile(filepath.Join(dir, name+".txt"), []byte(strings.Join(h.tt.Texts(), "\n")), 0o644)
 			if bad := paneGeometry(h.tt, float32(w)); len(bad) > 0 {
 				_ = os.WriteFile(filepath.Join(dir, name+".geo.txt"), []byte(strings.Join(bad, "\n")), 0o644)
 				t.Logf("%s: %d geometry findings", name, len(bad))

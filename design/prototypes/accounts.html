@@ -449,7 +449,7 @@ function sourceCard(key, src, o = {}) {
       <div class="ln"><i>${L("会看：", "Reads: ")}</i>${reads}</div>
       <div class="ln"><i>${L("先问你：", "Asks you first: ")}</i>${asks}</div>
       <div class="ln"><i>${L("最后看过：", "Last looked: ")}</i>${a.n}</div>
-      ${a.bad ? `<div class="ln" style="color:var(--fail-ink);font-weight:700">${L("现在连不上它所在的服务器。", "Its server can't be reached right now.")}</div>` : `<div class="sw"><span>${L("自己留意", "Watch on its own")}<small>${a.mentions ? L("只看 @你 和私信", "Only @-mentions and DMs") : watch ? L("这个月用了 3%", "3% of this month's budget") : L("你问起来才去看", "Reads only when you ask")}</small></span><button class="switch ${watch && PRO !== 3 ? "on" : ""}" data-k="${key}" data-watch="${a.id}" aria-label="${L("自己留意", "Watch on its own")}"></button></div>`}
+      ${a.bad ? `<div class="ln" style="color:var(--fail-ink);font-weight:700">${L("现在连不上它所在的服务器。", "Its server can't be reached right now.")}</div>` : `<div class="sw"><span>${L("自己留意", "Watch on my own")}<small>${a.mentions ? L("只看 @你 和私信", "Only @-mentions and DMs") : watch ? L("这个月用了 3%", "3% of this month's budget") : L("你问起来才去看", "Reads only when you ask")}</small></span><button class="switch ${watch && PRO !== 3 ? "on" : ""}" data-k="${key}" data-watch="${a.id}" aria-label="${L("自己留意", "Watch on my own")}"></button></div>`}
       <div class="foot2"><button class="btn text sm" style="height:30px;padding:0 6px" data-k="${key}" data-out="${a.id}">${s.out[a.id] ? L("让 Ducter 看这个", "Let Ducter read this one") : L("不让 Ducter 看这个", "Don't let Ducter read this one")}</button>${src.signout ? `<small style="color:var(--ink-muted);font-size:12px">${src.signout}</small>` : ""}</div>
     </div>`;
   }
@@ -458,7 +458,7 @@ function sourceCard(key, src, o = {}) {
       <div class="r"><time>08:00</time><span>${L("日历：今天 5 个会", "Calendar: 5 meetings today")}</span></div>
       <div class="r"><time>07:59</time><span>${L("GitHub：3 条提到你的", "GitHub: 3 that mention you")}</span></div>
       <div class="r"><time>07:58</time><span>${L("Gmail · work：读了 1 封全文（Cloudflare 续费）", "Gmail · work: read 1 in full (Cloudflare renewal)")}</span></div>
-      <div class="hon">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>` : "";
+      <div class="hon">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What I reads is shown to your AI account. No one else gets it.")}</div></div>` : "";
   const foot = s.stop
     ? `<div class="dfoot"><span class="ask">${L("不用了以后它就看不到这些账号；记下的事还在「记忆」里，可以忘掉。", "Once stopped, it can't read these accounts. What it noted stays in Memory, where you can forget it.")}</span><button class="btn text sm" data-k="${key}" data-stop>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-stop>${L("不用了", "Stop")}</button></div>`
     : `<div class="dfoot"><button class="btn danger sm" data-k="${key}" data-stop>${src.stop}</button></div>`;
@@ -469,16 +469,16 @@ function sourceCard(key, src, o = {}) {
     <div class="name">${src.name}</div>
     <div class="status ${statusCls}">${statusTx}</div>
     <div class="tray">${tiles}</div>${detail}
-    <div class="via">${src.via}<button class="more" data-k="${key}" data-reads aria-expanded="${s.reads}" aria-label="${L("看了哪些", "What it read")}">⋯</button></div>${reads}
+    <div class="via">${src.via}<button class="more" data-k="${key}" data-reads aria-expanded="${s.reads}" aria-label="${L("看了哪些", "What I read")}">⋯</button></div>${reads}
     ${foot}</div>`;
 }
 function proChips(key) {
-  const opts = [L("只说急的", "Only urgent"), L("每天最多 3 条", "Up to 3 a day"), L("有用就说", "Whenever useful"), L("不用主动找我", "Only when I ask")];
+  const opts = [L("只说急的", "Only urgent"), L("每天最多 3 条", "Up to 3 a day"), L("有用就说", "Whenever useful"), L("等你来问", "Only when you ask")];
   const notes = [L("只在拖到明天就来不及的时候找你，没有早上那条。", "Only when tomorrow would be too late; no morning note."),
     L("早上把值得说的放在一条里，最多 3 条；急的随时说。", "One note in the morning with up to 3 things; urgent ones right away."),
     L("不设上限，还是放在早上那条和你在用的时候说。", "No cap, still in the morning note and while you're here."),
     L("它不自己看了，你问起来才去看。", "It stops looking on its own; it reads only when you ask.")];
-  return `<div><div class="ptitle">${L("发现了就说", "When it notices something")}</div>
+  return `<div><div class="ptitle">${L("发现了就说", "When I notice something")}</div>
     <div class="pchips" role="radiogroup">${opts.map((t, i) => `<button class="pc ${PRO === i ? "on" : "off"}" role="radio" aria-checked="${PRO === i}" data-pro="${i}" data-k="${key}">${t}</button>`).join("")}</div>
     <div class="pnote">${notes[PRO]}</div></div>`;
 }
@@ -492,13 +492,13 @@ function renderBefore() {
       <div><b>${L("oo 里的账号", "Accounts in oo")}</b><div class="ap">Gmail (2) · Discord · Google Calendar · GitHub</div><div class="m">${L("经过 oo · 邮件和登录经过 OOMOL 的服务器", "Through oo · your mail and sign-ins pass through OOMOL's servers")}</div></div>
       <span class="bt">${L("移除", "Remove")}</span></div>
     <div class="add"><button class="btn primary sm">${L("加一个", "Add one")}</button></div>
-    <div class="m" style="margin-top:10px">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>`;
+    <div class="m" style="margin-top:10px">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What I reads is shown to your AI account. No one else gets it.")}</div></div>`;
   document.getElementById("newA").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">${proChips("a")}${sourceCard("a", sources().oo)}</div>`;
   document.getElementById("fixes").innerHTML = [
     L("<b>它会做什么</b>：没写 → 上面一排「发现了就说」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
     L("<b>它现在怎么样</b>：没有 → 一行状态「在留意」（不报数，D173；看了多少在 ⋯ 里）。", "<b>How it is now</b>: missing → one status line, Keeping an eye out (no counts, D173; they are under ⋯)."),
     L("<b>能看什么</b>：一串字 → 一排 app 方块，点开说看什么、什么先问你、最后什么时候看的。", "<b>What it can read</b>: a run of names → a tray of app tiles; tap one for what it reads, what asks first, when it last looked."),
-    L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What it read</b>: invisible → ⋯ opens today's reads and the honest line."),
+    L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What I read</b>: invisible → ⋯ opens today's reads and the honest line."),
     L("<b>主按钮</b>：「加一个」→ 退到卡片下面的小字；卡片只有一个危险按钮，原地确认。", "<b>The primary button</b>: Add one → a quiet link under the cards; the card has one destructive action, confirmed in place."),
     L("<b>加上那一刻</b>：一个 toast → 伙伴在对话里开口（见下一块）。", "<b>The moment of adding</b>: a toast → the partner speaks in the conversation (next board)."),
   ].map((x) => `<li>${x}</li>`).join("");
@@ -517,9 +517,9 @@ function firstBody(phone) {
       <div class="acts"><button class="btn secondary sm">${L("好，先帮我读一遍", "Read it first")}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
       <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("11/9 GitHub 通知《Review requested》", "GitHub notification \"Review requested\", 11/9")}</li><li>${L("今天 09:12 Lina 在 PR 下的评论", "Lina's comment on the PR, today 09:12")}</li></ul></details>
       <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>
-      ${FIRST === 2 ? `<div class="acts"><button class="btn primary sm" data-pick="1">${L("好", "Sounds good")}</button><button class="btn text sm" data-pick="0">${L("只说急的", "Only urgent")}</button><button class="btn text sm" data-pick="3">${L("不用主动找我", "Only when I ask")}</button></div>` : ""}</div></div>`);
+      ${FIRST === 2 ? `<div class="acts"><button class="btn primary sm" data-pick="1">${L("好", "Sounds good")}</button><button class="btn text sm" data-pick="0">${L("只说急的", "Only urgent")}</button><button class="btn text sm" data-pick="3">${L("等你来问", "Only when you ask")}</button></div>` : ""}</div></div>`);
   if (FIRST === 3) {
-    const t = { 0: L("只说急的", "Only urgent"), 1: L("好", "Sounds good"), 3: L("不用主动找我", "Only when I ask") }[FIRSTPICK];
+    const t = { 0: L("只说急的", "Only urgent"), 1: L("好", "Sounds good"), 3: L("等你来问", "Only when you ask") }[FIRSTPICK];
     parts.push(`<div class="bub you">${t}</div>`);
     parts.push(`<div class="sysline">${FIRSTPICK === 3 ? L("它不会自己去看。设置 › 账号 里随时改。", "It won't look on its own. Change it any time in Settings › Accounts.") : FIRSTPICK === 0 ? L("只说急的。设置 › 账号 里随时改。", "Only urgent. Change it any time in Settings › Accounts.") : L("每天最多 3 条，早上 8 点。设置 › 账号 里随时改。", "Up to 3 a day, at 8 in the morning. Change it any time in Settings › Accounts.")}</div>`);
   }

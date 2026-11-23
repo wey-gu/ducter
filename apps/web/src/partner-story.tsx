@@ -211,7 +211,7 @@ export function TasksSection() {
             if (l) lines.push(l);
             if (h.allowance?.sharedBy && h.allowance.sharedBy > 1) lines.push(t("loadout.acct.shared", h.allowance.sharedBy));
           }
-          if (h.harness === b.harness && h.canBePartner) lines.push(t("loadout.acct.thinks", name));
+          if (h.harness === b.harness && h.canBePartner) lines.push(t("loadout.acct.thinks"));
           const on = accounts[h.harness]?.enabled !== false;
           return (
             <GRow key={h.harness} tile={<AgentTile harness={h.harness} />} title={agent} line={lines.join("\n") || undefined}>

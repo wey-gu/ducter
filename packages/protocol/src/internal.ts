@@ -191,9 +191,15 @@ export interface CoreApi {
     /** D401: the rules Ducter kept by itself from this user message (seq). */
     keptFrom?(seq: number): RuleView[];
   };
-  /** D413: what the person said may go without asking; what came of a message's words. */
+  /** D413: what the person said may go without asking. D495: recorded by the partner's without_asking tool. */
   standing?: {
-    heardFrom(seq: number): ({ kind: "kept"; standing: { text: string; orgs?: string[] } } | { kind: "revoked"; text: string } | { kind: "floor"; what: "pay" | "secret" | "delete" } | { kind: "unsupported"; what: string })[];
+    list(): import("./standing.ts").StandingView[];
+    hear(
+      key: string,
+      s: { kind: "grant"; action: import("./standing.ts").StandingAction; orgs?: string[]; quote: string } | { kind: "revoke"; action: import("./standing.ts").StandingAction; quote: string },
+      at: string,
+      seq?: number,
+    ): { kept?: import("./standing.ts").StandingView; revoked?: import("./standing.ts").StandingView[] } | undefined;
   };
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;

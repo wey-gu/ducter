@@ -195,16 +195,18 @@ func TestReplyPebbleRepliesToTheFind(t *testing.T) {
 	w := pebbleRun[i18n.ZH]
 	app, tt := pebbleApp(t, i18n.ZH, 1100, 1400, false)
 	r, p := hoverPebble(t, app, tt, w.find1)
-	// On the pebble, it says its word, growing away from the card.
+	// D495: on the pebble, nothing appears and nothing moves: no word, the
+	// same size and place (its name is its label and the system tooltip).
+	before := texts(tt)
 	tt.Move(p.X+p.W/2, p.Y+p.H/2)
 	tt.Frame()
 	tt.Frame()
 	q, _ := tt.Find(app.L.T("reply.action"))
-	if q.W <= p.W || q.X < p.X-1 {
-		t.Errorf("the pebble under the pointer didn't widen away from the card: %+v -> %+v", p, q)
+	if q != p || q.X < r.X+r.W {
+		t.Errorf("the pebble under the pointer changed: %+v -> %+v", p, q)
 	}
-	if !tt.HasText(app.L.T("reply.action")) || q.X < r.X+r.W {
-		t.Errorf("no word on the pebble, or it moved onto the card: %+v", q)
+	if after := texts(tt); after != before {
+		t.Errorf("pointing at the pebble changed the words on screen: %q -> %q", before, after)
 	}
 	pebbleShot(t, tt, "mac-zh-light-wide-find-on-pebble")
 	if err := tt.Click(app.L.T("reply.action")); err != nil {

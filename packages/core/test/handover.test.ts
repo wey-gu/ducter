@@ -505,8 +505,10 @@ test("D415: 只开始，不留言 starts without a comment; inside a standing pe
   await until(() => b.opened.length === 1);
   expect(b.gh.comments.length).toBe(0);
   expect(b.opened[0]!.brief).not.toContain("already left the comment");
-  // "在 acme 的 issue 里留言不用问我": kept at once; the next such note comments without asking.
-  b.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "以后在 acme 的 issue 里留言不用问我，直接发" } });
+  // "在 acme 的 issue 里留言不用问我": the partner keeps it (D495: without_asking, as here); the next
+  // such note comments without asking.
+  const said = b.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "以后在 acme 的 issue 里留言不用问我，直接发" } });
+  b.core.standing.hear(`tool:${said.seq}`, { kind: "grant", action: "issue_comment", orgs: ["acme"], quote: "以后在 acme 的 issue 里留言不用问我，直接发" }, said.ts, said.seq);
   await until(() => b.core.standing.list().some((s) => s.action === "issue_comment"));
   expect(b.core.standing.list().find((s) => s.action === "issue_comment")!.orgs).toEqual(["acme"]);
   const n = decisions(b).length;

@@ -146,7 +146,7 @@ export interface TaskSourcesDeps {
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
   /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
-  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean; allowsComment?(ref: string): StandingView | undefined };
+  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean; allowsComment?(ref: string): StandingView | undefined };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;
   /** Today in the person's zone (the Tasks ✅ date). */

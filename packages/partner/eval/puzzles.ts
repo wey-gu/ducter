@@ -676,6 +676,25 @@ export const puzzles: Scenario[] = [
     rubric:
       "Step 1: the person asks for quiet places in Kyoto for Dec 20–23 with prices; one task is opened with a short Chinese ack. Step 2: the task reports two places with prices. Pass if the partner then tells them both options with their prices in a few short Chinese lines (it said it would tell them the prices). Fail if it says nothing after the report, leaves out the prices, or says it promised.",
   },
+  // D495, hel 2026-11-23: the author's review loop posted only some drafts by itself and asked about the
+  // rest on a card each round (「我的 loop 里请它自动不停去发 review，为何还是要问我是否发送?」). Said to the
+  // partner, the standing go is recorded by the partner (without_asking), and code posts every round.
+  {
+    id: "wp-loop-posts-reviews-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    seed: [
+      { user: "每 45 分钟看一轮 nowledge-co 里请我 review 和 at 我的 PR，按 mem 里的 review skill 仔细审" },
+      { task: { key: "rev", title: "持续评审 nowledge-co", ack: "好，我每 45 分钟看一轮 nowledge-co 请你评审和提到你的 PR。", state: "working", harness: "codex", words: "每 45 分钟看一轮 nowledge-co 里请我 review 和 at 我的 PR，按 mem 里的 review skill 仔细审" } },
+      { loop: { task: "rev", everyMin: 45, reason: "看 nowledge-co 新的评审请求" } },
+    ],
+    steps: [{ user: "这个 review 的 loop 里写好的评审你就自己不停地发出去，别每轮都来问我要不要发" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 100, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], proseForbid: [/仍需|还是需要|需要你确认|不能跳过|规矩|Ducter 的规则/] },
+    rubric:
+      "The world: a task in rounds reviews nowledge-co PRs every 45 minutes; each round's drafts wait on a card. The person now says the loop should post its reviews by itself, every round, without asking. Pass if the partner records that standing go (without_asking keep, PR reviews) and says it back in one short, true Chinese line (from now on reviews post without asking; taking it back is one sentence). Fail if it asks anything, makes a card, opens a task, says each post still needs confirming, or calls not doing it a rule.",
+  },
   // D494: the author's own words on hel (2026-11-23): a standing "loop agent" with a name in Bridge
   // that his agents hand PRs to. Ducter's home is the one receiver and wakes the work, so the right
   // outcome is a helper, made at once: no Codex task that polls a mailbox or loops, no question.

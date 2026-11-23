@@ -1,143 +1,52 @@
 // D413: 不用问我的 / Without asking. What the person says Ducter may do for them from now on without
-// asking ("review 做好了直接发别和我确认", "just post the reviews, don't ask me") is kept the moment their
-// message lands, in their words, like a said rule (D401): no card, no Go. The review routine then
-// posts its drafts on the PRs inside it through the same audited write (Done for you), and asks only
-// for what is outside it (another org, a PR that only mentions them). Said again the other way
-// ("评审发之前先问我", "ask me before posting reviews") or 收回 / Take back on the Partner page ends it.
+// asking ("review 做好了直接发别和我确认", "just post the reviews, don't ask me") is kept in their words,
+// like a rule: no card, no Go. The review routine then posts its drafts on the PRs inside it through
+// the same audited write (Done for you), and asks only for what is outside it (another org). Said the
+// other way, or 收回 / Take back on the Partner page, ends it.
 //
-// The floor (D61 GQ5) is never standing: paying, passwords, codes and sign-ins, deleting, and
-// anything an untrusted source asked for. Ducter keeps none of those, and tells the partner the
-// real reason so it says that, not a rule it made up. Outward actions Ducter has no standing path
-// for yet are told to the partner as exactly that.
-//
-// Only an explicit statement counts: an action (a PR review), a "don't ask / post directly"
-// directive, in one sentence, not a question and not this once ("这次直接发吧" is that once).
+// D495 (principle 21): the model judges, code guards. The partner records a permission with its
+// without_asking tool (keep / take_back), quoting the person's own words, which code checks were said
+// (never what they mean). Code holds the invariants: only actions with an audited write that honours
+// them (STANDING_ACTIONS) can be kept, so the floor (D61 GQ5: paying, passwords and sign-ins,
+// deleting, what an untrusted source asked for) can never become standing; where it holds is the
+// owners recorded, else where the review routine looks. No regex reads the person's words here.
 import { existsSync, readFileSync, renameSync, writeFileSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { STANDING_ACTIONS, type Bodies, type StandingAction, type StandingView } from "@ducter/protocol";
+import { STANDING_ACTIONS, type StandingAction, type StandingView } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const STANDING_FILE = "standing.json";
 
-/** What one sentence of the person's says about asking first. */
+/** What the partner recorded about asking first (their words in quote). */
 export type StandingSaying =
   | { kind: "grant"; action: StandingAction; orgs?: string[]; quote: string }
-  | { kind: "revoke"; action: StandingAction; quote: string }
-  /** A no-ask said about something on the floor: never kept; the partner gives the real reason. */
-  | { kind: "floor"; what: "pay" | "secret" | "delete"; quote: string }
-  /** A no-ask said about an outward action Ducter can't keep as standing yet. */
-  | { kind: "unsupported"; what: string; quote: string };
-
-const REVIEW = /(?<![a-z])(code\s*)?reviews?(?![a-z])|评审|审查|审阅|\bCR\b/i;
-/** D415: a comment on an issue ("在 issue 里留言", "comment on my issues"); a close is never in it. */
-const ISSUE_COMMENT = /(issue|议题)[^。！？!?\n]{0,12}(留言|评论|回复|说一声|说一下)|(留言|评论|回复)[^。！？!?\n]{0,8}(issue|议题)|\bcomments?\b[^.!?\n]{0,24}\bissues?\b|\bissues?\b[^.!?\n]{0,24}\bcomments?\b/i;
-/** "nowledge-co 的 issue", "nowledge-co issues": an owner named without a repository. */
-const OWNER_WORD = /(?<![\w./-])([A-Za-z0-9][\w.-]*[-.][\w.-]+|[A-Za-z0-9][\w-]{2,38})\s*(?:这个\s*)?(?:org|组织)?\s*(?:的|里的?|下的?|'s)?\s*(?:所有\s*)?(?:issues?|议题)/gi;
-const NOT_OWNER = new Set(["my", "the", "all", "these", "those", "any", "our", "your", "their", "github", "on", "in", "open", "new", "comment", "comments", "post", "leave"]);
-const NO_ASK =
-  /直接(发|发布|提交|贴|发出去|发到|post)|不用(再)?(问|确认|找我|等我)|不要(再)?(问|确认)|别(再)?(问|和我确认|跟我确认|找我确认|确认|等我)|无需确认|不必(问|确认)|不需要(问|确认)|自己(发|发布)(就行|吧|就好)?|\b(don'?t|do not|no need to|never|stop) (ask|asking|confirm|check with)\b|\bwithout (asking|confirm\w*|checking with me)\b|\bjust (post|send|publish)\b|\bpost (them |it |reviews? )?(directly|right away|straight)\b/i;
-/** "review 不要直接发" / "别直接发": the other way. */
-const NOT_DIRECT = /(不要|别|不能|不准|不许)\s*直接(发|发布|提交|post)|\b(don'?t|do not|never) (just )?post (them |it )?(directly|right away)\b/i;
-const ASK_FIRST =
-  /(先|还是|发之前|发布前|发前|之前)[^。！？!?\n]{0,6}(问|给我看|让我确认|跟我确认|和我确认)|(要|得|需要)先(问我|给我看|让我确认)|\bask (me )?(first|before)\b|\bcheck with me (first|before)\b|\bconfirm with me (first|before)\b/i;
-const ONE_OFF = /这次|这一次|这回|这几个|这几份|这份|这个\s*PR|this time|this one|these ones|just once|for now/i;
-const QUESTION = /[?？]\s*$|[吗么嘛][。！!]?\s*$|要不要|是不是|能不能|可不可以|\b(should (i|we|you)|shall (i|we)|can you|could you|would you)\b/i;
-const FLOOR: [Extract<StandingSaying, { kind: "floor" }>["what"], RegExp][] = [
-  ["pay", /付款|支付|付钱|刷卡|下单|买单|转账|\b(pay|paying|payments?|purchase|buy|checkout)\b/i],
-  ["secret", /密码|验证码|登录|登陆|\b(passwords?|passcodes?|2fa|one-time code|sign(ing)? in|log(ging)? in)\b/i],
-  ["delete", /删除|删掉|删了|清空|\b(delete|deleting|remove|wipe|erase)\b/i],
-];
-const OUTWARD = /邮件|email|e-mail|mail|消息|私信|message|回复|reply|评论|comment|issue|推送|push|合并|merge|发帖|post|tweet|PR|pull request/i;
-const PARTICLES = /[\s哈啊呀吧哦喔啦了嘛呢~～!！。.,，;；:：]+$/;
-const QUOTE_MAX = 90;
-/** owner/repo or owner/repo#n named in the sentence: the owner bounds the permission. */
-const OWNER_RE = /(?<![\w.-])([A-Za-z0-9][\w.-]{0,38})\/[\w.-]+(?:#\d+)?/g;
-
-const sentences = (text: string) => text.split(/(?<=[。！？!?;；\n])|(?<=\.)\s+/).map((s) => s.trim()).filter(Boolean);
-const clip = (s: string) => {
-  const q = s.replace(/^>.*$/gm, "").replace(PARTICLES, "").trim();
-  const chars = [...q];
-  return chars.length <= QUOTE_MAX ? q : `${chars.slice(0, QUOTE_MAX - 1).join("").trimEnd()}…`;
-};
-
-/** What a piece of the person's words says about asking first, if anything (explicitly). */
-export function readStanding(text: string): StandingSaying[] {
-  const out: StandingSaying[] = [];
-  // A quoted line ("> …") is someone else's words (often the partner's), never theirs.
-  const own = text
-    .split("\n")
-    .filter((l) => !/^\s*>/.test(l))
-    .join("\n");
-  for (const s of sentences(own)) {
-    if (QUESTION.test(s) || ONE_OFF.test(s)) continue;
-    const comment = ISSUE_COMMENT.test(s) && !REVIEW.test(s);
-    if (comment) {
-      // D415: the same reading for a comment on an issue: kept, bounded by the owners named.
-      if (NOT_DIRECT.test(s) || (!NO_ASK.test(s) && ASK_FIRST.test(s)) || /(先|还是)[^。！？!?\n]{0,6}(问|确认)[^。！？!?\n]{0,4}(再|才)?(留言|评论)/.test(s)) {
-        out.push({ kind: "revoke", action: "issue_comment", quote: clip(s) });
-        continue;
-      }
-      if (!NO_ASK.test(s) && !/(直接|自己)(留言|评论|回复)|\bjust comment\b|\bcomment (directly|right away)\b/i.test(s)) continue;
-      if (FLOOR.some(([, re]) => re.test(s))) continue;
-      const orgs = [...new Set([...[...s.matchAll(OWNER_RE)].map((m) => m[1]!.toLowerCase()), ...[...s.matchAll(OWNER_WORD)].map((m) => m[1]!.toLowerCase()).filter((x) => !NOT_OWNER.has(x))])];
-      out.push({ kind: "grant", action: "issue_comment", ...(orgs.length ? { orgs } : {}), quote: clip(s) });
-      continue;
-    }
-    const review = REVIEW.test(s);
-    if (review && (NOT_DIRECT.test(s) || (!NO_ASK.test(s) && ASK_FIRST.test(s)))) {
-      out.push({ kind: "revoke", action: "pr_review", quote: clip(s) });
-      continue;
-    }
-    if (!NO_ASK.test(s)) continue;
-    const floor = FLOOR.find(([, re]) => re.test(s));
-    if (floor) {
-      out.push({ kind: "floor", what: floor[0], quote: clip(s) });
-      continue;
-    }
-    if (review) {
-      const orgs = [...new Set([...s.matchAll(OWNER_RE)].map((m) => m[1]!.toLowerCase()))];
-      out.push({ kind: "grant", action: "pr_review", ...(orgs.length ? { orgs } : {}), quote: clip(s) });
-      continue;
-    }
-    const o = OUTWARD.exec(s);
-    if (o) out.push({ kind: "unsupported", what: o[0], quote: clip(s) });
-  }
-  return out;
-}
+  | { kind: "revoke"; action: StandingAction; quote: string };
 
 export interface StandingStore {
   list(): StandingView[];
-  /** The standing permission that lets this PR's review go without asking, if any. */
-  allows(action: StandingAction, ref: string, o?: { mention?: boolean }): StandingView | undefined;
+  /** The standing permission that lets this action on ref (owner/repo#n) go without asking, if any. */
+  allows(action: StandingAction, ref: string): StandingView | undefined;
   /** Keep a saying (grant: kept or widened; revoke: ended), once per saying key. What changed. */
   hear(key: string, s: StandingSaying, at: string, seq?: number): { kept?: StandingView; revoked?: StandingView[] } | undefined;
   /** 收回 / Take back, by id. */
   revoke(id: string): boolean;
   /** The first use of this permission: true once (the one line in the conversation), then false. */
   firstUse(id: string): boolean;
-  /** What Ducter did with this user message's words (for the partner's line under them). */
-  heardFrom(seq: number): Heard[];
-  /** The Log's sayings not heard yet (said before Ducter kept them), oldest first. */
-  backfill(): StandingView[];
   onChange(fn: () => void): () => void;
   /** Ongoing (D413): a grant was kept: post what waits inside it now. */
   onGrant(fn: (s: StandingView) => void): () => void;
 }
 
-export type Heard =
-  | { kind: "kept"; standing: StandingView }
-  | { kind: "revoked"; text: string }
-  | { kind: "floor"; what: "pay" | "secret" | "delete" }
-  | { kind: "unsupported"; what: string };
+export type Heard = { kind: "kept"; standing: StandingView } | { kind: "revoked"; text: string };
 
 interface File {
   items: StandingView[];
-  /** Saying keys heard (said:<seq>[.i]) → what came of them, so a taken-back one never returns from the same words. */
+  /** Saying keys heard → what came of them (a record; D413's said:<seq> keys from before D495 stay). */
   heard: Record<string, Heard>;
 }
 
-export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Date; reviewOrgs?: () => string[] }): StandingStore {
+export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => Date; reviewOrgs?: () => string[] }): StandingStore {
   const now = o.now ?? (() => new Date());
   const path = join(o.dataDir, STANDING_FILE);
   let st: File = { items: [], heard: {} };
@@ -170,27 +79,15 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
   };
   const ownerOf = (ref: string) => ref.split("/")[0]!.toLowerCase();
 
-  const fromLog = () =>
-    o.log
-      .read({ kinds: ["user_msg"], limit: 5000 })
-      .filter((e) => e.origin === "user" && (e.stream === "channel" || e.stream.startsWith("channel:")))
-      .filter((e) => !(e.body as Bodies["user_msg"]).forwarded)
-      .flatMap((e) => readStanding((e.body as Bodies["user_msg"]).text ?? "").map((s, i) => ({ s, key: `said:${e.seq}${i ? `.${i}` : ""}`, at: e.ts, seq: e.seq })));
-
   const store: StandingStore = {
     list: () => st.items.slice(),
-    allows(action, ref, x) {
-      if (x?.mention) return undefined;
+    allows(action, ref) {
       const owner = ownerOf(ref);
       return st.items.find((s) => s.action === action && (!s.orgs?.length || s.orgs.includes(owner)));
     },
     hear(key, s, at, seq) {
       if (st.heard[key]) return undefined;
-      if (s.kind === "floor" || s.kind === "unsupported") {
-        st.heard[key] = s.kind === "floor" ? { kind: "floor", what: s.what } : { kind: "unsupported", what: s.what };
-        changed();
-        return {};
-      }
+      if (!STANDING_ACTIONS.includes(s.action)) return undefined;
       if (s.kind === "revoke") {
         const gone = st.items.filter((x) => x.action === s.action);
         st.items = st.items.filter((x) => x.action !== s.action);
@@ -233,20 +130,6 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
       changed();
       return true;
     },
-    heardFrom(seq) {
-      return Object.entries(st.heard)
-        .filter(([k]) => k === `said:${seq}` || k.startsWith(`said:${seq}.`))
-        .map(([, h]) => (h.kind === "kept" ? { kind: "kept" as const, standing: st.items.find((x) => x.id === h.standing.id) ?? h.standing } : h));
-    },
-    backfill() {
-      const ids = new Set<string>();
-      for (const { s, key, at, seq } of fromLog()) {
-        if (st.heard[key]) continue;
-        const r = store.hear(key, s, at, seq);
-        if (r?.kept) ids.add(r.kept.id);
-      }
-      return st.items.filter((x) => ids.has(x.id));
-    },
     onChange(fn) {
       subs.add(fn);
       return () => subs.delete(fn);
@@ -257,15 +140,4 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
     },
   };
   return store;
-}
-
-/** D413: the person's words are heard as they land, before the partner's turn (as D401's rules). */
-export function keepStandingAtOnce(log: LogStore, store: StandingStore): () => void {
-  return log.subscribe((e) => {
-    if (e.kind !== "user_msg" || e.origin !== "user") return;
-    if (!(e.stream === "channel" || e.stream.startsWith("channel:"))) return;
-    const b = e.body as Bodies["user_msg"];
-    if (b.forwarded) return;
-    readStanding(b.text ?? "").forEach((s, i) => store.hear(`said:${e.seq}${i ? `.${i}` : ""}`, s, e.ts, e.seq));
-  });
 }

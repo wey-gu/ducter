@@ -417,8 +417,8 @@ export function SelectText() {
 
 /** D256: the reply pebble. With a mouse, while the pointer is over something that can be replied
  *  to, one small clay pebble rests in the gutter beside it (left of the person's, right of the
- *  partner's, outside a note's card beside a find), its ledge on the bottom line; on the pebble
- *  itself it says 回复 / Reply. D492: 拷贝 / Copy rests over it, the whole message (not for
+ *  partner's, outside a note's card beside a find), its ledge on the bottom line. D495: the mark
+ *  alone, never a word on it; its name is its aria-label and the browser's own delayed tooltip. D492: 拷贝 / Copy rests over it, the whole message (not for
  *  pictures alone); on a partner's message 朗读 / Read aloud over that. Touch has the swipe and
  *  the long-press menu instead. */
 export function HoverReply({ k, copy = true }: { k?: string; copy?: boolean }) {
@@ -436,6 +436,7 @@ export function HoverReply({ k, copy = true }: { k?: string; copy?: boolean }) {
       type="button"
       class="hover-reply"
       aria-label={replyWord(r)}
+      title={replyWord(r)}
       onClick={(ev) => {
         ev.stopPropagation();
         const r = targets.get(k);
@@ -443,9 +444,6 @@ export function HoverReply({ k, copy = true }: { k?: string; copy?: boolean }) {
       }}
     >
       <ReplyGlyph />
-      <span class="w" aria-hidden="true">
-        {replyWord(r)}
-      </span>
     </button>
     </>
   );
@@ -462,15 +460,13 @@ function HoverRead({ seq }: { seq: number; k: string }) {
       type="button"
       class={`hover-reply hover-read${on ? " on" : ""}`}
       aria-label={label}
+      title={label}
       onClick={(ev) => {
         ev.stopPropagation();
         toggleRead(seq, text);
       }}
     >
       <SpeakerGlyph size={16} on={on} />
-      <span class="w" aria-hidden="true">
-        {label}
-      </span>
     </button>
   );
 }

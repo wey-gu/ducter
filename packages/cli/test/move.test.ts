@@ -83,7 +83,7 @@ function snapshot(dir: string): string[] {
 }
 
 const plan = (extra: Partial<Parameters<typeof planMove>[0]> = {}) => {
-  const p = planMove({ dataDir, t: en, computer: "Wey's MacBook Pro", platform: "darwin", now: NOW, home, env: {}, agents: [{ name: "Claude Code", signedIn: true }, { name: "Codex", signedIn: true }], github: true, ...extra });
+  const p = planMove({ dataDir, t: en, computer: "Wey's MacBook Pro", platform: "darwin", now: NOW, home, env: {}, agents: [{ name: "Claude Code", harness: "claude-code", signedIn: true }, { name: "Codex", harness: "codex", signedIn: true }], github: true, ...extra });
   if (!p.ok) throw new Error("no home");
   return p;
 };

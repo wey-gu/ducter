@@ -214,7 +214,7 @@ async function cmdUndo(ctx: Ctx): Promise<number> {
 
 /** The AI agents on this machine that outlive Ducter (pi ships inside it): what Remove may
  *  promise stays. A failed probe says nothing rather than guessing. */
-async function installedAgents(dataDir: string): Promise<{ name: string; signedIn: boolean }[] | undefined> {
+async function installedAgents(dataDir: string): Promise<{ name: string; harness: string; signedIn: boolean }[] | undefined> {
   const host = realHost();
   try {
     const found = await probeHarnesses({
@@ -225,7 +225,7 @@ async function installedAgents(dataDir: string): Promise<{ name: string; signedI
       which: (c) => host.which(c),
       dataDir,
     });
-    return found.filter((h) => h.harness !== "pi" && h.installed).map((h) => ({ name: harnessName(h.harness), signedIn: h.loggedIn }));
+    return found.filter((h) => h.harness !== "pi" && h.installed).map((h) => ({ name: harnessName(h.harness), harness: h.harness, signedIn: h.loggedIn }));
   } catch {
     return undefined;
   }

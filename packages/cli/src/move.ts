@@ -16,6 +16,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sameComputer } from "@ducter/protocol/src/computer-name.ts";
+import { HARNESS_KEYS, isHarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import type { T } from "./i18n.ts";
 import { sizeOf } from "./uninstall.ts";
@@ -61,7 +62,7 @@ export interface PlanMoveInput {
   platform: NodeJS.Platform;
   to?: string;
   /** The AI agents installed here, probed by the caller; absent: not probed, no line. */
-  agents?: { name: string; signedIn: boolean }[];
+  agents?: { name: string; harness?: string; signedIn: boolean }[];
   /** GitHub's CLI is signed in on this computer (probed by the caller). */
   github?: boolean;
   now?: number;
@@ -104,6 +105,16 @@ const listDir = (p: string) => {
   }
 };
 
+/**
+ * A SQLite file opened for reading only. With no -wal beside it (a home that is stopped, or a
+ * database closed cleanly) it is opened immutable, so SQLite makes no -wal or -shm of its own; with
+ * one (the home is running) read-only, through the -shm the running home already made.
+ */
+export function openRead(path: string): Database {
+  if (existsSync(`${path}-wal`)) return new Database(path, { readonly: true });
+  return new Database(`file:${encodeURI(path)}?immutable=1`, { readonly: true });
+}
+
 /** The data folder holds a home: its Log. A worker or a CLI that follows a home elsewhere has none. */
 export function isHome(dataDir: string): boolean {
   return existsSync(join(dataDir, "ducter.db"));
@@ -121,7 +132,7 @@ export function readLog(dataDir: string): LogFacts | undefined {
   const path = join(dataDir, "ducter.db");
   let db: Database | undefined;
   try {
-    db = new Database(path, { readonly: true });
+    db = openRead(path);
     const events = (db.query("SELECT COUNT(*) AS n FROM events").get() as { n: number }).n;
     const opens = new Map<string, any>();
     for (const r of db.query("SELECT body FROM events WHERE kind = 'task_open' ORDER BY seq").all() as { body: string }[]) {
@@ -188,7 +199,7 @@ export function readDevices(dataDir: string): DeviceFacts {
   if (!existsSync(path)) return out;
   let db: Database | undefined;
   try {
-    db = new Database(path, { readonly: true });
+    db = openRead(path);
     const cols = new Set((db.query("PRAGMA table_info(devices)").all() as { name: string }[]).map((c) => c.name));
     const extra = ["computer", "form"].filter((c) => cols.has(c));
     const rows = db.query(`SELECT name, kind, platform, last_seen_at${extra.map((c) => `, ${c}`).join("")} FROM devices WHERE revoked_at IS NULL`).all() as any[];
@@ -283,7 +294,8 @@ export function planMove(i: PlanMoveInput): MovePlanResult {
   // ---------- what is done again there ----------
   for (const a of i.agents ?? []) {
     if (!a.signedIn) continue;
-    const viaKey = a.name === "Claude Code" && keys.includes("CLAUDE_CODE_OAUTH_TOKEN");
+    // An agent that signs in with a key in keys.env goes with it (the registry says which keys are whose).
+    const viaKey = a.harness !== undefined && isHarnessId(a.harness) && HARNESS_KEYS[a.harness].some((k) => keys.includes(k));
     if (!viaKey) redo.push({ id: `agent:${a.name}`, what: t("move.redo.agent", { agent: a.name }), detail: t("move.redo.agent.why") });
   }
   if (i.github) redo.push({ id: "github", what: t("move.redo.github"), detail: t("move.redo.github.why") });
@@ -386,7 +398,7 @@ export interface MoveCtx {
   to?: string;
   computer: string;
   platform: NodeJS.Platform;
-  probe?: () => Promise<{ agents?: { name: string; signedIn: boolean }[]; github?: boolean }>;
+  probe?: () => Promise<{ agents?: { name: string; harness?: string; signedIn: boolean }[]; github?: boolean }>;
   print?: (s: string) => void;
 }
 

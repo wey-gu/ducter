@@ -146,16 +146,12 @@ test("a reply typed into a card answered elsewhere goes to the partner as a mess
   await Bun.sleep(30);
   expect(core.log.read({ kinds: ["decision_resolved"] })).toHaveLength(1);
   expect(c.frames.some((x) => x.t === "error")).toBe(false);
-});
-
-test("the same reply arriving twice (two windows, same words) is said once", async () => {
-  const core = boot();
-  const id = partnerAsk(core);
-  const c = await client(core);
-  c.send({ t: "decide", decisionId: id, option: "reply", text: "你看看吧" });
+  // The same reply from two windows (same words) is said once.
+  const id2 = partnerAsk(core, "And this?");
+  c.send({ t: "decide", decisionId: id2, option: "reply", text: "你看看吧" });
   await Bun.sleep(30);
-  c.send({ t: "decide", decisionId: id, option: "reply", text: "你看看吧" });
+  c.send({ t: "decide", decisionId: id2, option: "reply", text: "你看看吧" });
   await Bun.sleep(30);
-  expect(core.log.read({ kinds: ["decision_resolved"] })).toHaveLength(1);
-  expect(core.log.read({ stream: "channel", kinds: ["user_msg"] })).toHaveLength(0);
+  expect(core.log.read({ kinds: ["decision_resolved"] })).toHaveLength(2);
+  expect(core.log.read({ stream: "channel", kinds: ["user_msg"] })).toHaveLength(1);
 });

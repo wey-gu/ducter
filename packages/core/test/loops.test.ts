@@ -263,6 +263,12 @@ test("a computer asleep: the round is tried again, and once late past its grace 
   await flush();
   expect(b.woke).toHaveLength(1); // one catch-up once it can
   expect(og(b)?.health).toBeUndefined();
+  // D481: its card closes by itself once its moment passed, on every window (openAsks).
+  b.clock.advance(SWEEP_MS);
+  await flush();
+  const id = cards(b)[0]!.decisionId;
+  expect(b.core.decisions.resolution(id)).toMatchObject({ by: "ended", settled: true });
+  expect(b.core.tasks.onHand().openAsks?.ids).not.toContain(id);
 });
 
 test("a quota wait: late with when it resets, and no card (the limit's own line says it)", async () => {
@@ -485,28 +491,4 @@ test("D481: a round that runs long is handed to the partner with its facts (a me
   expect(looks[0]!.round!.steps.some((s) => s.text.startsWith("said: CI"))).toBe(true);
   expect(woke).toContain("mend"); // the partner looks
   expect(b.core.tasks.onHand().tasks.find((c) => c.taskId === "swj3zc4w")?.mending).toBeUndefined();
-});
-
-test("D481: the watchdog's card closes by itself once its moment passed (the computer woke and the round ran)", async () => {
-  let asleep = false;
-  const b = boot({ sendFails: () => (asleep ? "MacBook is asleep" : undefined) });
-  open(b);
-  await waitFor(b, "swj3zc4w");
-  asleep = true;
-  b.clock.advance(45 * MIN);
-  await flush();
-  b.clock.advance(25 * MIN);
-  await flush();
-  expect(cards(b)).toHaveLength(1);
-  const id = cards(b)[0]!.decisionId;
-  expect(b.core.decisions.openIds()).toContain(id);
-  asleep = false;
-  b.clock.advance(10 * MIN);
-  await flush();
-  expect(b.woke).toHaveLength(1);
-  b.clock.advance(SWEEP_MS);
-  await flush();
-  expect(b.core.decisions.resolution(id)).toMatchObject({ by: "ended", settled: true });
-  expect(b.core.decisions.openIds()).not.toContain(id);
-  expect(b.core.tasks.onHand().openAsks?.ids).not.toContain(id);
 });

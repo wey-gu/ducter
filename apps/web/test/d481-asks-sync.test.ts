@@ -44,10 +44,10 @@ const WAYS: Bodies["decision_resolved"][] = [
   { decisionId: "", option: "hold", by: "ended", settled: true },
 ];
 
-for (const kind of ["task", "partner"] as Kind[])
-  for (const way of WAYS) {
-    const name = `${way.option}${way.by !== "user" ? ` by ${way.by}` : ""}`;
-    test(`${kind} question, ${name}, live: every surface closes at once`, () => {
+const CASES = (["task", "partner"] as Kind[]).flatMap((kind) => WAYS.map((way) => ({ kind, way })));
+
+test("live: each way of answering closes every surface at once, for a task's question and the partner's own", () => {
+  for (const { kind, way } of CASES) {
       const s = new Store();
       s.apply({ t: "welcome", persona: "default", headSeq: 0 } as never);
       const id = asked(s, kind);
@@ -55,8 +55,11 @@ for (const kind of ["task", "partner"] as Kind[])
       s.apply({ t: "events", events: [ev("decision_resolved", { ...way, decisionId: id })] });
       expect(surfaces(s, id, kind)).toEqual(NONE);
       expect(s.decisions.get(id)!.resolved).toMatchObject({ option: way.option, by: way.by });
-    });
-    test(`${kind} question, ${name}, missed while away: On hand's openAsks closes it, the home's events then say how`, () => {
+  }
+});
+
+test("missed while away: On hand's openAsks closes it on every surface, then the home's events (asks_get) say how", () => {
+  for (const { kind, way } of CASES) {
       const s = new Store();
       s.apply({ t: "welcome", persona: "default", headSeq: 0 } as never);
       const id = asked(s, kind);
@@ -73,8 +76,8 @@ for (const kind of ["task", "partner"] as Kind[])
       expect(s.decisions.get(id)!.elsewhere).toBeUndefined();
       expect(s.decisions.get(id)!.resolved).toMatchObject({ option: way.option, by: way.by });
       expect(surfaces(s, id, kind)).toEqual(NONE);
-    });
   }
+});
 
 test("snapshot vs event order: a question asked after the snapshot's asOf is never closed by it", () => {
   const s = new Store();
@@ -94,6 +97,14 @@ test("open at the home but unknown here (asked before what this page loaded): as
   expect(s.takeAsksWanted()).toEqual(["d_far"]);
   s.apply({ t: "events", events: [d] });
   expect(surfaces(s, "d_far", "partner")).toEqual({ card: true, onHand: true, partnerAsks: true, taskPage: false });
+  // Asked once a socket; a new socket asks again for what it still lacks.
+  s.apply({ t: "on_hand", onHand: onHand(["d_far", "d_x"], seq) });
+  expect(s.takeAsksWanted()).toEqual(["d_x"]);
+  s.apply({ t: "on_hand", onHand: onHand(["d_far", "d_x"], seq) });
+  expect(s.takeAsksWanted()).toEqual([]);
+  s.apply({ t: "welcome", persona: "default", headSeq: seq } as never);
+  s.apply({ t: "on_hand", onHand: onHand(["d_far", "d_x"], seq) });
+  expect(s.takeAsksWanted()).toEqual(["d_x"]);
 });
 
 test("a question the home still has open stays open, even one this page answered and the home never got (it shows as sent)", () => {
@@ -103,18 +114,6 @@ test("a question the home still has open stays open, even one this page answered
   s.apply({ t: "on_hand", onHand: onHand([id], seq) });
   expect(surfaces(s, id, "partner").onHand).toBe(true);
   expect(s.decisions.get(id)!.resolved).toBeUndefined();
-});
-
-test("a new socket asks again for what it still lacks", () => {
-  const s = new Store();
-  s.apply({ t: "welcome", persona: "default", headSeq: 0 } as never);
-  s.apply({ t: "on_hand", onHand: onHand(["d_x"], seq) });
-  expect(s.takeAsksWanted()).toEqual(["d_x"]);
-  s.apply({ t: "on_hand", onHand: onHand(["d_x"], seq) });
-  expect(s.takeAsksWanted()).toEqual([]);
-  s.apply({ t: "welcome", persona: "default", headSeq: seq } as never);
-  s.apply({ t: "on_hand", onHand: onHand(["d_x"], seq) });
-  expect(s.takeAsksWanted()).toEqual(["d_x"]);
 });
 
 test("words left in a card's reply box after it was answered elsewhere are offered as a message, on both card layouts, zh and en", () => {

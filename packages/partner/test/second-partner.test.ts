@@ -61,6 +61,8 @@ test("a second partner's own session answers in its name, on its own role and fo
   expect(inputs(mainRunner)).not.toContain("牙医");
 
   const words = (s: string) => core.log.read({ stream: s, kinds: ["ai_msg"] }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  // Both answers are written by turns that may still be landing on a slow machine (CI): wait for them.
+  for (let i = 0; i < 500 && (!words("channel:p2").length || !words("channel").length); i++) await Bun.sleep(10);
   expect(words("channel:p2")).toEqual(["约了，周六上午十点。"]);
   expect(words("channel")).toEqual(["on it."]);
 });

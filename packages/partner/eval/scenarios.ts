@@ -29,6 +29,11 @@ export type Seed =
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
+  // D483: the seeded task declared it owns this PR (its checkpoint's owns), so Ducter watches it for it.
+  | { owns: { task: string; pr: string } }
+  // D483: the seeded task's own wait ended without its condition (ran out, or its look couldn't be
+  // read), as core logs it: its looks first, then the end; core then tells the task with the facts.
+  | { waitEnded: { task: string; reason: string; argv: string[]; path: string; looks: string[]; cantTell?: string } }
   // D478: the runner's record that a seeded task's agent hit its usage limit (resets at HH:MM local).
   | { limitHit: { task: string; harness: string; resetsAt: string } }
   // D193 (scenario.phone): a call on the line whose other side asks the user something (its card is up).

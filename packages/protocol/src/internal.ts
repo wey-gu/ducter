@@ -180,6 +180,8 @@ export interface CoreApi {
   codeOn?(): { device: string; name: string; remote?: string }[];
   /** D478: each agent's usage limit per computer (device "local" for the home): used up (until when, the tasks resting on it) or room left, from the runner's hits, the limit waits and the home's account reads. */
   agentLimits?(): { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] }[];
+  /** D483: what each task declared it owns outside and Ducter watches for it (PRs as owner/repo#123). */
+  owned?(): { taskId: string; refs: string[] }[];
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
   said?: {
     fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;

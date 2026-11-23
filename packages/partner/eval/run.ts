@@ -771,6 +771,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       // D478: the runner's own record of a task's agent hitting its usage limit (D297), as it logs it.
       const taskId = idOf.get(s.limitHit.task)!;
       core.log.append({ stream: `task:${taskId}`, origin: "runner", kind: "task_event", body: { taskId, role: "system", from: "runner", text: "usage limit", raw: { limit: { harness: s.limitHit.harness, failure: "quota", resetsAt: nextAt(s.limitHit.resetsAt) } } } } as never);
+    } else if ("owns" in s) {
+      const taskId = idOf.get(s.owns.task)!;
+      core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "checkpoint", body: { taskId, text: "opened the PR", owns: [s.owns.pr] } });
+    } else if ("waitEnded" in s) {
+      const taskId = idOf.get(s.waitEnded.task)!;
+      const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), taskId, reason: s.waitEnded.reason, kind: "check", check: { argv: s.waitEnded.argv, succeedWhen: { path: s.waitEnded.path, equals: "completed" } }, everyMs: 180_000, until: new Date(Date.now() - 1000).toISOString(), state: "armed" };
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: w });
+      for (const summary of s.waitEnded.looks) core.log.append({ stream: `task:${taskId}`, origin: "waiter", kind: "waiter_look", body: { waiterId: w.waiterId, taskId, ok: true, met: false, summary } });
+      // observed: the last look that could be read (as core keeps it); the unreadable one is cantTell.
+      const last = s.waitEnded.cantTell ? s.waitEnded.looks.filter((l) => !/^not JSON/.test(l)).at(-1) : s.waitEnded.looks.at(-1);
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...w, ...(s.waitEnded.cantTell ? { state: "cancelled", cantTell: s.waitEnded.cantTell } : { state: "expired" }), ...(last ? { observed: last } : {}) } });
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -927,6 +938,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("asks" in s) lines.push(`(earlier) under that message the app shows its lines: ${s.asks.lines.map((l, i) => `${i + 1}. ${l.words} (task "${l.task}")`).join("; ")}`);
     else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
     else if ("limitHit" in s) lines.push(`(earlier) task "${s.limitHit.task}"'s agent ${s.limitHit.harness} hit its usage limit (resets at ${s.limitHit.resetsAt})`);
+    else if ("owns" in s) lines.push(`(earlier) task "${s.owns.task}" opened ${s.owns.pr} and Ducter watches it for that task`);
+    else if ("waitEnded" in s) lines.push(`(earlier) task "${s.waitEnded.task}"'s own wait "${s.waitEnded.reason}" ended without its condition (${s.waitEnded.cantTell ? `its look couldn't be read: ${s.waitEnded.cantTell}` : "it ran out"}); Ducter told that task, with what its looks saw, and it decides what is next`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   if (sc.second)

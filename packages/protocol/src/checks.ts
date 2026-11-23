@@ -8,7 +8,15 @@
 import type { CheckSpec, Predicate } from "./index.ts";
 
 export const CHECK_TIMEOUT_MS = 20_000;
+/** What a check's output may carry on (a judge, a change watch, the Log): never what it reads. */
 export const CHECK_MAX_OUTPUT = 64 * 1024;
+/**
+ * D483: how much of a command's answer a look reads and evaluates, whole. On hel a check-runs
+ * answer grew to 80,090 bytes once a check failed with a long log; cut at 64 KB it was never JSON
+ * again and the wait looked on in vain for 5.5 h. A look reads the whole answer up to this bound
+ * (a memory guard, not a judgment); past it, it says so: the look can't be evaluated.
+ */
+export const CHECK_READ_MAX = 16 * 1024 * 1024;
 /** The floor on how often a check runs (research/20: 60 s); tests pass their own. */
 export const MIN_EVERY_MS = 60_000;
 export const DEFAULT_EVERY_MS = 5 * 60_000;
@@ -252,8 +260,12 @@ export function jsonAt(root: unknown, path: string): { values: unknown[]; mapped
 const show = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
 const clip = (s: string, n = 200) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
-/** Whether one look met the condition, and what it saw in one short line. */
-export function evaluate(p: Predicate, exitCode: number, stdout: string): { met: boolean; summary: string } {
+/**
+ * Whether one look met the condition, and what it saw in one short line. D483: `unreadable` says
+ * the look can't be evaluated at all (a JSON path over an answer that isn't JSON, or one larger
+ * than CHECK_READ_MAX): a fact for whoever waits, never just "not met".
+ */
+export function evaluate(p: Predicate, exitCode: number, stdout: string, truncated = false): { met: boolean; summary: string; unreadable?: string } {
   const test = (v: unknown): boolean => {
     if (p.equals !== undefined) return v === p.equals || show(v) === show(p.equals);
     if (p.oneOf) return p.oneOf.some((o) => v === o || show(v) === show(o));
@@ -264,11 +276,17 @@ export function evaluate(p: Predicate, exitCode: number, stdout: string): { met:
   };
   const exitOk = p.exitCode !== undefined ? exitCode === p.exitCode : true;
   if (p.path) {
+    if (truncated) {
+      const unreadable = `its answer is larger than ${Math.round(CHECK_READ_MAX / 1024 / 1024)} MB, so ${p.path} can't be read from it (exit ${exitCode})`;
+      return { met: false, summary: clip(unreadable), unreadable };
+    }
     let root: unknown;
     try {
       root = JSON.parse(stdout);
     } catch {
-      return { met: false, summary: clip(`not JSON (exit ${exitCode}): ${stdout.trim().split("\n")[0] ?? ""}`) };
+      const first = stdout.trim().split("\n")[0] ?? "";
+      const unreadable = `its answer isn't JSON (exit ${exitCode}, ${stdout.length} characters), so ${p.path} can't be read from it: ${clip(first, 120)}`;
+      return { met: false, summary: clip(`not JSON (exit ${exitCode}): ${first}`), unreadable };
     }
     const { values, mapped } = jsonAt(root, p.path);
     if (!values.length) return { met: false, summary: `${p.path}: nothing there` };

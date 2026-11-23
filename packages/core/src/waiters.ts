@@ -13,13 +13,20 @@
 // what it saw changed. Errors back off
 // by doubling up to 30 min. Everything is rebuilt from the Log on start, so armed waiters survive
 // a restart; overdue timers fire at once, checks look again soon (staggered).
-import { endedUnmet, type Attention, type Bodies, type CheckSpec, type EventSpec, type LogEvent, type Origin, type WaiterView, type WatchBaseline, type WatchSpec } from "@ducter/protocol";
+import { endedUnmet, PARTNER_WAIT_UNTIL_MS, TASK_WAIT_UNTIL_MS, type Attention, type Bodies, type CheckSpec, type EventSpec, type LogEvent, type Origin, type WaiterView, type WatchBaseline, type WatchSpec } from "@ducter/protocol";
 import { describeChange, diffWatch, snapshot, validateWatch } from "@ducter/protocol/src/watch.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_EVERY_MS, MAX_BACKOFF_MS, MIN_EVERY_MS, validateCheck } from "@ducter/protocol/src/checks.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { TriggerRead } from "./connections.ts";
+import { langOfText } from "./lang.ts";
+import { words } from "@ducter/protocol";
+
+/** D483: a task-less wait whose look can't be read ends unmet, said in the wait's language. */
+const CANT_TELL = { zh: { unmet: "查看的结果读不出来" }, en: { unmet: "its look couldn't be read" } };
+/** D483: a look that couldn't reach where it runs (a worker away): it looks again when that computer is back. */
+const AWAY = new Set(["offline"]);
 
 const FINISHED: Attention[] = ["done", "failed", "dropped", "superseded"];
 const MAX_DELAY = 2 ** 31 - 1;
@@ -101,6 +108,7 @@ interface Entry {
   backoff: number;
   lastLookAt?: number;
   lastSummary?: string;
+  lastReadable?: string; // D483: what the last look that could be evaluated saw
   lastKey?: string; // ok|met|summary of the last logged look
   looks: number;
   changes: number;
@@ -140,7 +148,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     a.timer = a.deadline = undefined;
   };
 
-  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin; detail?: string; unsure?: boolean; replacedBy?: string } = {}) => {
+  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin; detail?: string; unsure?: boolean; replacedBy?: string; cantTell?: string } = {}) => {
     const a = armed.get(waiterId);
     if (!a) return;
     armed.delete(waiterId);
@@ -153,6 +161,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     if (why.detail) body.detail = clip(why.detail, 2000);
     if (why.unsure) body.unsure = true;
     if (why.replacedBy) body.replacedBy = why.replacedBy;
+    if (why.cantTell) body.cantTell = clip(why.cantTell, 300);
     log.append({ stream: "channel", origin: why.by ?? "waiter", kind: "waiter", body });
   };
 
@@ -187,11 +196,11 @@ export function createWaiters(opts: WaiterDeps): Waiters {
   };
 
   /** Fetch what the condition is about: a check's result, or new items from an event. */
-  async function fetchOnce(w: Pick<Bodies["waiter"], "check" | "event" | "taskId">, checkpoint: unknown): Promise<{ ok: boolean; met: boolean; failed?: boolean; summary: string; data: string; checkpoint?: unknown; error?: string }> {
+  async function fetchOnce(w: Pick<Bodies["waiter"], "check" | "event" | "taskId">, checkpoint: unknown): Promise<{ ok: boolean; met: boolean; failed?: boolean; summary: string; data: string; checkpoint?: unknown; error?: string; unreadable?: string }> {
     if (w.check) {
       if (!opts.check) return { ok: false, met: false, summary: "checks can't run here", data: "", error: "no check runner" };
       const r = await opts.check(w.check, { taskId: w.taskId });
-      return { ok: r.ok, met: r.met, ...(r.failed ? { failed: true } : {}), summary: r.summary, data: r.output ?? r.summary, ...(r.error ? { error: r.error } : {}) };
+      return { ok: r.ok, met: r.met, ...(r.failed ? { failed: true } : {}), summary: r.summary, data: r.output ?? r.summary, ...(r.error ? { error: r.error } : {}), ...(r.unreadable ? { unreadable: r.unreadable } : {}) };
     }
     if (w.event) {
       if (!opts.readEvent) return { ok: false, met: false, summary: "no connections to watch", data: "", error: "no event source" };
@@ -243,6 +252,13 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     close(w.waiterId, "fired", said.observed, { detail: said.detail, ...(d.unsure ? { unsure: true } : {}) });
   }
 
+  /** D483: the wait ends with what happened: a task is woken with it (work.ts); a partner's wait ends unmet. */
+  function cantTell(a: Entry, why: string) {
+    const w = a.w;
+    // observed: the last thing a look could truly see (the unreadable one is in cantTell).
+    close(w.waiterId, "cancelled", a.lastReadable ?? a.lastSummary, { cantTell: why, ...(!w.taskId ? { unmet: w.unmetSays ?? words(CANT_TELL, langOfText(w.reason)).unmet } : {}) });
+  }
+
   async function lookOnce(a: Entry): Promise<void> {
     if (a.busy || stopped) return;
     a.busy = true;
@@ -268,10 +284,19 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (!got.ok) {
         a.lastSummary = got.summary;
         record(a, { ok: false, met: false, summary: clip(got.summary), ...(got.error ? { error: clip(got.error) } : {}) });
+        // D483: a look that can't run is a fact for whoever waits, never a silent retry forever;
+        // only a computer that is away is looked at again (the wait goes on when it is back).
+        if (!w.routineId && !AWAY.has(got.error ?? "")) return cantTell(a, `the look can't run: ${got.summary}`);
         a.backoff = Math.min(MAX_BACKOFF_MS, a.backoff ? a.backoff * 2 : every(w) * 2);
         return scheduleLook(a, a.backoff);
       }
       a.backoff = 0;
+      // D483: it ran, but its answer can't be evaluated (not JSON for its path, too large).
+      if (got.unreadable && !got.met && !w.routineId) {
+        a.lastSummary = got.summary;
+        record(a, { ok: true, met: false, summary: clip(got.summary), error: clip(got.unreadable) });
+        return cantTell(a, got.unreadable);
+      }
       let met = got.met;
       let summary = got.summary;
       let deferMs: number | undefined;
@@ -298,6 +323,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
         }
       }
       a.lastSummary = summary;
+      a.lastReadable = summary;
       const advanced = got.checkpoint !== undefined && JSON.stringify(got.checkpoint) !== JSON.stringify(a.checkpoint);
       if (advanced) a.checkpoint = got.checkpoint;
       record(a, { ok: true, met, summary, ...(advanced ? { checkpoint: got.checkpoint } : {}) });
@@ -439,6 +465,9 @@ export function createWaiters(opts: WaiterDeps): Waiters {
         if (Number.isNaN(u)) throw new Error(`could not read the deadline: ${input.until}`);
         if (u <= clock.now()) throw new Error("the deadline is already past");
         body.until = new Date(u).toISOString();
+      } else if (body.kind !== "timer" && body.kind !== undefined && !input.routineId) {
+        // D483: every wait ends: one with no until of its own lasts a day for a task, a week for the partner.
+        body.until = new Date(clock.now() + (input.taskId ? TASK_WAIT_UNTIL_MS : PARTNER_WAIT_UNTIL_MS)).toISOString();
       }
       if (input.taskId) body.taskId = input.taskId;
       if (input.decisionId) body.decisionId = input.decisionId;

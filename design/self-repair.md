@@ -88,6 +88,35 @@ The card's 没能开始 and its buttons (D395, D415) remain the truth while a ta
 mend that lands within the push batch is never pushed (D372's note). A failure the partner
 couldn't fix is a 等你 in the brief, with the partner's fix as the button (D467's grammar).
 
+## Waits and what a task owns (D483)
+
+A task that rests is mid-run: the failure that hurts is silence, a wait that can never end or news
+that never reaches it (hel, task b7gw6r2e, 6 h 22 min, research/208). Four invariants, in code:
+
+- **A look reads the whole answer.** A check's output is read and evaluated whole (up to 16 MB,
+  `CHECK_READ_MAX`); only what is passed on or logged is cut (64 KB, 4 KB, a 200-character summary).
+- **A look that can't be evaluated is a fact, not "unmet".** An answer that isn't JSON for its path,
+  one too large, or a command that can't run where it looks ends the wait (`cantTell`) and wakes the
+  task with what happened, its check and what its last looks saw. Only a computer that is away is
+  looked at again (the wait goes on when it is back). A routine's watch backs off as before.
+- **Every wait ends, and whoever waits hears why.** A check, event or judged wait with no until of
+  its own lasts a day for a task, a week for the partner. When it runs out, the task is told (the
+  same facts) and decides: wait again with a look that reads only what it needs, carry on, or report
+  needs_input. Code never asks the person; the partner hears the task's report. The keeper of a task
+  in rounds (D427) never re-arms a look that ran out or couldn't be read: that is the task's choice;
+  the rounds go on as a round at their rhythm, which wakes the task.
+- **What a task owns wakes it.** A task declares a pull request it opened or took over
+  (`checkpoint.owns`, `owner/repo#123`); Ducter looks at it every 5 minutes where the task works
+  (its gh): new comments, reviews, CI ending on the head, a push that isn't one of its checkpointed
+  commits, merged or closed (then the watch ends), and another task's report whose evidence names
+  the same PR. What is new goes to the task as one message of facts, after its turn when it is in
+  one (`owned_news` keeps the cursor across restarts). The partner's `[live]` line says what each
+  task owns.
+
+A resume refused because the session store spells the folder differently (agy lists a workspace
+URI, percent-encoded) is a start that lost its session; the directory's identity now holds every
+spelling (raw, percent-encoded, a file URI, NFC/NFD), in a patch to OAR until OAR has it.
+
 ## The partner's own robustness
 
 - **Its reply is never lost or doubled**: D106's outbox (pending, sending, sent) for every

@@ -1703,7 +1703,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
     const others = (core.workers?.list() ?? []).length > 0;
-    const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()));
+    const owned = new Map((core.owned?.() ?? []).map((x) => [x.taskId, x.refs]));
+    const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()), owned);
     if (live) deltas.push(live);
     // D480: what isn't whole about the person's own agents' mail (closed mailboxes, another Mem server), every turn while so.
     const mail = renderAgentMail(core.agentMail?.() ?? []);
@@ -5881,7 +5882,7 @@ const LIVE_STATES = new Set(["queued", "working", "needs_you", "blocked"]);
  * computer, and what it waits on (its agent's limit and until when, the user). Facts only:
  * "carry it on with another agent" or "leave it" is the partner's judgment from them.
  */
-export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefined, nameOf: ((dev: string) => string) | undefined, now = new Date()): string {
+export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefined, nameOf: ((dev: string) => string) | undefined, now = new Date(), owned?: Map<string, string[]>): string {
   const live = cards.filter((c) => LIVE_STATES.has(c.attention)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   if (!live.length) return "";
   const one = (c: TaskCard) => {
@@ -5891,7 +5892,9 @@ export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefin
       ? `resting until ${resting.harness}'s limit resets${resting.until ? ` (${resetWords(resting.until, now)})` : ""}`
       : c.attention === "needs_you" || c.attention === "blocked" ? "waiting on the user" : c.attention === "queued" ? "queued" : "working";
     const title = c.title.length > 50 ? c.title.slice(0, 49) + "…" : c.title;
-    return `${c.taskId} "${title}" ${c.harness}${nameOf ? ` on ${nameOf(dev)}` : ""}, ${state}`;
+    // D483: what it owns outside (news about it wakes it): another task's word about it belongs to it.
+    const owns = owned?.get(c.taskId)?.slice(0, 3);
+    return `${c.taskId} "${title}" ${c.harness}${nameOf ? ` on ${nameOf(dev)}` : ""}, ${state}${owns?.length ? `, owns ${owns.map((r) => `PR ${r}`).join(", ")}` : ""}`;
   };
   const more = live.length - LIVE_MAX;
   return `[live] ${live.slice(0, LIVE_MAX).map(one).join(" · ")}${more > 0 ? ` · and ${more} more` : ""}. True now.`;

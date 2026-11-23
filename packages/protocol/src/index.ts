@@ -537,7 +537,14 @@ export interface Bodies {
     /** D439: set by Ducter (never the task): the document it shows was checked page by page; `left` is what is still so. */
     doc?: import("./doc-bar.ts").DocCheck;
   };
-  checkpoint: { taskId: string; text: string; gitRef?: string };
+  /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
+  checkpoint: { taskId: string; text: string; gitRef?: string; owns?: string[] };
+  /**
+   * D483: news about a PR a task owns, as told to it (its comments, reviews, CI's end, a push, merged
+   * or closed, another task's report naming it), and what was told up to then (`seen`: the cursor a
+   * restart picks up from). news [] is the first look, which only learns where it stands.
+   */
+  owned_news: { taskId: string; pr: string; news: string[]; seen: OwnedSeen };
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
   // New task, the partner when it took one, or a standing go).
   task_bound: { taskId: string; item: SourceItemRef | null; by: "you" | "partner" | "rule" };
@@ -616,6 +623,12 @@ export interface Bodies {
     unmet?: string;
     /** D394: "cancelled" because the task armed its next timer: a task has one timer of its own, the newest. */
     replacedBy?: string;
+    /**
+     * D483: "cancelled" because a look can't be evaluated (its answer isn't JSON for its path, is
+     * too large, or the command can't run where it looks): what happened, plainly (<= 300 chars).
+     * A task's wait wakes the task with it; never a wait that looks on in vain.
+     */
+    cantTell?: string;
   };
   // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
   // on the task's stream (task waiters) or the channel. Clients fold them into Details.
@@ -3091,6 +3104,22 @@ export interface BridgeView {
 /** D144: a task-less wait that ended without its condition (it can't come true, or ran out of time). */
 export const endedUnmet = (w: Pick<Bodies["waiter"], "state" | "unmet" | "taskId" | "routineId">): boolean =>
   !w.taskId && !w.routineId && (w.state === "expired" || (w.state === "cancelled" && Boolean(w.unmet)));
+
+/** D483: what Ducter told a task about a PR it owns, up to now (core/src/owned.ts). */
+export interface OwnedSeen {
+  /** When the task declared it: comments from before are not news. */
+  since: string;
+  head?: string;
+  /** The head whose CI ending was told. */
+  ciFor?: string;
+  state?: "open" | "closed" | "merged";
+  /** Comment and review ids already told (bounded). */
+  ids?: string[];
+}
+
+/** D483: how long a wait with no until of its own lasts: every wait ends, and whoever waits hears why. */
+export const TASK_WAIT_UNTIL_MS = 24 * 60 * 60_000;
+export const PARTNER_WAIT_UNTIL_MS = 7 * 24 * 60 * 60_000;
 
 export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 

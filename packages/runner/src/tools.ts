@@ -2,6 +2,7 @@
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
 import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
+import { prIdentity } from "@ducter/protocol/src/owned.ts";
 
 const SUMMARY_MAX = 600;
 const STATES = ["progress", "needs_input", "blocked", "done", "failed"] as const;
@@ -98,6 +99,7 @@ export const checkpointSchema = {
   properties: {
     text: { type: "string", description: "Your own note: where the work stands, what comes next, open questions." },
     gitRef: { type: "string" },
+    owns: { type: "array", items: { type: "string" }, description: "A pull request you opened or took over (owner/repo#123): its reviews, CI and pushes then wake you" },
   },
   required: ["text"],
 } as const;
@@ -361,13 +363,15 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
   core.mcp.register("task", "checkpoint", "Record where the work stands after a meaningful step.", checkpointSchema, async (args, ctx) => {
     if (!ctx.taskId) throw new Error("checkpoint requires a task token");
     const persona = core.tasks.get(ctx.taskId)?.persona;
+    // D483: what it owns, as identities (owner/repo#123); anything else isn't a PR and is left out.
+    const owns = [...new Set((Array.isArray(args?.owns) ? args.owns : []).map((r: unknown) => prIdentity(String(r))).filter((r: string | undefined): r is string => !!r))].slice(0, 10) as string[];
     core.log.append({
       persona,
       stream: `task:${ctx.taskId}`,
       origin: "task",
       kind: "checkpoint",
-      body: { taskId: ctx.taskId, text: String(args?.text ?? "").slice(0, 4000), gitRef: args?.gitRef ? String(args.gitRef) : undefined },
+      body: { taskId: ctx.taskId, text: String(args?.text ?? "").slice(0, 4000), gitRef: args?.gitRef ? String(args.gitRef) : undefined, ...(owns.length ? { owns } : {}) },
     });
-    return "Checkpoint saved.";
+    return owns.length ? `Checkpoint saved. Ducter watches ${owns.join(", ")} for you: new reviews and comments, CI finishing and pushes wake you with the news.` : "Checkpoint saved.";
   });
 }

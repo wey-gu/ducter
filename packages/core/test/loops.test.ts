@@ -492,3 +492,50 @@ test("D481: a round that runs long is handed to the partner with its facts (a me
   expect(woke).toContain("mend"); // the partner looks
   expect(b.core.tasks.onHand().tasks.find((c) => c.taskId === "swj3zc4w")?.mending).toBeUndefined();
 });
+
+// D483: hel, 2026-11-22 19:30. A task in rounds whose round is a look (check-runs at its head),
+// armed with an until; the look ran out at 19:30:00, and 20 s later the keeper armed the same look
+// again with no until, which idled 5.5 h. Now the task is told what its looks saw and decides; the
+// keeper never arms that look again by itself; a round at its rhythm wakes the task.
+test("D483: a look that ran out goes to the task with its facts; the keeper never re-arms it blindly", async () => {
+  const pending = JSON.stringify({ total_count: 3, check_runs: [{ name: "ci/mem-bazel", status: "in_progress" }] });
+  const b = boot({ core: { work: { exec: async () => ({ exitCode: 0, stdout: pending }), minEveryMs: 1000, restartLookMs: 10 } } });
+  const id = "pr10932";
+  open(b, id, "在 hel 上审改 mem 长文案并开 PR，CI 过了再告诉我");
+  const look = { argv: ["gh", "api", "repos/o/r/commits/e2b8b625ff/check-runs"], succeedWhen: { path: "check_runs[].status", equals: "completed" } };
+  const call = (until?: string) => b.core.mcp.call({ role: "task", taskId: id } as never, "wait_for", { reason: "PR #10932 最新提交的三项 CI 检查全部完成", check: look, everyMinutes: 3, ...(until ? { untilISO: until } : {}) }) as Promise<{ ok: boolean }>;
+  // Rounds: it rests on its look, is woken once, and arms it again (a loop from its rounds).
+  expect((await call()).ok).toBe(true);
+  turnEnd(b, id);
+  await flush();
+  const first = armed(b, id)[0]!;
+  b.core.work.waiters.cancel(first.waiterId, { by: "system" });
+  b.core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...first, state: "fired" } });
+  await flush();
+  b.core.tasks.setState(id, "working", "hot");
+  expect((await call(new Date(b.clock.now() + 50 * MIN).toISOString())).ok).toBe(true);
+  turnEnd(b, id);
+  await flush();
+  expect(loop(b, id)?.look?.check?.argv).toEqual(look.argv);
+  const before = b.woke.length;
+  for (let i = 0; i < 50; i++) {
+    b.clock.advance(MIN);
+    await flush();
+  }
+  const told = b.woke.slice(before).at(-1);
+  expect(told?.text).toStartWith("没等到：「PR #10932 最新提交的三项 CI 检查全部完成」到 ");
+  expect(told?.text).toContain("0 of 1 match (1 in_progress)");
+  expect(b.core.tasks.get(id)!.attention).not.toBe("needs_you");
+  // Its turn ends without arming anything: the keeper brings a round at its rhythm, never the look.
+  turnEnd(b, id);
+  b.clock.advance(SETTLE_MS + 1000);
+  await flush();
+  const next = armed(b, id);
+  expect(next.length).toBe(1);
+  expect(next[0]!.check).toBeUndefined();
+  expect(next[0]!.at).toBeDefined();
+  // The task arms a new look of its own: its choice, and it carries an until.
+  b.core.tasks.setState(id, "working", "hot");
+  expect((await call()).ok).toBe(true);
+  expect(armed(b, id).find((w) => w.check)?.until).toBeDefined();
+});

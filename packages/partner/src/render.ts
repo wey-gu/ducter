@@ -476,6 +476,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       if (!b.check && !b.event) return `[timer ${b.state}] ${b.reason}${on}`;
       // D112: a condition wait. Tell the user once, in one short line, in their terms.
       if (b.state === "fired") return `[wait over] ${b.reason}${on}${b.observed ? ` · it saw: ${b.observed}` : ""}`;
+      // D483: a task's own wait that ran out or couldn't be read goes back to the task with what it saw.
+      if (b.taskId && (b.state === "expired" || b.cantTell))
+        return `[task's wait ended] ${b.reason}${on}: ${b.cantTell ? `its look can't tell (${b.cantTell})` : "it still didn't hold at its deadline"}${b.observed ? ` · the last look it could read saw: ${b.observed}` : ""}. This was the task's own wait, not yours: Ducter told the task what its looks saw, and the task decides whether and how to look or wait again (watching it is its job, not a choice for the user). Say nothing unless it reports or the user asks; then say what is known.`;
       if (b.state === "expired") return `[wait ran out] ${b.reason}${on}: still not true at the deadline${b.observed ? ` · last saw: ${b.observed}` : ""}. Tell the user plainly and ask whether to keep waiting.`;
       if (b.state === "cancelled" && b.unmet) return `[wait can't happen] ${b.reason}${on}: ${b.unmet}${b.observed ? ` · last saw: ${b.observed}` : ""}. Tell the user in one short sentence what happened and the one next step they can take; no internals.`;
       return `[wait ${b.state}] ${b.reason}${on}`;

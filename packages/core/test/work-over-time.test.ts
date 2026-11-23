@@ -110,7 +110,19 @@ test("checks: the predicate reads JSON arrays, values, text and exit codes", () 
   expect(evaluate({ path: "state", equals: "MERGED" }, 0, '{"state":"OPEN"}')).toEqual({ met: false, summary: "state: OPEN" });
   expect(evaluate({ exitCode: 0 }, 1, "").met).toBe(false);
   expect(evaluate({ matches: "^HTTP/\\S+ 200" }, 0, "HTTP/2 200\nserver: x").met).toBe(true);
-  expect(evaluate({ path: "state", equals: "x" }, 0, "not json").met).toBe(false);
+  // D483: an answer that can't be evaluated says so (a fact for whoever waits), and a large one is read whole.
+  expect(evaluate({ path: "state", equals: "x" }, 0, "not json")).toMatchObject({ met: false, unreadable: expect.stringContaining("isn't JSON") });
+  expect(evaluate({ path: "state", equals: "x" }, 0, '{"state":', true).unreadable).toContain("larger than 16 MB");
+});
+
+test("D483: hel's check-runs answer (80 KB once a check failed) is evaluated whole; only what is passed on is cut", async () => {
+  const run = (name: string, conclusion: string, text = "") => ({ id: 1, name, status: "completed", conclusion, output: { title: name, summary: "", text } });
+  const big = JSON.stringify({ total_count: 3, check_runs: [run("ci/mem-bazel", "success"), run("ci/mem-cloud-browser-postgres", "success"), run("ci/mem-playwright-e2e", "failure", "x".repeat(43_600) + "\n".repeat(36_000))] });
+  expect(big.length).toBeGreaterThan(80_000);
+  const r = await runCheck({ argv: ["gh", "api", "repos/o/r/commits/abc/check-runs"], succeedWhen: { path: "check_runs[].status", equals: "completed" } }, { exec: async () => ({ exitCode: 0, stdout: big }) });
+  expect(r).toMatchObject({ ok: true, met: true, summary: "3 of 3 match (3 completed)" });
+  expect(r.unreadable).toBeUndefined();
+  expect(r.output!.length).toBe(4096);
 });
 
 test("checks: a refused command never runs", async () => {
@@ -267,18 +279,57 @@ test("D271: a wake leaves out what the check saw when it is only a number (a clo
   expect(sent[0]!.text).toBe("等到了：「约45分钟后继续检查」。接着做。");
 });
 
-test("a deadline: the wait runs out, the task needs you, the partner is told", async () => {
-  const { clock, log, tasks, work } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson(["PENDING"]) }) });
+test("D483: a wait that runs out goes back to whoever waits: a task with what its looks saw (the person isn't asked by code), the partner's to the partner; every wait has an until", async () => {
+  const { clock, log, tasks, work, sent } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson(["PENDING"]) }) });
   openTask(log, "t1");
   tasks.setState("t1", "working", "hot");
   work.waiters.arm({ reason: "CI 通过", taskId: "t1", check: prCheck, everyMs: 60_000, until: new Date(clock.now() + 3 * 60_000).toISOString() });
   await flush();
-  clock.advance(3 * 60_000);
-  await flush();
+  for (let i = 0; i < 3; i++) {
+    clock.advance(60_000);
+    await flush();
+  }
   const last = log.read({ kinds: ["waiter"] }).at(-1)!;
   expect(last.body).toMatchObject({ state: "expired" });
-  expect(triggersPartner(last)).toBe(true);
-  expect(tasks.get("t1")!.attention).toBe("needs_you");
+  expect(triggersPartner(last)).toBe(false); // the task decides; the partner hears its report
+  expect(tasks.get("t1")!.attention).not.toBe("needs_you");
+  expect(sent.at(-1)!.taskId).toBe("t1");
+  expect(sent.at(-1)!.text).toStartWith("没等到：「CI 通过」到 ");
+  expect(sent.at(-1)!.text).toContain("gh pr checks 1592");
+  expect(sent.at(-1)!.text).toContain("0 of 1 match (1 PENDING)");
+  expect(sent.at(-1)!.text).toContain("wait_for");
+  // A partner's wait that runs out is the partner's to say.
+  work.waiters.arm({ reason: "CI 通过", check: prCheck, everyMs: 60_000, until: new Date(clock.now() + 60_000).toISOString() });
+  clock.advance(60_000);
+  await flush();
+  expect(triggersPartner(log.read({ kinds: ["waiter"] }).at(-1)!)).toBe(true);
+  // Every wait ends: one with no until of its own lasts a day for a task, a week for the partner.
+  expect(Date.parse(work.waiters.arm({ reason: "CI", taskId: "t1", check: prCheck }).until!) - clock.now()).toBe(24 * 3600_000);
+  expect(Date.parse(work.waiters.arm({ reason: "CI", check: prCheck }).until!) - clock.now()).toBe(7 * 24 * 3600_000);
+});
+
+test("D483: a look whose answer can't be read ends the wait at once: a task is woken with what happened; a partner's wait ends unmet", async () => {
+  const { clock, log, tasks, work, sent } = setup({ exec: async () => ({ exitCode: 0, stdout: '{"total_count":3,"check_runs":[{"id":137312403288,"name":"ci/mem-bazel"' }) });
+  openTask(log, "t1");
+  tasks.setState("t1", "working", "hot");
+  const w = work.waiters.arm({ reason: "PR #10932 的三项 CI 检查全部完成", taskId: "t1", check: { argv: ["gh", "api", "repos/o/r/commits/abc/check-runs"], succeedWhen: { path: "check_runs[].status", equals: "completed" } }, everyMs: 60_000 });
+  await flush();
+  expect(tasks.get("t1")!.attention).toBe("blocked");
+  clock.advance(60_000);
+  await flush();
+  const ended = log.read({ kinds: ["waiter"] }).at(-1)!.body as Bodies["waiter"];
+  expect(ended).toMatchObject({ waiterId: w.waiterId, state: "cancelled" });
+  expect(ended.cantTell).toContain("isn't JSON");
+  expect(work.waiters.views()).toEqual([]); // never looks on in vain
+  expect(tasks.get("t1")!.attention).toBe("working");
+  expect(sent.at(-1)!.text).toStartWith("没等到：「PR #10932 的三项 CI 检查全部完成」，这次查看判断不了：its answer isn't JSON");
+  expect(sent.at(-1)!.text).toContain("--jq");
+  work.waiters.arm({ reason: "PR merged", check: { argv: ["gh", "api", "repos/o/r/pulls/1"], succeedWhen: { path: "merged", equals: "true" } }, everyMs: 60_000 });
+  clock.advance(60_000);
+  await flush();
+  const partners = log.read({ kinds: ["waiter"] }).at(-1)!;
+  expect(partners.body).toMatchObject({ state: "cancelled", unmet: "its look couldn't be read" });
+  expect(triggersPartner(partners)).toBe(true);
 });
 
 test("D144: a check that fails ends the wait unmet; On hand keeps it today; Keep waiting re-arms it as it was", async () => {
@@ -326,7 +377,7 @@ test("D144: the partner cancels a wait that can't come true with why; a plain ca
   expect(tasks.onHand().missed!.map((x) => x.waiterId)).toEqual([a.waiterId]);
 });
 
-test("errors back off by doubling; a command that isn't there says so", async () => {
+test("D483: a command that isn't there ends the wait with that fact; a routine's watch backs off by doubling", async () => {
   let n = 0;
   const { clock, log, work } = setup({ exec: async () => (n++, Promise.reject(new Error("spawn gh ENOENT"))) });
   work.waiters.arm({ reason: "CI", check: prCheck, everyMs: 60_000 });
@@ -334,6 +385,12 @@ test("errors back off by doubling; a command that isn't there says so", async ()
   await flush();
   expect(n).toBe(1);
   expect((kinds(log, "waiter_look")[0] as Bodies["waiter_look"]).summary).toBe("gh is not installed here");
+  expect(log.read({ kinds: ["waiter"] }).at(-1)!.body).toMatchObject({ state: "cancelled", cantTell: "the look can't run: gh is not installed here" });
+  work.waiters.arm({ reason: "CI", routineId: "r1", check: prCheck, everyMs: 60_000 });
+  n = 0;
+  clock.advance(60_000);
+  await flush();
+  expect(n).toBe(1);
   clock.advance(60_000);
   await flush();
   expect(n).toBe(1); // backed off to 2 min

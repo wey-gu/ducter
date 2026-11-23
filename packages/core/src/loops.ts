@@ -153,6 +153,8 @@ interface State {
   looked?: { round: number; at: number }; // D481: the round last handed to the partner to look at, and when
   endedAt?: number;
   settle?: unknown; // the timer after a turn's end
+  /** D483: its own look ended without its condition (ran out, or its look can't be read): the task was told and decides; Ducter never arms that look again by itself. */
+  spent?: boolean;
 }
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -243,9 +245,11 @@ export function createLoops(o: {
     rest(b.taskId, b.reason);
     let at: string | undefined;
     try {
-      if (b.look) {
+      if (b.look && !s.spent) {
         armOwn({ reason: b.reason, taskId: b.taskId, ...b.look });
       } else {
+        // D483: a look that ran out or couldn't be read is the task's to re-arm (it was told what its
+        // looks saw); the promise of rounds is kept by a round at its rhythm, which wakes the task.
         const due = Math.max(now + MIN, (s.lastFire ?? now) + (b.everyMs ?? 45 * MIN));
         at = iso(due);
         armOwn({ reason: b.reason, taskId: b.taskId, at, wakes: "task" });
@@ -284,7 +288,7 @@ export function createLoops(o: {
   function askedSince(taskId: string, at: number): boolean {
     return log
       .read({ stream: `task:${taskId}`, kinds: ["task_event"], limit: 40 })
-      .some((e) => Date.parse(e.ts) > at && (e.body as Bodies["task_event"]).role === "user" && !/^(到时间了|等到了|It's time|The wait is over)/.test(String((e.body as Bodies["task_event"]).text ?? "")));
+      .some((e) => Date.parse(e.ts) > at && (e.body as Bodies["task_event"]).role === "user" && !/^(到时间了|等到了|没等到|It's time|The wait is over|The wait ran out|The wait ended|This won't happen)/.test(String((e.body as Bodies["task_event"]).text ?? "")));
   }
 
   // ---------- the Log ----------
@@ -295,6 +299,11 @@ export function createLoops(o: {
       if (!own(w)) return;
       const taskId = w.taskId!;
       const at = Date.parse(e.ts);
+      if (w.state === "expired" || (w.state === "cancelled" && w.cantTell)) {
+        const s = loops.get(taskId);
+        if (s && kindOf(w) !== "timer") s.spent = true;
+        return;
+      }
       if (w.state === "fired") {
         firedSeen.add(taskId);
         const s = loops.get(taskId);
@@ -304,6 +313,7 @@ export function createLoops(o: {
       }
       if (w.state !== "armed" || arming || mine.has(w.waiterId)) return;
       let s = loops.get(taskId);
+      if (s && kindOf(w) !== "timer") s.spent = false; // the task armed a look of its own again
       if (!s || s.b.state === "ended") {
         // Ended: it starts again only when someone asked the task to go on since (接着跑).
         if (s?.b.state === "ended" && !(s.endedAt !== undefined && askedSince(taskId, s.endedAt))) return;
@@ -575,6 +585,8 @@ export function createLoops(o: {
     } else told.delete((e.body as Bodies["decision_resolved"]).decisionId), moveOf.delete((e.body as Bodies["decision_resolved"]).decisionId);
   }
   for (const [taskId, s] of loops) {
+    const end = lastOwnEnd.get(taskId);
+    if (end && kindOf(end.w) !== "timer" && (end.state === "expired" || (end.state === "cancelled" && end.w.cantTell))) s.spent = true;
     s.lastFire = firedAt.get(taskId);
     s.lastHot = hotAt.get(taskId);
     if (failsOf.has(taskId)) (s.fails = failsOf.get(taskId)!.n), (s.failWhy = failsOf.get(taskId)!.why);

@@ -304,7 +304,7 @@ export interface CoreOptions {
   /** The machine's platform as Devices sees it (tests: "linux"). */
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
-  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
+  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; monthTokens?: number; zone?: string };
   /** D458 test seam: a fake Mem the offers read (the partner sets the real one with setMemLook). */
@@ -454,7 +454,8 @@ export function triggersPartner(e: LogEvent): boolean {
     // when it matters (no reset time and nobody else to take it), once.
     if (w.limit) return w.state === "armed" && !!w.limit.tell;
     if (w.wakes === "task") return false; // D267: the task's own timer wakes the task
-    if (w.state === "expired") return true;
+    // D483: a task's own wait that runs out goes back to the task, which decides; the partner hears its report.
+    if (w.state === "expired") return !w.taskId;
     // D145: it can no longer come true (a check failed): said once, by the partner.
     if (w.state === "cancelled" && w.unmet && e.origin === "waiter" && !w.taskId) return true;
     return w.state === "fired" && !(w.taskId && (w.check || w.event));
@@ -618,6 +619,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     persona: persona.id,
     exec: opts.work?.exec,
     minEveryMs: opts.work?.minEveryMs,
+    ownedEveryMs: opts.work?.ownedEveryMs,
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
@@ -1311,6 +1313,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // projects (with their origin when kept) and the repositories tasks worked in (a clone's address),
   // never a place that turned out not to be there. A fact to place work by; nothing here decides.
   api.agentLimits = () => agentLimits.now();
+  // D483: what each task owns outside (its PRs), for the partner's [live] line.
+  api.owned = () => work.owned.all();
   // D478, D479: a task_open that records `replaces` retires that task (replaces.ts): by its id, never by title.
   log.subscribe((e) => {
     if (e.kind !== "task_open" || e.origin !== "partner") return;

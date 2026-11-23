@@ -393,7 +393,56 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person said hel. The agent Ducter picked there (Antigravity) ended at once, out of capacity for 4 hours; Codex and Claude Code are signed in on hel too; the person named no agent. Pass if the work starts again on hel with another agent, the person is asked nothing, and hears at most one short Chinese line. Fail if anything runs on the Mac, it waits 4 hours, asks the person, or pastes the agent's error.",
   },
-  // 21. D481, hel 2026-11-23: a healthy task in rounds, waiting on Prow CI for hours, was asked about
+  // 21. D483, hel 20:09: another task (the review rounds) reports that PR #10932 is failing; the task
+  // that opened #10932 owns it ([live] says so) and Ducter passes the report on to it.
+  {
+    id: "wp-other-task-names-owned-pr-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: HEL_WORDS },
+      { task: { key: "copy", title: "在 hel 用 gemini 审改 mem 长文案并开 PR", repo: "/root/ducter/worktrees/mem/在-hel-用-gemini-审改-mem-长文案并开-pr", ack: "好，我在 hel 上用 agy 细看一遍，改好了开 PR 给你看。", state: "working", harness: "antigravity", words: HEL_WORDS } },
+      { owns: { task: "copy", pr: "nowledge-co/mem#10932" } },
+      { task: { key: "review", title: "每 45 分钟看一轮 nowledge-co 的 review 请求", ack: "好，我每 45 分钟看一轮。", state: "working", harness: "codex" } },
+    ],
+    steps: [{ report: { task: "review", body: { state: "progress", summary: "这一轮看了 6 个 PR。nowledge-co/mem#10932 的 ci/mem-playwright-e2e 挂了（shell-status-tray 的简中暗色用例），其余 5 个没有新变化。", questions: [], evidence: [{ kind: "link", label: "PR #10932", ref: "https://github.com/nowledge-co/mem/pull/10932" }] } } }],
+    expect: { opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120, noSendTo: "review" },
+    rubric:
+      "The world: task copy opened nowledge-co/mem#10932 and owns it ([live] says so; Ducter passes any report naming the PR on to that task by itself). The review-rounds task reports that #10932's playwright e2e failed. Pass if no new task is opened for #10932, the person is asked nothing, and the partner says at most one short Chinese line (silence is fine; telling task copy with task_send is fine). Fail if it opens a new task to fix #10932, asks the person what to do, tells the review task to fix it, or says something false (e.g. that nobody is on the PR).",
+  },
+  // 22. D483, hel 19:30: the task's own wait ran out (its looks couldn't read an 80 KB answer); Ducter
+  // told the task, with what its looks saw. The person asks how the PR is doing.
+  {
+    id: "wp-task-wait-ended-ask-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: HEL_WORDS },
+      { task: { key: "copy", title: "在 hel 用 gemini 审改 mem 长文案并开 PR", repo: "/root/ducter/worktrees/mem/在-hel-用-gemini-审改-mem-长文案并开-pr", ack: "好，我在 hel 上用 agy 细看一遍，改好了开 PR 给你看。", state: "working", harness: "antigravity", words: HEL_WORDS } },
+      { owns: { task: "copy", pr: "nowledge-co/mem#10932" } },
+      {
+        waitEnded: {
+          task: "copy",
+          reason: "PR #10932 最新提交的三项 CI 检查全部完成",
+          argv: ["gh", "api", "repos/nowledge-co/mem/commits/e2b8b625ff6a9de8a3fa5de2bbfb9b3bd72f294d/check-runs"],
+          path: "check_runs[].status",
+          looks: ["0 of 3 match (3 in_progress)", "2 of 3 match (2 completed, 1 in_progress)", 'not JSON (exit 0): {"total_count":3,"check_runs":[{"id":137312403288,"name":"ci/mem-bazel"…'],
+          cantTell: "its answer isn't JSON (exit 0, 80090 characters), so check_runs[].status can't be read from it",
+        },
+      },
+    ],
+    steps: [{ user: "PR 10932 那边怎么样了？" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 160, proseForbid: [/JSON|check_runs|80090|exit 0/i] },
+    rubric:
+      "The world: task copy owns nowledge-co/mem#10932 and is working on it; its own wait for CI ended because its look couldn't read GitHub's answer, and Ducter has just told the task, with what the looks saw, so the task is deciding what is next (nothing is waiting now). The last look it could read saw 2 of 3 checks done. Pass if the partner answers in one or two short, true Chinese sentences (that task is on it; what is known of CI, such as the last look that could be read, or that it is not known yet; no promise of a result) and opens nothing, asks nothing. Sending the task a short nudge to look at CI now is fine. Fail if it says CI passed or failed as fact, claims the task is idle or done, opens a new task, asks the person to decide, or pastes the look's technical text (JSON, check_runs, byte counts).",
+  },
+  // 23. D481, hel 2026-11-23: a healthy task in rounds, waiting on Prow CI for hours, was asked about
   // as 「比平时久太多，可能卡住了」 from the time alone; the person answered 「你可以直接看看吧？」.
   {
     id: "wp-long-round-ci-zh",
@@ -429,7 +478,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "The task runs in rounds watching Prow CI on PR #10932; this round has lasted six and a half hours, but its steps show steady progress (a fix pushed, a flaky retest, the queue long, two of three checks green, the last still running 6 minutes ago). Nothing is wrong. Pass if the partner says nothing, or at most one short calm Chinese line that states only what the steps show (e.g. two checks passed, e2e still running), and asks nothing. Fail if it asks the person anything, makes a card, says or implies it may be stuck or slow, restarts or reopens the task, or claims CI passed.",
   },
-  // 22. D481: the same kind of round, truly stuck: no step for hours, the same error over and over.
+  // 24. D481: the same kind of round, truly stuck: no step for hours, the same error over and over.
   {
     id: "wp-long-round-stuck-en",
     category: "puzzle",

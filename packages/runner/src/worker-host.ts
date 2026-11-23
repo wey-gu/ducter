@@ -239,7 +239,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     folderKeep: async (a) => folders.keep(String(a.taskId)),
     // D112: a waiter's check runs here when the task works on this device (read-only, validated
     // again here: the worker never trusts the main to have checked).
-    check: (a) => runCheck(a.spec),
+    check: (a) => runCheck(a.spec, a.outputMax ? { outputMax: Math.min(Number(a.outputMax), 1024 * 1024) } : {}),
     // D197: what a folder here is (missing, a folder, or a repo with its branches), so a home
     // elsewhere can add it as a project and offer its branches. Read-only.
     // D455: a computer that set DUCTER_FOLDER_ROOTS lets nothing outside them be added.

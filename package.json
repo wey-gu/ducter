@@ -17,5 +17,8 @@
   "devDependencies": {
     "typescript": "^5.9.0",
     "@types/bun": "latest"
+  },
+  "patchedDependencies": {
+    "@botiverse/oar@0.124.0": "patches/@botiverse%2Foar@0.124.0.patch"
   }
 }

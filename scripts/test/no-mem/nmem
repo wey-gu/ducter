@@ -1,0 +1,5 @@
+#!/bin/sh
+# The `nmem` every test process finds first on PATH (scripts/test/no-mem.ts puts it there): a test
+# never reaches the developer's real Nowledge Mem. A test that wants Mem gives its own fake nmem.
+echo "nmem: the real Nowledge Mem is off in tests (scripts/test/no-mem.ts); give the test its own fake nmem" >&2
+exit 127

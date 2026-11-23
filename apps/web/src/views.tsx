@@ -457,6 +457,8 @@ function answeredWords(d: DecisionState): string {
   if (d.elsewhere) return t("decision.resolved.elsewhere");
   if (d.resolved?.by === "ended") return t("decision.resolved.ended");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
+  // D499: Ducter said Go for them, under what they said.
+  if (d.resolved?.by === "said") return t("decision.resolved.said");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
   return t("decision.resolved.go", goLabel(d));
@@ -2898,8 +2900,8 @@ function StandingList() {
             </svg>
             <span class="grow">
               <span>{t(`standing.${x.action}`)}</span>
-              {/* D424: "PRs that ask for your review" is what the title already means; the owners only when bounded. */}
-              {x.orgs?.length ? <small>{t("standing.where.orgs", x.orgs.join(sep))}</small> : null}
+              {/* D424: "PRs that ask for your review" is what the title already means; the owners only when bounded. D499: one task's, by its name. */}
+              {x.taskId ? <small>{t("standing.where.task", x.taskTitle ?? x.taskId)}</small> : x.orgs?.length ? <small>{t(x.action === "pr_review" ? "standing.where.orgs" : "standing.where.owners", x.orgs.join(sep))}</small> : null}
               <small>{t("standing.said", x.text)}</small>
             </span>
             <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />

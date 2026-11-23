@@ -3,7 +3,7 @@
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskBound, TaskNeeds, WorkKind } from "@ducter/protocol";
 import { allowedBy } from "./bound.ts";
-import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, whichPhone, WORK_KINDS, type HarnessId } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_KIND, whichPhone, WORK_KINDS, type HarnessId } from "@ducter/protocol";
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
@@ -410,11 +410,18 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
         match: { type: "array", items: { type: "string" }, description: "3–10 words that mark this kind of work in a task title or brief, in both Chinese and English (e.g. [\"后端\", \"backend\", \"api\", \"server\"])" },
         kind: { type: "array", items: { type: "string", enum: [...WORK_KINDS] }, description: "The task_open kinds it covers (订酒店、看机票这类: errand)" },
         never: { type: "boolean", description: "NOT this agent (or model) for it" },
+        no_second_look: { type: "boolean", description: "这类不用复查: no other AI looks this kind's results over first (kind; none: all work); no harness" },
       },
-      required: ["text", "harness"],
+      required: ["text"],
     },
-    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown }) => {
+    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown; no_second_look?: unknown }) => {
       try {
+        // D499 (retiring D437's word reader): the partner keeps 这类不用复查 itself; code keeps only what it names.
+        if (a.no_second_look === true) {
+          const kinds = (Array.isArray(a.kind) ? a.kind.map(String) : typeof a.kind === "string" ? [a.kind] : []).filter(isWorkKind);
+          const r = rules.addNotice({ text: String(a.text ?? ""), kind: NO_LOOK_KIND, ...(kinds.length ? { kinds } : {}) });
+          return { ok: true, rule: r, note: "Saved: another AI no longer looks these over first. Say it back in one short line." };
+        }
         const r = rules.add({
           text: String(a.text ?? ""),
           harness: String(a.harness ?? ""),

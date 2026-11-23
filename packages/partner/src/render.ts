@@ -104,7 +104,7 @@ function toldLines(told: string[] | undefined, n: number): string[] {
 const sameUndo = (a: NonNullable<Bodies["report"]["folder"]>, b: Bodies["report"]["folder"]): boolean =>
   !!b && b.undo === "open" && (["added", "changed", "removed", "moved", "renamed", "folders", "undoUntil"] as const).every((k) => a[k] === b[k]);
 
-function renderReport(r: Bodies["report"], title?: string, told?: string[], undoBefore?: Bodies["report"]["folder"]): string {
+function renderReport(r: Bodies["report"], title?: string, told?: string[], undoBefore?: Bodies["report"]["folder"], asked?: { asks: { id: string; question: string }[]; goes: { action: string; text: string; task?: boolean }[] }): string {
   const head = `[task ${r.taskId}${title ? ` "${clip(title, 120)}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
   // D340: what the user said in the task itself since its last report: their own ask, not the task's idea.
@@ -147,8 +147,15 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
   // ("要付吗？") asks what the card already asks.
   if (r.state === "needs_input" && r.questions?.some((q) => q.checkout))
     lines.push("  (This is the checkout: Ducter shows the pay card under your words, and the user pays there with their own tap. Your words are not a question: in one short line, what it picked and that it waits at payment for them; nothing is booked or paid yet.)");
-  else if (r.state === "needs_input")
-    lines.push("  (Your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences, the question the last, with any detail such as how long it takes inside it.)");
+  else if (r.state === "needs_input") {
+    // D499: the ask's id and what the user already allowed this task, so a step they allowed is
+    // answered for them (the model judges it is that step; code checks the go and the floor).
+    for (const a of asked?.asks ?? []) lines.push(`  its card: ask ${a.id} "${clip(a.question, 160)}"`);
+    if (asked?.goes.length) lines.push(`  the user already allowed, without asking: ${asked.goes.map((g) => `${g.action}${g.task ? " (this task)" : ""} "${clip(g.text, 80)}"`).join("; ")}`);
+    lines.push(
+      "  (If its question is a step the user already allowed (above, or their own words to or about this task, e.g. 「推进到能合并，别问我」), don't ask it: without_asking do=answer with the ask's id and the step (said: their words, when nothing above covers it), then one short line that it went ahead on their word. Never a payment, a sign-in, deleting or merging. Otherwise your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences, the question the last, with any detail such as how long it takes inside it.)",
+    );
+  }
   // D491: blocked is the task's stop, not the user's question: what can be cleared without them is.
   if (r.state === "blocked")
     lines.push("  (It stopped at something in its way and asks the user nothing. If it or you can clear it without them (an update or a retry on Ducter's own phone or computer, a sign-in already saved, another agent with room), task_send it to do that and carry on; the user needs no word, and never a promise of the result. Tell them only what only they can do, in one short line.)");
@@ -198,8 +205,10 @@ export interface RenderCtx {
   follows?(seq: number): Follows | undefined;
   /** D401: the rules Ducter kept from this user message by itself (who does which work), still kept. */
   kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
-  /** D437: the 这类不用复查 rule Ducter kept from this user message (no second look for that kind of work). */
-  noLook?(seq: number): { text: string; kinds?: string[] } | undefined;
+  /** D499: a task's questions still open on their cards (id and words). */
+  openAsks?(taskId: string): { id: string; question: string }[];
+  /** D499: what the user already allowed this task to do without asking (kept for it, or for its repo's owner). */
+  goesFor?(taskId: string): { action: string; text: string; task?: boolean }[];
   /** D444: the memories Ducter took back at these words of the user's (别记这个). */
   takenBack?(seq: number): { title: string }[];
   /** D426: the lines a task's many-things message asked for (all of them, any task), and that message's seq. */
@@ -217,15 +226,9 @@ export function asksLines(a: { lines: AskLine[] }, ctx: Pick<RenderCtx, "taskTit
     .join("; ");
 }
 
-/** D437: one line under the user's words: Ducter kept their 这类不用复查 as a rule by itself. */
 /** D444: one line under the user's words: what Ducter already took back from memory at them. */
 export function takenBackLine(ts: { title: string }[]): string {
   return `  (Ducter already took back what you noted from memory at these words: ${ts.map((t) => `"${clip(t.title, 60)}"`).join(", ")}. It won't be remembered, and the user sees it as not kept. No memory tool: say it back in a few words, e.g. "好，不记了。" / "Okay, not keeping that.")`;
-}
-
-export function noLookLine(r: { text: string; kinds?: string[] }): string {
-  const what = r.kinds?.length ? `${r.kinds.join(", ")} work` : "any work";
-  return `  (Ducter already kept this as the user's rule, on the Partner page: "${clip(r.text, 90)}": another AI no longer looks over results of ${what} before they reach the user. It holds from now on. No rule_save, no card: say it back in one short line in their words, e.g. "好，这类以后不再让另一个 AI 复查。")`;
 }
 
 /** D401: one line under the user's words: what Ducter already kept as their rule from them. */
@@ -396,11 +399,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       // D426: the lines a recent many-things message asked for, so "第二个改一下" lands on its task.
       const ab = e.seq > 0 ? ctx.asksBefore?.(e.seq) : undefined;
       const al = ab && ab.lines.length >= 2 ? `\n  (the lines under their earlier message, as they see them: ${asksLines(ab, ctx)}. A follow-up about one of them ("the second one", its words) goes to its task with task_send; a new thing for the same message: task_send or task_open with asks)` : "";
-      // D437: 这类不用复查, kept by Ducter.
-      const nl = e.seq > 0 ? ctx.noLook?.(e.seq) : undefined;
       // D444: 别记这个, taken back by Ducter.
       const tb = e.seq > 0 ? (ctx.takenBack?.(e.seq) ?? []) : [];
-      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${nl ? `\n${noLookLine(nl)}` : ""}${tb.length ? `\n${takenBackLine(tb)}` : ""}${al}${f ? `\n${followsLine(f)}` : ""}`;
+      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${tb.length ? `\n${takenBackLine(tb)}` : ""}${al}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];
@@ -408,7 +409,8 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       // D407: a task that keeps one of the user's apps current: its rounds show there, not in words.
       const app = r.state === "done" ? ctx.taskApp?.(r.taskId) : undefined;
       const quiet = app ? `\n[this task keeps the user's app "${clip(app, 40)}" current: they see each round there. If this report only says a round was done or the app updated (nothing for them to decide or fix), send no message at all: end your turn without words.]` : "";
-      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined) + (src ? `\n${sourceLine(r.taskId, src)}` : "") + quiet;
+      const asked = r.state === "needs_input" ? { asks: ctx.openAsks?.(r.taskId) ?? [], goes: ctx.goesFor?.(r.taskId) ?? [] } : undefined;
+      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined, asked) + (src ? `\n${sourceLine(r.taskId, src)}` : "") + quiet;
     }
     case "source_seen": {
       // D341: new to-dos in a source the user wants told, or taken under their standing go.
@@ -736,7 +738,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D427: the keeper's one word about a task in rounds that is late or failing (its own card).
       if (d.loop) return `[${t} Ducter said once, on its own card, that task ${d.loop.taskId}'s rounds aren't keeping time: "${clip(d.question, 200)}" (Go runs a round now). Never restate it.]`;
       if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
-      return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
+      return `[${t} ${d.taskId ? `task ${d.taskId} asks (ask ${d.decisionId})` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
@@ -748,6 +750,8 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
           : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool yourself (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
       if (d?.board) return `[${t} the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
       if (b.by === "ended") return `[${t} question closed: no longer needed (what it asked about ended)]${d ? ` "${clip(d.question, 120)}"` : ""}`;
+      // D499: Ducter said Go for them, under what they said.
+      if (b.by === "said") return `[${t} went ahead for the user, on their word "${clip(b.said ?? "", 120)}"]${d ? ` "${clip(d.question, 120)}"` : ""}`;
       return `[${t} decision resolved: ${b.option}${b.by === "default" ? " by default" : ""}]${d ? ` "${clip(d.question, 120)}"` : ""}${b.text ? ` ${clip(b.text, 300)}` : ""}`;
     }
     case "bridge_msg": {

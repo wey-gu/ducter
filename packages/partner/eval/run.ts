@@ -356,6 +356,8 @@ interface RunResult {
   /** D379: who each task went to; asks to keep a saying; the person's rules after the run. */
   bodies: Bodies["body_selected"][];
   saidAsks: number;
+  /** D499: asks Ducter said Go to for the person, on their word (by "said"). */
+  wentOnWord: number;
   rulesNow: { harness: string; never?: boolean; kinds?: string[]; text: string }[];
 }
 
@@ -1090,6 +1092,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 
   const bodies = core.log.read({ kinds: ["body_selected"], fromSeq: startSeq + 1, limit: 1000 }).map((e) => e.body as Bodies["body_selected"]);
   const saidAsks = core.log.read({ kinds: ["decision"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision"]).saying).length;
+  // D499: the asks Ducter said Go to for the person, on their word.
+  const wentOnWord = core.log.read({ kinds: ["decision_resolved"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision_resolved"]).by === "said").length;
   // D401: the person's rules as the run left them (kept by Ducter from their words, or by rule_save).
   let rulesNow: { harness: string; never?: boolean; kinds?: string[]; text: string }[] = [];
   try {
@@ -1119,7 +1123,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, wentOnWord, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1414,6 +1418,7 @@ function check(r: RunResult): string[] {
   if (e.notHarness && r.opened.some((o) => o.harness === e.notHarness)) fails.push(`a task pinned to ${e.notHarness}`);
   // D379: who a task actually went to (its body_selected), whoever decided it, and the one ask to keep a saying.
   if (e.notBody && r.bodies.some((b) => b.harness === e.notBody)) fails.push(`a task went to ${e.notBody}`);
+  if (e.wentOnWord !== undefined && r.wentOnWord !== e.wentOnWord) fails.push(`asks answered on their word x${r.wentOnWord} (want ${e.wentOnWord})`);
   if (e.saidAsk !== undefined && r.saidAsks !== (e.saidAsk ? 1 : 0)) fails.push(`asks to keep a saying x${r.saidAsks} (want ${e.saidAsk ? 1 : 0})`);
   // D401: the person's own words became their rule, with no card.
   if (e.ruleKept && !r.rulesNow.some((x) => x.harness === e.ruleKept!.harness && !!x.never === !!e.ruleKept!.never && (!e.ruleKept!.kind || (x.kinds ?? []).includes(e.ruleKept!.kind)))) fails.push(`no rule kept: ${e.ruleKept.never ? "never" : "always"} ${e.ruleKept.harness}`);

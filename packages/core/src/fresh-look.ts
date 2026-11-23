@@ -20,7 +20,7 @@
 // work. A ceiling per day, one look and one check per result, and every failure fails open: the
 // report goes on as the task wrote it, never held up by the look.
 import { createHash } from "node:crypto";
-import { HARNESS_IDS, HARNESSES, harnessName, LOOK_ASK_OPENING, LOOK_FINDING_CHARS, LOOK_FINDINGS_MAX, NO_LOOK_KIND, isNoLookKind, lookStepOf, type Attention, type Bodies, type HarnessId, type LangTag, type RuleView, type FreshLook, type WorkKind } from "@ducter/protocol";
+import { HARNESS_IDS, HARNESSES, harnessName, LOOK_ASK_OPENING, LOOK_FINDING_CHARS, LOOK_FINDINGS_MAX, isNoLookKind, lookStepOf, type Attention, type Bodies, type HarnessId, type LangTag, type RuleView, type FreshLook, type WorkKind } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 
 /** A change this small (lines added and removed, one file) is a trivial edit: no look. */
@@ -558,69 +558,4 @@ export async function diffFromWorkbench(wb: (req: { op: "changes" } | { op: "dif
   }
   if (named.length || ch.more) parts.push(`Also changed (not shown): ${named.join(", ")}${ch.more ? ` and ${ch.more} more` : ""}`);
   return parts.join("\n");
-}
-
-// ---------- 这类不用复查: the person's word, kept as a rule at once (D401, D413's way) ----------
-
-const NO_LOOK =
-  /(不用|不需要|不必|别|不要|无需|用不着|省了|免了)(再)?(让(别的|另一个|另外的)?\s*AI\s*)?(复查|复核|再查一遍|再看一遍|再过一遍|另外看|二次检查|看一遍|查一遍|过一遍|审一遍)|\b(no need to|don'?t|do not|stop|skip|never)\s+(the\s+)?(double[- ]?check(ing)?|re-?check(ing)?|second[- ]check(ing)?|second look|look(ing)? (it |them |these )?over|having (another|a second) (ai|agent) (look|check))\b|\bno (second|extra|other ai'?s?) (look|check|review)s?\b/i;
-const NO_LOOK_QUESTION = /[?？]\s*$|[吗么嘛][。！!]?\s*$|要不要|是不是|能不能|可不可以|\b(should|can|could|would) (i|we|you)\b/i;
-const NO_LOOK_ONCE = /这次|这一次|这回|这个就|this time|this one|just once|for now/i;
-const NO_LOOK_ALL = /以后都|全都|所有|一律|everything|all (of )?(them|results|tasks)|anything|ever again/i;
-const NO_LOOK_KINDS: [WorkKind, RegExp][] = [
-  ["code", /代码|改代码|写代码|\bcode\b|\bcoding\b|\bPRs?\b|pull requests?/i],
-  ["writing", /文档|文章|写作|稿子|\bdocs?\b|\bwriting\b|\bdocuments?\b/i],
-  ["research", /调研|研究|查资料|\bresearch\b/i],
-  ["errand", /跑腿|订|买|回复|消息|邮件|评论|留言|\berrands?\b|\brepl(y|ies)\b|\bmessages?\b|\bemails?\b|\bcomments?\b/i],
-];
-
-/** What one message of the person's says about the look before a result goes out, if it says so explicitly. */
-export function readNoLook(text: string): { quote: string; kinds: WorkKind[]; all: boolean; these: boolean } | undefined {
-  const own = text
-    .split("\n")
-    .filter((l) => !/^\s*>/.test(l))
-    .join("\n");
-  for (const s of own.split(/(?<=[。！？!?;；\n])|(?<=\.)\s+/).map((x) => x.trim()).filter(Boolean)) {
-    if (!NO_LOOK.test(s) || NO_LOOK_QUESTION.test(s) || NO_LOOK_ONCE.test(s)) continue;
-    const kinds = NO_LOOK_KINDS.filter(([, re]) => re.test(s)).map(([k]) => k);
-    const quote = [...s.replace(/[\s哈啊呀吧哦啦了嘛呢~～!！。.,，]+$/, "")].slice(0, 90).join("");
-    return { quote, kinds, all: !kinds.length && NO_LOOK_ALL.test(s), these: /这类|这种|这些|这样的|this kind|these|such/i.test(s) };
-  }
-  return undefined;
-}
-
-/**
- * D437: the person's 这类不用复查, kept the moment the message lands: for the kinds it names, else
- * the kind of the last task another AI looked over ("这类" points at the card they just read),
- * else everything when they said so. Nothing to point at: nothing kept. What was kept, by the
- * message's seq, for the partner's line under their words.
- */
-export function keepNoLookAtOnce(o: { log: LogStore; rules: { addNotice(r: { text: string; kind: string; kinds?: WorkKind[]; match?: string[] }): RuleView } }): { heardFrom(seq: number): RuleView | undefined; stop(): void } {
-  const heard = new Map<number, RuleView>();
-  const lastLookedKind = (): WorkKind | undefined => {
-    const reports = o.log.read({ kinds: ["report"], beforeSeq: o.log.head() + 1, limit: 400 });
-    for (let i = reports.length - 1; i >= 0; i--) {
-      const r = reports[i]!.body as Bodies["report"];
-      if (!r.look) continue;
-      const open = o.log.read({ stream: `task:${r.taskId}`, kinds: ["task_open"], beforeSeq: o.log.head() + 1, limit: 20 }).at(-1)?.body as Bodies["task_open"] | undefined;
-      return open?.workKind ?? "code";
-    }
-    return undefined;
-  };
-  const stop = o.log.subscribe((e) => {
-    if (e.kind !== "user_msg" || e.origin !== "user") return;
-    if (!(e.stream === "channel" || e.stream.startsWith("channel:"))) return;
-    const b = e.body as Bodies["user_msg"];
-    if (b.forwarded) return;
-    const said = readNoLook(b.text ?? "");
-    if (!said) return;
-    const kinds = said.kinds.length ? said.kinds : said.all ? [] : ((k) => (k ? [k] : undefined))(lastLookedKind());
-    if (!kinds) return;
-    try {
-      heard.set(e.seq, o.rules.addNotice({ text: said.quote, kind: NO_LOOK_KIND, kinds }));
-    } catch (err) {
-      console.warn("[fresh-look] couldn't keep the rule:", (err as Error).message);
-    }
-  });
-  return { heardFrom: (seq) => heard.get(seq), stop };
 }

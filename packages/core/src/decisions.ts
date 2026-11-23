@@ -1,6 +1,7 @@
 // Reports -> attention + decisions (D10). Reversible defaults auto-resolve; resolutions are
 // forwarded to the task through the onDecision hook (main.ts wires it to runner.send).
-import type { Attention, Bodies, EvidenceRef, LogEvent, Question } from "@ducter/protocol";
+import type { Attention, Bodies, EvidenceRef, LogEvent, Question, StandingAction } from "@ducter/protocol";
+import { STEP_WORDS } from "@ducter/protocol/src/standing.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { CoreRegistry } from "./registry.ts";
@@ -36,6 +37,11 @@ export interface Decisions {
    */
   answeredByMessage(taskId: string, text: string, by: "user" | "partner"): void;
   /**
+   * D499: Go for the person, under what they said (a kept 不用问我的 covering this step): only a
+   * task's plain question (plainAsk), open; forwarded to the task as their go, with the words.
+   */
+  goOnTheirWord(decisionId: string, w: { said: string; action: StandingAction; standing: string }): LogEvent<"decision_resolved">;
+  /**
    * Answers resolved before a restart that never reached their task (the process died between
    * decision_resolved and the forward). Returned once; core hands them over when the runner is wired.
    */
@@ -65,7 +71,25 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
   return r.option === "reply" ? "user" : "ducter";
 }
 
+
+/**
+ * D499: a task's plain question, the only kind Ducter may answer for the person: no card of its own
+ * kind (a payment, a checkout, a key, a sign-in, a fill, a phone or computer tap, a lent phone, where it
+ * runs, a message to another agent, a call), nothing another AI still flagged in what it sends, and a
+ * Go that deletes nothing (D340). The floor (D61 GQ5) is these kinds; none of them ever goes for them.
+ */
+export function plainAsk(d: Bodies["decision"]): boolean {
+  if (!d.taskId) return false;
+  if (d.pay || d.checkout || d.key || d.signIn || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
+  if (d.routineId || d.forApp || d.loop || d.board || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
+  if (d.look?.left.length) return false;
+  return !destructiveChoice(d.question, d.goLabel);
+}
+
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
+  // D499: answered for the person by their own word: the task goes, and learns not to ask about it again.
+  if (r.option === "go" && r.by === "said" && r.action)
+    return `Go: ${d.goLabel}. Ducter answered this for the user: they already allowed ${STEP_WORDS[r.action]} ("${(r.said ?? "").slice(0, 200)}"). From now on in this task, do that without asking and say it in your report; anything else that reaches other people still asks.`;
   // D151: the user signed in themselves in the live view; the task checks the page again.
   // D157: where it runs is the runner's to change (it re-places the task); the task hears nothing.
   if (d.where) return "";
@@ -498,6 +522,14 @@ export function createDecisions(opts: {
           body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user" },
         });
       }
+    },
+    goOnTheirWord(decisionId, w) {
+      const d = all.get(decisionId);
+      if (!d) throw new Error(`unknown decision ${decisionId}`);
+      if (resolved.has(decisionId)) throw new Error("That was answered already.");
+      if (!plainAsk(d)) throw new Error("Only a task's plain question can be answered for the user.");
+      if (dropped(d.taskId)) throw new Error("That task was dropped.");
+      return log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "go", by: "said", said: w.said.slice(0, 400), action: w.action, standing: w.standing } });
     },
     decide(decisionId, option, text, extra) {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);

@@ -10,9 +10,31 @@
  * pr_review: post a PR review (the review routine, D413). issue_comment (D415): leave a comment on
  * an issue the person handed over ("在 nowledge-co 的 issue 里留言不用问我"), e.g. the hand-over note's
  * "tell them my agent is starting"; never a close, never someone else's PR.
+ *
+ * D499: three steps a task takes on its own work. A task asks about them (report_to_main
+ * needs_input) and Ducter answers for the person when their word covers the step; that answer is
+ * the audited write (recorded with the words it rested on, in Done for you):
+ *   ci_rerun: rerun its PR's checks (a `/test`-style command comment, `gh run rerun`): it repeats
+ *     what already ran and changes no code;
+ *   pr_comment: a comment on the PR the task opened or works on (a reply to a reviewer, a status
+ *     line): it can be edited or deleted, and only the PR's people see it;
+ *   branch_push: push the task's own branch (its PR updates): never the base or a protected
+ *     branch, never a delete, never a merge.
+ * Never here: merging, paying, passwords and sign-ins, deleting, anything an untrusted source asked.
  */
-export type StandingAction = "pr_review" | "issue_comment";
-export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review", "issue_comment"];
+export type StandingAction = "pr_review" | "issue_comment" | "ci_rerun" | "pr_comment" | "branch_push";
+export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review", "issue_comment", "ci_rerun", "pr_comment", "branch_push"];
+/** D499: the steps a task's own ask can be answered under (pr_review goes through review_report). */
+export const TASK_STEP_ACTIONS: readonly StandingAction[] = ["ci_rerun", "pr_comment", "branch_push", "issue_comment"];
+
+/** D499: each step in a task's words (model-visible: the go forwarded to a task, its brief). */
+export const STEP_WORDS: Record<StandingAction, string> = {
+  pr_review: "posting PR reviews",
+  issue_comment: "commenting on the issues it works on",
+  ci_rerun: "rerunning its PR's checks (a /test-style comment, gh run rerun)",
+  pr_comment: "commenting on the PR it opened or works on",
+  branch_push: "pushing its own branch (never the base or a protected branch, never a delete or a merge)",
+};
 
 export interface StandingView {
   id: string;
@@ -23,6 +45,13 @@ export interface StandingView {
    * asked it to; code never narrows what they said).
    */
   orgs?: string[];
+  /**
+   * D499: only inside this task (said about one task: 「这个 PR 你自己推进到能合并就好，这些都别问我」);
+   * it ends with the task. Absent: wherever `orgs` says.
+   */
+  taskId?: string;
+  /** D499: that task's title, for the Partner page's line. */
+  taskTitle?: string;
   /** The person's own words, the clause that said it. */
   text: string;
   /** ISO time it was said. */

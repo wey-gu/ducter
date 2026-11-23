@@ -157,6 +157,8 @@ type StandingView struct {
 	ID        string   `json:"id"`
 	Action    string   `json:"action"`
 	Orgs      []string `json:"orgs,omitempty"`
+	TaskID    string   `json:"taskId,omitempty"`    // D499: only inside this task
+	TaskTitle string   `json:"taskTitle,omitempty"` // D499: that task's name
 	Text      string   `json:"text"`
 	CreatedAt string   `json:"createdAt"`
 	UsedAt    string   `json:"usedAt,omitempty"`

@@ -417,6 +417,8 @@ type DecisionResolved struct {
 	Settled bool `json:"settled,omitempty"`
 	// Posted (D413): settled because its drafts went under a standing permission.
 	Posted bool `json:"posted,omitempty"`
+	// Said (D499, By "said"): Ducter said Go for the person under these words of theirs.
+	Said string `json:"said,omitempty"`
 }
 
 type ReadReceipt struct {

@@ -314,7 +314,7 @@ describe("turn loop", () => {
     expect(seed).toContain("user] 修一下 ~/dev/foo 的 flaky test");
     expect(seed).toContain("you] 我去看看。");
     expect(seed).toContain("task t1 running] Fix flaky test");
-    expect(seed).toContain("task t1 asks] Also bump deps?");
+    expect(seed).toContain("task t1 asks (ask d1)] Also bump deps?");
     expect(seed).toContain("you] 在做，还没报告。");
     expect(seed).toContain('<tasks>\nOpen:\n- t1 "Fix flaky test" · working · repo /x/foo');
     // the triggering message is the delta at the end, not in the background

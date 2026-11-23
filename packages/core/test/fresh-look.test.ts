@@ -5,7 +5,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { Bodies, HarnessId, RuleView, TaskCard } from "@ducter/protocol";
-import { checkPrompt, createFreshLook, diffFromWorkbench, fixAsk, keepNoLookAtOnce, lookPrompt, lookRuledOff, lookWhat, parseCheck, parseLook, pickLooker, readNoLook, type LookDeps } from "../src/fresh-look.ts";
+import { checkPrompt, createFreshLook, diffFromWorkbench, fixAsk, lookPrompt, lookRuledOff, lookWhat, parseCheck, parseLook, pickLooker, type LookDeps } from "../src/fresh-look.ts";
 import { openRules } from "../src/rules.ts";
 import { openLog } from "../src/log.ts";
 import { tempDir } from "./helpers.ts";
@@ -273,35 +273,21 @@ test("a restart: a result cut off while looking goes on; one waiting for its fix
   expect(b2.reports()[0]!.look?.found).toEqual(["漏了 Windows"]);
 });
 
-test("这类不用复查 read from the person's words: explicit only, never a question or this once", () => {
-  expect(readNoLook("这类不用复查了")).toMatchObject({ kinds: [], these: true });
-  expect(readNoLook("改文档这种不用再让别的 AI 看一遍")).toMatchObject({ kinds: ["writing"] });
-  expect(readNoLook("以后都不用复查")).toMatchObject({ kinds: [], all: true });
-  expect(readNoLook("No need to double-check code changes.")).toMatchObject({ kinds: ["code"] });
-  expect(readNoLook("这次不用复查")).toBeUndefined();
-  expect(readNoLook("要不要复查？")).toBeUndefined();
-  expect(readNoLook("不用复查吗")).toBeUndefined();
-  expect(readNoLook("帮我复查一下 PR")).toBeUndefined();
-  expect(readNoLook("> 这类不用复查\n好的")).toBeUndefined(); // a quote is someone else's words
-});
-
-test("这类 points at the last result another AI looked over; kept at once as a rule, for the partner's line", () => {
+// D499: 这类不用复查 is the partner's to keep (rule_save no_second_look, the kind it points at); no
+// code reads the person's words for it. Code keeps what the call names, and the look honours it.
+test("这类不用复查 kept by rule_save no_second_look: the kind it names, honoured by the look", async () => {
   const t = tempDir();
-  const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default" });
   const rules = openRules(t.dir);
-  const k = keepNoLookAtOnce({ log, rules });
-  stops.push(() => k.stop(), () => log.close?.());
-  // Nothing looked at yet: "这类" points at nothing, nothing kept.
-  const m0 = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "这类不用复查" } });
-  expect(k.heardFrom(m0.seq)).toBeUndefined();
-  log.append({ stream: "task:w1", origin: "task", kind: "task_open", body: { taskId: "w1", title: "改 README", project: "", place: { kind: "none" }, harness: "codex", brief: "改 README", workKind: "writing" } as Bodies["task_open"] });
-  log.append({ stream: "task:w1", origin: "task", kind: "report", body: { ...done({ taskId: "w1" }), look: { by: "claude-code", found: ["x"], left: ["x"] } } });
-  const m1 = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "这类不用复查了哈" } });
-  const r = k.heardFrom(m1.seq)!;
-  expect(r).toMatchObject({ text: "这类不用复查", kinds: ["writing"], notice: { kind: "fresh_look" } });
-  expect(rules.list().filter((x) => x.notice?.kind === "fresh_look").length).toBe(1);
+  const { registerRuleTools } = await import("../src/loadout.ts");
+  const tools = new Map<string, (a: unknown) => Promise<unknown>>();
+  registerRuleTools({ register: (_role: string, name: string, _d: string, _s: unknown, fn: (a: unknown) => Promise<unknown>) => void tools.set(name, fn) } as never, rules);
+  const r = (await tools.get("rule_save")!({ text: "改文档这类不用复查", no_second_look: true, kind: ["writing"] })) as { ok: boolean };
+  expect(r.ok).toBe(true);
+  expect(rules.list().filter((x) => x.notice?.kind === "fresh_look").map((x) => x.kinds)).toEqual([["writing"]]);
   expect(lookRuledOff(rules.list(), { title: "改 docs", kind: "writing" })).toBeTruthy();
   expect(lookRuledOff(rules.list(), { title: "修 bug", kind: "code" })).toBeUndefined();
+  // Without no_second_look, a rule still names an agent.
+  expect(((await tools.get("rule_save")!({ text: "x" })) as { ok: boolean }).ok).toBe(false);
 });
 
 test("what is left reaches the Go card the report makes", async () => {

@@ -444,7 +444,8 @@ function isTrigger(e: LogEvent): boolean {
   if (e.kind === "user_msg") return true;
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended";
+  // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
   if (e.kind === "waiter") {
@@ -971,10 +972,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     // D401: the rules Ducter kept from this message of the user's, by itself.
     kept: (seq) => core.said?.keptFrom?.(seq) ?? [],
-    // D437: 这类不用复查, kept by Ducter from these words.
-    noLook: (seq) => core.noLookFrom?.(seq),
     // D444: 别记这个, taken back by Ducter at these words.
     takenBack: (seq) => core.takenBackFrom?.(seq) ?? [],
+    // D499: a task's questions still on their cards, and what the user already allowed it.
+    openAsks: (taskId) => {
+      const evs = core.log.read({ stream: "channel", kinds: ["decision", "decision_resolved"], limit: 500 });
+      const done = new Set(evs.filter((e) => e.kind === "decision_resolved").map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
+      return evs
+        .filter((e) => e.kind === "decision" && (e.body as Bodies["decision"]).taskId === taskId && !done.has((e.body as Bodies["decision"]).decisionId))
+        .map((e) => ({ id: (e.body as Bodies["decision"]).decisionId, question: (e.body as Bodies["decision"]).question }));
+    },
+    goesFor: (taskId) => (core.goesFor?.(taskId) ?? []).map((s) => ({ action: s.action, text: s.text, ...(s.taskId ? { task: true } : {}) })),
     // D426: the lines a many-things message asked for (core/src/asks.ts).
     asksOf: (taskId) => (core as { asks?: AsksReadPort }).asks?.forTask(taskId),
     asksBefore: (seq) => {
@@ -3765,52 +3773,84 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // never be named). A kept go posts what waits inside it at once (core's onGrant).
   if (core.standing) {
     const standingStore = core.standing;
-    /** What without_asking's `said` may quote: memory_add's, and the words they replied to a card with. */
+    /**
+     * What without_asking's `said` may quote: the person's own words only (D499: never a report's or
+     * another agent's): their messages, the words they replied to a card with, and what they typed
+     * straight to a task.
+     */
     const heardForStanding = (t: TurnState | null): string[] => [
-      ...heardWords(t),
+      ...(t?.userTexts ?? []),
+      ...core.log
+        .read({ stream: "channel", kinds: ["user_msg"], limit: HEARD_MESSAGES })
+        .filter((e) => e.origin === "user" && !(e.body as Bodies["user_msg"]).forwarded && (!e.persona || e.persona === core.persona.id))
+        .map((e) => (e.body as Bodies["user_msg"]).text ?? ""),
       ...core.log
         .read({ stream: "channel", kinds: ["decision_resolved"], limit: HEARD_MESSAGES })
         .filter((e) => e.origin === "user" && (!e.persona || e.persona === core.persona.id))
         .map((e) => (e.body as Bodies["decision_resolved"]).text ?? ""),
+      ...core.log
+        .read({ kinds: ["task_event"], limit: 400 })
+        .filter((e) => e.origin === "user" || (e.body as Bodies["task_event"]).from === "user")
+        .map((e) => (e.body as Bodies["task_event"]).text ?? ""),
     ];
     tools.register(
       "partner",
       "without_asking",
-      "The user says an outward action may go from now on without asking them (\"review 直接发，别问我\", a loop told to keep posting reviews), or takes it back (\"评审发之前先问我\"). Kept: Ducter does it with no card, each in Done for you; what waits goes now. Not for this once. Paying, sign-ins, deleting are never kept.",
+      "The user says an outward step may go without asking them (\"review 直接发，别问我\"; about one task: \"这个 PR 你自己推进到能合并，别问我\": pass task), or takes it back (\"先问我\"). answer: a task asks about a step they already allowed (a kept go, or their words): Ducter says Go for them, no card. Not for this once. Paying, sign-ins, deleting, merging never.",
       {
         type: "object",
         properties: {
-          do: { type: "string", enum: ["keep", "take_back"] },
-          action: { type: "string", enum: [...STANDING_ACTIONS], description: "pr_review: posting PR reviews; issue_comment: comments on issues they handed over" },
+          do: { type: "string", enum: ["keep", "take_back", "answer"] },
+          action: { type: "string", enum: [...STANDING_ACTIONS], description: "pr_review: post PR reviews; issue_comment: comment on issues handed over; ci_rerun: rerun a task's PR checks (/test); pr_comment: comment on its PR; branch_push: push its own branch" },
           owners: { type: "array", items: { type: "string" }, description: "GitHub owners, only if named" },
-          said: { type: "string", description: "Their own words, copied exactly" },
+          task: { type: "string", description: "Only this task's id, when said about one task" },
+          ask: { type: "string", description: "answer: the ask's id (ask d_…)" },
+          said: { type: "string", description: "Their own words, copied exactly (answer: when no go is kept yet)" },
         },
-        required: ["do", "action", "said"],
+        required: ["do", "action"],
       },
-      async (args: { do?: unknown; action?: unknown; owners?: unknown; said?: unknown }) => {
+      async (args: { do?: unknown; action?: unknown; owners?: unknown; task?: unknown; ask?: unknown; said?: unknown }) => {
         const action = String(args?.action ?? "") as StandingAction;
-        if (!STANDING_ACTIONS.includes(action)) return { ok: false, error: `Only ${STANDING_ACTIONS.join(" and ")} can go without asking. Nothing was kept; say plainly what Ducter can't keep yet.` };
+        if (!STANDING_ACTIONS.includes(action)) return { ok: false, error: `Only ${STANDING_ACTIONS.join(", ")} can go without asking. Nothing was kept; say plainly what Ducter can't keep yet.` };
         const said = typeof args?.said === "string" ? args.said.trim().slice(0, 400) : "";
-        if (!said || !saidInConversation(said, heardForStanding(turn)))
-          return { ok: false, error: "Those words aren't in what the user said in this conversation. Copy their exact words, or don't keep it. Nothing was kept." };
+        const theirs = () => !!said && saidInConversation(said, heardForStanding(turn));
+        const notTheirs = { ok: false, error: "Those words aren't in what the user said (their messages, card replies, words to a task). Copy their exact words, or don't keep it. Nothing was kept." };
         const quote = [...said].length <= 90 ? said : `${[...said].slice(0, 89).join("").trimEnd()}…`;
         const at = new Date().toISOString();
         const seq = turn ? replyToFor(turn) : undefined;
         // Unique per call: a keep and a take_back in the same millisecond are two sayings.
         const key = `tool:${at}:${action}:${randomBytes(3).toString("hex")}`;
+        // D499: a task's ask about a step the person already allowed: Go for them (code checks the rest).
+        if (args?.do === "answer") {
+          const askId = String(args?.ask ?? "").trim();
+          const a = core.askOf?.(askId);
+          if (!a || !core.answerFor) return { ok: false, error: "No open question from a task with that id. Use the id in [task … asks (ask d_…)]." };
+          if (!a.open) return { ok: false, error: "That question was answered already." };
+          if (said) {
+            if (!theirs()) return notTheirs;
+            standingStore.hear(key, { kind: "grant", action, quote, taskId: a.taskId, taskTitle: a.title }, at, seq);
+          }
+          const r = core.answerFor(askId, action);
+          if (!r.ok) return { ok: false, error: `${r.error} Nothing was answered.` };
+          return { ok: true, went: r.question, note: `Ducter said Go for them on their word ("${r.standing.text}"); it is in Done for you. Its card shows it went ahead on their word; at most one short line (e.g. "按你说的，让它直接重跑了 E2E。"). No question, no card.` };
+        }
+        if (!theirs()) return notTheirs;
+        const taskId = typeof args?.task === "string" ? args.task.trim() : "";
+        const card = taskId ? core.tasks.get(taskId) : undefined;
+        if (taskId && !card) return { ok: false, error: "No task with that id. Nothing was kept." };
         if (args?.do === "take_back") {
-          const r = standingStore.hear(key, { kind: "revoke", action, quote }, at, seq);
+          const r = standingStore.hear(key, { kind: "revoke", action, quote, ...(card ? { taskId } : {}) }, at, seq);
           return r?.revoked?.length ? { ok: true, note: "Taken back: Ducter asks before each one again. Say so in one short line." } : { ok: true, note: "Nothing was standing for that; it already asks each time." };
         }
         const owners = Array.isArray(args?.owners) ? [...new Set(args.owners.map((x) => String(x).trim().toLowerCase().replace(/^@/, "")).filter((x) => /^[a-z0-9][\w.-]{0,38}$/.test(x)))] : [];
-        const r = standingStore.hear(key, { kind: "grant", action, ...(owners.length ? { orgs: owners } : {}), quote }, at, seq);
+        const r = standingStore.hear(key, { kind: "grant", action, ...(owners.length && !card ? { orgs: owners } : {}), quote, ...(card ? { taskId, taskTitle: card.title } : {}) }, at, seq);
         const kept = r?.kept;
         if (!kept) return { ok: false, error: "Nothing was kept." };
-        const where = kept.orgs?.length ? ` on ${kept.orgs.join(", ")}` : "";
+        const where = kept.taskId ? ` for task ${kept.taskId} only` : kept.orgs?.length ? ` on ${kept.orgs.join(", ")}` : "";
         return {
           ok: true,
-          kept: { action, ...(kept.orgs?.length ? { owners: kept.orgs } : {}) },
-          note: `Kept as their standing go${where} (Settings › Partner, Without asking): every round posts these with no card, what waits goes now, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后评审写完直接发，不再问你。想收回说一声。" No ask, no card.`,
+          kept: { action, ...(kept.orgs?.length ? { owners: kept.orgs } : {}), ...(kept.taskId ? { task: kept.taskId } : {}) },
+          note: `Kept as their go${where} (Settings › Partner, Without asking): Ducter does it with no card, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后这类直接做，不再问你。想收回说一声。" No ask, no card.`,
         };
       },
     );

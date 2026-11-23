@@ -4,7 +4,7 @@ import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
 import { createFreeBudget } from "./free-budget.ts";
-import { createFreshLook, diffFromWorkbench, keepNoLookAtOnce } from "./fresh-look.ts";
+import { createFreshLook, diffFromWorkbench } from "./fresh-look.ts";
 import { createDocCheck } from "./doc-check.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -12,13 +12,13 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
-import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
+import { createDecisions, forwardFrom, plainAsk, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
 import { openLog, type SqliteLog } from "./log.ts";
 import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
@@ -438,7 +438,8 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended";
+  // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
@@ -601,7 +602,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   keepSaidAtOnce(log, said);
   // D413: what the person says may go without asking (不用问我的), bounded by where the review routine
   // looks now. D495: the partner records it (without_asking); no code reads their words for it.
-  const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [] });
+  // D499: a go kept for one task ends with it (listed and honoured while the task is open).
+  const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [], alive: (id) => ((a) => !!a && !["done", "done_claimed", "superseded", "dropped", "failed"].includes(a))(tasks.get(id)?.attention) });
   // D444: 别记这个, said right after the partner noted something, takes it back the moment it lands.
   const takeBack = takeBackAtOnce({ log, undo: (seq) => settings.undo(seq) });
   try {
@@ -1204,8 +1206,6 @@ export function startCore(opts: CoreOptions = {}): Core {
     frugal: (by, what) => freeBudget.frugal(by.harness) && (what === "code" || freeBudget.low()),
     onFrugal: () => void freeBudget.lookSkipped(),
   });
-  // D437: 这类不用复查, kept as the person's rule the moment it lands.
-  const noLook = keepNoLookAtOnce({ log, rules });
   // D439: a document to send is checked page by page before it reaches the person; the pages are
   // drawn into the task's own evidence folder when it works on this computer.
   const docCheck = createDocCheck({
@@ -1219,7 +1219,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1382,6 +1382,38 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.agentLimits = () => agentLimits.now();
   // D483: what each task owns outside (its PRs), for the partner's [live] line.
   api.owned = () => work.owned.all();
+  // D499: a task's ask answered for the person under what they said. The partner judges that the
+  // ask is the step a kept permission names (the model judges); code checks the invariants: a task's
+  // plain question, open, not the floor (plainAsk), a step a task's ask can go under, and a kept
+  // permission covering that step for this task (kept for it, or for its repo's owner).
+  const ownerOfTask = (taskId: string): string | undefined => {
+    const p = tasks.get(taskId)?.place;
+    const clone = p?.kind === "repo" ? p.clone : undefined;
+    const fromClone = clone?.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/[\w.-]+?(?:\.git)?\/?$/)?.[1];
+    return (fromClone ?? work.owned.of(taskId)[0]?.split("/")[0])?.toLowerCase();
+  };
+  api.goesFor = (taskId) =>
+    TASK_STEP_ACTIONS.flatMap((a) => {
+      const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
+      return s ? [s] : [];
+    });
+  api.askOf = (decisionId) => {
+    const d = decisions.get(decisionId);
+    if (!d?.taskId) return undefined;
+    const owner = ownerOfTask(d.taskId);
+    return { taskId: d.taskId, title: tasks.get(d.taskId)?.title ?? d.taskId, ...(owner ? { owner } : {}), open: decisions.isPending(decisionId) };
+  };
+  api.answerFor = (decisionId, action) => {
+    const d = decisions.get(decisionId);
+    if (!d?.taskId) return { ok: false, error: "That isn't a task's open question." };
+    if (!decisions.isPending(decisionId)) return { ok: false, error: "That question was answered already." };
+    if (!plainAsk(d)) return { ok: false, error: "This one is the user's own to answer (a payment, a sign-in, a key, a tap on a phone or computer, deleting, or something another AI flagged): it stays on its card." };
+    if (!TASK_STEP_ACTIONS.includes(action)) return { ok: false, error: `A task's question can go only under ${TASK_STEP_ACTIONS.join(", ")}.` };
+    const s = standing.covers(action, { taskId: d.taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(d.taskId)) });
+    if (!s) return { ok: false, error: "Nothing the user said covers that step for this task. It stays on its card: ask it as usual." };
+    decisions.goOnTheirWord(decisionId, { said: s.text, action, standing: s.id });
+    return { ok: true, standing: s, question: d.question };
+  };
   // D478, D479: a task_open that records `replaces` retires that task (replaces.ts): by its id, never by title.
   log.subscribe((e) => {
     if (e.kind !== "task_open" || e.origin !== "partner") return;
@@ -2505,7 +2537,6 @@ export function startCore(opts: CoreOptions = {}): Core {
       brainHold.stop();
       freeBudget.stop();
       freshLook.stop();
-      noLook.stop();
       takeBack.stop();
       proactive.stop();
       calendar.stop();

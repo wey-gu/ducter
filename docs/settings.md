@@ -142,7 +142,11 @@ At the top is your partner, its name and one line: where it lives and what it th
   don't answer. Asks you first: anything sent to people, anything it can't undo, signing in, and
   paying. Paying and signing in always ask. Tell your partner reviews may go without asking ("just
   post reviews, don't ask me") and they appear under **Without asking**, with your words and **Take
-  back**.
+  back**. The same works for the steps a task takes on its own pull request: rerunning its checks,
+  commenting on it, pushing its own branch. Say it about one task ("get this PR to mergeable, don't
+  ask me about these") and it holds for that task only (**Only in "…"**) until the task ends. When a
+  task then asks about such a step, your partner answers it for you: the question reads **Went ahead,
+  as you said**, and it shows in Done for you with your words. Merging stays yours.
 
 ### More than one partner
 

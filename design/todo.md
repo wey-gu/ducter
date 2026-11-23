@@ -59,15 +59,28 @@ line.
   said.ts (D401's spoken rule kept at once, the author's standing preference; trigger: the partner's
   own `rule_save` before task_open holds on the rules eval on two runs, then the regexes go),
   peer-self `pingOf` and `ownAgentSelf` (trigger: a bridge eval round where the partner answers its
-  own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `HOW_KNOW`,
-  `CLAIMS_CHOICE`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
+  own agents' contact tests itself), fresh-look `OUTWARD`, `HOW_KNOW`,
+  `CLAIMS_CHOICE`, `REVIEW_WORDS`, Mem take-back (D444's `takeBackAtOnce`), `doc-bar MAKE`,
   `startProblem`'s buckets, ranking weights (phase 2c). (`PROMISE_RE`, `ONE_TIME`, `ASKS_RECALL`,
   `POINTS_AT_THREAD` and `ASKS_ABOUT_ME`: retired by D490; standing.ts's `readStanding`: retired by D495,
-  the partner's `without_asking`.)
-- **A task's own ask about an outward step the person already allowed** (hel 2026-11-23: the PR
-  babysitter loop asked to comment `/test` on a PR; the person replied 「你自己推进到能合并就好，这些都别问我」).
-  D495 covers PR reviews and issue comments Ducter writes; a task's comment or push it asks about
-  itself still asks. Trigger: the next loop that asks again after such a reply.
+  the partner's `without_asking`; fresh-look's `NO_LOOK_*` / `readNoLook` / `keepNoLookAtOnce`:
+  retired by D499, the partner's `rule_save` no_second_look.)
+- **D499: said.ts is the next to go, and why it didn't go with D499.** It is two readers, not one:
+  D401's at-once keeping (`keepSaidAtOnce`, `backfill`, the "(Ducter already kept this…)" line) and
+  D379's steering (`fromLog` over every channel message and `fromMemory` over recalled notes,
+  `rulesFor` feeding `loadout.choose` so a task opened in the same turn goes by words never saved,
+  with the 记成规则 card). Retiring D401 alone brings D379's card back for every saying; retiring both
+  moves the same-turn routing to the partner (`rule_save` before `task_open`, or `harness` on it),
+  and four eval scenarios assert the code's keeping today (`kind-never-unsaved-zh`,
+  `said-then-booking-zh`, `said-same-turn-en`, `rule-never-claude-code-zh`: `ruleKept`). Trigger: a change of its own with those
+  scenarios rewritten to assert the partner's `rule_save` (and a world puzzle where the saying is
+  only in memory), two full eval runs, then `said.ts`, `keepSaidOnGo`'s card, `saidPick` and the
+  `said` port go.
+- **D499: what is still owed.** A step outside the four (`ci_rerun`, `pr_comment`, `branch_push`,
+  `issue_comment`), e.g. editing the PR's title or labels, still asks; widen only with a write the
+  answer can stand for. A go said about a task's repo in general ("mem 的 PR 这些都别问我") is kept by
+  owner, which covers every task in that owner. Not on hel yet; the next babysitter's ask is the live
+  check. Trigger: the next release on hel.
 - **D490 on Codex.** The [[later]] mark and the preamble by position were measured on haiku only (a Codex run uses
   the person's own Codex sign-in). Owed: one Codex eval (`--harness codex`) against D462's 179–189, and the two
   shapes no longer collapsed that D462 saw only on Codex (the same ack twice before task_open; a preamble before a

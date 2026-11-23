@@ -161,8 +161,6 @@ export interface CoreApi {
   freshLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"], also?: { words: string; found: string }): boolean; readonly heldWords: string; readonly heldWithDocWords?: string; waiting?(taskId: string): boolean };
   /** D439: a document a done report shows, checked page by page (core/src/doc-check.ts); absent in tests and stubs. */
   docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; againFound?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
-  /** D437: the 这类不用复查 rule Ducter kept from this user message's words, for the partner's line under them. */
-  noLookFrom?(seq: number): RuleView | undefined;
   /** D444: the memories Ducter took back at this user message's words (别记这个), for the partner's line under them. */
   takenBackFrom?(seq: number): { seq: number; title: string }[];
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
@@ -196,11 +194,24 @@ export interface CoreApi {
     list(): import("./standing.ts").StandingView[];
     hear(
       key: string,
-      s: { kind: "grant"; action: import("./standing.ts").StandingAction; orgs?: string[]; quote: string } | { kind: "revoke"; action: import("./standing.ts").StandingAction; quote: string },
+      s:
+        | { kind: "grant"; action: import("./standing.ts").StandingAction; orgs?: string[]; quote: string; taskId?: string; taskTitle?: string }
+        | { kind: "revoke"; action: import("./standing.ts").StandingAction; quote: string; taskId?: string },
       at: string,
       seq?: number,
     ): { kept?: import("./standing.ts").StandingView; revoked?: import("./standing.ts").StandingView[] } | undefined;
+    /** D499: the permission covering this step of this task, if any. */
+    covers?(action: import("./standing.ts").StandingAction, at: { taskId: string; owner?: string }): import("./standing.ts").StandingView | undefined;
   };
+  /**
+   * D499: a task's open ask answered Go for the person under a kept permission (code checks the ask
+   * is a task's plain question, not the floor, and that a kept permission covers the step there).
+   */
+  answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
+  goesFor?(taskId: string): import("./standing.ts").StandingView[];
+  /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */
+  askOf?(decisionId: string): { taskId: string; title: string; owner?: string; open: boolean } | undefined;
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;
   /** What the partner is doing while the user waits (D104); absent in tests and stubs. */

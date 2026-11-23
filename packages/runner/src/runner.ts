@@ -1530,6 +1530,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ...((d) => (d ? { doc: d } : {}))(docAsk(`${open.title}\n${briefed ? open.brief : ""}`)),
         // D449: on a free key whose day is shared with the partner, the task is asked to be frugal.
         ...(core.freeBudget?.frugal?.(open.harness ?? "") ? { frugal: true } : {}),
+        // D499: what the user already allowed this task to do without asking (kept for it, or for its repo's owner).
+        ...((g) => (g.length ? { goes: g.map((s) => ({ action: s.action, words: s.text })) } : {}))(core.goesFor?.(id) ?? []),
       }),
       mcp: [mcp],
       permissionMode: "bypass",

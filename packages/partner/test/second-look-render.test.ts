@@ -1,9 +1,9 @@
 // D437: what the partner reads of another AI's look: what is still so (the app shows it, never
 // repeated word for word, never called complete), nothing for a clean or fixed look; and the
-// 这类不用复查 rule Ducter kept from the person's words, said back without a rule_save.
+// 这类不用复查 the person says, which the partner keeps itself (D499).
 import { expect, test } from "bun:test";
 import type { Bodies, LogEvent } from "@ducter/protocol";
-import { noLookLine, renderTrigger, type RenderCtx } from "../src/render.ts";
+import { renderTrigger, type RenderCtx } from "../src/render.ts";
 
 const ctx = { taskTitle: () => "安装目录可配置", decision: () => undefined } as unknown as RenderCtx;
 const report = (look?: Bodies["report"]["look"]): LogEvent =>
@@ -21,10 +21,10 @@ test("a clean or fixed look: nothing for the partner to say", () => {
   expect(renderTrigger(report({ by: "codex", found: ["x"], left: [] }), ctx)).not.toContain("another AI");
 });
 
-test("这类不用复查 kept: said back in one line, no rule_save", () => {
-  const l = noLookLine({ text: "这类不用复查", kinds: ["writing"] });
-  expect(l).toContain("writing work");
-  expect(l).toContain("No rule_save");
+// D499: no line under their words says Ducter kept 这类不用复查 by itself; the partner keeps it (rule_save).
+test("这类不用复查: their words reach the partner as they are, no line that it was kept", () => {
   const e = { seq: 12, ts: "2026-11-21T10:00:00Z", persona: "default", stream: "channel", origin: "user", kind: "user_msg", body: { text: "这类不用复查" } } as LogEvent;
-  expect(renderTrigger(e, { ...ctx, noLook: (seq: number) => (seq === 12 ? { text: "这类不用复查", kinds: ["writing"] } : undefined) } as RenderCtx)).toContain("another AI no longer looks over results of writing work");
+  const s = renderTrigger(e, ctx);
+  expect(s).toContain("这类不用复查");
+  expect(s).not.toContain("Ducter already kept");
 });

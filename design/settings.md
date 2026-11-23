@@ -173,6 +173,9 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
   said one: each row says what (**评审写完直接发到 GitHub**) and their words, the owners only when it is
   bounded (D424), with **收回 / Take back**; the word after it is said under the group. Nothing shows
   before the first one; until then 要不要先问's note says how one is made (**评审想直接发，跟它说一声就行。**, D424).
+  D499: a task's own steps can be rows too (**重跑 PR 的检查不用先问**, **在它的 PR 下留言不用先问**,
+  **推送它自己的分支不用先问**), bounded **在 {owners}** or **只在「{task}」里** (kept for one task, listed
+  while that task is open); the word after a take back is **收回了：以后这类先问你。**
 - The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
 

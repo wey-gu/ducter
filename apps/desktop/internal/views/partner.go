@@ -554,8 +554,17 @@ func (a *App) standingList(c *ui.Context) {
 		for _, x := range a.S.Standing {
 			x := x
 			where := "" // D424: "PRs that ask for your review" is what the title already means
-			if len(x.Orgs) > 0 {
+			switch {
+			case x.TaskID != "": // D499: kept for one task, by its name
+				name := x.TaskTitle
+				if name == "" {
+					name = x.TaskID
+				}
+				where = a.L.T("standing.where.task", name)
+			case len(x.Orgs) > 0 && x.Action == "pr_review":
 				where = a.L.T("standing.where.orgs", strings.Join(x.Orgs, sep))
+			case len(x.Orgs) > 0:
+				where = a.L.T("standing.where.owners", strings.Join(x.Orgs, sep))
 			}
 			title := a.L.T("standing." + x.Action)
 			ui.Row(c.Key("standing:" + x.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {

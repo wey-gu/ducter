@@ -20,13 +20,18 @@ export const STANDING_FILE = "standing.json";
 
 /** What the partner recorded about asking first (their words in quote). */
 export type StandingSaying =
-  | { kind: "grant"; action: StandingAction; orgs?: string[]; quote: string }
-  | { kind: "revoke"; action: StandingAction; quote: string };
+  | { kind: "grant"; action: StandingAction; orgs?: string[]; quote: string; taskId?: string; taskTitle?: string }
+  | { kind: "revoke"; action: StandingAction; quote: string; taskId?: string };
 
 export interface StandingStore {
   list(): StandingView[];
   /** The standing permission that lets this action on ref (owner/repo#n) go without asking, if any. */
   allows(action: StandingAction, ref: string): StandingView | undefined;
+  /**
+   * D499: the permission that covers this step of this task, if any: one kept for this task, or one
+   * for the action where its owners hold (owner: the task's repo owner; unbounded holds anywhere).
+   */
+  covers(action: StandingAction, at: { taskId: string; owner?: string }): StandingView | undefined;
   /** Keep a saying (grant: kept or widened; revoke: ended), once per saying key. What changed. */
   hear(key: string, s: StandingSaying, at: string, seq?: number): { kept?: StandingView; revoked?: StandingView[] } | undefined;
   /** 收回 / Take back, by id. */
@@ -46,7 +51,7 @@ interface File {
   heard: Record<string, Heard>;
 }
 
-export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => Date; reviewOrgs?: () => string[] }): StandingStore {
+export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => Date; reviewOrgs?: () => string[]; /** D499: a task still open (a permission kept for one task ends with it). */ alive?: (taskId: string) => boolean }): StandingStore {
   const now = o.now ?? (() => new Date());
   const path = join(o.dataDir, STANDING_FILE);
   let st: File = { items: [], heard: {} };
@@ -78,19 +83,28 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
     for (const fn of subs) fn();
   };
   const ownerOf = (ref: string) => ref.split("/")[0]!.toLowerCase();
+  /** D499: a permission kept for one task holds while that task is open. */
+  const live = (s: StandingView) => !s.taskId || !o.alive || o.alive(s.taskId);
 
   const store: StandingStore = {
-    list: () => st.items.slice(),
+    list: () => st.items.filter(live),
     allows(action, ref) {
       const owner = ownerOf(ref);
-      return st.items.find((s) => s.action === action && (!s.orgs?.length || s.orgs.includes(owner)));
+      return st.items.find((s) => s.action === action && !s.taskId && (!s.orgs?.length || s.orgs.includes(owner)));
+    },
+    covers(action, at) {
+      const owner = at.owner?.toLowerCase();
+      const mine = st.items.find((s) => s.action === action && s.taskId === at.taskId && live(s));
+      return mine ?? st.items.find((s) => s.action === action && !s.taskId && (!s.orgs?.length || (!!owner && s.orgs.includes(owner))));
     },
     hear(key, s, at, seq) {
       if (st.heard[key]) return undefined;
       if (!STANDING_ACTIONS.includes(s.action)) return undefined;
       if (s.kind === "revoke") {
-        const gone = st.items.filter((x) => x.action === s.action);
-        st.items = st.items.filter((x) => x.action !== s.action);
+        // Taken back for the action (D499: only that task's, when one is named).
+        const hit = (x: StandingView) => x.action === s.action && (!s.taskId || x.taskId === s.taskId);
+        const gone = st.items.filter(hit);
+        st.items = st.items.filter((x) => !hit(x));
         st.heard[key] = { kind: "revoked", text: gone[0]?.text ?? s.quote };
         changed();
         return { revoked: gone };
@@ -98,13 +112,15 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
       // Bounded by the orgs named, else by where the review routine looks now (a later org asks first).
       // Said again: one permission per action, its words the newest; unbounded if either is.
       // D415: a comment on issues names its owners or holds wherever the person's issues are.
-      const orgs = s.orgs ?? (s.action === "pr_review" ? (o.reviewOrgs?.() ?? []).map((x) => x.toLowerCase()) : []);
-      const had = st.items.find((x) => x.action === s.action);
+      // D499: one kept for a task is its own (the task bounds it; owners don't apply).
+      const orgs = s.taskId ? [] : (s.orgs ?? (s.action === "pr_review" ? (o.reviewOrgs?.() ?? []).map((x) => x.toLowerCase()) : []));
+      const had = st.items.find((x) => x.action === s.action && x.taskId === s.taskId);
       const bound = had ? (had.orgs?.length && orgs.length ? [...new Set([...had.orgs, ...orgs])] : []) : [...new Set(orgs)];
       const kept: StandingView = {
         id: had?.id ?? `st_${randomBytes(5).toString("hex")}`,
         action: s.action,
         ...(bound.length ? { orgs: bound } : {}),
+        ...(s.taskId ? { taskId: s.taskId, ...(s.taskTitle ? { taskTitle: s.taskTitle.slice(0, 80) } : {}) } : {}),
         text: s.quote,
         createdAt: at,
         ...(seq !== undefined ? { seq } : {}),

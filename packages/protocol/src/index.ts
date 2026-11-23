@@ -60,7 +60,7 @@ import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
-import type { StandingView } from "./standing.ts";
+import type { StandingAction, StandingView } from "./standing.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -446,7 +446,10 @@ export interface Bodies {
   // permission the person said (shown 按你说的，直接发了 / Posted, as you said).
   // D481 by "ended": closed by what happened, not by an answer (its task finished or was replaced,
   // a loop's card whose moment passed); never forwarded, read as 不用回了 / No longer needed.
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
+  // D499 by "said": a task's ask answered Go by Ducter for the person, under what they said (a kept
+  // 不用问我的, or their words about this task): `said` their words, `action` the step it covered,
+  // `standing` the permission's id. Shown 按你说过的，没再问你 / Went ahead, as you said.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };

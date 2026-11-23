@@ -219,6 +219,8 @@ export interface Expect {
   notBody?: string;
   /** D379: Ducter asked once to keep a saying as a rule (true), or never (false). */
   saidAsk?: boolean;
+  /** D499: how many task asks Ducter said Go to for the person, on their word (without_asking answer). */
+  wentOnWord?: number;
   /** D401: after the run, the person's rules hold this one (kept from their words, with no card). */
   ruleKept?: { harness: string; never?: boolean; kind?: string };
   /** D372: some opened task is of this kind of work (said, or read from its needs and place). */

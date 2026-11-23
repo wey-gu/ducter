@@ -153,6 +153,8 @@ export function createDid(d: DidDeps): Did {
         if (!a) return undefined;
         const b = a.body as Bodies["decision_resolved"];
         if (b.option !== "go") return undefined;
+        // D499: answered for them under what they said: their words.
+        if (b.by === "said") return { by: "said", at: a.ts, ...(b.said ? { words: b.said } : {}) };
         return { by: b.by === "default" ? "default" : "you", at: a.ts };
       };
 
@@ -202,6 +204,13 @@ export function createDid(d: DidDeps): Did {
               const c = b.checkout;
               const amount = c.total ? `${c.currency ?? ""} ${c.total}`.trim() : undefined;
               items.push({ id: `e${e.seq}`, kind: "paid", sub: "checkout", at: go.at!, to: c.site, ...(amount ? { amount } : {}), ...(clip(c.what) ? { line: clip(c.what) } : {}), who: who(b.taskId), go: { by: "paid", at: go.at! }, where: { kind: "browser", ...(deviceOf(b.taskId)?.name ? { name: deviceOf(b.taskId)!.name } : {}) }, ...(b.taskId ? { taskId: b.taskId } : {}) });
+            } else if (go.by === "said" && b.taskId) {
+              // D499: a task's own step Ducter said Go to for them (a rerun, a comment, a push of its branch).
+              const r = answers.get(b.decisionId)!.body as Bodies["decision_resolved"];
+              const k: { kind: DidKind; sub: DidSub } = r.action === "branch_push" ? { kind: "changed", sub: "pr" } : { kind: "sent", sub: "post" };
+              const c = d.tasks.get(b.taskId);
+              const branch = r.action === "branch_push" && c?.place.kind === "repo" ? c.place.branch : undefined;
+              items.push({ id: `e${e.seq}`, ...k, at: go.at!, ...(branch ? { to: branch } : {}), via: "GitHub", ...(clip(b.question) ? { line: clip(b.question) } : {}), who: who(b.taskId), go, ...(deviceOf(b.taskId) ? { where: deviceOf(b.taskId)! } : {}), taskId: b.taskId });
             } else if (b.phone?.kind === "go" || b.computer?.kind === "go") {
 
               const ask = (b.phone ?? b.computer) as { app: string; name?: string; label: string; effect: string };

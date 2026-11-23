@@ -1,5 +1,6 @@
 // Every model-visible string the runner produces lives in this file (snapshot-tested).
-import type { DocAsk, Place } from "@ducter/protocol";
+import type { DocAsk, Place, StandingAction } from "@ducter/protocol";
+import { STEP_WORDS } from "@ducter/protocol/src/standing.ts";
 import { LANGUAGES, langName, normalizeTag, baseTag, type LangTag } from "@ducter/protocol/src/lang.ts";
 
 export interface BriefInput {
@@ -27,6 +28,24 @@ export interface BriefInput {
   doc?: DocAsk;
   /** D449: the task thinks on a free key with a small daily allowance shared with the partner: be frugal. */
   frugal?: boolean;
+  /** D499: the steps the user already allowed this task to take without asking, with their words. */
+  goes?: { action: StandingAction; words: string }[];
+}
+
+/**
+ * D499: Model-visible: what the user already allowed this task to do without asking (a kept
+ * 不用问我的 that covers it), so it doesn't ask in the first place (snapshot-tested).
+ */
+export function goesBrief(goes: NonNullable<BriefInput["goes"]>): string {
+  if (!goes.length) return "";
+  const lines = goes.map((g) => `- ${STEP_WORDS[g.action]}: the user said "${g.words.slice(0, 200)}".`);
+  return `
+## What you may do without asking
+
+The user already allowed these, so do them when the work needs them, without a needs_input question, and say in your report what you did:
+${lines.join("\n")}
+Everything else that reaches other people still asks first, as below.
+`;
 }
 
 /** D168: what the user's memory gives this task. Absent: nothing at all about memory. */
@@ -134,7 +153,7 @@ You work in ${placeLine(b.place, b.cwd)}${b.project ? ` Project: ${b.project}.` 
 - Anything the brief does not ask for. Note follow-ups in your report instead of doing them.
 - Files outside your working place, pushing to remotes, merging into the base branch, opening a PR, publishing, deleting user data, or spending money, unless the brief says so explicitly. Integrating your branch is the user's call; offer it in your report, don't ask before committing.
 ${deviceRule(b.partnerName)}
-
+${b.goes?.length ? goesBrief(b.goes) : ""}
 ## How you report (required)
 
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
@@ -143,7 +162,7 @@ ${languageLine(b.language)}
 - \`summary\` is written for the user, not for you: they read it as it is, often on their phone. Open with the result in one plain sentence anyone could follow (what is now true for them), then at most a few short lines on what stands. Write ordinary sentences with ordinary spacing: a number keeps its unit and its spaces ("16 checks, 15 passed", "16 项检查，15 项通过"), never glued into notes like "16checks15success". Leave out your own bookkeeping (round numbers, counters, ledger or note file names, ids, hashes) unless the user needs one to act; it goes in \`evidence\` or your checkpoint. At most 600 characters; shorter is better.
 - Say what changed since your last report, not everything again.
 - Work that repeats (a watcher, a review every so often): a round that found nothing new for the user doesn't report at all; call \`wait_for\` with the time of the next round and end your turn (silence means nothing changed). Report only when something new needs them: a new request, a change with new findings, a draft ready to send. Then say what still stands too, never "nothing new" alone while things wait on them ("8 review requests wait on you: 3 had new commits and are reviewed again, 5 unchanged").
-- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief says to send it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts the drafts the person said may go without asking, and asks once a round for the rest; never post or ask about them yourself.
+- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief (or "What you may do without asking") says to do it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts the drafts the person said may go without asking, and asks once a round for the rest; never post or ask about them yourself.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.

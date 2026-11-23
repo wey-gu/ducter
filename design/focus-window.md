@@ -22,6 +22,28 @@ The runner's frame around the brief also names **the language the user reads rep
 last message). The task writes its summary, questions and evidence labels in it, whatever
 language the code or tool output is in; those labels show on On hand as they are (D125).
 
+**What it may do without asking (D499).** The frame also lists the steps the person already
+allowed this task (`goesBrief`: a kept 不用问我的 for this task, or for its repo's owner, in their
+words): rerunning its PR's checks (`ci_rerun`, a `/test` comment or `gh run rerun`), commenting on
+its PR (`pr_comment`), pushing its own branch (`branch_push`, never the base or a protected branch,
+never a delete or a merge), commenting on the issues it works on (`issue_comment`). The task does
+these without a `needs_input`, says them in its report, and still asks for everything else that
+reaches other people. A go kept mid-task reaches it with the first answer given under it.
+
+**An ask already answered (D499).** A task may still ask about such a step (an older session, a
+brief from before the go). The partner sees the ask's id and what the person allowed under the
+report (`its card: ask d_…`, `the user already allowed, without asking: …`) and judges whether the
+question is that step; if it is, `without_asking` `answer` (with their words when nothing is kept
+yet: kept for that task first). Code checks the invariants (`core.answerFor`, `plainAsk`): a task's
+open plain question, no card of its own kind (a payment, a checkout, a key, a sign-in, a fill, a tap
+on a phone or computer, a lent phone, where it runs, a message to another agent, a call), nothing
+another AI still flags in what it sends, no delete (D340), a task step, and a kept go covering it
+(`standing.covers`). Then the ask resolves Go `by: "said"` (`said`, `action`, `standing`); the task
+hears **Go** with the words and that the step needs no question from now on; the card reads
+**按你说过的，没再问你 / Went ahead, as you said**; Done for you lists it with the words; no partner
+turn wakes on it. The person's words are only theirs: their messages, card replies, words typed to a
+task, never a report's or another agent's. Merging stays the person's (their Merge, or a card).
+
 ## Pull tools
 
 Windows get the same `log.search` / `log.read` tools as the main AI. Scope: the persona's
@@ -82,7 +104,7 @@ answers ok or at most three things that must change, in the person's language. S
 report is held, the task hears it once as Ducter's words, fixes what is right and reports again; that
 report is checked on the same points only and goes on with `look` (`found`, `left`). Clients say only
 `left`: **另一个 AI 看过 / Another AI looked it over** under the result and on the Go card. Every
-failure fails open; 40 looks a day; the person's 这类不用复查 is a rule (D165 notice kind
+failure fails open; 40 looks a day; the person's 这类不用复查 is a rule the partner keeps (D499: `rule_save` no_second_look with the kind it points at; no code reads the words) (D165 notice kind
 `fresh_look`, `second_look` before D443 still read; the Log step is `raw.freshLook`, `raw.secondLook` before). The task's `report_to_main` tool and its words are unchanged.
 
 **One held round per result (D450).** When the page check (D439) finds something on a report the

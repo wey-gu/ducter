@@ -469,7 +469,8 @@ func firstClause(s string) string {
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+	// D493: 8 under each card, so its ledge never touches the next one.
+	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		a.askerRow(c, task)
 		rep := task.Report()
@@ -485,7 +486,10 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 		if d != nil {
 			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
 			a.whereLines(c, d)
-			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
+			// D493: the question 16 above the row (the card's gap of 12 and 4 more).
+			ui.Column(c).Padding(t.S4-t.S3, 0, 0, 0).Children(func() {
+				a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
+			})
 		}
 	})
 }
@@ -747,11 +751,11 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	if d.Call != nil {
-		ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 			Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callBody(c, d) })
 		return
 	}
-	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {
 			// X1 (D170): the agent's coin and who it is stand where a task's title would.
@@ -767,6 +771,9 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}
 		a.whereLines(c, d)
-		a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
+		// D493: the question 16 above the row (the card's gap of 12 and 4 more).
+		ui.Column(c).Padding(t.S4-t.S3, 0, 0, 0).Children(func() {
+			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
+		})
 	})
 }

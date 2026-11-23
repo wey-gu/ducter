@@ -564,10 +564,14 @@ func (a *App) notice(c *ui.Context, key string, tone noticeTone, glyph func(), b
 
 // aboveComposer centers what it holds on the conversation's column, just
 // above the composer: where notices go.
-func (a *App) aboveComposer(c *ui.Context, body func()) {
+func (a *App) aboveComposer(c *ui.Context, body func()) { a.aboveComposerAt(c, convWidth, body) }
+
+// aboveComposerAt is aboveComposer on a composer of another measure (the
+// opened task's, D493): whatever sits over it shares its edges.
+func (a *App) aboveComposerAt(c *ui.Context, measure float32, body func()) {
 	t := a.T
 	ui.Row(c).Justify(ui.Center).Padding(0, t.S5, t.S2, t.S5).Children(func() {
-		ui.Column(c).Grow(1).MaxWidth(convWidth).Children(body)
+		ui.Column(c).Grow(1).MaxWidth(measure).MinWidth(0).Children(body)
 	})
 }
 
@@ -810,6 +814,12 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 // its field in place of the row, with its own 发送 / Send where Go stood and
 // 取消 / Cancel (Enter sends, Esc closes): nothing else sends while it is open.
 func (a *App) decideRow(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under func()) {
+	// D493: the row and what stands under it keep one step of the scale
+	// apart (12; the Go's ledge takes 4 of it), on every surface.
+	ui.Column(c.Key("dk:" + d.DecisionID)).Gap(a.T.S3).Children(func() { a.decideRowIn(c, d, about, height, bg, after, under) })
+}
+
+func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under func()) {
 	t := a.T
 	id := d.DecisionID
 	if a.replyOpen[id] {
@@ -903,13 +913,15 @@ func (a *App) defaultUnder(c *ui.Context, d *store.DecisionState, ink ui.Color, 
 	if line == "" && after == nil {
 		return
 	}
-	ui.Row(c.Key("dflt:"+d.DecisionID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, t.S1).Children(func() {
+	// D493: at the column's edge (under the Go's own edge), the ring centred
+	// on the sentence's first line, so a sentence that wraps hangs under itself.
+	ui.Row(c.Key("dflt:" + d.DecisionID)).Gap(t.S2).Wrap().AlignItems(ui.Start).Children(func() {
 		if left, ok := a.defaultIn(d); ok && d.DefaultOption == "go" && d.Reversible && d.Where == nil {
 			frac := float32(1)
 			if total := store.ParseTime(d.DefaultAt).Sub(a.decisionTime(d)); total > 0 {
 				frac = max(0, float32(left)/float32(total))
 			}
-			ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
+			ui.Box(c).Size(16, 16).Shrink(0).Margin(max(0, (size*1.45-16)/2), 0, 0, 0).Draw(drawRing(ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
 		}
 		if line != "" {
 			uiText(c, autospace(line)).FontSize(size).TextColor(ink).LineHeight(1.45).MinWidth(0).Shrink(1)
@@ -1060,9 +1072,6 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	label := d.GoLabel
 	if d.Closing != nil { // D157: the closing card's Go, in the reader's words
 		label = a.L.T("move.closing.go")
-		if a.L.Cased() {
-			label = strings.ToLower(label[:1]) + label[1:]
-		}
 	}
 	// D315: the label sits mid-sentence: its own full stop would read
 	// "等你登录后继续。，之后还能改回来。".
@@ -1070,9 +1079,9 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	if label == "" {
 		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}
-	if a.L.Han() && label != "" && label[0] < 0x80 {
-		label = " " + label // a Latin word in Chinese text gets its space
-	}
+	// D493: the model wrote the label, so the sentence quotes it as the
+	// option it is (按「30 分钟后再试」办 / go with "Try again in 30 minutes"),
+	// never splices it in as a verb ("29 分钟后我就 30 分钟后再试").
 	return a.L.T("decision.default.go", a.duration(left+time.Second*59/60), label)
 }
 

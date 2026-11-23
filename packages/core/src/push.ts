@@ -273,7 +273,8 @@ export function quietEndsAt(at: number, q: Quiet | null): number {
 const COPY = {
   zh: {
     go: "好",
-    defaultGo: (inText: string, label: string) => `${inText}后你没回，我就${/^[\x00-\x7f]/.test(label) ? " " + label : label}，之后还能改回来。`,
+    // D493: the label is the model's words, quoted as the option it is, never spliced in as a verb.
+    defaultGo: (inText: string, label: string) => `${inText}后你没回，我就按「${label}」办，之后还能改回来。`,
     defaultHold: "你没回之前，我先放着。",
     noDefault: "你说好，我再做。",
     min: (n: number) => `${n} 分钟`,
@@ -295,7 +296,7 @@ const COPY = {
   },
   en: {
     go: "Go",
-    defaultGo: (inText: string, label: string) => `If you don't answer, I'll ${label} in ${inText}. It can be undone.`,
+    defaultGo: (inText: string, label: string) => `If you don't answer, in ${inText} I'll go with “${label}”. It can be undone.`,
     defaultHold: "I'll leave it until you answer.",
     noDefault: "I'll do it once you say so.",
     min: (n: number) => `${n} min`,

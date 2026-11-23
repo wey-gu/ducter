@@ -82,7 +82,7 @@ func TestDefaultLineKeepsOneMark(t *testing.T) {
 	var line string
 	tt := ui.NewTesterWith(func(c *ui.Context) { line = app.defaultLine(c, d) }, 400, 200, ui.TesterOptions{})
 	tt.Frame()
-	if strings.Contains(line, "。，") || !strings.Contains(line, "等你登录后继续，") {
+	if strings.Contains(line, "。，") || !strings.Contains(line, "「等你登录后继续」") {
 		t.Errorf("default line %q", line)
 	}
 }

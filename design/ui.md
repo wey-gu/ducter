@@ -65,7 +65,11 @@ brows when something needs you. Other themes render the same states in their own
   zh "好，rebase"), as a dark press-down pebble button, **first** in the row; after it, quiet text:
   `Not now / 先不用`, `Reply… / 回复…`, `Ask me later / 晚点再问我`; under them the default, once. Reply…
   opens its field in place of the row (Send where Go stood, Cancel; Enter, Esc). At phone width the Go
-  is the full width at 44 and the quiet ways sit under it. No seals or stamps (D22).
+  is the full width at 44 and the quiet ways sit under it, the first one hanging so its letters start at
+  the card's edge. No seals or stamps (D22).
+- **The decision card's measure and rhythm (D493):** docked over a composer it shares that composer's
+  edges; inside its own task it carries no title; 24 around (16 on a phone), the question 16 above the
+  row, the default 12 under it, its ring hanging at the column's edge on the first line.
 
 ## Components and tokens (canonical; polish pass 2026-11-09)
 

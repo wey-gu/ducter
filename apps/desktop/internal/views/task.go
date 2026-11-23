@@ -490,11 +490,12 @@ func (a *App) reportLabel(r *protocol.Report) string {
 // the window on the conversation's measure.
 func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
+	// D493: what sits over the task's composer shares its measure and edges.
 	if a.held != nil && a.held.taskID == task.ID {
-		a.aboveComposer(c, func() { a.heldLine(c) })
+		a.aboveComposerAt(c, readMeasure, func() { a.heldLine(c) })
 	}
 	if d := a.S.PendingDecision(task.ID); d != nil && d.Resolved == nil && d.Pending == "" {
-		a.aboveComposer(c, func() { a.decisionCard(c, d, task.ID) })
+		a.aboveComposerAt(c, readMeasure, func() { a.decisionCard(c, d, task.ID) })
 	}
 	draft := a.taskDrafts[task.ID]
 	tray := "task:" + task.ID

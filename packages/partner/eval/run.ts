@@ -1064,6 +1064,7 @@ function describeStep(st: Step): string {
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   if ("todosNew" in st) return `a look at GitHub found newly assigned issues: ${st.todosNew.refs.join(", ")}${st.todosNew.taken ? " (under the user's standing go: they start without asking)" : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
+  if ("longRound" in st) return `task "${st.longRound.task}" (in rounds every ${st.longRound.everyMin} min) has been on this round for ${st.longRound.sinceMin} min; Ducter's loop keeper handed its facts to the partner to look at (nothing is known to be wrong)`;
   if ("cantStart" in st) return `task "${st.cantStart.task}" couldn't start (${st.cantStart.line}); Ducter's own ladder had nothing left to try, so it handed the task to the partner`;
   if ("startFailed" in st) return `task "${st.startFailed.task}" couldn't start (${st.startFailed.why}${st.startFailed.path ? ` at ${st.startFailed.path}` : ""}${st.startFailed.detail ? `; its agent said: "${st.startFailed.detail}"` : ""}); Ducter's own mender then acted (any restart it made is listed as an opened task by Ducter)`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
@@ -1116,6 +1117,18 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
     });
     core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
+  } else if ("longRound" in st) {
+    // D481: the round's steps as the runner logs them, then the keeper's hand-over (the mend it appends).
+    const x = st.longRound;
+    const taskId = tid(x.task);
+    const ago = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+    const steps = x.steps.map((s) => ({ at: ago(s.minAgo), text: s.kind === "said" ? `said: ${s.text}` : `blocked: ${s.text}` }));
+    for (const s of x.steps) {
+      if (s.kind === "said") core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "assistant", text: s.text } });
+      else core.tasks.setState(taskId, "blocked", "hot", s.text);
+    }
+    core.tasks.setState(taskId, "working", "hot");
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "mend", body: { taskId, cls: "round", rung: "rethink", attempt: 1, tried: [], state: "ok", round: { since: ago(x.sinceMin), everyMs: x.everyMin * 60_000, reason: x.reason, earlier: x.earlier, steps, ...(x.waits?.length ? { waits: x.waits } : {}) } } });
   } else if ("cantStart" in st) {
     // D473: the runner's failed start as it lands; core's mender reacts (here: hands it to the partner).
     core.tasks.setState(tid(st.cantStart.task), "failed", "archived", st.cantStart.line, st.cantStart.cant);

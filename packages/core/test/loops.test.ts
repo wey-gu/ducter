@@ -456,3 +456,57 @@ test("D429: routine_list's ready lines, zh and en", async () => {
   expect(sayOngoing({ ...base, state: "paused" }, "zh", now, "UTC")).toBe("「Review requests on nowledge-co」暂停了。");
   expect(sayOngoing({ kind: "routine", id: "w", title: "整理上周的周报", state: "resting", cadence: "每周一 10:00（跟着你的时区）", nextAt: "2026-11-23T02:00:00Z", runs: [], startedAt: "2026-11-01T00:00:00Z" }, "zh", now, "Asia/Shanghai")).toBe("「整理上周的周报」在跑，每周一 10:00，下次 周一 10:00，按时。");
 });
+
+// D481: hel, 2026-11-23: a healthy loop waiting on Prow CI was asked about as "比平时久太多，可能卡住了"
+// from the time alone. Now a long round is never a card or a health of its own: the partner gets its facts.
+test("D481: a round that runs long is handed to the partner with its facts (a mend of class round), never a card", async () => {
+  const b = boot();
+  const woke: string[] = [];
+  b.core.setPartner({ onTrigger: (e) => void woke.push(e.kind) });
+  open(b);
+  await waitFor(b, "swj3zc4w");
+  await flush();
+  b.clock.advance(45 * MIN);
+  await flush();
+  expect(b.woke).toHaveLength(1);
+  // The round goes on for hours, working and waiting on CI, with steps all along.
+  for (let i = 0; i < 8; i++) {
+    b.core.tasks.setState("swj3zc4w", "working", "hot", "PR #10932 最新提交的三项 Prow CI 检查还在跑");
+    b.core.log.append({ stream: "task:swj3zc4w", origin: "task", kind: "task_event", body: { taskId: "swj3zc4w", role: "assistant", text: `CI 第 ${i + 1} 次查看：还在跑` } });
+    b.clock.advance(30 * MIN);
+    await flush();
+  }
+  expect(cards(b)).toHaveLength(0); // never "可能卡住了" from the time alone
+  expect(og(b)?.health).toBeUndefined(); // nor "这一轮跑得太久了" on its Ongoing card
+  const looks = b.core.log.read({ stream: "task:swj3zc4w", kinds: ["mend"], limit: 10 }).map((e) => e.body as Bodies["mend"]);
+  expect(looks).toHaveLength(1); // once a round
+  expect(looks[0]).toMatchObject({ cls: "round", rung: "rethink", round: { everyMs: 45 * MIN } });
+  expect(looks[0]!.round!.steps.some((s) => s.text.includes("Prow CI"))).toBe(true);
+  expect(looks[0]!.round!.steps.some((s) => s.text.startsWith("said: CI"))).toBe(true);
+  expect(woke).toContain("mend"); // the partner looks
+  expect(b.core.tasks.onHand().tasks.find((c) => c.taskId === "swj3zc4w")?.mending).toBeUndefined();
+});
+
+test("D481: the watchdog's card closes by itself once its moment passed (the computer woke and the round ran)", async () => {
+  let asleep = false;
+  const b = boot({ sendFails: () => (asleep ? "MacBook is asleep" : undefined) });
+  open(b);
+  await waitFor(b, "swj3zc4w");
+  asleep = true;
+  b.clock.advance(45 * MIN);
+  await flush();
+  b.clock.advance(25 * MIN);
+  await flush();
+  expect(cards(b)).toHaveLength(1);
+  const id = cards(b)[0]!.decisionId;
+  expect(b.core.decisions.openIds()).toContain(id);
+  asleep = false;
+  b.clock.advance(10 * MIN);
+  await flush();
+  expect(b.woke).toHaveLength(1);
+  b.clock.advance(SWEEP_MS);
+  await flush();
+  expect(b.core.decisions.resolution(id)).toMatchObject({ by: "ended", settled: true });
+  expect(b.core.decisions.openIds()).not.toContain(id);
+  expect(b.core.tasks.onHand().openAsks?.ids).not.toContain(id);
+});

@@ -149,7 +149,7 @@ var zh = Table{
 	"decision.resolved.hold":         "你说：先等等",
 	"decision.resolved.reply":        "你说：%s",
 	"decision.resolved.default":      "你没回，我照原计划做了",
-	"decision.resolved.ended":        "不用回了，这件事已经过去了",
+	"decision.resolved.ended":        "不用回了，这事已经过去了",
 	"decision.resolved.elsewhere":    "在别处答过了",
 	"decision.left.line":             "这里已经答过了，你写的这句还没发：",
 	"decision.left.send":             "作为消息发给我",

@@ -1825,7 +1825,7 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
   return (
     <div class="ocards src-sheet">
     {review > 0 && !pile.sorting && (
-      <div class="ocard src-sum src-review">
+      <div class="ocard src-sum src-asked">
         <span class="omain static">
           <span class="omark k-src" aria-hidden="true">
             <BrandMark name={kind} size={18} />

@@ -11,6 +11,16 @@ from the Log, so a restart keeps it. A fixed **Replies in** language wins. Tasks
 task's `language` tag), and a result said in another language is held back and said again once
 (D154). Lines Ducter's code writes itself come from zh/en tables through the fallback chain.
 
+**How the partner speaks (D491).** Written as behaviour, not adjectives, at the top of the
+persona and held for every reply: the reply's size follows the question's weight (a status or a
+yes/no is one sentence, a result or a choice one or two, more only for depth asked for); the
+answer comes first, with no lead-in, recap or closing line; a question only when the person's
+answer changes what happens and nothing in view settles it, then one; never an offer of what a
+task, a wait, a card or Ducter is already doing; one subject per reply. The lines Ducter writes
+for the partner say whose a thing is (a task's own wait that ended is the task's to redo), and a
+line that is not a question never reads as one (the checkout's pay card asks for the person; a
+blocked task asks nothing).
+
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
 

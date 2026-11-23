@@ -410,7 +410,7 @@ func TestSetCardOpensTheSheet(t *testing.T) {
 func TestPlanCardGoesWithNotes(t *testing.T) {
 	app, sent, tt := convApp(t, i18n.ZH, 1180, 1800, "plan")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"记忆提炼：方案", "看了这 7 个和 acme/mem 的代码", "已经修好了，只差关掉", "在 PR #360 里已经修好了", "合成一个任务做", "#398 + #412 + #405", "一个做完接下一个", "#377", "都在 haswell 上验证", "不动数据库迁移", "照这个做", "先等等", "回复…", "交给小鸭了"} {
+	for _, want := range []string{"记忆提炼：方案", "看了这 7 个和 acme/mem 的代码", "已经修好了，只差关掉", "在 PR #360 里已经修好了", "合成一个任务做", "#398 + #412 + #405", "一个做完接下一个", "#377", "都在 haswell 上验证", "不动数据库迁移", "照这个做", "先不用", "回复…", "交给小鸭了"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

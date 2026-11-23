@@ -1,6 +1,7 @@
 // A note the partner said by itself (D165, design/connectors.md §6), on the phone: one partner
-// message, its opening line, its finds (its kind in small letters, two sentences, its one next step
-// 好，<action> that never runs without Go, 怎么知道的 › with the evidence in place, 有用 · 这类不用告诉我);
+// message, its opening line, its finds (two sentences, where it came from in one quiet line, its one next
+// step 好，<action> that never runs without Go beside 怎么知道的, the evidence in place ending in 有用 and
+// 这类不用告诉我, D482);
 // and the one ask a note may carry. Only shared controls. D453: a find said as an offer has no
 // 先等等 (letting it be is the hold); past the first OFFER_SHOWN they wait under 还有几条 / A few more;
 // one that faded keeps its words, dimmed, with no button and no word about having been missed.
@@ -9,7 +10,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
-import { Btn, Chev, Facts, TextBox } from "./controls.tsx";
+import { Btn, Facts, TextBox, TextLink } from "./controls.tsx";
 import { openDid } from "./did.tsx";
 import { LearnedLine } from "./recall.tsx";
 import { ago } from "./format.ts";
@@ -135,10 +136,7 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
             <div class="fsrc-row" key={i}>
               <Facts class="small" items={[h.src && <span class="fsrc">{t(`find.src.${h.src}`)}</span>, <span class="sub">{ago(A.L, h.at)}</span>, h.from && <span class="sub">{h.from}</span>]} />
               {h.url ? (
-                <a class="flink" href={h.url} target="_blank" rel="noopener noreferrer">
-                  {h.what}
-                  <Chev cls="btn-chev" />
-                </a>
+                <TextLink class="flink" href={h.url} label={h.what} />
               ) : (
                 <div class="fwhat">{h.what}</div>
               )}

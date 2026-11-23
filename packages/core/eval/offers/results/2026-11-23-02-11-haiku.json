@@ -1,0 +1,373 @@
+{
+ "model": "haiku",
+ "set": "corpus",
+ "leads": 20,
+ "planted": 13,
+ "calls": 2,
+ "tokens": 26839,
+ "runs": {
+  "leads": {
+   "ids": [
+    "g-t1",
+    "g-t2",
+    "g-t3",
+    "g-t5",
+    "n-t1",
+    "n-t6",
+    "g-t4",
+    "n-t3",
+    "g-m1",
+    "g-m4",
+    "n-m3",
+    "g-m3",
+    "g-c1",
+    "g-c2",
+    "g-c3",
+    "g-c4",
+    "n-c2",
+    "n-c3",
+    "n-c5",
+    "n-c7"
+   ],
+   "all": {
+    "offered": 20,
+    "hit": 12,
+    "planted": 13,
+    "precision": 0.6,
+    "recall": 0.9230769230769231
+   },
+   "task": {
+    "offered": 8,
+    "hit": 5,
+    "planted": 5,
+    "precision": 0.625,
+    "recall": 1
+   },
+   "mem": {
+    "offered": 4,
+    "hit": 3,
+    "planted": 3,
+    "precision": 0.75,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 8,
+    "hit": 4,
+    "planted": 4,
+    "precision": 0.5,
+    "recall": 1
+   },
+   "missed": [
+    "g-m2"
+   ]
+  },
+  "code-zh": {
+   "offered": [
+    "g-t3",
+    "g-t1"
+   ],
+   "all": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 13,
+    "precision": 1,
+    "recall": 0.15384615384615385
+   },
+   "task": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 5,
+    "precision": 1,
+    "recall": 0.4
+   },
+   "mem": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 3,
+    "precision": 1,
+    "recall": 0
+   },
+   "talk": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 4,
+    "precision": 1,
+    "recall": 0
+   }
+  },
+  "code-en": {
+   "offered": [
+    "g-t3",
+    "g-t1"
+   ],
+   "all": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 13,
+    "precision": 1,
+    "recall": 0.15384615384615385
+   },
+   "task": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 5,
+    "precision": 1,
+    "recall": 0.4
+   },
+   "mem": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 3,
+    "precision": 1,
+    "recall": 0
+   },
+   "talk": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 4,
+    "precision": 1,
+    "recall": 0
+   }
+  },
+  "haiku-zh": {
+   "offered": [
+    "g-m1",
+    "g-m4",
+    "g-m3",
+    "g-t1",
+    "g-t2",
+    "g-t3",
+    "g-t5",
+    "g-t4",
+    "g-c1",
+    "g-c2",
+    "g-c3",
+    "g-c4"
+   ],
+   "wrong": [],
+   "lost": [
+    "g-m2"
+   ],
+   "dropped": [],
+   "all": {
+    "offered": 12,
+    "hit": 12,
+    "planted": 13,
+    "precision": 1,
+    "recall": 0.9230769230769231
+   },
+   "task": {
+    "offered": 5,
+    "hit": 5,
+    "planted": 5,
+    "precision": 1,
+    "recall": 1
+   },
+   "mem": {
+    "offered": 3,
+    "hit": 3,
+    "planted": 3,
+    "precision": 1,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 4,
+    "hit": 4,
+    "planted": 4,
+    "precision": 1,
+    "recall": 1
+   },
+   "lines": [
+    {
+     "id": "g-m1",
+     "text": "11月24日 NH 920 浦东飞羽田，你一向要靠窗。要我查一下这班的座位图，把靠窗的位子挑出来吗？",
+     "go": "查座位",
+     "origin": "从你 10 月 2 日记下的想到的"
+    },
+    {
+     "id": "g-m4",
+     "text": "明天和 Weizhen 有 HawDB planner review。你习惯会前一天把议程发给对方，要我先拟一份草稿吗？",
+     "go": "拟议程",
+     "origin": "从 Claude Code 9 月 14 日记下的想到的"
+    },
+    {
+     "id": "g-m3",
+     "text": "join order 代价模型的 cardinality 估计还没改。要我从 estimate_join_card 接着做吗？",
+     "go": "接着做",
+     "origin": "从你和 Codex 11 月 12 日的对话想到的"
+    },
+    {
+     "id": "g-t1",
+     "text": "WAL group commit 昨天合并了，replicas 批量 fsync 还挂在 #10562。要我接着做这块吗？",
+     "go": "接着做",
+     "origin": "从 11 月 20 日做完的「WAL group commit」想到的"
+    },
+    {
+     "id": "g-t2",
+     "text": "buffer pool 的 pin count 在事务中途 abort 时可能下溢。这是修 LRU-K 测试时看到的，要我查一下并给出修复吗？",
+     "go": "查一下",
+     "origin": "从 11 月 20 日做完的「Fix the flaky LRU-K eviction test」想到的"
+    },
+    {
+     "id": "g-t3",
+     "text": "#24011 的 bun 1.4.4 worker 崩溃问题 11 月 19 日已关闭。要我把 CI 升到 1.4.4 试一下吗？",
+     "go": "试升级",
+     "origin": "从 11 月 15 日没成的「Move CI to Bun 1.4.4」想到的"
+    },
+    {
+     "id": "g-t5",
+     "text": "docs/devices.md 里两个 worker 设置锚点链接返回 404。要我修掉这两个链接吗？",
+     "go": "修链接",
+     "origin": "从 11 月 20 日做完的「Write the 0.1.9 release notes」想到的"
+    },
+    {
+     "id": "g-t4",
+     "text": "夜间 HawDB CI 从 11 月 20 日起 main 上 3 个测试失败。要我查一下是不是 7f3a2c1 之后的改动引起的吗？",
+     "go": "查一下",
+     "origin": "从例行「Nightly HawDB CI」最近两次的结果想到的"
+    },
+    {
+     "id": "g-c1",
+     "text": "Weizhen 那个 PR #10559 的 review 意见，你说过要回头看。要我整理成清单，逐条列给你吗？",
+     "go": "看意见",
+     "origin": "从你 11 月 19 日说的话想到的"
+    },
+    {
+     "id": "g-c2",
+     "text": "nightly bench 的脚本你说过太乱，要整理。要我先过一遍，列出可以合并或删掉的部分吗？",
+     "go": "看看脚本",
+     "origin": "从你 11 月 18 日说的话想到的"
+    },
+    {
+     "id": "g-c3",
+     "text": "你说过要更新 Linux worker 的安装文档。要我起草一版新的吗？",
+     "go": "起草文档",
+     "origin": "从你 11 月 17 日说的话想到的"
+    },
+    {
+     "id": "g-c4",
+     "text": "你说过要研究 OpenRouter 免费额度到底怎么算。要我查官方说明，把算法整理给你吗？",
+     "go": "查额度规则",
+     "origin": "从你 11 月 16 日说的话想到的"
+    }
+   ]
+  },
+  "haiku-en": {
+   "offered": [
+    "g-m1",
+    "g-m4",
+    "g-m3",
+    "g-t2",
+    "g-t3",
+    "g-t5",
+    "g-t4",
+    "g-c1",
+    "g-c2",
+    "g-c3",
+    "g-c4"
+   ],
+   "wrong": [],
+   "lost": [
+    "g-t1",
+    "g-m2"
+   ],
+   "dropped": [],
+   "all": {
+    "offered": 11,
+    "hit": 11,
+    "planted": 13,
+    "precision": 1,
+    "recall": 0.8461538461538461
+   },
+   "task": {
+    "offered": 4,
+    "hit": 4,
+    "planted": 5,
+    "precision": 1,
+    "recall": 0.8
+   },
+   "mem": {
+    "offered": 3,
+    "hit": 3,
+    "planted": 3,
+    "precision": 1,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 4,
+    "hit": 4,
+    "planted": 4,
+    "precision": 1,
+    "recall": 1
+   },
+   "lines": [
+    {
+     "id": "g-m1",
+     "text": "Your NH 920 flight to Tokyo leaves Pudong on the 24th, and you always want a window seat. Want me to check which window seats are still open?",
+     "go": "Check seats",
+     "origin": "From what you noted on Oct 2"
+    },
+    {
+     "id": "g-m4",
+     "text": "You meet Weizhen for the HawDB planner review at 06:00 UTC tomorrow, and you usually send the agenda the day before. Want me to draft it?",
+     "go": "Draft the agenda",
+     "origin": "From what Claude Code noted on Sep 14"
+    },
+    {
+     "id": "g-m3",
+     "text": "You left the HawDB join-order cost model at estimate_join_card, with cardinality estimation not yet changed. Want me to pick it up from there?",
+     "go": "Pick it up",
+     "origin": "From your conversation with Codex on Nov 12"
+    },
+    {
+     "id": "g-t2",
+     "text": "While fixing the LRU-K test you noticed the buffer pool's pin count can underflow when a transaction aborts mid-scan, and it's still untouched. Want me to look into it?",
+     "go": "Look into it",
+     "origin": "From “Fix the flaky LRU-K eviction test”, done Nov 20"
+    },
+    {
+     "id": "g-t3",
+     "text": "The Bun 1.4.4 crash you were waiting on, oven-sh/bun#24011, closed on the 19th. Want me to try moving CI to 1.4.4 again?",
+     "go": "Pick it up",
+     "origin": "From “Move CI to Bun 1.4.4”, which didn't work on Nov 15"
+    },
+    {
+     "id": "g-t5",
+     "text": "The 0.1.9 release notes are done, but two links in docs/devices.md return 404 on the worker setup anchors. Want me to find and fix them?",
+     "go": "Fix the links",
+     "origin": "From “Write the 0.1.9 release notes”, done Nov 20"
+    },
+    {
+     "id": "g-t4",
+     "text": "Nightly HawDB CI has 3 planner join-order tests failing on main since 7f3a2c1, which still expect the old cost model. Want me to look into it?",
+     "go": "Look into it",
+     "origin": "From the last two runs of the routine “Nightly HawDB CI”"
+    },
+    {
+     "id": "g-c1",
+     "text": "You meant to go back over Weizhen's review comments on PR #10559. Want me to pull them up and list what's still open?",
+     "go": "Review the comments",
+     "origin": "From what you said on Nov 19"
+    },
+    {
+     "id": "g-c2",
+     "text": "You said you'd tidy the nightly bench scripts when you had time, and they're still messy. Want me to go through them and propose a cleanup?",
+     "go": "Propose a cleanup",
+     "origin": "From what you said on Nov 18"
+    },
+    {
+     "id": "g-c3",
+     "text": "You said you should update the install docs for the Linux worker at some point. Want me to draft the update?",
+     "go": "Draft the docs",
+     "origin": "From what you said on Nov 17"
+    },
+    {
+     "id": "g-c4",
+     "text": "You wanted to figure out how OpenRouter's free quota actually works. Want me to research it and write up what I find?",
+     "go": "Research the quota",
+     "origin": "From what you said on Nov 16"
+    }
+   ]
+  }
+ }
+}

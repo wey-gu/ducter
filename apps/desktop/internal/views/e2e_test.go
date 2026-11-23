@@ -155,7 +155,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Errorf("composer kept %q after Enter", h.app.draft)
 	}
 	h.until("the decision", func() bool { return s.PendingDecision("t-ci-1") != nil && s.LatestLiving() != nil })
-	for _, want := range []string{"帮我看下 HawDB #1592 的 CI 为什么挂了", "你不在的时候", "好，rebase", "先等等", "回复…"} {
+	for _, want := range []string{"帮我看下 HawDB #1592 的 CI 为什么挂了", "你不在的时候", "好，rebase", "先不用", "回复…", "不回的话，"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("conversation lacks %q: %q", want, h.tt.Texts())
 		}
@@ -176,7 +176,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	if _, ok := h.tt.AccessByRole(ui.RoleButton, "好，rebase，修 CI #1592"); !ok {
 		t.Error("Go of Fix CI has no unique accessible name")
 	}
-	if _, ok := h.tt.AccessByRole(ui.RoleButton, "先等等，升级 bun 到 1.3"); !ok {
+	if _, ok := h.tt.AccessByRole(ui.RoleButton, "先不用，升级 bun 到 1.3"); !ok {
 		t.Error("Hold of the bun upgrade has no unique accessible name")
 	}
 

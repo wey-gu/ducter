@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.24 - 2026-11-23
+
+<!-- whats-new
+zh: 帮手：给你的 agent 一个能交活的名字
+en: Helpers: a named address your agents can hand work to
+-->
+
+**Helpers**
+- Say "make a helper my agents can hand PRs to, and watch them until they can merge" and
+  Ducter gives it a name your other agents find in Nowledge Mem. Work they send it becomes a
+  task Ducter watches and wakes; when it's done, the helper replies to the agent that sent it.
+- Settings › Agent messaging lists your helpers, what each takes and how much it has on hand,
+  with Stop and Resume.
+
+**One place receives**
+- Your home Ducter receives for every computer. A task's own session no longer looks like a
+  second computer receiving, and tasks never set up a mailbox of their own.
+- When your partner names a Settings pane, it uses the name you see.
+
 ## 0.1.23 - 2026-11-23
 
 <!-- whats-new

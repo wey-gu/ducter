@@ -96,10 +96,12 @@ after in the person's own words and that it never sees the others' conversations
 {default}说的我看不到，你跟我说的只在这儿。/ I look after {about}. I can't see what you tell
 {default}; what you tell me stays here.** (without an about: **跟{default}说的我看不到，你跟我说的只在
 这儿。说一句就行。/ I can't see what you tell {default}; what you tell me stays here. Just say the
-word.**). Its starters come from its own part: **{about}这边，你能帮我做些什么？/ What can you do for
-me with {about}?**, its own task in progress, then everyday examples that fit any part of life
-(never the default's code or mail starters). Built on the home from names only, no model
-(`partnerScreen`, core/src/first-screen.ts); the person's words are placed as they are, never parsed.
+word.**). Its starters come from real things only: its own task in progress, then everyday examples
+that fit any part of life, and **你能帮我做些什么？举三个例子 / What can you do for me? Give me three
+examples** (never the default's code or mail starters, never a sentence made by pasting the person's
+words into a frame, principle 21). Built on the home from names only, no model (`partnerScreen`,
+core/src/first-screen.ts). Starters the partner writes itself when it is made or changed are owed
+(todo).
 
 ## Several partners: the analysis behind D497
 

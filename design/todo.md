@@ -17,6 +17,9 @@ line.
 - [ ] **A clay character per partner** (another figure, not a recolour): the metaphor process with real
   art (a full state set and the blink), the false implication "different powers" tested. Trigger: the
   author asks for it, or raters confuse two recoloured partners.
+- [ ] **A partner's own starters**, written by the model once when it is made or what it looks after
+  changes (the partner tool's make/set), kept with the partner and shown in its first meeting. Needs
+  a partner-tool change, so a D175 eval. Trigger: the author asks for richer first meetings.
 - [ ] **On hand's figure** is the shown partner's clay though the board is everyone's: a neutral figure
   or the default's. Trigger: the author's review of D497's shots.
 - [ ] **The iPhone and Android shells** inherit the web; check the pills and the first meeting on a

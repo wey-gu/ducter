@@ -159,8 +159,9 @@ test("a second partner introduces itself and starts from what it looks after", (
   const s = partnerScreen({ ...base(), about: "读书、跑步和周末的安排", defaultName: "Ducter" });
   expect(s.visit).toBe("first");
   expect(s.line.zh).toBe("我管读书、跑步和周末的安排。跟 Ducter 说的我看不到，你跟我说的只在这儿。");
-  expect(s.starters[0]!.words.zh).toBe("读书、跑步和周末的安排这边，你能帮我做些什么？");
-  expect(s.starters.length).toBe(3);
+  // Never the person's words pasted into a frame: everyday examples and its own tasks only.
+  expect(s.starters.some((x) => x.words.zh.includes("读书、跑步"))).toBe(false);
+  expect(s.starters.length).toBe(4);
   expect(s.starters.some((x) => x.kind === "code" || x.kind === "mail")).toBe(false);
   // Its own task in progress is a starter; without what it looks after it still says who it is.
   const t = partnerScreen({ ...base({ tasks: [task({ attention: "working", title: "查社区游泳馆周日的课" })] }), about: "", defaultName: "Ducter" });

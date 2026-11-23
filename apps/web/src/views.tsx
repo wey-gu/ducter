@@ -1740,7 +1740,7 @@ function Counts() {
       </div>
     );
   return (
-    <button class="sum" role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+    <button class={s.parts?.length ? "sum" : "sum none"} role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
       {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );

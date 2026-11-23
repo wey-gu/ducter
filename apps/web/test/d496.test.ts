@@ -8,7 +8,6 @@ import { strings } from "../src/i18n.ts";
 
 afterAll(async () => {
   const { A } = await import("../src/app.ts");
-  A.S.tasks.clear();
   A.L = strings("zh");
 });
 
@@ -36,15 +35,17 @@ const HEL = [
 async function app(lang: "zh" | "en") {
   const { A } = await import("../src/app.ts");
   A.L = strings(lang);
-  A.S.tasks.clear();
-  A.receive({
+  // A store of its own: the page's (A.S) keeps what it saw, and another file reads it (D488).
+  const { Store } = await import("../src/store.ts");
+  const S = new Store();
+  S.apply({
     t: "events",
     events: [
       { seq: 37544, ts: "2026-11-21T21:51:20.414Z", persona: "default", stream: "task:xfnccfi7", origin: "partner", kind: "task_open", body: { taskId: "xfnccfi7", title: "graph_error_response_tests intermittently…", place: { kind: "repo", device: "local", repoPath: "/r", branch: "ducter/graph-error-response-tests", baseBranch: "main" }, harness: "claude-code", brief: "x" } },
       ...HEL,
     ],
   } as never);
-  const task = A.S.tasks.get("xfnccfi7")!;
+  const task = S.tasks.get("xfnccfi7")!;
   task.historyLoaded = true;
   return { A, task };
 }

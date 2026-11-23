@@ -436,6 +436,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
                 loggedIn: h.loggedIn,
                 ...(h.version ? { version: h.version } : {}),
                 ...(h.how ? { how: h.how as AgentHow } : {}),
+                // D503: whose account it is there, as the worker's fingerprint (an older Ducter says none).
+                ...(h.account ? { account: h.account } : {}),
                 // D363: what the worker says of putting it there and signing it in (an older Ducter says neither).
                 ...(h.installable && !h.installed ? { installable: true } : {}),
                 ...(h.setup ? { setup: h.setup } : {}),

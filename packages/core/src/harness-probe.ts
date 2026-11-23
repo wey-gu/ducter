@@ -13,9 +13,11 @@
 //                     on PATH, else ~/.local/bin/agy, as OAR looks); signed in = `agy models`
 //                     answers (agy's own check, a remote call); a copy too old, one that doesn't
 //                     answer, or only the desktop app is said as `trouble`
-// Every probe reads presence only, never a secret's value into any output.
+// Every probe reads presence only, never a secret's value into any output. D503: Claude Code and
+// Codex also say whose account it is, kept only as a fingerprint (accountPrint).
 // D156: each installed agent also gets its version (its own --version) and how it was installed
 // (`how`, from where its binary really lives; research/42).
+import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -197,6 +199,17 @@ export function compareVersions(a: string, b: string): number | null {
   return 0;
 }
 
+/**
+ * D503 (research/219): a short fingerprint of the account an agent is signed in to, from what the
+ * agent itself says (Claude Code's email and org, Codex's account id). Two computers with the same
+ * fingerprint share one usage limit; the parts themselves are never kept or sent.
+ */
+export function accountPrint(harness: string, parts: unknown[]): string | undefined {
+  const said = parts.filter((p): p is string => typeof p === "string" && p.trim() !== "").map((p) => p.trim().toLowerCase());
+  if (!said.length) return undefined;
+  return createHash("sha256").update([harness, ...said].join("\u0000")).digest("hex").slice(0, 12);
+}
+
 export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[]> {
   const env = o.env ?? process.env;
   const home = o.home ?? homedir();
@@ -208,13 +221,19 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
   const claude = async (): Promise<RawHarness> => {
     if (!o.which("claude")) return { harness: "claude-code", installed: false, loggedIn: false };
     const r = await o.exec(["claude", "auth", "status"], 15_000);
-    const status = r.code === 0 && parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1))?.loggedIn === true;
-    return { harness: "claude-code", installed: true, loggedIn: status || has(CLAUDE_TOKEN_ENV) };
+    const json = r.code === 0 ? parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1)) : undefined;
+    const status = json?.loggedIn === true;
+    // D503 (research/219): who is signed in, as a fingerprint only (the email never leaves here).
+    const account = status ? accountPrint("claude-code", [json.email, json.orgId]) : undefined;
+    return { harness: "claude-code", installed: true, loggedIn: status || has(CLAUDE_TOKEN_ENV), ...(account ? { account } : {}) };
   };
   const codex = async (): Promise<RawHarness> => {
     if (!o.which("codex")) return { harness: "codex", installed: false, loggedIn: false };
     const r = await o.exec(["codex", "login", "status"], 15_000);
-    return { harness: "codex", installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.out) && !/not logged in/i.test(r.out) };
+    const loggedIn = r.code === 0 && /logged in/i.test(r.out) && !/not logged in/i.test(r.out);
+    // D503: `codex login status` names no account; its auth file's account id does (no token is read out).
+    const account = loggedIn ? accountPrint("codex", [parseJson(read(join(env[HARNESS_FACTS.codex.account?.value.homeEnv ?? "CODEX_HOME"] || join(home, ".codex"), "auth.json")))?.tokens?.account_id]) : undefined;
+    return { harness: "codex", installed: true, loggedIn, ...(account ? { account } : {}) };
   };
   const pi = async (): Promise<RawHarness> => {
     const agentDir = env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent");

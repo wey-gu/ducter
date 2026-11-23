@@ -13,7 +13,9 @@
 import { fill, harnessName, LIMIT_RESET_GRACE_MS, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { AccountUsageBook } from "./account-usage.ts";
+import type { AgentLimit } from "./agent-limits.ts";
 import { realClock, type Clock } from "./clock.ts";
+import { sameModelRoutes, type Route } from "./routes.ts";
 import { langOfText } from "./lang.ts";
 import type { Loadout } from "./loadout.ts";
 import { isActive, taskStream, type CoreRegistry } from "./registry.ts";
@@ -52,9 +54,11 @@ export interface LimitDeps {
   log: LogStore;
   tasks: CoreRegistry;
   waiters: Waiters;
-  loadout?: Pick<Loadout, "candidates" | "switchTask">;
+  loadout?: Pick<Loadout, "candidates" | "switchTask"> & Partial<Pick<Loadout, "computers">>;
   settings?: Pick<SettingsStore, "get">;
   usage?: AccountUsageBook;
+  /** D503: every agent's limit per computer, as last known (agent-limits.ts), for the same model another way. */
+  limitsNow?: () => AgentLimit[];
   runner: () => Runner | undefined;
   clock?: Clock;
 }
@@ -109,12 +113,34 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
     return undefined;
   }
 
+  /** D503: the same agent and model another way (another account on another computer), best first; none when unknown. */
+  async function sameModel(taskId: string, harness: string, model: string | undefined, from: string | undefined): Promise<Route | undefined> {
+    if (!o.loadout?.computers) return undefined;
+    const computers = await o.loadout.computers().catch(() => undefined);
+    if (!computers || computers.length < 2) return undefined;
+    const candidates = await o.loadout.candidates(taskId).catch(() => [] as Candidate[]);
+    return sameModelRoutes({ harness, ...(model ? { model } : {}), ...(from ? { from } : {}), computers, candidates, limits: o.limitsNow?.() ?? [], now: clock.now() })[0];
+  }
+
   async function onHit(hit: LimitSeen & { taskId: string }) {
     const card = o.tasks.get(hit.taskId);
     if (!card || !isActive(card.attention) || card.attention === "done_claimed" || card.attention === "needs_you") return;
     const now = clock.now();
     const prev = lastEnded.get(hit.taskId);
     const tries = prev && prev.harness === hit.harness && now - prev.at < AGAIN_MS ? prev.tries + 1 : 1;
+    // D503: a used-up account is not a used-up model. The same agent and model signed in to another
+    // account elsewhere takes the task at once, with nothing to choose: the task's own lines say it
+    // once (its limit, then 换到 {computer} 接着做). A throttle passes by itself; a folder can't move.
+    if (hit.failure === "quota" && card.place.kind !== "folder") {
+      const route = await sameModel(hit.taskId, hit.harness, card.model, card.place.device);
+      if (route) {
+        const r = await o.loadout!.switchTask(hit.taskId, hit.harness, card.model, o.runner(), route.device, undefined, "limit").catch((err) => ({ ok: false, message: (err as Error).message }));
+        if (r.ok) {
+          o.log.append({ stream: taskStream(hit.taskId), origin: "system", kind: "task_event", body: { taskId: hit.taskId, role: "system", from: "runner", text: `usage limit: the same model on ${route.deviceName}`, raw: { limitRouted: { harness: hit.harness, ...(card.model ? { model: card.model } : {}), from: card.place.device || "local", to: route.device } } } } as never);
+          return;
+        }
+      }
+    }
     const to = await handTo(hit.taskId, hit.harness);
     // The person chose to hand off right away: no wait at all.
     if (to && o.settings?.get().limitHandoff) {

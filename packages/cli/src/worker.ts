@@ -98,7 +98,8 @@ async function probeHarnesses(_t: T, dataDir: string, setup?: AgentSetup) {
     piBundled: bundledPiVersion,
   });
   // D156: each agent's version and how it was installed ride along; the main reads its latest.
-  const rows = found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}) }));
+  // D503: whose account it is, as a fingerprint, so the main can tell one limit from two.
+  const rows = found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}), ...(h.account ? { account: h.account } : {}) }));
   return setup ? setup.decorate(rows) : rows;
 }
 

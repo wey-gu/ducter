@@ -28,7 +28,7 @@ export interface WorkerHello {
   /** laptop | mini | server: how the device is drawn on Your devices and abilities. */
   kind?: string;
   /** D156: version and how each agent was installed ride along. */
-  harnesses?: { id: string; installed: boolean; loggedIn: boolean; version?: string; how?: string; installable?: boolean; setup?: import("@ducter/protocol").AgentSetupState; login?: import("@ducter/protocol").AgentLoginState }[];
+  harnesses?: { id: string; installed: boolean; loggedIn: boolean; version?: string; how?: string; account?: string; installable?: boolean; setup?: import("@ducter/protocol").AgentSetupState; login?: import("@ducter/protocol").AgentLoginState }[];
   /** D148: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
   how?: string;
   /** D187: how "app", and it can ask the app on its Mac to update (app-update.ts). */

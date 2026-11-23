@@ -2196,6 +2196,8 @@ export interface DeviceHarness {
   canBePartner: boolean;
   /** plan: a subscription's allowance; usage: paid per token (an API key). */
   billing?: "plan" | "usage";
+  /** D503: a fingerprint of the signed-in account (never the email): the same one on two computers is one limit. */
+  account?: string;
   /** D156: the installed version, as the agent's own --version says it. */
   version?: string;
   /** D156: how this copy was installed, which decides how it updates (research/42). */

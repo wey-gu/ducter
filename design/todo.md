@@ -9,6 +9,23 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## The same model another way, after D503 (`where.md` §21, research/219)
+
+- [ ] **A second account on the same computer.** A Ducter-owned config folder per extra account
+  (`<dataDir>/accounts/<agent>/<n>` as `CLAUDE_CONFIG_DIR` / `CODEX_HOME`), signed in once through the
+  agent's own login with that folder, offered where an account is shown (never a group to configure);
+  the runner starts a session with that folder, and a limit hit carries the session file into it so it
+  resumes in place. *Trigger:* the author signs a second Claude or Codex account in on one Mac.
+- [ ] **A key as a route the person agrees to once.** Today a pasted Anthropic or OpenAI key replaces
+  the plan for that agent (`HARNESS_KEYS`); a key beside a plan, offered at a hit with what it costs,
+  then remembered as their go. *Trigger:* the second-account folder above (the key rides the same seam).
+- [ ] **The partner's own turns on another account.** D435 holds its agent and answers with another
+  agent; the same model on another account (a second folder on the home) comes first once one exists.
+- [ ] **Account reads for workers' agents** (room and reset per account, D288's read on the worker), so
+  a route is ranked by room, not only by hits. *Trigger:* a route picked onto an account that then hits at once.
+- [ ] **The live check:** two computers, Claude Code on two accounts, a task run to its limit on one;
+  it continues on the other with the same model, the lines said once. *Trigger:* the author's two accounts.
+
 ## Settings, after D500 (`settings.md` "Every pane, by one hand")
 
 - [ ] **Rows say 它 under a head that says 我.** Every pane's head is the partner speaking (D469); its

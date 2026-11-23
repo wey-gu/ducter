@@ -21300,3 +21300,8 @@ html[data-text-size="large"] .brand-mark > svg {
 .partners-set .partner-removing b { font-weight: 700; }
 .passed-from:disabled { cursor: default; }
 .passed-from .stone { flex: none; }
+/* D494: 你的帮手 / Your helpers: each fact its own line; the counts side by side, never joined into one string. */
+.helper-row .helper-about { color: var(--ink-soft); overflow-wrap: anywhere; }
+.helper-row .helper-state.refused { color: var(--ink-soft); }
+.helper-row .helper-counts { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
+.helper-row .helper-counts small { margin-top: 2px; }

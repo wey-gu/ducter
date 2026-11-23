@@ -75,8 +75,8 @@ describe("which tasks Ducter carries messages for", () => {
     expect(relaysBridge("antigravity", { kind: "none" })).toBe(true);
     expect(relaysBridge("pi", { kind: "repo" })).toBe(true);
     expect(relaysBridge("deepseek-harness")).toBe(true);
-    expect(relaysBridge("claude-code", { kind: "none" })).toBe(false);
-    expect(relaysBridge("codex", { kind: "none" })).toBe(false);
+    expect(relaysBridge("claude-code", { kind: "none" })).toBe(true); // D494: the home receives for every task
+    expect(relaysBridge("codex", { kind: "repo" })).toBe(true);
     expect(relaysBridge("pi", { kind: "browser" })).toBe(false);
     expect(relaysBridge("cursor")).toBe(false);
   });
@@ -219,12 +219,11 @@ describe("a task's message out: a card first, then Ducter sends it with the task
     expect(secret.error).toContain("secret");
   });
 
-  test("a task on an agent with Bridge of its own (Claude Code) isn't carried", async () => {
+  test("D494: a Claude Code task is carried too (the home is the one receiver; its plugin would speak as the partner)", async () => {
     const { tool, decisions } = setup("claude-code");
     const r = await tool({ to: "your Codex", text: "hi" });
-    expect(r.ok).toBe(false);
-    expect(r.note).toContain("isn't available");
-    expect(decisions()).toHaveLength(0);
+    expect(r.ok).toBe(true);
+    expect(decisions()).toHaveLength(1);
   });
 
   test("an answer the task can't take (dropped) wakes the partner instead", async () => {

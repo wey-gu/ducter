@@ -88,9 +88,9 @@ describe("Connect without a tap (D332)", () => {
 
   test("the line names the agents, in the person's language, with the way to turn it off", () => {
     expect(bridgeOnWords("zh", ["Claude Code", "Codex"])).toContain("Claude Code、Codex");
-    expect(bridgeOnWords("zh", [])).toContain("设置 › 和你的其他 agent 通信");
+    expect(bridgeOnWords("zh", [])).toContain("设置 › Agent 通信");
     expect(bridgeOnWords("en", ["Claude Code", "Codex", "pi"])).toStartWith("Your Claude Code, Codex and pi can reach me");
-    expect(bridgeOnWords("en", ["Codex"])).toContain("Settings › Talk with your other agents");
+    expect(bridgeOnWords("en", ["Codex"])).toContain("Settings › Agent messaging");
   });
 });
 

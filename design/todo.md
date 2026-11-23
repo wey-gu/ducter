@@ -483,8 +483,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - [ ] A live run: an Antigravity task on the author's Mac asks his Codex through the real Mem (a throwaway exchange
       he approves), and the answer lands in the task. Trigger: the next live Bridge pass, with the author's Go.
-- [ ] A Claude Code or Codex task where Mem's plugin isn't in the session (`memoryMode` "ducter") gets
-      `agent_message` too. Trigger: a task there needs another agent once.
+- [x] A Claude Code or Codex task gets `agent_message` too: done as D494 (every task; the home receives for it).
 - [ ] Follow-through when a task's message gets no answer (today the task waits, its card says 在等…回话): one line
       to the task, or to the person, after a while. Trigger: a task waits more than a day once.
 - [ ] A new message (not an answer) from another agent that names a task ("tell the agy task on the CI fix…")
@@ -494,6 +493,26 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       by title). Still open: `feed` for the Memory page's this week (every tool's), reading a shared plan (needs a
       read-only `collab` look, research/191 §asks 4), native sessions for asking one open terminal session (needs a
       session's own name on its card, §asks 3). Trigger: each one's scenario comes up in the author's use, or Mem answers.
+
+## Helpers on Bridge (D494, `bridge.md` "Helpers", research/211)
+
+- [ ] **The live run:** "开个帮手…" on hel makes "Nowledge Mem PR babysitter" in the real Mem (an enroll and a
+      connection: Mem writes, the author's Go), the author's Codex finds it in `bridge contacts`, hands it a real
+      PR, the task's waits wake it on CI and review, and the answer comes back to that Codex from the helper's
+      name. Trigger: the author's Go; first check `agents enroll`'s and `connections connect`'s real answers against
+      the fake's guesses.
+- [ ] **`inbox --watch` per helper** (today a helper's inbox is read at each check, one more 45–52 s identity
+      read). Trigger: a helper whose work waits a check's period in the author's use.
+- [ ] **Helpers on Ongoing** (一直在跑的): one row per helper with its work on hand, beside routines. Trigger: the
+      author asks where it is, or has two helpers.
+- [ ] **Mem's side** (`research/private/bridge-helpers-ask-2026-11-23.md`, a draft, not sent): a field that tells a
+      native session's connection from a home's (Ducter reads its own label meanwhile), and whether a session
+      connection can take identity mail. Trigger: the author sends it.
+- [ ] **来往 / Back and forth says which helper took it**: a message to a helper shows today as **它找我，我开了任务「…」**
+      under the sender's thread; it should say **交给「{helper}」的** (seen in the D494 shots). Trigger: the
+      author's first real hand-over.
+- [ ] **A message to a helper that joins work on hand** gets its own claim line (today only the task's first
+      message is answered by code; a joined one is the partner's to answer). Trigger: it happens once.
 
 ## Mem in the person's day (D444, `memory.md` "Mem in the person's day", research/191)
 

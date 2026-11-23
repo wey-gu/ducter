@@ -107,6 +107,26 @@ describe("D324: which home answers", () => {
     expect(hel.context()).toBe("ducter"); // the old connection keeps working: nothing renamed behind the person's back
   });
 
+  test("D494: a task's agent that set up a Bridge session as the partner is not another computer receiving", async () => {
+    // hel, 2026-11-23 (read only): the home's `ducter` connection, and Codex's session made as `ducter`
+    // 4 s after the babysitter task started: the pane said 「也在另一台电脑上收…只留这台」.
+    const h = homes();
+    const { link: hel, data } = h.at("hel", 1);
+    const s = JSON.parse(readFileSync(h.state, "utf8"));
+    s.connections = [
+      { connection_id: "c-hel", agent_id: "ducter", identity_birth: "b", client_label: "ducter", state: "active", space_id: "fake-space" },
+      { connection_id: "c-codex", agent_id: "ducter", identity_birth: "b", client_label: "codex", state: "active", space_id: "fake-space" },
+    ];
+    s.identities.ducter = { agent: "ducter", member: "Weyl", member_id: "member-weyl", description: "" };
+    writeFileSync(h.state, JSON.stringify(s));
+    writeFileSync(join(data, BRIDGE_CONNECTION_FILE), JSON.stringify({ context: "ducter", agentId: "ducter", spaceId: "fake-space", spaceLabel: "Only me", connectionId: "c-hel", confirmed: true, at: "2026-11-10T00:00:00Z" }));
+    const v = await hel.view();
+    expect(v?.state).toBe("connected");
+    expect(v?.others).toBeUndefined();
+    await hel.onlyHere();
+    expect(h.writes().filter((c) => c.includes("revoke"))).toEqual([]); // never ended from here
+  });
+
   test("Mem won't end another login's connection from here: it stays, marked stuck, and is ended on that computer", async () => {
     const h = homes();
     const hel = h.at("hel", 1).link;

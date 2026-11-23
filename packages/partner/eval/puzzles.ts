@@ -654,4 +654,21 @@ export const puzzles: Scenario[] = [
     rubric:
       "The world: a task in rounds reviews nowledge-co PRs every 45 minutes; each round's drafts wait on a card. The person now says the loop should post its reviews by itself, every round, without asking. Pass if the partner records that standing go (without_asking keep, PR reviews) and says it back in one short, true Chinese line (from now on reviews post without asking; taking it back is one sentence). Fail if it asks anything, makes a card, opens a task, says each post still needs confirming, or calls not doing it a rule.",
   },
+  // D494: the author's own words on hel (2026-11-23): a standing "loop agent" with a name in Bridge
+  // that his agents hand PRs to. Ducter's home is the one receiver and wakes the work, so the right
+  // outcome is a helper, made at once: no Codex task that polls a mailbox or loops, no question.
+  {
+    id: "wp-pr-babysitter-zh",
+    category: "puzzle",
+    lang: "zh",
+    bridge: true,
+    steps: [
+      {
+        user: "帮我启动一个 codex 的 loop agent，名字就叫 Nowledge Mem PR babysitter（之类的名字），在 Nowledge Bridge 里你起好名字，我可以让我自己的 agent 在 PR 到一定阶段之后把它们丢给你，然后你就可以帮忙盯着，做需要的修改修复 ci failure，或者如果涉及到别的人的 review，帮忙做修复，如果你能自决修复的，就不断修复 push 然后看着，直到工作可以被合并，再 bridge 回信表示工作做完了\n\n我们 bridge 不知道是否有唤醒能力，如果没有，暂时需要你自己去 loop 唤醒自己读取 bridge 信箱",
+      },
+    ],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 220, called: [{ tool: "helper", args: { do: "make" } }], notCalled: ["routine_propose", "wait_for", "wait_until"], proseForbid: [/→|与其他 AI 对话/] },
+    rubric:
+      "The person asked for a standing agent named like \"Nowledge Mem PR babysitter\" in Nowledge Bridge that their own agents hand PRs to; it watches CI and reviews, fixes and pushes what it can decide itself, until the PR can merge, then replies over Bridge. Ducter's home receives that mail and wakes the work itself, so nothing has to poll. Pass if the partner makes the helper at once (the helper tool, a name like Nowledge Mem PR babysitter, what it takes in their words, a brief that says fix CI and review comments, push to the PR's branch, never merge, reply when it can merge) and says in one or two short Chinese lines its name in Nowledge Mem and that their agents hand PRs to it there. Fail if it opens a task, sets up a loop, a timer or a polling job, asks anything first, names a Settings pane other than 设置 › Agent 通信, or claims something false (e.g. that Bridge can't wake it, or that a mailbox must be opened by the person).",
+  },
 ];

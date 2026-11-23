@@ -226,6 +226,8 @@ export interface CoreApi {
   memCarry?: MemCarry;
   /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
   bridgeLink?: BridgeLinkApi;
+  /** D494: 帮手 / Helpers, the person's named addresses in Bridge that this home owns (core/src/helpers.ts). */
+  helpers?: HelpersApi;
   /** D206: pictures and files on the home (core/src/media.ts); absent in tests and stubs. */
   media?: MediaApi;
   /** D288: account limits a running session said, kept with the agent's last read (core/src/account-usage.ts); absent in tests and stubs. */
@@ -406,6 +408,20 @@ export interface BridgeLinkApi {
   setMailboxes?(list: { harness: string; open: boolean }[]): void;
   /** D480: the last list setMailboxes was given (undefined: never read). */
   mailboxesNow?(): { harness: string; open: boolean }[] | undefined;
+}
+
+/** D494: the home's helpers, as the partner uses them (core/src/helpers.ts has the whole of it). */
+export interface HelpersApi {
+  list(): import("./helpers.ts").Helper[];
+  get(id: string): import("./helpers.ts").Helper | undefined;
+  byName(name: string): import("./helpers.ts").Helper | undefined;
+  make(a: { name: string; about: string; brief: string; persona?: string }): { ok: true; helper: import("./helpers.ts").Helper } | { ok: false; error: "empty" | "taken" | "full" };
+  set(id: string, a: { about?: string; brief?: string }): import("./helpers.ts").Helper | undefined;
+  stop(id: string): Promise<import("./helpers.ts").Helper | undefined>;
+  resume(id: string): import("./helpers.ts").Helper | undefined;
+  /** On, with a confirmed address: whose mail the home reads now. */
+  listening(): { id: string; name: string; context: string }[];
+  onChange(fn: () => void): () => void;
 }
 
 /** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */

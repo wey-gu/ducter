@@ -24,6 +24,7 @@ export * from "./calendar.ts";
 export * from "./later.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
+export * from "./helpers.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
@@ -746,6 +747,9 @@ export interface Bodies {
     operation?: string;
     // D412, "followed": the other unanswered messages to the same agent that one line also covered.
     alsoFollowed?: string[];
+    // D494: sent to one of the person's helpers (in), or from one (out: its reply goes from the helper's
+    // own address): the helper's id on the home (core/src/helpers.ts).
+    helper?: string;
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
@@ -1461,6 +1465,9 @@ export type ClientFrame =
   // D324: 改由这台收 / Receive here instead (elsewhere) and 只留这台 / Keep only this one (others on
   // connected): this home connects if it isn't yet, then ends the other homes' connections. The tap is the Go.
   | { t: "bridge_only_here" }
+  // D494: 停下 / Stop and 接着收 / Take work again on a helper's row (Settings › Agent 通信): the tap is the Go.
+  | { t: "helper_stop"; id: string }
+  | { t: "helper_resume"; id: string }
   // D225: put in (or update) the home's Nowledge Mem command line; sign it in with a one-time
   // connect link the user made in Nowledge Mem (never logged or kept).
   | { t: "bridge_mem_install" }
@@ -1873,7 +1880,7 @@ export type ServerFrame =
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
   // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
   // your terminal shows in Settings for them.
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[] }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D465: whether Nowledge Mem took the answer (ok false: it's back on the page, to settle in Mem).

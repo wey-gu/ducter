@@ -18,12 +18,14 @@ export function isHarnessId(s: unknown): s is HarnessId {
 export const MEM_BRIDGE_HARNESSES: readonly HarnessId[] = ["claude-code", "codex"];
 
 /**
- * D448: a task Ducter runs on an agent with no Bridge of its own talks to other agents through
- * Ducter: its message goes out under the partner's identity with the task named, and an answer to
- * it comes back into the task. Never a browser task (D62: a page could ask for it).
+ * D448: a task Ducter runs talks to other agents through Ducter: its message goes out under the
+ * partner's identity with the task named, and an answer to it comes back into the task. Never a
+ * browser task (D62: a page could ask for it). D494: every agent, Claude Code and Codex too: a task
+ * runs as the partner's Mem identity, so its own plugin's Bridge session is a second reader of the
+ * partner's mailbox (hel, 2026-11-23); the home is the one receiver and wakes the task.
  */
 export function relaysBridge(harness: string, place?: { kind: string }): boolean {
-  return isHarnessId(harness) && !MEM_BRIDGE_HARNESSES.includes(harness) && place?.kind !== "browser";
+  return isHarnessId(harness) && place?.kind !== "browser";
 }
 
 /**

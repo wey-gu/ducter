@@ -74,6 +74,8 @@ export interface BridgeMessage {
   route?: string[];
   /** D444: what it hands over from Mem (references in its words or among Mem's typed references; a shared plan's card). */
   refs?: MessageRef[];
+  /** D494: it came to one of the person's helpers (its id on the home), read with that helper's context. */
+  helper?: string;
 }
 
 /** D444: one thing a message hands over from Nowledge Mem, before it is read. */

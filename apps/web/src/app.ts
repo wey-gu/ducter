@@ -368,6 +368,8 @@ class AppState {
   bridgeConfirm = false;
   /** D332: the AI agents the person runs themselves on the home (their records' file times), from the settings frame. */
   ownAgents: ("claude-code" | "codex" | "pi")[] = [];
+  /** D494: the home's helpers (Settings › Agent 通信 shows them while there are any). */
+  helpers: import("@ducter/protocol").HelperView[] = [];
   /** D332: 和你的其他 agent 通信 was opened from the Partner page's one line, so Settings lists it for now. */
   peersAsked = false;
   /** What the partner thinks with right now (D150), and the computer Ducter runs on. */
@@ -1002,6 +1004,7 @@ class AppState {
     this.mem = f.mem;
     this.bridge = f.bridge;
     this.ownAgents = f.ownAgents ?? [];
+    this.helpers = f.helpers ?? [];
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
@@ -2231,6 +2234,12 @@ class AppState {
     this.changed();
   }
   /** D205: 接上 / Connect: the home's nmem connects the persona (the frame shows each step). */
+  /** D494: 停下 / Stop and 接着收 / Take work again on a helper's row: the tap is the Go. */
+  stopHelper(id: string, on: boolean) {
+    this.helpers = this.helpers.map((h) => (h.id === id ? { ...h, state: on ? "on" : "stopped" } : h));
+    this.send(on ? { t: "helper_resume", id } : { t: "helper_stop", id });
+    this.changed();
+  }
   connectBridge() {
     if (this.bridge) this.bridge = { ...this.bridge, state: "connecting" };
     this.send({ t: "bridge_connect" });

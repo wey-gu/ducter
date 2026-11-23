@@ -63,6 +63,7 @@ import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./
 import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
+import { createHelpers, HELPER_RETRY_MS } from "./helpers.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -1085,6 +1086,29 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.bridgeLink ?? {}),
   });
   bridgeLink.onChange(() => settings.bridgeChanged());
+  // D494: 帮手 / Helpers: named addresses of the person's in Bridge, owned by this home (helpers.json).
+  // Their addresses are made while the home's Bridge is connected; a scratch home (byItself false) waits too.
+  const helpers = createHelpers({ dataDir, link: () => (bridgeLink.context() ? bridgeLink : undefined), partnerName: () => persona.name || "Ducter", home: () => computers.homeName() });
+  helpers.onChange(() => settings.bridgeChanged());
+  bridgeLink.onChange(() => void helpers.tick());
+  bridgeLink.onMemReady(() => void helpers.tick());
+  const helperTimer = setInterval(() => void helpers.tick(), HELPER_RETRY_MS);
+  /** D494: a helper's work on hand (its tasks not ended) and what it took in the last 7 days, from the Log. */
+  const helperCount = (id: string) => {
+    const evs = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 });
+    const since = Date.now() - 7 * 86_400_000;
+    let week = 0;
+    const tasksOf = new Set<string>();
+    for (const e of evs) {
+      const b = e.body as Bodies["bridge_msg"];
+      if (b.helper !== id) continue;
+      if (b.direction === "in" && !b.inReplyTo && Date.parse(e.ts) >= since) week++;
+      if (b.direction === "out" && b.taskId) tasksOf.add(b.taskId);
+    }
+    const open = [...tasksOf].filter((t) => ((a) => !!a && a !== "done" && a !== "failed" && a !== "dropped")(tasks.get(t)?.attention)).length;
+    return { open, week };
+  };
+  (helperTimer as { unref?: () => void }).unref?.();
   // D295: a glance at Mem itself for Settings › 记忆 (its count, what other AI tools saved), gated like the row.
   const memGlance = createMemGlance({
     run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
@@ -1176,7 +1200,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1514,7 +1538,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

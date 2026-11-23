@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-21 (D448: tasks Ducter carries messages for; D459: one story with Memory) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-23 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -103,6 +103,11 @@ a computer nobody looks at, and Mem's list can't say which is which (both were l
 - **The label.** A home connects with the context `<identity>-on-<home>-<key tag>` (the home's name as a slug, six
   hex of its D293 key), so Mem's own list says which computer holds each connection; `-2`… after a revoked one.
   One made before D324 keeps its name and keeps working.
+- **Only a home is a receiver (D494).** A connection counts as another home only when its label is a home's
+  (`<identity>-on-<home>-…`, or the bare identity a home used before D324). A task runs as the partner's
+  identity, so its agent's own Bridge session shows in Mem's list too (hel, 2026-11-23: Codex's, labelled
+  `codex`): it is never said as another computer and never offered for 只留这台; tasks don't make one any
+  more (below, "Tasks Ducter carries messages for").
 - **A second home** reads Mem's list at every look (read-only) and never connects beside another home on its own:
 
 | The home | The row (Settings › 和你的其他 agent 通信) | The tap runs |
@@ -1176,12 +1181,16 @@ Evidence: `research/191` (nmem still 0.10.121; a deeper read of its help and str
   `unavailable` (a revoked connection's `cloud_agent_context_authority_denied`, VERIFIED read-only, research/200) is
   a failed check, never "nothing new".
 
-## Tasks Ducter carries messages for (D448, 2026-11-21)
+## Tasks Ducter carries messages for (D448, 2026-11-21; every task since D494)
 
-A Claude Code or Codex task reaches other agents through its own Mem plugin. A task on pi, Antigravity or
-DeepSeek Harness has none (research/183 §3), but Ducter is in the middle of it both ways, as it is for Mem's two
-steps on agy (D417): the task's tools are Ducter's, and the partner's Bridge client already sends, recovers and
-reads. So Ducter carries the task's messages.
+D494: every task, on any agent (never a browser task). A task runs as the partner's Mem identity, so a Claude
+Code or Codex task setting up its plugin's own Bridge session made a second reader of the partner's mailbox
+(research/211); the home is the one receiver. The brief says Ducter receives for the task and wakes it, and
+never to set up a mailbox or session of its own.
+
+A task on pi, Antigravity or DeepSeek Harness has no Bridge of its own (research/183 §3); none needs one: Ducter
+is in the middle of it both ways, as it is for Mem's two steps on agy (D417): the task's tools are Ducter's, and
+the partner's Bridge client already sends, recovers and reads. So Ducter carries the task's messages.
 
 ```
 task (pi / agy, Bridge on, not a browser)
@@ -1326,6 +1335,48 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
 - **What the pane is for**, under the switch: **它们能把事交给{name}，也能问{name}事情；{name}也替你去问它们。
   要你定的，都会出现在你们的对话里。**
 - **Mem's side** (what would make the one tap disappear): `research/private/bridge-feedback-2026-11-23.md`.
+
+## Helpers: named addresses the home owns (D494, 2026-11-23)
+
+The author asked the partner on hel for "a Codex loop agent named like Nowledge Mem PR babysitter, in Nowledge
+Bridge", that his agents hand PRs to and that fixes CI and review comments until the PR can merge, then replies
+over Bridge, and, if Bridge can't wake it, wakes itself to read its mailbox. The partner opened a Codex task
+that tried to become that mailbox (`bridge session prepare`, `delivery_ready: false`, a label Mem derived and
+nobody can rename, a timer wake only) and reported blocked (research/211).
+
+- **Who.** H hands finished PRs to something that takes them to mergeable; C wants "something my AIs give jobs
+  to"; F never sees it. *Before:* a task that can't listen, a name nobody chose, a pane that doesn't exist.
+  *After:* one line; the helper is under his name in Nowledge Mem; each PR is watched and woken by Ducter.
+- **What it is.** A named address of the person's in Nowledge Bridge (`helpers.json` on the home): its own Mem
+  identity, `ducter-helper-<its name>`, enrolled with its name and a card (what to send it, that it answers when
+  the work is done, that it reads every Space), and the home's one connection for it in the person's own place
+  (`bridge connections connect`, then a passive setup; never `--enable`). Mem's identity inbox (nmem 0.10.121+)
+  reads it everywhere; on an older nmem it waits, said so. Not a partner (D486): no conversation, memory or
+  stone of its own. Not a routine: work starts on mail, and which task a message joins is the model's call.
+- **How it is made.** In one sentence: the partner's `helper` tool (make, stop, resume, set), listed while
+  Bridge is on, never a task that loops or polls. The tool's answer says what is true: Ducter receives the
+  helper's mail and starts the work; nothing polls; no mailbox for the person to open.
+- **How work flows.**
+
+```
+the person's own agent ── bridge send ──▶ "Nowledge Mem PR babysitter" (its Mem identity)
+the home: the partner's Bridge loop reads it with the helper's context ─▶ bridge_msg{in, helper}
+the partner's turn: [message to your helper …] + [helpers] (each helper's work on hand)
+   ├─ task_open (forMessage; the helper's brief and the sender's words; no card: making it was the go)
+   └─ or task_send to the task already on the same work
+the task: fixes, pushes within the brief; its own waits on CI and reviews wake it (D483); rounds (D394)
+done or failed ─▶ the answer goes back from the helper's address (a wait is not a result)
+```
+
+- **Limits in code.** At most 6 helpers; a unique name; 10 pieces of work a day each without asking (the next
+  asks); a teammate's agent writing to a helper gets its card as anywhere else; stopping ends its connection, so
+  Mem tells senders its mailbox is closed, and work on hand finishes; a reply from a helper is recovered with its
+  own client by its operation, never resent.
+- **Shown** in Settings › Agent 通信 under **你的帮手 / Your helpers**, while there are any (words in the
+  glossary); its tasks are ordinary tasks on On hand.
+- **Not yet.** The live run against Mem (the author's step); `--watch` per helper (it is read at each check);
+  helpers listed on Ongoing; what Mem owes (`research/private/bridge-helpers-ask-2026-11-23.md`, not sent): a
+  field telling a session's connection from a home's, and whether a session connection can take identity mail.
 
 ## Open questions
 

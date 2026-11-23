@@ -11,6 +11,8 @@ const W = {
     // D380: a quick web look didn't settle it, so a browsing task takes it (when the model wrote no line).
     lookAck: "网上一下没查准，我开个任务仔细查：{title}",
     trustedBrief: "（你的 {agent} 让我做的；你说过它的活直接接。）",
+    // D494: work handed to one of the person's helpers; its own brief follows.
+    helperBrief: "（你的 {agent} 交给「{helper}」的；你开「{helper}」时就说好，交来的活直接接。）",
     // D372: the first errand Ducter's default put on a faster model, said once.
     kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
     // D435: the partner's own agent ran out (or fails): said once, by code, before the answer.
@@ -55,6 +57,7 @@ const W = {
     ack: "On it: {title}",
     lookAck: "A quick look didn't settle it, so a task is checking properly: {title}",
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
+    helperBrief: "(Your {agent} handed this to \"{helper}\"; making \"{helper}\" was your go for the work it takes.)",
     kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
     heldQuota: "{from} is out of credit, so {to} is answering you for now. Back to {from} at {at}.",
     heldQuotaSoon: "{from} is out of credit, so {to} is answering you for now, until {from} is back.",

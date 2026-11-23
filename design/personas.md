@@ -163,7 +163,9 @@ Built:
 
 ## What's left
 
-1. **Bridge per partner.** Bridge stays the default's connection.
+1. **Bridge per partner.** Bridge stays the default's connection. D494: a standing address other agents
+   hand work to is a helper (`bridge.md` "Helpers"), not a partner; a helper made in another partner's
+   conversation keeps that partner (its tasks are its), its mail still read by the one home.
 2. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
 3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
 4. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.

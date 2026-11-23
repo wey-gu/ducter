@@ -297,6 +297,19 @@ your partner, in plain words, with when it last came at the right:
   back into the task. Otherwise it says **Their Nowledge Mem plugin can't pass messages yet**: that
   is for Nowledge Mem to add, nothing for you to fix.
 
+**Your helpers** shows each helper you made. A helper is a name of yours in Nowledge Mem that your
+agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull
+request, and it watches the checks and the reviews, fixes and pushes what it may, and tells the agent
+that sent it when the work can merge. Ask your partner for one in a sentence ("make a helper my agents
+hand PRs to, and watch them until they can merge"). Nothing on any of your computers has to keep
+listening for it: the computer Ducter runs on receives its messages and starts the work, and each
+piece of work is an ordinary task you can open on **On hand**. Each row shows what it takes, whether
+your agents can reach it yet, and how much it has on hand; **Stop** closes it (work on hand still
+finishes) and **Take work again** reopens it.
+
+Your partner listens on the computer Ducter runs on, for all your computers: a task on another
+computer hears its answers through Ducter, so you never choose which computer receives.
+
 **Back and forth** keeps a thread for each agent, newest first. Each exchange shows what was asked
 and what came of it, in your partner's words: **It wrote; I opened the task "…"**, **It wrote; I
 answered: …**, **It wrote; waiting for your call**, **I asked for you; waiting for its answer**, and

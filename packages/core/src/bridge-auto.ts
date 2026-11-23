@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import type { BridgeView } from "@ducter/protocol";
+import { paneName } from "@ducter/protocol/src/settings-panes.ts";
 
 export const BRIDGE_SAID_FILE = "bridge-said";
 
@@ -103,11 +104,11 @@ export function connectsByItself(dataDir: string, env: Record<string, string | u
 
 /** The partner's one line when it first can be reached, from a table per language (D292). */
 const SAID = {
-  en: { line: "Your {names} can reach me now: work they hand me, and anything that needs your call, will show up here. To stop it, turn it off in Settings › Talk with your other agents.", any: "other agents", list: (a: string[]) => (a.length === 1 ? a[0]! : `${a.slice(0, -1).join(", ")} and ${a.at(-1)}`) },
-  zh: { line: "你的 {names} 现在能找到我了：它们交给我的事、要你定的事，都会来这里。不想要的话，在 设置 › 和你的其他 agent 通信 里关掉。", any: "其他 agent", list: (a: string[]) => a.join("、") },
+  en: { line: "Your {names} can reach me now: work they hand me, and anything that needs your call, will show up here. To stop it, turn it off in {pane}.", any: "other agents", list: (a: string[]) => (a.length === 1 ? a[0]! : `${a.slice(0, -1).join(", ")} and ${a.at(-1)}`) },
+  zh: { line: "你的 {names} 现在能找到我了：它们交给我的事、要你定的事，都会来这里。不想要的话，在 {pane} 里关掉。", any: "其他 agent", list: (a: string[]) => a.join("、") },
 };
 
 export function bridgeOnWords(lang: LangTag, agents: string[]): string {
   const w = words(SAID, lang);
-  return fill(w.line, { names: agents.length ? w.list(agents) : w.any });
+  return fill(w.line, { names: agents.length ? w.list(agents) : w.any, pane: paneName("peers", lang) }); // D494: the pane by its name in the rail
 }

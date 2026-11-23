@@ -21,8 +21,9 @@ describe("能找到{name}的: pi and Antigravity where Ducter runs tasks", () =>
     expect(reachRows([], ["antigravity"], []).map((r) => r.can)).toEqual(["none"]);
   });
   test("the line says both halves, in both languages", () => {
-    expect(memoryWords.zh["peers.reach.relay"]).toBe("%[1]s开的 %[2]s 任务能传话，你自己开的还不行");
-    expect(memoryWords.en["peers.reach.relay"]).toBe("%[2]s tasks %[1]s runs pass messages; yours can't yet");
+    // D489: pi and Antigravity share one row, so the line names neither.
+    expect(memoryWords.zh["peers.st.relay"]).toBe("%s开的任务能替它们传话，你自己开的还不行");
+    expect(memoryWords.en["peers.st.relay"]).toBe("Tasks %s runs on them pass messages; yours can't yet");
   });
 });
 

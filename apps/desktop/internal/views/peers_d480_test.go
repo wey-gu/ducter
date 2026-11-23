@@ -35,4 +35,31 @@ func TestD480Looked(t *testing.T) {
 	if a.mailboxChoosing.Pick != "personal" {
 		t.Fatalf("pick %q", a.mailboxChoosing.Pick)
 	}
+	// D489: without Ducter's suggestion nothing is picked for the person (Mem picks no Space, nor does Ducter).
+	a.mailboxChoosing = &mailboxChoice{Device: "mac", Harness: "claude-code"}
+	a.mailboxLooked(protocol.ServerFrame{T: "mailbox_look", Device: "mac", Harness: "claude-code", Look: &protocol.MailboxLook{State: "choose", Spaces: []protocol.MailboxSpace{{ID: "all", Kind: "commons"}}}})
+	if a.mailboxChoosing.Pick != "" {
+		t.Fatalf("picked %q without a suggestion", a.mailboxChoosing.Pick)
+	}
+}
+
+// D489: each agent said as what the person gets, the same as the web's standing (apps/web/test/d480.test.ts).
+func TestD489Standing(t *testing.T) {
+	cases := []struct {
+		r    reachRow
+		want string
+	}{
+		{reachRow{Harness: "codex", Can: "yes", Box: "open"}, "both"},
+		{reachRow{Harness: "claude-code", Can: "yes", Box: "closed", Device: "mac"}, "oneway"},
+		{reachRow{Harness: "codex", Can: "yes"}, "to"},
+		{reachRow{Harness: "codex", Can: "install", Device: "mac"}, "install"},
+		{reachRow{Harness: "codex", Can: "unknown"}, "unknown"},
+		{reachRow{Harness: "pi", Can: "relay"}, "relay"},
+		{reachRow{Harness: "antigravity", Can: "none"}, "none"},
+	}
+	for _, c := range cases {
+		if got := standing(c.r); got != c.want {
+			t.Errorf("%+v: %s, want %s", c.r, got, c.want)
+		}
+	}
 }

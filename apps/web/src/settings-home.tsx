@@ -57,7 +57,7 @@ export function setNeeds(): SetNeed[] {
     out.push({ key: `memp:${dv.id}:${h.harness}`, text: t("need.memplug", harnessName(h.harness)), go: here ? action! : t("need.go.update"), page: "memory", ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
   }
   // D470: one of the person's agents reaches the partner, but the answers can't get back: its mailbox's one task, here.
-  for (const r of peersOneWay()) out.push({ key: `peers:${r.harness}`, text: t("need.peers.oneway", r.tool), go: t("peers.fix.mailbox"), page: "peers", about: r.tool, fix: { kind: "mailbox", device: r.device!, harness: r.harness } });
+  for (const r of peersOneWay()) out.push({ key: `peers:${r.harness}`, text: t("need.peers.oneway", r.tool), go: t("peers.fix.hear"), page: "peers", about: r.tool, fix: { kind: "mailbox", device: r.device!, harness: r.harness } });
   const u = updatesWaiting();
   if (u.n > 0 && !u.running) {
     // Devices' own one tap (Update all), which asks nothing more there either.
@@ -159,7 +159,8 @@ export function paneSay(page: SettingsPage): string {
 /** A pushed page's head under its title (D469): the partner, in the pose for this page, says what is true here; what needs you here follows. */
 export function PaneSays({ page }: { page: SettingsPage }) {
   const say = paneSay(page);
-  const needs = needsOf(page);
+  // D489: on Agent messaging the agent's own row carries its offer; the head says it once, as the partner.
+  const needs = page === "peers" ? [] : needsOf(page);
   if (!say && !needs.length) return null;
   return (
     <div class={`pane-says${needs.length ? " needs" : ""}`}>

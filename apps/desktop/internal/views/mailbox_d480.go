@@ -8,11 +8,11 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D480: 打开它的信箱 / Open its mailbox, in place under the agent's link row (the web's
-// MailboxChoice in memory.tsx). Nowledge Mem's Bridge needs an explicit Space and never picks one
-// silently, so the person's real Spaces are the choices, the suggested one (the Space the partner
-// already listens in) chosen and said why in one line, the others one tap away; one tap opens it.
-// Never a typed name.
+// D480, D489: an agent's answers reach it once its Nowledge Mem mailbox is open, offered in place under
+// the agent's row (the web's HearBack in memory.tsx). Nowledge Mem's Bridge needs an explicit Space and
+// never picks one silently, so the person's real Spaces are the choices: the suggested one (the Space
+// the partner already listens in) said in the offer's one line, the others one quiet tap away; the
+// person's one tap opens it there. Never a typed name.
 
 // mailboxChoice is the choice open under one agent's row.
 type mailboxChoice struct {
@@ -38,10 +38,7 @@ func (a *App) mailboxLooked(f protocol.ServerFrame) {
 	}
 	c.Look = f.Look
 	if c.Pick == "" {
-		c.Pick = f.Look.Recommend
-		if c.Pick == "" && len(f.Look.Spaces) > 0 {
-			c.Pick = f.Look.Spaces[0].ID
-		}
+		c.Pick = f.Look.Recommend // never the first by default: Mem picks no Space, nor does Ducter
 	}
 }
 
@@ -69,84 +66,113 @@ func (a *App) spaceReaders(s protocol.MailboxSpace) string {
 	return ""
 }
 
-// mailboxChoice draws the choice under the row, set in from the coin like its why line.
-func (a *App) mailboxChoice(c *ui.Context, r reachRow, where string) {
-	t := a.T
-	ch := a.mailboxChoosing
-	look := ch.Look
-	sheet := ui.Column(c.Key("mb-choice")).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.Bg).Border(1, t.LineSoft).
-		Margin(0, 0, 0, 96+t.S3).Role(ui.RoleGroup).Label(a.L.T("mailbox.title"))
-	lede := func(s string) {
-		uiText(c, keepWords(autospace(s))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+// spaceIn is where the answers will go, in one line: the Space and who can read it (D489).
+func (a *App) spaceIn(s protocol.MailboxSpace) string {
+	switch {
+	case s.Kind == "personal":
+		return a.L.T("mailbox.in.you", a.spaceName(s))
+	case s.Readers > 0:
+		return a.L.T("mailbox.in.some", a.spaceName(s), strconv.Itoa(s.Readers))
 	}
-	not := func() {
-		if a.buttonFor(c, a.L.T("mailbox.not"), r.Tool, btnText, t.ControlSM, t.Bg) {
-			a.mailboxChoosing = nil
-		}
-	}
-	sheet.Children(func() {
-		switch {
-		case look == nil:
-			lede(a.L.T("mailbox.looking", where))
-		case look.State != "choose" || len(look.Spaces) == 0:
-			k := look.State
-			if k == "choose" {
-				k = "failed"
-			}
-			lede(a.L.T("mailbox."+k, where))
-			ui.Row(c.Key("mb-acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-				if k != "old" && a.buttonFor(c, a.L.T("mailbox.again"), r.Tool, btnSecondary, t.ControlSM, t.Bg) {
-					a.chooseMailbox(r.Device, r.Harness)
-				}
-				not()
-			})
-		default:
-			a.mailboxSpaces(c, r, ch, look)
-		}
-	})
+	return a.L.T("mailbox.in", a.spaceName(s))
 }
 
-// mailboxSpaces is the question, the partner's reason for the suggested Space, the Spaces as radio
-// rows (the suggested one and the chosen one, the rest one tap away), and one tap to open it there.
-func (a *App) mailboxSpaces(c *ui.Context, r reachRow, ch *mailboxChoice, look *protocol.MailboxLook) {
+// hearBack is D489's offer under an agent whose answers can't reach it (D480's choice, one tap):
+// where they will go (the Space Ducter suggests, read from that computer's own Mem, read only) and who
+// can read it in one line, 让它收到回话 / Let it hear back (the tap is the Go, with that Space), and
+// 换一个空间 / Another Space, quiet, for the real list. Mem never picks a Space; without a suggestion
+// the list is open and the person picks first. Never a typed name.
+func (a *App) hearBack(c *ui.Context, r reachRow) {
 	t := a.T
-	var rec *protocol.MailboxSpace
+	ch := a.mailboxChoosing
+	mine := ch != nil && ch.Device == r.Device && ch.Harness == r.Harness
+	where := r.DeviceName
+	if where == "" {
+		where = r.Device
+	}
+	line := func(s string, control func()) {
+		ui.Row(c.Key("hear-line")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+			uiText(c, keepWords(autospace(s))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).Basis(rowWordsMin).MinWidth(0)
+			if control != nil {
+				ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
+			}
+		})
+	}
+	if !mine {
+		line(a.L.T("mailbox.ask", where), func() {
+			if a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
+				a.chooseMailbox(r.Device, r.Harness)
+			}
+		})
+		return
+	}
+	look := ch.Look
+	if look == nil {
+		line(a.L.T("mailbox.looking", where), nil)
+		return
+	}
+	if look.State != "choose" || len(look.Spaces) == 0 {
+		k := look.State
+		if k == "choose" {
+			k = "failed"
+		}
+		var again func()
+		if k != "old" {
+			again = func() {
+				if a.buttonFor(c, a.L.T("mailbox.again"), r.Tool, btnText, t.ControlSM, t.Surface) {
+					a.chooseMailbox(r.Device, r.Harness)
+				}
+			}
+		}
+		line(a.L.T("mailbox."+k, where), again)
+		return
+	}
+	var rec, pick *protocol.MailboxSpace
 	for i := range look.Spaces {
 		if look.Spaces[i].ID == look.Recommend {
 			rec = &look.Spaces[i]
 		}
-	}
-	pick := look.Spaces[0]
-	if rec != nil {
-		pick = *rec
-	}
-	for _, s := range look.Spaces {
-		if s.ID == ch.Pick {
-			pick = s
+		if look.Spaces[i].ID == ch.Pick {
+			pick = &look.Spaces[i]
 		}
 	}
-	uiText(c, a.L.T("mailbox.title")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
-	if rec != nil {
-		k := "mailbox.why.personal"
-		if rec.Partner {
-			k = "mailbox.why.partner"
-		}
-		uiText(c, keepWords(autospace(a.L.T(k, a.spaceName(*rec))))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+	if pick == nil {
+		pick = rec
 	}
-	shown := 0
+	offer := func() {
+		if pick == nil {
+			line(a.L.T("mailbox.pick"), nil)
+			return
+		}
+		p := *pick
+		line(a.spaceIn(p), func() {
+			if a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
+				a.openMailbox(r.Device, r.Harness, &protocol.MailboxSpaceRef{ID: p.ID, Label: p.Label})
+			}
+		})
+	}
+	if rec != nil && !ch.More {
+		offer()
+		// At the text's start edge, as the web's: a row keeps the quiet link its own width.
+		ui.Row(c.Key("mb-more")).Children(func() {
+			if a.buttonFor(c, a.L.T("mailbox.other"), r.Tool, btnText, t.ControlSM, t.Surface) {
+				ch.More = true
+			}
+		})
+		return
+	}
+	// Open, the list comes first and the offer follows it, saying the Space picked.
+	defer offer()
 	ui.Column(c.Key("mb-list")).Gap(2).Role(ui.RoleRadioGroup).Label(a.L.T("mailbox.title")).Children(func() {
 		for _, s := range look.Spaces {
-			if !ch.More && rec != nil && s.ID != rec.ID && s.ID != pick.ID {
-				continue
-			}
-			shown++
 			s := s
 			who := a.spaceReaders(s)
 			label := a.spaceName(s)
 			if who != "" {
 				label += ", " + who
 			}
-			if a.menuRow(c, "mb:"+s.ID, label, s.ID == pick.ID, false, func() {
+			on := pick != nil && s.ID == pick.ID
+			if a.menuRow(c, "mb:"+s.ID, label, on, false, func() {
 				ui.Row(c).Grow(1).MinWidth(0).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					uiText(c, a.spaceName(s)).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).SingleLine()
 					if rec != nil && s.ID == rec.ID {
@@ -159,22 +185,6 @@ func (a *App) mailboxSpaces(c *ui.Context, r reachRow, ch *mailboxChoice, look *
 			}) {
 				ch.Pick = s.ID
 			}
-		}
-	})
-	if rec != nil && !ch.More && shown < len(look.Spaces) {
-		// At the list's start edge, as the web's: a row keeps the text button its own width.
-		ui.Row(c.Key("mb-more")).Children(func() {
-			if a.buttonFor(c, a.L.T("mailbox.more"), r.Tool, btnText, t.ControlSM, t.Bg) {
-				ch.More = true
-			}
-		})
-	}
-	ui.Row(c.Key("mb-acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
-		if a.buttonFor(c, a.L.T("mailbox.go", a.spaceName(pick)), r.Tool, btnPrimary, t.ControlSM, t.Bg) {
-			a.openMailbox(r.Device, r.Harness, &protocol.MailboxSpaceRef{ID: pick.ID, Label: pick.Label})
-		}
-		if a.buttonFor(c, a.L.T("mailbox.not"), r.Tool, btnText, t.ControlSM, t.Bg) {
-			a.mailboxChoosing = nil
 		}
 	})
 }

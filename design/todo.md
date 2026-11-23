@@ -61,7 +61,14 @@ line.
 
 ## Agent messaging, after D470 (`bridge.md` "Who reaches whom…")
 
-- **Open its mailbox, run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
+- **Mem's side of the one tap (D489).** `research/private/bridge-feedback-2026-11-23.md`: a nameable personal
+  Space, a consented enable by a trusted local app, Bridge in the pi and Antigravity plugins, identity-scoped
+  contexts, a watch that delivers in seconds, a mailbox-changed event. Trigger: the author sends it and Mem ships
+  any of them; then drop the offer (or its look) where Mem makes it unneeded.
+- **The pane's row says "done" the moment the mailbox opens.** Trigger: Mem emits a mailbox-changed event (item 6);
+  until then the row turns at the next contact read (D444).
+
+- **Let it hear back (D489; was Open its mailbox), run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
   The task writes Mem-side (`nmem bridge setup --enable` in that agent's own context); check the brief's steps
   against Mem's then-current help, and that the row turns both ways after Mem's next contact read.
 - **A sender's daily use shown** (of SENDER_DAILY, TRUSTED_DAILY) in its thread's head. Trigger: a sender is set

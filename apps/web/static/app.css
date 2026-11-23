@@ -20591,98 +20591,31 @@ html[data-text-size="large"] .brand-mark > svg {
   grid-column: 1 / -1;
 }
 
-/* D470: Agent messaging in Settings' voice. 谁能找到谁 / Who reaches whom: per agent its coin, the two
-   ways drawn (solid with a head when it goes, dashed with none while it doesn't), the partner in its pose,
-   and under a broken way why and its fix. 来往 / Back and forth: a thread per agent. The conversation's
-   origin line over the partner's words. Tokens only. */
-.peers-map .link-row {
+/* D470, D489: Agent messaging in Settings' voice. 你的 agent / Your agents: a literal row per agent;
+   under one whose answers can't reach it, its offer (where they'd go, one tap, another Space quietly).
+   来往 / Back and forth: a thread per agent. The conversation's origin line over the partner's words.
+   Tokens only. */
+.hear {
   display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  padding: var(--s3) var(--set-in, var(--s4));
-}
-.lr-pic {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s3);
-  margin: 0;
+  gap: var(--s2) var(--s3);
 }
-.lr-end {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 92px;
+.hear small {
+  flex: 1 1 200px;
   min-width: 0;
-  text-align: center;
-}
-.lr-end b {
-  font-size: var(--sm);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--ink);
-}
-.lr-end small {
-  font-size: var(--xs);
-  line-height: 1.3;
-  color: var(--ink-muted);
-}
-.lr-ways {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--s2);
-  min-width: 0;
-}
-.lr-way {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.lr-way small {
-  font-size: var(--sm);
-  font-weight: 600;
-  line-height: 1.35;
-  text-align: center;
-  color: var(--ink-soft);
-}
-.lr-way.no small,
-.lr-way.unknown small {
-  font-weight: 500;
-  color: var(--ink-muted);
-}
-.lr-line {
-  display: block;
-  width: 100%;
-  height: 12px;
-}
-.lr-line.yes {
-  color: var(--ink-soft);
-}
-.lr-line.no {
-  color: var(--ink-muted);
-}
-.lr-line.unknown {
-  color: var(--line);
-}
-.link-row.broken .lr-way.no small,
-.link-row.broken .lr-line.no {
-  color: var(--needs-ink);
-}
-.lr-why {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  padding: 0 0 0 calc(92px + var(--s3));
-}
-.lr-why small {
   font-size: var(--sm);
   line-height: 1.5;
   color: var(--ink-soft);
 }
-.link-row.broken .lr-why small {
-  color: var(--needs-ink);
+.hear > .btn {
+  flex: none;
+}
+/* On a phone the row keeps its words whole; when the agent last came is in 来往 below. */
+@media (max-width: 599px) {
+  .agent-row > .g-state {
+    display: none;
+  }
 }
 .peer-threads {
   display: flex;
@@ -20739,21 +20672,6 @@ html[data-text-size="large"] .brand-mark > svg {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--r-sm);
-}
-@media (max-width: 599px) {
-  .lr-end {
-    width: 68px;
-  }
-  .lr-way small {
-    font-size: var(--xs);
-  }
-  .lr-why {
-    flex-wrap: wrap;
-    padding-left: 0;
-  }
-}
-.lr-why > .btn {
-  flex: none;
 }
 
 /* ---------- D471: On hand as one ledger ---------- */
@@ -21052,32 +20970,9 @@ html[data-text-size="large"] .brand-mark > svg {
   .set-page.pushed .set-card > div.chat-row:not(.tiled) > .seg { flex: 1 1 calc(100% + var(--chat-col)); margin-left: calc(-1 * var(--chat-col)); }
 }
 
-/* ---------- D480: an agent's mailbox, its Space chosen in place ---------- */
-/* Under the agent's link row, set in from the coin like its why line: a sheet on the paper with the
-   question, the partner's one-line reason, the Spaces as radio rows (the suggested one first and
-   chosen), the rest one tap away, and one tap to open it. Never a typed name. */
-.mb-choice {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  margin: 0 0 0 calc(92px + var(--s3));
-  padding: var(--s3);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  border: 1px solid var(--line-soft);
-}
-.mb-title {
-  font-size: var(--sm);
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--ink);
-}
-.mb-lede,
-.mb-wait {
-  font-size: var(--sm);
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
+/* ---------- D480, D489: where an agent's answers go, its Space chosen in place ---------- */
+/* Under the agent's offer: the real Spaces as radio rows (the suggested one marked), opened by the quiet
+   换一个空间 / Another Space. Never a typed name. */
 .mb-list {
   display: flex;
   flex-direction: column;
@@ -21119,18 +21014,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .mb-more:hover {
   color: var(--ink);
-}
-.mb-acts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2);
-  padding-top: var(--s1);
-}
-@media (max-width: 599px) {
-  .mb-choice {
-    margin-left: 0;
-  }
 }
 
 /* ---------- D482: an ask's one grammar; the morning note's calm ---------- */

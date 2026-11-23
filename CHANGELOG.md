@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.22 - 2026-11-23
+
+<!-- whats-new
+zh: 伙伴一开口就记得关于你的要紧事
+en: Your partner starts each conversation knowing what matters about you
+-->
+
+**It remembers you from the first word**
+- Each new conversation starts with what Nowledge Mem holds about you: your preferences,
+  decisions and facts, newest first. Your partner uses the one that matters to what you just
+  said and leaves the rest unsaid.
+- When something you say now differs from what it remembers, it says so and asks which is
+  right before acting.
+- What it brought up says where it came from: "Remembered from what you said", and when.
+
 ## 0.1.21 - 2026-11-23
 
 <!-- whats-new

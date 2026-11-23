@@ -159,6 +159,12 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 	if d.Resolved != nil && d.Resolved.Posted {
 		return a.L.T("standing.settled") // D413: the drafts went under what the person said
 	}
+	if d.Elsewhere {
+		return a.L.T("decision.resolved.elsewhere") // D481: closed while this window missed how; the home's word follows
+	}
+	if d.Resolved != nil && d.Resolved.By == "ended" {
+		return a.L.T("decision.resolved.ended") // D481: closed by what happened
+	}
 	opt, text, by := d.Pending, "", ""
 	if d.Resolved != nil {
 		opt, text, by = d.Resolved.Option, d.Resolved.Text, d.Resolved.By

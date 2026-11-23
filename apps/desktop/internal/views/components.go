@@ -761,6 +761,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 			a.glyph(c, 16, drawCheck(t.InkMuted))
 			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
+		a.leftDraft(c, d, st)
 		return
 	}
 	// D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the
@@ -839,6 +840,31 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		})
 		a.replyDraft[d.DecisionID] = draft
 	}
+}
+
+// leftDraft (D481): words typed into this card's reply box while it was
+// answered somewhere else: kept, and offered as a message to the partner
+// quoting the card, never dropped with the box.
+func (a *App) leftDraft(c *ui.Context, d *store.DecisionState, st decisionStyle) {
+	t := a.T
+	draft := strings.TrimSpace(a.replyDraft[d.DecisionID])
+	if draft == "" || d.Pending != "" {
+		return
+	}
+	ui.Column(c.Key("left:"+d.DecisionID)).Gap(t.S2).Padding(t.S3, t.S3, t.S3, t.S3).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
+		uiText(c, a.L.T("decision.left.line")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, draft).FontSize(t.MD).TextColor(t.Ink).LineHeight(1.5)
+		ui.Row(c.Key("left-acts:" + d.DecisionID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			ui.Spacer(c)
+			if a.buttonFor(c, a.L.T("decision.left.drop"), draft, btnText, st.height, st.quietBg) {
+				delete(a.replyDraft, d.DecisionID)
+			}
+			if a.buttonFor(c, a.L.T("decision.left.send"), draft, btnSecondary, st.height, st.quietBg) {
+				delete(a.replyDraft, d.DecisionID)
+				a.sendLeftDraft(d, draft)
+			}
+		})
+	})
 }
 
 // holdLabel is Hold's words: 先等等, or what holding means for a where ask

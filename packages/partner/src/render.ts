@@ -578,6 +578,7 @@ const factsLine = (f: MendFacts | undefined) => {
  */
 export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart, facts?: MendFacts): string {
   const name = title ? `"${clip(title, 80)}"` : m.taskId;
+  if (m.cls === "round") return renderRound(m, name);
   const again = ` To open the same work again: task_open with replaces "${m.taskId}" (it keeps the user's word on where), its repository as place.remote when it has one.`;
   if (m.cls === "stall")
     return (
@@ -596,6 +597,36 @@ export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: 
     `${head} The user hasn't been told; find another way first, from the facts and [devices] (which computers, their agents, the code on each).${again} ` +
     `Code not on the computer the work belongs on is cloned there first; if its agent couldn't start, open it on another agent there. ` +
     `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all. Never say anything [devices] or these facts don't show.`
+  );
+}
+
+const mins = (n: number) => (n < 120 ? `${n} min` : `${Math.round(n / 6) / 10} h`);
+
+/**
+ * D481: a round of a task in rounds has gone on past Ducter's look budget. Not a failure and not a
+ * verdict: the facts (its steps, what it waits on, its earlier rounds), for the partner to judge.
+ * hel, 2026-11-23: a healthy loop waiting on Prow CI was called "probably stuck" from the time
+ * alone, and the person's answer was 「你可以直接看看吧？」.
+ */
+function renderRound(m: Bodies["mend"], name: string): string {
+  const f = m.round;
+  const now = Date.now();
+  const ago = (iso: string) => mins(Math.max(0, Math.round((now - Date.parse(iso)) / 60_000)));
+  const facts = f
+    ? [
+        `this round began ${hhmm(f.since)} (${ago(f.since)} ago)`,
+        f.everyMs ? `it runs every ${mins(Math.round(f.everyMs / 60_000))}` : "",
+        f.reason ? `its rounds are for: "${clip(f.reason, 160)}"` : "",
+        f.earlier?.length ? `its earlier rounds took ${f.earlier.map(mins).join(", ")}` : "no earlier round to compare with",
+        f.waits?.length ? `it waits on: ${f.waits.map((w) => `"${clip(w, 120)}"`).join("; ")}` : "",
+        f.report ? `its report this round (${hhmm(f.report.at)}): ${f.report.state}, "${clip(f.report.summary, 240)}"` : "no report yet this round",
+        f.steps.length ? `its latest steps: ${f.steps.map((s) => `${hhmm(s.at)} ${clip(s.text, 160)}`).join(" | ")}` : "no steps logged this round",
+      ].filter(Boolean)
+    : [];
+  return (
+    `[task ${m.taskId} ${name} runs in rounds; this round has gone on a long time. Nothing is known to be wrong: this is a look, not an alarm.]${facts.length ? ` Facts: ${facts.join("; ")}.` : ""} The user hasn't been told. ` +
+    `Look first (task_read its steps if these aren't enough) and judge what the facts show: still moving (new steps, waiting on something that takes time, like CI checks or a review), or truly stuck (no step for a long while, the same error again and again). ` +
+    `Moving: say nothing at all. Stuck: task_send it the one clear next step. Ask the user only if you truly can't tell from its steps, or it needs their decision; then one short line in their language saying what you saw (its last step and when), never "it may be stuck" from the time alone. Never say anything these facts or its steps don't show.`
   );
 }
 
@@ -717,6 +748,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
           ? `[${t} the user said Go on keeping task ${d.board.taskId}'s review rounds on a board: Ducter made the review board (its card is up). Say nothing more.]`
           : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool yourself (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
       if (d?.board) return `[${t} the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
+      if (b.by === "ended") return `[${t} question closed: no longer needed (what it asked about ended)]${d ? ` "${clip(d.question, 120)}"` : ""}`;
       return `[${t} decision resolved: ${b.option}${b.by === "default" ? " by default" : ""}]${d ? ` "${clip(d.question, 120)}"` : ""}${b.text ? ` ${clip(b.text, 300)}` : ""}`;
     }
     case "bridge_msg": {

@@ -801,11 +801,19 @@ export function createWsHandler(deps: WsDeps) {
         if (deps.home) send(ws, deps.home.ways());
         // Channel only: task streams are pulled with task_history.
         const stream = channelOf(ws.data.partner);
-        const events =
-          f.cursor != null && f.cursor >= 0
-            ? log.read({ stream, fromSeq: f.cursor + 1, limit: REPLAY_MAX })
-            : log.read({ stream, limit: REPLAY_FRESH });
-        send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
+        // D481: everything since the cursor, in frames of REPLAY_MAX. Before, one read of the first
+        // REPLAY_MAX was all a long-away client got: what came after it (a resolution among it) never
+        // arrived, and the live events moved its cursor past the gap for good.
+        const asChannel = (evs: LogEvent[]) => dropSuperseded(evs).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" }));
+        if (f.cursor != null && f.cursor >= 0) {
+          let from = f.cursor + 1;
+          for (;;) {
+            const page = log.read({ stream, fromSeq: from, limit: REPLAY_MAX });
+            send(ws, { t: "events", events: asChannel(page) });
+            if (page.length < REPLAY_MAX) break;
+            from = page[page.length - 1]!.seq + 1;
+          }
+        } else send(ws, { t: "events", events: asChannel(log.read({ stream, limit: REPLAY_FRESH })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         if (deps.pins && !ws.data.partner) send(ws, pinsFrame());
         if (deps.apps && !ws.data.partner) send(ws, appsFrame());
@@ -903,6 +911,17 @@ export function createWsHandler(deps: WsDeps) {
           else throw new Error("a key card is answered with the key or 不给 / Don't give");
           return;
         }
+        // D481: answered already, somewhere else (another window, a chat app, its default, its task
+        // ending): this client learns how at once, and words typed into its reply box are not lost:
+        // they go to the partner as a message quoting the card.
+        if (decisions.get(f.decisionId) && !decisions.isPending(f.decisionId)) {
+          const seqs = decisions.seqsOf(f.decisionId);
+          const r = decisions.resolution(f.decisionId);
+          const text = f.option === "reply" ? String(f.text ?? "").trim() : "";
+          if (text && text !== r?.text?.trim() && seqs[0]) logUserMessage(log, decisions, { text, reply: { seq: seqs[0] }, stream: channelOf(ws.data.partner) });
+          send(ws, { t: "events", events: seqs.flatMap((s) => log.read({ fromSeq: s, limit: 1 })).flatMap((e) => forSocket(ws, e) ?? []) });
+          return;
+        }
         const pay = deps.autofill?.fill;
         if (f.option === "go" && pay?.needsCvc(f.decisionId)) {
           if (!f.cvc) throw new Error("this payment needs the card's security code");
@@ -915,6 +934,15 @@ export function createWsHandler(deps: WsDeps) {
         // D382: 晚点再问我 / Ask me later (until), or 现在就定 / Decide now (null).
         const until = f.until === null ? null : Date.parse(String(f.until ?? ""));
         decisions.later(f.decisionId, until);
+        return;
+      }
+      case "asks_get": {
+        // D481: the questions a client and On hand's openAsks disagree about: each one's own events
+        // (its decision, later/back/seen, its resolution), in seq order, in one events frame.
+        const ids = Array.isArray(f.ids) ? f.ids.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
+        const seqs = [...new Set(ids.flatMap((id) => decisions.seqsOf(id)))].sort((a, b) => a - b);
+        const events = seqs.flatMap((s) => log.read({ fromSeq: s, limit: 1 })).flatMap((e) => forSocket(ws, e) ?? []);
+        send(ws, { t: "events", events });
         return;
       }
       case "key_add": {

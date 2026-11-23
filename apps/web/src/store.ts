@@ -53,6 +53,11 @@ export type DecisionState = Bodies["decision"] & {
   /** D382: put off until this time (晚点再问我 / Ask me later); backAt: when it came back. */
   later?: string;
   backAt?: string;
+  /**
+   * D481: On hand says it is no longer open at the home, and this client missed how: closed here
+   * at once (resolved holds a stand-in), until the home's own resolution (asks_get) replaces it.
+   */
+  elsewhere?: true;
 };
 
 export interface Send {
@@ -315,6 +320,8 @@ export class Store {
         this.headSeq = f.headSeq;
         this.welcomed = true;
         if (f.personaName) this.personaName = f.personaName;
+        this.asksAsked.clear(); // D481: a new socket asks again for what it still lacks
+        this.asksWanted.length = 0;
         // D284: a new socket: what a task's history missed meanwhile is asked again when it opens.
         for (const t of this.tasks.values()) {
           t.histStale = t.histStale || t.historyLoaded;
@@ -468,6 +475,7 @@ export class Store {
       t.stateSeq = Math.max(t.stateSeq ?? 0, this.cursor);
       if (card.lastReport) t.lastReport = card.lastReport;
     }
+    if (o.openAsks) this.reconcileAsks(o.openAsks);
   }
 
   /** D320: the tail's bookkeeping (D284) from the span through the newest, when there is one. */
@@ -806,6 +814,42 @@ export class Store {
     }
     d.resolved = r;
     d.pending = "";
+    delete d.elsewhere;
+  }
+
+  /** D481: the ids to ask the home for (asks_get), each once a socket; filled by an On hand that disagrees with what is held. */
+  asksWanted: string[] = [];
+  private asksAsked = new Set<string>();
+
+  /**
+   * D481: On hand's openAsks is the one source of truth for "open". A question held open here that
+   * the home no longer has open, asked at or before the snapshot, closes now (its resolution was
+   * missed: a socket that slept, a replay before D481); one open at the home that isn't held here
+   * (asked before what this client loaded) is asked for. Either way the home's own events follow.
+   */
+  reconcileAsks(a: { ids: string[]; asOf: number }) {
+    const open = new Set(a.ids);
+    const want = (id: string) => {
+      if (this.asksAsked.has(id)) return;
+      this.asksAsked.add(id);
+      this.asksWanted.push(id);
+    };
+    for (const d of this.decisions.values()) {
+      if (d.resolved || open.has(d.decisionId) || d.seq > a.asOf) continue;
+      d.resolved = { decisionId: d.decisionId, option: d.pending || "hold", by: "ended", settled: true };
+      d.pending = "";
+      d.elsewhere = true;
+      want(d.decisionId);
+    }
+    for (const id of open) {
+      const d = this.decisions.get(id);
+      if (!d || !d.question) want(id);
+    }
+  }
+
+  /** D481: what to ask the home for now (and forget, so it goes once). */
+  takeAsksWanted(): string[] {
+    return this.asksWanted.splice(0);
   }
 
   /** An event into the task's held events, in seq order (D320: by bisection, a page lands far up too). */

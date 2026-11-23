@@ -76,6 +76,8 @@ import { readForDraft, sendPlan, type Drafter } from "./reply.ts";
 import type { ReplyTarget } from "./candidate.ts";
 import { KIND_WORDS, W } from "./words.ts";
 import { codeCandidates, LEADS_MAX, spotsToCandidates, type Lead, type Spotter, type Upcoming } from "./wider.ts";
+import { CROSS_RUNS_A_DAY, CROSS_TOKENS_A_DAY, shadowPass, type CrossAsk } from "./cross.ts";
+import type { ShadowRun } from "@ducter/protocol";
 
 export const PROACTIVE_FILE = "proactive.json";
 const MIN = 60_000;
@@ -278,6 +280,8 @@ interface State {
   opens?: OpenRec[];
   /** D388: the web looks run today for open questions (≤ WEB_LOOKS_A_DAY). */
   webDay?: { day: string; n: number };
+  /** D502: the shadow passes today (runs, tokens), the day the daily one ran, and the fact sets already logged. */
+  cross?: { day: string; runs: number; tokens: number; daily?: string; seen: Record<string, number> };
 }
 
 /**
@@ -423,6 +427,8 @@ export interface ProactiveOptions {
   wider?: (ctx: { now: number; zone: string; focus: string[]; upcoming: Upcoming[] }) => Promise<Lead[]>;
   /** D458: picks the leads worth offering (the cheapest model); set later, like the judge. Absent: code's joins only. */
   spotter?: Spotter;
+  /** D502: cross-source findings over the ledger, in shadow (the cheapest model); set later, like the judge. Absent: no shadow pass. */
+  cross?: CrossAsk;
 }
 
 /** D243: the partner's view of what it noticed (the `noticed` tool). Words only, never mail. */
@@ -467,7 +473,12 @@ export interface Proactive {
   wakes(e: LogEvent): boolean;
   /** D388: the questions said finds left open, and what became of them (the replay reports them). */
   opens(): { name: string; fields: ("day" | "time")[]; state: "open" | "filled" | "gone"; looks: number }[];
-  setModels(m: { triage?: Triage; judge?: FindJudge; drafter?: Drafter; spotter?: Spotter }): void;
+  setModels(m: { triage?: Triage; judge?: FindJudge; drafter?: Drafter; spotter?: Spotter; cross?: CrossAsk }): void;
+  /**
+   * D502: one shadow pass of cross-source findings now (`ducter proactive cross`, or the daily one
+   * after the morning note): logged as `shadow_finds` on the partner stream, never shown or said.
+   */
+  cross(by?: ShadowRun["by"]): Promise<ShadowRun>;
   /** D403: 撤回 / Undo on a drafted reply inside its window: nothing is sent and its Go is asked again. False when it can't be undone. */
   undo(findId: string): boolean;
   /** Something the accounts card shows changed (a look, a find, a tile). */
@@ -515,6 +526,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   let judge = o.judge ?? barJudge;
   let drafter = o.drafter;
   let spotter = o.spotter;
+  let crossAsk = o.cross;
   /** D403: the replies waiting out their undo window (in memory: a restart asks again instead of sending). */
   const sendTimers = new Map<string, unknown>();
   /** D368: the focus names of this morning's run (Mem's Working Memory), for the bar and the pick; empty otherwise. */
@@ -1871,6 +1883,41 @@ export function createProactive(o: ProactiveOptions): Proactive {
     await speak("morning");
   }
 
+  /** D502: once a day, after that day's morning ran (however it ran), the shadow pass; never awaited: a slow model holds nothing up. */
+  function crossDaily(): void {
+    if (!crossAsk || mode() === "off" || st.morningDay !== today() || st.cross?.daily === today()) return;
+    void crossNow("daily").catch((err) => console.warn(`[proactive] the shadow pass failed: ${(err as Error).message}`));
+  }
+
+  /**
+   * D502: one shadow pass: the cheapest model over the ledger's open facts; code's guards; logged on
+   * the partner stream with the detectors' candidates beside it. Never said, never a task.
+   */
+  async function crossNow(by: ShadowRun["by"]): Promise<ShadowRun> {
+    const d = today();
+    if (st.cross?.day !== d) st.cross = { day: d, runs: 0, tokens: 0, seen: st.cross?.seen ?? {}, ...(st.cross?.daily ? { daily: st.cross.daily } : {}) };
+    const cx = st.cross;
+    if (by === "daily") cx.daily = d;
+    const over = cx.runs >= CROSS_RUNS_A_DAY || cx.tokens >= CROSS_TOKENS_A_DAY;
+    if (!over && crossAsk) cx.runs++;
+    const run = await shadowPass({
+      runId: newId("shadow"),
+      by,
+      now: now(),
+      ctx: { lang: lang(), today: d, zone: zone() },
+      facts: ledger.all(),
+      candidates: detect(ledger, dctx()),
+      saidFacts: new Set(Object.values(st.finds).flatMap((f) => f.facts ?? [])),
+      seen: cx.seen,
+      ...(crossAsk ? { ask: crossAsk } : {}),
+      over,
+    });
+    cx.tokens += run.tokens;
+    if (run.skipped !== "no_model") o.log.append({ stream: "partner", origin: "system", kind: "shadow_finds", body: run });
+    save();
+    return run;
+  }
+
   /**
    * D281, every tick: a morning the home missed (asleep or restarting at its hour) runs now, within
    * MORNING_LATE_MS; then the person's own lines whose moment came. A line kept for the morning waits
@@ -1881,6 +1928,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const m = mode();
     const noteDay = (m === "three" || m === "useful") && now() - morningOf(today()) <= MORNING_LATE_MS;
     sayOwn(ownDue().filter((r) => r.timed || !noteDay || st.morningDay === today()));
+    crossDaily();
   }
 
   /**
@@ -2233,9 +2281,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (m.judge) judge = m.judge;
       if (m.drafter) drafter = m.drafter;
       if (m.spotter) spotter = m.spotter;
+      if (m.cross) crossAsk = m.cross;
       // A look back that waited for a model to read with goes now (D226).
       if (m.triage) resumeBackfills();
     },
+    cross: (by = "asked") => crossNow(by),
     undo(findId) {
       const f = st.finds[findId];
       if (!f || f.send?.state !== "sending") return false;

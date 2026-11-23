@@ -41,11 +41,12 @@ import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { replayProactive } from "./proactive/replay.ts";
-import { readWeekEvents, weekReport, weeksSince, WEEKS_DEFAULT, WEEKS_MAX } from "./proactive/week.ts";
+import { readShadowEvents, readWeekEvents, weekReport, weeksSince, WEEKS_DEFAULT, WEEKS_MAX } from "./proactive/week.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelDrafter } from "./proactive/reply.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { gatherLeads, modelSpotter } from "./proactive/wider.ts";
+import { modelCross } from "./proactive/cross.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { openPartners, type Partners, type PartnerError } from "./partners.ts";
@@ -308,7 +309,7 @@ export interface CoreOptions {
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
-  proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; monthTokens?: number; zone?: string };
+  proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; cross?: import("./proactive/cross.ts").CrossAsk; monthTokens?: number; zone?: string };
   /** D458 test seam: a fake Mem the offers read (the partner sets the real one with setMemLook). */
   memLook?: MemLookPort;
   /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
@@ -2297,6 +2298,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       return gatherLeads({ ...c, tasks: mine, talk, refs, ...(memLookRef && settings.get().memory ? { mem: memLookRef } : {}) });
     },
     ...(opts.proactive?.spotter ? { spotter: opts.proactive.spotter } : {}),
+    ...(opts.proactive?.cross ? { cross: opts.proactive.cross } : {}),
   });
   proactiveRef = proactive;
   // D388: the dry replay: a second engine on a scratch folder, the same sources and agent, nothing sent.
@@ -2315,7 +2317,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const weeks = Math.min(WEEKS_MAX, Math.max(1, Math.floor(n ?? WEEKS_DEFAULT)));
     const now = clock.now();
     const z = zone();
-    return weekReport(readWeekEvents(log, weeksSince(now, z, weeks)), { now, zone: z, weeks, mode: settings.get().proactive ?? "off", weights: proactive.weights() });
+    const since = weeksSince(now, z, weeks);
+    return weekReport(readWeekEvents(log, since), { now, zone: z, weeks, mode: settings.get().proactive ?? "off", weights: proactive.weights(), shadow: readShadowEvents(log, since) });
   };
   // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
   void workingMemory.refresh().catch(() => undefined);
@@ -2477,6 +2480,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
         // D458: the leads past the accounts, picked once a morning on the cheapest model (tool-less, its own folder).
         ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
+        // D502: cross-source findings in shadow, once a day on the cheapest model (tool-less, its own folder).
+        ...(opts.proactive?.cross ? {} : { cross: modelCross(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "cross", timeoutMs: 120_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
       });
       // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
       if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));

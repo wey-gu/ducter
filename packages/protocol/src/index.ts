@@ -822,6 +822,9 @@ export interface Bodies {
   // A few more brought it into view ("more"). Once per find and what; read only by `ducter
   // proactive week` (never a learning signal, never wakes the partner).
   find_opened: { findId: string; kind: FindKind; what: import("./proactive.ts").FindOpenWhat };
+  // D502: one shadow pass of cross-source findings (the cheap model over the ledger's facts), on the
+  // "partner" stream: never shown, never wakes the partner; read by `ducter proactive week`.
+  shadow_finds: import("./proactive.ts").ShadowRun;
   connection_call: {
     callId: string;
     connectionId: string;
@@ -1566,6 +1569,8 @@ export type ClientFrame =
   | { t: "proactive_replay"; days?: number; web?: boolean }
   // D464: `ducter proactive week`: the last `weeks` (1–12) of offers counted from the Log; answered with proactive_week_result.
   | { t: "proactive_week"; weeks?: number }
+  // D502: `ducter proactive cross`: one shadow pass of cross-source findings now, logged like the daily one; answered with proactive_cross_result.
+  | { t: "proactive_cross" }
   // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
   | { t: "repairs_week"; weeks?: number }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
@@ -1914,6 +1919,7 @@ export type ServerFrame =
   | { t: "proactive_day"; day: ProactiveDay }
   | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
+  | { t: "proactive_cross_result"; run?: import("./proactive.ts").ShadowRun; error?: string }
   | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }

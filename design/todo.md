@@ -1469,7 +1469,16 @@ note and a `Dn`) before it is built.
       dedup, and the cross-source checks (a stay vs a flight). Only after a labelled week from the
       author ("should this have been said?") scored for precision of what is said and recall of
       what mattered, against today's detectors. Trigger: hel's first findings under D230–D232
-      and the author's labelled week.
+      and the author's labelled week. D502 built the cross-source half in shadow (below).
+- [ ] **Cross-source findings: from shadow to said** (D502, `connectors.md` §4.4): after a week
+      of shadow passes on the author's home, the author labels each shadow finding and each
+      detector join of that week ("should this have been said?"). Promote (a find of its own kind
+      or the detectors' kinds, offered, never an interruption) only when, on those labels, shadow
+      plus detectors find more of what mattered than the detectors alone and shadow's precision is
+      at least theirs; retire a detector once shadow covers its shape on two labelled weeks. The
+      step is the author's. Also owed: a held-out set of ledgers written by someone else (today's
+      21 were written with the prompt), and a run on Codex's cheap model. Trigger: seven days of
+      `shadow_finds` on the author's home and the author's labels.
 - [ ] **Mailbox and app-tile art** (D166): a clay mailbox per source colour at 640 (closed, lid
       up, grey) and the app tiles' clay base; marks per each brand's guidelines (D146's rule).
       Then the human comprehension test (with D65's). Trigger: met (D166 decided 2026-11-10).

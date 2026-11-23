@@ -367,6 +367,46 @@ condition's short words (`once`, `以后再`) and the focus; conversations one c
 the most recent first, at most three. A source names a tool only when it is an AI tool the person
 knows; Mem's own distillers and connectors are the person's own line.
 
+### 4.4 Cross-source findings, in shadow (D502, research/218 #2)
+
+The motivation's two stories (a flight that doesn't match the hotel, a domain that can't renew) are
+caught today by detectors written for one shape each (§4: `mismatches()`, `planMismatches()`, a
+renewal's `cardExpired`). Principle 21 says what conflicts with what is the model's to judge. So,
+beside the detectors and changing nothing they do, a **shadow pass** asks the general question:
+*which of these facts contradict each other, or together put something at risk?*
+
+- **What it reads:** the ledger's open facts (§9), the types that can meet (booking, renewal,
+  payment, commitment, change, meeting, service, billing, plan; not the asks and replies the
+  waiting kinds own): those whose own date is at most a day behind, the soonest first, then news
+  of the last 14 days about something past (a payment that failed on Sunday bears on next week's
+  renewal), the newest first; 160 at most. Each as its id, type,
+  source, label, sender and typed fields: exactly what the detectors read, never a body.
+- **Who reads:** the cheapest model of the agent the partner thinks with (`createHarnessAsk` cheap,
+  tool-less, its own folder `cross/`), one call (`proactive/cross.ts`).
+- **What comes back:** records, no kind: `{facts: [ids], text, why, next, confidence}`, the text in
+  the person's language.
+- **Code guards invariants only:** a finding citing any id it wasn't shown is dropped (a made-up id
+  is a made-up reason), as is one with no facts or no words; one finding per fact set; at most 8 a
+  pass; a fact set logged once in 30 days; at most 3 passes and 150 k tokens a day. Nothing outward:
+  the pass returns records and has no tools, no task, no message, no push.
+- **When:** once a day, after that day's morning note (any mode but 不用主动找我), never awaited;
+  and on asking: **`ducter proactive cross [--json]`** on the home (counts against the day's 3).
+- **Where it goes:** the Log only, as `shadow_finds` on the partner stream (no client shows it).
+  Each finding carries which detectors' candidates rest only on facts it cites (`alsoBy`; a trip's or
+  meeting's heads-up doesn't count) and whether a find on its facts was already said; the pass also
+  lists the detectors' joins no finding touched.
+- **The comparison:** `ducter proactive week` (§8.1) gains a line per week: passes, findings, how
+  many a detector also has, how many only the model has (quoted, with its confidence), how many
+  joins only the detectors have.
+- **Measured:** `bun run eval:findings --model haiku` (`packages/core/eval/findings/`): 21 ledgers
+  (13 true conflicts: the two stories in the detectors' shape and their variants; 6 look-alikes
+  that are fine; 2 of noise), each with everyday facts beside its story, scored on the facts cited.
+  On haiku: 13/13 found and 0 false findings in both zh and en (D502 for the runs; the ledgers
+  were written with the prompt, so this is an upper bound).
+- **Promotion (D502):** nothing is shown until the author's labelled week on his own home
+  (`todo.md`). Then each shadow finding is said as an offer only if the labels give it recall over
+  the detectors at no worse precision, and a detector retires once shadow covers its shape.
+
 ## 5. When it speaks: one ladder, one switch
 
 The existing escalation (principle 7: badge → message → push → call) with proactive rungs:

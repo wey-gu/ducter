@@ -309,6 +309,65 @@ export interface WeekRow {
   interruptions: OfferCounts;
   /** What the person took up, by its words (at most TAKEN_LIST, oldest first). */
   takenUp: { kind: FindKind; text: string; by: "go" | "useful" | "replied"; at: string; offer: boolean }[];
+  /** D502: the model's cross-source findings in shadow this week, beside the detectors' (absent: no shadow run). */
+  shadow?: ShadowWeek;
+}
+
+/**
+ * D502: one cross-source finding the cheap model returned over the ledger's facts, kept by code's
+ * guards (every fact it cites is real, nothing outward). Shadow only: logged, never shown.
+ */
+export interface ShadowFinding {
+  /** Its fact ids, sorted and joined: one finding per set of facts. */
+  key: string;
+  facts: string[];
+  /** The model's own description in the person's language (no kind). */
+  text: string;
+  /** What the person would lose if nobody noticed. */
+  why: string;
+  /** The one next step it suggests (never taken: shadow). */
+  next: string;
+  /** 0..1, the model's. */
+  confidence: number;
+  /** The hand-written detectors' kinds whose candidates rest on any of these facts now. */
+  alsoBy: FindKind[];
+  /** A find resting on any of these facts was already said. */
+  said: boolean;
+}
+
+/** D502: why code dropped a returned finding. */
+export type ShadowDrop = "no_facts" | "unknown_fact" | "no_text" | "duplicate" | "over_cap";
+
+/** D502: one shadow pass (the `shadow_finds` Log event on the partner stream). */
+export interface ShadowRun {
+  runId: string;
+  by: "daily" | "asked";
+  /** Facts the model saw. */
+  facts: number;
+  findings: ShadowFinding[];
+  /** Kept findings whose fact set an earlier pass already logged (not logged again). */
+  repeats: number;
+  dropped: { why: ShadowDrop; n: number }[];
+  /** The detectors' joins (two facts or more, or a mismatch) none of the findings touch. */
+  detectorsOnly: { key: string; kind: FindKind; facts: string[] }[];
+  tokens: number;
+  /** It did not ask the model: over the day's budget, nothing to read, no model, or the call failed. */
+  skipped?: "budget" | "no_facts" | "no_model" | "failed";
+  error?: string;
+}
+
+/** D502: a week of shadow findings against the detectors (`ducter proactive week`). */
+export interface ShadowWeek {
+  runs: number;
+  findings: number;
+  /** Findings a detector also has a candidate on. */
+  both: number;
+  /** Findings no detector has: what promotion would add. */
+  shadowOnly: number;
+  /** Detector joins no finding touched (each distinct join once). */
+  detectorsOnly: number;
+  /** Shadow-only findings by their words (the newest few, oldest first). */
+  list: { text: string; confidence: number; facts: number; at: string }[];
 }
 
 /** D464: `ducter proactive week`: from the Log, per week; and the weights learned now (D453). */

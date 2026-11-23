@@ -311,16 +311,26 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; native: Awaited<ReturnType<NativeBrowserProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
   let cached: Cached | undefined;
   let inflight: Promise<Cached> | undefined;
+  // D440: the last harness reading that succeeded (refresh keeps it): a probe that fails never
+  // reads as "nothing signed in", a re-probe never as "unknown"; unknown only before the first.
+  let readHarnesses: Cached["harnesses"] | undefined;
+  /** Who is installed and signed in: the part the partner's brain and a blind home are decided on. */
+  const logins = (hs: Cached["harnesses"] | undefined) => (hs ? JSON.stringify(hs.map((h) => [h.harness, h.loggedIn, h.installed !== false])) : "");
   const local = async (): Promise<Cached> => {
     if (cached && now() - cached.at < cacheMs) return cached;
     inflight ??= (async () => {
-      const [cua, native, harnesses, kind] = await Promise.all([
+      const [cua, native, read, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
         probes.native().catch(() => undefined),
-        probes.harnesses().catch(() => [] as Awaited<ReturnType<DeviceProbes["harnesses"]>>),
+        probes.harnesses().catch(() => undefined),
         probes.kind().catch(() => "laptop" as DeviceKind),
       ]);
-      cached = { at: now(), cua, native, harnesses, kind };
+      const before = logins(readHarnesses);
+      if (read) readHarnesses = read;
+      cached = { at: now(), cua, native, harnesses: read ?? readHarnesses ?? [], kind };
+      // D440: a reading that changed who can think is news (the first one at start too): the brain
+      // hold sees the home turn blind, and so sees it turn able again and answers what waited.
+      if (read && logins(read) !== before) changed();
       inflight = undefined;
       return cached;
     })();
@@ -637,7 +647,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     },
     harnessesNow() {
       if (!cached || now() - cached.at >= cacheMs) void local().catch(() => {});
-      return cached?.harnesses;
+      // While a refresh probes again, the last reading stands: "unknown" in between would read as
+      // able to think and let a blind home's kept messages go before any agent is there (D440).
+      return readHarnesses ? (cached?.harnesses ?? readHarnesses) : undefined;
     },
     stop() {
       offWorkers();

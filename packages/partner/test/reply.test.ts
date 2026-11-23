@@ -19,9 +19,17 @@ afterEach(async () => {
   stops = [];
 });
 
-function rig() {
+type Login = { harness: string; loggedIn: boolean; installed: boolean };
+const SIGNED_IN: Login[] = [{ harness: "claude-code", loggedIn: true, installed: true }];
+
+/**
+ * A real core whose home's agents are these (signed in by default), never the machine's own: core
+ * probes the home's agents at start, and on a machine with none signed in (CI) the partner is
+ * rightly blind (D440) and keeps every message after the probe lands for a sign-in.
+ */
+function rig(home: Login[] = SIGNED_IN) {
   const dir = mkdtempSync(join(tmpdir(), "ducter-reply-"));
-  const core: Core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin" });
+  const core: Core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", deviceProbes: { harnesses: async () => home.map((h) => ({ ...h })) as never } });
   stops.push(() => rmSync(dir, { recursive: true, force: true }), () => core.stop());
   core.setPartner({ onTrigger() {} }); // the seeded history is background, not new work
   return { core };
@@ -95,6 +103,29 @@ test("two replies to two tasks are two turns, each with its own message and no c
   expect(delta(turns[1]!)).not.toContain("t_a");
   const replies = core.log.read({ stream: "channel", kinds: ["ai_msg"] }).slice(-2).map((e) => (e.body as Bodies["ai_msg"]).replyTo);
   expect(replies).toEqual([ua.seq, ub.seq]);
+});
+
+test("D440: a reply kept while nothing can think is answered once the home signs in (the start-up probe is seen)", async () => {
+  const home: Login[] = [{ harness: "claude-code", loggedIn: false, installed: true }];
+  const { core } = rig(home);
+  const a = seedTask(core, "foo 的 values()", "t_a", "foo: values()", "values() 加好了。");
+  const { partner, inputs } = partnerOn(core);
+  // The start-up probe has landed: the home is blind, and core's brain hold saw it turn so.
+  for (let i = 0; i < 100 && !core.brainHold.blind(); i++) await Bun.sleep(10);
+  expect(core.brainHold.blind()).toBe(true);
+  const ua = logUserMessage(core.log, core.decisions, { text: "keys() 也加上", reply: { seq: a.seq } });
+  await partner.idle();
+  expect(inputs()).toHaveLength(0); // never tried on an agent that isn't there
+  // Signed in (as agent setup's own look does: probe again, say the devices changed).
+  home[0]!.loggedIn = true;
+  core.devicesView.refresh();
+  core.devicesView.changed();
+  for (let i = 0; i < 300 && inputs().length < 1; i++) await Bun.sleep(10);
+  await partner.idle();
+  expect(inputs()).toHaveLength(1);
+  expect(inputs()[0]!.slice(inputs()[0]!.lastIndexOf("[user"))).toContain("keys() 也加上");
+  const ai = core.log.read({ stream: "channel", kinds: ["ai_msg"] }).at(-1)!;
+  expect((ai.body as Bodies["ai_msg"]).replyTo).toBe(ua.seq);
 });
 
 test("a reply to one find of a note carries that find", async () => {

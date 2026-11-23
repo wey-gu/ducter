@@ -39,6 +39,10 @@ type onHandState struct {
 	swQuery string
 	swAt    int
 	steps   map[int64][]Block // a latest step's blocks, by seq
+	// D498: a task's steps in sentences (cached until a new step lands), and
+	// when each task's newest step was first drawn here (its pebble's beat).
+	said  map[string]saidMemo
+	beats map[string]beatMark
 	// D244: the room the list is drawn in now ("rail" beside an opened
 	// task, else ""), what each row's status place showed last, and when
 	// a row's handover to its done face began.
@@ -64,6 +68,9 @@ type onHandState struct {
 	// actsCol: the sheet being drawn keeps a column for its rows' actions;
 	// rowFirst: the row being drawn is its sheet's first (D471).
 	actsCol, rowFirst bool
+	// roundsRow: the row being drawn is a task in rounds (D498: its mark is
+	// the drawn repeat between rounds).
+	roundsRow bool
 	// walked is the focus the keys last moved to (D471: the peek follows it,
 	// never a focus kept from a task opened before).
 	walked  string
@@ -195,8 +202,20 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			return rowStory{words: a.untilLine(u.Until)}
 		}
-		if s, ok := a.nowLine(task); ok {
-			return s
+		// D498 (D152): this turn's latest line in a sentence, never a bare
+		// command; a step that didn't work keeps the quiet ink (it went on).
+		if ss := a.saidOf(task, turnStart(task)); len(ss) > 0 {
+			s := ss[len(ss)-1]
+			mark := s.k
+			if s.bad {
+				mark = "error"
+			} else if mark == "voice" {
+				mark = ""
+			}
+			return rowStory{mark: mark, words: s.words}
+		}
+		if task.Card != nil && task.Card.TurnAt != "" && len(stepsHeld(task)) > 0 {
+			return rowStory{words: a.L.T("onhand.turn.fresh")}
 		}
 		return rowStory{words: a.stateLabel(att)}
 	}
@@ -221,14 +240,7 @@ func (a *App) storyOf(task *store.Task) rowStory {
 func (a *App) rowTime(task *store.Task) string {
 	att := task.Attention()
 	if att == protocol.Working || att == protocol.Queued {
-		start := ""
-		if task.Card != nil {
-			start = task.Card.OpenedAt
-		}
-		if start == "" {
-			start = task.OpenedAt
-		}
-		at := store.ParseTime(start)
+		at := turnStart(task) // D498 (D210): this turn's time, never since the task opened
 		if at.IsZero() {
 			return ""
 		}
@@ -360,13 +372,35 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	waiting := withoutGroups(keep(sp.waiting), inGroup)
 	today := withoutGroups(keep(sp.today), inGroup)
 	earlier := withoutGroups(keep(sp.earlier), inGroup)
+	// D498 (D427): a task in rounds, at work on a round or resting till the
+	// next, stands under 一直在跑的 (its rhythm), never under 在做 or 在等; one
+	// that asks or stopped stays in 等你. Beside an opened task, the lanes.
+	var ongoing []*store.Task
+	if !rail {
+		inRounds := func(x *store.Task) bool {
+			att := x.Attention()
+			return x.Card != nil && x.Card.Rounds != nil && (att == protocol.Working || att == protocol.Queued || att == protocol.Blocked)
+		}
+		split := func(ts []*store.Task) []*store.Task {
+			var rest []*store.Task
+			for _, x := range ts {
+				if inRounds(x) {
+					ongoing = append(ongoing, x)
+				} else {
+					rest = append(rest, x)
+				}
+			}
+			return rest
+		}
+		working, waiting = split(working), split(waiting)
+	}
 	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
 		f = 0
 	}
 	show := func(i int) bool { return f == 0 || f == i }
-	if q != "" && len(needs)+len(stopped)+len(failed)+len(working)+len(waiting)+len(today)+len(earlier)+len(inGroup) == 0 {
+	if q != "" && len(needs)+len(stopped)+len(failed)+len(working)+len(waiting)+len(ongoing)+len(today)+len(earlier)+len(inGroup) == 0 {
 		a.oh.order = a.oh.order[:0]
 		uiText(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		a.pastFindLink(c, q) // D285
@@ -451,6 +485,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	add(show(2), working)
 	add(show(3), fresh, inGroups)
 	add(show(3) && quietOpen, quiet)
+	add(show(2), ongoing)
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
 	add(show(4) && earlierOpen, earlier)
@@ -513,6 +548,11 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 					a.taskCards(c.Key("quiet"), quiet)
 				}
 			}
+		})
+	}
+	if len(ongoing) > 0 && show(2) {
+		a.listSection(c, "ongoing", a.L.T("og.tab"), len(ongoing), func() {
+			a.taskCards(c.Key("ongoing"), ongoing)
 		})
 	}
 	if len(today)+len(missed)+nGroups(3) == 0 && len(earlier) > 0 && show(4) {

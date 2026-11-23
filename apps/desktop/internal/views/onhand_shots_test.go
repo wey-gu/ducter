@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // D287: On hand pictured against a seeded demo core in one of its moments
@@ -49,6 +50,17 @@ func TestOnHandShots(t *testing.T) {
 		h.until("the sources", func() bool { return h.app.S.Sources != nil && len(h.app.S.Sources.Sources) > 0 })
 	}
 	h.app.oh.srcAll = os.Getenv("DUCTER_ONHAND_SRCALL") != "" // D467: the whole sort, opened
+	// D498: a working row reads its steps: let their history come in first.
+	lanes := h.app.S.Board().Lanes
+	for _, x := range [][]*store.Task{lanes[store.LaneWorking], lanes[store.LaneWaiting]} {
+		for _, task := range x {
+			h.app.ensureHistory(task.ID)
+		}
+	}
+	for start := time.Now(); time.Since(start) < 3*time.Second; {
+		h.until("frames", func() bool { return true })
+		time.Sleep(50 * time.Millisecond)
+	}
 	// D315: DUCTER_ONHAND_ROUTE=conv pictures the conversation, task:<id> an opened task.
 	switch r := os.Getenv("DUCTER_ONHAND_ROUTE"); {
 	case r == "conv":

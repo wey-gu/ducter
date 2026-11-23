@@ -986,6 +986,12 @@ export interface TaskCard {
   /** D473, D471: Ducter is mending it right now (its newest event is a repair under way, not the
    *  partner's rethink): it stands at work on On hand, never as a failure. */
   mending?: { cls: import("./mend.ts").MendClass; how?: import("./mend.ts").MendHow; name?: string };
+  /** D498 (D210): while it works, when this turn began (its last start to work), so a card says how
+   *  long this turn has run, never how long ago the task was opened. */
+  turnAt?: string;
+  /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
+   *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
+  rounds?: import("./past.ts").TaskRounds;
 }
 
 /**

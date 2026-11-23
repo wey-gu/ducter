@@ -235,6 +235,17 @@ export interface OngoingItem {
   where?: { device?: string; deviceName?: string; harness?: string };
 }
 
+/** D498: a task in rounds as its On hand card carries it (Ongoing's own item, cut to what the row says). */
+export interface TaskRounds {
+  everyMs?: number;
+  /** Its next round (absent while one runs, or paused). */
+  nextAt?: string;
+  last?: OngoingItem["last"];
+  reviews?: import("./task-sources.ts").ReviewStanding;
+  health?: OngoingHealth;
+  paused?: boolean;
+}
+
 /**
  * D427: an ongoing thing that isn't keeping its time, with why and the one fix.
  *   late     its round was due and hasn't started (lateMin minutes); why says what holds it

@@ -260,6 +260,12 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	failed := att == protocol.Failed && !mending
 	quiet := att == protocol.Blocked && !stopped && a.quietWait(task)
 	seen := (att == protocol.Done || att == protocol.DoneClaimed) && !fresh
+	// D498 (D427): a task in rounds says its rhythm (the round under way, else
+	// the last round and the next), never "at work for 182 hours".
+	var rounds *protocol.TaskRounds
+	if task.Card != nil && task.Card.Rounds != nil && a.oh.room != "rail" && !stopped && (att == protocol.Working || att == protocol.Queued || att == protocol.Blocked) {
+		rounds = task.Card.Rounds
+	}
 	focus := a.oh.focus == task.ID
 	padY, minH := float32(12), float32(64)
 	if a.compact() {
@@ -301,7 +307,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	}
 	acted := false
 	card.Children(func() {
+		a.oh.roundsRow = rounds != nil
 		a.stateMark(c, task, stopped)
+		a.oh.roundsRow = false
 		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 			// D471: a long title takes its two lines; where and its to-do flow after it.
 			ui.Row(c.Key("l1")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
@@ -320,7 +328,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				}
 				// Where, each its own element (D291): its project when the
 				// board shows them all, its computer when it isn't the usual.
-				for _, m := range a.whereMeta(task) {
+				meta := a.whereMeta(task)
+				if rounds != nil && rounds.EveryMs > 0 {
+					meta = append(meta, a.L.T("og.round.every", a.duration(time.Duration(rounds.EveryMs)*time.Millisecond)))
+				}
+				for _, m := range meta {
 					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
 				}
 				ui.Spacer(c)
@@ -370,7 +382,18 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			if s.code != "" {
 				words += "  " + s.code
 			}
-			if working {
+			if rounds != nil && !working {
+				// D498: between rounds, the last round's facts, each its own element (D291).
+				ink := t.InkSoft
+				if rounds.Health != nil {
+					ink = t.Waiting.Ink
+				}
+				ui.Row(c.Key("rounds")).Gap(t.S3).Wrap().Children(func() {
+					for i, f := range a.roundsLine(rounds) {
+						uiText(c.Key(fmt.Sprint("rf", i)), keepWords(autospace(f))).FontSize(t.SM).LineHeight(1.45).TextColor(ink).MaxLines(2)
+					}
+				})
+			} else if working {
 				// D425: held for the dwell, a short entrance (a fade only under reduced motion).
 				held, k := a.aliveHeld(c, "card:"+task.ID, words)
 				box := ui.Box(c.Key("say:" + held)).Opacity(k)
@@ -391,8 +414,19 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 				a.goal(c, u.Until, false)
 			}
+			// D498: no step for a while: when the last one was, quietly (a fact; the
+			// partner judges a stall, D481).
 			if working {
-				a.trail(c, "trail", task) // D467: its steps on its time, the head at now
+				a.ensureHistory(task.ID) // D498: its line and pebble read its steps
+			}
+			if working && !mending {
+				last := lastStepAt(task)
+				if ts := turnStart(task); ts.After(last) {
+					last = ts
+				}
+				if !lastStepAt(task).IsZero() && a.Now().Sub(last) >= quietStep {
+					uiText(c.Key("quiet"), a.tp("onhand.progress.last", a.agoLong(last.UTC().Format(time.RFC3339)))).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+				}
 			}
 		})
 		// D471: the time on one edge of the sheet; what to do on one column.
@@ -411,6 +445,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 						a.finishedActs(c, *f)
 					}
 				})
+			case rounds != nil:
+				if w := a.roundsBeat(task, rounds, working); w != "" {
+					uiText(c.Key("rb"), w).FontSize(t.XS).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
+				}
 			case mending:
 				a.beat(c, task, protocol.Working, false) // D473: at work since it began
 			case (stopped || quiet || failed) && task.Card != nil:

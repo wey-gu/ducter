@@ -36,7 +36,8 @@ import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardG
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
-import { echoes, ensureSteps, firstSentence, Outcome, outcomeOf, PeekPicture, peekSteps, peekTask, peekWords, StuckActs, stuckClause, stuckOf, Trail, useTick } from "./onhand-brief.tsx";
+import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
+import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -108,9 +109,12 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   if (a === "working" || a === "queued") {
     const u = A.S.untilOf(task);
     if (u) return { words: untilLine(u) };
-    const n = nowLine(task);
-    if (n) return { mark: n.mark, words: n.words, code: n.code };
-    return { words: stateLabel(a) };
+    // D498 (D152): what it is on, in a sentence: this turn's latest line of saidOf (its own words, or
+    // the steps it took without words as one gist), never a bare command; a step that didn't work
+    // keeps the quiet ink (it went on). Before this turn holds a step: the turn's start in words.
+    const said = saidOf(task, turnStart(task)).at(-1);
+    if (said) return { mark: said.bad ? "error" : said.k === "voice" ? "" : said.k, words: said.words };
+    return { words: task.card?.turnAt && task.events.some((e) => e.kind === "task_event") ? t("onhand.turn.fresh") : stateLabel(a) };
   }
   const failed = a === "failed";
   // D472: a task that couldn't start says why in its row too (the page's own words, cant.tsx).
@@ -125,7 +129,7 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
 function timeOf(task: Task, now = Date.now()): string {
   const a = attention(task);
   if (a === "working" || a === "queued") {
-    const at = Date.parse(task.card?.openedAt ?? task.openedAt ?? "");
+    const at = turnStart(task); // D498 (D210): this turn's time, never since the task opened
     if (!Number.isFinite(at)) return "";
     const m = Math.max(0, Math.floor((now - at) / 60_000));
     return m < 1 ? t("time.now") : m < 60 ? t("time.min", m) : t("time.hour", Math.floor(m / 60));
@@ -243,6 +247,25 @@ export function waitNext(w: ReturnType<typeof A.S.waiterFor>, now = Date.now()):
     return { text: t("onhand.wait.at", soon(w.at!, now)), frac: Number.isFinite(from) && at > from ? (now - from) / (at - from) : 0 };
   }
   return { text: "", frac: 0 };
+}
+
+/** D498 (D427, D394): a task in rounds between rounds, each its own fact (D291): paused; else its
+ *  health when it isn't on time; else a review's standing; else the last round's own line. */
+export function roundsLine(r: NonNullable<NonNullable<Task["card"]>["rounds"]>): string[] {
+  if (r.paused) return [t("og.paused")];
+  if (r.health) return healthLine(r.health);
+  if (r.reviews) return reviewLine(r.reviews);
+  const l = r.last;
+  if (l) return [l.line || t(`og.run.${l.state}`)];
+  return [];
+}
+
+/** D498: a task in rounds at its right edge: this round's time while one runs, else when the next
+ *  one comes (or that it is paused). */
+export function roundsBeat(task: Task, r: NonNullable<NonNullable<Task["card"]>["rounds"]>, running: boolean, now = Date.now()): string {
+  if (running) return timeOf(task, now) === t("time.now") ? t("onhand.rounds.started") : t("onhand.rounds.now", timeOf(task, now));
+  if (r.paused) return t("onhand.rounds.paused");
+  return r.nextAt && Date.parse(r.nextAt) > now ? t("onhand.rounds.next", soon(r.nextAt, now)) : "";
 }
 
 /** What comes next for a waiting task, in one line, for the opened task's head: when it comes back,
@@ -878,21 +901,26 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
 const cheered = new Map<string, number>();
 
 /** D467: a card's state, drawn in its mark: the same vocabulary as a group's parts. */
-type MarkKind = "needs" | "failed" | "working" | "waiting" | "done" | "seen";
+type MarkKind = "needs" | "failed" | "working" | "waiting" | "done" | "seen" | "rounds";
 
 /** D467: the state mark at the head of every card: a 32 sunk round holding the part marks' glyph
- *  (a flag for what stopped, a cross for what didn't work out, three bars at work, the ring filling
+ *  (a flag for what stopped, a cross for what didn't work out, D498's pebble at work, the ring filling
  *  toward a wait's next look, a tick when done: filled for a new result, quiet once seen). Never the
  *  agent's brand coin, never the partner's face. */
-export function StateMark({ k, frac = 0 }: { k: MarkKind; frac?: number }) {
+export function StateMark({ k, frac = 0, beat, still }: { k: MarkKind; frac?: number; beat?: number; still?: boolean }) {
+  // D498 (research/216): at work, a pebble that beats once each time a step lands (keyed by the
+  // newest step, so it beats only when the task truly moves) and rests between; dimmed once no step
+  // has come for a while. No bars (read as pause or an equalizer), no track pretending to progress.
   if (k === "working")
     return (
-      <span class="omark k-working" aria-hidden="true">
-        <span class="pulse">
-          <i />
-          <i />
-          <i />
-        </span>
+      <span class={`omark k-working${still ? " still" : ""}`} aria-hidden="true">
+        <span key={beat ?? 0} class="peb" />
+      </span>
+    );
+  if (k === "rounds")
+    return (
+      <span class="omark k-rounds" aria-hidden="true">
+        <RepeatGlyph task={false} />
       </span>
     );
   if (k === "waiting")
@@ -952,16 +980,29 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // the heartbeat rests when the person has been away a while.
   const words = useDwell(mend ? mendWords(mend) : s.words);
   const rest = useResting();
+  // D498: a working row's line and pebble read its steps: ask once for its history (as the peek does).
+  useEffect(() => void (working && ensureSteps(task)), [task.id, working, A.S.welcomed]);
   const fin = finishedOf(task);
   const ref = useRef<HTMLDivElement>(null);
   useSwipeAway(ref, fin);
-  const k: MarkKind = stopped ? "needs" : failed ? "failed" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
+  // D498 (D427): a task in rounds stands under 一直在跑的 and says its rhythm: the round under way, or
+  // the last round's outcome and when the next one comes; never "at work for 182 hours".
+  const rounds = room !== "rail" && a !== "needs_you" && !stopped && !failed ? task.card?.rounds : undefined;
+  // D498: at work, the pebble beats with each new step and dims once none has come for a while; the
+  // row then says when the last one was (a fact; silence means fine while it moves).
+  const lastAt = working && !mend ? Math.max(lastStepAt(task) || 0, turnStart(task) || 0) || NaN : NaN;
+  const stepQuiet = Number.isFinite(lastAt) && Number.isFinite(lastStepAt(task)) && Date.now() - lastAt >= QUIET_STEP_MS;
+  const k: MarkKind = stopped ? "needs" : failed ? "failed" : rounds && !working ? "rounds" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
   // D467: a waiting line that only says the title again gives way to what the task last said, else
   // when it looks again, else nothing (the heartbeat says when it is back).
   // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
   const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
-  const beat = working
+  const roundFacts = rounds && !working ? roundsLine(rounds) : [];
+  if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
+  const beat = rounds
+    ? roundsBeat(task, rounds, working)
+    : working
     ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
     : stopped || quiet
       ? ago(A.L, at) // D471: the time column says a time; why is the row's own line
@@ -980,7 +1021,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       data-row={task.id}
     >
       <button class="omain" onClick={onClick} title={about}>
-        <StateMark k={k} frac={next?.frac ?? 0} />
+        <StateMark k={k} frac={next?.frac ?? 0} beat={latestOf(task)?.seq} still={stepQuiet || rest} />
         <span class="otx">
           <span class="o1">
             <PartnerMark persona={task.card?.persona} />
@@ -996,16 +1037,22 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             {!stacked && finished(task) && <Outcome task={task} />}
             {!stacked && task.card?.source && <SourceChip src={task.card.source} small plain short />}
           </span>
-          {(working || line) && (
-            <span class={`o2${stuck ? " needs" : s.tone && !mend ? ` ${s.tone}` : ""}`}>
-              {s.mark && !stuck && <StepMark k={s.mark} />}
-              <span key={working ? words : ""} class={working ? "w say" : "w"}>
-                {working ? words : line}
-              </span>
-              {s.code && !stuck && <code class="c">{s.code}</code>}
+          {roundFacts.length > 0 ? (
+            <span class={`o2 rounds${rounds?.health ? " late" : ""}`}>
+              <Facts class="w" items={roundFacts} />
             </span>
+          ) : (
+            (working || line) && (
+              <span class={`o2${stuck ? " needs" : s.tone && !mend ? ` ${s.tone}` : ""}`}>
+                {s.mark && !stuck && <StepMark k={s.mark} />}
+                <span key={working ? words : ""} class={working ? "w say" : "w"}>
+                  {working ? words : line}
+                </span>
+                {s.code && !stuck && <code class="c">{s.code}</code>}
+              </span>
+            )
           )}
-          {working && room !== "rail" && <Trail task={task} />}
+          {stepQuiet && room !== "rail" && <span class="oquiet">{t("onhand.progress.last", ago(A.L, new Date(lastAt).toISOString()))}</span>}
           {u && !finished(task) && <Goal u={u} />}
           {/* D471 round 2: on a phone, where it is and when, quietly, on a line of their own under the
               words (never a chip past the edge, never a time jammed under one). */}
@@ -1250,14 +1297,19 @@ export function OnHandList({ room }: { room: Room }) {
   const groupsIn = (lane: number) => bgs.filter((b) => b.lane === lane);
   const nIn = (lane: number) => lanes[lane]!.length;
   const needs = ungrouped(keep(lanes[LANE.needs]!));
-  const working = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id)))];
+  // D498 (D427): a task in rounds, at work on a round or resting till the next, stands under
+  // 一直在跑的 (its rhythm), never under 在做 or 在等; one that asks or stopped stays in 等你.
+  const inRounds = (x: Task) => !rail && !!x.card?.rounds && ["working", "queued", "blocked"].includes(attention(x)) && !stoppedWait(x);
+  const workingAll = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id)))];
+  const working = workingAll.filter((x) => !inRounds(x));
   // D467: a wait nothing brings back and a task that didn't work out stand in 等你; 今天做完 is
   // today's; what finished before folds under it. Beside an opened task the rail keeps the lanes.
   const parts = boardParts([[], [], ungrouped(keep(lanes[LANE.waiting]!)), ungrouped(keep(lanes[LANE.done]!))]);
   const stoppedTs = rail ? [] : parts.stopped;
   const failedTs = rail ? [] : parts.failed;
   // D471: every task is one row in its section, said once; the head names none of them.
-  const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting;
+  const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting.filter((x) => !inRounds(x));
+  const ongoing = [...workingAll.filter(inRounds), ...parts.waiting.filter(inRounds)];
   const done = rail ? ungrouped(keep(lanes[LANE.done]!)) : parts.today;
   const earlier = rail ? [] : parts.earlier;
   const earlierOpen = earlierShown || f === 4 || !!q;
@@ -1284,13 +1336,13 @@ export function OnHandList({ room }: { room: Room }) {
   const doneOpen = !seenFolds || doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
   const gIds = (lane: number) => groupsIn(lane).flatMap((b) => b.rows.flatMap((r) => (r.kind === "task" && b.ids.has(r.taskId) ? [r.taskId] : [])));
-  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
+  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...ongoing.map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
     const lane = stoppedTs.some((x) => x.id === id) || failedTs.some((x) => x.id === id) ? 0 : laneOf(id);
     return show(lane + 1) || inGroup.has(id);
   });
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const openN = A.defaultable().length;
-  const shown = needs.length + stoppedTs.length + failedTs.length + working.length + waiting.length + done.length + earlier.length + inGroup.size;
+  const shown = needs.length + stoppedTs.length + failedTs.length + working.length + waiting.length + ongoing.length + done.length + earlier.length + inGroup.size;
   return (
     <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
@@ -1351,6 +1403,12 @@ export function OnHandList({ room }: { room: Room }) {
           {quietFolds && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
           {quiet.length > 0 && !quietFolds && !rail && fresh.length + looseWs.length > 0 && <p class="sub-h">{t("onhand.wait.quiet.head")}</p>}
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
+        </Section>
+      )}
+      {/* D498: what keeps going on its own rhythm (a task in rounds), after the waits. */}
+      {ongoing.length > 0 && show(2) && (
+        <Section name={t("og.tab")}>
+          <Rows tasks={ongoing} room={room} cards />
         </Section>
       )}
       {/* D467 round 3: with nothing of today's left to draw, only yesterday's fold, no heading. */}
@@ -1427,11 +1485,7 @@ function MemberMark({ k }: { k: ReturnType<typeof markOf> }) {
   if (k === "working")
     return (
       <span class="gmark k-working" aria-hidden="true">
-        <span class="pulse">
-          <i />
-          <i />
-          <i />
-        </span>
+        <span class="peb" />
       </span>
     );
   const path =
@@ -1571,8 +1625,14 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
               <span class="gidx" aria-hidden="true">
                 {r.part}
               </span>
-              {/* D467 round 3: one encoding a level: a part at work has no glyph; its trail moves. */}
-              {k === "working" ? <span class="gmark k-blank" aria-hidden="true" /> : <MemberMark k={k} />}
+              {/* D498: a part at work has the board's mark: its pebble beats with each step. */}
+              {k === "working" && task ? (
+                <span class="gmark k-working" aria-hidden="true">
+                  <span key={latestOf(task)?.seq ?? 0} class="peb" />
+                </span>
+              ) : (
+                <MemberMark k={k} />
+              )}
               {task ? (
                 <button class="gtitle" title={title(task)} onClick={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
                   {partWords(r)}
@@ -1583,11 +1643,6 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
               <span class="gwhen">{memberWhen(r, task)}</span>
               {/* D467: a part at work says what it is on now, as every card does. */}
               {task && k === "working" && <span class="gnow">{storyOf(task).words}</span>}
-              {task && k === "working" && room !== "rail" && (
-                <span class="gtrail">
-                  <Trail task={task} />
-                </span>
-              )}
               {hi > 0 && room !== "phone" && <Btn kind="text" size="sm" label={t("group.up")} about={r.kind === "held" ? r.title : ""} onClick={() => send("move", { member: (r as { key: string }).key, to: hi - 1 })} />}
               {d && (
                 <div class="gask">
@@ -1753,12 +1808,13 @@ export function sourceFacts(pile: PileView, name: string): { lead: string; leadG
 function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; review: number }) {
   const name = A.S.personaName;
   const f = sourceFacts(pile, name);
-  // D467: one offer in the partner's voice and its button; the breakdown lives behind 看看全部.
+  // D498: what is the person's own leads: PRs whose review is asked of them, a row of its own with
+  // its way in; the offer follows at a sane size: a few picked, never the whole pile in one press.
   const lead = f.leadGroup === "do" ? t("onhand.src.offer", pile.groups.do) : f.lead;
-  const facts = pile.sorting ? f.facts : review > 0 ? [t("onhand.src.review", review)] : [];
+  const facts = pile.sorting ? f.facts : [];
   const act =
     f.leadGroup === "do" ? (
-      <Btn kind="secondary" size="sm" label={t("pile.act.do", name)} about={f.lead} onClick={() => openHand({ door: "do", doCount: pile.groups.do })} />
+      <Btn kind="secondary" size="sm" label={t("onhand.src.pick")} about={f.lead} onClick={() => openHand({ door: "do", doCount: pile.groups.do, pick: true })} />
     ) : f.leadGroup === "decide" ? (
       <Btn kind="secondary" size="sm" label={t("pile.act.decide")} about={f.lead} onClick={() => openPile("decide")} />
     ) : f.leadGroup === "close" ? (
@@ -1767,6 +1823,24 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
       <Btn kind="secondary" size="sm" label={t("pile.first")} about={f.lead} onClick={() => A.send({ t: "pile_sort" })} />
     ) : null;
   return (
+    <div class="ocards src-sheet">
+    {review > 0 && !pile.sorting && (
+      <div class="ocard src-sum src-review">
+        <span class="omain static">
+          <span class="omark k-src" aria-hidden="true">
+            <BrandMark name={kind} size={18} />
+          </span>
+          <span class="otx">
+            <span class="o1">
+              <span class="t offer">{t("onhand.src.review", review)}</span>
+            </span>
+          </span>
+        </span>
+        <span class="oacts on">
+          <Btn kind="secondary" size="sm" label={t("onhand.src.review.go")} about={t("onhand.src.review", review)} onClick={() => ((srcOpen = true), A.changed())} />
+        </span>
+      </div>
+    )}
     <div class="ocard src-sum">
       <span class="omain static">
         <span class="omark k-src" aria-hidden="true">
@@ -1794,6 +1868,7 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
       </span>
       {act && <span class="oacts on">{act}</span>}
     </div>
+    </div>
   );
 }
 
@@ -1802,7 +1877,8 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
 function ongoingCount(): number {
   const o = A.S.onHand;
   const routines = (o?.routines ?? []).filter((r) => r.state !== "ended" && r.state !== "dismissed").length;
-  const tasks = new Set((o?.waiters ?? []).filter((w) => w.taskId && !w.routineId && w.state === "armed").map((w) => w.taskId)).size;
+  // D498: a task in rounds counts while a round runs too (its wait is re-armed only after it).
+  const tasks = new Set([...(o?.waiters ?? []).filter((w) => w.taskId && !w.routineId && w.state === "armed").map((w) => w.taskId), ...(o?.tasks ?? []).filter((c) => c.rounds).map((c) => c.taskId)]).size;
   return routines + tasks;
 }
 
@@ -1963,21 +2039,6 @@ export function switchList(q: string, limit = 40): Task[] {
 
 // ---------- D467: the peek ----------
 
-/** One held step in words, as the transcript says it (D210): its mark, its words, its code. */
-function stepLine(task: Task, ev: LogEvent): { mark: string; words: string; code: string; bad: boolean } | undefined {
-  let blocks = stepCache.get(ev);
-  if (!blocks) stepCache.set(ev, (blocks = blocksOf(harnessOf(task), [ev], true)));
-  const b = blocks.at(-1);
-  if (b?.k === "voice") return { mark: "thought", words: b.text.split("\n")[0]!, code: "", bad: false };
-  if (b?.k !== "steps") return undefined;
-  const l = b.lines.at(-1);
-  if (!l) return undefined;
-  if (l.k === "group") return { mark: l.rows.at(-1)!.step?.kind ?? "other", words: liveWords(blocks), code: "", bad: false };
-  const [words, code] = rowWords(l.row);
-  const bad = l.row.outcome === "error";
-  return { mark: bad ? "error" : (l.row.step?.kind ?? "thought"), words, code, bad };
-}
-
 /**
  * D467: the peek, the conductor's "sit in" at a wide window: the focused task (the keys' focus, else
  * the first in the walk) as it is right now: its mark, title and where, its state in words, what it
@@ -2006,7 +2067,7 @@ export function Peek() {
         : at && finished(task)
           ? t("onhand.card.done", soon(at))
           : stateLabel(a);
-  const steps = peekSteps(task);
+  const steps = peekSaid(task);
   const r = reportOf(task);
   const result = finished(task) && r?.summary ? (sayable(r.summary, A.readerLang(task)) ?? "").split("\n").filter(Boolean).slice(0, 3) : [];
   const where = whereMeta(task);
@@ -2033,7 +2094,6 @@ export function Peek() {
           ))}
         </div>
       )}
-      {working && <Trail task={task} />}
       <PeekPicture task={task} />
       {w && (w.check || w.event) && waitCaption(w) && <p class="pwait">{waitCaption(w)}</p>}
       {result.length > 0 && (
@@ -2048,23 +2108,14 @@ export function Peek() {
         <div class="psteps">
           <p class="plabel">{t("onhand.peek.steps")}</p>
           <ol>
-            {steps.map((ev, i) => {
-              const l = stepLine(task, ev);
-              if (!l) return null;
-              // D471: a step in its own words, whole; a step with only a command stays in the task.
-              const words = peekWords(l.words);
-              if (!words) return null;
-              const newest = i === steps.length - 1;
-              return (
-                <li key={ev.seq} class={`${l.bad ? "bad" : ""}${newest && working ? " pnew" : ""}`}>
-                  <StepMark k={l.mark} />
-                  <span class="sw">{words}</span>
-                  {/* D471: what it touched, only when it is short enough to say whole (a file's name). */}
-                  {l.code && l.code.length <= 32 && !/\s/.test(l.code) && <code class="c">{l.code}</code>}
-                  {newest && working && <b class="head" aria-hidden="true" />}
-                </li>
-              );
-            })}
+            {/* D498: the steps in sentences (D152): its own words, one gist for steps without words; a
+                step that didn't work is a quiet line with the transcript's small cross, never red. */}
+            {steps.map((l, i) => (
+              <li key={l.seq} class={`${l.bad ? "bad" : ""}${i === steps.length - 1 ? " pnew" : ""}`}>
+                <StepMark k={l.bad ? "error" : l.k === "voice" ? "thought" : l.k} />
+                <span class="sw">{l.words}</span>
+              </li>
+            ))}
           </ol>
         </div>
       )}

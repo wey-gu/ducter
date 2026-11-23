@@ -34,9 +34,6 @@ func TestD471Names(t *testing.T) {
 	if got := sayName("用手机把 Ducter 官网录一段屏发到 X", 28); got != "用手机把 Ducter 官网录一段…" {
 		t.Errorf("a Han name is cut at a character: %q", got)
 	}
-	if peekWords("cp review-report-round235.json review/") != "" || peekWords("运行测试") != "运行测试" {
-		t.Error("the peek says a step's words, never a cut command")
-	}
 }
 
 // D471 round 2: a stop said as the partner; a repair under way stands at

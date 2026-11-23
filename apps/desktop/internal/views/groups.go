@@ -11,6 +11,7 @@ package views
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -372,7 +373,12 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).AccessHidden(true)
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
-						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true) // its trail moves, not a glyph
+						// D498: the board's mark at work: a pebble that beats with each step.
+						var beat time.Time
+						if pt := a.S.Task(r.taskID); pt != nil {
+							beat = a.beatOf(pt)
+						}
+						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawPebble(fill, beat, false))
 					} else {
 						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawGroupMark(k, fill, t.Surface))
 					}
@@ -419,7 +425,6 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					held, op := a.aliveHeld(c, "part:"+key, words)
 					uiText(c.Key("now:"+held), held).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).
 						Opacity(op).Padding(0, 0, 0, 52).Tooltip(s.words)
-					ui.Column(c.Key("trail")).Padding(0, 0, 0, 52).Children(func() { a.trail(c, "trail", task) })
 				}
 				// What needs you never folds: its question inside the card.
 				if k == "needs" {
@@ -486,7 +491,7 @@ func (a *App) groupStateMark(c *ui.Context, bg boardGroup) {
 		box.Background(t.NeedsYou.Surface).Draw(drawGroupMark("needs", t.NeedsYou.Dot, t.Surface))
 	case 1:
 		box.Background(t.Working.Surface).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(bg.g.ID), a.aliveResting(c)))
+			ui.Box(c.Key("peb")).Size(12, 12).Draw(drawPebble(t.Working.Dot, time.Time{}, a.aliveResting(c)))
 		})
 	case 2:
 		box.Background(t.SurfaceSunken).Draw(drawGroupMark("waiting", t.Waiting.Ink, t.Surface))

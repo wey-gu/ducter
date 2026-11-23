@@ -9,6 +9,20 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## On hand, after D498 (`on-hand.md`, research/216)
+
+- [ ] **Human raters for the pebble** (the LLM proxies are done): the author first, then a consumer
+  who has never heard "agent", on the built board in motion; research/216's five questions. Trigger:
+  the author's review of D498's shots.
+- [ ] **A loop between rounds, pictured**: the demo's review loop resting with a review standing and a
+  late health line (`.shots/d498/` has it at work on a round only). Trigger: the next On hand review.
+- [ ] **The head line counts a loop as work**: while only a review round runs, 「没有要你定的，我在做。」;
+  and with only a loop resting, 「在等的那个 {time} 回来」 names its next round. Default: the counts leave
+  rounds out and a board with only rounds says they keep their rhythm. Trigger: the author reads it as wrong.
+- [ ] **An Ongoing row's own gestures on the board** (Pause, Run now, How often on hover or ⋯), today on
+  the opened task and the Ongoing tab only. Trigger: the author reaches for them on On hand.
+- [ ] **The iOS Simulator** for the phone board (dark zh), as D471 owed. Trigger: the next phone release.
+
 ## Several partners, after D497 (`personas.md`, research/215)
 
 - [ ] **Human raters for the recoloured figure** (the LLM proxies are done): five people who never saw

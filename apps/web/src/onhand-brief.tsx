@@ -16,7 +16,8 @@ import { harnessName } from "./format.ts";
 import { computerName, computerOf } from "./where.ts";
 import { heldFrame, openPhone } from "./phone-use.tsx";
 import { liveSize } from "./live.tsx";
-import { sayName, shortTitle } from "./transcript.tsx";
+import { groupWords, sayName, shortTitle } from "./transcript.tsx";
+import { blocksOf, tallyOf, type StepRow } from "@ducter/protocol/src/transcript.ts";
 import { BrandMark } from "./brand.tsx";
 import { isNewResult } from "./seen.ts";
 
@@ -304,46 +305,75 @@ export function useTick(ms = 1000) {
   }, [ms]);
 }
 
-/** The trail (D467): a working task's own steps placed on its elapsed time, a tick each (an error
- *  in the failed ink), the head breathing at now; then how many steps and when the last one was. */
-export function Trail({ task, now = Date.now() }: { task: Task; now?: number }) {
-  useEffect(() => ensureSteps(task), [task.id, A.S.welcomed]);
-  const start = Date.parse(task.card?.openedAt ?? task.openedAt ?? "");
-  const steps = stepsOf(task);
-  const span = Number.isFinite(start) ? Math.max(60_000, now - start) : 0;
-  const x = (at: number) => (span ? Math.min(100, Math.max(0, ((at - start) / span) * 100)) : 100);
-  const last = steps.at(-1);
-  const runs = trailRuns(steps.map((s) => ({ x: x(s.at), bad: s.bad, key: s.ev.seq })));
-  return (
-    <span class="trail-row">
-      <span class="trail" aria-hidden="true">
-        <span class="rule" />
-        {runs.map((r) =>
-          r.to > r.from ? (
-            <i key={r.key} class={`span${r.bad ? " bad" : ""}`} style={{ left: `${r.from}%`, width: `${r.to - r.from}%` }} />
-          ) : (
-            <i key={r.key} class={r.bad ? "bad" : ""} style={{ left: `${r.from}%` }} />
-          ),
-        )}
-        <b class="head" />
-      </span>
-      {steps.length > 0 && <span class="tfact">{t("onhand.progress.steps", steps.length)}</span>}
-      {last && <span class="tfact">{t("onhand.progress.last", now - last.at < 60_000 ? t("time.now") : ago(A.L, new Date(last.at).toISOString(), now))}</span>}
-    </span>
-  );
+/** D498: how long a working task may go without a new step before its row says when its last one
+ *  was (silence means fine while it moves; a fact, never "maybe stuck", D481). */
+export const QUIET_STEP_MS = 10 * 60_000;
+
+/** D498: when a task's newest step this client holds happened (ms), else NaN. */
+export function lastStepAt(task: Task): number {
+  const s = stepsOf(task).at(-1);
+  return s ? s.at : NaN;
 }
 
-/** The trail's marks (D467 round 3): steps closer than about 6 px (1.2 % of a trail about 500 px
- *  wide) join one span from the first to the last; a lone step stays a tick. x in percent, in order. */
-export function trailRuns(steps: { x: number; bad: boolean; key: number }[], gap = 1.2): { from: number; to: number; bad: boolean; key: number }[] {
-  const out: { from: number; to: number; bad: boolean; key: number }[] = [];
-  for (const s of steps) {
-    const r = out.at(-1);
-    if (r && s.x - r.to < gap) {
-      r.to = s.x;
-      r.bad ||= s.bad;
-    } else out.push({ from: s.x, to: s.x, bad: s.bad, key: s.key });
+/** D498 (D210): when this turn began: the home's word on the card, else when the task opened. A
+ *  working row says how long this turn has run, never how long ago the task was opened. */
+export function turnStart(task: Task): number {
+  return Date.parse(task.card?.turnAt ?? task.card?.openedAt ?? task.openedAt ?? "");
+}
+
+/** D498: one line of a task's steps as the person reads them (D152). k: its mark (a step's kind,
+ *  "voice" for the agent's own words); bad: a step that didn't work, said quietly (the task went
+ *  on: no alarm). */
+export interface Said {
+  k: string;
+  words: string;
+  bad?: boolean;
+  seq: number;
+}
+
+/** A gist's mark: the kind of step it is mostly made of. */
+const GIST_MARK: Record<string, string> = { edited: "edited", ran: "ran", read: "read", searched: "searched", web: "browsed", browsed: "browsed", computer: "computer", waited: "waited", used: "other", other: "other" };
+
+/** D498 (D152, D210): a task's latest steps in sentences: its own words; a step that said what it was
+ *  for; and a run of steps with no words of their own (a bare command, a read, a search pattern) as
+ *  one gist (看了 3 个文件，跑了 2 条命令). Never a verb alone, a raw command or a raw pattern. since:
+ *  only this turn's steps (ms). The Mac's saidOf reads the same. */
+export function saidOf(task: Task, since = NaN): Said[] {
+  const evs = stepsOf(task)
+    .filter((s) => !Number.isFinite(since) || s.at >= since - 1000)
+    .slice(-120)
+    .map((s) => s.ev);
+  if (!evs.length) return [];
+  const out: Said[] = [];
+  let pend: StepRow[] = [];
+  const flush = () => {
+    if (!pend.length) return;
+    const tally = tallyOf(pend);
+    out.push({ k: GIST_MARK[tally[0]?.kind ?? "other"] ?? "other", words: groupWords(tally), seq: pend.at(-1)!.seq });
+    pend = [];
+  };
+  for (const b of blocksOf(harnessOf(task), evs, false)) {
+    if (b.k === "voice") {
+      flush();
+      const w = b.text.split("\n").find((l) => l.trim())?.trim();
+      if (w) out.push({ k: "voice", words: w, seq: b.seq });
+      continue;
+    }
+    if (b.k !== "steps") continue;
+    for (const l of b.lines) {
+      if (l.k === "group") {
+        pend.push(...l.rows);
+        continue;
+      }
+      const r = l.row;
+      if (!r.step) continue; // thinking: its words come when it says them
+      if (r.step.says?.trim()) {
+        flush();
+        out.push({ k: r.step.kind, words: r.step.says.trim(), seq: r.seq, ...(r.outcome === "error" ? { bad: true } : {}) });
+      } else pend.push(r);
+    }
   }
+  flush();
   return out;
 }
 
@@ -360,19 +390,10 @@ export function peekTask(focus: string, order: string[], walked = true): Task | 
   return A.S.tasks.get(working ?? order[0] ?? "");
 }
 
-/** The peek's latest steps: the last six this client holds, oldest first. */
-export function peekSteps(task: Task): LogEvent[] {
-  return stepsOf(task)
-    .slice(-6)
-    .map((s) => s.ev);
-}
-
-/** D471: a step said in the peek: its words only, whole (a command or a path is the task's detail,
- *  never cut mid-word into the sentence); "" when the step has no words of its own. */
-export function peekWords(words: string): string {
-  const w = words.replace(/\s+/g, " ").trim();
-  if (!w || /^[`"'$/~.]/.test(w) || /^[a-z][\w-]*\s+(-|\S*[./])/.test(w)) return "";
-  return w;
+/** D498: the peek's latest steps: the last six lines of saidOf, oldest first (D152's sentences;
+ *  steps with no words of their own folded into one gist, never a verb alone or a command). */
+export function peekSaid(task: Task): Said[] {
+  return saidOf(task).slice(-6);
 }
 
 /**

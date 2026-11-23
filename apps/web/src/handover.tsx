@@ -97,7 +97,7 @@ const SETT = new Map<string, Set<string>>();
  * on the empty words field with its suggestions (one by one stays a link away); a subject chip and a
  * set card open with their words already in the field and their set found, ticked as they came.
  */
-export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; subject?: string; setId?: string; ticked?: string[]; query?: string; note?: string; doCount?: number }) {
+export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; subject?: string; setId?: string; ticked?: string[]; query?: string; note?: string; doCount?: number; pick?: boolean }) {
   const now = Date.now();
   const words = o.door === "subject" ? o.subject ?? "" : o.door === "set" ? o.query ?? o.subject ?? "" : o.query ?? "";
   const note = o.note?.trim() ?? "";
@@ -112,6 +112,8 @@ export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; 
   // Where and who from the start: the right column is never a dead "looking" state.
   askHow(true);
   A.sheet = { kind: "hand" };
+  // D498: from On hand's offer, the do group's list with the first few ticked (never all at once).
+  if (o.pick) browse(true);
   A.changed();
 }
 

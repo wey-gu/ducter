@@ -8,7 +8,7 @@
 // end (by the user) and are kept in <dataDir>/paused.json, and come back as they were on resume.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { Bodies, LangTag, OngoingAction, OngoingHealth, OngoingItem, OngoingRun } from "@ducter/protocol";
+import type { Bodies, LangTag, OngoingAction, OngoingHealth, OngoingItem, OngoingRun, TaskRounds } from "@ducter/protocol";
 import { words } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { Clock } from "./clock.ts";
@@ -30,6 +30,8 @@ interface Paused {
 
 export interface Ongoing {
   list(persona: string): OngoingItem[];
+  /** D498: a task in rounds, for its On hand card (undefined when it isn't one). */
+  rounds(taskId: string): TaskRounds | undefined;
   act(kind: "routine" | "task", id: string, a: OngoingAction): Promise<{ ok: boolean; message?: string }>;
   /** Resumes what was paused until a time that has come (the timer runs it too). */
   sweep(): void;
@@ -155,27 +157,41 @@ export function createOngoing(o: {
       });
     }
     // Tasks that look again on their own: an armed wait, paused here, or in rounds Ducter keeps (D427).
-    const waits = new Map<string, ReturnType<Waiters["views"]>[number]>();
-    for (const w of o.waiters.views()) if (w.taskId && w.state === "armed" && !w.routineId) waits.set(w.taskId, w);
+    const waits = taskWaits();
     const loopIds = (o.loops?.all() ?? []).map((l) => l.taskId);
     const ids = new Set([...waits.keys(), ...Object.keys(paused), ...loopIds]);
     for (const id of ids) {
+      const it = taskItem(id, waits.get(id));
+      if (it) items.push(it);
+    }
+    const rank: Record<OngoingItem["state"], number> = { needs_you: 0, running: 1, resting: 2, proposed: 3, paused: 4 };
+    return items.sort((a, b) => rank[a.state] - rank[b.state] || (a.nextAt ?? "~").localeCompare(b.nextAt ?? "~") || a.title.localeCompare(b.title));
+  }
+
+  const taskWaits = () => {
+    const waits = new Map<string, ReturnType<Waiters["views"]>[number]>();
+    for (const w of o.waiters.views()) if (w.taskId && w.state === "armed" && !w.routineId) waits.set(w.taskId, w);
+    return waits;
+  };
+
+  /** One task that keeps going on its own, as Ongoing lists it (undefined when nothing keeps it going). */
+  function taskItem(id: string, w: ReturnType<Waiters["views"]>[number] | undefined): OngoingItem | undefined {
+    {
       const c = o.tasks.get(id);
-      if (!c || c.attention === "dropped" || c.attention === "superseded") continue;
-      const w = waits.get(id);
+      if (!c || c.attention === "dropped" || c.attention === "superseded") return undefined;
       const p = paused[id];
       const pw = p?.waiters[0];
       const loop = o.loops?.get(id);
       const inLoop = loop && loop.state !== "ended";
       // A one-off wait that ended with its task: nothing keeps going.
-      if (!w && !p && !inLoop) continue;
+      if (!w && !p && !inLoop) return undefined;
       // D394: a review task whose round card is unanswered waits on the person, under 等你.
       const state: OngoingItem["state"] = p || loop?.state === "paused" ? "paused" : c.attention === "needs_you" || o.asking?.(id) ? "needs_you" : ACTIVE.has(c.attention) ? "running" : "resting";
       const every = (inLoop ? (loop.everyMs ?? loop.look?.everyMs) : undefined) ?? w?.everyMs ?? pw?.everyMs;
       const reason = w?.reason ?? pw?.reason ?? (inLoop ? loop.reason : undefined);
       const runs = taskRuns(id);
       const health = inLoop ? o.loops?.health(id) : undefined;
-      items.push({
+      return {
         kind: "task",
         id,
         title: c.title,
@@ -197,10 +213,24 @@ export function createOngoing(o: {
         taskId: id,
         startedAt: c.openedAt,
         ...(c.mark ? { mark: c.mark } : {}),
-      });
+      };
     }
-    const rank: Record<OngoingItem["state"], number> = { needs_you: 0, running: 1, resting: 2, proposed: 3, paused: 4 };
-    return items.sort((a, b) => rank[a.state] - rank[b.state] || (a.nextAt ?? "~").localeCompare(b.nextAt ?? "~") || a.title.localeCompare(b.title));
+  }
+
+  /** D498: a task in rounds as its On hand card carries it (its rhythm, next round, last round, standing, health). */
+  function rounds(taskId: string): TaskRounds | undefined {
+    const loop = o.loops?.get(taskId);
+    if (!loop || loop.state === "ended") return undefined;
+    const it = taskItem(taskId, taskWaits().get(taskId));
+    if (!it) return undefined;
+    return {
+      ...(it.everyMs ? { everyMs: it.everyMs } : {}),
+      ...(it.nextAt ? { nextAt: it.nextAt } : {}),
+      ...(it.last ? { last: it.last } : {}),
+      ...(it.reviews ? { reviews: it.reviews } : {}),
+      ...(it.health ? { health: it.health } : {}),
+      ...(it.state === "paused" ? { paused: true } : {}),
+    };
   }
 
   function resumeTask(id: string): boolean {
@@ -320,7 +350,7 @@ export function createOngoing(o: {
   const timer = setInterval(sweep, 30_000);
   (timer as { unref?: () => void }).unref?.();
 
-  return { list, act, sweep, stop: () => clearInterval(timer) };
+  return { list, rounds, act, sweep, stop: () => clearInterval(timer) };
 }
 
 /**

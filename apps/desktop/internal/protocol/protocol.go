@@ -1033,6 +1033,12 @@ type TaskCard struct {
 	// Mending (D473, D471): Ducter is mending it right now; On hand stands
 	// it at work, never as a failure.
 	Mending *Mending `json:"mending,omitempty"`
+	// TurnAt (D498, D210): while it works, when this turn began, so a card
+	// says how long this turn has run, never since the task was opened.
+	TurnAt string `json:"turnAt,omitempty"`
+	// Rounds (D498, D427): a task in rounds Ducter keeps; On hand stands it
+	// under 一直在跑 / Ongoing and says its rhythm.
+	Rounds *TaskRounds `json:"rounds,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.

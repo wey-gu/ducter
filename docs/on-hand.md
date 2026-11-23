@@ -46,21 +46,26 @@ Below that, the rest:
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
   wake up. A question you put off with **Ask me later** waits here too, saying when it
   will ask you again; **Decide now** brings it back at once.
+- **Ongoing**: work that runs in rounds on its own rhythm, such as a review every 45 minutes. It
+  says how often it runs, what its last round found, and when the next one comes; while a round
+  runs, how long this round has taken. When one needs you, it stands under **Needs you** instead.
 - **Done today**: tasks that finished today. A wait that didn't happen is listed there too with its
   own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
   yesterday**.
 
 Each section is one card, and every task in it is one row. On the left, a small mark says where it stands:
-a flag when it needs you, three moving bars while it works, a ring that fills up toward when a wait
+a flag when it needs you, a dot that gives a small beat each time the task takes a step while it works, a ring that fills up toward when a wait
 comes back, a tick when it's done, a cross when it didn't work out. Then the title, whole (a long one
 takes two lines), and its project,
 and under them, in words, what it is doing right now ("Running the tests", "Opened booking.com in
 Chrome"), what it waits for, or what came of it. On the right, every row's time stands on the same edge, and what you can do stands in the same
 column, so you can read down them:
 
-- working: how long it has been at it. Under its words, a thin line shows its steps as they
-  happened since it started, with a softly breathing dot at now, how many steps, and when the last
-  one was. A group of tasks shows its parts as one track: done, at work, waiting their turn;
+- working: how long it has been at it this time (a task you came back to counts from when it picked
+  up again, not from the day you started it). If it hasn't taken a step for a while, its dot dims
+  and it says when its last step was. A step that didn't work while the task carries on isn't an
+  alarm; it shows in the task. A group of tasks shows its parts as one track: done, at work, waiting
+  their turn;
 - waiting: when it comes back ("back at 11:39"); there's nothing for you to do until then. A task
   waiting for an AI agent's limit says whose, and offers **Hand it to Codex now** when another
   agent can take it;
@@ -76,7 +81,8 @@ A card says which computer it runs on only when that isn't the one most of your 
 A finished task shows what it made, such as its pull request (**#1190**), which you can open.
 
 On a wide window, a task shows on the right as it works: the one you moved to with the arrow keys,
-or else the one at work. You see what it's doing now, its last few steps in its own words, and
+or else the one at work. You see what it's doing now, its last few steps in plain sentences (several quick ones as one line,
+such as "Read 3 files, ran 2 commands"), and
 **Open the task**; for a task that stopped, why, and under **Its last words** what it last told you. For a task using a phone, it shows the
 last picture you saw of that phone and **Watch the phone**; for one in a browser, **Watch it browse**. Move with the arrow keys and watch it
 follow; press Enter to go in.

@@ -161,15 +161,28 @@ func (a *App) stateMark(c *ui.Context, task *store.Task, stopped bool) {
 	switch {
 	case mending:
 		box.Background(t.Working.Surface).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), true))
+			ui.Box(c.Key("peb")).Size(12, 12).Draw(drawPebble(t.Working.Dot, time.Time{}, false))
+		})
+	case a.oh.roundsRow && !stopped && att != protocol.NeedsYou && att != protocol.Failed && att != protocol.Working && att != protocol.Queued:
+		// D498: a task in rounds between rounds: the drawn repeat (Ongoing's own).
+		box.Background(t.SurfaceSunken).Children(func() {
+			ui.Box(c.Key("rep")).Size(18, 18).Draw(drawPastGlyph("repeat", t.InkSoft))
 		})
 	case stopped || att == protocol.NeedsYou:
 		box.Background(t.NeedsYou.Surface).Draw(drawGroupMark("needs", t.NeedsYou.Dot, t.Surface))
 	case att == protocol.Failed:
 		box.Background(t.Failed.Surface).Draw(drawGroupMark("failed", t.Failed.Dot, t.Surface))
 	case att == protocol.Working || att == protocol.Queued:
+		// D498 (research/216): a pebble that beats once when a step lands and
+		// rests between; dimmed once no step has come for a while.
+		last := lastStepAt(task)
+		if ts := turnStart(task); ts.After(last) {
+			last = ts
+		}
+		still := (!last.IsZero() && a.Now().Sub(last) >= quietStep) || a.aliveResting(c)
+		beat := a.beatOf(task)
 		box.Background(t.Working.Surface).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), true)) // still: its trail moves
+			ui.Box(c.Key("peb")).Size(24, 24).Draw(drawPebble(t.Working.Dot, beat, still))
 		})
 	case att == protocol.Blocked:
 		_, frac := a.waitNext(a.S.WaiterFor(task.ID))

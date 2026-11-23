@@ -895,7 +895,7 @@ function soon(iso: string): string {
   return `${f.day(d)} ${hm}`;
 }
 
-function interval(ms: number): string {
+export function interval(ms: number): string {
   const m = Math.round(ms / 60_000);
   const f = DATES[A.L.lang];
   if (m < 60) return f.min(m);
@@ -983,7 +983,7 @@ export function reviewLine(r: NonNullable<OngoingItem["reviews"]>): string[] {
   return [head, posted, r.drafted ? (r.drafted === 1 ? t("og.rev.drafted.1") : t("og.rev.drafted", r.drafted)) : ""].filter(Boolean);
 }
 
-const RepeatGlyph = ({ task }: { task: boolean }) => (
+export const RepeatGlyph = ({ task }: { task: boolean }) => (
   <svg class="pg" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
     {task ? (
       <path d="M10 16a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM10 7v3.2l2.2 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />

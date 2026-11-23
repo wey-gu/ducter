@@ -84,6 +84,13 @@ func (a *App) ongoingCount() int {
 			n++
 		}
 	}
+	// D498: a task in rounds counts while a round runs too.
+	for _, c := range o.Tasks {
+		if c.Rounds != nil && !seen[c.TaskID] {
+			seen[c.TaskID] = true
+			n++
+		}
+	}
 	return n
 }
 

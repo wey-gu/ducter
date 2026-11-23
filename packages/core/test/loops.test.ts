@@ -108,6 +108,16 @@ test("hel's round 185: a round's done with its next timer armed after it never e
   await flush();
   expect(b.woke).toHaveLength(2); // round 186 came, on time
   expect(b.core.log.read({ kinds: ["waiter"], limit: 100 }).some((e) => (e.body as Bodies["waiter"]).state === "cancelled" && !(e.body as Bodies["waiter"]).replacedBy)).toBe(false);
+  // D498: its On hand card carries its rhythm and its last round (On hand says 一直在跑的, never
+  // "at work for 182 hours"); a round at work says when this turn began.
+  const card = () => b.core.tasks.onHand().tasks.find((c) => c.taskId === "swj3zc4w")!;
+  expect(card().rounds).toMatchObject({ everyMs: 45 * MIN, last: { state: "done" } });
+  b.core.tasks.setState("swj3zc4w", "working", "hot");
+  const turnAt = card().turnAt!;
+  // round 186's wake set it working; setting it working again is the same turn
+  expect(Date.parse(turnAt)).toBeLessThan(Date.parse(b.core.log.read({ stream: "task:swj3zc4w", kinds: ["task_state"], limit: 1 })[0]!.ts));
+  b.core.tasks.setState("swj3zc4w", "blocked", "parked");
+  expect(card().turnAt).toBeUndefined();
 });
 
 test("the very first round reporting done before its first timer: the arm brings it back to its rounds", async () => {

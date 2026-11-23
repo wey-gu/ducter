@@ -812,10 +812,29 @@ export function startCore(opts: CoreOptions = {}): Core {
       return { ...c, mending: { cls: b.cls, ...(b.how ? { how: b.how } : {}), ...(b.name ? { name: b.name } : {}) } };
     }),
   });
+  // D498 (D210, D427): a working card says when this turn began (never since the task opened), and a
+  // task in rounds carries its rhythm and where its rounds stand, so On hand says it as Ongoing.
+  let ongoingRef: import("./ongoing.ts").Ongoing | undefined;
+  const turnsDecorate = (o: OnHand): OnHand => ({
+    ...o,
+    tasks: o.tasks.map((c) => {
+      const loop = work.loops.get(c.taskId);
+      const rounds = loop && loop.state !== "ended" ? ongoingRef?.rounds(c.taskId) : undefined;
+      let turnAt: string | undefined;
+      if (c.attention === "working" || c.attention === "queued") {
+        for (const e of log.read({ stream: `task:${c.taskId}`, kinds: ["task_state"], limit: 12 }).reverse()) {
+          const a = (e.body as Bodies["task_state"]).attention;
+          if (a !== "working" && a !== "queued") break;
+          turnAt = e.ts;
+        }
+      }
+      return rounds || turnAt ? { ...c, ...(rounds ? { rounds } : {}), ...(turnAt ? { turnAt } : {}) } : c;
+    }),
+  });
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))));
+    const on = turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -1461,7 +1480,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) });
+  const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
   registerOngoingTools(mcp, ongoing, () => persona.id, { lang: () => langNow(), zone: () => opts.work?.defaultZone, now: () => clock.now() }); // D429: its ready lines in the person's language
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));

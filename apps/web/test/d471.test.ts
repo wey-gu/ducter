@@ -68,8 +68,6 @@ describe("On hand on a real board (D471)", () => {
     expect(b.stuckClause(k("other"))).toBe((await import("../src/cant.tsx")).cantLine(A.S.tasks.get("other")!.card!.cant!));
     expect(k("clone").kind).toBe("cant");
     expect(b.rawFailure("fatal: not a git repository")).toBe("unknown");
-    expect(b.peekWords("cp review-report-round235.json review/")).toBe("");
-    expect(b.peekWords("运行测试")).toBe("运行测试");
     A.S.tasks.clear();
   });
 

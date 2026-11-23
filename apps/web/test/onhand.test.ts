@@ -47,10 +47,12 @@ describe("On hand rows (D216)", () => {
     const { A, o } = await home();
     const s = o.storyOf(A.S.tasks.get("t1")!);
     expect(s.mark).toBe("ran");
-    expect(`${s.words} ${s.code}`).toContain("bun test");
-    // A newer event the client holds wins over the card's.
+    // D498: a step with no words of its own is said as what it did, never the command.
+    expect(s.words).toBeTruthy();
+    expect(`${s.words} ${s.code ?? ""}`).not.toContain("bun test");
+    // A newer event the client holds joins the card's: steps without words are one gist (D498).
     A.receive({ t: "events", events: [step(12, "t1", { name: "Read", input: { file_path: "/r/ducter/apps/web/src/onhand.tsx" } })] } as any);
-    expect(o.storyOf(A.S.tasks.get("t1")!).mark).toBe("read");
+    expect(o.storyOf(A.S.tasks.get("t1")!).words).not.toBe(s.words);
   });
 
   test("a done row says its result; Find and the switcher match every word", async () => {

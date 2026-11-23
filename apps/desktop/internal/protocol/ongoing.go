@@ -44,6 +44,18 @@ type OngoingItem struct {
 	Where  *OngoingWhere  `json:"where,omitempty"`
 }
 
+// TaskRounds (D498) is a task in rounds as its On hand card carries it:
+// its rhythm, next round (absent while one runs or paused), last round,
+// a review task's standing, its health, and whether it is paused.
+type TaskRounds struct {
+	EveryMs int64           `json:"everyMs,omitempty"`
+	NextAt  string          `json:"nextAt,omitempty"`
+	Last    *OngoingLast    `json:"last,omitempty"`
+	Reviews *ReviewStanding `json:"reviews,omitempty"`
+	Health  *OngoingHealth  `json:"health,omitempty"`
+	Paused  bool            `json:"paused,omitempty"`
+}
+
 // OngoingHealth is an ongoing thing not keeping its time (D427): late,
 // failing, or back after a stop by mistake; why, and its one fix.
 type OngoingHealth struct {

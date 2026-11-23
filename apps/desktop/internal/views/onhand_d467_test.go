@@ -1,6 +1,7 @@
 package views
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -115,7 +116,7 @@ func TestTodoSummaryAddsUp(t *testing.T) {
 		t.Fatalf("taken %d", n)
 	}
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"里面有 51 个我现在就能做，交给我就开始。", "看看全部 559 个"} {
+	for _, want := range []string{"里面有 51 个我能直接做，先挑几个交给我吧。", "挑几个交给我", "看看全部 559 个"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -148,14 +149,28 @@ func TestOnHandOutcomesAndTrail(t *testing.T) {
 	if got := app.waitCardWords(ci, "等 acme-web 的发布流水线跑完"); got != "" && strings.Contains(ci.Title(), got) {
 		t.Fatalf("the wait says its title again: %q", got)
 	}
+	// D498: steps in sentences: commands without words of their own are one
+	// gist (never "运行" alone or the command); a step with its own words is
+	// itself, and one that didn't work is marked, quietly.
+	bad := false
 	var evs []protocol.LogEvent
-	for i, m := range []time.Duration{-15, -9, -2} {
-		evs = append(evs, protocol.NewEvent(int64(100+i), iso(m*time.Minute), "default", protocol.TaskStream("t_ci"), protocol.OriginTask, protocol.KindTaskEvent,
-			protocol.TaskEvent{TaskID: "t_ci", Role: "tool", Tool: &protocol.ToolCall{Name: "Bash", OK: &ok}}))
+	for i, cmd := range []string{"python3 - <<'EOF'\nprint(1)\nEOF", "rg -n 'scope.*desktop' .", "cargo check -p mem-desktop"} {
+		evs = append(evs, protocol.NewEvent(int64(100+i), iso(time.Duration(-15+i)*time.Minute), "default", protocol.TaskStream("t_ci"), protocol.OriginTask, protocol.KindTaskEvent,
+			protocol.TaskEvent{TaskID: "t_ci", Role: "tool", Tool: &protocol.ToolCall{Name: "Bash", Input: mustJSON(map[string]string{"command": cmd}), OK: &ok}}))
 	}
+	evs = append(evs, protocol.NewEvent(110, iso(-2*time.Minute), "default", protocol.TaskStream("t_ci"), protocol.OriginTask, protocol.KindTaskEvent,
+		protocol.TaskEvent{TaskID: "t_ci", Role: "tool", Tool: &protocol.ToolCall{Name: "Bash", Input: mustJSON(map[string]string{"command": "bun test", "description": "跑一遍测试"}), OK: &bad}}))
 	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
-	if n := len(trailOf(app.S.Task("t_ci"))); n != 3 {
-		t.Fatalf("trail %d steps", n)
+	ss := app.saidOf(app.S.Task("t_ci"), time.Time{})
+	if len(ss) < 2 {
+		t.Fatalf("said %+v", ss)
+	}
+	g, last := ss[len(ss)-2], ss[len(ss)-1]
+	if strings.Contains(g.words, "python3") || strings.Contains(g.words, "scope") || g.words == "运行" || !strings.Contains(g.words, "命令") {
+		t.Fatalf("the gist %q", g.words)
+	}
+	if last.words != "跑一遍测试" || !last.bad {
+		t.Fatalf("the last step %+v", last)
 	}
 }
 
@@ -204,4 +219,9 @@ func TestStuckFixKinds(t *testing.T) {
 	if !app.stoppedWait(app.S.Task("t_off")) {
 		t.Error("a computer gone away for two hours needs the person")
 	}
+}
+
+func mustJSON(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
 }

@@ -62,10 +62,12 @@ Once a source is added, **On hand** (**手头的事**) shows your to-dos after *
 **Assigned to you on GitHub** (or **To-dos in** your vault, or **Your to-dos** with more than one),
 with how many are open.
 
-Once your partner has gone through the pile (below), one card stands there, so the list never takes
-over: one offer in its words ("236 of them I can take on now; hand them over and I'll start."), how
-many pull requests wait for your review, and one button, **Hand to** your partner. **See all {n}** under it
-opens everything else in place: the stack, a row for each group, a few to-dos and the rest.
+Once your partner has gone through the pile (below), one small card stands there, so the list never
+takes over. First what is yours: **3 PRs wait for your review**, with **Take a look**, which opens them
+in place. Then the offer in your partner's words ("I can take 236 of them on now. Pick a few to start
+with.") and **Pick a few for me**: the hand-over sheet opens with the first few ticked, never the whole
+pile at once. **See all {n}** under it opens everything else in place: the stack, a row for each group,
+a few to-dos and the rest.
 
 Before a sort, and behind **See all** after one, a few to-dos stand first: a pull request waiting for your review, an
 issue where someone mentioned you, an Obsidian to-do due in the next couple of days, and the most

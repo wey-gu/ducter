@@ -677,62 +677,77 @@ func (a *App) srcSummary(c *ui.Context, pv *protocol.PileView, review int) {
 	if a.compact() {
 		padY, minH = 8, 52
 	}
-	card := ui.Row(c.Key("src-sum")).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).Radius(16).AlignItems(ui.Center).
-		Background(t.Surface).Role(ui.RoleGroup)
-	card.Shadow(0, 2, 0, 0, t.Line).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16))
-	g := pv.Groups
-	type fact struct {
-		key string
-		n   int
-	}
-	facts := []fact{{"onhand.src.decide", g["decide"]}, {"onhand.src.close", g["close"]}, {"onhand.src.later", g["later"]}, {"onhand.src.unread", pv.Unread}, {"onhand.src.taken", pileTaken(pv)}}
-	sorted := pv.SortedAt != "" && pv.Read > 0
-	card.Children(func() {
-		a.todoMark(c, kind, 32)
-		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			switch {
-			case pv.Sorting != nil:
-				uiText(c.Key("lead"), a.L.T("pile.sorting")).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine()
-				ui.Row(c.Key("facts")).Gap(t.S3).Children(func() {
-					uiText(c.Key("r"), a.L.T("pile.sorting.read", pv.Sorting.Read)).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
-					uiText(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
-				})
-			case sorted:
-				// D467: one offer in the partner's voice; the breakdown is behind 看看全部.
-				lead := ""
-				if g["do"] > 0 {
-					lead = a.L.T("onhand.src.offer", g["do"])
-				} else {
-					for _, f := range facts {
-						if f.n > 0 {
-							lead = a.L.T(f.key, f.n)
-							break
+	// D498: one sheet: what is the person's own leads (PRs whose review is
+	// asked of them, a row of its own with its way in), then the offer at a
+	// sane size (a few picked, never the whole pile in one press).
+	sheet := ui.Column(c.Key("src-sheet")).Width(w).Radius(16).Background(t.Surface).Clip().Role(ui.RoleGroup)
+	sheet.Shadow(0, 2, 0, 0, t.Line).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16))
+	sheet.Children(func() {
+		if review > 0 && pv.Sorting == nil {
+			ui.Row(c.Key("src-review")).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).AlignItems(ui.Center).Children(func() {
+				a.todoMark(c, kind, 32)
+				uiText(c.Key("rv"), a.L.T("onhand.src.review", review)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).Grow(1).Shrink(1).MinWidth(0).SingleLine()
+				if a.button(c, a.L.T("onhand.src.review.go"), btnSecondary, t.ControlSM, t.Surface) {
+					a.oh.srcAll = true // the whole sort, the review requests first among its cards
+				}
+			})
+		}
+		card := ui.Row(c.Key("src-sum")).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).AlignItems(ui.Center)
+		if review > 0 && pv.Sorting == nil {
+			card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
+		}
+		g := pv.Groups
+		type fact struct {
+			key string
+			n   int
+		}
+		facts := []fact{{"onhand.src.decide", g["decide"]}, {"onhand.src.close", g["close"]}, {"onhand.src.later", g["later"]}, {"onhand.src.unread", pv.Unread}, {"onhand.src.taken", pileTaken(pv)}}
+		sorted := pv.SortedAt != "" && pv.Read > 0
+		card.Children(func() {
+			a.todoMark(c, kind, 32)
+			ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+				switch {
+				case pv.Sorting != nil:
+					uiText(c.Key("lead"), a.L.T("pile.sorting")).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine()
+					ui.Row(c.Key("facts")).Gap(t.S3).Children(func() {
+						uiText(c.Key("r"), a.L.T("pile.sorting.read", pv.Sorting.Read)).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
+						uiText(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+					})
+				case sorted:
+					// D467: one offer in the partner's voice; the breakdown is behind 看看全部.
+					lead := ""
+					if g["do"] > 0 {
+						lead = a.L.T("onhand.src.offer", g["do"])
+					} else {
+						for _, f := range facts {
+							if f.n > 0 {
+								lead = a.L.T(f.key, f.n)
+								break
+							}
 						}
 					}
+					if lead == "" {
+						lead = a.L.T("pile.clear")
+					}
+					uiText(c.Key("lead"), autospace(lead)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
+				default:
+					uiText(c.Key("lead"), a.L.T("pile.first.lede", name)).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2)
 				}
-				if lead == "" {
-					lead = a.L.T("pile.clear")
+			})
+			ui.Row(c.Key("act")).Shrink(0).Children(func() {
+				switch {
+				case pv.Sorting != nil:
+				case sorted && g["do"] > 0:
+					if a.buttonFor(c, a.L.T("onhand.src.pick"), a.L.T("pile.g.do", name), btnSecondary, t.ControlSM, t.Surface) {
+						a.openHandDo()     // D385: the hand-over sheet,
+						a.handBrowse(true) // D498: the do list with the first few ticked
+					}
+				case !sorted && pv.Open > 0:
+					if a.button(c, a.L.T("pile.first"), btnSecondary, t.ControlSM, t.Surface) {
+						a.send(protocol.PileReq{T: "pile_sort"})
+					}
 				}
-				uiText(c.Key("lead"), autospace(lead)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
-				if review > 0 {
-					uiText(c.Key("review"), a.L.T("onhand.src.review", review)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
-				}
-			default:
-				uiText(c.Key("lead"), a.L.T("pile.first.lede", name)).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2)
-			}
-		})
-		ui.Row(c.Key("act")).Shrink(0).Children(func() {
-			switch {
-			case pv.Sorting != nil:
-			case sorted && g["do"] > 0:
-				if a.buttonFor(c, a.L.T("pile.act.do", name), a.L.T("pile.g.do", name), btnSecondary, t.ControlSM, t.Surface) {
-					a.openHandDo() // D385: the hand-over sheet
-				}
-			case !sorted && pv.Open > 0:
-				if a.button(c, a.L.T("pile.first"), btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.PileReq{T: "pile_sort"})
-				}
-			}
+			})
 		})
 	})
 }

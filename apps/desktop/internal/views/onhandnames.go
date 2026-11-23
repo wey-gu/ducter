@@ -6,7 +6,6 @@ package views
 // end, never inside one. The web says the same (apps/web/src/transcript.tsx).
 
 import (
-	"regexp"
 	"strings"
 )
 
@@ -34,20 +33,6 @@ func untrail(title string) string {
 	}
 	return strings.TrimRight(strings.Join(words, " "), trimTail)
 }
-
-// peekWords is a step said in the peek: its words whole, or "" when the step
-// has none of its own (only a command or a path).
-func peekWords(words string) string {
-	w := strings.Join(strings.Fields(words), " ")
-	if w == "" || strings.ContainsAny(w[:1], "`\"'$/~.") || shellLine.MatchString(w) {
-		return ""
-	}
-	return w
-}
-
-// shellLine is a command as typed ("cp review-report.json review/"): a
-// lowercase word, then a flag or a path.
-var shellLine = regexp.MustCompile(`^[a-z][\w-]*\s+(-|\S*[./])`)
 
 // cols is how wide a run of text reads: a Han or full-width character two.
 func cols(s string) int {

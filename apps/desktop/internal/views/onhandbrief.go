@@ -153,130 +153,6 @@ func (a *App) outcomeChip(c *ui.Context, key string, task *store.Task) bool {
 
 // ---------- motion ----------
 
-// trailStep is one step a task took, at its time.
-type trailStep struct {
-	at  time.Time
-	bad bool
-}
-
-// trailOf is the steps this Mac holds for a task, oldest first (at most 400).
-func trailOf(task *store.Task) []trailStep {
-	var out []trailStep
-	from := max(0, len(task.Events)-400)
-	for i := from; i < len(task.Events); i++ {
-		e := &task.Events[i]
-		if e.Kind != protocol.KindTaskEvent {
-			continue
-		}
-		var b protocol.TaskEvent
-		if e.Decode(&b) != nil {
-			continue
-		}
-		if b.Role != "tool" && !(b.Role == "assistant" && strings.TrimSpace(b.Text) != "") {
-			continue
-		}
-		s := trailStep{at: store.ParseTime(e.TS)}
-		if b.Tool != nil && b.Tool.OK != nil && !*b.Tool.OK {
-			s.bad = true
-		}
-		out = append(out, s)
-	}
-	if len(out) == 0 && task.Card != nil && task.Card.Latest != nil {
-		out = append(out, trailStep{at: store.ParseTime(task.Card.Latest.TS)})
-	}
-	return out
-}
-
-// trail is a working task's steps on its elapsed time, the head at now
-// breathing (still under reduced motion), and beside it how many steps and
-// when the last one was, each its own element.
-func (a *App) trail(c *ui.Context, key string, task *store.Task) {
-	t := a.T
-	a.ensureHistory(task.ID) // its steps from before this Mac connected
-	steps := trailOf(task)
-	start := time.Time{}
-	if task.Card != nil {
-		start = store.ParseTime(task.Card.OpenedAt)
-	}
-	if start.IsZero() {
-		start = store.ParseTime(task.OpenedAt)
-	}
-	now := a.Now()
-	if start.IsZero() || !now.After(start) {
-		return
-	}
-	n := 0
-	for _, s := range steps {
-		if !s.at.Before(start) {
-			n++
-		}
-	}
-	dot, bad, line := t.Working.Dot, t.Failed.Dot, t.Line
-	rest := a.aliveResting(c)
-	c.After(time.Minute)
-	ui.Row(c.Key(key)).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
-		ui.Box(c.Key("track")).Height(10).Grow(1).Shrink(1).MinWidth(60).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
-			span := float32(now.Sub(start))
-			cy := r.Y + r.H/2
-			var base ui.Path
-			base.MoveTo(r.X, cy).LineTo(r.X+r.W-5, cy).Cap(ui.RoundCap)
-			p.StrokePath(&base, 2, line)
-			// D467 round 3: steps closer than 6 pt read as one span, a rhythm
-			// rather than a barcode; a lone step stays a tick.
-			var xs []float32
-			var bads []float32
-			for _, s := range steps {
-				if s.at.Before(start) {
-					continue
-				}
-				f := float32(s.at.Sub(start)) / span
-				x := r.X + min(1, max(0, f))*(r.W-10)
-				if s.bad {
-					bads = append(bads, x)
-				}
-				xs = append(xs, x)
-			}
-			for i := 0; i < len(xs); {
-				j := i
-				for j+1 < len(xs) && xs[j+1]-xs[j] < 6 {
-					j++
-				}
-				var m ui.Path
-				if j == i {
-					m.MoveTo(xs[i], cy-4).LineTo(xs[i], cy+4).Cap(ui.RoundCap)
-					p.StrokePath(&m, 2, dot.Alpha(0.55))
-				} else {
-					m.MoveTo(xs[i], cy).LineTo(xs[j], cy).Cap(ui.RoundCap)
-					p.StrokePath(&m, 5, dot.Alpha(0.45))
-				}
-				i = j + 1
-			}
-			for _, x := range bads {
-				var m ui.Path
-				m.MoveTo(x, cy-4).LineTo(x, cy+4).Cap(ui.RoundCap)
-				p.StrokePath(&m, 2, bad)
-			}
-			k := float32(1)
-			if !p.Preferences().ReduceMotion && !rest {
-				k = 0.45 + 0.55*float32(0.5-0.5*math.Cos(2*math.Pi*cycle(p.Now(), 1600*time.Millisecond, 0)))
-				idleFrame(p)
-			}
-			p.FillPath(oval(r.X+r.W-5, cy, 4.5, 4.5), dot.Alpha(k))
-		})
-		if n > 0 {
-			uiText(c.Key("n"), a.L.T("onhand.progress.steps", n)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
-		}
-		if len(steps) > 0 {
-			last := steps[len(steps)-1].at
-			ago := a.L.T("time.now")
-			if d := now.Sub(last); d >= time.Minute {
-				ago = a.agoLong(last.UTC().Format(time.RFC3339))
-			}
-			uiText(c.Key("last"), a.tp("onhand.progress.last", ago)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
-		}
-	})
-}
-
 // groupTrack is a group's parts as one track (D467): done, at work
 // (breathing), needing you, didn't work, in line.
 func (a *App) groupTrack(c *ui.Context, bg boardGroup) {
@@ -412,9 +288,6 @@ func (a *App) peek(c *ui.Context) {
 			uiText(c.Key("said-h"), a.L.T("onhand.peek.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			uiText(c.Key("said"), keepWords(autospace(strings.TrimSpace(r.Summary)))).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(5)
 		}
-		if att == protocol.Working || att == protocol.Queued {
-			a.trail(c, "trail", task)
-		}
 		if finishedAtt(att) {
 			a.outcomeChip(c, "chip", task)
 		}
@@ -445,52 +318,31 @@ func (a *App) peek(c *ui.Context) {
 				}
 			})
 		}
-		// The last few steps, newest last, in the task's own words.
-		var evs []*protocol.LogEvent
-		for i := len(task.Events) - 1; i >= 0 && len(evs) < 6; i-- {
-			e := &task.Events[i]
-			if e.Kind != protocol.KindTaskEvent {
-				continue
-			}
-			var b protocol.TaskEvent
-			if e.Decode(&b) != nil || (b.Role != "tool" && !(b.Role == "assistant" && strings.TrimSpace(b.Text) != "")) {
-				continue
-			}
-			evs = append(evs, e)
+		// D498: the last few steps in sentences (D152): its own words, one gist
+		// for steps without words; a step that didn't work is a quiet line
+		// with the transcript's small cross, never the failed ink.
+		ss := a.saidOf(task, time.Time{})
+		if len(ss) > 6 {
+			ss = ss[len(ss)-6:]
 		}
-		if len(evs) > 0 {
+		if len(ss) > 0 {
 			uiText(c.Key("steps-h"), a.L.T("onhand.peek.steps")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, 0, 0, 0)
 			ui.Column(c.Key("steps")).Gap(6).Children(func() {
-				for i := len(evs) - 1; i >= 0; i-- {
-					e := evs[i]
-					st, ok := a.eventStory(task, e)
-					// D471: a step in its own words, whole; one that is only a
-					// command stays in the task, never cut into the peek.
-					if !ok || peekWords(st.words) == "" {
-						continue
-					}
-					ui.Row(c.Key(fmt.Sprint("e", e.Seq))).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-						mk := t.InkMuted
-						if st.tone == "failed" {
-							mk = t.Failed.Ink
-						}
-						draw := stepGlyph(st.mark)
-						if st.mark == "error" {
+				for i, st := range ss {
+					ui.Row(c.Key(fmt.Sprint("e", st.seq))).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+						draw := stepGlyph(st.k)
+						switch {
+						case st.bad:
 							draw = drawCross
-						}
-						if st.mark == "" {
+						case st.k == "voice":
 							draw = stepGlyph("thought")
 						}
-						a.glyph(c, 14, draw(mk))
+						a.glyph(c, 14, draw(t.InkMuted))
 						col := t.InkSoft
-						if i == 0 {
+						if i == len(ss)-1 {
 							col = t.Ink
 						}
-						uiText(c.Key("w"), keepWords(autospace(peekWords(st.words)))).FontSize(t.SM).TextColor(col).MaxLines(2).Shrink(1).MinWidth(0).Tooltip(st.words)
-						// D471: what it touched, only when short enough to say whole (a file's name).
-						if st.code != "" && len([]rune(st.code)) <= 32 && !strings.ContainsAny(st.code, " \t") {
-							uiText(c.Key("code"), st.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
-						}
+						uiText(c.Key("w"), keepWords(autospace(st.words))).FontSize(t.SM).TextColor(col).MaxLines(2).Shrink(1).MinWidth(0).Tooltip(st.words)
 					})
 				}
 			})

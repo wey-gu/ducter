@@ -184,10 +184,15 @@ describe("On hand reports (D467 round 2)", () => {
     A.S.applyEvent(ev(9301, "work", -20 * 60_000, { role: "tool", tool: { name: "Bash", input: { command: "defaults read -g" }, output: "ok", ok: true } }) as any);
     A.S.applyEvent(ev(9302, "work", -60_000, { role: "assistant", text: "Picking the Dock settings." }) as any);
     A.S.applyEvent(ev(9303, "work", -30_000, { role: "tool", tool: { name: "Bash", input: { command: "false" }, output: "no", ok: false } }) as any);
-    const { stepsOf, peekTask } = await import("../src/onhand-brief.tsx");
+    const { stepsOf, peekTask, saidOf } = await import("../src/onhand-brief.tsx");
     const steps = stepsOf(A.S.tasks.get("work")!);
     expect(steps).toHaveLength(3);
     expect(steps.map((s) => s.bad)).toEqual([false, false, true]);
+    // D498: steps in sentences: a command with no words of its own is a gist, never the command.
+    const said = saidOf(A.S.tasks.get("work")!);
+    expect(said.map((x) => x.k)).toEqual(["ran", "voice", "ran"]);
+    expect(said[1]!.words).toBe("Picking the Dock settings.");
+    expect(said.map((x) => x.words).join(" ")).not.toMatch(/defaults read|false/);
     expect(peekTask("", ["idle", "work"])!.id).toBe("work");
     expect(peekTask("idle", ["idle", "work"])!.id).toBe("idle");
     expect(peekTask("gone", ["idle", "work"])!.id).toBe("work");
@@ -200,9 +205,10 @@ describe("On hand reports (D467 round 2)", () => {
   test("the source is one offer; the peek stands only at a wide window", async () => {
     const { A } = await import("../src/app.ts");
     A.L = strings("zh");
-    expect(A.L.t("onhand.src.offer", 49)).toBe("里面有 49 个我现在就能做，交给我就开始。");
+    // D498: the offer asks for a few, never the whole pile in one press.
+    expect(A.L.t("onhand.src.offer", 49)).toBe("里面有 49 个我能直接做，先挑几个交给我吧。");
     A.L = strings("en");
-    expect(A.L.t("onhand.src.offer", 49)).toBe("49 of them I can take on now; hand them over and I'll start.");
+    expect(A.L.t("onhand.src.offer", 49)).toBe("I can take 49 of them on now. Pick a few to start with.");
     const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
     const block = css.slice(css.indexOf("/* D467 round 2"));
     expect(block).toMatch(/\.peek-col \{\s*display: none;/);
@@ -210,7 +216,7 @@ describe("On hand reports (D467 round 2)", () => {
     expect(block).toMatch(/prefers-reduced-motion: reduce/);
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
     expect(src("../src/board.tsx".replace("../src/", ""))).toContain("<Peek />");
-    for (const k of ["onhand.brief.stopped.phone", "onhand.stuck.phone", "onhand.progress.steps", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
+    for (const k of ["onhand.brief.stopped.phone", "onhand.stuck.phone", "onhand.progress.last", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
   });
 });
 
@@ -240,36 +246,24 @@ describe("On hand said once (D467 round 3)", () => {
     A.S.tasks.clear();
   });
 
-  test("a name in a sentence is cut at a word's end, never inside one (D471); the trail merges dense steps into spans", async () => {
-    const { briefName, trailRuns } = await import("../src/onhand-brief.tsx");
+  test("a name in a sentence is cut at a word's end, never inside one (D471)", async () => {
+    const { briefName } = await import("../src/onhand-brief.tsx");
     expect(briefName("用手机把 Ducter 官网录一段屏发到 X")).toBe("用手机把 Ducter 官网录一段…");
     expect(briefName("Fix the typo")).toBe("Fix the typo");
     expect(briefName("Record the Ducter site on the phone and post it to X")).toBe("Record the Ducter site on…");
-    const runs = trailRuns([
-      { x: 10, bad: false, key: 1 },
-      { x: 40, bad: false, key: 2 },
-      { x: 90, bad: false, key: 3 },
-      { x: 90.5, bad: true, key: 4 },
-      { x: 91, bad: false, key: 5 },
-      { x: 91.6, bad: false, key: 6 },
-    ]);
-    expect(runs).toEqual([
-      { from: 10, to: 10, bad: false, key: 1 },
-      { from: 40, to: 40, bad: false, key: 2 },
-      { from: 90, to: 91.6, bad: true, key: 3 },
-    ]);
   });
 
   test("one encoding a level; a face only where something needs you; the axis from two waits", () => {
     const onhand = src("onhand.tsx");
     const g = onhand.slice(onhand.indexOf("function GroupCard"), onhand.indexOf("/** How the parts run"));
     expect(g).not.toContain("<StateMark");
-    expect(g).toContain('k === "working" ? <span class="gmark k-blank"');
+    expect(g).toContain('class="peb"'); // D498: a part at work beats with its steps
     expect(onhand).toContain("const needsHere = ");
     expect(src("onhand-brief.tsx")).not.toContain("function WaitAxis"); // D471: the times stand on the rows' own edge
     const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
     const block = css.slice(css.indexOf("/* D467 round 3"));
-    expect(block).toMatch(/\.ocard \.omark \.pulse i \{\s*animation: none;/);
+    expect(css).toMatch(/\.omark\.k-working\.still \.peb \{\s*opacity: 0\.45;\s*animation: none;/);
+    expect(css).not.toMatch(/\.trail-row|\.ocard \.omark \.pulse/);
     expect(block).toMatch(/\.peek \.pt \{[^}]*white-space: nowrap;/);
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
   });

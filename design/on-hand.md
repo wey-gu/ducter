@@ -6,7 +6,9 @@ the folds), D287 (the partner at its head, the work as cards) and D315 (one shor
 there, headings with character; the review below), D467 (the board by attention: what stopped needs
 you, today is today, a source is one summary card, no day beside it) and D471 (one ledger, designed on
 the author's real board: the partner's one sentence, then each section one sheet of rows on one grid,
-every task said once, every reason in plain words, names said whole).
+every task said once, every reason in plain words, names said whole) and D498 (alive without a
+progress line, a turn's own time, rounds as Ongoing, steps in sentences, the person's own work first
+in the to-do source; research/216).
 Words are the glossary's (`product-model.md`); the visuals are Pebble's (`ui.md`).
 
 ## The two axes
@@ -99,7 +101,7 @@ task in {name}** where the bare ＋ stood.
    much); the filter it gave is gone, Find and the lens narrow. Under the line, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
 3. D467 round 4, D471: no forecast line; each wait's row says when it is back.
-4. Sections by attention (D467): 等你, 在做, 在等, 今天做完. 等你 answers in place (decision cards),
+4. Sections by attention (D467): 等你, 在做, 在等, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
    then what **stopped** (a wait nothing brings back on its own: no waiter of any kind, not a
    question put off, not a computer that will come back, quiet for 30 minutes or more) with
    **接着做 / Continue** and **放下 / Put down** always shown and **上次有动静是 {ago}**, then what
@@ -139,18 +141,25 @@ detail, on hover and in the task.
 
 | Part | What it shows |
 |---|---|
-| State mark | A 32-pt sunk round with a group part's glyph: a flag (needs you, stopped), three soft bars (working), the D279 ring filling toward its next look (waiting), a tick (a new result; quiet once seen), a cross (didn't work out) |
+| State mark | A 32-pt sunk round with a group part's glyph: a flag (needs you, stopped), D498's pebble (working: it beats once each time a step lands and rests between, dimmed after ten quiet minutes; research/216), Ongoing's drawn repeat (a task in rounds between rounds), the D279 ring filling toward its next look (waiting), a tick (a new result; quiet once seen), a cross (didn't work out) |
 | Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
 | Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it |
-| Trail (working) | D467 (rev.): under the living line, its steps placed on its elapsed time as ticks (an errored one in the failed ink), the head at now breathing (1.6 s; still under reduced motion and when the board rests, D425), then **n 步 / n steps** and **上一步 {ago} / last step {ago}**, each its own element. The client asks once for a working task's history so the trail is whole after a reconnect |
+| Quiet (working) | D498: no progress line. After ten minutes with no step, under the living line, **上一步 {ago} / last step {ago}** in the quiet ink (a fact; the partner judges a stall, D481). The living line is D498's `saidOf`: this turn's latest line in a sentence (the agent's words, a step that said what it was for, or the unworded steps as one gist, **跑了 3 条命令，看了 2 个文件**), never a bare command; a failed step the task went past keeps the quiet ink. The client asks once for a working task's history |
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**) from the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
-| Right end | The heartbeat in words (**在做 12 分钟**, **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover Merge / draft PR, Pause, D454's × and ⋯ |
+| Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover Merge / draft PR, Pause, D454's × and ⋯ |
 
-A new result pops once the first time it is drawn (D313). Round 3, one sign of progress per level:
-a working card's mark stands still (its trail moves); a group (D360) is the same card with its name
-at the head (no mark, no beads) and a **track** of its parts under it (done, at work breathing,
-needing you, didn't work, in line); a part at work has no glyph of its own, only its living line and
-its trail. A trail joins steps closer than 6 pt into one span, so a busy stretch reads as rhythm.
+A new result pops once the first time it is drawn (D313). A group (D360) is the same card with its
+name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
+line); D498: a part at work has the board's pebble and its living line.
+
+**一直在跑的 / Ongoing (D498, D427).** A task in rounds (the home's `rounds` on its card), at work on a
+round or resting till the next, is a row here, never under 在做 or 在等; one that asks or stopped stays
+in 等你. Its mark between rounds is Ongoing's drawn repeat (at work, the pebble); beside its project
+**每 {n} 一轮 / A round every {n}**; its line between rounds the last round's facts, each its own
+element (health when it isn't on time, D427's words in the waiting ink; else a review's standing,
+D394's **8 个请求在等你：3 个有新提交已复审，5 个没变**; else the round's own line); at its right
+**这一轮 {n} / This round {n}** while a round runs, else **下一轮 {time} / Next round {time}** or
+**暂停了 / Paused**. Its gestures stay on its opened task and the Ongoing tab.
 
 ### The peek (D467 rev.)
 
@@ -158,9 +167,9 @@ From 1280 (Mac pt, web px), a clay card 360 wide beside the list sits in on a ta
 keys moved to on this board (a focus kept from a task opened before doesn't hold it), else the first
 at work, else the first in the walk. Its mark, title (16/700, up to three lines) and where, its
 heartbeat, the living line in full (a stuck task's reason, then **它最后说 / Its last words**: what it
-reported, whole), its trail, **最近几步 / Latest steps** (the last six steps in their own words, newest
-last and in ink; a step that is only a command stays in the task; a short file name may stand beside
-its words), a PR chip when done, and **打开任务 / Open the task**. Arrows and j/k move it; Enter opens;
+reported, whole), **最近几步 / Latest steps** (D498: the last six lines of `saidOf`, newest last and in
+ink; steps with no words of their own as one gist; a failed step quiet, with the small cross), a PR
+chip when done, and **打开任务 / Open the task**. Arrows and j/k move it; Enter opens;
 hovering a row doesn't move it. Round 4: its picture
 from what exists: the phone view's last frame this device held (D248) under **上次看到的画面 / Last
 seen**, and **看它用手机 / Watch the phone** or **查看浏览器 / Watch it browse** into the live views.
@@ -182,11 +191,13 @@ Seen**).
 
 D357, D467: after 今天做完, while a to-do source is on and something is open there, **GitHub 上标给你的 /
 Assigned to you on GitHub** (a vault: **{vault} 里的待办**; several: **你的待办 / Your to-dos**) as a
-quiet label like the sections'. Under it, with a sort (D359), **one summary card** of the board's shape: the
-app's mark where a task has its state mark, D467 (rev.) one offer in the partner's voice (**里面有 236
-个我现在就能做，交给我就开始。 / 236 of them I can take on now; hand them over and I'll start.**; with
-none to hand over, the first of the others), **n 个 PR 等你 review** apart, and its one action
-**交给{name}** (D385's sheet). Before a sort the card says **让{name}一个个看过，分出能交给它做的、要你定的、也许能关的。** with **理一理 / Sort them**;
+quiet label like the sections'. Under it, with a sort (D359), **one sheet** of the board's shape, the
+app's mark where a task has its state mark. D498: what is the person's own first, as its own row:
+**{n} 个 PR 等你 review / {n} PRs wait for your review** with **去看看 / Take a look** (opens them in
+place, behind 看看全部); then one offer in the partner's voice at a sane size (**里面有 236 个我能直接做，
+先挑几个交给我吧。 / I can take 236 of them on now. Pick a few to start with.**; with none to hand over,
+the first of the others) and **挑几个交给我 / Pick a few for me** (D385's sheet on the do list, the
+first six ticked; never the whole pile in one press). Before a sort the card says **让{name}一个个看过，分出能交给它做的、要你定的、也许能关的。** with **理一理 / Sort them**;
 while it sorts, **正在一个个看…** and its count. Under the card, **看看全部 {n} 个 / See all {n}**
 (this session; **收起 / Hide**) opens the whole sort behind it: **the pile** (D359: the partner in
 clay beside a stack whose height is the count's bucket, at most 88 wide, the count at heading size,

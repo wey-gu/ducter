@@ -82,7 +82,9 @@ export function othersTurn(notes: { id?: string; title: string; from?: string }[
  *  Chinese, and its evidence label became the On hand card's subtitle (fresh-user QA). Any
  *  language by name (D292): a Korean user's task is told Korean, never English by default. */
 function languageLine(lang: BriefInput["language"]): string {
-  const what = "write `summary`, question `text` and `default`, evidence `label`s, and `wait_for`'s `reason` and `unmetSays`";
+  // D498: the short description a command or step carries (Claude Code's Bash `description`) is a line
+  // On hand shows the person, so it is in their language too.
+  const what = "write `summary`, question `text` and `default`, evidence `label`s, `wait_for`'s `reason` and `unmetSays`, and the short description you give a command or step";
   const tag = normalizeTag(lang);
   if (!tag) return `- **Language:** ${what} in the language of the user's own words in the brief, whatever language that is. The user may read them as they are.`;
   const short = LANGUAGES.find((l) => l.tag === tag || l.tag === baseTag(tag))?.en ?? langName(tag);

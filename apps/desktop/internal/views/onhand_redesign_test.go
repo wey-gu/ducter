@@ -36,7 +36,8 @@ func TestOnHandRowsFromTheCard(t *testing.T) {
 	c2.Integrated = &protocol.Integrated{Act: "open_pr", Ref: "https://github.com/o/r/pull/7"}
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{c1, c2}}})
 	s := app.storyOf(app.S.Task("t1"))
-	if s.mark != "ran" || !strings.Contains(s.words+" "+s.code, "bun test") {
+	// D498: a step with no words of its own is said as what it did, never the command.
+	if s.mark != "ran" || s.words == "" || strings.Contains(s.words+" "+s.code, "bun test") {
 		t.Fatalf("the working row's line from the card: %+v", s)
 	}
 	if integrated(app.S.Task("t2")) != "open_pr" {

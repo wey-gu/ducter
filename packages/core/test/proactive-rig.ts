@@ -107,7 +107,7 @@ export function rig(o: RigOptions = {}) {
   const settle = async () => {
     for (let i = 0; i < 5; i++) {
       await p.tick();
-      await new Promise((r) => setTimeout(r, 1));
+      await new Promise((r) => setImmediate(r));
     }
   };
   /** Moves the fake clock, letting each due timer's async work finish before the next. */

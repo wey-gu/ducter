@@ -41,7 +41,7 @@ function setup(script: Script, fb = fakeBridge()) {
   const fc = fakeCore(clock, tmp());
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: fakeMemory([]).memory, bridge: fb.bridge, bridgeIntervalMs: 0 });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {}, memory: fakeMemory([]).memory, bridge: fb.bridge, bridgeIntervalMs: 0 });
   const channel = () => fc.events.filter((e) => e.stream === "channel");
   return { fc, fr, partner, channel, fb };
 }

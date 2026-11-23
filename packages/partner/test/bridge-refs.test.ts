@@ -73,7 +73,7 @@ test("the partner sees what was handed over as data, the line's title in the Log
   const fc = fakeCore(clock, mkdtempSync(join(tmpdir(), "ducter-bridge-refs-")));
   const fr = fakeRunner(async (input, s) => (inputs.push(input), s.end()));
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: fakeMemory([]).memory, bridge, bridgeIntervalMs: 0 });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {}, memory: fakeMemory([]).memory, bridge, bridgeIntervalMs: 0 });
   await partner.checkBridge();
   await partner.idle();
   expect(resolved).toEqual(["nowledgemem://artifacts/a1"]);

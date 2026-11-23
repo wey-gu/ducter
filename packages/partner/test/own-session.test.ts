@@ -48,7 +48,7 @@ function setup(script: Script, o: Parameters<typeof port>[0] & { bridge?: true }
   fr.bindCards(fc.cards);
   // D409: Bridge on (a client that never brings anything; only its presence matters here).
   const bridge = o.bridge ? { check: async () => ({ ok: true as const, messages: [] }), reply: async () => ({ ok: false as const, reason: "unavailable" as const, message: "" }) } : undefined;
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, ...(bridge ? { bridge, bridgeIntervalMs: 0, bridgeStartMark: false } : {}) });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {}, ...(bridge ? { bridge, bridgeIntervalMs: 0, bridgeStartMark: false } : {}) });
   const user = (text: string) => partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));
   return { fc, partner, user, adopted };
 }

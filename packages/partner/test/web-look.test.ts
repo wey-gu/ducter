@@ -21,7 +21,7 @@ function setup(script: Script, result: WebLookResult | ((q: string) => Promise<W
   fc.core.activity = { set: (a) => void seen.push(a) };
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {} });
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, settleMs: 0, onError: () => {} });
   // Core wakes the partner with a look's result (core.ts triggersPartner); the fake core doesn't.
   fc.core.log.subscribe((e) => e.kind === "web_look" && (e.body as Bodies["web_look"]).state !== "looking" && partner.onTrigger(e));
   const user = (text: string) => partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.20 - 2026-11-23
+
+<!-- whats-new
+zh: 一处答了，处处都答了；不再凭时长说「可能卡住了」
+en: Answer once, it's answered everywhere; no more "may be stuck" by the clock
+-->
+
+**Questions stay in step**
+- Answer a question on one device and it closes everywhere: the conversation, On hand, the
+  task and your other devices, even ones that were away when you answered.
+- A question about something that has since ended closes by itself: "No answer needed now;
+  that has passed."
+- Words you typed into a question that was answered somewhere else are kept: send them as a
+  message, or discard them.
+
+**No alarm by the clock**
+- A long round is no longer called stuck because of how long it has run. Your partner looks at
+  what it is actually doing: it stays quiet while it is moving, tells the task what to do next
+  when it is stuck, and asks you only when you are needed.
+
 ## 0.1.19 - 2026-11-23
 
 <!-- whats-new

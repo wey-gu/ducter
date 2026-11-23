@@ -133,7 +133,7 @@ export interface PileDeps {
   /** The service's one path out: a write, logged as source_write (Done for you). */
   write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }) => Promise<WriteResult>;
   /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
-  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
+  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean };
   /** Open a task for a to-do and bind it (the person handed it over). */
   openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
   /** The repository's own review guide, when its folder is on this computer (a review skill, REVIEW.md). */
@@ -358,7 +358,7 @@ export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: P
     const gist = typeof x.gist === "string" && x.gist.trim() ? x.gist.trim().slice(0, 160) : undefined;
     const title = typeof x.title === "string" && x.title.trim() ? x.title.trim().replace(/\s+/g, " ").slice(0, 200) : undefined;
     const ci = x.ci === "passing" || x.ci === "failing" || x.ci === "pending" || x.ci === "none" ? x.ci : undefined;
-    // D413: a PR that only mentions the person (didn't ask for their review) is never posted without asking.
+    // D407: a PR that only mentions the person (didn't ask for their review), shown so on the board.
     prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes });
   }
   return { ok: true, prs };
@@ -814,15 +814,17 @@ export function createPile(d: PileDeps): Pile {
   };
   /**
    * D413: post this task's unsent drafts that a standing permission covers (the person said reviews
-   * go without asking, on these orgs; never a PR that only mentions them), through the one audited
+   * go without asking, on these orgs; D495: a PR that mentions them too), through the one audited
    * write. The first time a permission is used, one line in the conversation lists what went.
    */
-  const postStanding = async (taskId: string, mentionOf: (ref: string) => boolean | undefined, justSaid = false): Promise<{ ref: string; link?: string }[]> => {
+  const postStanding = async (taskId: string, justSaid = false): Promise<{ ref: string; link?: string }[]> => {
     if (!d.standing) return [];
     const went: { ref: string; link?: string; standing: string }[] = [];
     for (const x of Object.values(st.reads)) {
       if (x.byTask !== taskId || x.state !== "drafted" || !x.notes.length) continue;
-      const s = d.standing.allows(x.ref, { mention: mentionOf(x.ref) === true });
+      // D495: every draft the round made where the permission holds, a mention too: the routine
+      // reviews what the person asked it to, and code never narrows what they said.
+      const s = d.standing.allows(x.ref);
       if (!s) continue;
       const w = await d.write(prItem(x), "review", { by: "rule", taskId, standing: s.id, said: s.text, text: JSON.stringify({ notes: x.notes }) });
       if (!w.ok) continue; // it stays drafted: the card asks for it
@@ -1095,8 +1097,7 @@ export function createPile(d: PileDeps): Pile {
       const rounds = (st.rounds ??= {});
       const prev = rounds[taskId];
       // D413: what the person said may go without asking goes now; the rest waits on one card.
-      const mentionOf = (ref: string) => r.prs.find((p) => p.ref === ref)?.mention ?? prev?.prs?.find((p) => p.ref === ref)?.mention;
-      const posted = await postStanding(taskId, mentionOf);
+      const posted = await postStanding(taskId);
       // Every draft of this task still unsent goes on the one card (an earlier round's too).
       const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
       const standing: ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[] } = {
@@ -1129,7 +1130,7 @@ export function createPile(d: PileDeps): Pile {
       const out: { taskId: string; posted: { ref: string; link?: string }[] }[] = [];
       for (const [taskId, s0] of Object.entries(st.rounds ?? {})) {
         if (!s0.drafted) continue;
-        const posted = await postStanding(taskId, (ref) => s0.prs?.find((p) => p.ref === ref)?.mention, true);
+        const posted = await postStanding(taskId, true);
         if (!posted.length) continue;
         const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
         const card = roundCard(taskId, s0.decisionId, unsent);

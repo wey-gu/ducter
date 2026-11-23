@@ -107,8 +107,8 @@ func (a *App) hoverCopy(c *ui.Context, r *replyTo, show bool, side int) {
 	a.copyPebble(c, key, text, side, done)
 }
 
-// copyPebble is the pebble itself, as the reply's: the copy mark, its word
-// on hover in a window with room, the check and 已拷贝 once it copied.
+// copyPebble is the pebble itself, as the reply's: the copy mark, the
+// check once it copied (D495: no word on it; 拷贝 / 已拷贝 is its label).
 func (a *App) copyPebble(c *ui.Context, key, text string, side int, done bool) {
 	t := a.T
 	label := a.L.T("reply.copy")
@@ -140,15 +140,10 @@ func (a *App) copyPebble(c *ui.Context, key, text string, side int, done bool) {
 	if done {
 		ink, draw = t.Done.Ink, drawCheck
 	}
-	words := (on || done) && a.winW >= 900
-	if words {
-		b.Padding(0, t.S3, 0, t.S2+2)
-	}
+	// D495: the mark alone, never a word, copied or not: 已拷贝 is the
+	// drawn check in the done ink, its words the label and the tooltip.
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(draw(ink))
-		if words {
-			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
-		}
 	})
 	if b.Clicked() {
 		a.copyMessage(c, key, text)

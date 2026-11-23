@@ -426,15 +426,10 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 	if on {
 		ink = t.Accent
 	}
-	words := on && a.winW >= 900
-	if words {
-		b.Padding(0, t.S3, 0, t.S2+2)
-	}
+	// D495: the mark alone, never a word: its name is the button's label
+	// and the system's tooltip after the usual delay.
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawReply(ink))
-		if words {
-			uiText(c, a.replyWord(r)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
-		}
 	})
 	if b.Clicked() {
 		a.StartReply(r)

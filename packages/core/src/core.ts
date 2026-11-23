@@ -74,7 +74,7 @@ import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-re
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
-import { keepStandingAtOnce, openStanding, type StandingStore } from "./standing.ts";
+import { openStanding, type StandingStore } from "./standing.ts";
 import { takeBackAtOnce } from "./mem-takeback.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
@@ -599,10 +599,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D401: what the person says about who does which work is their rule the moment it lands (before
   // the partner's turn); what they said before this was built is kept now.
   keepSaidAtOnce(log, said);
-  // D413: what the person says may go without asking (不用问我的) is kept the moment it lands, the
-  // same way; bounded by where the review routine looks now. Earlier sayings: after the to-do sources.
+  // D413: what the person says may go without asking (不用问我的), bounded by where the review routine
+  // looks now. D495: the partner records it (without_asking); no code reads their words for it.
   const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [] });
-  keepStandingAtOnce(log, standing);
   // D444: 别记这个, said right after the partner noted something, takes it back the moment it lands.
   const takeBack = takeBackAtOnce({ log, undo: (seq) => settings.undo(seq) });
   try {
@@ -2100,7 +2099,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     platform: opts.platform ?? process.platform,
     computer: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} its to-do changed:`, (e as Error).message)),
-    standing: { allows: (ref, o) => standing.allows("pr_review", ref, o), firstUse: (id) => standing.firstUse(id), allowsComment: (ref) => standing.allows("issue_comment", ref) },
+    standing: { allows: (ref) => standing.allows("pr_review", ref), firstUse: (id) => standing.firstUse(id), allowsComment: (ref) => standing.allows("issue_comment", ref) },
     stop: async (taskId) => {
       await runner?.drop(taskId).catch(() => {});
       const c = tasks.get(taskId);
@@ -2208,8 +2207,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
   taskSourcesRef = taskSources;
-  // D413: a standing permission said: every draft that waits inside it goes now (its card shrinks or
-  // settles), and the review task hears that Ducter posts from now on. Then the Log's earlier sayings.
+  // D413: a standing permission kept: every draft that waits inside it goes now (its card shrinks or
+  // settles), and the review task hears that Ducter posts from now on.
   standing.onGrant(() => {
     void taskSources.pile
       .postWaiting()
@@ -2221,12 +2220,6 @@ export function startCore(opts: CoreOptions = {}): Core {
       })
       .catch((err) => console.warn("[standing] couldn't post what waits:", (err as Error).message));
   });
-  try {
-    const back = standing.backfill();
-    if (back.length) console.log(`[standing] kept ${back.length} standing permission(s) from what you said earlier: ${back.map((x) => x.text).join(" | ")}`);
-  } catch (err) {
-    console.warn("[standing] couldn't keep earlier sayings:", (err as Error).message);
-  }
   // D407: a round, a Go or a draft sent from its sheet: the review board shows it at once.
   taskSources.pile.onBoard((id) => boards.write(id));
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);

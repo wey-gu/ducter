@@ -68,8 +68,12 @@ func TestCopyPebble(t *testing.T) {
 	if string(text) != w.fixed || string(html) != "<p>"+w.fixed+"</p>" {
 		t.Errorf("copied %q / %q, want the message as written and formatted", text, html)
 	}
-	if !tt.HasText(app.L.T("reply.copied")) {
-		t.Errorf("the pebble doesn't say 已拷贝 after copying: %q", texts(tt))
+	// D495: 已拷贝 is the drawn check and the pebble's label, never a word on it.
+	if q, ok := tt.Find(app.L.T("reply.copied")); !ok || q.W > pebbleSize+0.5 {
+		t.Errorf("the pebble isn't named 已拷贝 after copying, or it grew: %+v %v", q, ok)
+	}
+	if count(tt, app.L.T("reply.copied")) != 1 { // the label alone
+		t.Errorf("the pebble writes 已拷贝 beside itself: %q", texts(tt))
 	}
 	pebbleShot(t, tt, "mac-zh-light-wide-copied")
 }

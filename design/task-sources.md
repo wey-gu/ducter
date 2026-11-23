@@ -163,7 +163,8 @@ pre-reads (marked with the task and the head), so the same card and sheet show t
 round, **{n} 个 PR 的评审写好了，发到 GitHub？**, carries every unsent draft; Go posts each as one
 comment-only review (`source_write` op `review`), Hold posts nothing. **Under a standing
 permission (D413)** the person said (**不用问我的 / Without asking**, `core/src/standing.ts`), the
-drafts inside it (its orgs; never a PR the round marks `mention`) are posted in the round through
+drafts inside it (its orgs; D495: a PR the round marks `mention` too, the routine reviews what the
+person asked it to) are posted in the round through
 the same write (`by: "rule"`, `standing`, `said` = their words), the card carries only the rest, and
 the first post under a new permission is one partner line listing what went with links. The request is tied to the
 task by its read, not bound (a binding's end comments or closes, which a review must not).

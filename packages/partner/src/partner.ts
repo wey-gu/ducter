@@ -50,9 +50,10 @@
 //   turn covered. On start, triggers after that seq (a turn cut off by the restart, or events
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
@@ -974,8 +975,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     noLook: (seq) => core.noLookFrom?.(seq),
     // D444: 别记这个, taken back by Ducter at these words.
     takenBack: (seq) => core.takenBackFrom?.(seq) ?? [],
-    // D413: what Ducter did with what they said about asking first (kept, taken back, the floor).
-    standing: (seq) => core.standing?.heardFrom(seq) ?? [],
     // D426: the lines a many-things message asked for (core/src/asks.ts).
     asksOf: (taskId) => (core as { asks?: AsksReadPort }).asks?.forTask(taskId),
     asksBefore: (seq) => {
@@ -3757,6 +3756,65 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return { ok: true, note: `Remembered${r.replaced ? `, in place of what you remembered before (“${r.replaced.title}”)` : ""}. The user sees a small Noted line; don't mention it in your reply.` };
     },
   );
+
+  // ---------- D495: 不用问我的 / Without asking, recorded by the partner ----------
+  // The person says an outward kind of action may go from now on without asking them ("review 直接发，
+  // 别问我", in the conversation, in a loop's ask, or replying to a card). The partner judges that it is
+  // a standing go (not this once, not a question) and records it with their words; code checks only
+  // that the words were said and that the action is one Ducter has an audited write for (the floor can
+  // never be named). A kept go posts what waits inside it at once (core's onGrant).
+  if (core.standing) {
+    const standingStore = core.standing;
+    /** What without_asking's `said` may quote: memory_add's, and the words they replied to a card with. */
+    const heardForStanding = (t: TurnState | null): string[] => [
+      ...heardWords(t),
+      ...core.log
+        .read({ stream: "channel", kinds: ["decision_resolved"], limit: HEARD_MESSAGES })
+        .filter((e) => e.origin === "user" && (!e.persona || e.persona === core.persona.id))
+        .map((e) => (e.body as Bodies["decision_resolved"]).text ?? ""),
+    ];
+    tools.register(
+      "partner",
+      "without_asking",
+      "The user says an outward action may go from now on without asking them (\"review 直接发，别问我\", a loop told to keep posting reviews), or takes it back (\"评审发之前先问我\"). Kept: Ducter does it with no card, each in Done for you; what waits goes now. Not for this once. Paying, sign-ins, deleting are never kept.",
+      {
+        type: "object",
+        properties: {
+          do: { type: "string", enum: ["keep", "take_back"] },
+          action: { type: "string", enum: [...STANDING_ACTIONS], description: "pr_review: posting PR reviews; issue_comment: comments on issues they handed over" },
+          owners: { type: "array", items: { type: "string" }, description: "GitHub owners, only if named" },
+          said: { type: "string", description: "Their own words, copied exactly" },
+        },
+        required: ["do", "action", "said"],
+      },
+      async (args: { do?: unknown; action?: unknown; owners?: unknown; said?: unknown }) => {
+        const action = String(args?.action ?? "") as StandingAction;
+        if (!STANDING_ACTIONS.includes(action)) return { ok: false, error: `Only ${STANDING_ACTIONS.join(" and ")} can go without asking. Nothing was kept; say plainly what Ducter can't keep yet.` };
+        const said = typeof args?.said === "string" ? args.said.trim().slice(0, 400) : "";
+        if (!said || !saidInConversation(said, heardForStanding(turn)))
+          return { ok: false, error: "Those words aren't in what the user said in this conversation. Copy their exact words, or don't keep it. Nothing was kept." };
+        const quote = [...said].length <= 90 ? said : `${[...said].slice(0, 89).join("").trimEnd()}…`;
+        const at = new Date().toISOString();
+        const seq = turn ? replyToFor(turn) : undefined;
+        // Unique per call: a keep and a take_back in the same millisecond are two sayings.
+        const key = `tool:${at}:${action}:${randomBytes(3).toString("hex")}`;
+        if (args?.do === "take_back") {
+          const r = standingStore.hear(key, { kind: "revoke", action, quote }, at, seq);
+          return r?.revoked?.length ? { ok: true, note: "Taken back: Ducter asks before each one again. Say so in one short line." } : { ok: true, note: "Nothing was standing for that; it already asks each time." };
+        }
+        const owners = Array.isArray(args?.owners) ? [...new Set(args.owners.map((x) => String(x).trim().toLowerCase().replace(/^@/, "")).filter((x) => /^[a-z0-9][\w.-]{0,38}$/.test(x)))] : [];
+        const r = standingStore.hear(key, { kind: "grant", action, ...(owners.length ? { orgs: owners } : {}), quote }, at, seq);
+        const kept = r?.kept;
+        if (!kept) return { ok: false, error: "Nothing was kept." };
+        const where = kept.orgs?.length ? ` on ${kept.orgs.join(", ")}` : "";
+        return {
+          ok: true,
+          kept: { action, ...(kept.orgs?.length ? { owners: kept.orgs } : {}) },
+          note: `Kept as their standing go${where} (Settings › Partner, Without asking): every round posts these with no card, what waits goes now, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后评审写完直接发，不再问你。想收回说一声。" No ask, no card.`,
+        };
+      },
+    );
+  }
 
   // ---------- Memory inside tasks (D168, design/memory.md "Mem and tasks") ----------
   // Memory in Ducter's tasks comes from Ducter, through this same client and switch: the few

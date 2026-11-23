@@ -112,6 +112,19 @@ that never reaches it (hel, task b7gw6r2e, 6 h 22 min, research/208). Four invar
   the same PR. What is new goes to the task as one message of facts, after its turn when it is in
   one (`owned_news` keeps the cursor across restarts). The partner's `[live]` line says what each
   task owns.
+- **Where its PR stands goes with it (D496).** Each look also reads where the PR stands, whenever
+  things were written: each reviewer's latest decisive review (a request for changes that still
+  stands, with who, when, on which commit and its gist), approvals, reviews asked for, its checks
+  by name (passed, failed, pending), and whether it can merge. A standing request for changes is
+  told once, the first look included (a review from before the task declared the PR is not
+  "old"); a failed check is news before the others end (a merge bot's status may wait on an
+  approval and never end). The standing goes with every piece of news, with the task's own wake
+  (its wait fired, ran out, can't tell or can't come true) and with its `wait_for` answer, and to
+  the partner's `[live]` line as short facts ("changes requested by …, told to the task; checks
+  9/10 passed, pending: tide"). Code says GitHub's rule (while a request stands the PR isn't
+  approved, so a wait for its merge can't come true); the task judges what to do within its
+  brief, and the person hears only what the task reports. The first look comes 30 s after a PR is
+  declared; news held for a turn goes a minute after it.
 
 A resume refused because the session store spells the folder differently (agy lists a workspace
 URI, percent-encoded) is a start that lost its session; the directory's identity now holds every

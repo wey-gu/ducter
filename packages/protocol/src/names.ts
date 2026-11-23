@@ -71,3 +71,17 @@ export function cutAtWord(text: string, max: number): string {
   const cut = /[㐀-鿿]/.test(out.slice(-1)) ? out.length : lastSpace > out.length / 2 ? lastSpace : lastBreak > out.length / 2 ? lastBreak : out.length;
   return `${out.slice(0, cut).replace(/[\s，、：；。,;:\-—]+$/, "")}…`;
 }
+
+/**
+ * D496: a name cut for length ends where a word ends, never inside one ("…-tests-intermittentl"
+ * became "…-tests"): when the cut falls between two letters of a spaced script, it goes back to
+ * the last `-` (or `.`, `_`), if that keeps more than half. Han, kana and Hangul are a word each.
+ */
+export function cutAtWordEnd(kept: string, next: string): string {
+  const word = /[\p{L}\p{N}]/u;
+  const each = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+  const last = [...kept].at(-1) ?? "";
+  if (!next || !word.test(next) || !word.test(last) || each.test(next) || each.test(last)) return kept;
+  const at = Math.max(kept.lastIndexOf("-"), kept.lastIndexOf("_"), kept.lastIndexOf("."));
+  return at > kept.length / 2 ? kept.slice(0, at) : kept;
+}

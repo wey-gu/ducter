@@ -1,0 +1,60 @@
+{
+  "note": "D496: what a shell command sent out of its place, read from its grammar. Both protocol/src/outward.ts and apps/desktop/internal/store/outward.go must give `acts` for each `cmd` (with `output` when given). The first cases are hel's task xfnccfi7 (2026-11-21), as its Log holds them.",
+  "cases": [
+    {
+      "cmd": "sed -i '' 's/^Issue Number: close #8826$/Issue Number: close #8826\\n\\nFixes nowledge-co\\/mem#8826/' /tmp/ger_pr.md; grep -n \"Fixes\" /tmp/ger_pr.md; gh pr edit 10847 --repo nowledge-co/mem --body-file /tmp/ger_pr.md >/dev/null; gh issue view 8826 --repo nowledge-co/mem --json labels -q '.labels[].name'",
+      "acts": [{ "kind": "pr_edit", "n": 10847, "fields": ["body"] }]
+    },
+    {
+      "cmd": "gh pr edit 10847 --repo nowledge-co/mem --add-label component/server,component/testing,type/test,severity/minor >/dev/null; gh pr view 10847 --repo nowledge-co/mem --json title,isDraft,headRefOid,labels",
+      "acts": [{ "kind": "pr_edit", "n": 10847, "fields": ["labels"] }]
+    },
+    {
+      "cmd": "git add nmem-rs/crates/nmem-server/bazel/hawdb_runtime_blockers.json && git commit -q -m \"test(server): refresh HawDB blocker pin\n\nThe test-only change altered the file hash.\" && git push -q 2>&1 | tail -2; git log --oneline -2",
+      "acts": [{ "kind": "push" }]
+    },
+    {
+      "cmd": "python3 - <<'EOF'\np='/tmp/ger_pr_cur.md'\ns=open(p).read()\ns=s.replace('gh pr merge 1', 'x')\nopen(p,'w').write(s)\nEOF\ngh pr edit 10847 --repo nowledge-co/mem --body-file /tmp/ger_pr_cur.md >/dev/null && echo ok",
+      "acts": [{ "kind": "pr_edit", "n": 10847, "fields": ["body"] }]
+    },
+    {
+      "cmd": "cat > /tmp/ger_pr.md <<'EOF'\n### Issue\ngit push origin main\nEOF\ngh pr create --repo nowledge-co/mem --title \"test(server): capture graph error logs deterministically\" --body-file /tmp/ger_pr.md --head ducter/graph-error-response-tests",
+      "output": "https://github.com/nowledge-co/mem/pull/10847\n",
+      "acts": [{ "kind": "pr_create", "n": 10847 }]
+    },
+    { "cmd": "git push -u origin ducter/fix-ci", "acts": [{ "kind": "push", "target": "ducter/fix-ci" }] },
+    { "cmd": "git -C /repo push --force-with-lease origin HEAD:refs/heads/ducter/x", "acts": [{ "kind": "push", "target": "ducter/x" }] },
+    { "cmd": "git push origin --delete ducter/old", "acts": [{ "kind": "branch_delete", "target": "ducter/old" }] },
+    { "cmd": "git push --tags", "acts": [{ "kind": "push_tags" }] },
+    { "cmd": "git commit -m 'git push later' && git status", "acts": [] },
+    { "cmd": "gh pr create --draft --title x --body y", "acts": [{ "kind": "pr_create" }] },
+    { "cmd": "url=$(gh pr create --fill)", "output": "https://github.com/acme/web/pull/12", "acts": [{ "kind": "pr_create", "n": 12 }] },
+    { "cmd": "gh pr comment 1592 --body 'Fixed in 4b52ac6'", "acts": [{ "kind": "pr_comment", "n": 1592 }] },
+    { "cmd": "gh pr review 1592 --approve", "acts": [{ "kind": "pr_review", "n": 1592, "review": "approve" }] },
+    { "cmd": "gh pr review https://github.com/acme/web/pull/77 -r -b 'see inline'", "acts": [{ "kind": "pr_review", "n": 77, "review": "request_changes" }] },
+    { "cmd": "gh pr merge 1592 --squash --delete-branch", "acts": [{ "kind": "pr_merge", "n": 1592 }] },
+    { "cmd": "gh pr ready 1592", "acts": [{ "kind": "pr_ready", "n": 1592 }] },
+    { "cmd": "gh pr edit 3 --title 'New title' --add-reviewer hawkingrei", "acts": [{ "kind": "pr_edit", "n": 3, "fields": ["title", "reviewers"] }] },
+    { "cmd": "gh pr view 1592 --json state && gh pr checks 1592", "acts": [] },
+    { "cmd": "gh issue comment 8826 -b 'covered'", "acts": [{ "kind": "issue_comment", "n": 8826 }] },
+    { "cmd": "gh issue close 8826", "acts": [{ "kind": "issue_close", "n": 8826 }] },
+    { "cmd": "gh release create v0.1.23 dist/*.zip --notes-file notes.md", "acts": [{ "kind": "release_create", "target": "v0.1.23" }] },
+    { "cmd": "gh api repos/acme/web/pulls/12/comments -f body='thanks'", "acts": [{ "kind": "api_write", "target": "repos/acme/web/pulls/12/comments" }] },
+    { "cmd": "gh api -X DELETE repos/acme/web/git/refs/heads/old", "acts": [{ "kind": "api_delete", "target": "repos/acme/web/git/refs/heads/old" }] },
+    { "cmd": "gh api repos/acme/web/pulls/12 --jq .head.sha", "acts": [] },
+    { "cmd": "gh api graphql -f query='query { viewer { login } }'", "acts": [] },
+    { "cmd": "gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: \"T1\"}) { thread { id } } }'", "acts": [{ "kind": "api_write", "target": "graphql resolveReviewThread" }] },
+    { "cmd": "npm publish --access public", "acts": [{ "kind": "publish", "target": "npm" }] },
+    { "cmd": "cargo publish --dry-run", "acts": [] },
+    { "cmd": "docker push ghcr.io/acme/web:1.2", "acts": [{ "kind": "image_push", "target": "ghcr.io/acme/web:1.2" }] },
+    { "cmd": "bunx wrangler pages deploy dist", "acts": [{ "kind": "deploy", "target": "Cloudflare" }] },
+    { "cmd": "curl -X POST https://api.example.com/hook", "acts": [{ "kind": "http", "target": "api.example.com" }] },
+    { "cmd": "curl -s https://example.com -o page.html", "acts": [] },
+    { "cmd": "curl -d '{}' http://localhost:7777/x", "acts": [] },
+    { "cmd": "ssh -i ~/.ssh/k root@hel 'systemctl restart ducter'", "acts": [{ "kind": "remote", "target": "hel" }] },
+    { "cmd": "rsync -a dist/ deploy@box:/srv/app", "acts": [{ "kind": "copy", "target": "box" }] },
+    { "cmd": "scp hel:/var/log/x.log .", "acts": [] },
+    { "cmd": "bash -lc 'cd /repo && git push origin ducter/y'", "acts": [{ "kind": "push", "target": "ducter/y" }] },
+    { "cmd": "echo 'gh pr merge 5' # not run", "acts": [] }
+  ]
+}

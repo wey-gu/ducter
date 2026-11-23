@@ -14,7 +14,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
-import { canBeOne, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
+import { canBeOne, cutAtWordEnd, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { HeldOpen, TaskGroups } from "../task-groups.ts";
@@ -268,7 +268,8 @@ export function todoBranch(items: SourceItemRef[]): string | undefined {
   if (!gh.length) return undefined;
   const nums = gh.slice(0, 3).map((i) => i.label.slice(1)).join("-");
   let words = gh[0]!.title.normalize("NFC").replace(/[A-Z]+/g, (x) => x.toLowerCase()).replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^[-\p{M}]+/u, "");
-  words = [...words].slice(0, 32).join("").replace(/-+$/, "");
+  const chars = [...words];
+  words = cutAtWordEnd(chars.slice(0, 32).join(""), chars[32] ?? "").replace(/-+$/, ""); // D496: never inside a word
   return `ducter/${nums}${words ? `-${words}` : ""}`;
 }
 

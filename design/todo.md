@@ -2967,8 +2967,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
   opened; the keys are `i18n-d484.ts`'s. *Trigger:* the author's review of D484 on the web.
 - [ ] **The iOS Simulator walk** of the phone's bar, Share (the system sheet only shows there, on a
   secure page) and 这个任务. Chrome's emulation stood in. *Trigger:* the next phone pass.
-- [ ] **发出去的 / What went out** still prints `gh pr create …` as a command: say what it did (开了
-  草稿 PR #212, a link) from the command's own output. *Trigger:* the next opened-task pass.
+- [x] **发出去的 / What went out** said in plain words from each command's grammar (D496).
+- [ ] **Sent out rows as links** (开了 PR #10847 opening the PR) and the hover's command for a
+  heredoc'd line showing its outward part, not its first line. *Trigger:* the next opened-task pass.
+- [ ] **D496 live on hel:** a task that declares a PR with a standing request for changes is told
+  within a minute of its turn, and doesn't wait on a merge. *Trigger:* hel on the release with D496.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.

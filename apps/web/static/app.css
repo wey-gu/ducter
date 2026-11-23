@@ -3062,9 +3062,10 @@ a {
   font-weight: 700;
   color: var(--ink-muted);
 }
-.outside code {
-  font-family: var(--mono);
-  font-size: var(--xs);
+/* D496: each thing that went out, in words; its command only on hover. */
+.outside .out-act {
+  font-size: var(--sm);
+  line-height: 1.5;
   color: var(--ink-soft);
   overflow-wrap: anywhere;
 }

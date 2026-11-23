@@ -2,43 +2,28 @@ package store
 
 import (
 	"encoding/json"
-	"regexp"
+	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// OutsideAct is something a task did outside its place, as seen in its
-// transcript: a push, a PR, a publish, a deploy, a write request, a
-// remote shell. It is detected, not gated (G-safety G5: "Seen in the
-// transcript").
+// OutsideAct is one thing a task sent out of its place, as seen in its
+// transcript (D496: by the command's grammar, store/outward.go): the same
+// act on the same thing is one row with a count, a PR's edits are one row
+// with every field changed. It is detected, not gated (G-safety G5: "Seen
+// in the transcript"); the commands stay for a hover.
 type OutsideAct struct {
-	Seq     int64
-	Command string // the command's first line
+	Seq      int64
+	Act      OutwardAct
+	Count    int
+	Commands []string // each command's first line
 }
 
-var outsideRE = []*regexp.Regexp{
-	regexp.MustCompile(`\bgit\s+push\b`),
-	regexp.MustCompile(`\bgh\s+(pr|issue|release)\s+(create|merge|comment|edit|close|reopen|review|delete|upload)\b`),
-	regexp.MustCompile(`\bgh\s+api\b.*(-X|--method)\s*(POST|PUT|PATCH|DELETE)`),
-	regexp.MustCompile(`\bnpm\s+publish\b|\bbun\s+publish\b|\bpnpm\s+publish\b|\bcargo\s+publish\b`),
-	regexp.MustCompile(`\bdocker\s+push\b`),
-	regexp.MustCompile(`\bwrangler\s+(deploy|publish|pages\s+deploy)\b`),
-	regexp.MustCompile(`\bcurl\b.*(-X\s*(POST|PUT|PATCH|DELETE)|--request\s+(POST|PUT|PATCH|DELETE)|\s-d\s|--data\b|-F\s|--form\b)`),
-	regexp.MustCompile(`(^|[\s;&|])(ssh|scp)\s`),
-	regexp.MustCompile(`\brsync\b.*\s[\w.-]+@?[\w.-]+:`),
-}
-
-// IsOutside reports whether a shell command acts outside the task's place.
-func IsOutside(cmd string) bool {
-	for _, re := range outsideRE {
-		if re.MatchString(cmd) {
-			return true
-		}
-	}
-	return false
-}
+// IsOutside reports whether a shell command sent something out of the task's place.
+func IsOutside(cmd string) bool { return len(OutwardOf(cmd, "")) > 0 }
 
 // Outside lists what the task's transcript shows it did outside, oldest
 // first. It knows only the events loaded (HistoryLoaded says whether that
@@ -65,6 +50,7 @@ type outsideKey struct {
 
 func (t *Task) outsideScan() []OutsideAct {
 	var out []OutsideAct
+	at := map[string]int{}
 	for _, ev := range t.Events {
 		if ev.Kind != protocol.KindTaskEvent {
 			continue
@@ -74,8 +60,36 @@ func (t *Task) outsideScan() []OutsideAct {
 			continue
 		}
 		cmd := commandOf(b.Tool)
-		if cmd != "" && IsOutside(cmd) {
-			out = append(out, OutsideAct{Seq: ev.Seq, Command: firstLine(cmd)})
+		if cmd == "" {
+			continue
+		}
+		line := firstLine(cmd)
+		for _, act := range OutwardOf(cmd, b.Tool.Output) {
+			// A push that names no branch pushed the task's own.
+			if act.Kind == "push" && act.Target == "" {
+				act.Target = t.Place().Branch
+			}
+			key := fmt.Sprintf("%s|%d|%s|%s", act.Kind, act.N, act.Target, act.Review)
+			i, ok := at[key]
+			if !ok {
+				act.Fields = append([]string(nil), act.Fields...)
+				at[key] = len(out)
+				out = append(out, OutsideAct{Seq: ev.Seq, Act: act, Count: 1, Commands: []string{line}})
+				continue
+			}
+			row := &out[i]
+			if act.Kind == "pr_edit" || act.Kind == "issue_edit" {
+				for _, f := range act.Fields {
+					if !slices.Contains(row.Act.Fields, f) {
+						row.Act.Fields = append(row.Act.Fields, f)
+					}
+				}
+			} else {
+				row.Count++
+			}
+			if !slices.Contains(row.Commands, line) {
+				row.Commands = append(row.Commands, line)
+			}
 		}
 	}
 	return out
@@ -93,6 +107,14 @@ func commandOf(tool *protocol.ToolCall) string {
 	}
 	var s string
 	if json.Unmarshal(tool.Input, &s) == nil && strings.EqualFold(tool.Name, "bash") {
+		// A harness that hands its input over as JSON text (seen on hel, 2026-11-21).
+		if strings.HasPrefix(strings.TrimSpace(s), "{") && json.Unmarshal([]byte(s), &in) == nil {
+			for _, k := range []string{"command", "cmd"} {
+				if v, ok := in[k].(string); ok {
+					return v
+				}
+			}
+		}
 		return s
 	}
 	return ""

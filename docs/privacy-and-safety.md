@@ -63,7 +63,8 @@ exactly what it will and won't do. This page lists it.
   conversation, your memory and your accounts.
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
   what, right under the message (never folded away). An opened task lists it again under
-  **Sent out**, below what the task did.
+  **Sent out**, below what the task did, in plain words ("Opened PR #12", "Pushed to its
+  branch"); hold the pointer over a line to see the command behind it.
 - **It never shows a key.** If a key, token or password turns up in what you asked a task or in
   what it ran or printed, every screen shows only its first few letters, then dots, with **A key
   is hidden** beside it. The task itself still gets the key, so it can do the work; the key stays

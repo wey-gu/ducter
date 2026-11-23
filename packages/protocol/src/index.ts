@@ -3139,6 +3139,30 @@ export interface OwnedSeen {
   state?: "open" | "closed" | "merged";
   /** Comment and review ids already told (bounded). */
   ids?: string[];
+  /** D496: the failed checks already told for `head` (a failure is news before every check ends). */
+  failedTold?: string[];
+  /** D496: where the PR stands at the last look, told with every piece of news and every wake. */
+  standing?: OwnedStanding;
+}
+
+/**
+ * D496: where a task's PR stands, as facts read from GitHub at one look: what reviewers asked that
+ * still stands (whenever it was written: a request from before the task declared the PR counts),
+ * its checks on the head, whether it can merge. Who must act is read from these, by the model.
+ */
+export interface OwnedStanding {
+  at: string;
+  head?: string;
+  draft?: boolean;
+  /** Each reviewer whose latest decisive review asks for changes: who, when, on which commit, the gist. */
+  changes?: { id: string; by: string; at: string; on?: string; text: string }[];
+  approvedBy?: string[];
+  /** Reviews asked for and not given yet. */
+  awaiting?: string[];
+  /** Checks on the head: check runs and commit statuses together. */
+  checks?: { total: number; passed: number; failed: string[]; pending: string[] };
+  /** GitHub's mergeable_state: clean, blocked, behind, dirty (conflicts), unstable, draft, unknown. */
+  merge?: string;
 }
 
 /** D483: how long a wait with no until of its own lasts: every wait ends, and whoever waits hears why. */

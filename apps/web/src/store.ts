@@ -6,6 +6,7 @@ import { countDoneToday, endedUnmet } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
+import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -1127,18 +1128,8 @@ export function latestByLabel(evs: EvidenceRef[]): EvidenceRef[] {
   return out;
 }
 
-const OUTSIDE = [
-  /\bgit\s+push\b/,
-  /\bgh\s+(pr|issue|release)\s+(create|merge|comment|edit|close|reopen|review|delete|upload)\b/,
-  /\bgh\s+api\b.*(-X|--method)\s*(POST|PUT|PATCH|DELETE)/,
-  /\bnpm\s+publish\b|\bbun\s+publish\b|\bpnpm\s+publish\b|\bcargo\s+publish\b/,
-  /\bdocker\s+push\b/,
-  /\bwrangler\s+(deploy|publish|pages\s+deploy)\b/,
-  /\bcurl\b.*(-X\s*(POST|PUT|PATCH|DELETE)|--request\s+(POST|PUT|PATCH|DELETE)|\s-d\s|--data\b|-F\s|--form\b)/,
-  /(^|[\s;&|])(ssh|scp)\s/,
-  /\brsync\b.*\s[\w.-]+@?[\w.-]+:/,
-];
-export const isOutside = (cmd: string) => OUTSIDE.some((re) => re.test(cmd));
+/** D496: a command that sent something out of the task's place (by its grammar; outward.ts). */
+export const isOutside = (cmd: string) => outwardOf(cmd).length > 0;
 
 function commandOf(tool: NonNullable<Bodies["task_event"]["tool"]>): string {
   const input = tool.input as unknown;
@@ -1149,7 +1140,15 @@ function commandOf(tool: NonNullable<Bodies["task_event"]["tool"]>): string {
     }
     return "";
   }
-  return typeof input === "string" && tool.name.toLowerCase() === "bash" ? input : "";
+  if (typeof input !== "string" || tool.name.toLowerCase() !== "bash") return "";
+  // A harness that hands its input over as JSON text (seen on hel, 2026-11-21): the command inside.
+  if (input.trimStart().startsWith("{")) {
+    try {
+      const o = JSON.parse(input) as Record<string, unknown>;
+      return typeof o.command === "string" ? o.command : typeof o.cmd === "string" ? o.cmd : input;
+    } catch {}
+  }
+  return input;
 }
 
 function firstLine(s: string) {
@@ -1159,17 +1158,47 @@ function firstLine(s: string) {
   return s.length > 100 ? s.slice(0, 100) + "…" : s;
 }
 
-/** What the transcript shows the task did outside its place, oldest first. */
-export function outsideActs(t: Task): { seq: number; command: string }[] {
-  const out: { seq: number; command: string }[] = [];
+/** D496: one thing the task sent out, gathered: the same act on the same thing is one row with a
+ *  count, a PR's edits are one row with every field it changed; the commands stay for a hover. */
+export interface OutsideRow {
+  seq: number;
+  act: OutwardAct;
+  count: number;
+  commands: string[];
+}
+
+/** What the transcript shows the task sent out of its place, oldest first (D496: what went out, never what stayed). */
+export function outsideActs(t: Task): OutsideRow[] {
+  const rows: OutsideRow[] = [];
+  const byKey = new Map<string, OutsideRow>();
   for (const ev of t.events) {
     if (ev.kind !== "task_event") continue;
     const tool = (ev.body as Bodies["task_event"]).tool;
     if (!tool || tool.ok === false) continue;
     const cmd = commandOf(tool);
-    if (cmd && isOutside(cmd)) out.push({ seq: ev.seq, command: firstLine(cmd) });
+    if (!cmd) continue;
+    for (const a of outwardOf(cmd, tool.output ?? "")) {
+      // A push that names no branch pushed the task's own.
+      const own = (placeOf(t) as { branch?: string }).branch;
+      const act = a.kind === "push" && !a.target && own ? { ...a, target: own } : a;
+      const key = `${act.kind}|${act.n ?? ""}|${act.target ?? ""}|${act.review ?? ""}`;
+      const row = byKey.get(key);
+      const line = firstLine(cmd);
+      if (!row) {
+        const r: OutsideRow = { seq: ev.seq, act: { ...act, ...(act.fields ? { fields: [...act.fields] } : {}) }, count: 1, commands: [line] };
+        byKey.set(key, r);
+        rows.push(r);
+        continue;
+      }
+      if (act.kind === "pr_edit" || act.kind === "issue_edit") {
+        // Edits of one PR are one row: what it changed, together.
+        const f = new Set([...(row.act.fields ?? []), ...(act.fields ?? [])]);
+        if (f.size) row.act.fields = [...f];
+      } else row.count++;
+      if (!row.commands.includes(line)) row.commands.push(line);
+    }
   }
-  return out;
+  return rows;
 }
 
 /** What looks like a credential (G-safety): held back before it is sent. */

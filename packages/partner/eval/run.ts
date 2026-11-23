@@ -95,6 +95,9 @@ import { seedDidDay } from "../../core/test/did-day.ts";
 import { seedMade } from "./seed-made.ts";
 import { seedHistory } from "./seed-history.ts";
 import { realClock } from "../../core/src/clock.ts";
+import { realExec, type Exec } from "../../protocol/src/checks-run.ts";
+import { prIdentity } from "../../protocol/src/owned.ts";
+import type { OwnsGh } from "./scenarios.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import { createModelCatalog } from "../../core/src/models.ts";
 
@@ -445,6 +448,37 @@ const nextAt = (hm: string) => {
   return d.toISOString();
 };
 const worldDev = (sc: Scenario, name: string) => (name === "local" || name === sc.world?.home.name ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
+/**
+ * D496: Ducter's looks at a seeded PR answer from the world's GitHub (the scenario's `owns.gh`),
+ * never the real one; a seeded PR without one can't be read (the look tells nothing). Any other
+ * command runs as before.
+ */
+function ownedExec(sc: Scenario): Exec {
+  const prs = new Map<string, OwnsGh | undefined>();
+  for (const s of sc.seed ?? []) if ("owns" in s) prs.set(prIdentity(s.owns.pr) ?? s.owns.pr, s.owns.gh);
+  const out = (v: unknown) => ({ exitCode: 0, stdout: JSON.stringify(v), stderr: "" });
+  return async (argv, o) => {
+    const m = argv[0] === "gh" && argv[1] === "api" ? /^repos\/([^/]+\/[^/]+)\/(pulls|issues|commits)\/([^/?]+)(\/[^?]*)?/.exec(argv[2] ?? "") : null;
+    if (!m) return realExec(argv, o);
+    const [, repo, kind, id, rest = ""] = m;
+    const pr = kind === "commits" ? [...prs].find(([k, g]) => k.startsWith(`${repo!.toLowerCase()}#`) && g?.head === id)?.[0] : `${repo!.toLowerCase()}#${id}`;
+    if (!pr || !prs.has(pr)) return realExec(argv, o);
+    const gh = prs.get(pr);
+    if (!gh) return { exitCode: 1, stdout: "", stderr: "not in this world" };
+    if (kind === "pulls" && !rest) return out({ head: gh.head, state: "open", merged: false, draft: false, merge: gh.merge ?? "blocked", awaiting: [] });
+    if (rest === "/reviews") return out((gh.reviews ?? []).map((r, i) => ({ id: i + 1, ...r, on: gh.head })));
+    if (rest === "/comments") return out([]);
+    if (rest === "/check-runs") return out([]);
+    if (rest === "/status") {
+      const st = gh.statuses ?? [];
+      const bad = st.filter((x) => x.state === "failure" || x.state === "error").map((x) => x.context);
+      const pending = st.filter((x) => x.state === "pending").map((x) => x.context);
+      return out({ state: bad.length ? "failure" : pending.length ? "pending" : "success", n: st.length, failed: bad, pending });
+    }
+    return { exitCode: 1, stdout: "", stderr: "not in this world" };
+  };
+}
+
 function worldCoreOptions(sc: Scenario, dataDir: string) {
   const w = sc.world!;
   const others = sc.computers ?? [];
@@ -552,7 +586,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
       }
     : {};
-  const core = startCore({ ...brainHome, ...(sc.world ? worldCoreOptions(sc, dataDir) : {}), dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  const core = startCore({ ...brainHome, ...(sc.world ? worldCoreOptions(sc, dataDir) : {}), dataDir, port: 0, persona, webLook, clock, work: { exec: ownedExec(sc) }, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -796,7 +830,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       core.log.append({ stream: `task:${taskId}`, origin: "runner", kind: "task_event", body: { taskId, role: "system", from: "runner", text: "usage limit", raw: { limit: { harness: s.limitHit.harness, failure: "quota", resetsAt: nextAt(s.limitHit.resetsAt) } } } } as never);
     } else if ("owns" in s) {
       const taskId = idOf.get(s.owns.task)!;
-      core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "checkpoint", body: { taskId, text: "opened the PR", owns: [s.owns.pr] } });
+      core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "checkpoint", body: { taskId, text: "opened the PR", owns: [s.owns.pr], ...(s.owns.gh ? { gitRef: s.owns.gh.head } : {}) } });
+      // D496: Ducter's first look at it, as it takes one soon after a PR is declared.
+      if (s.owns.gh) await core.work.owned.sweep();
     } else if ("waitEnded" in s) {
       const taskId = idOf.get(s.waitEnded.task)!;
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), taskId, reason: s.waitEnded.reason, kind: "check", check: { argv: s.waitEnded.argv, succeedWhen: { path: s.waitEnded.path, equals: "completed" } }, everyMs: 180_000, until: new Date(Date.now() - 1000).toISOString(), state: "armed" };

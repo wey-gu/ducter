@@ -28,6 +28,9 @@ const cases: [string, string][] = [
   ["🚀 ship it 🎉", "ship-it"],
   ["🚀🎉✨", "task"],
   ["!!!", "task"],
+  // D496: cut for length at a word's end, never inside one (hel, 2026-11-23: "…-intermittentl").
+  ["graph_error_response_tests intermittently misses the typed cause in captured logs", "graph-error-response-tests"],
+  ["supercalifragilisticexpialidociousandmoreandmore", "supercalifragilisticexpialidociousandmor"],
   ["", "task"],
 ];
 

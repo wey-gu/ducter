@@ -1821,7 +1821,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
     const others = (core.workers?.list() ?? []).length > 0;
-    const owned = new Map((core.owned?.() ?? []).map((x) => [x.taskId, x.refs]));
+    // D496: each PR with where it stands at the last look (a request for changes, its checks).
+    const owned = new Map((core.owned?.() ?? []).map((x) => [x.taskId, x.refs.map((r) => (x.said?.[r] ? `${r} (${x.said[r]})` : r))]));
     const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()), owned);
     if (live) deltas.push(live);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
@@ -6133,7 +6134,9 @@ export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefin
     const resting = limits?.find((l) => l.waiting?.includes(c.taskId));
     const state = resting
       ? `resting until ${resting.harness}'s limit resets${resting.until ? ` (${resetWords(resting.until, now)})` : ""}`
-      : c.attention === "needs_you" || c.attention === "blocked" ? "waiting on the user" : c.attention === "queued" ? "queued" : "working";
+      : c.attention === "blocked" && c.reason
+        ? `resting on its own wait until "${c.reason.length > 80 ? c.reason.slice(0, 79) + "…" : c.reason}"` // D496: a task's own wait is not the user's
+        : c.attention === "needs_you" || c.attention === "blocked" ? "waiting on the user" : c.attention === "queued" ? "queued" : "working";
     const title = c.title.length > 50 ? c.title.slice(0, 49) + "…" : c.title;
     // D483: what it owns outside (news about it wakes it): another task's word about it belongs to it.
     const owns = owned?.get(c.taskId)?.slice(0, 3);

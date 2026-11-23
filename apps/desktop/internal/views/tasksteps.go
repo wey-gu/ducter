@@ -406,7 +406,9 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	})
 }
 
-// outsideActs is what went out of the machine (D?): its commands, quiet.
+// outsideActs is what went out of the machine, in plain words (D496:
+// "改了 PR #10847 的说明和标签", never the command; what stayed on the
+// machine is not here). The commands are a hover away.
 func (a *App) outsideActs(c *ui.Context, task *store.Task) {
 	t := a.T
 	acts := task.Outside()
@@ -415,8 +417,9 @@ func (a *App) outsideActs(c *ui.Context, task *store.Task) {
 	}
 	ui.Column(c.Key("outside")).Gap(t.S1).MaxWidth(readMeasure).Children(func() {
 		uiText(c, a.L.T("outside.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		branch := task.Place().Branch
 		for _, act := range acts {
-			uiText(c.Key(act.Seq), redact.Text(act.Command)).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).TextColor(t.InkSoft).Selectable().MaxLines(3)
+			uiText(c.Key(act.Seq), a.outsideSentence(act, branch)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Selectable().MaxLines(3).Tooltip(redact.Text(strings.Join(act.Commands, "\n")))
 		}
 	})
 }

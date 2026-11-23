@@ -14,8 +14,8 @@
 // (its gh). What is new is sent to the task as one message, with the facts; the task judges what it
 // means. News waits while the task is in a turn and goes with its next look. What was delivered is
 // logged (`owned_news` on the task's stream), so a restart neither repeats nor loses it.
-import type { Bodies, CheckSpec, LogEvent, OwnedSeen } from "@ducter/protocol";
-export type { OwnedSeen };
+import type { Bodies, CheckSpec, LogEvent, OwnedSeen, OwnedStanding } from "@ducter/protocol";
+export type { OwnedSeen, OwnedStanding };
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -26,6 +26,10 @@ import { prIdentity } from "@ducter/protocol/src/owned.ts";
 
 /** How often a task's owned PRs are looked at. */
 export const OWNED_EVERY_MS = 5 * 60_000;
+/** D496: the first look at a PR just declared. */
+const FIRST_LOOK_MS = 30_000;
+/** D496: the next look when news waited for a turn to end. */
+const HELD_LOOK_MS = 60_000;
 const OUTPUT_MAX = 512 * 1024;
 const SEEN_IDS = 300;
 const GONE = new Set(["dropped", "superseded"]);
@@ -35,7 +39,9 @@ export { prIdentity };
 export interface Owned {
   /** Each task's owned PRs, for the partner's [live] line. */
   of(taskId: string): string[];
-  all(): { taskId: string; refs: string[] }[];
+  all(): { taskId: string; refs: string[]; said?: Record<string, string> }[];
+  /** D496: where each of a task's open PRs stands at the last look, in its words ("" when nothing is known). */
+  standing(taskId: string): string;
   /** One look at every owned PR now (tests; the timer otherwise). */
   sweep(): Promise<void>;
   stop(): void;
@@ -54,6 +60,22 @@ const W = {
     closed: "- PR 被关掉了（没合并）。之后不再替你盯它。",
     other: "- 另一个任务「{title}」({id}) 的汇报提到了它：{text}",
     tail: "这些是事实，由你判断要不要处理、怎么处理；处理完照常 report_to_main 或继续等。",
+    // D496: where it stands, with every piece of news and every wake: a request from before counts.
+    stands: "它现在的状态（{at} 看的）：",
+    change: "- {by} 在 {at} 请求修改{on}，还没撤回：{text}",
+    changeOn: "（针对 {sha}{later}）",
+    changeLater: "，之后 head 又变过",
+    changeNew: "- {by} 在 {at} 请求修改{on}：{text}",
+    changeAbove: "- {by} 上面那条修改请求还没撤回",
+    approved: "- 已批准：{names}",
+    awaiting: "- 在等 {names} 评审",
+    checks: "- {head} 上的检查：{counts}{failed}{pending}",
+    pending: "，还在等：{names}",
+    dirty: "- 和目标分支有冲突，现在合并不了",
+    behind: "- 落后于目标分支",
+    draft: "- 还是草稿",
+    changeRule: "有人请求修改、还没撤回时，GitHub 不算它通过评审，等它合并就等不来。回应这些请求是这个 PR 的一部分，在你的任务范围内由你判断怎么做；做完照常 report_to_main。",
+    failNew: "- {head} 上有检查没过：{names}",
     counts: "{total} 项里 {ok} 项通过",
     failed: "，没过：{names}",
     sep: "、",
@@ -68,18 +90,44 @@ const W = {
     closed: "- the PR was closed without merging. Ducter stops watching it.",
     other: '- another task, "{title}" ({id}), reported about it: {text}',
     tail: "These are facts; you judge whether and how to act on them, then report_to_main as usual or wait again.",
+    stands: "Where it stands (looked at {at}):",
+    change: "- {by} requested changes at {at}{on}, still standing: {text}",
+    changeOn: " (on {sha}{later})",
+    changeLater: "; the head has moved since",
+    changeNew: "- {by} requested changes at {at}{on}: {text}",
+    changeAbove: "- {by}'s request for changes above still stands",
+    approved: "- approved by {names}",
+    awaiting: "- waiting for a review from {names}",
+    checks: "- checks on {head}: {counts}{failed}{pending}",
+    pending: "; still pending: {names}",
+    dirty: "- it conflicts with its base branch and can't merge now",
+    behind: "- it is behind its base branch",
+    draft: "- it is still a draft",
+    changeRule: "While a request for changes stands, GitHub doesn't count the PR as approved, so a wait for its merge can't come true. Answering these requests is part of this PR, within your brief: you judge how; then report_to_main as usual.",
+    failNew: "- a check failed on {head}: {names}",
     counts: "{ok} of {total} passed",
     failed: "; failed: {names}",
     sep: ", ",
   },
 };
+/** D496: where a PR stands, as short English facts for the partner's [live] line. */
+export function saidOf(st: OwnedStanding, told: readonly string[] = []): string {
+  const out: string[] = [];
+  for (const x of st.changes ?? []) out.push(`changes requested by ${x.by} ${x.at.slice(0, 16).replace("T", " ")}${st.head && x.on && x.on !== st.head ? " (before its latest push)" : ""}, ${told.includes(`r:${x.id}`) ? "told to the task" : "the task hears it when its turn ends"}`);
+  if (st.approvedBy?.length) out.push(`approved by ${st.approvedBy.join(", ")}`);
+  else if (!st.changes?.length) out.push("no approval yet");
+  if (st.checks) out.push(`checks ${st.checks.passed}/${st.checks.total} passed${st.checks.failed.length ? `, failed: ${st.checks.failed.slice(0, 4).join(", ")}` : ""}${st.checks.pending.length ? `, pending: ${st.checks.pending.slice(0, 4).join(", ")}` : ""}`);
+  if (st.merge === "dirty") out.push("conflicts with its base");
+  if (st.draft) out.push("draft");
+  return out.join("; ");
+}
 const fill = (t: string, v: Record<string, string>) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 const one = (s: unknown, n = 400) => {
   const t = String(s ?? "").replace(/\s+/g, " ").trim();
   return t.length <= n ? t : t.slice(0, n - 1) + "…";
 };
 
-interface Item { id?: number | string; by?: string; at?: string; text?: string; path?: string; line?: number; state?: string }
+interface Item { id?: number | string; by?: string; at?: string; text?: string; path?: string; line?: number; state?: string; on?: string }
 
 export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () => Runner | undefined; check: Check; clock?: Clock; everyMs?: number }): Owned {
   const { log, tasks } = o;
@@ -88,15 +136,19 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   const gitRefs = new Map<string, Set<string>>(); // taskId -> its own checkpointed commits
   const pending = new Map<string, Map<string, string[]>>(); // taskId -> pr -> other tasks' lines not yet told
   let stopped = false;
-  let busy = false;
+  let running: Promise<void> | undefined;
   const wordsOf = (taskId: string) => words(W, langOfText(tasks.get(taskId)?.title));
 
+  let fresh = false;
   const declare = (taskId: string, refs: string[] | undefined, at: string) => {
     for (const r of refs ?? []) {
       const pr = prIdentity(r);
       if (!pr) continue;
       const m = owns.get(taskId) ?? new Map<string, OwnedSeen>();
-      if (!m.has(pr)) m.set(pr, { since: at });
+      if (!m.has(pr)) {
+        m.set(pr, { since: at });
+        fresh = true;
+      }
       owns.set(taskId, m);
     }
   };
@@ -127,60 +179,117 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     return JSON.parse(r.output ?? "");
   };
 
-  /** One look at one PR: the news since what was told, and what is told after it. */
+  /** One look at one PR: the news since what was told, where it stands now, and what is told after it. */
   async function lookAt(taskId: string, pr: string, seen: OwnedSeen): Promise<{ lines: string[]; next: OwnedSeen }> {
     const [repo, n] = pr.split("#") as [string, string];
     const w = wordsOf(taskId);
     const lines: string[] = [];
     const next: OwnedSeen = { ...seen, ids: [...(seen.ids ?? [])] };
-    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, state: .state, merged: .merged}"])) as { head?: string; state?: string; merged?: boolean };
+    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, state: .state, merged: .merged, draft: .draft, merge: .mergeable_state, awaiting: [.requested_reviewers[]?.login]}"])) as { head?: string; state?: string; merged?: boolean; draft?: boolean; merge?: string; awaiting?: string[] };
     const since = new Date(Date.parse(seen.since)).toISOString().slice(0, 19) + "Z";
     const told = new Set(next.ids);
-    const fresh = (x: Item, kind: string) => {
-      const id = `${kind}:${x.id}`;
-      if (told.has(id) || !x.at || x.at < since) return false;
+    const mark = (id: string) => {
+      if (told.has(id)) return false;
       told.add(id);
       next.ids!.push(id);
       return true;
     };
+    const fresh = (x: Item, kind: string) => !!x.at && x.at >= since && mark(`${kind}:${x.id}`);
     const comments = (await call(taskId, ["gh", "api", `repos/${repo}/issues/${n}/comments?since=${since}&per_page=100`, "--jq", "[.[] | {id, by: .user.login, at: .created_at, text: .body[0:600]}]"])) as Item[];
     const notes = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}/comments?since=${since}&per_page=100`, "--jq", "[.[] | {id, by: .user.login, at: .created_at, path, line, text: .body[0:600]}]"])) as Item[];
-    const reviews = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}/reviews?per_page=100`, "--jq", "[.[] | {id, by: .user.login, at: .submitted_at, state, text: .body[0:600]}]"])) as Item[];
+    const reviews = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}/reviews?per_page=100`, "--jq", "[.[] | {id, by: .user.login, at: .submitted_at, state, on: .commit_id, text: .body[0:600]}]"])) as Item[];
+    const sha = String(head?.head ?? "");
+    // D496: each reviewer's latest decisive review, whenever it was written. A request for changes
+    // that still stands is told once, even when it came before the task declared the PR (hel,
+    // 2026-11-23: a request from 03:17 the day before was never told, and the task waited a day for
+    // a merge it alone could unblock).
+    const decisive = new Map<string, Item>();
+    for (const x of [...(reviews ?? [])].sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")))) {
+      if (x.by && ["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(String(x.state))) decisive.set(x.by, x);
+    }
+    const changes = [...decisive.values()].filter((x) => x.state === "CHANGES_REQUESTED");
+    const onOf = (x: Item) => (x.on ? fill(w.changeOn, { sha: String(x.on).slice(0, 10), later: sha && x.on !== sha ? w.changeLater : "" }) : "");
     for (const x of comments ?? []) if (fresh(x, "c")) lines.push(fill(w.comment, { by: one(x.by, 40), at: one(x.at, 25), where: "", text: one(x.text) }));
     for (const x of notes ?? []) if (fresh(x, "n")) lines.push(fill(w.comment, { by: one(x.by, 40), at: one(x.at, 25), where: x.path ? ` (${one(x.path, 120)}${x.line ? `:${x.line}` : ""})` : "", text: one(x.text) }));
-    for (const x of reviews ?? []) if (fresh(x, "r")) lines.push(fill(w.review, { by: one(x.by, 40), at: one(x.at, 25), state: one(x.state, 30), text: one(x.text) || "-" }));
+    for (const x of reviews ?? []) {
+      if (changes.includes(x)) {
+        if (mark(`r:${x.id}`)) lines.push(fill(w.changeNew, { by: one(x.by, 40), at: one(x.at, 25), on: onOf(x), text: one(x.text) || "-" }));
+      } else if (fresh(x, "r")) lines.push(fill(w.review, { by: one(x.by, 40), at: one(x.at, 25), state: one(x.state, 30), text: one(x.text) || "-" }));
+    }
     if (next.ids!.length > SEEN_IDS) next.ids = next.ids!.slice(-SEEN_IDS);
-    const sha = String(head?.head ?? "");
     if (sha && seen.head && sha !== seen.head && !ownCommit(taskId, sha)) lines.push(fill(w.push, { head: sha.slice(0, 10) }));
+    if (sha && sha !== seen.head) next.failedTold = [];
     if (sha) next.head = sha;
+    let checks = seen.standing?.head === sha ? seen.standing?.checks : undefined;
     if (sha && next.ciFor !== sha) {
       const runs = ((await call(taskId, ["gh", "api", `repos/${repo}/commits/${sha}/check-runs?per_page=100`, "--jq", "[.check_runs[] | {name, status, conclusion}]"])) as { name?: string; status?: string; conclusion?: string }[]) ?? [];
-      const st = (await call(taskId, ["gh", "api", `repos/${repo}/commits/${sha}/status`, "--jq", '{state, n: (.statuses | length), failed: [.statuses[] | select(.state == "failure" or .state == "error") | .context]}'])) as { state?: string; n?: number; failed?: string[] };
+      const st = (await call(taskId, ["gh", "api", `repos/${repo}/commits/${sha}/status`, "--jq", '{state, n: (.statuses | length), failed: [.statuses[] | select(.state == "failure" or .state == "error") | .context], pending: [.statuses[] | select(.state == "pending") | .context]}'])) as { state?: string; n?: number; failed?: string[]; pending?: string[] };
       const statuses = Number(st?.n ?? 0);
-      const any = runs.length > 0 || statuses > 0;
+      const bad = new Set(["failure", "timed_out", "cancelled", "action_required", "startup_failure"]);
+      const failed = [...runs.filter((r) => bad.has(String(r.conclusion))).map((r) => String(r.name)), ...(st?.failed ?? [])];
+      const waiting = [...runs.filter((r) => r.status !== "completed").map((r) => String(r.name)), ...(st?.pending ?? [])];
+      const total = runs.length + statuses;
+      if (total) checks = { total, passed: Math.max(0, total - failed.length - waiting.length), failed, pending: waiting };
       const runsDone = runs.every((r) => r.status === "completed");
       const statusDone = !statuses || st?.state !== "pending";
-      if (any && runsDone && statusDone) {
-        const bad = new Set(["failure", "timed_out", "cancelled", "action_required", "startup_failure"]);
-        const failed = [...runs.filter((r) => bad.has(String(r.conclusion))).map((r) => String(r.name)), ...(st?.failed ?? [])];
-        const total = runs.length + statuses;
+      if (total > 0 && runsDone && statusDone) {
         const counts = fill(w.counts, { total: String(total), ok: String(total - failed.length) });
         lines.push(fill(w.ci, { head: sha.slice(0, 10), counts, failed: failed.length ? fill(w.failed, { names: failed.slice(0, 8).join(w.sep) }) : "" }));
         next.ciFor = sha;
+      } else {
+        // D496: a check that failed is news before the others end (a merge bot's status can wait
+        // on an approval and never end by itself).
+        const newly = failed.filter((f) => !(next.failedTold ?? []).includes(f));
+        if (newly.length) {
+          lines.push(fill(w.failNew, { head: sha.slice(0, 10), names: newly.slice(0, 8).join(w.sep) }));
+          next.failedTold = [...(next.failedTold ?? []), ...newly].slice(-40);
+        }
       }
     }
     const state = head?.merged ? "merged" : head?.state === "closed" ? "closed" : "open";
     if (state !== "open" && seen.state !== state) lines.push(state === "merged" ? w.merged : w.closed);
     next.state = state;
+    const approvedBy = [...decisive.values()].filter((x) => x.state === "APPROVED").map((x) => one(x.by, 40));
+    next.standing = {
+      at: new Date(clock.now()).toISOString(),
+      ...(sha ? { head: sha } : {}),
+      ...(head?.draft ? { draft: true } : {}),
+      ...(changes.length ? { changes: changes.map((x) => ({ id: String(x.id), by: one(x.by, 40), at: one(x.at, 25), ...(x.on ? { on: String(x.on) } : {}), text: one(x.text) })) } : {}),
+      ...(approvedBy.length ? { approvedBy } : {}),
+      ...(head?.awaiting?.length ? { awaiting: head.awaiting.map((x) => one(x, 40)).slice(0, 8) } : {}),
+      ...(checks ? { checks } : {}),
+      ...(head?.merge ? { merge: String(head.merge) } : {}),
+    };
     return { lines, next };
   }
 
-  const tell = async (taskId: string, pr: string, lines: string[], seen: OwnedSeen) => {
+  /** D496: where a PR stands, in the task's words, told with every piece of news and every wake. */
+  const standingText = (taskId: string, st: OwnedStanding | undefined, above = new Set<string>()): string => {
+    if (!st) return "";
+    const w = wordsOf(taskId);
+    const out: string[] = [];
+    for (const x of st.changes ?? []) out.push(above.has(`r:${x.id}`) ? fill(w.changeAbove, { by: x.by }) : fill(w.change, { by: x.by, at: x.at, on: x.on ? fill(w.changeOn, { sha: x.on.slice(0, 10), later: st.head && x.on !== st.head ? w.changeLater : "" }) : "", text: x.text || "-" }));
+    if (st.approvedBy?.length) out.push(fill(w.approved, { names: st.approvedBy.join(w.sep) }));
+    if (st.awaiting?.length) out.push(fill(w.awaiting, { names: st.awaiting.join(w.sep) }));
+    if (st.checks) {
+      const c = st.checks;
+      out.push(fill(w.checks, { head: (st.head ?? "").slice(0, 10), counts: fill(w.counts, { total: String(c.total), ok: String(c.passed) }), failed: c.failed.length ? fill(w.failed, { names: c.failed.slice(0, 8).join(w.sep) }) : "", pending: c.pending.length ? fill(w.pending, { names: c.pending.slice(0, 8).join(w.sep) }) : "" }));
+    }
+    if (st.merge === "dirty") out.push(w.dirty);
+    else if (st.merge === "behind") out.push(w.behind);
+    if (st.draft) out.push(w.draft);
+    if (!out.length) return "";
+    return [fill(w.stands, { at: st.at.slice(0, 16).replace("T", " ") + " UTC" }), ...out, ...(st.changes?.length ? [w.changeRule] : [])].join("\n");
+  };
+
+  const tell = async (taskId: string, pr: string, lines: string[], seen: OwnedSeen, before: OwnedSeen) => {
     const w = wordsOf(taskId);
     const r = o.runner();
     if (!r) return false;
     try {
-      await r.send(taskId, [fill(w.head, { pr }), ...lines, w.tail].join("\n"), undefined, "partner");
+      const was = new Set(before.ids ?? []);
+      const stands = seen.state === "open" ? standingText(taskId, seen.standing, new Set((seen.ids ?? []).filter((id) => !was.has(id)))) : "";
+      await r.send(taskId, [fill(w.head, { pr }), ...lines, ...(stands ? ["", stands] : []), "", w.tail].join("\n"), undefined, "partner");
     } catch (err) {
       console.warn(`[owned] could not tell ${taskId} about ${pr}: ${(err as Error).message}`);
       return false;
@@ -194,9 +303,16 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     return !!c && c.residency === "hot" && (c.attention === "working" || c.attention === "queued");
   };
 
-  async function sweep() {
-    if (busy || stopped) return;
-    busy = true;
+  /** One sweep at a time: a sweep asked for during another runs after it (its timer, a first look, a test). */
+  async function sweep(): Promise<void> {
+    while (running) await running;
+    if (stopped) return;
+    running = sweepOnce().finally(() => (running = undefined));
+    return running;
+  }
+
+  async function sweepOnce() {
+    let held = false;
     try {
       for (const [taskId, m] of owns) {
         const c = tasks.get(taskId);
@@ -215,7 +331,8 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
           const others = pending.get(taskId)?.get(pr) ?? [];
           const lines = [...got.lines, ...others];
           if (!seen.head && !lines.length) {
-            // The first look only learns where it stands.
+            // A first look with nothing for the task only learns where it stands (D496: a request
+            // for changes or a failed check that stands is news on a first look too).
             m.set(pr, got.next);
             log.append({ stream: `task:${taskId}`, origin: "system", kind: "owned_news", body: { taskId, pr, news: [], seen: got.next } });
             continue;
@@ -224,23 +341,34 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
             m.set(pr, got.next);
             continue;
           }
-          if (inTurn(taskId)) continue; // it goes with the next look, after this turn
-          if (await tell(taskId, pr, lines, got.next)) {
+          if (inTurn(taskId)) {
+            // It goes with the next look, after this turn; where the PR stands is known now (for
+            // the task's own wake and the partner's [live] line).
+            held = true;
+            if (got.next.standing) m.set(pr, { ...seen, standing: got.next.standing });
+            continue;
+          }
+          if (await tell(taskId, pr, lines, got.next, seen)) {
             m.set(pr, got.next);
             pending.get(taskId)?.delete(pr);
           }
         }
       }
     } finally {
-      busy = false;
+      // D496: news held for a turn goes soon after it, not a whole round later.
+      if (held && !stopped) clock.setTimeout(() => void sweep(), HELD_LOOK_MS);
     }
   }
 
   const onEvent = (e: LogEvent) => {
     if (e.kind === "checkpoint") {
       const b = e.body as Bodies["checkpoint"];
+      fresh = false;
       declare(b.taskId, b.owns, e.ts);
       noteRef(b.taskId, b.gitRef);
+      // D496: a PR just declared is looked at soon, so where it stands (a request for changes
+      // from before) reaches the task with its next wake, not five minutes on.
+      if (fresh && !stopped) clock.setTimeout(() => void sweep(), FIRST_LOOK_MS);
       return;
     }
     if (e.kind !== "report") return;
@@ -271,8 +399,24 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   timer = clock.setTimeout(tick, o.everyMs ?? OWNED_EVERY_MS);
 
   return {
+    standing: (taskId) =>
+      [...(owns.get(taskId)?.entries() ?? [])]
+        .filter(([, s]) => (!s.state || s.state === "open") && s.standing)
+        .map(([pr, s]) => {
+          const t = standingText(taskId, s.standing);
+          return t ? `PR ${pr}: ${t}` : "";
+        })
+        .filter(Boolean)
+        .join("\n\n"),
     of: (taskId) => [...(owns.get(taskId)?.entries() ?? [])].filter(([, s]) => !s.state || s.state === "open").map(([pr]) => pr),
-    all: () => [...owns].map(([taskId, m]) => ({ taskId, refs: [...m.entries()].filter(([, s]) => !s.state || s.state === "open").map(([pr]) => pr) })).filter((x) => x.refs.length),
+    all: () =>
+      [...owns]
+        .map(([taskId, m]) => {
+          const open = [...m.entries()].filter(([, s]) => !s.state || s.state === "open");
+          const said = Object.fromEntries(open.filter(([, s]) => s.standing).map(([pr, s]) => [pr, saidOf(s.standing!, s.ids)]).filter(([, t]) => t));
+          return { taskId, refs: open.map(([pr]) => pr), ...(Object.keys(said).length ? { said } : {}) };
+        })
+        .filter((x) => x.refs.length),
     sweep,
     stop() {
       stopped = true;

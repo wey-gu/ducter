@@ -468,7 +468,7 @@ test("D415: as one task: titled by its own to-dos (the first, and how many more)
   expect(g.hand!.subject).toBe("通用设置");
   // One to-do: its own title and its own number on the branch.
   await b.ho.hand({ refs: ["acme/mem#377"] });
-  expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", place: { branch: "ducter/377-distillation-gets-slow-on-very-l" } });
+  expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", place: { branch: "ducter/377-distillation-gets-slow-on-very" } /* D496: never inside a word */ });
 });
 
 const NOTE = "确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了";

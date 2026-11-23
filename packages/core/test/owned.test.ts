@@ -54,14 +54,15 @@ function setup(exec: Exec, dir?: string, clock = new FakeClock(Date.parse("2026-
   const tasks = createRegistry(log, clock);
   const sent: { taskId: string; text: string }[] = [];
   const runner = { async send(taskId: string, text: string) { sent.push({ taskId, text }); return { delivered: "prompted" as const }; }, async openTask() { return {} as TaskCard; }, async interrupt() {} } as unknown as Runner;
-  const work = createWork({ log, tasks, mcp: createMcpHub({ secret: "s" }), runner: () => runner, clock, persona: "default", exec, ownedEveryMs: 60 * 60_000 });
+  const mcp = createMcpHub({ secret: "s" });
+  const work = createWork({ log, tasks, mcp, runner: () => runner, clock, persona: "default", exec, ownedEveryMs: 60 * 60_000 });
   const prev = cleanup;
   cleanup = () => {
     work.stop();
     log.close();
     prev();
   };
-  return { dir: t.dir, clock, log, tasks, work, sent };
+  return { dir: t.dir, clock, log, tasks, work, sent, mcp };
 }
 
 const checkpoint = (log: ReturnType<typeof openLog>, taskId: string, body: Partial<Bodies["checkpoint"]>) =>
@@ -145,4 +146,43 @@ test("another task's report naming the PR in its evidence reaches the task that 
   expect(sent[0]!.text).toContain("zh-Hans dark tray");
   expect(sent[0]!.text).not.toContain("looks fine");
   void gh;
+});
+
+// D496: hel, 2026-11-23. Task xfnccfi7 declared PR nowledge-co/mem#10847 at 12:56Z; a reviewer had
+// requested changes at 03:17Z the day before. The first look "only learned where it stands" (the
+// review predated `since`), so the task told the person it only needed an approval and waited a
+// day for a merge that couldn't come. Synthetic data with the same shapes.
+test("a request for changes from before the PR was declared is told on the first look, once; a wait's wake and its answer carry where the PR stands", async () => {
+  const { gh, exec } = fakeGitHub();
+  gh.head = "4b52ac6552163d67c90997c3123d8f1d750ec6b6";
+  gh.runs = [];
+  gh.reviews.push({ id: 41, by: "hawkingrei", at: "2026-11-22T03:17:00Z", state: "CHANGES_REQUESTED", text: "rest_sources/source_graph_scan_tests.rs still reaches the shared graph error response without the new initialization. Please cover this path before closing #8826.", on: gh.head } as never);
+  const statuses = { state: "pending", n: 10, failed: [] as string[], pending: ["tide"] };
+  const exec2: Exec = async (argv, o) => ((argv[2] ?? "").endsWith("/status") ? { exitCode: 0, stdout: JSON.stringify(statuses) } : exec(argv, o));
+  const { clock, log, tasks, work, sent, mcp } = setup(exec2, undefined, new FakeClock(Date.parse("2026-11-23T12:56:00Z")));
+  openTask(log, "xf", "graph_error_response_tests intermittently misses the typed cause");
+  checkpoint(log, "xf", { gitRef: gh.head, owns: ["nowledge-co/mem#10847"] });
+  tasks.setState("xf", "blocked", "warm", "PR #10847 is merged");
+  // The first look comes soon after the declaration, not a round later.
+  clock.advance(31_000);
+  await flush();
+  expect(sent.length).toBe(1);
+  const said = sent[0]!.text;
+  expect(said).toContain("hawkingrei requested changes at 2026-11-22T03:17:00Z");
+  expect(said).toContain("source_graph_scan_tests.rs");
+  expect(said).toContain("9 of 10 passed; still pending: tide");
+  expect(said).toContain("can't come true");
+  // Told once: the next look has nothing new.
+  await work.owned.sweep();
+  expect(sent.length).toBe(1);
+  // Where it stands goes with the task's own wake and its wait's answer, and to the partner as facts.
+  expect(work.owned.standing("xf")).toContain("hawkingrei requested changes at 2026-11-22T03:17:00Z");
+  expect(work.owned.all()[0]!.said?.["nowledge-co/mem#10847"]).toContain("changes requested by hawkingrei");
+  const w = (await mcp.call({ role: "task", taskId: "xf" }, "wait_for", { reason: "PR #10847 is merged", check: { argv: ["gh", "pr", "view", "10847", "--json", "state"], succeedWhen: { path: "state", equals: "MERGED" } } })) as { ok: boolean; yourPRs?: string };
+  expect(w.yourPRs ?? "").toContain("hawkingrei");
+  // An approval later: the request no longer stands.
+  gh.reviews.push({ id: 42, by: "hawkingrei", at: "2026-11-23T14:00:00Z", state: "APPROVED", text: "", on: gh.head } as never);
+  await work.owned.sweep();
+  expect(work.owned.standing("xf")).not.toContain("requested changes");
+  expect(work.owned.standing("xf")).toContain("approved by hawkingrei");
 });

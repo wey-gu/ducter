@@ -12,6 +12,7 @@ import type { Place } from "@ducter/protocol";
 import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
 import { ducterDataRefusal, ducterFolder, isDucterData, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, cloneTarget } from "@ducter/protocol/src/clone.ts";
+import { cutAtWordEnd } from "@ducter/protocol/src/names.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -35,13 +36,18 @@ export function nameSegment(s: string, opts: { path?: boolean; lowerAscii?: bool
   const max = opts.max ?? 80;
   let out = "";
   let n = 0;
+  let next = "";
   for (const { segment } of graphemes.segment(t)) {
-    if (n >= max || Buffer.byteLength(out + segment) > 200) break;
+    if (n >= max || Buffer.byteLength(out + segment) > 200) {
+      next = segment;
+      break;
+    }
     out += segment;
     n++;
   }
-  return out.replace(/[-.]+$/, "");
+  return cutAtWordEnd(out, next).replace(/[-.]+$/, "");
 }
+
 
 /**
  * A new task's branch is `ducter/<slugify(title)>`, and its folder that slug too (D198). D201:

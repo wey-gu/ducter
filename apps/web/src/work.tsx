@@ -4,7 +4,7 @@
 // next runs. Time is drawn; words are its quiet caption. How a wait checks (the command, how
 // often, who judges) is only in the opened task, folded under How it checks. Copy: i18n.ts.
 import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@ducter/protocol";
-import { words as byLang } from "@ducter/protocol/src/lang.ts";
+import { detect, inLanguage, scriptOfLang, words as byLang } from "@ducter/protocol/src/lang.ts";
 import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -43,6 +43,10 @@ export function WaitBubble({ w, size = "sm" }: { w?: Pick<WaiterView, "check" | 
 /** What it waits for, named as awaited: "等 PR #1592 通过" / "Waiting until PR #1592 passes". */
 export function waitLine(reason: string): string {
   let r = reason.trim();
+  // D496: a condition the task wrote in another language than the screen's is its own words,
+  // quoted under the screen's, never glued into a sentence of another language ("等 PR #10847 is merged").
+  const d = r ? detect(r) : undefined;
+  if (d && !inLanguage(r, A.L.lang) && (d.sure || d.script !== scriptOfLang(A.L.lang))) return t("wait.quote", r);
   // "Waiting until the domain renewal email arrives": a capital that only starts the sentence goes.
   if (A.L.style.cased && /^[A-Z][a-z]/.test(r)) r = r[0]!.toLowerCase() + r.slice(1);
   return t("wait.line", !A.L.style.spaced && /^[A-Za-z0-9#]/.test(r) ? ` ${r}` : r);

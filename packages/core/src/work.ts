@@ -221,6 +221,12 @@ export function createWork(o: WorkOptions): Work {
     return looks.length ? looks.join("; ") : w.observed ?? "nothing yet";
   };
 
+  /** D496: a task woken by its own wait hears where the PRs it owns stand (a request for changes from before included). */
+  const withPRs = (taskId: string, text: string) => {
+    const s = owned.standing(taskId);
+    return s ? `${text}\n\n${s}` : text;
+  };
+
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
   const unsubscribe = log.subscribe((e) => {
     if (e.kind !== "waiter") return;
@@ -241,7 +247,8 @@ export function createWork(o: WorkOptions): Work {
       const wake = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       // D429: a round of a task in rounds says how a round ends (progress; done only for the person's until).
       const loop = !w.limit ? loops.get(w.taskId) : undefined;
-      const text = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
+      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
+      const text = w.limit ? said : withPRs(w.taskId, said);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
       if (!r) loops.wakeFailed(w.taskId, "the runner isn't up yet");
@@ -255,7 +262,7 @@ export function createWork(o: WorkOptions): Work {
       // asked only when the task (or the partner) judges so. If it can't be told, its card says it.
       const c = wordsOf(w.reason);
       const facts = fill(c.facts, { check: w.check ? `${describeCheck(w.check)} (met when ${describePredicate(w.check.succeedWhen)})` : w.event ? `${w.event.service} ${w.event.trigger}` : "-", looks: looksOf(w) });
-      const text = w.cantTell ? fill(c.cantTell, { reason: w.reason, why: w.cantTell, facts }) : fill(c.ranOut, { reason: w.reason, until: w.until ?? "", facts });
+      const text = withPRs(w.taskId, w.cantTell ? fill(c.cantTell, { reason: w.reason, why: w.cantTell, facts }) : fill(c.ranOut, { reason: w.reason, until: w.until ?? "", facts }));
       const deadline = () => tasks.setState(w.taskId!, "needs_you", card.residency, fill(c.deadline, { reason: w.reason }));
       if (card.attention === "blocked") tasks.setState(w.taskId, "working", card.residency);
       const r = o.runner();
@@ -269,7 +276,7 @@ export function createWork(o: WorkOptions): Work {
       tasks.setState(w.taskId, "working", card.residency);
       // D144: it can no longer come true: the task hears why and decides what is next.
       if (w.unmet && e.origin === "waiter") {
-        const text = fill(wordsOf(w.reason).wont, { reason: w.reason, unmet: w.unmet });
+        const text = withPRs(w.taskId, fill(wordsOf(w.reason).wont, { reason: w.reason, unmet: w.unmet }));
         void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
       }
     }
@@ -406,6 +413,9 @@ export function createWork(o: WorkOptions): Work {
         every: `${Math.round((w.everyMs ?? 0) / 60_000)} min`,
         ...(w.until ? { until: w.until } : {}),
         ...(w.check ? { check: `${describeCheck(w.check)} (met when ${describePredicate(w.check.succeedWhen)})` } : {}),
+        // D496: a task that waits while it owns a PR sees where the PR stands (a wait for a merge
+        // while a reviewer's request for changes stands can't come true; the task judges).
+        ...(ctx.role === "task" && taskId && owned.standing(taskId) ? { yourPRs: owned.standing(taskId) } : {}),
         note:
           ctx.role === "task"
             ? "Armed. End your turn now; you will be woken when it holds."

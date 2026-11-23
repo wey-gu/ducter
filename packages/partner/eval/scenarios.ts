@@ -30,7 +30,9 @@ export type Seed =
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
   // D483: the seeded task declared it owns this PR (its checkpoint's owns), so Ducter watches it for it.
-  | { owns: { task: string; pr: string } }
+  // D496: gh, the PR as the world's GitHub has it (its reviews, its checks), read by Ducter's own looks
+  // (never the real GitHub); Ducter takes its first look while the world is seeded.
+  | { owns: { task: string; pr: string; gh?: OwnsGh } }
   // D483: the seeded task's own wait ended without its condition (ran out, or its look couldn't be
   // read), as core logs it: its looks first, then the end; core then tells the task with the facts.
   | { waitEnded: { task: string; reason: string; argv: string[]; path: string; looks: string[]; cantTell?: string } }
@@ -319,6 +321,14 @@ export interface SeedMemory {
   kind?: string;
   /** D304: Mem's `source` (default "ducter": the person's words to the partner); "claude-code": another AI tool. */
   source?: string;
+}
+
+/** D496: a seeded PR as the world's GitHub answers for it. */
+export interface OwnsGh {
+  head: string;
+  reviews?: { by: string; at: string; state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED"; text: string }[];
+  statuses?: { context: string; state: "success" | "failure" | "pending" | "error" }[];
+  merge?: string;
 }
 
 export interface Scenario {

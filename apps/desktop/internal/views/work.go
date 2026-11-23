@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -108,6 +109,12 @@ func (a *App) waitCaption(w *protocol.Waiter) string {
 // waitLine names what it waits for as awaited: "等 PR #1592 通过".
 func (a *App) waitLine(reason string) string {
 	r := strings.TrimSpace(reason)
+	// D496: a condition the task wrote in another language than the screen's
+	// is its own words, quoted under the screen's, never glued into a
+	// sentence of another language ("等 PR #10847 is merged").
+	if d := lang.Detect(r); d.Lang != "" && !lang.InLanguage(r, string(a.L.Lang)) && (d.Sure || d.Script != lang.ScriptOfLang(string(a.L.Lang))) {
+		return a.L.T("wait.quote", r)
+	}
 	if a.L.Han() && r != "" && (r[0] < 0x80) {
 		r = " " + r
 	}

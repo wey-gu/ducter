@@ -241,7 +241,7 @@ func (a *App) outsideLine(task *store.Task) (line string, more int) {
 	if len(acts) == 0 {
 		return "", 0
 	}
-	return acts[0].Command, len(acts) - 1
+	return a.outsideSentence(acts[0], task.Place().Branch), len(acts) - 1
 }
 
 // resultActions are the next steps a finished repo task offers. They go

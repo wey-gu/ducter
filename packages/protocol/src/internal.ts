@@ -183,7 +183,8 @@ export interface CoreApi {
   /** D478: each agent's usage limit per computer (device "local" for the home): used up (until when, the tasks resting on it) or room left, from the runner's hits, the limit waits and the home's account reads. */
   agentLimits?(): { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] }[];
   /** D483: what each task declared it owns outside and Ducter watches for it (PRs as owner/repo#123). */
-  owned?(): { taskId: string; refs: string[] }[];
+  /** D483; D496: `said` is where each PR stands at the last look, as short facts. */
+  owned?(): { taskId: string; refs: string[]; said?: Record<string, string> }[];
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
   said?: {
     fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;

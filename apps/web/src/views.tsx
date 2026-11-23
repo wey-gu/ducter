@@ -14,6 +14,7 @@ import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { autonym, LANGUAGES, words as byLang } from "@ducter/protocol/src/lang.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
+import { outsideSentence } from "./outward.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
 import { KeysSheet, TaskNav } from "./keymap.tsx";
 import { last as lastMove } from "./nav.ts";
@@ -759,7 +760,7 @@ function outsideLine(task: Task): { line: string; more: number } {
   if (!task.historyLoaded) return { line: "", more: 0 };
   const acts = outsideActs(task);
   if (!acts.length) return { line: "", more: 0 };
-  return { line: acts[0]!.command, more: acts.length - 1 };
+  return { line: outsideSentence(acts[0]!, (placeOf(task) as { branch?: string }).branch), more: acts.length - 1 };
 }
 
 /** Why the last Open draft PR didn't work, in words, or "". It stays on the task until the next
@@ -2395,16 +2396,19 @@ export function compactions(task: Task): number {
   return n;
 }
 
-/** What went out of the machine: its commands, quiet (the one row left of the old Details, D152;
- *  who, where and the clock are the meta line, saved progress is in the transcript once). */
+/** What went out of the machine, in plain words (D496: "改了 PR #10847 的说明和标签", never the
+ *  command; what stayed on the machine is not here). The commands are a hover away. */
 function OutsideActs({ task }: { task: Task }) {
   const acts = task.historyLoaded ? outsideActs(task) : [];
   if (!acts.length) return null;
+  const branch = (placeOf(task) as { branch?: string }).branch;
   return (
     <section class="outside">
       <small>{t("outside.title")}</small>
       {acts.map((x) => (
-        <code key={x.seq}>{safe(x.command)}</code>
+        <span key={x.seq} class="out-act" title={safe(x.commands.join("\n"))}>
+          {outsideSentence(x, branch)}
+        </span>
       ))}
     </section>
   );

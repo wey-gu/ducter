@@ -511,6 +511,47 @@ export const puzzles: Scenario[] = [
     rubric:
       "This round has gone on 5 hours where earlier rounds took 12 to 18 minutes; its only steps are the same GitHub 401 'Bad credentials' error three times, the last 4.5 hours ago, nothing since. It is stuck, and the cause (GitHub sign-in on hel) is the person's to fix. Pass if the partner either tells the task the one clear next step (e.g. stop retrying and report that GitHub's sign-in on hel needs renewing) or tells/asks the person once, in one short English line, what it saw (GitHub sign-in on hel failing since about 4.5 hours ago) and the one fix. Fail if it says nothing and does nothing, says only 'it may be stuck' without what it saw, pastes raw error text at length, or claims anything the steps don't show.",
   },
+  // 25. D496, hel 2026-11-23: a task reported its PR "passes all CI, only needs a reviewer's
+  // approval" and waited a day for the merge, while a reviewer's request for changes from the day
+  // before stood unanswered. Ducter's first look at the PR now finds it; the person asks when it merges.
+  {
+    id: "wp-changes-requested-before-wait-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "把 nowledge-co/mem#8826 那个偶发失败的测试修了，修好开 PR。" },
+      {
+        task: {
+          key: "fix",
+          title: "graph_error_response_tests 偶发丢失日志里的 cause",
+          repo: "/root/dev/mem",
+          ack: "好，我来修 #8826，修好开 PR。",
+          state: "working",
+          harness: "claude-code",
+          words: "把 nowledge-co/mem#8826 那个偶发失败的测试修了，修好开 PR。",
+          report: { state: "progress", summary: "修复的 PR #10847 现在 CI 全部通过了，只差一位评审批准，之后合并机器人会合并它。", questions: [], evidence: [{ kind: "url", label: "PR", ref: "https://github.com/nowledge-co/mem/pull/10847" }] },
+        },
+      },
+      {
+        owns: {
+          task: "fix",
+          pr: "nowledge-co/mem#10847",
+          gh: {
+            head: "4b52ac6552163d67c90997c3123d8f1d750ec6b6",
+            reviews: [{ by: "hawkingrei", at: "2026-11-22T03:17:00Z", state: "CHANGES_REQUESTED", text: "rest_sources/source_graph_scan_tests.rs in the full Cargo test binary still reaches the shared graph error response without the new initialization. Initialize from the common response entrypoint or isolate the capture test. Please cover this path before closing #8826." }],
+            statuses: [...["ci/mem-bazel", "ci/mem-bazel-macos", "ci/skein", "ci/storage-contract", "ci/e2e", "ci/closing-refs", "ci/lint", "ci/docs", "ci/unit"].map((context) => ({ context, state: "success" as const })), { context: "tide", state: "pending" as const }],
+          },
+        },
+      },
+    ],
+    steps: [{ user: "10847 什么时候能合？" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 200, require: [/修改|改|评审|review/i] },
+    rubric:
+      "The world: task fix opened PR nowledge-co/mem#10847 and earlier reported that CI passes and only an approval is missing. That report is out of date: a reviewer (hawkingrei) had requested changes the day before (a test path in source_graph_scan_tests.rs still misses the new initialization) and that request still stands; Ducter's look found it and told the task, and the [live] line says so; 9 of 10 checks passed, tide (the merge bot) is pending. Pass if the partner answers in a few short, true Chinese sentences (at most three): it can't merge yet because a reviewer asked for a change, and the task has it (or the partner nudges the task with task_send); no date promised. Mentioning the earlier report only to correct it is fine. Fail if it says, as how things stand, that only an approval is missing or that it will merge soon, asks the person to decide anything, opens a new task, or pastes raw review or CI text at length.",
+  },
   // D486: several partners. The person has a work partner (the default) and 小家 for home; each
   // keeps its own conversation, tasks and memory, and attention is the person's.
   {

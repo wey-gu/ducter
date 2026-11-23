@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.28 - 2026-11-24
+
+<!-- whats-new
+zh: 撞到额度上限，换个账号用同一个模型接着做
+en: A usage limit hit continues on the same model through another account
+-->
+
+**The same model, another way**
+- When a task hits its agent's usage limit, it moves at once to another awake computer signed
+  in to a different account of the same agent and model, the one with the most room left, and
+  says so in one line. Nothing to set up.
+- New tasks keep off the account your partner thinks with when that account is nearly used up.
+
+**Behind the scenes**
+- Ducter now checks, once a day and without telling you anything, which of your bookings,
+  renewals and plans don't fit together, so a later version can mention the ones that matter.
+
 ## 0.1.27 - 2026-11-24
 
 <!-- whats-new

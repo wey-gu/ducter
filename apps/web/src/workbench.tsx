@@ -22,7 +22,8 @@ import { spoken } from "./format.ts";
 import { hlLines, escHtml } from "./hl.ts";
 import { LiveView, liveSize } from "./live.tsx";
 import { MediaBlock } from "./media.tsx";
-import { attention, browsing, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
+import { attention, browsing, cantOf, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
+import { phoneNow } from "./wide.ts";
 import { computerName, watchesBrowser } from "./where.ts";
 import { SimScreen } from "./sim.tsx";
 import { driverFor, screenFor } from "./workbench-screens.ts";
@@ -107,7 +108,8 @@ const errWords = (e: { error?: WbError; message?: string }) =>
 // ---------- which pages show (only those that have something) ----------
 
 const kindOf = (task: Task) => placeOf(task).kind;
-const hasFiles = (task: Task) => kindOf(task) === "repo" || kindOf(task) === "folder";
+// D484: a task that never started has no working copy to show (its folder may not even exist).
+const hasFiles = (task: Task) => (kindOf(task) === "repo" || kindOf(task) === "folder") && !(attention(task) === "failed" && cantOf(task));
 
 function made(task: Task): { media: MediaRef[]; links: EvidenceRef[] } {
   const media = [...(reportOf(task)?.media ?? [])];
@@ -142,6 +144,9 @@ export const benchShown = { taskId: "" };
 
 export function benchOpen(task: Task | undefined): boolean {
   if (!task || !bench.open) return false;
+  // D484: on a phone the workbench is a sheet over the task: it is open for the task it was
+  // opened on, never over the next one opened (a column beside every task stays on wide screens).
+  if (phoneNow()) return bench.kept === task.id;
   if (benchable(task)) return (bench.kept = task.id), true;
   return bench.kept === task.id;
 }

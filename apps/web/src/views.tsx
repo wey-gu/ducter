@@ -58,6 +58,19 @@ import { homeThinks, PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
+import { PhoneMore, ShareButton, taskPr } from "./task-sheet.tsx";
+import { usePhone } from "./wide.ts";
+import { prNumber } from "./task-words.ts";
+
+/** A pull request's drawn mark (D484): two branches meeting, never a font glyph. */
+const PrMark = () => (
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="4" cy="3.5" r="1.6" />
+    <circle cx="4" cy="12.5" r="1.6" />
+    <circle cx="12" cy="12.5" r="1.6" />
+    <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
+  </svg>
+);
 import { PartnersSection, PartnerSwitch } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
@@ -782,7 +795,12 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         </span>
       ) : (
         <>
-          {!noRemote(task) && <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />}
+          {/* D484: a draft PR already opened is seen, never offered again. */}
+          {taskPr(task) ? (
+            <Btn kind="secondary" label={t("info.pr.open")} about={title(task)} onClick={() => window.open(taskPr(task), "_blank", "noopener")} />
+          ) : (
+            !noRemote(task) && <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
+          )}
           <Btn kind="primary" label={t("result.merge", base)} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
         </>
       )}
@@ -1610,7 +1628,7 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   );
 }
 
-function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren }) {
+function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean }) {
   // D176: side by side, the conversation's own header carries the face and the places, and On hand
   // is already in view: its pane's header names it instead of going back to a conversation that is
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
@@ -1647,7 +1665,7 @@ function Top({ back, plus, level, extra }: { back?: string; plus?: boolean; leve
         {/* D184: wide, the level can take the whole screen; the same button brings it back. */}
         {wide && <FillButton level={level ? "onhand" : "task"} />}
         {/* D270: spacing alone parts this place's actions from the places. */}
-        {!wide && <Places onHand={false} />}
+        {!wide && !own && <Places onHand={false} />}
       </header>
     );
   return (
@@ -2460,6 +2478,7 @@ function FolderChangesView({ task }: { task: Task }) {
 
 export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const task = A.S.tasks.get(id);
+  const phone = usePhone();
   const scroller = useRef<HTMLDivElement>(null);
   // D210: it opens at its latest while it works or waits on you, at its head once finished (the
   // outcome is there). While it works, a reader at the end follows the newest step; one who
@@ -2527,6 +2546,12 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   // wait ran out): say so, never a mystery (D152).
   const yourTurn = a === "needs_you" && !d;
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
+  const stateWord = yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || stateLabel(a);
+  // D484: where it stands in one sentence, as Share sends it: what it waits for, else its state.
+  const stateSentence = a === "blocked" ? storyOf(task).words || stateWord : stateWord;
+  // D484: its pull request, one tap from the head while it is not finished (a finished one's
+  // result has its own buttons).
+  const pr = !finished(task) ? taskPr(task) : undefined;
   return (
     <>
       {full ? (
@@ -2536,18 +2561,31 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           <TaskNav id={id} />
           <TaskInfoButton task={task} />
           <BenchToggle task={task} />
+          <ShareButton task={task} state={stateSentence} />
           <TaskMore task={task} />
         </FullTop>
       ) : (
         <Top
           back={t("nav.back")}
+          own={phone}
           extra={
-            <>
-              <TaskNav id={id} />
-              <TaskInfoButton task={task} />
-              <BenchToggle task={task} />
-              <TaskMore task={task} />
-            </>
+            phone ? (
+              // D484: a phone's bar holds the task's own actions, each 44 points: Share, the
+              // workbench when it has something, and ⋯ (这个任务: the working copy, Switch, Cancel).
+              <>
+                <ShareButton task={task} state={stateSentence} />
+                <BenchToggle task={task} />
+                <PhoneMore task={task} canSwitch={canSwitch} />
+              </>
+            ) : (
+              <>
+                <TaskNav id={id} />
+                <TaskInfoButton task={task} />
+                <BenchToggle task={task} />
+                <ShareButton task={task} state={stateSentence} />
+                <TaskMore task={task} />
+              </>
+            )
           }
         />
       )}
@@ -2559,13 +2597,19 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
           </span>
           <div class="head-words">
-            <TaskMeta task={task} stateLabel={yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || stateLabel(a)} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
+            <TaskMeta task={task} stateLabel={stateWord} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
             <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}
             {/* D279: a wait of its own says when it comes back in the state and the watch card. */}
             {a === "blocked" && !A.S.waiterFor(id) && taskNext(task) && <p class="waitnext">{taskNext(task)}</p>}
+            {pr && (
+              <a class="pr-link" href={pr} target="_blank" rel="noopener">
+                <PrMark />
+                <span>{prNumber(pr) ? t("pr.open", prNumber(pr)) : t("pr.open.bare")}</span>
+              </a>
+            )}
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>

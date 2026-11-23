@@ -64,7 +64,11 @@ function fakeHome() {
   add("d2", "Browser", "client", "web", NOW - 3_600_000);
   add("d3", "hel", "worker", "linux", NOW - 60_000, "", "hel");
   add("d4", "Old iPad", "client", "ios-safari", NOW - 60 * 86_400_000);
+  // Closed cleanly, as on Linux: a WAL-mode file with no -wal or -shm beside it (macOS's SQLite keeps
+  // an empty -wal; Linux's removes it). The plan must not make them again.
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
   db.close();
+  for (const f of ["devices.db-wal", "devices.db-shm"]) rmSync(join(dataDir, f), { force: true });
 }
 
 /** Every file under dir with its size and modification time: the plan must leave them as they were. */

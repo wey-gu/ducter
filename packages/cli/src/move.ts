@@ -13,7 +13,7 @@
 //   risks   what to know before going.
 // The move itself (bundle, import, handover, cut-over, rollback) is later slices: design/move.md.
 import { Database } from "bun:sqlite";
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { sameComputer } from "@ducter/protocol/src/computer-name.ts";
 import { HARNESS_KEYS, isHarnessId } from "@ducter/protocol/src/harnesses.ts";
@@ -106,13 +106,18 @@ const listDir = (p: string) => {
 };
 
 /**
- * A SQLite file opened for reading only. With no -wal beside it (a home that is stopped, or a
- * database closed cleanly) it is opened immutable, so SQLite makes no -wal or -shm of its own; with
- * one (the home is running) read-only, through the -shm the running home already made.
+ * A SQLite file opened for reading only. With a -wal beside it (the home is running) it is opened
+ * read-only, through the -wal and -shm the home already made. With none (a stopped home, or a
+ * database closed cleanly) the main file is the whole database: it is read into memory, its header
+ * set back from WAL to rollback mode in that copy only, so SQLite makes no -wal or -shm beside it
+ * (a read-only open in WAL mode would). Past COPY_MAX it is opened read-only instead.
  */
+const COPY_MAX = 256 * 1024 * 1024;
 export function openRead(path: string): Database {
-  if (existsSync(`${path}-wal`)) return new Database(path, { readonly: true });
-  return new Database(`file:${encodeURI(path)}?immutable=1`, { readonly: true });
+  if (existsSync(`${path}-wal`) || statSync(path).size > COPY_MAX) return new Database(path, { readonly: true });
+  const bytes = new Uint8Array(readFileSync(path));
+  if (bytes.length >= 20 && bytes[18] === 2 && bytes[19] === 2) bytes[18] = bytes[19] = 1;
+  return Database.deserialize(bytes, true);
 }
 
 /** The data folder holds a home: its Log. A worker or a CLI that follows a home elsewhere has none. */

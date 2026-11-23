@@ -21099,6 +21099,36 @@ html[data-text-size="large"] .brand-mark > svg {
   .dk-acts > .btn.primary { flex: 1 1 100%; margin-inline-end: 0; min-height: 44px; }
   .dk-acts > .btn.text { min-height: 44px; }
 }
+/* D493: the card's rhythm from the spacing scale: 24 around (16 at a phone's width), the question
+   16 above the row, the default 12 under it (the Go's ledge eats 4 of that, so it never touches).
+   The default is one paragraph: its ring hangs in the margin at the column's edge, centred on the
+   first line, and the sentence wraps under itself (never cut, never the ring on a line alone). */
+.decision { padding: var(--s5); }
+/* The quiet ways are one group that hangs by its first word's padding: under the Go its letters start
+   at the card's edge; beside it the Go's 20 less that 12 leaves the letters 20 from the Go. */
+.dk-quiet { display: flex; flex-wrap: wrap; align-items: center; min-width: 0; margin-inline-start: -12px; }
+.dk-acts:has(> .btn.sm) > .dk-quiet { margin-inline-start: -10px; }
+.dk-acts > .btn.primary { margin-inline-end: var(--s5); }
+.dk-quiet > .btn.text { font-weight: 600; color: var(--ink-soft); }
+.decision .dk-quiet > .btn.text { color: var(--needs-ink); }
+.decision > .dk { margin-top: calc(var(--s4) - 10px); }
+.dk { gap: var(--s3); }
+.dk > .dk-default.dl { display: block; position: relative; }
+.dk > .dk-default.dl.timer { padding-inline-start: var(--s5); }
+.dk > .dk-default.dl.timer > .pie { position: absolute; inset-inline-start: 0; top: calc((1.45em - 16px) / 2); }
+.dk > .dk-default.dl .dk-line { display: inline; white-space: normal; overflow: visible; }
+.dk > .dk-default.dl > .tb { display: inline-flex; vertical-align: middle; margin-inline-start: var(--s2); }
+.decision .q { text-wrap: pretty; }
+/* In the conversation's tray the ring stands under the Go's edge too. */
+.askq > .tray.dk-card .dk > .dk-default.dl { padding-inline: 0; }
+.askq > .tray.dk-card .dk > .dk-default.dl.timer { padding-inline-start: var(--s5); }
+@media (max-width: 599px) {
+  .decision { padding: var(--s5) var(--s4); }
+  .dk-acts > .btn.primary { margin-inline-end: 0; }
+  .dk-quiet > .btn.text { min-height: 44px; }
+  /* The quiet words' 44 already holds air; the default sits one small step under them. */
+  .dk { gap: var(--s1); }
+}
 
 /* The morning note: one grammar per find. Its words; one quiet line of where it came from; one row
    with its step and 怎么知道的; the evidence in place, wrapping inside the note, 有用 / 这类不用告诉我

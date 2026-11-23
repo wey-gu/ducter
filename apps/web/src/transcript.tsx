@@ -51,12 +51,13 @@ export function shortGo(label: string | undefined): string {
   return t("decision.go.label", !A.L.style.cased ? l : l.charAt(0).toUpperCase() + l.slice(1));
 }
 
-/** At most 6 Chinese characters or 3 English words, and no sentence in it. */
+/** At most 6 Chinese characters, or 5 English words in 28 letters (D493: "30 分钟后再试" is "Try again
+ *  in 30 minutes"), and no sentence in it. */
 export function shortVerb(l: string): boolean {
   if (/[，,；;：:。]/.test(l)) return false;
   const words = l.split(/\s+/).filter(Boolean).length;
   const han = [...l].filter((c) => c.codePointAt(0)! >= 0x2e80).length;
-  return han > 0 ? han <= 6 && words <= 2 : words <= 3;
+  return han > 0 ? han <= 6 && words <= 2 : words <= 5 && l.length <= 28;
 }
 
 // D471, D482: how a name is said is one implementation, shared with the home (packages/protocol/src/names.ts).

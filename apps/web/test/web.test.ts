@@ -47,7 +47,9 @@ describe("copy", () => {
     expect(strings("zh").t("face.working", "小鸭")).toBe("小鸭正在做事");
     expect(strings("zh").t("face.working", "Ducter")).toBe("Ducter 正在做事");
     expect(joinHan("你 好")).toBe("你好");
-    expect(strings("en").t("decision.default.go", "30 min", "rebase")).toBe("If you don't answer, I'll rebase in 30 min. It can be undone.");
+    expect(strings("en").t("decision.default.go", "30 min", "rebase")).toBe("If you don't answer, in 30 min I'll go with “rebase”. It can be undone.");
+    // D493: the Go button's words, quoted, not a second time spliced in.
+    expect(strings("zh").t("decision.default.go", "29 分钟", "好，30 分钟后再试")).toBe("不回的话，29 分钟后我就按「好，30 分钟后再试」办，之后还能改回来。");
   });
   test("retired vocabulary never appears", () => {
     const all = JSON.stringify(TABLES);

@@ -82,7 +82,13 @@ func TestDefaultLineKeepsOneMark(t *testing.T) {
 	var line string
 	tt := ui.NewTesterWith(func(c *ui.Context) { line = app.defaultLine(c, d) }, 400, 200, ui.TesterOptions{})
 	tt.Frame()
-	if strings.Contains(line, "。，") || !strings.Contains(line, "等你登录后继续，") {
+	if strings.Contains(line, "。，") || strings.Contains(line, "。」") || strings.Contains(line, "就就") {
 		t.Errorf("default line %q", line)
+	}
+	// D493: the sentence quotes the Go button as it reads, once 就.
+	d.GoLabel = "30 分钟后再试"
+	tt.Frame()
+	if want := "不回的话，26 分钟后我就按「好，30 分钟后再试」办，之后还能改回来。"; line != want {
+		t.Errorf("default line %q, want %q", line, want)
 	}
 }

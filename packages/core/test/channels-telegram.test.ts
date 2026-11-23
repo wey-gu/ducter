@@ -126,7 +126,7 @@ test("a reversible card gets buttons; a tap decides it and the message is edited
     { text: "好，合进去", callback_data: `g:${id}` },
     { text: "先等等", callback_data: `h:${id}` },
   ]);
-  expect(card.text).toContain("后你没回，我就合进去");
+  expect(card.text).toContain("后你没回，我就按「好，合进去」办");
   const cardId = tg.idOf("要把它合进 main 吗")!;
   tg.taps(PERSON, cardId, `g:${id}`);
   await waitFor(() => !decisions.isPending(id));

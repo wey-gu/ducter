@@ -271,3 +271,38 @@ func keepWords(s string) string {
 	}
 	return b.String()
 }
+
+// keepTail keeps a question's last few characters together (D493), so a
+// wrapped question never ends on a line of its own like 「吗？」: in Chinese
+// the last four characters are joined with word joiners (Core Text honours
+// them, and no phrase is cut, unlike balancing); in Latin text the last two
+// words are joined with a no-break space.
+func keepTail(s string) string {
+	rs := []rune(s)
+	n := len(rs)
+	if n < 8 {
+		return s
+	}
+	if !isHan(rs[n-2]) {
+		for i := n - 1; i > n-16 && i > 0; i-- {
+			if rs[i] == ' ' {
+				return string(rs[:i]) + " " + string(rs[i+1:])
+			}
+		}
+		return s
+	}
+	for _, r := range rs[n-4:] {
+		if unicode.IsSpace(r) {
+			return s
+		}
+	}
+	var b strings.Builder
+	b.WriteString(string(rs[:n-4]))
+	for i := n - 4; i < n; i++ {
+		b.WriteRune(rs[i])
+		if i < n-1 {
+			b.WriteRune(wordJoiner)
+		}
+	}
+	return b.String()
+}

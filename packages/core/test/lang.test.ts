@@ -65,11 +65,11 @@ test("a push to a Korean phone is in English, to a zh-Hant one in Chinese; junk 
   const d: Bodies["decision"] = { decisionId: "d1", taskId: "t1", question: "rebase?", goLabel: "rebase", defaultOption: "go", reversible: true, defaultAt: "2026-11-09T00:30:00Z" };
   const now = Date.parse("2026-11-09T00:00:00Z");
   expect(decisionMessage(d, { persona: "Ducter", locale: "ko", platform: "android", now })).toMatchObject({
-    body: "rebase? If you don't answer, I'll rebase in 30 min. It can be undone.",
+    body: "rebase? If you don't answer, in 30 min I'll go with “Go: rebase”. It can be undone.",
     actions: [{ action: "go", title: "Go: rebase" }, { action: "hold", title: "Hold" }],
   });
   expect(decisionMessage(d, { persona: "Ducter", locale: "zh-Hant", platform: "android", now })).toMatchObject({
-    body: "rebase? 30 分钟后你没回，我就 rebase，之后还能改回来。",
+    body: "rebase? 30 分钟后你没回，我就按「好，rebase」办，之后还能改回来。",
     actions: [{ action: "go", title: "好，rebase" }, { action: "hold", title: "先等等" }],
   });
   expect(doneMessage({ taskId: "t1", title: "회의록" }, { persona: "Ducter", locale: "ko" }).body).toBe("Done: 회의록");

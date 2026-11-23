@@ -95,7 +95,13 @@ anywhere it clones on the computer that can read it. Who follows rules by kind. 
 
 **Go:** **交给{name}这 n 个 / Hand these n to {name}**, its shape as its own line beneath (never
 joined with a dot, D291). On the phone the sheet is two screens: what (foot: **勾了 n 个** and
-**下一步：怎么做 / Next: how**), then the note and how (foot: Go).
+**下一步：怎么做 / Next: how**), then the note and how (foot: Go). On the phone (the author on
+0.1.18, a layout fix): the words field and every note grow with all their text, the
+placeholder included, and never scroll inside themselves; the sheet scrolls instead. Where the browser
+cannot size a field to its text (an older iOS Safari) the page measures it after every draw, so words
+put in by a chip or a note moved from the sentence fit too. The sheet stands on iOS's keyboard (the
+foot with Go stays in reach above it), and every link in it takes a 44-pt tap. The Mac's sheet keeps
+its own field (four lines, then it scrolls with its inset kept).
 
 ## 4. Plan first
 

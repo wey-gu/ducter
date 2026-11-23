@@ -2,7 +2,7 @@
 // (interactive-widget=resizes-content); iOS Safari lays the keyboard over the page instead, so a
 // bottom sheet's field (a Telegram key, a card's number, the partner's new name) would sit under it.
 // The keyboard's height goes to `--kb`; the phone's sheet stands on it, and the focused field is
-// brought into view inside the sheet.
+// brought into view inside the sheet (the hand-over sheet too).
 
 /** How much of the window the keyboard covers: zero where the page was resized for it. */
 export function keyboardInset(innerHeight: number, viewportHeight: number, viewportTop: number): number {
@@ -20,7 +20,7 @@ export function keepAboveKeyboard(): void {
     last = kb;
     document.documentElement.style.setProperty("--kb", `${kb}px`);
     const a = document.activeElement as HTMLElement | null;
-    if (kb > 0 && a && a.closest(".sheet") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) requestAnimationFrame(() => a.scrollIntoView({ block: "nearest" }));
+    if (kb > 0 && a && a.closest(".sheet, .ho-sheet") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) requestAnimationFrame(() => a.scrollIntoView({ block: "nearest" }));
   };
   vv.addEventListener("resize", fit);
   vv.addEventListener("scroll", fit);

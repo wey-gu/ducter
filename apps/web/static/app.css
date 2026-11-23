@@ -21333,3 +21333,10 @@ html[data-text-size="large"] .brand-mark > svg {
   .ho-back-words { min-height: 44px; }
   .ho-note-link::before, .ho-put-link::before, .ho-chip::before { content: ""; position: absolute; top: 50%; left: 50%; width: max(44px, 100%); height: max(44px, 100%); transform: translate(-50%, -50%); }
 }
+
+/* D486: what a partner looks after, under its name; its removal asked in its own row; words another partner passed on. */
+.partners-set .partner-about { color: var(--ink-soft); overflow-wrap: anywhere; }
+.partners-set .about-input { font-size: var(--xs); }
+.partners-set .partner-removing b { font-weight: 700; }
+.passed-from:disabled { cursor: default; }
+.passed-from .stone { flex: none; }

@@ -178,6 +178,8 @@ export interface CoreApi {
   agentMail?(): { harness: string; box: "closed" }[];
   /** D477: the code Ducter knows is on each computer (device "local" for the home): the person's projects and the places tasks worked in, with origins when known. */
   codeOn?(): { device: string; name: string; remote?: string }[];
+  /** D486: the person's partners (with what each looks after) and which one this is; for the [partners] line. */
+  partnersNow?(): { me: string; list: import("./partners.ts").PartnerInfo[] };
   /** D478: each agent's usage limit per computer (device "local" for the home): used up (until when, the tasks resting on it) or room left, from the runner's hits, the limit waits and the home's account reads. */
   agentLimits?(): { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] }[];
   /** D483: what each task declared it owns outside and Ducter watches for it (PRs as owner/repo#123). */

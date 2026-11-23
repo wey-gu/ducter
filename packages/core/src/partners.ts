@@ -3,13 +3,15 @@
 // conversation (channelOf(id) in the one Log), a name and a look; devices, projects, accounts
 // and On hand are the person's and shared (design/personas.md).
 //
-// Preview (D309): on only with DUCTER_PARTNERS=preview (or opts.on in tests). D312: a second
-// partner answers in its own session, on its own view of core (partner-view.ts).
+// D486: on for every home (DUCTER_PARTNERS=off turns it off; opts.on in tests). With one partner
+// nothing about partners shows. D312: a second partner answers in its own session, on its own view
+// of core (partner-view.ts). D486: each has what it looks after (`about`, the person's words), and
+// another can be removed: its id is never given again, so its conversation is never inherited.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent, PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
-import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, isLook, nextLook, partnerNameProblem, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isLook, nextLook, partnerNameProblem, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
 export const PARTNERS_FILE = "partners.json";
 
@@ -18,10 +20,16 @@ interface Kept {
   name: string;
   look: PartnerLook;
   createdAt: string;
+  /** D486: what it looks after, in the person's words. */
+  about?: string;
 }
 interface File {
   defaultLook?: PartnerLook;
+  /** D486: what the default partner looks after (once there are others), in the person's words. */
+  defaultAbout?: string;
   others: Kept[];
+  /** D486: ids of removed partners: never given again (their conversations stay in the Log). */
+  gone?: string[];
 }
 
 export type PartnerError = "empty" | "long" | "taken" | "full" | "unknown";
@@ -35,9 +43,13 @@ export interface Partners {
   get(id: string): PartnerInfo | undefined;
   /** Whether a client may show this partner's conversation. */
   has(id: string): boolean;
-  add(input: { name: string; look?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
-  /** A rename or a new look. The default's rename goes through settings (persona.json), not here. */
-  set(id: string, patch: { name?: string; look?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  add(input: { name: string; look?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  /** A rename, a new look or what it looks after. The default's rename goes through settings (persona.json), not here. */
+  set(id: string, patch: { name?: string; look?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  /** D486: removes another partner (never the default). Its conversation stays in the Log; its tasks become the default's. */
+  remove(id: string): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  /** D486: a partner by its name (trimmed, case folded), the default included. */
+  byName(name: string): PartnerInfo | undefined;
   /** The name to say for an event's partner (push, the menu bar): its conversation's, else the default's. */
   nameOf(persona: string | undefined): string;
   /** D312: every partner's own open questions (On hand lists another partner's). */
@@ -56,7 +68,7 @@ export function openPartners(opts: {
 }): Partners {
   const path = join(opts.dataDir, PARTNERS_FILE);
   const now = opts.now ?? (() => new Date());
-  const on = opts.on ?? process.env.DUCTER_PARTNERS === "preview";
+  const on = opts.on ?? process.env.DUCTER_PARTNERS !== "off";
   const listeners = new Set<() => void>();
 
   const read = (): File => {
@@ -66,8 +78,9 @@ export function openPartners(opts: {
       const others = (Array.isArray(raw?.others) ? raw.others : [])
         .filter((p: any) => typeof p?.id === "string" && /^[a-z0-9-]{1,40}$/.test(p.id) && p.id !== DEFAULT_PARTNER && typeof p?.name === "string" && p.name.trim())
         .slice(0, PARTNERS_MAX - 1)
-        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString() }));
-      return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), others };
+        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString(), ...(cleanAbout(p.about) ? { about: cleanAbout(p.about) } : {}) }));
+      const gone = (Array.isArray(raw?.gone) ? raw.gone : []).filter((g: unknown): g is string => typeof g === "string" && /^[a-z0-9-]{1,40}$/.test(g));
+      return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), ...(cleanAbout(raw?.defaultAbout) ? { defaultAbout: cleanAbout(raw.defaultAbout) } : {}), others, ...(gone.length ? { gone } : {}) };
     } catch (err) {
       console.warn("[partners] couldn't read partners.json:", (err as Error).message);
       return { others: [] };
@@ -97,14 +110,14 @@ export function openPartners(opts: {
   };
   const asks = (id: string): number => questions(id).length;
 
-  const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER) });
-  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id) });
+  const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER), ...(file.defaultAbout ? { about: file.defaultAbout } : {}) });
+  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id), ...(p.about ? { about: p.about } : {}) });
   const names = (except?: string) => [opts.persona.name, ...file.others.map((p) => p.name)].filter((_, i) => (i === 0 ? except !== DEFAULT_PARTNER : file.others[i - 1]!.id !== except));
   const takenLooks = () => [file.defaultLook ?? "sand", ...file.others.map((p) => p.look)];
   const newId = () => {
     for (let n = file.others.length + 2; ; n++) {
       const id = `p${n}`;
-      if (!file.others.some((p) => p.id === id)) return id;
+      if (!file.others.some((p) => p.id === id) && !(file.gone ?? []).includes(id)) return id;
     }
   };
 
@@ -122,7 +135,8 @@ export function openPartners(opts: {
       const name = String(input.name ?? "").trim();
       const why = partnerNameProblem(name, names());
       if (why) return { ok: false, error: why };
-      const kept: Kept = { id: newId(), name, look: isLook(input.look) ? input.look : nextLook(takenLooks()), createdAt: now().toISOString() };
+      const about = cleanAbout(input.about);
+      const kept: Kept = { id: newId(), name, look: isLook(input.look) ? input.look : nextLook(takenLooks()), createdAt: now().toISOString(), ...(about ? { about } : {}) };
       file = { ...file, others: [...file.others, kept] };
       save();
       return { ok: true, partner: info(kept) };
@@ -130,8 +144,11 @@ export function openPartners(opts: {
     set(id, patch) {
       if (id === DEFAULT_PARTNER) {
         if (patch.name !== undefined) return { ok: false, error: "unknown" }; // settings_set renames the default
-        if (!isLook(patch.look)) return { ok: false, error: "unknown" };
-        file = { ...file, defaultLook: patch.look };
+        if (patch.look === undefined && patch.about === undefined) return { ok: false, error: "unknown" };
+        if (patch.look !== undefined && !isLook(patch.look)) return { ok: false, error: "unknown" };
+        const about = patch.about !== undefined ? cleanAbout(patch.about) : file.defaultAbout;
+        const { defaultAbout: _was, ...rest } = file;
+        file = { ...rest, ...(patch.look !== undefined ? { defaultLook: patch.look as PartnerLook } : {}), ...(about ? { defaultAbout: about } : {}) };
         save();
         return { ok: true, partner: defaultInfo() };
       }
@@ -149,9 +166,29 @@ export function openPartners(opts: {
         if (!isLook(patch.look)) return { ok: false, error: "unknown" };
         next = { ...next, look: patch.look };
       }
+      if (patch.about !== undefined) {
+        const about = cleanAbout(patch.about);
+        const { about: _was, ...rest } = next;
+        next = about ? { ...rest, about } : rest;
+      }
       file = { ...file, others: file.others.map((p, i) => (i === at ? next : p)) };
       save();
       return { ok: true, partner: info(next) };
+    },
+    remove(id) {
+      const at = on && id !== DEFAULT_PARTNER ? file.others.findIndex((p) => p.id === id) : -1;
+      if (at < 0) return { ok: false, error: "unknown" };
+      const was = file.others[at]!;
+      file = { ...file, others: file.others.filter((_, i) => i !== at), gone: [...new Set([...(file.gone ?? []), id])] };
+      save();
+      return { ok: true, partner: info(was) };
+    },
+    byName(name) {
+      const n = name.trim().toLocaleLowerCase();
+      if (!n) return undefined;
+      if (opts.persona.name.trim().toLocaleLowerCase() === n) return defaultInfo();
+      const p = on ? file.others.find((o) => o.name.toLocaleLowerCase() === n) : undefined;
+      return p && info(p);
     },
     nameOf(persona) {
       if (!persona || persona === DEFAULT_PARTNER) return opts.persona.name;

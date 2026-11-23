@@ -144,6 +144,27 @@ At the top is your partner, its name and one line: where it lives and what it th
   post reviews, don't ask me") and they appear under **Without asking**, with your words and **Take
   back**.
 
+### More than one partner
+
+You can have up to four partners: one for work and one for home, say, or one for each person in
+the family. Each has its own name, colour, conversation and memory, and none of them sees the
+others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
+counts for all of them.
+
+- **Make one.** Tell your partner ("make me another partner for things at home, call it Home"), or
+  open **Settings › Partner › Your partners › Add a partner** and give it a name, **What it looks
+  after** and a colour.
+- **Talk to one.** Its stone sits beside your partner's name at the top of the conversation; tap it.
+  A dot on a stone means that partner has a question for you. Each device remembers which partner
+  it shows.
+- **Pass something on.** Say it to the partner you're talking to ("tell Home to remind me about the
+  vaccine on Saturday"). It goes into that partner's conversation as your words, with **Passed on
+  by …** over them, and that partner answers there. Nothing else of the conversation goes along.
+- **Change or remove one.** In **Your partners**, **Change** renames it and edits what it looks
+  after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
+
+Chat apps (Telegram, Slack, iMessage) talk to your first partner for now.
+
 ### Who's doing a task
 
 Every task says who is doing it. In the conversation its line ends with the AI agent's name,

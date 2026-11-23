@@ -71,7 +71,7 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersSection, PartnerSwitch } from "./partners.tsx";
+import { PartnersSection, PartnerSwitch, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -1420,6 +1420,14 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         </div>
       );
     }
+    // D486: the person's words for this partner, said to another and passed on by it: a small line names who.
+    if (e.user.passed)
+      return (
+        <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+          <PassedFrom from={e.user.passed.from} />
+          <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
+        </div>
+      );
     // D206: the pictures stand above the words, on their own, as in a messaging app.
     if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (

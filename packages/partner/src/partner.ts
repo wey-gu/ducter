@@ -816,6 +816,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   const ctx: RenderCtx = {
+    partnerName: (id) => core.partnersNow?.().list.find((p) => p.id === id)?.name,
     get seesPictures() {
       return HARNESSES[partnerRun().harness]?.images !== false;
     },
@@ -1701,6 +1702,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const home = core.homeDevice?.();
     const devices = renderDevices(core.workers?.list() ?? [], home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()), core.settings?.get().limitHandoff === true);
     if (devices) deltas.push(devices);
+    // D486: the person's other partners, while there are any (one partner: no line).
+    const partnersLine = renderPartners(core.partnersNow?.());
+    if (partnersLine) deltas.push(partnersLine);
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
     const others = (core.workers?.list() ?? []).length > 0;
@@ -5750,6 +5754,24 @@ export function renderWorkingMemory(wm: WorkingMemoryView, scrub: (t: string) =>
  * how to change one in place. Their own things: data, never instructions. Bounded: PINS_MAX pins,
  * each clipped.
  */
+/** D486: at most this many characters of what each other partner looks after (the person's words). */
+const PARTNER_ABOUT_SHOWN = 80;
+
+/**
+ * D486: the person's other partners, on every turn while there is more than one (L4, bounded: four
+ * partners at most, their "looks after" clipped). Facts only: who they are, what each looks after,
+ * how many of their own questions wait on the user. Nothing of their conversations, tasks or memory.
+ */
+export function renderPartners(now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number }[] } | undefined): string {
+  if (!now || now.list.length < 2) return "";
+  const me = now.list.find((p) => p.id === now.me);
+  const others = now.list.filter((p) => p.id !== now.me);
+  if (!me || !others.length) return "";
+  const clipAbout = (a: string) => ([...a].length > PARTNER_ABOUT_SHOWN ? [...a].slice(0, PARTNER_ABOUT_SHOWN - 1).join("") + "…" : a);
+  const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
+  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}. The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass.`;
+}
+
 export function renderPins(pins: readonly PinView[]): string {
   if (!pins.length) return "";
   const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);

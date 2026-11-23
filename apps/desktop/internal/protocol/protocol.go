@@ -131,6 +131,14 @@ type UserMsg struct {
 	Via string `json:"via,omitempty"`
 	// App (D405): about one of the person's apps, or that app's own ask.
 	App *AppRef `json:"app,omitempty"`
+	// Passed (D486): the person's words, said to another partner and passed
+	// on by it (that partner's id).
+	Passed *PassedFrom `json:"passed,omitempty"`
+}
+
+// PassedFrom names the partner that passed the person's words on (D486).
+type PassedFrom struct {
+	From string `json:"from"`
 }
 
 type AIMsg struct {
@@ -1603,7 +1611,12 @@ type PartnerInfo struct {
 	Name string `json:"name"`
 	Look string `json:"look"`
 	Asks int    `json:"asks"`
+	// About is what it looks after, in the person's words (D486); "" when not said.
+	About string `json:"about,omitempty"`
 }
+
+// PartnerAboutMax is how long a partner's "looks after" line may be (D486).
+const PartnerAboutMax = 120
 
 // PartnerLooks are the looks, in the order the pickers show them.
 var PartnerLooks = []string{"sand", "sage", "sky", "plum", "apricot"}
@@ -1621,15 +1634,26 @@ type PartnerAdd struct {
 	T        string `json:"t"` // "partner_add"
 	Name     string `json:"name"`
 	Look     string `json:"look,omitempty"`
+	About    string `json:"about,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
 }
 
-// PartnerSet renames a partner or changes its look (D309).
+// PartnerSet renames a partner, changes its look or what it looks after
+// (D309, D486). About is a pointer so "" clears it.
 type PartnerSet struct {
-	T        string `json:"t"` // "partner_set"
+	T        string  `json:"t"` // "partner_set"
+	ID       string  `json:"id"`
+	Name     string  `json:"name,omitempty"`
+	Look     string  `json:"look,omitempty"`
+	About    *string `json:"about,omitempty"`
+	ClientID string  `json:"clientId,omitempty"`
+}
+
+// PartnerRemove removes another partner (D486): its conversation stays,
+// its tasks become the default's.
+type PartnerRemove struct {
+	T        string `json:"t"` // "partner_remove"
 	ID       string `json:"id"`
-	Name     string `json:"name,omitempty"`
-	Look     string `json:"look,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
 }
 

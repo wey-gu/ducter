@@ -612,6 +612,9 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		if e.User.App != nil {
 			a.userAppLine(c, itoa(e.FirstSeq), e.User.App)
 		}
+		if e.User.Passed != nil {
+			a.passedLine(c, itoa(e.FirstSeq), e.User.Passed.From)
+		}
 		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a

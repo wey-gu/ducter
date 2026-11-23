@@ -21132,3 +21132,25 @@ html[data-text-size="large"] .brand-mark > svg {
     margin-left: 0;
   }
 }
+
+/* D385, on a phone: the hand-over sheet (the author on 0.1.18: the words field cut its sentence).
+   The words field and every note grow with all their text: no cap, so nothing scrolls inside a
+   field and its inset is never eaten; the sheet scrolls instead. With several lines the lens and
+   the clear button stay by the first line. The phone's sheet stands on iOS's keyboard (--kb, set by
+   keyboard.ts), its foot dropping the home bar's room while the keyboard covers it. Small links
+   take a 44 tap through an invisible box; a title with no spaces breaks instead of widening its row. */
+.ho-words { align-items: flex-start; font-size: max(16px, var(--lg)); }
+.ho-words > svg { flex: none; margin-top: calc(15px + (1.45em - 18px) / 2); }
+.ho-words .ho-words-x { margin-top: calc(15px + (1.45em - 36px) / 2); }
+.ho-words textarea { max-height: none; overflow: hidden; }
+.ho-sheet .ho-ta, .ho-sheet .ho-itemnote { max-height: none; overflow: hidden; }
+.ho-title, .ho-ask, .pile-why { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .ho-sheet { bottom: var(--kb, 0px); transition: bottom var(--t-fast) var(--ease); }
+  .ho-sheet.thin .ho-foot { padding-bottom: calc(14px + max(0px, var(--safe-bottom) - var(--kb, 0px))); }
+  .ho-sheet .ho-item > .ho-note-link.corner { position: relative; }
+}
+@media (pointer: coarse) {
+  .ho-note-link:not(.corner), .ho-put-link, .ho-chip { position: relative; }
+  .ho-note-link::before, .ho-put-link::before, .ho-chip::before { content: ""; position: absolute; top: 50%; left: 50%; width: max(44px, 100%); height: max(44px, 100%); transform: translate(-50%, -50%); }
+}

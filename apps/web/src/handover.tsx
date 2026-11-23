@@ -7,7 +7,7 @@
 // together live here too. Core decides every default (pile_how); this file only draws and asks.
 import type { FindSaid, FindSummary, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, SubjectOp, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { PILE_HAND_DEFAULT, sizeSaid } from "@ducter/protocol";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark } from "./brand.tsx";
 import { Btn, Chev } from "./controls.tsx";
@@ -948,8 +948,11 @@ export function HandSheet() {
     window.addEventListener("resize", r);
     // The find field first on a wide screen (a phone keeps its keyboard down until asked).
     if (!narrow()) setTimeout(() => (document.getElementById("ho-words") as HTMLInputElement | null)?.focus({ preventScroll: true }), 60);
+    void document.fonts?.ready.then(r);
     return () => window.removeEventListener("resize", r);
   }, []);
+  // Every field fits its words after each draw, however they got there.
+  useLayoutEffect(() => box.current?.querySelectorAll("textarea").forEach(grow));
   const n = ticked().size;
   const thin = narrow();
   const keys = (e: KeyboardEvent) => {
@@ -1430,11 +1433,19 @@ export function seePlan(decisionId: string) {
   setTimeout(() => find(12), 60);
 }
 
-/** A note field grows with what is written (no grip to drag); CSS field-sizing does it where the browser can. */
+/** A field grows with what is written (no grip to drag); CSS field-sizing does it where the browser can.
+ *  Elsewhere (an older iOS Safari) it is measured here: while empty by its placeholder, so the hint
+ *  is never cut, and again on every draw (words put in by a chip, the note moved from the sentence) and
+ *  on a resize, not only when typed into. */
 const grow = (el: HTMLTextAreaElement | null) => {
-  if (!el || CSS.supports?.("field-sizing", "content")) return;
+  if (!el || !el.isConnected || CSS.supports?.("field-sizing", "content")) return;
+  const hint = !el.value && el.placeholder ? el.placeholder : "";
   el.style.height = "auto";
-  el.style.height = `${el.scrollHeight + 2}px`;
+  if (hint) el.value = hint;
+  const h = el.scrollHeight;
+  if (hint) el.value = "";
+  const cs = getComputedStyle(el);
+  el.style.height = `${h + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px`;
 };
 
 export function HandBlock({ g }: { g: TaskGroupView }) {

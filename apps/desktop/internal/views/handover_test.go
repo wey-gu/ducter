@@ -246,7 +246,7 @@ func TestHandSheetNarrowTwoSteps(t *testing.T) {
 
 // 讲的是 chips on the pile, and the do row opening the same sheet.
 func TestPileSubjectsAndDoRowOpenTheSheet(t *testing.T) {
-	app, sent, tt := todoApp(t, i18n.ZH, 1280, 1300)
+	app, sent, tt := todoApp(t, i18n.ZH, 1280, 1500) // D498: the review row stands above the offer
 	app.Receive(pileFrameSubjects(i18n.ZH))
 	app.Route = RouteOnHand
 	app.oh.srcAll = true // D467: the whole sort stands behind 看看全部

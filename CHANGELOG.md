@@ -4,7 +4,7 @@
 
 <!-- whats-new
 zh: 一键拷贝整条消息；伙伴话更少、问得更准
-en: Copy a whole message in one tap; your partner says less and asks only what matters
+en: Copy a whole message; your partner says less and asks less
 -->
 
 **Copy a whole message**

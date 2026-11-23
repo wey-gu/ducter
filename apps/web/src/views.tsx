@@ -8,7 +8,7 @@ import { ComputerLine } from "./computer-use.tsx";
 import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
-import { Fragment } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { autonym, LANGUAGES, words as byLang } from "@ducter/protocol/src/lang.ts";
@@ -251,7 +251,7 @@ const Back = () => (
 export const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
 
-function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; autoFocus?: boolean; id?: string }) {
+function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; onEscape?: () => void; autoFocus?: boolean; id?: string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -278,6 +278,12 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
         if (e.key === "Enter" && !e.isComposing && p.onEnter && (e.metaKey || e.ctrlKey || (!e.shiftKey && !coarse()))) {
           e.preventDefault();
           p.onEnter();
+        }
+        // D482: Esc closes an ask's reply field and goes back to its buttons (never the sheet behind it).
+        if (e.key === "Escape" && !e.isComposing && p.onEscape) {
+          e.preventDefault();
+          e.stopPropagation();
+          p.onEscape();
         }
       }}
     />
@@ -319,21 +325,95 @@ export function goLabel(d: DecisionState): string {
   return shortGo(d.goLabel);
 }
 
-/** An ask's default on a card (D127): a small timer of the time left and one caption
- *  ("28 分钟后按默认：等你登录后继续"); a default that holds, or none, in words alone. */
-function DefaultRow({ d }: { d: DecisionState }) {
-  const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
-  if (!d.reversible || d.defaultOption !== "go" || Number.isNaN(at)) return <div class="dl">{defaultInfo(d, Date.now()).line}</div>;
-  const left = at - Date.now();
-  let g = (d.goLabel || t("decision.go")).trim().replace(/[.。]+$/, "");
-  if (A.L.style.cased && /^[A-Z][a-z]/.test(g)) g = g.charAt(0).toLowerCase() + g.slice(1);
-  const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
-  const frac = Number.isNaN(asked) || at <= asked ? 1 : left / (at - asked);
-  const words = left <= 0 ? t("decision.default.due") : t("decision.default.in", duration(A.L, left), g);
+/** An ask's default (D127; D482: said once, the same sentence on every surface): what happens if
+ *  the person doesn't answer, "不回的话，25 分钟后我就 rebase，之后还能改回来。", with a small timer of
+ *  the time left when it goes by itself; a default that holds, or none, in words alone. */
+function DefaultRow({ d, id, children }: { d: DecisionState; id?: string; children?: ComponentChildren }) {
+  const { line, frac } = defaultInfo(d, Date.now());
   return (
-    <div class="dl timer" title={words}>
-      <TimerPie frac={frac} />
-      <span>{words}</span>
+    <div class={`dl dk-default${frac !== undefined ? " timer" : ""}`} id={id}>
+      {frac !== undefined && <TimerPie frac={frac} />}
+      <span class="dk-line">
+        {d.asker?.suggests && <b class="sug">{t("peer.suggests", d.goLabel)}</b>}
+        {line}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** The hold's words: what declining means for this kind of ask (D157, D222, D334…), else 先不用 / Not now. */
+function holdWords(d: DecisionState): string {
+  const wa = d.where ? whereAsk(d.where) : undefined;
+  return wa?.hold ?? d.holdLabel ?? (d.cal ? calHold(d.cal) : d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"));
+}
+
+/**
+ * D482: an ask's one grammar, wherever a go/hold ask stands (the conversation's card, On hand, a
+ * sheet, the opened task), on every client: the one action that says exactly what happens leads;
+ * the other ways follow it as quiet text, each meaning one thing (先不用 / Not now declines, 回复… /
+ * Reply… says something else, 晚点再问我 / Ask me later brings it back at a time); then the default,
+ * once, as a sentence. Reply… opens its field in place of the row, with its own 发送 / Send where Go
+ * stood and 取消 / Cancel (Enter sends, Esc closes): nothing else sends while it is open.
+ */
+function DecideRow({ d, about, sm, foot, dflt = true }: { d: DecisionState; about: string; sm?: boolean; foot?: ComponentChildren; dflt?: boolean }) {
+  const id = d.decisionId;
+  const replying = A.replyOpen.has(id);
+  const draft = A.replyDraft.get(id) ?? "";
+  const size = sm ? "sm" : undefined;
+  const lineId = `dk-${id}`;
+  const close = () => {
+    A.replyOpen.delete(id);
+    A.changed();
+    // Back to the way in, so the keys go on from where they were.
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-dk-reply="${id}"]`)?.focus());
+  };
+  const send = () => {
+    const v = draft.trim();
+    if (!v) return;
+    A.decide(id, "reply", v);
+    A.replyDraft.delete(id);
+  };
+  const toggleReply = () => {
+    A.replyOpen.add(id);
+    A.laterOpen.delete(id);
+    A.changed();
+  };
+  return (
+    <div class={`dk${replying ? " replying" : ""}`}>
+      {replying ? (
+        <div class="dk-reply">
+          <AutoText
+            value={draft}
+            autoFocus
+            label={t("decision.reply.placeholder")}
+            placeholder={t("decision.reply.placeholder")}
+            onInput={(v) => (A.replyDraft.set(id, v), A.changed())}
+            onEnter={send}
+            onEscape={close}
+          />
+          <div class="dk-acts">
+            <Btn kind="primary" size={size} label={t("decision.reply.send")} about={about} disabled={!draft.trim()} onClick={send} />
+            <Btn kind="text" size={size} label={t("decision.reply.cancel")} about={about} onClick={close} />
+          </div>
+        </div>
+      ) : (
+        <div class="dk-acts" role="group" aria-describedby={lineId}>
+          <Btn kind="primary" size={size} label={d.asker ? d.goLabel : goLabel(d)} about={about} onClick={() => A.decide(id, "go")} />
+          {d.asker?.other ? (
+            // X1: its second option, answered in its own words (a reply), never Hold.
+            <Btn kind="text" size={size} label={d.asker.other} about={about} onClick={() => A.decide(id, "reply", d.asker!.other)} />
+          ) : (
+            <Btn kind="text" size={size} label={holdWords(d)} about={about} onClick={() => A.decide(id, "hold")} />
+          )}
+          <button class={`btn text${sm ? " sm" : ""}`} data-dk-reply={id} aria-expanded={false} aria-label={spoken(A.L, t("decision.reply"), about)} onClick={toggleReply}>
+            <span class="lbl">{t("decision.reply")}</span>
+          </button>
+          <LaterButton d={d} about={about} size={size} />
+        </div>
+      )}
+      {dflt ? <DefaultRow d={d} id={lineId}>{foot}</DefaultRow> : foot && <div class="dl dk-default" id={lineId}>{foot}</div>}
+      {!replying && <LaterTimes d={d} />}
     </div>
   );
 }
@@ -382,11 +462,10 @@ function DraftAskBody({ d, about, open }: { d: DecisionState; about: string; ope
         {d.draft!.first}
       </div>
       {open ? (
-        <div class="btns decide">
-          <span class="pair">
-            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
-            <Btn kind="primary" label={t("draft.see")} about={about} onClick={() => seeDraft(d.findId!)} />
-          </span>
+        // D482: the action first, declining as quiet text after it.
+        <div class="dk-acts">
+          <Btn kind="primary" label={t("draft.see")} about={about} onClick={() => seeDraft(d.findId!)} />
+          <Btn kind="text" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : (
         <Resolved d={d} />
@@ -402,8 +481,6 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
     return task && title(task) ? title(task) : d.question.slice(0, 40);
   })();
-  const goText = goLabel(d);
-  const draft = A.replyDraft.get(d.decisionId) ?? "";
   // D436: the errand's stop, and a step on a page that's the person's: both open the task's tab live.
   if (d.checkout) return <CheckoutBody d={d} />;
   if (d.signIn?.step) return <StepBody d={d} />;
@@ -440,62 +517,15 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       {d.cal && <CalFacts c={d.cal} />}
       {d.src && <SourceCardBody src={d.src} />}
       {d.board && <BoardOfferFacts b={d.board} />}
+      {/* D157: a where ask says its own lines (what waiting means, what moving does) in place of the default. */}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
-      {open && !wa && !d.cal && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
       {open ? (
-        // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
-        // sends Reply… to its own line under them (.btns.decide).
-        <div class="btns decide">
-          <Btn
-            kind="text"
-            label={t("decision.reply")}
-            about={about}
-            onClick={() => {
-              A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId);
-              A.laterOpen.delete(d.decisionId);
-              A.changed();
-            }}
-          />
-          <LaterButton d={d} about={about} />
-          <span class="pair">
-            {d.asker?.other ? (
-              // X1: its second option, answered in its own words (a reply), never Hold.
-              <Btn kind="secondary" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
-            ) : (
-              <Btn kind="secondary" label={wa?.hold ?? d.holdLabel ?? (d.cal ? calHold(d.cal) : d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
-            )}
-            <Btn kind="primary" label={d.asker ? d.goLabel : goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
-          </span>
-          {d.asker?.suggests && <span class="sug">{t("peer.suggests", d.goLabel)}</span>}
-        </div>
+        // D482: the one grammar: the action first, the other ways as quiet text, the default once.
+        <DecideRow d={d} about={about} dflt={!wa && !d.cal} />
       ) : d.cal ? (
         <CalSettle d={d} />
       ) : (
         <Resolved d={d} />
-      )}
-      {open && <LaterTimes d={d} />}
-      {open && A.replyOpen.has(d.decisionId) && (
-        <div class="reply">
-          <AutoText
-            value={draft}
-            autoFocus
-            label={t("decision.reply.placeholder")}
-            placeholder={t("decision.reply.placeholder")}
-            onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())}
-            onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
-          />
-          <button
-            class="btn accent icon send"
-            aria-label={t("composer.send")}
-            disabled={!draft.trim()}
-            onClick={() => {
-              A.decide(d.decisionId, "reply", draft.trim());
-              A.replyDraft.delete(d.decisionId);
-            }}
-          >
-            <Arrow />
-          </button>
-        </div>
       )}
     </>
   );
@@ -1114,56 +1144,25 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       ) : open ? (
         <>
           <LaterBack d={d} />
-          {/* One compact tray (D129): Reply… · Hold as quiet text, Go last, named by the action. */}
-          {buttons && (
-            <div class="tray">
-              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.laterOpen.delete(d.decisionId), A.changed())} />
-              {d.asker?.other ? (
-                // X1: its second option, answered in its own words (a reply), never Hold.
-                <Btn kind="secondary" size="sm" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
-              ) : (
-                <Btn kind="text" size="sm" label={d.holdLabel ?? (d.cal ? calHold(d.cal) : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
-              )}
-              <span class="grow" />
-              <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+          {/* One compact card under the words (D129; D482: one grammar): the action first, named by
+              what it does; 先不用 · 回复… · 晚点再问我 as quiet text after it; the default once, inside
+              the card; Reply… opens its field in place of the row. */}
+          {buttons ? (
+            <div class="tray dk-card">
+              <DecideRow d={d} about={about} sm dflt={!d.cal} foot={task && title(task) ? <DetailsToggle k={k} about={about} /> : undefined} />
             </div>
+          ) : (
+            !d.cal && (
+              <div class="dflt">
+                <span>{defaultInfo(d, Date.now()).line}</span>
+                {task && title(task) && <DetailsToggle k={k} about={about} />}
+              </div>
+            )
           )}
-          {!d.cal && <div class="dflt">
-            <span>
-              {d.asker?.suggests && <b class="sug">{t("peer.suggests", d.goLabel)}</b>}
-              {defaultInfo(d, Date.now()).line}
-            </span>
-            {buttons && <LaterButton d={d} about={about} line />}
-            {task && title(task) && <DetailsToggle k={k} about={about} />}
-          </div>}
           {task && A.detailsOpen(k) && (
             <div class="det">
               <TaskLine task={task} />
               {d.said && d.question && <div class="its">{t("decision.its_words", d.question)}</div>}
-            </div>
-          )}
-          {buttons && <LaterTimes d={d} />}
-          {A.replyOpen.has(d.decisionId) && (
-            <div class="reply">
-              <AutoText
-                value={draft}
-                autoFocus
-                label={t("decision.reply.placeholder")}
-                placeholder={t("decision.reply.placeholder")}
-                onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())}
-                onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
-              />
-              <button
-                class="btn accent icon send"
-                aria-label={t("composer.send")}
-                disabled={!draft.trim()}
-                onClick={() => {
-                  A.decide(d.decisionId, "reply", draft.trim());
-                  A.replyDraft.delete(d.decisionId);
-                }}
-              >
-                <Arrow />
-              </button>
             </div>
           )}
         </>

@@ -716,6 +716,17 @@ type decisionStyle struct {
 	question float32  // font size; 0 hides the question
 	// after adds controls after Reply… in the same row (Details).
 	after func()
+	// under is drawn under the row (D482: the default, said once).
+	under func()
+}
+
+// defaultBelow is the default under an On hand card's or a sheet's row
+// (D482), in the needs-you ink; a where ask says its own lines above instead.
+func (a *App) defaultBelow(c *ui.Context, d *store.DecisionState) func() {
+	if d.Where != nil || d.Cal != nil {
+		return nil
+	}
+	return func() { a.defaultUnder(c, d, a.T.NeedsYou.Ink, a.T.SM, nil) }
 }
 
 // decisionButtons builds Go / Hold / Reply… and the reply field, or how
@@ -786,59 +797,126 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		return
 	}
 	a.laterBack(c, d)
-	goText := a.goLabel(d)
-	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		// One order on every surface (ui.md, Buttons): quiet text actions first, the
-		// primary last, where the eye and the thumb end up (as on the phone and the site).
-		about := a.decisionAbout(d)
-		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
-			a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
-			delete(a.laterOpen, d.DecisionID)
-		}
-		a.laterToggle(c, d, about, st.height, st.quietBg)
-		if st.after != nil {
-			st.after()
-		}
-		if d.Asker != nil && d.Asker.Other != "" {
-			// X1 (D170): the asking agent's second option, answered in its own
-			// words (a reply), never Hold.
-			if a.buttonFor(c, d.Asker.Other, about, btnSecondary, st.height, st.quietBg) {
-				a.Decide(d.DecisionID, "reply", d.Asker.Other)
+	a.decideRow(c, d, a.decisionAbout(d), st.height, st.quietBg, st.after, st.under)
+}
+
+// decideRow is an ask's one grammar (D482), on every surface a go/hold ask
+// stands (the conversation's card, On hand, the opened task, a sheet), as on
+// the web (views.tsx DecideRow): the one action that says exactly what happens
+// leads; the other ways follow it as quiet text, each meaning one thing (先不用 /
+// Not now declines, 回复… / Reply… says something else, 晚点再问我 / Ask me later
+// brings it back at a time); then under, the default said once. Reply… opens
+// its field in place of the row, with its own 发送 / Send where Go stood and
+// 取消 / Cancel (Enter sends, Esc closes): nothing else sends while it is open.
+func (a *App) decideRow(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under func()) {
+	t := a.T
+	id := d.DecisionID
+	if a.replyOpen[id] {
+		a.replyField(c, d, about, height, bg)
+	} else {
+		ui.Row(c.Key("decide:" + id)).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
+			label := a.goLabel(d)
+			if a.buttonFor(c, label, about, btnPrimary, height, bg) {
+				a.Decide(id, "go", "")
 			}
-		} else if a.buttonFor(c, a.holdLabel(d), about, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
-		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "go", "")
-		}
-	})
+			ui.Box(c).Width(t.S2).Shrink(0)
+			if d.Asker != nil && d.Asker.Other != "" {
+				// X1 (D170): the asking agent's second option, answered in its own
+				// words (a reply), never Hold.
+				if a.buttonFor(c, d.Asker.Other, about, btnText, height, bg) {
+					a.Decide(id, "reply", d.Asker.Other)
+				}
+			} else if a.buttonFor(c, a.holdLabel(d), about, btnText, height, bg) {
+				a.Decide(id, "hold", "")
+			}
+			if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, height, bg) {
+				a.replyOpen[id] = true
+				delete(a.laterOpen, id)
+			}
+			a.laterToggle(c, d, about, height, bg)
+			if after != nil {
+				after()
+			}
+		})
+	}
 	if d.Asker != nil && d.Asker.Suggests {
 		uiText(c, a.L.T("peer.suggests", d.GoLabel)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
 	}
-	a.laterTimes(c, d, st.quietBg)
-	if a.replyOpen[d.DecisionID] {
-		draft := a.replyDraft[d.DecisionID]
-		ui.Row(c.Key("reply:"+d.DecisionID)).Gap(t.S2).Padding(t.S1, t.S1, t.S1, t.S3).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
-			ui.TextArea(c, &draft).Lines(1, 4).Placeholder(a.L.T("decision.reply.placeholder")).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).Grow(1).FontSize(t.MD).
-				OnTextKey(func(k ui.TextKey) bool {
-					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						if txt := k.Text(); txt != "" {
-							a.Decide(d.DecisionID, "reply", txt)
-							a.replyDraft[d.DecisionID] = ""
-						}
-						k.SetText("")
-						return true
-					}
-					return false
-				})
-			if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) && draft != "" {
-				a.Decide(d.DecisionID, "reply", draft)
-				draft = ""
+	if under != nil {
+		under()
+	}
+	if !a.replyOpen[id] {
+		a.laterTimes(c, d, bg)
+	}
+}
+
+// replyField is an ask's reply, opened from Reply… in place of its row
+// (D482): the words, then 发送 / Send where Go stood and 取消 / Cancel. Enter
+// sends, Esc closes and goes back to the buttons.
+func (a *App) replyField(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color) {
+	t := a.T
+	id := d.DecisionID
+	draft := a.replyDraft[id]
+	send := func(txt string) {
+		if strings.TrimSpace(txt) == "" {
+			return
+		}
+		a.Decide(id, "reply", strings.TrimSpace(txt))
+		a.replyDraft[id] = ""
+		draft = ""
+	}
+	ui.Column(c.Key("reply:" + id)).Gap(t.S2).Children(func() {
+		ui.TextArea(c, &draft).Lines(1, 4).Placeholder(a.L.T("decision.reply.placeholder")).Label(a.L.T("decision.reply.placeholder")).AutoFocus().
+			Background(t.Sunken).Border(1, t.Line).Radius(t.RadiusSM).Padding(t.S2, t.S3).FontSize(t.MD).TextColor(t.Ink).
+			OnTextKey(func(k ui.TextKey) bool {
+				switch {
+				case k.Key == ui.KeyEnter && k.Mods == 0:
+					send(k.Text())
+					k.SetText("")
+					return true
+				case k.Key == ui.KeyEscape:
+					a.replyOpen[id] = false
+					return true
+				}
+				return false
+			})
+		ui.Row(c.Key("reply-acts:" + id)).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+			if a.buttonFor(c, a.L.T("decision.reply.send"), about, btnPrimary, height, bg) {
+				send(draft)
+			}
+			ui.Box(c).Width(t.S2).Shrink(0)
+			if a.buttonFor(c, a.L.T("decision.reply.cancel"), about, btnText, height, bg) {
+				a.replyOpen[id] = false
 			}
 		})
-		a.replyDraft[d.DecisionID] = draft
+	})
+	a.replyDraft[id] = draft
+}
+
+// defaultUnder is an ask's default said once under its row (D482): what
+// happens if the person doesn't answer, as a sentence; with a small ring of
+// the time left when it goes by itself.
+func (a *App) defaultUnder(c *ui.Context, d *store.DecisionState, ink ui.Color, size float32, after func()) {
+	t := a.T
+	line := a.defaultLine(c, d)
+	if line == "" && after == nil {
+		return
 	}
+	ui.Row(c.Key("dflt:"+d.DecisionID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, t.S1).Children(func() {
+		if left, ok := a.defaultIn(d); ok && d.DefaultOption == "go" && d.Reversible && d.Where == nil {
+			frac := float32(1)
+			if total := store.ParseTime(d.DefaultAt).Sub(a.decisionTime(d)); total > 0 {
+				frac = max(0, float32(left)/float32(total))
+			}
+			ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
+		}
+		if line != "" {
+			uiText(c, autospace(line)).FontSize(size).TextColor(ink).LineHeight(1.45).MinWidth(0).Shrink(1)
+		}
+		if after != nil {
+			after()
+		}
+	})
 }
 
 // holdLabel is Hold's words: 先等等, or what holding means for a where ask

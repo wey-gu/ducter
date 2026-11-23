@@ -284,6 +284,9 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
     "learned.line": "这周记下了 %s 条关于你的事，要看看对不对吗？",
     "learned.line.one": "这周记下了一条关于你的事，要看看对不对吗？",
     "learned.open": "看看",
+    // D482: the same offer as one quiet link at the note's foot.
+    "learned.link": "这周记下的 %s 条关于你的事",
+    "learned.link.one": "这周记下的一条关于你的事",
     "learned.title": "这周记下的",
     "learned.lede": "对的点「对」；不对就改一下，或者让它忘掉。改过的会写回 Nowledge Mem。",
     "learned.right": "对",
@@ -578,6 +581,8 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
     "learned.line": "This week I noted %s things about you. Want to check them?",
     "learned.line.one": "This week I noted one thing about you. Want to check it?",
     "learned.open": "Show me",
+    "learned.link": "%s things I noted about you this week",
+    "learned.link.one": "One thing I noted about you this week",
     "learned.title": "What it learned this week",
     "learned.lede": "Mark what's right, fix what isn't, or have it forget. Fixes go back to Nowledge Mem.",
     "learned.right": "Right",

@@ -1,6 +1,7 @@
 // A note the partner said by itself (D165, design/connectors.md §6), on the phone: one partner
-// message, its opening line, its finds (its kind in small letters, two sentences, its one next step
-// 好，<action> that never runs without Go, 怎么知道的 › with the evidence in place, 有用 · 这类不用告诉我);
+// message, its opening line, its finds (two sentences, where it came from in one quiet line, its one next
+// step 好，<action> that never runs without Go beside 怎么知道的, the evidence in place ending in 有用 and
+// 这类不用告诉我, D482);
 // and the one ask a note may carry. Only shared controls. D453: a find said as an offer has no
 // 先等等 (letting it be is the hold); past the first OFFER_SHOWN they wait under 还有几条 / A few more;
 // one that faded keeps its words, dimmed, with no button and no word about having been missed.
@@ -9,7 +10,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
-import { Btn, Facts, LinkBtn, TextBox } from "./controls.tsx";
+import { Btn, Facts, TextBox, TextLink } from "./controls.tsx";
 import { openDid } from "./did.tsx";
 import { LearnedLine } from "./recall.tsx";
 import { ago } from "./format.ts";
@@ -87,68 +88,75 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
   const rk = seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined;
   // D453: an offer nothing came of fades: its words stay, dimmed; no button, no "missed".
   const faded = !!f.offer && st?.state === "passed";
+  const drafted = !!f.draft && !!d && (open || !!send || (d.pending ?? d.resolved?.option) === "go");
+  const going = !!d && (st?.state === "go" || (d.pending ?? d.resolved?.option) === "go");
+  const howBtn = (
+    <Btn kind="text" size="sm" class="fhow-btn" label={t("find.how")} chev expanded={how} onClick={() => {
+      if (!how) A.openFinds([f.findId], "how"); // D464: counted once, never learned from
+      setHow(!how);
+    }} />
+  );
+  // D482: one grammar for every find: its words; one quiet line of where it came from (D458's origin,
+  // else its kind, in the same small muted words); one row with its step and 怎么知道的 beside it; the
+  // evidence in place, each source wrapping inside the note, with 有用 / 这类不用告诉我 at its end.
   return (
     <div class={`find${faded ? " faded" : ""}`} id={`find-${f.findId}`} data-reply={rk} data-seq={undefined}>
-      <div class="kind">{t(`kind.${f.kind}`)}</div>
       {/* D256: the pebble rests outside the card, beside the find's words. */}
       <div class="ftext">
         {f.text}
         <HoverReply k={rk} />
       </div>
-      {/* D458: an offer from past the accounts says where it came from, one quiet line under its words. */}
-      {f.origin && <div class="small sub forigin">{f.origin}</div>}
-      {f.draft && d && st?.state !== "passed" && (send || open || (d.pending ?? d.resolved?.option) === "go") ? (
+      <div class="small sub forigin">{f.origin || t(`kind.${f.kind}`)}</div>
+      {f.draft && d && st?.state !== "passed" && drafted ? (
         <Draft f={f} open={open} decide={(text) => (text ? A.decide(d.decisionId, "go", text) : A.decide(d.decisionId, "hold"))} />
       ) : null}
-      {d &&
-        !(f.draft && (open || send || (d.pending ?? d.resolved?.option) === "go")) &&
-        (st?.state === "passed" ? (
-          faded ? null : <div class="small sub">{t("find.passed")}</div>
-        ) : open ? (
-          <div class="fstep">
-            <Btn kind="secondary" size="sm" label={t("decision.go.label", f.goLabel ?? "")} onClick={() => A.decide(d.decisionId, "go")} />
-            {!f.offer && <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => A.decide(d.decisionId, "hold")} />}
-          </div>
-        ) : st?.state === "go" || (d.pending ?? d.resolved?.option) === "go" ? (
-          <div class="small sub">{t("find.going")}</div>
-        ) : f.offer ? null : (
-          <div class="small sub">{t("find.held")}</div>
-        ))}
-      {!faded && <div class="freact">
-        <Btn kind="text" size="sm" label={t("find.how")} chev expanded={how} onClick={() => {
-          if (!how) A.openFinds([f.findId], "how"); // D464: counted once, never learned from
-          setHow(!how);
-        }} />
-        <span class="grow" />
-        {st?.state === "muted" ? (
-          <span class="small sub">{t("find.muted")}</span>
-        ) : st?.state === "useful" ? (
-          <span class="small sub">{t("find.thanked")}</span>
-        ) : (
-          <>
-            <Btn kind="text" size="sm" label={t("find.useful")} about={f.text} onClick={() => A.reactFind(f.findId, "useful")} />
-            <Btn kind="text" size="sm" label={t("find.mute")} about={f.text} onClick={() => A.reactFind(f.findId, "mute")} />
-          </>
-        )}
-      </div>}
-      {how && (
+      {faded ? null : (
+        <div class="fstep">
+          {d && !drafted && open && (
+            <>
+              <Btn kind="secondary" size="sm" label={t("decision.go.label", f.goLabel ?? "")} onClick={() => A.decide(d.decisionId, "go")} />
+              {!f.offer && <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => A.decide(d.decisionId, "hold")} />}
+            </>
+          )}
+          {d && !drafted && !open && (st?.state === "passed" ? (
+            <span class="small sub fsaid">{t("find.passed")}</span>
+          ) : going ? (
+            <span class="small sub fsaid">{t("find.going")}</span>
+          ) : f.offer ? null : (
+            <span class="small sub fsaid">{t("find.held")}</span>
+          ))}
+          {howBtn}
+        </div>
+      )}
+      {how && !faded && (
         <div class="fhow">
-          {/* D388: each line is one source, in the order the find rests on them: where it was read, what it is, what it says, its page. */}
+          {/* D388: each source in the order the find rests on them: where it was read, when, who; what
+              it is (its page when it has one), wrapping inside the note; what it says. */}
           {f.how.map((h, i) => (
-            <Facts
-              key={i}
-              class="small"
-              items={[
-                h.src && <span class="fsrc">{t(`find.src.${h.src}`)}</span>,
-                <span class="sub">{ago(A.L, h.at)}</span>,
-                h.from && <span class="sub">{h.from}</span>,
-                h.url ? <LinkBtn kind="text" size="sm" class="flink" href={h.url} label={h.what} /> : h.what,
-                h.says && <span class="fsays">{h.says}</span>,
-              ]}
-            />
+            <div class="fsrc-row" key={i}>
+              <Facts class="small" items={[h.src && <span class="fsrc">{t(`find.src.${h.src}`)}</span>, <span class="sub">{ago(A.L, h.at)}</span>, h.from && <span class="sub">{h.from}</span>]} />
+              {h.url ? (
+                <TextLink class="flink" href={h.url} label={h.what} />
+              ) : (
+                <div class="fwhat">{h.what}</div>
+              )}
+              {h.says && <div class="fsays">{h.says}</div>}
+            </div>
           ))}
           {f.unknown && <div class="small sub">{t("find.unknown", f.unknown)}</div>}
           {f.untouched && <div class="small sub">{f.untouched}</div>}
+          <div class="ffeel">
+            {st?.state === "muted" ? (
+              <span class="small sub">{t("find.muted")}</span>
+            ) : st?.state === "useful" ? (
+              <span class="small sub">{t("find.thanked")}</span>
+            ) : (
+              <>
+                <Btn kind="text" size="sm" label={t("find.useful")} about={f.text} onClick={() => A.reactFind(f.findId, "useful")} />
+                <Btn kind="text" size="sm" label={t("find.mute")} about={f.text} onClick={() => A.reactFind(f.findId, "mute")} />
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -196,14 +204,16 @@ export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: b
               setMore(!more);
             }} />
         )}
-        {/* D304: the week's first note offers, in one line, what it noted about them. */}
-        {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}
         <Ask n={n} />
+        {/* D482: the note's ways on, one quiet row at its foot in the same words' size: D304's week of
+            what it noted (the week's first note) and D300's Done for you (the morning's). */}
+        {((n.learned && n.learned.count > 0) || (n.rung === "morning" && !n.quiet)) && (
+          <div class="note-foot">
+            {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}
+            {n.rung === "morning" && !n.quiet && <Btn kind="text" size="sm" chev class="did-morning" label={t("did.link")} onClick={() => openDid()} />}
+          </div>
+        )}
       </div>
-      {/* D300: under the morning note, the quiet way to what it did for you. */}
-      {n.rung === "morning" && !n.quiet && (
-        <Btn kind="text" size="sm" chev class="did-morning" label={t("did.link")} onClick={() => openDid()} />
-      )}
     </div>
   );
 }

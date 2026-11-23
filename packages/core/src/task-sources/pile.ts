@@ -12,7 +12,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, FindHow, HandedState, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
-import { PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECT_NAME_MAX, SUBJECTS_PAST, SUBJECTS_SHOWN, type SubjectOp } from "@ducter/protocol";
+import { cutAtWord, PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECT_NAME_MAX, SUBJECTS_PAST, SUBJECTS_SHOWN, type SubjectOp } from "@ducter/protocol";
 /** D415: at most this many subjects the person made are kept. */
 const SUBJECTS_KEPT = 60;
 import { redact } from "@ducter/protocol/src/redact.ts";
@@ -1229,7 +1229,7 @@ export function createPile(d: PileDeps): Pile {
       const w = W[lang];
       const y = cleared(d.dayOf(d.now() - DAY_MS));
       const text = `${y ? fill(w.picksYesterday, { k: y }) : ""}${y && lang === "en" ? " " : ""}${fill(w.picks, { n: picks.length })}`;
-      const how: FindHow[] = picks.map((p) => ({ what: p.item.title.slice(0, 80), from: p.item.kind === "github" ? `${p.item.where ?? ""}${p.item.label}` : (p.item.where ?? "Obsidian"), at: p.item.updatedAt ?? new Date(d.now()).toISOString() }));
+      const how: FindHow[] = picks.map((p) => ({ what: cutAtWord(p.item.title, 80), from: p.item.kind === "github" ? `${p.item.where ?? ""}${p.item.label}` : (p.item.where ?? "Obsidian"), at: p.item.updatedAt ?? new Date(d.now()).toISOString() }));
       const decisionId = newId();
       const goLabel = fill(w.picksGo, { name: d.name() });
       d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, holdLabel: w.picksHold, defaultOption: "hold", defaultAt: new Date(d.now() + 10 * 3_600_000).toISOString(), reversible: false, findId, offer: true, src: { kind: "picks", item: refOfItem(picks[0]!.item), items: picks.map((p) => ({ item: refOfItem(p.item) })) } } });

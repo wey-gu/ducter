@@ -36,7 +36,8 @@ test("the note: no Hold on an offer, the fold after three, a faded offer keeps i
   const src = readFileSync(join(import.meta.dir, "../src/finds.tsx"), "utf8");
   expect(src).toContain('{!f.offer && <Btn kind="text" size="sm" label={t("decision.hold")}');
   expect(src).toContain("OFFER_SHOWN");
-  expect(src).toContain('faded ? null : <div class="small sub">{t("find.passed")}</div>');
+  // D482: a faded offer has no step row at all (no button, no word).
+  expect(src).toContain("{faded ? null : (");
 });
 
 test("D458: the kinds from past the accounts and their sources have words in both languages; the origin line is shown under the words", () => {
@@ -46,7 +47,8 @@ test("D458: the kinds from past the accounts and their sources have words in bot
   expect(["next_step", "remembered", "loose_end"].map((k) => en.t(`kind.${k}`))).toEqual(["A next step", "Remembered", "You mentioned"]);
   expect([zh.t("find.src.task"), zh.t("find.src.mem"), en.t("find.src.task"), en.t("find.src.mem")]).toEqual(["任务", "记忆", "Task", "Memory"]);
   const src = readFileSync(join(import.meta.dir, "../src/finds.tsx"), "utf8");
-  expect(src).toContain('{f.origin && <div class="small sub forigin">{f.origin}</div>}');
+  // D482: where it came from, else its kind, in one quiet line under the words.
+  expect(src).toContain('<div class="small sub forigin">{f.origin || t(`kind.${f.kind}`)}</div>');
 });
 
 test("D464: opening 怎么知道的, or 还有几条, tells the home which finds were opened (counted once there, never learned from)", () => {

@@ -188,10 +188,10 @@ func (a *App) answeredLine(c *ui.Context, d *store.DecisionState) {
 	})
 }
 
-// decisionTray is an open ask's one compact card under its question:
-// Reply… · Hold as quiet text, Go last and named by the action (D76), the
-// reply field when open; then the default in one small grey line, with
-// Details when a task asks.
+// decisionTray is an open ask's one compact card under its words (D129;
+// D482: one grammar): the action first, named by what it does; 先不用 · 回复… ·
+// 晚点再问我 as quiet text after it; the default once, inside the card, with
+// Details when a task asks; Reply… opens its field in place of the row.
 func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Task, key string, details bool) {
 	t := a.T
 	about := a.decisionAbout(d)
@@ -201,63 +201,18 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 			return
 		}
 		a.laterBack(c, d)
-		card := ui.Column(c).Gap(t.S2).Padding(t.S2, t.S2, t.S2, t.S2).Radius(t.RadiusMD).Background(t.Surface).
+		card := ui.Column(c).Gap(t.S2).Padding(t.S2, t.S2, t.S2+2, t.S2).Radius(t.RadiusMD).Background(t.Surface).
 			Border(1, t.Line).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color)
 		card.Children(func() {
-			ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
-				if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, t.ControlSM, t.Surface) {
-					a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
-				}
-				if a.buttonFor(c, a.holdLabel(d), about, btnText, t.ControlSM, t.Surface) {
-					a.Decide(d.DecisionID, "hold", "")
-				}
-				ui.Spacer(c)
-				if a.buttonFor(c, a.goLabel(d), about, btnPrimary, t.ControlSM, t.Surface) {
-					a.Decide(d.DecisionID, "go", "")
-				}
-			})
-			if a.replyOpen[d.DecisionID] {
-				a.replyField(c, d)
+			var foot func()
+			if details {
+				foot = func() { a.detailsToggle(c, key, task.Title()) }
 			}
-		})
-		a.underBubble(c, func() {
-			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-				if line := a.defaultLine(c, d); line != "" {
-					uiText(c, line).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
-				}
-				// D382: on the default's own line: the other way than letting the time run.
-				a.laterToggle(c, d, about, t.ControlSM, t.Bg)
-				if details {
-					a.detailsToggle(c, key, task.Title())
+			a.decideRow(c, d, about, t.ControlSM, t.Surface, nil, func() {
+				if d.Cal == nil {
+					a.defaultUnder(c, d, t.InkMuted, t.XS+1, foot)
 				}
 			})
 		})
-		a.laterTimes(c, d, t.Bg)
 	})
-}
-
-// replyField is an ask's reply field, under its buttons.
-func (a *App) replyField(c *ui.Context, d *store.DecisionState) {
-	t := a.T
-	draft := a.replyDraft[d.DecisionID]
-	ui.Row(c.Key("reply:"+d.DecisionID)).Gap(t.S2).Padding(t.S1, t.S1, t.S1, t.S3).Radius(t.RadiusMD).Background(t.Sunken).Children(func() {
-		ui.TextArea(c, &draft).Lines(1, 4).Placeholder(a.L.T("decision.reply.placeholder")).AutoFocus().
-			Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).Grow(1).FontSize(t.MD).
-			OnTextKey(func(k ui.TextKey) bool {
-				if k.Key == ui.KeyEnter && k.Mods == 0 {
-					if txt := k.Text(); txt != "" {
-						a.Decide(d.DecisionID, "reply", txt)
-						a.replyDraft[d.DecisionID] = ""
-					}
-					k.SetText("")
-					return true
-				}
-				return false
-			})
-		if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) && draft != "" {
-			a.Decide(d.DecisionID, "reply", draft)
-			draft = ""
-		}
-	})
-	a.replyDraft[d.DecisionID] = draft
 }

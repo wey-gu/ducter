@@ -21132,3 +21132,55 @@ html[data-text-size="large"] .brand-mark > svg {
     margin-left: 0;
   }
 }
+
+/* ---------- D482: an ask's one grammar; the morning note's calm ---------- */
+/* An ask: the one action that says what happens leads; the other ways (先不用, 回复…, 晚点再问我)
+   follow it as quiet text; the default once, a sentence under them. Reply… opens its field in place
+   of the row, its own Send where Go stood. Same in the conversation, On hand, a sheet, a task. */
+.dk { display: flex; flex-direction: column; align-items: stretch; align-self: stretch; gap: 6px; min-width: 0; text-align: start; }
+.dk-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; min-width: 0; }
+.dk-acts > .btn.primary { margin-inline-end: 8px; max-width: 100%; }
+.dk-acts > .btn.primary .lbl { overflow: hidden; text-overflow: ellipsis; }
+.dk-acts > .btn.text { font-weight: 600; color: var(--ink-soft); }
+.decision .dk-acts > .btn.text { color: var(--needs-ink); }
+.dk .dk-default { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: var(--sm); line-height: 1.45; color: var(--ink-muted); }
+.decision .dk .dk-default { color: var(--needs-ink); }
+.dk .dk-default .dk-line { min-width: 0; flex: 0 1 auto; white-space: normal; overflow: visible; text-overflow: clip; }
+.dk .dk-default .sug { margin-inline-end: 6px; }
+.dk .dk-default .tb { min-height: 24px; font-size: var(--sm); }
+.dk-reply { display: flex; flex-direction: column; gap: 6px; }
+.dk-reply textarea { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font: inherit; font-size: var(--body); line-height: 1.45; resize: none; outline: none; max-height: 140px; }
+.dk-reply textarea:focus-visible { border-color: var(--ink-soft); }
+/* In the conversation the card holds the row and the default together (the default was a loose line under it). */
+.askq > .tray.dk-card { flex-direction: column; align-items: stretch; gap: 0; padding: 8px 8px 10px; }
+.askq > .tray.dk-card .dk-default { padding: 0 6px; font-size: var(--xs); }
+.askq > .tray.dk-card .dk-default .tb { font-size: var(--xs); }
+@media (max-width: 599px) {
+  /* One hand: the action the full width at 44, the quiet ways under it. */
+  .dk-acts > .btn.primary { flex: 1 1 100%; margin-inline-end: 0; min-height: 44px; }
+  .dk-acts > .btn.text { min-height: 44px; }
+}
+
+/* The morning note: one grammar per find. Its words; one quiet line of where it came from; one row
+   with its step and 怎么知道的; the evidence in place, wrapping inside the note, 有用 / 这类不用告诉我
+   at its end; the note's ways on in one quiet row at its foot. */
+.bubble.note .find { gap: 2px; padding-top: 12px; }
+.bubble.note .find .forigin { margin-top: 0; font-size: var(--sm); color: var(--ink-muted); overflow-wrap: anywhere; }
+.bubble.note .fstep { margin-top: 6px; gap: 4px 2px; }
+.bubble.note .fstep > .btn.secondary { margin-inline-end: 8px; }
+.bubble.note .fstep .fsaid { margin-inline-end: 8px; }
+.bubble.note .fstep .btn.text, .bubble.note .ffeel .btn.text, .bubble.note .note-foot .btn.text { font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }
+.bubble.note .fhow { gap: 8px; margin: 4px 0 2px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); min-width: 0; }
+.bubble.note .fsrc-row { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bubble.note .fsrc-row .facts { font-size: var(--xs); }
+.bubble.note .fsrc-row .flink, .bubble.note .fsrc-row .fwhat { font-size: var(--sm); line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+.bubble.note .fsrc-row .flink { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+.bubble.note .fsrc-row .flink:hover { text-decoration-color: currentColor; }
+.bubble.note .fsrc-row .flink .btn-chev { display: inline; vertical-align: -1px; margin-inline-start: 2px; }
+.bubble.note .fsrc-row .fsays { font-size: var(--sm); color: var(--ink-soft); overflow-wrap: anywhere; }
+.bubble.note .ffeel { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; margin: 0 -10px -6px; }
+.bubble.note .ffeel .small { padding: 0 10px; }
+.bubble.note .note-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; margin: 4px 0 -6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.bubble.note .note-foot > :first-child { margin-inline-start: -10px; }
+.bubble.note .note-foot .did-morning { margin: 0; }
+.bubble.note > .fmore { margin: 2px -10px -4px; font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }

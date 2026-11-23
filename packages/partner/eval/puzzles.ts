@@ -634,6 +634,7 @@ export const puzzles: Scenario[] = [
     expect: { opens: 1, msgs: [1, 2], maxChars: 260, require: [/18|180,?000|18 万/, /9\.6|96,?000|9\.6 万/] },
     rubric:
       "Step 1: the person asks for quiet places in Kyoto for Dec 20–23 with prices; one task is opened with a short Chinese ack. Step 2: the task reports two places with prices. Pass if the partner then tells them both options with their prices in a few short Chinese lines (it said it would tell them the prices). Fail if it says nothing after the report, leaves out the prices, or says it promised.",
+  },
   // D494: the author's own words on hel (2026-11-23): a standing "loop agent" with a name in Bridge
   // that his agents hand PRs to. Ducter's home is the one receiver and wakes the work, so the right
   // outcome is a helper, made at once: no Codex task that polls a mailbox or loops, no question.

@@ -1433,7 +1433,7 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     return (
       <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq} style={picsAspect(e.user.media)}>
         <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
-        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} />}
+        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} copy={false} />}
       </div>
     );
   }

@@ -529,6 +529,7 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 	hov := rt != nil && row.Hovered()
 	row.Children(func() {
 		ui.Spacer(c)
+		a.hoverCopy(c, rt, hov, -1) // D492
 		a.hoverReply(c, rt, hov, -1)
 		r := t.BubbleRadius
 		tr := r[1]
@@ -589,6 +590,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			hov := rt != nil && row.Hovered()
 			row.Children(func() {
 				ui.Spacer(c)
+				a.hoverCopy(c, rt, hov, -1) // D492: none for pictures alone
 				a.hoverReply(c, rt, hov, -1)
 				ui.Column(c).Gap(t.S1).AlignItems(ui.End).MinWidth(0).Children(func() {
 					a.messageMedia(c, fmt.Sprint("u", e.FirstSeq), e.User.Media, nil, true, "conv")

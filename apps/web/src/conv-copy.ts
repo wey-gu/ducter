@@ -4,6 +4,7 @@
 // Clipboard API, then the old way (a hidden field selected and copied inside the tap), and says
 // whether it worked.
 import { haptic } from "./native.ts";
+import { markdown } from "./markdown.ts";
 
 type Doc = Pick<Document, "createElement" | "execCommand" | "activeElement"> & { body: HTMLElement };
 
@@ -29,8 +30,21 @@ export function copyByField(text: string, d: Doc = document): boolean {
   return ok;
 }
 
-/** Copies text; true when it is on the clipboard. */
-export async function copy(text: string, nav: { clipboard?: { writeText(s: string): Promise<void> } } = navigator, d?: Doc): Promise<boolean> {
+type Nav = { clipboard?: { writeText(s: string): Promise<void>; write?(items: ClipboardItem[]): Promise<void> } };
+
+/** Copies text (and, given `html`, the same words formatted beside it); true when it is on the
+ *  clipboard. */
+export async function copy(text: string, nav: Nav = navigator, d?: Doc, html?: string): Promise<boolean> {
+  // D492: a rich editor (Notes, Mail, a doc) takes the formatted message; an editor, a terminal
+  // or a plain chat takes the Markdown as written.
+  if (html && nav.clipboard?.write && typeof ClipboardItem !== "undefined") {
+    try {
+      await nav.clipboard.write([new ClipboardItem({ "text/plain": new Blob([text], { type: "text/plain" }), "text/html": new Blob([html], { type: "text/html" }) })]);
+      return true;
+    } catch {
+      // Refused (an old web view, no focus): the words alone.
+    }
+  }
   if (nav.clipboard?.writeText) {
     try {
       await nav.clipboard.writeText(text);
@@ -43,11 +57,15 @@ export async function copy(text: string, nav: { clipboard?: { writeText(s: strin
 }
 
 /** A copy the person asked for: the light tap and 已拷贝 / Copied, or that it didn't work. */
-export async function copyAndSay(text: string, say: (ok: boolean) => void): Promise<void> {
-  const ok = await copy(text);
+export async function copyAndSay(text: string, say: (ok: boolean) => void, html?: string): Promise<void> {
+  const ok = await copy(text, navigator, undefined, html);
   if (ok) haptic("light");
   say(ok);
 }
+
+/** D492: a whole message as it goes to the clipboard: the Markdown as written, and the message
+ *  formatted beside it for an app that takes formatting. */
+export const copyMessage = (md: string, say: (ok: boolean) => void) => copyAndSay(md.trim(), say, markdown(md.trim()));
 
 /**
  * A code block's own Copy (markdown.ts draws it): one listener for the page, so every block

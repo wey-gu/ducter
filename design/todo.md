@@ -9,6 +9,11 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Copying a message, after D492 (`conversation.md` "Keeping your place and copying")
+
+- **⌘C on a whole message** with nothing selected (the one under the pointer, or the focused bubble): trigger, the author asks for it or a review finds the pebble slow.
+- **Copy on the person's own words in a task** (their sent bubble in the transcript): trigger, someone copies their own brief back out.
+
 ## The partner's world, phase 2c (D477 proposed, D478 built phase 2b; research/206 §2.1, §7, §9)
 
 - **The author's verdict on D477's architecture** (principle 21 proposed; `where` / `replaces` on

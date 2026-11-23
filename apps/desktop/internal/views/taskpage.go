@@ -34,6 +34,9 @@ type taskPage struct {
 	colW float32
 	// took is how long the turn being drawn worked, for its words' meta line.
 	took string
+	// answer is the seq of a finished turn's last words, its answer (D492):
+	// their meta line and its Copy stay in view.
+	answer int64
 	// locOpen: the locator's list is open (the rail or the list is hovered,
 	// or a click pinned it); loc, its card (D325).
 	locOpen bool
@@ -569,22 +572,28 @@ func (a *App) dividerTip(c *ui.Context, label, at, tip string) {
 
 // voice is the agent's words (D271): the words, then one quiet line that
 // says "保存了进度" when it saved them, and on hover its time, how long its
-// turn worked and Copy.
+// turn worked and Copy. D492: a finished turn's last words (its answer)
+// keep that line in view; Copy is the copy mark and its word, saying
+// 已拷贝 in place; right-click has Copy too.
 func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 	t := a.T
 	col := ui.Column(c.Key("voice")).Gap(2).MinWidth(0)
-	hover := col.Hovered()
+	key := fmt.Sprintf("voice-copy:%s:%d", task.ID, b.Seq)
+	done := a.justCopied(c, key)
+	answer := a.tpage.answer == b.Seq
+	shown := col.Hovered() || done || answer
 	took := a.tpage.took
+	a.replyMenu(c, col, nil, b.Text)
 	col.Children(func() {
 		markdown.View(c, mdSpace(b.Text), a.mdFor(b.Text))
 		if b.Full > 0 {
 			a.showAll(c, task, b.Seq, b.Full, false) // D320: cut at its most
 		}
-		if !b.Saved && !hover {
+		if !b.Saved && !shown {
 			return
 		}
 		meta := ui.Row(c.Key("meta")).Gap(t.S2).MinHeight(16).AlignItems(ui.Center).MinWidth(0)
-		if !b.Saved {
+		if !b.Saved && !answer {
 			// Over the gap under the words, so nothing moves when it shows.
 			meta.Absolute().Left(0).Bottom(-15)
 		}
@@ -593,7 +602,7 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 			if b.Saved {
 				uiText(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
 			}
-			if !hover {
+			if !shown {
 				return
 			}
 			// D291: its time and how long it worked, each its own small element.
@@ -602,16 +611,36 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 					uiText(c.Key(i), s).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
 				}
 			}
-			label := a.L.T("reply.copy")
-			cp := uiText(c.Key("copy"), label).FontSize(t.XXS).FontWeight(600).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
-			if cp.Hovered() {
-				cp.TextColor(t.Ink)
-			}
-			if cp.Clicked() {
-				c.WriteClipboard(copyText(b.Text))
-			}
+			a.copyLink(c, key, b.Text, done)
 		})
 	})
+}
+
+// copyLink is the quiet line's Copy (D492): the drawn copy mark and its
+// word in the small type; the check and 已拷贝 in the done ink once it
+// copied.
+func (a *App) copyLink(c *ui.Context, key, text string, done bool) {
+	t := a.T
+	label, draw := a.L.T("reply.copy"), drawCopy
+	if done {
+		label, draw = a.L.T("reply.copied"), drawCheck
+	}
+	cp := ui.Row(c.Key("copy")).Gap(t.S1).AlignItems(ui.Center).Padding(2, t.S1).Margin(-2, 0, -2, -t.S1).Radius(t.RadiusXS).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
+	ink := t.InkSoft
+	if cp.Hovered() || cp.FocusVisible() {
+		ink = t.Ink
+	}
+	if done {
+		ink = t.Done.Ink
+	}
+	cp.Children(func() {
+		ui.Box(c).Size(14, 14).Shrink(0).Draw(draw(ink))
+		uiText(c, label).FontSize(t.XXS).FontWeight(600).TextColor(ink).SingleLine().Unselectable()
+	})
+	if cp.Clicked() {
+		a.copyMessage(c, key, text)
+	}
 }
 
 // savedLine (D349) is a checkpoint that was the agent's own note: only

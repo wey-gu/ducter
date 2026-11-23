@@ -50,7 +50,7 @@ export const ALLOW: { file: string; has?: string; why: string }[] = [
   { file: "apps/web/src/markdown.ts", has: "[*•]", why: "parses a list bullet" },
   { file: "apps/web/src/markdown.ts", has: "[-*•]", why: "parses a list bullet" },
   { file: "apps/web/src/markdown-doc.ts", has: "[-*+•]", why: "parses a list bullet" },
-  { file: "apps/desktop/internal/views/follow.go", has: "[*•]", why: "parses a list bullet" },
+  { file: "apps/desktop/internal/views/copy_d492.go", has: "[-*•]", why: "parses a list bullet (the message as HTML, D492)" },
   { file: "apps/desktop/internal/views/phone.go", has: '"•"', why: "strips a provider's Markdown list marker" },
   // The secret mask itself, and the rule that never masks a mask again.
   // A saved card's or secret's hidden digits (•••• 4242) in Autofill: a mask, not a separator (D296).

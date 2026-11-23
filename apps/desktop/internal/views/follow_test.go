@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
@@ -36,17 +37,41 @@ func TestFollowRules(t *testing.T) {
 	}
 }
 
-func TestCopyText(t *testing.T) {
+// D492: a whole message copies as the Markdown written, and formatted beside
+// it (the web's markdown.ts subset), escaped first.
+func TestMessageHTML(t *testing.T) {
 	for in, want := range map[string]string{
-		"**Done.** The *build* is green.\n\n### Next\n* ship it":        "Done. The build is green.\n\nNext\n- ship it",
-		"See [the PR](https://github.com/x/y/pull/1) and https://a.b/c": "See the PR (https://github.com/x/y/pull/1) and https://a.b/c",
-		"Run:\n```\nbun test **x**\n```\n`inline` stays":                "Run:\n```\nbun test **x**\n```\n`inline` stays",
-		"*一* 和 *二*": "一 和 二",
+		"**Done.** The *build* is green.\n\n### Next\n* ship it\n* tag it": "<p><strong>Done.</strong> The <em>build</em> is green.</p><h4>Next</h4><ul><li>ship it</li><li>tag it</li></ul>",
+		"See [the PR](https://github.com/x/y/pull/1) and https://a.b/c":    `<p>See <a href="https://github.com/x/y/pull/1">the PR</a> and <a href="https://a.b/c">https://a.b/c</a></p>`,
+		"Run:\n```\nbun test **x** <y>\n```\n`a<b` stays":                  "<p>Run:</p><pre><code>bun test **x** &lt;y&gt;</code></pre><p><code>a&lt;b</code> stays</p>",
+		"1. 一\n2. 二\n\n<script>":                                           "<ol><li>一</li><li>二</li></ol><p>&lt;script&gt;</p>",
 	} {
-		if got := copyText(in); got != want {
-			t.Errorf("copyText(%q) = %q, want %q", in, got, want)
+		if got := mdHTML(in); got != want {
+			t.Errorf("mdHTML(%q) = %q, want %q", in, got, want)
 		}
 	}
+}
+
+// D492: the copy pebble beside a partner's message copies it whole (its
+// Markdown and its HTML) and says 已拷贝 on itself.
+func TestCopyPebble(t *testing.T) {
+	w := pebbleRun[i18n.ZH]
+	app, tt := pebbleApp(t, i18n.ZH, 1100, 1400, false)
+	hoverPebble(t, app, tt, w.fixed)
+	if err := tt.Click(app.L.T("reply.copy")); err != nil {
+		t.Fatalf("no copy pebble beside the partner's message: %v", err)
+	}
+	tt.Frame()
+	got := tt.ClipboardData()
+	text, _ := got.Read(transfer.Text)
+	html, _ := got.Read(transfer.HTML)
+	if string(text) != w.fixed || string(html) != "<p>"+w.fixed+"</p>" {
+		t.Errorf("copied %q / %q, want the message as written and formatted", text, html)
+	}
+	if !tt.HasText(app.L.T("reply.copied")) {
+		t.Errorf("the pebble doesn't say 已拷贝 after copying: %q", texts(tt))
+	}
+	pebbleShot(t, tt, "mac-zh-light-wide-copied")
 }
 
 // followApp is a morning's conversation read up to its 8th message, the

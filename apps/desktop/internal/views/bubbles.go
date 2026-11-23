@@ -57,7 +57,8 @@ func (a *App) partnerBubble(c *ui.Context, join bool, body func()) {
 			})
 		}
 		a.hoverReply(c, rt, hov, 1)
-		a.hoverRead(c, rt, hov) // D305: 朗读 / Read aloud beside it
+		a.hoverCopy(c, rt, hov, 1) // D492: 拷贝 / Copy, the whole message
+		a.hoverRead(c, rt, hov)    // D305: 朗读 / Read aloud beside it
 		ui.Spacer(c)
 	})
 }

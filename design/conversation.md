@@ -385,12 +385,26 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
   front. Sending takes the line away.
 - **Read means seen.** The conversation counts as read only while its end is in view.
 - **The place is kept** while On hand or a task has the phone's screen.
-- **Copy.** Long press (touch) or right click on a message: its time, **回复 / Reply**, **拷贝 /
-  Copy** (the message as written: styling marks out, links as "words (address)", code kept), on a
-  link **拷贝链接 / Copy link**, and on a touch screen **选择文字 / Select text** (the words on a sheet
-  where the system's own selection works; **全部拷贝 / Copy all**, **完成 / Done**). With words
-  selected (Mac, wide web) Copy is the selection's. Each code block has its own quiet **拷贝**
-  (**已拷贝** for a moment). A copy says **已拷贝 / Copied** with a light tap, or that it couldn't.
+- **Copy (D492).** A whole message is one press away wherever it is read:
+  - *With a mouse*, the pebbles beside a message (D256's gutter) carry **拷贝 / Copy** with the copy
+    mark: on the web a column, Reply on the message's bottom line, Copy over it, **朗读 / Read
+    aloud** over that on a partner's message; on the Mac a row, Reply, Copy, Read aloud. Every
+    bubble that can be replied to has it; pictures alone have none.
+  - *Long press (touch) or right click* opens the message menu: its time, **回复 / Reply**, **拷贝 /
+    Copy**, on a link **拷贝链接 / Copy link**, and on a touch screen **选择文字 / Select text** (the
+    words to read on a sheet where the system's own selection works, without styling marks or
+    fences; **全部拷贝 / Copy all**, **完成 / Done**). With words selected (Mac, wide web) Copy is the
+    selection's.
+  - *In an opened task*, the quiet line under the agent's words (its time, how long its turn
+    worked) ends in **拷贝** with the copy mark. A finished turn's last words, its answer, keep
+    that line in view; earlier words show it on hover; a touch screen always. On the Mac its
+    right-click has Copy too.
+  - *What it copies:* the message's Markdown as written, and the same message formatted beside it
+    (a rich editor keeps headings, lists, bold and code; an editor, a terminal or another agent
+    gets the source). Each code block also has its own quiet **拷贝**.
+  - *What it says:* the button pressed turns to the drawn check and **已拷贝 / Copied** for a
+    moment, with a light tap; a menu that closed says **已拷贝** in the toast; a copy that failed
+    says so, with Select text.
 - **The draft is kept** when the app is closed, until it is sent.
 - **Not here:** editing a sent message (the partner already acted on it; say a correction), read
   ticks, reactions. Find in the conversation is in `todo.md`.

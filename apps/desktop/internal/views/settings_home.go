@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -157,16 +158,20 @@ func (a *App) paneSay(tab, lede string) string {
 
 // D475: each pane's head is what is true there now, never what the pane is for.
 
+// interfaceLangs are Look and sound's window languages, in the order its choice shows them.
+var interfaceLangs = []string{"auto", "zh", "en"}
+
 // lookSay (D501): the theme, the light and the window's language, read back.
 func (a *App) lookSay() string {
 	paper, lang := "system", "auto"
 	if a.Local != nil {
 		paper, lang = a.Local.Appearance(), a.Local.Lang()
 	}
-	if paper != "light" && paper != "dark" {
+	// Each choice reads back by its own key; anything else is the system's.
+	if !slices.Contains([]string{"system", "light", "dark"}, paper) {
 		paper = "system"
 	}
-	if lang != "zh" && lang != "en" {
+	if !slices.Contains(interfaceLangs, lang) {
 		lang = "auto"
 	}
 	theme := a.L.T("settings.look.pebble")

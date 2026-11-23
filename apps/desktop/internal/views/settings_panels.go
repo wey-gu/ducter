@@ -81,7 +81,7 @@ func (a *App) lookPanel(c *ui.Context) {
 		})
 	})
 	a.group(c, "lang", a.L.T("settings.lang.group"), "", func() {
-		opts := []string{"auto", "zh", "en"}
+		opts := interfaceLangs
 		cur := "auto"
 		if a.Local != nil {
 			cur = a.Local.Lang()

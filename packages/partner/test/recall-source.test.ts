@@ -42,6 +42,7 @@ describe("takeRecallMark", () => {
     expect(takeRecallMark("A [[m1, m3]]")).toEqual({ text: "A", mark: "m1" });
     expect(takeRecallMark("no mark [[wiki]] here")).toEqual({ text: "no mark [[wiki]] here" });
     expect(takeRecallMark("Await it first. [[c1]]")).toEqual({ text: "Await it first.", mark: "c1" });
+    expect(takeRecallMark("周四下午 3 点。[[k2]]")).toEqual({ text: "周四下午 3 点。", mark: "k2" });
   });
 });
 
@@ -62,6 +63,21 @@ describe("the source line", () => {
     const lines = channel().filter((e) => e.kind === "memory_recalled");
     expect(lines.length).toBe(1);
     expect(lines[0]!.body).toEqual({ memoryId: "m_week", title: SEED[0]!.title, by: "said", date: "2026-11-10", aboutSeq: msgs[0]!.seq, replyTo: u.seq });
+  });
+
+  // D487: what the session was given about them (no search this turn): its ref says which, the same line.
+  test("a known item leaned on: [[k1]] gives the same line, with no search", async () => {
+    let input = "";
+    const { partner, user, channel } = setup(async (i, s) => {
+      input = i;
+      s.say("周五下午，发给产品组。[[k1]]");
+      s.end();
+    });
+    user("周报哪天发来着？");
+    await partner.idle();
+    expect(input).toContain("k1 preference 2026-11-10: 周报每周五下午发，发给产品组");
+    const line = channel().find((e) => e.kind === "memory_recalled")!.body as Bodies["memory_recalled"];
+    expect(line).toMatchObject({ memoryId: "m_week", by: "said", date: "2026-11-10" });
   });
 
   test("another AI tool's memory: by tool, with its name", async () => {

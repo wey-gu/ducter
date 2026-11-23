@@ -52,7 +52,8 @@ test("asked what it knows about them: memory_search answers with aboutYou and ho
   });
   user("你都记得我些什么？");
   await partner.idle();
-  expect(mem.abouts.length).toBe(1);
+  // D487: one read for what the session is given, one for the answer.
+  expect(mem.abouts.length).toBe(2);
   expect(r.aboutYou.map((x: { title: string }) => x.title)).toEqual(["周报每周五下午发，发给产品组", "JS 项目一律用 pnpm", "Ducter 词汇：伙伴不是上下级"]);
   expect(JSON.stringify(r)).not.toContain("m_week"); // never Mem's id
   expect(r.note).toMatch(/at most three short sentences/);
@@ -69,7 +70,7 @@ test("any other question: no aboutYou, the search as before", async () => {
   });
   user("周报哪天发？");
   await partner.idle();
-  expect(mem.abouts.length).toBe(0);
+  expect(mem.abouts.length).toBe(1); // D487: only the session's own read
   expect(r.aboutYou).toBeUndefined();
   expect(r.results.length).toBeGreaterThan(0);
 });

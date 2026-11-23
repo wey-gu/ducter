@@ -235,7 +235,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
     async about() {
       abouts.push(1);
       if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
-      const hits = (["preference", "decision", "fact"] as const).flatMap((k) => aboutHits(all.filter((m) => m.kind === k), k));
+      const hits = (["preference", "decision", "fact"] as const).flatMap((k) => aboutHits(all.filter((m) => m.kind === k).map((m) => ({ ...m, created_at: m.date })), k));
       return { ok: true, hits };
     },
     // D329, D444: an undone save is archived (taken back by a tap or by 别记这个).

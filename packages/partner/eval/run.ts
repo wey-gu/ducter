@@ -320,6 +320,8 @@ interface RunResult {
   toolsUnfit?: string[];
   transcript: string;
   recalls: { query: string; step: number }[];
+  /** D487: what their memory holds about them reached the partner (the session's known set had something). */
+  knownShown: boolean;
   threadSearches: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
@@ -655,13 +657,18 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown, ...(sc.threads ? { threads: sc.threads } : {}) });
   const recalls: { query: string; step: number }[] = [];
+  let knownShown = false;
   const threadSearches: { query: string; step: number }[] = [];
   const memAttempts: { input: unknown; step: number }[] = [];
   const memWrapped = {
     search: (q: string, n: number) => (recalls.push({ query: q, step: cur.step }), mem.memory.search(q, n)),
     add: (m: MemoryAdd) => mem.memory.add(m),
     threads: (q: string, n: number) => (threadSearches.push({ query: q, step: cur.step }), mem.memory.threads!(q, n)),
-    about: () => mem.memory.about!(),
+    about: async () => {
+      const r = await mem.memory.about!();
+      if (r.ok && r.hits.length) knownShown = true;
+      return r;
+    },
     archive: (id: string) => mem.memory.archive!(id),
   };
   // D477: a world puzzle's core was started over its world (worldCoreOptions); the home's agents in [devices] as it probed them.
@@ -1047,7 +1054,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1276,7 +1283,8 @@ function check(r: RunResult): string[] {
   const openedBriefs = r.opened.map((o) => o.brief).join("\n");
   for (const re of e.briefRequire ?? []) if (!re.test(openedBriefs)) fails.push(`task brief lacks ${re}`);
   // Memory.
-  if (e.recall && !r.recalls.length) fails.push("no memory_search");
+  // D487: the memory reached the partner by its own search or in what the session was given; the outcome is graded below.
+  if (e.recall && !r.recalls.length && !r.knownShown) fails.push("no memory_search");
   if (e.noRecall && r.recalls.length) fails.push(`memory_search ×${r.recalls.length} (want none)`);
   if (e.threadSearch && !r.threadSearches.length) fails.push("no search of past conversations");
   if (e.noThreadSearch && r.threadSearches.length) fails.push("searched past conversations (want none)");

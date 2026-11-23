@@ -30,6 +30,17 @@ line.
   own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `ASKS_RECALL`, `HOW_KNOW`,
   `CLAIMS_CHOICE`, `ONE_TIME`, `ASKS_ABOUT_ME`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
   `startProblem`'s buckets, ranking weights (phase 2c).
+- **The main-AI mechanisms research/209 ranked after D487's** (§3, items 3–9), each with its eval first and an
+  A/B read with `eval:compare`: memory_add records the person's own words it rests on, checked verbatim, its content
+  declarative, never a claim that a tool or computer can't do something (in place of `ONE_TIME`); `ASKS_RECALL`
+  (a budget of two stated in the result), `POINTS_AT_THREAD` (past conversations read with every search) and
+  `ASKS_ABOUT_ME` (D487's block already holds the about-set) to facts; promised work as state (with `PROMISE_RE`
+  above); a record of what the partner's session has seen, replayed with an honest preamble when unknown; a turn's
+  replay decided from the harness's protocol state, never error text; keeping a subscription cache warm in the
+  person's active hours; the persona as a behaviour spec, section by section. Trigger: the next eval round.
+- **D487's block on a real Mem**: how often a fresh session's first turn misses the 1.5 s wait on Cloud, and
+  whether 18 lines are the right ones on the author's Mem (eight of each kind, newest first). Trigger: the next
+  release on the author's home.
 - **The persona toward ≈13 KB, again** (research/206 §5, §9). D478 cut it to 12.6 KB and the full eval
   fell by 14 (193/190 → 176/178 without the puzzles: calls, stop, the errand that stops at the checkout,
   noticed, the person's own sessions, rich answers, a web link's place, the quota puzzle), so the cut

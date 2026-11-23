@@ -392,6 +392,33 @@ any of it: nothing to set up, no line, no card. Restraint holds: the partner nev
   `partner/test/working-memory.test.ts`. Not run against a live Mem beyond read-only shape checks
   (research/138).
 
+## What their memory holds about them, in every session (D487, built 2026-11-23)
+
+*Who and how it feels:* the person who told Ducter on Monday that the dentist moved to Thursday asks on
+Wednesday for a reminder before "Wednesday's dentist"; the partner says it moved, as a friend would, instead of
+setting the wrong reminder. The consumer hears their own preferences kept without saying them again; the fresh
+user, with nothing in Mem yet, sees nothing. Every personal AI research/209 read loads a bounded core memory into
+each fresh session; the partner used to know the person only when it chose to search.
+
+- **What** (`partner/src/known.ts`): D444's about-set (`about()`, D321's rule: preferences from anyone Mem names,
+  decisions and facts only the person's, newest first, eight of each), at most 18 lines and 2,400 characters
+  (≈600 tokens), one line each: a ref (`k1`…), the kind, the day it was said, the words. Another app's words are
+  flattened (no newlines, no angle brackets) and secrets redacted.
+- **When:** read in the background at start and at most every 30 minutes; a save (`memory_add`) marks it stale.
+  A fresh session's first turn waits for a first read 1.5 s at most (a Cloud list takes about 4 s; then the turn
+  goes without it and the next turn carries it); a warm session never waits.
+- **In the partner's context:** one L4 block, once per session and again only when what it holds changes (its
+  key), fenced as data: you simply know these; when one bears on this message (a day, a time, a place, a person,
+  how they want it done), act on it or say it in a few words; a newer one wins over an older one it contradicts;
+  never list them or say you read memory; `memory_search` for what isn't here. No word of the person's decides
+  whether it shows (principle 21).
+- **The 想起了 line (D304):** a reply that leaned on one ends with its ref (`[[k2]]`); code resolves it against
+  this session's known set exactly as a search's `m` refs, and the same quiet line names it.
+- **Off:** memory off, Mem missing or an empty set: no block, no wait.
+- **Measured:** `known.test.ts` (bounds, once per session, nothing searched), `recall-source.test.ts` (a `k`
+  ref's line); the eval's `recall` check passes when the memory reached the partner by a search or in this block,
+  the outcome graded as before. A/B in `decisions.md` D487.
+
 ## The past conversation an answer leaned on (D433, built 2026-11-20)
 
 D368 let the partner use the person's past conversations with their other AI tools but said nothing under the

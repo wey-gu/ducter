@@ -21152,5 +21152,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 @media (pointer: coarse) {
   .ho-note-link:not(.corner), .ho-put-link, .ho-chip { position: relative; }
+  .ho-back-words { min-height: 44px; }
   .ho-note-link::before, .ho-put-link::before, .ho-chip::before { content: ""; position: absolute; top: 50%; left: 50%; width: max(44px, 100%); height: max(44px, 100%); transform: translate(-50%, -50%); }
 }

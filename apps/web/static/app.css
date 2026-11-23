@@ -13984,9 +13984,11 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
 }
 /* A phone's bar: the face and the number; the name is its label. */
 @media (max-width: 600px) {
-  .top .partner-switch { margin-left: 6px; gap: 4px; }
-  .top .partner-pick { padding: 2px 6px 2px 3px; gap: 3px; }
+  .top .who-words { flex: 1 1 auto; min-width: 5.5em; }
+  .top .partner-switch { margin-left: 2px; gap: 2px; }
+  .top .partner-pick { width: 32px; height: 32px; padding: 0; justify-content: center; background: none; }
   .top .partner-pick .partner-name { display: none; }
+  .top .partner-pick .partner-n { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; line-height: 16px; padding: 0 4px; font-size: 0.625rem; box-shadow: 0 0 0 2px var(--bg); }
 }
 .partners-set .partner-row {
   align-items: center;

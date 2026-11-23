@@ -444,7 +444,8 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 
 // replyMenu is right-click on a bubble: Reply, then Copy. D254: with words
 // selected in it, Copy is the selection's (the system's own items, Select
-// All with it); else the whole message, as written (copyText).
+// All with it); else the whole message, as written (D492: its Markdown,
+// and formatted beside it).
 func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
 	a.contextMenu(c, e, func(m *ui.Menu) {
 		if r != nil && m.Item(a.replyWord(r)).Icon(menuGlyph("reply")).Chosen() {
@@ -455,11 +456,17 @@ func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
 			m.EditItems()
 			return
 		}
-		if m.Item(a.L.T("reply.copy")).Icon(menuGlyph("copy")).Chosen() {
-			c.WriteClipboard(copyText(text))
-			c.Toast(a.L.T("reply.copied"))
-		}
+		a.copyItem(c, m, text)
 	})
+}
+
+// copyItem is the menu's 拷贝 / Copy (D492): the whole message, 已拷贝 in a
+// toast, since the menu that said it closed.
+func (a *App) copyItem(c *ui.Context, m *ui.Menu, text string) {
+	if m.Item(a.L.T("reply.copy")).Icon(menuGlyph("copy")).Chosen() {
+		a.copyMessage(c, "", text)
+		c.Toast(a.L.T("reply.copied"))
+	}
 }
 
 // composerReply is what this replies to, pressed into the composer's card

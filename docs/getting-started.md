@@ -113,7 +113,7 @@ see how it checks. Each time the wait comes true, a thin line says **Wait over**
 and that round's work folds under it. When Ducter itself tells the agent something, such as that
 you lent it your phone, it's a thin line in your words too, never one of your messages. On a wide
 window, the small marks at the right edge are everything said to the agent: hover them for the
-list, click one to go there. Hover the agent's words for their time and **Copy**.
+list, click one to go there. Under the agent's answer are its time and **Copy**, which copies the whole answer (on a computer, hover its earlier words to see the same).
 
 A task is the AI agent as you run it yourself: Claude Code or Codex with your own instructions
 (`CLAUDE.md`, `AGENTS.md`), skills, commands, hooks, subagents and MCP servers. What you type in
@@ -200,10 +200,12 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   a few replies in a row and each gets its own answer. Tap the small copy to go back to the
   original. On a computer you can also select part of your partner's words and press **Reply to
   this part**.
-- **Copy anything.** Press and hold a message on the phone (right-click it on a computer) and
-  choose **Copy**: you get its words as written, ready to paste. The same menu shows when it was
-  said, and on the phone offers **Copy link** on a link and **Select text** to pick just part of
-  it. Every block of code has its own **Copy** at its top right.
+- **Copy a whole message.** On a computer, point at a message and press **Copy** beside it (or
+  right-click it). On the phone, press and hold it and choose **Copy**. You get the whole message:
+  pasted into a notes app or a document it keeps its headings, lists and bold; pasted into an
+  editor or a terminal it is the text as written. The button says **Copied** for a moment. The
+  phone's menu also shows when it was said, and offers **Copy link** on a link and **Select text**
+  to pick just part of it. Every block of code has its own **Copy** at its top right.
 - **You never lose your place.** While you read back, the conversation stays where you are. If
   your partner says something meanwhile, a small button above where you type says how many new
   messages came; tap it to read from the first of them. When you open Ducter after a while, a

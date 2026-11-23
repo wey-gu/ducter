@@ -2490,6 +2490,49 @@ a {
   font-weight: 600;
   color: var(--ink-soft);
 }
+/* D492: a finished turn's answer keeps the line in view; a touch screen, with no hover, always.
+   Copy is the copy mark and its word, a button the eye finds, and says 已拷贝 in place. */
+.voice .vmeta.shown .hov {
+  visibility: visible;
+}
+.voice .vmeta .vcopy {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  margin-block: -4px;
+  padding: 0 4px;
+  margin-inline-start: -2px;
+  border-radius: var(--r-xs);
+}
+.voice .vmeta .vcopy .g svg {
+  width: 14px;
+  height: 14px;
+}
+.voice .vmeta .vcopy .g {
+  display: inline-flex;
+}
+.voice .vmeta .vcopy:hover,
+.voice .vmeta .vcopy:focus-visible {
+  color: var(--ink);
+}
+.voice .vmeta .vcopy.done {
+  color: var(--done-ink);
+}
+@media (hover: none) {
+  .voice .vmeta .hov {
+    visibility: visible;
+  }
+  .voice .vmeta:not(.kept) {
+    position: static;
+  }
+  .voice .vmeta .vcopy {
+    min-height: 32px;
+    margin-block: -8px;
+    padding: 0 8px;
+  }
+}
 /* D291: saved, its time, how long it worked: separate small elements spaced by the gap, never a dot. */
 .voice .vmeta.kept {
   gap: var(--s3);
@@ -14502,9 +14545,22 @@ svg .wave.w2.on {
   0%, 100% { opacity: 0.25; }
   50% { opacity: 1; }
 }
-/* On a wide screen, a second pebble over the reply's. */
-.partner > .bubble > .hover-read {
+/* On a wide screen, D492's Copy over the reply's pebble, and on a partner's message Read aloud
+   over that: one column of pebbles in the gutter, the most used nearest the bottom line. */
+.hover-reply.hover-copy {
   bottom: 39px;
+}
+.find > .ftext > .hover-reply.hover-copy {
+  bottom: 34px;
+}
+.hover-reply .g {
+  display: inline-flex;
+}
+.hover-reply.hover-copy.done {
+  color: var(--done-ink);
+}
+.partner > .bubble > .hover-read {
+  bottom: 75px;
 }
 .hover-read.on {
   color: var(--needs-ink);

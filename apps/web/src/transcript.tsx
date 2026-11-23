@@ -26,6 +26,7 @@ import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
+import { CopyButton } from "./copy-button.tsx";
 import { cantClause, cantLine } from "./cant.tsx";
 import { MediaBlock } from "./media.tsx";
 import { DocLine } from "./doc-line.tsx";
@@ -548,8 +549,9 @@ function noteName(b: Extract<Block, { k: "note" }>): string {
 }
 
 /** The agent's words (D271): then one quiet line, 保存了进度 when it saved them, and on hover its
- *  time, how long its turn worked and Copy. */
-function Voice({ task, b, took, times }: { task: Task; b: Extract<Block, { k: "voice" }>; took?: string; times?: number }) {
+ *  time, how long its turn worked and Copy. D492: a finished turn's last words (its answer) keep
+ *  that line in view, and a touch screen shows it always; Copy is a button with the copy mark. */
+function Voice({ task, b, took, times, last }: { task: Task; b: Extract<Block, { k: "voice" }>; took?: string; times?: number; last?: boolean }) {
   const err = providerError(b.text);
   if (err) return <ErrVoice task={task} b={b} code={err.code} times={times ?? 1} />;
   const ms = tsOf(task, b.seq);
@@ -558,14 +560,12 @@ function Voice({ task, b, took, times }: { task: Task; b: Extract<Block, { k: "v
     <div class="voice">
       <div class={`tx assistant md${hanClass(b.text)}`} dir="auto" dangerouslySetInnerHTML={{ __html: markdown(b.text, t("reply.copy")) }} />
       {b.full ? <ShowAll seq={b.seq} n={b.full} /> : null}
-      <small class={`vmeta${b.saved ? " kept" : ""}`}>
+      <small class={`vmeta${b.saved || last ? " kept" : ""}${last ? " shown" : ""}`}>
         {b.saved && <span class="saved">{t("task.saved")}</span>}
         <span class="hov">
           {at && <span>{at}</span>}
           {took && <span>{took}</span>}
-          <button type="button" class="qlink" onClick={() => void navigator.clipboard?.writeText(b.text)}>
-            {t("reply.copy")}
-          </button>
+          <CopyButton cls="qlink vcopy" text={() => b.text} />
         </span>
       </small>
     </div>
@@ -642,10 +642,10 @@ function Saved({ task, b }: { task: Task; b: Extract<Block, { k: "saved" }> }) {
   );
 }
 
-function BlockView({ task, b, live, took, times }: { task: Task; b: Block; live?: boolean; took?: string; times?: number }) {
+function BlockView({ task, b, live, took, times, last }: { task: Task; b: Block; live?: boolean; took?: string; times?: number; last?: boolean }) {
   switch (b.k) {
     case "voice":
-      return <Voice task={task} b={b} took={took} times={times} />;
+      return <Voice task={task} b={b} took={took} times={times} last={last} />;
     case "saved":
       return <Saved task={task} b={b} />;
     case "steps": {
@@ -807,7 +807,8 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   const to = body.length ? tsOf(task, lastSeq(body.at(-1)!)) : NaN;
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
   const worked = !live && Number.isFinite(from) && Number.isFinite(to) && to > from ? t("turn.worked", took) : "";
-  const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} />);
+  const answer = !live && lastVoice >= 0 ? body[lastVoice]!.seq : undefined;
+  const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />);
   if (!foldable) return <>{draw(body)}</>;
   return (
     <>

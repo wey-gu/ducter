@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { copy, copyByField } from "../src/conv-copy.ts";
 import { AT_END, countWords, dividerAt, gapOf, keepDraft, landing, newSince, readDraft, showWayBack, stillFollowing } from "../src/follow.ts";
 import { strings } from "../src/i18n.ts";
-import { copyText, forReading, markdown } from "../src/markdown.ts";
+import { markdown, readingWords } from "../src/markdown.ts";
 
 const m = (scrollHeight: number, scrollTop: number, clientHeight: number) => ({ scrollHeight, scrollTop, clientHeight });
 const rows = (...r: [number, boolean][]) => r.map(([seq, mine]) => ({ seq, mine }));
@@ -74,16 +74,23 @@ describe("landing", () => {
 });
 
 describe("copying", () => {
-  test("a message copies as written, without the marks that only style it", () => {
-    expect(copyText("**Done.** The *build* is green.\n\n### Next\n* ship it")).toBe("Done. The build is green.\n\nNext\n- ship it");
-    expect(copyText("See [the PR](https://github.com/x/y/pull/1) and https://a.b/c")).toBe("See the PR (https://github.com/x/y/pull/1) and https://a.b/c");
+  test("D492: a whole message copies as the Markdown written, and formatted beside it", async () => {
+    const src = "**Done.** The *build* is green.\n\n### Next\n* ship it\n```\nbun test **x**\n```";
+    const put: Record<string, string> = {};
+    (globalThis as { ClipboardItem?: unknown }).ClipboardItem ??= class {
+      constructor(readonly parts: Record<string, Blob>) {}
+    };
+    const nav = { clipboard: { writeText: async () => {}, write: async ([item]: ClipboardItem[]) => { for (const [k, b] of Object.entries((item as unknown as { parts: Record<string, Blob> }).parts)) put[k] = await b.text(); } } };
+    expect(await copy(src, nav, undefined, markdown(src))).toBe(true);
+    expect(put["text/plain"]).toBe(src);
+    expect(put["text/html"]).toContain("<strong>Done.</strong>");
+    expect(put["text/html"]).toContain("<pre><code>bun test **x**</code></pre>");
+    expect(put["text/html"]).not.toContain("data-copy-code");
   });
-  test("code keeps its fences and its marks", () => {
-    const src = "Run:\n```\nbun test **x**\n```\n`inline` stays";
-    expect(copyText(src)).toBe(src);
-  });
-  test("Select text shows the words without the fences", () => {
-    expect(forReading(copyText("改好了：\n\n```\nrecord: x\n```\n\n18 分钟降到 9 分钟。"))).toBe("改好了：\n\nrecord: x\n\n18 分钟降到 9 分钟。");
+  test("Select text shows the words to read: no styling marks, no fences, a link with its address", () => {
+    expect(readingWords("**Done.** The *build* is green.\n\n### Next\n* ship it")).toBe("Done. The build is green.\n\nNext\n- ship it");
+    expect(readingWords("See [the PR](https://github.com/x/y/pull/1) and https://a.b/c")).toBe("See the PR (https://github.com/x/y/pull/1) and https://a.b/c");
+    expect(readingWords("改好了：\n\n```\nrecord: x\n```\n\n18 分钟降到 9 分钟。")).toBe("改好了：\n\nrecord: x\n\n18 分钟降到 9 分钟。");
   });
   test("a code block in the conversation carries its own Copy; the plain form doesn't", () => {
     expect(markdown("```\nx < y\n```")).toBe("<pre><code>x &lt; y</code></pre>");

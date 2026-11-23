@@ -118,7 +118,13 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		}
 	}
 	took := a.turnTook(task, tu)
-	a.tpage.took = ""
+	a.tpage.took, a.tpage.answer = "", -1
+	for i := len(tu.Body) - 1; i >= 0 && !live; i-- {
+		if tu.Body[i].K == "voice" {
+			a.tpage.answer = tu.Body[i].Seq
+			break
+		}
+	}
 	if !live && took > 0 {
 		a.tpage.took = a.L.T("turn.worked", a.shortDur(took))
 	}

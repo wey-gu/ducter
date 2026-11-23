@@ -115,13 +115,13 @@ jobs:
         run: go build -trimpath -o /dev/null .
 
       # The view tests are most of this job (about 4 of its 5 minutes, one package run serially), so
-      # they are split in two (D488): Test[A-K] and the 50,000-event TestLongSession* here with every
-      # other package, the rest in go-views (measured on CI: A-K alone 2m42 and 3m58, A-M 4m45 and 3m18).
+      # they are split in two (D488): Test[A-K] here with every other package, the rest in go-views
+      # (measured on CI: A-K 2m42 and 3m58; A-M 4m45 and 3m18; A-K plus TestLongSession 4m40 and 3m35).
       # The two -run/-skip patterns are each other's complement, so no test is left out.
-      - name: go test (all but the views, and views Test[A-K] and TestLongSession*)
+      - name: go test (all but the views, and views Test[A-K])
         run: |
           go test $(go list ./... | grep -v '/internal/views$')
-          go test ./internal/views -run '^Test([A-K]|LongSession)'
+          go test ./internal/views -run '^Test[A-K]'
 
   go-views:
     name: desktop (Go views, the rest)
@@ -139,7 +139,7 @@ jobs:
           cache-dependency-path: apps/desktop/go.sum
 
       - name: go test (views, the rest)
-        run: go test ./internal/views -skip '^Test([A-K]|LongSession)'
+        run: go test ./internal/views -skip '^Test[A-K]'
 
   android:
     name: Android app (unit tests, debug APK)

@@ -271,9 +271,9 @@ private repo.
   whoever changes the persona or a partner tool runs `bun run eval:partner --model haiku`
   (about $1) and commits the results with the change.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
-  `go test` of every package but the views, plus the view tests named `Test[A-K]...` and `TestLongSession...`. MyGo calls
+  `go test` of every package but the views, plus the view tests named `Test[A-K]...`. MyGo calls
   AppKit through purego, not cgo, so all of it runs on Linux.
-- **go-views** (macOS): the rest of the view tests (`-skip '^Test([A-K]|LongSession)'`), beside go, so the
+- **go-views** (macOS): the rest of the view tests (`-skip '^Test[A-K]'`), beside go, so the
   longest package runs in two halves (D488).
 - **android** (`apps/android`): its JVM unit tests and a debug APK, signed with Gradle's debug
   key (D178).

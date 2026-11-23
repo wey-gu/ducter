@@ -13972,8 +13972,10 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   color: var(--needs-ink);
   font-size: 0.6875rem;
   font-weight: 700;
-  line-height: 18px;
-  text-align: center;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 @media (hover: hover) {
   .top .partner-pick:hover { color: var(--ink); background: color-mix(in srgb, var(--surface-sunken, var(--sunken)) 92%, var(--ink)); }
@@ -13988,7 +13990,7 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   .top .partner-switch { margin-left: 2px; gap: 2px; }
   .top .partner-pick { width: 32px; height: 32px; padding: 0; justify-content: center; background: none; }
   .top .partner-pick .partner-name { display: none; }
-  .top .partner-pick .partner-n { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; line-height: 16px; padding: 0 4px; font-size: 0.625rem; box-shadow: 0 0 0 2px var(--bg); }
+  .top .partner-pick .partner-n { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 0.625rem; box-shadow: 0 0 0 2px var(--bg); }
 }
 .partners-set .partner-row {
   align-items: center;

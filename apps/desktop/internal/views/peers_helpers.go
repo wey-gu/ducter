@@ -35,7 +35,7 @@ func (a *App) peersHelpers(c *ui.Context) {
 					}
 					uiText(c, a.L.T("peers.helper."+state)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 					if h.Open > 0 || h.Week > 0 {
-						ui.Row(c.Key("helper-counts:"+h.ID)).Gap(t.S3).Wrap().Children(func() {
+						ui.Row(c.Key("helper-counts:" + h.ID)).Gap(t.S3).Wrap().Children(func() {
 							if h.Open > 0 {
 								uiText(c, a.L.T("peers.helper.open", h.Open)).FontSize(t.SM).TextColor(t.InkMuted)
 							}

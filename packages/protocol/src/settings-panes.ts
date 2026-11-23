@@ -15,6 +15,6 @@ export const PANE_NAMES: Record<"zh" | "en", { settings: string; panes: Record<P
 
 /** "设置 › Agent 通信" / "Settings › Agent messaging": the pane, by its name in the rail, in that language. */
 export function paneName(pane: PaneKey, lang: LangTag | string = "en"): string {
-  const w = PANE_NAMES[pickTag(lang as LangTag, ["zh", "en"] as LangTag[]) === "zh" ? "zh" : "en"];
+  const w = PANE_NAMES[pickTag(lang as LangTag, ["zh", "en"] as const)];
   return `${w.settings} › ${w.panes[pane]}`;
 }

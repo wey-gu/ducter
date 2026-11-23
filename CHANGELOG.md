@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.21 - 2026-11-23
+
+<!-- whats-new
+zh: 不止一个伙伴；agent 通信一下点好；任务不再空等
+en: More than one partner; agent messaging in one tap; tasks no longer wait in vain
+-->
+
+**More than one partner**
+- Make another partner by saying so ("make me another partner for things at home"), with a line
+  for what it looks after. Each has its own name, conversation and memory; your devices,
+  accounts and On hand are shared, and what needs you is counted once.
+- Words meant for the other partner are passed on and answered there, marked "Passed on by".
+- Rename, change what one looks after, or remove one in Settings; its conversation is kept.
+
+**Agent messaging, plainly**
+- Settings › Agent messaging lists what each of your agents can do for you. The one that can't
+  hear back yet takes one tap, with the suggested Space already in the button.
+
+**Tasks that wait**
+- A task's check reads the whole answer, however long; when it can't tell, the task is told at
+  once instead of waiting on.
+- Every wait has an end, and when it ends the task decides what's next.
+- A task's own pull request wakes it: new reviews, comments, CI finishing, pushes, merged or
+  closed.
+- A task in a folder with a Chinese name picks its own session up again.
+
+**On your phone**
+- Handing over to-dos: the note grows with its words and the keyboard never covers Next.
+
 ## 0.1.20 - 2026-11-23
 
 <!-- whats-new

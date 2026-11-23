@@ -362,3 +362,10 @@ describe("the pusher", () => {
     expect(s.store.subs().length).toBe(0);
   });
 });
+
+// D497: a question in another partner's own conversation opens that partner first.
+test("another partner's question links to its conversation", () => {
+  const d = { decisionId: "d_home", question: "约周六 9:30 吗？", defaultOption: "hold" } as Parameters<typeof decisionMessage>[0];
+  expect(decisionMessage(d, { persona: "Ducter", locale: "zh", platform: "android", now: 0, who: "小家", pid: "p2" }).url).toBe("app#p=p2/d=d_home");
+  expect(decisionMessage(d, { persona: "Ducter", locale: "zh", platform: "android", now: 0 }).url).toBe("app#d=d_home");
+});

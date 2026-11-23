@@ -155,7 +155,12 @@ export function paletteGroups(q: string): { key: string; label?: string; rows: R
   const words = q.trim();
   const out: { key: string; label?: string; rows: Row[] }[] = [];
   const low = words.toLowerCase();
-  const places = PLACES.filter((p) => !low || t(p.key).toLowerCase().includes(low)).map((p): Row => ({ k: "go", id: `go:${p.id}`, label: t(p.key), ...(p.keys ? { keys: p.keys } : {}), run: p.run }));
+  // D497: with more than one partner, each other partner is a place: 换到{name} / Switch to {name}.
+  const shownP = A.shownPartner()?.id;
+  const partners = (A.manyPartners() ? A.partners! : [])
+    .map((p, i): Row | undefined => (p.id === shownP || i > 3 ? undefined : { k: "go", id: `go:partner:${p.id}`, label: t("partners.switch", p.name), keys: `⌥⌘${i + 1}`, run: () => A.switchPartner(p.id) }))
+    .filter((r): r is Row => !!r && (!low || (r.k === "go" && r.label.toLowerCase().includes(low))));
+  const places = [...partners, ...PLACES.filter((p) => !low || t(p.key).toLowerCase().includes(low)).map((p): Row => ({ k: "go", id: `go:${p.id}`, label: t(p.key), ...(p.keys ? { keys: p.keys } : {}), run: p.run }))];
   if (!words) {
     const recent = switchList("", 8).map(liveRow);
     if (recent.length) out.push({ key: "recent", label: t("palette.g.recent"), rows: recent });

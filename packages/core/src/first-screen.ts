@@ -263,3 +263,41 @@ export function firstScreen(i: FirstScreenInput): FirstScreen {
   const n = returning ? news(i) : undefined;
   return { visit: returning ? "returning" : "first", line: canLine(i), ...(n ? { news: n } : {}), starters: starters(i) };
 }
+
+/** D497: who a second partner is, for its own empty conversation. */
+export interface PartnerScreenInput extends FirstScreenInput {
+  /** What it looks after, in the person's own words ("" when not said). */
+  about: string;
+  /** The default partner's name: the one whose conversation this one never sees. */
+  defaultName: string;
+}
+
+/**
+ * D497: a second partner's empty conversation is its first meeting with the person (its own
+ * conversation has never had a word), so it says who it is (the clients' "我是 {name}" greeting,
+ * visit "first"), what it looks after in the person's own words, and that it never sees the other
+ * partner's conversation; its starters come from its own part: the line the person gave it, its own
+ * tasks (i.tasks holds only its own), then everyday examples that fit any part of life. The person's
+ * words are placed as they are, never parsed (principle 21); no model runs.
+ */
+export function partnerScreen(i: PartnerScreenInput): FirstScreen {
+  const day = dayOf(i.now, i.tz);
+  const about = i.about.trim();
+  const d = i.defaultName;
+  const line: Words = about
+    ? { zh: space(`我管${about}。跟${d}说的我看不到，你跟我说的只在这儿。`), en: `I look after ${about}. I can't see what you tell ${d}; what you tell me stays here.` }
+    : { zh: space(`跟${d}说的我看不到，你跟我说的只在这儿。说一句就行。`), en: `I can't see what you tell ${d}; what you tell me stays here. Just say the word.` };
+  const out: Candidate[] = [];
+  if (about) out.push({ kind: "everyday", key: "about", words: w(`${about}这边，你能帮我做些什么？`, `What can you do for me with ${about}?`) });
+  const byNew = [...i.tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const working = byNew.find((t) => t.attention === "working" || t.attention === "blocked" || t.attention === "needs_you");
+  if (working) out.push({ kind: "task", key: `task:${working.taskId}`, words: w(`「${short(working.title)}」做到哪了？`, `How far along is “${short(working.title)}”?`) });
+  for (const k of rotate(["reminder", "plan", "trip"] as const, day)) {
+    if (out.length >= (about ? 3 : STARTERS - 1)) break;
+    out.push({ kind: "everyday", key: `everyday:${k}`, words: pick(EVERYDAY[k], day, k) });
+  }
+  if (!about) out.push({ kind: "everyday", key: "can", words: w("你能帮我做些什么？举三个例子", "What can you do for me? Give me three examples") });
+  const returning = i.talked || i.tasks.length > 0;
+  const n = returning ? news(i) : undefined;
+  return { visit: returning ? "returning" : "first", line, ...(n ? { news: n } : {}), starters: out.map((c) => ({ id: c.key, kind: c.kind, words: c.words })) };
+}

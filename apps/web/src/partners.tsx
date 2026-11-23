@@ -1,25 +1,33 @@
 // D309: 伙伴们 / Your partners (design/personas.md), the same as the Mac's
 // (apps/desktop/internal/views/partners.go). With one partner nothing here shows: no word, no
-// stone, no switch. With more, the conversation bar's face sits on its partner's own clay stone,
-// the others sit beside the name as small stones (a dot when one has something waiting), and a
-// tap on one shows its conversation. Settings › 伙伴 lists them, renames them, changes a look and
+// face, no switch. D497: with more, each partner is the same clay figure in its own clay (its look,
+// LOOK_CLAY), the conversation's own figure in the shown one's; the others sit beside it in the bar,
+// each its face and its name, with the number of what of its own waits on the person, and a tap
+// (or ⌥⌘1–⌥⌘4, or Find anything) shows its conversation. Settings › 伙伴 lists them, renames them, changes a look and
 // adds one (a name, what it looks after and a colour). D486: what each looks after shows under its
 // name and is changed with it; another partner is removed in two taps (its conversation stays).
 // A partner can also be made, renamed or handed the person's words from the conversation.
 import { useState } from "preact/hooks";
-import { DEFAULT_PARTNER, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import type { PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { AddRow, Btn, Chev } from "./controls.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** A partner's stone: its idle clay face on its own colour (app.css .stone, --look-*). */
+/** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
+ *  "stone" stays for the code (D309's disc); nothing on screen says it. */
 export function Stone({ look, size }: { look: PartnerLook; size: number }) {
   return (
     <span class="stone" data-look={look} style={{ width: size, height: size }} aria-hidden="true">
       <img src="app/art/idle.webp" alt="" draggable={false} />
     </span>
   );
+}
+
+/** D497: the CSS filter a look gives the clay figure, from the protocol's one table. */
+export function clayFilter(look: PartnerLook | undefined): string {
+  const c = look ? LOOK_CLAY[look] : undefined;
+  return !c || (c.hue === 0 && c.sat === 1) ? "none" : `hue-rotate(${c.hue}deg) saturate(${c.sat})`;
 }
 
 /** D312: whose a task is, on its On hand row or card, once there is more than one partner. */
@@ -50,24 +58,45 @@ export function OtherAsk({ a }: { a: PartnerAsk }) {
   );
 }
 
-/** The other partners beside the name in the conversation bar: a tap shows that one's conversation. */
+/** D497: the other partners beside the shown one in the conversation bar: each its face in its own
+ *  clay and its name (never a bare face behind a tooltip), with the number of what of its own waits
+ *  on the person; hover says what it looks after. A tap shows that one's conversation. */
 export function PartnerSwitch() {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
-  const others = A.partners!.filter((p) => p.id !== shown);
   return (
     <span class="partner-switch" role="group" aria-label={t("partners.title")}>
-      {others.map((p) => {
-        const label = p.asks ? t("partners.switch.asks", p.name, p.asks) : t("partners.switch", p.name);
+      {A.partners!.map((p, i) => {
+        if (p.id === shown) return null;
+        const needs = A.partnerNeeds(p);
+        const label = needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
+        const tip = `${label} (⌥⌘${i + 1})${p.about ? `\n${t("partners.about.shown", p.about)}` : ""}`;
         return (
-          <button key={p.id} class="partner-pick" aria-label={label} title={label} onClick={() => A.switchPartner(p.id)}>
-            <Stone look={p.look} size={28} />
-            {p.asks > 0 && <span class="partner-dot" aria-hidden="true" />}
+          <button key={p.id} class="partner-pick" data-look={p.look} aria-label={label} title={tip} onClick={() => A.switchPartner(p.id)}>
+            <Stone look={p.look} size={24} />
+            <span class="partner-name" aria-hidden="true">
+              {p.name}
+            </span>
+            {needs > 0 && (
+              <span class="partner-n" aria-hidden="true">
+                {needs}
+              </span>
+            )}
           </button>
         );
       })}
     </span>
   );
+}
+
+/** D497: ⌥⌘1–⌥⌘4 show the first to fourth partner, in Settings' order (the default first). */
+export function partnerKey(e: KeyboardEvent) {
+  if (!A.manyPartners() || !(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey) return;
+  const n = /^Digit([1-4])$/.exec(e.code)?.[1];
+  const p = n ? A.partners![Number(n) - 1] : undefined;
+  if (!p) return;
+  e.preventDefault();
+  A.switchPartner(p.id);
 }
 
 const errorWord = (e: string | undefined) => (e ? t(`partners.error.${e}`) : "");
@@ -76,7 +105,9 @@ function LookPick({ value, onPick, label }: { value: PartnerLook; onPick: (l: Pa
   return (
     <span class="look-pick" role="radiogroup" aria-label={label}>
       {PARTNER_LOOKS.map((l) => (
-        <button key={l} class={`look-chip${l === value ? " on" : ""}`} role="radio" aria-checked={l === value} aria-label={t(`partners.look.${l}`)} title={t(`partners.look.${l}`)} data-look={l} onClick={() => onPick(l)} />
+        <button key={l} class={`look-chip${l === value ? " on" : ""}`} role="radio" aria-checked={l === value} aria-label={t(`partners.look.${l}`)} title={t(`partners.look.${l}`)} data-look={l} onClick={() => onPick(l)}>
+          <Stone look={l} size={24} />
+        </button>
       ))}
     </span>
   );

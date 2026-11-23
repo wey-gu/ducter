@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -16,15 +16,15 @@ conversations separate), D31 (projects and devices are the user's) and principle
   partner means sharing one memory. After: each family member's partner remembers them. Value:
   惊喜, a second friend in the same app, made in ten seconds.
 - **The fresh user.** Never needs this. With one partner nothing about partners shows: no word,
-  no switch, no stone. The second partner appears only after the person makes one. Value: 好用,
+  no switch, no coloured figure. The second partner appears only after the person makes one. Value: 好用,
   zero concepts until wanted.
 
 **How it starts.** By talking: 「再给我做一个管家里事的伙伴，叫它小家」 makes it at once (the partner
-tool, D486), and the reply says its stone is beside the name. Or Settings › 伙伴, one row: **再加一个
+tool, D486), and the reply says it is beside the name. Or Settings › 伙伴, one row: **再加一个
 伙伴 / Add a partner**, with one line of help (one for work and one for home, or one per person). The
 form asks three things: a name, **它管什么 / What it looks after** (optional, the person's words) and a
 colour (D24: creating one is light). Settings' foot, with one partner, says it can be asked for in
-words. Afterwards the bar shows the new partner's stone beside the name; one click shows its
+words. Afterwards the bar shows the new partner beside the name (its face in its own clay and its name); one click shows its
 conversation.
 
 ## Shared and isolated
@@ -50,12 +50,15 @@ A family that needs privacy from each other needs separate homes.
 
 ## Attention is the person's
 
-- **One count.** The bar's 等你 / Needs you is one number across partners: On hand's needs-you
-  cards (already every partner's tasks) plus the shown conversation's questions plus every other
-  partner's own questions (`needsAcross`, protocol). The Dock badge and the menu bar's mark use
-  the same number.
+- **One count, where the person is counted (D497).** The Dock badge, the menu bar's mark and On
+  hand say one number across partners: On hand's needs-you cards (every partner's tasks) plus every
+  partner's own questions (`needsAcross`, protocol). **The bar says it by whose.** The counts line
+  sits under a partner's name, so it speaks for that partner (its own tasks and its conversation's
+  questions); each other partner's face beside it carries the number of what of its own waits on
+  the person. The bar's numbers add up to the person's one count. (D309 put the one count under
+  the shown partner's name: every naive rater read it as that partner's.)
 - **One On hand.** On hand stays one board for the person, never one per partner (D24). Each
-  row and card carries its partner's small stone once there is more than one, and another
+  row and card carries its partner's small face in its own clay once there is more than one, and another
   partner's own questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you**
   with the question; a click shows that partner, where it is answered (D312).
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
@@ -64,36 +67,91 @@ A family that needs privacy from each other needs separate homes.
   **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
   needs-you notice names the partner whose questions wait.
 
-## Switching (zero concepts)
+## Switching (zero concepts, D497)
 
-- The conversation bar's face sits on its partner's own **stone** (a clay disc in its colour)
-  once there is a second partner. The others sit beside the name as small stones; one with its own
-  question waiting carries the accent dot. A click on a stone shows that partner's conversation
-  (label: **换到{name} / Switch to {name}**). The same on the Mac, the web wide and the phone.
+- **Every other partner is in view, by face and name.** With a second partner, the bar's left keeps
+  the shown partner (its figure in its own clay, its name, its counts line); right after it sit the
+  others, each a small pill: its face in its own clay, its name, and, when something of its own
+  waits on the person, that number in the needs-you colours. Hover (the title on the web) says
+  **换到{name}，有 {n} 个等你 / Switch to {name}, {n} need you** and **管：{about} / Looks after:
+  {about}**. A click shows its conversation. On a phone the pill keeps the face and the number; the
+  name is its accessible label (room for four in 390).
+- **Keys and words.** ⌥⌘1–⌥⌘4 show the first to fourth partner in Settings' order (the default
+  first), on the Mac and the web; 键盘 / Keyboard lists them (**第 1 到第 4 个伙伴 / The first to
+  fourth partner**). ⌘K 找什么都行 / Find anything lists each other partner as a place to go,
+  **换到{name} / Switch to {name}**, found by its name.
+- **Mostly you never switch.** Words meant for another partner are passed on (D486); On hand lists
+  every partner's asks with its face; a notification about another partner's own question opens
+  that partner's conversation (web push `#p=<id>/d=<id>`, the Mac's notice by its id).
 - A switch is per device: this Mac can show the home partner while the phone shows the work one.
   It is remembered on the device, survives a reconnect and a relaunch.
 - Underneath: a switch is a new hello with `persona`; the socket then shows that conversation
   (as its `channel`), and the client starts over on it (no glance of another partner is painted).
+
+## Meeting a partner (D497)
+
+A partner's empty conversation is its first meeting with the person (a partner the person made but
+never talked to). It greets as **晚上好，我是{name}。/ Good evening, I'm {name}.**, says what it looks
+after in the person's own words and that it never sees the others' conversations: **我管{about}。跟
+{default}说的我看不到，你跟我说的只在这儿。/ I look after {about}. I can't see what you tell
+{default}; what you tell me stays here.** (without an about: **跟{default}说的我看不到，你跟我说的只在
+这儿。说一句就行。/ I can't see what you tell {default}; what you tell me stays here. Just say the
+word.**). Its starters come from its own part: **{about}这边，你能帮我做些什么？/ What can you do for
+me with {about}?**, its own task in progress, then everyday examples that fit any part of life
+(never the default's code or mail starters). Built on the home from names only, no model
+(`partnerScreen`, core/src/first-screen.ts); the person's words are placed as they are, never parsed.
+
+## Several partners: the analysis behind D497
+
+**Who, in this moment.** The heavy developer with a work partner and a home partner opens the Mac
+at night: they want to know at a glance who they are talking to and whether the other one needs
+them. The consumer who made 多比 for the kids' things wants it to feel like a second friend, not a
+second tab. The fresh user never sees any of it.
+
+**Before (D309's switch).** Both partners were the same orange figure; the only difference was a
+pale disc behind the face (sand and apricot nearly the same). The others were 28-point faces after
+the counts line, their names only in a tooltip. The counts under the shown name were the person's
+total, so 「2 个等你」 under 多比 were Ducter's. Naive raters: the stone read as "the same helper,
+maybe another instance" (2 of 3), nobody could say whose the waiting things were.
+
+**What they feel after.** 放心: who they are talking to is obvious from across the room (the figure's
+own clay), and every partner's asks are visible without switching. 惊喜: a new partner meets them as
+itself, in its own colour, says what it looks after and that it keeps their words to itself. 好用:
+a click, a key or a word; mostly none, since asks come to them (On hand, notifications, passing on).
+
+**Shapes considered** (first principles: one person, several partners, attention is the person's):
+
+| Shape | For | Against | Verdict |
+|---|---|---|---|
+| A single group conversation with every partner in it | one place to read | breaks isolation (D24, each partner's context and memory its own); who answers becomes a routing puzzle in front of the person; a chief by another name | no |
+| A sidebar list of partners (a chat app's contact list) | familiar, scales | a whole column for two to four partners, on every screen, for something rarely done; the conversation loses width on the 13" Mac and is impossible on the phone | no |
+| Switch only by intent (say "ask 小家…", never a switch) | zero chrome | the person can't see or read the other conversation; passing on (D486) already covers intent | kept as the main path, not the only one |
+| Faces in the bar (chosen) | always in view, costs one line already there, legible by face and name, carries each one's own number | grows with the count: capped at four partners | yes |
+| Swipe between conversations on the phone | quick | collides with the system back swipe and the bubbles' own swipe to reply; invisible | no (later only if asked) |
+
+**Distinctness.** Run through the metaphor process (research/215): six candidates and "no
+metaphor", mapping tables with their false implications, a rubric, and naive-rater LLM proxies on
+rendered bars. The same clay figure in its own clay colour plus its name won: raters read the
+recoloured figures as different helpers 3 of 3 (the stone 1 of 3, the name alone 0 of 3, an
+initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles).
 
 ## Naming and look
 
 - A name is the partner's only label: trimmed, at most 24 characters, unique among the home's
   partners (case-insensitive). The default partner keeps its name in persona.json (Settings ›
   伙伴's rename); the others in partners.json.
-- **Look (metaphor review).** Candidates: (1) no metaphor, the name alone; (2) a recoloured clay
-  face; (3) the same face on its own clay **stone**; (4) a different clay character per partner;
-  (5) a coloured ring round the face; (6) a per-partner theme. Mapping and false implications:
-  (1) none false, but fails "recognisable at a glance" at 28 points; (2) implies a different
-  being with different powers, and needs a re-render of every face state per colour; (4) the best
-  emotional fit but needs a full art set per character (later); (5) reads as a status ring
-  (needs-you, working), a false state; (6) implies another app. Rubric (legibility without labels,
-  fidelity, scale to 4, state expressiveness kept, emotional fit, distinctiveness, feasibility):
-  the stone wins today: the face keeps every state it has (D77), the colour is a calm token per
-  theme, it reads at 28 points, and it is the same clay world. Decided: (3), with (4) as the
-  later upgrade. Comprehension testing with naive raters is still owed (below).
-- Looks are tokens, never colours: `sand` (the default's Pebble clay), `sage`, `sky`, `plum`,
-  `apricot`, each light and dark (web `--look-*`, Mac `Tokens.Looks`). A new partner gets the
-  first look nobody has.
+- **Look (D497, research/215).** Each partner is the same clay figure in its own clay: a look
+  recolours the art (a hue turn then a saturation, `LOOK_CLAY` in protocol/partners.ts, CSS
+  `--clay` on the web, `theme.LookClay` on the Mac: the same sRGB matrices). The default's `sand` is
+  the art as drawn (the orange Pebble clay); `sage` green, `sky` blue, `plum` purple, `apricot` a
+  coral (its id kept). Every state of the figure (idle, working, waiting, needs you, done, napping,
+  the blink) is recoloured alike, so the figure keeps its life (D77). The page's own figure is the
+  shown partner's; a mark elsewhere (the bar's pills, On hand's cards and asks, passed words,
+  Settings) is its partner's. Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
+  **梅子 / Plum**, **珊瑚 / Coral**; the picker shows the figure in each. D309's stone (the face on a
+  pale disc) is retired. A clay character per partner stays the later upgrade, owed through the
+  metaphor process with real art (todo).
+- Looks are tokens, never colours. A new partner gets the first look nobody has.
 - At most four partners on a home (the default and three).
 
 ## Partners know each other, and hand over (D486)
@@ -131,8 +189,9 @@ On every home (`DUCTER_PARTNERS=off` turns it off; `startCore({ partners })` in 
   ws shows each socket one conversation and sends another's never; a user message to a second
   partner lands in its own stream; the default partner is never woken by another's conversation;
   push names whose with more than one partner.
-- Web (wide and phone) and Mac: the stone in the bar, the other partners' stones with the dot,
-  the switch, the combined count, Settings › 伙伴's 伙伴们 (list, look, add; rename on the web).
+- Web (wide and phone) and Mac: D497's recoloured figure, the other partners' pills in the bar
+  (face, name, their own number), ⌥⌘1–⌥⌘4 and Find anything, the bar's line by whose, the first
+  meeting, Settings › 伙伴's 伙伴们 (list, look, add, change, remove).
   The Mac's menu bar lists the other partners with something waiting; its notice names whose.
 
 ## A second partner answers (D312)
@@ -171,5 +230,6 @@ Built:
 4. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.
 5. **The CLI** talks to the default partner only.
 6. **iPhone and Android shells** show the web client, so they inherit it; not checked on a device.
-7. **Comprehension test of the stone** with naive raters; the clay-character upgrade.
+7. **Human raters** for D497's recoloured figure (the LLM proxies are done, research/215); the
+   clay-character upgrade (a new figure per partner) through the metaphor process.
 8. **A live run** with two real partner sessions on one home.

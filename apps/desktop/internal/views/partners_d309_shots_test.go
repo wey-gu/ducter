@@ -46,6 +46,14 @@ func TestD309PartnersShots(t *testing.T) {
 	h.app.SwitchPartner("p2")
 	h.until("the home partner", func() bool { return h.app.S.Welcomed && h.app.S.Persona == "p2" && len(h.app.S.Partners) > 1 })
 	both("conv-home", 1280, 860)
+	// D497: a partner made but never talked to (DEMO_PARTNER_NEW=1): its first meeting.
+	if h.app.partnerByID("p3") != nil {
+		h.app.SwitchPartner("p3")
+		h.until("the new partner", func() bool {
+			return h.app.S.Welcomed && h.app.S.Persona == "p3" && len(h.app.S.Partners) > 1 && h.app.S.First != nil
+		})
+		both("conv-new", 1280, 860)
+	}
 	h.app.SwitchPartner("default")
 	h.until("back", func() bool { return h.app.S.Welcomed && h.app.S.Persona == "default" && len(h.app.S.Partners) > 1 })
 	h.app.openTab(TabPartner)

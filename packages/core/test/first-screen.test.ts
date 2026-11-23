@@ -2,7 +2,7 @@
 // rotated by day, everyday examples for someone new, and one timely line for a returning person.
 import { expect, test } from "bun:test";
 import type { Place, ServerFrame, TaskCard } from "@ducter/protocol";
-import { firstScreen, space, starters, type FirstScreenInput } from "../src/first-screen.ts";
+import { firstScreen, partnerScreen, space, starters, type FirstScreenInput } from "../src/first-screen.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -151,4 +151,20 @@ test("zh words keep a space between Chinese and Latin (D78)", () => {
   expect(space("明早9点")).toBe("明早 9 点");
   const s = starters(base({ apps: [{ service: "slack", title: "Slack" }] }));
   for (const x of s) expect(x.words.zh).not.toMatch(/[\p{Script=Han}][A-Za-z0-9]|[A-Za-z0-9][\p{Script=Han}]/u);
+});
+
+// D497: a second partner's empty conversation is its first meeting: who it is, what it looks after
+// in the person's words, that it never sees the default's conversation, starters from its own part.
+test("a second partner introduces itself and starts from what it looks after", () => {
+  const s = partnerScreen({ ...base(), about: "读书、跑步和周末的安排", defaultName: "Ducter" });
+  expect(s.visit).toBe("first");
+  expect(s.line.zh).toBe("我管读书、跑步和周末的安排。跟 Ducter 说的我看不到，你跟我说的只在这儿。");
+  expect(s.starters[0]!.words.zh).toBe("读书、跑步和周末的安排这边，你能帮我做些什么？");
+  expect(s.starters.length).toBe(3);
+  expect(s.starters.some((x) => x.kind === "code" || x.kind === "mail")).toBe(false);
+  // Its own task in progress is a starter; without what it looks after it still says who it is.
+  const t = partnerScreen({ ...base({ tasks: [task({ attention: "working", title: "查社区游泳馆周日的课" })] }), about: "", defaultName: "Ducter" });
+  expect(t.visit).toBe("returning");
+  expect(t.starters.some((x) => x.words.zh.includes("查社区游泳馆周日的课"))).toBe(true);
+  expect(t.line.en).toBe("I can't see what you tell Ducter; what you tell me stays here. Just say the word.");
 });

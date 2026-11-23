@@ -9,6 +9,19 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Several partners, after D497 (`personas.md`, research/215)
+
+- [ ] **Human raters for the recoloured figure** (the LLM proxies are done): five people who never saw
+  Ducter, the built bar with three partners, research/215's five questions. Trigger: the first
+  person outside the author with two partners, or before v1 is called done.
+- [ ] **A clay character per partner** (another figure, not a recolour): the metaphor process with real
+  art (a full state set and the blink), the false implication "different powers" tested. Trigger: the
+  author asks for it, or raters confuse two recoloured partners.
+- [ ] **On hand's figure** is the shown partner's clay though the board is everyone's: a neutral figure
+  or the default's. Trigger: the author's review of D497's shots.
+- [ ] **The iPhone and Android shells** inherit the web; check the pills and the first meeting on a
+  device (iOS Simulator). Trigger: the next phone release.
+
 ## Copying a message, after D492 (`conversation.md` "Keeping your place and copying")
 
 - **⌘C on a whole message** with nothing selected (the one under the pointer, or the focused bubble): trigger, the author asks for it or a review finds the pebble slow.

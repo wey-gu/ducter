@@ -324,6 +324,9 @@ if (process.env.DEMO_PARTNERS === "1") {
     hv.log.append({ stream: "task:t_home1", origin: "task", kind: "report", body: { taskId: "t_home1", state: "progress", summary: zh ? "在看游泳馆的课表" : "Reading the pool's timetable", questions: [], evidence: [] } });
     await tick();
   }
+  // D497: DEMO_PARTNER_NEW=1: a third partner the person made but never talked to (its empty
+  // conversation is its first meeting: who it is, what it looks after, its own starters).
+  if (process.env.DEMO_PARTNER_NEW === "1") core.partners.add({ name: zh ? "多比" : "Dobby", look: "sky", about: zh ? "读书、跑步和周末的安排" : "reading, running and weekend plans" });
 }
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so

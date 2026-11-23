@@ -154,9 +154,12 @@ counts for all of them.
 - **Make one.** Tell your partner ("make me another partner for things at home, call it Home"), or
   open **Settings › Partner › Your partners › Add a partner** and give it a name, **What it looks
   after** and a colour.
-- **Talk to one.** Its stone sits beside your partner's name at the top of the conversation; tap it.
-  A dot on a stone means that partner has a question for you. Each device remembers which partner
-  it shows.
+- **Talk to one.** Each partner is the same little clay figure in its own colour. The others sit
+  beside your partner's name at the top of the conversation, each with its face and its name, and a
+  number when something of theirs waits on you; tap one (or press ⌥⌘1 to ⌥⌘4, or find it with ⌘K).
+  A notification about another partner's question opens that partner. Each device remembers which
+  partner it shows. The first time you open a new partner, it tells you who it is and what it looks
+  after.
 - **Pass something on.** Say it to the partner you're talking to ("tell Home to remind me about the
   vaccine on Saturday"). It goes into that partner's conversation as your words, with **Passed on
   by …** over them, and that partner answers there. Nothing else of the conversation goes along.

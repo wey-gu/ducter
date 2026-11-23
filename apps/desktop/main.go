@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -289,6 +290,15 @@ func main() {
 			win.Show()
 			win.Focus()
 		}
+		// D497: a notification about another partner opens its conversation.
+		mygo.App.OnNotificationClick(func(id string) {
+			if !strings.HasPrefix(id, notePartner) {
+				return
+			}
+			win.Update(func() { app.SwitchPartner(strings.TrimPrefix(id, notePartner)) })
+			win.Show()
+			win.Focus()
+		})
 		mygo.App.OnActivate(func(visible bool) {
 			if !visible || !win.IsVisible() {
 				win.Show()
@@ -304,7 +314,12 @@ func main() {
 				// notification, if they said yes to them (views/asks.go).
 				if n > badge && badge >= 0 && !(win.IsVisible() && win.IsFocused()) {
 					if title, body := app.NeedsYouNotice(n); title != "" {
-						go func() { _ = (desktop{win}).Notify(title, body) }()
+						// D497: about another partner: a click shows its conversation.
+						id := ""
+						if p := app.NeedsYouPartner(); p != "" {
+							id = notePartner + p
+						}
+						go func() { _ = (desktop{win}).NotifyID(id, title, body) }()
 					}
 				}
 				badge = n
@@ -809,11 +824,18 @@ func (d desktop) Focus() {
 }
 
 // Notify shows a notification; the first one is when macOS asks.
-func (d desktop) Notify(title, body string) error {
+func (d desktop) Notify(title, body string) error { return d.NotifyID("", title, body) }
+
+// notePartner starts a notification's id that is about another partner
+// (D497): its click shows that partner's conversation.
+const notePartner = "partner:"
+
+// NotifyID is Notify with an id its click comes back with ("" for none).
+func (d desktop) NotifyID(id, title, body string) error {
 	if !mygo.NotificationsSupported() {
 		return errors.New("notifications need the app bundle")
 	}
-	err := mygo.NewNotification(mygo.NotificationOptions{Title: title, Body: body, Group: "ducter"}).Show()
+	err := mygo.NewNotification(mygo.NotificationOptions{ID: id, Title: title, Body: body, Group: "ducter"}).Show()
 	if errors.Is(err, mygo.ErrNotificationsDenied) {
 		return views.ErrNotificationsDenied
 	}

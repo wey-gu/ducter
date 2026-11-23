@@ -663,8 +663,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		return // the palette has the keys (D216, D391)
 	}
-	a.railKeys(c) // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
-	a.taskKeys(c) // D456: ⌃1–⌃9 the nth task on hand; ⌘/ every key
+	a.railKeys(c)    // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
+	a.taskKeys(c)    // D456: ⌃1–⌃9 the nth task on hand; ⌘/ every key
+	a.partnerKeys(c) // D497: ⌥⌘1–⌥⌘4 the partners
 	switch {
 	case c.Shortcut(ui.Cmd, ui.KeyO):
 		a.OpenSwitcher()

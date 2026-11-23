@@ -670,10 +670,11 @@ func (a *App) tasksGroup(c *ui.Context) {
 			if r.Harness != "" {
 				tile = a.agentTile(c, r.Harness, r.Never)
 			}
-			a.tileRow(c, "rule:"+r.ID, tile, r.Text, line, func() {
-				if a.quietDanger(c, "rule:"+r.ID, a.L.T("loadout.rule.remove"), r.Text) {
+			words := a.ruleWords(r.Text)
+			a.tileRow(c, "rule:"+r.ID, tile, words, line, func() {
+				if a.quietDanger(c, "rule:"+r.ID, a.L.T("loadout.rule.remove"), words) {
 					a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
-					a.say("tasks", a.L.T("loadout.rule.removed", r.Text))
+					a.say("tasks", a.L.T("loadout.rule.removed", words))
 				}
 			})
 		}
@@ -841,6 +842,17 @@ func (a *App) padEnd(s string) string {
 
 // whoName is an agent and its model inside a sentence ("Claude Code（Sonnet）"),
 // never joined by a dot (D291).
+// ruleWords is a rule as the partner wrote it ("后端的事 → Codex") with its
+// arrow said in words (D500: no text arrows on screen): 后端的事：Codex.
+func (a *App) ruleWords(text string) string {
+	sep := a.L.T("loadout.rule.arrow")
+	parts := strings.Split(text, "→")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return strings.Join(parts, sep)
+}
+
 func (a *App) whoName(h, m string) string {
 	if m == "" {
 		return harnessName(h)

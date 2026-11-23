@@ -6,16 +6,17 @@ package i18n
 
 var zhAccounts = Table{
 	"proactive.title":        "发现了就说",
+	"proactive.group":        "自己发现的事", // D500: its group's heading on Notifications
 	"proactive.urgent":       "只说急的",
 	"proactive.three":        "每天最多 3 条",
 	"proactive.useful":       "有用就说",
 	"proactive.off":          "不用主动找我",
-	"proactive.note.urgent":  "只在等不到明天的时候说，还有开会前；早上不发。",
-	"proactive.note.three":   "早上把值得说的放在一条里，最多 3 条；急的随时说。",
-	"proactive.note.useful":  "可能有用的都放在早上那一条里，看不看都行；等不到明天的才叫你。",
+	"proactive.note.urgent":  "等不到明天的才说，还有开会前；早上不发。",
+	"proactive.note.three":   "早上一起说，最多 3 条；急的随时说。",
+	"proactive.note.useful":  "可能有用的都放进早上那一条；急的才叫你。",
 	"proactive.note.off":     "它不自己去看；你问起来才去看。",
 	"proactive.note.never":   "还没定：它不自己去看，你问起来才去看。",
-	"proactive.note.default": "你还没选过，先这样：可能有用的都放在早上那一条里，看不看都行；等不到明天的才叫你。",
+	"proactive.note.default": "还没选过，先这样：可能有用的都放进早上那一条；急的才叫你。",
 
 	"find.how":             "怎么知道的",
 	"find.src.calendar":    "日历",
@@ -168,7 +169,7 @@ var zhAccounts = Table{
 	"read.mentions": "%s：%d 条提到你的",
 	"read.full":     "%s：读了 %d 封全文",
 	// D289: the page on the settings grid.
-	"acct.sec.read":     "它能看的",
+	"acct.sec.read":     "能看的", // D500: as Overview's label; the head above speaks as 我
 	"acct.sec.calls":    "打电话",
 	"acct.more.line":    "邮箱、日历、Slack……连好就会出现在这里。",
 	"acct.add.title":    "再连一个账号服务",
@@ -182,16 +183,17 @@ var zhAccounts = Table{
 
 var enAccounts = Table{
 	"proactive.title":        "When it notices something",
+	"proactive.group":        "What it finds",
 	"proactive.urgent":       "Only urgent",
 	"proactive.three":        "Up to 3 a day",
 	"proactive.useful":       "Whenever useful",
 	"proactive.off":          "Only when I ask",
 	"proactive.note.urgent":  "Only what can't wait until tomorrow, and before a meeting; no morning note.",
-	"proactive.note.three":   "One note each morning with up to 3 things; anything urgent right away.",
-	"proactive.note.useful":  "Anything that might help, in one quiet note each morning, to read or not; only what can't wait calls you.",
+	"proactive.note.three":   "One morning note, up to 3 things; anything urgent right away.",
+	"proactive.note.useful":  "Anything that might help goes in the morning note; only what can't wait calls you.",
 	"proactive.note.off":     "It doesn't look by itself; it reads only when you ask.",
 	"proactive.note.never":   "Not chosen yet: it doesn't look by itself; it reads only when you ask.",
-	"proactive.note.default": "You haven't chosen yet, so for now: anything that might help, in one quiet note each morning, to read or not; only what can't wait calls you.",
+	"proactive.note.default": "Not chosen yet, so for now: anything that might help goes in the morning note; only what can't wait calls you.",
 
 	"find.how":             "How I know",
 	"find.src.calendar":    "Calendar",
@@ -343,7 +345,7 @@ var enAccounts = Table{
 	"read.mentions": "%s: %d mentioning you",
 	"read.full":     "%s: read %d in full",
 	// D289: the page on the settings grid.
-	"acct.sec.read":     "What it can read",
+	"acct.sec.read":     "Can read",
 	"acct.sec.calls":    "Phone calls",
 	"acct.more.line":    "Mail, calendars, Slack… they show up here once connected.",
 	"acct.add.title":    "Connect another account service",

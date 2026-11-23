@@ -44,6 +44,10 @@ type chatsState struct {
 	// open: the apps whose setup the person opened with 设置 / Set up (D365): an
 	// app never connected rests as its one row until then.
 	open map[string]bool
+	// D500: the order the apps stand in, set when the pane opens: those in use
+	// first, then the ones resting until chosen; held while the pane is open so
+	// an app being set up never jumps under the person.
+	order []string
 }
 
 var chatNames = map[string]string{"telegram": "Telegram", "slack": "Slack"}
@@ -89,7 +93,7 @@ func (a *App) chatsPanel(c *ui.Context) {
 		if a.chats.was == nil {
 			a.chats.was = map[string]string{}
 		}
-		for _, v := range f.Channels {
+		for _, v := range a.chatOrder(f.Channels) {
 			// D404: the moment an app becomes linked is answered once, never on opening the pane.
 			if prev, seen := a.chats.was[v.Kind]; seen && prev != "linked" && v.State == "linked" {
 				who := chatNames[v.Kind]
@@ -108,6 +112,35 @@ func (a *App) chatsPanel(c *ui.Context) {
 		}
 	}
 	a.imessageGroup(c)
+}
+
+// chatOrder is the apps in use first, then those never set up (D500), in
+// the order fixed when the pane opened (a.chats.order, cleared by openTab).
+func (a *App) chatOrder(vs []protocol.ChannelView) []protocol.ChannelView {
+	s := &a.chats
+	if len(s.order) != len(vs) {
+		s.order = s.order[:0]
+		for _, rest := range []bool{false, true} {
+			for _, v := range vs {
+				if (v.State == "off") == rest {
+					s.order = append(s.order, v.Kind)
+				}
+			}
+		}
+	}
+	out := make([]protocol.ChannelView, 0, len(vs))
+	for _, k := range s.order {
+		for _, v := range vs {
+			if v.Kind == k {
+				out = append(out, v)
+			}
+		}
+	}
+	if len(out) != len(vs) { // an app came or went: order afresh next frame
+		s.order = nil
+		return vs
+	}
+	return out
 }
 
 func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {

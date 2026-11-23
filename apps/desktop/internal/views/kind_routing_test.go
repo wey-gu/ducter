@@ -54,6 +54,9 @@ func TestD372PartnerRules(t *testing.T) {
 				t.Errorf("%s never=%v: the errand default shows=%v", lang, never, tt.HasText(sonnet))
 			}
 			for _, s := range tt.Texts() {
+				if strings.Contains(s, "→") { // D500: an arrow is said in words
+					t.Errorf("%s: a text arrow in %q", lang, s)
+				}
 				if strings.Contains(s, "） ") {
 					t.Errorf("%s: a space after a full-width bracket in %q", lang, s)
 				}

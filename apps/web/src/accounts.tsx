@@ -52,6 +52,8 @@ export function ProactiveChips(p: { inNote?: boolean; children?: preact.Componen
   // choice at the right edge (one pill on a phone), never a heading over an untitled slab.
   return (
     <section class="set proactive-sec">
+      {/* D500: a heading like the groups around it. */}
+      <h3>{t("proactive.group")}</h3>
       <div class="set-card chat-app g-group">
         <div class="chat-row pro-row">
           <span class="grow">

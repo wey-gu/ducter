@@ -43,7 +43,7 @@ var zhVoice = Table{
 	"voice.read.none":              "这台设备没有%s的朗读声音。",
 	"voice.settings":               "语音",
 	"voice.settings.readback":      "用语音说的时候，把回复念出来",
-	"voice.settings.readback.help": "按住说话发出去的那条，它的回复会念给你听。",
+	"voice.settings.readback.help": "按住说话发的消息，回复会念给你听。",
 	"voice.settings.key":           "按住说话的键",
 	"voice.settings.key.help":      "Ducter 在最前面时，按住它说话，松开就放进输入框。",
 	"voice.settings.key.none.help": "按住输入框旁的麦克风说话。",

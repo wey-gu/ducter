@@ -9,6 +9,16 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Settings, after D500 (`settings.md` "Every pane, by one hand")
+
+- [ ] **Rows say 它 under a head that says 我.** Every pane's head is the partner speaking (D469); its
+  rows still speak of it as 它 (D330), e.g. Chat apps' **你在 Telegram 里说的，它就在那儿回。** under
+  **在 Telegram、微信里也能找我**. One voice per pane, through the change loop (which rows may say 我,
+  and the en "it" / "I" with them). *Trigger:* the author's review of D500, or a rater reads two speakers.
+- [ ] **Look and sound's head states, not describes** (D475's rule): the theme, the light and the
+  language read back (**这台 Mac 上是 Pebble，浅色深色跟着系统。**). *Trigger:* the next Look and sound change.
+- [ ] **The author's review of D500** on the Mac and the phone (`.shots/d500/after`).
+
 ## On hand, after D498 (`on-hand.md`, research/216)
 
 - [ ] **Human raters for the pebble** (the LLM proxies are done): the author first, then a consumer

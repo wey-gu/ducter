@@ -478,6 +478,7 @@ Every pane but Memory, Agent messaging and On hand rendered against `demo-settin
 - D468's leftovers: 移除 / Remove stands alone on its own row under each to-do source; the web's This phone
   has no lede; the web's devices list has no hairlines between devices (D311's list); the Partner page's
   peers line has no chevron on the web (`memory.tsx`); the notification preview's 现在 sits mid-card at 500.
+  (移除 and the chevron: done in D500.)
 
 ## The partner reports on its own world (D469)
 
@@ -571,11 +572,56 @@ The rules it leaves, for every pane:
 - **A thing kept for the person is drawn as itself**, in the 40 tile column, the same on both clients.
 - **On a phone, room goes to the control.** A choice under its words takes the card's whole width.
 
+## Every pane, by one hand (D500)
+
+The author's standing ask: 「每一个设置页面的打磨和 flow/视觉设计，我们要让人爱不释手，充满情绪价值，无比好用顺滑优雅」.
+Agent messaging (D480, D489, D494) and On hand (D498) had just been re-seen; this pass took every other
+pane: Overview, Partner (with D497's colours), Memory, Notifications, Accounts, To-do sources, Chat apps,
+Passwords & cards, Look and sound, Where it runs, About. Shot on the Mac at 1400 and 760 (`TestD475Shots`,
+now with Overview) and the web at 1400 and 390, zh and en, light and dark, against `demo-settings-real.ts`
+(the author's real shape), `DEMO_NEEDS=1` and `demo-first.ts` (a fresh home with no AI agent):
+`.shots/d500/{before,after}`.
+
+**Who, and what they feel.** H opens a pane to change one thing and wants the row where they expect it;
+C opens Partner, Notifications or Chat apps and wants calm; F opens Partner first, from 改名字 or from the
+first run's 去登录, and must meet only what is true for them. The pass looked for what breaks the
+feeling of one hand: a group out of the story's order, a line that repeats its title, a word the pane's
+own head contradicts, an edge a few points off, a control alone on a row.
+
+### The audit, ranked (most felt first)
+
+| # | Pane | What was wrong | Fix |
+|---|---|---|---|
+| 1 | 伙伴 / Partner | With one partner, **伙伴们 / Your partners** led the pane: a fresh user with no AI agent to think with was first offered a second partner (personas.md: with one partner nothing about partners shows but the offer). On the Mac its add row was a bare text button with no ＋ and no line; on the web its note sat under the card | With one partner the group is the pane's last, after the trust lists; with several it leads (who is who). The Mac's add row is the shared add row (＋, **再加一个伙伴**, **比如一个管工作、一个管家里，或者家里每人一个。**); the note sits under the heading on both |
+| 2 | 伙伴 / Partner | Rules read as code: **跑腿的事 → Claude Code（Sonnet）**, **写代码和别的事 → Codex**, and a rule the partner wrote (**后端的事 → Codex**) | The defaults in words: **跑腿的事交给 {agent} / Errands go to {agent}**, **写代码和别的事交给 {agent} / Code and everything else goes to {agent}**; a rule's arrow is said as **：/ :** on screen (the partner's tool text is unchanged) |
+| 3 | 聊天软件 / Chat apps | Slack, never set up, stood between Telegram and WeChat, both linked: the pane read as linked, not, linked | The apps in use first, then those resting until chosen; the order is fixed when the pane opens, so an app being set up never jumps |
+| 4 | 待办来源 / To-do sources | **移除** stood alone on a row of its own under each source (D468's and D475's leftover); **新的来了**'s line began **新的来了，…**, **做完以后**'s **做完…**: the line said its title again | The source's last line says when it last looked (**刚刚看过 / Looked just now**, **10 分钟前看过**) with **移除** at its right edge; the lines say only what the choice does (**在对话里跟你说一声。**, **先问你，再在 issue 下留言。**, **在笔记里勾掉；想撤回，把勾点掉就行。**) |
+| 5 | 通知 / Notifications | 发现了就说's card was the only one without a heading, between 什么时候找你 and 你没回的时候; its line wrapped one character onto its last line (说。); on the web 今天看了什么 was a small link indented past the row above | The card's heading **自己发现的事 / What it finds**; the lines shorter (**早上一起说，最多 3 条；急的随时说。**); 今天看了什么 a row on the web as on the Mac (its title on the text edge, the chevron at the right edge) |
+| 6 | 概览 / Overview, 在哪儿运行 / Where it runs | The card grids' headings (你的电脑和手机, 你的账号在哪儿) sat 16 points left of every other heading, in the muted ink; on the web the home card's face stood on a line of its own above **你们的对话在这儿** | The headings on the text edge in the soft ink, as every group's (`sectionHead`); the face and its words on one line on the web, as on the Mac |
+| 7 | 关于 / About | The versions card's note said its title again (**Ducter 和帮它做事的电脑，各自是什么版本。** under **各台电脑上的 Ducter**); the home's row said **10 分钟前看过，已经是最新的** under a head that had just said **每台电脑上的我都是最新的。** | No note; while every computer is current the home's row says only when it looked (**刚看过**, **10 分钟前看过**); with an update waiting it says as before |
+| 8 | 账号 / Accounts | Its first group was **它能看的** under a head in the partner's own voice (**我在留意 6 个账号…**): 它 and 我 for the same partner a line apart | **能看的 / Can read**, Overview's own label |
+| 9 | 外观和声音 / Look and sound, 这台电脑 / This computer | Lines of two sentences that wrapped a character onto a line of their own on a phone (改。, 听。); **⌘⇧D** offered on a touch screen; **只在这台设备上生效** under a pane titled 这台 | One clause each: **只改这个窗口；回你用的语言在「伙伴」里。** (naming the row it means), **紧凑：头像缩到标题旁边，一屏多看几行；⌘⇧D 随时切换。** (without the shortcut on a touch screen), **按住说话发的消息，回复会念给你听。**; the web's lines wrap without an orphan (`text-wrap: pretty`) |
+| 10 | 密码和银行卡 / Passwords & cards | 铁路 12306's pebble said **1** (the first character of 12306.cn) beside a name starting with 铁 | A sign-in's pebble is the first letter of the name beside it |
+| 11 | 伙伴 / Partner | The last line (**你自己用的 agent 也能把事交给 Ducter。 看看**) was a card's foot on the paper: a hairline over it and its words pushed in by an empty tile column (Mac); no chevron and its button beside the words (web, D468's leftover) | A line on the paper on the text edge, **看看 ›** at the right edge, on both |
+
+Looked at and kept: Memory (its own pass, D459 and D465–D466; one shape with the rest); Where it runs'
+cards; Look and sound's stage and rows; Accounts' per-service state (D296, D475); the Overview brief; the
+dark theme on every pane (no finding of its own).
+
+### Not changed, noted
+
+- **它 under a head that says 我.** Every pane's head is the partner speaking (D469), and the rows below
+  still speak of it as 它 (D330): **你在 Telegram 里说的，它就在那儿回。** under **在 Telegram、微信里也能找我**.
+  Rewording every row is its own change (`todo.md`).
+- **Look and sound's head describes the pane** (**我在这台 Mac 上的样子、语言和声音。**), where D475 asks for
+  the state; a head that reads the theme, the light and the language back is owed (`todo.md`).
+- The web's 你的设备 list still has no hairlines between devices (D311); the web lists a computer that is only
+  a window on Overview (Siweis-MacBook-Pro) where the Mac doesn't.
+
 ## Not done
 
-- D475's own: the iOS Simulator walk (Chrome's device emulation with touch stood in); To-do sources'
-  **移除** still alone on its own row; Chat apps' quiet actions each on a line of their own on a phone;
-  Notifications' **今天看了什么** keeps the tile column's indent under a row that has none; Where it runs'
+- D475's own: the iOS Simulator walk (Chrome's device emulation with touch stood in); Chat apps' quiet
+  actions each on a line of their own on a phone; Where it runs'
   cards say what each computer is doing only when the home reports it (the demo reports none); the
   author's review.
 - D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on

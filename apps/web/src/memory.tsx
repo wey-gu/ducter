@@ -1452,7 +1452,7 @@ export function PeersInvite() {
     <section class="set">
       <div class="set-invite">
         <small class="grow">{t("peers.invite", name)}</small>
-        <Btn kind="text" size="sm" label={t("peers.invite.go")} onClick={() => ((A.peersAsked = true), (A.sheet = { kind: "settings", page: "peers" }), A.changed())} />
+        <Btn kind="text" size="sm" chev label={t("peers.invite.go")} onClick={() => ((A.peersAsked = true), (A.sheet = { kind: "settings", page: "peers" }), A.changed())} />
       </div>
     </section>
   );

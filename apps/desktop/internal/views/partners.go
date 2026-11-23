@@ -395,9 +395,11 @@ func (a *App) lookPick(c *ui.Context, key, value string) string {
 }
 
 // partnersGroup is Settings › 伙伴's 伙伴们 / Your partners, on a home that
-// offers more than one (the partners frame came).
-func (a *App) partnersGroup(c *ui.Context) {
-	if a.S.Partners == nil {
+// offers more than one (the partners frame came). D500: with several it
+// leads the pane (who is who); with one it is the pane's last group, after
+// everything about the one there is (the fresh user meets it last).
+func (a *App) partnersGroup(c *ui.Context, top bool) {
+	if a.S.Partners == nil || top != a.manyPartners() {
 		return
 	}
 	t := a.T
@@ -494,24 +496,22 @@ func (a *App) partnersGroup(c *ui.Context) {
 		if len(a.S.Partners) >= 4 {
 			return
 		}
-		a.sep(c)
 		if !ps.adding {
-			ui.Row(c.Key("partner-add-row")).Padding(t.S3, t.S5).Children(func() {
-				if a.button(c, a.L.T("partners.add"), btnText, t.ControlSM, t.Surface) {
-					ps.adding, ps.name, ps.focused, ps.cid = true, "", false, ""
-					taken := map[string]bool{}
-					for _, p := range a.S.Partners {
-						taken[p.Look] = true
-					}
-					ps.look = "sage"
-					for _, l := range protocol.PartnerLooks[1:] {
-						if !taken[l] {
-							ps.look = l
-							break
-						}
+			// D500: the shared add row (a ＋, the title, one line of what for), as on the web.
+			if a.addRow(c, "partner-add", a.L.T("partners.add"), a.L.T("partners.add.help")) {
+				ps.adding, ps.name, ps.focused, ps.cid = true, "", false, ""
+				taken := map[string]bool{}
+				for _, p := range a.S.Partners {
+					taken[p.Look] = true
+				}
+				ps.look = "sage"
+				for _, l := range protocol.PartnerLooks[1:] {
+					if !taken[l] {
+						ps.look = l
+						break
 					}
 				}
-			})
+			}
 			return
 		}
 		add := func() {
@@ -521,6 +521,7 @@ func (a *App) partnersGroup(c *ui.Context) {
 			ps.cid = fmt.Sprintf("pa-%d", time.Now().UnixNano())
 			a.send(protocol.PartnerAdd{T: "partner_add", Name: ps.name, Look: ps.look, About: strings.TrimSpace(ps.about), ClientID: ps.cid})
 		}
+		a.sep(c)
 		ui.Column(c.Key("partner-add")).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
 			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 				a.stone(c, "add", ps.look, 48)

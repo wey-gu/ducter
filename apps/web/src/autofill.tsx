@@ -244,7 +244,8 @@ export function AutofillSettings() {
             ) : (
               <button class="set-row" key={x.id} onClick={() => edit({ kind: "signin", item: x })} aria-label={`${x.site} ${x.username}`}>
                 <span class="af-mark" aria-hidden="true">
-                  {(x.site ?? "?").slice(0, 1).toUpperCase()}
+                  {/* D500: the first letter of the name beside it (铁路 12306 is 铁, not 1). */}
+                  {Array.from(x.label || x.site || "?")[0]!.toUpperCase()}
                 </span>
                 <span class="grow">
                   <b>{x.label}</b>

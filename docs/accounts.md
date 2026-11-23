@@ -87,7 +87,7 @@ The key is kept only in Ducter's own data folder, and is never shown again.
 
 ## Each place, one group
 
-Under **What it can read**, each place your accounts come from (oo, OOMOL, your own
+Under **Can read**, each place your accounts come from (oo, OOMOL, your own
 OpenConnector, another service) is one group. Its first row is the place: a small mailbox, its
 name and one line that says how it is (**Keeping an eye out**, **Paused**, **Reads only when you
 ask**, or what went wrong and how to fix it). Then one row for each app and account it can read,

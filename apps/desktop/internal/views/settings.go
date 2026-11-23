@@ -169,6 +169,7 @@ func (a *App) openTab(tab string) {
 		// "Tried again just now" belongs to the page it was tried on (the
 		// Mac walk of 0.0.98: it followed to Agent messaging, minutes later).
 		a.settings.memTried = false
+		a.chats.order = nil // D500: the chat apps are ordered afresh on each visit
 	}
 	a.Route, a.settings.tab = RouteSettings, tab
 	a.send(protocol.SettingsReq{T: "settings"})

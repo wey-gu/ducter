@@ -48,6 +48,7 @@ var zhTodos = Table{
 	"todos.looking":          "正在看…",
 	"todos.signin":           "重新连上",
 	"todos.remove":           "移除",
+	"todos.looked":           "%s看过", // D500: a source's last line, beside 移除
 	"todos.remove.ask":       "移除 %s？已经接下的事还在。",
 	"todos.remove.yes":       "移除",
 	"todos.remove.no":        "保留",
@@ -230,6 +231,7 @@ var enTodos = Table{
 	"todos.looking":          "Looking…",
 	"todos.signin":           "Reconnect",
 	"todos.remove":           "Remove",
+	"todos.looked":           "Looked %s",
 	"todos.remove.ask":       "Remove %s? Tasks it took stay.",
 	"todos.remove.yes":       "Remove",
 	"todos.remove.no":        "Keep",

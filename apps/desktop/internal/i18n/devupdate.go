@@ -73,6 +73,8 @@ var zhDevup = Table{
 	"settings.versions.worker":       "帮 %s 做事",
 	"settings.versions.current":      "%s看过，已经是最新的",
 	"settings.versions.current.now":  "刚看过，已经是最新的",
+	"settings.versions.looked":       "%s看过",
+	"settings.versions.looked.now":   "刚看过",
 }
 
 var enDevup = Table{
@@ -146,6 +148,8 @@ var enDevup = Table{
 	"settings.versions.worker":       "Helps %s with tasks",
 	"settings.versions.current":      "Up to date, checked %s",
 	"settings.versions.current.now":  "Up to date, checked just now",
+	"settings.versions.looked":       "Checked %s",
+	"settings.versions.looked.now":   "Checked just now",
 }
 
 func init() {

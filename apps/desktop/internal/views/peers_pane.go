@@ -408,7 +408,11 @@ func (a *App) peersInvite(c *ui.Context) {
 	if a.S.Settings == nil {
 		return
 	}
-	a.footRow(c, "peers-invite", a.L.T("peers.invite", a.personaName()), func() {
+	// D500: a line on the paper, on the text edge with the group heads (never a card's foot with an
+	// empty tile column and a hairline over it).
+	t := a.T
+	ui.Row(c.Key("peers-invite")).Gap(t.S3).Padding(t.S2, t.S5).MinHeight(44).AlignItems(ui.Center).Children(func() {
+		uiText(c, a.L.T("peers.invite", a.personaName())).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if a.quietButton(c, "peers-invite", a.L.T("peers.invite.go"), "", false, 1) {
 			a.peersAsked = true
 			a.openTab(TabPeers)

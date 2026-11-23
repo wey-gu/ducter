@@ -13,7 +13,7 @@
 // what WeChat allows: it answers inside a day of their words, a few messages, no buttons.
 import type { ChannelKind, ChannelServerFrame, ChannelView } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, How, LinkBtn } from "./controls.tsx";
@@ -84,12 +84,17 @@ export function ChatAppsSettings() {
     if (A.S.welcomed) A.send({ t: "channels" });
   }, [A.S.welcomed]);
   const f = S.frame;
+  // D500: the apps in use first, then those resting until chosen; the order is set when the page
+  // opens, so an app being set up never jumps under the person.
+  const order = useRef<string[]>([]);
   if (!f) return <Waiting text={t("conn.connecting")} />;
+  const apps = chatOrder(f.channels, order.current);
+  order.current = apps.map((v) => v.kind);
   return (
     <>
       <p class="small lede-note">{t("chats.goes")}</p>
       <How about={t("chats.goes")} detail={t("chats.goes.how")} />
-      {f.channels.map((v) => (
+      {apps.map((v) => (
         <Fragment key={v.kind}>
           {v.kind === "wechat" ? <WechatCard v={v} /> : <ChannelCard v={v} manifest={f.slackManifest} />}
           <Said k={`chat:${v.kind}`} />
@@ -98,6 +103,13 @@ export function ChatAppsSettings() {
       <IMessageCard frame={f} />
     </>
   );
+}
+
+/** D500: the apps in the order held (an app new to the list re-orders all), else in use first. */
+export function chatOrder(vs: ChannelView[], held: readonly string[]): ChannelView[] {
+  const has = (k: string) => vs.some((v) => v.kind === k);
+  if (held.length === vs.length && held.every(has)) return held.map((k) => vs.find((v) => v.kind === k)!);
+  return [...vs.filter((v) => v.state !== "off"), ...vs.filter((v) => v.state === "off")];
 }
 
 /**

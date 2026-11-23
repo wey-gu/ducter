@@ -20,7 +20,7 @@ conversations separate), D31 (projects and devices are the user's) and principle
   zero concepts until wanted.
 
 **How it starts.** By talking: 「再给我做一个管家里事的伙伴，叫它小家」 makes it at once (the partner
-tool, D486), and the reply says it is beside the name. Or Settings › 伙伴, one row: **再加一个
+tool, D486), and the reply says it is beside the name. Or Settings › 伙伴 (with one partner its last group, D500), one row: **再加一个
 伙伴 / Add a partner**, with one line of help (one for work and one for home, or one per person). The
 form asks three things: a name, **它管什么 / What it looks after** (optional, the person's words) and a
 colour (D24: creating one is light). Settings' foot, with one partner, says it can be asked for in

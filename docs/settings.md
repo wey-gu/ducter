@@ -151,7 +151,8 @@ At the top is your partner, its name and one line: where it lives and what it th
 ### More than one partner
 
 You can have up to four partners: one for work and one for home, say, or one for each person in
-the family. Each has its own name, colour, conversation and memory, and none of them sees the
+the family. With one partner, **Your partners** is the last group on the Partner page; once you have
+more, it comes first. Each has its own name, colour, conversation and memory, and none of them sees the
 others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
 counts for all of them.
 
@@ -392,7 +393,7 @@ notifications off it shows where the question waits instead.
 - When you change quiet hours or how long it waits, your partner answers in one short line under
   it (like *Got it: if you don't answer, I'll go with the default after 1 hour.*), which goes away
   by itself.
-- **When it notices something** (once you have accounts): how your partner tells you what it
+- **When it notices something** (once you have accounts, under **What it finds**): how your partner tells you what it
   noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** (until you choose) or **Only when I
   ask**; see [When it notices something](accounts.md#when-it-notices-something).
   Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read

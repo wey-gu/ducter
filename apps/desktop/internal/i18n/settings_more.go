@@ -27,6 +27,7 @@ var zhSettingsMore = Table{
 	"said.handoff.off":         "好，额度用完时我等它恢复，再接着做。",
 	"density.title":            "打开的任务",
 	"density.help":             "紧凑：头像缩到标题旁边，一屏多看几行；⌘⇧D 随时切换。",
+	"density.help.touch":       "紧凑：头像缩到标题旁边，一屏多看几行。", // D500: the web on a touch screen
 	"density.comfortable":      "宽松",
 	"density.compact":          "紧凑",
 	"density.said.compact":     "打开的任务排紧凑了，⌘⇧D 换回。",
@@ -53,6 +54,7 @@ var enSettingsMore = Table{
 	"said.handoff.off":         "Got it: when a limit runs out, I'll wait for it to come back and carry on.",
 	"density.title":            "An opened task",
 	"density.help":             "Compact puts the face small beside the title, so more fits on screen; ⌘⇧D switches any time.",
+	"density.help.touch":       "Compact puts the face small beside the title, so more fits on screen.",
 	"density.comfortable":      "Comfortable",
 	"density.compact":          "Compact",
 	"density.said.compact":     "Opened tasks are compact now. ⌘⇧D switches back.",

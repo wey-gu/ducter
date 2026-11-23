@@ -845,10 +845,7 @@ func (a *App) padEnd(s string) string {
 // ruleWords is a rule as the partner wrote it ("后端的事 → Codex") with its
 // arrow said in words (D500: no text arrows on screen): 后端的事：Codex.
 func (a *App) ruleWords(text string) string {
-	sep := ": "
-	if a.L.Lang == "zh" {
-		sep = "："
-	}
+	sep := a.L.T("loadout.rule.arrow")
 	parts := strings.Split(text, "→")
 	for i := range parts {
 		parts[i] = strings.TrimSpace(parts[i])

@@ -280,15 +280,14 @@ func (a *App) updateReason(reason string) string {
 	return a.L.T("devup.why.failed")
 }
 
-// anyBehind: some computer has a newer version waiting (the About head then
-// says so, not 每台电脑上的我都是最新的).
-func (a *App) anyBehind() bool {
-	for i := range a.S.Devices {
-		if behind(&a.S.Devices[i]) {
-			return true
-		}
+// aboutSaysCurrent: the About head says 每台电脑上的我都是最新的 (nothing needs the
+// person there, nothing waiting or running), so the home's row needn't say it again (D500).
+func (a *App) aboutSaysCurrent() bool {
+	if len(a.needsOf(TabAbout)) > 0 || a.S.UpdateAll == nil {
+		return false
 	}
-	return false
+	n, running := a.updatesWaiting()
+	return n == 0 && !running
 }
 
 // upToDate never says "latest" without when it was read: 已经是最新的, and
@@ -574,7 +573,7 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			// D399: said once, on the home's row; a computer that does tasks is current with it and
 			// says nothing (three rows of the same words were a wall).
 			words, _ := a.upToDate(u) // one phrase, 刚看过，已经是最新的 (D296)
-			if !a.anyBehind() {
+			if a.aboutSaysCurrent() {
 				// D500: the pane's head already says every computer is current; the row says when it looked.
 				words = a.L.T("settings.versions.looked.now")
 				if at := store.ParseTime(u.CheckedAt); !at.IsZero() && a.Now().Sub(at) >= 2*time.Minute {

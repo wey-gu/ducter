@@ -607,7 +607,7 @@ func (a *App) aboutPanel(c *ui.Context) {
 				for _, n := range needs {
 					uiText(c.Key("about-need:"+n.key), keepWords(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.NeedsYou.Ink)
 				}
-			} else if n, running := a.updatesWaiting(); a.S.UpdateAll != nil && n == 0 && !running {
+			} else if a.aboutSaysCurrent() {
 				uiText(c.Key("about-ok"), a.L.T("say.about.ok")).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Done.Ink)
 			}
 		})

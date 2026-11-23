@@ -15,7 +15,7 @@ import { harnessName, modelName, padEnd, stamp, when } from "./format.ts";
 import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 /** D500: a rule as the partner wrote it ("后端的事 → Codex") with its arrow said in words: 后端的事：Codex. */
-export const ruleWords = (text: string) => text.split("→").map((s) => s.trim()).join(A.L.lang === "zh" ? "：" : ": ");
+export const ruleWords = (text: string) => text.split("→").map((s) => s.trim()).join(t("loadout.rule.arrow"));
 const pct = (f: number) => Math.round(f * 100);
 
 /** The home's AI agents that can do tasks now: installed and signed in. */

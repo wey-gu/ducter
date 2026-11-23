@@ -150,6 +150,7 @@ var zhLoadout = Table{
 	// D372: a rule that rules an agent out, and the built-in default per kind of work.
 	"loadout.rule.line.never":     "你定的规则：这类不用它",
 	"loadout.default.errand":      "跑腿的事交给 %s",
+	"loadout.rule.arrow":          "：", // D500: a rule's → said on screen
 	"loadout.default.errand.line": "订酒店、看机票、比价、填表这类。默认交给更快的，%s留给更难的事。",
 	"loadout.default.rest":        "写代码和别的事交给 %s",
 	"loadout.default.rest.line":   "默认交给最聪明的。",
@@ -315,6 +316,7 @@ var enLoadout = Table{
 	"loadout.rule.line":              "A rule you set",
 	"loadout.rule.line.never":        "A rule you set: not for this kind",
 	"loadout.default.errand":         "Errands go to %s",
+	"loadout.rule.arrow":             ": ",
 	"loadout.default.errand.line":    "Hotels, flights, prices, forms. By default a faster one, and %s is kept for harder work.",
 	"loadout.default.rest":           "Code and everything else goes to %s",
 	"loadout.default.rest.line":      "By default the smartest.",

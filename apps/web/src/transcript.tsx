@@ -376,7 +376,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
   const detail = !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const cls = `step${bad ? " bad" : ""}${st.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
   const mono = st.kind === "ran" || (live && !!code);
   const inner = (
     <>

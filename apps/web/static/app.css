@@ -2886,6 +2886,10 @@ a {
 .step:not(:has(> code)) > .sum:first-of-type {
   flex-shrink: 1;
 }
+/* D521: a background failure says it in its words (后台的事出错了), in the error ink, no separate tag. */
+.turns .step.bad.bg .sum {
+  color: var(--failed-ink);
+}
 .step .sum.code {
   flex: 0 1 auto;
 }

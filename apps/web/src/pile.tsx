@@ -410,9 +410,9 @@ function CloseSheet({ items }: { items: PileItem[] }) {
       <div class="pile-go">
         {PL.said && <p class="small tone-bad">{PL.said}</p>}
         <div class="pile-go-row">
-          <Btn kind="secondary" label={t("pile.close.hold")} onClick={closeSheet} />
           {/* The sheet goes on Go: the pile is watched ticking down underneath. */}
           <Btn kind="primary" grow label={t("pile.close.go", going.length)} disabled={!going.length || PL.sending} onClick={() => ((PL.sending = true), (PL.cid = `close-${Date.now()}`), A.send({ t: "pile_close", refs: going.map((p) => p.item.ref), clientId: PL.cid }), closeSheet())} />
+          <Btn kind="secondary" label={t("pile.close.hold")} onClick={closeSheet} />
         </div>
         <p class="pile-foot-note">{t("pile.close.foot")}</p>
       </div>
@@ -457,8 +457,8 @@ function ReadSheet() {
         {r.state === "drafted" && r.notes.length > 0 ? (
           <>
             <div class="pile-go-row">
-              <Btn kind="secondary" label={t("pile.read.hold")} onClick={closeSheet} />
               <Btn kind="primary" grow label={t("pile.read.go", kept.length)} disabled={!kept.length || PL.sending} onClick={() => ((PL.sending = true), (PL.cid = `send-${Date.now()}`), A.send({ t: "pre_read_send", ref: r.ref, keep: kept, clientId: PL.cid }), A.changed())} />
+              <Btn kind="secondary" label={t("pile.read.hold")} onClick={closeSheet} />
             </div>
             <p class="pile-foot-note">{t("pile.read.foot")}</p>
           </>

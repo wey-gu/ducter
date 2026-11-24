@@ -958,7 +958,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     openRow(task.id, room);
   };
   return (
-    <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
+    <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id} data-look={A.lookOf(task.card?.persona)}>
       <button class="tmain" onClick={onClick} title={title(task)} aria-current={opened ? "page" : undefined}>
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
@@ -1147,6 +1147,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       ref={ref}
       class={`ocard a-${a}${prr ? ` pr-${prr.stands}` : ""}${stopped ? " stopped" : ""}${quiet ? " quiet" : ""}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`}
       data-row={task.id}
+      data-look={A.lookOf(task.card?.persona)}
     >
       <button class="omain" onClick={onClick} title={about}>
         <StateMark k={k} frac={next?.frac ?? 0} beat={latestOf(task)?.seq} still={stepQuiet || rest} />
@@ -1851,8 +1852,10 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
     }
   }, [atWork.join(","), A.S.welcomed]);
   return (
-    <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
+    <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} data-look={A.lookOf(b.g.persona)} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
+        {/* D546: whose line of work it is, once there is more than one partner (a part's own row says it again only when another's). */}
+        <PartnerMark persona={b.g.persona} />
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
         ) : (

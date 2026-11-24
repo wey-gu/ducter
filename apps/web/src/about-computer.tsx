@@ -25,8 +25,8 @@ function RuleEdit({ dv, rule, onDone }: { dv: DeviceView; rule?: RuleView; onDon
       <Seg label={t("about.way")} value={avoid ? "less" : "more"} options={[{ v: "more", label: t("about.more") }, { v: "less", label: t("about.less") }]} onPick={(v) => setAvoid(v === "less")} />
       <Seg label={t("about.which")} value={work} options={[{ v: "heavy", label: t("about.w.heavy") }, { v: "web", label: t("about.w.web") }, { v: "all", label: t("about.w.all") }]} onPick={setWork} />
       <div class="btns">
-        <Btn kind="secondary" size="sm" label={t("about.cancel")} onClick={onDone} />
         <Btn kind="primary" size="sm" label={t("about.keep")} onClick={() => (A.send({ t: "rule_where", ...(rule ? { id: rule.id } : {}), device: dv.name, avoid, work, lang: String(A.L.lang) }), onDone())} />
+        <Btn kind="secondary" size="sm" label={t("about.cancel")} onClick={onDone} />
       </div>
     </div>
   );

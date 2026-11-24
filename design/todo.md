@@ -21,6 +21,22 @@ line.
 - [ ] **A rotated key, everywhere it was copied.** The list knows where each copy is; a rotate
   offers to copy the new value to each. Trigger: the person rotates a key that was copied.
 
+## Whose it is, after D546 (`personas.md` "Whose it is, never who is shown")
+
+- [ ] **只看{name}的 / Only {name}'s, a chip on On hand** that narrows the one board to one
+  partner's things. Not built: with at most four partners the owner's mark on every row says whose,
+  and the bar's count already opens the shown partner's own. Trigger: a real board of the author's
+  past about 20 rows a day where he scrolls past other partners' work to find one partner's.
+- [ ] **Past tasks across partners.** Core lists the shown partner's own (`past.ts` query by
+  persona), so its rows need no mark. If Past ever lists every partner's, `PastItem` gets a
+  `persona` and each row its owner's mark. Trigger: the author looks in Past for a task another
+  partner opened.
+- [ ] **A wait that ended unmet** (`missed`) carries no persona; its row is drawn in the shown
+  partner's clay. Trigger: a task-less missed wait of another partner shows on the author's board.
+- [ ] **Two marks on a rail row** (the owner's small mark before the title and the state face, both
+  in the owner's clay) were so before D546. If the lead finds it doubled, keep only the state face
+  there. Trigger: the lead's review of `.shots/owner-marks/`.
+
 ## A partner switch, after D541 (`personas.md` "Switching")
 
 - [ ] **The switch on the author's own home.** Trigger: the first release with D541. On the Mac app
@@ -78,6 +94,16 @@ line.
   the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
   (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
   with D532.
+- [ ] **D543 on a real phone on a real network** (`offline.md`): a train or a lift with the iPhone
+  app and an Android phone: the last screen stays, a message sent in a tunnel lands once, a cold start
+  offline opens to the kept screen with no can't-reach screen over it. *Trigger:* the first release
+  with D543.
+- [ ] **D543: pictures picked while the link is down** wait in memory with their words (D206's
+  upload needs the link); keep the picture's bytes in IndexedDB too, so a reload keeps them.
+  *Trigger:* a person who loses one.
+- [ ] **D543: a picture never seen offline** is a broken box (media needs the token, so the shell
+  doesn't keep it); keep the conversation's recent thumbnails with the glance. *Trigger:* the author
+  reading on a train.
 - [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
   the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,

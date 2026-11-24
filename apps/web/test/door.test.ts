@@ -38,6 +38,7 @@ async function home() {
   A.L = strings("zh");
   A.send = () => {};
   A.S.welcomed = true;
+  A.S.tasks.clear(); // only this file's tasks, whatever an earlier file left (done-today's "c")
   A.receive({
     t: "on_hand",
     onHand: {

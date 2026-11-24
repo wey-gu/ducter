@@ -1170,7 +1170,8 @@ export type NewTaskWhen =
   | { kind: "until"; condition: string };
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
-export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number; limitAuto?: boolean };
+/** D546 persona: the partner that set it (absent: the default); On hand lists every partner's waits. */
+export type WaiterView = Bodies["waiter"] & { persona?: string; armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number; limitAuto?: boolean };
 
 /**
  * D297: a wait on an AI agent's usage limit. `harness` is whose limit; every task on that account

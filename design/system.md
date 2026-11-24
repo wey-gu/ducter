@@ -599,6 +599,14 @@ window as it was.
   opens the pair screen over the app with **返回 / Back**, keeping the token. *Where:*
   `apps/web/src/link.ts` (`judge`, `createLinkWatch`), `conn.ts` (`Connection`), `main.tsx`
   (`gone`, the one place the token is cleared), `views.tsx` (`LinkLost`).
+- *Through a drop (D543, `offline.md`):* the web client says nothing for the first 2.5 s of a
+  loss (`LINK_QUIET_MS`), then the line above, so a flapping link never flickers. A page showing
+  a kept screen never tells the iPhone or Android app `reach: false` (no can't-reach screen over
+  something readable). What is sent while down waits in an outbox on the device (IndexedDB) and
+  goes after the next welcome with its clientId; a payment, a key, a Go that deletes and Call now
+  never wait and ask again. An open socket proves itself on coming back, on `online`, on `focus`
+  and on every message written (a ping and 4 s), else it is dialled again. The browser has an app
+  shell (`sw.ts`); the apps keep their own cache (D209).
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's

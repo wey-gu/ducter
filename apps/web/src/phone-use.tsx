@@ -522,8 +522,8 @@ export function PhoneLivePanel(p: { device: string; taskId?: string; mode: Phone
         <div class="btns">
           {v.mode === "signin" ? (
             <>
-              <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={() => closePhone(false)} />
               <Btn kind="primary" label={t("live.done")} onClick={() => closePhone(true)} />
+              <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={() => closePhone(false)} />
             </>
           ) : mine ? (
             v.mode === "watch" || v.taskId ? <Btn kind="primary" label={t("live.handback")} onClick={() => v.id && send({ t: "phone_turn", id: v.id, mine: false })} /> : <Btn kind="primary" label={t("live.done")} onClick={close} />
@@ -633,8 +633,8 @@ export function PhoneInfo({ dv }: { dv: DeviceView }) {
         <>
           <div class="small">{t("phoneuse.erase.ask")}</div>
           <div class="btns">
-            <Btn kind="secondary" size="sm" label={t("phoneuse.erase.keep")} onClick={() => setAsking(false)} />
             <Btn kind="primary" size="sm" label={t("phoneuse.erase.go")} onClick={() => (setAsking(false), send({ t: "phone_erase", device: dv.id, keepSdk: true }))} />
+            <Btn kind="secondary" size="sm" label={t("phoneuse.erase.keep")} onClick={() => setAsking(false)} />
           </div>
         </>
       ) : (
@@ -705,7 +705,6 @@ export function PhoneInstallSheet() {
         </>
       )}
       <div class="btns">
-        <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={close} />
         <Btn
           kind="primary"
           label={t("phoneuse.install.go")}
@@ -717,6 +716,7 @@ export function PhoneInstallSheet() {
             changed();
           }}
         />
+        <Btn kind="secondary" label={t("phoneuse.notnow")} onClick={close} />
       </div>
     </SheetFrame>
   );
@@ -744,9 +744,8 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
         </div>
         {open ? (
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t("handset.user.done")} onClick={() => A.decide(d.decisionId, "go")} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         ) : (
           <div class={compact ? "said" : "resolved"} role="status">
@@ -765,9 +764,8 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
         </div>
         {open ? (
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t("phoneuse.user.open")} onClick={() => openPhone({ device: home, mode: "signin", decisionId: d.decisionId, ...(d.taskId ? { taskId: d.taskId } : {}) })} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         ) : (
           <div class={compact ? "said" : "resolved"} role="status">
@@ -783,10 +781,9 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
       {open && <div class="dl">{ph.name ? t("phoneuse.go.what", labelHead(ph.label), ph.name) : t("phoneuse.go.what.0", labelHead(ph.label))}</div>}
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          {d.taskId && !mine && <Btn kind="text" size={compact ? "sm" : undefined} label={t("phoneuse.go.look")} onClick={() => openPhone({ device: home, taskId: d.taskId, mode: "watch" })} />}
-          {compact && <span class="grow" />}
-          <Btn kind="secondary" size={compact ? "sm" : undefined} label={t("phoneuse.go.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("phoneuse.go.go")} onClick={() => A.decide(d.decisionId, "go")} />
+          <Btn kind="secondary" size={compact ? "sm" : undefined} label={t("phoneuse.go.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
+          {d.taskId && !mine && <Btn kind="text" size={compact ? "sm" : undefined} label={t("phoneuse.go.look")} onClick={() => openPhone({ device: home, taskId: d.taskId, mode: "watch" })} />}
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">

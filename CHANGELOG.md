@@ -1,10 +1,33 @@
 # Changelog
 
+## 0.1.50 - 2026-11-24
+
+<!-- whats-new
+zh: 断网也照样能看能发；每个任务显示它自己伙伴的样子
+en: Keeps working through a bad connection; each task shows its own partner
+-->
+
+**Through a bad connection**
+- A short drop says nothing; after a few seconds one quiet line says Ducter is reconnecting. What
+  is on screen stays readable, and the composer never locks.
+- A message sent while offline shows at once with 连上就发出去 / Sends when it's back, survives a
+  reload, and is delivered once when the connection returns. Drafts are kept per partner and task.
+- Reopening the app offline shows your last screen in a moment, instead of an error page.
+- A connection that looks open but is dead is noticed within seconds, not a minute.
+
+**Whose it is**
+- With several partners, every task, card and Keep shows the partner who owns it, its colour and
+  its name ("小玛交给它的事"), whichever partner you are talking to. Every partner's Keeps are on
+  On hand.
+
+**Buttons**
+- The main button comes first on every card, sheet and settings row.
+
 ## 0.1.49 - 2026-11-24
 
 <!-- whats-new
 zh: 评审循环会真的把评审发出去；看守中的任务一眼看出下一轮
-en: The review loop really posts its reviews; a looked-after task shows its next round
+en: The review loop posts its reviews; a looked-after task shows its next round
 -->
 
 **The review loop posts its reviews**

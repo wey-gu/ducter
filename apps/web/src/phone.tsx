@@ -147,11 +147,11 @@ function GoCard({ d }: { d: DecisionState }) {
       {open ? (
         <>
           <div class="btns decide">
-            <Btn kind="text" label={t("decision.reply")} about={d.question} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
             <span class="pair">
-              <Btn kind="secondary" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
               <Btn kind="primary" label={d.goLabel} about={d.question} onClick={() => A.decide(d.decisionId, "go")} />
+              <Btn kind="secondary" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
             </span>
+            <Btn kind="text" label={t("decision.reply")} about={d.question} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
           </div>
           {A.replyOpen.has(d.decisionId) && (
             <div class="call-reply">
@@ -186,8 +186,8 @@ function QuestionCard({ d }: { d: DecisionState }) {
           <div class="call-choices">
             {d.call!.yesNo ? (
               <>
-                <Btn kind="secondary" label={t("call.no")} about={d.question} onClick={() => send("no")} />
                 <Btn kind="primary" label={t("call.yes")} about={d.question} onClick={() => send("yes")} />
+                <Btn kind="secondary" label={t("call.no")} about={d.question} onClick={() => send("no")} />
               </>
             ) : (
               (d.call!.choices ?? []).map((ch) => <Btn key={ch} kind="secondary" label={ch} about={d.question} onClick={() => send(ch)} />)
@@ -267,7 +267,6 @@ function SheetCard({ d }: { d: DecisionState }) {
       </dl>
       {open ? (
         <div class="btns decide">
-          <Btn kind="text" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
           <span class="pair">
             <Btn kind={dialed ? "primary" : "secondary"} label={t("call.sheet.done")} about={d.question} onClick={() => A.decide(d.decisionId, "go")} />
             {away && awayName ? (
@@ -286,6 +285,7 @@ function SheetCard({ d }: { d: DecisionState }) {
               </a>
             )}
           </span>
+          <Btn kind="text" label={t("call.hold")} about={d.question} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : null}
       {open && said && (

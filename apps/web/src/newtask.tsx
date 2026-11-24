@@ -438,8 +438,8 @@ export function NewTaskSheet() {
         !coarse() && <Facts class="nt-keys small sub" items={[t("newtask.keys", start), t("newtask.keys.more")]} />
       )}
       <div class="btns">
-        <Btn kind="text" label={t("newtask.cancel")} onClick={close} />
         <Btn kind="primary" grow label={nt.sending ? t("newtask.starting") : start} disabled={!!nt.sending} onClick={() => A.startNewTask()} />
+        <Btn kind="text" label={t("newtask.cancel")} onClick={close} />
       </div>
     </SheetFrame>
   );
@@ -598,6 +598,14 @@ export function FolderBrowser() {
       </div>
       {repo && repo.root !== r?.path && <div class="adf-inrepo">{t("addfolder.inrepo", repo.name)}</div>}
       <div class="nt-browse-foot adf-foot">
+        {/* Primary first, on the left; the keys' hints after the room between. */}
+        {r?.ok && !atHome ? (
+          <Btn kind="primary" size="sm" class="adf-go" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!!nt.adding} onClick={() => A.ntBrowseUse()} />
+        ) : (
+          r?.ok && <small class="adf-pick">{t("addfolder.pick")}</small>
+        )}
+        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
+        <span class="nt-grow" />
         {fine && (
           <span class="adf-keys" aria-hidden="true">
             <span>
@@ -622,13 +630,6 @@ export function FolderBrowser() {
               {t("addfolder.keys.up")}
             </span>
           </span>
-        )}
-        <span class="nt-grow" />
-        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
-        {r?.ok && !atHome ? (
-          <Btn kind="primary" size="sm" class="adf-go" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!!nt.adding} onClick={() => A.ntBrowseUse()} />
-        ) : (
-          r?.ok && <small class="adf-pick">{t("addfolder.pick")}</small>
         )}
       </div>
     </div>
@@ -743,8 +744,8 @@ export function CloneField() {
       )}
       {k.err && k.failedAccess && gh?.state !== "signed_in" && !busy && (gh?.state === "no_gh" ? <div class="nt-empty small sub">{t("newtask.gh.nogh", name)}</div> : signIn)}
       <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.clone.going") : t("newtask.clone.go")} disabled={busy || !k.address.trim()} onClick={() => A.ntCloneGo()} />
+        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
       </div>
     </div>
   );
@@ -831,8 +832,8 @@ export function NewFolderField() {
         </div>
       )}
       <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.new.going") : t("newtask.new.go")} disabled={busy || !n.name.trim()} onClick={() => A.ntNewGo()} />
+        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
       </div>
     </div>
   );

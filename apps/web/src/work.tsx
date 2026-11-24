@@ -8,6 +8,7 @@ import { detect, inLanguage, scriptOfLang, words as byLang } from "@ducter/proto
 import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { PartnerMark } from "./partners.tsx";
 import { cjkPad, clock, day, harnessName, md, when } from "./format.ts";
 import { Btn, Toggle } from "./controls.tsx";
 
@@ -65,6 +66,11 @@ const frac = (from: string | undefined, to: string | undefined) => {
   return Math.min(1, Math.max(0, (Date.now() - a) / (b - a)));
 };
 
+/** D546: whose a wait is: its task's partner, else the partner that set it (absent: the default). */
+export function waitOwner(w: WaiterView): string | undefined {
+  return (w.taskId ? A.S.tasks.get(w.taskId)?.card?.persona : undefined) ?? w.persona;
+}
+
 /** The deadline groove: a sunken clay groove from when it started to its deadline, the little
  *  Ducter on its bench sitting at now. Only for a wait with a deadline. */
 export function Groove({ w, big }: { w: WaiterView; big?: boolean }) {
@@ -81,7 +87,7 @@ export function Groove({ w, big }: { w: WaiterView; big?: boolean }) {
   const pct = `${Math.round(f * 1000) / 10}%`;
   return (
     <>
-      <span class={`groove-track${big ? " big" : ""}`} role="img" aria-label={waitCaption(w)}>
+      <span class={`groove-track${big ? " big" : ""}`} role="img" aria-label={waitCaption(w)} data-look={A.lookOf(waitOwner(w))}>
         <span class="groove" />
         <span class="gone" style={{ width: pct }} />
         <span class="who" style={{ left: pct }}>
@@ -471,7 +477,7 @@ function nextFew(r: RoutineView): string[] {
 export function pausedWhy(r: RoutineView): string {
   const why = r.pauseReason ?? "asked";
   if (why !== "asked") return t(`routine.paused.${why}`);
-  return r.pausedBy === "user" ? t("routine.paused.by_you") : t("routine.paused.by_partner", A.S.personaName);
+  return r.pausedBy === "user" ? t("routine.paused.by_you") : t("routine.paused.by_partner", A.nameOf(r.persona));
 }
 
 /** D245: how late a run started, said only when it was: "晚了 12 分钟 / 12 min late"; its own fact (D291). */
@@ -508,7 +514,10 @@ export function RoutineRow({ r }: { r: RoutineView }) {
         <WaitBubble w={{ check: r.trigger.check, event: r.trigger.event }} />
       )}
       <span class="main">
-        <span class="t">{r.name}</span>
+        <span class="t">
+          <PartnerMark persona={r.persona} />
+          {r.name}
+        </span>
         {/* A condition routine's name already says its condition. */}
         {r.trigger.kind === "time" && !r.name.includes(r.triggerWords) && <span class="m">{r.triggerWords}</span>}
         {lines.some(Boolean) && (

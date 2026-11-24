@@ -137,13 +137,13 @@ func (a *App) phoneSpec(c *ui.Context, card string, dv *protocol.DeviceView, ab 
 				return
 			}
 			a.infoText(c, a.L.T("phoneuse.erase.ask"))
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-				if a.button(c, a.L.T("phoneuse.erase.keep"), btnSecondary, t.ControlSM, t.Bg) {
-					a.pu.eraseAsk = false
-				}
+			ui.Row(c).Gap(t.S2).Children(func() {
 				if a.button(c, a.L.T("phoneuse.erase.go"), btnPrimary, t.ControlSM, t.Bg) {
 					a.pu.eraseAsk = false
 					a.send(protocol.PhoneEraseReq{T: "phone_erase", Device: dv.ID, KeepSdk: true})
+				}
+				if a.button(c, a.L.T("phoneuse.erase.keep"), btnSecondary, t.ControlSM, t.Bg) {
+					a.pu.eraseAsk = false
 				}
 			})
 		}
@@ -366,10 +366,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 				uiText(c, a.pu.errText).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 			}
 		}
-		ui.Row(c).Gap(t.S3).Justify(ui.End).Margin(t.S2, 0, 0, 0).Children(func() {
-			if a.button(c, a.L.T("phoneuse.notnow"), btnSecondary, t.ControlMD, t.Surface) {
-				close()
-			}
+		ui.Row(c).Gap(t.S3).Margin(t.S2, 0, 0, 0).Children(func() {
 			ready := tm != nil && tm.OK && a.pu.agreed && !a.pu.sending
 			if ready && a.button(c, a.L.T("phoneuse.install.go"), btnPrimary, t.ControlMD, t.Surface) {
 				acc := make([]protocol.Accepted, 0, len(tm.Licenses))
@@ -378,6 +375,9 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 				}
 				a.pu.sending, a.pu.errText = true, ""
 				a.send(protocol.PhoneInstallReq{T: "phone_install", Device: a.pu.installFor, Accepted: acc})
+			}
+			if a.button(c, a.L.T("phoneuse.notnow"), btnSecondary, t.ControlMD, t.Surface) {
+				close()
 			}
 		})
 	})
@@ -414,11 +414,11 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 	if ph.Kind == "user" {
 		uiText(c, a.L.T("phoneuse.user.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		ui.Row(c.Key("phone-user:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-			if a.button(c, a.L.T("signin.later"), btnSecondary, st.height, st.quietBg) {
-				a.Decide(d.DecisionID, "hold", "")
-			}
 			if a.button(c, a.L.T("phoneuse.user.open"), btnPrimary, st.height, st.quietBg) {
 				a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, d.DecisionID, "signin")
+			}
+			if a.button(c, a.L.T("signin.later"), btnSecondary, st.height, st.quietBg) {
+				a.Decide(d.DecisionID, "hold", "")
 			}
 		})
 		return
@@ -430,14 +430,14 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 	}
 	uiText(c, what).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("phone-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
-			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
+		if a.button(c, a.L.T("phoneuse.go.go"), btnPrimary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "go", "")
 		}
 		if a.button(c, a.L.T("phoneuse.go.hold"), btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
-		if a.button(c, a.L.T("phoneuse.go.go"), btnPrimary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "go", "")
+		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
+			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
 		}
 	})
 }
@@ -690,11 +690,11 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 		switch {
 		case pv.Mode == "signin":
 			uiText(c, a.L.T("phoneuse.signin.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
-			if a.buttonFor(c, a.L.T("phoneuse.notnow"), title, btnSecondary, t.ControlMD, t.Bg) {
-				a.ClosePhone(false)
-			}
 			if a.buttonFor(c, a.L.T("live.done"), title, btnPrimary, t.ControlMD, t.Bg) {
 				a.ClosePhone(true)
+			}
+			if a.buttonFor(c, a.L.T("phoneuse.notnow"), title, btnSecondary, t.ControlMD, t.Bg) {
+				a.ClosePhone(false)
 			}
 		default:
 			line, col := a.L.T("phoneuse.idle"), t.InkMuted

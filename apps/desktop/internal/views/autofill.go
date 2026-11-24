@@ -461,6 +461,19 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 		}
 		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
+				if !ok {
+					s.missing = need
+				} else {
+					a.send(protocol.SavedPut{T: "saved_put", Item: put})
+					s.sentAt = a.Now()
+				}
+			}
+			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+				s.editing = ""
+				a.clearForm()
+			}
+			ui.Box(c).Grow(1)
 			if x != nil {
 				if s.sure {
 					if a.buttonFor(c, a.L.T("af.remove.go"), x.Label, btnSecondary, t.ControlSM, t.Surface) {
@@ -469,19 +482,6 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 					}
 				} else if a.buttonFor(c, a.L.T("af.remove"), x.Label, btnText, t.ControlSM, t.Surface) {
 					s.sure = true
-				}
-			}
-			ui.Box(c).Grow(1)
-			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-				s.editing = ""
-				a.clearForm()
-			}
-			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
-				if !ok {
-					s.missing = need
-				} else {
-					a.send(protocol.SavedPut{T: "saved_put", Item: put})
-					s.sentAt = a.Now()
 				}
 			}
 		})
@@ -512,11 +512,6 @@ func (a *App) afDetails(c *ui.Context, details []protocol.DetailView) {
 			s.details[k] = v
 		}
 		ui.Row(c).Gap(t.S3).Children(func() {
-			ui.Box(c).Grow(1)
-			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-				s.editing = ""
-				a.clearForm()
-			}
 			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
 				values := map[string]string{}
 				for _, k := range protocol.DetailOrder {
@@ -531,6 +526,10 @@ func (a *App) afDetails(c *ui.Context, details []protocol.DetailView) {
 				}
 				a.send(protocol.SavedPut{T: "saved_put", Item: protocol.SavedInput{Kind: "detail", Values: values}})
 				s.sentAt = a.Now()
+			}
+			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+				s.editing = ""
+				a.clearForm()
 			}
 		})
 	})
@@ -621,9 +620,6 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 	uiText(c, a.L.T("pay.why")).FontSize(t.XS).TextColor(t.InkMuted)
 	ready := !p.NeedsCvc || regexp.MustCompile(`^\d{3,4}$`).MatchString(code)
 	ui.Row(c.Key("pay-go:" + d.DecisionID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("pay.hold"), p.Site, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("pay.go", amount), p.Site, btnPrimary, st.height, st.quietBg) && ready {
 			if d := a.S.Decisions[d.DecisionID]; d != nil {
 				d.Pending, d.AnsweredAt = "go", a.Now()
@@ -631,6 +627,9 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 			a.markRead()
 			a.send(protocol.DecidePay{T: "decide", DecisionID: d.DecisionID, Option: "go", Cvc: code})
 			delete(a.af.cvc, d.DecisionID)
+		}
+		if a.buttonFor(c, a.L.T("pay.hold"), p.Site, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }
@@ -653,11 +652,11 @@ func (a *App) fillButtons(c *ui.Context, d *store.DecisionState, st decisionStyl
 		return
 	}
 	ui.Row(c.Key("fill-go:" + d.DecisionID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("fill.hold"), f.Site, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("fill.go"), f.Site, btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
+		}
+		if a.buttonFor(c, a.L.T("fill.hold"), f.Site, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }

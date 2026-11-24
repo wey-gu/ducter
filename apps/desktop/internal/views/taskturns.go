@@ -130,13 +130,13 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 	if p := tu.Prompt; p != nil {
 		switch p.K {
 		case "brief":
-			label := a.L.T("task.asked", a.S.PersonaName)
+			label := a.L.T("task.asked", a.taskName(task)) // D546: whose task it is, not who is shown
 			if p.By == "you" {
 				label = a.L.T("task.asked.you")
 			}
 			a.promptCard(c, task, p, label)
 		case "partner":
-			a.promptCard(c, task, p, a.L.T("task.from.partner", a.S.PersonaName))
+			a.promptCard(c, task, p, a.L.T("task.from.partner", a.taskName(task)))
 		case "you":
 			a.sentBubble(c, p.Text, task.SendFor(p.Seq), queued, p.Media...)
 			a.steerReceipt(c, task, p.Seq) // D325
@@ -149,7 +149,7 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		case "wake", "told":
 			// D271: Ducter woke it, or told it something itself: a hairline
 			// with its time, the reason (or what was sent) on hover.
-			a.dividerTip(c, a.promptLine(p), a.promptAt(task, p), p.Text)
+			a.dividerTip(c, a.promptLine(task, p), a.promptAt(task, p), p.Text)
 		}
 	}
 	took := a.turnTook(task, tu)
@@ -258,7 +258,7 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	case "plan":
 		a.planCard(c, b)
 	case "report":
-		uiText(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.reportLabel(task, &protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		uiText(c, autospace(b.Text)).FontSize(taskProse).LineHeight(leadingFor(b.Text, 1.6)).TextColor(t.InkSoft).Selectable()
 		a.messageMedia(c, fmt.Sprint("r", b.Seq), b.Media, nil, false, "task:"+task.ID)
 		if b.Full > 0 {

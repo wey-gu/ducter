@@ -97,12 +97,12 @@ func (a *App) sitesList(c *ui.Context, dv *protocol.DeviceView) {
 		if s.clearing {
 			uiText(c, a.L.T("sites.clear.ask")).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
 			ui.Row(c).Gap(t.S3).Children(func() {
-				if a.button(c, a.L.T("sites.keep"), btnSecondary, t.ControlSM, t.Surface) {
-					s.clearing = false
-				}
 				if a.buttonFor(c, a.L.T("sites.clear.go"), a.L.T("sites.title"), btnPrimary, t.ControlSM, t.Surface) {
 					s.clearing = false
 					a.send(protocol.BrowserSitesReq{T: "browser_sites_clear"})
+				}
+				if a.button(c, a.L.T("sites.keep"), btnSecondary, t.ControlSM, t.Surface) {
+					s.clearing = false
 				}
 			})
 		} else if a.buttonFor(c, a.L.T("sites.clear"), a.L.T("sites.title"), btnText, t.ControlSM, t.Surface) {

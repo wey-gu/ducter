@@ -115,7 +115,15 @@ it turns white on the card's ledge deepened 45% toward the state's strong tone, 
 38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
 36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
-In a row the primary is first, on the left, as the decision cards put **好，发出去** first, then the others (D533: one rule everywhere; it was "last, as macOS"); at most one primary shows per group.
+In a row the primary is first, on the left, the others after it (D482's grammar on every
+surface; D543 put every card on it), and the row reads from its left edge: it is never pushed
+to the right end, where a primary that comes first would stand in the middle. At most one
+primary shows per group. A settings card's end line (`actions`, `cardEnd`, D314) follows the
+rule too: its clay first, then the quiet way out (Cancel, Back); a quiet aside that isn't an
+answer (Remove…, Use a key instead, the keys' hints) goes after the room at the row's end. One
+named exception: **a row whose words come first** (a hint, a question, a status) keeps its
+buttons after the words, primary first among them, because the words are what the buttons
+answer and they are read first.
 
 **The in-place ask.** An action on a card that changes something outside Ducter asks where it
 stands, never in a floating layer: a sunken block on the page's ground (`Bg`, radius 12,

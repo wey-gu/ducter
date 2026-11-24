@@ -525,6 +525,19 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	})
 }
 
+// ownedTitle (D546) is a card's title with whose task it is before it: its
+// partner's mark, once there is more than one.
+func (a *App) ownedTitle(c *ui.Context, task *store.Task, size float32) {
+	if !a.manyPartners() {
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(size).FontWeight(800).Balance()
+		return
+	}
+	ui.Row(c.Key("owned")).Gap(a.T.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		a.partnerMark(c, "t-"+task.ID, a.taskPartner(task))
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(size).FontWeight(800).Balance().Grow(1).Shrink(1).MinWidth(0)
+	})
+}
+
 // askerRow is what the ask is about: the task's short title as a link
 // (its hover says the whole title, who and where), and how long ago. No
 // coin: at this size it reads as an emoji (D213).
@@ -536,6 +549,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 		for _, why := range a.whereWhy(task) {
 			tip += "\n" + why
 		}
+		a.partnerMark(c, "ask-"+task.ID, a.taskPartner(task)) // D546: whose task asks
 		l := ui.Row(c.Key("asker")).Gap(2).AlignItems(ui.Center).Grow(1).MinWidth(0).Cursor(ui.CursorPointer).
 			Role(ui.RoleLink).Label(task.Title()).Focusable().Tooltip(tip)
 		hover := l.Hovered() || l.Pressed()
@@ -683,10 +697,10 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 			}
 			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
 		}
-		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		a.ownedTitle(c, task, t.MD)
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
-			a.goal(c, u.Until, false)
+			a.goal(c, u.Until, a.taskLook(task), false)
 			if line := a.untilLine(u.Until); line != "" {
 				uiText(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 			}
@@ -711,7 +725,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		a.ownedTitle(c, task, t.MD)
 		// What it waits for, said alone: the clock or the wait's bubble
 		// already says it is waiting (D291); when it comes back is its own
 		// muted time.

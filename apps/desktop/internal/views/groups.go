@@ -353,6 +353,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					a.oh.groupRename = ""
 				}
 			} else {
+				a.partnerMark(c, "group-"+g.ID, g.Persona) // D546: whose group
 				uiText(c, g.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 			}
 			ui.Spacer(c)

@@ -18,6 +18,10 @@ export const linkWords: { zh: Record<string, string>; en: Record<string, string>
     "connect.revoked": "%s 上的 Ducter 已经断开了这台手机。要回来，就再连一次。",
     "connect.unknown": "%s 上的 Ducter 认不出这台手机了，可能是它的设备记录被重置过。要回来，就再连一次。",
     "connect.back": "返回",
+    // D543: what was sent while the link was down waits on this phone and goes when it is back.
+    "conn.queued": "连上就发出去",
+    "conn.ask.again": "还没连上 %s。这一步不能晚点再发，连上后再点一次。",
+    "conn.answer.stale": "断开得太久，刚才的回答没有替你发出去。再看一眼那张卡片。",
   },
   en: {
     "conn.reconnecting": "Reconnecting to %s…",
@@ -33,5 +37,8 @@ export const linkWords: { zh: Record<string, string>; en: Record<string, string>
     "connect.revoked": "Your Ducter on %s disconnected this phone. Connect it again to come back.",
     "connect.unknown": "Your Ducter on %s doesn't know this phone anymore; its list of devices may have been reset. Connect it again to come back.",
     "connect.back": "Back",
+    "conn.queued": "Sends when it's back",
+    "conn.ask.again": "Not connected to %s yet. This one can't be sent later: tap it again once it's back.",
+    "conn.answer.stale": "The link was down too long, so your answer wasn't sent. Have another look at the card.",
   },
 };

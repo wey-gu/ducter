@@ -441,8 +441,8 @@ function AddForm({ done }: { done: () => void }) {
         </p>
       )}
       <div class="btns">
-        <Btn kind="text" label={t("partners.add.cancel")} onClick={done} />
         <Btn kind="primary" label={t("partners.add.go")} disabled={!name.trim()} onClick={go} />
+        <Btn kind="text" label={t("partners.add.cancel")} onClick={done} />
       </div>
     </div>
   );

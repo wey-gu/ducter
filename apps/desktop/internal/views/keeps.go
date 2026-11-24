@@ -266,7 +266,10 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 				if k.Life == "paused" {
 					ink = t.InkMuted
 				}
-				uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2)
+				ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					a.partnerMark(c, "keep-"+k.ID, k.Persona) // D546: whose Keep, as a task row says whose task
+					uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0)
+				})
 				if len(facts) > 0 {
 					ui.Row(c.Key("facts")).Gap(t.S3).Wrap().Children(func() {
 						for i, f := range facts {
@@ -519,7 +522,7 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 	ui.Row(c.Key("ph")).Gap(18).AlignItems(ui.Start).Margin(0, 0, 12, 0).Children(func() {
 		a.keepMark(c, "page", k.Life, 64)
 		ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			uiText(c.Key("kick"), a.L.T("keep.kicker", a.S.PersonaName)).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
+			uiText(c.Key("kick"), a.L.T("keep.kicker", a.ownerName(k.Persona))).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
 			uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.XXL).FontWeight(800).TextColor(t.Ink).LineHeight(1.2).Margin(2, 0, 8, 0)
 			ui.Row(c.Key("life")).Gap(8).Wrap().Children(func() {
 				life := tagPlain
@@ -810,7 +813,7 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 		})
 		ks.focus = false
 		if ks.told == k.ID && ks.said == "" {
-			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.S.PersonaName)).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
+			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.ownerName(k.Persona))).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
 		}
 	})
 }

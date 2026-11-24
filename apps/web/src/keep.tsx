@@ -17,6 +17,7 @@ import { soon } from "./onhand.tsx";
 import { healthLine, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
 import { Menu, MenuItem, Select } from "./menu.tsx";
+import { PartnerMark } from "./partners.tsx";
 import { SEG_MAX, taskAgents, taskComputers } from "./partner-story.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -239,11 +240,14 @@ export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }
   const nested = k.run === "perItem" ? k.items.filter((x) => x.at !== "you" && x.at !== "ready") : [];
   const shown = nested.slice(0, 3);
   return (
-    <div class={`kp-sheet${k.life === "paused" ? " paused" : ""}`} data-keep={k.id}>
+    <div class={`kp-sheet${k.life === "paused" ? " paused" : ""}`} data-keep={k.id} data-look={A.lookOf(k.persona)}>
       <button class="kp-head" onClick={() => openKeep(k.id)} aria-label={spoken(A.L, t("keep.open", k.title), ...facts.map((f) => f.text), beat)}>
         <KeepMark life={k.life} beat={beatNow(k)} />
         <span class="kp-tx">
-          <span class="kp-title">{k.title}</span>
+          <span class="kp-title">
+            <PartnerMark persona={k.persona} />
+            {k.title}
+          </span>
           {facts.length > 0 && (
             <span class="kp-facts">
               {facts.map((f) => (
@@ -734,7 +738,7 @@ function Talk({ k }: { k: KeepPage }) {
       <ComposerBox id="keep-talk" value={tk.text} onInput={(v) => ((tk.text = v), (tk.sent = ""), A.changed())} onSend={send} sending={!!tk.sending} label={place} placeholder={place} />
       {tk.sent === k.id && !tk.text && (
         <p class="kp-sent" role="status">
-          {t("keep.talk.sent", A.S.personaName)}
+          {t("keep.talk.sent", A.nameOf(k.persona))}
         </p>
       )}
     </div>
@@ -798,7 +802,7 @@ export function KeepPageView({ room }: { room: string }) {
         <header class="kp-ph">
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />
           <div>
-            <p class="kick">{t("keep.kicker", A.S.personaName)}</p>
+            <p class="kick">{t("keep.kicker", A.nameOf(k.persona))}</p>
             <h1>{noOrphan(k.title)}</h1>
             <p class="kp-life">
               {chips.map((c) => (

@@ -277,15 +277,15 @@ func (a *App) infoActs(c *ui.Context, task *store.Task, base string) {
 		case merged:
 			uiText(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		default:
+			if can && a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlSM, t.Surface) {
+				act("merge")
+			}
 			if pr != "" {
 				if a.button(c, a.L.T("info.pr.open"), btnSecondary, t.ControlSM, t.Surface) {
 					c.OpenURL(pr)
 				}
 			} else if can && !noRemote(task) && a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlSM, t.Surface) {
 				act("open_pr")
-			}
-			if can && a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlSM, t.Surface) {
-				act("merge")
 			}
 		}
 	})

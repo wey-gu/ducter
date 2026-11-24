@@ -167,7 +167,9 @@ You can have up to four partners: one for work and one for home, say, or one for
 the family. With one partner, **Your partners** is the last group on the Partner page; once you have
 more, it comes first. Each has its own name, colour, conversation and memory, and none of them sees the
 others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
-counts for all of them.
+counts for all of them. On hand shows every partner's tasks, whichever partner you're talking to:
+each task, routine and standing job carries the small figure of the partner that started it, in
+that partner's colour, and an opened task says which partner gave it the work.
 
 - **Make one.** Tell your partner ("make me another partner for things at home, call it Home"), or
   open **Settings › Partner › Your partners › Add a partner** and give it a name, **What it looks

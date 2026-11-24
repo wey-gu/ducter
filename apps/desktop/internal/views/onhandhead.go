@@ -472,7 +472,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				}
 			}
 			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
-				a.goal(c, u.Until, false)
+				a.goal(c, u.Until, a.taskLook(task), false)
 			}
 			// D498: no step for a while: when the last one was, quietly (a fact; the
 			// partner judges a stall, D481).

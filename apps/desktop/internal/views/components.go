@@ -1289,3 +1289,25 @@ func (a *App) stepNumber(c *ui.Context, n int) {
 		uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 	})
 }
+
+// lineField is the shared one-line field (D536; the web's Field): the
+// control height, as wide as its column allows up to 420, a hairline that
+// becomes the one accent ring while typing in it. strong: a name, bolder.
+func (a *App) lineField(c *ui.Context, key, label string, v *string, placeholder string, strong bool, submit func()) ui.Element {
+	t := a.T
+	in := ui.TextInput(c.Key("input:"+key), v).Placeholder(placeholder).Label(label).
+		FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).
+		Width(420).MaxWidthPercent(100)
+	if strong {
+		in.FontWeight(700)
+	}
+	if in.Focused() {
+		in.Border(2, t.Accent)
+	} else {
+		in.Border(1, t.Line2)
+	}
+	if submit != nil {
+		in.OnSubmit(submit)
+	}
+	return in
+}

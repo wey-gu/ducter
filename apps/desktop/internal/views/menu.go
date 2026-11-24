@@ -35,6 +35,17 @@ func (a *App) menuButton(c *ui.Context, b ui.Element, build func(m *ui.Menu), st
 	a.inMenuTheme(c, func() { b.PopoverMenuButton(build, o) })
 }
 
+// menuAbove is menuButton opening above b (D536): for a pop-up choice low
+// in its card, the list goes up over its own group, never down over the next
+// group's heading; it flips below where the window has no room above.
+func (a *App) menuAbove(c *ui.Context, b ui.Element, build func(m *ui.Menu), start bool) {
+	o := ui.PopoverMenuButtonOptions{At: ui.AnchorTopEnd, Self: ui.AnchorBottomEnd, Panel: a.menuPanel, Item: a.menuItemRow}
+	if start {
+		o.At, o.Self = ui.AnchorTopStart, ui.AnchorBottomStart
+	}
+	a.inMenuTheme(c, func() { b.PopoverMenuButton(build, o) })
+}
+
 // contextMenu gives e the clay menu build fills, where it is right-clicked
 // (or Control-clicked, or the menu key pressed while it has the focus).
 func (a *App) contextMenu(c *ui.Context, e ui.Element, build func(m *ui.Menu)) {

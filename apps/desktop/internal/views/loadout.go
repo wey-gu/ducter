@@ -448,6 +448,11 @@ func (a *App) thinksGroup(c *ui.Context) {
 	t := a.T
 	lo := &a.lo
 	title := a.L.T("loadout.brain.title")
+	// D536: with more than one partner this is the default every partner without its own follows.
+	note := ""
+	if a.manyPartners() {
+		title, note = a.L.T("loadout.brain.title.default"), a.L.T("loadout.brain.default.note", a.defaultName())
+	}
 	if a.noBrain() {
 		a.group(c, "brain", title, "", func() {
 			a.headRow(c, "brain", nil, a.L.T("loadout.brain.none"), a.L.T("loadout.brain.none.line"), sideMuted, nil)
@@ -487,7 +492,7 @@ func (a *App) thinksGroup(c *ui.Context) {
 		}
 		lines = append(lines, l)
 	}
-	a.group(c, "brain", title, "", func() {
+	a.group(c, "brain", title, note, func() {
 		a.headRow(c, "brain", a.agentTile(c, b.Harness, false), harnessName(b.Harness), strings.Join(lines, "\n"), sideMuted, func() {
 			switch {
 			case lo.choosing:
@@ -540,9 +545,39 @@ func (a *App) thinksGroup(c *ui.Context) {
 				// the row's right edge opening them, as the reply language does, never a tray
 				// wrapping onto a second line with one model alone on it.
 				a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), func() {
-					if i := a.modelPill(c, labels, sel, &a.partner.modelOpen); i >= 0 {
+					if i := a.modelPill(c, labels, sel); i >= 0 {
 						a.setBrain(protocol.Brain{Harness: b.Harness, Model: models[i].id})
 						a.say("brain", a.L.T("said.brain", a.L.T("loadout.brain.with", harnessName(b.Harness), models[i].label)))
+					}
+				})
+			}
+		}
+		// D536: how hard it thinks, where the model names its levels (its own default first).
+		if !lo.choosing && len(models) > 0 {
+			cur := models[brainModelIndex(models, b.Model)]
+			var levels []string
+			for _, m := range a.brainModelsFor(b.Harness) {
+				if m.ID == cur.id {
+					levels = m.Efforts
+				}
+			}
+			if len(levels) > 0 {
+				labels := []string{a.L.T("newtask.effort.default")}
+				at := 0
+				for i, e := range levels {
+					labels = append(labels, a.effortWord(e))
+					if e == b.Effort {
+						at = i + 1
+					}
+				}
+				a.tileRow(c, "brain-effort", nil, a.L.T("newtask.effort"), "", func() {
+					if i := a.pickPill(c, "brain-effort", a.L.T("newtask.effort"), labels, at, false); i >= 0 && i != at {
+						nb := protocol.Brain{Harness: b.Harness, Model: cur.id}
+						if i > 0 {
+							nb.Effort = levels[i-1]
+						}
+						a.setBrain(nb)
+						a.say("brain", a.L.T("said.effort", strings.ToLower(labels[i])))
 					}
 				})
 			}
@@ -632,6 +667,9 @@ func (a *App) tasksGroup(c *ui.Context) {
 			}
 			if h.Harness == b.Harness && h.CanBePartner {
 				lines = append(lines, a.L.T("loadout.acct.thinks"))
+			}
+			if l := a.partnersOnAgent(h.Harness); l != "" {
+				lines = append(lines, l) // D536
 			}
 			var control func()
 			if len(ready) > 1 {

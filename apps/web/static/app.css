@@ -21508,7 +21508,7 @@ html[data-text-size="large"] .brand-mark > svg {
 
 /* D486: what a partner looks after, under its name; its removal asked in its own row; words another partner passed on. */
 .partners-set .partner-about { color: var(--ink-soft); overflow-wrap: anywhere; }
-.partners-set .about-input { font-size: var(--xs); }
+
 .partners-set .partner-removing b { font-weight: 700; }
 .passed-from:disabled { cursor: default; }
 .passed-from .stone { flex: none; }
@@ -22989,6 +22989,58 @@ button.tray-main:focus-visible,
 /* D532: the pair screen keeps a reading measure on a wide window (the Mac's card is 560). */
 .pairing { width: 100%; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
 .pairing .set-back { align-self: flex-start; }
+
+
+/* D536: what each partner thinks with, under its name: its agent's coin and the facts beside it (its
+   own setting, or the default partner's), or one quiet line (the same as the default's). 改一下 adds
+   the pickers, indented as the colours are, each a small label over its pop-up, wrapping on a phone. */
+.partners-set .partner-thinks {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink-soft);
+}
+.partners-set .partner-thinks.same { color: var(--ink-muted); }
+.partners-set .partner-thinks > .coin-art { flex: none; margin-top: 1px; }
+.partners-set .partner-thinks-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin-inline-start: 52px;
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick > .small { color: var(--ink-muted); }
+/* D536: the shared one-line field (Field): 44 tall, the hairline turning into the one accent ring
+   while typing (an inset ring, so the page's outer focus ring never stacks a second one outside it). */
+.field {
+  width: 100%;
+  min-width: 0;
+  height: max(44px, 2.75rem);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+  line-height: 1.4;
+}
+.field.strong { font-weight: 700; }
+.field::placeholder { color: var(--ink-muted); }
+.field:focus,
+.field:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.partners-set .partner-words .field { max-width: 26.25rem; }
 
 /* ---------- D534: @ and / in the composers (composer.tsx MentionPop, RefChip; design/mentions.md) ----------
    The words sit over a backdrop that marks each picked reference on the chip's tint (the textarea

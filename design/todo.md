@@ -65,6 +65,18 @@ line.
   is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
   bubble. *Trigger:* the author says the bubble reads wrong.
 
+## Each partner thinks with its own, after D536 (`personas.md` "What each thinks with")
+
+- [ ] **The author's review** of the line under each name, 改一下's three pop-ups and the default card's
+  new title, on hel with four partners. *Check:* 小玛 on Claude Code Opus answers on it from its next
+  message, its digest runs there, and 「小玛用 Opus」 said to Ducter sets 小玛's, not Ducter's.
+- [ ] **A live run** with two partner sessions on two agents, one of them hitting its limit: the other
+  partner keeps answering on its own, the held one's next agent answers meanwhile.
+- [ ] **A task default per partner** (its tasks on its own agent too). *Trigger:* a person asks for it
+  ("小玛的活都用 Claude Code"); today a rule for a kind of work or New tasks start covers it.
+- [ ] **A partner's own agent signed out** says so on its row and falls back (today the row shows the
+  setting and its turns fail until D435 holds the agent). *Trigger:* the first report of a partner on a signed-out agent.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with

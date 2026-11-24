@@ -9,7 +9,7 @@
 // another can be removed: its id is never given again, so its conversation is never inherited.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, LogEvent, PartnerAsk } from "@ducter/protocol";
+import { HARNESSES, isHarnessId, type Bodies, type Brain, type LogEvent, type PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isLook, nextLook, partnerNameProblem, lastLine, type PartnerInfo, type PartnerLast, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
@@ -22,6 +22,24 @@ interface Kept {
   createdAt: string;
   /** D486: what it looks after, in the person's words. */
   about?: string;
+  /** D536: what it thinks with, when the person gave it its own (absent: the default partner's). */
+  brain?: Brain;
+}
+
+/** D536: a model or effort id as kept: one short token, no spaces or control characters. */
+const shortId = (x: unknown, n: number): string | undefined => {
+  if (typeof x !== "string") return undefined;
+  const v = x.trim();
+  return v && v.length <= n && !/[\s\p{Cc}]/u.test(v) ? v : undefined;
+};
+
+/** D536: a partner's own brain as kept: an agent that may be the partner, its model and effort; else none. */
+export function cleanBrain(v: unknown): Brain | undefined {
+  const b = v as { harness?: unknown; model?: unknown; effort?: unknown } | null | undefined;
+  if (!b || typeof b !== "object" || typeof b.harness !== "string" || !isHarnessId(b.harness) || !HARNESSES[b.harness].partner) return undefined;
+  const model = shortId(b.model, 80);
+  const effort = shortId(b.effort, 20);
+  return { harness: b.harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
 }
 interface File {
   defaultLook?: PartnerLook;
@@ -45,7 +63,7 @@ export interface Partners {
   has(id: string): boolean;
   add(input: { name: string; look?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** A rename, a new look or what it looks after. The default's rename goes through settings (persona.json), not here. */
-  set(id: string, patch: { name?: string; look?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  set(id: string, patch: { name?: string; look?: unknown; about?: unknown; /** D536: null: the default's again. */ brain?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** D486: removes another partner (never the default). Its conversation stays in the Log; its tasks become the default's. */
   remove(id: string): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** D486: a partner by its name (trimmed, case folded), the default included. */
@@ -80,7 +98,7 @@ export function openPartners(opts: {
       const others = (Array.isArray(raw?.others) ? raw.others : [])
         .filter((p: any) => typeof p?.id === "string" && /^[a-z0-9-]{1,40}$/.test(p.id) && p.id !== DEFAULT_PARTNER && typeof p?.name === "string" && p.name.trim())
         .slice(0, PARTNERS_MAX - 1)
-        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString(), ...(cleanAbout(p.about) ? { about: cleanAbout(p.about) } : {}) }));
+        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString(), ...(cleanAbout(p.about) ? { about: cleanAbout(p.about) } : {}), ...(cleanBrain(p.brain) ? { brain: cleanBrain(p.brain) } : {}) }));
       const gone = (Array.isArray(raw?.gone) ? raw.gone : []).filter((g: unknown): g is string => typeof g === "string" && /^[a-z0-9-]{1,40}$/.test(g));
       return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), ...(cleanAbout(raw?.defaultAbout) ? { defaultAbout: cleanAbout(raw.defaultAbout) } : {}), others, ...(gone.length ? { gone } : {}) };
     } catch (err) {
@@ -121,7 +139,7 @@ export function openPartners(opts: {
   const asks = (id: string): number => questions(id).length;
 
   const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER), ...(file.defaultAbout ? { about: file.defaultAbout } : {}) });
-  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id), ...(p.about ? { about: p.about } : {}) });
+  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id), ...(p.about ? { about: p.about } : {}), ...(p.brain ? { brain: p.brain } : {}) });
   const names = (except?: string) => [opts.persona.name, ...file.others.map((p) => p.name)].filter((_, i) => (i === 0 ? except !== DEFAULT_PARTNER : file.others[i - 1]!.id !== except));
   const takenLooks = () => [file.defaultLook ?? "sand", ...file.others.map((p) => p.look)];
   const newId = () => {
@@ -154,6 +172,7 @@ export function openPartners(opts: {
     set(id, patch) {
       if (id === DEFAULT_PARTNER) {
         if (patch.name !== undefined) return { ok: false, error: "unknown" }; // settings_set renames the default
+        if (patch.brain !== undefined) return { ok: false, error: "unknown" }; // D536: the default's is Settings.brain
         if (patch.look === undefined && patch.about === undefined) return { ok: false, error: "unknown" };
         if (patch.look !== undefined && !isLook(patch.look)) return { ok: false, error: "unknown" };
         const about = patch.about !== undefined ? cleanAbout(patch.about) : file.defaultAbout;
@@ -180,6 +199,13 @@ export function openPartners(opts: {
         const about = cleanAbout(patch.about);
         const { about: _was, ...rest } = next;
         next = about ? { ...rest, about } : rest;
+      }
+      if (patch.brain !== undefined) {
+        // D536: null is the default partner's again; anything it can't think with is refused.
+        const brain = patch.brain === null ? undefined : cleanBrain(patch.brain);
+        if (patch.brain !== null && !brain) return { ok: false, error: "unknown" };
+        const { brain: _was, ...rest } = next;
+        next = brain ? { ...rest, brain } : rest;
       }
       file = { ...file, others: file.others.map((p, i) => (i === at ? next : p)) };
       save();

@@ -33,6 +33,8 @@ export interface BrainHoldPort {
    * partner is installed and signed in): a message waits for the first one, said once by code.
    */
   blind?(): boolean;
+  /** D536: the same holds for a partner that thinks with its own agent (base: that agent). */
+  as?(base: () => HarnessId): Omit<BrainHoldPort, "as">;
 }
 
 export interface AppendInput<K extends EventKind = EventKind> {

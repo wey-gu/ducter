@@ -569,6 +569,8 @@ type Store struct {
 	Helpers []protocol.HelperView
 	// BrainNow is what the partner thinks with right now (D150).
 	BrainNow *protocol.BrainNow
+	// BrainOptions is D536: what each partner's own 想事情用 may offer.
+	BrainOptions []protocol.BrainOption
 	// Connections (D96), once asked for; nil means not yet. Oo is what the
 	// oo CLI is set up with. ConnResult is the last add/remove answer, for
 	// the page to turn into one line.
@@ -831,6 +833,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Mem = f.Mem
 		}
 		s.BrainNow = f.BrainNow
+		s.BrainOptions = f.BrainOptions
 		s.Bridge = f.Bridge
 		s.OwnAgents = f.OwnAgents
 		s.Helpers = f.Helpers

@@ -63,7 +63,8 @@ test("a second partner's own session answers in its name, on its own role and fo
   expect(inputs(mainRunner)).toContain("ship the release");
   expect(inputs(mainRunner)).not.toContain("牙医");
   // D486: who the others are and what each looks after; the passed words say who passed them.
-  expect(inputs(homeRunner)).toContain('[partners] You are 小家, looking after: "家里的事、看病、孩子". The user\'s other partners: Ducter.');
+  // D536: and what it thinks with, whose setting that is.
+  expect(inputs(homeRunner)).toContain('[partners] You are 小家, looking after: "家里的事、看病、孩子". You think with Claude Code opus (the same as Ducter\'s). The user\'s other partners: Ducter.');
   expect(inputs(homeRunner)).toContain("[user, passed on by Ducter, the partner they said it to] 周六提醒我带孩子打疫苗");
   expect(inputs(mainRunner)).toContain('The user\'s other partners: 小家 (looks after: "家里的事、看病、孩子")');
 

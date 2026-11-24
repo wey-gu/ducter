@@ -7,7 +7,7 @@ import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -377,6 +377,8 @@ class AppState {
   peersAsked = false;
   /** What the partner thinks with right now (D150), and the computer Ducter runs on. */
   brainNow?: BrainNow;
+  /** D536: with more than one partner, what each one's own 想事情用 picker may offer. */
+  brainOptions?: BrainOption[];
   homeName?: string;
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
@@ -1032,6 +1034,7 @@ class AppState {
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
+    this.brainOptions = f.brainOptions;
     if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
     // D329: an Undo Mem didn't take: said quietly on that line until the next settings frame.
     this.undoFailed = f.undid && !f.undid.ok ? f.undid.seq : undefined;
@@ -2184,7 +2187,7 @@ class AppState {
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string }) {
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string; /** D536: null: the same as the default partner's. */ brain?: Brain | null }) {
     if (id === DEFAULT_PARTNER && patch.name) {
       this.setSettings({ name: patch.name });
       const { name: _n, ...rest } = patch;
@@ -2193,7 +2196,15 @@ class AppState {
     }
     const cid = `ps-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "set" };
-    if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    const { brain, ...words } = patch;
+    if (this.partners)
+      this.partners = this.partners.map((p) => {
+        if (p.id !== id) return p;
+        const next = { ...p, ...words };
+        if (brain === null) delete next.brain;
+        else if (brain) next.brain = brain;
+        return next;
+      });
     this.send({ t: "partner_set", id, ...patch, clientId: cid });
     this.changed();
   }

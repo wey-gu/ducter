@@ -585,6 +585,33 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person asked for a second partner named 小家 for things at home. Pass if 小家 is made at once with what it looks after in their words, and the reply is one short Chinese line that it is made and how to talk to it (its row in the list of partners: at the left on a computer, back with ‹ on a phone). Fail if it asks questions first, opens a task, explains settings at length, or claims it can't.",
   },
+  // D536: what another partner thinks with, said to any partner: brain_switch with its name, never
+  // the asker's own setting (nor the default every other partner follows), never a task.
+  {
+    id: "wp-partner-brain-other-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [
+      { name: "多比", about: "读书和跑步" },
+      { name: "小新", about: "账单和报销" },
+      { name: "小玛", about: "GTM growth hacker，增长和投放" },
+    ],
+    steps: [{ user: "小玛以后用 Opus 想事情吧" }],
+    expect: { called: [{ tool: "brain_switch", args: { partner: /小玛/, model: /opus/i } }], notCalled: ["task_switch", "task_open"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    rubric:
+      "The person, talking with their work partner, wants 小玛 (another partner) to think with Opus. Pass if brain_switch sets 小玛's (partner 小玛, model Opus), not this partner's own, and at most one short Chinese line says 小玛 uses Opus from its next message. Fail if it switches itself, passes the words to 小玛 as a message instead, opens a task, or asks first.",
+  },
+  {
+    id: "wp-partner-brain-self-en",
+    category: "puzzle",
+    lang: "en",
+    second: { name: "Mia", about: "growth, launches and ads" },
+    steps: [{ user: "use opus for our chats from now on" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch", "partner"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric:
+      "The partner under test is Mia, a second partner; the person asks Mia itself to think with Opus. Pass if brain_switch sets it (for Mia: no partner named, or Mia), nothing is opened or passed on, and at most one short English line says Mia thinks with Opus from the next message. Fail if it claims it changed Ducter's, opens a task, or asks.",
+  },
   {
     id: "wp-partner-pass-back-en",
     category: "puzzle",

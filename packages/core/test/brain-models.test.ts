@@ -26,9 +26,10 @@ const cxOnly: DeviceHarness[] = [
 test("brainNow: a Codex home with its list read offers Sol and Astra, its default marked, no guessed kind", () => {
   const now = brainNow({ harness: "claude-code", model: "opus" }, false, cxOnly, (h) => (h === "codex" ? CODEX : undefined));
   expect(now).toMatchObject({ harness: "codex", auto: true, why: "only_codex" });
+  // D536: each with its effort levels from the live list.
   expect(now.models).toEqual([
-    { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", default: true },
-    { id: "gpt-6.2-astra", label: "GPT-6.2-Astra" },
+    { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", default: true, efforts: ["low", "medium", "high"], defaultEffort: "low" },
+    { id: "gpt-6.2-astra", label: "GPT-6.2-Astra", efforts: ["low", "medium", "high"], defaultEffort: "low" },
   ]);
   // Chosen Astra: still both, the setting's model named.
   const set = brainNow({ harness: "codex", model: "gpt-6.2-astra" }, true, cxOnly, () => CODEX);

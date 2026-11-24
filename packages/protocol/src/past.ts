@@ -303,6 +303,9 @@ export type PastClientFrame =
   | { t: "outside_hide"; agent: OutsideAgent; hidden: boolean }
   // 一直在跑的 / Ongoing: answered with ongoing_result; every window gets a fresh one after an action.
   | { t: "ongoing"; id?: string }
+  // D511: one Keep's page (keep_result); its gestures (action_result, then a fresh keep_result and On hand).
+  | { t: "keep"; id: string }
+  | ({ t: "keep_action"; id: string } & import("./keeps.ts").KeepAction)
   // Answered with action_result (taskId: the id, action: the action's name), then ongoing_result.
   | ({ t: "ongoing_action"; kind: "routine" | "task"; id: string } & OngoingAction);
 
@@ -319,4 +322,6 @@ export type PastServerFrame =
   | { t: "outside_adopted"; agent: OutsideAgent; id: string; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_hidden"; agent: OutsideAgent; hidden: boolean }
   | { t: "past_marked"; taskId: string; mark: PastMark | null }
-  | { t: "ongoing_result"; id?: string; items: OngoingItem[] };
+  | { t: "ongoing_result"; id?: string; items: OngoingItem[] }
+  // D511: a Keep's page; absent: no Keep by that id for this partner.
+  | { t: "keep_result"; id: string; keep?: import("./keeps.ts").KeepPage };

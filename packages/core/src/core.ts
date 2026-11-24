@@ -65,6 +65,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
+import { createKeeps, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -820,6 +821,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D507 (D494): which task is which helper's work (the helper's claim went out naming it), kept as the
   // Log grows, and the first messages each helper took (its week): On hand stands a helper's tasks under it.
   let helpersRef: Helpers | undefined;
+  // D511: 照看 / Looking after: every routine, task in rounds and helper is a Keep (keeps.ts).
+  let keepsRef: Keeps | undefined;
+  let wsUp = false;
   const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[] };
   const indexHelper = (e: LogEvent) => {
     if (e.kind !== "bridge_msg") return;
@@ -855,6 +859,16 @@ export function startCore(opts: CoreOptions = {}): Core {
       ...(on.length ? { helpers: on } : {}),
     };
   };
+  // D511: 在照看的 / Looking after: each Keep its own sheet, and every task it owns names it.
+  const keepsDecorate = (o: OnHand): OnHand => {
+    const ks = keepsRef;
+    if (!ks) return o;
+    const sheets = ks.sheets(persona.id);
+    if (!sheets.length) return o;
+    const of = new Map<string, { id: string; name: string }>();
+    for (const s of sheets) for (const t of s.taskIds) of.set(t, { id: s.id, name: s.title });
+    return { ...o, tasks: o.tasks.map((c) => (of.has(c.taskId) ? { ...c, keep: of.get(c.taskId)! } : c)), keeps: sheets };
+  };
   const turnsDecorate = (o: OnHand): OnHand => ({
     ...o,
     tasks: o.tasks.map((c) => {
@@ -874,7 +888,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))));
+    const on = keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -1563,6 +1577,33 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
   registerOngoingTools(mcp, ongoing, () => persona.id, { lang: () => langNow(), zone: () => opts.work?.defaultZone, now: () => clock.now() }); // D429: its ready lines in the person's language
+  // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
+  // migration: their own records stay as they are), and whatever becomes one later is kept at once.
+  const keeps = (keepsRef = createKeeps({
+    log,
+    tasks,
+    routines: work.routines,
+    loops: work.loops,
+    helpers: () => helpersRef,
+    ongoing: () => ongoingRef,
+    helperTasks: () => helperIndex.tasks,
+    helperWeek: (id) => helperCount(id).week,
+    persona: () => persona.id,
+    isOf: (p, want) => (want === persona.id ? !isOther(p) : p === want),
+    lang: () => langNow(),
+    zone: () => opts.work?.defaultZone,
+    clock,
+    onChange: () => (onHandChanged(), wsUp && ws.ongoingChanged()),
+  }));
+  let keepSync = false;
+  const syncKeeps = () => {
+    if (keepSync) return;
+    keepSync = true;
+    queueMicrotask(() => ((keepSync = false), keeps.sync()));
+  };
+  log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
+  helpers.onChange(syncKeeps);
+  api.keeps = keeps;
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
@@ -1639,9 +1680,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
+  wsUp = true;
+  keeps.sync(); // D511: the migration, on every start (what is already a Keep is left as it is)
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
   api.activity = {

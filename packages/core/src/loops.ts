@@ -113,6 +113,8 @@ export interface Loops {
   get(taskId: string): TaskLoopBody | undefined;
   /** Loops on or paused. */
   all(): TaskLoopBody[];
+  /** D511: every loop ever kept, ended ones too (each is a Keep, the ended ones under 照看过的). */
+  ever(): TaskLoopBody[];
   health(taskId: string): OngoingHealth | undefined;
   /** The rhythm the person set ("改成每小时"); the task's own timers follow it. */
   rhythm(taskId: string): number | undefined;
@@ -644,6 +646,7 @@ export function createLoops(o: {
     },
     get: (taskId) => loops.get(taskId)?.b,
     all: () => [...loops.values()].filter((s) => s.b.state !== "ended").map((s) => s.b),
+    ever: () => [...loops.values()].map((s) => s.b),
     health: (taskId) => {
       const s = loops.get(taskId);
       return s ? healthOf(s) : undefined;

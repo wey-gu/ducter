@@ -116,6 +116,12 @@ export interface YoursInput {
 
 export interface Routines {
   propose(input: ProposeInput): Promise<RoutineView>;
+  /**
+   * D511: a Keep's rounds as a routine, on at once (the Keep's receipt card stands where D114's Go
+   * card stood): for rounds that only read and draft. A condition looks once now (its first round's
+   * result). Anything that would act outward without asking still goes through propose's Go.
+   */
+  make(input: ProposeInput): Promise<RoutineView>;
   yours(input: YoursInput): RoutineView;
   pause(routineId: string, by: "user" | "partner" | "system", reason?: RoutineBody["pauseReason"]): boolean;
   resume(routineId: string): boolean;
@@ -126,6 +132,8 @@ export interface Routines {
   end(routineId: string): boolean;
   get(routineId: string): RoutineView | undefined;
   views(): RoutineView[];
+  /** D511: every routine ever made, ended and dismissed ones too (each past its Go is a Keep). */
+  ever(): RoutineView[];
   /** The user's current zone, from the latest client hello (personal routines follow it). */
   setUserZone(tz: string): void;
   stop(): void;
@@ -830,6 +838,45 @@ export function createRoutines(opts: {
   };
 
   return {
+    async make(input) {
+      if (input.effect === "local_writes") throw new Error("a Keep made at once only reads and drafts; one that writes goes through routine_propose's Go");
+      const name = input.name?.trim();
+      if (!name) throw new Error("a routine needs a short name");
+      if (!input.brief?.trim()) throw new Error("a routine needs a self-contained brief: what each run does");
+      const t = input.trigger;
+      if (!t || (t.kind !== "time" && t.kind !== "condition")) throw new Error('trigger.kind must be "time" or "condition"');
+      if (t.kind === "time") {
+        const bad = validateTimeTrigger(t);
+        if (bad) throw new Error(bad);
+      } else if (!t.check && !t.event && !t.watch) throw new Error("a condition needs a check, an event or a watch to look at");
+      else if (t.watch && (t.check || t.event || t.judge)) throw new Error("a watch stands alone: no check, event or judge with it");
+      const lang = input.language ?? langOfText(name, input.brief);
+      const now = clock.now();
+      const r: RoutineBody = {
+        routineId: newId("rt"),
+        ...personaNow(),
+        name: name.slice(0, 60),
+        trigger: t,
+        triggerWords: input.triggerWords?.trim() || describeTrigger(t, lang),
+        brief: input.brief.trim(),
+        ...(input.place ? { place: input.place } : {}),
+        reports: input.reports ?? "on_change",
+        effect: input.effect ?? "read_only",
+        budget: { monthTokens: Math.max(10_000, Math.round(input.monthTokens ?? DEFAULT_MONTH_TOKENS)) },
+        state: "active",
+        createdAt: iso(now),
+        reviewAt: iso(now + REVIEW_DAYS * DAY),
+      };
+      const s: State = { r, fails: 0, unread: 0, monthTokens: 0, month: monthOf(now), lastScheduled: now };
+      if (t.kind === "condition") {
+        const d = await waiters.dryRun({ reason: t.condition, ...(t.check ? { check: t.check } : {}), ...(t.event ? { event: t.event } : {}), ...(t.judge ? { judge: t.judge } : {}), ...(t.watch ? { watch: t.watch } : {}) });
+        s.dryRun = { ...d, at: iso(clock.now()) };
+      }
+      states.set(r.routineId, s);
+      write(r);
+      arm(s);
+      return view(s);
+    },
     async propose(input) {
       const name = input.name?.trim();
       if (!name) throw new Error("a routine needs a short name");
@@ -960,6 +1007,7 @@ export function createRoutines(opts: {
       return s && view(s);
     },
     views: () => [...states.values()].filter((s) => s.r.state !== "ended" && s.r.state !== "dismissed").map(view),
+    ever: () => [...states.values()].map(view),
     setUserZone(tz) {
       try {
         new Intl.DateTimeFormat("en-US", { timeZone: tz });

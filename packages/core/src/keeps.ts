@@ -1,0 +1,563 @@
+// D511: 照看 / Looking after. One store for work Ducter keeps on for the person (protocol keeps.ts has
+// the model). A routine (D114), a task in rounds (D427) and a helper (D494/D507) each become a Keep;
+// the mechanism under each stays as it was (principle 16) and the Keep names it as `from`:
+//
+//   - The store is the Log: `keep` snapshots on stream keep:<keepId>, rebuilt on every start.
+//   - The migration runs on start (and after every change, for what arrives later: a task that rests
+//     on its own wait after a wake is a Keep from that moment). Every loop, routine (past its Go) and
+//     helper gets a Keep with its life; their own records are never changed or removed, so nothing
+//     is lost and an older Ducter still reads them. Its rounds are read from the history its
+//     mechanism already wrote (a loop's wakes and reports, a routine's runs, a helper's mail).
+//   - Code guards facts and invariants: what woke a round, what it reported, whether it asked, what
+//     the person did (pause, resume, stop). Whether a goal holds or a round is news is the model's
+//     to judge (principle 21); nothing here reads meaning from words.
+import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepBody, KeepCard, KeepFrom, KeepItem, KeepPage, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
+import { fill, words } from "@ducter/protocol";
+import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
+import type { LogStore } from "@ducter/protocol/src/internal.ts";
+import type { Helper } from "@ducter/protocol/src/helpers.ts";
+import { realClock, type Clock } from "./clock.ts";
+import { helperItems, type Helpers } from "./helpers.ts";
+import type { Loops } from "./loops.ts";
+import { sayOngoing, type Ongoing } from "./ongoing.ts";
+import type { CoreRegistry } from "./registry.ts";
+import type { Routines } from "./routines.ts";
+import { kindOf } from "./waiters.ts";
+
+const DAY = 86_400_000;
+/** Rounds a page shows at most (silent ones fold on the client). */
+export const ROUNDS_MAX = 80;
+/** Rounds a Keep's history is read from at most, per stream. */
+const READ_MAX = 2000;
+
+/** The words core says of a Keep itself (D292: a table per language; the clients have their own). */
+const W = {
+  zh: {
+    arrives: "有活就接",
+    holds: "「{title}」有活就接，手上 {n} 个。",
+    holdsYou: "「{title}」有活就接，手上 {n} 个，{you} 个在等你。",
+    idle: "「{title}」有活就接，现在手上没有。",
+    paused: "「{title}」暂停了。",
+    pausedUntil: "「{title}」暂停了，{until} 恢复。",
+    done: "「{title}」照看完了。",
+    stopped: "「{title}」停下了。",
+    untilLine: "一直做到：{until}。哪一轮看到它成立了，就在报告的第一句说出来，并写明凭什么。",
+    speaksLine: "什么时候出声：{speaks}。其余时候不出声，没有变化就不用说。",
+  },
+  en: {
+    arrives: "Takes work as it comes",
+    holds: "“{title}” takes work as it comes; it holds {n}.",
+    holdsYou: "“{title}” takes work as it comes; it holds {n}, {you} waiting for you.",
+    idle: "“{title}” takes work as it comes; nothing on it now.",
+    paused: "“{title}” is paused.",
+    pausedUntil: "“{title}” is paused; it resumes {until}.",
+    done: "“{title}” is done.",
+    stopped: "“{title}” is stopped.",
+    untilLine: "Keep at it until: {until}. When a round sees that it holds, say so in the report's first line, with what shows it.",
+    speaksLine: "When to speak: {speaks}. Otherwise stay silent; nothing new needs no word.",
+  },
+};
+
+export type Keeps = KeepsApi;
+
+const newId = () => `kp_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
+const iso = (ms: number) => new Date(ms).toISOString();
+const firstLine = (s?: string) => (s ?? "").split("\n").map((l) => l.trim()).find(Boolean)?.slice(0, 200);
+const keyOf = (f: KeepFrom) => (f.kind === "loop" ? `loop:${f.taskId}` : f.kind === "routine" ? `routine:${f.routineId}` : `helper:${f.helperId}`);
+const GONE = new Set(["dropped", "superseded"]);
+const AT_WORK = new Set(["working", "queued"]);
+
+export function createKeeps(o: {
+  log: LogStore;
+  tasks: CoreRegistry;
+  routines: Routines;
+  loops: Loops;
+  helpers?: () => Helpers | undefined;
+  ongoing: () => Ongoing | undefined;
+  /** D507: which task is which helper's (its claim went out naming it). */
+  helperTasks: () => Iterable<[string, string]>;
+  /** D507: pieces of work a helper took in the last 7 days. */
+  helperWeek: (id: string) => number;
+  /** The partner a Keep with no persona is for. */
+  persona: () => string;
+  /** Whether a Keep's persona is this partner's (D312: absent and the default partner are the same). */
+  isOf?: (keepPersona: string | undefined, persona: string) => boolean;
+  lang?: () => LangTag;
+  zone?: () => string | undefined;
+  clock?: Clock;
+  onChange?: () => void;
+}): Keeps {
+  const { log, tasks } = o;
+  const clock = o.clock ?? realClock;
+  const lang = () => o.lang?.() ?? "en";
+  const isOf = o.isOf ?? ((p, want) => (p ?? o.persona()) === want);
+  const byId = new Map<string, KeepBody>();
+  const byFrom = new Map<string, string>();
+  let quiet = false; // make() in progress: its own Keep is written by make, never by a sync it sets off
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["keep"] })) {
+    const b = e.body as KeepBody;
+    if (!b?.keepId || !b.from) continue;
+    byId.set(b.keepId, b);
+    byFrom.set(keyOf(b.from), b.keepId);
+  }
+
+  const put = (k: KeepBody) => {
+    for (const f of Object.keys(k) as (keyof KeepBody)[]) if (k[f] === undefined) delete k[f];
+    log.append({ stream: `keep:${k.keepId}`, origin: "system", kind: "keep", body: { ...k }, ...(k.persona ? { persona: k.persona } : {}) } as never);
+    byId.set(k.keepId, k);
+    byFrom.set(keyOf(k.from), k.keepId);
+  };
+
+  // ---------- what each mechanism says a Keep is ----------
+
+  const briefOf = (taskId: string): string => {
+    const e = log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 1 })[0];
+    return String((e?.body as Bodies["task_open"] | undefined)?.brief ?? "");
+  };
+  type Shape = Pick<KeepBody, "title" | "said" | "run" | "wakes" | "life" | "createdAt"> & Partial<Pick<KeepBody, "persona" | "until" | "endedAt" | "met">>;
+  const fromLoop = (b: TaskLoopBody): Shape => {
+    const c = tasks.get(b.taskId);
+    const every = b.everyMs ?? b.look?.everyMs;
+    const wakes: KeepWake[] = b.look ? [{ kind: "changes", words: b.reason }] : every ? [{ kind: "every", everyMs: every }] : [{ kind: "changes", words: b.reason }];
+    const ended = b.state === "ended";
+    const done = ended && b.endedBy === "condition";
+    return {
+      title: c?.title ?? b.reason,
+      said: briefOf(b.taskId) || b.reason,
+      run: "same",
+      wakes,
+      life: b.state === "on" ? "on" : b.state === "paused" ? "paused" : done ? "done" : "stopped",
+      createdAt: b.since,
+      ...(c?.persona ? { persona: c.persona } : {}),
+      ...(b.until ? { until: b.until } : {}),
+    };
+  };
+  const fromRoutine = (r: RoutineView): Shape | undefined => {
+    if (r.state === "proposed" || r.state === "dismissed") return undefined; // not kept before its Go
+    const t = r.trigger;
+    const wakes: KeepWake[] = t.kind === "time" ? [{ kind: "at", words: r.triggerWords }] : [{ kind: "changes", words: r.triggerWords || t.condition }];
+    const once = t.kind === "time" && t.every === "once";
+    return {
+      title: r.name,
+      said: r.brief,
+      run: "fresh",
+      wakes,
+      life: r.state === "active" ? "on" : r.state === "paused" ? "paused" : once ? "done" : "stopped",
+      createdAt: r.createdAt ?? r.reviewAt,
+      ...(r.persona ? { persona: r.persona } : {}),
+    };
+  };
+  const fromHelper = (h: Helper, kept?: KeepBody): Shape => ({
+    title: h.name,
+    said: h.about || h.brief,
+    run: "perItem",
+    wakes: [{ kind: "arrives" }, { kind: "changes" }],
+    // A helper has on and stopped; a Keep the person paused holds its address stopped till it resumes.
+    life: h.state === "on" ? "on" : kept?.life === "paused" ? "paused" : "stopped",
+    createdAt: h.createdAt,
+    ...(h.persona && h.persona !== "default" ? { persona: h.persona } : {}),
+  });
+
+  const sources = (): { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] => {
+    const out: { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] = [];
+    for (const b of o.loops.ever()) out.push({ from: { kind: "loop", taskId: b.taskId }, made: "task_loop", shape: () => fromLoop(b) });
+    for (const r of o.routines.ever()) out.push({ from: { kind: "routine", routineId: r.routineId }, made: "routine", shape: () => fromRoutine(r) });
+    for (const h of o.helpers?.()?.list() ?? []) out.push({ from: { kind: "helper", helperId: h.id }, made: "helpers.json", shape: (k) => fromHelper(h, k) });
+    return out;
+  };
+
+  let booted = false;
+  function sync(): { made: number; changed: number } {
+    if (quiet) return { made: 0, changed: 0 };
+    let made = 0;
+    let changed = 0;
+    const now = clock.now();
+    for (const s of sources()) {
+      const id = byFrom.get(keyOf(s.from));
+      const kept = id ? byId.get(id) : undefined;
+      const shape = s.shape(kept);
+      if (!shape) continue;
+      if (!kept) {
+        // The first start with Keeps carries over what was there (migratedAt); later ones are new.
+        put({ keepId: newId(), ...shape, from: s.from, made: s.made, ...(booted ? {} : { migratedAt: iso(now) }), ...(shape.life === "done" || shape.life === "stopped" ? { endedAt: iso(now) } : {}) });
+        made++;
+        continue;
+      }
+      // Its life follows its mechanism (a pause there is a pause here); the person's words stay.
+      const life = shape.life;
+      if (life !== kept.life) {
+        const ended = life === "done" || life === "stopped";
+        put({ ...kept, life, ...(ended ? { endedAt: kept.endedAt ?? iso(now) } : { endedAt: undefined }), ...(life !== "paused" ? { pausedUntil: undefined } : {}) });
+        changed++;
+      }
+    }
+    booted = true;
+    if (made || changed) o.onChange?.();
+    return { made, changed };
+  }
+
+  // ---------- what a Keep holds, and its rounds ----------
+
+  const routineTasks = (routineId: string, limit = 40): string[] => {
+    const ids: string[] = [];
+    for (const e of log.read({ stream: `routine:${routineId}`, kinds: ["routine_run"], limit: 400 })) {
+      const b = e.body as Bodies["routine_run"];
+      if (b.taskId && !ids.includes(b.taskId)) ids.push(b.taskId);
+    }
+    return ids.slice(-limit);
+  };
+
+  const itemOf = (c: TaskCard): KeepItem | undefined => {
+    if (GONE.has(c.attention)) return undefined;
+    const p = prOf(c.prs);
+    const at: KeepItem["at"] = c.attention === "needs_you" || c.attention === "failed" ? "you" : AT_WORK.has(c.attention) ? "work" : "rest";
+    const yours = at === "you" ? (c.pendingDecision?.question ?? c.reason) : undefined;
+    return { taskId: c.taskId, title: c.title, at, ...(yours ? { yours } : {}), ...(p ? { pr: p.pr, said: prSaid(p) } : {}) };
+  };
+  const fromHelperItem = (x: HelperItem): KeepItem => ({ taskId: x.taskId, title: x.title, at: x.at === "work" ? "work" : x.at, ...(x.yours ? { yours: x.yours } : {}), ...(x.pr ? { pr: x.pr } : {}), ...(x.said ? { said: x.said } : {}) });
+
+  function itemsOf(k: KeepBody): KeepItem[] {
+    const f = k.from;
+    if (k.life === "done" || k.life === "stopped") return [];
+    let items: KeepItem[] = [];
+    if (f.kind === "helper") items = helperItems(f.helperId, { tasksOf: o.helperTasks, card: (t) => tasks.get(t) }).map(fromHelperItem);
+    else if (f.kind === "loop") {
+      const c = tasks.get(f.taskId);
+      const it = c && itemOf(c);
+      if (it) items = [it];
+    } else {
+      for (const t of routineTasks(f.routineId, 12)) {
+        const c = tasks.get(t);
+        if (!c || !(AT_WORK.has(c.attention) || c.attention === "needs_you" || c.attention === "blocked")) continue;
+        const it = itemOf(c);
+        if (it) items.push(it);
+      }
+    }
+    const rank = { you: 0, ready: 1, work: 2, rest: 3 } as const;
+    return items.sort((a, b) => rank[a.at] - rank[b.at]);
+  }
+
+  /** A task's rounds: each report (but progress) ends one; the wake before it says what woke it. */
+  function taskRounds(taskId: string, opts: { first?: boolean; change?: string } = {}): KeepRound[] {
+    const out: KeepRound[] = [];
+    let wake: { at: string; woke: KeepRound["woke"]; what?: string } | undefined;
+    let asked = false;
+    let n = 0;
+    for (const e of log.read({ stream: `task:${taskId}`, kinds: ["waiter", "report", "decision"], limit: READ_MAX })) {
+      if (e.kind === "waiter") {
+        const w = e.body as Bodies["waiter"];
+        if (w.state !== "fired" || w.taskId !== taskId || w.routineId || w.limit) continue;
+        wake = { at: e.ts, woke: kindOf(w) === "timer" ? "time" : "change", ...(w.reason ? { what: firstLine(w.reason) } : {}) };
+      } else if (e.kind === "decision") asked = true;
+      else {
+        const r = e.body as Bodies["report"];
+        if (r.state === "progress") continue;
+        const woke: KeepRound["woke"] = wake?.woke ?? (n === 0 && opts.first !== false ? "first" : opts.change ? "change" : "time");
+        const what = wake?.what ?? (woke === "change" ? opts.change : undefined);
+        out.push({ at: e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...(firstLine(r.summary) ? { did: firstLine(r.summary) } : {}), spoke: asked || r.state === "needs_input" ? "asked" : "silent", state: r.state === "failed" ? "failed" : "done", taskId });
+        wake = undefined;
+        asked = false;
+        n++;
+      }
+    }
+    const c = tasks.get(taskId);
+    if (wake && c && AT_WORK.has(c.attention)) out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), spoke: "silent", state: "running", taskId });
+    return out;
+  }
+
+  function roundsOf(k: KeepBody): KeepRound[] {
+    const f = k.from;
+    let out: KeepRound[] = [];
+    if (f.kind === "loop") out = taskRounds(f.taskId);
+    else if (f.kind === "routine") {
+      const r = o.routines.get(f.routineId);
+      const cond = r?.trigger.kind === "condition";
+      const byRun = new Map<string, KeepRound>();
+      for (const e of log.read({ stream: `routine:${f.routineId}`, kinds: ["routine_run"], limit: READ_MAX })) {
+        const b = e.body as Bodies["routine_run"];
+        const c = b.taskId ? tasks.get(b.taskId) : undefined;
+        const state: KeepRound["state"] = b.state === "started" ? (c && !AT_WORK.has(c.attention) ? (c.attention === "failed" ? "failed" : "done") : "running") : b.state;
+        const asked = !!c && (c.attention === "needs_you" || !!c.pendingDecision);
+        // A routine that reports every run tells the person its result: a fact of its rules, not a reading of its words.
+        const told = state === "done" && r?.reports === "every";
+        const did = b.state === "skipped" ? b.reason : (firstLine(c?.lastReport?.summary) ?? b.reason);
+        const prev = byRun.get(b.runId);
+        byRun.set(b.runId, { at: prev?.at ?? e.ts, woke: cond ? "change" : "time", ...(cond && r ? { wokeWhat: r.triggerWords } : {}), ...(did ? { did: firstLine(did) } : {}), spoke: asked ? "asked" : told ? "told" : "silent", state, ...(b.taskId ? { taskId: b.taskId } : {}) });
+      }
+      out = [...byRun.values()];
+    } else {
+      // A helper: each piece of work handed to it is a round (its arrival), and each of its tasks' reports one more (a change on what it holds).
+      const claims = new Map<string, string>();
+      const ins: LogEvent[] = [];
+      for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) {
+        const b = e.body as Bodies["bridge_msg"];
+        if (b.helper !== f.helperId) continue;
+        if (b.direction === "out" && b.inReplyTo && b.taskId && !claims.has(b.inReplyTo)) claims.set(b.inReplyTo, b.taskId);
+        if (b.direction === "in" && !b.inReplyTo && (!b.state || b.state === "held")) ins.push(e);
+      }
+      const seen = new Set<string>();
+      for (const e of ins) {
+        const b = e.body as Bodies["bridge_msg"];
+        const t = claims.get(b.messageId);
+        const c = t ? tasks.get(t) : undefined;
+        out.push({ at: e.ts, woke: "arrival", ...(b.agent || b.from ? { wokeWhat: b.agent ?? b.from } : {}), ...(c ? { did: c.title } : { did: firstLine(b.text) }), spoke: "silent", state: "done", ...(t ? { taskId: t } : {}) });
+        if (t && !seen.has(t)) {
+          seen.add(t);
+          const p = c ? prOf(c.prs) : undefined;
+          out.push(...taskRounds(t, { first: false, ...(p ? { change: p.pr.replace(/^.*#/, "#") } : {}) }));
+        }
+      }
+    }
+    // Newest first; rounds at the same instant keep the order the Log wrote them in.
+    return out
+      .map((r, i) => [r, i] as const)
+      .sort((a, b) => a[0].at.localeCompare(b[0].at) || a[1] - b[1])
+      .map((x) => x[0])
+      .reverse()
+      .slice(0, ROUNDS_MAX);
+  }
+
+  const ongoingOf = (k: KeepBody, persona: string): OngoingItem | undefined => {
+    if (k.from.kind === "helper") return undefined;
+    const id = k.from.kind === "loop" ? k.from.taskId : k.from.routineId;
+    return o.ongoing()?.list(persona).find((x) => x.id === id && (x.kind === "routine") === (k.from.kind === "routine"));
+  };
+
+  function sheetOf(k: KeepBody, persona: string): KeepSheet {
+    const items = itemsOf(k);
+    const og = k.life === "on" || k.life === "paused" ? ongoingOf(k, persona) : undefined;
+    const rounds = roundsOf(k);
+    const now = clock.now();
+    const said = rounds.find((r) => r.did && r.state !== "running");
+    const f = k.from;
+    const h = f.kind === "helper" ? o.helpers?.()?.get(f.helperId) : undefined;
+    const taskIds = [...new Set([...(f.kind === "loop" && k.life !== "done" && k.life !== "stopped" ? [f.taskId] : []), ...items.map((x) => x.taskId)])];
+    const week = f.kind === "helper" ? o.helperWeek(f.helperId) : rounds.filter((r) => Date.parse(r.at) >= now - 7 * DAY && r.state !== "skipped").length;
+    const everyMs = og?.everyMs ?? (k.wakes.find((w) => w.kind === "every") as { everyMs?: number } | undefined)?.everyMs;
+    return {
+      id: k.keepId,
+      title: k.title,
+      ...(k.persona ? { persona: k.persona } : {}),
+      life: k.life,
+      run: k.run,
+      wakes: k.wakes,
+      ...(k.until ? { until: k.until } : {}),
+      items,
+      taskIds,
+      asks: items.filter((x) => x.at === "you" || x.at === "ready").length,
+      ...(everyMs ? { everyMs } : {}),
+      ...(og?.kind === "routine" && og.cadence ? { cadence: og.cadence } : {}),
+      ...(og?.nextAt && og.state !== "running" ? { nextAt: og.nextAt } : {}),
+      ...(og?.state === "running" ? { running: true } : {}),
+      ...(og?.health ? { health: og.health } : {}),
+      ...(said?.did ? { line: { at: said.at, text: said.did } } : {}),
+      ...(og?.reviews ? { reviews: og.reviews } : {}),
+      week,
+      ...(k.pausedUntil || og?.pausedUntil ? { pausedUntil: k.pausedUntil ?? og?.pausedUntil } : {}),
+      ...(h ? { address: { name: h.name, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}) } } : {}),
+      since: k.createdAt,
+      ...(k.endedAt ? { endedAt: k.endedAt } : {}),
+    };
+  }
+
+  // ---------- the person's gestures, and the partner's verbs ----------
+
+  async function act(id: string, a: KeepAction): Promise<{ ok: boolean; message?: string }> {
+    const k = byId.get(id);
+    if (!k) return { ok: false, message: "I can't find that." };
+    if ((k.life === "done" || k.life === "stopped") && a.action !== "stop") return { ok: false, message: "It has ended." };
+    const f = k.from;
+    let r: { ok: boolean; message?: string } = { ok: false };
+    if (f.kind === "helper") {
+      const hs = o.helpers?.();
+      if (!hs) return { ok: false, message: "Helpers aren't available here." };
+      if (a.action === "look_now") return { ok: false, message: "It takes work as it comes; there is nothing to look at." };
+      if (a.action === "pause") {
+        const until = a.until && Date.parse(a.until) > clock.now() ? iso(Date.parse(a.until)) : undefined;
+        put({ ...k, life: "paused", ...(until ? { pausedUntil: until } : { pausedUntil: undefined }) });
+        await hs.stop(f.helperId);
+        r = { ok: true };
+      } else if (a.action === "resume") {
+        put({ ...k, life: "on", pausedUntil: undefined });
+        r = hs.resume(f.helperId) ? { ok: true } : { ok: false, message: "It didn't start again." };
+      } else {
+        put({ ...k, life: "stopped", endedAt: iso(clock.now()), pausedUntil: undefined });
+        r = (await hs.stop(f.helperId)) ? { ok: true } : { ok: false, message: "It didn't stop." };
+      }
+    } else {
+      const og = o.ongoing();
+      if (!og) return { ok: false, message: "Not available here." };
+      const kind = f.kind === "routine" ? "routine" : "task";
+      const ref = f.kind === "routine" ? f.routineId : f.taskId;
+      const oa = a.action === "pause" ? { action: "pause" as const, ...(a.until ? { until: a.until } : {}) } : a.action === "resume" ? { action: "resume" as const } : a.action === "look_now" ? { action: "run_now" as const } : { action: "end" as const };
+      r = await og.act(kind, ref, oa);
+      if (r.ok && a.action === "pause") put({ ...k, life: "paused", ...(a.until && Date.parse(a.until) > clock.now() ? { pausedUntil: iso(Date.parse(a.until)) } : { pausedUntil: undefined }) });
+      if (r.ok && a.action === "stop") put({ ...k, life: "stopped", endedAt: iso(clock.now()), pausedUntil: undefined });
+    }
+    sync();
+    o.onChange?.();
+    return r;
+  }
+
+  // A helper paused until a time comes back by itself (a routine's and a task's pause are Ongoing's).
+  const sweep = () => {
+    for (const k of byId.values()) if (k.from.kind === "helper" && k.life === "paused" && k.pausedUntil && Date.parse(k.pausedUntil) <= clock.now()) void act(k.keepId, { action: "resume" });
+  };
+  const timer = setInterval(sweep, 30_000);
+  (timer as { unref?: () => void }).unref?.();
+
+  const untilBrief = (brief: string, until?: string, speaks?: string) => {
+    const w = words(W, lang());
+    return [brief.trim(), until ? fill(w.untilLine, { until }) : "", speaks ? fill(w.speaksLine, { speaks }) : ""].filter(Boolean).join("\n\n");
+  };
+
+  async function make(input: KeepMakeInput): Promise<{ ok: true; keep: KeepBody; card: KeepCard } | { ok: false; error: string }> {
+    const title = input.title?.trim().slice(0, 80);
+    if (!title) return { ok: false, error: "It needs a short title." };
+    const said = input.said?.trim() || input.brief?.trim();
+    if (!said) return { ok: false, error: "It needs the user's words (said)." };
+    const kinds = [input.wake?.at, input.wake?.watch, input.wake?.address].filter(Boolean).length;
+    if (kinds !== 1) return { ok: false, error: "Give exactly one wake: at (times on the clock), watch (a fact to look at), or address (other agents hand it work)." };
+    const firstEver = ![...byId.values()].some((k) => k.made === "keep_make");
+    const persona = input.persona;
+    quiet = true;
+    try {
+      if (input.wake.address) {
+        const hs = o.helpers?.();
+        if (!hs) return { ok: false, error: "Addresses in Nowledge Bridge aren't available on this home." };
+        const r = hs.make({ name: title, about: said, brief: untilBrief(input.brief || said, input.until, input.speaks), ...(persona ? { persona } : {}) });
+        if (!r.ok) return { ok: false, error: { empty: "It needs a name.", taken: "That name is taken by another one; pick another title.", full: "There are as many with an address as a home keeps (6)." }[r.error] };
+        const k: KeepBody = { keepId: newId(), ...(persona ? { persona } : {}), title: r.helper.name, said, from: { kind: "helper", helperId: r.helper.id }, run: "perItem", wakes: [{ kind: "arrives" }, { kind: "changes" }], ...(input.until ? { until: input.until } : {}), ...(input.speaks ? { speaks: input.speaks } : {}), ...(input.limits ? { limits: input.limits } : {}), life: "on", createdAt: iso(clock.now()), made: "keep_make" };
+        put(k);
+        return { ok: true, keep: k, card: { id: k.keepId, title: k.title, when: words(W, lang()).arrives, ...(k.speaks ? { speaks: k.speaks } : {}), ...(k.until ? { until: k.until } : {}), ...(firstEver ? { firstEver } : {}) } };
+      }
+      const trigger = (input.wake.at ?? input.wake.watch)!;
+      let v: RoutineView;
+      try {
+        v = await o.routines.make({ name: title, trigger, ...(input.whenWords ? { triggerWords: input.whenWords } : {}), brief: untilBrief(input.brief || said, input.until, input.speaks), ...(input.place ? { place: input.place } : {}), reports: "on_change", effect: input.effect ?? "read_only", language: lang() });
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      const k: KeepBody = { keepId: newId(), ...(persona ? { persona } : {}), title: v.name, said, from: { kind: "routine", routineId: v.routineId }, run: "fresh", wakes: trigger.kind === "time" ? [{ kind: "at", words: v.triggerWords }] : [{ kind: "changes", words: v.triggerWords }], ...(input.until ? { until: input.until } : {}), ...(input.speaks ? { speaks: input.speaks } : {}), ...(input.limits ? { limits: input.limits } : {}), life: "on", createdAt: iso(clock.now()), made: "keep_make" };
+      put(k);
+      // The first round now, when it can: a watch already looked once (its dry run); a time Keep runs one round.
+      if (trigger.kind === "time" && input.lookNow !== false) o.routines.runNow(v.routineId);
+      const first = v.dryRun?.summary ? firstLine(v.dryRun.summary) : undefined;
+      const where = input.place && input.place.kind !== "none" ? (input.place.kind === "repo" ? input.place.repoPath : input.place.kind === "folder" ? input.place.path : undefined) : undefined;
+      return { ok: true, keep: k, card: { id: k.keepId, title: k.title, when: v.triggerWords, ...(k.speaks ? { speaks: k.speaks } : {}), ...(k.until ? { until: k.until } : {}), ...(where ? { where } : {}), ...(first ? { first } : {}), ...(firstEver ? { firstEver } : {}) } };
+    } finally {
+      quiet = false;
+      o.onChange?.();
+    }
+  }
+
+  async function change(id: string, c: KeepChange): Promise<{ ok: true; keep: KeepBody } | { ok: false; error: string }> {
+    const k = byId.get(id);
+    if (!k) return { ok: false, error: "No Keep with that id; see keep_list." };
+    const f = k.from;
+    if (c.everyMinutes !== undefined) {
+      if (f.kind !== "loop") return { ok: false, error: f.kind === "routine" ? "It runs on the clock: give at (new times) instead." : "It takes work as it comes; it has no rhythm." };
+      const r = await o.ongoing()?.act("task", f.taskId, { action: "every", minutes: c.everyMinutes });
+      if (!r?.ok) return { ok: false, error: r?.message ?? "The rhythm didn't change." };
+    }
+    if (c.at) {
+      if (f.kind !== "routine") return { ok: false, error: "Only a Keep on the clock changes its times." };
+      const r = await o.ongoing()?.act("routine", f.routineId, { action: "retime", trigger: c.at });
+      if (!r?.ok) return { ok: false, error: r?.message ?? "Its times didn't change." };
+    }
+    const cur = byId.get(id)!;
+    const patch: Partial<KeepBody> = {
+      ...(c.title?.trim() ? { title: c.title.trim().slice(0, 80) } : {}),
+      ...(c.until !== undefined ? { until: c.until.trim() || undefined } : {}),
+      ...(c.speaks !== undefined ? { speaks: c.speaks.trim() || undefined } : {}),
+      ...(c.limits !== undefined ? { limits: c.limits.trim() || undefined } : {}),
+      ...(c.at ? { wakes: cur.wakes.map((w) => (w.kind === "at" ? { kind: "at" as const, words: o.routines.get((f as { routineId: string }).routineId)?.triggerWords ?? w.words } : w)) } : {}),
+      ...(c.everyMinutes !== undefined ? { wakes: cur.wakes.map((w) => (w.kind === "every" ? { kind: "every" as const, everyMs: Math.round(c.everyMinutes!) * 60_000 } : w)) } : {}),
+    };
+    if (Object.keys(patch).length) put({ ...cur, ...patch });
+    // What the rounds are told follows the person's words (a helper's brief, a routine's brief carries until and speaks).
+    if ((c.until !== undefined || c.speaks !== undefined) && f.kind === "helper") {
+      const h = o.helpers?.()?.get(f.helperId);
+      const now = byId.get(id)!;
+      if (h) o.helpers?.()?.set(f.helperId, { brief: untilBrief(now.said, now.until, now.speaks) });
+    }
+    if (c.act) {
+      const r = await act(id, c.act);
+      if (!r.ok) return { ok: false, error: r.message ?? "That didn't take." };
+    }
+    o.onChange?.();
+    return { ok: true, keep: byId.get(id)! };
+  }
+
+  function ofTaskIndex(): Map<string, { id: string; name: string }> {
+    const m = new Map<string, { id: string; name: string }>();
+    const helperOf = new Map([...o.helperTasks()].map(([t, h]) => [t, h]));
+    for (const k of byId.values()) {
+      const f = k.from;
+      const v = { id: k.keepId, name: k.title };
+      if (f.kind === "loop") m.set(f.taskId, v);
+      else if (f.kind === "routine") for (const t of routineTasks(f.routineId, 20)) m.set(t, v);
+      else for (const [t, h] of helperOf) if (h === f.helperId) m.set(t, v);
+    }
+    return m;
+  }
+
+  function sayOf(id: string): string {
+    const k = byId.get(id);
+    if (!k) return "";
+    const w = words(W, lang());
+    const persona = k.persona ?? o.persona();
+    const s = sheetOf(k, persona);
+    const when = (v: string) => new Date(v).toLocaleString(lang() === "zh" ? "zh-CN" : "en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, ...(o.zone?.() ? { timeZone: o.zone() } : {}) });
+    if (k.life === "done") return fill(w.done, { title: k.title });
+    if (k.life === "stopped") return fill(w.stopped, { title: k.title });
+    if (k.life === "paused") return s.pausedUntil ? fill(w.pausedUntil, { title: k.title, until: when(s.pausedUntil) }) : fill(w.paused, { title: k.title });
+    if (k.from.kind === "helper") return s.items.length ? fill(s.asks ? w.holdsYou : w.holds, { title: k.title, n: String(s.items.length), you: String(s.asks) }) : fill(w.idle, { title: k.title });
+    // A routine or a task in rounds: Ongoing's ready line (its rhythm, next round, on time or why not).
+    const it = ongoingOf(k, persona);
+    return it ? sayOngoing({ ...it, title: k.title }, lang(), clock.now(), o.zone?.()) : fill(w.paused, { title: k.title });
+  }
+
+  return {
+    all: () => [...byId.values()],
+    get: (id) => byId.get(id),
+    ofTask: (taskId) => ofTaskIndex().get(taskId),
+    sheets(persona) {
+      return [...byId.values()]
+        .filter((k) => (k.life === "on" || k.life === "paused") && isOf(k.persona, persona))
+        .map((k) => sheetOf(k, persona))
+        .sort((a, b) => b.asks - a.asks || (a.life === "paused" ? 1 : 0) - (b.life === "paused" ? 1 : 0) || a.since.localeCompare(b.since));
+    },
+    ended(persona) {
+      return [...byId.values()]
+        .filter((k) => (k.life === "done" || k.life === "stopped") && isOf(k.persona, persona))
+        .map((k) => sheetOf(k, persona))
+        .sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? ""));
+    },
+    page(id) {
+      const k = byId.get(id);
+      if (!k) return undefined;
+      const persona = k.persona ?? o.persona();
+      const s = sheetOf(k, persona);
+      const og = ongoingOf(k, persona);
+      const decisions = s.items.flatMap((x) => (tasks.get(x.taskId)?.pendingDecision?.decisionId ? [tasks.get(x.taskId)!.pendingDecision!.decisionId] : []));
+      return {
+        ...s,
+        said: k.said,
+        ...(k.speaks ? { speaks: k.speaks } : {}),
+        ...(k.limits ? { limits: k.limits } : {}),
+        ...(k.met ? { met: k.met } : {}),
+        rounds: roundsOf(k),
+        ...(og?.where ? { where: { ...(og.where.deviceName ? { deviceName: og.where.deviceName } : {}), ...(og.where.harness ? { harness: og.where.harness } : {}) } } : {}),
+        decisions,
+        ...(og?.app ? { app: og.app } : {}),
+      };
+    },
+    act,
+    make,
+    change,
+    sync,
+    say: sayOf,
+    stop: () => clearInterval(timer),
+  };
+}

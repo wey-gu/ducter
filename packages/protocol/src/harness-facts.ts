@@ -362,7 +362,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     background: {
       value: {
         ownTurn: "yes",
-        how: "Bash run_in_background, Monitor and a background Agent are tasks (OAR task_started/task_ended, local_bash · local_agent · mcp_task); the process stays up between turns and a task's end starts a turn of its own (no input id) that reads its result",
+        how: "Bash run_in_background, Monitor and a background Agent are tasks (OAR task_started/task_ended, local_bash, local_agent, mcp_task); the process stays up between turns and a task's end starts a turn of its own (no input id) that reads its result",
       },
       evidence: { kind: "VERIFIED", how: "research/222 §2: OAR 0.124 claude runtime, haiku, a background `sleep 20; echo …`: task_started background at 8 s, turn_ended at 9 s, task_ended at 28 s, then turn_active with no input id and the model's own words on the result", date: "2026-11-24", version: "2.1.331" },
     },

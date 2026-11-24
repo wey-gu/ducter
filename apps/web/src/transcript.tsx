@@ -9,7 +9,7 @@
 import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
-import { inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { inTurn, lastSeq, latestVoice, quietRuns, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
 import { builtTurns, indexOf, lowerBound, slotsOf, type SessionIndex, type Slot, type TurnCache } from "@ducter/protocol/src/session.ts";
 import { landmarkNear, landmarksIn, landmarksOf, type Landmark } from "@ducter/protocol/src/landmarks.ts";
 import { splitRefs, tokensShort } from "@ducter/protocol";
@@ -893,6 +893,63 @@ const liveShut = new Set<string>();
 
 /** A turn's answer (D530): its work (everything before its last words; all of it while it works)
  *  under one quiet head, folded once the turn is done and open while it works; its last words after. */
+// ---------- D544: rounds that changed nothing, folded ----------
+
+type QuietMember = { id: string; first: boolean; n: number; from: string; to: string };
+const quietCache = new WeakMap<Task, { n: number; m: Map<number, QuietMember> }>();
+/** Each folded round's key (its wake's seq, or its report's) to its run (protocol quietRuns). */
+export function quietOf(task: Task): Map<number, QuietMember> {
+  const c = quietCache.get(task);
+  if (c && c.n === task.events.length) return c.m;
+  const m = new Map<number, QuietMember>();
+  for (const r of quietRuns(task.events)) {
+    const id = `${task.id}:${r.keys[0]}`;
+    r.keys.forEach((k, i) => m.set(k, { id, first: i === 0, n: r.keys.length, from: r.from, to: r.to }));
+  }
+  quietCache.set(task, { n: task.events.length, m });
+  return m;
+}
+/** The runs opened by a tap, this session; `quietTick` redraws the turns they touch. */
+const quietOpen = new Set<string>();
+let quietTick = 0;
+
+function QuietFold({ q }: { q: QuietMember }) {
+  const open = quietOpen.has(q.id);
+  return (
+    <div class="quiet-fold">
+      <WorkHead
+        words={t("loop.quiet", q.n, clock(q.from), clock(q.to))}
+        failed={0}
+        open={open}
+        onClick={() => (open ? quietOpen.delete(q.id) : quietOpen.add(q.id), quietTick++, A.changed())}
+      />
+    </div>
+  );
+}
+
+/** A turn's blocks with its quiet rounds (no wake of their own: one turn holding many) folded: each
+ *  round's blocks up to its report go, the run's first leaves the fold row in their place. */
+type Drawn = Block | { k: "qfold"; seq: number; q: QuietMember };
+function foldQuietBody(task: Task, body: Block[]): Drawn[] {
+  const q = quietOf(task);
+  if (!q.size) return body;
+  const out: Drawn[] = [];
+  let unit: Block[] = [];
+  for (const b of body) {
+    unit.push(b);
+    if (b.k !== "report") continue;
+    const m = q.get(b.seq);
+    if (!m) out.push(...unit);
+    else {
+      if (m.first) out.push({ k: "qfold", seq: b.seq, q: m });
+      if (quietOpen.has(m.id)) out.push(...unit);
+    }
+    unit = [];
+  }
+  out.push(...unit);
+  return out;
+}
+
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
   const [done, setDone] = useState(false);
   // The live turn's fold is shared with the live line (D530: it shows only while folded).
@@ -900,7 +957,8 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   const toggled = live ? liveShut.has(key) : done;
   const [, bump] = useState(0);
   const setToggled = (v: boolean) => (live ? (v ? liveShut.add(key) : liveShut.delete(key), bump((n) => n + 1), A.changed()) : setDone(v));
-  const body = turn.body;
+  // D544: the rounds that changed nothing, folded (a fold row stands in a block's place).
+  const body = foldQuietBody(task, turn.body) as Block[];
   let lastVoice = -1;
   for (let i = body.length - 1; i >= 0; i--)
     if (body[i]!.k === "voice") {
@@ -914,7 +972,8 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
   const worked = !live && Number.isFinite(from) && Number.isFinite(to) && to > from ? t("turn.worked", took) : "";
   const answer = !live && lastVoice >= 0 ? body[lastVoice]!.seq : undefined;
-  const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />);
+  const draw = (bs: Block[]) =>
+    foldErrors(bs).map(({ b, times }) => ((b as Drawn).k === "qfold" ? <QuietFold key={`q${b.seq}`} q={(b as unknown as Extract<Drawn, { k: "qfold" }>).q} /> : <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />));
   if (!foldable) return <>{draw(body)}</>;
   // Done: folded until opened. While it works: open until folded.
   const open = live ? !toggled : toggled;
@@ -937,8 +996,17 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
   render() {
     const { task, turn, live } = this.props;
     const p = turn.prompt;
+    // D544: a round that changed nothing, opened by its own wake: folded into its run's one row.
+    const q = p?.k === "wake" && !live ? quietOf(task).get(p.seq) : undefined;
+    if (q && !quietOpen.has(q.id))
+      return (
+        <section class="turn quiet" data-seq={this.props.seq ?? turn.seq}>
+          {q.first && <QuietFold q={q} />}
+        </section>
+      );
     return (
       <section class="turn" data-seq={this.props.seq ?? turn.seq}>
+        {q?.first && <QuietFold q={q} />}
         {(p?.k === "wake" || p?.k === "told") && (
           <div class="tx-divider wake" role="separator" title={p.text}>
             <span>{promptLine(p)}</span>
@@ -972,7 +1040,7 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   const turns = own ? taskTurns(task) : turnsOf(blocks);
   const moving = taskInTurn(task);
   const view = (tu: Turn, last: boolean, seq?: number) => (
-    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}`} />
+    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}:${quietTick}`} />
   );
   const items: JSX.Element[] = own ? [] : turns.map((tu, i, shown) => view(tu, i === shown.length - 1));
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.

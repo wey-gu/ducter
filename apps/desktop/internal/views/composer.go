@@ -6,8 +6,11 @@ package views
 // (Surface, RadiusXL, Raised), the words growing to their lines, what belongs
 // beside them (pictures, the mic, the context ring, Stop), and the round
 // accent send with its drawn arrow. Its states are the send's: empty
-// (resting at 45%, not pressable), ready (raised on its ledge), sending
-// (pressed into its ledge, the words greyed, until the home has them). The
+// (sunken and flat, its arrow muted, not pressable; D547), ready (raised on
+// its ledge), sending (pressed into its ledge, the words greyed, until the
+// home has them). D547: every button in the row is one size (ControlMD),
+// round, on one bottom line; an opened task's card is tiered (the words their
+// own line, the buttons under them). The
 // web's apps/web/src/composer.tsx is the same; TestOneComposer fails on any
 // other copy.
 
@@ -16,6 +19,7 @@ import (
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -47,8 +51,13 @@ type composerOpts struct {
 	sendLabel   string
 	before      func() // inside the card, above the words (a reply pressed in, pictures)
 	lead        func() // in the row, before the words (add pictures)
-	tools       func() // in the row, after the words (the mic, the context ring, Stop)
-	keys        func(k ui.TextKey) bool
+	tools       func() // in the row, after the words (the mic, the model chip, the context ring)
+	// end (D547): in the row just before Send, kept S3 apart from it (a working task's Stop).
+	end func()
+	// tiered (D547): the words take their own line, the whole measure, and the buttons the line
+	// under them inside the card (an opened task, whose row carries the chip and the meter).
+	tiered bool
+	keys   func(k ui.TextKey) bool
 	// tray (D242, issue #68): the picture tray a paste fills; "" takes none.
 	tray     string
 	onSend   func(text string) bool // true: sent (the words are emptied)
@@ -61,9 +70,10 @@ type composerOpts struct {
 // composerBox draws the one composer and returns its card.
 func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 	t := a.T
-	// Without a leading control (pictures) the words keep clear of the round edge: the inset a
-	// leading control would have given them (D519: 「想改什么…」 sat on the edge).
-	left := t.S3
+	// D547: S2 round the row's buttons, which are round and concentric with the card. Without a
+	// leading control (pictures) the words keep clear of the round edge: the inset a leading
+	// control would have given them (D519: 「想改什么…」 sat on the edge).
+	left := t.S2
 	if o.lead == nil {
 		left = t.S5
 	}
@@ -82,7 +92,7 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 	}
 	size := o.sendSize
 	if size == 0 {
-		size = t.ControlLG
+		size = composerButton(t)
 	}
 	ready := len(strings.TrimSpace(*o.draft)) > 0
 	if o.canSend != nil {
@@ -105,10 +115,8 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 		if o.before != nil {
 			o.before()
 		}
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if o.lead != nil {
-				o.lead()
-			}
+		// D547: the buttons stand on one bottom line, so as the words grow only the card's top moves.
+		words := func() {
 			ink := t.Ink
 			if o.sending {
 				ink = t.InkMuted
@@ -146,17 +154,43 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			if o.focus {
 				ta.Focus()
 			}
+		}
+		label := o.sendLabel
+		if label == "" {
+			label = a.L.T("composer.send")
+		}
+		buttons := func(spread bool) {
 			if o.tools != nil {
 				o.tools()
 			}
-			label := o.sendLabel
-			if label == "" {
-				label = a.L.T("composer.send")
+			if spread {
+				ui.Box(c).Grow(1)
+			}
+			if o.end != nil {
+				o.end()
+				ui.Box(c).Size(t.S1, 1).Shrink(0) // Stop kept S3 from Send (the row's gap and this)
 			}
 			if a.sendButton(c, label, size, state, o.sendMenu) && send(*o.draft) {
 				*o.draft = ""
 			}
-		})
+		}
+		if o.tiered {
+			ui.Row(c).Padding(0, t.S2, 0, t.S2).Children(words)
+			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
+				if o.lead != nil {
+					o.lead()
+				}
+				buttons(true)
+			})
+		} else {
+			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
+				if o.lead != nil {
+					o.lead()
+				}
+				words()
+				buttons(false)
+			})
+		}
 		if o.mentions != nil {
 			a.mentionPop(c, o.key, o.mentions, box, o.draft)
 		}
@@ -165,13 +199,13 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 }
 
 // sendButton is the composer's send: the round accent button with the drawn
-// arrow. empty: resting at 45%, not pressable; sending: pressed into its
+// arrow. empty: sunken and flat, not pressable (D547); sending: pressed into its
 // ledge and still, until the home has the words. It reports a click when ready.
 // menu, when given, holds the send's alternates (the one clay menu, D421) on
 // a right-click or Control-click while there is something to send.
 func (a *App) sendButton(c *ui.Context, label string, size float32, state sendState, menu ...func(m *ui.Menu)) bool {
 	t := a.T
-	b := ui.Box(c.Key("send:"+label)).Size(size, size).Radius(a.buttonRadius(size)).Label(label).
+	b := ui.Box(c.Key("send:"+label)).Size(size, size).Radius(size / 2).Label(label).
 		Role(ui.RoleButton).Shrink(0)
 	switch state {
 	case sendReady:
@@ -195,10 +229,27 @@ func (a *App) sendButton(c *ui.Context, label string, size float32, state sendSt
 		}
 		b.Draw(drawSend(t.OnAccent.Alpha(0.55))) // the arrow waits, muted
 	default:
-		b.Background(t.Accent).Opacity(0.45)
-		b.Draw(drawSend(t.OnAccent))
+		// D547: empty, sunken and flat with a muted arrow: plainly not pressable, never a faded accent.
+		b.Background(t.Sunken).Border(1, t.LineSoft)
+		b.Draw(drawSend(t.InkMuted.Alpha(0.6)))
 	}
 	return false
+}
+
+// composerButton is the one size of every button in the composer's row
+// (attach, the mic, Stop, Send; D547): ControlMD, round.
+func composerButton(t *theme.Tokens) float32 { return t.ControlMD }
+
+// roundButton is a button of the composer's row: one size, round, in the
+// family's clay (attach and the mic quiet, Stop the secondary; D547).
+func (a *App) roundButton(c *ui.Context, label string, kind btnKind, draw func(fg ui.Color) func(p *ui.Painter, r ui.Rect)) bool {
+	t := a.T
+	size := composerButton(t)
+	b := ui.Box(c.Key("round:"+label)).Size(size, size).Radius(size / 2).Label(label).Tooltip(label).
+		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, kind, size, t.Surface)
+	b.Draw(draw(fg))
+	return b.Clicked()
 }
 
 // drawSend is the send's arrow, drawn (never a glyph or an emoji).

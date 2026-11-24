@@ -302,11 +302,12 @@ func (a *App) micButton(c *ui.Context) {
 	if a.hf.on {
 		label = a.L.T("talk.end") // D442: a tap ends the talk
 	}
-	size := t.ControlLG
-	b := ui.Box(c.Key("mic")).Size(size, size).Radius(a.buttonRadius(size)).Label(label).Tooltip(label).
+	// D547: one of the composer's row: its size, round, quiet until it hears.
+	size := composerButton(t)
+	b := ui.Box(c.Key("mic")).Size(size, size).Radius(size / 2).Label(label).Tooltip(label).
 		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	listening := a.vox.phase == "listen" || a.hf.on
-	kind := btnSecondary
+	kind := btnText
 	if listening {
 		kind = btnAccent
 	}

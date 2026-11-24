@@ -3397,3 +3397,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
   *Trigger:* the author says approvals may go without asking too.
 - [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
   change gets a review on GitHub. *Trigger:* hel on the release with D540.
+- [ ] **D547 on a real phone:** the composer standing on iOS Safari's keyboard (checked only with an
+  emulated visual viewport; the Simulator's Safari never loaded the demo) and the Android app's;
+  Overview on the iPhone app at its real text size. *Trigger:* the next build on the author's phone.
+- [ ] **D547 with D543:** the outbox's pending line in the composer's rhythm once D543 lands.
+  *Trigger:* D543 on main.
+- [ ] **The conversation bar at 320:** its counts line breaks between characters beside the update
+  pebble (seen in D547's shots). *Trigger:* the next bar pass.

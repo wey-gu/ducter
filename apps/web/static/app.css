@@ -23734,3 +23734,320 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 .task-page > .watch {
   margin-inline: auto;
 }
+
+/* ---------- D547: the composer, polished (composer.tsx ComposerBox; the Mac's composerBox) ----------
+   One card, S2 round its buttons. Every button in its row (attach, the mic, Stop, Send) is one size,
+   44, round and near concentric with the card (28 against 22 + 8), and they share one bottom line, so as the
+   words grow nothing moves but the card's top edge; the words' one line is centred on the buttons'
+   centre. Only Send is raised in the accent (and Stop, the secondary clay, while a task works, kept
+   12 apart from it); attach and the mic are quiet. Empty, Send rests sunken and flat with a muted
+   arrow, never a washed-out orange; it rises into the accent with a small pop when there is
+   something to send. The pictures picked sit inside the card above the words (as on the Mac). In a
+   tiered card (an opened task: its row carries the chip, the meter and Stop) the words take the first
+   line whole and the buttons the line under it, inside the card: nothing under the box (D542). */
+.composer {
+  --cb: 44px;
+  --cp: var(--s2);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 4px;
+  row-gap: 0;
+  padding: var(--cp);
+  margin-bottom: 0;
+  border-radius: var(--r-xl);
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+.composer.bare {
+  padding-left: var(--cp);
+}
+.composer .words {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-right: 4px;
+}
+.composer.bare .words {
+  padding-left: 18px;
+}
+.composer textarea,
+.composer .words-marks {
+  padding: max(4px, calc((var(--cb) - 1.45em) / 2)) 0;
+}
+.composer textarea {
+  min-height: max(var(--cb), calc(1.45em + 8px));
+  max-height: none; /* AutoText caps it at five lines, then it scrolls inside */
+  caret-color: var(--accent);
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+/* The row's buttons: one size, round, on the bottom line. */
+.composer .add-pic,
+.composer .mic,
+.composer .stop,
+.composer .send {
+  width: var(--cb);
+  height: var(--cb);
+  min-height: var(--cb);
+  padding: 0;
+  border-radius: 50%;
+  flex: none;
+  align-self: flex-end;
+}
+.composer .add-pic {
+  margin-left: 0;
+}
+.composer .send-anchor {
+  display: flex;
+  flex: none;
+  align-self: flex-end;
+}
+.composer .stop + .send-anchor {
+  margin-left: 8px;
+}
+.composer .send {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+/* Empty: sunken and flat, the arrow muted; plainly not pressable, never a faded accent. */
+.composer .send.is-empty:disabled {
+  opacity: 1;
+  --fill: var(--sunken);
+  --fill-top: var(--sunken);
+  --on: var(--ink-muted);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+  cursor: default;
+}
+.composer .send.is-empty svg {
+  opacity: 0.55;
+}
+.composer .send:not(:disabled) {
+  animation: send-ready var(--t-med) var(--spring);
+}
+@keyframes send-ready {
+  from {
+    transform: scale(0.84);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer .send:not(:disabled) {
+    animation: none;
+  }
+}
+/* The model chip and the context meter stand on the same bottom line, each a 44 target. */
+.composer .ctune,
+.composer .ctx-anchor {
+  align-self: flex-end;
+  height: var(--cb);
+  display: inline-flex;
+  align-items: center;
+}
+.composer .ctune-chip,
+.composer .ctx-btn {
+  min-height: var(--cb);
+}
+.composer .ctx-btn {
+  padding-inline: 8px;
+}
+/* Focus: one ring, on the card, never a border inside it. A phone shows the caret alone. */
+.composer:has(textarea:focus-visible) {
+  box-shadow: var(--base), 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+@media (pointer: coarse) {
+  .composer:has(textarea:focus-visible) {
+    box-shadow: var(--base);
+  }
+}
+/* The pictures picked: inside the card, above the words, on the card's own inset. */
+.composer-top,
+.composer > .replying {
+  order: -2;
+}
+.composer-top {
+  flex: 1 0 100%;
+  min-width: 0;
+}
+.composer-top:empty {
+  display: none;
+}
+.composer-top .tray-pics {
+  padding: 10px 6px 6px;
+}
+.composer-top .chosen {
+  border-radius: var(--r-md);
+}
+.composer-top .chosen > img {
+  border-radius: var(--r-md);
+}
+.composer:has(.composer-top:not(:empty)) {
+  border-radius: var(--r-lg);
+}
+/* Remove: a 44 target round the small pebble. */
+.chosen .x::after {
+  inset: -12px;
+}
+/* A tiered card (an opened task: attach, the model chip, the context meter, Stop): at every width
+   the words take their own line, the whole measure, and the buttons the line under them, Stop and
+   Send at the right edge; the same shape from a phone to a wide window, as on the Mac.
+   Under 420 the model chip keeps its name short; under 340 the chip is its level alone (its card
+   names the model) and the meter its ring alone. */
+.composer.tiered .words {
+  flex: 1 0 100%;
+  order: -1;
+  padding-inline: 12px 6px;
+}
+.composer.tiered .stop,
+.composer.tiered .send-anchor {
+  margin-left: auto;
+}
+.composer.tiered .stop + .send-anchor {
+  margin-left: 8px;
+}
+@container composer (max-width: 420px) {
+  .composer .ctune-chip .m {
+    max-width: 6.5em;
+  }
+}
+@container composer (max-width: 340px) {
+  .composer .ctune-chip .m,
+  .composer .ctx-btn .pct {
+    display: none;
+  }
+}
+/* iOS Safari lays its keyboard over the page (keyboard.ts marks it): the keyboard covers the home
+   indicator, so the composer stands right on the keyboard with no safe-area gap under it. */
+html.kb {
+  --safe-bottom: 0px;
+}
+html.kb #app {
+  height: var(--vvh, 100%);
+}
+
+/* ---------- D547: Settings' Overview on a phone (settings-home.tsx PhoneBrief, PhonePlaces) ----------
+   One column for a thumb, the most important first: the partner and its lead on one line; what needs
+   you on the needs tint, each sentence with its fix (a 44 button); the labelled lines as the list's
+   own rows (the label small over what is true, a chevron, the whole row a target); then the
+   computers and the accounts' places as rows of the list under its heads. */
+.set-brief.phone {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+  padding: 4px 0 0;
+}
+.set-brief.phone .sb-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0 4px;
+}
+.set-brief.phone .sb-face {
+  margin-top: 0;
+}
+.set-brief.phone .sb-lead {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.set-brief.phone .sb-needs {
+  background: var(--needs-surface);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--needs-surface) 60%, var(--needs-ink) 22%);
+}
+.set-brief.phone .sb-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  font-size: var(--md);
+  line-height: 1.45;
+  color: var(--needs-ink);
+}
+.set-brief.phone .sb-need + .sb-need {
+  border-top: 1px solid color-mix(in srgb, var(--needs-ink) 14%, transparent);
+}
+.set-brief.phone .sb-need .sb-words {
+  flex: 1 1 10em;
+  min-width: 0;
+  font-weight: 600;
+  text-wrap: pretty;
+}
+.set-brief.phone .sb-need .btn {
+  flex: none;
+}
+.set-brief.phone .sb-row {
+  min-height: 60px;
+}
+.set-brief.phone .sb-row b {
+  display: block;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.set-brief.phone .sb-row small.sb-k {
+  margin: 0 0 1px;
+  font-size: var(--xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.set-row > .chev-g {
+  flex: none;
+  color: var(--ink-muted);
+}
+.set-map.phone {
+  gap: var(--s2);
+  margin: var(--s2) 0 0;
+}
+.set-map.phone .map-label {
+  padding: 0 4px;
+}
+.set-map.phone .set-row small.map-now {
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-top: 0;
+}
+.set-map.phone .set-row small.map-here {
+  margin-top: 0;
+}
+.set-map.phone .map-line.away small.map-role {
+  color: var(--failed-ink);
+}
+.set-map.phone .acct-line .g-tile,
+.set-map.phone .acct-line .brand-tile {
+  flex: none;
+}
+.set-map.phone .acct-line .ap-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.set-map.phone .acct-line .map-mark {
+  width: 22px;
+  height: 22px;
+}
+.set-map.phone .acct-line small.ap-down {
+  color: var(--failed-ink);
+  font-weight: 600;
+}
+.set-map.phone + .set-map.phone {
+  margin-top: var(--s3);
+}
+/* D547: on a phone the @ and / sheet and the composer are one surface: the sheet stands flush on the
+   card (no gap, no shadow falling on the words), its lower corners and the card's upper ones square. */
+.composer.has-pop:has(> .mention-pop.sheet) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.composer > .mention-pop.sheet {
+  bottom: 100%;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -10px 28px -12px rgba(43, 33, 24, 0.22), 0 0 0 1px var(--line-soft);
+  clip-path: inset(-40px -40px 0 -40px);
+}

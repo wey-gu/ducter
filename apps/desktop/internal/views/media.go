@@ -890,7 +890,9 @@ func (a *App) addPicturesButton(c *ui.Context, tray string) {
 	if a.Media == nil {
 		return
 	}
-	if a.iconButton(c, a.L.T("media.add"), t.ControlMD, btnText, drawAttach) {
+	_ = t
+	// D547: one of the composer's row, the same size and round as Send.
+	if a.roundButton(c, a.L.T("media.add"), btnText, drawAttach) {
 		a.pickInto(tray)
 	}
 }

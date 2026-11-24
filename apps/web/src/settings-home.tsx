@@ -10,7 +10,7 @@ import { A, type SettingsPage } from "./app.ts";
 import { Mailbox, status, tilesOf, tileWords } from "./accounts.tsx";
 import { BrandMark, BrandTile, brandOf } from "./brand.tsx";
 import { linkedChats } from "./channels.tsx";
-import { Btn } from "./controls.tsx";
+import { Btn, Chev } from "./controls.tsx";
 import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
 import { ago, harnessName, memWords, modelName } from "./format.ts";
 import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
@@ -260,11 +260,11 @@ export function SetBrief({ go }: { go: (p: SettingsPage) => void }) {
   const needs = setNeeds();
   const lines = homeLines();
   const pose = needs.length ? "needsyou" : A.status === "offline" ? "napping" : "done";
-  const wide = typeof matchMedia === "function" ? !matchMedia("(max-width: 599px)").matches : true;
+  if (phoneWidth()) return <PhoneBrief needs={needs} lines={lines} pose={pose} go={go} />;
   return (
     <div class={`set-brief${needs.length ? " needs" : ""}`}>
       <span class="sb-face">
-        <Avatar size={wide ? 88 : 56} state={pose} />
+        <Avatar size={88} state={pose} />
       </span>
       <div class="sb-says">
         <p class="sb-lead" aria-live="polite">
@@ -302,8 +302,54 @@ export function SetBrief({ go }: { go: (p: SettingsPage) => void }) {
   );
 }
 
+/** D547: Overview on a phone: one column for a thumb. */
+const phoneWidth = () => typeof matchMedia === "function" && matchMedia("(max-width: 599px)").matches;
+
+/**
+ * D547: the brief on a phone, one column for a thumb, the most important first: the partner and its
+ * lead on one line, then what needs you (each sentence with its fix, a full 44 button) on the
+ * needs tint, then the labelled lines as the Settings list's own rows (the label small over what is
+ * true, the chevron, the whole row a target). Never the wide brief's two columns squeezed.
+ */
+function PhoneBrief({ needs, lines, pose, go }: { needs: SetNeed[]; lines: HomeLine[]; pose: "needsyou" | "napping" | "done"; go: (p: SettingsPage) => void }) {
+  return (
+    <div class={`set-brief phone${needs.length ? " needs" : ""}`}>
+      <div class="sb-top">
+        <span class="sb-face">
+          <Avatar size={48} state={pose} />
+        </span>
+        <p class="sb-lead" aria-live="polite">
+          {homeLead(needs)}
+        </p>
+      </div>
+      {needs.length > 0 && (
+        <div class="set-card sb-needs" role="group" aria-label={t("lane.needs_you")}>
+          {needs.map((n) => (
+            <NeedLine key={n.key} n={n} go={go} phone />
+          ))}
+        </div>
+      )}
+      <div class="set-card set-list sb-rows">
+        {lines.flatMap((l) => {
+          const rows = [{ key: l.key, label: l.label, text: l.text, page: l.page }];
+          if (l.more) rows.push({ key: `${l.key}-more`, label: "", text: l.more.text, page: l.more.page });
+          return rows.map((r) => (
+            <button key={r.key} class="set-row sb-row" onClick={() => go(r.page)}>
+              <span class="grow">
+                {r.label && <small class="sb-k">{r.label}</small>}
+                <b>{r.text}</b>
+              </span>
+              <Chev />
+            </button>
+          ));
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** One thing that needs you, and its fix: in place when the page's own action can run here (the D466 ask, Update all), else the way to the page. */
-function NeedLine({ n, go }: { n: SetNeed; go: (p: SettingsPage) => void }) {
+function NeedLine({ n, go, phone }: { n: SetNeed; go: (p: SettingsPage) => void; phone?: boolean }) {
   const [asking, setAsking] = useState(false);
   const f = n.fix;
   const press = () => {
@@ -316,7 +362,7 @@ function NeedLine({ n, go }: { n: SetNeed; go: (p: SettingsPage) => void }) {
   return (
     <span class={`sb-need${asking ? " asking" : ""}`}>
       <span class="sb-words">{n.text}</span>
-      {!asking && <Btn kind="secondary" size="sm" label={n.go} about={n.text} onClick={press} />}
+      {!asking && <Btn kind="secondary" {...(phone ? {} : { size: "sm" as const })} label={n.go} about={n.text} onClick={press} />}
       {asking && f?.kind === "memp" && (
         <span class="sb-ask">
           <MemAsk dv={f.dv} h={f.h} onDone={() => setAsking(false)} />
@@ -376,6 +422,7 @@ export function PlacesMap({ go }: { go: (p: SettingsPage) => void }) {
   const places = mapPlaces();
   const accts = accountPlaces();
   const memOn = !!A.settings && memPhase(!!A.settings.memory, A.mem, A.bridge) === "on";
+  if (phoneWidth()) return <PhonePlaces places={places} accts={accts} memOn={memOn} go={go} />;
   return (
     <>
       {places.length > 0 && (
@@ -424,6 +471,80 @@ export function PlacesMap({ go }: { go: (p: SettingsPage) => void }) {
                   </span>
                 )}
                 {!a.calls && !a.down && <small class="ap-may">{t("home.acct.may")}</small>}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <p class="set-foot">
+        <Avatar size={28} state="idle" still />
+        <span>{t("home.foot")}</span>
+      </p>
+    </>
+  );
+}
+
+/** The mark of a place where accounts live (a source's tile, the calling service, or the mailbox). */
+function AcctMark({ a }: { a: AcctPlace }) {
+  if (a.calls && /tuwa/i.test(a.name)) return <BrandTile name="tuwa" faded={!!a.down} />;
+  if (a.calls) return <img src="app/art/ab_call.webp" alt="" width={40} height={40} />;
+  if (a.source === "oomol" || a.source === "oo") return <BrandTile name="oomol" faded={!!a.down} />;
+  return (
+    <span class="g-tile mark">
+      <Mailbox source={a.source} off={!!a.down} />
+    </span>
+  );
+}
+
+/**
+ * D547: where things live, on a phone: the computers and phones, then the accounts' places, each a
+ * row of the Settings list (its clay at 40, its name, what it is to the partner and what it does now,
+ * the chevron), under the list's own heads; never a column of tall cards a thumb scrolls past.
+ */
+function PhonePlaces({ places, accts, memOn, go }: { places: MapPlace[]; accts: AcctPlace[]; memOn: boolean; go: (p: SettingsPage) => void }) {
+  return (
+    <>
+      {places.length > 0 && (
+        <section class="set-map phone" aria-label={t("home.map")}>
+          <h3 class="map-label">{t("home.map")}</h3>
+          <div class="set-card set-list">
+            {places.map((p) => (
+              <button key={p.key} class={`set-row map-line${p.away ? " away" : ""}`} onClick={() => go("devices")}>
+                <img src={p.art} alt="" width={40} height={40} />
+                <span class="grow">
+                  <b>{p.name}</b>
+                  <small class="map-role">{p.role}</small>
+                  {p.now && <small class="map-now">{p.now}</small>}
+                  {p.home && <small class="map-here">{t(memOn ? "home.here" : "home.here.conv")}</small>}
+                </span>
+                <Chev />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {accts.length > 0 && (
+        <section class="set-map phone" aria-label={t("home.accts")}>
+          <h3 class="map-label">{t("home.accts")}</h3>
+          <div class="set-card set-list">
+            {accts.map((a) => (
+              <button key={a.key} class={`set-row acct-line${a.down ? " down" : ""}`} onClick={() => go("accounts")}>
+                <AcctMark a={a} />
+                <span class="grow">
+                  <b>{a.name}</b>
+                  {a.down ? <small class="ap-down">{a.down}</small> : <small>{t(a.calls ? "home.acct.calls" : "home.acct.via")}</small>}
+                  {!a.calls && a.marks.length > 0 && (
+                    <span class="ap-marks" aria-hidden="true">
+                      {a.marks.slice(0, 5).map((m) => (
+                        <span key={m} class="map-mark">
+                          <BrandMark name={m} size={14} />
+                        </span>
+                      ))}
+                      {a.marks.length > 5 && <span class="map-more">+{a.marks.length - 5}</span>}
+                    </span>
+                  )}
+                </span>
+                <Chev />
               </button>
             ))}
           </div>

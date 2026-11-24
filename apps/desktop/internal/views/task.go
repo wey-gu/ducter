@@ -577,10 +577,14 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						// the composer's own row before Stop and Send: no row under it.
 						a.composerTune(c, task)
 						a.contextRing(c, task)
-						if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
+					},
+					// D547: Stop by Send at the row's end, kept apart from it; the words their own line.
+					end: func() {
+						if working && a.roundButton(c, a.L.T("task.action.pause"), btnSecondary, drawStop) {
 							a.TaskAction(task.ID, "interrupt")
 						}
 					},
+					tiered: true,
 					keys: func(k ui.TextKey) bool {
 						if a.pictureKeys(tray, k) {
 							return true

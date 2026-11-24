@@ -38,17 +38,58 @@ export const Arrow = () => (
 /** What the words hand the composer around them (D534): keys first, and where the caret went. */
 type WordsHooks = { taRef?: { current: HTMLTextAreaElement | null }; keys?: (e: KeyboardEvent) => boolean; onCaret?: () => void; aria?: JSX.HTMLAttributes<HTMLTextAreaElement> };
 
-/** Words that grow with what is typed (up to 140, scaled with the text size). Enter sends with a
- *  keyboard; on a phone Return breaks the line and the button sends; ⌘⏎ sends everywhere (D210). */
-export function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; onEscape?: () => void; autoFocus?: boolean; id?: string; disabled?: boolean } & WordsHooks) {
+/** D547: the first (longest) of the choices whose width fits the room, else the last (shortest). */
+export const longestThatFits = (choices: readonly string[], width: (s: string) => number, room: number): string => choices.find((c) => width(c) <= room) ?? choices.at(-1) ?? "";
+
+/** The longest of the placeholders that fits the words' width on one line (D547: never cut, at 320
+ *  in zh or en). Measured on a canvas in the textarea's own font; the last one is the shortest. */
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+export function fitPlaceholder(el: HTMLTextAreaElement, choices: readonly string[]): string {
+  if (choices.length < 2) return choices[0] ?? "";
+  if (measureCtx === undefined) measureCtx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  const cs = getComputedStyle(el);
+  const room = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  const ctx = measureCtx;
+  if (!ctx || room <= 0) return choices.at(-1)!;
+  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  return longestThatFits(choices, (c) => ctx.measureText(c).width, room - 2);
+}
+
+/** D547: the most lines the words grow to before they scroll inside (five, as a messaging app). */
+export const WORDS_LINES = 5;
+
+/** Words that grow with what is typed, up to five lines, then scroll inside; the cap follows the
+ *  words' own line height and padding, so it holds at any text size (D452). Enter sends with a
+ *  keyboard; on a phone Return breaks the line and the button sends; ⌘⏎ sends everywhere (D210).
+ *  `placeholder` may be a list, longest first: the longest that fits is shown (D547). */
+export function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string | readonly string[]; label: string; onEnter?: () => void; onEscape?: () => void; autoFocus?: boolean; id?: string; disabled?: boolean; lines?: number } & WordsHooks) {
   const own = useRef<HTMLTextAreaElement>(null);
   const ref = p.taRef ?? own;
+  const choices = typeof p.placeholder === "string" ? [p.placeholder] : p.placeholder;
+  const [ph, setPh] = useState(choices[0] ?? "");
+  const phKey = choices.join("\n");
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const cs = getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight) || scaledRow(23);
+    const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const cap = Math.round(lh * (p.lines ?? WORDS_LINES) + pad);
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, scaledRow(140))}px`;
+    const want = el.scrollHeight;
+    el.style.height = `${Math.min(want, cap)}px`;
+    // It scrolls inside only at its cap: no scrollbar flashing in while it grows.
+    el.style.overflowY = want > cap + 1 ? "auto" : "hidden";
   }, [p.value]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || choices.length < 2) return void setPh(choices[0] ?? "");
+    const fit = () => setPh(fitPlaceholder(el, choices));
+    fit();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(fit) : undefined;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [phKey]);
   useEffect(() => {
     if (p.autoFocus) ref.current?.focus();
   }, []);
@@ -58,7 +99,7 @@ export function AutoText(p: { value: string; onInput: (v: string) => void; place
       id={p.id}
       rows={1}
       value={p.value}
-      placeholder={p.placeholder}
+      placeholder={ph}
       aria-label={p.label}
       enterkeyhint="send"
       readOnly={p.disabled}
@@ -100,7 +141,7 @@ export function SendButton({ state, label, onSend, alts }: { state: "empty" | "r
       <button
         ref={btn}
         type="button"
-        class={`btn accent icon send${state === "sending" ? " sending" : ""}`}
+        class={`btn accent icon send${state === "sending" ? " sending" : state === "empty" ? " is-empty" : ""}`}
         aria-label={label ?? A.L.t("composer.send")}
         aria-busy={state === "sending" || undefined}
         aria-haspopup={can ? "menu" : undefined}
@@ -390,10 +431,13 @@ function Marks({ value, refs, taRef }: { value: string; refs: Ref[]; taRef: { cu
 }
 
 /**
- * The composer's card: `before` (add pictures, a reply pressed in), the words, `tools` (the mic, the
- * context ring, After this, Stop) and the send. `sending` keeps the words and presses the send in;
- * `canSend` overrides "has words" (pictures alone may go). D534 `mentions`: @ and / work here, for
- * the partner (where "") or the task (where its id, task true).
+ * The composer's card: `top` (the pictures picked, inside the card above the words, D547), `before`
+ * (add pictures, a reply pressed in), the words, `tools` (the mic, the model chip and the context
+ * ring, Stop) and the send. One size for every button in the row (44, round, concentric with the
+ * card) on one bottom line; `tiered` (an opened task) puts the words on the first line whole
+ * and the buttons the line under them, inside the card (D547). `sending` keeps the words and presses
+ * the send in; `canSend` overrides "has words" (pictures alone may go). D534 `mentions`: @ and /
+ * work here, for the partner (where "") or the task (where its id, task true).
  */
 export function ComposerBox(p: {
   id?: string;
@@ -401,9 +445,14 @@ export function ComposerBox(p: {
   onInput: (v: string) => void;
   onSend: () => void;
   label: string;
-  placeholder: string;
+  /** Longest first: the longest that fits the words' width is shown (D547). */
+  placeholder: string | readonly string[];
   sending?: boolean;
   canSend?: boolean;
+  /** D547: inside the card, above the words: the pictures and files picked for this message. */
+  top?: ComponentChildren;
+  /** D547: the words their own line and the buttons under them (an opened task, whose row carries the chip, the meter and Stop). */
+  tiered?: boolean;
   before?: ComponentChildren;
   tools?: ComponentChildren;
   sendLabel?: string;
@@ -533,7 +582,7 @@ export function ComposerBox(p: {
   };
 
   return (
-    <div ref={boxRef} class={`composer${p.before ? "" : " bare"}${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
+    <div ref={boxRef} class={`composer${p.before ? "" : " bare"}${p.tiered ? " tiered" : ""}${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
       {open && pop && (
         <MentionPop
           pop={pop}
@@ -550,6 +599,7 @@ export function ComposerBox(p: {
           onClose={() => (setShut(`${pop.kind}${pop.start}`), setPop(undefined), closeMentions(), taRef.current?.focus())}
         />
       )}
+      {p.top && <div class="composer-top">{p.top}</div>}
       {p.before}
       <div class="words">
         {mn && <Marks value={p.value} refs={refs} taRef={taRef} />}

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.56 - 2026-11-25
+
+<!-- whats-new
+zh: 更新 Mem 插件一点就好；Mem 出问题时伙伴照实说
+en: Updating the Mem plugin takes one tap; your partner is honest when Mem is down
+-->
+
+**Nowledge Mem**
+- Updating the Mem plugin for an agent opens one update however many times you tap. The button
+  says 更新中… / Updating…, and the row says 已更新到 0.7.38 when it's done.
+- With several computers, each update notice says which computer it is about.
+- When Mem is signed out or unreachable, Overview lists it as something to fix, and your partner
+  tells you plainly when something you asked it to remember wasn't saved.
+
 ## 0.1.55 - 2026-11-25
 
 <!-- whats-new

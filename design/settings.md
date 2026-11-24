@@ -504,8 +504,10 @@ choice use this. To give one its own, choose Change on its row.**, and gains the
 (the said line **好，从你的下一句话开始，思考深度用「{level}」。/ Got it: from your next message, I use
 {level} effort.**). With one partner the card keeps **想事情用 / What I think with** and no note. **做事的**:
 an agent another partner thinks with of its own says **{name}想事情也用它 / Also thinks for {name}**.
-Shared controls only: the web's Select and Facts, the Mac's pill (`pickPill`, D445's model pill made
-general) and facts. Shots: `.shots/partner-model/` (Mac 1150 and 1400, web 390, zh and en, light and dark).
+Shared controls only: the web's Select, Facts and Field (the name and its line, 44 tall with one
+accent ring), the Mac's pill (`pickPill`, D445's model pill made general, opening the one clay menu
+above it over its own group, never down over the next heading; it flips where the window has no
+room), `lineField` and facts. Shots: `.shots/partner-model/` (Mac 1150 and 1400, web 390, zh and en, light and dark).
 
 ## Not done
 

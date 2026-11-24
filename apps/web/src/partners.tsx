@@ -14,7 +14,7 @@ import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_N
 import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, Chev, CountPebble, Facts } from "./controls.tsx";
+import { AddRow, Btn, Chev, CountPebble, Facts, Field } from "./controls.tsx";
 import { harnessName, modelName } from "./format.ts";
 import { Select } from "./menu.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -332,8 +332,8 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
         <span class="grow partner-words">
           {editing ? (
             <>
-              <input class="name-input" value={draft} maxLength={PARTNER_NAME_MAX} aria-label={t("partners.rename")} autoFocus onInput={(e) => setDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
-              <input class="name-input about-input" value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} aria-label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={(e) => setAboutDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
+              <Field strong value={draft} maxLength={PARTNER_NAME_MAX} label={t("partners.rename")} autoFocus onInput={setDraft} onKeyDown={keys} />
+              <Field value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={setAboutDraft} onKeyDown={keys} />
             </>
           ) : (
             <>
@@ -372,37 +372,22 @@ function AddForm({ done }: { done: () => void }) {
     setName("");
     setAbout("");
   };
+  const addKeys = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && !e.isComposing) go();
+    if (e.key === "Escape") e.stopPropagation(), done();
+  };
   return (
     <div class="set-item partner-add">
       <span class="partner-add-head">
         <Stone look={look} size={48} />
         <label class="acct-field grow">
           <span class="small">{t("partners.add.name")}</span>
-          <input
-            value={name}
-            maxLength={PARTNER_NAME_MAX}
-            placeholder={t("partners.add.placeholder")}
-            autoFocus
-            onInput={(e) => setName((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.isComposing) go();
-              if (e.key === "Escape") e.stopPropagation(), done();
-            }}
-          />
+          <Field value={name} label={t("partners.add.name")} maxLength={PARTNER_NAME_MAX} placeholder={t("partners.add.placeholder")} autoFocus onInput={setName} onKeyDown={addKeys} />
         </label>
       </span>
       <label class="acct-field">
         <span class="small">{t("partners.about")}</span>
-        <input
-          value={about}
-          maxLength={PARTNER_ABOUT_MAX}
-          placeholder={t("partners.about.placeholder")}
-          onInput={(e) => setAbout((e.target as HTMLInputElement).value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.isComposing) go();
-            if (e.key === "Escape") e.stopPropagation(), done();
-          }}
-        />
+        <Field value={about} label={t("partners.about")} maxLength={PARTNER_ABOUT_MAX} placeholder={t("partners.about.placeholder")} onInput={setAbout} onKeyDown={addKeys} />
       </label>
       <span class="small">{t("partners.look")}</span>
       <LookPick value={look} label={t("partners.look")} onPick={setLook} />

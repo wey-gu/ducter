@@ -57,8 +57,31 @@ func TestD536PartnerThinksShots(t *testing.T) {
 		d302Both(t, h.app, h.tt, settle, "partner-model-change-"+itoa(int64(w)), lang)
 	}
 	// The agent pop-up open: the same as the default's, and each agent the home has.
+	// D421: the shared clay menu, anchored to its pill, flipped where there is no room.
 	h.tt.SetSize(1150, 2300)
-	h.app.partners.editing, h.app.partners.thinksOpen = ma.ID, "agent"
-	d302Both(t, h.app, h.tt, settle, "partner-model-pick-1150", lang)
-	h.app.partners.editing, h.app.partners.thinksOpen = "", ""
+	h.app.partners.editing = ma.ID
+	title := h.app.L.T("partners.thinks.title")
+	for _, mode := range []string{"light", "dark"} {
+		h.app.Local.SetAppearance(mode)
+		settle()
+		if err := h.tt.Click(spoken(h.app.L, title, "Claude Code")); err != nil {
+			t.Fatal(err)
+		}
+		settle()
+		d302Write(t, h.tt, "mac-partner-model-pick-1150-"+mode+"-"+string(lang))
+		h.tt.CloseMenu()
+	}
+	h.app.partners.editing = ""
+	// D445's model pill on the default card: the same menu, up over its own group.
+	for _, mode := range []string{"light", "dark"} {
+		h.app.Local.SetAppearance(mode)
+		settle()
+		if err := h.tt.Click(spoken(h.app.L, h.app.L.T("loadout.brain.model"), "GPT-6.2-Astra")); err != nil {
+			t.Fatal(err)
+		}
+		settle()
+		d302Write(t, h.tt, "mac-partner-model-modelpill-1150-"+mode+"-"+string(lang))
+		h.tt.CloseMenu()
+	}
+	h.app.Local.SetAppearance("system")
 }

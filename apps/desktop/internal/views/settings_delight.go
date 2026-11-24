@@ -185,35 +185,29 @@ func (a *App) talkSample(c *ui.Context, tag string) {
 // modelPill is the model choice as one pill at the row's right edge, the
 // models in its list (D445: Codex's six no longer wrap onto two lines under
 // the row). It reports the index picked.
-func (a *App) modelPill(c *ui.Context, labels []string, sel int, open *bool) int {
-	return a.pickPill(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel, open)
+func (a *App) modelPill(c *ui.Context, labels []string, sel int) int {
+	return a.pickPill(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel, false)
 }
 
-// pickPill is one choice among labels as a pill opening its list (D445's
-// model pill, D536's 想事情用 pickers): key keeps each pill's own rows apart.
-func (a *App) pickPill(c *ui.Context, key, title string, labels []string, sel int, open *bool) int {
+// pickPill is one choice among labels as a pill opening the one clay menu
+// (D421), anchored to the pill and opening above it, over its own group
+// (menuAbove; below only where the window has no room above), so it never
+// lies over the next group's heading. D445's model pill and D536's 想事情用
+// pickers. start: the menu lines up with the pill's start
+// (a pill on the text column), else its end (a pill at a row's right edge).
+func (a *App) pickPill(c *ui.Context, key, title string, labels []string, sel int, start bool) int {
 	t := a.T
 	hit := -1
-	e, click := a.pill(c, key+"-pill", spoken(a.L, title, labels[sel]), *open, func() {
+	e, _ := a.pill(c, key+"-pill", spoken(a.L, title, labels[sel]), false, func() {
 		uiText(c, labels[sel]).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
 	})
-	if click {
-		*open = !*open
-	}
-	if !*open {
-		return -1
-	}
-	a.listPanel(c, e, open, title, 240, func() {
+	a.menuAbove(c, e, func(m *ui.Menu) {
 		for i, l := range labels {
-			i, l := i, l
-			if a.menuRow(c, key+":"+l, l, i == sel, false, func() {
-				uiText(c, l).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
-			}) && i != sel {
+			if m.Item(l).Radio(i == sel).Chosen() && i != sel {
 				hit = i
-				*open = false
 			}
 		}
-	})
+	}, start)
 	return hit
 }
 

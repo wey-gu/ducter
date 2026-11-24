@@ -32,13 +32,9 @@ type partnerState struct {
 	// D445: a quiet-hours end's list of half hours is open; qJust is its first
 	// frame, when the chosen time is brought into sight.
 	qOpenStart, qOpenEnd, qJust bool
-	// D445: the model list under 想事情用 is open.
-	modelOpen bool
-	// D536: the effort list under it is open.
-	effortOpen bool
-	toast      string
-	toastAt    time.Time
-	toastTone  noticeTone // set with every toast: an error never wears the done look (D158)
+	toast                       string
+	toastAt                     time.Time
+	toastTone                   noticeTone // set with every toast: an error never wears the done look (D158)
 	// forgetting: the noted lines asked to be forgotten, seq -> title.
 	forgetting map[int64]string
 	// Adding a connection (D96): the form, where it runs, the address and

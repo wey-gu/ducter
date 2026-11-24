@@ -602,6 +602,24 @@ export function TextBox(p: { value: string; label: string; lang?: string; class?
   );
 }
 
+/** D536: one line of words someone types (a partner's name, what it looks after): 44 tall, a hairline
+ *  that becomes the one accent ring while typing in it (never the page's outer focus ring on top).
+ *  The Mac's `lineField`. */
+export function Field(p: { value: string; label: string; placeholder?: string; maxLength?: number; autoFocus?: boolean; strong?: boolean; onInput: (v: string) => void; onKeyDown?: (e: KeyboardEvent) => void }) {
+  return (
+    <input
+      class={`field${p.strong ? " strong" : ""}`}
+      value={p.value}
+      aria-label={p.label}
+      placeholder={p.placeholder}
+      maxLength={p.maxLength}
+      autoFocus={p.autoFocus}
+      onInput={(e) => p.onInput((e.target as HTMLInputElement).value)}
+      onKeyDown={p.onKeyDown}
+    />
+  );
+}
+
 /** D457: one part of a path's breadcrumb that steps back there (the folder browser's). */
 export function CrumbStep(p: { label: string; onClick: () => void }) {
   return (

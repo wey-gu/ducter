@@ -82,10 +82,8 @@ func (a *App) thinksPick(c *ui.Context, p protocol.PartnerInfo) {
 		return
 	}
 	t := a.T
-	ps := &a.partners
 	own := p.Brain
 	set := func(b any) {
-		ps.thinksOpen = ""
 		a.send(protocol.PartnerSet{T: "partner_set", ID: p.ID, Brain: b})
 	}
 	agents := []string{a.L.T("partners.thinks.same.pick", a.defaultName())}
@@ -119,14 +117,8 @@ func (a *App) thinksPick(c *ui.Context, p protocol.PartnerInfo) {
 	pick := func(key, title string, labels []string, sel int, apply func(i int)) {
 		ui.Column(c.Key("thinks-pick:" + key)).Gap(t.S1).MinWidth(0).Children(func() {
 			uiText(c, title).FontSize(t.SM).TextColor(t.InkMuted)
-			open := ps.thinksOpen == key
-			if i := a.pickPill(c, "thinks-"+key+":"+p.ID, title, labels, sel, &open); i >= 0 {
+			if i := a.pickPill(c, "thinks-"+key+":"+p.ID, title, labels, sel, true); i >= 0 {
 				apply(i)
-			}
-			if open {
-				ps.thinksOpen = key
-			} else if ps.thinksOpen == key {
-				ps.thinksOpen = ""
 			}
 		})
 	}

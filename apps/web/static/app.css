@@ -21299,7 +21299,7 @@ html[data-text-size="large"] .brand-mark > svg {
 
 /* D486: what a partner looks after, under its name; its removal asked in its own row; words another partner passed on. */
 .partners-set .partner-about { color: var(--ink-soft); overflow-wrap: anywhere; }
-.partners-set .about-input { font-size: var(--xs); }
+
 .partners-set .partner-removing b { font-weight: 700; }
 .passed-from:disabled { cursor: default; }
 .passed-from .stone { flex: none; }
@@ -22808,3 +22808,27 @@ button.tray-main:focus-visible,
   min-width: 0;
 }
 .partners-set .partner-thinks-pick .pick > .small { color: var(--ink-muted); }
+/* D536: the shared one-line field (Field): 44 tall, the hairline turning into the one accent ring
+   while typing (an inset ring, so the page's outer focus ring never stacks a second one outside it). */
+.field {
+  width: 100%;
+  min-width: 0;
+  height: max(44px, 2.75rem);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+  line-height: 1.4;
+}
+.field.strong { font-weight: 700; }
+.field::placeholder { color: var(--ink-muted); }
+.field:focus,
+.field:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.partners-set .partner-words .field { max-width: 26.25rem; }

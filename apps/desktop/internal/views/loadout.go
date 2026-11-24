@@ -545,7 +545,7 @@ func (a *App) thinksGroup(c *ui.Context) {
 				// the row's right edge opening them, as the reply language does, never a tray
 				// wrapping onto a second line with one model alone on it.
 				a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), func() {
-					if i := a.modelPill(c, labels, sel, &a.partner.modelOpen); i >= 0 {
+					if i := a.modelPill(c, labels, sel); i >= 0 {
 						a.setBrain(protocol.Brain{Harness: b.Harness, Model: models[i].id})
 						a.say("brain", a.L.T("said.brain", a.L.T("loadout.brain.with", harnessName(b.Harness), models[i].label)))
 					}
@@ -571,7 +571,7 @@ func (a *App) thinksGroup(c *ui.Context) {
 					}
 				}
 				a.tileRow(c, "brain-effort", nil, a.L.T("newtask.effort"), "", func() {
-					if i := a.pickPill(c, "brain-effort", a.L.T("newtask.effort"), labels, at, &a.partner.effortOpen); i >= 0 && i != at {
+					if i := a.pickPill(c, "brain-effort", a.L.T("newtask.effort"), labels, at, false); i >= 0 && i != at {
 						nb := protocol.Brain{Harness: b.Harness, Model: cur.id}
 						if i > 0 {
 							nb.Effort = levels[i-1]

@@ -72,7 +72,7 @@ A family that needs privacy from each other needs separate homes.
 ## Switching: the list of partners (zero concepts, D513)
 
 - **Every partner in one list, as a messaging app lists its chats.** With a second partner, a
-  computer (the Mac, the web from 1000) shows **伙伴们 / Your partners** as a column at the
+  computer (the Mac, the web from 700; D541: from 700 to 999 the slim list) shows **伙伴们 / Your partners** as a column at the
   conversation's left. Each row: the partner's figure in its own clay; its name; the last thing said
   in its conversation (the person's own words as **你：{text} / You: {text}**; nothing said yet:
   **管：{about} / Looks after: {about}**, else **还没聊过 / Nothing said yet**); and on the figure's
@@ -84,15 +84,20 @@ A family that needs privacy from each other needs separate homes.
   only (On hand and an opened task are the person's, not a partner's).
 - **Alive and still (D517).** The list never moves on a switch (its numbers are held until the new
   welcome): the chosen pebble glides to the row picked on a spring and the chosen figure stands a
-  touch taller; only the conversation comes in. Each figure breathes and blinks in its own clay, out
+  touch taller; the conversation changes in place, at once (D541). Each figure breathes and blinks in its own clay, out
   of step with the others, and hops once when something new comes from it (never the one shown).
   The number is a clay pebble in the needs-you colours on its ledge. Reduce Motion stills it all.
 - **The number is the person's one count's (D517).** A row's number is that partner's part of what
   On hand lists under 等你: its questions, and its tasks that ask, stopped, didn't work out or have
   a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
   hand's head; each item is under 等你 with its fix.
+- **Thin or hidden (D545).** Beside the conversation (not on a phone), the bar's first control
+  narrows the list to its faces and their numbers, hides it, and brings it back; each device
+  remembers it. Hidden, the other partners' faces stay in the bar with what waits in them, and a
+  press brings the list back; nothing waiting is lost.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
-  last shown. The bar's left has **‹** with the number of what waits in the other partners (label
+  last shown. The bar's left has **‹** and the other partners' own figures, a small stack in their
+  clays (D541: a lone ‹ read as "back"), with the number of what waits in them (label
   **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the
   leading-edge swipe goes up to the list, a row goes back down into that partner's conversation.
   Rows are a thumb tall (76); the list's bar has the places; with fewer than four, **再加一个伙伴 /
@@ -108,8 +113,16 @@ A family that needs privacy from each other needs separate homes.
   that partner's conversation (web push `#p=<id>/d=<id>`, the Mac's notice by its id).
 - A switch is per device: this Mac can show the home partner while the phone shows the work one.
   It is remembered on the device, survives a reconnect and a relaunch.
-- Underneath: a switch is a new hello with `persona`; the socket then shows that conversation
-  (as its `channel`), and the client starts over on it (no glance of another partner is painted).
+- **Instant, as a messaging app switches chats (D541).** The other partner's conversation is there in
+  the frame the click lands in, where it was left: its place in the list, its draft, its unsent
+  messages. No fade, no rise; the bar's face and name change where they stand; the bar and the
+  composer never move and keep the keyboard. Nothing blank, nothing "connecting", On hand untouched.
+- Underneath (D541): each conversation a window or page has shown stays held; once connected, each
+  other partner's newest 50 events are asked for (`partner_peek`), so one never shown draws at once
+  too. A switch is a new hello with `persona` and the cursor of what is held: the home sends only
+  what is newer, and frames of the conversation left still on the way are dropped until its welcome.
+  What is the person's (On hand, tasks, devices, settings) is never swapped. A partner never shown
+  on a home before D541 waits for its welcome, with nothing of another's painted.
 
 ## Meeting a partner (D497)
 

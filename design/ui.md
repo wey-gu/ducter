@@ -292,8 +292,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 
 **A task resting on its own wait (D279).** Its state in the head's meta line is when it comes
 back, **21:59 回来 / Back at 21:59**, in the waiting ink with the clock mark. Under the head, the
-**watch card**, under the title on its left edge (the face's 96 and the head's 24 in; a phone keeps
-the page's edge; D355): a 56 ring (a clay disc, its groove muted ink at 16%, 8 wide) whose arc in
+**watch card**, under the head on the page's own left edge (D542; was the face's 96 in, D355): a 56 ring (a clay disc, its groove muted ink at 16%, 8 wide) whose arc in
 `--waiting-dot` fills clockwise from the last look (or the arming) to the next, redrawn each
 half minute, so it maps to time and nothing else; a bead at the arc's edge breathes once per
 `--t-breathe` (3.2 s, scale 1 → 1.3 on `--ease`; Mac `Breathe`), still under reduced motion;
@@ -353,6 +352,7 @@ ms, bounce 0.08), across 300 ms (`--t-across`), hero 440 ms (`--t-hero` on `--ea
 | go deeper (conversation → On hand → task) | page in from 28 pt on the push spring, its fade on a quick ease-out (`EnterDur`); the page left recedes 10, opaque under it | a full push from the trailing edge; the page left recedes a third and dims | the pane's page in from 28px; the one left recedes and fades |
 | come back | the reverse | the page left slides off the trailing edge on top | the reverse |
 | the card you opened | On hand's row (held on hover or focus) grows into the task's head (`Match` + `Fly`), and the head goes back into it | the row's `.tmain` and the head share `hero` | the same |
+| one partner to the next (the list of partners, ⌥⌘1–4; D541) | not a move in depth: the conversation is shown in place at once, where it was left (no fade, no rise); the knob glides (D517); the bar's face and name change where they stand; bar and composer stay | the same (from the list, the phone's row goes deeper as D513 has it) | the same |
 | one task to the next (rail, ⌘⇧], j/k; D343) | not a move in depth: nothing travels and no card flies; the task's column cross-fades in place on 140 ms ease-out (`Nav.Switch`), the head's words changing where they stand; bar and rail stay; reduced motion: at once | the page cross-fades in place (`--t-switch` 140 ms, ease-out) | the same |
 | a place beside another | page 14 toward its mark; the knob (its own piece under the marks) slides there | — | the knob goes to Devices or Settings while their sheet is over the board |
 | the bar | held still against its page (a pose turned back); its words cross-fade | named `bar`: stays, cross-fades | — (two bars) |
@@ -448,10 +448,22 @@ ledge), one element gliding from row to row on a spring (420 ms, bounce about 0.
 figure 6% taller; hover is a light sunken ground; no tooltip. A figure hops once (700 ms) when
 something new comes from its partner. D517: 272 wide from 1200 on the Mac and 1360 on the web;
 under that 88 wide, each figure with its name under it (11/700). Reduce Motion: no glide, no
-breath, no blink, no hop.
+breath, no blink, no hop. D541: a pick shows that partner's conversation in place in the next
+frame, held or peeked (no fade, no rise, never blank); the bar and the composer don't move.
 On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
 tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
-**‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no
+the way up (D541): the drawn chevron (`Chev back`, 16) and the other partners' own figures, a stack
+of up to three 24-pt discs in their clays (each on the sunken ground with a 1.5 ring of the page,
+overlapping 9, the nearest on top), the others' number as a `CountPebble` on the stack's shoulder;
+44 tall; at 360 and under, one figure and the number. A lone ‹ read as "back"; the faces say who is
+there. The same in a fold's conversation pane (no column stands beside there); the list then opens
+over that pane. From 700 to 999 (an iPad upright, a foldable open: one column) the slim list (88)
+stands at the conversation's left and the column grows by its width. D545: the bar's first control
+(a drawn window with its side column, `IconBtn` / `iconButton`) narrows the list to its faces (thin:
+30-pt figures on a 56-pt strip on the web, 60 on the Mac, the number above each head), hides it, and
+brings it back, remembered per device; hidden, the others' faces in the bar are the way back. The
+list's width changes once at the press and then the list alone slides in 14 on `--t-across`; on the
+Mac, thin, its band joins the bar's chrome under the window's controls. No pills, no coloured edge, no
 " · " joins: each fact its own element.
 
 **The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay
@@ -575,6 +587,7 @@ A new control is added to the set (and to this table) before it is used.
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| The other partners' faces, a stack of up to three 24-pt discs in their clays with what waits in them on a `CountPebble`, the way up to (or back to a hidden) list of partners (D541, D545) | `othersStack` (`shared.go`) | `PartnersBack` |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |
 | A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
@@ -590,7 +603,7 @@ A new control is added to the set (and to this table) before it is used.
 | A needs-you count as a door (D535): a pebble with a pointer's room round it that lifts a point under the pointer; the bar's 「n 个等你」 as a quiet text button in the needs-you ink; the line over the composer as a clay pill 30 tall in the needs-you surface on its 2-pt ledge, its words 13/700 and the drawn chevron, sinking 2 pt pressed. A tap opens the next item that waits | `pebbleDoor`, `countDoor`, `needsDoor` (`components.go`) | `CountPebble` in a door row, `CountDoor`, `NeedsDoor` (`.sum-needs`, `.needs-door`) |
 | **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, Stop; D530: the context meter and the keys sit in the row under it, After this turn is the send's alternate in its menu), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
 | A section's name over its card (等你, 手上的, 每一轮, 怎么做; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
-| A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
+| A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken); D542: working, waiting, failed for an opened task's state | `tag` (`composer.go`) | `Tag` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
 | The @ and / list over a composer (D534): sections with drawn glyphs, ↑↓ Enter Tab Esc, hover and click without taking the focus, above the caret and never past the window, a sheet with 48-tall rows on a phone or under 560; and a reference in a sent message, its glyph and name on the bubble's own ink at 13% | `mentionPop`, `refChip`, `drawKind` (`mentions.go`) | `MentionPop`, `RefChip`, `KindGlyph` (`composer.tsx`) |
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
@@ -1049,11 +1062,13 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    (D268: 640 pt on the Mac, 40 em on the web, head, transcript, changes and composer alike), read top to bottom; the window's header is the breadcrumb and the title only.
    D535: the breadcrumb is the one way back at every level (a Keep's page: 对话 / 手头的事 / {the Keep}), Esc
    goes up one level, every needs-you count opens its next item; the table is `on-hand.md` "Navigation".
-   1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
-      (D152): the state in its ink, the task's one clock once finished ("用了 18 分钟 / took 18
-      min"; while it works the clock ticks on the working line, D268), the agent and the model (no coin, D213), where
-      (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
-      place), and **换谁来做 / Switch who does it** with the drawn chevron as a small action; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
+   1. **The head is one block** (D90; D542: the partner's mark at 28 inline before the title, on
+      the reading column's left edge, at every width and density; never the 96 face beside the
+      page), then one quiet meta line under the title (D152): the state in the shared `Tag` on its
+      state's tint, in D525's register (进行中, 等你, 等待中, 已完成, 没完成; D542; never link blue), the task's one clock once finished ("用了 18 分钟 / took 18
+      min"; while it works the clock ticks on the working line, D268), the agent (D542: the model and effort only when the composer's chip doesn't show them; no coin, D213), where
+      (the project, a folder, "在 hel 上 / on hel" for another machine; nothing for no
+      place; D542: never the branch, which is the bar's own button), and **换谁来做 / Switch who does it** as the shared quiet link with its chevron; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
       at 28/800; finished, the outcome at 34/800. No link chain in the head.
    2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
@@ -1114,9 +1129,10 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    composer does, on the same 640 measure (D268); a pending ask sits over it (D152). While it
    works, a square **暂停 / Pause** button sits beside Send (one family with it: the secondary and
    the accent clay), ⌥↩ or the send's menu (right-click; a long press on a phone) holds the words
-   for **等它做完再说 / After this turn**, and in the row under the box, after the model chip and
-   only while the words have the focus, the keys drawn in their caps: **↩ 插一句** and **⌥↩
-   等它做完再说**; the context meter, its ring and **上下文 22%**, at the row's far end (D530). Over it, **the foot** says only the moment (D268): Esc once,
+   for **等它做完再说 / After this turn**; D542: the model chip and the context meter (its ring and
+   **上下文 22%**; in a pane under 560 the ring and its figure, the chip's level as its bars) sit in
+   the composer's own row before Pause and Send, and nothing is drawn under the box, at rest or
+   on focus (a row that came with the focus moved the box under the pointer). Over it, **the foot** says only the moment (D268): Esc once,
    **再按一次 Esc 就暂停** with **继续** and **暂停**; over to you, **等你回复** in the needs ink and
    the hint muted. Where it is at is the working line at the transcript's end. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the

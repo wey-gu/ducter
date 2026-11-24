@@ -36,6 +36,7 @@ type sheetState struct {
 	fold      string               // D398: the card whose fold (how it's connected, disconnect) is open
 	lockSteps string               // D398: the phone whose 锁屏时也能借给任务 steps are open
 	handOff   string               // D398: the phone whose 用这台手机 chip asked before turning off
+	keptSure  string               // D539: "device:ENV" whose 删掉 asked once (确定删掉)
 }
 
 const (
@@ -119,6 +120,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		}
 		// D538: what this computer measured of itself, and the person's rules about it.
 		a.aboutComputer(c, dv)
+		// D539: the keys Ducter keeps on this computer for its tasks here (names only), folded.
+		if dv.Kind != "phone" {
+			a.keptKeysFold(c, dv)
+		}
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.
 		if dv.Home {

@@ -23,7 +23,6 @@ import { hlLines, escHtml } from "./hl.ts";
 import { LiveView, liveSize } from "./live.tsx";
 import { MediaBlock } from "./media.tsx";
 import { attention, browsing, cantOf, finished, placeOf, reportOf, resultEvidence, type Task } from "./store.ts";
-import { phoneNow } from "./wide.ts";
 import { computerName, watchesBrowser } from "./where.ts";
 import { SimScreen } from "./sim.tsx";
 import { driverFor, screenFor } from "./workbench-screens.ts";
@@ -40,31 +39,52 @@ const TABS: BenchTab[] = ["changes", "files", "preview", "browser", "phone", "ma
 
 // ---------- state (this device's own: open or not, the page, the width) ----------
 
+// D542: the workbench is one task's: it is open for the task it was opened on, at the page that task
+// last showed, never carried into the next task opened (a row tapped in the rail, j/k, a Keep's
+// task). Each task's page is its own; a task opened fresh opens at its conversation.
 const KEY = "ducter.bench";
 interface Bench {
   open: boolean;
+  /** The page shown last for the task it was opened on (tabOf reads the task's own). */
   tab: BenchTab;
+  /** D542: each task's own page, this session. */
+  tabs: Map<string, BenchTab>;
   /** The column's width on a wide screen, CSS px. */
   width: number;
   /** Opened from the two panes: closing goes back beside the conversation. */
   promoted?: boolean;
-  /** D244: the task whose workbench had a page while open: when its pages go away it stays open
-   *  on the launcher, never a blank, never closing on its own. */
+  /** D244, D542: the task whose workbench is open (when its pages go away it stays open on the
+   *  launcher, never a blank, never closing on its own). Kept on this device with it. */
   kept?: string;
 }
-const read = (): Bench => {
+export const readBench = (raw: string | null): Bench => {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Bench>;
-    return { open: !!v.open, tab: TABS.includes(v.tab as BenchTab) ? (v.tab as BenchTab) : "changes", width: typeof v.width === "number" ? v.width : 0 };
+    const v = JSON.parse(raw ?? "{}") as Partial<Bench>;
+    const tab = TABS.includes(v.tab as BenchTab) ? (v.tab as BenchTab) : "changes";
+    const kept = typeof v.kept === "string" && v.kept ? v.kept : undefined;
+    // D542: an open workbench belongs to one task; one kept before it did (no task) opens for none.
+    return { open: !!v.open && !!kept, tab, tabs: new Map(kept ? [[kept, tab]] : []), width: typeof v.width === "number" ? v.width : 0, kept };
   } catch {
-    return { open: false, tab: "changes", width: 0 };
+    return { open: false, tab: "changes", tabs: new Map(), width: 0 };
   }
 };
-export const bench: Bench = read();
+const stored = () => {
+  try {
+    return localStorage.getItem(KEY);
+  } catch {
+    return null;
+  }
+};
+export const bench: Bench = readBench(stored());
 const keep = () => {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ open: bench.open, tab: bench.tab, width: bench.width }));
+    localStorage.setItem(KEY, JSON.stringify({ open: bench.open, tab: bench.tab, width: bench.width, kept: bench.kept }));
   } catch {}
+};
+/** D542: sets the page a task's workbench shows (its own, never another task's). */
+const setTab = (taskId: string, tab: BenchTab) => {
+  bench.tab = tab;
+  bench.tabs.set(taskId, tab);
 };
 
 interface FileView {
@@ -136,19 +156,18 @@ export const benchable = (task: Task) => tabsOf(task).length > 0;
 /** The page shown: the one chosen when it is there, else the first that is. */
 export function tabOf(task: Task): BenchTab | undefined {
   const tabs = tabsOf(task);
-  return tabs.includes(bench.tab) ? bench.tab : tabs[0];
+  const own = bench.tabs.get(task.id);
+  return own && tabs.includes(own) ? own : tabs[0];
 }
 
 /** The task whose workbench is on screen now (main.tsx sets it each frame). */
 export const benchShown = { taskId: "" };
 
 export function benchOpen(task: Task | undefined): boolean {
-  if (!task || !bench.open) return false;
-  // D484: on a phone the workbench is a sheet over the task: it is open for the task it was
-  // opened on, never over the next one opened (a column beside every task stays on wide screens).
-  if (phoneNow()) return bench.kept === task.id;
-  if (benchable(task)) return (bench.kept = task.id), true;
-  return bench.kept === task.id;
+  // D484, D542: at every width the workbench is open for the task it was opened on, never over or
+  // beside the next one opened (D484's column beside every task on wide screens carried one task's
+  // 成果 / Results into the next one tapped, and took the rail's place for it).
+  return !!task && bench.open && bench.kept === task.id;
 }
 
 /** Opens or closes it. Wide, from the two panes, it takes the whole screen for it (and gives it back). */
@@ -174,13 +193,13 @@ export function toggleBench(taskId: string, on = benchShown.taskId !== taskId) {
 
 /** Opens the workbench at a page (the head's Watch, the working copy's changes). */
 export function openBenchAt(task: Task, tab: BenchTab) {
-  bench.tab = tab;
+  setTab(task.id, tab);
   if (benchShown.taskId !== task.id) toggleBench(task.id, true);
   else showTab(task, tab);
 }
 
 export function showTab(task: Task, tab: BenchTab) {
-  bench.tab = tab;
+  setTab(task.id, tab);
   keep();
   A.changed();
   void load(task, tab);
@@ -734,7 +753,7 @@ function openInFiles(task: Task, path: string) {
   // Open its folders on the way.
   const parts = path.split("/");
   for (let i = 1; i < parts.length; i++) d.expanded.add(parts.slice(0, i).join("/"));
-  bench.tab = "files";
+  setTab(task.id, "files");
   keep();
   void openFile(task, path);
   for (const p of d.expanded) if (!d.dirs.has(p)) void loadDir(task, p);

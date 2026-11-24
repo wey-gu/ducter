@@ -56,6 +56,26 @@ func (a *App) openKeep(id string) {
 
 func (a *App) closeKeep() { a.oh.keep = keepState{} }
 
+// keepOfTask is the Keep whose own work a task is (a Keep in rounds: its
+// rounds' task), so a row of it opens the Keep's page (D542); a Keep's item
+// (one PR it babysits) is a task of its own.
+func (a *App) keepOfTask(id string) string {
+	if a.S.OnHand == nil {
+		return ""
+	}
+	for _, k := range a.S.OnHand.Keeps {
+		if k.Run == "perItem" {
+			continue
+		}
+		for _, x := range k.TaskIDs {
+			if x == id {
+				return k.ID
+			}
+		}
+	}
+	return ""
+}
+
 // keepMark is the mark (§8): a lantern, lit while on, dim when paused, out
 // with a tick when done, out when stopped. A flat placeholder until the clay
 // art is rated: the one place a Keep's mark is drawn, so the art (or the

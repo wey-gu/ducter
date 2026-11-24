@@ -107,6 +107,27 @@ If you give Ducter an API key or a sign-in token, it's kept in a private file in
 handed only to the AI agent that signs in with it, never to the others or to every task. A task
 doesn't get the keys or tokens from the environment Ducter was started in, either.
 
+### A key you already have, on another of your computers
+
+When a task on one of your computers needs a key you already have on another (say it's set in
+your Mac's terminal and the task runs on your server), Ducter doesn't ask you to set it again by
+hand. It shows one card: **Copy {key} from {Mac} to {server}? Only for Ducter's tasks there. Never
+shown, never in the conversation.** Only your own tap on **Copy** copies it. It never happens by
+itself, and nothing a task or a web page says can make it happen.
+
+- The key goes from the Ducter on one computer to the Ducter on the other, locked for that one
+  computer before it leaves, so nothing in between can read it: not your network, and not the
+  computer your Ducter's home runs on when it passes it along.
+- On the computer it goes to, it's kept locked by Ducter (in the Mac's keychain, or a file only
+  your account can read on a server) and given only to the Ducter tasks there that need it. Your
+  own terminal settings there are left as they are.
+- What's recorded is only that the key with that name was copied, from where to where, on your
+  word. The key itself is never shown, not even to you, and never reaches the conversation.
+- Each computer's card in **Devices** lists **Keys Ducter keeps** there, by name, and
+  **Remove** forgets one there at once.
+- The limit, said plainly: a task that uses the key sees what its own commands print, as with any
+  key you give a task.
+
 Before a result that changed code or files, or something a task would send for you, reaches you,
 another AI agent you're signed in to on the same computer reads it once: what you asked, what the
 task says it did, and what it changed. It reads on that agent's smallest model, with no tools; what

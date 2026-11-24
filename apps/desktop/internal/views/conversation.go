@@ -149,7 +149,9 @@ func (a *App) conversation(c *ui.Context) {
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	// D254: the list and the pebble over its foot share one pane.
 	a.readBack() // D305: the reply to a message sent by voice, read aloud
-	pane := ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
+	// D541: each partner's list its own element, so the place a held
+	// conversation comes back to is its own (the bar and the composer, outside it, stay).
+	pane := ui.Column(c.Key("convpane:" + a.shownPartnerID())).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
 	a.toastsOver(pane) // D527: toasts centre over the conversation, beside the list of partners
 	pane.Children(func() {
 		ui.List(c, &a.list, len(rows), func(i int) {
@@ -197,7 +199,7 @@ func (a *App) conversation(c *ui.Context) {
 				})
 			})
 		}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Children(func() {
-			if len(rows) == 0 && a.S.Welcomed {
+			if len(rows) == 0 && a.S.Welcomed && a.sw.to == "" { // D541: not before a switch is answered
 				a.emptyConversation(c)
 			}
 		})
@@ -312,6 +314,8 @@ func (a *App) header(c *ui.Context) {
 		// doing, D77, D112).
 		tint := t.SurfaceSunken.Mix(t.Chrome, 0.45)
 		about := a.L.T("nav.partner.about", a.S.PersonaName)
+		a.railToggle(c)  // D545: the list beside: narrower, hidden, back
+		a.othersStack(c) // D545: hidden, the others' faces are the way back
 		ui.Row(c.Key("who")).Gap(t.S3 - 2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			// The clay partner, 44 points: it breathes and blinks (D77).
 			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)

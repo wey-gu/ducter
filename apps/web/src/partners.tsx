@@ -14,7 +14,9 @@ import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_N
 import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, Chev, CountPebble, Facts, Field } from "./controls.tsx";
+import { AddRow, Btn, Chev, CountPebble, Facts, Field, IconBtn } from "./controls.tsx";
+import { phoneNow } from "./wide.ts";
+import { currentSplit } from "./fold.ts";
 import { harnessName, modelName } from "./format.ts";
 import { Select } from "./menu.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -208,7 +210,7 @@ function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; show
  *  Wide (`side`), a column at the conversation's left: each row its face, name, last line and
  *  number; a narrower window keeps the faces and numbers (app.css). On a phone (`home`), the
  *  level above the conversation: the list, a tap in, back with ‹ or the edge swipe. */
-export function PartnerList({ at, places }: { at: "side" | "home"; places?: preact.ComponentChildren }) {
+export function PartnerList({ at, places, slim, thin }: { at: "side" | "home"; places?: preact.ComponentChildren; slim?: boolean; thin?: boolean }) {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
   const at_ = Math.max(0, A.partners!.findIndex((p) => p.id === shown));
@@ -217,13 +219,13 @@ export function PartnerList({ at, places }: { at: "side" | "home"; places?: prea
       {/* D517: the chosen pebble glides to the row picked, on a spring; the rows never move. */}
       <li class="pl-knob" aria-hidden="true" />
       {A.partners!.map((p, i) => (
-        <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : 40} />
+        <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : thin ? 30 : 40} />
       ))}
     </ul>
   );
   if (at === "side")
     return (
-      <nav class="pane partners" aria-label={t("partners.title")}>
+      <nav class={`pane partners${thin ? " thin" : slim ? " slim" : ""}${Date.now() - A.railAt < 600 ? " rail-in" : ""}`} aria-label={t("partners.title")}>
         <header class="top">
           <h1 class="level">{t("partners.title")}</h1>
         </header>
@@ -249,20 +251,50 @@ export function PartnerList({ at, places }: { at: "side" | "home"; places?: prea
   );
 }
 
-/** D513: a phone's way up to the list from a conversation: ‹ with the number of what waits on the
- *  person in the other partners (a messaging app's back button with its unread count). */
+/** D513, D541: a phone's way up to the list from a conversation (and a fold's, where no column
+ *  stands beside): ‹ and the other partners' own figures, a small stack in their clays, with the
+ *  number of what waits on the person in them. A lone ‹ read as "back"; the faces say who is there. */
 export function PartnersBack() {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
-  const elsewhere = A.partners!.filter((p) => p.id !== shown).reduce((n, p) => n + A.partnerNeeds(p), 0);
+  const others = A.partners!.filter((p) => p.id !== shown);
+  const elsewhere = others.reduce((n, p) => n + A.partnerNeeds(p), 0);
   const label = elsewhere ? t("partners.back.asks", elsewhere) : t("partners.back");
   return (
-    <button class="partners-back" aria-label={label} onClick={() => A.showPartners()}>
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-        <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      {elsewhere > 0 && <CountPebble n={elsewhere} />}
+    <button class="partners-back" aria-label={label} onClick={() => (A.railMode === "hidden" && !phoneNow() && !currentSplit() ? A.setRail("") : A.showPartners())}>
+      <Chev back cls="pb-chev" />
+      <span class="pb-faces" aria-hidden="true">
+        {others.slice(0, 3).map((p) => (
+          <span key={p.id} class="pb-face stone" data-look={p.look}>
+            <img src="app/art/idle.webp" alt="" draggable={false} />
+          </span>
+        ))}
+        {elsewhere > 0 && <CountPebble n={elsewhere} />}
+      </span>
     </button>
+  );
+}
+
+/** D545: the header's toggle for the list beside the conversation: narrower (the faces alone),
+ *  hidden, and back. A drawn glyph alone (the shared IconBtn): a window with its side column, the
+ *  column as wide as the list will be after the press. */
+export function RailToggle() {
+  if (!A.manyPartners()) return null;
+  const next = A.nextRail();
+  const label = t(next === "thin" ? "partners.rail.thin" : next === "hidden" ? "partners.rail.hide" : "partners.rail.show");
+  // The glyph says how the list stands now, in the places' family (an 18-px mark, a 1.6 stroke, the
+  // muted ink): the window's outline and the list's edge inside it, wide as the width has it,
+  // narrow when thin, dashed when hidden.
+  const edge = A.railMode === "thin" ? 5 : 7.5;
+  return (
+    <span class="rail-toggle">
+      <IconBtn label={label} onClick={() => A.setRail(next)}>
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="2" y="3.5" width="14" height="11" rx="2.5" />
+          <path d={`M${edge} 3.5v11`} stroke-dasharray={A.railMode === "hidden" ? "0.6 2.6" : undefined} />
+        </svg>
+      </IconBtn>
+    </span>
   );
 }
 

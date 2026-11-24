@@ -106,6 +106,7 @@ const (
 	KindDecisionLater    = "decision_later"
 	KindDecisionBack     = "decision_back"
 	KindDecisionSeen     = "decision_seen"
+	KindKeyCopy          = "key_copy" // D539: a key copied between the person's computers (names only)
 	KindReadReceipt      = "read_receipt"
 	KindTaskOpen         = "task_open"
 	KindTaskState        = "task_state"
@@ -228,6 +229,10 @@ type Decision struct {
 	// Key (D233): a task asks the person for a key; Go carries it (Hold is
 	// 不给 / Don't give).
 	Key *KeyAsk `json:"key,omitempty"`
+	// CopyKey (D539): 复制密钥 / Copy a key from one of the person's
+	// computers to others, for Ducter's tasks there. No default; only the
+	// person's own Copy on this card copies.
+	CopyKey *CopyKeyAsk `json:"copyKey,omitempty"`
 	// Phone (D217): a tap on Ducter's phone that commits (Go taps it once),
 	// or the user's own turn on the phone (Go = 好了 / Done).
 	Phone *PhoneAsk `json:"phone,omitempty"`
@@ -891,6 +896,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &DecisionBack{}
 	case KindDecisionSeen:
 		v = &DecisionSeen{}
+	case KindKeyCopy:
+		v = &KeyCopy{}
 	case KindReadReceipt:
 		v = &ReadReceipt{}
 	case KindTaskOpen:
@@ -1476,6 +1483,15 @@ type ChannelHistoryReq struct {
 	T         string `json:"t"` // "channel_history"
 	BeforeSeq int64  `json:"beforeSeq"`
 	Limit     int    `json:"limit,omitempty"`
+}
+
+// PartnerPeekReq asks for another partner's newest stretch (D541), answered
+// with a partner_peek frame (Persona, Events, HeadSeq, More): a switch to it
+// draws at once, and its hello's cursor carries on from there.
+type PartnerPeekReq struct {
+	T       string `json:"t"` // "partner_peek"
+	Persona string `json:"persona"`
+	Limit   int    `json:"limit,omitempty"`
 }
 
 // TaskIndexReq asks for a task's session index (D320): all of it, or its
@@ -3185,6 +3201,9 @@ type ServerFrame struct {
 	// D233: 密钥 / Keys, and 让任务向我要密钥 (nil = on).
 	SavedKeys []KeyView `json:"keys,omitempty"`
 	AskKeys   *bool     `json:"askKeys,omitempty"`
+	// D539: kept_keys answers for Device (OK, Why, the names in SavedKeys);
+	// Removed names the one just removed.
+	Removed string `json:"removed,omitempty"`
 	// D193: connection_signin (the device sign-in); phone_voice_result uses
 	// Action, OK, URL, Reason, Message.
 	SignIn *SignInView `json:"signIn,omitempty"`
@@ -3471,9 +3490,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "kept_keys", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result", "partner_peek":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "past_steps_result", "past_forked":

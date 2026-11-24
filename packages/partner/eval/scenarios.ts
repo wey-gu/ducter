@@ -475,6 +475,11 @@ export interface Scenario {
    * card) and its mender run over it for real; only git, the disk and the agents are fake.
    */
   world?: World;
+  /**
+   * D539: variables in the person's shell on each computer (by name; the home by its own name), as
+   * Ducter's look there finds them. Fake values, never the person's; a copy runs between fake shelves.
+   */
+  keysOn?: Record<string, string[]>;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the

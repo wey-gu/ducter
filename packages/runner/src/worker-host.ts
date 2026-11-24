@@ -50,6 +50,8 @@ export interface WorkerHostOptions {
   extraOps?: Record<string, (a: any) => Promise<unknown>>;
   /** D157: what this computer can do for tasks now (sent up after 上网 changes here). */
   abilities?: { set(id: "web" | "computer", on: boolean): Promise<{ ok: boolean; reason?: string; detail?: string }> };
+  /** D539: the keys Ducter keeps on this computer (key-shelf.ts): its ops, a session's keyRefs, and what a task's events never carry up. */
+  keys?: import("@ducter/protocol/src/key-shelf.ts").KeyShelf;
 }
 
 export interface WorkerHost {
@@ -171,13 +173,24 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   async function pump(key: string, s: HarnessSession) {
     let error: string | undefined;
     try {
-      for await (const ev of s.events()) o.send({ t: "ev", key, ev: wireEvent(ev), busy: busyOf(s), sessionId: idOf(s) });
+      for await (const ev of s.events()) o.send({ t: "ev", key, ev: hideKept(wireEvent(ev)), busy: busyOf(s), sessionId: idOf(s) });
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
     if (sessions.get(key) === s) sessions.delete(key);
     o.send({ t: "end", key, ...(error ? { error } : {}) });
   }
+
+  /** D539: a key kept here that a task's command printed never leaves this computer in its events. */
+  const hideKept = (ev: HarnessEvent): HarnessEvent => {
+    const vs = (o.keys?.values() ?? []).filter((v) => v.length >= 6).map((v) => JSON.stringify(v).slice(1, -1));
+    if (!vs.length) return ev;
+    const raw = JSON.stringify(ev);
+    if (!vs.some((v) => raw.includes(v))) return ev;
+    let out = raw;
+    for (const v of vs.sort((a, b) => b.length - a.length)) out = out.split(v).join("••••••");
+    return JSON.parse(out) as HarnessEvent;
+  };
 
   const need = (key: string) => {
     const s = sessions.get(key);
@@ -191,7 +204,9 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     plan: (a) => planPlace(a.place, a.taskId, a.title, o.dataDir),
     provision: (a) => provisionPlace(a.resolved),
     async start(a) {
-      const s = await o.harness.start(rewriteMcp(a.spec, o.mainBase, o.deviceToken));
+      // D539: the keys this task holds here go into its environment here; the home never sent a value.
+      const spec = rewriteMcp(a.spec, o.mainBase, o.deviceToken);
+      const s = await o.harness.start(o.keys ? o.keys.withKeys(spec) : spec);
       sessions.set(a.key, s);
       harnessOf.set(a.key, String(a.spec?.harness ?? ""));
       // Answer first, then stream: the main registers its listener when the answer lands.
@@ -330,6 +345,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       if ((a.id !== "web" && a.id !== "computer") || !o.abilities) return { ok: false, reason: "failed" };
       return o.abilities.set(a.id, a.on === true);
     },
+    ...(o.keys?.ops ?? {}),
     ...(o.extraOps ?? {}),
   };
 

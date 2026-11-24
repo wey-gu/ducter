@@ -86,6 +86,9 @@ type state struct {
 	PersonaName string `json:"personaName,omitempty"`
 	// D309: the partner whose conversation this Mac shows (empty: the default).
 	Partner string `json:"partner,omitempty"`
+	// D545: the list of partners beside the conversation: "" as the window's
+	// width has it, "thin" (the faces and their numbers) or "hidden".
+	RailMode string `json:"railMode,omitempty"`
 	// D305: voice. VoiceKey is the key held to talk ("fn", "none", or empty
 	// for right Option); VoiceAsked is set once the first hold's card was
 	// answered; ReadBack reads the reply to a message sent by voice aloud.
@@ -169,6 +172,26 @@ func (l *Local) SetPartner(id string) {
 		return
 	}
 	l.st.Partner = id
+	l.save()
+}
+
+// RailMode is how this Mac shows the list of partners (D545).
+func (l *Local) RailMode() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.RailMode
+}
+
+// SetRailMode remembers it.
+func (l *Local) SetRailMode(m string) {
+	if m != "thin" && m != "hidden" {
+		m = ""
+	}
+	if l == nil || l.st.RailMode == m {
+		return
+	}
+	l.st.RailMode = m
 	l.save()
 }
 

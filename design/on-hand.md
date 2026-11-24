@@ -324,6 +324,12 @@ unknown icon).
   or, once quiet, **上次有动静是 2 天前**. The right end says where: the project (under All, from
   two groups) and the computer (with two or more). The branch and the agent are in the task.
 
+D542: a row opens what it names. A Keep in rounds stands in the rail as its round's task; its row
+opens the Keep's page (the other Keeps at its left from 1120, the page on the right), never the
+round's task; a Keep's item (one PR it babysits) opens its own task. A task opens at its
+conversation, never at another task's workbench page (`workbench.md`). On a touch screen a tap
+anywhere on a row opens the row: what a row reveals on hover takes no tap while faded.
+
 ## Navigation: where things live and how you move (D535)
 
 Three zoom levels, one header shape at each (D262, D270), one way back. The Mac at 1000, 1150 and

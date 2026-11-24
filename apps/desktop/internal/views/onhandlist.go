@@ -903,6 +903,12 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		a.nav.rows++
 	}
 	if clicked {
+		// D542: in the rail a Keep's own work (its rounds' task) is the
+		// Keep: its row opens the Keep's page, never the round's task.
+		if k := a.keepOfTask(task.ID); rail && k != "" {
+			a.openKeep(k)
+			return
+		}
 		a.oh.focus = task.ID
 		a.OpenTask(task.ID)
 	}

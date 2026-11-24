@@ -671,7 +671,9 @@ export function SectionHead(p: { label: string; end?: ComponentChildren }) {
 }
 
 /** D519: a small state word on its own tint (a Keep's 照看中, 1 件在等你, 从 11 月 22 日起): on, needs, or plain. */
-export function Tag(p: { text: string; tone?: "on" | "needs" | "" }) {
+/** D542: a Tag's tint: on (done), needs, and the other states' own (working, waiting, failed); plain sunken. */
+export type TagTone = "on" | "needs" | "working" | "waiting" | "failed" | "";
+export function Tag(p: { text: string; tone?: TagTone }) {
   return <span class={`tag${p.tone ? ` ${p.tone}` : ""}`}>{p.text}</span>;
 }
 

@@ -47,6 +47,9 @@ var zhPartners = Table{
 	"partners.you":               "你：%s",
 	"partners.empty":             "还没聊过",
 	"partners.back":              "所有伙伴",
+	"partners.rail.thin":         "收窄伙伴栏",
+	"partners.rail.hide":         "收起伙伴栏",
+	"partners.rail.show":         "显示伙伴栏",
 	"partners.back.asks":         "所有伙伴，别处有 %d 个等你",
 	// D536: what each partner thinks with: its own, else the default partner's.
 	"partners.thinks.title":       "想事情用",
@@ -105,6 +108,9 @@ var enPartners = Table{
 	"partners.you":               "You: %s",
 	"partners.empty":             "Nothing said yet",
 	"partners.back":              "All your partners",
+	"partners.rail.thin":         "Narrow your partners",
+	"partners.rail.hide":         "Hide your partners",
+	"partners.rail.show":         "Show your partners",
 	"partners.back.asks":         "All your partners, %d need you elsewhere",
 	// D536: what each partner thinks with: its own, else the default partner's.
 	"partners.thinks.title":       "Thinks with",

@@ -46,6 +46,8 @@ export function createKeys(o: {
   tasks: CoreRegistry;
   /** How long one call waits for the person (tests); default per harness (MCP_CALL_WAIT). */
   waitMs?: (harness: string) => number;
+  /** D539: keys kept on the person's computers, and copied between them on their Go. */
+  copy?: import("../key-copy.ts").KeyCopy;
 }): Keys {
   const { store, tasks, decisions, log } = o;
   const dir = join(o.dataDir, "task-keys");
@@ -101,13 +103,16 @@ export function createKeys(o: {
   // ---------- what the Log never takes ----------
   let values: string[] | undefined;
   const list = () => {
-    if (values) return values;
-    try {
-      values = store.keyValues().filter((v) => v.length >= 6).sort((a, b) => b.length - a.length);
-    } catch {
-      values = [];
+    if (!values) {
+      try {
+        values = store.keyValues().filter((v) => v.length >= 6);
+      } catch {
+        values = [];
+      }
     }
-    return values;
+    // D539: and the keys kept on the home for its tasks (copied there on the person's Go).
+    const kept = o.copy?.homeValues().filter((v) => v.length >= 6) ?? [];
+    return kept.length ? [...values, ...kept].sort((a, b) => b.length - a.length) : [...values].sort((a, b) => b.length - a.length);
   };
   const hide = (s: string, vs: string[]) => {
     let out = s;
@@ -205,19 +210,24 @@ export function createKeys(o: {
       const name = String(args.name ?? "").trim().replace(/\s+/g, " ").slice(0, 120) || env;
       const why = String(args.why ?? "").trim().replace(/\s+/g, " ").slice(0, 300);
       const device = (card.place as { device?: string }).device;
-      if (device && device !== "local")
-        return `This task runs on another computer, and Ducter can't hand a key to a task there yet. Don't ask for ${env} again; carry on without it, and say in your report which key you need (${env}), what it is and why, so the person can do that step from a task on the home.`;
+      const elsewhere = !!device && device !== "local";
       const file = fileOf(taskId);
       const again = args.again === true;
       const k: KeyAsk = { env, name, ...(why ? { why } : {}), file };
       // Given to this task already (and not said to be broken).
-      if (!again && store.grantsFor(taskId).some((g) => g.env === env)) return writeFile(taskId), keyReadyText(k);
-      const kept: KeyView | undefined = store.keyFor(env);
+      if (!elsewhere && !again && store.grantsFor(taskId).some((g) => g.env === env)) return writeFile(taskId), keyReadyText(k);
+      const kept: KeyView | undefined = elsewhere ? undefined : store.keyFor(env);
       if (kept && !again) {
         store.grant({ taskId, env, keyId: kept.id, name: kept.name, task: card.title });
         writeFile(taskId);
         return keyReadyText({ ...k, name: kept.name });
       }
+      // D539: kept by Ducter on the computer this task runs on (given at once), or on another of the
+      // person's computers (a 复制密钥 / Copy a key card for this task, which waits on it in 等你).
+      const c = o.copy ? await o.copy.forTask(taskId, { env, name, ...(why ? { why } : {}), again, device: device || "local" }).catch(() => undefined) : undefined;
+      if (c) return "text" in c ? c.text : c.wait;
+      if (elsewhere)
+        return `${env} isn't on this computer, and Ducter didn't find it on the person's other connected computers either. Don't ask for ${env} again in this task. If the work can't go on without it, report needs_input with one question saying which key you need (${env}), what it is and on which computer it is if you know, so the person gets a card; otherwise carry on without it.`;
       if (!store.askKeys()) return keysOffText(env);
       if (!openAsk(taskId, env)) ask(taskId, { ...k, ...(kept ? { saved: true, name: kept.name } : {}) });
       return wait(taskId, k, waitFor(card.harness));

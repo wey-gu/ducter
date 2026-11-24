@@ -21,7 +21,8 @@ import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
 import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
-import { Btn, Chev, CodeChip, Facts, FileChip, WorkHead } from "./controls.tsx";
+import { Btn, Chev, CodeChip, Facts, FileChip, Tag, WorkHead, type TagTone } from "./controls.tsx";
+import { composerTune } from "./composer-tune.tsx";
 import { chipText, fileKind, fileName, itemsOf, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
 import { openFileLink } from "./fileview.tsx";
 import { SourceChip } from "./todos.tsx";
@@ -1766,16 +1767,34 @@ export function whereParts(p: Place): string[] {
 
 /** One quiet line (D152): where it stands, how long it took once finished (while it works the clock
  *  is in the foot, D210), who does it, where, and Switch who does it. */
-export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; stateLabel: string; mark?: JSX.Element; onSwitch?: () => void }) {
+/** D542: an attention state's Tag tint, in its state's ink (never link blue). */
+export function stateTone(a: string): TagTone {
+  if (a === "needs_you") return "needs";
+  if (a === "working" || a === "queued") return "working";
+  if (a === "blocked") return "waiting";
+  if (a === "failed") return "failed";
+  if (a === "done" || a === "done_claimed") return "on";
+  return "";
+}
+
+/** D542: who does it, said once: the agent; its model and effort only when the composer's chip
+ *  doesn't already show them. Where: the project (and the computer, taskWhere); the branch is the
+ *  bar's (its branch button, or ⋯ on a phone), never said twice. */
+export function headFacts(task: Task, chip: boolean): string[] {
+  const m = modelOf(task);
+  const e = effortOf(task);
+  const p = placeOf(task);
+  const where = whereParts(p).filter((x) => p.kind !== "repo" || x !== p.branch);
+  return [harnessName(harnessOf(task)), !chip && m && modelName(m), !chip && e && effortWord(A.L, e), ...where].filter((x): x is string => !!x);
+}
+
+export function TaskMeta({ task, stateLabel, onSwitch }: { task: Task; stateLabel: string; onSwitch?: () => void }) {
   const a = attention(task);
   const done = finished(task);
   const [whyFor, setWhy] = useState(""); // the task whose why is open (a tap; one task at a time)
   const why = whyFor === task.id;
-  const h = harnessOf(task);
-  const m = modelOf(task);
-  const e = effortOf(task);
-  // D291: who does it and where, each fact its own small element.
-  const facts = [harnessName(h), m && modelName(m), e && effortWord(A.L, e), ...whereParts(placeOf(task))].filter((x): x is string => !!x);
+  // D291: who does it and where, each fact its own small element; D542: each said once.
+  const facts = headFacts(task, !!composerTune(task));
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
   let when = "";
   if (!Number.isNaN(start)) {
@@ -1795,8 +1814,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
           the first beside the face and gives the facts the page's whole width (one line on a wide
           screen, as before). */}
       <span class="st-line">
-        {mark}
-        <b>{stateLabel}</b>
+        {/* D542: the state in the shared Tag, on its state's tint. */}
+        <Tag text={stateLabel} tone={stateTone(a)} />
         {when && <span class="when">{when}</span>}
       </span>
       <span class="st-facts">
@@ -1818,12 +1837,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
         )}
         {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
         {task.card?.source && <SourceChip src={task.card.source} />}
-        {onSwitch && (
-          <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
-            {t("who.switch")}
-            <Chev />
-          </button>
-        )}
+        {/* D542: the shared quiet link. */}
+        {onSwitch && <Btn kind="text" size="sm" chev expanded={A.switchFor === task.id} class="st-switch" label={t("who.switch")} onClick={onSwitch} />}
       </span>
     </div>
     {why && on.why && <div class="where-why small sub">{on.why}</div>}

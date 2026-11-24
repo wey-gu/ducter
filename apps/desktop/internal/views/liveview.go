@@ -92,6 +92,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.Key != nil {
 		return a.L.T("key.title", a.keyTask(d))
 	}
+	if d.CopyKey != nil {
+		return a.copyKeyTitle(d) // D539
+	}
 	if d.Handset != nil && d.Handset.Kind == "record" {
 		return a.L.T("handset.record.title", phoneShort(d.Handset.Name)) // D280
 	}

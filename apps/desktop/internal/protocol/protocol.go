@@ -1767,6 +1767,9 @@ type PartnerInfo struct {
 	// Last is the last thing said in its conversation, for the list of
 	// partners (D513); nil with one partner or nothing said yet.
 	Last *PartnerLast `json:"last,omitempty"`
+	// Brain is what it thinks with when the person gave it its own
+	// (D536); nil: the same as the default partner's (Settings.Brain).
+	Brain *Brain `json:"brain,omitempty"`
 }
 
 // PartnerLast is one line of a partner's conversation for the list (D513).
@@ -1803,13 +1806,23 @@ type PartnerAdd struct {
 // PartnerSet renames a partner, changes its look or what it looks after
 // (D309, D486). About is a pointer so "" clears it.
 type PartnerSet struct {
-	T        string  `json:"t"` // "partner_set"
-	ID       string  `json:"id"`
-	Name     string  `json:"name,omitempty"`
-	Look     string  `json:"look,omitempty"`
-	About    *string `json:"about,omitempty"`
-	ClientID string  `json:"clientId,omitempty"`
+	T     string  `json:"t"` // "partner_set"
+	ID    string  `json:"id"`
+	Name  string  `json:"name,omitempty"`
+	Look  string  `json:"look,omitempty"`
+	About *string `json:"about,omitempty"`
+	// Brain is D536's own 想事情用: a Brain, or SameBrain (JSON null) for
+	// the default partner's again; nil leaves it.
+	Brain    any    `json:"brain,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
 }
+
+// SameBrain marshals as null: a partner thinks with the default partner's
+// again (D536).
+type SameBrain struct{}
+
+// MarshalJSON is null.
+func (SameBrain) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
 
 // PartnerRemove removes another partner (D486): its conversation stays,
 // its tasks become the default's.
@@ -2320,6 +2333,17 @@ type BrainModel struct {
 	Label   string `json:"label"`
 	Kind    string `json:"kind,omitempty"`
 	Default bool   `json:"default,omitempty"`
+	// Efforts are its effort levels from the live list (D536); none: no
+	// effort to pick.
+	Efforts       []string `json:"efforts,omitempty"`
+	DefaultEffort string   `json:"defaultEffort,omitempty"`
+}
+
+// BrainOption is one agent a partner may think with on the home, with its
+// models (D536; the settings frame, with more than one partner).
+type BrainOption struct {
+	Harness string       `json:"harness"`
+	Models  []BrainModel `json:"models"`
 }
 
 // Forgot says how a memory_forget went: "mem" (Mem forgot it) or
@@ -3020,7 +3044,10 @@ type ServerFrame struct {
 	// BrainNow is what the partner thinks with right now (D150): Brain,
 	// unless core runs it on a signed-in agent instead (Why "only_codex", "only_signed_in").
 	BrainNow *BrainNow `json:"brainNow,omitempty"`
-	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// BrainOptions is D536: with more than one partner, what each one's
+	// own 想事情用 may offer.
+	BrainOptions []BrainOption `json:"brainOptions,omitempty"`
+	Forgot       *Forgot       `json:"forgot,omitempty"`
 	// D304: how a memory_correct went: "mem" (Mem took it) or "here" (only here).
 	Corrected *Forgot `json:"corrected,omitempty"`
 	// D329: Undid says a 撤销 / Undo didn't go through (OK false).

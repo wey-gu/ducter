@@ -180,3 +180,62 @@ func drawRing(rim, left ui.Color, frac float32) func(p *ui.Painter, r ui.Rect) {
 		p.FillPath(&w, left)
 	}
 }
+
+// drawPlug is a plug: a step through a connected service (D530), never a
+// bare dot for it.
+func drawPlug(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-2.5, cy-6)
+		m.LineTo(cx-2.5, cy-3)
+		m.MoveTo(cx+2.5, cy-6)
+		m.LineTo(cx+2.5, cy-3)
+		m.MoveTo(cx-5, cy-3)
+		m.LineTo(cx+5, cy-3)
+		m.LineTo(cx+5, cy-0.5)
+		m.QuadTo(cx+5, cy+3, cx, cy+3)
+		m.QuadTo(cx-5, cy+3, cx-5, cy-0.5)
+		m.Close()
+		m.MoveTo(cx, cy+3)
+		m.LineTo(cx, cy+6.5)
+		p.StrokePath(&m, glyphStroke, col)
+	}
+}
+
+// drawPictureSM is a small framed hill and sun: a picture file's chip (D530).
+func drawPictureSM(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-5.5, cy-4.5)
+		m.LineTo(cx+5.5, cy-4.5)
+		m.LineTo(cx+5.5, cy+4.5)
+		m.LineTo(cx-5.5, cy+4.5)
+		m.Close()
+		m.MoveTo(cx-5.5, cy+3)
+		m.LineTo(cx-1.5, cy-0.5)
+		m.LineTo(cx+1.5, cy+2)
+		m.LineTo(cx+3, cy+0.8)
+		m.LineTo(cx+5.5, cy+3)
+		p.StrokePath(&m, glyphStroke*0.85, col)
+		var s ui.Path
+		s.Circle(cx+2.6, cy-1.8, 1.1)
+		p.FillPath(&s, col)
+	}
+}
+
+// drawStack is three lines, the last short: a turn's work folded (D530).
+func drawStack(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-5, cy-3.5)
+		m.LineTo(cx+5, cy-3.5)
+		m.MoveTo(cx-5, cy)
+		m.LineTo(cx+5, cy)
+		m.MoveTo(cx-5, cy+3.5)
+		m.LineTo(cx+1, cy+3.5)
+		p.StrokePath(&m, glyphStroke, col)
+	}
+}

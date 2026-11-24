@@ -21,7 +21,9 @@ import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
 import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
-import { Btn, Chev, Facts } from "./controls.tsx";
+import { Btn, Chev, CodeChip, Facts, FileChip, WorkHead } from "./controls.tsx";
+import { chipText, fileKind, fileName, itemsOf, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
+import { openFileLink } from "./fileview.tsx";
 import { SourceChip } from "./todos.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
@@ -133,6 +135,9 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
   group: () => <G><path d="M3 4.5h10M3 8h10M3 11.5h6" /></G>,
+  // D530: a step through a connected service (never a bare dot), and the earlier steps of a stretch.
+  plug: () => <G><path d="M5.5 2v3M10.5 2v3M3 5h10v2.5Q13 11 8 11T3 7.5zM8 11v3.5" /></G>,
+  more: () => <G><circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none" /></G>,
   // D521: a watch (Claude Code's Monitor), an ended one's tick, and Stop's square.
   watch: () => <G><path d="M1.8 8q6.2-7.4 12.4 0q-6.2 7.4-12.4 0z" /><circle cx="8" cy="8" r="1.9" /></G>,
   check: () => <G><path d="M3.5 8.4 6.6 11.4 12.5 4.8" /></G>,
@@ -365,41 +370,122 @@ const Check = () => (
   </svg>
 );
 
-/** One step (D268): its mark, its words, the subject it names in ink (a command in mono), an
- *  edit's counts; a failure keeps its words with a small × and says what went wrong in a line; it
- *  opens to its output or its diff when it has something to show. Live, it says what it is doing. */
-function Row({ r, live }: { r: StepRow; live?: boolean }) {
-  const [open, setOpen] = useState(false);
-  if (!r.step) return <Thought r={r} live={live} />;
+// ---------- D530: the steps as rows ----------
+
+/** What a step's row says, apart: a plain verb, its object as a mono chip or a file chip, muted words. */
+export type Parts = { verb: string; code?: string; file?: string; path?: string; words?: string; more?: string; tip?: string };
+
+/** A step's drawn mark (D530): a web search a globe, a service's tool a plug, else its kind's. */
+const stepMarkOf = (st: Step): string => (st.kind === "searched" && st.act === "web" ? "browsed" : st.kind === "other" && st.via ? "plug" : st.kind);
+
+/** A step in its row's words (D530): a plain verb (the present tense while it is the live one) and
+ *  the object it acted on, never a verb alone and never a raw tool name. */
+export function rowParts(r: StepRow, live = false): Parts {
+  const now = (k: string, past: string) => (live ? t(`now.${k}`) : past);
+  const label = (k: string) => t(`step.label.${k}`);
+  if (!r.step) {
+    const head = (r.thought ?? "").split("\n")[0]!.trim();
+    const took = r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
+    return { verb: now("thought", took), words: head };
+  }
   const st = r.step;
-  const delegated = st.kind === "delegated";
-  const [words, code] = live ? liveRow(r) : delegated ? [st.target ? t("step.delegated.to", st.target) : t("step.delegated.bare"), ""] : st.kind === "other" && st.via ? [r.outcome === "error" ? serviceName(st.via) : capFirst(r.n > 1 ? t("tally.used", serviceName(st.via), r.n) : t("tally.used.one", serviceName(st.via))), ""] : rowWords(r);
-  const detail = !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
+  if (r.outcome === "missing") {
+    const [verb, code] = rowWords(r);
+    return { verb, ...(code ? { code } : {}) };
+  }
+  const cmd = unwrapShell(r.command ?? "");
+  switch (st.kind) {
+    case "delegated":
+      return { verb: now("sub", label("sub")), ...(st.target ? { words: st.target } : {}) };
+    case "other":
+      if (st.via) {
+        const { act, object } = toolAct(st.target ?? "");
+        return { verb: t("use.say", serviceName(st.via), t(`use.act.${act}`)), ...(object ? { code: object } : {}) };
+      }
+      if (st.target) return { verb: label("other"), code: st.target };
+      break;
+    case "ran": {
+      const code = cmd ? chipText(cmd) : st.target ?? "";
+      const verb = st.act ? capFirst(stepWords(st)) : code ? now("ran", label("ran")) : t("step.ran.bare");
+      return { verb, ...(code ? { code } : {}), tip: st.says || cmd.split("\n")[0]! };
+    }
+    case "read":
+      if (st.act === "list" && st.target) return { verb: label("list"), code: st.target };
+      if (st.act) return { verb: capFirst(stepWords(st)) };
+      if (st.target) return { verb: now("read", label("read")), file: st.target, ...(r.path ? { path: r.path } : {}) };
+      return { verb: t("step.read.bare") };
+    case "edited":
+      if (st.act) return { verb: capFirst(stepWords(st)) };
+      if (st.target) return { verb: now("edited", label("edited")), file: st.target, ...(r.path ? { path: r.path } : {}), ...(st.more ? { more: t("step.edited.others", st.more) } : {}) };
+      return { verb: t("step.edited.bare") };
+    case "searched":
+      if (st.act === "web" && st.target) return { verb: now("web", label("web")), words: st.target };
+      if (!st.act && st.target) return { verb: now("searched", label("searched")), code: st.target };
+      if (!st.act) return { verb: t("step.searched.bare") };
+      break;
+  }
+  return { verb: capFirst(stepWords(st)) };
+}
+
+/** The task the transcript is shown in, for a file chip's open (D356 finds it by the path, too). */
+const shownTask = () => (A.route.name === "task" ? A.route.id : undefined);
+
+/** A file chip of a step (D530): opens the file in Ducter's viewer when its path is known. */
+const StepFile = ({ tail, path, cls }: { tail: string; path?: string; cls?: string }) => (
+  <FileChip name={fileName(tail)} tail={tail} picture={fileKind(tail) === "picture"} {...(cls ? { cls } : {})} {...(path ? { onOpen: () => openFileLink(path, shownTask()) } : {})} />
+);
+
+/** A clock that ticks once a second while it is shown: how long since `from`. */
+function Since({ from }: { from: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, []);
+  return <span class="took">{dur(Date.now() - from)}</span>;
+}
+
+/** One step (D530): its row 28 tall (the mark, the verb in 13 medium, its object in a chip, muted
+ *  words, its counts, at the right what it took or that it failed, a chevron when it opens), a
+ *  failure's words under it, and what it ran and printed, its diff or its thinking once opened. */
+function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
+  const [open, setOpen] = useState(false);
+  const p = rowParts(r, live);
+  const st = r.step;
+  const lines = [st?.says, r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean);
+  const detail = !st ? ((r.thought ?? "").includes("\n") || [...(p.words ?? "")].length >= 60 ? r.thought ?? "" : "") : !r.diff && (r.command || r.output) ? lines.join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${st.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
-  const mono = st.kind === "ran" || (live && !!code);
+  const cls = `step${bad ? " bad" : ""}${st?.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const at = live && task ? tsOf(task, r.seq) : NaN;
   const inner = (
     <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : (bad ? GLYPHS.error : GLYPHS[st.kind] ?? GLYPHS.other)!()}
-      <span class="sum" title={st.kind === "other" ? st.target : words}>
-        {words}
+      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
+      <span class="verb" title={p.tip || p.verb}>
+        {p.verb}
       </span>
-      {code && (
-        <code class={`subj${mono ? " mono" : ""}`} title={code}>
-          {code}
-        </code>
-      )}
-      {r.n > 1 && !st.via && <span class="times">×{r.n}</span>}
-      {r.added ? <span class="plus">+{r.added}</span> : null}
-      {r.removed ? <span class="minus">−{r.removed}</span> : null}
-      {delegated && !live && (
-        <span class="took">
-          <Check />
-          {r.ms !== undefined && r.ms >= 1000 ? dur(r.ms) : ""}
+      {p.file && <StepFile tail={p.file} {...(p.path ? { path: p.path } : {})} />}
+      {p.code && <CodeChip text={p.code} title={r.command ? unwrapShell(r.command) : p.code} />}
+      {p.words && (
+        <span class={`words${hanClass(p.words)}`} title={p.words}>
+          {p.words}
         </span>
       )}
-      {bad && st.kind !== "background" && <span class="bad-tag">{t("step.label.error")}</span>}
+      {p.more && <span class="times">{p.more}</span>}
+      {r.n > 1 && <span class="times">×{r.n}</span>}
+      {r.added ? <span class="plus">+{r.added}</span> : null}
+      {r.removed ? <span class="minus">−{r.removed}</span> : null}
+      <span class="grow" />
+      {live && Number.isFinite(at) ? (
+        <Since from={at} />
+      ) : st?.kind === "delegated" && r.ms !== undefined ? (
+        <span class="took">
+          <Check />
+          {r.ms >= 1000 ? dur(r.ms) : ""}
+        </span>
+      ) : bad && st?.kind !== "background" ? (
+        <span class="bad-tag">{t("step.label.error")}</span>
+      ) : null}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );
@@ -413,82 +499,78 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
       ) : (
         <div class={cls}>{inner}</div>
       )}
-      {hint && <div class={`failline${hanClass(hint)}`}>{hint}</div>}
-      {open && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
+      {hint && !open && (r.code ? <div class={`failline${hanClass(hint)}`}>{hint}</div> : <div class="failline raw" title={hint}><code>{hint}</code></div>)}
+      {open && !st && (
+        <div class="thought-text">
+          {(r.thought ?? "")
+            .split("\n")
+            .filter(Boolean)
+            .map((h, i) => (
+              <p key={i}>{h}</p>
+            ))}
+        </div>
+      )}
+      {open && st && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
       {open && r.outputFull ? <ShowAll seq={r.seq} n={r.outputFull} /> : null}
     </div>
   );
 }
 
-/** A stretch of thinking (D268): how long it thought; open, its headings. Live, its first heading. */
-function Thought({ r, live }: { r: StepRow; live?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const heads = (r.thought ?? "").split("\n").filter(Boolean);
-  const words = live ? heads[0] || t("live.thinking") : r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
-  const opens = !live && heads.length > 0;
-  const inner = (
-    <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.thought!()}
-      <span class="sum">{words}</span>
-      {opens && <span class="chev">{GLYPHS.chev!()}</span>}
-    </>
-  );
+/** A run of file reads as one row (D530): "读了 3 个文件" and the files' chips, the rest counted. */
+const FILES_SHOWN = 3;
+function FilesRow({ rows }: { rows: StepRow[] }) {
+  const names = rows.map((r) => fileName(r.step!.target!));
   return (
     <div class="sline">
-      {opens ? (
-        <button class={`step quiet${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-          {inner}
-        </button>
-      ) : (
-        <div class={`step quiet${live ? " running" : ""}`}>{inner}</div>
-      )}
-      {open && (
-        <div class="thought-text">
-          {heads.map((h, i) => (
-            <p key={i}>{h}</p>
-          ))}
-        </div>
-      )}
+      <div class="step files" aria-label={[t("step.read.files", rows.length), ...names].join(" ")}>
+        {GLYPHS.read!()}
+        <span class="verb">{t("step.read.files", rows.length)}</span>
+        {rows.slice(0, FILES_SHOWN).map((r, i) => (
+          <StepFile key={r.seq} tail={r.step!.target!} {...(i ? { cls: "extra" } : {})} {...(r.path ? { path: r.path } : {})} />
+        ))}
+        {rows.length > FILES_SHOWN && (
+          <span class="times more-wide" title={names.slice(FILES_SHOWN).join("\n")}>
+            {t("step.files.more", rows.length - FILES_SHOWN)}
+          </span>
+        )}
+        {/* D530: at a phone's width, the first file and the rest counted (app.css). */}
+        <span class="times more-narrow" title={names.slice(1).join("\n")}>
+          {t("step.files.more", rows.length - 1)}
+        </span>
+      </div>
     </div>
   );
 }
 
-/** A run of steps between two things said, as one line (D268): what it did, in at most two phrases;
- *  open, each step. While it runs, only its latest step, in the present tense, with a small spinner. */
-const GROUP_MAX = 60;
-function Group({ l, live }: { l: Extract<Line, { k: "group" }>; live?: boolean }) {
-  const [open, setOpen] = useState(false);
+/** How many of a long stretch's rows show under "前面还有 n 步" (D530), which opens the rest in place. */
+const STEP_TAIL = 8;
+
+/** A stretch of steps (D530): its rows, a run of file reads as one; past STEP_TAIL, its last rows
+ *  under "前面还有 n 步". The live stretch's last step is its own row, in the present tense. */
+function Stretch({ task, b, live }: { task: Task; b: Extract<Block, { k: "steps" }>; live: boolean }) {
   const [all, setAll] = useState(false);
-  const latest = l.rows.at(-1)!;
-  const [lw, lc] = live ? liveRow(latest) : ["", ""];
-  const words = live ? lw : groupWords(l.tally);
+  const items: Item[] = itemsOf(b.lines);
+  const last = items.at(-1);
+  if (live && last?.k === "files") {
+    items.pop();
+    const rest = last.rows.slice(0, -1);
+    if (rest.length >= 2) items.push({ k: "files", seq: rest[0]!.seq, rows: rest });
+    else for (const r of rest) items.push({ k: "row", row: r });
+    items.push({ k: "row", row: last.rows.at(-1)! });
+  }
+  const from = !all && items.length > STEP_TAIL ? items.length - STEP_TAIL : 0;
+  const earlier = items.slice(0, from).reduce((a, it) => a + (it.k === "files" ? it.rows.length : it.row.step ? it.row.n : 1), 0);
   return (
-    <div class="sline">
-      <button class={`step steprun${open ? " open" : ""}${live ? " running" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.group!()}
-        <span class="sum" title={groupWords(l.tally)}>
-          {words}
-        </span>
-        {live && lc && (
-          <code class={`subj${latest.step?.kind === "ran" ? " mono" : ""}`} title={lc}>
-            {lc}
-          </code>
-        )}
-        <span class="chev">{GLYPHS.chev!()}</span>
-      </button>
-      {/* D271: it grows in place, never a scroller of its own; a long run shows its first steps. */}
-      {open && (
-        <div class="group-rows">
-          {(all ? l.rows : l.rows.slice(0, GROUP_MAX)).map((r) => (
-            <Row key={r.seq} r={r} />
-          ))}
-          {!all && l.rows.length > GROUP_MAX && (
-            <button class="qlink more" onClick={() => setAll(true)}>
-              {t("group.more", l.rows.length - GROUP_MAX)}
-            </button>
-          )}
+    <div class="lines">
+      {from > 0 && (
+        <div class="sline">
+          <button class="step earlier-steps" onClick={() => setAll(true)}>
+            {GLYPHS.more!()}
+            <span class="words">{t("steps.earlier", earlier)}</span>
+          </button>
         </div>
       )}
+      {items.slice(from).map((it, i, shown) => (it.k === "files" ? <FilesRow key={`f${it.seq}`} rows={it.rows} /> : <Row key={it.row.seq} r={it.row} task={task} live={live && i === shown.length - 1} />))}
     </div>
   );
 }
@@ -654,14 +736,8 @@ function BlockView({ task, b, live, took, times, last }: { task: Task; b: Block;
       return <Voice task={task} b={b} took={took} times={times} last={last} />;
     case "saved":
       return <Saved task={task} b={b} />;
-    case "steps": {
-      const n = b.lines.length - 1;
-      return (
-        <div class="lines">
-          {b.lines.map((l, i) => (l.k === "group" ? <Group key={`g${l.seq}`} l={l} live={live && b.live && i === n} /> : <Row key={l.row.seq} r={l.row} live={live && b.live && i === n} />))}
-        </div>
-      );
-    }
+    case "steps":
+      return <Stretch task={task} b={b} live={!!live && !!b.live} />;
     case "plan":
       return <PlanCard b={b} />;
     case "report": {
@@ -804,8 +880,25 @@ export function wakesOf(task: Task): { n: number; lastAt: number } {
 
 /** A turn's body (D268): a finished turn folds its steps and interim words under "Worked for 3m
  *  12s", keeping its last words in view; the live turn never folds. */
+/** D530: a turn's work in words: "12 步，3 条消息" / "12 steps, 3 messages". */
+export function workWords(w: Work): string {
+  if (!w.steps) return t("work.thought");
+  const s = w.steps === 1 ? t("work.steps.one") : t("work.steps", w.steps);
+  return s + (w.messages === 1 ? t("work.msgs.one") : w.messages > 1 ? t("work.msgs", w.messages) : "");
+}
+
+/** The live turns folded by the person (task:turn), which the live line reads (D530). */
+const liveShut = new Set<string>();
+
+/** A turn's answer (D530): its work (everything before its last words; all of it while it works)
+ *  under one quiet head, folded once the turn is done and open while it works; its last words after. */
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
-  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  // The live turn's fold is shared with the live line (D530: it shows only while folded).
+  const key = `${task.id}:${turn.seq}`;
+  const toggled = live ? liveShut.has(key) : done;
+  const [, bump] = useState(0);
+  const setToggled = (v: boolean) => (live ? (v ? liveShut.add(key) : liveShut.delete(key), bump((n) => n + 1), A.changed()) : setDone(v));
   const body = turn.body;
   let lastVoice = -1;
   for (let i = body.length - 1; i >= 0; i--)
@@ -813,8 +906,8 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
       lastVoice = i;
       break;
     }
-  const head = lastVoice >= 0 ? body.slice(0, lastVoice) : body;
-  const foldable = !live && head.some((b) => b.k === "steps");
+  const head = live ? body : lastVoice >= 0 ? body.slice(0, lastVoice) : body;
+  const foldable = head.some((b) => b.k === "steps");
   const from = body.length ? tsOf(task, turn.prompt?.seq ?? body[0]!.seq) : NaN;
   const to = body.length ? tsOf(task, lastSeq(body.at(-1)!)) : NaN;
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
@@ -822,12 +915,12 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   const answer = !live && lastVoice >= 0 ? body[lastVoice]!.seq : undefined;
   const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />);
   if (!foldable) return <>{draw(body)}</>;
+  // Done: folded until opened. While it works: open until folded.
+  const open = live ? !toggled : toggled;
+  const w = workOf(head);
   return (
     <>
-      <button class={`worked${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span>{t("turn.worked", took)}</span>
-        <span class="chev">{GLYPHS.chev!()}</span>
-      </button>
+      <WorkHead words={workWords(w)} failed={w.failed} live={live} open={open} onClick={() => setToggled(!toggled)} />
       {open && <div class="worked-body">{draw(head)}</div>}
       {draw(body.slice(head.length))}
     </>
@@ -1100,9 +1193,10 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   );
 }
 
-/** The working line at the transcript's end (D268): what it is on, shimmering, and the turn's
- *  clock at the right; a retry takes its words while it is the latest thing. D271: never
- *  "thinking" after its words, only that it works. */
+/** The transcript's foot while a turn is under way (D530): a hairline, then one muted line in the
+ *  step rows' rhythm: the shared spinner (the one thing on the page that moves while it works) and
+ *  what it is doing now in plain words with the turn's clock, 「正在跑命令，41 秒」; 「还在做」 when its
+ *  latest is words; a retry takes its words while it is the latest thing. Never the link's blue. */
 function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -1110,15 +1204,47 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
     return () => clearInterval(h);
   }, []);
   const last = blocks.at(-1);
-  const words = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : t(`state.${attention(task)}`);
+  const [doing, seq] = footWords(blocks);
   const tu = turns.at(-1);
-  const start = tu ? tsOf(task, tu.seq) : NaN;
+  const folded = !!tu && tu.body.some((b) => b.k === "steps") && liveShut.has(`${task.id}:${tu.seq}`);
+  const retry = last?.k === "note" && last.say === "retry";
+  // One indicator for the moment (D530): unfolded, the live step's row carries the spinner and its
+  // clock, and there is no line; folded, the step and that step's time; with no step under way,
+  // the turn's total, labeled.
+  if (!retry && seq && !folded) return null;
+  const since = (ms: number) => (Number.isFinite(ms) ? dur(Date.now() - ms) : "");
+  const stepTime = seq ? since(tsOf(task, seq)) : "";
+  const turnTime = tu ? since(tsOf(task, tu.seq)) : "";
+  const words = retry ? t("note.retry", (last as { name?: string }).name ?? "") : seq ? (stepTime ? t("foot.live", doing, stepTime) : doing) : turnTime ? t("foot.live", doing, t("foot.turn", turnTime)) : doing;
   return (
-    <div class="working-line" role="status">
-      <span class="shimmer">{words}</span>
-      {Number.isFinite(start) && <span class="clock">{dur(Date.now() - start)}</span>}
+    <div class={`work-foot${seq ? " folded" : ""}`} role="status" aria-label={words}>
+      <span class="spin sm" aria-hidden="true" />
+      <span class="state" aria-hidden="true">
+        {words}
+      </span>
     </div>
   );
+}
+
+/** What the agent is doing now, said plainly for the live line (D530): its latest step's kind in
+ *  the present, never its command or a tool's name (the step's own row says those). The Mac's
+ *  footWords. */
+export function footWords(blocks: Block[]): [string, number] {
+  const b = blocks.at(-1);
+  if (b?.k !== "steps" || !b.live) return [t("foot.still"), 0];
+  const l = b.lines.at(-1);
+  if (!l) return [t("foot.still"), 0];
+  if (l.k === "group" && !l.rows.length) return [footKind(l.tally[0]?.kind ?? ""), l.seq];
+  const r = l.k === "group" ? l.rows.at(-1)! : l.row;
+  if (!r.step) return [t("foot.thought"), r.seq];
+  return [footKind(r.step.kind, r.step.act, r.step.via), r.seq];
+}
+
+function footKind(kind: string, act?: string, via?: string): string {
+  if (kind === "other" && via) return t("foot.used", serviceName(via));
+  if ((kind === "searched" && act === "web") || kind === "web") return t("foot.web");
+  if (kind === "delegated") return t("foot.sub");
+  return ["ran", "read", "edited", "searched", "browsed", "computer", "waited"].includes(kind) ? t(`foot.${kind}`) : t("foot.still");
 }
 
 /** When a turn's prompt came, as a clock ("21:59"), or "". */

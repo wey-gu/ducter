@@ -403,14 +403,9 @@ func (a *App) taskTail(c *ui.Context, task *store.Task, m *taskMemo) {
 			}
 			a.endLine(c, task, m)
 		})
-		if workFolder(task.Place()) != "" {
-			ui.Column(c.Key("work")).Gap(t.S2).Children(func() {
-				a.workFolderLine(c, task) // D198: where its files are, over its changes
-				a.changes(c, task)
-			})
-		} else {
-			a.changes(c, task)
-		}
+		// D530: where its files are lives in the header's place and in 看细节,
+		// never as a raw path in the transcript.
+		a.changes(c, task)
 		a.outsideActs(c, task)
 		a.waitFacts(c, task)
 	})

@@ -51,10 +51,14 @@ export function ContextButton({ task }: { task: Task }) {
   const m = meterOf(task);
   if (!hasMeter(m)) return null;
   const label = m.percent !== undefined ? t("ctx.ring", `${m.percent}%`) : t("ctx.ring.unknown");
+  // D530: under the composer, the ring with its share in words beside it, so it reads as a meter
+  // and never as something loading.
   return (
     <span class="ctx-anchor">
       <button ref={btn} type="button" class={`ctx-btn${open ? " on" : ""}`} aria-label={label} title={label} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)}>
-        <Ring m={m} />
+        <Ring m={m} size={14} />
+        <span aria-hidden="true">{t("ctx.title")}</span>
+        {m.percent !== undefined && <span class="pct" aria-hidden="true">{`${m.percent}%`}</span>}
       </button>
       {open && <ContextCard task={task} m={m} anchor={btn} onClose={() => (setOpen(false), btn.current?.focus())} />}
     </span>

@@ -220,6 +220,7 @@ func (a *App) conversation(c *ui.Context) {
 			a.cliOfferLine(c)
 		}
 		a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
+		a.doorLine(c, rows)             // D535: 有 n 个等你定 ›, while what waits is out of view
 		a.composer(c)
 	})
 	a.readWhenSeen(c)
@@ -336,29 +337,55 @@ func (a *App) header(c *ui.Context) {
 					if f, ok := a.summaryFilter(b); ok && words != "" {
 						// D291: each count its own element, spaced by a gap;
 						// read aloud as a list.
-						l := ui.Row(c.Key("who-counts")).AlignItems(ui.Center).Padding(1, t.S1+2).Radius(t.RadiusXS).
-							Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(words).Focusable().Tooltip(a.L.T("nav.onhand"))
-						ink := t.InkMuted
-						if l.Hovered() || l.Pressed() {
-							l.Background(tint)
-							ink = t.Ink
-						}
 						parts := a.countParts(b)
 						if len(parts) == 0 {
 							parts = []string{words}
 						}
-						l.Children(func() {
-							ui.Row(c).Gap(t.S3).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-								for _, p := range parts {
-									uiText(c, p).FontSize(t.XS).TextColor(ink).SingleLine()
-								}
-							})
-						})
-						if l.Clicked() {
-							a.oh.filter, a.oh.focus = f, ""
-							a.Route = RouteOnHand
-							a.markRead()
+						// D535: 「n 个等你」 is a door of its own: it opens the next
+						// item that waits (the question here, or On hand's row
+						// focused); the rest of the line opens On hand.
+						needs := ""
+						if n := a.barNeeds(b); n > 0 {
+							needs = a.L.T("header.needs", n)
 						}
+						rest := parts[:0:0]
+						for _, p := range parts {
+							if p != needs {
+								rest = append(rest, p)
+							}
+						}
+						ui.Row(c.Key("who-line")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+							if needs != "" {
+								if a.countDoor(c, needs, tint) {
+									a.openDoor(a.barDoorPartner())
+								}
+							}
+							if len(rest) == 0 {
+								return
+							}
+							l := ui.Row(c.Key("who-counts")).AlignItems(ui.Center).Padding(1, t.S1+2).Radius(t.RadiusXS).
+								Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(spoken(a.L, rest...)).Focusable().Tooltip(a.L.T("nav.onhand"))
+							ink := t.InkMuted
+							if l.Hovered() || l.Pressed() {
+								l.Background(tint)
+								ink = t.Ink
+							}
+							l.Children(func() {
+								ui.Row(c).Gap(t.S3).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+									for _, p := range rest {
+										uiText(c, p).FontSize(t.XS).TextColor(ink).SingleLine()
+									}
+								})
+							})
+							if l.Clicked() {
+								if needs != "" {
+									f = 0 // the line without its door names more than one thing
+								}
+								a.oh.filter, a.oh.focus = f, ""
+								a.Route = RouteOnHand
+								a.markRead()
+							}
+						})
 						return
 					}
 					uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
@@ -1010,6 +1037,7 @@ func (a *App) composer(c *ui.Context) {
 			a.composerBox(c, composerOpts{
 				key: "composer", draft: &a.draft, placeholder: ph, label: label, autoFocus: true, focus: a.focusComposer,
 				mentions: &mentionPlace{},                                          // D534
+				tray:     "conv",                                                   // #68: ⌘V pastes a picture
 				box:      func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
 				before: func() {
 					if over {

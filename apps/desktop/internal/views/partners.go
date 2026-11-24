@@ -268,6 +268,7 @@ func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
 	if row.Hovered() {
 		row.Background(t.Surface.Mix(t.Ink, 0.03))
 	}
+	a.doorCard(c, row, "a:"+x.DecisionID) // D535
 	row.Children(func() {
 		a.stone(c, "oask-"+x.DecisionID, p.Look, 32)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
@@ -419,15 +420,16 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 						a.stone(c, "row-"+id, p.Look, 40)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 							if ps.editing == id {
-								ui.TextInput(c.Key("input:partner-name:"+id), &ps.editName).Label(a.L.T("partners.rename")).
-									FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
-								ui.TextInput(c.Key("input:partner-about:"+id), &ps.editAbout).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
-									FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
+								// D536: the shared field, both at the control height (the line used
+								// to be a small font in a 260-wide box that cut its words off).
+								a.lineField(c, "partner-name:"+id, a.L.T("partners.rename"), &ps.editName, "", true, save)
+								a.lineField(c, "partner-about:"+id, a.L.T("partners.about"), &ps.editAbout, a.L.T("partners.about.placeholder"), false, save)
 							} else {
 								uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
 								if p.About != "" {
 									uiText(c, a.L.T("partners.about.shown", p.About)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
 								}
+								a.thinksLine(c, p)
 							}
 							if p.ID == shown {
 								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -439,6 +441,9 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
 						}
 					})
+					if ps.editing == id {
+						a.thinksPick(c, p)
+					}
 					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 52).Children(func() {
 						if ps.editing == id {
 							if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
@@ -493,8 +498,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				a.stone(c, "add", ps.look, 48)
 				ui.Column(c).Grow(1).Gap(t.S1).Children(func() {
 					uiText(c, a.L.T("partners.add.name")).FontSize(t.SM).TextColor(t.InkMuted)
-					in := ui.TextInput(c.Key("input:partner-add"), &ps.name).Placeholder(a.L.T("partners.add.placeholder")).Label(a.L.T("partners.add.name")).
-						FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(add)
+					in := a.lineField(c, "partner-add", a.L.T("partners.add.name"), &ps.name, a.L.T("partners.add.placeholder"), false, add)
 					if !ps.focused {
 						in.Focus()
 						ps.focused = true
@@ -502,8 +506,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				})
 			})
 			uiText(c, a.L.T("partners.about")).FontSize(t.SM).TextColor(t.InkMuted)
-			ui.TextInput(c.Key("input:partner-add-about"), &ps.about).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
-				FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(320).OnSubmit(add)
+			a.lineField(c, "partner-add-about", a.L.T("partners.about"), &ps.about, a.L.T("partners.about.placeholder"), false, add)
 			uiText(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
 			if l := a.lookPick(c, "add", ps.look); l != "" {
 				ps.look = l

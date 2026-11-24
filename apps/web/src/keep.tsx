@@ -8,7 +8,7 @@
 import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { BackRow, Btn, SectionHead, Tag, TimeCol } from "./controls.tsx";
+import { Btn, SectionHead, Tag, TimeCol } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
@@ -417,7 +417,7 @@ export function KeepRail() {
   const ks = A.S.onHand?.keeps ?? [];
   return (
     <aside class="kp-rail" aria-label={t("keep.section")}>
-      <BackRow label={t("keep.back")} onClick={closeKeep} />
+      {/* D535: no back link here: the way back is the header's breadcrumb (对话 / 手头的事 / the Keep). */}
       <SectionHead label={t("keep.section")} />
       {ks.map((k) => {
         const facts = keepFacts(k).filter((f) => f.tone === "needs");
@@ -462,7 +462,7 @@ export function KeepPageView({ room }: { room: string }) {
   ];
   return (
     <div class={`kp-page${wide ? " wide" : ""}`}>
-      {!wide && <BackRow label={t("keep.back")} onClick={closeKeep} />}
+      {/* D535: the way back is the header's (‹ 手头的事 beside the conversation and on a phone). */}
       <div class="kp-main">
         <header class="kp-ph">
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />
@@ -550,4 +550,9 @@ export function KeepReceipt({ card }: { card: KeepCard }) {
 }
 
 A.openKeep = openKeep;
+A.upInPlace = () => (K.open ? (closeKeep(), true) : false);
+A.leftOnHand = () => {
+  K.open = "";
+  K.pause = K.stop = false;
+};
 A.onKeepFrame = onKeepFrame;

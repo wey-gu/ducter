@@ -228,6 +228,8 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 	t := a.T
 	label := a.L.T("partners.switch", p.Name)
 	switch {
+	case on && needs > 0:
+		label = a.L.T("door.pebble", p.Name, needs)
 	case on:
 		label = a.L.T("partners.here", p.Name)
 	case needs > 0:
@@ -250,8 +252,9 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 	if on {
 		nameInk = t.Ink
 	}
+	door := false
 	row.Children(func() {
-		a.railFace(c, p, on, needs)
+		door = a.railFace(c, p, on, needs)
 		if !wide {
 			uiText(c, p.Name).FontSize(11).FontWeight(700).TextColor(nameInk).SingleLine().MaxWidth(76).AccessHidden(true)
 			return
@@ -262,7 +265,13 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 		})
 	})
 	if row.Clicked() {
-		a.SwitchPartner(p.ID)
+		// D535: the partner shown, with something waiting: its row is the
+		// door too (the keyboard's way to the pebble's).
+		if door || (on && needs > 0) {
+			a.openDoor(p.ID)
+		} else {
+			a.SwitchPartner(p.ID)
+		}
 	}
 	_ = i
 }
@@ -271,7 +280,7 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 // (out of step with the others), stands a little taller while chosen, and
 // hops once when something new comes from it. Its number sits on its
 // shoulder as a clay pebble.
-func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int) {
+func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int) (door bool) {
 	t := a.T
 	look := p.Look
 	box := ui.Box(c.Key("pface:"+p.ID)).Size(railFace+8, railFace+4).Shrink(0).AccessHidden(true)
@@ -321,7 +330,11 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 		if on {
 			ring = t.Surface
 		}
-		// The number: the shared clay pebble (countPebble) on its shoulder.
-		a.countPebble(c, p.ID, needs, ring).Absolute().Right(-4).Top(-3)
+		// The number: the shared clay pebble on its shoulder, a door (D535):
+		// a tap goes to that partner's next item that waits.
+		e, ok := a.pebbleDoor(c, p.ID, needs, ring)
+		e.Absolute().Right(-8).Top(-7)
+		door = ok
 	})
+	return door
 }

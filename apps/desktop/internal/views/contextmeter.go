@@ -343,19 +343,26 @@ func (a *App) contextRing(c *ui.Context, task *store.Task) {
 	if !hasMeter(m) {
 		return
 	}
-	label := a.L.T("ctx.ring.unknown")
+	label, pct := a.L.T("ctx.ring.unknown"), ""
 	if m.Percent != nil {
-		label = a.L.T("ctx.ring", fmt.Sprintf("%d%%", *m.Percent))
+		pct = fmt.Sprintf("%d%%", *m.Percent)
+		label = a.L.T("ctx.ring", pct)
 	}
 	f, at := meterFracs(m)
-	b := ui.Box(c.Key("ctx-ring")).Size(32, 32).Radius(16).Shrink(0).Role(ui.RoleButton).Label(label).Tooltip(label).
-		Cursor(ui.CursorPointer).Focusable()
+	// D530: under the composer, the ring with its share in words beside it,
+	// so it reads as a meter and never as something loading.
+	b := ui.Row(c.Key("ctx-ring")).Gap(t.S1).Height(t.ControlSM).Padding(0, t.S2).Radius(t.RadiusXS).AlignItems(ui.Center).Shrink(0).
+		Role(ui.RoleButton).Label(label).Tooltip(label).Cursor(ui.CursorPointer).Focusable()
 	open := ctxUI.open && ctxUI.task == task.ID
 	if open || b.Hovered() {
 		b.Background(t.SurfaceSunken)
 	}
 	b.Children(func() {
-		ui.Box(c).Size(20, 20).Margin(6, 6, 6, 6).Draw(drawContextRing(t.LineSoft, a.meterColors(m), t.Faint, f, at)).AccessHidden(true)
+		ui.Box(c).Size(14, 14).Draw(drawContextRing(t.LineSoft, a.meterColors(m), t.Faint, f, at)).AccessHidden(true)
+		uiText(c, a.L.T("ctx.title")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		if pct != "" {
+			uiText(c, pct).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().AccessHidden(true)
+		}
 	})
 	if b.Clicked() {
 		ctxUI.open, ctxUI.task = !open, task.ID

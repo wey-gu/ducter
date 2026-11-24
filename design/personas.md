@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486, D497, D513, D516. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497, D513, D516, D536. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -38,7 +38,7 @@ one's conversation.
 | Tasks, routines | listed together in On hand | owned by the partner that opened them (D31: `card.persona`) |
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
-| Settings | notifications, quiet hours, look and sound, devices | its name, look, what it looks after (D486); later its own talk and memory switches |
+| Settings | notifications, quiet hours, look and sound, devices; **默认用什么想事情 / What partners think with by default** (D536) | its name, look, what it looks after (D486); what it thinks with when the person gives it its own (D536); later its own talk and memory switches |
 | Chat apps (Telegram, Slack, WeChat, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one they are talking with); its words there lead with its name |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
@@ -266,6 +266,32 @@ On every home (`DUCTER_PARTNERS=off` turns it off; `startCore({ partners })` in 
   D513: each row three lines, so a phone never squeezes the words).
   The Mac's menu bar lists the other partners with something waiting; its notice names whose.
 
+## What each thinks with (D536)
+
+**Who, in this moment.** The heavy developer whose work partner is on Codex and who wants the growth
+partner, 小玛, on Claude Code Opus: another strength and another account's limit. The consumer who
+wants the kids' partner on a faster, cheaper model. The fresh user with one partner, who sees nothing new.
+
+**One default, an optional own.** Settings › 伙伴's card titled **默认用什么想事情 / What partners
+think with by default** (with one partner it stays **想事情用 / What I think with**) is Settings.brain:
+the default partner's and every partner's that has none of its own. Under each partner's name in
+伙伴们 a line says what it thinks with: its agent's coin, **想事情用 {agent} / Thinks with {agent}**,
+its model and **思考：{level} / Effort: {level}**, each its own fact; the default's row adds **默认 /
+The default**; one that follows says **想事情跟 {default} 一样 / Thinks with the same as {default}**.
+**改一下 / Change** on another partner shows **想事情用 / Thinks with** (**跟 {default} 一样 / Same as
+{default}**, or each agent the home can think with), **用哪个模型 / Which model** and **思考深度 /
+Effort** (**默认 / Default** first), applied at once as a colour is. Kept in partners.json
+(`PartnerInfo.brain`); the default's own is never there.
+
+**What runs on it.** Its conversation, its memory digests and its holds (D435, seen from its own agent:
+another agent answers while its own is held). Core's own work for the person (triage, the bar, quick
+web looks) stays on the default's. D503's reserve keeps every agent a partner thinks with. Its tasks
+still start by New tasks start (D510) and the rules, never by its own brain.
+
+**By words.** 「小玛用 Opus」 said to any partner is `brain_switch` with that partner's name; said to
+itself, its own; 「跟 Ducter 一样就行」 is `same`. The `[partners]` line says what this partner thinks
+with and whose setting it is, and what the others think with of their own.
+
 ## A second partner answers (D312)
 
 Built:
@@ -311,7 +337,8 @@ iMessage have one identity, and a bot per partner on Telegram is an upgrade for 
    hand work to is a helper (`bridge.md` "Helpers"), not a partner; a helper made in another partner's
    conversation keeps that partner (its tasks are its), its mail still read by the one home.
 2. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
-3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
+3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use (what it thinks
+   with is its own since D536). A task default per partner (its tasks on its own agent): later, when asked.
 4. **A bot of its own per partner** (D516 (7)): a Telegram bot or Slack app bound to a chosen
    partner, its own contact in the chat app's list; and iMessage on its own connection, so it
    follows the one-thread rules instead of the partner the Mac shows.

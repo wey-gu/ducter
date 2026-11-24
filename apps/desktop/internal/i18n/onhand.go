@@ -5,6 +5,10 @@ package i18n
 // (apps/web/src/i18n-onhand.ts); a test keeps them equal.
 
 var zhOnhand = Table{
+	// D535: every needs-you count is a door.
+	"door.line":               "有 %d 个等你定",
+	"door.line.about":         "一个一个带你去看",
+	"door.pebble":             "%s 有 %d 个等你，一个一个带你去看",
 	"onhand.find.placeholder": "搜索…",
 	"onhand.find.none":        "没有匹配的结果。",
 	"onhand.pr.draft":         "草稿 PR",
@@ -160,6 +164,10 @@ var zhOnhand = Table{
 }
 
 var enOnhand = Table{
+	// D535: every needs-you count is a door.
+	"door.line":                    "%d waiting on you",
+	"door.line.about":              "one at a time",
+	"door.pebble":                  "%s: %d waiting on you, one at a time",
 	"onhand.find.placeholder":      "Find a task…",
 	"onhand.find.none":             "Nothing matches.",
 	"onhand.pr.draft":              "Draft PR",

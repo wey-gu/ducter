@@ -52,6 +52,23 @@ test("no card for one member, nor for a group none of whose tasks is on the boar
   expect(boardGroups([G()], () => -1, () => "done")).toEqual([]);
 });
 
+// D535: a hand-over stands by the rule every client shares (handGroupStand; the Mac's HandStand over
+// the same fixture): 等你 while its plan waits, 在做 with only parts in line, nowhere with nothing.
+test("a hand-over with nothing on the board and nothing in line is no card; parts in line stand in 在做", () => {
+  const hand = (over: object = {}) => ({ shape: "one", items: [], where: { device: "dev_m3", name: "Macbook Pro M3" }, ...over }) as never;
+  const none = () => -1;
+  // The author's 通用设置: its one task off the board, nothing in line.
+  expect(boardGroups([G({ name: "通用设置", hand: hand(), members: [{ taskId: "gone" }] })], none, () => undefined)).toEqual([]);
+  // Parts held in line on that computer: 在做.
+  const [q] = boardGroups([G({ hand: hand(), members: [{ key: "k1", title: "给 #120 写复现", at: "", device: "dev_m3" }, { key: "k2", title: "关掉 #98", at: "", device: "dev_m3" }] })], none, () => undefined);
+  expect(q!.lane).toBe(1);
+  // Its plan ready for the person: 等你, though nothing of it is on the board.
+  const [p] = boardGroups([G({ hand: hand({ plan: { taskId: "plan", state: "ready" } }), members: [{ taskId: "plan" }, { key: "k1", title: "a", at: "" }] })], none, () => undefined);
+  expect(p!.lane).toBe(0);
+  // Its review sent, nothing left on the board: no card.
+  expect(boardGroups([G({ hand: hand({ review: "sent" }), members: [{ taskId: "gone" }, { key: "k1", title: "a", at: "" }] })], none, () => undefined)).toEqual([]);
+});
+
 test("a stopped line says which part ended and which is next, and stands with what needs you", () => {
   const g = G({ members: [{ taskId: "a" }, { taskId: "b" }, { key: "h1", title: "c", at: "" }, { key: "h2", title: "d", at: "" }], stopped: { taskId: "b", why: "failed" } });
   const [b] = boardGroups([g], (id) => (id === "a" ? 3 : 3), (id) => (id === "a" ? "done" : "failed"));

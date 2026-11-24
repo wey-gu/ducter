@@ -72,10 +72,6 @@ var zhTurns = Table{
 	"plan.progress":        "%d/%d 完成",
 	// D325: while it works Return steers and ⌥ Return holds for after this
 	// turn; an agent that can't steer holds either way and says so.
-	"composer.steer.hint":    "回车：它做到下一步就会看到",
-	"composer.steer.short":   "它做到下一步就会看到",
-	"composer.after":         "做完再说",
-	"composer.queue.hint":    "⌥ 回车：这一轮做完再说",
 	"composer.steer.place":   "插一句，它做到下一步就会看到…",
 	"composer.nosteer.place": "%s 这一轮做完才会看到…",
 	"composer.nosteer.hint":  "%s 做事时不能插话，发出的话会等这一轮做完",
@@ -158,10 +154,6 @@ var enTurns = Table{
 	"note.retry":             "Retrying (attempt %s)",
 	"plan.title":             "Plan",
 	"plan.progress":          "%d of %d done",
-	"composer.steer.hint":    "Return: it sees this at its next step",
-	"composer.steer.short":   "It sees this at its next step",
-	"composer.after":         "After this",
-	"composer.queue.hint":    "⌥ Return: after this turn",
 	"composer.steer.place":   "Add something; it sees it at its next step…",
 	"composer.nosteer.place": "%s reads this when this turn is done…",
 	"composer.nosteer.hint":  "%s can't take words mid-turn; what you send waits for this turn to end",

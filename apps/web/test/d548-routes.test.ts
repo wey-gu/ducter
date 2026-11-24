@@ -24,6 +24,8 @@ afterAll(async () => {
   A.partnersOpen = false;
   A.route = { name: "conv" };
   A.sheet = null;
+  // A switch left waiting for its welcome would swallow the next file's welcome (seen with clone-folder).
+  (A as unknown as { switchTo?: string }).switchTo = undefined;
 });
 
 const four = [

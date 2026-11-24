@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.53 - 2026-11-25
+
+<!-- whats-new
+zh: 输入框更顺手；手机上的设置概览重新排过
+en: A calmer, steadier composer; Settings › Overview laid out for a phone
+-->
+
+**The composer**
+- Every button in the row is the same round size and sits at the bottom as the words grow; only
+  Send stands up, and only when there is something to send.
+- A task's composer keeps the words on their own line, with the model and how full it is below.
+  On a narrow phone nothing squeezes the words.
+- Pictures sit inside the composer, above the words. The placeholder never cuts off, and on an
+  iPhone the composer rests right on the keyboard.
+
+**Settings › Overview on a phone**
+- One column: what needs a look first, each with its button, then where Ducter runs, what it
+  thinks with and what it can see, then your computers and phones as a list.
+
 ## 0.1.52 - 2026-11-25
 
 <!-- whats-new

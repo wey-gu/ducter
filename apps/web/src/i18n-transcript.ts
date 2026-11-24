@@ -64,7 +64,9 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     // D325: while it works, Return steers (it reads it at its next step) and ⌥ Return holds the
     // words for after this turn; an agent that can't steer holds them either way, and says so.
     "composer.steer.place": "插一句，它做到下一步就会看到…",
+    "composer.steer.place.short": "插一句…",
     "composer.nosteer.place": "%s 这一轮做完才会看到…",
+    "composer.nosteer.place.short": "这一轮做完它再看…",
     "composer.nosteer.hint": "%s 做事时不能插话，发出的话会等这一轮做完",
     "delivery.steer.wait": "它做到下一步就会看到",
     "delivery.steer.read": "它看到了",
@@ -171,7 +173,9 @@ export const transcriptWords: { zh: Record<string, string>; en: Record<string, s
     "plan.title": "Plan",
     "plan.progress": "%d of %d done",
     "composer.steer.place": "Add something; it sees it at its next step…",
+    "composer.steer.place.short": "Add something…",
     "composer.nosteer.place": "%s reads this when this turn is done…",
+    "composer.nosteer.place.short": "For after this turn…",
     "composer.nosteer.hint": "%s can't take words mid-turn; what you send waits for this turn to end",
     "delivery.steer.wait": "It'll see this at its next step",
     "delivery.steer.read": "Seen",

@@ -132,10 +132,13 @@ export interface DevicesView {
   stop(): void;
 }
 
-const defaultExec: Exec = async (argv, timeoutMs = 15_000) => {
+export const defaultExec: Exec = async (argv, timeoutMs = 15_000) => {
   try {
     // Both streams: `codex login status` answers on stderr.
-    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+    // D518: the PATH as it is now. Without an env Bun looks a bare command up on the PATH the
+    // process started with (research/132), so an agent Ducter put in its own tools folder while a
+    // service ran (hel's Claude Code) read as installed (whichNow) and never answered: 未登录 forever.
+    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: process.env });
     const timer = setTimeout(() => p.kill(), timeoutMs);
     const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
     clearTimeout(timer);
@@ -318,9 +321,19 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   let readHarnesses: Cached["harnesses"] | undefined;
   /** Who is installed and signed in: the part the partner's brain and a blind home are decided on. */
   const logins = (hs: Cached["harnesses"] | undefined) => (hs ? JSON.stringify(hs.map((h) => [h.harness, h.loggedIn, h.installed !== false])) : "");
+  // D518: a refresh while a probe runs makes that probe stale (it may have read before the change):
+  // its reading is not kept, and the next ask probes again after it instead of sharing it.
+  let gen = 0;
+  let inflightGen = -1;
   const local = async (): Promise<Cached> => {
     if (cached && now() - cached.at < cacheMs) return cached;
-    inflight ??= (async () => {
+    if (inflight && inflightGen === gen) return inflight;
+    const earlier = inflight;
+    const g = gen;
+    inflightGen = g;
+    let p: Promise<Cached> | undefined;
+    p = (async () => {
+      if (earlier) await earlier.catch(() => undefined);
       const [cua, native, read, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
         probes.native().catch(() => undefined),
@@ -329,14 +342,16 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       ]);
       const before = logins(readHarnesses);
       if (read) readHarnesses = read;
-      cached = { at: now(), cua, native, harnesses: read ?? readHarnesses ?? [], kind };
+      const got: Cached = { at: now(), cua, native, harnesses: read ?? readHarnesses ?? [], kind };
+      if (g === gen) cached = got;
       // D440: a reading that changed who can think is news (the first one at start too): the brain
       // hold sees the home turn blind, and so sees it turn able again and answers what waited.
       if (read && logins(read) !== before) changed();
-      inflight = undefined;
-      return cached;
+      if (inflight === p) inflight = undefined;
+      return got;
     })();
-    return inflight;
+    inflight = p;
+    return p;
   };
 
   const envPinned = () => webPinned(env);
@@ -649,6 +664,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     changed,
     refresh: () => {
       cached = undefined;
+      gen++;
       o.computer?.refresh();
     },
     harnessesNow() {

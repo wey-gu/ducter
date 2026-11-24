@@ -17,7 +17,8 @@ export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "
   if (h.setup?.phase === "queued") return "queued";
   // D416: a sign-out running (or one that didn't take) opens the panel on a signed-in row.
   if (h.installed && (h.login?.state === "signing_out" || h.login?.reason === "signout_failed")) return "login";
-  if (h.installed && h.loggedIn && (!h.login || h.login.state !== "done")) return "ready";
+  // D518: done is the agent's own check saying signed in: the row is ready at once (登录好了 its word).
+  if (h.installed && h.loggedIn) return "ready";
   if (h.installed && h.login) return "login";
   if (h.installed) return h.loggedIn ? "ready" : "signin";
   if (h.setup?.phase === "failed") return "failed";

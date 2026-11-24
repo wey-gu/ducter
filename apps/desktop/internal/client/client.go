@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand/v2"
 	"net"
 	"net/url"
 	"os"
@@ -66,7 +67,30 @@ type Options struct {
 	OnFrame func(protocol.ServerFrame)
 	// OnStatus gets the connection's state as it changes.
 	OnStatus func(Status, error)
+	// Gone (D520) asks the home, after it refused the socket off this
+	// machine, whether this device's credential is gone there: gone only on
+	// the home's own signed word (remote.AskStanding), with its reason
+	// ("revoked", "unknown"). A refused upgrade alone is a proxy's 502 as
+	// often as anything, so without it the pairing stays and the client
+	// keeps trying. Nil: never gone.
+	Gone func(ctx context.Context, url, token string) (reason string, gone bool)
+	// Jitter spreads each wait between tries (nil: ±20% at random), so
+	// every device of a home that restarts doesn't dial on the same beat.
+	Jitter func(time.Duration) time.Duration
+	// OffMachine applies the rules for a home on another computer whatever
+	// the address (tests' fake homes listen on loopback).
+	OffMachine bool
 }
+
+// Waits between tries (D520): 250 ms doubling to RetryCap; after an outage
+// of LongAfter, to LongCap. A home that said this device is gone is asked
+// again only every GoneWait (a pairing or a kick asks at once).
+var (
+	RetryCap  = 5 * time.Second
+	LongAfter = time.Minute
+	LongCap   = 15 * time.Second
+	GoneWait  = time.Minute
+)
 
 // Client is a connection that keeps itself up.
 type Client struct {
@@ -82,6 +106,9 @@ type Client struct {
 	url, token string
 	// asleep: the Mac is going to sleep (D293); no dialling until Wake.
 	asleep bool
+	// down is when the connection was last lost (zero while connected, and
+	// before the first connection).
+	down time.Time
 }
 
 // Liveness (D293): with a home that answers pings, one every PingEvery, and
@@ -110,13 +137,40 @@ func (c *Client) Sleep() {
 func (c *Client) Wake() {
 	c.mu.Lock()
 	c.asleep = false
-	conn := c.conn
 	c.mu.Unlock()
 	// A socket from before the sleep is dead whatever it says: start over.
+	c.Redial()
+}
+
+// Redial drops the socket, live or not, and dials again at once: after a
+// wake, or when the network came back (a socket from before is dead
+// whatever it says; D520).
+func (c *Client) Redial() {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
 	if conn != nil {
 		conn.Close()
 	}
 	c.RetryNow()
+}
+
+// Nudge dials at once while there is no connection (the window came to the
+// front, D520); a live connection is left alone.
+func (c *Client) Nudge() {
+	c.mu.Lock()
+	up := c.conn != nil
+	c.mu.Unlock()
+	if !up {
+		c.RetryNow()
+	}
+}
+
+// DownSince is when the connection was lost, while it is; zero otherwise.
+func (c *Client) DownSince() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.down
 }
 
 // New makes a client; Run connects it.
@@ -147,9 +201,24 @@ func (c *Client) Retarget(url, token string) {
 	c.RetryNow()
 }
 
-// ErrUnauthorized means the server refused this device: it was never
-// paired, or it was disconnected with `ducter devices disconnect`.
+// ErrUnauthorized means the home itself said, signed with its key, that
+// this device's credential is gone there (disconnected with `ducter
+// devices`, or unknown to it), or that there never was one (a home off this
+// machine dialled with no credential). Nothing else means it (D520).
 var ErrUnauthorized = errors.New("ducter: this device isn't connected (pair it again)")
+
+// GoneError is ErrUnauthorized with the home's reason: "revoked" (it
+// disconnected this device), "unknown" (it has no such credential), or ""
+// (there was no credential to offer).
+type GoneError struct{ Reason string }
+
+func (e *GoneError) Error() string        { return ErrUnauthorized.Error() }
+func (e *GoneError) Is(target error) bool { return target == ErrUnauthorized }
+
+// ErrRefused means the socket was refused off this machine without the
+// home saying this device is gone: a proxy in front of a home that is
+// restarting (502), or a home that can't be asked. The pairing stays.
+var ErrRefused = errors.New("ducter: the home's address refused the connection for now")
 
 // RetryNow cuts the wait before the next reconnect short.
 func (c *Client) RetryNow() {
@@ -177,7 +246,8 @@ func (c *Client) NextAttempt() time.Time {
 
 // Run connects and reconnects until ctx is done.
 func (c *Client) Run(ctx context.Context) {
-	backoff := 250 * time.Millisecond
+	const first = 250 * time.Millisecond
+	backoff := first
 	for ctx.Err() == nil {
 		c.status(Connecting, nil)
 		start := time.Now()
@@ -186,29 +256,52 @@ func (c *Client) Run(ctx context.Context) {
 			return
 		}
 		if time.Since(start) > 10*time.Second {
-			backoff = 250 * time.Millisecond // it was up a while: retry soon
+			backoff = first // it was up a while: retry soon
 		}
+		now := time.Now()
 		c.mu.Lock()
-		c.next = time.Now().Add(backoff)
+		if c.down.IsZero() {
+			c.down = now
+		}
+		ceiling := RetryCap
+		if now.Sub(c.down) > LongAfter {
+			ceiling = LongCap // a long outage: still trying, a little less often
+		}
+		backoff = min(backoff, ceiling)
+		wait := c.jitter(backoff)
+		if errors.Is(err, ErrUnauthorized) {
+			wait = GoneWait // the home said so: pairing again (a kick) brings it back
+		}
+		c.next = now.Add(wait)
 		asleep := c.asleep
 		c.mu.Unlock()
 		c.status(Disconnected, err)
-		wait := time.After(backoff)
+		timer := time.NewTimer(wait)
+		tick := timer.C
 		if asleep {
-			wait = nil // asleep: only Wake (a kick) dials again
+			tick = nil // asleep: only Wake (a kick) dials again
 		}
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-wait:
+		case <-tick:
 		case <-c.kick:
-			backoff = 250 * time.Millisecond
+			backoff = first
 		}
+		timer.Stop()
 		c.mu.Lock()
 		c.next = time.Time{}
 		c.mu.Unlock()
-		backoff = min(backoff*2, 5*time.Second)
+		backoff *= 2
 	}
+}
+
+func (c *Client) jitter(d time.Duration) time.Duration {
+	if c.opt.Jitter != nil {
+		return c.opt.Jitter(d)
+	}
+	return time.Duration(float64(d) * (0.8 + 0.4*rand.Float64()))
 }
 
 func (c *Client) status(s Status, err error) {
@@ -241,10 +334,20 @@ func (c *Client) session(ctx context.Context) error {
 	}
 	conn, err := cfg.DialContext(ctx)
 	if err != nil {
-		// Off this machine, a refused upgrade is Ducter's gate saying no.
+		// Off this machine, a refused upgrade may be Ducter's gate saying no,
+		// or a proxy saying the home is away (502 while it restarts): only
+		// the home's signed word sends this device back to pairing (D520).
 		var de *websocket.DialError
-		if errors.As(err, &de) && de.Err == websocket.ErrBadStatus && !isLoopback(u.Hostname()) {
-			return ErrUnauthorized
+		if errors.As(err, &de) && de.Err == websocket.ErrBadStatus && (c.opt.OffMachine || !isLoopback(u.Hostname())) {
+			if token == "" {
+				return &GoneError{} // no credential at all: nothing to keep
+			}
+			if c.opt.Gone != nil {
+				if why, gone := c.opt.Gone(ctx, target, token); gone {
+					return &GoneError{Reason: why}
+				}
+			}
+			return ErrRefused
 		}
 		return err
 	}
@@ -267,6 +370,7 @@ func (c *Client) session(ctx context.Context) error {
 	}
 	c.mu.Lock()
 	c.conn = conn
+	c.down = time.Time{}
 	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()

@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, type KeyObject } from "node:crypto";
 import { join } from "node:path";
-import { challengeText, type HomeKey, type HomeProof } from "@ducter/protocol/src/reach.ts";
+import { challengeText, standingText, type DeviceStanding, type HomeKey, type HomeProof, type StandingProof } from "@ducter/protocol/src/reach.ts";
 import { fingerprint } from "@ducter/protocol/src/reach-verify.ts";
 
 export const HOME_KEY_FILE = "home-key.pem";
@@ -13,6 +13,8 @@ export const HOME_KEY_FILE = "home-key.pem";
 export interface HomeIdentity extends HomeKey {
   /** The answer to a challenge: the key and its signature of the nonce. */
   prove(nonce: string): HomeProof;
+  /** D520: the home's signed word on a device's credential, over the device's nonce. */
+  attest(standing: DeviceStanding, device: string, nonce: string): StandingProof;
 }
 
 function rawPublic(pub: KeyObject): Buffer {
@@ -49,6 +51,7 @@ export function homeIdentity(dataDir: string): HomeIdentity {
     key,
     fp,
     prove: (nonce) => ({ v: 1, key, fp, sig: sign(null, Buffer.from(challengeText(nonce)), k).toString("base64url") }),
+    attest: (standing, device, nonce) => ({ v: 1, standing, device, key, fp, sig: sign(null, Buffer.from(standingText(standing, device, nonce)), k).toString("base64url") }),
   };
 }
 

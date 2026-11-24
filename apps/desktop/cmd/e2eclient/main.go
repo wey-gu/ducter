@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -72,7 +73,7 @@ func main() {
 				default:
 				}
 			}
-			if err != nil && err == client.ErrUnauthorized {
+			if errors.Is(err, client.ErrUnauthorized) || errors.Is(err, client.ErrRefused) {
 				fail("refused: %v", err)
 			}
 		}})

@@ -495,6 +495,17 @@ version it verified; no sudo), and finds the person's own copies: the worker's P
 the login shell's PATH and the usual per-user folders, and it looks again within seconds of a
 change (a fingerprint every 5 s, a real probe when it moves, and when a card opens).
 
+**Signing in there (D518).** The sign-in in a row is two numbered steps in the agent's own words
+(open the link; the code pasted back with **确认登录 / Confirm**, or Codex's code entered on the
+page) and one alive line with the agent's coin that says what it waits for and how long it still
+waits (**等你在页面上登录… · 还剩 15 分钟**). When the agent's sign-in ends well Ducter asks the agent
+itself (`claude auth status`, fresh, never the card's cached probe): **正在和 Claude Code 确认…**, then
+**登录好了** and the row, its coin and the island read signed in at once, or **{agent} 说登录完了，但它
+自己查还是未登录。** with 再试一次. A wrong code asks again; a pasted code with no answer stops after
+90 s, a sign-in left waiting after 15 minutes, each saying so with 再试一次. Every probe of a home runs
+with the PATH as it is now, so an agent Ducter put in its tools folder while running is seen (hel,
+2026-11-24: it never was, and read 未登录 although claude was signed in).
+
 **DeepSeek Harness (D371, research/140).** Found inside its Mac app too (the `dsh` it carries, never
 on PATH; such a copy **随 DeepSeek Harness app 更新** and Ducter never updates it), and the home looks
 every 5 s like a worker, its fingerprint including DeepSeek Harness's own credential file. Signed in

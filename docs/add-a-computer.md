@@ -34,9 +34,16 @@ A computer added this way only does tasks. It can't read your conversation or de
 5. **Which AIs should it have?** Codex and Claude Code are already checked; tap **Install**.
    Ducter puts them in its own folder on that computer: no administrator password, nothing else
    on it changes. They arrive one by one, which takes a few minutes on a slow connection.
-6. Tap **Sign in** beside each one. Codex shows a link and a code: open the link on any device
-   and enter the code. Claude Code shows a link: sign in there, then paste the code the page
-   gives you back into Ducter. When one is signed in, Ducter says **nas is ready for tasks**.
+6. Tap **Sign in** beside each one. It shows two steps. Codex: open the link on any device, then
+   enter the code there; the card turns ready by itself. Claude Code: open the link and sign in
+   with Claude, then paste the code that page gives you and tap **Confirm**. While it waits, the
+   card says what it's waiting for and how long it still waits. Ducter then checks with the AI
+   itself, and the card says **Signed in** only once the AI agrees. When one is signed in,
+   Ducter says **nas is ready for tasks**.
+
+   If a code is wrong, the card says so and you can paste it again. If nothing comes back, or the
+   sign-in waits 15 minutes, it stops, says so, and offers **Try again**. **Cancel** stops it.
+   This works the same for the computer Ducter itself runs on, such as a server.
 
 Tasks run on that computer with its own AI agents. Until one is signed in, asking for a task
 there gets one line saying so; the task never quietly runs somewhere else.

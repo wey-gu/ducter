@@ -86,7 +86,7 @@ func (a *App) submitConnect() {
 			a.Route, a.settings.tab = RouteSettings, TabRun
 		}
 		a.conn = connectState{}
-		a.Unauthorized = false
+		a.Unauthorized, a.goneWhy = false, ""
 		a.Failed = false
 		a.URL = remote.WSURL(base)
 	}
@@ -123,17 +123,27 @@ func (a *App) connectError(err error, where string) string {
 
 // connect is the card itself: calm, one step, the literal words.
 func (a *App) connect(c *ui.Context) {
-	t := a.T
 	a.bareChrome(c)
-	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
-		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
+	// The card scrolls in a short window rather than running off its foot;
+	// it sits centred, clear of the titlebar's zone, when it fits.
+	ui.Scroll(c.Key("connect-scroll")).Grow(1).MinHeight(0).Children(func() {
+		ui.Column(c).MinHeightPercent(100).Justify(ui.Center).AlignItems(ui.Center).Padding(0, 32, ChromeH, 32).Children(func() {
+			a.connectCard(c)
+		})
+	})
+}
+
+func (a *App) connectCard(c *ui.Context) {
+	t := a.T
+	{
+		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S3).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		a.enter(c, card)
 		card.Children(func() {
-			a.avatar(c, theme.Idle, 88)
+			a.avatar(c, theme.Idle, 64) // D520: the whole card fits a 760-high window
 			a.heading(c, a.L.T("connect.title"), t.XXL)
 			if a.Unauthorized {
-				uiText(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
+				uiText(c, a.goneLine()).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
 			}
 			uiText(c, a.L.T("connect.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, PairCommand)
@@ -152,13 +162,13 @@ func (a *App) connect(c *ui.Context) {
 				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
 					a.conn.open = false
 				}
-				if a.button(c, label, btnPrimary, t.ControlLG, t.Bg) {
+				if a.button(c, label, btnPrimary, t.ControlLG, t.Surface) {
 					a.submitConnect()
 				}
 			})
 			uiText(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		})
-	})
+	}
 }
 
 // field is one labelled single-line input on the connect card.
@@ -166,8 +176,15 @@ func (a *App) field(c *ui.Context, key, label string, value *string, placeholder
 	t := a.T
 	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
 		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		// What is typed is an address or a code, in mono; the placeholder is
+		// words in the reading face and muted ink, so 例如 K7QM-4XPA never
+		// passes for a code already filled in.
+		font := t.Mono
+		if *value == "" {
+			font = t.Body
+		}
 		ui.TextInput(c.Key("input:"+key), value).Placeholder(placeholder).Label(label).
-			Font(t.Mono).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
+			Font(font).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
 			Background(t.SurfaceSunken).Border(1, t.LineSoft).
 			OnSubmit(a.submitConnect)
 		if hint != "" {

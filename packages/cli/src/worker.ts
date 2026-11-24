@@ -230,6 +230,13 @@ export async function cmdWorker(o: {
     sys: { ...realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }), logout: async (h: string) => (await runnerMod.createOarHarnessPort({ dataDir: o.dataDir }).logout?.(h)) ?? { ok: false } },
     probe: reprobe,
     changed: () => sendAgents(setup.decorate(rows)),
+    // D518: a sign-in is done when the agent's own check, run now, says so.
+    signedIn: async (h) => {
+      widenAgentPath({ dataDir: o.dataDir });
+      const host = realHost();
+      const found = await probeLocalHarnesses({ exec: async (argv, ms) => ((r) => ({ code: r.code, out: r.stdout }))(await host.run(argv, ms)), which: (c) => host.which(c), dataDir: o.dataDir, only: [h] });
+      return found[0]?.loggedIn ?? false;
+    },
   });
   // D366: Nowledge Mem on this computer for tasks: where it stands (Mem's own doctor), putting its
   // command line here, signing it in with the person's one-time link and connecting the agents here.

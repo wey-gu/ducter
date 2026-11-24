@@ -2374,7 +2374,10 @@ type AgentSetupState struct {
 // run there). Reason: device_off | wrong_code | wrong_key | no_balance |
 // offline | failed. D371: Key, DeepSeek Harness signs in with a DeepSeek API
 // key pasted here (URL: where one is made); App, the app Ducter just opened on
-// that Mac to sign in with the DeepSeek account.
+// that Mac to sign in with the DeepSeek account. D518: done only once the
+// agent's own check says signed in; Reason not_seen (its sign-in ended, the
+// agent still says signed out) and no_answer (a pasted code got no answer);
+// Until, when a waiting sign-in stops by itself (ms since the epoch).
 type AgentLoginState struct {
 	State   string `json:"state"`
 	URL     string `json:"url,omitempty"`
@@ -2384,6 +2387,7 @@ type AgentLoginState struct {
 	App     string `json:"app,omitempty"`
 	Reason  string `json:"reason,omitempty"`
 	Command string `json:"command,omitempty"`
+	Until   int64  `json:"until,omitempty"`
 }
 
 // AgentSetupReq is 安装, 登录, a pasted code, 不登录了 or a look again on a

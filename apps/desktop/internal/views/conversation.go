@@ -661,6 +661,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if e.AI.App != nil {
 				a.appCard(c, itoa(e.FirstSeq), e.AI.App)
 			}
+			// D511: the Keep this message made: its receipt under the words.
+			if e.AI.Keep != nil {
+				a.keepReceipt(c, itoa(e.FirstSeq), e.AI.Keep)
+			}
 			// D410: 你的小应用, one click from the words that say where they are.
 			if e.AI.Shelf {
 				a.shelfCard(c, itoa(e.FirstSeq))

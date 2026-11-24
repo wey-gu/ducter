@@ -220,7 +220,7 @@ export interface KeepMakeInput {
   limits?: string;
   place?: Place;
   effect?: "read_only" | "drafts";
-  /** The first round now (default: yes for times; a watch always looks once). */
+  /** The first round now (the model's call: a fare has a value today, a weekly report doesn't); a watch always looks once. */
   lookNow?: boolean;
   persona?: string;
 }

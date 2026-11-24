@@ -1032,6 +1032,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return { name: g.name, part, of: g.members.length, held };
     },
     taskApp: (taskId) => core.apps?.list(core.persona.id).find((m) => m.task?.id === taskId)?.name,
+    keptBy: (taskId) => !!core.keeps?.all().some((k) => k.from.kind === "loop" && k.from.taskId === taskId && (k.life === "on" || k.life === "paused")),
     decision: (decisionId) => {
       const evs = core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 });
       for (let i = evs.length - 1; i >= 0; i--) {
@@ -2899,30 +2900,33 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             properties: { every: { type: "string", enum: ["day", "weekday", "week", "month", "hours", "once"] }, time: { type: "string", description: "09:00" }, days: { type: "array", items: { type: "number" }, description: "week: 0 = Sunday" }, dayOfMonth: { type: "number" }, hours: { type: "number" }, date: { type: "string", description: "once: 2026-12-01" } },
             required: ["every", "time"],
           },
-          address: { type: "boolean", description: "their other agents hand it work through Bridge" },
+          address: { type: "boolean", description: "their other agents hand it work through Bridge; then no at: Ducter wakes it when work arrives" },
+          look_now: { type: "boolean", description: "a first look now: what it watches has a value to read today (a fare, a page); not a report due later" },
           until: { type: "string" },
           speaks: { type: "string" },
         },
         required: ["title", "said", "brief"],
       },
-      async (a: { title?: unknown; said?: unknown; brief?: unknown; at?: { every?: string; time?: string; days?: number[]; dayOfMonth?: number; hours?: number; date?: string }; address?: unknown; until?: unknown; speaks?: unknown }) => {
+      async (a: { title?: unknown; said?: unknown; brief?: unknown; at?: { every?: string; time?: string; days?: number[]; dayOfMonth?: number; hours?: number; date?: string }; address?: unknown; look_now?: unknown; until?: unknown; speaks?: unknown }) => {
         const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
         const at = a.at && typeof a.at === "object" ? a.at : undefined;
-        if (!at && a.address !== true) return { ok: false, error: "Give at (when it wakes) or address: true (their agents hand it work)." };
+        const address = a.address === true || a.address === "true";
+        if (!at && !address) return { ok: false, error: "Give at (when it wakes) or address: true (their agents hand it work)." };
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
         const r = await keeps.make({
           title: str(a.title),
           said: str(a.said),
           brief: str(a.brief),
-          wake: at ? { at: { kind: "time", every: (at.every ?? "day") as "day", time: String(at.time ?? ""), zone: "personal", tz, ...(Array.isArray(at.days) ? { days: at.days.map(Number) } : {}), ...(at.dayOfMonth !== undefined ? { dayOfMonth: Number(at.dayOfMonth) } : {}), ...(at.hours !== undefined ? { hours: Number(at.hours) } : {}), ...(at.date ? { date: String(at.date) } : {}) } } : { address: true },
+          wake: !address && at ? { at: { kind: "time", every: (at.every ?? "day") as "day", time: String(at.time ?? ""), zone: "personal", tz, ...(Array.isArray(at.days) ? { days: at.days.map(Number) } : {}), ...(at.dayOfMonth !== undefined ? { dayOfMonth: Number(at.dayOfMonth) } : {}), ...(at.hours !== undefined ? { hours: Number(at.hours) } : {}), ...(at.date ? { date: String(at.date) } : {}) } } : { address: true },
           ...(str(a.until) ? { until: str(a.until) } : {}),
           ...(str(a.speaks) ? { speaks: str(a.speaks) } : {}),
+          lookNow: a.look_now === true || a.look_now === "true",
           persona: core.persona.id,
         });
         if (!r.ok) return { ok: false, error: r.error };
         if (turn) turn.keepCard = r.card;
-        const address = r.keep.from.kind === "helper" ? ` Its address in Nowledge Mem is being made under "${r.keep.title}"; Ducter says one line when it is ready. Nothing polls: Ducter wakes each piece of work when it arrives.` : "";
-        return { ok: true, id: r.keep.keepId, note: `True now: Ducter looks after it from now on, and its card (when it wakes, when it speaks, until when; Open, Change, Undo) stands under your words.${address} Say one short line in their language, 好，我来照看：… / Done, I'll look after it: …, and nothing the card already shows.` };
+        const where = r.keep.from.kind === "helper" ? ` Their agents find it in Nowledge Mem as "${r.keep.title}" and hand it work there (Ducter says one line once the address is ready). Nothing polls: Ducter wakes each piece of work when it arrives. Say its name and that their agents hand it work there.` : "";
+        return { ok: true, id: r.keep.keepId, note: `True now: Ducter looks after it from now on, and its card (when it wakes, when it speaks, until when; Open, Change, Undo) stands under your words.${where} Ducter runs its rounds (a first look now, if you asked one): open no task for it. Say one short line in their language, 好，我来照看：… / Done, I'll look after it: …, and nothing the card already shows.` };
       },
     );
   }

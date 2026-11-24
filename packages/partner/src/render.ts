@@ -191,6 +191,8 @@ export interface RenderCtx {
   merged?(taskId: string): boolean;
   /** D360: the group a task is in: its name, which part it is, and the parts still held in line. */
   taskGroup?(taskId: string): { name: string; part: number; of: number; held: string[] } | undefined;
+  /** D511: the task is Ducter's rounds of something it looks after (a loop): changed or stopped with keep_change. */
+  keptBy?(taskId: string): boolean;
   /** Spike: a Bridge message we sent, by its id (an incoming reply renders as its answer). */
   bridgeOut?(messageId: string | undefined): Bodies["bridge_msg"] | undefined;
   /** D494: a helper's name by its id. */
@@ -798,7 +800,7 @@ function took(c: TaskCard): string {
 /** Open tasks listed in a fresh session's seed; the rest are named by count (research/48 F2). */
 export const OPEN_TASKS_MAX = 20;
 
-export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup">): string {
+export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup" | "keptBy">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
   const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
   // Those that need the user first, then the most recently moved.
@@ -820,7 +822,9 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     // D360: a part of a group, and what is still held in line after it (not tasks yet).
     const g = ctx?.taskGroup?.(c.taskId);
     const group = g ? ` · group "${clip(g.name, 40)}" part ${g.part} of ${g.of}${g.held.length ? `; held in line: ${g.held.map((h) => `"${clip(h, 60)}"`).join(", ")}` : ""}` : "";
-    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${group}${where}${last}`;
+    // D511: a task in rounds is something Ducter looks after: its rhythm, a pause or a stop go through keep_change.
+    const kept = ctx?.keptBy?.(c.taskId) && ACTIVE.has(c.attention) ? " · Ducter looks after it in rounds (keep_change, never task_send, changes or stops it)" : "";
+    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${group}${kept}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");

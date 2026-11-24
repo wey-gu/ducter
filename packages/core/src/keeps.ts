@@ -445,7 +445,7 @@ export function createKeeps(o: {
       const k: KeepBody = { keepId: newId(), ...(persona ? { persona } : {}), title: v.name, said, from: { kind: "routine", routineId: v.routineId }, run: "fresh", wakes: trigger.kind === "time" ? [{ kind: "at", words: v.triggerWords }] : [{ kind: "changes", words: v.triggerWords }], ...(input.until ? { until: input.until } : {}), ...(input.speaks ? { speaks: input.speaks } : {}), ...(input.limits ? { limits: input.limits } : {}), life: "on", createdAt: iso(clock.now()), made: "keep_make" };
       put(k);
       // The first round now, when it can: a watch already looked once (its dry run); a time Keep runs one round.
-      if (trigger.kind === "time" && input.lookNow !== false) o.routines.runNow(v.routineId);
+      if (trigger.kind === "time" && input.lookNow) o.routines.runNow(v.routineId);
       const first = v.dryRun?.summary ? firstLine(v.dryRun.summary) : undefined;
       const where = input.place && input.place.kind !== "none" ? (input.place.kind === "repo" ? input.place.repoPath : input.place.kind === "folder" ? input.place.path : undefined) : undefined;
       return { ok: true, keep: k, card: { id: k.keepId, title: k.title, when: v.triggerWords, ...(k.speaks ? { speaks: k.speaks } : {}), ...(k.until ? { until: k.until } : {}), ...(where ? { where } : {}), ...(first ? { first } : {}), ...(firstEver ? { firstEver } : {}) } };
@@ -580,7 +580,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_list",
-    "What Ducter looks after for the user (照看): reviews every 45 min, routines, watches, helpers other agents hand work to. Each has say: its ready line in the user's language; reply with that line word for word. For \"这个循环怎么样了\" / \"我在照看的都怎么样\".",
+    "What Ducter looks after for the user (照看): reviews every 45 min, routines, watches, helpers other agents hand work to. Always call it for \"这个循环怎么样了\", \"is my review loop still running?\" (never answer from memory). Each has say: its ready line in the user's language; reply with that line word for word.",
     { type: "object", properties: {} },
     async () =>
       keeps.sheets(persona()).map((s) => {
@@ -605,7 +605,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "Change one the user looks after, on their word (id from keep_list): action pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60), stop (\"别看了\", only on their word); or set until / speaks / title in their words. Then one line.",
+    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words. Then one line.",
     {
       type: "object",
       properties: {

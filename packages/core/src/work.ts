@@ -532,7 +532,7 @@ export function createWork(o: WorkOptions): Work {
   mcp.register(
     "partner",
     "routine_propose",
-    "Propose a routine (例行) for recurring or watched work: \"每周一早上 9 点给我周报\", \"whenever hawdb's nightly breaks, tell me\". Nothing runs until the user presses Go on the proposal card this makes (it shows the trigger in words, the next 5 firings or what the condition sees now, budget, how it reports, what it may touch). Each firing runs as a fresh task with the brief. Ask first only if what, when or where is unclear. After calling, say one short line; don't restate the card.",
+    "Only for recurring or watched work whose runs would post, send or change something without asking (anything that only reads or drafts is keep_make): \"whenever hawdb's nightly breaks, fix it and push\". Nothing runs until the user presses Go on the proposal card this makes (it shows the trigger in words, the next 5 firings or what the condition sees now, budget, how it reports, what it may touch). Each firing runs as a fresh task with the brief. Ask first only if what, when or where is unclear. After calling, say one short line; don't restate the card.",
     {
       type: "object",
       properties: {

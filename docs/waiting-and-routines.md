@@ -45,7 +45,7 @@ to GitHub, the first time with one line listing what went, every one in Done for
 listed in Settings › Partner under "Without asking", where Take back ends it (or say "ask me
 before posting reviews"). Saying it to a review that runs every so often works the same way
 ("keep posting the reviews yourself"), and every round after that posts on its own, pull
-requests that only mention you included. One in a place it hasn't looked before still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Ongoing,
+requests that only mention you included. One in a place it hasn't looked before still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Looking after,
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 
@@ -54,7 +54,7 @@ fails, a restart or an update never ends it; if its next round goes missing, Duc
 back by itself. Only you end it: **End** on its card, or say "stop the review loop". If you gave
 it an end ("until #10473 merges"), it stops there.
 
-In Past tasks › Ongoing each card says how it is keeping its time, and only when it isn't:
+In Past tasks › Looking after each card says how it is keeping its time, and only when it isn't:
 **1 h late: Ada's MacBook Pro is asleep; it catches up as soon as it wakes**, **Its last 3 rounds
 didn't work**, **Out of allowance; carries on at 20:53**, or, for a day after it was stopped by
 mistake, **Stopped by mistake at 15:12, running again**. When there is something to do, the card's

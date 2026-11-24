@@ -84,4 +84,11 @@ func TestD511Shots(t *testing.T) {
 		}
 	}
 	h.app.closeKeep()
+	// The receipt under the partner's words in the conversation (the fare watch, made from one sentence).
+	for _, w := range []int{1400, 1000} {
+		h.tt.SetSize(w, 1000)
+		h.app.Route = RouteConversation
+		settle()
+		shoot(fmt.Sprintf("mac-made-flight-%d-%s-%s.png", w, lang, paper))
+	}
 }

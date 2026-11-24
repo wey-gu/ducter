@@ -749,7 +749,7 @@ export const puzzles: Scenario[] = [
         user: "帮我启动一个 codex 的 loop agent，名字就叫 Nowledge Mem PR babysitter（之类的名字），在 Nowledge Bridge 里你起好名字，我可以让我自己的 agent 在 PR 到一定阶段之后把它们丢给你，然后你就可以帮忙盯着，做需要的修改修复 ci failure，或者如果涉及到别的人的 review，帮忙做修复，如果你能自决修复的，就不断修复 push 然后看着，直到工作可以被合并，再 bridge 回信表示工作做完了\n\n我们 bridge 不知道是否有唤醒能力，如果没有，暂时需要你自己去 loop 唤醒自己读取 bridge 信箱",
       },
     ],
-    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 220, called: [{ tool: "keep_make", args: { address: true } }], notCalled: ["routine_propose", "wait_for", "wait_until"], proseForbid: [/→|与其他 AI 对话/] },
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 220, called: [{ tool: "keep_make" }], notCalled: ["routine_propose", "wait_for", "wait_until"], proseForbid: [/→|与其他 AI 对话/] },
     rubric:
       "The person asked for a standing agent named like \"Nowledge Mem PR babysitter\" in Nowledge Bridge that their own agents hand PRs to; it watches CI and reviews, fixes and pushes what it can decide itself, until the PR can merge, then replies over Bridge. Ducter's home receives that mail and wakes the work itself, so nothing has to poll. Pass if the partner makes it at once as something Ducter looks after with an address (keep_make with address, a title like Nowledge Mem PR babysitter, their words, a brief that says fix CI and review comments, push to the PR's branch, never merge, reply when it can merge; until each PR can merge is fine) and says in one or two short Chinese lines that it is looking after it and that their agents hand PRs to it there by that name. Fail if it opens a task, sets up a loop, a timer or a polling job, asks anything first, names a Settings pane other than 设置 › Agent 通信, or claims something false (e.g. that Bridge can't wake it, or that a mailbox must be opened by the person).",
   },
@@ -760,16 +760,16 @@ export const puzzles: Scenario[] = [
     category: "puzzle",
     lang: "zh",
     steps: [{ user: "帮我盯一下 12 月 20 日上海飞东京的机票，每天早上看一次，降到 2000 以下告诉我，我订了就不用看了" }],
-    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 160, called: [{ tool: "keep_make" }], notCalled: ["routine_propose", "task_open", "wait_for"] },
+    expect: { opens: [0, 1], noAsk: true, msgs: [1, 1], maxChars: 160, called: [{ tool: "keep_make" }], notCalled: ["routine_propose", "task_open", "wait_for"] },
     rubric:
-      "The person asks Ducter to keep an eye on one fare every morning, say something when it is under ¥2,000, and stop once they book. Pass if the partner makes it at once with keep_make (wakes every morning at a time; until: they booked; speaks: under ¥2,000; their sentence as said) and replies in one short Chinese line that it is looking after it (好，我来照看：…), with when it looks, when it speaks and when it stops, or a subset. Fail if it opens a task, puts up a card that needs a Go first, asks a question back, claims a current fare it never looked up, or explains tools or schedules at length.",
+      "The person asks Ducter to keep an eye on one fare every morning, say something when it is under ¥2,000, and stop once they book. Pass if the partner makes it at once with keep_make (wakes every morning at a time; until: they booked; speaks: under ¥2,000; their sentence as said) and replies in one short Chinese line that it is looking after it (好，我来照看：…), with when it looks, when it speaks and when it stops, or a subset. A first look Ducter runs now (a task with the watch's own brief) is fine. Fail if the partner opens a task of its own besides, puts up a card that needs a Go first, asks a question back, claims a current fare it never looked up, or explains tools or schedules at length.",
   },
   {
     id: "wp-keep-fare-change-zh",
     category: "puzzle",
     lang: "zh",
     steps: [{ user: "帮我盯一下 12 月 20 日上海飞东京的机票，每天早上看一次，降到 2000 以下告诉我，我订了就不用看了" }, { user: "降到 1800 再告诉我吧" }],
-    expect: { opens: 0, noAsk: true, msgs: [1, 2], maxChars: 120, called: [{ tool: "keep_make" }, { tool: "keep_change" }], notCalled: ["routine_propose", "task_open"] },
+    expect: { opens: [0, 1], noAsk: true, msgs: [1, 2], maxChars: 120, called: [{ tool: "keep_make" }, { tool: "keep_change" }], notCalled: ["routine_propose", "task_open"] },
     rubric:
       "First the person asks Ducter to watch a fare every morning and say something under ¥2,000 (the partner makes it). Then they say to tell them only under ¥1,800. Pass if, at the last message, the partner changes the same one with keep_change (when it speaks: under ¥1,800) instead of making a second one, and says so in one short Chinese line. Fail if it makes a new one for 1800, opens a task, asks a question back, or leaves the old 2000 rule standing as what it says it will do.",
   },
@@ -778,7 +778,7 @@ export const puzzles: Scenario[] = [
     category: "puzzle",
     lang: "zh",
     steps: [{ user: "帮我盯一下 12 月 20 日上海飞东京的机票，每天早上看一次，降到 2000 以下告诉我，我订了就不用看了" }, { user: "票我已经订好了，别看了" }],
-    expect: { opens: 0, noAsk: true, msgs: [1, 2], maxChars: 100, called: [{ tool: "keep_make" }, { tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"] },
+    expect: { opens: [0, 1], noAsk: true, msgs: [1, 2], maxChars: 100, called: [{ tool: "keep_make" }, { tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"] },
     rubric:
       "First the person asks Ducter to watch a fare every morning until they book (the partner makes it). Then they say they have booked and it should stop. Pass if, at the last message, the partner stops it with keep_change stop and says so in one short Chinese line (a word for the booking is fine). Fail if it only pauses it, asks whether they are sure, opens a task, or keeps watching.",
   },

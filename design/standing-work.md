@@ -1,10 +1,32 @@
 # Looking after (照看): one object for work Ducter keeps on for the person
 
-> **D511: designed, not built, for the author's review.** Nothing here is in the code yet. Where this note
-> and a built note (`past.md` Ongoing, `on-hand.md` A helper, `bridge.md` Helpers) disagree, the built
-> note says what runs today. This note says what it would become. Evidence and raters are in
-> `research/221-standing-work.md`. The prototype is `apps/web/demo-standing-work.html`; its shots are in
-> `.shots/standing-work/` (D75: not in git).
+> **D511: accepted; phases 1–3 of §11 built 2026-11-24.** The Keep store and the migration
+> (`core/src/keeps.ts`, `protocol/src/keeps.ts`), On hand's 在照看的 and each Keep's page on the web and the
+> Mac (`apps/web/src/keep.tsx`, `apps/desktop/internal/views/keeps.go`), and the partner's `keep_make` /
+> `keep_list` / `keep_change`. Phases 4–6 (goals and news as recorded judgments, the clay mark, live on
+> hel) are in `todo.md`. Evidence and raters are in `research/221-standing-work.md`. The prototype is
+> `apps/web/demo-standing-work.html` (shots `.shots/standing-work/`); the built screens' demo is
+> `apps/web/demo-d511.ts` (shots `.shots/d511-built/`; D75: not in git).
+
+### What is built (phases 1–3)
+
+- **The store and the migration.** A Keep is a `keep` snapshot on stream `keep:<id>`, rebuilt on start.
+  On every start (and whenever a `task_loop` or `routine` snapshot or `helpers.json` changes) every
+  loop, every routine past its Go and every helper without a Keep gets one, with its life; their own
+  records are never changed, so an older Ducter still reads them and nothing is lost. The first start
+  marks what it carried over (`migratedAt`). A proposed or dismissed routine was never kept. Its rounds
+  are read from the history its mechanism already wrote: a loop's wakes and reports (and the questions
+  each round asked, from the channel), a routine's runs, a helper's mail and its tasks' reports.
+  Tested from fixture copies of each older shape (`core/test/fixtures/keeps-old.ts`).
+- **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
+  now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
+- **What waits for the person** is in 等你 once, naming the Keep; the sheet says the count.
+- **Code reads facts only**: what woke a round, what it reported, whether it asked. A round is
+  `told` only where a rule says so (a routine that reports every run). Goals and news are phase 4.
+- **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address
+  (a helper, `run: perItem`); a first look now is the model's call (a fare has a value today, a weekly
+  report doesn't). Rounds that would act outward unasked still go through `routine_propose`'s Go.
+  A Keep in rounds on one task (`run: same`) is still made by a task that rests on its own wait.
 
 ## 1. The ask, and what is wrong today
 

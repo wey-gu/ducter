@@ -1338,7 +1338,7 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
 
 ## Helpers: named addresses the home owns (D494, 2026-11-23)
 
-> D511 (designed, not built, for review): helpers, routines and tasks in rounds become one object, 照看 / Looking after, with its own page; see `standing-work.md`. A helper would be a Keep with an address; what follows is what runs today.
+> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 照看 / Looking after (a Keep), with its own page; see `standing-work.md`. A helper is a Keep with an address (`run: perItem`): the partner makes it with `keep_make` (address), its home is the Keep's page, and Settings › Agent 通信 lists the address with **打开 / Open** to that page. The `helper` tool is gone; what follows is the address mechanism, unchanged.
 
 The author asked the partner on hel for "a Codex loop agent named like Nowledge Mem PR babysitter, in Nowledge
 Bridge", that his agents hand PRs to and that fixes CI and review comments until the PR can merge, then replies

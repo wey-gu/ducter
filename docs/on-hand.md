@@ -46,9 +46,10 @@ Below that, the rest:
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
   wake up. A question you put off with **Ask me later** waits here too, saying when it
   will ask you again; **Decide now** brings it back at once.
-- **Ongoing**: work that runs in rounds on its own rhythm, such as a review every 45 minutes. It
-  says how often it runs, what its last round found, and when the next one comes; while a round
-  runs, how long this round has taken. When one needs you, it stands under **Needs you** instead.
+- **Looking after**: what Ducter keeps on for you, such as a review every 45 minutes, a fare it
+  checks every morning, or a helper your agents hand pull requests to. Each is one card with a
+  lantern: what it holds, how many wait for you, how often it wakes, its last change, and when it
+  wakes next. Whatever needs you from it is under **Needs you**, once, with its name.
 - **Done today**: tasks that finished today. A task whose result is a pull request is done only
   once that pull request is merged (see below). A wait that didn't happen is listed there too with its
   own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
@@ -201,19 +202,22 @@ The same: the projects as a row of names you can swipe, the four numbers, and th
 row to open it: the row grows into the task's page. To go back, tap **‹** at the top left, or, in
 the app, swipe in from the left edge. A sheet (Settings, a new task) closes when you pull it down.
 
-## Your helpers
+## Looking after
 
-A helper you made (for example "Nowledge Mem PR Babysitter", which your agents hand pull requests to)
-stands on **On hand** as one card of its own. Its first line says how it is doing at a glance:
-**Nothing handed over yet**, **2 on hand**, or **1 waiting for you**, then what it takes and how many it
-took this week. Tap it to see it in **Settings › Agent messaging**.
+Ask once, in a sentence, and Ducter keeps at it: "keep an eye on the Dec 20 Tokyo fare every morning,
+tell me under ¥2,000, stop once I book", "every Monday at 9, draft my weekly report", or "make a
+helper my agents hand PRs to, and watch them until they can merge". Your partner says it in one line
+and puts a card under it: when it wakes, when it speaks, until when, and **Open**, **Change**, **Undo**.
 
-Each piece of work your agents hand it is a task listed under it, and stays there until it is really
-over: a task that finished while its pull request is still open says where the pull request is, as
-any such task does (**Waiting for review**, **Ready to merge** with **Merge on GitHub**), and moves to
-**Done today** once the pull request is merged or closed. When something under a helper
-needs you, the whole card moves up to **Needs you**. Anywhere else a helper's task shows, such as in
-Find, it carries the helper's name.
+Each one is a card under **Looking after**. Its lantern is lit while it is on and dim while paused.
+The tasks at work on it are listed under it; one that needs you (a question, a pull request ready to
+merge) is under **Needs you** instead, with its name, and the card only says how many wait.
+
+Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
+(each pull request with its checks), every round (newest first; the quiet ones fold into one line),
+and **How it runs**. Type what to change in the box under the rounds ("make it every hour", "tell me
+under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
+**Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.
 
 ## Groups
 

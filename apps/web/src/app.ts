@@ -936,6 +936,11 @@ class AppState {
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
+    // D521: a stop the agent refused: the row runs on, and says so once.
+    if (f.t === "action_result" && f.action === "stop_background" && !f.ok) {
+      for (const k of this.bgStopping.keys()) if (k.startsWith(`${f.taskId}|`)) this.bgStopping.delete(k);
+      this.toast(this.L.t("bg.stop.failed"));
+    }
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
@@ -3430,6 +3435,16 @@ class AppState {
     const t = this.S.tasks.get(id);
     if (t && (action === "merge" || action === "open_pr")) t.acting = action;
     this.send({ t: "task_action", taskId: id, action });
+    this.changed();
+  }
+
+  /** D521: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */
+  bgStopping = new Map<string, number>();
+  stopBackground(id: string, job: string) {
+    const k = `${id}|${job}`;
+    if (this.bgStopping.has(k)) return;
+    this.bgStopping.set(k, Date.now());
+    this.send({ t: "task_action", taskId: id, action: "stop_background", job });
     this.changed();
   }
 

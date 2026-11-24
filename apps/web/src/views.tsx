@@ -6,6 +6,8 @@ import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
 import { AutoText, ComposerBox } from "./composer.tsx";
+import { BgTray } from "./bg-tray.tsx";
+import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -2688,6 +2690,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </button>
         </div>
       )}
+      {/* D521: its agent's background work, over the composer. */}
+      <BgTray taskId={id} bg={task.card?.background} />
       <TaskFoot task={task} blocks={blocks} />
       {/* A pending ask sits over the composer, where the answer is typed (D152). */}
       {d && !d.resolved && (

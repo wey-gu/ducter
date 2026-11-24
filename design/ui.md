@@ -572,6 +572,8 @@ A new control is added to the set (and to this table) before it is used.
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
+| A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | A toast: one sentence that goes by itself, with an optional action (D527) | `toastSlot`, `toastCard` (`toasts.go`), said through `c.Toast` / `c.AddToast` / `a.toast` | `Toasts` (`views.tsx`), said through `A.toast` |

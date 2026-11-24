@@ -5428,6 +5428,68 @@
       "ok": true
      }
     }
+   },
+   {
+    "seq": 108,
+    "ts": "2026-11-10T07:58:03.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "finished in the background: make test",
+     "raw": {
+      "background": {
+       "id": "e9",
+       "act": "ended",
+       "type": "shell",
+       "what": "make test",
+       "exitCode": 2
+      }
+     }
+    }
+   },
+   {
+    "seq": 109,
+    "ts": "2026-11-10T07:58:04.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "text": "stopped in the background: bun run dev",
+     "raw": {
+      "background": {
+       "id": "e7",
+       "act": "stopped",
+       "type": "shell",
+       "what": "bun run dev"
+      }
+     }
+    }
+   },
+   {
+    "seq": 110,
+    "ts": "2026-11-10T07:58:05.000Z",
+    "persona": "default",
+    "stream": "task:bg1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "bg1",
+     "role": "system",
+     "from": "runner",
+     "text": "background work quiet for 12 h (tail -f server.log); no longer keeping the session open for it",
+     "raw": {
+      "backgroundCeiling": true,
+      "bgId": "e5",
+      "bgWhat": "tail -f server.log"
+     }
+    }
    }
   ],
   "inTurn": true,
@@ -5463,51 +5525,13 @@
        {
         "k": "row",
         "row": {
-         "seq": 102,
-         "step": {
-          "kind": "background",
-          "act": "start",
-          "target": "Run the WAL bench for an hour"
-         },
-         "n": 1,
-         "outcome": "ok"
-        }
-       },
-       {
-        "k": "row",
-        "row": {
-         "seq": 103,
-         "step": {
-          "kind": "background",
-          "act": "start"
-         },
-         "n": 1,
-         "outcome": "ok"
-        }
-       },
-       {
-        "k": "row",
-        "row": {
          "seq": 105,
          "step": {
           "kind": "background",
-          "act": "end"
+          "act": "fail"
          },
          "n": 1,
          "outcome": "error"
-        }
-       },
-       {
-        "k": "row",
-        "row": {
-         "seq": 106,
-         "step": {
-          "kind": "background",
-          "act": "end",
-          "target": "Run the WAL bench for an hour"
-         },
-         "n": 1,
-         "outcome": "ok"
         }
        },
        {
@@ -5522,6 +5546,45 @@
          "outcome": "ok",
          "output": "p99 4.1ms"
         }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 108,
+         "step": {
+          "kind": "background",
+          "act": "fail",
+          "target": "make test"
+         },
+         "n": 1,
+         "outcome": "error"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 109,
+         "step": {
+          "kind": "background",
+          "act": "stop",
+          "target": "bun run dev"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
+       },
+       {
+        "k": "row",
+        "row": {
+         "seq": 110,
+         "step": {
+          "kind": "background",
+          "act": "lost",
+          "target": "tail -f server.log"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
        }
       ],
       "live": true
@@ -5533,10 +5596,10 @@
    "turns": [
     {
      "seq": 100,
-     "end": 107,
-     "n": 8,
+     "end": 110,
+     "n": 11,
      "at": "2026-11-10T06:58:00.000Z",
-     "endAt": "2026-11-10T07:58:02.000Z",
+     "endAt": "2026-11-10T07:58:05.000Z",
      "p": {
       "k": "brief",
       "seq": 100,
@@ -5547,8 +5610,8 @@
      "s": 1
     }
    ],
-   "n": 8,
-   "last": 107,
+   "n": 11,
+   "last": 110,
    "wakes": 0,
    "briefed": true
   }

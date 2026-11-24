@@ -132,6 +132,10 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
   group: () => <G><path d="M3 4.5h10M3 8h10M3 11.5h6" /></G>,
+  // D521: a watch (Claude Code's Monitor), an ended one's tick, and Stop's square.
+  watch: () => <G><path d="M1.8 8q6.2-7.4 12.4 0q-6.2 7.4-12.4 0z" /><circle cx="8" cy="8" r="1.9" /></G>,
+  check: () => <G><path d="M3.5 8.4 6.6 11.4 12.5 4.8" /></G>,
+  stop: () => <G><rect x="4.5" y="4.5" width="7" height="7" rx="1.6" fill="currentColor" stroke="none" opacity="0.7" /></G>,
 };
 
 /** A step's drawn mark by its kind (D216: On hand's latest line uses the transcript's marks). */
@@ -372,7 +376,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
   const detail = !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const cls = `step${bad ? " bad" : ""}${st.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
   const mono = st.kind === "ran" || (live && !!code);
   const inner = (
     <>
@@ -394,7 +398,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
           {r.ms !== undefined && r.ms >= 1000 ? dur(r.ms) : ""}
         </span>
       )}
-      {bad && <span class="bad-tag">{t("step.label.error")}</span>}
+      {bad && st.kind !== "background" && <span class="bad-tag">{t("step.label.error")}</span>}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );

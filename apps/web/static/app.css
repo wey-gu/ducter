@@ -2908,6 +2908,16 @@ a {
 .step .sum:first-of-type {
   flex-shrink: 0.35;
 }
+/* D521: words with no subject beside them (a background job's end, its Error tag after) take the
+   whole shrink: with only a 0.35 share, flexbox removes only 35% of the overflow and the words and
+   their tag ran past a phone's edge. */
+.step:not(:has(> code)) > .sum:first-of-type {
+  flex-shrink: 1;
+}
+/* D521: a background failure says it in its words (后台的事出错了), in the error ink, no separate tag. */
+.turns .step.bad.bg .sum {
+  color: var(--failed-ink);
+}
 .step .sum.code {
   flex: 0 1 auto;
 }
@@ -6600,7 +6610,8 @@ button.bcard:active {
    ask on the same measure. */
 .full > .task-page,
 .full > .ask-dock,
-.full > .composer-wrap {
+.full > .composer-wrap,
+.full > .bg-dock {
   padding-left: max(24px, calc((100% - 720px) / 2));
   padding-right: max(24px, calc((100% - 720px) / 2));
 }
@@ -8312,7 +8323,8 @@ dl.call-summary dd { margin: 0; }
 .full.book .beside-rail > .task-page,
 .full.book .beside-rail > .ask-dock,
 .full.book .beside-rail > .composer-wrap,
-.full.book .beside-rail > .task-foot {
+.full.book .beside-rail > .task-foot,
+.full.book .beside-rail > .bg-dock {
   padding-left: 16px;
   padding-right: calc(var(--safe-right) + 16px);
 }
@@ -8361,7 +8373,8 @@ dl.call-summary dd { margin: 0; }
 .beside-rail > .task-page,
 .beside-rail > .ask-dock,
 .beside-rail > .composer-wrap,
-.beside-rail > .task-foot {
+.beside-rail > .task-foot,
+.beside-rail > .bg-dock {
   padding-left: max(24px, calc((100% - 720px) / 2));
   padding-right: max(24px, calc((100% - 720px) / 2));
 }
@@ -22351,4 +22364,214 @@ html[data-text-size="large"] .brand-mark > svg {
 @media (max-width: 360px) {
   .top:has(.partners-back) .who-face { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
+}
+/* D521: the shared TrayRow and IconBtn (controls.tsx): one dense quiet row of a tray, a drawn glyph as a button. */
+.tray-row {
+  min-width: 0;
+}
+.tray-line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.tray-main {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: max(36px, 2.25rem);
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+button.tray-main {
+  cursor: pointer;
+}
+button.tray-main:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+button.tray-main:active {
+  transition-duration: var(--t-press);
+  background: var(--line-soft);
+}
+button.tray-main:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tray-mark {
+  flex: none;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+}
+.tray-words {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.tray-row.head .tray-words {
+  font-weight: 700;
+}
+.tray-side {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.tray-time {
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.tray-state {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.tray-chev {
+  flex: none;
+  color: var(--ink-muted);
+}
+.tray-act {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: 36px;
+}
+.tray-row.done .tray-mark {
+  color: var(--done-ink);
+}
+.tray-row.ended .tray-words,
+.tray-row.ended .tray-mark,
+.tray-row.fold .tray-words {
+  color: var(--ink-muted);
+}
+.tray-row.st-failed .tray-state {
+  color: var(--failed-ink);
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-press) var(--ease);
+}
+.icon-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.icon-btn.danger:hover {
+  color: var(--failed-ink);
+}
+.icon-btn:active {
+  transform: translateY(1px);
+}
+.icon-btn:disabled {
+  color: var(--faint);
+  background: none;
+  cursor: default;
+}
+/* D521: 后台 / In the background, over the opened task's composer: one quiet tray of TrayRows, on
+   the composer's measure (its dock takes the composer's padding wherever the composer has one). */
+.bg-dock {
+  padding: 0 var(--s4) var(--s2);
+  min-width: 0;
+}
+.bg-tray > .tray-row.head {
+  padding-inline: var(--s1);
+}
+.bg-tray {
+  margin: 0;
+  padding: var(--s1) 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: var(--sm);
+  min-width: 0;
+  animation: bg-in 220ms var(--ease) both;
+}
+@keyframes bg-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+.bg-rows {
+  margin-top: var(--s1);
+  padding: var(--s1) var(--s1) 0;
+  border-top: 1px solid var(--line-soft);
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  animation: bg-in 220ms var(--ease) both;
+}
+.bg-rows > .tray-row {
+  animation: bg-in 220ms var(--ease) both;
+}
+.bg-tail {
+  margin: 0 var(--s3) var(--s2) calc(var(--s3) + 16px + var(--s2));
+  min-width: 0;
+}
+.bg-tail-head {
+  display: block;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.bg-tail pre {
+  margin: var(--s1) 0 0;
+  max-height: 8.5em;
+  overflow: auto;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bg-tail-none {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+@media (max-width: 699px) {
+  .bg-dock {
+    padding: 0 var(--s3) var(--s2);
+  }
+  .tray-main {
+    min-height: max(44px, 2.75rem);
+  }
+  .tray-act,
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-tray,
+  .bg-rows,
+  .bg-rows > .tray-row {
+    animation: none;
+  }
+  .icon-btn:active {
+    transform: none;
+  }
 }

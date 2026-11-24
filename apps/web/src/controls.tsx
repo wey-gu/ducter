@@ -642,5 +642,52 @@ export function TimeCol(p: { at: string; text: string }) {
     <time class="time-col" dateTime={p.at}>
       {p.text}
     </time>
+/** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
+ *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
+ *  pointer (danger: the failed ink). The Mac's `iconButton`. */
+export function IconBtn(p: { label: string; about?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
+  return (
+    <button type="button" class={`icon-btn${p.danger ? " danger" : ""}`} title={p.label} aria-label={p.about ? spoken(A.L, p.label, p.about) : p.label} disabled={p.disabled} onClick={p.onClick}>
+      {p.children}
+    </button>
+  );
+}
+
+/**
+ * D521: one dense row of a quiet tray (the opened task's 后台 / In the background): a drawn mark,
+ * its words cut with an ellipsis (the whole in the tooltip), its facts at the right edge in mono
+ * (a time, a state), an optional chevron when it opens (open: what it holds, under it), and an
+ * optional action apart at its far right (an IconBtn). head: the tray's own head row (stronger
+ * words). The Mac's `trayRow`.
+ */
+export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words: string; head?: boolean; tone?: string; side?: ComponentChildren; open?: boolean; onClick?: () => void; act?: ComponentChildren; children?: ComponentChildren }) {
+  const inner = (
+    <>
+      {p.mark && (
+        <span class="tray-mark" role={p.markAbout ? "img" : undefined} aria-label={p.markAbout} title={p.markAbout}>
+          {p.mark}
+        </span>
+      )}
+      <span class="tray-words" title={p.words}>
+        {p.words}
+      </span>
+      {p.side && <span class="tray-side">{p.side}</span>}
+      {p.onClick && p.open !== undefined && <Chev open={p.open} cls="tray-chev" />}
+    </>
+  );
+  return (
+    <div class={`tray-row${p.head ? " head" : ""}${p.tone ? ` ${p.tone}` : ""}${p.act !== undefined ? " has-act" : ""}`}>
+      <div class="tray-line">
+        {p.onClick ? (
+          <button type="button" class="tray-main" aria-expanded={p.open} onClick={p.onClick}>
+            {inner}
+          </button>
+        ) : (
+          <span class="tray-main">{inner}</span>
+        )}
+        {p.act !== undefined && <span class="tray-act">{p.act}</span>}
+      </div>
+      {p.open && p.children}
+    </div>
   );
 }

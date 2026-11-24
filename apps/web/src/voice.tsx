@@ -390,7 +390,7 @@ export function MicButton() {
   return (
     <button
       type="button"
-      class={`btn secondary icon mic${live || talking ? " hearing" : ""}${off ? " off" : ""}`}
+      class={`btn text icon mic${live || talking ? " hearing" : ""}${off ? " off" : ""}`}
       aria-label={talking ? t("talk.end") : t("voice.hold.both")}
       title={talking ? t("talk.end") : t("voice.hold.both")}
       aria-pressed={live || talking}

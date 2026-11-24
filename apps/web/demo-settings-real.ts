@@ -266,5 +266,18 @@ S.put({ kind: "key", name: zh ? "Cloudflare 的 API 令牌（ducter.ai）" : "Cl
 // D413: one standing permission, in the author's own words (hel, 2026-11-19), so 不用问我的 shows.
 if (!core.standing.list().length) core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "review 做好了直接发别和我确认" : "Just post the reviews when they're done, don't ask me." } });
 core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "把设置里的东西都过一遍" : "Let's go through Settings" } });
+// D547, DEMO_TASK=1: a Codex task at work on the home, so the task's composer shows what it carries
+// while it works: the model chip (GPT-6.2-Sol, its effort), the context ring at 22% and Stop.
+if (process.env.DEMO_TASK) {
+  const id = "t_codex";
+  const ev = (b: Record<string, unknown>) => core.log.append({ stream: `task:${id}`, origin: "task", kind: "task_event", body: { taskId: id, ...b } as never });
+  const place = { kind: "repo", device: "local", repoPath: "/root/ducter/repos/mem", worktree: "/root/ducter/worktrees/mem/ci-flaky", branch: "ducter/ci-flaky-compaction", baseBranch: "main" };
+  core.log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: zh ? "查 mem 这周 main 上红的 CI" : "Find why mem's CI went red on main this week", project: "Mem", place, harness: "codex", model: "gpt-6.2-sol", effort: "medium", brief: zh ? "看 nowledge-co/mem 这周 main 上红了的 job，是不是同一个 flaky 测试；是的话修掉，跑 20 遍确认。" : "Look at the jobs that went red on nowledge-co/mem's main this week; if it is one flaky test, fix it and run it 20 times to confirm." } as never });
+  core.tasks.setState(id, "working", "hot");
+  ev({ role: "tool", tool: { name: "shell", input: { command: ["bash", "-lc", "gh run list --branch main --status failure --limit 20"] }, ok: true, output: "12 runs" } });
+  ev({ role: "assistant", text: zh ? "这周 main 上红了 12 次，9 次是同一个测试：compaction_resumes_after_restart。" : "Main went red 12 times this week; 9 of them are one test: compaction_resumes_after_restart." });
+  ev({ role: "system", text: "", raw: { kind: "context", contextTokens: 60000, contextWindow: 272000 } });
+  ev({ role: "tool", tool: { name: "shell", input: { command: ["bash", "-lc", "cargo test compaction_resumes_after_restart -- --nocapture"] }, ok: true, output: "" } });
+}
 await Bun.sleep(300);
 console.log(`[demo-settings-real] http://127.0.0.1:${core.port}/app · ${zh ? "zh" : "en"} · data ${dataDir}`);

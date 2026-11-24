@@ -609,7 +609,7 @@ A new control is added to the set (and to this table) before it is used.
 | The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
 | A needs-you count as a door (D535): a pebble with a pointer's room round it that lifts a point under the pointer; the bar's 「n 个等你」 as a quiet text button in the needs-you ink; the line over the composer as a clay pill 30 tall in the needs-you surface on its 2-pt ledge, its words 13/700 and the drawn chevron, sinking 2 pt pressed. A tap opens the next item that waits | `pebbleDoor`, `countDoor`, `needsDoor` (`components.go`) | `CountPebble` in a door row, `CountDoor`, `NeedsDoor` (`.sum-needs`, `.needs-door`) |
-| **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, Stop; D530: the context meter and the keys sit in the row under it, After this turn is the send's alternate in its menu), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
+| **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines then scrolling inside (the cap from their own line height), the caret in the accent, one 2-pt accent ring on the card on focus with a pointer (none on a phone); the placeholder the longest of its list that fits one line, never cut. D547: every button in its row (attach, the mic, Stop, Send) one size (44, the Mac's `ControlMD`), round, `S2` from the card's edge, on one bottom line, the words' single line centred on their centre, so as the words grow only the card's top moves; attach and the mic quiet (under 420 wide the mic steps aside while there are words), Stop the secondary clay kept 20 from Send; the pictures picked inside the card above the words; an opened task's card tiered at every width (the words their own line, under them attach, the model chip, the meter, then Stop and Send at the right edge). After this turn is the send's alternate in its menu (right-click, a long press on a phone). The send in three states: empty (sunken and flat, its arrow muted, not pressable), ready (the raised accent, a small pop as it becomes so), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton`, `roundButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
 | A section's name over its card (等你, 手上的, 每一轮, 怎么做; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken); D542: working, waiting, failed for an opened task's state | `tag` (`composer.go`) | `Tag` |
 | A slim clay pill on the reading measure, a 24 mark then its facts (the lead in ink, one in the needs ink, the rest muted), the whole one action (D544: a task in rounds' line under the bar: 看守中, 1 个在等你, 下一轮 18:49, 第 302 轮) | `factPill` (`shared.go`) | `FactPill` |
@@ -1136,12 +1136,14 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does, on the same 640 measure (D268); a pending ask sits over it (D152). While it
-   works, a square **暂停 / Pause** button sits beside Send (one family with it: the secondary and
-   the accent clay), ⌥↩ or the send's menu (right-click; a long press on a phone) holds the words
-   for **等它做完再说 / After this turn**; D542: the model chip and the context meter (its ring and
-   **上下文 22%**; in a pane under 560 the ring and its figure, the chip's level as its bars) sit in
-   the composer's own row before Pause and Send, and nothing is drawn under the box, at rest or
-   on focus (a row that came with the focus moved the box under the pointer). Over it, **the foot** says only the moment (D268): Esc once,
+   works, a round **暂停 / Pause** button sits by Send, 20 apart (one family with it: the secondary
+   and the accent clay), ⌥↩ or the send's menu (right-click; a long press on a phone) holds the words
+   for **等它做完再说 / After this turn**; D547 (amending D542): the box is tiered at every width, the
+   words their own line on the whole measure and under them, inside the card, attach, the model chip
+   and the context meter (its ring and **上下文 22%**; under 420 the chip's name short, under 340 the
+   chip its level alone; the meter keeps its figure), then Pause and Send at the right edge; nothing is
+   drawn under the box, at rest or on focus (a row that came with the focus moved the box under the
+   pointer). Over it, **the foot** says only the moment (D268): Esc once,
    **再按一次 Esc 就暂停** with **继续** and **暂停**; over to you, **等你回复** in the needs ink and
    the hint muted. Where it is at is the working line at the transcript's end. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the

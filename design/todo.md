@@ -3435,3 +3435,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
   *Trigger:* the author says approvals may go without asking too.
 - [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
   change gets a review on GitHub. *Trigger:* hel on the release with D540.
+- [ ] **D547 on a real phone:** the composer standing on iOS Safari's keyboard (checked only with an
+  emulated visual viewport; the Simulator's Safari never loaded the demo) and the Android app's;
+  Overview on the iPhone app at its real text size. *Trigger:* the next build on the author's phone.

@@ -36,6 +36,8 @@ var sharedControls = map[string]bool{
 	"stepNumber": true,
 	// D519: the one composer and its send, the section head, the tag, the time column, a menu's opener
 	"composerBox": true, "sendButton": true, "secHead": true, "tag": true, "timeCol": true, "menuOpener": true,
+	// D533: a rule row edited in place, a line of words, a number with its unit
+	"editRow": true, "lineField": true, "numberField": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

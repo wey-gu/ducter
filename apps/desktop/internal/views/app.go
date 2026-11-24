@@ -726,6 +726,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		if a.locatorEsc() {
 			break // D325: the locator's card closes first
 		}
+		if a.Route == RouteOnHand && a.keepEsc() {
+			break // D533: a Keep's open editor closes first
+		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()
 		}

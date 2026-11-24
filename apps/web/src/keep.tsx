@@ -5,17 +5,19 @@
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
 // 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么照看 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
-import { cutAtWord, foldRounds, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
+import { cutAtWord, foldRounds, keepBeat, type KeepCard, type KeepChange, type KeepEdit, type KeepField, type KeepItem, type KeepPage, type KeepProposal, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
+import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { BackRow, Btn, SectionHead, Tag, TimeCol } from "./controls.tsx";
+import { BackRow, Btn, EditRow, LineField, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
 import { healthLine, interval } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
-import { Menu, MenuItem } from "./menu.tsx";
+import { Menu, MenuItem, Select } from "./menu.tsx";
+import { SEG_MAX, taskAgents, taskComputers } from "./partner-story.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -23,13 +25,33 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const RAIL_COLS = 38;
 
 /** The Keep whose page is open (absent: On hand's list), the pages read, and the page's own state (talk: the words being typed, the clientId in flight, the Keep last told). */
-export const K = { open: "", pages: new Map<string, KeepPage>(), pause: false, stop: false, undone: new Set<string>(), sig: "", askedAt: 0, talk: { text: "", sending: "", at: 0, sent: "" } };
+export const K = {
+  open: "",
+  pages: new Map<string, KeepPage>(),
+  pause: false,
+  stop: false,
+  undone: new Set<string>(),
+  sig: "",
+  askedAt: 0,
+  talk: { text: "", sending: "", at: 0, sent: "" },
+  // D533: the rule row open for a change (its drafts, on its way, its error), the person's words being
+  // changed (reading them, the rules read from them), and the last change with its Undo.
+  edit: { field: "" as KeepField | "", draft: {} as Record<string, string>, busy: false, error: "" },
+  words: { open: false, draft: "", phase: "" as "" | "reading" | "read" | "saving", proposal: undefined as KeepProposal | undefined },
+  done: undefined as { id: string; edits: KeepEdit[]; undo?: KeepChange; undone?: boolean } | undefined,
+};
+
+const freshEdit = () => ({ field: "" as KeepField | "", draft: {} as Record<string, string>, busy: false, error: "" });
+const freshWords = () => ({ open: false, draft: "", phase: "" as const, proposal: undefined });
 
 /** Opens a Keep's page in the board's place, and asks the home for it. */
 export function openKeep(id: string) {
   K.open = id;
   K.pause = K.stop = false;
   K.talk = { text: "", sending: "", at: 0, sent: "" };
+  K.edit = freshEdit();
+  K.words = freshWords();
+  K.done = undefined;
   A.send({ t: "keep", id });
   if (A.route.name !== "onhand") A.go({ name: "onhand" });
   else A.changed();
@@ -46,6 +68,65 @@ export function onKeepFrame(f: Extract<ServerFrame, { t: "keep_result" }>) {
   else K.pages.delete(f.id);
   A.changed();
 }
+
+/** D533: an edit came back (closed with its line and Undo, or its error at the row), or the rules read from edited words. */
+export function onKeepEdit(f: Extract<ServerFrame, { t: "keep_changed" | "keep_proposal" }>) {
+  if (f.id !== K.open) return;
+  if (f.t === "keep_proposal") {
+    if (K.words.phase === "reading") (K.words.phase = "read"), (K.words.proposal = f.proposal);
+  } else if (f.ok) {
+    K.edit = freshEdit();
+    if (K.words.phase === "saving") K.words = freshWords();
+    K.done = f.undone ? { id: f.id, edits: f.edits ?? [], undone: true } : (f.edits ?? []).length ? { id: f.id, edits: f.edits!, ...(f.undo ? { undo: f.undo } : {}) } : undefined;
+  } else {
+    const err = t("keep.edit.failed", f.error ?? "");
+    if (K.words.phase === "saving") (K.words.phase = "read"), (K.edit.error = err);
+    else (K.edit.busy = false), (K.edit.error = err);
+  }
+  A.changed();
+}
+
+/** Sends a change on the one path the partner's keep_change takes (core checks it again). */
+const sendChange = (id: string, change: KeepChange, undo?: boolean) => {
+  A.send({ t: "keep_change", id, change, ...(undo ? { undo: true } : {}) });
+  A.changed();
+};
+
+// ---------- D533: a change's words ----------
+
+const SPEAKS = ["keep.speaks.news", "keep.speaks.default", "keep.speaks.every"] as const;
+
+/** A field's value as the page says it (an absent one: what having none means). */
+export function fieldWords(field: KeepField, v?: string): string {
+  if (field === "every") return v ? t("keep.every", interval(Number(v) * 60_000)) : "";
+  if (field === "agent") return !v || v === "auto" ? t("newtasks.auto") : harnessName(v);
+  if (field === "where") return !v || v === "auto" ? t("newtasks.auto") : v;
+  if (field === "cap") return v ? t("keep.cap", Number(v)) : "";
+  if (field === "speaks") return v || t("keep.speaks.default");
+  if (field === "until") return v || t("keep.until.none");
+  if (field === "limits") return v || t("keep.limits.none");
+  return v ?? "";
+}
+
+/** One change in words: 每 45 分钟一轮 → 每 1 小时一轮. */
+export const editWords = (e: KeepEdit) => (e.field === "said" ? t("keep.said.edit.words") : `${fieldWords(e.field, e.from)} → ${fieldWords(e.field, e.to)}`);
+
+/** A change as a line among its rounds: who made it, then what changed. */
+export function editLines(r: KeepRound): string[] {
+  const ed = r.edit;
+  if (!ed) return [];
+  const who = ed.by === "you" ? t("keep.edit.you") : A.S.personaName;
+  return ed.edits.map((e) => {
+    if (e.field === "said") return ed.undo ? t("keep.edit.undoSaid", who) : t("keep.edit.said", who);
+    if (ed.undo) return t("keep.edit.undoLine", who, fieldWords(e.field, e.to));
+    const shown = ["speaks", "until", "limits", "where", "agent"].includes(e.field);
+    if ((e.from || shown) && (e.to || shown)) return t("keep.edit.line", who, fieldWords(e.field, e.from), fieldWords(e.field, e.to));
+    return e.to ? t("keep.edit.set", who, fieldWords(e.field, e.to)) : t("keep.edit.cleared", who, fieldWords(e.field, e.from));
+  });
+}
+
+/** The rule a field stands under on the page. */
+const RULE_OF: Record<KeepField, string> = { every: "keep.rule.wakes", at: "keep.rule.wakes", until: "keep.rule.until", speaks: "keep.rule.speaks", limits: "keep.rule.limits", cap: "keep.rule.limits", where: "keep.rule.where", agent: "keep.rule.where", address: "keep.rule.address", said: "keep.said", title: "keep.said" };
 
 // ---------- the mark ----------
 
@@ -226,6 +307,23 @@ const outWords = (r: KeepRound) => (r.state === "running" ? t("keep.round.runnin
  *  (the model's, once it has read the report), how it ended; the report as the task wrote it to
  *  Ducter only behind 看细节, with the way to its task. */
 function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: boolean; onToggle: () => void }) {
+  // D533: a change the person or the partner made stands among the rounds as who changed what.
+  if (r.woke === "edit")
+    return (
+      <div class="kp-rd edit">
+        <TimeCol at={r.at} text={colTime(A.L, r.at)} />
+        <span class="body">
+          {editLines(r).map((l, i) => (
+            <span key={i} class="did">
+              {l}
+            </span>
+          ))}
+        </span>
+        <span class="end">
+          <span class="out">{t("keep.round.edit")}</span>
+        </span>
+      </div>
+    );
   const more = !!r.report;
   return (
     <div class={`kp-rd${open ? " open" : ""}`}>
@@ -265,7 +363,7 @@ function Rounds({ k }: { k: KeepPage }) {
               <span>{t("keep.rounds.fold", x.fold)}</span>
             </div>
           );
-        const id = `${x.round.at}|${x.round.taskId ?? ""}`;
+        const id = `${x.round.at}|${x.round.taskId ?? ""}|${x.round.woke}`;
         return <Round key={id} r={x.round} k={k} open={open === id} onToggle={() => setOpen(open === id ? "" : id)} />;
       })}
     </div>
@@ -315,60 +413,275 @@ function wakeLines(k: KeepPage): string[] {
   );
 }
 
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * D533: each rule changes in place with its own control, through the one path the partner's
+ * keep_change takes: what is checked here (a range, an empty field) is said at once in the person's
+ * words; core checks it all again. A change applies at once; its line and Undo stand under the card.
+ */
 function HowItRuns({ k }: { k: KeepPage }) {
   const ended = k.life === "done" || k.life === "stopped";
-  const where = [k.where?.deviceName ?? (k.where ? t("keep.where.home") : ""), k.where?.harness ? harnessName(k.where.harness) : ""].filter(Boolean);
-  const rules: { k: string; v: string[]; muted?: string }[] = [
-    { k: "keep.rule.wakes", v: wakeLines(k) },
-    // Its end as the person gave it, or as the model read it from their words; nothing until it has (never a guess).
-    ...(k.until || k.noEnd ? [{ k: "keep.rule.until", v: [k.until ?? t("keep.until.none")] }] : []),
-    { k: "keep.rule.speaks", v: [k.speaks ?? t("keep.speaks.default")], muted: t("keep.speaks.quiet") },
-    ...(k.limits || k.run === "perItem" ? [{ k: "keep.rule.limits", v: [k.limits ?? t("keep.limits.helper")] }] : []),
-    ...(where.length ? [{ k: "keep.rule.where", v: [where.join(t("keep.where.sep"))] }] : []),
-    ...(k.address ? [{ k: "keep.rule.address", v: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`) }] : []),
-  ];
-  return (
-    <div class="kp-card kp-rules">
-      {rules.map((r) => (
-        <div key={r.k} class="ru">
-          <span class="k">{t(r.k)}</span>
-          {r.v.map((v) => (
-            <span key={v} class="v">
-              {v}
-            </span>
-          ))}
-          {r.muted && <span class="v m">{r.muted}</span>}
-        </div>
-      ))}
-      {!ended && (
-        <div class="acts">
-          {k.life === "paused" ? (
-            <Btn kind="secondary" size="sm" grow label={t("keep.resume")} onClick={() => act(k.id, { action: "resume" })} />
-          ) : (
-            <Btn kind="secondary" size="sm" grow chev expanded={K.pause} label={t("keep.pause")} onClick={() => ((K.pause = !K.pause), (K.stop = false), A.changed())} />
-          )}
-          {k.life === "on" && !k.wakes.every((w) => w.kind === "arrives" || (w.kind === "changes" && !w.words)) && <Btn kind="secondary" size="sm" grow label={t("keep.look")} onClick={() => act(k.id, { action: "look_now" })} />}
-          <Btn kind="secondary" size="sm" grow class="stop" label={t("keep.stop")} onClick={() => ((K.stop = !K.stop), (K.pause = false), A.changed())} />
-        </div>
-      )}
-      {K.pause && (
-        <Menu class="kp-menu" label={t("keep.pause")} focusFirst onClose={() => ((K.pause = false), A.changed())}>
-          {PAUSES.map((p) => (
-            <MenuItem key={p.key} onClick={() => act(k.id, { action: "pause", ...((u) => (u ? { until: u } : {}))(p.until(Date.now())) })}>
-              {t(p.key)}
-            </MenuItem>
-          ))}
-        </Menu>
-      )}
-      {K.stop && (
-        <div class="kp-stop">
-          <p>{t("keep.stop.ask")}</p>
-          <span class="acts">
-            <Btn kind="primary" size="sm" class="stop" label={t("keep.stop.go")} onClick={() => act(k.id, { action: "stop" })} />
-            <Btn kind="secondary" size="sm" label={t("keep.stop.keep")} onClick={() => ((K.stop = false), A.changed())} />
+  const ed = new Set(k.editable ?? []);
+  const e = K.edit;
+  const d = e.draft;
+  const open = (field: KeepField, draft: Record<string, string>) => {
+    K.edit = { field, draft, busy: false, error: "" };
+    K.words = freshWords();
+    K.done = undefined;
+    A.changed();
+  };
+  const cancel = () => ((K.edit = freshEdit()), A.changed());
+  const fail = (key: string) => ((K.edit.error = t(key)), A.changed());
+  const set = (key: string) => (v: string) => ((K.edit.draft[key] = v), (K.edit.error = ""), A.changed());
+  const save = () => {
+    if (e.busy) return;
+    const f = e.field;
+    let change: KeepChange | undefined;
+    if (f === "every") {
+      const n = Number(d.every);
+      if (!d.every || n < 5 || n > 10_080) return fail("keep.edit.every.range");
+      change = { everyMinutes: n };
+    } else if (f === "at") {
+      if (!TIME.test(d.time ?? "")) return fail("keep.edit.at.bad");
+      change = { at: { ...(k.at ?? {}), every: (d.every || k.at?.every || "day") as "day", time: d.time! } as KeepChange["at"] };
+    } else if (f === "until" || f === "limits") change = { [f]: (d[f] ?? "").trim() };
+    else if (f === "speaks") change = { speaks: d.speaks === "keep.speaks.default" ? "" : d.speaks === "custom" ? (k.speaks ?? "") : t(d.speaks ?? "") };
+    else if (f === "cap") {
+      const n = Number(d.cap);
+      if (!d.cap || n < 1 || n > 30) return fail("keep.edit.cap.range");
+      change = { cap: n };
+    } else if (f === "where") change = { ...(d.where !== undefined ? { where: d.where } : {}), ...(d.agent !== undefined ? { agent: d.agent } : {}) };
+    else if (f === "address") {
+      if (!(d.address ?? "").trim()) return fail("keep.edit.empty");
+      change = { address: d.address!.trim() };
+    }
+    if (!change || !Object.keys(change).length) return cancel();
+    K.edit.busy = true;
+    sendChange(k.id, change);
+  };
+  const row = (p: { field?: KeepField; label: string; values: string[]; muted?: string; draft?: () => Record<string, string>; editor?: () => ComponentChildren }) => (
+    <EditRow
+      key={p.label}
+      label={t(p.label)}
+      values={p.values}
+      muted={p.muted}
+      editable={!!p.field && ed.has(p.field) && !ended}
+      open={!!p.field && e.field === p.field}
+      busy={e.busy}
+      error={e.error}
+      onOpen={() => p.field && p.draft && open(p.field, p.draft())}
+      onSave={save}
+      onCancel={cancel}
+    >
+      {p.editor?.()}
+    </EditRow>
+  );
+  // 在哪儿做 / 谁来做: the pickers of D510, each only where there is a choice; a task in rounds names one (no 自动).
+  const comps = taskComputers();
+  const agents = taskAgents();
+  const idOf = (c: { home: boolean; id: string }) => (c.home ? "local" : c.id);
+  const auto = k.run !== "same";
+  const whereOpts = [...(auto ? [{ v: "auto", label: t("newtasks.auto") }] : []), ...comps.map((c) => ({ v: idOf(c), label: c.name }))];
+  const whoOpts = [...(auto ? [{ v: "auto", label: t("newtasks.auto") }] : []), ...agents.map((h) => ({ v: h, label: harnessName(h) }))];
+  const pick = (label: string, value: string, options: { v: string; label: string }[], on: (v: string) => void) =>
+    options.length <= SEG_MAX ? <Seg label={label} value={value} options={options} onPick={on} /> : <Select label={label} value={value} options={options} onPick={on} />;
+  const whereWords = [k.where?.deviceName ?? (k.where || k.device ? t("keep.where.home") : ""), k.where?.harness ? harnessName(k.where.harness) : k.agent ? harnessName(k.agent) : ""].filter(Boolean);
+  const canWhere = ed.has("where") && whereOpts.length > 1;
+  const canWho = ed.has("agent") && whoOpts.length > 1;
+  const speaksKey = SPEAKS.find((s) => (s === "keep.speaks.default" ? !k.speaks : t(s) === k.speaks)) ?? "custom";
+  const everyMin = k.everyMs ? String(Math.round(k.everyMs / 60_000)) : "";
+  const wakeField: KeepField | undefined = ed.has("every") ? "every" : ed.has("at") ? "at" : undefined;
+  const helper = k.run === "perItem";
+  const rows = [
+    row({
+      field: wakeField,
+      label: "keep.rule.wakes",
+      values: wakeLines(k),
+      draft: (): Record<string, string> => (wakeField === "every" ? { every: everyMin } : { every: k.at?.every ?? "day", time: k.at?.time ?? "" }),
+      editor: () =>
+        e.field === "every" ? (
+          <NumberField value={d.every ?? ""} label={t("keep.rule.wakes")} unit={t("keep.edit.every.unit")} autoFocus onInput={set("every")} />
+        ) : (
+          <span class="er-two">
+            <Seg
+              label={t("keep.rule.wakes")}
+              value={d.every}
+              options={[{ v: "day", label: t("keep.edit.at.day") }, { v: "weekday", label: t("keep.edit.at.weekday") }, ...(k.at && k.at.every !== "day" && k.at.every !== "weekday" ? [{ v: k.at.every, label: wakeLines(k)[0] ?? k.at.every }] : [])]}
+              onPick={set("every")}
+            />
+            <LineField value={d.time ?? ""} label={t("keep.edit.at.time")} placeholder="08:00" mode="numeric" autoFocus onInput={set("time")} />
           </span>
+        ),
+    }),
+    ...(k.until || k.noEnd
+      ? [row({ field: "until", label: "keep.rule.until", values: [k.until ?? t("keep.until.none")], draft: () => ({ until: k.until ?? "" }), editor: () => <LineField value={d.until ?? ""} label={t("keep.rule.until")} placeholder={t("keep.edit.until.ph")} autoFocus onInput={set("until")} /> })]
+      : []),
+    row({
+      field: "speaks",
+      label: "keep.rule.speaks",
+      values: [k.speaks ?? t("keep.speaks.default")],
+      muted: t("keep.speaks.quiet"),
+      draft: () => ({ speaks: speaksKey }),
+      editor: () => <Seg label={t("keep.rule.speaks")} value={d.speaks} options={[...SPEAKS.map((s) => ({ v: s as string, label: t(s) })), ...(speaksKey === "custom" ? [{ v: "custom", label: k.speaks ?? "" }] : [])]} onPick={set("speaks")} />,
+    }),
+    ...(helper
+      ? [row({ field: "cap", label: "keep.rule.limits", values: [t("keep.cap", k.cap ?? 10)], draft: () => ({ cap: String(k.cap ?? 10) }), editor: () => <NumberField value={d.cap ?? ""} label={t("keep.rule.limits")} unit={t("keep.edit.cap.unit")} autoFocus onInput={set("cap")} /> })]
+      : k.limits || ed.has("limits")
+        ? [row({ field: "limits", label: "keep.rule.limits", values: [k.limits ?? t("keep.limits.none")], draft: () => ({ limits: k.limits ?? "" }), editor: () => <LineField value={d.limits ?? ""} label={t("keep.rule.limits")} placeholder={t("keep.edit.limits.ph")} autoFocus onInput={set("limits")} /> })]
+        : []),
+    ...(whereWords.length || canWhere || canWho
+      ? [
+          row({
+            field: canWhere || canWho ? "where" : undefined,
+            label: "keep.rule.where",
+            values: [whereWords.length ? whereWords.join(t("keep.where.sep")) : t("newtasks.auto")],
+            draft: () => ({}),
+            editor: () => (
+              <span class="er-two">
+                {canWhere && (
+                  <span class="er-pick">
+                    <span class="lb">{t("keep.where.label")}</span>
+                    {pick(t("keep.where.label"), d.where ?? k.device ?? "auto", whereOpts, set("where"))}
+                  </span>
+                )}
+                {canWho && (
+                  <span class="er-pick">
+                    <span class="lb">{t("keep.who.label")}</span>
+                    {pick(t("keep.who.label"), d.agent ?? k.agent ?? "auto", whoOpts, set("agent"))}
+                  </span>
+                )}
+              </span>
+            ),
+          }),
+        ]
+      : []),
+    ...(k.address
+      ? [row({ field: "address", label: "keep.rule.address", values: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`), draft: () => ({ address: k.address!.name }), editor: () => <LineField value={d.address ?? ""} label={t("keep.rule.address")} placeholder={t("keep.edit.address.ph")} autoFocus onInput={set("address")} /> })]
+      : []),
+  ];
+  const done = K.done?.id === k.id ? K.done : undefined;
+  return (
+    <>
+      <div class="kp-card kp-rules">
+        {rows}
+        {!ended && (
+          <div class="acts">
+            {k.life === "paused" ? (
+              <Btn kind="secondary" size="sm" grow label={t("keep.resume")} onClick={() => act(k.id, { action: "resume" })} />
+            ) : (
+              <Btn kind="secondary" size="sm" grow chev expanded={K.pause} label={t("keep.pause")} onClick={() => ((K.pause = !K.pause), (K.stop = false), A.changed())} />
+            )}
+            {k.life === "on" && !k.wakes.every((w) => w.kind === "arrives" || (w.kind === "changes" && !w.words)) && <Btn kind="secondary" size="sm" grow label={t("keep.look")} onClick={() => act(k.id, { action: "look_now" })} />}
+            <Btn kind="secondary" size="sm" grow class="stop" label={t("keep.stop")} onClick={() => ((K.stop = !K.stop), (K.pause = false), A.changed())} />
+          </div>
+        )}
+        {K.pause && (
+          <Menu class="kp-menu" label={t("keep.pause")} focusFirst onClose={() => ((K.pause = false), A.changed())}>
+            {PAUSES.map((p) => (
+              <MenuItem key={p.key} onClick={() => act(k.id, { action: "pause", ...((u) => (u ? { until: u } : {}))(p.until(Date.now())) })}>
+                {t(p.key)}
+              </MenuItem>
+            ))}
+          </Menu>
+        )}
+        {K.stop && (
+          <div class="kp-stop">
+            <p>{t("keep.stop.ask")}</p>
+            <span class="acts">
+              <Btn kind="primary" size="sm" class="stop" label={t("keep.stop.go")} onClick={() => act(k.id, { action: "stop" })} />
+              <Btn kind="secondary" size="sm" label={t("keep.stop.keep")} onClick={() => ((K.stop = false), A.changed())} />
+            </span>
+          </div>
+        )}
+      </div>
+      {done && <Changed done={done} id={k.id} />}
+    </>
+  );
+}
+
+/** D533: the last change in one line under the card, with its Undo (once undone, one line says so). */
+function Changed({ done, id }: { done: NonNullable<typeof K.done>; id: string }) {
+  return (
+    <p class="kp-changed" role="status">
+      <span class="w">{done.undone ? t("keep.edit.undone") : t("keep.edit.done", done.edits.map(editWords).join(t("keep.where.sep")))}</span>
+      {!done.undone && done.undo && <Btn kind="text" size="sm" label={t("keep.edit.undo")} onClick={() => sendChange(id, done.undo!, true)} />}
+    </p>
+  );
+}
+
+/**
+ * D533: 你说的 / You said, changed as words: saving them asks the cheap model once which rules the new
+ * words change (principle 21), shown as a small diff for one Go; 只改说的话 keeps the rules as they are.
+ */
+function Said({ k }: { k: KeepPage }) {
+  const w = K.words;
+  const can = (k.editable ?? []).includes("said");
+  if (!w.open)
+    return (
+      <div class="kp-said">
+        <span class="er-head">
+          <b>{t("keep.said")}</b>
+          {can && <Btn kind="text" size="sm" label={t("keep.edit")} about={t("keep.said.edit.about")} onClick={() => ((K.words = { open: true, draft: k.said, phase: "", proposal: undefined }), (K.edit = freshEdit()), (K.done = undefined), A.changed())} />}
+        </span>
+        <span>{k.said}</span>
+      </div>
+    );
+  const cancel = () => ((K.words = freshWords()), A.changed());
+  const read = () => {
+    const v = w.draft.trim();
+    if (!v) return;
+    if (v === k.said.trim()) return cancel();
+    K.words.phase = "reading";
+    K.edit.error = "";
+    A.send({ t: "keep_words", id: k.id, said: v });
+    A.changed();
+  };
+  const apply = (change: KeepChange) => ((K.words.phase = "saving"), (K.edit.error = ""), sendChange(k.id, change));
+  const p = w.phase === "read" || w.phase === "saving" ? w.proposal : undefined;
+  const rules = p?.ok ? p.edits.filter((x) => x.field !== "said") : [];
+  return (
+    <div class="kp-said open">
+      <b>{t("keep.said")}</b>
+      <TextBox value={w.draft} label={t("keep.said")} onInput={(v) => ((K.words.draft = v), w.phase === "read" && ((K.words.phase = ""), (K.words.proposal = undefined)), A.changed())} />
+      {w.phase === "reading" && (
+        <p class="kp-reading" role="status">
+          <i class="breath" aria-hidden="true" />
+          {t("keep.said.edit.read")}
+        </p>
+      )}
+      {p && (
+        <div class="kp-diff">
+          {p.ok && rules.length > 0 ? (
+            <>
+              <p class="hd">{t("keep.said.edit.diff")}</p>
+              {rules.map((x) => (
+                <div key={x.field} class="kp-drow">
+                  <span class="k">{t(RULE_OF[x.field])}</span>
+                  <span class="ch">
+                    <span class="from">{fieldWords(x.field, x.from)}</span>
+                    <span class="to">{fieldWords(x.field, x.to)}</span>
+                  </span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <p class="hd">{p.ok ? t("keep.said.edit.same") : t("keep.said.edit.unread")}</p>
+          )}
         </div>
       )}
+      {K.edit.error && (
+        <p class="er-err" role="alert">
+          {K.edit.error}
+        </p>
+      )}
+      <span class="er-acts">
+        <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={cancel} />
+        {p && rules.length > 0 && <Btn kind="secondary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
+        {p && !p.ok && <Btn kind="primary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
+        {p?.ok && <Btn kind="primary" size="sm" label={rules.length ? t("keep.said.edit.go") : t("keep.edit.save")} disabled={w.phase === "saving"} onClick={() => apply(p.change)} />}
+        {!p && <Btn kind="primary" size="sm" label={w.phase === "reading" ? t("keep.edit.saving") : t("keep.edit.save")} disabled={w.phase === "reading" || !w.draft.trim()} onClick={read} />}
+      </span>
     </div>
   );
 }
@@ -476,10 +789,7 @@ export function KeepPageView({ room }: { room: string }) {
             </p>
           </div>
         </header>
-        <div class="kp-said">
-          <b>{t("keep.said")}</b>
-          <span>{k.said}</span>
-        </div>
+        <Said k={k} />
         {decisions.length > 0 && (
           <>
             <SectionHead label={t("keep.waiting")} />
@@ -551,3 +861,4 @@ export function KeepReceipt({ card }: { card: KeepCard }) {
 
 A.openKeep = openKeep;
 A.onKeepFrame = onKeepFrame;
+A.onKeepEdit = onKeepEdit;

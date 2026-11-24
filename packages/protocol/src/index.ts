@@ -681,6 +681,9 @@ export interface Bodies {
   // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
   // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
   keep_round: { keepId: string; round: string; line?: string; failed?: true };
+  // D533: a change to a Keep, by the person on its page or by the partner (keep_change), on stream
+  // keep:<keepId>: each field from and to, shown as a line among its rounds.
+  keep_edit: { keepId: string } & import("./keeps.ts").KeepEditLine;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).

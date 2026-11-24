@@ -311,6 +311,9 @@ export type PastClientFrame =
   // D511: one Keep's page (keep_result); its gestures (action_result, then a fresh keep_result and On hand).
   | { t: "keep"; id: string }
   | ({ t: "keep_action"; id: string } & import("./keeps.ts").KeepAction)
+  // D533: an edit on a Keep's page (the one path the partner's keep_change takes too), and edited words to read into rules.
+  | { t: "keep_change"; id: string; change: import("./keeps.ts").KeepChange; undo?: boolean }
+  | { t: "keep_words"; id: string; said: string }
   // Answered with action_result (taskId: the id, action: the action's name), then ongoing_result.
   | ({ t: "ongoing_action"; kind: "routine" | "task"; id: string } & OngoingAction);
 
@@ -329,4 +332,7 @@ export type PastServerFrame =
   | { t: "past_marked"; taskId: string; mark: PastMark | null }
   | { t: "ongoing_result"; id?: string; items: OngoingItem[] }
   // D511: a Keep's page; absent: no Keep by that id for this partner.
-  | { t: "keep_result"; id: string; keep?: import("./keeps.ts").KeepPage };
+  | { t: "keep_result"; id: string; keep?: import("./keeps.ts").KeepPage }
+  // D533: an edit's result (each field from and to, and the change that undoes it), and the rules read from edited words.
+  | { t: "keep_changed"; id: string; ok: boolean; error?: string; edits?: import("./keeps.ts").KeepEdit[]; undo?: import("./keeps.ts").KeepChange; undone?: boolean }
+  | { t: "keep_proposal"; id: string; proposal: import("./keeps.ts").KeepProposal };

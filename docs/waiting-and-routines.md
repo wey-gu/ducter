@@ -66,6 +66,18 @@ which computer and which AI agent run it. **⋯ › How often** sets it (every 1
 to every 4 hours). You can ask too: "how is my loop doing?" (one line back: how often, the next round, on time or not), "make the review every hour",
 "pause it until tomorrow", "stop it".
 
+You can also change it yourself, on its own page (open it from On hand › Looking after). Under
+**How it runs**, each rule has **Change** beside its name: how often it wakes (a number of minutes,
+or every day or weekdays at a time), when it ends, when it speaks (when there's news, only when you
+need to decide, or after every round), its limit (for one your agents hand work to, how many pieces
+a day before it asks you), which computer and which AI agent do it, and the name your agents find it
+by. A change takes effect at once, and **Undo** under the card puts it back. **You said** can be
+edited too: when you save your new words, Ducter reads which rules they change and shows them
+(every 45 minutes → every hour) before anything changes; **Change it** applies them, **Only the words**
+keeps the rules as they are. Every change, yours or your partner's, is written among its rounds
+("You changed: every 45 minutes → every hour"), and its next round follows it. No change, by hand
+or in words, lets it send, pay or delete without asking you.
+
 ## "Remind me …" and what you said you'd do
 
 > Remind me at 3 this afternoon to pay the landlord.

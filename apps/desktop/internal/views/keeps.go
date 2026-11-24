@@ -35,11 +35,15 @@ type keepState struct {
 	sentAt  time.Time
 	told    string
 	round   string
+	// D533: a rule or the person's words being changed in place.
+	edit keepEdit
 }
 
 // openKeep opens a Keep's page in On hand's place and asks the home for it.
 func (a *App) openKeep(id string) {
 	a.oh.keep = keepState{open: id, askedAt: time.Now()}
+	// D533: answers to edits made before this page opened are not this page's.
+	a.oh.keep.edit.seen, a.oh.keep.edit.seenProp = a.S.KeepChanged[id], a.S.KeepProposals[id]
 	a.send(protocol.KeepReq{T: "keep", ID: id})
 	a.Route = RouteOnHand
 }
@@ -448,6 +452,7 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 		ks.sig, ks.askedAt = sig, time.Now()
 		a.send(protocol.KeepReq{T: "keep", ID: ks.open})
 	}
+	a.keepEditSync(ks.open)
 	if k == nil {
 		msg := a.L.T("keep.loading")
 		if sheet == nil {
@@ -511,10 +516,7 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 			})
 		})
 	})
-	ui.Column(c.Key("said")).Width(w).Gap(2).Padding(12, 14).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		uiText(c.Key("k"), a.L.T("keep.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		uiText(c.Key("v"), keepWords(autospace(k.Said))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft)
-	})
+	a.keepSaid(c, k, w)
 	// 在等你: its tasks' questions, answered in place (the same card as in 等你).
 	// Its tasks' questions: its items', and its own loop's (D519), each once.
 	var asking []*store.Task
@@ -649,7 +651,14 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 	}
 	ks := &a.oh.keep
 	for i, r := range k.Rounds {
-		quiet := r.Spoke == "silent" && r.State != "running" && r.State != "failed"
+		// D533: a change the person or the partner made is never folded away.
+		quiet := r.Spoke == "silent" && r.State != "running" && r.State != "failed" && r.Woke != "edit"
+		if r.Woke == "edit" && r.Edit != nil {
+			r := r
+			shown++
+			line(fmt.Sprint("rd", i)).Children(func() { a.keepEditRound(c, r) })
+			continue
+		}
 		if quiet && shown >= 4 {
 			fold++
 			continue
@@ -781,141 +790,5 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 		if ks.told == k.ID && ks.said == "" {
 			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.S.PersonaName)).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
 		}
-	})
-}
-
-// keepRules is 怎么照看 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
-func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
-	t := a.T
-	w := float32(320)
-	a.keepCard(c, "rules", w, func() {
-		ui.Column(c.Key("rules")).Width(w).Padding(4, 16, 16, 16).Children(func() {
-			type rule struct {
-				k     string
-				v     []string
-				muted string
-			}
-			var wakes []string
-			onlyArrives := true
-			for _, x := range k.Wakes {
-				switch x.Kind {
-				case "arrives":
-					wakes = append(wakes, a.L.T("keep.wake.arrives"))
-				case "every":
-					onlyArrives = false
-					wakes = append(wakes, a.L.T("keep.every", a.duration(time.Duration(x.EveryMs)*time.Millisecond)))
-				case "at":
-					onlyArrives = false
-					wakes = append(wakes, x.Words)
-				default:
-					if x.Words != "" {
-						onlyArrives = false
-						wakes = append(wakes, a.L.T("keep.wake.changes", x.Words))
-					} else {
-						wakes = append(wakes, a.L.T("keep.wake.changes.prs"))
-					}
-				}
-			}
-			speaks := k.Speaks
-			if speaks == "" {
-				speaks = a.L.T("keep.speaks.default")
-			}
-			rules := []rule{{"keep.rule.wakes", wakes, ""}}
-			// Its end as given, or as the model read it from their words; nothing until it has (never a guess).
-			switch {
-			case k.Until != "":
-				rules = append(rules, rule{"keep.rule.until", []string{k.Until}, ""})
-			case k.NoEnd:
-				rules = append(rules, rule{"keep.rule.until", []string{a.L.T("keep.until.none")}, ""})
-			}
-			rules = append(rules, rule{"keep.rule.speaks", []string{speaks}, a.L.T("keep.speaks.quiet")})
-			if k.Limits != "" || k.Run == "perItem" {
-				l := k.Limits
-				if l == "" {
-					l = a.L.T("keep.limits.helper")
-				}
-				rules = append(rules, rule{"keep.rule.limits", []string{l}, ""})
-			}
-			if k.Where != nil {
-				var parts []string
-				if k.Where.DeviceName != "" {
-					parts = append(parts, k.Where.DeviceName)
-				}
-				if k.Where.Harness != "" {
-					parts = append(parts, harnessName(k.Where.Harness))
-				}
-				sep := a.L.T("keep.where.sep")
-				if len(parts) > 0 {
-					rules = append(rules, rule{"keep.rule.where", []string{strings.Join(parts, sep)}, ""})
-				}
-			}
-			if k.Address != nil {
-				rules = append(rules, rule{"keep.rule.address", []string{a.L.T("keep.address.name", k.Address.Name)}, a.L.T("keep.address." + k.Address.Mem)})
-			}
-			for i, r := range rules {
-				row := ui.Column(c.Key("ru:"+r.k)).Gap(2).Padding(12, 0)
-				if i < len(rules)-1 {
-					row.BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft)
-				}
-				row.Children(func() {
-					uiText(c.Key("k"), a.L.T(r.k)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-					for j, v := range r.v {
-						uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
-					}
-					if r.muted != "" {
-						uiText(c.Key("m"), r.muted).FontSize(t.SM).TextColor(t.InkMuted)
-					}
-				})
-			}
-			if k.Life == "done" || k.Life == "stopped" {
-				return
-			}
-			ks := &a.oh.keep
-			ui.Row(c.Key("acts")).Gap(8).Wrap().Padding(14, 0, 0, 0).Children(func() {
-				if k.Life == "paused" {
-					if a.buttonFor(c, a.L.T("keep.resume"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "resume"})
-					}
-				} else {
-					// D421: Pause's choices are the one clay menu.
-					a.menuOpener(c, "pause", a.L.T("keep.pause"), k.Title, btnSecondary, t.ControlSM, t.Surface, func(m *ui.Menu) {
-						now := a.Now()
-						morning := time.Date(now.Year(), now.Month(), now.Day()+1, 8, 0, 0, 0, now.Location())
-						for _, p := range []struct {
-							key   string
-							until time.Time
-						}{{"keep.pause.hour", now.Add(time.Hour)}, {"keep.pause.morning", morning}, {"keep.pause.week", now.Add(7 * 24 * time.Hour)}, {"keep.pause.resume", time.Time{}}} {
-							if m.Item(a.L.T(p.key)).ID(p.key).Chosen() {
-								f := protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "pause"}
-								if !p.until.IsZero() {
-									f.Until = p.until.UTC().Format(time.RFC3339)
-								}
-								a.send(f)
-							}
-						}
-					})
-				}
-				if k.Life == "on" && !onlyArrives && a.buttonFor(c, a.L.T("keep.look"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "look_now"})
-				}
-				if a.buttonFor(c, a.L.T("keep.stop"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-					ks.stop = !ks.stop
-				}
-			})
-			if ks.stop {
-				ui.Column(c.Key("stop-ask")).Gap(10).Padding(12).Margin(10, 0, 0, 0).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-					uiText(c.Key("q"), a.L.T("keep.stop.ask")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-					ui.Row(c.Key("acts")).Gap(8).Children(func() {
-						if a.buttonFor(c, a.L.T("keep.stop.go"), k.Title, btnPrimary, t.ControlSM, t.SurfaceSunken) {
-							a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "stop"})
-							ks.stop = false
-						}
-						if a.buttonFor(c, a.L.T("keep.stop.keep"), k.Title, btnSecondary, t.ControlSM, t.SurfaceSunken) {
-							ks.stop = false
-						}
-					})
-				})
-			}
-		})
 	})
 }

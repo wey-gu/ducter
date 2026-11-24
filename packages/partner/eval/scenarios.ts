@@ -2909,6 +2909,21 @@ export const scenarios: Scenario[] = [
     rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
   },
   {
+    // D533: who does a Keep's rounds is one of its rules, changed through keep_change like its rhythm (the page's 谁来做 too).
+    id: "loop-agent-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "review 那个以后让 Codex 来做" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change", args: { agent: "codex" } }], notCalled: ["task_open", "keep_make", "routine_propose"], noAsk: true },
+    rubric: "The user wants the review loop's rounds done by Codex from now on. The partner changes who does it on the same loop (keep_change with agent codex) and says so in one short Chinese line. Fail if it opens a new task, makes a second loop, or asks a question back.",
+  },
+  {
     id: "loop-status-en",
     category: "routines",
     lang: "en",

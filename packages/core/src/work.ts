@@ -37,6 +37,10 @@ export interface Work {
   /** false: this event must not wake the partner (a try of an `until` loop that is still going). */
   wakes(e: LogEvent): boolean;
   setJudge(j: Judge | undefined): void;
+  /** D533: a Keep's rules as they are now, told to each round of a task in rounds (or a routine's run) once the person changed them. */
+  setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
+  /** D533: a Keep's rules as they are now, told to each round of a task in rounds (or a routine's run) once the person changed them. */
+  setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
   stop(): void;
 }
 
@@ -207,7 +211,8 @@ export function createWork(o: WorkOptions): Work {
 
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
-  const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
+  let keepRules: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined;
+  const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone, rules: (routineId) => keepRules?.({ routineId }) });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
   const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone, ...(o.loopsWhere ? { where: o.loopsWhere } : {}) });
 
@@ -247,7 +252,10 @@ export function createWork(o: WorkOptions): Work {
       const wake = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       // D429: a round of a task in rounds says how a round ends (progress; done only for the person's until).
       const loop = !w.limit ? loops.get(w.taskId) : undefined;
-      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
+      const said0 = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
+      // D533: the person changed how it is looked after: this round hears its rules as they are now.
+      const rulesNow = loop?.state === "on" ? keepRules?.({ taskId: w.taskId }) : undefined;
+      const said = rulesNow ? `${said0}\n\n${rulesNow}` : said0;
       const text = w.limit ? said : withPRs(w.taskId, said);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
@@ -582,6 +590,7 @@ export function createWork(o: WorkOptions): Work {
     routines,
     loops,
     owned,
+    setKeepRules: (f) => void (keepRules = f),
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),

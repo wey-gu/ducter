@@ -169,7 +169,7 @@ export function ThinksSection() {
 }
 
 /** D390: up to this many models fit a segmented control; more (Codex's own list) are one pop-up (D445). */
-const SEG_MAX = 3;
+export const SEG_MAX = 3;
 
 /** 做事的 / Who does the tasks. */
 export function TasksSection() {
@@ -251,12 +251,12 @@ export function TasksSection() {
 }
 
 /** D510: the computers that run tasks (the home and the computers doing tasks for it), from the devices frame. */
-function taskComputers() {
+export function taskComputers() {
   return (A.devices ?? []).filter((d) => d.kind !== "phone" && (d.home || d.harnesses.length > 0));
 }
 
 /** D510: the AI agents signed in somewhere tasks run, each once (the home's alone with one computer). */
-function taskAgents(): string[] {
+export function taskAgents(): string[] {
   const comps = taskComputers();
   const hs = comps.length > 1 ? comps.flatMap((d) => d.harnesses) : readyAgents();
   return [...new Set(hs.filter((h) => h.installed && h.loggedIn && isHarnessId(h.harness) && HARNESSES[h.harness].task).map((h) => h.harness))];

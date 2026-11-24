@@ -2861,10 +2861,12 @@ type ClientFrame struct {
 type ServerFrame struct {
 	T string `json:"t"` // welcome | events | on_hand | task_history | sent | error
 	// Keep (D511): keep_result's page (ID is the Keep's); absent: no such Keep.
-	Keep        *KeepPage `json:"keep,omitempty"`
-	Persona     string    `json:"persona,omitempty"`
-	PersonaName string    `json:"personaName,omitempty"`
-	Machine     string    `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	Keep *KeepPage `json:"keep,omitempty"`
+	// KeepEdit (D533): keep_changed and keep_proposal, read on their own.
+	KeepEdit    *KeepEditFrame `json:"-"`
+	Persona     string         `json:"persona,omitempty"`
+	PersonaName string         `json:"personaName,omitempty"`
+	Machine     string         `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
 	// a socket silent for 45 s may be closed and dialled again.
 	Ping bool `json:"ping,omitempty"`
@@ -3342,6 +3344,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	switch head.T {
 	case "apps", "app_open", "app_data", "app_ask_refused":
 		return decodeApps(data, ServerFrame{T: head.T})
+	case "keep_changed", "keep_proposal":
+		return decodeKeepEdit(data, ServerFrame{T: head.T})
 	case "mem_answered":
 		// D465: its "answer" is a word where the shared struct's is the workbench's.
 		return decodeMemAnswered(data, ServerFrame{T: head.T})

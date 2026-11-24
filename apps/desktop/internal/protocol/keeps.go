@@ -1,5 +1,7 @@
 package protocol
 
+import "encoding/json"
+
 // D511: 照看 / Looking after (packages/protocol/src/keeps.ts). A Keep is
 // something the person asked Ducter to look after over time: a routine, a task
 // in rounds and a helper are each one. On hand gives each Keep on or paused
@@ -39,6 +41,25 @@ type KeepRound struct {
 	Spoke  string `json:"spoke"`
 	State  string `json:"state"`
 	TaskID string `json:"taskId,omitempty"`
+	// Edit (D533): Woke "edit" is not a wake but a change the person or the
+	// partner made, said as a line among the rounds.
+	Edit *KeepEditLine `json:"edit,omitempty"`
+}
+
+// KeepEdit is one field changed (D533), from and to as the page says them
+// (every: minutes; agent: a harness; where: a computer's name; cap: a number).
+type KeepEdit struct {
+	Field string `json:"field"`
+	From  string `json:"from,omitempty"`
+	To    string `json:"to,omitempty"`
+}
+
+// KeepEditLine is one change: who made it (you, partner) and what changed;
+// Undo: it put back the change before it.
+type KeepEditLine struct {
+	By    string     `json:"by"`
+	Edits []KeepEdit `json:"edits"`
+	Undo  bool       `json:"undo,omitempty"`
 }
 
 // KeepLine is a Keep's last change in one sentence.
@@ -98,6 +119,95 @@ type KeepPage struct {
 	Rounds    []KeepRound `json:"rounds"`
 	Where     *KeepWhere  `json:"where,omitempty"`
 	Decisions []string    `json:"decisions"`
+	// D533: what the person may change in place, its clock, a helper's cap a
+	// day, and the computer and agent its rounds go to (absent: Ducter picks).
+	Editable []string        `json:"editable,omitempty"`
+	At       *RoutineTrigger `json:"at,omitempty"`
+	Cap      int             `json:"cap,omitempty"`
+	Device   string          `json:"device,omitempty"`
+	Agent    string          `json:"agent,omitempty"`
+}
+
+// CanEdit is whether the page lets the person change field in place.
+func (k *KeepPage) CanEdit(field string) bool {
+	for _, f := range k.Editable {
+		if f == field {
+			return true
+		}
+	}
+	return false
+}
+
+// KeepAt is a Keep's clock as an edit sends it (every day or weekday, at a time).
+type KeepAt struct {
+	Every string `json:"every"`
+	Time  string `json:"time"`
+}
+
+// KeepChange is what an edit on a Keep's page changes (D533): the same shape
+// as the partner's keep_change. Until, speaks and limits are pointers so ""
+// (clear it) can be sent.
+type KeepChange struct {
+	Title        string  `json:"title,omitempty"`
+	Until        *string `json:"until,omitempty"`
+	Speaks       *string `json:"speaks,omitempty"`
+	Limits       *string `json:"limits,omitempty"`
+	EveryMinutes int     `json:"everyMinutes,omitempty"`
+	At           *KeepAt `json:"at,omitempty"`
+	Said         string  `json:"said,omitempty"`
+	Cap          int     `json:"cap,omitempty"`
+	Where        string  `json:"where,omitempty"`
+	Agent        string  `json:"agent,omitempty"`
+	Address      string  `json:"address,omitempty"`
+}
+
+// KeepChangeReq is keep_change: an edit on a Keep's page (Undo: it puts back
+// the change before it). Answered with keep_changed and a fresh keep_result.
+type KeepChangeReq struct {
+	T      string     `json:"t"`
+	ID     string     `json:"id"`
+	Change KeepChange `json:"change"`
+	Undo   bool       `json:"undo,omitempty"`
+}
+
+// KeepWordsReq is keep_words: edited words for the cheap model to read into
+// the rules they change. Answered with keep_proposal; nothing applies.
+type KeepWordsReq struct {
+	T    string `json:"t"`
+	ID   string `json:"id"`
+	Said string `json:"said"`
+}
+
+// KeepProposal is the rules read from edited words (OK), or why not.
+type KeepProposal struct {
+	OK     bool       `json:"ok"`
+	Said   string     `json:"said"`
+	Change KeepChange `json:"change"`
+	Edits  []KeepEdit `json:"edits,omitempty"`
+	Error  string     `json:"error,omitempty"`
+}
+
+// KeepEditFrame is keep_changed (an edit's result: its edits and the change
+// that undoes it) or keep_proposal (Proposal set).
+type KeepEditFrame struct {
+	T        string        `json:"t"`
+	ID       string        `json:"id"`
+	OK       bool          `json:"ok"`
+	Error    string        `json:"error,omitempty"`
+	Edits    []KeepEdit    `json:"edits,omitempty"`
+	Undo     *KeepChange   `json:"undo,omitempty"`
+	Undone   bool          `json:"undone,omitempty"`
+	Proposal *KeepProposal `json:"proposal,omitempty"`
+}
+
+func decodeKeepEdit(data []byte, f ServerFrame) (ServerFrame, error) {
+	var k KeepEditFrame
+	if err := json.Unmarshal(data, &k); err != nil {
+		return f, err
+	}
+	f.ID = k.ID
+	f.KeepEdit = &k
+	return f, nil
 }
 
 // KeepCard is the receipt under the partner's words when a Keep was made.

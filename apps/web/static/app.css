@@ -22109,6 +22109,238 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-rules .ru .v.m {
   color: var(--ink-muted);
 }
+/* D533: a rule row changed in place (controls.tsx EditRow): its name and a quiet 改 on one line, the
+   control in its slot when open, then 取消 and 保存 at the row's right. */
+.edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.edit-row:last-of-type {
+  border-bottom: 0;
+}
+.er-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  min-height: 20px;
+}
+.edit-row .er-head .k {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+/* 改 sits on the name's line, its word on the card's text edge, quieter than a value; 36 tall to tap. */
+.er-head .btn {
+  margin: -8px -10px -8px 0;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.er-head .btn:hover:not(:disabled),
+.er-head .btn:focus-visible {
+  color: var(--ink);
+}
+.edit-row .v {
+  font-size: var(--sm);
+  color: var(--ink);
+  line-height: 1.5;
+}
+.edit-row .v.m {
+  color: var(--ink-muted);
+}
+.edit-row.open {
+  gap: var(--s2);
+}
+.er-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+.er-two {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.er-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.er-pick .lb {
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.er-err {
+  margin: 0;
+  font-size: var(--sm);
+  color: var(--failed-ink);
+  line-height: 1.5;
+}
+.er-acts {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.line-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: max(40px, 2.5rem);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+}
+.line-field::placeholder {
+  color: var(--ink-muted);
+}
+.line-field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.num-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.num-field .line-field {
+  width: 88px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.num-field .unit {
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+/* The person's words, being changed: the well grows with them; reading them breathes; the diff is old → new. */
+.kp-said .er-head b {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.kp-said.open {
+  gap: var(--s2);
+}
+.kp-said .textbox {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--sm);
+  line-height: 1.6;
+  resize: none;
+  field-sizing: content;
+}
+.kp-said .textbox:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.kp-reading {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  color: var(--ink-soft);
+}
+.kp-reading .breath {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--accent);
+  animation: kp-breath 1.6s ease-in-out infinite;
+}
+@keyframes kp-breath {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.kp-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.kp-diff .hd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.kp-drow {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: var(--s2);
+  align-items: baseline;
+}
+.kp-drow .k {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.kp-drow .ch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+.kp-drow .from {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-2);
+}
+.kp-drow .to {
+  color: var(--ink);
+  font-weight: 600;
+}
+.kp-drow .to::before {
+  content: "→";
+  margin-right: 6px;
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+/* The last change under the rules card, with its Undo. */
+.kp-changed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin: 10px 4px 0 16px;
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.kp-changed .w {
+  min-width: 0;
+}
+.kp-changed .btn {
+  flex: none;
+}
+.kp-rd.edit .did {
+  color: var(--ink-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kp-reading .breath {
+    animation-duration: 3.2s;
+  }
+}
 .kp-rules .acts {
   display: flex;
   flex-wrap: wrap;

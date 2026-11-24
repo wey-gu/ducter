@@ -215,8 +215,10 @@ await Bun.sleep(100);
 const ids = mid.keeps!.all().map((k) => `${k.title}=${k.keepId}`);
 await mid.stop();
 
+// D533: the person's edited words read into the rules they change: a fake cheap model that reads 每小时 / every hour as it would.
+const rulesAsk = async (r: { said: string }) => (/每小时|every hour/i.test(r.said) ? { everyMinutes: 60 } : {});
 // Serve from a core over the same Log, as after a restart.
-const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", work, keeps: { endAsk, roundAsk } });
+const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", work, keeps: { endAsk, roundAsk, rulesAsk } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 console.log(`[demo] D511 Looking after (${zh ? "zh" : "en"}) at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);

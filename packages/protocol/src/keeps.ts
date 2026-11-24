@@ -71,6 +71,8 @@ export interface KeepBody {
   end?: { at: string; said: "until" | "none" | "failed" };
   /** Carried over on start from `made`'s older record (D511's migration), never changing that record. */
   migratedAt?: string;
+  /** D533: the last time the person (or the partner) changed it: from then on each round is told its rules as they are now. */
+  editedAt?: string;
 }
 
 /** One thing a Keep holds now: a task at work on it, with the PR it owns and where that PR stands. */
@@ -90,8 +92,8 @@ export interface KeepItem {
 /** One round: one wake, what it did, and whether it spoke. Facts only; `did` is the round's own line. */
 export interface KeepRound {
   at: string;
-  /** time: its rhythm or its clock; arrival: work handed to it; change: a watched fact changed; now: the person's Look now; first: its first look. */
-  woke: "time" | "arrival" | "change" | "now" | "first";
+  /** time: its rhythm or its clock; arrival: work handed to it; change: a watched fact changed; now: the person's Look now; first: its first look; edit (D533, not a wake): the person or the partner changed it, `edit` says what. */
+  woke: "time" | "arrival" | "change" | "now" | "first" | "edit";
   /** What woke it, in words where there are some (#11030's CI; Codex). */
   wokeWhat?: string;
   /** What happened, in one line to the person in their language: the cheap model's reading of the
@@ -104,7 +106,35 @@ export interface KeepRound {
   spoke: "silent" | "told" | "asked";
   state: "running" | "done" | "failed" | "skipped";
   taskId?: string;
+  /** D533: a change to the Keep, as a line among its rounds (你改了：每 45 分钟 → 每小时). */
+  edit?: KeepEditLine;
 }
+
+/** D533: what a person can change on a Keep's page, each with its own control. */
+export type KeepField = "said" | "title" | "every" | "at" | "until" | "speaks" | "limits" | "cap" | "where" | "agent" | "address";
+
+/** D533: one field changed, from and to as the page says them (every: minutes; agent: a harness id;
+ *  where: a computer's name; at: its words; cap: a number; the rest their words). Absent: none. */
+export interface KeepEdit {
+  field: KeepField;
+  from?: string;
+  to?: string;
+}
+
+/** D533: one change: who made it and what changed; undo: it put back the change before it. */
+export interface KeepEditLine {
+  by: "you" | "partner";
+  edits: KeepEdit[];
+  undo?: true;
+}
+
+/** D533: the cap a person may set on a Keep with an address: pieces of work a day before it asks. */
+export const KEEP_CAP_MIN = 1;
+export const KEEP_CAP_MAX = 30;
+/** D533: a Keep's own words: a title or an address, a rule's words, the person's words. */
+export const KEEP_TITLE_MAX = 48;
+export const KEEP_RULE_MAX = 200;
+export const KEEP_SAID_MAX = 2000;
 
 /** A Keep on On hand: one sheet under 在照看的 / Looking after (the home's one model of its state). */
 export interface KeepSheet {
@@ -163,6 +193,15 @@ export interface KeepPage extends KeepSheet {
   decisions: string[];
   /** D407: the small app it fills. */
   app?: { id: string; name: string };
+  /** D533: what the person may change here in place, each with its control (the rest by talking). */
+  editable: KeepField[];
+  /** D533: its clock, for 什么时候醒's editor (a Keep on a schedule). */
+  at?: Extract<RoutineTrigger, { kind: "time" }>;
+  /** D533: pieces of work it takes in a day before it asks (a Keep with an address). */
+  cap?: number;
+  /** D533: the computer its rounds go to ("local": the home) and the agent, when one was named; absent: Ducter picks. */
+  device?: string;
+  agent?: string;
 }
 
 /** What 暂停 / Pause, 恢复 / Resume, 现在看一次 / Look now and 停下 / Stop do to a Keep. */
@@ -200,7 +239,8 @@ export function foldRounds(rounds: KeepRound[], keep = 4): ({ round: KeepRound }
   const out: ({ round: KeepRound } | { fold: number; since: string })[] = [];
   let shown = 0;
   for (const r of rounds) {
-    const quiet = r.spoke === "silent" && r.state !== "running" && r.state !== "failed";
+    // D533: a change the person or the partner made is never folded away with the quiet rounds.
+    const quiet = r.spoke === "silent" && r.state !== "running" && r.state !== "failed" && r.woke !== "edit";
     const last = out.at(-1);
     if (quiet && shown >= keep) {
       if (last && "fold" in last) {
@@ -245,9 +285,25 @@ export interface KeepChange {
   everyMinutes?: number;
   /** New times on the clock (a Keep on a schedule). */
   at?: Extract<RoutineTrigger, { kind: "time" }>;
+  /** D533: the person's own words, edited (their rules change only through a proposal they took). */
+  said?: string;
+  /** D533: pieces of work a day before it asks (a Keep with an address), KEEP_CAP_MIN..KEEP_CAP_MAX. */
+  cap?: number;
+  /** D533: the computer its rounds go to: "local", a worker's id, or "auto" (Ducter picks). */
+  where?: string;
+  /** D533: who does its rounds: an agent (a harness), or "auto". */
+  agent?: string;
+  /** D533: its name in Bridge, the one other agents find it by. */
+  address?: string;
   /** A gesture: pause (until a time), resume, look now, stop. */
   act?: KeepAction;
 }
+
+/** D533: what a change did: each field from and to, and the change that puts it back (Undo). */
+export type KeepChanged = { ok: true; keep: KeepBody; edits: KeepEdit[]; undo?: KeepChange } | { ok: false; error: string };
+
+/** D533: the rules the cheap model read from the person's edited words, shown as a diff before one Go. */
+export type KeepProposal = { ok: true; said: string; change: KeepChange; edits: KeepEdit[] } | { ok: false; said: string; error: string };
 
 export interface KeepsApi {
   /** Every Keep, ended ones too. */
@@ -264,7 +320,10 @@ export interface KeepsApi {
   page(id: string): KeepPage | undefined;
   act(id: string, a: KeepAction): Promise<{ ok: boolean; message?: string }>;
   make(input: KeepMakeInput): Promise<{ ok: true; keep: KeepBody; card: KeepCard } | { ok: false; error: string }>;
-  change(id: string, c: KeepChange): Promise<{ ok: true; keep: KeepBody } | { ok: false; error: string }>;
+  /** One path for the partner's keep_change and the person's edit on the page (D533): checked in code, recorded as a line among its rounds. */
+  change(id: string, c: KeepChange, o?: { by?: "you" | "partner"; undo?: boolean }): Promise<KeepChanged>;
+  /** D533: the person's edited words read once by the cheap model into the rules they change (nothing applied). */
+  propose(id: string, said: string): Promise<KeepProposal>;
   /** Every mechanism's record without a Keep gets one; every Keep's life follows its mechanism. */
   sync(): { made: number; changed: number };
   /** The one-line answer for one Keep in the person's language (keep_list's `say`). */

@@ -5046,10 +5046,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (ins.length !== 1) return undefined;
     const m = ins[0]!.body as Bodies["bridge_msg"];
     // D494: work handed to an on helper by one of the person's own agents: making the helper was the go
-    // (at most HELPER_DAILY a day each; the next asks). A teammate's agent still goes through its card.
+    // (at most HELPER_DAILY a day each, or the cap the person set on its Keep, D533; the next asks). A teammate's agent still goes through its card.
     if (m.helper) {
       const h = core.helpers?.get(m.helper);
-      if (!m.mine || h?.state !== "on" || helperClaims(h.id, DAY_MS) >= HELPER_DAILY) return undefined;
+      if (!m.mine || h?.state !== "on" || helperClaims(h.id, DAY_MS) >= (h.daily ?? HELPER_DAILY)) return undefined;
       return { ...m, agent: m.agent ?? m.host ?? m.from ?? "agent" };
     }
     if (!m.mine || !m.agent || !core.settings?.get().peers?.trusted.includes(m.agent)) return undefined;

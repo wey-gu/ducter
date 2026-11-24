@@ -644,3 +644,87 @@ export function TimeCol(p: { at: string; text: string }) {
     </time>
   );
 }
+
+/**
+ * D533: a rule row changed in place (a Keep's 怎么照看): its name, a quiet 改 / Change at the name's
+ * right while it may change, its value lines and a muted one. Open: the control in the slot under
+ * the name, then 取消 / Cancel and 保存 / Save (primary, last); Enter saves, Escape cancels. `error`
+ * stands under the control in the failed ink; `busy` says the change is on its way.
+ */
+export function EditRow(p: {
+  label: string;
+  values: string[];
+  muted?: string;
+  editable: boolean;
+  open: boolean;
+  busy?: boolean;
+  error?: string;
+  onOpen: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  children?: ComponentChildren;
+}) {
+  return (
+    <div
+      class={`edit-row${p.open ? " open" : ""}`}
+      onKeyDown={(e) => {
+        if (!p.open) return;
+        if (e.key === "Escape") e.stopPropagation(), p.onCancel();
+        if (e.key === "Enter" && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLButtonElement)) e.preventDefault(), p.onSave();
+      }}
+    >
+      <span class="er-head">
+        <span class="k">{p.label}</span>
+        {p.editable && !p.open && <Btn kind="text" size="sm" label={t("keep.edit")} about={t("keep.edit.about", p.label)} onClick={p.onOpen} />}
+      </span>
+      {!p.open &&
+        p.values.map((v) => (
+          <span key={v} class="v">
+            {v}
+          </span>
+        ))}
+      {!p.open && p.muted && <span class="v m">{p.muted}</span>}
+      {p.open && (
+        <>
+          <div class="er-slot">{p.children}</div>
+          {p.error && (
+            <p class="er-err" role="alert">
+              {p.error}
+            </p>
+          )}
+          <span class="er-acts">
+            <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
+            <Btn kind="primary" size="sm" label={p.busy ? t("keep.edit.saving") : t("keep.edit.save")} disabled={p.busy} onClick={p.onSave} />
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** D533: one line of words to change in place (a goal, a name, a time): a sunken well in the reading face. */
+export function LineField(p: { value: string; label: string; placeholder?: string; autoFocus?: boolean; mode?: "text" | "numeric"; onInput: (v: string) => void }) {
+  return (
+    <input
+      class="line-field"
+      value={p.value}
+      aria-label={p.label}
+      placeholder={p.placeholder}
+      inputMode={p.mode ?? "text"}
+      ref={(el) => {
+        if (p.autoFocus && el && document.activeElement !== el && !el.dataset.focused) (el.dataset.focused = "1"), el.focus();
+      }}
+      onInput={(e) => p.onInput((e.target as HTMLInputElement).value)}
+    />
+  );
+}
+
+/** D533: a whole number with its unit word after it ([45] 分钟一轮): digits only; the caller checks its range. */
+export function NumberField(p: { value: string; label: string; unit: string; autoFocus?: boolean; onInput: (v: string) => void }) {
+  return (
+    <span class="num-field">
+      <LineField value={p.value} label={p.label} mode="numeric" autoFocus={p.autoFocus} onInput={(v) => p.onInput(v.replace(/[^\d]/g, "").slice(0, 5))} />
+      <span class="unit">{p.unit}</span>
+    </span>
+  );
+}

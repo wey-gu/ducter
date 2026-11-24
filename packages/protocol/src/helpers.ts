@@ -41,6 +41,8 @@ export interface Helper {
   detail?: string;
   /** D507: what the partner last said of its address in the conversation (once each: ready, refused). */
   said?: "ready" | "refused";
+  /** D533: pieces of work it starts in a day without asking, as the person set it on its Keep (absent: HELPER_DAILY). */
+  daily?: number;
 }
 
 /** A helper as Settings › Agent 通信 shows it. */

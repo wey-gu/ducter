@@ -555,6 +555,9 @@ A new control is added to the set (and to this table) before it is used.
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
+| A rule row changed in place (a Keep's 怎么照看, D533): its name XS 700 muted with a quiet 改 / Change at its right while it may change, its value lines; open, the control in its slot, then 取消 and 保存 (primary, last); Enter saves, Escape cancels; an error under the control in the failed ink | `editRow` (`edit.go`) | `EditRow` |
+| One line of words changed in place (a Keep's goal, its name in Bridge, a time): a sunken well 40 tall, `RadiusSM`, the reading face (D533) | `lineField` (`edit.go`) | `LineField` |
+| A whole number with its unit word after it ([45] 分钟一轮, [10] 个一天; D533): digits only, tabular figures, 88 wide; the caller checks its range and says it in the failed ink | `numberField` (`edit.go`) | `NumberField` |
 
 **Deny by default (D519).** The guards cover every view file, never a list: Mac
 `TestSharedControlsEverywhere` walks every `.go` file in `views` but the files that define the set

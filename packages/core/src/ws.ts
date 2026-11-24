@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
 import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, KeepChange, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -2260,6 +2260,34 @@ export function createWsHandler(deps: WsDeps) {
         const id = String(f.id ?? "").slice(0, 64);
         const page = k.page(id);
         send(ws, { t: "keep_result", id, ...(page ? { keep: page } : {}) });
+        return;
+      }
+      case "keep_change": {
+        // D533: an edit on a Keep's page: the same path as the partner's keep_change, checked in core.
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const kid = String(f.id ?? "").slice(0, 64);
+        const c0 = (f.change ?? {}) as Record<string, unknown>;
+        const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2400) : undefined);
+        const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+        const at = c0.at && typeof c0.at === "object" ? (c0.at as KeepChange["at"]) : undefined;
+        const change: KeepChange = Object.fromEntries(
+          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at }).filter(([, v]) => v !== undefined),
+        );
+        const r = await k.change(kid, change, { by: "you", undo: f.undo === true }).catch((err: Error) => ({ ok: false as const, error: err.message }));
+        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
+        const page = k.page(kid);
+        send(ws, { t: "keep_result", id: kid, ...(page ? { keep: page } : {}) });
+        ongoingChanged();
+        return;
+      }
+      case "keep_words": {
+        // D533: edited words read once into the rules they change; nothing applies until the person's Go.
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const kid = String(f.id ?? "").slice(0, 64);
+        const proposal = await k.propose(kid, String(f.said ?? "").slice(0, 2400)).catch((err: Error) => ({ ok: false as const, said: String(f.said ?? ""), error: err.message }));
+        send(ws, { t: "keep_proposal", id: kid, proposal });
         return;
       }
       case "keep_action": {

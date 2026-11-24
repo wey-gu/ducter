@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.52 - 2026-11-25
+
+<!-- whats-new
+zh: 看守中的规则可以就地改，改了能撤销
+en: Change what Ducter looks after right on its page, and undo it
+-->
+
+**Change a Keep in place**
+- On a Keep's page each rule has 改 / Change: how often it wakes, until when, when it speaks up,
+  its limit, and where and who does it. A change applies at once and can be undone.
+- Edit what you said, and Ducter shows which rules that changes (old struck through, new in bold)
+  before you apply it.
+- Changes show in the rounds as one plain sentence; an undo removes its change, and several within
+  ten minutes become one line.
+
 ## 0.1.51 - 2026-11-25
 
 <!-- whats-new

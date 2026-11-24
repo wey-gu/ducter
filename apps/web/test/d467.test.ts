@@ -235,7 +235,9 @@ describe("On hand said once (D467 round 3)", () => {
     expect(onhand).not.toContain("BriefLines");
     expect(onhand).not.toContain("brief.told");
     expect(onhand).not.toContain("<WaitAxis");
-    expect(o.headLine("")).toBe(A.L.t("onhand.line.first", "17:00").replace("17:00", o.headLine("").match(/\d{1,2}:\d{2}/)?.[0] ?? ""));
+    // The time as said, with its day when 37 minutes from now is past midnight (明天 0:08).
+    const at = o.headLine("").match(/(?:明天 ?)?\d{1,2}:\d{2}/)?.[0] ?? "";
+    expect(o.headLine("")).toBe(A.L.t("onhand.line.first", at));
     A.S.tasks.clear();
   });
 

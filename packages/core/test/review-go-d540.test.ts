@@ -92,7 +92,7 @@ test("hel's #551: the one-off ask and the standing permission both reach the rou
 
   // 17:47 local: 「请 review 的 loop 直接 review …/pull/551 吧」: the partner steers the next round, now.
   const r = await partner(b, "keep_change", { id: "swj3zc4w", next_round: STEER, action: "look_now" });
-  expect(r).toMatchObject({ ok: true, nextRound: "kept: the next round's wake carries it first" });
+  expect(r).toMatchObject({ ok: true, roundAsk: STEER, starts: "now", nextRound: "kept: that round's wake carries it first" });
   // Never its goal: the Keep's end stays as it was.
   const k = b.core.keeps.get(b.core.keeps.ofTask("swj3zc4w")!.id)!;
   expect(k.until).toBeUndefined();

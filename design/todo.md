@@ -3053,7 +3053,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **D372: a preference only in Mem.** Done in D379 (2026-11-19) for a memory the partner's recall returns: read by code, applied, asked once to keep.
 - [x] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`). Done in D379: Ducter applies it by code.
 - [ ] **D379: a Mem-only saying the partner never recalls** (said to another tool, never in this conversation) still waits for a recall; a quiet Mem search for agent sayings (one query per agent, a few times a day) would catch it. Trigger: a task goes to an agent a memory says not to use, with no recall in that turn.
-- [ ] **D401: a where said in passing** ("要登录的网页都在 MacBook 上做", "验证都去 haswell") is still kept only by the partner's rule_save; a rule names an agent, and a where-only saying has none. Trigger: a task opened on another computer after the person said where this kind goes.
+- [x] **D401: a where said in passing** ("要登录的网页都在 MacBook 上做", "验证都去 haswell"): D538 keeps it as a computer rule (rule_save place, no agent), shown on that computer's card.
 - [ ] **D402: Discord read as the person** (a user connection, not OOMOL's bot): watch it when a source offers one with mentions and DMs. Trigger: such a connector in oo or OpenConnector.
 - [ ] **D402: the morning note names an account it couldn't read** ("Discord 还读不了") once, the first morning after it stopped. Trigger: a person who never opens Settings › Accounts asks why Discord was never mentioned.
 - [ ] **D379: sayings in other languages** (the parser knows zh and en words; a ko or ja saying is not read). Trigger: a person who says it in another language.
@@ -3293,6 +3293,37 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
 - **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).
 
+- [ ] **D534 live through the runner:** a Codex task given `$imagegen …` loads that skill, and a pi
+  task given `/skill:name` and `/template` expands them (both are listed token-free today; the
+  invocation is INFERRED for Codex and DOCUMENTED for pi, research/224). *Trigger:* the next
+  live check on hel with a Codex and a pi task.
+- [ ] **D534 OAR gaps** (drafts, not sent; research/224 §3): a structured Codex skill input
+  (`{type:"skill"}`) from `deliver`, so `$name` is exact; command catalogs for DeepSeek Harness
+  and Antigravity; Antigravity's `/compact` contract. Until then those commands are not offered.
+  *Trigger:* OAR publishes any of them.
+- [ ] **D534 the marks in the words** are a tint behind them (web) and the text's own colour (Mac),
+  not atomic chips, and the Mac's list sits at the composer's start rather than at the caret.
+  *Trigger:* the author finds the marks too quiet or wants the list at the caret on the Mac.
+
+## Which computer gets which work (D538, `where.md` §24)
+
+- [ ] **Live on hel and haswell:** a heavy verification task the author asks for lands on haswell
+  with **hel 内存不够**, and the card's 关于这台 shows both computers' real numbers. *Trigger:* the
+  release with D538 on both.
+- [ ] **A real Mem write:** a computer rule mirrored into the author's Space, read back by his own
+  Claude Code, then removed and archived (only fakes so far). *Trigger:* the author's go for one
+  real write.
+- [ ] **D524's memory watch on the card:** the day's out-of-memory stops come from the cgroup's own
+  counter; D524's memory watch keeps the biggest process at each stop (`memory-watch.json`), so the
+  card could name what was stopped. *Trigger:* the author asks what was stopped.
+- [ ] **A per-task memory fence** (`systemd-run --scope` with MemoryMax per task, D524's open item):
+  room only keeps a heavy task from starting where there is none; a task that grows after it starts
+  is still fenced only by the unit. *Trigger:* another OOM with D538 on.
+- [ ] **The ask for a pinned computer without room:** "hel 内存不够，等它，还是现在在 haswell 上做？",
+  like D157's asleep ask; today a pinned heavy task just waits. *Trigger:* the author waits on one.
+- [ ] **A computer's look on a phone app and the iPhone:** `DeviceView.resources` is on the frame;
+  the native apps don't show 关于这台 yet. *Trigger:* the next phone pass.
+
 ## The review loop posts what it reviewed (D540)
 
 - [ ] **A loop Keep's `until` reaches its rounds.** `keep_change until` on a loop writes the Keep but not the
@@ -3300,7 +3331,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
   D540 because hel's Keep `kp_8907c58d86` holds a one-off steer in `until` (2026-11-24 09:47 UTC): synced,
   its rounds would read 「本轮优先直接评审 …#551…」 as the condition that ends the loop. *Trigger:* hel's
   goal cleared (the partner's `keep_change until ""`), then sync both ways with a test.
-- [ ] **An approval when the review finds nothing.** D540 posts a comment-only review with its conclusion;
-  GitHub's Approve (or Prow's `/lgtm`) stays the person's. *Trigger:* the author asks the loop to approve.
+- [ ] **Clear hel's Keep goal.** `kp_8907c58d86`'s `until` holds the 09:47 UTC steer; the lead has the
+  partner run `keep_change until ""` on it. *Trigger:* hel upgraded to the release with D540 (0.1.48).
+- [ ] **An approval when the review finds nothing.** D540 posts a comment-only review stating the verdict,
+  never an Approve (it gates merges). Approvals would be their own standing permission (a new action).
+  *Trigger:* the author says approvals may go without asking too.
 - [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
   change gets a review on GitHub. *Trigger:* hel on the release with D540.

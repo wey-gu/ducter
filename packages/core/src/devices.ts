@@ -39,6 +39,8 @@ export interface DeviceProbes {
   harnesses(): Promise<(Omit<DeviceHarness, "canBePartner"> & { canBePartner?: boolean })[]>;
   /** laptop | mini | server for this machine. */
   kind(): Promise<DeviceKind>;
+  /** D538: this computer's own look (memory, cores, disk); tests and demos give a fixed one. */
+  resources?(): Promise<import("@ducter/protocol").DeviceResources | undefined>;
 }
 
 export interface DevicesOptions {
@@ -53,6 +55,8 @@ export interface DevicesOptions {
   recordsOn?: () => boolean;
   /** D514: the working copies tidied on a computer so far ("local" the home). */
   tidied?: (device: string) => { count: number; bytes: number } | undefined;
+  /** D538: the home's own look at itself (memory, cores, disk, the kernel's stops), as last taken. */
+  resources?: () => import("@ducter/protocol").DeviceResources | undefined;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -413,6 +417,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       abilities: [webAbility(me.cua, me.native), (await o.computer?.ability().catch(() => undefined)) ?? later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
       ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.("local")),
+      ...((r) => (r ? { resources: r } : {}))(o.resources?.()),
     };
     const up = o.updates?.();
     const homeUpdate = o.self ? up?.view("local", o.self.version, o.self.how) : undefined;
@@ -475,6 +480,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           // D377: the person's own agents' records there: only while looking is on, only with records there or a yes.
           ...(hello?.records && o.recordsOn?.() && (hello.records.state === "on" || hello.records.agents?.length) ? { records: hello.records } : {}),
           ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.(d.id)),
+          // D538: what it has and has free, from its own heartbeat, only while it is connected.
+          ...(on && hello?.resources ? { resources: hello.resources } : {}),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];

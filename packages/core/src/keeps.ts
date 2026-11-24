@@ -929,8 +929,13 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
       if (!r.ok) return { ok: false, error: r.error };
       const s = keeps.sheets(persona()).find((x) => x.id === k.keepId);
       // D540: where the one-off ask went: its round under way has it now, or its next round's wake carries it first.
-      const next = typeof a.next_round === "string" && a.next_round.trim() ? { nextRound: r.keep.next ? "kept: the next round's wake carries it first" : "told: the round under way has it now" } : {};
-      return { ok: true, life: r.keep.life, ...(s?.nextAt ? { nextAt: s.nextAt } : {}), ...next, say: keeps.say(k.keepId) };
+      // D540: the ask echoed with where it went, so the line back says what happens to it this round.
+      const ask = typeof a.next_round === "string" ? a.next_round.trim() : "";
+      if (ask) {
+        const starts = action === "look_now" || !r.keep.next ? "now" : s?.nextAt ? `at its next round (${s.nextAt})` : "at its next round";
+        return { ok: true, life: r.keep.life, roundAsk: ask, starts, nextRound: r.keep.next ? "kept: that round's wake carries it first" : "told: the round under way has it now", tell: `Say in one line that it takes this ask first, ${starts}: name what it will do (the PR, the item), not the schedule.` };
+      }
+      return { ok: true, life: r.keep.life, ...(s?.nextAt ? { nextAt: s.nextAt } : {}), say: keeps.say(k.keepId) };
     },
   );
 }

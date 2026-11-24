@@ -336,7 +336,7 @@ func (a *App) flushMediaSends() {
 		p := &a.pending[i]
 		if len(p.atts) > 0 && !p.sent && allReady(p.atts) {
 			p.sent = true
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want(), Refs: p.refs})
 		}
 	}
 	m := a.med()
@@ -948,7 +948,8 @@ func (a *App) sendToTaskWith(id, text, cid, mode string, atts []*attach) {
 	}
 	sd := a.S.AddSend(id, text, cid)
 	sd.At, sd.Media = a.Now(), refsOf(atts)
-	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts), Mode: mode})
+	sd.Refs = a.takeRefs(id, text) // D534
+	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts), Mode: mode, Refs: sd.Refs})
 }
 
 // waitingTaskSends are a task's messages whose pictures are still going up.

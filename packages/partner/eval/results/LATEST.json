@@ -1,9 +1,9 @@
 {
-  "file": "2026-11-24-haiku-d540-2.md",
+  "file": "2026-11-24-haiku-d540-merged.md",
   "date": "2026-11-24",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "230/288",
-  "persona": "281600524eb1dead",
-  "tools": "5df580231fd213fd"
+  "pass": "236/293",
+  "persona": "2859d6b45573b83f",
+  "tools": "bfd88b0c45fc292a"
 }

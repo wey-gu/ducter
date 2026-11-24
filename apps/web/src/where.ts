@@ -55,6 +55,9 @@ export function whereReason(w: WhereWhy | undefined): string {
       return "";
     case "awake":
       return t("where.reason.awake", w.other ?? "", dev);
+    case "room":
+      // D538: heavy work, and the other computer hasn't the memory free for it now.
+      return t("where.reason.room", w.other ?? "");
     case "changes_here":
       return t("where.reason.changes", dev);
     case "agent_here":
@@ -83,7 +86,7 @@ export function whereCandReason(c: Candidate): string {
   if (c.blocked === "no_web") return t("switch.cant.webpages");
   if (c.blocked === "no_phone") return t("switch.cant.phone", name);
   if (c.blocked === "elsewhere") return t("switch.cant.folder");
-  if (!c.blocked && c.waits) return t(c.waits === "asleep" ? "switch.waits" : "switch.waits.away");
+  if (!c.blocked && c.waits) return t(c.waits === "asleep" ? "switch.waits" : c.waits === "room" ? "switch.waits.room" : "switch.waits.away");
   return "";
 }
 
@@ -120,6 +123,8 @@ export function deviceWait(reason: string): string | undefined {
   if (asleep) return t("where.waiting", asleep[1]);
   const away = /^device:unreachable:(.+)$/.exec(reason);
   if (away) return t("device.unreachable", away[1]);
+  const room = /^device:room:(.+)$/.exec(reason); // D538
+  if (room) return t("where.waiting.room", room[1]);
   if (reason === "browser:native_missing") return t("wait.native_missing"); // D207
   return undefined;
 }

@@ -419,6 +419,26 @@ going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has
 Sign-ins never copy between computers: a site you're signed in to in your Mac's Chrome isn't
 signed in on the server, and the other way round.
 
+### Which work goes on which computer
+
+Each computer keeps an eye on itself: how much memory it has and how much is free right now, its
+cores, its disk, and whether it ran out of memory lately. You never have to tell Ducter any of this.
+Open a computer's card and tap **About this computer** to see it in plain words: *Memory 64 GB, 41 GB
+free now*, *Room for 8 heavy jobs at once (builds, tests)*.
+
+Heavy work (a full test run, type checks, a build, a browser test, a dev server) goes to a computer
+with room for it. When none has room right now, the task waits, saying *Waiting for room on hel*, and
+starts by itself as soon as there is. A task on a roomier computer says why: *Why haswell: hel is
+short on memory*.
+
+To steer it yourself, say it once: *"haswell has lots of memory, put verification and test runs
+there"*, or *"no browsers on hel"*. Or, under **You said** on that computer's card, tap **Add one**
+and choose **More here** or **Less here** and which work (**Heavy**, **Web** or **All**). Each one shows
+in your words on the card and on the Partner page, with **Change** and **Remove**. What a task needs
+still comes first (your Chrome, a Mac app, the only copy of a folder), and a computer you name for
+one task always wins. If you use Nowledge Mem, these are saved there too, so your other AI tools
+know them.
+
 ## It keeps working when you close the window
 
 The window is only a view. Ducter is the one doing the work, so:

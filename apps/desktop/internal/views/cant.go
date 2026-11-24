@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // cantLine (D415, D472) is the line, each why with the words it takes.
@@ -145,6 +146,21 @@ func (a *App) cantHint(k *protocol.CantStart) string {
 		return a.L.T("cant.retry.hint")
 	}
 	return ""
+}
+
+// cantOffersSwitch: the task couldn't start and its own fixes hold 换谁来做 (D549),
+// so the meta line leaves its own link out: the action shows once.
+func (a *App) cantOffersSwitch(task *store.Task) bool {
+	k := task.Cant()
+	if task.Attention() != protocol.Failed || k == nil {
+		return false
+	}
+	for _, f := range a.cantFixes(k) {
+		if f.act == "switch" {
+			return true
+		}
+	}
+	return false
 }
 
 // doCantFix does one fix (a tap on the page or in the brief).

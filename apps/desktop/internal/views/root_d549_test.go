@@ -110,6 +110,26 @@ func TestD549CardSaysWhyWithTheSwitchNeverRetry(t *testing.T) {
 		if !tt.HasText(sw) {
 			t.Errorf("%s: no %q fix", lang, sw)
 		}
+		// Once, and in order: the title, the meta line, then the failure block.
+		n, lineY, tagY := 0, float32(-1), float32(-1)
+		tag := app.tagLabel(protocol.Failed)
+		for _, ai := range tt.AccessAll() {
+			if (ai.Role == ui.RoleButton || ai.Role == ui.RoleLink) && strings.HasPrefix(ai.Name, sw) {
+				n++
+			}
+			if strings.HasPrefix(ai.Name, line) && lineY < 0 {
+				lineY = ai.Bounds.Y
+			}
+			if ai.Name == tag && tagY < 0 {
+				tagY = ai.Bounds.Y
+			}
+		}
+		if n != 1 {
+			t.Errorf("%s: %q shows %d times, want once", lang, sw, n)
+		}
+		if lineY < 0 || tagY < 0 || lineY <= tagY {
+			t.Errorf("%s: the failure block (y %v) isn't under the meta line (y %v)", lang, lineY, tagY)
+		}
 		for _, ai := range tt.AccessAll() {
 			if ai.Role == ui.RoleButton && ai.Name == retry {
 				t.Errorf("%s: %q on a cause that holds", lang, retry)

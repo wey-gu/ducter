@@ -419,7 +419,8 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 				wt.Tooltip(why)
 			}
 		}
-		if canSwitch(task) && a.quietLink(c.Key("sw"), "who:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
+		// D549: once: the failure block's own 换谁来做 button stands for it.
+		if canSwitch(task) && !a.cantOffersSwitch(task) && a.quietLink(c.Key("sw"), "who:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
 			a.openSwitch(task.ID)
 		}
 	})

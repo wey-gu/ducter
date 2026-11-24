@@ -727,8 +727,8 @@ export const scenarios: Scenario[] = [
     category: "work-over-time",
     lang: "zh",
     steps: [{ user: "每周一早上 9 点给我一份周报，看看 hawdb 和 ducter 上周合了什么、卡在哪儿" }],
-    expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 90, proseForbid: [/已经(开始|设好|安排好)|模型|命令/] },
-    rubric: "It proposes a weekly routine (Mondays 9:00) with a proposal card and at most one short Chinese line; it does not claim the routine is already on before the user presses Go, and it does not restate the card.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_make" }], notCalled: ["routine_propose"], proseForbid: [/模型|命令/] },
+    rubric: "D511: a weekly report only reads and drafts, so Ducter looks after it from now on, made at once (keep_make, Mondays 9:00) with its receipt card under one short Chinese line (好，我来照看：… is fine); no Go card first. It doesn't restate the card at length or name tools, models or commands.",
   },
   {
     // D245: a routine "when something changes", watched without a model.

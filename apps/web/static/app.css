@@ -22305,6 +22305,16 @@ html[data-text-size="large"] .brand-mark > svg {
     gap: 10px;
     padding-left: 14px;
   }
+  /* An open round gives its report the row's width: how it ended and Details go under it. */
+  .kp-rd.open {
+    grid-template-columns: var(--time-col) minmax(0, 1fr);
+  }
+  .kp-rd.open .end {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
   .kp-talk {
     margin-bottom: 12px;
   }

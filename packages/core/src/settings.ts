@@ -423,9 +423,11 @@ export function openSettings(opts: {
       const b = patch.brain as Partial<Brain> | undefined;
       if (b && typeof b === "object" && isHarnessId(b.harness) && HARNESSES[b.harness].partner) {
         const model = typeof b.model === "string" && b.model.trim() ? b.model.trim().slice(0, 120) : undefined;
-        const next: Brain = { harness: b.harness, ...(model ? { model } : {}) };
+        // D536: and how hard it thinks (one of the model's own levels; a short id, else none).
+        const effort = typeof b.effort === "string" && /^[a-z0-9_-]{1,20}$/i.test(b.effort.trim()) ? b.effort.trim() : undefined;
+        const next: Brain = { harness: b.harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
         const cur = get().brain;
-        if (cur.harness !== next.harness || cur.model !== next.model) (data.brain = next), did.push("brain");
+        if (cur.harness !== next.harness || cur.model !== next.model || cur.effort !== next.effort) (data.brain = next), did.push("brain");
       }
       const ta = patch.taskAccounts;
       if (ta && typeof ta === "object") {

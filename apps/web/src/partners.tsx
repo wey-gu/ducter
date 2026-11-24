@@ -11,10 +11,83 @@
 // A partner can also be made, renamed or handed the person's words from the conversation.
 import { useState } from "preact/hooks";
 import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
-import type { PartnerAsk } from "@ducter/protocol";
+import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { AddRow, Btn, Chev, CountPebble } from "./controls.tsx";
+import { Coin } from "./coin.tsx";
+import { AddRow, Btn, Chev, CountPebble, Facts } from "./controls.tsx";
+import { harnessName, modelName } from "./format.ts";
+import { Select } from "./menu.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
+
+/** D536: the models the home offers an agent to think with (settings.brainOptions, else brainNow's own). */
+function brainModels(harness: string) {
+  return A.brainOptions?.find((o) => o.harness === harness)?.models ?? (A.brainNow?.harness === harness ? A.brainNow.models : []);
+}
+
+/** D536: what a partner thinks with as set: its own, else none (it follows the default's). The default's is brainNow. */
+function thinksOf(p: PartnerInfo): Brain | undefined {
+  if (p.id === DEFAULT_PARTNER) return A.brainNow ?? A.settings?.brain;
+  return p.brain;
+}
+
+/** D536: the line under a partner's name: its agent's coin, the agent, its model and effort, each its own fact; else the same as the default's. */
+function ThinksLine({ p }: { p: PartnerInfo }) {
+  const b = thinksOf(p);
+  if (!b) return <small class="partner-thinks same">{t("partners.thinks.same", A.defaultName())}</small>;
+  const m = b.model ? (brainModels(b.harness).find((x) => x.id === b.model)?.label ?? modelName(b.model)) : undefined;
+  return (
+    <small class="partner-thinks">
+      <Coin harness={b.harness} size={18} />
+      <Facts items={[t("partners.thinks.with", harnessName(b.harness)), m, b.effort ? t("partners.thinks.effort", t(`effort.${b.effort}`)) : null, p.id === DEFAULT_PARTNER && (A.partners?.length ?? 0) > 1 ? t("partners.thinks.default") : null]} />
+    </small>
+  );
+}
+
+const SAME = "same";
+
+/** D536: 改一下's 想事情用 for another partner: the same as the default's, or an agent the home has, its model and its effort. A pick applies at once, as a colour does. */
+function ThinksPick({ p }: { p: PartnerInfo }) {
+  const opts = A.brainOptions ?? [];
+  if (!opts.length || p.id === DEFAULT_PARTNER) return null;
+  const own = p.brain;
+  const agents = [{ v: SAME, label: t("partners.thinks.same.pick", A.defaultName()) }, ...opts.map((o) => ({ v: o.harness as string, label: harnessName(o.harness) }))];
+  const models = own ? brainModels(own.harness) : [];
+  const model = own ? (models.find((m) => m.id === own.model) ?? models.find((m) => m.default) ?? models[0]) : undefined;
+  const efforts = model?.efforts ?? [];
+  const set = (b: Brain | null) => A.setPartner(p.id, { brain: b });
+  const pickAgent = (v: string) => {
+    if (v === SAME) return own && set(null);
+    if (own?.harness === v) return;
+    const ms = brainModels(v);
+    const m = ms.find((x) => x.default) ?? ms[0];
+    set({ harness: v as HarnessId, ...(m ? { model: m.id } : {}) });
+  };
+  return (
+    <span class="partner-thinks-pick">
+      <span class="pick">
+        <span class="small">{t("partners.thinks.title")}</span>
+        <Select label={t("partners.thinks.title")} value={own?.harness ?? SAME} options={agents} onPick={pickAgent} />
+      </span>
+      {own && model && models.length > 1 && (
+        <span class="pick">
+          <span class="small">{t("loadout.brain.model")}</span>
+          <Select label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={(v) => v !== own.model && set({ harness: own.harness, model: v })} />
+        </span>
+      )}
+      {own && model && efforts.length > 0 && (
+        <span class="pick">
+          <span class="small">{t("newtask.effort")}</span>
+          <Select
+            label={t("newtask.effort")}
+            value={own.effort && efforts.includes(own.effort) ? own.effort : ""}
+            options={[{ v: "", label: t("newtask.effort.default") }, ...efforts.map((e) => ({ v: e, label: t(`effort.${e}`) }))]}
+            onPick={(v) => set({ harness: own.harness, model: model.id, ...(v ? { effort: v } : {}) })}
+          />
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
  *  "stone" stays for the code (D309's disc); nothing on screen says it. */
@@ -266,12 +339,14 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
             <>
               <b>{p.name}</b>
               {p.about ? <small class="partner-about">{t("partners.about.shown", p.about)}</small> : null}
+              <ThinksLine p={p} />
             </>
           )}
           {shown ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
       <LookPick value={p.look} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+      {editing && <ThinksPick p={p} />}
       <span class="partner-acts">
         {editing ? (
           <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />

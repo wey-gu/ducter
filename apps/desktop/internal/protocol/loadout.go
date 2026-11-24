@@ -15,6 +15,8 @@ const KindBodySelected = "body_selected"
 type Brain struct {
 	Harness string `json:"harness"`
 	Model   string `json:"model,omitempty"`
+	// Effort is how hard it thinks (D536): one of the model's own levels; "" its default.
+	Effort string `json:"effort,omitempty"`
 }
 
 // TaskAccount is one account's 用它做事 / Use it for tasks switch.

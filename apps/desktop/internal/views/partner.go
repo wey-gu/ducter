@@ -34,6 +34,8 @@ type partnerState struct {
 	qOpenStart, qOpenEnd, qJust bool
 	// D445: the model list under 想事情用 is open.
 	modelOpen bool
+	// D536: the effort list under it is open.
+	effortOpen bool
 	toast     string
 	toastAt   time.Time
 	toastTone noticeTone // set with every toast: an error never wears the done look (D158)

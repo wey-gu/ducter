@@ -1551,7 +1551,8 @@ export type ClientFrame =
   // Switching is a new hello with persona: the socket then shows that partner's conversation.
   | { t: "partners" }
   | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
-  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  // D536: brain, what another partner thinks with (null: the same as the default partner's, Settings.brain).
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; brain?: Brain | null; clientId?: string }
   // D486: removes another partner (never the default): its conversation stays in the Log, unread;
   // its tasks and routines become the default's; a device showing it shows the default's.
   | { t: "partner_remove"; id: string; clientId?: string }
@@ -1953,7 +1954,7 @@ export type ServerFrame =
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
   // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
   // your terminal shows in Settings for them.
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; /** D536: with more than one partner. */ brainOptions?: BrainOption[]; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D465: whether Nowledge Mem took the answer (ok false: it's back on the page, to settle in Mem).
@@ -2974,6 +2975,19 @@ export interface ContextWindows {
 export interface Brain {
   harness: HarnessId;
   model?: string;
+  /** D536: how hard it thinks (one of the model's own levels, ListedModel.efforts); absent: the model's own default. */
+  effort?: string;
+}
+
+/**
+ * D536: one agent a partner may think with on the home, with its models as the default card lists
+ * them (brainNow's rows, each with its effort levels where the agent's live list names them). Sent
+ * in the settings frame while the home has more than one partner, so each partner's 想事情用 picker
+ * offers only what the home has.
+ */
+export interface BrainOption {
+  harness: HarnessId;
+  models: BrainNow["models"];
 }
 
 /**
@@ -2997,7 +3011,7 @@ export interface BrainNow extends Brain {
    * doesn't know (D390: never guessed from a live list's order). default: what the agent runs
    * when no model is named.
    */
-  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true }[];
+  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true; /** D536: its effort levels, from the live list (absent: none to pick). */ efforts?: string[]; defaultEffort?: string }[];
 }
 
 /**

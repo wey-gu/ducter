@@ -35,6 +35,9 @@ type partnersUI struct {
 	editName  string
 	editAbout string
 	removing  string
+	// D536: which of the changed row's 想事情用 pop-ups is open ("agent",
+	// "model", "effort"; "" none).
+	thinksOpen string
 }
 
 // manyPartners: more than one partner, so the bar shows whose this is.
@@ -419,6 +422,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 								if p.About != "" {
 									uiText(c, a.L.T("partners.about.shown", p.About)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
 								}
+								a.thinksLine(c, p)
 							}
 							if p.ID == shown {
 								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -430,6 +434,9 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
 						}
 					})
+					if ps.editing == id {
+						a.thinksPick(c, p)
+					}
 					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 52).Children(func() {
 						if ps.editing == id {
 							if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
@@ -441,7 +448,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							a.SwitchPartner(id)
 						}
 						if a.button(c, a.L.T("partners.change"), btnText, t.ControlSM, t.Surface) {
-							ps.editing, ps.editName, ps.editAbout, ps.removing = id, p.Name, p.About, ""
+							ps.editing, ps.editName, ps.editAbout, ps.removing, ps.thinksOpen = id, p.Name, p.About, "", ""
 						}
 						if id != protocol.DefaultPartner && a.button(c, a.L.T("partners.remove"), btnText, t.ControlSM, t.Surface) {
 							ps.removing, ps.editing = id, ""

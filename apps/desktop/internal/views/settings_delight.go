@@ -186,10 +186,15 @@ func (a *App) talkSample(c *ui.Context, tag string) {
 // models in its list (D445: Codex's six no longer wrap onto two lines under
 // the row). It reports the index picked.
 func (a *App) modelPill(c *ui.Context, labels []string, sel int, open *bool) int {
+	return a.pickPill(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel, open)
+}
+
+// pickPill is one choice among labels as a pill opening its list (D445's
+// model pill, D536's 想事情用 pickers): key keeps each pill's own rows apart.
+func (a *App) pickPill(c *ui.Context, key, title string, labels []string, sel int, open *bool) int {
 	t := a.T
 	hit := -1
-	title := a.L.T("loadout.brain.model")
-	e, click := a.pill(c, "brain-model-pill", spoken(a.L, title, labels[sel]), *open, func() {
+	e, click := a.pill(c, key+"-pill", spoken(a.L, title, labels[sel]), *open, func() {
 		uiText(c, labels[sel]).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
 	})
 	if click {
@@ -201,7 +206,7 @@ func (a *App) modelPill(c *ui.Context, labels []string, sel int, open *bool) int
 	a.listPanel(c, e, open, title, 240, func() {
 		for i, l := range labels {
 			i, l := i, l
-			if a.menuRow(c, "brain-model:"+l, l, i == sel, false, func() {
+			if a.menuRow(c, key+":"+l, l, i == sel, false, func() {
 				uiText(c, l).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
 			}) && i != sel {
 				hit = i

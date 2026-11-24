@@ -22780,3 +22780,31 @@ button.tray-main:focus-visible,
 /* D532: the pair screen keeps a reading measure on a wide window (the Mac's card is 560). */
 .pairing { width: 100%; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
 .pairing .set-back { align-self: flex-start; }
+
+
+/* D536: what each partner thinks with, under its name: its agent's coin and the facts beside it (its
+   own setting, or the default partner's), or one quiet line (the same as the default's). 改一下 adds
+   the pickers, indented as the colours are, each a small label over its pop-up, wrapping on a phone. */
+.partners-set .partner-thinks {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink-soft);
+}
+.partners-set .partner-thinks.same { color: var(--ink-muted); }
+.partners-set .partner-thinks > .coin-art { flex: none; margin-top: 1px; }
+.partners-set .partner-thinks-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin-inline-start: 52px;
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick > .small { color: var(--ink-muted); }

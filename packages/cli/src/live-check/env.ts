@@ -2,7 +2,7 @@
 // read-only frames (kit.ts READ_FRAMES), commands the checks name. The one fetch is free-key-429's,
 // asked first.
 import { Database } from "bun:sqlite";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -47,6 +47,13 @@ export function realCheckEnv(o: { dataDir: string; port: number; version: string
       }
     },
     exists: (p) => existsSync(p),
+    list(dir) {
+      try {
+        return readdirSync(dir);
+      } catch {
+        return [];
+      }
+    },
     events(kinds, sinceMs) {
       const path = join(o.dataDir, "ducter.db");
       if (!existsSync(path)) return undefined;

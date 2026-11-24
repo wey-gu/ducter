@@ -178,6 +178,19 @@ The same: the projects as a row of names you can swipe, the four numbers, and th
 row to open it: the row grows into the task's page. To go back, tap **‹** at the top left, or, in
 the app, swipe in from the left edge. A sheet (Settings, a new task) closes when you pull it down.
 
+## Your helpers
+
+A helper you made (for example "Nowledge Mem PR Babysitter", which your agents hand pull requests to)
+stands on **On hand** as one card of its own. Its first line says how it is doing at a glance:
+**Nothing handed over yet**, **2 on hand**, or **1 waiting for you**, then what it takes and how many it
+took this week. Tap it to see it in **Settings › Agent messaging**.
+
+Each piece of work your agents hand it is a task listed under it, and stays there until it is really
+over: a task that finished while its pull request is still open says **Can merge; waiting for a merge**
+and moves to **Done today** once the pull request is merged or closed. When something under a helper
+needs you, the whole card moves up to **Needs you**. Anywhere else a helper's task shows, such as in
+Find, it carries the helper's name.
+
 ## Groups
 
 When you ask for one piece of work in several parts ("redo the sign-in page: first the form, then

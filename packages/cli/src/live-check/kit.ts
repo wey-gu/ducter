@@ -46,6 +46,8 @@ export interface CheckEnv {
   run(argv: string[], ms?: number): Promise<{ code: number; out: string; err: string } | undefined>;
   readText(path: string): string | undefined;
   exists(path: string): boolean;
+  /** A folder's entries (empty when it can't be read); optional, so a fake may leave it out. */
+  list?(dir: string): string[];
   /** The Log's events of these kinds since then, oldest first; undefined when there is no Log here. */
   events(kinds: string[], sinceMs: number): LoggedEvent[] | undefined;
   /** One read-only frame to the running home and its answer; undefined: no home answered. */

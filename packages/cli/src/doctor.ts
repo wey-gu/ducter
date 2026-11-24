@@ -5,6 +5,7 @@ import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, wri
 import { basename, join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { POPPLER_TOOLS, popplerCmd } from "@ducter/core/src/pkg-line.ts";
 import { CLAUDE_TOKEN_ENV, harnessName } from "@ducter/protocol";
 import { HARNESS_FACTS, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
@@ -45,7 +46,7 @@ export interface Host {
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli" | "pdf";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -279,7 +280,10 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
 
 type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars?: Record<string, string | number>, fix?: string, action?: Check["action"]) => Check;
 
-/** Server-only rows: does Ducter outlive this SSH session, and is any device connected? Both optional. */
+/**
+ * Server-only rows: does Ducter outlive this SSH session, is any device connected, and (D506) can
+ * the document check read a PDF's pages (Poppler, from the system's own package manager). All optional.
+ */
 async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
   const user = process.env.USER || "$USER";
   let service: Check;
@@ -295,7 +299,10 @@ async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
   }
   const n = host.pairedDevices?.() ?? 0;
   const devices = n > 0 ? c("devices", "check.devices", "ok", false, "check.devices.ok", { n }) : c("devices", "check.devices", "missing", false, "check.devices.none", {}, SERVER_FIX.devices);
-  return [service, devices];
+  const pdf = POPPLER_TOOLS.every((x) => host.which(x))
+    ? c("pdf", "check.pdf", "ok", false, "check.pdf.ok")
+    : c("pdf", "check.pdf", "missing", false, "check.pdf.missing", {}, popplerCmd("linux", (x) => !!host.which(x)));
+  return [service, devices, pdf];
 }
 
 export interface Style {

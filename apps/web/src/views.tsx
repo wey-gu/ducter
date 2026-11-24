@@ -2722,7 +2722,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </button>
         </div>
       )}
-      {/* D518: its agent's background work, over the composer. */}
+      {/* D521: its agent's background work, over the composer. */}
       <BgTray taskId={id} bg={task.card?.background} />
       <TaskFoot task={task} blocks={blocks} />
       {/* A pending ask sits over the composer, where the answer is typed (D152). */}

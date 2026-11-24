@@ -1143,7 +1143,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { 
     async interrupt() {
       await s.abort();
     },
-    // D518: one background job stopped by the agent's own stop (Claude Code's TaskStop, a Codex
+    // D521: one background job stopped by the agent's own stop (Claude Code's TaskStop, a Codex
     // subagent's turn interrupted, DeepSeek Harness's job kill). Accepted is only the agent's
     // acknowledgement: its end comes as the job's own task_ended.
     ...(typeof s.stopTask === "function"

@@ -127,7 +127,7 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
       await call("send", { text, mode, ...(pics ? { images: pics } : {}), ...(docs ? { files: docs } : {}), ...(inputId ? { inputId } : {}) });
     },
     interrupt: () => call("interrupt", {}),
-    // D518: a worker from D518 on says its session can stop one background job.
+    // D521: a worker from D521 on says its session can stop one background job.
     ...(init.canStop ? { stopBackground: (id: string) => call("stopBackground", { id }) } : {}),
     async close() {
       off();

@@ -530,6 +530,7 @@ A new control is added to the set (and to this table) before it is used.
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
 | A card's foot that folds what can wait: how it's connected, its addresses, the one 断开 (D398) | `sheetFold` (`devguard.go`) | `Fold` |
 | An optional step as one framed row that opens in place (锁屏时也能借给任务 ›; D398) | `extraStep` (`devguard.go`) | `StepRow` |
+| A step's number in a short numbered sequence, a sunken disc (the lend sheet's three steps; a sign-in's two, D518) | `stepNumber` (`components.go`) | `StepNumber`; the lend sheet's `.lend-steps li::before` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
@@ -545,8 +546,8 @@ A new control is added to the set (and to this table) before it is used.
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
-| A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D518) | `iconButton` (`components.go`), kind text | `IconBtn` |
-| One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D518) | `trayRow` (`shared.go`) | `TrayRow` |
+| A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |

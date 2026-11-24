@@ -382,7 +382,7 @@ export interface BackgroundEnd {
   output?: string;
   summary?: string;
   outputFile?: string;
-  /** D518: the person stopped it from Ducter. */
+  /** D521: the person stopped it from Ducter. */
   by?: "person";
 }
 

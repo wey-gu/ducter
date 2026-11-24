@@ -936,7 +936,7 @@ class AppState {
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
-    // D518: a stop the agent refused: the row runs on, and says so once.
+    // D521: a stop the agent refused: the row runs on, and says so once.
     if (f.t === "action_result" && f.action === "stop_background" && !f.ok) {
       for (const k of this.bgStopping.keys()) if (k.startsWith(`${f.taskId}|`)) this.bgStopping.delete(k);
       this.toast(this.L.t("bg.stop.failed"));
@@ -3438,7 +3438,7 @@ class AppState {
     this.changed();
   }
 
-  /** D518: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */
+  /** D521: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */
   bgStopping = new Map<string, number>();
   stopBackground(id: string, job: string) {
     const k = `${id}|${job}`;

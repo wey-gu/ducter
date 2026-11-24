@@ -1051,7 +1051,7 @@ type TaskCard struct {
 	Helper *TaskHelper `json:"helper,omitempty"`
 	// Keep (D511): the Keep this task is a round or an item of.
 	Keep *TaskKeep `json:"keep,omitempty"`
-	// Background (D518): the work its agent runs beside its turn, every one
+	// Background (D521): the work its agent runs beside its turn, every one
 	// still running and the newest finished, folded from its Log by core.
 	Background *TaskBackground `json:"background,omitempty"`
 }
@@ -1409,11 +1409,11 @@ type TaskAction struct {
 	// Place (D472, start_in): the folder the person chose for a task that
 	// couldn't start (D455's sheet).
 	Place *Place `json:"place,omitempty"`
-	// Job (D518, stop_background): the background job to stop.
+	// Job (D521, stop_background): the background job to stop.
 	Job string `json:"job,omitempty"`
 }
 
-// TaskBackground (D518) is a task's background work: every job still
+// TaskBackground (D521) is a task's background work: every job still
 // running and the newest finished; Done counts every finished one.
 type TaskBackground struct {
 	Jobs []BgJob `json:"jobs"`
@@ -2416,7 +2416,10 @@ type AgentSetupState struct {
 // run there). Reason: device_off | wrong_code | wrong_key | no_balance |
 // offline | failed. D371: Key, DeepSeek Harness signs in with a DeepSeek API
 // key pasted here (URL: where one is made); App, the app Ducter just opened on
-// that Mac to sign in with the DeepSeek account.
+// that Mac to sign in with the DeepSeek account. D518: done only once the
+// agent's own check says signed in; Reason not_seen (its sign-in ended, the
+// agent still says signed out) and no_answer (a pasted code got no answer);
+// Until, when a waiting sign-in stops by itself (ms since the epoch).
 type AgentLoginState struct {
 	State   string `json:"state"`
 	URL     string `json:"url,omitempty"`
@@ -2426,6 +2429,7 @@ type AgentLoginState struct {
 	App     string `json:"app,omitempty"`
 	Reason  string `json:"reason,omitempty"`
 	Command string `json:"command,omitempty"`
+	Until   int64  `json:"until,omitempty"`
 }
 
 // AgentSetupReq is 安装, 登录, a pasted code, 不登录了 or a look again on a

@@ -1152,7 +1152,7 @@ export function createWsHandler(deps: WsDeps) {
               await r.interrupt(f.taskId);
               return result(true);
             case "stop_background": {
-              // D518: one background job, through its agent's own stop; its end comes as its own act.
+              // D521: one background job, through its agent's own stop; its end comes as its own act.
               if (!r?.stopBackground) return result(false, noRunnerLine());
               if (typeof f.job !== "string" || !f.job) return result(false, "Which one?");
               const s = await r.stopBackground(f.taskId, f.job);

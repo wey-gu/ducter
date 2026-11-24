@@ -376,6 +376,15 @@ export function Fold({ title, summary, children }: { title: string; summary?: st
   );
 }
 
+/** A step's number in a short numbered sequence: a sunken disc (the lend sheet's three steps' look; D518 a sign-in's two). */
+export function StepNumber({ n }: { n: number }) {
+  return (
+    <span class="step-n" aria-hidden="true">
+      {n}
+    </span>
+  );
+}
+
 /** D398: an optional step as one framed row (its mark, its title, a muted line, a chevron); open, the step is under it. */
 export function StepRow({ mark, title, sub, open, onClick }: { mark: ComponentChildren; title: string; sub?: string; open: boolean; onClick: () => void }) {
   return (
@@ -611,7 +620,7 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
   );
 }
 
-/** D518: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
+/** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
  *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
  *  pointer (danger: the failed ink). The Mac's `iconButton`. */
 export function IconBtn(p: { label: string; about?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
@@ -623,7 +632,7 @@ export function IconBtn(p: { label: string; about?: string; onClick: () => void;
 }
 
 /**
- * D518: one dense row of a quiet tray (the opened task's 后台 / In the background): a drawn mark,
+ * D521: one dense row of a quiet tray (the opened task's 后台 / In the background): a drawn mark,
  * its words cut with an ellipsis (the whole in the tooltip), its facts at the right edge in mono
  * (a time, a state), an optional chevron when it opens (open: what it holds, under it), and an
  * optional action apart at its far right (an IconBtn). head: the tray's own head row (stronger

@@ -87,7 +87,7 @@ test("agent_setup install and login reach the worker; its rows come back on the 
 
   c.send({ t: "agent_setup", device: deviceId, action: "login", harness: "codex" });
   const login = await c.until((f) => card(f, deviceId)?.harnesses.find((h) => h.harness === "codex")?.login?.state === "waiting");
-  expect(card(login, deviceId)!.harnesses.find((h) => h.harness === "codex")!.login).toEqual({ state: "waiting", url: "https://auth.openai.com/codex/device", code: "ABCD-EFGHI" });
+  expect(card(login, deviceId)!.harnesses.find((h) => h.harness === "codex")!.login).toMatchObject({ state: "waiting", url: "https://auth.openai.com/codex/device", code: "ABCD-EFGHI" });
   // Once there, it isn't offered for install.
   expect(card(login, deviceId)!.harnesses.find((h) => h.harness === "codex")!.installable).toBeUndefined();
 

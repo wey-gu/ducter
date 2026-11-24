@@ -202,7 +202,7 @@ interface TaskRt {
   bgOwed?: boolean;
   /** D515: background jobs that ended since the last turn, what the wake turn says. */
   bgDone?: BackgroundEnd[];
-  /** D518: the jobs the person asked to stop from Ducter (their end says who stopped them). */
+  /** D521: the jobs the person asked to stop from Ducter (their end says who stopped them). */
   bgStopping?: Set<string>;
   bgSettle?: ReturnType<typeof setTimeout>;
   /** D266: merged while background work ran: archived once it ends. */
@@ -553,7 +553,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       (t.bgDone ??= []).push(end);
     }
     const by = b.act !== "started" && t.bgStopping?.delete(b.id) && b.act === "stopped" ? "person" : undefined;
-    // D518: logged with its id, the tool that started it, whether it can be stopped and its output's
+    // D521: logged with its id, the tool that started it, whether it can be stopped and its output's
     // tail, so core folds the task's background list from the Log (protocol background.ts).
     const said = typeof b.output === "string" && b.output.trim() ? { output: tailLines(b.output) } : typeof b.summary === "string" && b.summary.trim() ? { summary: b.summary.slice(0, 500) } : {};
     logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { id: b.id, act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.tool ? { tool: b.tool } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}), ...said, ...(b.stop ? { stop: true } : {}), ...(by ? { by } : {}) } } });
@@ -2766,7 +2766,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return runner.dispose();
     },
 
-    // D518: one background job stopped by its agent's own stop; its end comes as the job's own.
+    // D521: one background job stopped by its agent's own stop; its end comes as the job's own.
     async stopBackground(taskId, jobId) {
       const t = tasks.get(taskId);
       if (!t) return { ok: false, message: "I can't find that task." };

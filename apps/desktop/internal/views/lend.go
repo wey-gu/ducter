@@ -548,10 +548,7 @@ func (a *App) lendSteps(c *ui.Context) {
 	ui.Row(c.Key("lend-steps")).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 		for i, k := range []string{"lend.step.copy", where, "lend.step.joins"} {
 			ui.Row(c.Key("lend-step:" + k)).Gap(t.S2).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
-				n := string(rune('1' + i))
-				ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-					uiText(c, n).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
-				})
+				a.stepNumber(c, i+1)
 				uiText(c, a.L.T(k)).FontSize(t.SM).FontWeight(700).LineHeight(1.35).TextColor(t.Ink).Grow(1).MinWidth(0)
 			})
 		}

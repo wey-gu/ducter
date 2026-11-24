@@ -217,7 +217,7 @@ type App struct {
 	taskDrafts map[string]string
 	// D325: the held message being changed in place over a task's composer.
 	heldEditing *heldEdit
-	// D518: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
+	// D521: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
 	bgStopping map[string]bool
 	bgRefused  map[string]time.Time
 	heldFocus  bool

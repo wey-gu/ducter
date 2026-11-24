@@ -17,7 +17,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D518: the opened task's 后台 / In the background tray, from frames (no
+// D521: the opened task's 后台 / In the background tray, from frames (no
 // core): the author's LoCoMo eval task with its agent's subagents, shells and
 // a Monitor watch running and 22 finished, at the Mac's widths.
 
@@ -116,11 +116,11 @@ func d518Task(t *testing.T, lang i18n.Lang, w int, running, done int) (*App, *ui
 	return app, tt, sent
 }
 
-// TestD518Tray: six running and 22 done at 1000 and 1400, zh and en: the
+// TestD521Tray: six running and 22 done at 1000 and 1400, zh and en: the
 // head, each row's words, its time and Stop only where its agent can stop
 // it; the finished fold opens to their states; nothing overlaps or leaves
 // the window; Stop sends the job; folded, only the head stays.
-func TestD518Tray(t *testing.T) {
+func TestD521Tray(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, w := range []int{1000, 1400} {
 			app, tt, sent := d518Task(t, lang, w, 6, 22)
@@ -198,9 +198,9 @@ func TestD518Tray(t *testing.T) {
 	}
 }
 
-// TestD518Quiet: a task whose agent never ran anything in the background
+// TestD521Quiet: a task whose agent never ran anything in the background
 // has no tray; one with only finished work says them as one folded head.
-func TestD518Quiet(t *testing.T) {
+func TestD521Quiet(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt, _ := d518Task(t, lang, 1400, 0, 0)
 		if tt.HasText(app.L.T("bg.head", 0)) || tt.HasText(app.L.T("bg.head.done", 0)) {
@@ -213,8 +213,8 @@ func TestD518Quiet(t *testing.T) {
 	}
 }
 
-// TestD518OnHand: a running task's row says how many run in the background.
-func TestD518OnHand(t *testing.T) {
+// TestD521OnHand: a running task's row says how many run in the background.
+func TestD521OnHand(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, _, _ := d518Task(t, lang, 1400, 3, 2)
 		task := app.S.Task("e1")
@@ -230,11 +230,11 @@ func TestD518OnHand(t *testing.T) {
 	}
 }
 
-// D518 shots: 0, 2 and 6 running with 22 done, at 1400 and 1000, zh and en,
+// D521 shots: 0, 2 and 6 running with 22 done, at 1400 and 1000, zh and en,
 // light and dark, the fold open and the tail of a failure open:
 //
-//	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=<repo>/.shots/bg-tray go test ./internal/views -run D518Shots
-func TestD518Shots(t *testing.T) {
+//	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=<repo>/.shots/bg-tray go test ./internal/views -run D521Shots
+func TestD521Shots(t *testing.T) {
 	if os.Getenv("DUCTER_SHOTS") == "" {
 		t.Skip("DUCTER_SHOTS not set")
 	}

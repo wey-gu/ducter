@@ -1,4 +1,4 @@
-// D518: 后台 / In the background, the opened task's tray over its composer. Built only from the shared
+// D521: 后台 / In the background, the opened task's tray over its composer. Built only from the shared
 // TrayRow and IconBtn (D161), on the composer's measure, folded on a phone, its words in both
 // languages and the same as the Mac's, and its rows fitting a 320 phone with a 44 target.
 import { describe, expect, test } from "bun:test";
@@ -19,7 +19,7 @@ function blocks(selector: string): string {
   return out.join("\n");
 }
 
-describe("the background tray (D518)", () => {
+describe("the background tray (D521)", () => {
   test("draws its controls only through controls.tsx", () => {
     const f = src("bg-tray.tsx");
     expect(f.match(/<(button|input|select|textarea|a)\b/g) ?? []).toEqual([]);

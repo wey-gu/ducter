@@ -1,4 +1,4 @@
-// D518: the work a task's own agent runs beside its turn (D266, D515), as one list the opened task
+// D521: the work a task's own agent runs beside its turn (D266, D515), as one list the opened task
 // shows over its composer and On hand counts: Claude Code's background shells, Monitor watches and
 // subagents; Codex's background terminals and subagents; DeepSeek Harness's jobs; any agent OAR
 // reports tasks for. Folded from the task's Log (the runner logs each start and end as a system
@@ -33,7 +33,7 @@ export interface BgJob {
   stop?: true;
 }
 
-/** D518: a task's background work: every one still running and the newest finished ones; `done` counts every finished one. */
+/** D521: a task's background work: every one still running and the newest finished ones; `done` counts every finished one. */
 export interface TaskBackground {
   jobs: BgJob[];
   done: number;
@@ -70,14 +70,14 @@ export interface BgLogged {
   id?: string;
   act?: string;
   type?: string;
-  /** D518: the tool that started it, when it names the kind better than its type (Claude Code's Monitor). */
+  /** D521: the tool that started it, when it names the kind better than its type (Claude Code's Monitor). */
   tool?: string;
   what?: string;
   exitCode?: number;
   output?: string;
   summary?: string;
   stop?: boolean;
-  /** D518: the person stopped it from Ducter. */
+  /** D521: the person stopped it from Ducter. */
   by?: string;
 }
 
@@ -92,10 +92,10 @@ export function bgKindOf(b: Pick<BgLogged, "type" | "tool">): BgKind {
 type Ev = { ts: string; kind: string; body: unknown };
 
 /**
- * D518: a task's background work from its events, oldest first (task_event bodies with
+ * D521: a task's background work from its events, oldest first (task_event bodies with
  * `raw.background`; `raw.backgroundCeiling` lets one go unheard). `live`: whether the task's
  * session is still there (its residency is hot, warm, provisioning or offline): without it, one
- * still open went with the session and its state is unknown. Acts logged before D518 carry no id:
+ * still open went with the session and its state is unknown. Acts logged before D521 carry no id:
  * an end is matched to the oldest open one of its words.
  */
 export function backgroundOf(events: readonly Ev[], live: boolean): TaskBackground | undefined {

@@ -214,7 +214,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       await need(a.key).interrupt();
       return {};
     },
-    // D518: one background job of a session here, stopped by its agent's own stop.
+    // D521: one background job of a session here, stopped by its agent's own stop.
     async stopBackground(a) {
       const s = need(a.key);
       if (!s.stopBackground) throw new Error("this agent can't stop one job by itself");

@@ -91,7 +91,7 @@ func (l *Local) SetBenchWidth(w float32) {
 	l.save()
 }
 
-// BgTrayShut says whether the opened task's background tray is folded (D518).
+// BgTrayShut says whether the opened task's background tray is folded (D521).
 func (l *Local) BgTrayShut() bool { return l != nil && l.st.BgTray == "shut" }
 
 // SetBgTrayShut keeps whether the background tray is folded.

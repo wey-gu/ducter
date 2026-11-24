@@ -9,6 +9,15 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Signing in on a server, after D518 (`where.md` "Signing in there")
+
+- [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
+  card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
+  UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
+- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
+  into its own folder while running is spawned by its bare name.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with
@@ -990,11 +999,11 @@ Built against a fake iLink and CDN only.
 - [ ] **agy on web work**: never routed there (`no_web`), since OAR refuses `exclude` for agy (draft §3). Trigger: an OAR release that supports it.
 - [ ] **A live background check in the probe**: `scripts/probe-harnesses.ts --live` runs research/222's two cheap runs (Claude Code haiku, Codex luna, scratch homes) and fails when `background.ownTurn` no longer holds. Trigger: the next Claude Code or Codex upgrade past the verified range.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
-- [ ] **Stop for a Codex background terminal** (D518): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
-- [ ] **Antigravity's and pi's background work in the tray** (D518): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
-- [ ] **The tray live** (D518): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D518.
-- [ ] **The background list on request** (D518's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
-- [ ] **iOS Simulator pass on the tray** (D518): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
+- [ ] **Stop for a Codex background terminal** (D521): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
+- [ ] **Antigravity's and pi's background work in the tray** (D521): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
+- [ ] **The tray live** (D521): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D521.
+- [ ] **The background list on request** (D521's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
+- [ ] **iOS Simulator pass on the tray** (D521): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
 
 ## iMessage through the Mac app (D277, `design/imessage.md`)
 

@@ -15,7 +15,7 @@ import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protoc
 import { changelogUrl } from "@ducter/protocol/src/version.ts";
 import { tidySize } from "@ducter/protocol/src/tidy.ts";
 import { Fragment, type ComponentChildren } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, Fold, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
@@ -399,12 +399,21 @@ function CoinTray({ dv }: { dv: DeviceView }) {
   const shown = dv.harnesses.filter((h) => h.installed || arriving(h));
   const missing = dv.harnesses.filter((h) => !h.installed && !arriving(h));
   const n = shown.length + (missing.length ? 1 : 0);
-  if (!n) return null;
   const idx = open === "+" ? shown.length : shown.findIndex((h) => h.harness === open);
-  const notch = `${((idx + 0.5) / n) * 100}%`;
+  // D518: tiles are as wide as their names, so the notch points at the chosen tile where it is drawn.
+  const tray = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const sel = tray.current?.querySelector<HTMLElement>(".coin-tile.sel");
+    const box = tray.current?.getBoundingClientRect();
+    const r = sel?.getBoundingClientRect();
+    setAt(r && box ? r.left + r.width / 2 - box.left : undefined);
+  });
+  if (!n) return null;
+  const notch = at !== undefined ? `${at}px` : `${((idx + 0.5) / n) * 100}%`;
   return (
     <>
-      <div class="dc-tray" role="group" aria-label={t("devices.accounts", dv.name)}>
+      <div class="dc-tray" ref={tray} role="group" aria-label={t("devices.accounts", dv.name)}>
         {shown.map((h) => {
           const name = harnessName(h.harness);
           const dot = agentBehind(h);
@@ -496,6 +505,8 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       <div class="dh">
         <b>{name}</b>
       </div>
+      {/* D518: the moment its own check said signed in, said once where the person is looking. */}
+      {h.login?.state === "done" && <div class="ln ok" role="status">{t("ag.login.done")}</div>}
       {h.version && (
         <div class="ln soft">
           <Facts items={versionFacts(A.L, h)} />

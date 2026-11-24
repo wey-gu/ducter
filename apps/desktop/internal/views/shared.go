@@ -327,7 +327,7 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 	return n > 0 && fold.Clicked()
 }
 
-// trayLine is one dense row of a quiet tray (D518, the opened task's 后台 /
+// trayLine is one dense row of a quiet tray (D521, the opened task's 后台 /
 // In the background): a drawn mark (markAbout names it), its words on one
 // line cut with an ellipsis, its facts at the right edge (a state word, a
 // time in mono), a chevron when it opens (open non-nil), and an action slot

@@ -43,7 +43,7 @@ interface HarnessTask {
   ended: boolean;
   /** D515: a tool call still running when its turn completed (a Codex background terminal), by its call id. */
   call?: boolean;
-  /** D518: the tool that started it (Claude Code's Monitor names a watch). */
+  /** D521: the tool that started it (Claude Code's Monitor names a watch). */
   tool?: string;
 }
 
@@ -141,7 +141,7 @@ export class Normalizer {
   /** D288: what the native frame said about a compaction about to be read (before / after). */
   private compactNative: NativeCompact | undefined;
 
-  /** D518: canStop: the session can stop one task by its id (OAR stopTask); a start says so for the ones it can (never a Codex background terminal: OAR has no stop for a tool call). */
+  /** D521: canStop: the session can stop one task by its id (OAR stopTask); a start says so for the ones it can (never a Codex background terminal: OAR has no stop for a tool call). */
   constructor(
     private readonly usage: () => HarnessEvent["usage"] | undefined,
     private readonly opts: { canStop?: boolean } = {},

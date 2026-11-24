@@ -1,4 +1,4 @@
-// D518: a task's background work on its card (TaskCard.background), the list the opened task's
+// D521: a task's background work on its card (TaskCard.background), the list the opened task's
 // tray and On hand's quiet count read. Driven end to end: OAR-shaped events through the runner's
 // own Normalizer (a Claude Code background shell, a Monitor watch, a subagent, a Codex background
 // terminal), the runner's log, core's index over the Log; Stop through the client's task_action.
@@ -100,7 +100,7 @@ const until = async (what: string, ok: () => boolean, ms = 4000) => {
 
 const cardOf = (core: Core, id: string): TaskCard => core.tasks.onHand().tasks.find((c) => c.taskId === id)!;
 
-describe("a task's background work on its card (D518)", () => {
+describe("a task's background work on its card (D521)", () => {
   test("Claude Code: a background shell, a Monitor watch and a subagent; their ends, an exit code and an output's tail; Stop through the agent's own stop", async () => {
     const { core, runner, port } = await boot();
     const card = await runner.openTask({ persona: "default", title: "Run the LoCoMo eval", brief: "b", harness: "claude-code" });
@@ -204,7 +204,7 @@ describe("a task's background work on its card (D518)", () => {
 
 describe("the fold (protocol background.ts)", () => {
   const ev = (ts: string, background: Record<string, unknown>) => ({ ts, kind: "task_event", body: { taskId: "t", role: "system", raw: { background } } });
-  test("acts logged before D518 have no id: an end closes the oldest open one of its words", () => {
+  test("acts logged before D521 have no id: an end closes the oldest open one of its words", () => {
     const b = backgroundOf([ev("2026-11-24T01:00:00Z", { act: "started", type: "shell", what: "make" }), ev("2026-11-24T01:00:05Z", { act: "started", type: "shell", what: "make" }), ev("2026-11-24T01:01:00Z", { act: "ended", type: "shell", what: "make", exitCode: 0 })], true)!;
     expect(b.jobs.map((j) => j.state)).toEqual(["running", "done"]);
     expect(b.jobs[1]!.id).toBe("at:2026-11-24T01:00:00Z");

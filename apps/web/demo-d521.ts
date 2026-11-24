@@ -1,8 +1,8 @@
-// D518: the opened task's 后台 / In the background, as a demo core both clients read: the author's
+// D521: the opened task's 后台 / In the background, as a demo core both clients read: the author's
 // LoCoMo eval task, its agent's subagents, shells and a Monitor watch logged as the runner logs them
 // (task_event raw.background), so core folds the tray's list from the Log as it does live.
 // DEMO_RUNNING: how many still run (0, 2 or 6); 22 have ended either way.
-//   DUCTER_PORT=7518 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_RUNNING=6 bun apps/web/demo-d518.ts
+//   DUCTER_PORT=7518 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_RUNNING=6 bun apps/web/demo-d521.ts
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +13,7 @@ import type { Bodies, Place } from "@ducter/protocol";
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const w = (z: string, e: string) => (zh ? z : e);
 const running = Number(process.env.DEMO_RUNNING ?? 6);
-const scratch = mkdtempSync(join(tmpdir(), "ducter-demo-d518-"));
+const scratch = mkdtempSync(join(tmpdir(), "ducter-demo-d521-"));
 const dataDir = process.env.DUCTER_DATA_DIR || join(scratch, "data");
 const persona = { id: "default", name: "Ducter", identity: "" };
 const MIN = 60_000;
@@ -97,7 +97,7 @@ await seed.stop();
 const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", port: Number(process.env.DUCTER_PORT ?? 7518) });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
-console.log(`[demo] D518 the background tray (${zh ? "zh" : "en"}, ${running} running) at http://127.0.0.1:${core.port}/app#task=${id}/full (data: ${dataDir})`);
+console.log(`[demo] D521 the background tray (${zh ? "zh" : "en"}, ${running} running) at http://127.0.0.1:${core.port}/app#task=${id}/full (data: ${dataDir})`);
 process.on("SIGINT", async () => {
   await core.stop();
   process.exit(0);

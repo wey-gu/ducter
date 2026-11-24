@@ -101,7 +101,7 @@ and its output, D210; a server-owned terminal is a phase of its own, todo), the 
 harness reports one Ducter can show faithfully yet), comments on diff lines sent as context
 (todo).
 
-## In the background, over the composer (D518)
+## In the background, over the composer (D521)
 
 What the task's own agent still runs beside its turn, in the opened task (the conductor depth),
 always in view while it runs: not a workbench page (that is hidden until asked for), a tray just

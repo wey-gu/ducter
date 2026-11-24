@@ -1,4 +1,4 @@
-// D518: 后台 / In the background, the opened task's tray over its composer (its agent's background
+// D521: 后台 / In the background, the opened task's tray over its composer (its agent's background
 // shells, subagents, watches and jobs) and On hand's quiet count. The Mac takes these keys and words
 // as they are (apps/desktop/internal/i18n/bg.go).
 export const bgWords: { zh: Record<string, string>; en: Record<string, string> } = {

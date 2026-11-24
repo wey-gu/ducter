@@ -1,6 +1,6 @@
 package i18n
 
-// D518: 后台 / In the background, the opened task's tray over its composer
+// D521: 后台 / In the background, the opened task's tray over its composer
 // (its agent's background shells, subagents, watches and jobs) and On hand's
 // quiet count. The same keys and words as the web client's
 // (apps/web/src/i18n-bg.ts).

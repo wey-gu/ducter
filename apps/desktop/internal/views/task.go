@@ -491,7 +491,7 @@ func (a *App) reportLabel(r *protocol.Report) string {
 func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D493: what sits over the task's composer shares its measure and edges.
-	// D518: its agent's background work first, furthest from the words.
+	// D521: its agent's background work first, furthest from the words.
 	if task.Card != nil && task.Card.Background != nil && len(task.Card.Background.Jobs) > 0 {
 		a.aboveComposerAt(c, readMeasure, func() { a.bgTray(c, task) })
 	}

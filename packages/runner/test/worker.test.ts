@@ -458,7 +458,7 @@ test("D202: the worker answers the home's models op from its own agents (null wh
   expect(sent.find((f) => f.id === 2)).toEqual({ t: "res", id: 2, ok: true, result: null });
 });
 
-test("D518: a task on a worker stops one background job through its agent there; a session that can't stop one offers none", async () => {
+test("D521: a task on a worker stops one background job through its agent there; a session that can't stop one offers none", async () => {
   type Ev = import("@ducter/protocol/src/internal.ts").HarnessEvent;
   const stopped: string[] = [];
   let push!: (e: Ev) => void;

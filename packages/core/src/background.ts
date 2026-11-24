@@ -1,4 +1,4 @@
-// D518: each task's background work (its agent's background shells, subagents, watches, jobs),
+// D521: each task's background work (its agent's background shells, subagents, watches, jobs),
 // folded from the task's Log and carried on its card (TaskCard.background), so the opened task's
 // tray and On hand's quiet count read one list. A task's acts are read once from its stream, then
 // kept as the Log grows; nothing here runs on a task that never went to the background.

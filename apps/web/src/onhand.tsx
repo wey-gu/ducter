@@ -754,7 +754,7 @@ export function whereMeta(task: Task): string[] {
   return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
-/** D518: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
+/** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
 export function bgFact(task: Task): string[] {
   const a = attention(task);
   const n = bgRunning(task.card?.background);

@@ -70,6 +70,12 @@ export interface DeviceAuth {
   redeem(code: string, info: { name: string; platform?: string; role?: DeviceKind; form?: DeviceForm; computer?: string }, key?: string): { token: string; device: Device } | { error: RedeemError };
   /** The live (not revoked) device a token belongs to. */
   verify(token: string): Device | undefined;
+  /**
+   * D520: what this home says of a credential: live, revoked (the right secret of a device
+   * disconnected here), or unknown (no such device, or not its secret: nothing is told about a
+   * device to someone without its secret). `device` is the id the token names when it is ours.
+   */
+  standing(token: string): { standing: "live" | "revoked" | "unknown"; device: string };
   list(opts?: { all?: boolean }): Device[];
   /** Revokes by id, or by name when the name is unique among live devices. Returns what it revoked. */
   revoke(idOrName: string): Device[];
@@ -285,6 +291,16 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
         r.last_seen_at = t;
       }
       return row(r);
+    },
+    standing(token) {
+      const m = /^dvc\.([0-9a-f]{10})\.([A-Za-z0-9_-]{43})$/.exec(token.trim());
+      if (!m) return { standing: "unknown", device: "" };
+      const r = db.query("SELECT token_hash, revoked_at FROM devices WHERE id = ?").get(m[1]!) as { token_hash: string; revoked_at: number | null } | null;
+      if (!r) return { standing: "unknown", device: m[1]! };
+      const want = Buffer.from(r.token_hash, "hex");
+      const got = Buffer.from(sha(m[2]!), "hex");
+      if (want.length !== got.length || !timingSafeEqual(want, got)) return { standing: "unknown", device: m[1]! };
+      return { standing: r.revoked_at == null ? "live" : "revoked", device: m[1]! };
     },
     list(o = {}) {
       const q = o.all ? "SELECT * FROM devices ORDER BY created_at" : "SELECT * FROM devices WHERE revoked_at IS NULL ORDER BY created_at";

@@ -174,10 +174,15 @@ type App struct {
 	// http(s) base), saves it, and points the client there. Nil hides the
 	// "my Ducter is on another machine" path.
 	Pair func(base, code string) error
-	// Unauthorized is set when the server refused this device (revoked, or
-	// a token from an old pairing): the connect card shows, with a line.
+	// Unauthorized is set only when the home said, signed, that this device
+	// is disconnected there or unknown to it (D520; Linked): the connect
+	// card shows, with a line. A welcome clears it.
 	Unauthorized bool
-	conn         connectState
+	// goneWhy is the home's reason ("revoked", "unknown"); downAt when the
+	// link was lost (zero while up); linkTry when the last try began.
+	goneWhy         string
+	downAt, linkTry time.Time
+	conn            connectState
 	// UseLocal forgets the connection to another computer and starts the
 	// app again on this Mac's own Ducter (set by main).
 	UseLocal func()

@@ -45,6 +45,10 @@ export const partnersWords: { zh: Record<string, string>; en: Record<string, str
     "partners.empty": "还没聊过",
     "partners.back": "所有伙伴",
     "partners.back.asks": "所有伙伴，别处有 %d 个等你",
+    // D545: the list beside the conversation, narrowed, hidden and shown again.
+    "partners.rail.thin": "收窄伙伴栏",
+    "partners.rail.hide": "收起伙伴栏",
+    "partners.rail.show": "显示伙伴栏",
     // D536: what each partner thinks with: its own, else the same as the default partner's.
     "partners.thinks.title": "想事情用",
     "partners.thinks.with": "想事情用 %s",
@@ -102,6 +106,10 @@ export const partnersWords: { zh: Record<string, string>; en: Record<string, str
     "partners.empty": "Nothing said yet",
     "partners.back": "All your partners",
     "partners.back.asks": "All your partners, %d need you elsewhere",
+    // D545: the list beside the conversation, narrowed, hidden and shown again.
+    "partners.rail.thin": "Narrow your partners",
+    "partners.rail.hide": "Hide your partners",
+    "partners.rail.show": "Show your partners",
     // D536: what each partner thinks with: its own, else the same as the default partner's.
     "partners.thinks.title": "Thinks with",
     "partners.thinks.with": "Thinks with %s",

@@ -180,7 +180,9 @@ counts for all of them.
   the little faces of your other partners at the top left of the conversation (or swipe in from the
   left edge) to see them all; the number on them is what waits on you with the others. Tap one to
   talk to it. Switching is instant: each conversation comes back where you left it, with what you
-  were typing.
+  were typing. To give the conversation more room, the button at the left of its top bar narrows
+  the list to the faces, then hides it; the faces of your other partners stay at the top, and
+  tapping them brings the list back.
   A notification about another partner's question opens that partner. Each device remembers which
   partner it shows. The first time you open a new partner, it tells you who it is and what it looks
   after.

@@ -91,6 +91,10 @@ A family that needs privacy from each other needs separate homes.
   On hand lists under 等你: its questions, and its tasks that ask, stopped, didn't work out or have
   a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
   hand's head; each item is under 等你 with its fix.
+- **Thin or hidden (D545).** Beside the conversation (not on a phone), the bar's first control
+  narrows the list to its faces and their numbers, hides it, and brings it back; each device
+  remembers it. Hidden, the other partners' faces stay in the bar with what waits in them, and a
+  press brings the list back; nothing waiting is lost.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
   last shown. The bar's left has **‹** and the other partners' own figures, a small stack in their
   clays (D541: a lone ‹ read as "back"), with the number of what waits in them (label

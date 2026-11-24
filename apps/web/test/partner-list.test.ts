@@ -74,18 +74,40 @@ describe("D513: the list of partners", () => {
   });
   test("wide, a column at the conversation's left; a phone, the level above the conversation", () => {
     const main = src("main.tsx");
-    expect(main).toContain('<PartnerList at="side" />');
+    expect(main).toContain('<PartnerList at="side" thin={A.railMode === "thin"} />');
     expect(main).toMatch(/A\.partnersOpen && A\.manyPartners\(\) \? <PartnerList at="home"/);
     // The phone's edge swipe from a conversation goes up to the list.
-    expect(main).toContain("if (A.route.name === \"conv\") return A.showPartners();");
-    expect(src("views.tsx")).toContain("{((!wide && phoneBar) || fold) && <PartnersBack />}");
+    expect(main).toContain('if (A.route.name === "conv") return A.railMode === "hidden" && !phoneNow() ? A.setRail("") : A.showPartners();');
+    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}');
     expect(src("app.ts")).toContain('hash === "#partners"');
+  });
+  test("D545: the list beside the conversation narrows, hides and comes back, by the bar's toggle; remembered here", async () => {
+    const { A } = await import("../src/app.ts");
+    const was = A.railMode;
+    A.railMode = "";
+    expect(A.nextRail()).toBe("thin");
+    A.setRail("thin");
+    expect(A.railMode).toBe("thin");
+    expect(A.nextRail()).toBe("hidden");
+    A.setRail("hidden");
+    expect(A.nextRail()).toBe("");
+    A.setRail(was);
+    const main = src("main.tsx");
+    expect(main).toContain('{!split && A.railMode !== "hidden" && <PartnerList at="side" thin={A.railMode === "thin"} />}');
+    expect(main).toContain('A.manyPartners() && !phone && A.railMode !== "hidden" ? (');
+    // Hidden: the others' faces are the way back (and carry what waits in them), on any width.
+    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}');
+    expect(src("views.tsx")).toContain("{!phoneBar && !fold && <RailToggle />}");
+    expect(fn("RailToggle")).toContain("<IconBtn label={label} onClick={() => A.setRail(next)}>");
+    expect(css).toContain(".pane.partners.thin { flex-basis: 56px; }");
+    expect(css).toContain(".pane.partners.rail-in > * { animation: rail-in var(--t-across) var(--ease-push) both; }");
+    expect(css).toContain(".pane.partners.rail-in > * { animation: none; }");
   });
   test("D541: a way to the others at every width: the slim list from 700, the others' faces in a phone's and a fold's bar", () => {
     const main = src("main.tsx");
     // 700–999 (an iPad upright, a foldable open): the slim list beside the one column.
-    expect(main).toContain('<PartnerList at="side" slim />');
-    expect(main).toContain("A.manyPartners() && !phone ? (");
+    expect(main).toContain('<PartnerList at="side" slim thin={A.railMode === "thin"} />');
+    expect(main).toContain('A.manyPartners() && !phone && A.railMode !== "hidden" ? (');
     expect(css).toContain(".pane.partners.slim { flex-basis: 88px; }");
     expect(css).toContain("#app:has(> .panes.mid)");
     // A fold: the list opens over the conversation's pane, from the bar.

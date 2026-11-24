@@ -44,6 +44,18 @@ export function savedPartner(): string {
     return lastPartner;
   }
 }
+/** D545: how the list of partners stands beside the conversation on this device: "" as the width
+ *  has it, "thin" (the faces and their numbers), "hidden". */
+export type RailMode = "" | "thin" | "hidden";
+const RAIL_KEY = "ducter.rail";
+function savedRail(): RailMode {
+  try {
+    const v = localStorage.getItem(RAIL_KEY);
+    return v === "thin" || v === "hidden" ? v : "";
+  } catch {
+    return "";
+  }
+}
 function savePartner(id: string) {
   lastPartner = id;
   try {
@@ -2149,6 +2161,25 @@ class AppState {
   /** D513: on a phone with more than one partner, the list of partners stands in for the
    *  conversation (the level above it, as a messaging app's chats); wide, it is a column beside. */
   partnersOpen = false;
+
+  /** D545: the list beside the conversation: as the width has it, thin, or hidden (this device's). */
+  railMode: RailMode = savedRail();
+  /** D545: when it last changed, for its slide (app.css .rail-in). */
+  railAt = 0;
+  setRail(mode: RailMode) {
+    if (mode === this.railMode) return;
+    this.railMode = mode;
+    this.railAt = Date.now();
+    try {
+      if (mode) localStorage.setItem(RAIL_KEY, mode);
+      else localStorage.removeItem(RAIL_KEY);
+    } catch {}
+    this.changed();
+  }
+  /** D545: the header's toggle: as wide as the width has it, then thin, then hidden, then back. */
+  nextRail(): RailMode {
+    return this.railMode === "" ? "thin" : this.railMode === "thin" ? "hidden" : "";
+  }
 
   /** D513: up to the list of partners (a phone's ‹, its edge swipe, #partners). */
   showPartners() {

@@ -458,7 +458,12 @@ overlapping 9, the nearest on top), the others' number as a `CountPebble` on the
 44 tall; at 360 and under, one figure and the number. A lone ‹ read as "back"; the faces say who is
 there. The same in a fold's conversation pane (no column stands beside there); the list then opens
 over that pane. From 700 to 999 (an iPad upright, a foldable open: one column) the slim list (88)
-stands at the conversation's left and the column grows by its width. No pills, no coloured edge, no
+stands at the conversation's left and the column grows by its width. D545: the bar's first control
+(a drawn window with its side column, `IconBtn` / `iconButton`) narrows the list to its faces (thin:
+30-pt figures on a 56-pt strip on the web, 60 on the Mac, the number above each head), hides it, and
+brings it back, remembered per device; hidden, the others' faces in the bar are the way back. The
+list's width changes once at the press and then the list alone slides in 14 on `--t-across`; on the
+Mac, thin, its band joins the bar's chrome under the window's controls. No pills, no coloured edge, no
 " · " joins: each fact its own element.
 
 **The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay
@@ -582,6 +587,7 @@ A new control is added to the set (and to this table) before it is used.
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| The other partners' faces, a stack of up to three 24-pt discs in their clays with what waits in them on a `CountPebble`, the way up to (or back to a hidden) list of partners (D541, D545) | `othersStack` (`shared.go`) | `PartnersBack` |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |
 | A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |

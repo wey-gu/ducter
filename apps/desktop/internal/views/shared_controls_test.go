@@ -24,6 +24,8 @@ var sharedControls = map[string]bool{
 	"cardName": true, "coinTile": true, "socketTile": true, "abilityChip": true, "listRow": true, "trayToken": true,
 	// D166: an app a source can read, on the accounts card
 	"appTile": true,
+	// D545: the other partners' faces with what waits in them, the way back to a hidden list
+	"othersStack": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
 	"pill": true, "menuRow": true, "menuRowEl": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed

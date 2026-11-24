@@ -421,25 +421,46 @@ func (a *App) railToggle(c *ui.Context) {
 	}
 	next := a.nextRail()
 	label := a.L.T("partners.rail.show")
-	col := float32(7)
 	switch next {
 	case "thin":
-		label, col = a.L.T("partners.rail.thin"), 4.5
+		label = a.L.T("partners.rail.thin")
 	case "hidden":
-		label, col = a.L.T("partners.rail.hide"), 0
+		label = a.L.T("partners.rail.hide")
 	}
+	// The glyph says how the list stands now (the places' family: an
+	// 18-point mark, a 1.6 stroke, the muted ink warming under the pointer):
+	// the window's outline and the list's edge as a thin inner line, wide
+	// as the width has it, narrow when thin, dashed when hidden.
+	mode := a.Local.RailMode()
 	t := a.T
 	if a.iconButton(c, label, t.ControlSM, btnText, func(fg ui.Color) func(p *ui.Painter, r ui.Rect) {
-		return func(p *ui.Painter, r ui.Rect) {
-			s := r.W / 18
-			x, y := r.X+(r.W-18*s)/2, r.Y+(r.H-18*s)/2
-			p.Stroke(ui.Rect{X: x + 2*s, Y: y + 3*s, W: 14 * s, H: 12 * s}, fg, 3*s, 1.6*s)
-			if col > 0 {
-				p.Fill(ui.Rect{X: x + 2.8*s, Y: y + 3.8*s, W: col * s, H: 10.4 * s}, fg.Alpha(0.35), 2*s)
-				p.Line(x+(2+col+0.8)*s, y+3.5*s, x+(2+col+0.8)*s, y+14.5*s, 1.4*s, fg)
-			}
+		if fg == t.InkSoft {
+			fg = t.InkMuted
 		}
+		return drawRailGlyph(mode, fg)
 	}) {
 		a.setRail(next)
+	}
+}
+
+// drawRailGlyph is the list toggle's mark (D545): a window's outline and
+// the list's edge inside it, in the places' stroke.
+func drawRailGlyph(mode string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		const g = 18
+		x, y := r.X+(r.W-g)/2, r.Y+(r.H-g)/2
+		w := float32(1.6)
+		p.Stroke(ui.Rect{X: x + 2, Y: y + 3.5, W: 14, H: 11}, col, 2.5, w)
+		edge := x + 2 + 5.5
+		if mode == "thin" {
+			edge = x + 2 + 3
+		}
+		if mode != "hidden" {
+			p.Line(edge, y+3.5, edge, y+14.5, w, col)
+			return
+		}
+		for _, a := range []float32{5.2, 8.2, 11.2} {
+			p.Line(edge, y+a, edge, y+a+1.6, w, col)
+		}
 	}
 }

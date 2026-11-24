@@ -282,14 +282,16 @@ export function RailToggle() {
   if (!A.manyPartners()) return null;
   const next = A.nextRail();
   const label = t(next === "thin" ? "partners.rail.thin" : next === "hidden" ? "partners.rail.hide" : "partners.rail.show");
-  const col = next === "" ? 7 : next === "thin" ? 4.5 : 0;
+  // The glyph says how the list stands now, in the places' family (an 18-px mark, a 1.6 stroke, the
+  // muted ink): the window's outline and the list's edge inside it, wide as the width has it,
+  // narrow when thin, dashed when hidden.
+  const edge = A.railMode === "thin" ? 5 : 7.5;
   return (
     <span class="rail-toggle">
       <IconBtn label={label} onClick={() => A.setRail(next)}>
-        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-          <rect x="2" y="3" width="14" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" />
-          {col > 0 && <rect x="2.8" y="3.8" width={col} height="10.4" rx="2" fill="currentColor" opacity="0.35" />}
-          {col > 0 && <path d={`M${2 + col + 0.8} 3.5v11`} stroke="currentColor" stroke-width="1.4" />}
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="2" y="3.5" width="14" height="11" rx="2.5" />
+          <path d={`M${edge} 3.5v11`} stroke-dasharray={A.railMode === "hidden" ? "0.6 2.6" : undefined} />
         </svg>
       </IconBtn>
     </span>

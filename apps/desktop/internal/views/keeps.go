@@ -756,10 +756,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 				if k.Where.Harness != "" {
 					parts = append(parts, harnessName(k.Where.Harness))
 				}
-				sep := ", "
-				if a.L.Lang == i18n.ZH {
-					sep = "，"
-				}
+				sep := a.L.T("keep.where.sep")
 				if len(parts) > 0 {
 					rules = append(rules, rule{"keep.rule.where", []string{strings.Join(parts, sep)}, ""})
 				}

@@ -14,6 +14,7 @@ import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
 import { healthLine, interval } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
+import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -300,7 +301,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
     { k: "keep.rule.until", v: [k.until ?? t("keep.until.none")] },
     { k: "keep.rule.speaks", v: [k.speaks ?? t("keep.speaks.default")], muted: t("keep.speaks.quiet") },
     ...(k.limits || k.run === "perItem" ? [{ k: "keep.rule.limits", v: [k.limits ?? t("keep.limits.helper")] }] : []),
-    ...(where.length ? [{ k: "keep.rule.where", v: [where.join(A.L.lang === "zh" ? "，" : ", ")] }] : []),
+    ...(where.length ? [{ k: "keep.rule.where", v: [where.join(t("keep.where.sep"))] }] : []),
     ...(k.address ? [{ k: "keep.rule.address", v: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`) }] : []),
   ];
   return (
@@ -328,13 +329,13 @@ function HowItRuns({ k }: { k: KeepPage }) {
         </div>
       )}
       {K.pause && (
-        <div class="kp-menu" role="menu">
+        <Menu class="kp-menu" label={t("keep.pause")} focusFirst onClose={() => ((K.pause = false), A.changed())}>
           {PAUSES.map((p) => (
-            <button key={p.key} role="menuitem" onClick={() => act(k.id, { action: "pause", ...((u) => (u ? { until: u } : {}))(p.until(Date.now())) })}>
+            <MenuItem key={p.key} onClick={() => act(k.id, { action: "pause", ...((u) => (u ? { until: u } : {}))(p.until(Date.now())) })}>
               {t(p.key)}
-            </button>
+            </MenuItem>
           ))}
-        </div>
+        </Menu>
       )}
       {K.stop && (
         <div class="kp-stop">

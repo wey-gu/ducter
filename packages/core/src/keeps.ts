@@ -17,6 +17,7 @@ import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { Helper } from "@ducter/protocol/src/helpers.ts";
 import { realClock, type Clock } from "./clock.ts";
+import { intlLocale } from "./lang.ts";
 import { helperItems, type Helpers } from "./helpers.ts";
 import type { Loops } from "./loops.ts";
 import { sayOngoing, type Ongoing } from "./ongoing.ts";
@@ -512,7 +513,7 @@ export function createKeeps(o: {
     const w = words(W, lang());
     const persona = k.persona ?? o.persona();
     const s = sheetOf(k, persona);
-    const when = (v: string) => new Date(v).toLocaleString(lang() === "zh" ? "zh-CN" : "en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, ...(o.zone?.() ? { timeZone: o.zone() } : {}) });
+    const when = (v: string) => new Date(v).toLocaleString(intlLocale(lang()), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, ...(o.zone?.() ? { timeZone: o.zone() } : {}) });
     if (k.life === "done") return fill(w.done, { title: k.title });
     if (k.life === "stopped") return fill(w.stopped, { title: k.title });
     if (k.life === "paused") return s.pausedUntil ? fill(w.pausedUntil, { title: k.title, until: when(s.pausedUntil) }) : fill(w.paused, { title: k.title });

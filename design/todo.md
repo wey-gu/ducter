@@ -3271,3 +3271,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
+
+## A task's heavy child and the server's memory (D524)
+
+- **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
+- **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).

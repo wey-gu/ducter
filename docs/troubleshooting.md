@@ -28,6 +28,15 @@ The Mac app runs the same check-up by itself when it starts, and shows only what
 
 ## Common problems
 
+### The server ran out of memory
+
+`ducter doctor` says so under **Server memory (RAM)**: how many times in the last day, when, and
+the biggest program a task was running then (often a type check, a build or a browser running side
+by side). Ducter itself keeps running: only that program is stopped, and the task sees it and
+can run its checks one at a time. After an update, Ducter brings its service settings up to
+date by itself, and the check-up says **service settings updated** under **Stays on**. A server with little
+memory and no swap runs out sooner; adding swap, or running heavy tasks on another computer, helps.
+
 ### A task says "Couldn't start"
 
 Most of the time you won't see this: when a task can't start, Ducter first tries the fix itself

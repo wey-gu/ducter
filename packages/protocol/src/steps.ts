@@ -41,7 +41,7 @@ const DUCTER_TOOLS = ["report_to_main", "checkpoint", "log_search", "log_read"];
 const BOOKKEEPING = ["TodoWrite", "TodoRead", "update_plan", "todo_write", "todowrite", "ExitPlanMode"];
 
 const SHELL = ["Bash", "bash", "PowerShell", "shell", "exec_command", "commandExecution", "run_shell_command", "run_terminal_command", "local_shell", "run_command"];
-// D524: Antigravity's own (view_file, list_dir, find_by_name, write_to_file, replace_file_content,
+// D525: Antigravity's own (view_file, list_dir, find_by_name, write_to_file, replace_file_content,
 // search_web, read_url_content, invoke_subagent; its inputs in PascalCase: Path, AbsolutePath,
 // CommandLine) beside agy's read_file, edit_file and run_command (OAR 0.124's recorded names).
 const READ = ["Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory", "view_file", "list_dir"];
@@ -58,7 +58,7 @@ const COMPUTER_TOOLS = [
   "scroll", "computer", "bring_to_front", "set_window_frame", "verify_state",
 ];
 
-/** mcp__server__tool → [server, tool]; Antigravity's mcp_server_tool (D524) the same; anything else → ["", name]. */
+/** mcp__server__tool → [server, tool]; Antigravity's mcp_server_tool (D525) the same; anything else → ["", name]. */
 export function splitTool(name: string): [string, string] {
   if (name.startsWith("mcp__")) {
     const i = name.lastIndexOf("__");
@@ -69,14 +69,14 @@ export function splitTool(name: string): [string, string] {
   return ["", name];
 }
 
-/** Ducter's own tools, however a harness names them (mcp__ducter__x, agy's mcp_ducter_x, ducter.x): never a step of the work (D124, D524). */
+/** Ducter's own tools, however a harness names them (mcp__ducter__x, agy's mcp_ducter_x, ducter.x): never a step of the work (D124, D525). */
 export function isDucterTool(name: string): boolean {
   return /^mcp__ducter[\w-]*__/.test(name) || /^mcp_ducter[\w-]*_/.test(name) || /^ducter[\w-]*\./.test(name) || DUCTER_TOOLS.includes(name);
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
-/** The first of the keys with words in it; the same key in another case (agy's Path, CommandLine) counts after them (D524). */
+/** The first of the keys with words in it; the same key in another case (agy's Path, CommandLine) counts after them (D525). */
 function firstStr(o: Record<string, unknown>, keys: string[]): string {
   const got = (v: unknown): string => {
     if (typeof v === "string" && v.trim()) return v.trim();
@@ -475,7 +475,7 @@ const READ_KEYS = ["file_path", "path", "notebook_path", "filePath", "file", "ta
 const LIST = ["ls", "LS", "list_directory", "list_dir"];
 
 /**
- * D524: the whole path a file tool named (a read's, an edit's first), so the step's file chip opens
+ * D525: the whole path a file tool named (a read's, an edit's first), so the step's file chip opens
  * that file; "" for anything else (a folder listed, a shell's `cat x`, which names it from where it ran).
  */
 export function stepPath(t: ToolLike): string {

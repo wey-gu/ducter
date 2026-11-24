@@ -46,7 +46,7 @@ var (
 	ducterTools = []string{"report_to_main", "checkpoint", "log_search", "log_read"}
 	bookkeeping = []string{"TodoWrite", "TodoRead", "update_plan", "todo_write", "todowrite", "ExitPlanMode"}
 	shellTools  = []string{"Bash", "bash", "PowerShell", "shell", "exec_command", "commandExecution", "run_shell_command", "run_terminal_command", "local_shell", "run_command"}
-	// D524: Antigravity's own names beside agy's read_file, edit_file and run_command.
+	// D525: Antigravity's own names beside agy's read_file, edit_file and run_command.
 	readTools    = []string{"Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory", "view_file", "list_dir"}
 	listTools    = []string{"ls", "LS", "list_directory", "list_dir"}
 	readKeys     = []string{"file_path", "path", "notebook_path", "filePath", "file", "target_file", "AbsolutePath", "dir", "directory", "DirectoryPath"}
@@ -68,7 +68,7 @@ var (
 )
 
 // splitTool is mcp__server__tool as server and tool; Antigravity's
-// mcp_server_tool the same (D524).
+// mcp_server_tool the same (D525).
 func splitTool(name string) (string, string) {
 	if strings.HasPrefix(name, "mcp__") {
 		if i := strings.LastIndex(name, "__"); i > 4 {
@@ -82,13 +82,13 @@ func splitTool(name string) (string, string) {
 }
 
 // isDucterTool: Ducter's own tools however a harness names them
-// (mcp__ducter__x, agy's mcp_ducter_x, ducter.x), never a step (D124, D524).
+// (mcp__ducter__x, agy's mcp_ducter_x, ducter.x), never a step (D124, D525).
 func isDucterTool(name string) bool {
 	return plumbingRe.MatchString(name) || agyDucterRe.MatchString(name) || dotDucterRe.MatchString(name) || in(ducterTools, name)
 }
 
 // firstStr is the first of the keys with words in it; the same key in
-// another case (agy's Path, CommandLine) counts after them (D524).
+// another case (agy's Path, CommandLine) counts after them (D525).
 func firstStr(o map[string]any, keys ...string) string {
 	got := func(x any) string {
 		switch v := x.(type) {
@@ -892,7 +892,7 @@ var dottedToolRe = regexp.MustCompile(`(?i)^([a-z][\w-]*)\.([a-z_][\w.]*)$`)
 // saysOf is the agent's own short words for a shell step, when its harness
 // carries them (D152).
 // stepPath is the whole path a file tool named (a read's, an edit's
-// first), what its file chip opens (D524); "" for anything else.
+// first), what its file chip opens (D525); "" for anything else.
 func stepPath(t *protocol.ToolCall) string {
 	if isDucterTool(t.Name) {
 		return ""

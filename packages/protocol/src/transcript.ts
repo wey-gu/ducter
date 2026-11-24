@@ -27,7 +27,7 @@ export interface StepRow {
   outcome: Outcome;
   /** The command as it ran (shell steps), keys hidden: what opens on a tap, in mono. */
   command?: string;
-  /** D524: the whole path a file tool read or edited, keys hidden: what its file chip opens. */
+  /** D525: the whole path a file tool read or edited, keys hidden: what its file chip opens. */
   path?: string;
   /** What it printed, keys hidden, at most 40 lines. */
   output?: string;

@@ -327,9 +327,9 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 	return n > 0 && fold.Clicked()
 }
 
-// ---------- D524: the opened task's steps ----------
+// ---------- D525: the opened task's steps ----------
 
-// workHead is a turn's work under one quiet line (D524): the drawn stack
+// workHead is a turn's work under one quiet line (D525): the drawn stack
 // (the shared spinner while it works), "12 步，3 条消息" in 13 secondary
 // ink, a small × in the failed ink with how many failed, the chevron, and a
 // hairline on to the column's edge. Hovered, the words darken and nothing
@@ -340,7 +340,7 @@ func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open 
 	if failed > 0 {
 		name = spoken(a.L, words, a.L.T("work.failed", failed))
 	}
-	row := ui.Row(c.Key("work:"+key)).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).
+	row := ui.Row(c.Key("work:" + key)).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(name)
 	hover := row.Hovered()
 	row.Children(func() {
@@ -366,7 +366,7 @@ func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open 
 	return row.Clicked()
 }
 
-// stepLine is a step's one row (D268, D524): 28 tall, its mark at 16, what
+// stepLine is a step's one row (D268, D525): 28 tall, its mark at 16, what
 // it holds, and a 12 chevron in faint ink when it opens; hovered, a soft
 // tint under it that moves nothing (it pads into its own negative margin).
 // It answers a click. The web's .step.
@@ -388,7 +388,7 @@ func (a *App) stepLine(c *ui.Context, label string, expandable, open bool, child
 	return expandable && row.Clicked()
 }
 
-// stepChip is a step's object in mono on the inline code tint (D524): a
+// stepChip is a step's object in mono on the inline code tint (D525): a
 // command cut at a word's end, a pattern, a service's object; one line,
 // cut with an ellipsis, its whole on hover. Never pressable on its own.
 // The web's .chip.code.
@@ -402,7 +402,7 @@ func (a *App) stepChip(c *ui.Context, text, tip string) {
 	})
 }
 
-// fileChip is a file a step read or edited (D524): its kind's small mark and
+// fileChip is a file a step read or edited (D525): its kind's small mark and
 // its name in mono on the inline code tint, its tail on hover; when the
 // path is known it opens the file inside Ducter (D356's viewer), a deeper
 // tint under it on hover. The web's FileChip.

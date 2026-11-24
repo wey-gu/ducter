@@ -43,12 +43,12 @@ const (
 	groupMax = 60
 	// stepSize is a step line's words (D268): 13, secondary ink.
 	stepSize = 13
-	// stepRowH is every step row's height (D524): one rhythm; stepChipH
+	// stepRowH is every step row's height (D525): one rhythm; stepChipH
 	// a chip's in it.
 	stepRowH  = 28
 	stepChipH = 20
 	// stepTail is how many of a long stretch's rows show under "前面还有
-	// n 步" (D524), which opens the rest in place.
+	// n 步" (D525), which opens the rest in place.
 	stepTail = 8
 )
 
@@ -61,7 +61,7 @@ func isWorking(task *store.Task) bool {
 	return att == protocol.Working || att == protocol.Queued
 }
 
-// workEnd is where a turn's work ends (D524): while it works, all of it;
+// workEnd is where a turn's work ends (D525): while it works, all of it;
 // once done, the blocks before its last words; -1 when it has no steps.
 func workEnd(tu *Turn, live bool) int {
 	if live {
@@ -146,7 +146,7 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 	if !live && took > 0 {
 		a.tpage.took = a.L.T("turn.worked", a.shortDur(took))
 	}
-	// D524: the turn's work (everything before its last words; all of it
+	// D525: the turn's work (everything before its last words; all of it
 	// while it works) under one quiet head: folded once the turn is done,
 	// open while it works.
 	from := 0
@@ -525,7 +525,7 @@ func (a *App) liveWords(blocks []Block) string {
 
 // ---------- the working line (D268) ----------
 
-// workingLine is the transcript's foot while a turn is under way (D524): a
+// workingLine is the transcript's foot while a turn is under way (D525): a
 // hairline, then one row: On hand's working pulse, the state in its own
 // words, and the turn's clock at the right in tabular figures, in the meta
 // line's 12. A retry says itself here instead. The live step's own row

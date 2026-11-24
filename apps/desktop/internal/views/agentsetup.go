@@ -10,6 +10,7 @@ package views
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -34,7 +35,8 @@ func agentRowLook(h protocol.DeviceHarness) string {
 		return "login"
 	case h.Setup != nil && h.Setup.Phase == "queued":
 		return "queued"
-	case h.Installed && h.LoggedIn && (h.Login == nil || h.Login.State != "done"):
+	case h.Installed && h.LoggedIn:
+		// D518: done is the agent's own check saying signed in: ready at once (登录好了 its word).
 		return "ready"
 	case h.Installed && h.Login != nil:
 		return "login"
@@ -133,8 +135,14 @@ func (a *App) lookAgainOnce(dv *protocol.DeviceView) {
 func (a *App) agentWord(dv *protocol.DeviceView, h protocol.DeviceHarness, look string) string {
 	switch look {
 	case "ready":
+		if h.Login != nil && h.Login.State == "done" {
+			return a.L.T("ag.login.done")
+		}
 		return a.L.T("ag.ready")
 	case "signin", "login":
+		if look == "login" && signingIn(h) {
+			return a.L.T("ag.signing_in")
+		}
 		return a.L.T("ag.signed_out")
 	case "installing":
 		if h.Setup != nil && h.Setup.Pct > 0 {
@@ -175,11 +183,13 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 			ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
 				uiText(c, name).FontSize(t.MD).FontWeight(800)
 				ink := t.InkMuted
-				switch look {
-				case "failed":
+				switch {
+				case look == "failed":
 					ink = t.Failed.Ink
-				case "ready":
+				case look == "ready":
 					ink = t.Done.Ink
+				case look == "login" && signingIn(h):
+					ink = t.InkSoft
 				}
 				uiText(c, a.agentWord(dv, h, look)).FontSize(t.XS).TextColor(ink)
 			})
@@ -253,7 +263,7 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 			line(a.L.T("ag.login.pi", a.deviceNameIn(dv)), t.Ink)
 			return
 		case "starting":
-			line(a.L.T("ag.login.starting"), t.InkMuted)
+			a.loginLive(c, key, h.Harness, a.L.T("ag.login.starting"), 0)
 			return
 		case "done":
 			line(a.L.T("ag.login.done"), t.Done.Ink)
@@ -273,16 +283,11 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 		}
 		switch l.State {
 		case "failed", "expired":
-			k := "ag.login.failed"
-			switch {
-			case l.State == "expired":
-				k = "ag.login.expired"
-			case l.Reason == "device_off":
-				k = "ag.login.device_off"
-			case l.Reason == "wrong_code":
-				k = "ag.login.wrong_code"
+			if k := loginTrouble(l); k == "ag.login.not_seen" || k == "ag.login.unreachable" {
+				line(a.L.T(k, name), t.Failed.Ink)
+			} else {
+				line(a.L.T(k), t.Failed.Ink)
 			}
-			line(a.L.T(k), t.Failed.Ink)
 			again()
 			return
 		}
@@ -290,53 +295,133 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 			a.keyLogin(c, dv, h, key, line)
 			return
 		}
-		if h.Harness == "codex" {
-			line(a.L.T("ag.login.codex"), t.Ink)
-		} else if h.Harness == "antigravity" {
-			line(a.L.T("ag.login.agy"), t.Ink)
-		} else {
-			line(a.L.T("ag.login.claude"), t.Ink)
-		}
-		if l.Reason == "wrong_code" {
-			line(a.L.T("ag.login.wrong_code"), t.Failed.Ink)
-		}
-		if l.URL != "" {
-			uiText(c, shortURL(l.URL)).FontSize(t.XS).TextColor(t.Accent).SingleLine()
-		}
-		if l.Code != "" {
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				uiText(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
-				if a.buttonFor(c, a.L.T("ag.login.copy"), name, btnSecondary, t.ControlSM, t.Bg) {
-					c.WriteClipboard(l.Code)
-				}
-			})
-		}
-		if l.Paste && l.State == "waiting" {
-			if a.ag.code == nil {
-				a.ag.code = map[string]string{}
+		// D518: two steps the person can see (open the link; the code, pasted back
+		// or entered there), then one live line that moves while it waits.
+		open, code := loginSteps(h.Harness)
+		checking := l.State == "checking"
+		a.loginStep(c, key+":1", 1, func() {
+			line(a.L.T(open), t.Ink)
+			if l.URL != "" {
+				uiText(c, shortURL(l.URL)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				ui.Row(c).Children(func() {
+					if a.buttonFor(c, a.L.T("ag.login.open"), name, btnSecondary, t.ControlSM, t.Bg) {
+						c.OpenURL(l.URL)
+					}
+				})
 			}
-			v := a.ag.code[key]
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.TextInput(c.Key("ag-code:"+key), &v).Placeholder(a.L.T("ag.login.paste")).Label(a.L.T("ag.login.paste")).
-					FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1)
-				if a.buttonFor(c, a.L.T("ag.login.send"), name, btnPrimary, t.ControlSM, t.Bg) && v != "" {
-					a.agentSetupReq(dv, "code", protocol.AgentSetupReq{Harness: h.Harness, Code: v})
-					v = ""
+		})
+		a.loginStep(c, key+":2", 2, func() {
+			line(a.L.T(code), t.Ink)
+			if l.Code != "" {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+					uiText(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
+					if a.buttonFor(c, a.L.T("ag.login.copy"), name, btnSecondary, t.ControlSM, t.Bg) {
+						c.WriteClipboard(l.Code)
+					}
+				})
+			}
+			if l.Paste && !checking { // checking: the live line under the steps says so
+				if a.ag.code == nil {
+					a.ag.code = map[string]string{}
 				}
-			})
-			a.ag.code[key] = v
-		}
-		if l.State == "checking" {
-			line(a.L.T("ag.login.checking"), t.InkMuted)
+				v := a.ag.code[key]
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+					ui.TextInput(c.Key("ag-code:"+key), &v).Placeholder(a.L.T("ag.login.paste")).Label(a.L.T("ag.login.paste")).
+						FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)
+					if a.buttonFor(c, a.L.T("ag.login.send"), name, btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" && !checking {
+						a.agentSetupReq(dv, "code", protocol.AgentSetupReq{Harness: h.Harness, Code: v})
+					}
+				})
+				a.ag.code[key] = v
+			}
+			if l.Reason == "wrong_code" && !checking {
+				line(a.L.T("ag.login.wrong_code"), t.Failed.Ink)
+			}
+		})
+		if checking {
+			a.loginLive(c, key, h.Harness, a.L.T("ag.login.confirming", name), 0)
+		} else {
+			k := "ag.login.wait.self"
+			if l.Paste {
+				k = "ag.login.wait.paste"
+			}
+			a.loginLive(c, key, h.Harness, a.L.T(k), l.Until)
 		}
 		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
-			if l.URL != "" && a.buttonFor(c, a.L.T("ag.login.open"), name, btnSecondary, t.ControlSM, t.Bg) {
-				c.OpenURL(l.URL)
-			}
 			if a.buttonFor(c, a.L.T("ag.login.cancel"), name, btnText, t.ControlSM, t.Bg) {
 				a.agentSetupReq(dv, "cancel", protocol.AgentSetupReq{Harness: h.Harness})
 			}
 		})
+	})
+}
+
+// signingIn is a sign-in Ducter is carrying right now (not one that ended).
+func signingIn(h protocol.DeviceHarness) bool {
+	return h.Login != nil && (h.Login.State == "starting" || h.Login.State == "waiting" || h.Login.State == "checking")
+}
+
+// loginTrouble is which words a failed or stopped sign-in says (D518), as
+// the web's loginTrouble.
+func loginTrouble(l *protocol.AgentLoginState) string {
+	if l.State == "expired" {
+		return "ag.login.expired"
+	}
+	switch l.Reason {
+	case "device_off", "wrong_code", "not_seen", "no_answer":
+		return "ag.login." + l.Reason
+	case "offline":
+		// D523: its sign-in ended well but its own check got no answer from its service.
+		return "ag.login.unreachable"
+	}
+	return "ag.login.failed"
+}
+
+// loginSteps is each agent's two steps, in its own words (D518).
+func loginSteps(harness string) (open, code string) {
+	k := "claude"
+	switch harness {
+	case "codex":
+		k = "codex"
+	case "antigravity":
+		k = "agy"
+	}
+	return "ag.login." + k + ".1", "ag.login." + k + ".2"
+}
+
+// minutesLeft is the minutes until until (ms since the epoch), rounded up,
+// never below 1.
+func minutesLeft(until int64, now time.Time) int {
+	ms := until - now.UnixMilli()
+	m := int((ms + 59_999) / 60_000)
+	if m < 1 {
+		m = 1
+	}
+	return m
+}
+
+// loginStep is one numbered step of a sign-in: its number in a small disc,
+// what to do beside it.
+func (a *App) loginStep(c *ui.Context, key string, n int, body func()) {
+	t := a.T
+	ui.Row(c.Key("ag-step:" + key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+		a.stepNumber(c, n)
+		ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Margin(3, 0, 0, 0).Children(body)
+	})
+}
+
+// loginLive is the sign-in's live line (D518), the shared alive line every
+// wait uses: the agent's coin at work as its figure, what it waits for in
+// words, and how long it still waits under them.
+func (a *App) loginLive(c *ui.Context, key, harness, text string, until int64) {
+	sub := ""
+	if until > 0 {
+		sub = a.L.T("ag.login.left", strconv.Itoa(minutesLeft(until, a.Now())))
+		if left := time.UnixMilli(until).Sub(a.Now()); left > 0 {
+			c.After(min(left, time.Minute))
+		}
+	}
+	a.aliveLine(c, "ag-live:"+key, text, sub, func() {
+		a.coinBox(c, "ag-live:"+key, harness, 24, false, coinWorking)
 	})
 }
 

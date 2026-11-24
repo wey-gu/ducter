@@ -1,6 +1,6 @@
 package views
 
-// D524: an opened task's steps as the rows it draws: a turn's work under
+// D525: an opened task's steps as the rows it draws: a turn's work under
 // one quiet head ("12 步，3 条消息"), one row per step, a run of file reads
 // as one row with their chips, a service's tool said by the service and
 // what it did. The Go port of packages/protocol/src/stepview.ts; both pass

@@ -134,7 +134,7 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
   group: () => <G><path d="M3 4.5h10M3 8h10M3 11.5h6" /></G>,
-  // D524: a step through a connected service (never a bare dot), and the earlier steps of a stretch.
+  // D525: a step through a connected service (never a bare dot), and the earlier steps of a stretch.
   plug: () => <G><path d="M5.5 2v3M10.5 2v3M3 5h10v2.5Q13 11 8 11T3 7.5zM8 11v3.5" /></G>,
   more: () => <G><circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none" /></G>,
 };
@@ -365,15 +365,15 @@ const Check = () => (
   </svg>
 );
 
-// ---------- D524: the steps as rows ----------
+// ---------- D525: the steps as rows ----------
 
 /** What a step's row says, apart: a plain verb, its object as a mono chip or a file chip, muted words. */
 export type Parts = { verb: string; code?: string; file?: string; path?: string; words?: string; more?: string; tip?: string };
 
-/** A step's drawn mark (D524): a web search a globe, a service's tool a plug, else its kind's. */
+/** A step's drawn mark (D525): a web search a globe, a service's tool a plug, else its kind's. */
 const markOf = (st: Step): string => (st.kind === "searched" && st.act === "web" ? "browsed" : st.kind === "other" && st.via ? "plug" : st.kind);
 
-/** A step in its row's words (D524): a plain verb (the present tense while it is the live one) and
+/** A step in its row's words (D525): a plain verb (the present tense while it is the live one) and
  *  the object it acted on, never a verb alone and never a raw tool name. */
 export function rowParts(r: StepRow, live = false): Parts {
   const now = (k: string, past: string) => (live ? t(`now.${k}`) : past);
@@ -425,7 +425,7 @@ export function rowParts(r: StepRow, live = false): Parts {
 /** The task the transcript is shown in, for a file chip's open (D356 finds it by the path, too). */
 const shownTask = () => (A.route.name === "task" ? A.route.id : undefined);
 
-/** A file chip of a step (D524): opens the file in Ducter's viewer when its path is known. */
+/** A file chip of a step (D525): opens the file in Ducter's viewer when its path is known. */
 const StepFile = ({ tail, path }: { tail: string; path?: string }) => (
   <FileChip name={fileName(tail)} tail={tail} picture={fileKind(tail) === "picture"} {...(path ? { onOpen: () => openFileLink(path, shownTask()) } : {})} />
 );
@@ -440,7 +440,7 @@ function Since({ from }: { from: number }) {
   return <span class="took">{dur(Date.now() - from)}</span>;
 }
 
-/** One step (D524): its row 28 tall (the mark, the verb in 13 medium, its object in a chip, muted
+/** One step (D525): its row 28 tall (the mark, the verb in 13 medium, its object in a chip, muted
  *  words, its counts, at the right what it took or that it failed, a chevron when it opens), a
  *  failure's words under it, and what it ran and printed, its diff or its thinking once opened. */
 function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
@@ -511,7 +511,7 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
   );
 }
 
-/** A run of file reads as one row (D524): "读了 3 个文件" and the files' chips, the rest counted. */
+/** A run of file reads as one row (D525): "读了 3 个文件" and the files' chips, the rest counted. */
 const FILES_SHOWN = 3;
 function FilesRow({ rows }: { rows: StepRow[] }) {
   const names = rows.map((r) => fileName(r.step!.target!));
@@ -533,10 +533,10 @@ function FilesRow({ rows }: { rows: StepRow[] }) {
   );
 }
 
-/** How many of a long stretch's rows show under "前面还有 n 步" (D524), which opens the rest in place. */
+/** How many of a long stretch's rows show under "前面还有 n 步" (D525), which opens the rest in place. */
 const STEP_TAIL = 8;
 
-/** A stretch of steps (D524): its rows, a run of file reads as one; past STEP_TAIL, its last rows
+/** A stretch of steps (D525): its rows, a run of file reads as one; past STEP_TAIL, its last rows
  *  under "前面还有 n 步". The live stretch's last step is its own row, in the present tense. */
 function Stretch({ task, b, live }: { task: Task; b: Extract<Block, { k: "steps" }>; live: boolean }) {
   const [all, setAll] = useState(false);
@@ -865,14 +865,14 @@ export function wakesOf(task: Task): { n: number; lastAt: number } {
 
 /** A turn's body (D268): a finished turn folds its steps and interim words under "Worked for 3m
  *  12s", keeping its last words in view; the live turn never folds. */
-/** D524: a turn's work in words: "12 步，3 条消息" / "12 steps, 3 messages". */
+/** D525: a turn's work in words: "12 步，3 条消息" / "12 steps, 3 messages". */
 export function workWords(w: Work): string {
   if (!w.steps) return t("work.thought");
   const s = w.steps === 1 ? t("work.steps.one") : t("work.steps", w.steps);
   return s + (w.messages === 1 ? t("work.msgs.one") : w.messages > 1 ? t("work.msgs", w.messages) : "");
 }
 
-/** A turn's answer (D524): its work (everything before its last words; all of it while it works)
+/** A turn's answer (D525): its work (everything before its last words; all of it while it works)
  *  under one quiet head, folded once the turn is done and open while it works; its last words after. */
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
   const [toggled, setToggled] = useState(false);
@@ -1170,7 +1170,7 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   );
 }
 
-/** The transcript's foot while a turn is under way (D524): a hairline, then On hand's working pulse,
+/** The transcript's foot while a turn is under way (D525): a hairline, then On hand's working pulse,
  *  the state in its own words and the turn's clock at the right, in the meta line's 12; a retry
  *  takes its words while it is the latest thing. The live step's row above carries the spinner. */
 function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {

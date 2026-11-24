@@ -376,6 +376,15 @@ export function Fold({ title, summary, children }: { title: string; summary?: st
   );
 }
 
+/** A step's number in a short numbered sequence: a sunken disc (the lend sheet's three steps' look; D518 a sign-in's two). */
+export function StepNumber({ n }: { n: number }) {
+  return (
+    <span class="step-n" aria-hidden="true">
+      {n}
+    </span>
+  );
+}
+
 /** D398: an optional step as one framed row (its mark, its title, a muted line, a chevron); open, the step is under it. */
 export function StepRow({ mark, title, sub, open, onClick }: { mark: ComponentChildren; title: string; sub?: string; open: boolean; onClick: () => void }) {
   return (
@@ -611,7 +620,7 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
   );
 }
 
-// ---------- D524: the opened task's steps ----------
+// ---------- D525: the opened task's steps ----------
 
 const StackMark = () => (
   <svg class="g" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -619,7 +628,7 @@ const StackMark = () => (
   </svg>
 );
 
-/** D524: a turn's work under one quiet line: the drawn stack (the shared spinner while it works),
+/** D525: a turn's work under one quiet line: the drawn stack (the shared spinner while it works),
  *  "12 步，3 条消息", a small × in the failed ink with how many failed, the chevron, and a hairline on
  *  to the column's edge. The Mac's workHead. */
 export function WorkHead(p: { words: string; failed: number; live: boolean; open: boolean; onClick: () => void }) {
@@ -642,7 +651,7 @@ export function WorkHead(p: { words: string; failed: number; live: boolean; open
   );
 }
 
-/** D524: a step's object in mono on the inline code tint: one line, cut with an ellipsis, its whole
+/** D525: a step's object in mono on the inline code tint: one line, cut with an ellipsis, its whole
  *  on hover. Never pressable on its own. The Mac's stepChip. */
 export function CodeChip(p: { text: string; title?: string }) {
   return (
@@ -664,7 +673,7 @@ const PictureMark = () => (
   </svg>
 );
 
-/** D524: a file a step read or edited: its kind's small mark and its name in mono on the inline code
+/** D525: a file a step read or edited: its kind's small mark and its name in mono on the inline code
  *  tint, its tail on hover; with onOpen it opens the file inside Ducter (D356's viewer). The Mac's
  *  fileChip. */
 export function FileChip(p: { name: string; tail: string; picture?: boolean; onOpen?: () => void }) {

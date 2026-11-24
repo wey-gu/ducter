@@ -30,7 +30,7 @@ type StepRow struct {
 	N       int    `json:"n"`
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
-	// Path (D524) is the whole path a file tool read or edited: what its file chip opens.
+	// Path (D525) is the whole path a file tool read or edited: what its file chip opens.
 	Path   string `json:"path,omitempty"`
 	Output string `json:"output,omitempty"`
 	// OutputFull (D320): what it printed was cut at outputMax; its whole length.

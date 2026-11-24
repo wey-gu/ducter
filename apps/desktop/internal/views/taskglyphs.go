@@ -181,7 +181,7 @@ func drawRing(rim, left ui.Color, frac float32) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// drawPlug is a plug: a step through a connected service (D524), never a
+// drawPlug is a plug: a step through a connected service (D525), never a
 // bare dot for it.
 func drawPlug(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
@@ -203,7 +203,7 @@ func drawPlug(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// drawPictureSM is a small framed hill and sun: a picture file's chip (D524).
+// drawPictureSM is a small framed hill and sun: a picture file's chip (D525).
 func drawPictureSM(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2
@@ -225,7 +225,7 @@ func drawPictureSM(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// drawStack is three lines, the last short: a turn's work folded (D524).
+// drawStack is three lines, the last short: a turn's work folded (D525).
 func drawStack(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2

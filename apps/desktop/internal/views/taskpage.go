@@ -398,7 +398,7 @@ func (a *App) taskTail(c *ui.Context, task *store.Task, m *taskMemo) {
 			}
 			a.endLine(c, task, m)
 		})
-		// D524: where its files are lives in the header's place and in 看细节,
+		// D525: where its files are lives in the header's place and in 看细节,
 		// never as a raw path in the transcript.
 		a.changes(c, task)
 		a.outsideActs(c, task)

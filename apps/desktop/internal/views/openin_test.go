@@ -57,7 +57,7 @@ func TestOpenInMenu(t *testing.T) {
 		// This Mac's own Ducter: the menu, Finder, then each editor, then each
 		// terminal (D201), each group in the order found (the one used last first).
 		_, tt, calls := open(lang, "", repo, nil)
-		// D524: the place is the header's; the transcript never prints the raw path.
+		// D525: the place is the header's; the transcript never prints the raw path.
 		if tt.HasText(tildePath(wt)) {
 			t.Errorf("%s: the raw path shows: %q", lang, tt.Texts())
 		}
@@ -94,7 +94,7 @@ func TestOpenInMenu(t *testing.T) {
 			t.Errorf("%s: Open in Ghostty opened %+v", lang, *calls)
 		}
 
-		// A Ducter elsewhere, its place on that computer: no menu, and no raw path (D524).
+		// A Ducter elsewhere, its place on that computer: no menu, and no raw path (D525).
 		_, tt, _ = open(lang, "wss://hel.example.com/ws", repo, nil)
 		if _, ok := tt.Find(about); ok {
 			t.Errorf("%s: %s shows for a remote place", lang, about)

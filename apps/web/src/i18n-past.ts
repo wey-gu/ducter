@@ -1,7 +1,7 @@
 // D285: 做过的事 / Past tasks (design/past.md). The same words as the Mac's.
 export const pastWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
-    "og.tab": "一直在跑的",
+    "og.tab": "在照看的",
     "og.sec.next": "等下一次",
     "og.sec.paused": "暂停了",
     "past.tab": "做过的事",
@@ -36,8 +36,8 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "made.n": "找到 %d 个",
     "made.none": "没找到。换几个字，或者直接问%s。",
     "made.empty": "还没有给你做的东西。让%s查点什么、做个表格，做好的会在这里。",
-    "og.link": "一直在跑的 %d 个",
-    "og.empty": "现在没有一直在跑的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
+    "og.link": "在照看的 %d 个",
+    "og.empty": "现在没有在照看的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
     "og.s.running": "正在跑",
     "og.s.needs_you": "等你",
     "og.s.proposed": "还没开始",
@@ -176,7 +176,7 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "past.out.sep": "、",
   },
   en: {
-    "og.tab": "Ongoing",
+    "og.tab": "Looking after",
     "og.sec.next": "Up next",
     "og.sec.paused": "Paused",
     "past.tab": "Past",
@@ -210,8 +210,8 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "made.n": "%d found",
     "made.none": "Nothing found. Try other words, or just ask %s.",
     "made.empty": "Nothing made for you yet. Ask %s to look something up or make a table, and it shows up here.",
-    "og.link": "%d ongoing",
-    "og.empty": "Nothing keeps going right now. Ask for something every day or every week, or to keep an eye on something, and it shows here.",
+    "og.link": "Looking after %d",
+    "og.empty": "Nothing to look after right now. Ask for something every day or every week, or to keep an eye on something, and it shows here.",
     "og.s.running": "Running",
     "og.s.needs_you": "Needs you",
     "og.s.proposed": "Not started",

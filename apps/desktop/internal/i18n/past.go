@@ -4,12 +4,12 @@ package i18n
 // same keys and words as the web client (apps/web/src/i18n-past.ts).
 
 var zhPast = Table{
-	"og.tab":              "一直在跑的",
+	"og.tab":              "在照看的",
 	"og.sec.next":         "等下一次",
 	"og.sec.paused":       "暂停了",
 	"past.tab":            "做过的事",
-	"og.link":             "一直在跑的 %d 个",
-	"og.empty":            "现在没有一直在跑的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
+	"og.link":             "在照看的 %d 个",
+	"og.empty":            "现在没有在照看的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
 	"og.s.running":        "正在跑",
 	"og.s.needs_you":      "等你",
 	"og.s.proposed":       "还没开始",
@@ -152,12 +152,12 @@ var zhPast = Table{
 }
 
 var enPast = Table{
-	"og.tab":              "Ongoing",
+	"og.tab":              "Looking after",
 	"og.sec.next":         "Up next",
 	"og.sec.paused":       "Paused",
 	"past.tab":            "Past",
-	"og.link":             "%d ongoing",
-	"og.empty":            "Nothing keeps going right now. Ask for something every day or every week, or to keep an eye on something, and it shows here.",
+	"og.link":             "Looking after %d",
+	"og.empty":            "Nothing to look after right now. Ask for something every day or every week, or to keep an eye on something, and it shows here.",
 	"og.s.running":        "Running",
 	"og.s.needs_you":      "Needs you",
 	"og.s.proposed":       "Not started",

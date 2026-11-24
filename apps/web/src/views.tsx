@@ -94,6 +94,7 @@ import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
+import { KeepReceipt } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
@@ -1486,6 +1487,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         {/* D405: the app this message made or changed, under its words. */}
         {e.ai.app && <AppCardView c={e.ai.app} />}
+        {/* D511: the Keep this turn made: its receipt card under the words. */}
+        {e.ai.keep && <KeepReceipt card={e.ai.keep} />}
         {e.ai.shelf && <ShelfCard />}
         {e.ai.first && <FirstAfter fw={e.ai.first} />}
         <RecallLine seq={e.firstSeq} />
@@ -2183,7 +2186,7 @@ export function OnHand() {
           <>
             {/* D467 round 4: the brief's 接下来 says what comes back next; no line of its own. */}
             <OnHandList room={wide ? "side" : "phone"} />
-            <RoutineShelf />
+            {!A.S.onHand?.keeps && <RoutineShelf />}
           </>
         )}
       </main>

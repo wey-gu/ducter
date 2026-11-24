@@ -243,7 +243,10 @@ export function createKeeps(o: {
     let wake: { at: string; woke: KeepRound["woke"]; what?: string } | undefined;
     let asked = false;
     let n = 0;
-    for (const e of log.read({ stream: `task:${taskId}`, kinds: ["waiter", "report", "decision"], limit: READ_MAX })) {
+    // A task's questions stand on the channel (decisions.ts); its wakes and reports on its own stream.
+    const asks = log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).filter((e) => (e.body as Bodies["decision"]).taskId === taskId);
+    const own = log.read({ stream: `task:${taskId}`, kinds: ["waiter", "report", "decision"], limit: READ_MAX });
+    for (const e of [...own, ...asks].sort((a, b) => a.seq - b.seq)) {
       if (e.kind === "waiter") {
         const w = e.body as Bodies["waiter"];
         if (w.state !== "fired" || w.taskId !== taskId || w.routineId || w.limit) continue;

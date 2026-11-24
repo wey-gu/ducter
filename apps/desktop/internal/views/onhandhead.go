@@ -586,7 +586,10 @@ func (a *App) whereMeta(task *store.Task) []string {
 		meta = append(meta, a.computerName(p.Device))
 	}
 	// D507: a helper's task anywhere but under its helper says whose it is.
-	if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
+	// D511: so does a Keep's (a question in 等你, Find, the rail).
+	if task.Card != nil && task.Card.Keep != nil && !a.oh.inHelper {
+		meta = append(meta, task.Card.Keep.Name)
+	} else if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
 		meta = append(meta, task.Card.Helper.Name)
 	}
 	return meta

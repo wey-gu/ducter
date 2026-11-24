@@ -31,9 +31,10 @@ const (
 )
 
 type onHandState struct {
-	focus string   // the row the keys are on
-	find  string   // Find's words
-	order []string // the rows as drawn, for the keys
+	keep  keepState // D511: the Keep whose page is open (keeps.go)
+	focus string    // the row the keys are on
+	find  string    // Find's words
+	order []string  // the rows as drawn, for the keys
 	// The switcher (⌘O).
 	sw      bool
 	swQuery string
@@ -370,7 +371,18 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	for id := range inGroup {
 		hidden[id] = true
 	}
-	if !rail && q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) && a.S.OnHand != nil {
+	// D511: 在照看的 / Looking after takes the place of 你的帮手 and 一直在跑的
+	// when the home sends Keeps: a task a Keep owns stands under it, never in
+	// 在做 or 在等; one that waits for the person stays in 等你, naming it.
+	keepsOn := a.S.OnHand != nil && a.S.OnHand.Keeps != nil
+	var keeps []protocol.KeepSheet
+	if keepsOn && !rail && q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) {
+		keeps = a.S.OnHand.Keeps
+		for id := range a.keepHidden() {
+			hidden[id] = true
+		}
+	}
+	if !keepsOn && !rail && q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) && a.S.OnHand != nil {
 		for _, h := range a.S.OnHand.Helpers {
 			for _, x := range h.Items {
 				hidden[x.TaskID] = true
@@ -413,7 +425,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	// next, stands under 一直在跑的 (its rhythm), never under 在做 or 在等; one
 	// that asks or stopped stays in 等你. Beside an opened task, the lanes.
 	var ongoing []*store.Task
-	if !rail {
+	if !rail && !keepsOn {
 		inRounds := func(x *store.Task) bool {
 			att := x.Attention()
 			return x.Card != nil && x.Card.Rounds != nil && (att == protocol.Working || att == protocol.Queued || att == protocol.Blocked)
@@ -589,6 +601,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 				}
 			}
 		})
+	}
+	if len(keeps) > 0 && show(2) {
+		a.keepsSection(c, keeps)
 	}
 	if len(hsRest) > 0 && show(2) {
 		a.listSection(c, "helpers", a.L.T("peers.helpers.title"), len(hsRest), func() {

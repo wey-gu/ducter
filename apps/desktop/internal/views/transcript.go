@@ -30,7 +30,9 @@ type StepRow struct {
 	N       int    `json:"n"`
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
-	Output  string `json:"output,omitempty"`
+	// Path (D530) is the whole path a file tool read or edited: what its file chip opens.
+	Path   string `json:"path,omitempty"`
+	Output string `json:"output,omitempty"`
 	// OutputFull (D320): what it printed was cut at outputMax; its whole length.
 	OutputFull int `json:"outputFull,omitempty"`
 	// Hint is a real failure in words (D268): the service's message
@@ -371,7 +373,7 @@ func shellCommand(raw json.RawMessage) string {
 		return s
 	}
 	o, _ := v.(map[string]any)
-	for _, k := range []string{"command", "cmd", "script", "code"} {
+	for _, k := range []string{"command", "cmd", "script", "code", "CommandLine"} {
 		switch x := o[k].(type) {
 		case string:
 			if strings.TrimSpace(x) != "" {
@@ -1008,6 +1010,9 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 				case "ran", "searched", "read", "browsed":
 					cmd, _ := clipText(shellCommand(b.Tool.Input), outputMax)
 					row.Command = redact.Text(cmd)
+				}
+				if st.Kind == "read" || st.Kind == "edited" {
+					row.Path = redact.Text(stepPath(b.Tool))
 				}
 				addRow(ev.Seq, row)
 				continue

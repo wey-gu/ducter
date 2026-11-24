@@ -56,6 +56,8 @@ export interface BrainHold {
   /** D440: the home's agents were read again (core calls it on every devices change): a home that could not think and now can wakes what waited. */
   seen(): void;
   stop(): void;
+  /** D536: the same holds as a partner thinking with another agent sees them (its own base). */
+  as(base: () => HarnessId): Pick<BrainHold, "now" | "ahead" | "hit" | "ok" | "onChange" | "blind">;
 }
 
 export interface BrainHoldDeps {
@@ -181,8 +183,7 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
     return undefined;
   }
 
-  function view(): HoldNow | undefined {
-    const base = o.base();
+  function view(base: HarnessId = o.base()): HoldNow | undefined {
     const h = holds.get(base);
     if (!active(h)) return undefined;
     const to = next();
@@ -213,77 +214,16 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
   let wasBlind = blind();
 
   const api: BrainHold = {
-    now: view,
+    now: () => view(),
     blind,
-    async ahead() {
-      const none = { tell: false, held: false };
-      const base = o.base();
-      const now = clock.now();
-      if (active(holds.get(base), now)) return none;
-      const waits = (o.waits?.() ?? []).filter((w) => w.harness === base && Date.parse(w.at ?? "") > now);
-      if (!waits.length) return none;
-      // The account itself, as last read (or read now): room left means the turn goes as it is.
-      const read = o.usage ? (await o.usage.get(base).catch(() => undefined))?.usage : undefined;
-      if (read && !read.limited) return none;
-      // The reset: the account's used-up window, else the task's own known reset (its wait wakes a little after).
-      const known = waits.filter((w) => w.resetKnown).map((w) => Date.parse(w.at!) - RESET_GRACE_MS);
-      const reset = usageReset(read?.windows, now) ?? (known.length ? Math.max(...known) : undefined);
-      // Nothing read and no reset known: only a guess; the turn tries (and is held if it fails).
-      if (!read && reset === undefined) return none;
-      const r = await api.hit({ harness: base, failure: "quota", ...(reset !== undefined && reset > now ? { resetsAt: new Date(reset).toISOString() } : {}), source: "account" });
-      return { ...r, held: true };
-    },
+    ahead: () => aheadOn(o.base()),
     seen() {
       const b = blind();
       if (b === wasBlind) return;
       wasBlind = b;
       if (!b && !stopped) emit();
     },
-    async hit(hit) {
-      if (!isHarness(hit.harness)) return { tell: false };
-      const harness = hit.harness;
-      const now = clock.now();
-      let until = Date.parse(hit.resetsAt ?? "");
-      let known = Number.isFinite(until) && until > now;
-      // D297's order: the agent's own word; else what the account says is used up.
-      if (!known && hit.failure === "quota" && o.usage) {
-        const u = await o.usage.get(harness).catch(() => undefined);
-        const r = usageReset(u?.usage?.windows, now);
-        if (r) (until = r), (known = true);
-      }
-      if (!known) until = now + (hit.failure === "rate_limited" ? THROTTLE_RETRY_MS : hit.failure === "quota" ? UNKNOWN_RETRY_MS : ERROR_RETRY_MS);
-      const prev = holds.get(harness);
-      const same = !!prev && now - tryAt(prev) < AGAIN_MS;
-      const h: Hold = {
-        harness,
-        why: hit.failure,
-        until,
-        resetKnown: known,
-        since: same ? prev!.since : now,
-        ...(hit.source ? { source: hit.source } : {}),
-        ...(hit.said ? { said: hit.said.slice(0, 300) } : {}),
-        ...(same && prev!.told ? { told: prev!.told } : {}),
-        ...(hit.free ? { free: hit.free } : {}),
-      };
-      holds.set(harness, h);
-      await readSpent();
-      // What the person hears is about the agent they think with: who answers now, or nobody.
-      const v = view();
-      let tell = false;
-      const base = v ? holds.get(v.from) : undefined;
-      if (v && base) {
-        // Said once per time out: when it starts, and when nobody can answer any more (or someone can
-        // again). Another agent taking over from the one answering is only shown, not said.
-        const key = v.to ?? "none";
-        tell = !base.told || (base.told === "none") !== (key === "none");
-        base.told = key;
-        if (base !== h) record(base);
-      }
-      record(h);
-      arm(h);
-      emit();
-      return { ...(v ? { now: v } : {}), tell };
-    },
+    hit: (hit) => hitOn(o.base(), hit),
     ok(harness) {
       if (!isHarness(harness) || !holds.has(harness)) return;
       holds.delete(harness);
@@ -301,6 +241,80 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
       timers.clear();
       subs.clear();
     },
+    // D536: a partner that thinks with its own agent sees the holds from that agent: the same holds
+    // (one per agent account, whichever partner's turn found it out), another base.
+    as: (base) => ({
+      now: () => view(base()),
+      ahead: () => aheadOn(base()),
+      hit: (hit) => hitOn(base(), hit),
+      ok: (h) => api.ok(h),
+      onChange: (fn) => api.onChange(fn),
+      blind,
+    }),
   };
+
+  async function aheadOn(base: HarnessId): Promise<{ now?: HoldNow; tell: boolean; held: boolean }> {
+    const none = { tell: false, held: false };
+    const now = clock.now();
+    if (active(holds.get(base), now)) return none;
+    const waits = (o.waits?.() ?? []).filter((w) => w.harness === base && Date.parse(w.at ?? "") > now);
+    if (!waits.length) return none;
+    // The account itself, as last read (or read now): room left means the turn goes as it is.
+    const read = o.usage ? (await o.usage.get(base).catch(() => undefined))?.usage : undefined;
+    if (read && !read.limited) return none;
+    // The reset: the account's used-up window, else the task's own known reset (its wait wakes a little after).
+    const known = waits.filter((w) => w.resetKnown).map((w) => Date.parse(w.at!) - RESET_GRACE_MS);
+    const reset = usageReset(read?.windows, now) ?? (known.length ? Math.max(...known) : undefined);
+    // Nothing read and no reset known: only a guess; the turn tries (and is held if it fails).
+    if (!read && reset === undefined) return none;
+    const r = await hitOn(base, { harness: base, failure: "quota", ...(reset !== undefined && reset > now ? { resetsAt: new Date(reset).toISOString() } : {}), source: "account" });
+    return { ...r, held: true };
+  }
+
+  async function hitOn(baseNow: HarnessId, hit: BrainHit): Promise<{ now?: HoldNow; tell: boolean }> {
+    if (!isHarness(hit.harness)) return { tell: false };
+    const harness = hit.harness;
+    const now = clock.now();
+    let until = Date.parse(hit.resetsAt ?? "");
+    let known = Number.isFinite(until) && until > now;
+    // D297's order: the agent's own word; else what the account says is used up.
+    if (!known && hit.failure === "quota" && o.usage) {
+      const u = await o.usage.get(harness).catch(() => undefined);
+      const r = usageReset(u?.usage?.windows, now);
+      if (r) (until = r), (known = true);
+    }
+    if (!known) until = now + (hit.failure === "rate_limited" ? THROTTLE_RETRY_MS : hit.failure === "quota" ? UNKNOWN_RETRY_MS : ERROR_RETRY_MS);
+    const prev = holds.get(harness);
+    const same = !!prev && now - tryAt(prev) < AGAIN_MS;
+    const h: Hold = {
+      harness,
+      why: hit.failure,
+      until,
+      resetKnown: known,
+      since: same ? prev!.since : now,
+      ...(hit.source ? { source: hit.source } : {}),
+      ...(hit.said ? { said: hit.said.slice(0, 300) } : {}),
+      ...(same && prev!.told ? { told: prev!.told } : {}),
+      ...(hit.free ? { free: hit.free } : {}),
+    };
+    holds.set(harness, h);
+    await readSpent();
+    // What the person hears is about the agent they think with: who answers now, or nobody.
+    const v = view(baseNow);
+    let tell = false;
+    const base = v ? holds.get(v.from) : undefined;
+    if (v && base) {
+      // Said once per time out: when it starts, and when nobody can answer any more (or someone can
+      // again). Another agent taking over from the one answering is only shown, not said.
+      const key = v.to ?? "none";
+      tell = !base.told || (base.told === "none") !== (key === "none");
+      base.told = key;
+      if (base !== h) record(base);
+    }
+    record(h);
+    arm(h);
+    emit();
+    return { ...(v ? { now: v } : {}), tell };
+  }
   return api;
 }

@@ -27,6 +27,7 @@
   --bg-deep: #fcecd7;
   --surface: #ffffff;
   --sunken: #f7ebda;
+  --chip-ground: #f7ebda; /* D530: a step's code and file chips (sunken in the light) */
   --surface-sunken: #f3e6d3; /* sunken-2 */
   --surface-raised: #fffbf0;
   /* D519: a list's time column (TimeCol): "14:28", 昨天 or "11 月 22 日" on one line. */
@@ -224,6 +225,7 @@
     --bg-deep: #120e0b;
     --surface: #231c16;
     --sunken: #1d1712;
+    --chip-ground: #231c16; /* D530: the code chip one step above sunken in the dark */
     --surface-raised: #2a221b;
     --surface-sunken: #1d1712;
     --ink: #f6ebdd;
@@ -311,6 +313,7 @@
   --bg-deep: #120e0b;
   --surface: #231c16;
   --sunken: #1d1712;
+  --chip-ground: #231c16; /* D530: the code chip one step above sunken in the dark */
   --surface-raised: #2a221b;
   --surface-sunken: #1d1712;
   --ink: #f6ebdd;
@@ -11139,8 +11142,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 2px;
 }
 .turns .step {
-  min-height: 24px;
-  gap: 6px;
+  min-height: 28px;
+  gap: 8px;
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--ink-soft);
@@ -11186,10 +11189,33 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   color: var(--failed-ink);
 }
 .turns .failline {
-  margin: 0 0 4px 22px;
+  margin: 0 0 4px 24px;
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--ink-soft);
+}
+/* D530: the tool's own words, as it said them (in its language): set as what it printed, mono on the
+   step chips' tint, two lines at most, never as our prose. */
+.turns .failline.raw {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+  background: none;
+}
+.turns .failline.raw code {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--chip-ground);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
 }
 .turns .step .took {
   flex: none;
@@ -11224,7 +11250,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   font-size: var(--xs);
 }
 .turns .thought-text {
-  padding: 2px 0 6px 22px;
+  padding: 2px 0 6px 24px;
   font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ink-muted);
@@ -11234,7 +11260,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .turns .raw,
 .turns .diff {
-  margin-left: 22px;
+  margin-left: 24px;
 }
 /* The plan: a ring to do, a dashed accent ring under way, a check once done (faded). */
 .turns .plan {
@@ -11307,72 +11333,217 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   height: 1px;
   background: var(--line);
 }
-/* A finished turn folds its work under how long it took. */
-.turns .worked {
+/* D530: a turn's work under one quiet head: the stack (a spinner while it works), "12 步，3 条消息"
+   in 13 medium muted ink, a small × with how many failed, the chevron, a hairline on to the edge.
+   Folded once the turn is done, open while it works. Hover darkens the words; nothing moves. */
+.turns .work-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 28px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.8125rem;
+  width: 100%;
+  font-size: var(--sm);
+  font-weight: 500;
   color: var(--ink-muted);
   text-align: left;
   font-variant-numeric: tabular-nums;
 }
-.turns .worked .chev .g {
-  width: 12px;
-  height: 12px;
-  color: var(--faint);
-  transition: transform 0.15s ease;
+.turns .work-head .g {
+  flex: none;
 }
-.turns .worked.open .chev .g {
-  transform: rotate(90deg);
+.turns .work-head .words {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.turns .work-head .failed {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--failed-ink);
+}
+.turns .work-head .chev-g {
+  flex: none;
+  color: var(--faint);
+}
+.turns .work-head .rule {
+  flex: 1 1 16px;
+  min-width: 16px;
+  height: 1px;
+  background: var(--line-soft);
+}
+@media (hover: hover), (any-hover: hover) {
+  .turns .work-head:hover {
+    color: var(--ink-soft);
+  }
 }
 .turns .worked-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-/* The working line: what it is on, shimmering, its clock at the right. */
-.working-line {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 0.8125rem;
+/* D530: a step's verb in 13 medium, its object in a chip (mono on the inline code tint, 20 tall),
+   muted words after; what it took or that it failed at the row's right edge. */
+.turns .step .verb {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.turns .step.quiet .verb {
   color: var(--ink-muted);
 }
-.working-line .shimmer {
+/* D521 on D530's row: a background failure says it in its verb, in the error ink, no separate tag. */
+.turns .step.bad.bg .verb {
+  color: var(--failed-ink);
+}
+.turns .step .words {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.turns .step .grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.turns .step .times {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.chip-code {
+  display: inline-block;
+}
+.chip-code,
+.chip-file {
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  height: max(20px, 1.25rem);
+  padding: 0 6px;
+  border-radius: var(--r-xs);
+  background: var(--chip-ground);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-weight: 400;
+  line-height: max(20px, 1.25rem);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-file {
+  display: inline-flex;
+  padding-left: 4px;
+}
+.chip-file svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+.chip-file span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.chip-file {
+  cursor: pointer;
+}
+@media (hover: hover), (any-hover: hover) {
+  button.chip-file:hover {
+    background: var(--line-soft);
+    color: var(--ink);
+  }
+}
+/* D530: at a phone's width a run of reads shows its first file and counts the rest. */
+.turns .step.files .more-narrow {
+  display: none;
+}
+@media (max-width: 480px) {
+  .turns .step.files .extra,
+  .turns .step.files .more-wide {
+    display: none;
+  }
+  .turns .step.files .more-narrow {
+    display: inline;
+  }
+}
+.turns .step.earlier-steps .words {
+  color: var(--ink-muted);
+}
+/* D530: the transcript's foot while it works: a hairline, On hand's working pulse, the state in its
+   own words and the turn's clock at the right, in the meta line's 12. */
+.work-foot.folded {
+  border-top: 0;
+}
+.work-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.work-foot .pulse {
+  flex: none;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 12px;
+  padding-left: 1.5px;
+}
+.work-foot .pulse i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.work-foot .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.work-foot .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-foot .pulse i {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}
+.work-foot .state {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: linear-gradient(90deg, var(--ink-muted) 0%, var(--ink-muted) 40%, var(--ink) 50%, var(--ink-muted) 60%, var(--ink-muted) 100%);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: tx-shimmer 2.2s linear infinite;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
 }
-@keyframes tx-shimmer {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: 0 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .working-line .shimmer {
-    animation: none;
-    color: var(--ink-muted);
-    background: none;
-  }
-}
-.working-line .clock {
+/* D530: the live line's spinner sits in the 16 mark column the step rows use. */
+.work-foot > .spin.sm {
   flex: none;
-  font-size: 0.75rem;
+  margin: 0 2.5px;
+}
+.work-foot .clock {
+  flex: none;
   font-variant-numeric: tabular-nums;
 }
 /* Your words waiting their turn: a dashed outline, no fill, muted, and 排队中. */
@@ -11415,6 +11586,27 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .composer-hint .k {
   color: var(--faint);
+}
+/* D530: a key drawn in its cap and what it does (KeyHint). */
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.key-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  color: var(--ink-muted);
+  font: inherit;
 }
 /* D325: what the person held for after this turn, over the composer: small dashed chips in order,
    each its words on one line (tap to edit), 现在就说 and a quiet ×. */
@@ -13301,6 +13493,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   animation: rise 140ms var(--ease);
 }
 .pmenu { display: flex; flex-direction: column; min-width: 220px; padding: 6px; }
+/* D530: the send's alternates, pinned over the send (menu.tsx pin), its keys drawn. */
+.pmenu.send-menu { z-index: 80; min-width: 200px; }
+.pmenu.send-menu .key-hint { flex: 1; flex-direction: row-reverse; justify-content: space-between; font-size: var(--sm); color: var(--ink); gap: 16px; }
 .pmenu button {
   padding: 9px 12px;
   border: 0;
@@ -13444,7 +13639,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 /* D288 · 上下文 / Context: a quiet ring by the task's composer (ink-muted, butter once it is close,
    never red: compaction is ordinary), and the card it opens (the 工作副本 popover's shape). */
 .ctx-anchor { position: relative; display: inline-flex; flex: none; align-self: center; }
-.ctx-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; color: var(--ink-muted); transition: background var(--t-fast) var(--ease); }
+.ctx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; padding: 0 var(--s2); border-radius: var(--r-xs); color: var(--ink-muted); font-size: var(--xs); white-space: nowrap; transition: background var(--t-fast) var(--ease); }
+.ctx-btn .pct { font-variant-numeric: tabular-nums; }
+.composer-hint .ctx-anchor { margin-left: auto; }
 .ctx-btn.on { background: var(--surface-sunken); }
 @media (hover: hover), (any-hover: hover) { .ctx-btn:hover { background: var(--surface-sunken); } }
 .ctx-ring { display: block; }
@@ -14761,14 +14958,14 @@ svg .wave.w2.on {
 /* Each small link or chip keeps how it looks; an invisible box around it takes the tap, 44 tall
    where the space around it allows. The boxes position at zero specificity (:where), so a rule
    that places one of these elsewhere still wins. */
-:where(.top .who .name, .top .who button.sum, .recall-line, .inline-link, .turns .worked, .strip .cell, .lens-tabs .lens-row, .decision .asker, .fold-line, .past-link, .btn.sm, .pchip, .ach, .set-back, .info-btn, .bench-toggle) {
+:where(.top .who .name, .top .who button.sum, .recall-line, .inline-link, .turns .work-head, .strip .cell, .lens-tabs .lens-row, .decision .asker, .fold-line, .past-link, .btn.sm, .pchip, .ach, .set-back, .info-btn, .bench-toggle) {
   position: relative;
 }
 .top .who .name::before,
 .top .who button.sum::before,
 .recall-line::before,
 .inline-link::before,
-.turns .worked::before,
+.turns .work-head::before,
 .strip .cell::before,
 .lens-tabs .lens-row::before,
 .decision .asker::before,
@@ -14796,7 +14993,7 @@ svg .wave.w2.on {
 .recall-line::before { inset: -10px 0; }
 /* 换谁来做 (19) reaches into the title under it, never into the line above (where it runs may be a link). */
 .inline-link::before { inset: -6px -8px -19px; }
-.turns .worked::before { inset: -16px 0 0; }
+.turns .work-head::before { inset: -8px 0; }
 .strip .cell::before { inset: -8px 0; }
 .lens-tabs .lens-row::before,
 .btn.sm::before,
@@ -19208,9 +19405,8 @@ html[data-text-size="large"] .brand-mark > svg {
 :root[data-density="compact"] .task-page .turn {
   gap: 8px;
 }
-:root[data-density="compact"] .turns .worked {
+:root[data-density="compact"] .turns .work-head {
   min-height: 24px;
-  padding-bottom: 4px;
 }
 :root[data-density="compact"] .room-rail .trow {
   min-height: 44px;
@@ -21312,7 +21508,7 @@ html[data-text-size="large"] .brand-mark > svg {
 
 /* D486: what a partner looks after, under its name; its removal asked in its own row; words another partner passed on. */
 .partners-set .partner-about { color: var(--ink-soft); overflow-wrap: anywhere; }
-.partners-set .about-input { font-size: var(--xs); }
+
 .partners-set .partner-removing b { font-weight: 700; }
 .passed-from:disabled { cursor: default; }
 .passed-from .stone { flex: none; }
@@ -22794,6 +22990,58 @@ button.tray-main:focus-visible,
 .pairing { width: 100%; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
 .pairing .set-back { align-self: flex-start; }
 
+
+/* D536: what each partner thinks with, under its name: its agent's coin and the facts beside it (its
+   own setting, or the default partner's), or one quiet line (the same as the default's). 改一下 adds
+   the pickers, indented as the colours are, each a small label over its pop-up, wrapping on a phone. */
+.partners-set .partner-thinks {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink-soft);
+}
+.partners-set .partner-thinks.same { color: var(--ink-muted); }
+.partners-set .partner-thinks > .coin-art { flex: none; margin-top: 1px; }
+.partners-set .partner-thinks-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin-inline-start: 52px;
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.partners-set .partner-thinks-pick .pick > .small { color: var(--ink-muted); }
+/* D536: the shared one-line field (Field): 44 tall, the hairline turning into the one accent ring
+   while typing (an inset ring, so the page's outer focus ring never stacks a second one outside it). */
+.field {
+  width: 100%;
+  min-width: 0;
+  height: max(44px, 2.75rem);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+  line-height: 1.4;
+}
+.field.strong { font-weight: 700; }
+.field::placeholder { color: var(--ink-muted); }
+.field:focus,
+.field:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.partners-set .partner-words .field { max-width: 26.25rem; }
+
 /* ---------- D534: @ and / in the composers (composer.tsx MentionPop, RefChip; design/mentions.md) ----------
    The words sit over a backdrop that marks each picked reference on the chip's tint (the textarea
    keeps its own caret, IME and undo). The popover stands above the caret on the clay menu's card;
@@ -22981,4 +23229,112 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 @media (prefers-reduced-motion: reduce) {
   .mention-pop { animation: none; }
   .mp-breath { animation: none; }
+}
+
+/* D535: every needs-you count is a door. In the conversation's bar 「n 个等你」 is its own quiet
+   button in the needs-you ink (the rest of the line still opens On hand); over the composer, while
+   what waits is out of view, one clay pill 「有 n 件等你定 ›」. */
+.top .who .sum-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.top .who .sum-needs {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: min(var(--xs), 18px);
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--needs-ink);
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .top .who .sum-needs:hover {
+    background: color-mix(in srgb, var(--surface-sunken) 55%, var(--bg));
+  }
+}
+.needs-door {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--pill);
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  font-size: var(--sm);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 var(--needs-ledge);
+  transition:
+    transform 70ms var(--ease),
+    box-shadow 70ms var(--ease),
+    background-color 160ms var(--ease);
+}
+@media (hover: hover) {
+  .needs-door:hover {
+    background: color-mix(in srgb, var(--needs-surface) 86%, var(--needs-dot));
+  }
+}
+.needs-door:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--needs-ledge);
+  background: color-mix(in srgb, var(--needs-surface) 76%, var(--needs-dot));
+}
+.needs-door .chev-g {
+  flex: none;
+}
+.door-line {
+  display: flex;
+  padding: 0 12px 2px;
+}
+@media (pointer: coarse) {
+  .needs-door {
+    min-height: 36px;
+  }
+}
+/* Found by a door: the item's tint deepens to the needs-you surface once and settles (the Mac's
+   find); a card already in that surface deepens its own (flash); under reduced motion a still ring
+   for the find's length instead. */
+@keyframes door-found {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30%,
+  55% {
+    background-color: var(--needs-surface);
+  }
+}
+.trow.door-found,
+.gpart.door-found {
+  animation: door-found 1.4s var(--ease);
+}
+.tgroup.door-found,
+.other-ask.door-found {
+  animation: door-found 1.4s var(--ease);
+}
+.decision.door-found,
+.askq.door-found {
+  animation: flash 1.4s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .door-found {
+    box-shadow: inset 0 0 0 2px var(--needs-ledge);
+  }
+}
+/* D535: a partner's pebble is a door: under the pointer it lifts a point off its ledge. */
+.pl-face > .pl-n {
+  cursor: pointer;
+  transition: transform 160ms var(--ease);
+}
+@media (hover: hover) {
+  .pl-face > .pl-n:hover {
+    transform: translateY(-1px);
+  }
+}
+.pl-face > .pl-n:active {
+  transform: translateY(1px);
 }

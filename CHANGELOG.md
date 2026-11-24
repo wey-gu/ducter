@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.47 - 2026-11-24
+
+<!-- whats-new
+zh: 每个伙伴可以有自己的模型；任务的每一步看得清清楚楚
+en: Each partner can think with its own model; a task's steps read clearly
+-->
+
+**Each partner, its own model**
+- Give a partner its own AI, model and thinking depth in Settings › 伙伴, or just say it ("小玛用
+  Opus"). Partners you haven't set follow your default.
+
+**A task's steps**
+- An opened task shows each step on one line, with its command or files as small chips and a
+  failure's own words under it. While it works, the step it is on shows what it is doing and for
+  how long.
+- The composer while a task works has only Stop and Send. Hold Option with Return (or right-click
+  Send) to say something after this turn ends.
+
+**Everything that needs you is one tap away**
+- Every count of what waits on you opens the next item, in the conversation or On hand. Esc goes
+  back one level at a time, and the way back is always in the header.
+
+**Fixes**
+- On the Mac, ⌘V pastes a screenshot or a file copied in Finder into the composer (thanks
+  @kikko-me, #68).
+- A handover group with nothing left in it no longer shows a card that opens nothing.
+
 ## 0.1.46 - 2026-11-24
 
 <!-- whats-new

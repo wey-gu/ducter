@@ -1,7 +1,7 @@
 // What the partner thinks with right now (D150): the one place core decides it, used by the
 // partner's runner (through partnerFallback) and by the settings frame every client shows, so no
 // client computes it a second time.
-import { HARNESSES, PARTNER_FALLBACK, type Brain, type BrainHeld, type BrainNow, type DeviceHarness, type HarnessId } from "@ducter/protocol";
+import { HARNESSES, PARTNER_FALLBACK, isHarnessId, type Brain, type BrainHeld, type BrainNow, type BrainOption, type DeviceHarness, type HarnessId } from "@ducter/protocol";
 import type { ListedModel } from "@ducter/protocol/src/internal.ts";
 import { brainModelRows, tierOf } from "./candidates.ts";
 import { defaultModelOf, ROW_MAX, shortModels } from "./models.ts";
@@ -18,7 +18,7 @@ export function effectiveBrain(set: Brain, chosen: boolean, home: Pick<DeviceHar
     const next = PARTNER_FALLBACK.find((id) => id !== "claude-code" && HARNESSES[id].partner && signedIn(id));
     if (next) return { harness: next, auto: true, why: next === "codex" ? "only_codex" : "only_signed_in" };
   }
-  return { harness: set.harness, ...(set.model ? { model: set.model } : {}), auto: !chosen };
+  return { harness: set.harness, ...(set.model ? { model: set.model } : {}), ...(set.effort ? { effort: set.effort } : {}), auto: !chosen };
 }
 
 /**
@@ -48,8 +48,30 @@ export function liveBrainRows(harness: string, list: ListedModel[], current?: st
   const own = defaultModelOf(harness, list);
   return row.map((m) => {
     const t = tierOf(harness, m.id);
-    return { id: m.id, label: t?.label || m.label || m.id, ...(t ? { kind: t.kind } : {}), ...(own?.id === m.id || m.default ? { default: true as const } : {}) };
+    // D536: its effort levels as the live list names them, so a partner's picker can offer them.
+    return { id: m.id, label: t?.label || m.label || m.id, ...(t ? { kind: t.kind } : {}), ...(own?.id === m.id || m.default ? { default: true as const } : {}), ...(m.efforts?.length ? { efforts: m.efforts } : {}), ...(m.defaultEffort ? { defaultEffort: m.defaultEffort } : {}) };
   });
+}
+
+/**
+ * D536: every agent a partner may think with on the home (signed in there, HARNESSES[id].partner),
+ * each with its models as brainNow lists them: what each partner's own 想事情用 picker offers.
+ */
+export function brainOptions(home: DeviceHarness[] | undefined, listed?: (harness: string) => ListedModel[] | undefined): BrainOption[] {
+  return (home ?? [])
+    .filter((h): h is DeviceHarness & { harness: HarnessId } => h.loggedIn && h.installed !== false && isHarnessId(h.harness) && HARNESSES[h.harness].partner)
+    .map((h) => {
+      const live = listed?.(h.harness);
+      return { harness: h.harness, models: live?.length ? liveBrainRows(h.harness, live) : brainModelRows(h.harness, h) };
+    });
+}
+
+/**
+ * D536: what one partner thinks with as set: its own (PartnerInfo.brain) when the person gave it
+ * one, else the default partner's (Settings.brain). own: it is its own (no D150 fallback applies).
+ */
+export function brainOf(own: Brain | undefined, set: Brain): { brain: Brain; own: boolean } {
+  return own ? { brain: own, own: true } : { brain: set, own: false };
 }
 
 /**

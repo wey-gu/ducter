@@ -43,46 +43,76 @@ func in(list []string, s string) bool {
 }
 
 var (
-	ducterTools  = []string{"report_to_main", "checkpoint", "log_search", "log_read"}
-	bookkeeping  = []string{"TodoWrite", "TodoRead", "update_plan", "todo_write", "todowrite", "ExitPlanMode"}
-	shellTools   = []string{"Bash", "bash", "PowerShell", "shell", "exec_command", "commandExecution", "run_shell_command", "run_terminal_command", "local_shell", "run_command"}
-	readTools    = []string{"Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory"}
-	editTools    = []string{"Edit", "Write", "MultiEdit", "NotebookEdit", "edit", "write", "apply_patch", "fileChange", "search_replace", "str_replace_editor", "write_file", "edit_file", "create_file", "delete"}
-	searchTools  = []string{"Grep", "Glob", "grep", "glob", "find", "grep_search", "codebase_search", "semSearch", "file_search"}
-	webSearch    = []string{"WebSearch", "webSearch", "web_search"}
-	fetchTools   = []string{"WebFetch", "webFetch", "fetch", "web_fetch"}
-	delegate     = []string{"Agent", "Task", "subagent", "collabAgentToolCall", "spawn_agent"}
+	ducterTools = []string{"report_to_main", "checkpoint", "log_search", "log_read"}
+	bookkeeping = []string{"TodoWrite", "TodoRead", "update_plan", "todo_write", "todowrite", "ExitPlanMode"}
+	shellTools  = []string{"Bash", "bash", "PowerShell", "shell", "exec_command", "commandExecution", "run_shell_command", "run_terminal_command", "local_shell", "run_command"}
+	// D530: Antigravity's own names beside agy's read_file, edit_file and run_command.
+	readTools    = []string{"Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory", "view_file", "list_dir"}
+	listTools    = []string{"ls", "LS", "list_directory", "list_dir"}
+	readKeys     = []string{"file_path", "path", "notebook_path", "filePath", "file", "target_file", "AbsolutePath", "dir", "directory", "DirectoryPath"}
+	editTools    = []string{"Edit", "Write", "MultiEdit", "NotebookEdit", "edit", "write", "apply_patch", "fileChange", "search_replace", "str_replace_editor", "write_file", "edit_file", "create_file", "delete", "write_to_file", "replace_file_content", "multi_replace_file_content"}
+	searchTools  = []string{"Grep", "Glob", "grep", "glob", "find", "grep_search", "codebase_search", "semSearch", "file_search", "find_by_name"}
+	webSearch    = []string{"WebSearch", "webSearch", "web_search", "search_web"}
+	fetchTools   = []string{"WebFetch", "webFetch", "fetch", "web_fetch", "read_url_content"}
+	delegate     = []string{"Agent", "Task", "subagent", "collabAgentToolCall", "spawn_agent", "invoke_subagent"}
 	waitTools    = []string{"sleep", "wait"}
 	computerList = []string{"launch_app", "click", "double_click", "right_click", "type_text", "press_key", "hotkey", "get_window_state", "get_desktop_state",
 		"list_apps", "list_windows", "screenshot", "move_cursor", "set_value", "insert_text", "invoke_menu", "run_steps", "run_script",
 		"scroll", "computer", "bring_to_front", "set_window_frame", "verify_state"}
 )
 
-// splitTool is mcp__server__tool as server and tool.
+var (
+	agyToolRe   = regexp.MustCompile(`^mcp_([A-Za-z0-9-]+)_(.+)$`)
+	agyDucterRe = regexp.MustCompile(`^mcp_ducter[\w-]*_`)
+	dotDucterRe = regexp.MustCompile(`^ducter[\w-]*\.`)
+)
+
+// splitTool is mcp__server__tool as server and tool; Antigravity's
+// mcp_server_tool the same (D530).
 func splitTool(name string) (string, string) {
 	if strings.HasPrefix(name, "mcp__") {
 		if i := strings.LastIndex(name, "__"); i > 4 {
 			return name[5:i], name[i+2:]
 		}
 	}
+	if m := agyToolRe.FindStringSubmatch(name); m != nil {
+		return m[1], m[2]
+	}
 	return "", name
 }
 
+// isDucterTool: Ducter's own tools however a harness names them
+// (mcp__ducter__x, agy's mcp_ducter_x, ducter.x), never a step (D124, D530).
 func isDucterTool(name string) bool {
-	return plumbingRe.MatchString(name) || in(ducterTools, name)
+	return plumbingRe.MatchString(name) || agyDucterRe.MatchString(name) || dotDucterRe.MatchString(name) || in(ducterTools, name)
 }
 
+// firstStr is the first of the keys with words in it; the same key in
+// another case (agy's Path, CommandLine) counts after them (D530).
 func firstStr(o map[string]any, keys ...string) string {
-	for _, k := range keys {
-		switch v := o[k].(type) {
+	got := func(x any) string {
+		switch v := x.(type) {
 		case string:
-			if s := strings.TrimSpace(v); s != "" {
-				return s
-			}
+			return strings.TrimSpace(v)
 		case []any:
 			if len(v) > 0 {
-				if s, ok := v[len(v)-1].(string); ok && strings.TrimSpace(s) != "" {
+				if s, ok := v[len(v)-1].(string); ok {
 					return strings.TrimSpace(s)
+				}
+			}
+		}
+		return ""
+	}
+	for _, k := range keys {
+		if s := got(o[k]); s != "" {
+			return s
+		}
+	}
+	for _, k := range keys {
+		for ok, v := range o {
+			if ok != k && strings.EqualFold(ok, k) {
+				if s := got(v); s != "" {
+					return s
 				}
 			}
 		}
@@ -243,7 +273,10 @@ func keyCombo(v any) string {
 var shellWrapRe = regexp.MustCompile(`^(?:/usr/bin/env\s+)?(?:/(?:usr/)?bin/)?(?:ba|z)?sh\s+-l?c\s+`)
 var unescapeRe = regexp.MustCompile(`\\(["\\$` + "`" + `])`)
 
-// unwrapShell is the command inside `/bin/zsh -lc "…"`.
+// unwrapShell is the command inside `/bin/zsh -lc "…"`: the quoted script
+// up to its closing quote (what follows it, a redirect, is the wrapper's),
+// or to the end when the command came cut before it closed, so a step never
+// shows half a quote (「运行 "cat」).
 func unwrapShell(cmd string) string {
 	s := strings.TrimSpace(cmd)
 	for i := 0; i < 2; i++ {
@@ -252,9 +285,20 @@ func unwrapShell(cmd string) string {
 			break
 		}
 		rest := strings.TrimSpace(s[loc[1]:])
-		if len(rest) >= 2 && (rest[0] == '"' || rest[0] == '\'') && rest[len(rest)-1] == rest[0] {
+		if len(rest) >= 1 && (rest[0] == '"' || rest[0] == '\'') {
 			q := rest[0]
-			rest = rest[1 : len(rest)-1]
+			end := len(rest)
+			for j := 1; j < len(rest); j++ {
+				if q == '"' && rest[j] == '\\' {
+					j++
+					continue
+				}
+				if rest[j] == q {
+					end = j
+					break
+				}
+			}
+			rest = rest[1:end]
 			if q == '"' {
 				rest = unescapeRe.ReplaceAllString(rest, "$1")
 			}
@@ -697,7 +741,7 @@ func editPaths(raw any) []string {
 		return patchPaths(s)
 	}
 	o, _ := raw.(map[string]any)
-	if one := firstStr(o, "file_path", "path", "notebook_path", "filePath", "file", "target_file"); one != "" {
+	if one := firstStr(o, "file_path", "path", "notebook_path", "filePath", "file", "target_file", "TargetFile", "AbsolutePath"); one != "" {
 		return []string{one}
 	}
 	switch ch := o["changes"].(type) {
@@ -806,10 +850,10 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 		return st
 	case in(readTools, tool):
 		st := Step{Kind: "read"}
-		if tool == "ls" || tool == "LS" || tool == "list_directory" {
+		if in(listTools, tool) {
 			st.Act = "list"
 		}
-		if p := pick("file_path", "path", "notebook_path", "filePath", "file", "target_file", "dir", "directory"); p != "" {
+		if p := pick(readKeys...); p != "" {
 			st.Target = pathTail(p)
 		}
 		return st
@@ -839,7 +883,7 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 	case in(searchTools, tool):
 		return Step{Kind: "searched", Target: pick("pattern", "query", "glob", "name", "regex")}
 	case in(delegate, tool):
-		d := firstStr(o, "description", "prompt", "task")
+		d := firstStr(o, "description", "task_description", "prompt", "task")
 		if i := strings.IndexByte(d, '\n'); i >= 0 {
 			d = d[:i]
 		}
@@ -878,8 +922,34 @@ var dottedToolRe = regexp.MustCompile(`(?i)^([a-z][\w-]*)\.([a-z_][\w.]*)$`)
 
 // saysOf is the agent's own short words for a shell step, when its harness
 // carries them (D152).
+// stepPath is the whole path a file tool named (a read's, an edit's
+// first), what its file chip opens (D530); "" for anything else.
+func stepPath(t *protocol.ToolCall) string {
+	if isDucterTool(t.Name) {
+		return ""
+	}
+	_, tool := splitTool(t.Name)
+	var raw any
+	if len(t.Input) > 0 {
+		_ = json.Unmarshal(t.Input, &raw)
+	}
+	switch {
+	case in(readTools, tool) && !in(listTools, tool):
+		if s, ok := raw.(string); ok {
+			return strings.TrimSpace(s)
+		}
+		o, _ := raw.(map[string]any)
+		return firstStr(o, readKeys...)
+	case in(editTools, tool):
+		if ps := editPaths(raw); len(ps) > 0 {
+			return ps[0]
+		}
+	}
+	return ""
+}
+
 func saysOf(o map[string]any) string {
-	d := firstStr(o, "description", "justification")
+	d := firstStr(o, "description", "justification", "toolSummary")
 	if i := strings.IndexByte(d, '\n'); i >= 0 {
 		d = d[:i]
 	}

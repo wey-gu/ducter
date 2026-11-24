@@ -15,7 +15,8 @@ import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
 import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList, Peek, stateCounts } from "./onhand.tsx";
 import type { Task } from "./store.ts";
-import { K, KeepRail } from "./keep.tsx";
+import { closeKeep, K, KeepRail } from "./keep.tsx";
+import { cutAtWord } from "@ducter/protocol";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -52,7 +53,9 @@ export function FillButton({ level }: { level: "onhand" | "task" }) {
 
 /** 对话 / 手头的事 [/ the task]: each crumb but the last goes there; the last is the title. */
 export function FullTop({ task, children }: { task?: Task; children?: ComponentChildren }) {
-  const name = task ? shortTitle(title(task)) || t("task.unknown") : t("onhand.title");
+  // D535: on a Keep's page the breadcrumb is the way back: 对话 / 手头的事 / the Keep.
+  const keep = !task && K.open ? (K.pages.get(K.open)?.title ?? A.S.onHand?.keeps?.find((k) => k.id === K.open)?.title ?? t("keep.section")) : "";
+  const name = task ? shortTitle(title(task)) || t("task.unknown") : keep ? cutAtWord(keep, 40) : t("onhand.title");
   return (
     <header class="top crumbs">
       <nav class="trail" aria-label={t("nav.onhand")}>
@@ -60,9 +63,9 @@ export function FullTop({ task, children }: { task?: Task; children?: ComponentC
           {t("nav.conversation")}
         </button>
         <span class="slash" aria-hidden="true">/</span>
-        {task && (
+        {(task || keep) && (
           <>
-            <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
+            <button class="crumb" onClick={() => (keep ? closeKeep() : A.go({ name: "onhand", full: true }))}>
               {t("onhand.title")}
             </button>
             <span class="slash" aria-hidden="true">/</span>
@@ -70,7 +73,7 @@ export function FullTop({ task, children }: { task?: Task; children?: ComponentC
         )}
         {/* D270: the current crumb at the bar's one size, in full ink, not a button; no line under
             it (who does a task, where it stands and where are said once, in the task's head). */}
-        <h1 class="here" title={task ? title(task) : undefined}>
+        <h1 class="here" title={task ? title(task) : keep || undefined}>
           {name}
         </h1>
       </nav>

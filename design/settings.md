@@ -485,6 +485,30 @@ back to automatic **新任务在哪儿做，又由 {name} 来挑**. While an age
 code and the rest) step aside: the default speaks for them. Shots: `.shots/d510-new-tasks/` (Mac 1280,
 web 1400 and 390, zh, light and dark). `design/where.md` §23 has the mechanics.
 
+## What each partner thinks with (D536)
+
+**Who:** H with several partners who wants one of them (小玛, the growth one) on another agent or model;
+C with a partner per family member; F with one partner, who sees the page exactly as before. **Where:**
+two places on Settings › 伙伴, one meaning each. **伙伴们 / Your partners**: under each partner's name, a
+line with its agent's coin and **想事情用 {agent} / Thinks with {agent}**, its model and **思考：{level} /
+Effort: {level}** as separate facts (the default's adds **默认 / The default**); a partner with none of
+its own says **想事情跟 {default} 一样 / Thinks with the same as {default}** in the muted ink, no coin, so
+the ones set apart stand out. **改一下 / Change** on another partner adds three small pop-ups under its
+colours, indented as they are: **想事情用 / Thinks with** (**跟 {default} 一样 / Same as {default}**, then
+each agent the home can think with), **用哪个模型 / Which model** (only with more than one) and **思考深度 /
+Effort** (only where the model names levels; **默认 / Default** first). A pick applies at once, as a colour
+does; **好 / Save** is for the words only. **The default card**, with more than one partner, is titled
+**默认用什么想事情 / What partners think with by default**, its note under the heading **{default}
+和没单独选的伙伴都用这个。要给哪个伙伴单独选，点它的「改一下」。/ {default} and every partner without its own
+choice use this. To give one its own, choose Change on its row.**, and gains the **思考深度 / Effort** row
+(the said line **好，从你的下一句话开始，思考深度用「{level}」。/ Got it: from your next message, I use
+{level} effort.**). With one partner the card keeps **想事情用 / What I think with** and no note. **做事的**:
+an agent another partner thinks with of its own says **{name}想事情也用它 / Also thinks for {name}**.
+Shared controls only: the web's Select, Facts and Field (the name and its line, 44 tall with one
+accent ring), the Mac's pill (`pickPill`, D445's model pill made general, opening the one clay menu
+above it over its own group, never down over the next heading; it flips where the window has no
+room), `lineField` and facts. Shots: `.shots/partner-model/` (Mac 1150 and 1400, web 390, zh and en, light and dark).
+
 ## Not done
 
 - D459's leftovers: the phone's sign-in still answers with a boxed notice at the top (`partnerToast`), not

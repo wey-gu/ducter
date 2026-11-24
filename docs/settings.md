@@ -90,7 +90,10 @@ At the top is your partner, its name and one line: where it lives and what it th
   in use as a button at the end of the row; click it to pick another. When another AI agent is signed in there, **Switch** lists it with
   **Use this**. Switching keeps its name, what it remembers and your conversation; the new choice
   takes over from your next message. On every one of them your partner only reads and decides: it
-  can't change your files or run commands itself; that is what its tasks do.
+  can't change your files or run commands itself; that is what its tasks do. Where the model offers
+  levels, **Effort** sets how hard it thinks (**Default** is the model's own). With more than one
+  partner this group is called **What partners think with by default**: your first partner and every
+  partner you haven't given its own use it.
 - **Who does the tasks.** One line says how your partner picks: the best fit with the most limit
   left, or the one your rule names. Each signed-in AI agent is a row with its limit; with two or
   more, each has **Use it for tasks** (on unless you turn it off). One paid per use says so. With
@@ -184,6 +187,12 @@ counts for all of them.
   by …** over them, and that partner answers there. Nothing else of the conversation goes along.
 - **Change or remove one.** In **Your partners**, **Change** renames it and edits what it looks
   after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
+- **Give one its own AI.** Under each partner's name a line says what it thinks with; one you
+  haven't set says **Thinks with the same as** your first partner. **Change** on its row shows
+  **Thinks with**: keep **Same as …**, or pick another signed-in AI agent, then its model and
+  **Effort**. Its conversation, memory and replies run on it from its next message; its tasks are
+  still picked as **New tasks start** and your rules say. You can also just say it to any partner:
+  "Have Ma think with Opus".
 
 Chat apps (Telegram, Slack, iMessage) talk to your first partner for now.
 

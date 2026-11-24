@@ -578,6 +578,7 @@ A new control is added to the set (and to this table) before it is used.
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | A toast: one sentence that goes by itself, with an optional action (D527) | `toastSlot`, `toastCard` (`toasts.go`), said through `c.Toast` / `c.AddToast` / `a.toast` | `Toasts` (`views.tsx`), said through `A.toast` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
+| The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
 | **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, the context ring, After this, Stop), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
 | A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
@@ -626,6 +627,49 @@ clay component per client**, and a test fails on any other:
 - **Not menus:** pickers that hold more than rows (the pills' `listPanel` lists with their
   checks, the Marks popover, Ongoing's ⋯ that unfolds the 改时间 form in place) stay clay
   popovers of their own.
+
+### The locator's marks (D526)
+
+The author, on the locator over a PR review: 「这个 mini map 的三个 message 点很没有美感，缺乏打磨」. The
+rail at an opened task's right edge is the card's list drawn small: one place per landmark, in
+order, 12 apart while it has room (at most 360 tall), so the row the pointer chooses is the mark
+under it. Each landmark has one small drawn mark, the same on the rail and in its row. **Shape says
+what it is, tone says whose**, every colour a token:
+
+| Landmark | Mark | Tone (Mac `Locator.*` / web `--mark-*`) |
+|---|---|---|
+| The person's words | a dot, 5 | `You`: their bubble's orange a step deeper on light (`#C85F1A`; the bubble's `#FF8A3D` is 2.3:1 on white), the bubble's own on dark |
+| The partner's words | a dot, 5 | the partner's clay: `ClayMark` / `--mark-clay` (the default's sand clay deepened, never the person's orange), another partner's recoloured by its look's hue turn and saturation (`theme.LookTone`; web `filter: var(--clay)` under `data-look`, D497) |
+| A task handed over | a rounded square, 5.5, corners 1.5 | whose hand it came from: `You` or the partner's clay |
+| A result | a ring, 6, 1.5 stroke | `Done`, `Failed`, `Progress` |
+| An ask | a ring round a dot, 7.5, 1.25 stroke, dot 3 | `Ask` while the task still waits on it; `Progress` once answered |
+| Anything quiet (a wake, a note, a compaction, a switch, a move) | a dot, 2.5 | `Quiet` |
+
+**Contrast:** every mark is a graphic and keeps 3:1 (WCAG 1.4.11) on every ground it is drawn on (the
+page, the card, the sunken track and a chosen row, the knob), in both themes and in every partner's
+clay; so is the knob's hairline and the chosen ring (`theme/locator_contrast_test.go`, which also holds
+the web's `--mark-*` to the same values). A mark is never dimmed below full: one at 70% loses it.
+
+- **At rest** the rail shows only the marks that matter (the person's words, a task handed over, a
+  failure, an ask that waits), in full; the rest are hidden. Pointed at, open or focused, a sunken
+  track (`SurfaceSunken`) fades in behind it (`Snappy`, web `--t-fast`) and every mark shows.
+- **Where you are** is the places' knob (D264): `SurfaceRaised`, a 1-pt `Locator.KnobRim` hairline
+  (3:1 on the page in both themes) on a 1.5-pt `Line` ledge, 10 wide, over the landmarks in view; its
+  ends glide (`Smooth`, web 260 ms).
+- **Crowded:** where two marks would touch (closer than 7) the one that matters more is drawn: an ask
+  that waits, a failure, the person's words or a task handed over, the partner's words, a result,
+  progress, quiet.
+- **The mark chosen** in the card wears a 12-wide `Locator.Chosen` ring that glides to it (`Snappy`, web
+  `--spring`); its row is the sunken clay.
+- **The card** is the one menu's card (D421): `Surface`, a `LineSoft` hairline, `RadiusMD`, `Floating`,
+  6 in, 340 wide, at most 420 tall; rows 28 high: the mark in a 12 cell, one line at `SM` 400, the
+  time in a right column (at least 40, right-aligned, `XS`, `InkMuted`, tabular). One weight for every
+  row: in view `Ink`, else `InkSoft`, quiet `InkMuted`; never bold, never a pill. The task handed
+  over reads as the task's title, never the brief's words to the agent; 交给它的事 and 问了你 are
+  spoken labels only.
+- **Motion:** the card rises out of the rail over `EnterDur` (220, scale 0.94 and 6 from the side;
+  120 out). Reduced motion: nothing moves; colours still change.
+- Shots: `.shots/minimap/`.
 
 ### No joined text (D291)
 
@@ -1070,7 +1114,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    18 pt in from the right edge, one 8×2.5 rounded bar per turn evenly spaced (at most 360
    tall), faint ink, the turns in view 10 wide in ink; hovered or focused, a clay card (Surface,
    the floating shadow, 300 wide, at most 420 tall) lists each turn's first line, newest at the
-   bottom, those in view in ink at 600 with a mark; a click goes to that turn. D284: the page opens from what the client holds and asks the home for its newest 200 events, painted the moment they land. D320: every turn of the session is a row from its session index (the locator draws all of them); pages of 300 come as the reader scrolls, ahead of the scroll, and a turn not loaded yet is a blank of its height, never a spinner; the web draws only the turns within a screen of the view. The locator lists only what was said (the brief, the person's, the partner's); a run of quiet turns between them is one muted line at 12 with a 7×1 hairline mark, and on the rail a quiet turn is a 4-wide tick; the turns in view sit on a clay thumb (the accent at 12–13%, 12 wide) that glides (Smooth / 260 ms) as the page moves; the card rises out of the rail (scale 0.94 → 1 and fade from its bottom right, 180–200 ms in, 120 ms out); a click eases to the turn (the Mac row by row, ease-in-out 260–520 ms; the web 280–640 ms, landing a screen short first from afar), at once under reduced motion, and the turn wears the accent at 14–16% that rises fast and fades over 1.6 s. A Go the person gave on a card is a pill on their side (the sunken clay, 13 secondary ink, its time at 11 muted), never their bubble. The agent's The locator's look D315: the rail's full 14 wide and round, the accent at 10% with a 1-pt hairline at 28%; the ticks in it warmed to the accent, never darkened or widened, all ticks 1.5 high. D325, the list of landmarks: the card (320 wide, at most 420 tall, out of the rail's flow so the rail never moves under the pointer) lists the session's landmarks from its index alone (`packages/protocol/src/landmarks.ts`, its Go port `views/landmarks.go`, both on `fixtures/landmarks.json`): each said turn (the brief with its quiet label), each report (its first line, carried by the index's mark with its time; a small 7-pt ring, 1.5 stroke), each compaction, switch, move or interruption (muted, a 7×1 hairline, **压缩了上下文 / Context compacted** · **换了做事的 AI agent / Switched who does it** · **换到另一台电脑上接着做 / Moved to another computer** · **中断了 / Interrupted**), and between them each run of quiet turns once (a round that reports is its report, so a review loop reads as what it found). Rows are one height (28) and only those near the list's view are drawn. Pointing at the rail chooses the landmark nearest the turn under the pointer and centers the list on it; the chosen row is the sunken clay; those in view are in ink (said rows at 600). A click on the rail pins the card and gives it the keys: ↑ ↓, Page Up/Down, Home, End move the choice (just into view), Return goes there (D284's glide near, D320's jump far), Esc closes and stays on the task; pointing at a row chooses it, a click goes there; unpinned, leaving it closes it after 260 ms; closed by a key or a click under the pointer, it opens again only once the pointer has left; Tab to the rail opens it pinned on the turns in view. Times (D325): an item's time alone today, with its day otherwise (**昨天 9:47**); a run's range always in order, its day before it when not today, and both days when it crosses one (**昨天 22:10–今天 1:05 / yesterday 22:10–today 1:05**); never "10:46–10:32"; within one minute, one time.
+   bottom, those in view in ink with their mark (D526); a click goes to that turn. D284: the page opens from what the client holds and asks the home for its newest 200 events, painted the moment they land. D320: every turn of the session is a row from its session index (the locator draws all of them); pages of 300 come as the reader scrolls, ahead of the scroll, and a turn not loaded yet is a blank of its height, never a spinner; the web draws only the turns within a screen of the view. The locator lists only what was said (the brief, the person's, the partner's); a run of quiet turns between them is one muted line with a faint dot (D526), and the rail draws one mark per landmark with the knob over those in view (D526); the card rises out of the rail (scale 0.94 → 1 and fade from its bottom right, 180–200 ms in, 120 ms out); a click eases to the turn (the Mac row by row, ease-in-out 260–520 ms; the web 280–640 ms, landing a screen short first from afar), at once under reduced motion, and the turn wears the accent at 14–16% that rises fast and fades over 1.6 s. A Go the person gave on a card is a pill on their side (the sunken clay, 13 secondary ink, its time at 11 muted), never their bubble. The locator's look and marks are D526's ("The locator's marks" above): one mark per landmark, the rail the list drawn small, the knob where you are, the card in the one menu's clay. D325, the list of landmarks: the card (340 wide since D526, at most 420 tall, out of the rail's flow so the rail never moves under the pointer) lists the session's landmarks from its index alone (`packages/protocol/src/landmarks.ts`, its Go port `views/landmarks.go`, both on `fixtures/landmarks.json`): each said turn (the brief with its quiet label), each report (its first line, carried by the index's mark with its time; a ring, D526), each compaction, switch, move or interruption (muted, a faint dot, **压缩了上下文 / Context compacted** · **换了做事的 AI agent / Switched who does it** · **换到另一台电脑上接着做 / Moved to another computer** · **中断了 / Interrupted**), and between them each run of quiet turns once (a round that reports is its report, so a review loop reads as what it found). Rows are one height (28) and only those near the list's view are drawn. Pointing at the rail chooses the landmark under the pointer (D526: the rail is the list drawn small) and centers the list on it; the chosen row is the sunken clay; those in view are in ink, one weight for all (D526). A click on the rail pins the card and gives it the keys: ↑ ↓, Page Up/Down, Home, End move the choice (just into view), Return goes there (D284's glide near, D320's jump far), Esc closes and stays on the task; pointing at a row chooses it, a click goes there; unpinned, leaving it closes it after 260 ms; closed by a key or a click under the pointer, it opens again only once the pointer has left; Tab to the rail opens it pinned on the turns in view. Times (D325): an item's time alone today, with its day otherwise (**昨天 9:47**); a run's range always in order, its day before it when not today, and both days when it crosses one (**昨天 22:10–今天 1:05 / yesterday 22:10–today 1:05**); never "10:46–10:32"; within one minute, one time.
    words carry one quiet line at 11: **保存了进度** when saved (no icon), and on hover their time ·
    how long the turn worked · **拷贝**, drawn over the gap below so nothing moves. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open

@@ -238,3 +238,29 @@ describe("复制密钥 / Copy a key", () => {
     expect(frames.find((f) => f.t === "kept_keys" && (f as { device?: string }).device === "w3")).toMatchObject({ ok: false, why: "unsupported" });
   });
 });
+
+// The lead's review: the task's copy card must stay open in the conversation of a client that
+// gets exactly what the home sends (its events and On hand, with D481's openAsks), and Go from
+// there must copy. Fed through the real socket into the web client's own Store.
+test("a task's copy card stays open in the web client's conversation, and Go from there copies", async () => {
+  const { Store } = await import("../../../apps/web/src/store.ts");
+  start();
+  openTask("t3", "在 haswell 配置并验证 Prow 日志 MCP", "w2");
+  const call = ask("t3", { env: ENV, name: "Prow log MCP key" });
+  await until(() => cards().length === 1);
+  const d = cards()[0]!;
+  const send = await socket();
+  await until(() => frames.some((f) => f.t === "on_hand" && JSON.stringify(f).includes(d.decisionId)) && frames.some((f) => f.t === "events" && JSON.stringify(f).includes(`"decisionId":"${d.decisionId}"`)));
+  const store = new Store();
+  for (const f of frames) store.apply(f as never);
+  const held = store.decisions.get(d.decisionId)!;
+  expect(held.copyKey?.env).toBe(ENV);
+  expect(held.resolved).toBeUndefined(); // D481's reconcile leaves it open: the home lists it
+  expect(held.pending ?? "").toBe("");
+  expect(store.pendingDecision("t3")?.decisionId).toBe(d.decisionId);
+  // What the conversation's Copy sends (app.ts copyKey): the copy runs and the call is answered.
+  send({ t: "decide", decisionId: d.decisionId, option: "go" });
+  expect(await call).toContain("kept by Ducter on haswell");
+  expect(shelves.w2!.list().map((k) => k.env)).toEqual([ENV]);
+  nowhere();
+});

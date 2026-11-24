@@ -293,9 +293,17 @@ describe("doctor on a Linux server", () => {
     expect(r.checks.every((c) => c.action === undefined)).toBe(true);
   });
 
+  test("D506: a server without Poppler gets the PDF row with its own package manager's line", async () => {
+    const r = await runDoctor(server({ tools: [...ALL, "dnf"] }, svc("active", "yes")), en, opts);
+    expect(byId(r, "pdf")).toMatchObject({ status: "missing", required: false, fix: "sudo dnf install poppler-utils" });
+    const has = await runDoctor(server({ tools: [...ALL, "pdftotext", "pdftoppm"] }, svc("active", "yes")), en, opts);
+    expect(byId(has, "pdf")).toMatchObject({ status: "ok" });
+    expect(byId(has, "pdf").fix).toBeUndefined();
+  });
+
   test("a Mac shows no server rows", async () => {
     const r = await runDoctor(fake(), en, opts);
-    expect(r.checks.some((c) => c.id === "service" || c.id === "devices")).toBe(false);
+    expect(r.checks.some((c) => c.id === "service" || c.id === "devices" || c.id === "pdf")).toBe(false);
   });
 });
 

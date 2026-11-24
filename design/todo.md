@@ -606,6 +606,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       [--uri <link>] [--message <saved bridge open>]`.
 - [x] A read-only live check against the real Mem of what D444 reads by INFERRED shapes. Done as D461 (research/200):
       the grouped contacts and `resources get` VERIFIED and fixed.
+- [ ] **mem-shapes again on hel** after D506 (nmem found in `~/.local/bin`, contacts read under the home's
+      Agent Context: 93 cards and 12 contacts by hand; the activity null read as not yet). Trigger: the next
+      release on hel. Check: `ducter check run mem-shapes`.
 - [ ] Where a received message's `KnowledgeReference`s sit on `bridge open` (D461 couldn't: `open` records a read, and
       only the home that answers the partner can read its mailbox). Trigger: the next message with a reference reaches
       the partner; read its Log entry's refs, or ask Mem for the shape (research/191 §asks).
@@ -698,9 +701,12 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   often the check fires, what the task fixed, what was left, and what the person still found after a
   clean check. The eval's documents are made to carry one known defect each, so 22/23 is an upper
   bound. Trigger: the first release with D439 on the author's Mac.
-- [ ] **Poppler with the home** (or a pure reader for a PDF's text boxes): without it 8 of 13 PDF
-  defects go unseen. Trigger: a home without Poppler in the real measure, or the next installer change. Check: `ducter check run poppler`
-  on each home.
+- [x] **Poppler with the Linux home** (D506): trigger met on hel (no pdftotext, pdftoppm or soffice).
+  The bundle's `install.sh` adds it when that needs no password, else says the line; `ducter doctor`'s
+  **PDF pages** row. Left: re-run `ducter check run poppler` on hel after its next install or update.
+- [ ] **Poppler on a Mac home** (or a pure reader for a PDF's text boxes): the Mac app adds nothing
+  from Homebrew and doctor shows no row there. Trigger: a Mac home without Poppler in the real
+  measure (`ducter check run poppler`).
 - [ ] **A title Chrome shrank the page to fit** (the eval's one miss): the task's own look covers it
   today; an AI reading the page pictures, or a size floor near 7.5 pt, if real runs show it.
 - [ ] **LibreOffice where the task works,** so every `.pptx`/`.docx` has its pages; offered on the
@@ -2951,7 +2957,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D427: a task in rounds is kept (`core/src/loops.ts`, research/177)
 
-- [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel. Check: `ducter check run loops`.
+- [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel. Check: `ducter check run loops`. Tried live on hel (0.1.30): a false fail, a replaced waiter's cancel read as the task's (fixed in D506); run it again after the next release.
 - [x] **Say a round, not "done", in the report tool.** A task in rounds could be told in its wake text that a round's end is `progress` (D427 makes "done" harmless, but the words would match). Default: add one line to the wake for a task in rounds. Trigger: a task tool change with its eval. Done as D429 (the wake's round paragraph).
 - [x] **A computer's name on the late card for a worker.** The keeper names it only when the place names a paired worker; a home's own task says "its computer". Trigger: the first late loop on a worker Mac. Done as D429 (named wherever known, the home too).
 - [x] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep. Done as D429 (换到醒着的电脑上跑; not for repo or folder tasks).

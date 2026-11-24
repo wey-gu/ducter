@@ -3,7 +3,7 @@
 // either side renames a file, every `curl … | sh` breaks, so this test holds them together.
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -219,7 +219,8 @@ describe("worker mode", () => {
         writeFileSync(join(d, "from/ducter"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
         // The prefix's bin is on PATH: nothing is linked or written to a profile outside the folder.
         const r = spawnSync("sh", [join(import.meta.dir, "install.sh"), "--from", join(d, "from"), "--prefix", join(d, "p")], {
-          env: { HOME: d, PATH: `${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", ...env },
+          // A Linux CI runner has a passwordless sudo and apt: Poppler is held off here (its own test below).
+          env: { HOME: d, PATH: `${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", DUCTER_NO_POPPLER: "1", ...env },
           encoding: "utf8",
         });
         expect(r.status).toBe(0);
@@ -242,5 +243,72 @@ describe("worker mode", () => {
     const r = run(["worker", "https://hel.example.com"]);
     expect(r.status).not.toBe(0);
     expect(r.out).toContain("worker <address> --code <code>");
+  });
+});
+
+// D506: hel had no Poppler, so the document check missed most of a PDF's layout mistakes. The
+// bundle's install.sh adds it on Linux when that needs no password, else says the one line.
+describe("Poppler on a Linux home", () => {
+  // A runner image that already has Poppler in /usr/bin can't show its absence.
+  const sysPoppler = ["/usr/bin/pdftotext", "/bin/pdftotext"].some((p) => existsSync(p));
+  /** A fake Linux: uname says Linux; apt-get, sudo and id as given; every apt-get call written to calls.log. */
+  const linux = (o: { root?: boolean; sudo?: "nopass" | "asks"; aptWorks?: "yes" | "after-update" | "no"; has?: boolean }) => {
+    const d = mkdtempSync(join(tmpdir(), "ducter-poppler-sh-"));
+    try {
+      const fake = join(d, "fake");
+      mkdirSync(join(d, "from"), { recursive: true });
+      mkdirSync(fake, { recursive: true });
+      writeFileSync(join(d, "from/ducter"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const log = join(d, "calls.log");
+      const sh = (name: string, body: string) => writeFileSync(join(fake, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+      sh("uname", 'case "${1:-}" in -m) echo x86_64 ;; *) echo Linux ;; esac');
+      sh("id", `echo ${o.root ? 0 : 1000}`);
+      // Always a fake sudo: the real one (passwordless on a CI runner) would run the real apt-get.
+      sh("sudo", `[ "$1" = -n ] && shift; ${o.sudo !== "nopass" ? 'echo "sudo: a password is required" >&2; exit 1' : '"$@"'}`);
+      const made = `printf '#!/bin/sh\\n' > ${fake}/pdftotext; printf '#!/bin/sh\\n' > ${fake}/pdftoppm; chmod +x ${fake}/pdftotext ${fake}/pdftoppm`;
+      const install = o.aptWorks === "no" ? "exit 100" : o.aptWorks === "after-update" ? `[ -f ${d}/updated ] || exit 100; ${made}` : made;
+      sh("apt-get", `echo "apt-get $*" >> ${log}; case "$1" in update) touch ${d}/updated ;; install) ${install} ;; esac`);
+      if (o.has) sh("pdftotext", ""), sh("pdftoppm", "");
+      const r = spawnSync("sh", [join(import.meta.dir, "install.sh"), "--from", join(d, "from"), "--prefix", join(d, "p")], {
+        env: { HOME: d, PATH: `${fake}:${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", DUCTER_INSTALL_FOR: "worker" },
+        encoding: "utf8",
+      });
+      let calls = "";
+      try {
+        calls = readFileSync(log, "utf8");
+      } catch {}
+      return { status: r.status, out: r.stdout + r.stderr, calls };
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  };
+
+  test.skipIf(sysPoppler)("a passwordless sudo installs poppler-utils, with no prompt", () => {
+    const r = linux({ sudo: "nopass", aptWorks: "yes" });
+    expect(r.status).toBe(0);
+    expect(r.calls).toContain("apt-get install -y -q poppler-utils");
+    expect(r.out).toContain("Poppler (PDF pages are checked)");
+    expect(r.out).not.toContain("sudo apt install");
+  });
+
+  test.skipIf(sysPoppler)("a fresh image's empty package lists: one update, then the install", () => {
+    const r = linux({ root: true, aptWorks: "after-update" });
+    expect(r.calls.split("\n").filter(Boolean)).toEqual(["apt-get install -y -q poppler-utils", "apt-get update -q", "apt-get install -y -q poppler-utils"]);
+    expect(r.out).toContain("Poppler (PDF pages are checked)");
+  });
+
+  test.skipIf(sysPoppler)("a sudo that would ask a password: nothing run, the one line said; a failed install the same", () => {
+    for (const r of [linux({ sudo: "asks", aptWorks: "yes" }), linux({ root: true, aptWorks: "no" })]) {
+      expect(r.status).toBe(0);
+      expect(r.out).toContain("most layout mistakes in a PDF go unseen");
+      expect(r.out).toContain("sudo apt install poppler-utils");
+    }
+    expect(linux({ sudo: "asks", aptWorks: "yes" }).calls).toBe("");
+  });
+
+  test("Poppler already there: nothing said, nothing run", () => {
+    const r = linux({ sudo: "nopass", aptWorks: "yes", has: true });
+    expect(r.calls).toBe("");
+    expect(r.out).not.toContain("Poppler");
   });
 });

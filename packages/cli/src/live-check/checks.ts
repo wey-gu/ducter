@@ -2,7 +2,9 @@
 // already there, or asks the person for their one step; the pure readers below are what the tests
 // hold against fakes.
 import { basename, join } from "node:path";
-import { pipxCmd, seenAtOf } from "@ducter/core/src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, pipxCmd, seenAtOf } from "@ducter/core/src/bridge-link.ts";
+import { findNmem } from "@ducter/core/src/mem-cli.ts";
+import { popplerCmd } from "@ducter/core/src/pkg-line.ts";
 import { foundOf } from "@ducter/core/src/mem-glance.ts";
 import { contactsOf, mailboxesOf, refsIn, resourceOf } from "@ducter/partner/src/bridge.ts";
 import { readFreeLimit, type FreeProvider, WIDER_KINDS } from "@ducter/protocol";
@@ -88,7 +90,9 @@ export function holdVerdict(h: Hold, now: number): "ok" | "early" | "late" | "st
 /** D427/D429: the loops: each on-loop's latest wait, and what brought one back. */
 export function loopsOf(events: readonly LoggedEvent[]) {
   const loops = new Map<string, any>();
-  const waits = new Map<string, string>(); // taskId → latest waiter state
+  // waiterId → its task and latest state. Keyed by the waiter, not the task: a replaced waiter's
+  // cancel (`replacedBy`) is logged just after its successor is armed, and must not read as the task's.
+  const waits = new Map<string, { taskId: string; state: string }>();
   const backs: Record<string, number> = { done: 0, failed: 0, lost: 0, restart: 0 };
   let late = 0;
   let moves = 0;
@@ -97,14 +101,15 @@ export function loopsOf(events: readonly LoggedEvent[]) {
     if (e.kind === "task_loop" && typeof b.taskId === "string") {
       if (b.back && b.back.at !== loops.get(b.taskId)?.back?.at && b.back.from in backs) backs[b.back.from]!++;
       loops.set(b.taskId, b);
-    } else if (e.kind === "waiter" && typeof b.taskId === "string" && !b.limit) waits.set(b.taskId, b.state);
+    } else if (e.kind === "waiter" && typeof b.taskId === "string" && typeof b.waiterId === "string" && !b.limit) waits.set(b.waiterId, { taskId: b.taskId, state: b.state });
     else if (e.kind === "decision" && b.loop) {
       late++;
       if (b.loop.move) moves++;
     }
   }
   const on = [...loops.values()].filter((l) => l.state === "on");
-  const unarmed = on.filter((l) => waits.get(l.taskId) !== "armed");
+  const armed = new Set([...waits.values()].filter((w) => w.state === "armed").map((w) => w.taskId));
+  const unarmed = on.filter((l) => !armed.has(l.taskId));
   // A round's done read as the loop's end (D427) is the regression this guards: a done-back loop left ended by no one.
   const endedByDone = [...loops.values()].filter((l) => l.state === "ended" && !l.endedBy).length;
   return { loops: loops.size, on: on.length, paused: [...loops.values()].filter((l) => l.state === "paused").length, ended: [...loops.values()].filter((l) => l.state === "ended").length, unarmed: unarmed.length, endedByNoOne: endedByDone, backs, lateCards: late, movesOffered: moves };
@@ -157,16 +162,36 @@ export function contactShapes(j: any): Observed & { list: string } {
   };
 }
 
-/** D433: `connections list --include-activity`'s connections, as shapes, and how many carry a seen time where Ducter reads it. */
+/**
+ * D433/D461: `connections list --include-activity`'s connections, as shapes: how many carry a seen
+ * time where Ducter reads it (core's seenAtOf, the list-level `activity_available` honoured), how many
+ * carry the field still null (Mem hasn't seen them yet) and how many lack it altogether (a shape break).
+ */
 export function activityShapes(j: any): Observed {
   const list: any[] = Array.isArray(j?.connections) ? j.connections : [];
+  const none = (c: any) => j?.activity_available === false || c?.activity_available === false || c?.activity?.activity_available === false;
+  const has = (c: any) => (c && typeof c === "object" && "last_seen_at_ms" in c) || (c?.activity && typeof c.activity === "object" && "last_seen_at_ms" in c.activity);
+  const read = list.filter((c) => !none(c));
+  const seenRead = read.filter((c) => seenAtOf(c, j) !== undefined).length;
   return {
     connections: list.length,
+    listActivity: typeof j?.activity_available === "boolean" ? j.activity_available : null,
     fields: fieldsOf(list),
     activityFields: fieldsOf(list.map((c) => c?.activity).filter(Boolean)),
-    seenRead: list.filter((c) => seenAtOf(c) !== undefined).length,
-    saysNoActivity: list.filter((c) => c?.activity_available === false || c?.activity?.activity_available === false).length,
+    seenRead,
+    seenNotYet: read.filter((c) => has(c) && seenAtOf(c, j) === undefined).length,
+    seenMissing: read.filter((c) => !has(c)).length,
+    saysNoActivity: list.length - read.length,
   };
+}
+
+/** D461: the activity step's verdict from those shapes. */
+export function activityVerdict(s: Observed): { outcome: "pass" | "not-yet" | "fail"; note?: string } {
+  const n = (k: string) => (s[k] as number) ?? 0;
+  if (n("seenMissing") > 0) return { outcome: "fail", note: "activity offered but no last_seen_at_ms where Ducter reads it" };
+  if (n("saysNoActivity") === n("connections")) return { outcome: "pass", note: "Mem says no activity for this list: Ducter reads none" };
+  if (n("seenRead") > 0) return { outcome: "pass" };
+  return { outcome: "not-yet", note: "last_seen_at_ms is there but null: Mem hasn't seen these connections yet" };
 }
 
 /** D449: the 429 as pi would pass it (the body's words), read by Ducter's own reader. */
@@ -224,7 +249,11 @@ const homeUp: Step = {
   },
 };
 
-const nmemBin = (c: Ctx) => c.env.vars.NMEM_CLI_PATH || c.env.which("nmem");
+// Core's own finder (PATH, then ~/.local/bin and the other user folders a service's PATH lacks).
+const nmemBin = (c: Ctx) =>
+  findNmem(c.env.vars, { which: (cmd) => c.env.which(cmd), exists: (p) => c.env.exists(p), read: (p) => c.env.readText(p), list: (d) => c.env.list?.(d) ?? [], real: (p) => p, home: c.env.home, platform: c.env.platform as NodeJS.Platform });
+/** The home's confirmed Bridge connection (bridge-connection.json): its context, Space and identity. */
+const connectionOf = (c: Ctx) => jsonOf(c.env.readText(join(c.env.dataDir, BRIDGE_CONNECTION_FILE)) ?? "");
 const nmem = async (c: Ctx, args: string[], ms = 60_000) => {
   const bin = c.memo.nmem as string;
   return c.env.run([bin, "--json", ...args], ms);
@@ -260,13 +289,15 @@ const memShapes: Check = {
       title: "bridge contacts (grouped): mailbox_available / unavailable and the member, where D444 reads them",
       by: "auto",
       async run(c) {
-        const r = await nmem(c, ["bridge", "contacts"]);
+        // As the partner reads them (partner/bridge.ts): under the home's approved Agent Context, or Mem shows no cards.
+        const ctx = connectionOf(c)?.context;
+        const r = await nmem(c, [...(typeof ctx === "string" && ctx ? ["--agent-context", ctx] : []), "bridge", "contacts"]);
         if (!r || r.code !== 0) return { outcome: "fail", note: `bridge contacts failed (exit ${r?.code ?? "none"})` };
         const j = jsonOf(r.out);
         if (!j) return { outcome: "fail", note: "bridge contacts gave no JSON" };
         const s = contactShapes(j);
         if (s.list === "none") return { outcome: "fail", observed: { ...s, topFields: fieldsOf([j]) }, note: "no contacts[] or cards[] where Ducter reads them" };
-        if (!s.cards) return { outcome: "not-yet", observed: s, note: "no cards yet: connect one agent to Mem first" };
+        if (!s.cards) return { outcome: "not-yet", observed: { ...s, context: !!ctx }, note: ctx ? "no cards yet: connect one agent to Mem first" : "no cards: this home has no Bridge connection, so no Agent Context to read them with" };
         return { outcome: s.mailboxField ? "pass" : "fail", observed: s, ...(s.mailboxField ? {} : { note: "no card carries mailbox_available" }) };
       },
     },
@@ -277,15 +308,15 @@ const memShapes: Check = {
       async run(c) {
         const h = await nmem(c, ["bridge", "connections", "list", "--help"], 15_000);
         const offered = !!h && /--include-activity/.test(`${h.out}\n${h.err}`);
-        const rec = jsonOf(c.env.readText(join(c.env.dataDir, "bridge-connection.json")) ?? "");
+        const rec = connectionOf(c);
         if (!offered) return { outcome: "pass", observed: { offered }, note: "this nmem has no --include-activity: Ducter reads none" };
         if (!rec?.spaceId || !rec?.agentId) return { outcome: "skip", observed: { offered }, note: "this home has no Bridge connection to list" };
         const r = await nmem(c, ["bridge", "connections", "list", "--space-id", rec.spaceId, "--agent-id", rec.agentId, "--include-activity"]);
         const j = r && r.code === 0 ? jsonOf(r.out) : undefined;
         if (!j) return { outcome: "fail", observed: { offered }, note: "the list with --include-activity failed or gave no JSON" };
         const s = activityShapes(j);
-        const ok = s.seenRead as number > 0 || s.saysNoActivity === s.connections;
-        return { outcome: ok ? "pass" : "fail", observed: { offered, ...s }, ...(ok ? {} : { note: "activity offered but no last_seen_at_ms where Ducter reads it" }) };
+        const v = activityVerdict(s);
+        return { outcome: v.outcome, observed: { offered, ...s }, ...(v.note ? { note: v.note } : {}) };
       },
     },
     {
@@ -796,7 +827,8 @@ const poppler: Check = {
       async run(c) {
         const has = (x: string) => !!c.env.which(x);
         const observed = { pdftotext: has("pdftotext"), pdftoppm: has("pdftoppm"), soffice: has("soffice") || c.env.exists("/Applications/LibreOffice.app") };
-        return observed.pdftotext && observed.pdftoppm ? { outcome: "pass", observed } : { outcome: "fail", observed, note: "no Poppler here: the page check misses most PDF defects" };
+        // D506: the same line `ducter doctor` gives, in this computer's own package manager.
+        return observed.pdftotext && observed.pdftoppm ? { outcome: "pass", observed } : { outcome: "fail", observed, note: `no Poppler here: the page check misses most PDF defects; add it: ${popplerCmd(c.env.platform, has)}` };
       },
     },
   ],

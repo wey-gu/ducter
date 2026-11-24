@@ -1,4 +1,4 @@
-// D511: what a clean Codex session (the partner) really gets. Codex's app-server appends a
+// D512: what a clean Codex session (the partner) really gets. Codex's app-server appends a
 // thread's config to the launch's `-c` list, and a whole `mcp_servers` table there replaced the
 // `enabled=false` entries for the person's servers: the 0.171 eval's partner had context7, Mem,
 // cua-driver and node_repl behind tool search while `codex mcp list` showed them off. So:
@@ -6,7 +6,7 @@
 //      for none), Ducter's server rides in the launch arguments, its token in the env;
 //   2. with Codex installed, `codex debug prompt-input` under exactly those arguments and env, on a
 //      scratch CODEX_HOME holding two live servers of "the person's", renders the model's real
-//      input: Ducter's namespace and none of theirs, and no shell tool (D511's second half).
+//      input: Ducter's namespace and none of theirs, and no shell tool (D512's second half).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -78,7 +78,7 @@ const partner = (): SessionSpec => ({
   noWeb: true,
 });
 
-describe("D511: the partner's Codex session", () => {
+describe("D512: the partner's Codex session", () => {
   test("no thread mcp_servers table: Ducter's server is one launch override ahead of the person's servers turned off, its token in the env", () => {
     const a = adaptSpec(partner(), { dataDir: dir, env: { CODEX_HOME: home } });
     expect(a.options.mcpServers ?? []).toEqual([]); // none: OAR then sends no thread `mcp_servers`

@@ -250,7 +250,7 @@ export function codexLeftoverServers(command: string, args: string[], overlay: R
   return off;
 }
 /**
- * D511: Ducter's own servers for a clean Codex session, as one `-c mcp_servers={…}` launch
+ * D512: Ducter's own servers for a clean Codex session, as one `-c mcp_servers={…}` launch
  * override ahead of the overrides that turn the person's servers off, never as OAR's thread/start
  * `config.mcp_servers`. Codex's app-server appends a thread's config to the launch's `-c` list
  * and sets each entry at its dotted path into one layer (codex-rs 0.171.0
@@ -557,7 +557,7 @@ function readOnlyFor(h: HarnessId, a: { disallowed: string[]; launchArgs?: strin
   if (h === "codex") {
     // Under any sandbox codex declines an MCP call not marked readOnlyHint (with approvals off it
     // can't ask; measured: task_open and wait_for refused). See the MCP URL in adaptSpec.
-    // D511: and no shell at all (harness-facts readOnly): under the read-only sandbox the partner
+    // D512: and no shell at all (harness-facts readOnly): under the read-only sandbox the partner
     // still ran commands (3 scenarios of the 0.171 eval); what a place holds is a task's to read.
     return { ...a, launchArgs: [...(a.launchArgs ?? []), ...(HARNESS_FACTS.codex.readOnly.value.args ?? []), "-c", 'sandbox_mode="read-only"'] };
   }
@@ -752,7 +752,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     mcpServers = [];
   }
 
-  // D511: a clean Codex session takes Ducter's own servers as one launch override placed before
+  // D512: a clean Codex session takes Ducter's own servers as one launch override placed before
   // the person's servers are turned off, never as OAR's thread config (codexOwnServers).
   if (h === "codex" && launchArgs && (clean || spec.userConfiguration === "exclude") && mcpServers.length) {
     const own = codexOwnServers(mcpServers);

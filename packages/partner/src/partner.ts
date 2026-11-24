@@ -197,7 +197,7 @@ interface TurnState {
   opensSeen: number;
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
-  openAcked?: boolean; // D511: a task_open's ack went out this turn (a later open says nothing of its own)
+  openAcked?: boolean; // D512: a task_open's ack went out this turn (a later open says nothing of its own)
   looked?: boolean; // D380: a quick web look went out this turn (a short line after it is filler)
   handed?: boolean; // D385: to-dos were handed over after a line was said this turn (a short line after it repeats it)
   asked?: boolean; // the partner made a decision card (ask) this turn
@@ -1383,7 +1383,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return t.unboundAck;
   };
   /**
-   * D511: a task_open's line this turn: the line written before it, else (the turn's first open
+   * D512: a task_open's line this turn: the line written before it, else (the turn's first open
    * only) one from its title. Parallel opens in one turn (many-asks-places-en: three at once) share
    * the one ack; a later one gets its own job line and says nothing.
    */
@@ -2644,7 +2644,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         const later = !!groupName && !!groups?.named(core.persona.id, groupName);
         if (!ack && later) ack = { jobId: newId("job") } as NonNullable<typeof ack>;
-        // D511: the turn's ack is out (a parallel open): this one says nothing of its own.
+        // D512: the turn's ack is out (a parallel open): this one says nothing of its own.
         if (!ack) ack = openLine(t, args.title);
         t.openAcked = true;
         t.unboundAck = null;

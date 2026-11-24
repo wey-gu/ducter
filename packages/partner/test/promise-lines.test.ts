@@ -169,7 +169,7 @@ test("the same task_open twice in one turn opens one task, with one ack", async 
   expect(said(fc)).toEqual(["ack: I'll make the WAL flush interval configurable and update the README."]);
 });
 
-// D511 (many-asks-places-en on Codex: "On it: Diagnose HawDB main CI failure" after the ack): three
+// D512 (many-asks-places-en on Codex: "On it: Diagnose HawDB main CI failure" after the ack): three
 // different task_open calls at once in one turn. The line before them is the one ack; the other two
 // open their tasks and say nothing of their own, also with no line first (the first gets one from
 // its title) and with no stream events at all (the MCP calls alone).

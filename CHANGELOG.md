@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.33 - 2026-11-24
+
+<!-- whats-new
+zh: 伙伴用 Codex 时只拿到 Ducter 自己的工具
+en: On Codex, your partner gets only Ducter's own tools
+-->
+
+**Your partner on Codex keeps to its own tools**
+- When your partner thinks with Codex, its session no longer picks up the MCP servers you set up
+  for your own Codex, and it has no shell. Your tasks still get everything you set up.
+- Several tasks opened at once get one acknowledgement, not two.
+
 ## 0.1.32 - 2026-11-24
 
 <!-- whats-new

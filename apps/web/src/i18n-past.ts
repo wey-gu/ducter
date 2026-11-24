@@ -1,9 +1,9 @@
 // D285: 做过的事 / Past tasks (design/past.md). The same words as the Mac's.
 export const pastWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
-    "og.tab": "在照看的",
+    "og.tab": "看守中",
     "og.sec.next": "等下一次",
-    "og.sec.paused": "暂停了",
+    "og.sec.paused": "已暂停",
     "past.tab": "做过的事",
     // D383: 给你做的 / Made for you, the middle tab.
     "made.tab": "给你做的",
@@ -36,9 +36,9 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "made.n": "找到 %d 个",
     "made.none": "没找到。换几个字，或者直接问%s。",
     "made.empty": "还没有给你做的东西。让%s查点什么、做个表格，做好的会在这里。",
-    "og.link": "在照看的 %d 个",
-    "og.empty": "现在没有在照看的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
-    "og.s.running": "正在跑",
+    "og.link": "看守中 %d 个",
+    "og.empty": "现在没有看守中的事。让它每天、每周做点事，或者一直盯着什么，它就会在这里。",
+    "og.s.running": "进行中",
     "og.s.needs_you": "等你",
     "og.s.proposed": "还没开始",
     "og.next": "下次 %s",
@@ -70,7 +70,7 @@ export const pastWords: { zh: Record<string, string>; en: Record<string, string>
     "og.run.done": "做完了",
     "og.run.failed": "没做成",
     "og.run.skipped": "跳过了",
-    "og.run.running": "在跑",
+    "og.run.running": "进行中",
     "og.run.looked": "看了一次，还没有",
     "og.run.met": "等到了",
     "og.e.day": "每天",

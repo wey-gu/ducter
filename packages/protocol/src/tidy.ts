@@ -123,7 +123,7 @@ const W = {
       not_ours: "不是 Ducter 建的，不碰",
       live: "任务还在进行",
       waiting: "任务在等",
-      looking_after: "在照看",
+      looking_after: "看守中",
       pr_open: "PR 还开着",
       pinned: "你标了星或说过留着",
       shared: "另一个任务也在用",

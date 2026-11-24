@@ -199,6 +199,32 @@ slim strip just above the composer: radius 16, a sunken tint (done: done-surface
 failed-surface), a drawn glyph at its start (no tile), 13/12px text, small (32) buttons at its end.
 Something that needs no answer ("ducter now works in Terminal") is a toast instead.
 
+**Toasts: one slot (D527).** A toast is one sentence the app says after something done or
+something that happened by itself (已更新到 0.1.38 / Updated to 0.1.38, 已拷贝 / Copied, an undo).
+It needs no answer and goes by itself. Every toast on the Mac shows in **one slot**, drawn by
+**one card** (`toastSlot`, `toastCard` in `views/toasts.go`); a view only says what (`c.Toast`,
+`c.AddToast`, `a.toast`), never where or how.
+- **Where:** centred over the place's own content, never the whole window: the conversation
+  beside the list of partners, On hand's board beside its projects, a Settings pane beside its
+  rail, an opened task between On hand's rail and the workbench (each place names its content
+  with `toastsOver`). Its foot stands `S3` above the top of the place's foot (`toastsAbove`: the
+  composer with every notice, card and voice strip over it), else `S5` above the content's
+  bottom edge. It never covers the composer's words or buttons, nor a notice's. At most 520 wide,
+  two lines; newer ones stack above, three at most, `S2` apart.
+- **Look:** the ink card of the primary button's family on its ledge (`PressPrimary`, 3) and the
+  `Floating` drop: inverse on both papers. The sentence at 13/700 in the paper's colour; an action
+  (撤销 / Undo) a text button in the accent at the card's end. Radius `RadiusMD`, 44 tall.
+- **Motion (D290):** in from 6 below and a fade over `EnterDur` (220 ms); out 6 down and a fade
+  over `Nav.Leave` (260 ms); a toast pushed up by a newer one moves to its place. Reduced motion:
+  it only fades.
+- **Time:** 4 s, 8 s with an action; it holds while the pointer rests on it or the keyboard is
+  in it (Tab reaches its action), and Escape closes it there.
+- **Guards:** `TestToastsGoThroughTheOneSlot` (no `ToastViewportBase` or `ToastBase` outside
+  `toasts.go`), `TestToastSlotPlacesEveryToast` (centred, clear of the composer, at 1000 and 1400;
+  the pointer holds it). Shots: `.shots/whats-new-notice/`.
+- The web's `Toasts` (`views.tsx`, `.toasts`) is the same ink card on the phone, bottom-centred
+  over the composer's height; on a wide web window it still centres on the window (a todo).
+
 **Shown, not dotted; no pills (anti-slop rule, D69, D73).** No pulsing or glowing status dots,
 no decorative identity-color dots, no status that animates on its own (breathing rings, gliding
 bars, ticking clocks); only the clay character and scene may breathe (D77). **Status and evidence are never capsules**, on any surface: no state
@@ -548,6 +574,7 @@ A new control is added to the set (and to this table) before it is used.
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
+| A toast: one sentence that goes by itself, with an optional action (D527) | `toastSlot`, `toastCard` (`toasts.go`), said through `c.Toast` / `c.AddToast` / `a.toast` | `Toasts` (`views.tsx`), said through `A.toast` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
 | The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |

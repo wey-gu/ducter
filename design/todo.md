@@ -42,10 +42,15 @@ line.
 - [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
   and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
   *Trigger:* the first release with D520 on the author's Mac.
-- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
-  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
-  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
-  the same card.
+- [x] **The web client, iPhone and Android** keep the token on a 401 and leave only on a signed gone
+  (D532).
+- [ ] **D532 on a real phone:** the iPhone app (Simulator first) and an Android phone over hel's Caddy
+  through a hel restart: 正在重新连上 hel…, back by itself, and `ducterresume` redialing on coming to
+  the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
+  (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
+  with D532.
+- [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
+  the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
 ## Toasts, after D527 (`ui.md` "Toasts: one slot")

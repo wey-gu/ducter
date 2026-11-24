@@ -364,8 +364,12 @@ Every task shows two editable things on its card and header.
 - A task whose brief says it will **write** gets a worktree **at start**, at
   `~/ducter/worktrees/<repo>/<slug>` in the Ducter folder (D204; tasks from before keep
   `~/.ducter/worktrees/…`), named like its branch `ducter/<slug>` (D198), so Finder
-  and an editor's recent list say which task it is. The slug is the title's own words in their
-  own script (D201: `修复登录页的闪退`, `fix-the-flaky-test`). On the Mac, the opened task shows the path
+  and an editor's recent list say which task it is. The slug is ASCII (D522: shared with
+  collaborators, CI, shells and URLs): 3 to 6 lowercase English words the cheapest model wrote once
+  from the title, after the to-do's number when there is one (`ducter/11028-embedding-one-model`),
+  following the repository's own branch convention when it states one; `ducter/task-<id>` when no
+  model can answer. A task from before keeps its name (D201's `修复登录页的闪退`). The readable
+  title is still everything a person sees in Ducter. On the Mac, the opened task shows the path
   and **打开 / Open** takes the user there by hand.
 - A **read-only** task reads the main checkout, including uncommitted changes, and never
   gets a worktree.

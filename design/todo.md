@@ -9,6 +9,18 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
+
+- [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of
+  the author's real titles (zh and en, with and without a to-do number, one repository with a
+  `feat/` convention) through the cheapest model of Claude Code and Codex; check 3 to 6 words that
+  tell the task apart, the convention followed, and how long the start waited. Record the results.
+- [ ] **A GitHub ruleset's branch-name pattern** (`gh api repos/{o}/{r}/rulesets`) as one more source
+  of the repository's convention. Trigger: a repository whose convention lives only in a ruleset.
+- [ ] **A convention-shaped branch (`feat/…`) left by a task dropped before it started.**
+  `archiveWorktree` deletes only `ducter/` branches it made; record on the place that Ducter made
+  the branch, so a `feat/` one goes the same way. Trigger: the first such branch seen.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with

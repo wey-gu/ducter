@@ -125,6 +125,33 @@ test("a finished task's clean, pushed copy goes after 3 idle days: logged with i
   expect(core.past.item(taskId)?.tidied).toBeUndefined();
 });
 
+test("D522: a task from before with a CJK branch and folder tidies and continues as it is; a new one gets ASCII names that tidy the same", async () => {
+  const repo = repoWithOrigin();
+  let clock = Date.now();
+  const { core, runner, open, finish } = await boot({ now: () => new Date(clock) });
+  // As 0.1.39 named it: the title's own words in the branch and the folder.
+  const worktree = join(dir, "data", "ducter", "worktrees", "repo", "添加自定义服务商弹窗切到-embedding-标签页时-同");
+  const old = await open("添加自定义服务商弹窗切到 embedding 标签页时，同时显示模型下拉框", repo, { worktree, branch: "ducter/添加自定义服务商弹窗切到-embedding-标签页时-同" });
+  expect(old.place).toMatchObject({ worktree, branch: "ducter/添加自定义服务商弹窗切到-embedding-标签页时-同" });
+  await finish(old.taskId, old.place);
+  // A new task: no model in tests, so the fallback; ASCII either way.
+  const fresh = await open("修复登录页的闪退", repo);
+  expect(fresh.place.branch).toBe("ducter/task-t2");
+  expect(fresh.place.worktree).toBe(join(dir, "data", "ducter", "worktrees", "repo", "task-t2"));
+  await finish(fresh.taskId, fresh.place);
+  clock += 4 * DAY;
+  expect((await runner.sweepArchive()).sort()).toEqual([old.taskId, fresh.taskId].sort());
+  expect(existsSync(worktree)).toBe(false);
+  expect(existsSync(fresh.place.worktree!)).toBe(false);
+  // Continue: each comes back at its own stored path, on its own branch, never renamed.
+  await runner.send(old.taskId, "接着做。");
+  expect(existsSync(join(worktree, "b.txt"))).toBe(true);
+  expect((await git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/添加自定义服务商弹窗切到-embedding-标签页时-同");
+  expect(core.tasks.get(old.taskId)!.place).toMatchObject({ worktree, branch: "ducter/添加自定义服务商弹窗切到-embedding-标签页时-同" });
+  await runner.send(fresh.taskId, "One more thing.");
+  expect((await git(fresh.place.worktree!, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/task-t2");
+});
+
 test("Continue after the local branch was deleted too: the copy comes back from origin's branch, never a fresh one off main", async () => {
   const repo = repoWithOrigin();
   let clock = Date.now();

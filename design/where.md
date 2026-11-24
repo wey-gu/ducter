@@ -634,8 +634,9 @@ runs at a time (a second tap while it starts is the same start; each client hold
 and an early open that failed before its brief keeps the brief for the start again.
 
 **A worktree is made so it can't collide (D415).** Its branch names its to-do: `ducter/<issue
-number>-<the issue's own words>` (several: their numbers, then the first one's words), never a
-group's subject. A branch already there is used again only when it carries nothing (no commit past
+number>-<slug>` (several: their numbers first), never a group's subject; the slug is ASCII words
+the cheapest model wrote from the title (D522, `ducter/11028-embedding-one-model`), and the number
+alone when no model answers. A branch already there is used again only when it carries nothing (no commit past
 its base, checked out nowhere: what a start that failed left); one with work on it, or checked out,
 gets the next free `-2`, `-3` (the folder the same). A `git worktree add` that meets another git's
 lock is tried again (four times, waits growing); a lock older than ten minutes with no git running

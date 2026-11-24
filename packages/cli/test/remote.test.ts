@@ -35,7 +35,8 @@ describe("systemd unit", () => {
     for (const worker of [false, true]) {
       const u = systemdUnit({ execStart: ["/b"], dataDir: "/d", path: "/p", port: 1, worker });
       expect(u).toMatch(/^OOMPolicy=continue$/m);
-      expect(u).toMatch(/^MemoryHigh=80%$/m);
+      // No MemoryHigh: without swap, throttling the unit would stall the home itself.
+      expect(u).not.toMatch(/^MemoryHigh=/m);
       expect(u).toMatch(/^MemoryMax=90%$/m);
       // The home's own score is left to systemd: lowering it needs privilege a user unit lacks.
       expect(u).not.toMatch(/^OOMScoreAdjust=/m);

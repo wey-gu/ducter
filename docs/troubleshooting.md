@@ -33,8 +33,8 @@ The Mac app runs the same check-up by itself when it starts, and shows only what
 `ducter doctor` says so under **Server memory (RAM)**: how many times in the last day, when, and
 the biggest program a task was running then (often a type check, a build or a browser running side
 by side). Ducter itself keeps running: only that program is stopped, and the task sees it and
-can run its checks one at a time. If the check-up shows `ducter service install`, run it once:
-the service from an older Ducter stops all of Ducter when memory runs out. A server with little
+can run its checks one at a time. After an update, Ducter brings its service settings up to
+date by itself, and the check-up says **service settings updated** under **Stays on**. A server with little
 memory and no swap runs out sooner; adding swap, or running heavy tasks on another computer, helps.
 
 ### A task says "Couldn't start"

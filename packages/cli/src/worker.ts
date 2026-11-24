@@ -3,6 +3,8 @@
 // alias for the address). It dials OUT (no inbound port here), says which harnesses it has, and stays
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
 // them on this disk with this machine's harnesses (design/system.md "Workers").
+import { startMemoryWatch } from "@ducter/core/src/memory-watch.ts";
+import { refreshOnStart } from "@ducter/core/src/unit-refresh.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { arch, platform } from "node:os";
 import { thisComputer } from "@ducter/core/src/this-computer.ts";
@@ -295,6 +297,9 @@ export async function cmdWorker(o: {
   const dataDir = o.dataDir;
   updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how, agentsInstalling: () => agentUpdater.installing() });
   await agentUpdater.leftovers().catch(() => {});
+  // D524: a worker runs tasks too: its children go before it when memory runs out, and an older unit gets today's settings.
+  startMemoryWatch({ dataDir });
+  refreshOnStart(dataDir);
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the

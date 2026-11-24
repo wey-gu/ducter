@@ -15,6 +15,7 @@ import type { Tailnet } from "./tailscale.ts";
 import { homeIdentity } from "@ducter/core/src/home-key.ts";
 import { pairFragment } from "@ducter/protocol/src/reach.ts";
 import { captureLoginPath, saveLoginPath } from "@ducter/core/src/agent-path.ts";
+import { managedLines } from "@ducter/core/src/unit-refresh.ts";
 
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
@@ -357,11 +358,9 @@ export function systemdUnit(u: UnitSpec): string {
     "RestartSec=3",
     // D524: tasks' children (tsc, a dev server, a browser) run in this unit. When the kernel stops
     // one for memory, only it goes: the home keeps running (systemd's default stops the unit).
-    "# A task's child stopped for lack of memory takes only itself; Ducter keeps running.",
-    "OOMPolicy=continue",
-    "# Memory runs short inside this unit first, never for the whole computer (sshd stays).",
-    "MemoryHigh=80%",
-    "MemoryMax=90%",
+    // No MemoryHigh: without swap, throttling the unit stalls the home itself. A unit written
+    // before these lines gets them on the next start (core unit-refresh.ts).
+    ...managedLines(),
     "WorkingDirectory=%h",
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,
     // D340: the home the service runs is the person's own: it connects to their Mem by itself.

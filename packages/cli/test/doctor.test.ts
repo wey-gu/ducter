@@ -330,6 +330,9 @@ describe("doctor on a Linux server", () => {
     expect(byId(await runDoctor(h, en, { ...opts, unitPath: "/u/ducter.service" }), "memory")).toMatchObject({ status: "warn", fix: "ducter service install" });
     files["/u/ducter.service"] = "OOMPolicy=continue\n";
     expect(byId(await runDoctor(h, en, { ...opts, unitPath: "/u/ducter.service" }), "memory")).toMatchObject({ status: "ok" });
+    // The home brought the unit up to date at its start after the update: the service row says so.
+    files[`${opts.dataDir}/unit-refreshed.json`] = JSON.stringify({ at: new Date().toISOString() });
+    expect(byId(await runDoctor(h, zh, { ...opts, unitPath: "/u/ducter.service" }), "service").detail).toContain("已更新服务配置");
   });
 
   test("a Mac shows no server rows", async () => {

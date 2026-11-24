@@ -13,6 +13,7 @@ import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { childEnvironment } from "@ducter/runner/src/child-env.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { RECORD_FILE, type MemRecord } from "@ducter/core/src/memory-watch.ts";
+import { REFRESH_RECORD } from "@ducter/core/src/unit-refresh.ts";
 import { homedir } from "node:os";
 
 export const MIN_BUN = "1.3.0";
@@ -299,7 +300,7 @@ async function serverChecks(host: Host, c: Mk, opts: DoctorOptions): Promise<Che
     ]);
     if (active.stdout.trim() !== "active") service = c("service", "check.service", "missing", false, "check.service.off", {}, SERVER_FIX.service);
     else if (!/Linger=yes/.test(linger.stdout)) service = c("service", "check.service", "warn", false, "check.service.noLinger", {}, SERVER_FIX.linger(user));
-    else service = c("service", "check.service", "ok", false, "check.service.ok");
+    else service = c("service", "check.service", "ok", false, refreshedLately(host, opts.dataDir) ? "check.service.refreshed" : "check.service.ok");
   }
   const n = host.pairedDevices?.() ?? 0;
   const devices = n > 0 ? c("devices", "check.devices", "ok", false, "check.devices.ok", { n }) : c("devices", "check.devices", "missing", false, "check.devices.none", {}, SERVER_FIX.devices);
@@ -307,6 +308,16 @@ async function serverChecks(host: Host, c: Mk, opts: DoctorOptions): Promise<Che
     ? c("pdf", "check.pdf", "ok", false, "check.pdf.ok")
     : c("pdf", "check.pdf", "missing", false, "check.pdf.missing", {}, popplerCmd("linux", (x) => !!host.which(x)));
   return [service, devices, pdf, await memoryCheck(host, c, opts)];
+}
+
+/** D524: the home brought an older unit's settings up to date in the last week (unit-refresh.ts). */
+function refreshedLately(host: Host, dataDir: string): boolean {
+  try {
+    const at = Date.parse(JSON.parse(host.read?.(join(dataDir, REFRESH_RECORD)) ?? "{}").at);
+    return Number.isFinite(at) && Date.now() - at < 7 * 86_400_000;
+  } catch {
+    return false;
+  }
 }
 
 /** A command line as a person reads it: program names without their folders, at most 60 chars. */

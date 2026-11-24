@@ -444,8 +444,11 @@ when the partner suggests one, and then the steps below are what they copy and p
   (D102); `service install` moves any key it finds in `env` there first. It enables linger itself when polkit allows (Ubuntu 24.04: yes, without sudo) and
   prints the `sudo loginctl enable-linger` line when not. Then it pairs the first device.
 - Memory (D524): tasks' children (tsc, a dev server, a browser) run in the unit's cgroup. The
-  unit has `OOMPolicy=continue` (a child the kernel stops takes only itself), `MemoryHigh=80%`
-  and `MemoryMax=90%` (the unit runs short before the server does). The home's memory watch
+  unit has `OOMPolicy=continue` (a child the kernel stops takes only itself) and `MemoryMax=90%`
+  (the unit runs short before the server does); no `MemoryHigh` (without swap it stalls the
+  home). A unit an older Ducter wrote gets these at the next start under systemd (after an
+  update): only Ducter's own settings change, then `daemon-reload`, never an extra restart;
+  doctor's Stays on row says 已更新服务配置. The home's memory watch
   (Linux, every 5 s) raises every process under it to oom_score_adj 500, so a task's child goes
   before the home; when memory is low it logs the biggest processes under the home, sheds its
   caches, and records that and every kill in `<dataDir>/memory-watch.json`, which `ducter doctor`

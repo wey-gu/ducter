@@ -102,6 +102,16 @@ func TestTaskHeadSaysEachOnce(t *testing.T) {
 			t.Errorf("%s: tone %v, want %v", att, stateTone(att), tone)
 		}
 	}
+	// The Tag's words in D525's register; On hand's section heads keep theirs.
+	zh := railApp(t, i18n.ZH)
+	for att, w := range map[protocol.Attention]string{protocol.Working: "进行中", protocol.NeedsYou: "等你", protocol.Blocked: "等待中", protocol.Done: "已完成", protocol.DoneClaimed: "已完成", protocol.Failed: "没完成"} {
+		if got := zh.tagLabel(att); got != w {
+			t.Errorf("%s: tag %q, want %q", att, got, w)
+		}
+	}
+	if zh.stateLabel(protocol.Working) != "在做" {
+		t.Errorf("On hand's word changed: %q", zh.stateLabel(protocol.Working))
+	}
 	if taskMarkW > 32 {
 		t.Errorf("the head's mark is %v, at most 32", taskMarkW)
 	}

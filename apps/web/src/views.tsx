@@ -261,6 +261,8 @@ const Back = () => (
 // A finished task reads "Done": done_claimed means Ducter couldn't check its evidence and the
 // partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
 export const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
+/** D542: the opened task's state Tag, in D525's native register (进行中, 等待中, 已完成, 没完成). */
+export const tagLabel = (a: Attention) => t(`task.tag.${a === "done_claimed" ? "done" : a}`);
 
 
 
@@ -2648,7 +2650,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   // wait ran out): say so, never a mystery (D152).
   const yourTurn = a === "needs_you" && !d;
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
-  const stateWord = yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || stateLabel(a);
+  const stateWord = yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || tagLabel(a);
   // D484: where it stands in one sentence, as Share sends it: what it waits for, else its state.
   const stateSentence = a === "blocked" ? storyOf(task).words || stateWord : stateWord;
   // D484: its pull request, one tap from the head while it is not finished (a finished one's

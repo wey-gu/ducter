@@ -183,6 +183,14 @@ describe("the opened task's head and composer (D542)", () => {
   test("the state is the shared Tag in its state's tint", async () => {
     const tr = await import("../src/transcript.tsx");
     expect(["needs_you", "working", "queued", "blocked", "failed", "done", "dropped"].map(tr.stateTone)).toEqual(["needs", "working", "working", "waiting", "failed", "on", ""]);
+    // In D525's register (the author: 「在做」 is no state word); On hand's section heads keep theirs.
+    const { A } = await import("../src/app.ts");
+    const v = await import("../src/views.tsx");
+    A.L = strings("zh");
+    expect(["working", "needs_you", "blocked", "done", "done_claimed", "failed"].map((a) => v.tagLabel(a as never))).toEqual(["进行中", "等你", "等待中", "已完成", "已完成", "没完成"]);
+    expect(v.stateLabel("working")).toBe("在做");
+    A.L = strings("en");
+    expect(["working", "blocked", "done", "failed"].map((a) => v.tagLabel(a as never))).toEqual(["Working", "Waiting", "Done", "Didn't work"]);
     for (const tone of ["working", "waiting", "failed"]) expect(css).toMatch(new RegExp(`\\.tag\\.${tone} \\{[^}]*var\\(--${tone}-surface\\)[^}]*var\\(--${tone}-ink\\)`));
   });
   test("the head is the mark at the title's size, never the 96 face; the chip lives in the composer's row", () => {

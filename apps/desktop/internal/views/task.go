@@ -184,7 +184,7 @@ func (a *App) dropItem(c *ui.Context, m *ui.Menu, task *store.Task) {
 func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	t := a.T
 	att := task.Attention()
-	state := a.stateLabel(att)
+	state := a.tagLabel(att) // D542: D525's native register (进行中, 等待中, 已完成, 没完成)
 	if a.yourTurn(task) {
 		state = a.L.T("task.your.turn")
 	} else if att == protocol.Blocked {
@@ -336,6 +336,14 @@ func stateTone(att protocol.Attention) tagTone {
 		return tagOn
 	}
 	return tagPlain
+}
+
+// tagLabel is the opened task's state Tag word (D542), in D525's register.
+func (a *App) tagLabel(att protocol.Attention) string {
+	if att == protocol.DoneClaimed {
+		att = protocol.Done
+	}
+	return a.L.T("task.tag." + string(att))
 }
 
 // taskMarkW is the partner's mark inline before an opened task's title (D542).

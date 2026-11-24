@@ -1049,7 +1049,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    1. **The head is one block** (D90; D542: the partner's mark at 28 inline before the title, on
       the reading column's left edge, at every width and density; never the 96 face beside the
       page), then one quiet meta line under the title (D152): the state in the shared `Tag` on its
-      state's tint (D542; never link blue), the task's one clock once finished ("用了 18 分钟 / took 18
+      state's tint, in D525's register (进行中, 等你, 等待中, 已完成, 没完成; D542; never link blue), the task's one clock once finished ("用了 18 分钟 / took 18
       min"; while it works the clock ticks on the working line, D268), the agent (D542: the model and effort only when the composer's chip doesn't show them; no coin, D213), where
       (the project, a folder, "在 hel 上 / on hel" for another machine; nothing for no
       place; D542: never the branch, which is the bar's own button), and **换谁来做 / Switch who does it** as the shared quiet link with its chevron; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a

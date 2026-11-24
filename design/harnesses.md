@@ -65,7 +65,7 @@
   and PostCompact hooks and `compact_prompt` exist (binary strings).
 - **Events.** `compaction_started` and `compaction_ended` both reach Ducter.
 - **Browser.** Computer Use works headless under OAR (research/38).
-- **0.171.0: tool search by model, and the clean setup's one table (D510).** A model whose
+- **0.171.0: tool search by model, and the clean setup's one table (D511).** A model whose
   catalog entry supports tool search (`gpt-6.2-sol`) gets every MCP server as a deferred
   namespace behind tool search and code mode's `exec`; no config switch keeps them direct
   (`features.tool_search` is removed). The app-server sets a thread's `config` after the launch's

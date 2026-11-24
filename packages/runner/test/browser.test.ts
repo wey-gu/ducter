@@ -82,7 +82,7 @@ afterEach(() => {
 const idleProbe: FocusProbe = { front: async () => undefined, ducterBrowsers: async () => [], activate: async () => {} };
 /** The machine's own Claude in Chrome / Codex setup never leaks into these tests (D126). */
 const noNative = () => undefined;
-/** D510: the servers a session gets: OAR's list, or a clean Codex session's one launch override. */
+/** D511: the servers a session gets: OAR's list, or a clean Codex session's one launch override. */
 const serverNames = (o: any): string[] => {
   const own = ((o.launchArgs ?? []) as string[]).find((a) => a.startsWith("mcp_servers={"));
   return [...(o.mcpServers ?? []).map((m: any) => m.name), ...(own ? [...own.matchAll(/(?:^mcp_servers=\{ |\}, )"?([\w.-]+)"? = \{/g)].map((m) => m[1]!) : [])];

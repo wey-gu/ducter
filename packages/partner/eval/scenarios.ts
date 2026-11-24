@@ -339,7 +339,7 @@ export interface Scenario {
   lang: string; // the language the visible replies must be in, a BCP 47 tag (D292: any language)
   persona?: { name: string; identity?: string };
   seed?: Seed[];
-  /** D510: PRs the eval's fake gh answers as still open and unmerged ("owner/repo#n"), never the real GitHub. */
+  /** D511: PRs the eval's fake gh answers as still open and unmerged ("owner/repo#n"), never the real GitHub. */
   openPrs?: string[];
   /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed. */
   memories?: SeedMemory[];
@@ -547,7 +547,7 @@ const OTHER_THREAD: import("../src/memory.ts").ThreadHit = {
 };
 // A message to another agent is one question plus background, never numbered sub-questions.
 const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
-/** D510: a night a week from the run, in the user's words ("Dec 1" / "12 月 1 号"): never a date already past. */
+/** D511: a night a week from the run, in the user's words ("Dec 1" / "12 月 1 号"): never a date already past. */
 const IN_A_WEEK = new Date(Date.now() + 7 * 86_400_000);
 const NIGHT_EN = IN_A_WEEK.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const NIGHT_ZH = `${IN_A_WEEK.getMonth() + 1} 月 ${IN_A_WEEK.getDate()} 号`;
@@ -591,7 +591,7 @@ export const scenarios: Scenario[] = [
     category: "first_words",
     lang: "ko",
     steps: [{ user: "고마워요. 내일 아침에 다시 얘기해요." }, { user: "OK" }],
-    // D510: silence after a bare "OK" that closes the exchange is a valid answer.
+    // D511: silence after a bare "OK" that closes the exchange is a valid answer.
     expect: { opens: 0, msgs: [0, 2], maxChars: 160 },
     rubric: "Korean throughout: every visible reply is in Korean, including any answer to the bare \"OK\" (which must not switch the conversation to English). Saying nothing to that \"OK\" is fine: the exchange was already closed. Short and warm; no task.",
   },
@@ -708,7 +708,7 @@ export const scenarios: Scenario[] = [
     id: "wait-pr-zh",
     category: "work-over-time",
     lang: "zh",
-    // D510: a PR of the eval's own fake gh, open and unmerged (the real cli/cli#14964 has merged).
+    // D511: a PR of the eval's own fake gh, open and unmerged (the real cli/cli#14964 has merged).
     openPrs: ["nowledge-co/hawdb#1601"],
     steps: [{ user: "nowledge-co/hawdb 的 PR #1601 合了告诉我" }],
     expect: { opens: 0, waiter: true, msgs: [1, 2], maxChars: 90, proseForbid: [/模型|命令|gh |每\s*\d+\s*分钟|check|轮询/i] },
@@ -792,7 +792,7 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 80,
-      // D510 (principle 21): whether the duration reads as a usual figure is the judge's, not a word list's.
+      // D511 (principle 21): whether the duration reads as a usual figure is the judge's, not a word list's.
       forbid: [/挂了是因为|原因是|已经(查|修)/, /(分钟|小时)(内|之内)|保证|肯定/],
     },
     rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short Chinese sentence: the action (查 HawDB 的 CI 为什么挂了), a rough usual duration grounded in that (about 10-15 minutes, said as what it usually takes in any natural words such as 一般 / 大概 / 通常, never as a promise or deadline), and optionally that it will say when it's clear. No cause guessed, nothing after it. A missing duration fails.",
@@ -3065,7 +3065,7 @@ export const scenarios: Scenario[] = [
       { ai: "看完了：周四最慢，那天加了集成测试。" },
     ],
     steps: [{ user: "上周四那天跑了多久？" }],
-    // D510 (principle 21): the figure in any honest form (26.4 分钟, 26 分 24 秒, 二十六分多钟) is the judge's to read.
+    // D511 (principle 21): the figure in any honest form (26.4 分钟, 26 分 24 秒, 二十六分多钟) is the judge's to read.
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, noUi: true },
     rubric: "One number is asked. The partner answers in plain Chinese, one or two short sentences: about 26.4 minutes last Thursday, in any form that equals it (26.4 分钟, 26 分 24 秒, 二十六分多钟); a different figure fails. That the integration suite landed that day may be said; reading it as the likely reason is fine. What is graded is that a plain answer is right here: no table, chart, checklist or choices, and no task.",
   },

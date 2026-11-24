@@ -451,7 +451,7 @@ const nextAt = (hm: string) => {
 };
 const worldDev = (sc: Scenario, name: string) => (name === "local" || name === sc.world?.home.name ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
 /**
- * D510: a look at one of the scenario's `openPrs` (`gh pr view|checks <n|url> [-R repo] [--json …]`,
+ * D511: a look at one of the scenario's `openPrs` (`gh pr view|checks <n|url> [-R repo] [--json …]`,
  * `gh api repos/<r>/pulls/<n>`), answered as an open, unmerged PR; any other gh call naming it can't
  * be read here. Undefined for a command about anything else.
  */
@@ -1584,7 +1584,7 @@ Think it through in "reason" first, then decide. Answer with one JSON object and
 
 async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
   const prompt = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
-  // D510: an unreadable answer is asked again once, saying so; what it was is kept for the report.
+  // D511: an unreadable answer is asked again once, saying so; what it was is kept for the report.
   let last = "";
   let cost = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -1660,7 +1660,7 @@ function cleanupProjects(before: Set<string>, root: string) {
 }
 
 /**
- * D510: on Codex the partner's sessions write their rollouts under CODEX_HOME. The run gets its own
+ * D511: on Codex the partner's sessions write their rollouts under CODEX_HOME. The run gets its own
  * home inside `root` (deleted with it): the person's config.toml copied (their provider route, and
  * their servers for the clean setup to keep out, as on a real home) and auth.json linked (Codex
  * 0.171 writes a refreshed sign-in through the link to the real file: login/src/auth/storage_file.rs

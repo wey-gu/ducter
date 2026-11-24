@@ -22,7 +22,7 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const ducterMcp = { name: "ducter", url: "http://127.0.0.1:7777/mcp", headers: { Authorization: "Bearer dtk.test.sig" } };
-/** D510: Ducter's url as a clean Codex session gets it (its one launch override). */
+/** D511: Ducter's url as a clean Codex session gets it (its one launch override). */
 const codexUrl = (o: { launchArgs?: string[] }) => /url = "([^"]+)"/.exec(o.launchArgs?.find((a) => a.startsWith("mcp_servers={")) ?? "")?.[1];
 const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}): SessionSpec => ({
   harness,
@@ -172,7 +172,7 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect((claude.options.env as Record<string, string>).CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS).toBe(String(PARTNER_READ_MAX_TOKENS));
     const codex = adaptSpec(spec("codex", { readOnly: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
     expect(codex.options.launchArgs!.slice(-2)).toEqual(["-c", 'sandbox_mode="read-only"']);
-    expect(codex.options.launchArgs).toContain("features.shell_tool=false"); // D510: no shell either
+    expect(codex.options.launchArgs).toContain("features.shell_tool=false"); // D511: no shell either
     // Codex declines MCP calls under its sandbox unless marked read-only: Ducter's MCP is told.
     expect(codexUrl(codex.options)).toBe(ducterMcp.url + "?sandbox=read-only");
     expect((claude.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url);

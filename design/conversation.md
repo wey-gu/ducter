@@ -34,7 +34,7 @@ human opens them.
    something it waits, and a line written after the call says it instead (Codex writes a preamble
    before nearly every call; the persona says so as a fact); before a lookup, or a call whose own
    card is what the person sees (ask, routine_propose), it goes out first. A turn's task opens share
-   one ack (D510): opens made together (parallel calls) take the line before them, or the first one's
+   one ack (D511): opens made together (parallel calls) take the line before them, or the first one's
    title when there is none; a later open with no line of its own gets its job line and no words. A line that promises to come back later carries
    the partner's own **[[later]]** mark (hidden). With nothing in that turn that brings it back (a
    task opened or sent to, a wait, a routine, a card), it is held for one correction round that asks

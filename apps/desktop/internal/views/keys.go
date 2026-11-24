@@ -107,10 +107,6 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 				}
 			}
 			ui.Box(c).Grow(1)
-			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-				s.editing = ""
-				a.clearForm()
-			}
 			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
 				if !ok {
 					s.missing = need // the Mac walk of 0.0.98: never a Save that silently does nothing
@@ -122,6 +118,10 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 					a.send(protocol.KeyPut{T: "saved_put", Item: in})
 					s.sentAt = a.Now()
 				}
+			}
+			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+				s.editing = ""
+				a.clearForm()
 			}
 		})
 	})
@@ -183,10 +183,6 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		goLabel = a.L.T("key.go.once")
 	}
 	ui.Row(c.Key("key-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("key.hold"), k.Name, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-			delete(a.af.keyVal, d.DecisionID)
-		}
 		if a.buttonFor(c, goLabel, k.Name, btnPrimary, st.height, st.quietBg) && strings.TrimSpace(v) != "" {
 			if dd := a.S.Decisions[d.DecisionID]; dd != nil {
 				dd.Pending, dd.AnsweredAt = "go", a.Now()
@@ -195,6 +191,10 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 			a.send(protocol.DecideKey{T: "decide", DecisionID: d.DecisionID, Option: "go", Key: v, Once: once})
 			delete(a.af.keyVal, d.DecisionID)
 			delete(a.af.keyOnce, d.DecisionID)
+		}
+		if a.buttonFor(c, a.L.T("key.hold"), k.Name, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
+			delete(a.af.keyVal, d.DecisionID)
 		}
 	})
 }

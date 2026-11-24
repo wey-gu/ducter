@@ -353,12 +353,12 @@ func (a *App) talkAbove(c *ui.Context) bool {
 					uiText(c, a.voicePrivacy()).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkMuted)
 				})
 			}, func() {
+				if a.button(c, a.L.T("talk.ask.go"), btnPrimary, t.ControlSM, t.Surface) {
+					a.talkAllow()
+				}
 				if a.button(c, a.L.T("voice.ask.later"), btnSecondary, t.ControlSM, t.Surface) {
 					tk.ask = false
 					a.Local.SetTalkAsked()
-				}
-				if a.button(c, a.L.T("talk.ask.go"), btnPrimary, t.ControlSM, t.Surface) {
-					a.talkAllow()
 				}
 			})
 		})
@@ -502,11 +502,11 @@ func (a *App) talkPanel(c *ui.Context) {
 						return
 					}
 					ui.Box(c).Grow(1)
-					if a.button(c, a.L.T("talk.no"), btnSecondary, t.ControlSM, t.SurfaceSunken) {
-						a.talkAnswer("hold")
-					}
 					if a.button(c, a.L.T("talk.yes"), btnPrimary, t.ControlSM, t.SurfaceSunken) {
 						a.talkAnswer("go")
+					}
+					if a.button(c, a.L.T("talk.no"), btnSecondary, t.ControlSM, t.SurfaceSunken) {
+						a.talkAnswer("hold")
 					}
 				})
 			})

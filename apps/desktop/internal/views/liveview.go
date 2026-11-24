@@ -59,11 +59,11 @@ func (a *App) signInButtons(c *ui.Context, d *store.DecisionState, st decisionSt
 	}
 	uiText(c, a.L.T("signin.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("signin:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("signin.later"), site, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("signin.open"), site, btnPrimary, st.height, st.quietBg) {
 			a.OpenLive(d.DecisionID, site)
+		}
+		if a.buttonFor(c, a.L.T("signin.later"), site, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }
@@ -523,11 +523,11 @@ func (a *App) liveView(c *ui.Context) {
 				if _, _, h, d, ok := a.liveCardWords(lv); ok {
 					hold, done = h, d // D436: 还没付 · 付好了, or a step's Not now · Done
 				}
-				if a.buttonFor(c, hold, host, btnSecondary, t.ControlMD, t.Bg) {
-					a.CloseLive(false)
-				}
 				if a.buttonFor(c, done, host, btnPrimary, t.ControlMD, t.Bg) {
 					a.CloseLive(true)
+				}
+				if a.buttonFor(c, hold, host, btnSecondary, t.ControlMD, t.Bg) {
+					a.CloseLive(false)
 				}
 
 			}

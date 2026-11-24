@@ -1278,11 +1278,11 @@ func (a *App) newTaskFoot(c *ui.Context) {
 			uiText(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
 			return
 		}
-		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
-			nt.open, nt.err, nt.errEmpty, nt.started, nt.startedTask = false, "", false, "", ""
-		}
 		if a.buttonFor(c, start, a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {
 			a.StartNewTask()
+		}
+		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
+			nt.open, nt.err, nt.errEmpty, nt.started, nt.startedTask = false, "", false, "", ""
 		}
 	})
 }

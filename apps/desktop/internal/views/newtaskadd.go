@@ -658,13 +658,15 @@ func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 			}
 		}
 	}, func() {
-		switch g.phase {
-		case "code", "starting", "offer", "failed":
-			if a.button(c, a.L.T("newtask.gh.cancel"), btnText, t.ControlSM, t.Surface) {
-				a.cancelGitLogin(g)
-				return
+		// Primary first, on the left; Cancel after it.
+		defer func() {
+			switch g.phase {
+			case "code", "starting", "offer", "failed":
+				if a.button(c, a.L.T("newtask.gh.cancel"), btnText, t.ControlSM, t.Surface) {
+					a.cancelGitLogin(g)
+				}
 			}
-		}
+		}()
 		switch g.phase {
 		case "offer":
 			if a.buttonFor(c, a.L.T("newtask.gh.install.go"), "GitHub", btnPrimary, t.ControlSM, t.Surface) {

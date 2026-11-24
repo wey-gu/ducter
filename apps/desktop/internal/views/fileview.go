@@ -671,9 +671,6 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 		}
 		uiText(c, said).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(380).TextAlign(ui.Center)
 		ui.Row(c).Gap(t.S3).Children(func() {
-			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlMD, t.Bg) {
-				a.saveFileCopy(fv.ref)
-			}
 			if !inert && a.button(c, a.L.T("file.openMac"), btnPrimary, t.ControlMD, t.Bg) {
 				ref := fv.ref
 				a.fileBytes(ref, func(data []byte) {
@@ -681,6 +678,9 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 						a.toast(a.L.T("file.failed"))
 					}
 				})
+			}
+			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlMD, t.Bg) {
+				a.saveFileCopy(fv.ref)
 			}
 		})
 	})

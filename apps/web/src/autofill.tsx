@@ -81,8 +81,8 @@ function SignInForm({ item, done }: { item?: SavedView; done: () => void }) {
       <div class="row">
         {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
         <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!site.trim() || !user.trim() || (!item && !pw)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );
@@ -108,8 +108,8 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
       <div class="row">
         {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
         <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!name.trim() || !m || (!item && !num)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );
@@ -132,8 +132,8 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
       <div class="row">
         {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
         <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!envOk || (!item && !value.trim())} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );
@@ -185,8 +185,8 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
       <AfError />
       <div class="row">
         <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );

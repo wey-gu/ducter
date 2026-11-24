@@ -513,11 +513,11 @@ func (a *App) setupName(c *ui.Context) {
 		a.setup.nameFocused = true
 	}
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
-		if a.button(c, a.L.T("setup.name.keep", "Ducter"), btnText, t.ControlLG, t.Surface) {
-			a.SaveName("")
-		}
 		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlLG, t.Surface) {
 			submit()
+		}
+		if a.button(c, a.L.T("setup.name.keep", "Ducter"), btnText, t.ControlLG, t.Surface) {
+			a.SaveName("")
 		}
 	})
 }
@@ -583,10 +583,6 @@ func (a *App) cliOfferLine(c *ui.Context) {
 				uiText(c, a.L.T("cli.offer")).FontSize(t.SM).FontWeight(700)
 				uiText(c, a.L.T("cli.offer.body")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
 			}, func() {
-				if a.button(c, a.L.T("cli.offer.no"), btnText, t.ControlSM, t.Surface) {
-					a.Local.SetCLIOffer("declined")
-					o.closed = true
-				}
 				if a.button(c, a.L.T("cli.offer.yes"), btnPrimary, t.ControlSM, t.Surface) {
 					a.linkCLI()
 					// Done is said once, in passing; only what still
@@ -599,6 +595,10 @@ func (a *App) cliOfferLine(c *ui.Context) {
 						c.Toast(a.L.T("cli.other"))
 						o.closed = true
 					}
+				}
+				if a.button(c, a.L.T("cli.offer.no"), btnText, t.ControlSM, t.Surface) {
+					a.Local.SetCLIOffer("declined")
+					o.closed = true
 				}
 			})
 		case "path":

@@ -487,15 +487,15 @@ func (a *App) redoSheet(c *ui.Context) {
 			})
 		})
 		ui.Row(c.Key("redo-foot")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			if a.button(c, a.L.T("past.redo.cancel"), btnText, t.ControlMD, t.Surface) {
-				r.open = false
-			}
 			label := a.L.T("past.redo.go")
 			if r.busy {
 				label = a.L.T("past.redo.busy")
 			}
 			if a.buttonFor(c, label, it.Title, btnPrimary, t.ControlMD, t.Surface) && !r.busy && strings.TrimSpace(r.words) != "" {
 				a.sendRedo(it)
+			}
+			if a.button(c, a.L.T("past.redo.cancel"), btnText, t.ControlMD, t.Surface) {
+				r.open = false
 			}
 		})
 	})

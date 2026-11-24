@@ -864,13 +864,13 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 			uiText(c, d.Draft.First).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 		}
 		ui.Row(c.Key("draft-acts:" + d.DecisionID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
-				a.Decide(d.DecisionID, "hold", "")
-			}
 			if a.buttonFor(c, a.L.T("draft.see"), d.Question, btnPrimary, st.height, st.quietBg) {
 				a.draftJump = d.FindID
 				a.Route = RouteConversation
 				a.markRead()
+			}
+			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
+				a.Decide(d.DecisionID, "hold", "")
 			}
 		})
 		return

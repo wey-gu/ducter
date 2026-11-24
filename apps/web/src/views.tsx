@@ -2012,7 +2012,7 @@ function NotifyAsk() {
       <div class="q">{t("notify.ask")}</div>
       <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
       <div class="btns">
-        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
+        {/* Primary first, on the left (ui.md Buttons). */}
         <Btn
           kind="primary"
           label={t("notify.on")}
@@ -2025,6 +2025,7 @@ function NotifyAsk() {
             if (A.push === "on") A.toast(t("notify.enabled"));
           }}
         />
+        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
       </div>
     </div>
   );
@@ -2570,8 +2571,8 @@ function FolderChangesView({ task }: { task: Task }) {
             {t(c.count === 1 ? "folder.confirm.one" : "folder.confirm", c.count, [...c.files.map(lastPart), ...(c.count > c.files.length ? ["…"] : [])].join(t("folder.sep")))}
           </div>
           <div class="btns">
-            <Btn kind="text" label={t("folder.confirm.no")} onClick={() => ((task.confirm = undefined), A.changed())} />
             <Btn kind="primary" label={t("folder.confirm.go")} onClick={() => A.folderAction(task.id, "undo", { force: true })} />
+            <Btn kind="text" label={t("folder.confirm.no")} onClick={() => ((task.confirm = undefined), A.changed())} />
           </div>
         </div>
       )}
@@ -2782,8 +2783,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             ) : a === "failed" ? (
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
-                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
                 <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer-task")?.focus()} />
+                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
               </div>
             ) : (
               <ResultActions task={task} inTask />
@@ -2909,8 +2910,8 @@ function NameRow() {
               if (e.key === "Escape") e.stopPropagation(), setEditing(false);
             }}
           />
-          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
           <Btn kind="primary" label={t("partner.rename")} onClick={save} />
+          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
         </>
       ) : (
         <>
@@ -3337,10 +3338,10 @@ function Accounts() {
             </>
           )}
           <div class="row">
-            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""), setNoKey(false), (A.connRefusal = undefined))} />
             <button type="submit" class="btn primary" disabled={A.connecting || (!hosted && !url.trim())}>
               <span class="lbl">{A.connecting ? t("acct.checking") : t("acct.check")}</span>
             </button>
+            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""), setNoKey(false), (A.connRefusal = undefined))} />
           </div>
         </form>
       )}

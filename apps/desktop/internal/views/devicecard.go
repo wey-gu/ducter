@@ -1456,12 +1456,12 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		note("stop", false, func() {
 			a.infoText(c, a.L.T("chip.stop.ask", a.deviceNameIn(dv), n))
 			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
+				if a.button(c, a.L.T("chip.stop.after"), btnPrimary, t.ControlSM, t.Bg) {
+					s.stopAsk, s.stopAfter = "", dv.ID
+				}
 				if a.button(c, a.L.T("chip.stop.now"), btnText, t.ControlSM, t.Bg) {
 					s.stopAsk = ""
 					a.setWork(false)
-				}
-				if a.button(c, a.L.T("chip.stop.after"), btnPrimary, t.ControlSM, t.Bg) {
-					s.stopAsk, s.stopAfter = "", dv.ID
 				}
 			})
 		})

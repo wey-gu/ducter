@@ -1630,8 +1630,8 @@ export function ReviewSheet({ groupId }: { groupId: string }) {
           <div class="ho-foot">
             {HR.said && <p class="small tone-bad">{HR.said}</p>}
             <div class="ho-foot-row">
-              <Btn kind="secondary" label={t("ho.review.hold")} onClick={close} />
               <Btn kind="primary" grow label={t("ho.review.go", keep.length)} disabled={!keep.length || HR.sending} onClick={send} />
+              <Btn kind="secondary" label={t("ho.review.hold")} onClick={close} />
             </div>
             <p class="ho-foot-note">{fixedKept ? t("ho.review.foot") : t("ho.review.foot.none")}</p>
           </div>

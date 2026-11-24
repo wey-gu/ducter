@@ -335,13 +335,13 @@ func (a *App) askStopHereCard(c *ui.Context, host string) {
 		uiText(c, a.L.T("settings.home.ask")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 		uiText(c, a.L.T("settings.home.ask.body", host)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
 		ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
+			if a.button(c, a.L.T("settings.home.keep"), btnPrimary, t.ControlMD, t.SurfaceSunken) {
+				a.askStopHere = false
+			}
 			if a.button(c, a.L.T("settings.home.stop"), btnSecondary, t.ControlMD, t.SurfaceSunken) {
 				a.askStopHere = false
 				b := a.hereBackend
 				a.async(func() { _ = b.Rest() }, func() {})
-			}
-			if a.button(c, a.L.T("settings.home.keep"), btnPrimary, t.ControlMD, t.SurfaceSunken) {
-				a.askStopHere = false
 			}
 		})
 	})

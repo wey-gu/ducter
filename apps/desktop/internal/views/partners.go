@@ -515,11 +515,11 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				uiText(c, a.L.T("partners.error."+ans.WbError)).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleAlert)
 			}
 			ui.Row(c).Gap(t.S2).Children(func() {
-				if a.button(c, a.L.T("partners.add.cancel"), btnText, t.ControlMD, t.Surface) {
-					ps.adding = false
-				}
 				if a.button(c, a.L.T("partners.add.go"), btnPrimary, t.ControlMD, t.Surface) {
 					add()
+				}
+				if a.button(c, a.L.T("partners.add.cancel"), btnText, t.ControlMD, t.Surface) {
+					ps.adding = false
 				}
 			})
 		})

@@ -700,8 +700,8 @@ function DiffView({ task, path, change }: { task: Task; path: string; change?: W
         <div class="card confirm wb-confirm" role="alert">
           <div class="said">{t("wb.revert.ask", name)}</div>
           <div class="btns">
-            <Btn kind="text" label={t("wb.cancel")} onClick={() => ((d.revert = undefined), A.changed())} />
             <Btn kind="primary" label={t("wb.revert.go")} onClick={() => void revert(task, path)} />
+            <Btn kind="text" label={t("wb.cancel")} onClick={() => ((d.revert = undefined), A.changed())} />
           </div>
         </div>
       )}
@@ -907,8 +907,8 @@ function FileView({ task }: { task: Task }) {
             <>
               <span class="wb-unsaved">{f.draft !== a.text ? t("wb.unsaved") : ""}</span>
               <span class="grow" />
-              <Btn kind="text" size="sm" label={t("wb.cancel")} onClick={() => ((f.draft = undefined), (f.conflict = false), A.changed())} />
               <Btn kind="primary" size="sm" label={f.saving ? t("wb.saving") : t("wb.save")} disabled={f.saving || f.draft === a.text} onClick={() => void save()} />
+              <Btn kind="text" size="sm" label={t("wb.cancel")} onClick={() => ((f.draft = undefined), (f.conflict = false), A.changed())} />
             </>
           ) : (
             <Btn kind="secondary" size="sm" label={t("wb.edit")} about={name} onClick={() => ((f.draft = a.text), A.changed(), requestAnimationFrame(() => ta.current?.focus()))} />
@@ -920,8 +920,8 @@ function FileView({ task }: { task: Task }) {
         <div class="card confirm wb-confirm" role="alert">
           <div class="said">{t("wb.conflict")}</div>
           <div class="btns">
-            <Btn kind="text" label={t("wb.conflict.theirs")} onClick={() => ((f.conflict = false), (f.draft = undefined), A.changed(), openFile(task, f.path))} />
             <Btn kind="primary" label={t("wb.conflict.mine")} onClick={() => void save(true)} />
+            <Btn kind="text" label={t("wb.conflict.theirs")} onClick={() => ((f.conflict = false), (f.draft = undefined), A.changed(), openFile(task, f.path))} />
           </div>
         </div>
       )}

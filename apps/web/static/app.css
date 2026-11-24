@@ -802,6 +802,46 @@ a {
 .scroll > .spacer {
   flex: 1;
 }
+/* D509: older pages land above the reader; the conversation keeps the place itself (useOlder). */
+.scroll[role="log"] {
+  overflow-anchor: none;
+}
+/* D509: older messages on their way: one quiet line over the top, taking no room (its gap given
+   back), shown only when a page takes longer than a blink. */
+.scroll > .older-wait {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 0;
+  margin-bottom: -12px;
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+  pointer-events: none;
+}
+.older-wait > span {
+  margin-top: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 10%, transparent);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  opacity: 0;
+  animation: older-in 200ms ease-out 350ms forwards;
+}
+@keyframes older-in {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .older-wait > span {
+    animation: none;
+    opacity: 1;
+  }
+}
 /* The two voices as a messaging app (D129): one body size, at most about 38em wide. */
 .user {
   align-self: flex-end;
@@ -21213,6 +21253,19 @@ html[data-text-size="large"] .brand-mark > svg {
 .helper-row .helper-state.refused { color: var(--ink-soft); }
 .helper-row .helper-counts { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
 .helper-row .helper-counts small { margin-top: 2px; }
+/* D509: a helper on On hand, its own sheet: the head (its letter on the sunken pebble, its name, how it
+   reads at a glance) and under it, set in by the mark's width, the work it keeps. The needs-you ledge
+   when something on it waits for the person; no fill, no stripe, the words say it. */
+.onhand-list:not(.room-rail) .ocards.hsheet.needs { box-shadow: 0 2px 0 var(--needs-ledge), var(--drop); }
+.onhand-list:not(.room-rail) .hsheet .omark.k-helper { color: var(--ink-soft); font-size: var(--xs); font-weight: 700; line-height: 1; }
+.hsheet .hhead .o1 .t { font-weight: 700; }
+.hsheet .hhead .o2 { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
+.hsheet .hhead .o2 .more { color: var(--ink-muted); font-weight: 400; }
+.hsheet .hhead .habout { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.onhand-list:not(.room-rail) .hsheet > .ocard:not(.hhead) { margin-left: 38px; }
+.onhand-list.room-phone .hsheet > .ocard:not(.hhead),
+.onhand-list.room-side .hsheet > .ocard:not(.hhead) { margin-left: 36px; }
+.onhand-list:not(.room-rail) .hsheet > .ocard + .ocard { box-shadow: inset 0 1px 0 var(--line-soft); }
 
 /* D500: every Settings pane by one hand. The Overview's section heads sit on the text edge in the soft
    ink like every group's head (they were 8px in and muted); the home card's face and its words stand on

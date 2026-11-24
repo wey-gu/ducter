@@ -281,6 +281,9 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// headRows are the rows that stood first while older messages could
+	// still come (D509, older.go): they keep the look they had there.
+	headRows map[int64]bool
 	// fl is the conversation's place (D254, follow.go).
 	fl follow
 	// forgotten are the Noted lines forgotten from a message's Details.
@@ -1107,6 +1110,7 @@ func (a *App) forgetShown() {
 	a.taskLists = map[string]*ui.ListState{}
 	a.historyAsked = map[string]bool{}
 	a.livingAway = map[int64]bool{}
+	a.headRows = nil
 	if a.Route == RouteTask {
 		a.Route = RouteConversation
 	}

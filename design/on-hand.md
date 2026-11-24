@@ -101,7 +101,7 @@ task in {name}** where the bare ＋ stood.
    much); the filter it gave is gone, Find and the lens narrow. Under the line, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
 3. D467 round 4, D471: no forecast line; each wait's row says when it is back.
-4. Sections by attention (D467): 等你, 在做, 在等, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
+4. Sections by attention (D467): 等你, 在做, 在等, D507's **你的帮手 / Your helpers**, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
    then what **stopped** (a wait nothing brings back on its own: no waiter of any kind, not a
    question put off, not a computer that will come back, quiet for 30 minutes or more) with
    **接着做 / Continue** and **放下 / Put down** always shown and **上次有动静是 {ago}**, then what
@@ -162,6 +162,23 @@ element (health when it isn't on time, D427's words in the waiting ink; else a r
 D394's **8 个请求在等你：3 个有新提交已复审，5 个没变**; else the round's own line); at its right
 **这一轮 {n} / This round {n}** while a round runs, else **下一轮 {time} / Next round {time}** or
 **暂停了 / Paused**. Its gestures stay on its opened task and the Ongoing tab.
+
+**A helper (D507, D494; research/220).** Each helper that is on is its own clay sheet, never a row in a
+section. *Who:* the heavy developer whose agents hand PRs on; the consumer who asked for something to keep an
+eye on their PRs; the fresh user never meets it until they ask. Its **head**: its first letter on the sunken
+pebble (the Settings tile: the literal mark kept, the raters' tray owed as art), its name (15/700), how it
+reads at a glance (**还没有活交过来 / Nothing handed over yet** with **你的 agent 在 Nowledge Mem 里按这个名字找到
+它，就能把活交给它**; **手头有 {n} 个**; **{n} 个在等你 / {n} waiting for you** in the needs-you ink, then **手头有
+{n} 个**; its address's Settings words while not ready), **接：{about}** (two lines at most), and **这周接了 {n}
+个** on the time edge; each its own element. A tap opens its row in Settings › Agent 通信. **Under it**, set in
+by the mark's width (38 wide, 36 stacked; Mac 46) on the same sheet, the work it keeps, each the board's own row
+(what waits for the person first): a task until it ends, and a finished one while its PR is open, its line
+D508's (where the PR stands, "Under its PR" above: **在等评审**, **可以合了** with **到 GitHub 合并**, never 做完;
+a PR ready to merge waits for the person, so the sheet stands in 等你); a merge or a close lets it go to 今天做完 with the helper's
+name among its where-facts (as anywhere else it stands: beside an opened task, in Find, under a project lens).
+**Where:** like a group (D360), at the head of 等你 when something on it waits for the person (the sheet on the
+needs-you ledge), else under **你的帮手 / Your helpers** after 在等. Both clients read the home's one model of
+it (`OnHand.helpers`, `HelperWork`), which a helper's small app will read too.
 
 ### The peek (D467 rev.)
 

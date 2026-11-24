@@ -307,7 +307,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	// a hover's own actions in a slot of their own, so they never cover the
 	// time or run past the sheet's edge.
 	whenW, actsW, hoverW := float32(112), float32(216), float32(64)
-	if w < 700 {
+	if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) { // D507: a row set in under its helper keeps its sheet's columns
 		whenW, actsW, hoverW = 92, 184, 60
 	}
 	slot := !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)
@@ -556,6 +556,10 @@ func (a *App) whereMeta(task *store.Task) []string {
 	if a.manyComputers() && p.Kind != "none" && p.Device != "" && p.Device != a.oh.usual {
 		meta = append(meta, a.computerName(p.Device))
 	}
+	// D507: a helper's task anywhere but under its helper says whose it is.
+	if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
+		meta = append(meta, task.Card.Helper.Name)
+	}
 	return meta
 }
 
@@ -622,6 +626,15 @@ func (a *App) beat(c *ui.Context, task *store.Task, att protocol.Attention, sign
 		uiText(c.Key("beat"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	case protocol.Done, protocol.DoneClaimed, protocol.Failed:
 		if task.Card == nil {
+			return
+		}
+		// D508: a finished task whose PR is open isn't done: its phase, never 做完.
+		if _, said, st := prRow(task); st != "" {
+			ink := t.Waiting.Ink
+			if st == "needs" {
+				ink = t.NeedsYou.Ink
+			}
+			uiText(c.Key("beat"), a.prWords(task, said)).FontSize(t.XS).FontWeight(600).TextColor(ink).SingleLine()
 			return
 		}
 		if at := store.ParseTime(task.Card.UpdatedAt); !at.IsZero() {

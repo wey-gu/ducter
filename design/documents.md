@@ -76,6 +76,7 @@ Nothing found: nothing said. Progress reports are never held. `DUCTER_DOC_CHECK=
 
 ## Not yet
 
-Shipping Poppler (or a pure text-box reader) with the home; LibreOffice where the task works; the
+Poppler on a Mac home (on Linux the install adds it or says the line, and `ducter doctor` shows
+it: D506); LibreOffice where the task works; the
 real measure on the author's own documents; versions of a document in Made for you; a landscape
 slide's glimpse on the card (it shows the top of the slide). `todo.md`.

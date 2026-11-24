@@ -236,6 +236,9 @@ const en = {
   "check.devices": "Connected devices",
   "check.devices.ok": "{n} connected",
   "check.devices.none": "none yet",
+  "check.pdf": "PDF pages",
+  "check.pdf.ok": "Poppler (each page of a PDF is checked before you get it)",
+  "check.pdf.missing": "Poppler isn't installed (most layout mistakes in a PDF go unseen)",
 
   "headless.ready": "{name} is running on {device}",
   "headless.listen": "Listening",
@@ -1078,6 +1081,9 @@ const zh: Record<MsgKey, string> = {
   "check.devices": "已连接的设备",
   "check.devices.ok": "已连接 {n} 台",
   "check.devices.none": "还没有",
+  "check.pdf": "PDF 逐页检查",
+  "check.pdf.ok": "Poppler（PDF 给你之前，每一页都查过）",
+  "check.pdf.missing": "没装 Poppler（PDF 的版面问题多半看不出来）",
 
   "headless.ready": "{name} 在 {device} 上运行了",
   "headless.listen": "监听",

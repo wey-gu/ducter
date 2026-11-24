@@ -1044,6 +1044,9 @@ type TaskCard struct {
 	// PRs (D508): the pull requests it made or took over, where each
 	// stands; a finished task whose PR is open is not done.
 	PRs []TaskPR `json:"prs,omitempty"`
+	// Helper (D507, D494): the helper whose work this is, so a row standing
+	// anywhere but under its helper still says whose it is.
+	Helper *TaskHelper `json:"helper,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.
@@ -1166,6 +1169,51 @@ type OnHand struct {
 	// OpenAsks (D481) are every question still open at the home, as of
 	// Log seq AsOf: the one source of truth for "open" on every window.
 	OpenAsks *OpenAsks `json:"openAsks,omitempty"`
+	// Helpers (D507, D494) are the person's helpers that are on, each with
+	// the work it keeps: the home's one model of a helper's state.
+	Helpers []HelperWork `json:"helpers,omitempty"`
+}
+
+// TaskHelper (D507) names the helper a task's work came to.
+type TaskHelper struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// HelperWork (D507) is a helper that is on with the work it keeps.
+type HelperWork struct {
+	HelperView
+	Items []HelperItem `json:"items"`
+}
+
+// HelperItem (D507) is one piece of work a helper keeps: At is "work" (on
+// it, or its PR waiting on CI or a review), "you" (waits for the person) or
+// "ready" (finished, its PR ready to merge: D508, the person's to merge).
+type HelperItem struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
+	At     string `json:"at"`
+	Yours  string `json:"yours,omitempty"`
+	PR     string `json:"pr,omitempty"`
+	// Said (D508): where that PR stands, the one model (store.SayPR's).
+	Said *PRSaid `json:"said,omitempty"`
+}
+
+// PRSaid (D508) is a PR's phase with its facts, as pr-state.ts says it
+// (store.SayPR makes it).
+type PRSaid struct {
+	Phase  string        `json:"phase"`
+	By     []string      `json:"by,omitempty"`
+	Failed []string      `json:"failed,omitempty"`
+	Checks *PRChecksSaid `json:"checks,omitempty"`
+}
+
+// PRChecksSaid is how many of a PR's checks passed, of how many, and how
+// many still run.
+type PRChecksSaid struct {
+	Passed  int `json:"passed"`
+	Total   int `json:"total"`
+	Pending int `json:"pending"`
 }
 
 // OpenAsks (D481): the questions open at the home, as of AsOf.
@@ -1365,6 +1413,14 @@ type TaskHistoryReq struct {
 	// AfterSeq (D320): the page after a far stretch the client holds.
 	AfterSeq *int64 `json:"afterSeq,omitempty"`
 	Limit    int    `json:"limit,omitempty"`
+}
+
+// ChannelHistoryReq asks for the page of the conversation before BeforeSeq
+// (D509), answered with a channel_history frame (Events, BeforeSeq, More).
+type ChannelHistoryReq struct {
+	T         string `json:"t"` // "channel_history"
+	BeforeSeq int64  `json:"beforeSeq"`
+	Limit     int    `json:"limit,omitempty"`
 }
 
 // TaskIndexReq asks for a task's session index (D320): all of it, or its
@@ -3255,7 +3311,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// TestEveryServerFrameDecodes reads that union, so a new one can't be
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
-	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
+	case "welcome", "events", "channel_history", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",

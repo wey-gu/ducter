@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.31 - 2026-11-24
+
+<!-- whats-new
+zh: 对话能一直往上翻；帮手在手头的事里有自己的位置
+en: Scroll back through the whole conversation; helpers on On hand
+-->
+
+**The whole conversation, back to the start**
+- Scrolling up in the conversation now loads earlier messages as you near the top, on the Mac,
+  the phone and the apps, all the way to the first one. Where you were reading stays put.
+
+**Helpers on On hand**
+- A helper such as a PR babysitter has its own place on On hand: its name, what it takes, how
+  many it has on hand, and the PRs it is working on, kept under it until each one is merged or
+  closed. When one needs you, the helper moves to the top.
+- When a helper's address is ready in Nowledge Mem, your partner tells you once.
+
+**Fixes**
+- Linux installs bring the PDF tools (Poppler) when they can, and `ducter doctor` names the one
+  command when they're missing.
+- Several `ducter check` live checks read their results correctly.
+
 ## 0.1.30 - 2026-11-24
 
 <!-- whats-new

@@ -23,15 +23,17 @@ export function hasPR(task: Task): boolean {
   return !!task.card?.prs?.length || !!outcomeOf(task);
 }
 
-/** A PR's phase in the person's words. */
-export function prWords(task: Task, s: PrSaid): string {
-  const sep = t("onhand.prs.sep");
-  if (s.phase === "changes") return t("onhand.prs.changes", (s.by ?? []).join(sep));
-  if (s.phase === "conflict") {
-    const p = placeOf(task);
-    return t("onhand.prs.conflict", (p.kind === "repo" && p.baseBranch) || "main");
-  }
+/** A PR's phase in the person's words (base: the branch it merges into). */
+export function prPhaseWords(s: PrSaid, base = "main"): string {
+  if (s.phase === "changes") return t("onhand.prs.changes", (s.by ?? []).join(t("onhand.prs.sep")));
+  if (s.phase === "conflict") return t("onhand.prs.conflict", base);
   return t(`onhand.prs.${s.phase}`);
+}
+
+/** A task's PR phase in the person's words, its base from the task's place. */
+export function prWords(task: Task, s: PrSaid): string {
+  const p = placeOf(task);
+  return prPhaseWords(s, (p.kind === "repo" && p.baseBranch) || "main");
 }
 
 /** What a row says beside the phase, each its own element: who it waits on or who signed off, what

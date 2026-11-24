@@ -71,6 +71,9 @@ type onHandState struct {
 	// roundsRow: the row being drawn is a task in rounds (D498: its mark is
 	// the drawn repeat between rounds).
 	roundsRow bool
+	// D507: the row being drawn is under its helper (it doesn't name it
+	// again), and a finished one whose PR waits for a merge (it says so).
+	inHelper bool
 	// walked is the focus the keys last moved to (D471: the peek follows it,
 	// never a focus kept from a task opened before).
 	walked  string
@@ -357,6 +360,39 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		}
 		return n
 	}
+	// D507: each helper that is on is its own sheet, its work under it until
+	// it lets go (the task ended and its PR merged or closed): never scattered
+	// into 在做 or 今天做完. One whose work waits for the person stands at the
+	// head of 等你, the rest under 你的帮手 after the waits. Find and the rail
+	// show the tasks as rows, each with its helper's name.
+	var hsYou, hsRest []protocol.HelperWork
+	hidden := map[string]bool{}
+	for id := range inGroup {
+		hidden[id] = true
+	}
+	if !rail && q == "" && (a.oh.lens == "" || a.oh.lens == lensOther) && a.S.OnHand != nil {
+		for _, h := range a.S.OnHand.Helpers {
+			for _, x := range h.Items {
+				hidden[x.TaskID] = true
+			}
+			if a.helperWaits(h) > 0 {
+				hsYou = append(hsYou, h)
+			} else {
+				hsRest = append(hsRest, h)
+			}
+		}
+	}
+	helperIDs := func(hs []protocol.HelperWork) []*store.Task {
+		var out []*store.Task
+		for _, h := range hs {
+			for _, x := range h.Items {
+				if task := a.S.Task(x.TaskID); task != nil {
+					out = append(out, task)
+				}
+			}
+		}
+		return out
+	}
 	// A section's count is per task: grouped tasks count where they are.
 	count := func(all, shown []*store.Task) int {
 		if len(bgs) == 0 {
@@ -365,14 +401,14 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		return len(all)
 	}
 	sp := a.splitOf(b)
-	needs := withoutGroups(keep(sp.needs), inGroup)
-	stopped := withoutGroups(keep(sp.stopped), inGroup)
-	ready := withoutGroups(keep(sp.ready), inGroup)
-	failed := withoutGroups(keep(sp.failed), inGroup)
-	working := withoutGroups(keep(sp.working), inGroup)
-	waiting := withoutGroups(keep(sp.waiting), inGroup)
-	today := withoutGroups(keep(sp.today), inGroup)
-	earlier := withoutGroups(keep(sp.earlier), inGroup)
+	needs := withoutGroups(keep(sp.needs), hidden)
+	stopped := withoutGroups(keep(sp.stopped), hidden)
+	ready := withoutGroups(keep(sp.ready), hidden)
+	failed := withoutGroups(keep(sp.failed), hidden)
+	working := withoutGroups(keep(sp.working), hidden)
+	waiting := withoutGroups(keep(sp.waiting), hidden)
+	today := withoutGroups(keep(sp.today), hidden)
+	earlier := withoutGroups(keep(sp.earlier), hidden)
 	// D498 (D427): a task in rounds, at work on a round or resting till the
 	// next, stands under 一直在跑的 (its rhythm), never under 在做 or 在等; one
 	// that asks or stopped stays in 等你. Beside an opened task, the lanes.
@@ -482,11 +518,11 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		}
 	}
-	add(show(1), needs, stopped, ready, failed)
+	add(show(1), helperIDs(hsYou), needs, stopped, ready, failed)
 	add(show(2), working)
 	add(show(3), fresh, inGroups)
 	add(show(3) && quietOpen, quiet)
-	add(show(2), ongoing)
+	add(show(2), helperIDs(hsRest), ongoing)
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
 	add(show(4) && earlierOpen, earlier)
@@ -500,9 +536,12 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	// What needs you comes first and takes no room when there is none (the
 	// board's head says so in one calm sentence).
-	if len(needs)+len(stopped)+len(ready)+len(failed)+len(pds)+len(others)+nGroups(0) > 0 && show(1) {
+	if len(needs)+len(stopped)+len(ready)+len(failed)+len(pds)+len(others)+nGroups(0)+len(hsYou) > 0 && show(1) {
 		n := count(sp.needs, needs) + count(sp.stopped, stopped) + count(sp.ready, ready) + count(sp.failed, failed) + len(pds) + len(others)
 		a.listSection(c, "needs", a.L.T("lane.needs_you"), n, func() {
+			for _, h := range hsYou {
+				a.helperSheet(c, h)
+			}
 			groupsIn(0)
 			for _, d := range pds {
 				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
@@ -548,6 +587,13 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 				if quietOpen {
 					a.taskCards(c.Key("quiet"), quiet)
 				}
+			}
+		})
+	}
+	if len(hsRest) > 0 && show(2) {
+		a.listSection(c, "helpers", a.L.T("peers.helpers.title"), len(hsRest), func() {
+			for _, h := range hsRest {
+				a.helperSheet(c, h)
 			}
 		})
 	}

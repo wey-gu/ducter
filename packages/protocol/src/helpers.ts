@@ -39,6 +39,8 @@ export interface Helper {
   mem: HelperMem;
   /** Why it is waiting or refused, in Mem's terms (shown behind 细节 / Details). */
   detail?: string;
+  /** D507: what the partner last said of its address in the conversation (once each: ready, refused). */
+  said?: "ready" | "refused";
 }
 
 /** A helper as Settings › Agent 通信 shows it. */
@@ -53,6 +55,41 @@ export interface HelperView {
   open: number;
   /** Work it took in the last 7 days. */
   week: number;
+}
+
+/**
+ * D507: one piece of work a helper keeps, as the home reads it: the task, the PR it owns and where that
+ * PR stands, and whether something waits for the person. A helper keeps a task until it ends, and a
+ * finished one while its PR is still open (a merge or a close lets it go). This is the one model of a
+ * helper's state: On hand's sheet reads it, and so will a helper's small app (D405/D407: the home
+ * writes the app's key from it, as review-board.ts writes `board` from review_report).
+ */
+export interface HelperItem {
+  taskId: string;
+  title: string;
+  /** "work": it is on it (at work, or its PR waiting on CI, a review or its next turn); "you":
+   *  something waits for the person (a question, a stop, a failure); "ready": finished, its PR ready
+   *  to merge (D508: the merge is the person's, so it waits for them too). */
+  at: "work" | "you" | "ready";
+  /** What waits for the person, in the task's words (its question, or why it stopped). */
+  yours?: string;
+  /** The PR it owns, owner/repo#n, once the task declared it (D483). */
+  pr?: string;
+  /** D508: where that PR stands, in the one model every row reads (pr-state.ts `prSaid`). */
+  said?: import("./pr-state.ts").PrSaid;
+}
+
+/** D507: a helper that is on, with the work it keeps (HelperView's `open` is items.length). */
+export interface HelperWork extends HelperView {
+  items: HelperItem[];
+}
+
+/** D507: how a helper reads at a glance: nothing handed over, its work under way, or one waits for the
+ *  person (D508: a PR ready to merge waits for them too). */
+export function helperGlance(h: Pick<HelperWork, "mem" | "items">): "address" | "idle" | "busy" | "you" {
+  if (h.mem !== "ready" && !h.items.length) return "address";
+  if (h.items.some((x) => x.at === "you" || x.at === "ready")) return "you";
+  return h.items.length ? "busy" : "idle";
 }
 
 /** A helper's name as kept: one line, trimmed, clipped; "" when none. */

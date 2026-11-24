@@ -274,6 +274,20 @@ describe("loops (D427, D429)", () => {
     expect(loopsOf([loop("t2", T0, { state: "ended", endedBy: "user" })]).endedByNoOne).toBe(0);
   });
 
+  test("a replaced waiter: the new one armed, then the old one cancelled with replacedBy, still reads armed", async () => {
+    // As hel logged it: the successor armed at seq N, the predecessor's cancel 4 ms later.
+    const events = [
+      loop("t3", T0 - DAY),
+      ev("waiter", T0 - DAY, { waiterId: "w-old", taskId: "t3", reason: "next round", state: "armed" }),
+      ev("waiter", T0 - 3_600_000, { waiterId: "w-new", taskId: "t3", reason: "next round", state: "armed" }),
+      ev("waiter", T0 - 3_600_000 + 4, { waiterId: "w-old", taskId: "t3", reason: "next round", state: "cancelled", replacedBy: "w-new" }),
+    ];
+    expect(loopsOf(events)).toMatchObject({ on: 1, unarmed: 0 });
+    expect((await runCheck(checkNamed("loops")!, fakeEnv({ events }))).outcome).toBe("pass");
+    // A cancel with no successor armed still leaves the loop unarmed.
+    expect(loopsOf([...events, ev("waiter", T0 - MIN, { waiterId: "w-new", taskId: "t3", reason: "next round", state: "cancelled" })]).unarmed).toBe(1);
+  });
+
   test("no loop this week is not yet", async () => {
     expect((await runCheck(checkNamed("loops")!, fakeEnv({ events: [] }))).outcome).toBe("not-yet");
   });
@@ -388,7 +402,7 @@ describe("mem-shapes (D433, D444, D458)", () => {
   const conns = { connections: [{ connection_id: "k1", client_label: "Ducter on hel", state: "active", agent_id: "a1", activity: { last_seen_at_ms: T0 - MIN } }] };
   const nmemOut: Record<string, { code: number; out: string; err: string }> = {
     "--version": { code: 0, out: "nmem 0.10.121\n", err: "" },
-    "bridge contacts": { code: 0, out: JSON.stringify(contacts), err: "" },
+    "--agent-context ducter-hel bridge contacts": { code: 0, out: JSON.stringify(contacts), err: "" },
     "bridge connections list --help": { code: 0, out: "  --include-activity  show activity", err: "" },
     "bridge connections list --space-id s1 --agent-id a1 --include-activity": { code: 0, out: JSON.stringify(conns), err: "" },
     "m search -n 5 -- decided": { code: 0, out: JSON.stringify({ memories: [{ id: "m", title: "Use bun", source: "agent", unit_type: "decision" }] }), err: "" },
@@ -397,7 +411,7 @@ describe("mem-shapes (D433, D444, D458)", () => {
   const env = (over: Record<string, any> = {}) =>
     fakeEnv({
       which: (c) => (c === "nmem" ? "/opt/bin/nmem" : undefined),
-      readText: (p) => (p.endsWith("bridge-connection.json") ? JSON.stringify({ spaceId: "s1", agentId: "a1" }) : p === "/s/msg.json" ? JSON.stringify({ message: { body: "see nowledgemem://memory/abc", knowledge_references: [{ uri: "nowledgemem://threads/t1", purpose: "context" }] } }) : undefined),
+      readText: (p) => (p.endsWith("bridge-connection.json") ? JSON.stringify({ spaceId: "s1", agentId: "a1", context: "ducter-hel" }) : p === "/s/msg.json" ? JSON.stringify({ message: { body: "see nowledgemem://memory/abc", knowledge_references: [{ uri: "nowledgemem://threads/t1", purpose: "context" }] } }) : undefined),
       run: async (argv) => {
         expect(argv[0]).toBe("/opt/bin/nmem");
         const key = (argv[1] === "--json" ? argv.slice(2) : argv.slice(1)).join(" ");
@@ -419,7 +433,7 @@ describe("mem-shapes (D433, D444, D458)", () => {
   });
 
   test("cards without mailbox_available fail; the extras skip without failing", async () => {
-    const r = await runCheck(checkNamed("mem-shapes")!, env({ "bridge contacts": { code: 0, out: JSON.stringify({ cards: [{ contact: "c1" }] }), err: "" } }));
+    const r = await runCheck(checkNamed("mem-shapes")!, env({ "--agent-context ducter-hel bridge contacts": { code: 0, out: JSON.stringify({ cards: [{ contact: "c1" }] }), err: "" } }));
     expect(r.steps[1]).toMatchObject({ outcome: "fail", note: "no card carries mailbox_available" });
     expect(r.steps[4]!.outcome).toBe("skip");
     expect(r.outcome).toBe("fail");
@@ -428,6 +442,42 @@ describe("mem-shapes (D433, D444, D458)", () => {
   test("activity offered but read nowhere fails", async () => {
     const r = await runCheck(checkNamed("mem-shapes")!, env({ "bridge connections list --space-id s1 --agent-id a1 --include-activity": { code: 0, out: JSON.stringify({ connections: [{ connection_id: "k1", seen: 5 }] }), err: "" } }));
     expect(r.steps[2]!.outcome).toBe("fail");
+  });
+
+  const actKey = "bridge connections list --space-id s1 --agent-id a1 --include-activity";
+  const act = (j: any) => ({ [actKey]: { code: 0, out: JSON.stringify(j), err: "" } });
+
+  test("Mem's answer on hel: activity_available on the list, last_seen_at_ms null: not yet, not a fail", async () => {
+    const j = { schema_version: 2, activity_available: true, connections: [{ connection_id: "k1", created_at_ms: T0 - DAY, last_seen_at_ms: null, home_id: null, device_label: null }] };
+    expect(activityShapes(j)).toMatchObject({ connections: 1, listActivity: true, seenRead: 0, seenNotYet: 1, seenMissing: 0 });
+    const r = await runCheck(checkNamed("mem-shapes")!, env(act(j)));
+    expect(r.steps[2]!.outcome).toBe("not-yet");
+    // The time present on the list's own shape: read.
+    const seen = { ...j, connections: [{ ...j.connections[0], last_seen_at_ms: T0 - MIN }] };
+    expect((await runCheck(checkNamed("mem-shapes")!, env(act(seen)))).steps[2]!.outcome).toBe("pass");
+  });
+
+  test("the list says no activity: Ducter reads none, a pass; the field missing under activity: a fail", async () => {
+    const off = { activity_available: false, connections: [{ connection_id: "k1" }] };
+    expect(activityShapes(off)).toMatchObject({ saysNoActivity: 1, seenMissing: 0 });
+    expect((await runCheck(checkNamed("mem-shapes")!, env(act(off)))).steps[2]!.outcome).toBe("pass");
+    const r = await runCheck(checkNamed("mem-shapes")!, env(act({ activity_available: true, connections: [{ connection_id: "k1" }] })));
+    expect(r.steps[2]).toMatchObject({ outcome: "fail", observed: { seenMissing: 1 } });
+  });
+
+  test("bridge contacts is read under the home's Agent Context; without a connection, no cards is said plainly", async () => {
+    const seen: string[][] = [];
+    const base = env();
+    const r = await runCheck(checkNamed("mem-shapes")!, { ...base, readText: () => undefined, run: async (argv) => (seen.push(argv), argv.includes("contacts") ? { code: 0, out: '{"cards":[]}', err: "" } : base.run(argv)) });
+    expect(seen.find((a) => a.includes("contacts"))).toEqual(["/opt/bin/nmem", "--json", "bridge", "contacts"]);
+    expect(r.steps[1]).toMatchObject({ outcome: "not-yet", observed: { context: false } });
+    expect(r.steps[1]!.note).toContain("no Agent Context");
+  });
+
+  test("nmem off PATH is found in ~/.local/bin, as core finds it", async () => {
+    const e = fakeEnv({ exists: (p) => p === "/Users/anna/.local/bin/nmem", run: async (argv) => (argv[1] === "--version" ? { code: 0, out: "nmem 0.10.121", err: "" } : undefined) });
+    const r = await runCheck(checkNamed("mem-shapes")!, e);
+    expect(r.steps[0]).toMatchObject({ outcome: "pass", observed: { version: "0.10.121" } });
   });
 
   test("no nmem stops at once", async () => {

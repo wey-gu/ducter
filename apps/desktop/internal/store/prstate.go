@@ -27,21 +27,11 @@ const (
 	PROpen     = "open"
 )
 
-// PRChecksSaid is how many of a PR's checks passed, of how many, and how
-// many still run.
-type PRChecksSaid struct {
-	Passed  int `json:"passed"`
-	Total   int `json:"total"`
-	Pending int `json:"pending"`
-}
-
-// PRSaid is a PR's phase with the facts a row says beside it.
-type PRSaid struct {
-	Phase  string        `json:"phase"`
-	By     []string      `json:"by,omitempty"`
-	Failed []string      `json:"failed,omitempty"`
-	Checks *PRChecksSaid `json:"checks,omitempty"`
-}
+// PRChecksSaid and PRSaid are the protocol's (a helper's item carries one).
+type (
+	PRChecksSaid = protocol.PRChecksSaid
+	PRSaid       = protocol.PRSaid
+)
 
 func firstNames(xs []string) []string {
 	var out []string

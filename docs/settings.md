@@ -310,8 +310,9 @@ agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your 
 request, and it watches the checks and the reviews, fixes and pushes what it may, and tells the agent
 that sent it when the work can merge. Ask your partner for one in a sentence ("make a helper my agents
 hand PRs to, and watch them until they can merge"). Nothing on any of your computers has to keep
-listening for it: the computer Ducter runs on receives its messages and starts the work, and each
-piece of work is an ordinary task you can open on **On hand**. Each row shows what it takes, whether
+listening for it: the computer Ducter runs on receives its messages and starts the work, and your
+partner tells you once when its name is ready (or, if Nowledge Mem doesn't take the name, what to do).
+Its work shows on **On hand**, under the helper. Each row shows what it takes, whether
 your agents can reach it yet, and how much it has on hand; **Stop** closes it (work on hand still
 finishes) and **Take work again** reopens it.
 

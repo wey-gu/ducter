@@ -105,3 +105,35 @@ func TestIntegrateInTheMenu(t *testing.T) {
 		t.Fatalf("menu %+v", f)
 	}
 }
+
+// D508 with D507: a helper's PR tasks under its sheet read the same model:
+// the phase in its words, never 做完 while the PR is open, and a PR ready to
+// merge brings the helper's sheet to 等你.
+func TestHelperRowsStandUnderTheirPR(t *testing.T) {
+	app, _ := d508Board(t, i18n.ZH)
+	app.S.OnHand.Helpers = []protocol.HelperWork{{
+		HelperView: protocol.HelperView{ID: "h1", Name: "Nowledge Mem PR babysitter", State: "on", Mem: "ready", Open: 2},
+		Items: []protocol.HelperItem{
+			{TaskID: "t_11019", Title: "Graph export drops edge labels past 120 nodes when the layout is radial", At: "ready", PR: "nowledge-co/mem#11064", Said: &protocol.PRSaid{Phase: "ready", By: []string{"hawkingrei"}}},
+			{TaskID: "t_11031", Title: "桌面端：托盘菜单只显示当前空间的记忆，切换空间后要刷新", At: "work", PR: "nowledge-co/mem#11068", Said: &protocol.PRSaid{Phase: "review", By: []string{"hawkingrei"}}},
+		},
+	}}
+	if app.helperWaits(app.S.OnHand.Helpers[0]) != 1 {
+		t.Fatal("a PR ready to merge waits for the person")
+	}
+	app.Route = RouteOnHand
+	tt := ui.NewTesterWith(app.View, 1400, 1300, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	all := strings.Join(tt.Texts(), " | ")
+	for _, want := range []string{"Nowledge Mem PR babysitter", "可以合了", "在等评审", "到 GitHub 合并"} {
+		if !strings.Contains(all, want) {
+			t.Fatalf("missing %q in %s", want, all)
+		}
+	}
+	for _, never := range []string{"能合并了", "合进 main"} {
+		if strings.Contains(all, never) {
+			t.Fatalf("%q under the helper: %s", never, all)
+		}
+	}
+}

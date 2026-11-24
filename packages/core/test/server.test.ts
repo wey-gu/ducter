@@ -216,6 +216,24 @@ test("ws: hello without cursor replays the last 200 channel events, superseded r
   expect(evs.every((e) => e.stream === "channel")).toBe(true);
   expect(evs.some((e) => e.seq === lm.seq)).toBe(false);
   expect(evs.at(-1)!.supersedes).toBe(lm.seq);
+  // D509: scrolled to the top, the older ones come a page at a time until there are none.
+  const pages: number[][] = [];
+  let before = evs[0]!.seq;
+  for (;;) {
+    c.frames = [];
+    c.send({ t: "channel_history", beforeSeq: before, limit: 20 });
+    const h = await c.until<Extract<ServerFrame, { t: "channel_history" }>>((f) => f.t === "channel_history");
+    expect(h.beforeSeq).toBe(before);
+    expect(h.events.every((e) => e.stream === "channel" && e.seq < before)).toBe(true);
+    pages.push(h.events.map((e) => e.seq));
+    if (!h.more) break;
+    before = h.events[0]!.seq;
+  }
+  const older = pages.reverse().flat();
+  expect(older).toEqual(Array.from({ length: evs[0]!.seq - 1 }, (_, i) => i + 1));
+  expect(pages.length).toBe(2); // 31 older messages: 20, then 11
+  c.send({ t: "channel_history" });
+  expect((await c.until<Extract<ServerFrame, { t: "error" }>>((f) => f.t === "error")).message).toContain("beforeSeq");
 });
 
 test("ws: frames before hello are rejected; browser origins are refused", async () => {

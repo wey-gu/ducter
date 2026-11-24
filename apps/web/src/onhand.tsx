@@ -9,7 +9,7 @@ import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { callEnded, looseMatch, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
+import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -38,7 +38,7 @@ import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
 import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
-import { hasPR, PrLine, prRowOf } from "./onhand-pr.tsx";
+import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import { cutAtWord } from "@ducter/protocol";
 
@@ -691,8 +691,14 @@ export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "",
 export function whereMeta(task: Task): string[] {
   const p = placeOf(task);
   const k = lensOf(task);
-  return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : ""].filter(Boolean);
+  // D507: a helper's task anywhere but under its helper (beside an opened task, in Find, done after
+  // its PR merged) says whose it is.
+  const helper = task.card?.helper && !NESTED.has(task.id) ? task.card.helper.name : "";
+  return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
+
+/** D507: the tasks the board draws under their helper right now (so their rows don't name it again). */
+let NESTED = new Set<string>();
 
 /** The computer most of these tasks run on. */
 export function usualComputer(tasks: Task[]): string {
@@ -1242,6 +1248,87 @@ function Section({ name, n, children, end, fold }: { name: string; n?: number; c
   );
 }
 
+/**
+ * D507: one helper on On hand: a standing teammate that takes one kind of work. Its head (its first
+ * letter on the sunken pebble, as in Settings: research/220 kept the literal mark; its name; how it
+ * reads at a glance: nothing handed over yet, n on hand, n waiting for you; what it takes; this week's
+ * count on the time edge) opens its row in Settings › Agent 通信. Under it, on the same sheet and set
+ * in by the mark's width, the work it keeps: each task's own row (what waits for you first), and a
+ * finished one while its PR is still open, until the merge. The sheet takes the needs-you ledge when
+ * something on it waits for the person. Read from the home's one model (OnHand.helpers, HelperWork).
+ */
+function HelperSheet({ h, room }: { h: HelperWork; room: Room }) {
+  const g = helperGlance(h);
+  const stacked = room === "phone" || room === "side";
+  const ts = h.items.flatMap((x) => (A.S.tasks.has(x.taskId) ? [A.S.tasks.get(x.taskId)!] : []));
+  const loose = h.items.filter((x) => !A.S.tasks.has(x.taskId));
+  const you = h.items.filter((x) => x.at === "you" || (A.S.tasks.has(x.taskId) && stoppedWait(A.S.tasks.get(x.taskId)!))).length;
+  const line = g === "address" ? t(`peers.helper.${h.mem}`) : you ? t("helper.you", you) : h.items.length ? t("peers.helper.open", h.items.length) : t("helper.idle");
+  const beat = h.week > 0 ? t("peers.helper.week", h.week) : "";
+  return (
+    <div class={`ocards hsheet${you ? " needs" : ""}`} data-helper={h.id}>
+      <div class="ocard hhead">
+        <button class="omain" onClick={() => A.openSettings("peers")} title={t("helper.see", h.name)}>
+          <span class="omark k-helper" aria-hidden="true">
+            <span class="hl">{[...h.name][0]?.toUpperCase()}</span>
+          </span>
+          <span class="otx">
+            <span class="o1">
+              <span class="t">{h.name}</span>
+            </span>
+            <span class={`o2${you ? " needs" : ""}`}>
+              <span class="w">{line}</span>
+              {you > 0 && h.items.length > you && <span class="w more">{t("peers.helper.open", h.items.length)}</span>}
+            </span>
+            {g === "idle" && <span class="oquiet">{t("peers.helper.ready")}</span>}
+            {h.about && <span class="oquiet habout">{t("peers.helper.takes", h.about)}</span>}
+            {stacked && beat && (
+              <span class="ometa">
+                <span class="ow still">{beat}</span>
+              </span>
+            )}
+          </span>
+          {!stacked && <span class="obeat still">{beat}</span>}
+        </button>
+        <span class="ocol" />
+      </div>
+      {ts.map((task) => (
+        <TaskCard key={task.id} task={task} room={room} v={ver(task)} focus={L.focus === task.id && room !== "phone"} sel={L.sel.has(task.id)} opened={false} />
+      ))}
+      {loose.map((x) => (
+        <div key={x.taskId} class="ocard hitem">
+          <button class="omain" onClick={() => A.go({ name: "task", id: x.taskId, full: room === "full" })} title={x.title}>
+            <StateMark k={x.at === "you" || x.at === "ready" ? "needs" : "waiting"} />
+            <span class="otx">
+              <span class="o1">
+                <span class="t">{shortTitle(x.title)}</span>
+                {x.pr && <span class="pr">{x.pr.replace(/^.*#/, "#")}</span>}
+              </span>
+              {/* D508: where its PR stands in the one model's words; else what waits for the person. */}
+              {x.said && !x.yours ? (
+                <span class={`o2 prl ${x.at === "ready" ? "needs" : "waiting"}`}>
+                  <span class="ph">{prPhaseWords(x.said)}</span>
+                  {prFacts(x.said).map((f) => (
+                    <span key={f} class="pf">
+                      {f}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span class={`o2${x.at === "you" ? " needs" : ""}`}>
+                  <span class="w">{x.yours ?? ""}</span>
+                </span>
+              )}
+            </span>
+            {!stacked && <span class="obeat still" />}
+          </button>
+          <span class="ocol" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** A drawn disclosure chevron: right when folded, down when open. */
 const Chevron = ({ open }: { open: boolean }) => (
   <svg class={`chev${open ? " open" : ""}`} viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
@@ -1321,14 +1408,25 @@ export function OnHandList({ room }: { room: Room }) {
   const laneOf = (id: string) => lanes.findIndex((l) => l.some((x) => x.id === id));
   const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
-  const ungrouped = (ts: Task[]) => (inGroup.size ? ts.filter((x) => !inGroup.has(x.id)) : ts);
+  // D507: each helper that is on is its own sheet, its work under it until it lets go (the task ended
+  // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for
+  // the person stands at the head of 等你; the rest under 你的帮手 after the waits. Find and the rail
+  // beside an opened task show the tasks as rows, each with its helper's name.
+  const hws = rail || q || (lens && lens !== OTHER) ? [] : (A.S.onHand?.helpers ?? []);
+  const kept = new Set(hws.flatMap((h) => h.items.map((x) => x.taskId)));
+  NESTED = kept;
+  const helperYou = (h: HelperWork) => helperGlance(h) === "you" || h.items.some((x) => A.S.tasks.has(x.taskId) && stoppedWait(A.S.tasks.get(x.taskId)!));
+  const hsYou = hws.filter(helperYou);
+  const hsRest = hws.filter((h) => !helperYou(h));
+  const hIds = (hs: HelperWork[]) => hs.flatMap((h) => h.items.filter((x) => A.S.tasks.has(x.taskId)).map((x) => x.taskId));
+  const ungrouped = (ts: Task[]) => (inGroup.size || kept.size ? ts.filter((x) => !inGroup.has(x.id) && !kept.has(x.id)) : ts);
   const groupsIn = (lane: number) => bgs.filter((b) => b.lane === lane);
   const nIn = (lane: number) => lanes[lane]!.length;
   const needs = ungrouped(keep(lanes[LANE.needs]!));
   // D498 (D427): a task in rounds, at work on a round or resting till the next, stands under
   // 一直在跑的 (its rhythm), never under 在做 or 在等; one that asks or stopped stays in 等你.
   const inRounds = (x: Task) => !rail && !!x.card?.rounds && ["working", "queued", "blocked"].includes(attention(x)) && !stoppedWait(x);
-  const workingAll = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id)))];
+  const workingAll = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id) && !kept.has(x.id)))];
   const working = workingAll.filter((x) => !inRounds(x));
   // D467: a wait nothing brings back and a task that didn't work out stand in 等你; 今天做完 is
   // today's; what finished before folds under it. Beside an opened task the rail keeps the lanes.
@@ -1365,13 +1463,13 @@ export function OnHandList({ room }: { room: Room }) {
   const doneOpen = !seenFolds || doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
   const gIds = (lane: number) => groupsIn(lane).flatMap((b) => b.rows.flatMap((r) => (r.kind === "task" && b.ids.has(r.taskId) ? [r.taskId] : [])));
-  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...readyTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...ongoing.map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
+  L.order = [...hIds(hsYou), ...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...readyTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...hIds(hsRest), ...ongoing.map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
     const lane = stoppedTs.some((x) => x.id === id) || readyTs.some((x) => x.id === id) || failedTs.some((x) => x.id === id) ? 0 : parts.waiting.some((x) => x.id === id) ? LANE.waiting : laneOf(id);
-    return show(lane + 1) || inGroup.has(id);
+    return show(lane + 1) || inGroup.has(id) || kept.has(id);
   });
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const openN = A.defaultable().length;
-  const shown = needs.length + stoppedTs.length + readyTs.length + failedTs.length + working.length + waiting.length + ongoing.length + done.length + earlier.length + inGroup.size;
+  const shown = needs.length + stoppedTs.length + readyTs.length + failedTs.length + working.length + waiting.length + ongoing.length + done.length + earlier.length + inGroup.size + kept.size;
   return (
     <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
@@ -1384,13 +1482,16 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + readyTs.length + failedTs.length > 0 && show(1) && (
+      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + readyTs.length + failedTs.length + hsYou.length > 0 && show(1) && (
         <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length + stoppedTs.length + readyTs.length + failedTs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
             <Rows tasks={needs} room={room} />
           ) : (
             <>
+              {hsYou.map((h) => (
+                <HelperSheet key={h.id} h={h} room={room} />
+              ))}
               {groupsIn(0).map((b) => (
                 <GroupCard key={b.g.id} b={b} room={room} />
               ))}
@@ -1432,6 +1533,14 @@ export function OnHandList({ room }: { room: Room }) {
           {quietFolds && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
           {quiet.length > 0 && !quietFolds && !rail && fresh.length + looseWs.length > 0 && <p class="sub-h">{t("onhand.wait.quiet.head")}</p>}
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
+        </Section>
+      )}
+      {/* D507: the person's helpers, each its own sheet with the work it keeps, after the waits. */}
+      {hsRest.length > 0 && show(2) && (
+        <Section name={t("peers.helpers.title")}>
+          {hsRest.map((h) => (
+            <HelperSheet key={h.id} h={h} room={room} />
+          ))}
         </Section>
       )}
       {/* D498: what keeps going on its own rhythm (a task in rounds), after the waits. */}
@@ -1545,6 +1654,8 @@ function memberWhen(r: MemberRow, task: Task | undefined): string {
   const a = attention(task);
   if (a === "working" || a === "queued") return timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task));
   if (a === "blocked") return waitNext(A.S.waiterFor(task.id)).text || stateLabel(a);
+  const prr = prRowOf(task); // D508: a part whose PR is open isn't done
+  if (prr) return prWords(task, prr.said);
   if (a === "done" || a === "done_claimed") return task.card?.updatedAt ? t("onhand.card.done", soon(task.card.updatedAt)) : stateLabel(a);
   return stateLabel(a);
 }
@@ -2085,9 +2196,13 @@ export function Peek() {
   const stopped = stoppedWait(task);
   const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
   const next = w ? waitNext(w) : undefined;
-  const k: MarkKind = stopped || a === "needs_you" ? "needs" : a === "failed" ? "failed" : working ? "working" : a === "blocked" ? "waiting" : statusOf(task.id, a, task.card?.updatedAt) === "new" ? "done" : "seen";
+  // D508: under its open PR the peek says where the PR is, never 做完.
+  const prr = prRowOf(task);
+  const k: MarkKind = prr ? (prr.stands === "needs" ? "needs" : "waiting") : stopped || a === "needs_you" ? "needs" : a === "failed" ? "failed" : working ? "working" : a === "blocked" ? "waiting" : statusOf(task.id, a, task.card?.updatedAt) === "new" ? "done" : "seen";
   const at = task.card?.updatedAt;
-  const beat = working
+  const beat = prr
+    ? ""
+    : working
     ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
     : stopped
       ? t("onhand.wait.since", ago(A.L, at))
@@ -2114,6 +2229,7 @@ export function Peek() {
         </span>
       </div>
       {beat && <p class={`pbeat k-${k}`}>{beat}</p>}
+      {prr && <PrLine task={task} said={prr.said} stands={prr.stands} />}
       {stuck ? <p class="pnow needs">{stuckClause(stuck)}</p> : !finished(task) && <p class={`pnow${s.tone ? ` ${s.tone}` : ""}`}>{s.words}</p>}
       {said.length > 0 && (
         <div class="presult said">

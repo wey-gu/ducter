@@ -21,11 +21,18 @@ export const JUDGE_EVERY_MS = 30_000;
 /** A refused socket asks /api/me at most this often (the socket itself retries quicker). */
 export const ME_EVERY_MS = 5_000;
 
+/**
+ * D543: a drop shorter than this is not said at all (a flapping link, a lift, a tunnel): the
+ * screen stays as it was, sends wait in the outbox with their pending mark, and the line only says
+ * "reconnecting" once the link has really been down this long.
+ */
+export const LINK_QUIET_MS = 2_500;
+
 export type LinkState = "up" | "back" | "lost";
 
-/** The link as the person meets it: up, lost a moment ago (back), or lost for a while. */
+/** The link as the person meets it: up (or down for under LINK_QUIET_MS), lost a moment ago (back), or lost for a while. */
 export function linkState(status: "connecting" | "connected" | "offline", downAt: number, now: number): LinkState {
-  if (status === "connected" || !downAt) return "up";
+  if (status === "connected" || !downAt || now - downAt < LINK_QUIET_MS) return "up";
   return now - downAt >= LONG_OUTAGE_MS ? "lost" : "back";
 }
 

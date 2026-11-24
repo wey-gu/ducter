@@ -49,6 +49,16 @@ line.
   the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
   (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
   with D532.
+- [ ] **D543 on a real phone on a real network** (`offline.md`): a train or a lift with the iPhone
+  app and an Android phone: the last screen stays, a message sent in a tunnel lands once, a cold start
+  offline opens to the kept screen with no can't-reach screen over it. *Trigger:* the first release
+  with D543.
+- [ ] **D543: pictures picked while the link is down** wait in memory with their words (D206's
+  upload needs the link); keep the picture's bytes in IndexedDB too, so a reload keeps them.
+  *Trigger:* a person who loses one.
+- [ ] **D543: a picture never seen offline** is a broken box (media needs the token, so the shell
+  doesn't keep it); keep the conversation's recent thumbnails with the glance. *Trigger:* the author
+  reading on a train.
 - [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
   the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,

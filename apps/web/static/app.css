@@ -648,6 +648,11 @@ a {
 .boot-wait.static > * {
   animation-delay: 3s;
 }
+/* D543: the static ground is only ever the page's whole content; beside anything the app drew it
+   is gone (main.tsx removes it on the first draw; this holds even if a draw path ever misses it). */
+#app > .boot-wait.static:not(:only-child) {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .boot-wait:not(.failed) > * {
     animation-duration: 1ms;
@@ -7283,6 +7288,21 @@ dl.call-summary dd { margin: 0; }
 }
 .unsent .btn.text {
   color: var(--failed-ink);
+}
+/* D543: messages sent while the link is down wait on the device: one quiet line under them, a
+   messaging app's clock, never an error. */
+.queued {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: calc(var(--s1) * -0.5);
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.queued svg {
+  flex: none;
 }
 
 /* ---------- D286: a file, drawn as the thing it is ---------- */

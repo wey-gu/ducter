@@ -15,7 +15,10 @@ import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import type { View } from "@ducter/protocol/src/session.ts";
 import { Api, Connection, deviceName, myShape, pinFp, type ConnStatus, type Me, wsUrl } from "./conn.ts";
-import { heard, LONG_OUTAGE_MS, linkState, memoStore, type LinkState } from "./link.ts";
+import { heard, LINK_QUIET_MS, LONG_OUTAGE_MS, linkState, memoStore, type LinkState } from "./link.ts";
+import { ANSWER_TTL_MS, frameOf, Outbox, type OutItem } from "./outbox.ts";
+import { taskWindows } from "./taskwin.ts";
+import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -26,12 +29,39 @@ import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage,
 import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, stamp, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
-import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
+import { forgetGlance, keepEvents, loadGlance, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
-import { keepDraft, readDraft } from "./follow.ts";
+import { keepDraft, keepTaskDrafts, readDraft, readTaskDrafts } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
 import { DEFAULT_PARTNER, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import { spokenPeers } from "./mem-view.ts";
+
+/** D543: a Map whose every change is kept a moment later (the task drafts, kept on this device). */
+class KeptMap extends Map<string, string> {
+  private timer?: ReturnType<typeof setTimeout>;
+  private ready = false;
+  constructor(
+    init: Record<string, string>,
+    private keep: (m: Record<string, string>) => void,
+  ) {
+    super(Object.entries(init));
+    this.ready = true;
+  }
+  override set(k: string, v: string) {
+    super.set(k, v);
+    if (this.ready) this.later();
+    return this;
+  }
+  override delete(k: string) {
+    const had = super.delete(k);
+    if (had) this.later();
+    return had;
+  }
+  private later() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.keep(Object.fromEntries([...this].filter(([, v]) => v.trim()))), 300);
+  }
+}
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
 const PARTNER_KEY = "ducter.partner";
@@ -497,7 +527,16 @@ class AppState {
   conn?: Connection;
   base!: URL;
   /** Messages sent and not yet echoed. pics (D206): pictures still going up; failed: one didn't, Retry sends. */
-  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying; refs?: import("@ducter/protocol").Ref[] }[] = [];
+  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying; refs?: import("@ducter/protocol").Ref[]; /** D543: a message kept from an earlier page: its pictures' ids (they went up then). */ media?: string[] }[] = [];
+  /** D543: what was sent and the home doesn't have yet, kept on this device (outbox.ts). */
+  outbox = new Outbox();
+  /** D543: the tasks opened lately, kept on this device (taskwin.ts). */
+  taskWins = taskWindows();
+  /** D543: ids unique across this person's devices, not only this page (a clientId is deduped by the home). */
+  private pageTag = Math.random().toString(36).slice(2, 7);
+  cid(kind: string) {
+    return `${kind}${Date.now()}-${this.pageTag}-${++this.nextClient}`;
+  }
   /** D534: what was picked with @ or / into a composer's words ("" the partner's, else the task's id). */
   refsFor = new Map<string, import("@ducter/protocol").Ref[]>();
   /** D534: the home's answers to the composers' @ and / lists (mentions.ts sets this; no import cycle). */
@@ -514,15 +553,16 @@ class AppState {
   fileLink?: { path: string; taskId?: string; n: number; error?: FileOpenError; message?: string };
   /** D254: what is typed to the partner survives the app being closed (a phone's web view is
    *  often let go in the background): kept in this browser until it is sent or cleared. */
-  private draftNow = readDraft();
+  private draftNow = readDraft(savedPartner());
   get draft() {
     return this.draftNow;
   }
   set draft(v: string) {
     this.draftNow = v;
-    keepDraft(v);
+    keepDraft(v, this.partnerShown);
   }
-  taskDrafts = new Map<string, string>();
+  /** D543: each partner's draft is its own, and a task's draft survives the page too. */
+  taskDrafts: Map<string, string> = new KeptMap(readTaskDrafts(), keepTaskDrafts);
   replyOpen = new Set<string>();
   /** D382: the cards whose 晚点再问我 / Ask me later times are open; and the one picking its own time. */
   laterOpen = new Set<string>();
@@ -642,7 +682,10 @@ class AppState {
       (s) => {
         this.status = s;
         // D209: the app, which opened this page from its cache, learns whether the home answers.
-        if (s !== "connecting" && inApp()) tellReach(s === "connected");
+        // D543: a page that shows a kept screen never asks the app for its can't-reach screen: the
+        // last screen stays readable and the page says the link itself. Only a page with nothing
+        // kept to show does.
+        if (s !== "connecting" && inApp() && (s === "connected" || !this.keptScreen())) tellReach(s === "connected");
         this.linkTick();
         this.changed();
       },
@@ -730,6 +773,7 @@ class AppState {
         ...(this.me ? { me: this.me } : {}),
         savedAt: Date.now(),
       });
+      this.keepTaskWindows(now);
     };
     if (now) save();
     else this.glanceTimer = setTimeout(save, 1200);
@@ -758,11 +802,11 @@ class AppState {
   }
 
   /** Forgets everything this page holds (a Log that started over, a device revoked). */
-  private startOver() {
+  private startOver(forget = true) {
     this.S = new Store();
     this.kept.clear();
     this.fromGlance = false;
-    forgetGlance();
+    if (forget) forgetGlance();
   }
 
   receive(f: ServerFrame) {
@@ -787,6 +831,9 @@ class AppState {
       // The Log started over (its data was reset): forget everything and say hello from scratch.
       this.startOver();
       this.pending = [];
+      // D543: what was kept for that Log (its waiting messages, its tasks' windows) belongs to it.
+      this.outbox.clear();
+      void this.taskWins.clear();
       this.actSent.clear();
       this.inDoubt = undefined;
       this.historyAsked.clear();
@@ -946,6 +993,7 @@ class AppState {
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
+    this.settleOutbox(f);
     this.onAmbient?.();
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
@@ -980,7 +1028,14 @@ class AppState {
       if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
       this.actSent.clear();
       // A message whose pictures are still going up goes when they are (afterUpload).
-      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
+      const resent = new Set<string>();
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics ? p.pics.map((x) => x.ref!.id) : p.media, ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) {
+        if ("clientId" in r && r.clientId) resent.add(r.clientId);
+        this.send(r);
+      }
+      // D543: and what an earlier page left in the outbox (a card's answer, another partner's waits for its own socket).
+      for (const p of this.pending) resent.add(p.clientId);
+      this.flushOutbox(resent);
       // D204: a clone in flight goes again with its id: the home answers the same clone, not a second.
       const k = this.nt.clone;
       if (k?.cid) {
@@ -1018,7 +1073,7 @@ class AppState {
     // D209: the last screen follows what the home sent (on_hand closes a replay: caught up).
     if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
     if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
-    if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome") this.keepGlance();
+    if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome" || f.t === "task_history") this.keepGlance();
     if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || (typeof document === "object" && document.hidden));
     this.followUserLanguage();
     this.drainActionResults();
@@ -2153,17 +2208,24 @@ class AppState {
     this.partnersOpen = false;
     if (this.S.welcomed) this.railHeld = Object.fromEntries(this.partners.map((p) => [p.id, this.needsCount(p.id)]));
     this.partnerSwitchedAt = Date.now();
+    // D543: this partner's last screen is kept under its own name, so coming back to it (even with
+    // the link down) shows it at once; its waiting messages stay in the outbox for its own socket.
+    if (this.S.persona) this.keepGlance(true);
     savePartner((this.partnerShown = id));
-    this.startOver();
+    this.startOver(false);
     this.pending = [];
     this.actSent.clear();
     this.inDoubt = undefined;
     this.historyAsked.clear();
     this.livingAway.clear();
-    this.draft = "";
+    // D543: the draft typed to the other partner stays its own; this one's comes back.
+    this.draftNow = readDraft(id);
     this.replying = undefined;
     this.route = { name: "conv" };
     this.sheet = null;
+    const g = this.glanceDevice ? loadGlance(this.glanceDevice, undefined, id) : undefined;
+    if (g) this.restore(g);
+    this.restoreOutbox();
     this.S.personaName = this.partners.find((p) => p.id === id)!.name;
     this.conn?.rehello();
     this.changed();
@@ -2266,6 +2328,8 @@ class AppState {
   }
   /** D208: 现在就打 / Call now on a Go card that waits for the callee's hours: the Go, now. */
   callNow(decisionId: string, callId: string) {
+    // D543: a call placed late is not what was asked for: with the link down it asks again.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(decisionId);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -2944,6 +3008,10 @@ class AppState {
    */
   history(id: string, force = false) {
     const t = this.S.tasks.get(id);
+    // D543: a task opened lately reads from its kept window at once (the link down, or before the
+    // home's own answer lands); the home's history replaces it when it comes.
+    this.openedLately(id);
+    if (!t?.historyLoaded) void this.hydrateTask(id);
     if (!this.S.welcomed) return;
     // D320: its session index first (all of it, or from its last turn after a new socket).
     if (!t?.indexPending && (!t?.index || t.indexStale)) {
@@ -2955,6 +3023,42 @@ class AppState {
     if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return this.windowStep(id);
     this.historyAsked.add(id);
     this.askHistory(id, 0);
+  }
+
+  /** D543: the tasks opened on this page, the newest first (their windows are kept with the glance). */
+  private opened: string[] = [];
+  private openedLately(id: string) {
+    if (this.opened[0] === id) return;
+    this.opened = [id, ...this.opened.filter((x) => x !== id)].slice(0, 6);
+  }
+  private hydrated = new Set<string>();
+  /** D543: a kept window, applied as the pages the store already takes, marked stale so the home is asked again. */
+  async hydrateTask(id: string) {
+    if (this.hydrated.has(id) || !this.glanceDevice) return;
+    this.hydrated.add(id);
+    const w = await this.taskWins.get(this.glanceDevice, id);
+    const t = this.S.tasks.get(id);
+    if (!w || t?.historyLoaded) return;
+    this.S.apply({ t: "task_history", taskId: id, events: w.events, more: true });
+    const now = this.S.task(id);
+    now.histStale = true;
+    if (w.index && !now.index) this.S.apply({ t: "task_index", taskId: id, index: w.index }), (now.indexStale = true);
+    this.changed();
+  }
+  /** D543: keeps the windows of the tasks opened lately (with the glance: a moment after it settles, and on hide). */
+  private keptWinAt = new Map<string, number>();
+  private keepTaskWindows(now = false) {
+    if (!this.glanceDevice) return;
+    for (const id of this.opened) {
+      const t = this.S.tasks.get(id);
+      if (!t?.historyLoaded || !t.events.length) continue;
+      // A task at work changes all the time: its window is written at most every 30 s (and on hide).
+      const sig = t.version;
+      if (!now && (this.keptWinAt.get(id) ?? 0) > Date.now() - 30_000) continue;
+      if (this.keptWinAt.get(`${id}#v`) === sig) continue;
+      this.keptWinAt.set(id, Date.now()).set(`${id}#v`, sig);
+      void this.taskWins.keep({ device: this.glanceDevice, taskId: id, events: t.events, ...(t.index ? { index: t.index } : {}), at: Date.now() });
+    }
   }
 
   private askHistory(id: string, beforeSeq: number) {
@@ -3050,13 +3154,129 @@ class AppState {
   sendWords(text: string) {
     text = text.trim();
     if (!text) return;
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     this.pending.push({ clientId, text });
     this.thinkingSince = Date.now();
     this.markRead();
-    this.send({ t: "send", text, clientId });
+    this.sendKept({ t: "send", text, clientId });
     haptic("light");
     this.changed();
+  }
+
+  /**
+   * D543: a message to the partner or a task: written to the outbox (outbox.ts) first, so it
+   * survives the page, then sent if the link is up. After every welcome what the home hasn't
+   * echoed or acked goes again (core dedupes by clientId); its echo takes it out of the outbox.
+   */
+  sendKept(f: Extract<ClientFrame, { t: "send" } | { t: "task_send" }>, quote?: Replying) {
+    const device = this.glanceDevice || "local";
+    if (f.t === "send")
+      this.outbox.put({ kind: "send", device, persona: this.S.persona || this.partnerShown, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.reply ? { reply: f.reply } : {}), ...(quote ? { quote: { from: quote.from, quote: quote.quote, seq: quote.seq } } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
+    else if (f.clientId) this.outbox.put({ kind: "task_send", device, taskId: f.taskId, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.mode ? { mode: f.mode } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
+    this.send(f);
+  }
+
+  /** D543: a card's answer that is safe to apply late (the home still checks the card is open). */
+  private safeLate(d: DecisionState | undefined, option: "go" | "hold" | "reply"): boolean {
+    // D340: a Go that deletes something is never sent late: the person looks again.
+    if (option === "go" && d && destructiveChoice(d.question, d.goLabel)) return false;
+    return true;
+  }
+
+  /** D543: a tap that can't wait for the link: the card stays open, and one toast says why. */
+  private askAgainLater() {
+    haptic("warning");
+    this.toast(this.L.t("conn.ask.again", this.linkHome()));
+    this.changed();
+  }
+
+  /** D543: the link is up and the home has said welcome: a tap now reaches it now. */
+  linkUp(): boolean {
+    return this.status === "connected" && this.S.welcomed;
+  }
+
+  /**
+   * D543: after a welcome, what the outbox holds that this page hasn't sent again already (kept
+   * from an earlier page): messages for the partner this socket speaks for and for tasks, and the
+   * answers still young enough to send. An answer kept too long opens its card again.
+   */
+  private flushOutbox(sent: Set<string>) {
+    const now = Date.now();
+    const persona = this.S.persona || this.partnerShown;
+    const stale: string[] = [];
+    // A card shown as answered whose answer isn't kept (a payment, a key, a call, lost with the old
+    // socket) opens again: the replay closes it if the home did get it.
+    const kept = new Set(this.outbox.items.flatMap((i) => (i.kind === "decide" ? [i.decisionId] : [])));
+    for (const d of this.S.decisions.values()) if (d.pending && !d.resolved && !kept.has(d.decisionId)) d.pending = undefined;
+    for (const i of this.outbox.items) {
+      if (i.kind === "decide") {
+        if (now - i.at > ANSWER_TTL_MS) {
+          stale.push(i.decisionId);
+          continue;
+        }
+        const d = this.S.decisions.get(i.decisionId);
+        if (d && !d.resolved && !d.pending) d.pending = i.option;
+        this.send(frameOf(i));
+        continue;
+      }
+      if (sent.has(i.clientId)) continue;
+      if (i.kind === "send" && i.persona !== persona) continue; // another partner's: when its conversation is shown
+      this.send(frameOf(i));
+    }
+    if (stale.length) {
+      this.outbox.dropAnswer(stale);
+      for (const id of stale) {
+        const d = this.S.decisions.get(id);
+        if (d && !d.resolved) d.pending = undefined;
+      }
+      this.toast(this.L.t("conn.answer.stale"));
+    }
+  }
+
+  /** D543: what the home now has (an echo, a task's "sent", a card's resolution) leaves the outbox. */
+  private settleOutbox(f: ServerFrame) {
+    if (!this.outbox.items.length) return;
+    if (f.t === "sent" && f.clientId) return void this.outbox.dropClient([f.clientId]);
+    if (f.t !== "events") return;
+    const ids: string[] = [];
+    const answered: string[] = [];
+    for (const e of f.events) {
+      if (e.kind === "user_msg") {
+        const c = (e.body as { clientId?: string }).clientId;
+        if (c) ids.push(c);
+      } else if (e.kind === "task_event") {
+        const c = (e.body as { clientId?: string }).clientId;
+        if (c) ids.push(c);
+      } else if (e.kind === "decision_resolved") answered.push((e.body as { decisionId: string }).decisionId);
+    }
+    this.outbox.dropClient(ids);
+    this.outbox.dropAnswer(answered);
+  }
+
+  /**
+   * D543: what an earlier page left in the outbox shows again at once, with its pending mark: the
+   * messages for the partner shown here, a task's messages on its task, an answer on its card.
+   */
+  restoreOutbox() {
+    const persona = this.S.persona || this.partnerShown;
+    const have = new Set(this.pending.map((p) => p.clientId));
+    for (const i of this.outbox.items) {
+      if (i.kind === "send") {
+        if (i.persona !== persona || have.has(i.clientId)) continue;
+        have.add(i.clientId);
+        this.pending.push({ clientId: i.clientId, text: i.text, ...(i.media?.length ? { media: i.media } : {}), ...(i.refs?.length ? { refs: i.refs } : {}), ...(i.quote ? { reply: { ...i.quote, ...(i.reply?.findId ? { findId: i.reply.findId } : {}), ...(i.reply?.part ? { part: i.reply.part } : {}), ...(i.reply?.ask !== undefined ? { ask: i.reply.ask } : {}) } } : {}) });
+      } else if (i.kind === "task_send") {
+        const t = this.S.task(i.taskId);
+        if (t.sends.some((s) => s.clientId === i.clientId)) continue;
+        const sd = this.S.addSend(i.taskId, i.text, i.at, i.clientId);
+        if (i.media?.length) sd.media = i.media;
+        if (i.mode) sd.mode = i.mode;
+        if (i.refs?.length) sd.refs = i.refs;
+      } else {
+        const d = this.S.decisions.get(i.decisionId);
+        if (d && !d.resolved && !d.pending) d.pending = i.option;
+      }
+    }
   }
 
   sendMessage(text: string, force = false): boolean {
@@ -3069,7 +3289,7 @@ class AppState {
       return false;
     }
     this.held = undefined;
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     const reply = this.replying;
     this.replying = undefined;
     const refs = liveRefs(text, this.refsFor.get("") ?? []);
@@ -3082,7 +3302,7 @@ class AppState {
     this.markRead();
     // D206: the pictures went up when they were picked; one still going holds the message (with its words).
     const want = reply ? { reply: wantOf(reply) } : {};
-    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want, ...(refs.length ? { refs } : {}) }), () => ((p.failed = true), this.changed()));
+    this.afterUpload(pics, (media) => this.sendKept({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want, ...(refs.length ? { refs } : {}) }, reply), () => ((p.failed = true), this.changed()));
     this.changed();
     return true;
   }
@@ -3227,7 +3447,7 @@ class AppState {
       return false;
     }
     this.held = undefined;
-    const clientId = `t${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("t");
     const sd = this.S.addSend(id, text, Date.now(), clientId);
     if (pics.length) noteFlights(pics), (sd.pics = pics), this.picks.delete(id);
     const refs = liveRefs(text, this.refsFor.get(id) ?? []);
@@ -3243,7 +3463,7 @@ class AppState {
         (media) => {
           sd.failed = undefined;
           if (media.length) sd.media = media;
-          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}), ...(refs.length ? { refs } : {}) });
+          this.sendKept({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}), ...(refs.length ? { refs } : {}) });
         },
         () => ((sd.failed = this.L.t("media.failed")), (sd.retry = () => (pics.forEach((p) => p.state === "failed" && void this.lift(p)), (sd.failed = undefined), go(), this.changed())), this.changed()),
       );
@@ -3402,6 +3622,8 @@ class AppState {
   }
   /** D191: Go on a 付款 / Pay card, with the card's security code (it goes with this Go only). */
   pay(id: string, cvc: string) {
+    // D543: a payment carries the card's security code: never kept to send late. With the link down it asks again.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(id);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -3412,6 +3634,8 @@ class AppState {
   }
   /** D233: 保存，继续 / Save and continue on a key card: the key goes with this Go only (kept unless once). */
   giveKey(id: string, key: string, once: boolean) {
+    // D543: a key is never written down to wait for the link: with it down, this asks again later.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(id);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -3428,7 +3652,11 @@ class AppState {
   }
   decide(id: string, option: "go" | "hold" | "reply", text?: string) {
     const d = this.S.decisions.get(id);
+    // D543: with the link down, an answer that is safe late waits in the outbox (its card shows it
+    // given); one that isn't (a Go that deletes something) asks again once the link is back.
+    if (!this.linkUp() && !this.safeLate(d, option)) return this.askAgainLater();
     if (d) d.pending = option;
+    this.outbox.put({ kind: "decide", device: this.glanceDevice || "local", decisionId: id, option, ...(text ? { text } : {}), at: Date.now() });
     this.replyOpen.delete(id);
     if (navigator.vibrate) navigator.vibrate(8);
     haptic(option === "go" ? "success" : "light");
@@ -3440,12 +3668,12 @@ class AppState {
   /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
   sendLeftDraft(d: DecisionState, text: string) {
     this.replyDraft.delete(d.decisionId);
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     const reply: Replying | undefined = d.seq ? { seq: d.seq, from: "partner", quote: (d.said || d.question).slice(0, 120) } : undefined;
     this.pending.push({ clientId, text, ...(reply ? { reply } : {}) });
     this.thinkingSince = Date.now();
     this.markRead();
-    this.send({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) });
+    this.sendKept({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) }, reply);
     haptic("light");
     this.changed();
   }
@@ -3599,7 +3827,8 @@ class AppState {
   /** The partner owes an answer: the user's last message has no ack or reply after it. */
   thinking(): boolean {
     // A message held for a picture that didn't go up isn't with the partner yet (D206).
-    if (this.pending.some((p) => !p.failed)) return true;
+    // D543: not while the link is down: the message waits on this device (it says so), nobody thinks yet.
+    if (this.pending.some((p) => !p.failed)) return this.link() === "up";
     // D435: nobody can answer until its own agent is back: the messages wait, it isn't thinking (the header says when).
     if (this.brainNow?.held?.waits) return false;
     // D380: a quick web look is out: its line stays under the words that named it, until the answer.
@@ -3614,7 +3843,8 @@ class AppState {
   }
 
   presence(): "idle" | "working" | "needsyou" | "done" | "napping" | "waiting" {
-    if (this.status === "offline") return "napping";
+    // D543: a drop too short to say doesn't put the partner to sleep either.
+    if (this.status === "offline" && this.link() !== "up") return "napping";
     if (this.S.openDecisions().length) return "needsyou";
     const b = this.S.board();
     if (b.lanes[LANE.working]!.length || this.thinking()) return "working";
@@ -3667,8 +3897,16 @@ class AppState {
     clearTimeout(this.linkTimer);
     const down = this.conn?.downSince ?? 0;
     if (this.status === "connected" || !down) return;
+    // D543: one redraw when a quiet drop becomes worth saying, one when it becomes a long one.
+    const quiet = LINK_QUIET_MS - (Date.now() - down);
     const left = LONG_OUTAGE_MS - (Date.now() - down);
-    if (left > 0) this.linkTimer = setTimeout(() => this.changed(), left + 20);
+    if (quiet > 0) this.linkTimer = setTimeout(() => (this.changed(), this.linkTick()), quiet + 20);
+    else if (left > 0) this.linkTimer = setTimeout(() => this.changed(), left + 20);
+  }
+
+  /** D543: the page shows something it kept (a last screen, a conversation): readable while the link is down. */
+  keptScreen(): boolean {
+    return this.fromGlance || this.S.channel.length > 0 || !!this.S.onHand;
   }
 
   /** 今天做完 / Done today over the whole board, the same count On hand and the menu bar say (D310). */

@@ -2097,6 +2097,16 @@ export function Conversation() {
             </div>
           ),
         )}
+        {/* D543: with the link down, what waits says it goes once it's back (a clock, not an error). */}
+        {A.pending.some((p) => !p.failed) && A.link() !== "up" && (
+          <div class="queued" role="status">
+            <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="7" cy="7" r="5.6" />
+              <path d="M7 4.2V7l1.9 1.3" />
+            </svg>
+            <span>{t("conn.queued")}</span>
+          </div>
+        )}
         {A.thinking() && <Presence />}
         {/* D298: nothing can think and the first words aren't the opening: the key card here. */}
         {(A.S.first?.noBrain || keyJustAdded()) && !rows.some((r) => r.ai?.first) && <KeyCard />}

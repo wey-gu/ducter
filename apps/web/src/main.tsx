@@ -2,9 +2,9 @@
 // this browser may talk to core (local, or a paired device), then run the app.
 import { PhoneInstallSheet, PhoneLiveSheet, phoneFrame } from "./phone-use.tsx";
 import { HandsetGuideSheet, handsetFrame, handsetHello } from "./handset.tsx";
-import { render } from "preact";
+import { render, type ComponentChild } from "preact";
 import { useEffect, useReducer, useState } from "preact/hooks";
-import { A } from "./app.ts";
+import { A, savedPartner } from "./app.ts";
 import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } from "./conn.ts";
 import { kvSet } from "./idb.ts";
 import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
@@ -166,6 +166,9 @@ const watch = createLinkWatch({
     // The home said this device is disconnected (or no longer known): nothing it showed stays here.
     A.conn?.stop();
     forgetGlance();
+    // D543: what waited to be sent, and the tasks kept for reading, were this pairing's.
+    A.outbox.clear();
+    void A.taskWins.clear();
     storage.clear();
     await kvSet("token", undefined);
     return boot({ busy: false, code: "", error: why });
@@ -268,9 +271,27 @@ startAutospace(document.body); // the CJK-Latin gap where the browser lacks text
 // D254: every code block's own Copy, wherever a message draws one.
 listenForCodeCopy(() => ({ copy: t("reply.copy"), copied: t("conv.copied"), failed: t("conv.copy.failed") }), (s) => A.toast(s));
 
+/**
+ * D543 (D535's leftover): every draw into the page goes through here. Preact's first render into a
+ * root that already holds other DOM diffs against it instead of replacing it: it reuses an element
+ * of the same tag and leaves the rest where they are. index.html's static boot ground is a <main>:
+ * at a phone's width the app's own <main> took it over (so it seemed to go), at two panes (from
+ * about 1000 wide) nothing matched and it stayed in #app beside the app, a full-height block over
+ * it. D535 removed it only before the app's own render; any other first draw (and a cached older
+ * bundle) left it. So the first draw, whichever it is, empties the root of what Preact didn't make.
+ */
+let painted = false;
+function paint(vnode: ComponentChild) {
+  if (!painted) {
+    painted = true;
+    root.replaceChildren();
+  }
+  render(vnode, root);
+}
+
 /** D474: the ground while the page can't show the app yet, or why it couldn't, with Try again. */
 function wait(state: BootState) {
-  render(<BootWait t={t} state={state} onRetry={() => void boot()} />, root);
+  paint(<BootWait t={t} state={state} onRetry={() => void boot()} />);
 }
 
 /** D474: whatever goes wrong while opening, the page says so with Try again; it never stays blank. */
@@ -279,13 +300,13 @@ async function boot(pairing?: PairView) {
     await opening(pairing);
   } catch (e) {
     console.error("[ducter] opening the page failed", e);
-    render(<BootWait t={t} state={{ kind: "broken" }} onRetry={() => location.reload()} />, root);
+    paint(<BootWait t={t} state={{ kind: "broken" }} onRetry={() => location.reload()} />);
   }
 }
 
 async function opening(pairing?: PairView) {
   if (pairing) {
-    render(<Pairing initial={pairing} onPaired={() => void boot()} />, root);
+    paint(<Pairing initial={pairing} onPaired={() => void boot()} />);
     return;
   }
   // D293: the app opened the home at another of its addresses (another origin, empty storage):
@@ -302,9 +323,11 @@ async function opening(pairing?: PairView) {
   // last screen from the glance, the socket opening alongside, and who we are asked meanwhile.
   // Nothing waits on a round trip before the first frame.
   const device = storage.get()?.deviceId ?? (had ? "" : "local");
-  const glance = device ? loadGlance(device) : undefined;
+  const glance = device ? loadGlance(device, undefined, savedPartner()) : undefined;
   if (had || glance) {
     const me: Me = glance?.me ?? { via: had ? "device" : "local", personaName: storage.get()?.personaName ?? "Ducter", push: { supported: false } };
+    // D543: what an earlier page sent and the home hasn't got shows again in the first frame.
+    await within(A.outbox.load(device || "local"), 500, []);
     run(me, had, device, glance);
     void api.call<Me>("api/me").then(async (r) => {
       if (r.status === 401) {
@@ -330,6 +353,7 @@ async function opening(pairing?: PairView) {
   if (r.status === 401) return boot({ busy: false, code: "", error: undefined });
   if (r.status === 0) return wait({ kind: "unreachable", host: base.host });
   const me: Me = r.data ?? { via: "local", personaName: "Ducter", push: { supported: false } };
+  await within(A.outbox.load("local"), 500, []);
   run(me, had, "local");
 }
 
@@ -347,8 +371,9 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.onLinkRefused = () => void socketRefused();
   A.onLinkRetry = () => void socketRefused(true);
   A.onLinkHeard = () => void probeStanding();
-  A.onLinkAgain = () => render(<Pairing initial={{ busy: false, code: "" }} onPaired={() => location.reload()} onBack={showApp} />, root);
+  A.onLinkAgain = () => paint(<Pairing initial={{ busy: false, code: "" }} onPaired={() => location.reload()} onBack={showApp} />);
   if (glance) A.restore(glance);
+  A.restoreOutbox(); // D543
   A.start(base, api, me, token);
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
@@ -388,15 +413,12 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
 }
 
 function showApp() {
-  // D535: a page painted from its last screen (D209) renders the app without the waiting card first,
-  // so index.html's static boot ground was left in place, a full-height block that pushed the app
-  // off the window after every reload. It goes before the app comes in.
-  root.querySelector(":scope > .boot-wait.static")?.remove();
-  render(
+  // D535, D543: index.html's static boot ground never stays beside the app (paint empties the root
+  // of what Preact didn't draw on the first draw, whichever draw that is).
+  paint(
     <Guard t={t}>
       <App />
     </Guard>,
-    root,
   );
 }
 

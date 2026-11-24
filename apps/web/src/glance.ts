@@ -6,7 +6,8 @@
 // Kept in localStorage, not IndexedDB: it reads synchronously, so the first frame the page paints
 // already holds the conversation. It holds the channel's events (the newest GLANCE_EVENTS, the
 // same window a fresh hello replays and more), On hand, the empty conversation's words and who
-// this device is. A revoked device, or a home whose Log started over, forgets it.
+// this device is. A revoked device, or a home whose Log started over, forgets it. D543: one per
+// partner, so a switch with the link down shows that partner's own last screen.
 import type { FirstScreen, LogEvent, OnHand } from "@ducter/protocol";
 import type { Me } from "./conn.ts";
 
@@ -39,9 +40,15 @@ const store = (): Storage | undefined => {
   }
 };
 
-export function loadGlance(device: string, s: Storage | undefined = store()): Glance | undefined {
+/** D543: each partner's last screen is its own (the default partner's keeps the key it always had),
+ *  so switching to one while the link is down, or opening on it cold, shows its conversation. */
+export const glanceKey = (persona?: string) => (!persona || persona === "default" ? GLANCE_KEY : `${GLANCE_KEY}:${persona}`);
+/** A partner other than the default keeps a smaller screen (localStorage is shared). */
+const MAX_BYTES_OTHER = 600_000;
+
+export function loadGlance(device: string, s: Storage | undefined = store(), persona?: string): Glance | undefined {
   try {
-    const raw = s?.getItem(GLANCE_KEY);
+    const raw = s?.getItem(glanceKey(persona));
     if (!raw) return;
     const g = JSON.parse(raw) as Glance;
     if (g?.v !== 1 || g.device !== device || !Array.isArray(g.events)) return;
@@ -51,9 +58,17 @@ export function loadGlance(device: string, s: Storage | undefined = store()): Gl
   }
 }
 
-export function forgetGlance(s: Storage | undefined = store()) {
+/** Forgets the last screens (every partner's, or one). */
+export function forgetGlance(s: (Storage & { length?: number; key?(i: number): string | null }) | undefined = store(), persona?: string) {
   try {
+    if (persona !== undefined) return void s?.removeItem(glanceKey(persona));
     s?.removeItem(GLANCE_KEY);
+    const others: string[] = [];
+    for (let i = 0; s?.key && i < (s.length ?? 0); i++) {
+      const k = s.key(i);
+      if (k?.startsWith(`${GLANCE_KEY}:`)) others.push(k);
+    }
+    for (const k of others) s?.removeItem(k);
   } catch {}
 }
 
@@ -71,14 +86,16 @@ export function keepEvents(events: Iterable<LogEvent>, limit = GLANCE_EVENTS): L
 export function saveGlance(g: Glance, s: Storage | undefined = store()): boolean {
   if (!s) return false;
   let events = g.events;
+  const key = glanceKey(g.persona);
+  const max = key === GLANCE_KEY ? MAX_BYTES : MAX_BYTES_OTHER;
   for (let i = 0; i < 4; i++) {
     try {
       const raw = JSON.stringify({ ...g, events });
-      if (raw.length > MAX_BYTES && events.length > 20) {
+      if (raw.length > max && events.length > 20) {
         events = events.slice(Math.floor(events.length / 2));
         continue;
       }
-      s.setItem(GLANCE_KEY, raw);
+      s.setItem(key, raw);
       return true;
     } catch {
       // Over the quota: keep the newer half.
@@ -86,6 +103,6 @@ export function saveGlance(g: Glance, s: Storage | undefined = store()): boolean
       events = events.slice(Math.floor(events.length / 2));
     }
   }
-  forgetGlance(s);
+  forgetGlance(s, g.persona);
   return false;
 }

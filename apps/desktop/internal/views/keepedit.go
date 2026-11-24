@@ -9,7 +9,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -127,20 +126,9 @@ func (a *App) keepEditValue(field, v string) string {
 	return v
 }
 
-// keepEditInline is a field's value inside a sentence: in English a rule's
-// words start lower case there (changed: a round every 45 min → …); names
-// (a computer, an agent, an address, a title) stay as they are.
-func (a *App) keepEditInline(field, v string) string {
-	s := a.keepEditValue(field, v)
-	switch field {
-	case "where", "agent", "address", "title", "said", "at":
-		return s
-	}
-	if a.L.Lang == i18n.EN && len(s) > 1 && s[0] >= 'A' && s[0] <= 'Z' && !(s[1] >= 'A' && s[1] <= 'Z') {
-		return strings.ToLower(s[:1]) + s[1:]
-	}
-	return s
-}
+// keepEditInline is a field's value inside a sentence, as the page says it
+// (the web's fieldWords: the same words in both languages, no case changed).
+func (a *App) keepEditInline(field, v string) string { return a.keepEditValue(field, v) }
 
 // keepEditPair is one field's change: from → to.
 func (a *App) keepEditPair(e protocol.KeepEdit) string {

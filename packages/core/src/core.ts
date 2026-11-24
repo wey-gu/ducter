@@ -1348,10 +1348,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       return computers.folderInfo(dev, path, ms).catch(() => "offline" as const);
     },
     rules: () => rules.list(),
-    // D507: New tasks start's computer, preferred for a repository whenever it can have the code.
+    // D510: New tasks start's computer, preferred for a repository whenever it can have the code.
     prefer: () => settings.get().newTasks?.where,
   });
-  // D507: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
+  // D510: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
   registerNewTasksTool(mcp, { settings, computers: whereComputers });
   // D476: the home in the partner's [devices] line: its name, the names the person calls it, its agents.
   api.homeDevice = () => {

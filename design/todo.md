@@ -9,7 +9,7 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
-## New tasks start, after D507 (`where.md` §22)
+## New tasks start, after D510 (`where.md` §22)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with
   the MacBook. *Check:* a GitHub to-do handed over with Where hel and Who Codex runs on hel (a clone

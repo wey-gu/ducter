@@ -183,7 +183,7 @@ export function TasksSection() {
   const rules = A.rules ?? [];
   // D372: the built-in default per kind of work, in literal words (errands, then the rest).
   // A rule about errands (to an agent, or never one) speaks for them: its default row steps aside.
-  // D507: New tasks start naming an agent speaks for the built-in default (shown in its own group).
+  // D510: New tasks start naming an agent speaks for the built-in default (shown in its own group).
   const defaults = s.newTasks?.agent ? [] : A.ruleDefaults.filter((d) => d.work !== "errand" || !rules.some((r) => r.kinds?.includes("errand")));
   const nameOf = (d: { harness: string; model?: string }) => (d.model ? t("who.name", harnessName(d.harness), modelName(d.model)) : harnessName(d.harness));
   const rest = defaults.find((d) => d.work === "rest");
@@ -250,12 +250,12 @@ export function TasksSection() {
   );
 }
 
-/** D507: the computers that run tasks (the home and the computers doing tasks for it), from the devices frame. */
+/** D510: the computers that run tasks (the home and the computers doing tasks for it), from the devices frame. */
 function taskComputers() {
   return (A.devices ?? []).filter((d) => d.kind !== "phone" && (d.home || d.harnesses.length > 0));
 }
 
-/** D507: the AI agents signed in somewhere tasks run, each once (the home's alone with one computer). */
+/** D510: the AI agents signed in somewhere tasks run, each once (the home's alone with one computer). */
 function taskAgents(): string[] {
   const comps = taskComputers();
   const hs = comps.length > 1 ? comps.flatMap((d) => d.harnesses) : readyAgents();
@@ -263,7 +263,7 @@ function taskAgents(): string[] {
 }
 
 /**
- * D507: 新任务默认 / New tasks start: where every new task starts and who does it, set once. Shown
+ * D510: 新任务默认 / New tasks start: where every new task starts and who does it, set once. Shown
  * only where there is a choice (two computers, two agents); 自动 / Automatic is Ducter's own pick.
  * The partner's new_tasks tool writes the same setting from the person's words.
  */

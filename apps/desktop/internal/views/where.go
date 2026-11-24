@@ -125,7 +125,7 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 	case "moved":
 		return a.L.T("where.reason.moved", w.Other, dev)
 	case "you":
-		if w.RuleID == "new_tasks" { // D507: New tasks start named this computer
+		if w.RuleID == "new_tasks" { // D510: New tasks start named this computer
 			return a.L.T("where.reason.newtasks", dev)
 		}
 		if w.Text != "" {

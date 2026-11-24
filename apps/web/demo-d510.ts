@@ -1,9 +1,9 @@
-// A demo core for D507 (新任务默认 / New tasks start): the author's setup from his report. hel is the
+// A demo core for D510 (新任务默认 / New tasks start): the author's setup from his report. hel is the
 // home (a server that never sleeps; Codex and Claude Code), a MacBook does tasks for it (both agents,
 // the person's Chrome, the repository's clone). DEMO_SET=1: New tasks start is hel and Codex, and the
 // handed-over GitHub to-do runs there, its meta saying so. Real core and real web client; the
 // runner is the stub, the worker a socket that says hello.
-//   DUCTER_PORT=7841 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_SET=1 bun apps/web/demo-d507.ts
+//   DUCTER_PORT=7841 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_SET=1 bun apps/web/demo-d510.ts
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 

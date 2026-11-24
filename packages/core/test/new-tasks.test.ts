@@ -1,4 +1,4 @@
-// D507: 新任务默认 / New tasks start. The author's report (2026-11-24): a GitHub to-do handed over
+// D510: 新任务默认 / New tasks start. The author's report (2026-11-24): a GitHub to-do handed over
 // from the conversation went to the MacBook (the clone there builds first, D395) on Claude Code (the
 // default's smartest). With New tasks start set to hel and Codex, every later task goes there when
 // it can, and hard facts (the person's Chrome, a Mac app, a rule for a kind of work, a pin) still win.

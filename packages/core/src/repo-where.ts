@@ -5,7 +5,7 @@
 //
 // The order (D385's, generalized):
 //   1. a computer the person named in words (or the place's own device when the partner set one);
-//   2. a where-rule (a rule with a computer whose words match the work, D89/D372); then (D507)
+//   2. a where-rule (a rule with a computer whose words match the work, D89/D372); then (D510)
 //      the computer New tasks start names, when it is awake and has a copy or its git can read it;
 //   3. a computer that has a clone of it: the one that can build first (a Mac, then a worker, then
 //      a bare server home), then the most recently touched copy;
@@ -51,7 +51,7 @@ export interface RepoWhereDeps {
   /** What a folder on that computer is (exists, a repo, its origin). */
   folder(device: string, path: string, ms: number): Promise<FolderInfo | "offline">;
   rules?(): RuleView[];
-  /** D507: the computer New tasks start names ("local" or a worker's id), when the person set one. */
+  /** D510: the computer New tasks start names ("local" or a worker's id), when the person set one. */
   prefer?(): string | undefined;
   now?(): number;
   keepMs?: number;
@@ -74,7 +74,7 @@ export interface RepoAsk {
 export type RepoWhere =
   | {
       ok: true;
-      /** given: the caller's place checked out; named / rule / prefer (D507) / found: a clone there; clone: cloned there first. */
+      /** given: the caller's place checked out; named / rule / prefer (D510) / found: a clone there; clone: cloned there first. */
       how: "given" | "named" | "rule" | "prefer" | "found" | "clone";
       place: RepoPlace;
       /** The computer's name, said to the person. */
@@ -214,7 +214,7 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
         }
         // A where-rule's computer can't read it: one that has it, if any, is still better than none.
       }
-      // D507: New tasks start names a computer: its copy there, else a clone there when its own git
+      // D510: New tasks start names a computer: its copy there, else a clone there when its own git
       // can read it. Asleep, away or unable to read it: the copies elsewhere decide, as before.
       const preferred = pinned ? undefined : byId(d.prefer?.());
       if (preferred?.online) {

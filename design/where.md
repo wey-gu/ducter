@@ -119,7 +119,7 @@ asked of the user: every fact comes from a computer's hello or its ability state
    that lives on one computer pins that computer too.
 4. **Least access that does the job**: among rows that meet the needs, Ducter's own browser
    over the user's Chrome; a computer with only the site's sign-in over one with all of them.
-5. **New tasks start** (D507, §22): the computer the person set as the default, then their default
+5. **New tasks start** (D510, §22): the computer the person set as the default, then their default
    agent. Under what the task needs, so a default never sends signed-in work away from their Chrome.
 5b. **Keeps going**: for long or ongoing work, a computer that doesn't sleep.
 6. **Continuity**: where the task's worktree, session or the user's uncommitted work is; where
@@ -531,7 +531,7 @@ start, and D385's hand-over of several (the sheet's Where default, and the place
    place's own device when the partner set one; when that computer can't read the repository the
    facts go back to the partner (which computers have a copy), never a quiet move elsewhere (D477);
 2. a where-rule (a rule with a computer whose words match the work);
-2b. (D507) the computer **新任务默认 / New tasks start** names, when it is awake: its own copy, else a
+2b. (D510) the computer **新任务默认 / New tasks start** names, when it is awake: its own copy, else a
    clone there when its own git can read it; otherwise the next step decides, as before;
 3. with no computer named, a computer that has a clone: the one that builds first (a Mac 2, a
    worker 1, a server home 0), then the most recently touched copy; where it went is said back to
@@ -711,7 +711,7 @@ once. Research: research/219.
 - **Not yet:** a second account on the same computer (a Ducter-owned config folder), a key as a
   route the person agrees to, the partner's own turns on another account (`design/todo.md`).
 
-## 22. New tasks start where and with whom you said (D507)
+## 22. New tasks start where and with whom you said (D510)
 
 **Who.** The author, 2026-11-24: the partner told him about a newly assigned GitHub issue, he tapped
 交给 Ducter, and it ran on his MacBook on Claude Code. **Why (VERIFIED in code):** a GitHub to-do names

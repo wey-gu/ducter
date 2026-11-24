@@ -2206,7 +2206,7 @@ function whoSentence(task: Task): string {
   const who = whoName(harnessOf(task), m);
   if (!who) return "";
   const w = whoOf(task)?.why;
-  // D507: New tasks start named the agent (or named one that couldn't take it here).
+  // D510: New tasks start named the agent (or named one that couldn't take it here).
   if (w?.ruleId === "new_tasks") return w.kind === "rule" ? t("who.sentence.newtasks", who) : t("who.sentence.newtasks.away", who, harnessName(w.from ?? ""));
   if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
   if (w?.kind === "said" && w.text) return t("who.sentence.said", who, w.text);

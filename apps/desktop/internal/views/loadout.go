@@ -696,7 +696,7 @@ func (a *App) tasksGroup(c *ui.Context) {
 			if d.Work == "errand" && errandRule {
 				continue
 			}
-			// D507: New tasks start naming an agent speaks for the built-in default.
+			// D510: New tasks start naming an agent speaks for the built-in default.
 			if st := a.S.Settings; st != nil && st.NewTasks != nil && st.NewTasks.Agent != "" {
 				continue
 			}
@@ -716,7 +716,7 @@ func (a *App) tasksGroup(c *ui.Context) {
 	a.saidLine(c, "tasks")
 }
 
-// taskComputers are the computers that run tasks (D507): the home and the
+// taskComputers are the computers that run tasks (D510): the home and the
 // computers doing tasks for it, from the devices frame.
 func (a *App) taskComputers() []protocol.DeviceView {
 	var out []protocol.DeviceView
@@ -750,7 +750,7 @@ func (a *App) taskAgents() []string {
 	return out
 }
 
-// newTasksGroup is 新任务默认 / New tasks start (D507): where every new task
+// newTasksGroup is 新任务默认 / New tasks start (D510): where every new task
 // starts and who does it, set once, shown only where there is a choice (two
 // computers, two agents). 自动 / Automatic is Ducter's own pick. The partner's
 // new_tasks tool writes the same setting from the person's words.
@@ -931,7 +931,7 @@ func (a *App) whoLine(task *store.Task) (who, why string) {
 	if w == nil {
 		return who, ""
 	}
-	// D507: New tasks start named the agent (or one that couldn't take it here).
+	// D510: New tasks start named the agent (or one that couldn't take it here).
 	if w.Why.RuleID == "new_tasks" {
 		if w.Why.Kind == "rule" {
 			return who, a.L.T("who.why.newtasks")
@@ -1346,7 +1346,7 @@ func (a *App) whoSentence(task *store.Task) string {
 	if w == nil {
 		return a.L.T("who.sentence", who)
 	}
-	if w.Why.RuleID == "new_tasks" { // D507
+	if w.Why.RuleID == "new_tasks" { // D510
 		if w.Why.Kind == "rule" {
 			return a.L.T("who.sentence.newtasks", who)
 		}

@@ -53,7 +53,7 @@ interface SettingsFile {
   localAgents?: boolean;
   /** D451: the first-time lines already met, on any device. */
   met?: string[];
-  /** D507: 新任务默认 / New tasks start (where: "local" or a worker's id; agent: a harness id). */
+  /** D510: 新任务默认 / New tasks start (where: "local" or a worker's id; agent: a harness id). */
   newTasks?: NewTasks;
 }
 
@@ -61,7 +61,7 @@ interface SettingsFile {
 const agentList = (v: unknown): string[] | undefined =>
   Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string").map((x) => x.trim().replace(/\s+/g, " ").slice(0, 80)).filter(Boolean))].slice(0, 50) : undefined;
 
-/** D507: a New tasks start value as kept: a computer id (one line, ≤ 64) and a harness that runs tasks. */
+/** D510: a New tasks start value as kept: a computer id (one line, ≤ 64) and a harness that runs tasks. */
 export function cleanNewTasks(v: unknown): NewTasks {
   const o = (v && typeof v === "object" ? v : {}) as { where?: unknown; agent?: unknown };
   const where = typeof o.where === "string" ? o.where.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64) : "";
@@ -374,7 +374,7 @@ export function openSettings(opts: {
         (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.limitHandoff === "boolean" && (data.limitHandoff === true) !== patch.limitHandoff) (data.limitHandoff = patch.limitHandoff), did.push("limitHandoff");
-      // D507: New tasks start: the whole object as sent ({} clears it); junk fields are dropped.
+      // D510: New tasks start: the whole object as sent ({} clears it); junk fields are dropped.
       if (patch.newTasks && typeof patch.newTasks === "object") {
         const next = cleanNewTasks(patch.newTasks);
         if (JSON.stringify(next) !== JSON.stringify(cleanNewTasks(data.newTasks ?? {}))) {

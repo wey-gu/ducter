@@ -470,7 +470,7 @@ Every pane but Memory, Agent messaging and On hand rendered against `demo-settin
 - **Two actions never say the same thing.** A linked chat app's account row says **换个账号 / Use another
   account**, not 解除连接 / Unlink above 断开 Telegram.
 
-## New tasks start (D507)
+## New tasks start (D510)
 
 **Who:** H with a server and a laptop who wants work off the lid; C with one favourite agent. F with one
 computer and one agent never sees it. **Where:** Settings › Partner, its own group **新任务默认 / New tasks
@@ -482,7 +482,7 @@ has a choice. Each line says what the choice does in one or two clauses (**能�
 或者要用别处才有的（你的 Chrome、某个 App），就换一台。**); the foot says it can be said in the conversation
 too. The said line after a tap: **新任务默认在 hel 上做 / New tasks now start on hel**, **新任务默认交给 Codex**,
 back to automatic **新任务在哪儿做，又由 {name} 来挑**. While an agent is set, 做事的's built-in rows (errands,
-code and the rest) step aside: the default speaks for them. Shots: `.shots/d507-new-tasks/` (Mac 1280,
+code and the rest) step aside: the default speaks for them. Shots: `.shots/d510-new-tasks/` (Mac 1280,
 web 1400 and 390, zh, light and dark). `design/where.md` §22 has the mechanics.
 
 ## Not done

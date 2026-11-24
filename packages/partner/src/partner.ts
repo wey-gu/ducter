@@ -1822,7 +1822,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const home = core.homeDevice?.();
     const nt = core.settings?.get().newTasks;
     const workersNow = core.workers?.list() ?? [];
-    // D507: New tasks start, by name, so the partner leaves place.device and harness to it.
+    // D510: New tasks start, by name, so the partner leaves place.device and harness to it.
     const ntWhere = nt?.where ? (nt.where === "local" ? home?.name || "local" : workersNow.find((w) => w.id === nt.where)?.name) : undefined;
     const devices = renderDevices(workersNow, home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()), core.settings?.get().limitHandoff === true, nt ? { ...(ntWhere ? { where: ntWhere } : {}), ...(nt.agent ? { agent: nt.agent } : {}) } : undefined);
     if (devices) deltas.push(devices);
@@ -6200,7 +6200,7 @@ export function renderDevices(
   limits?: AgentLimitFact[],
   now = new Date(),
   handoff?: boolean,
-  /** D507: New tasks start (a computer's name, an agent id), when the person set it. */
+  /** D510: New tasks start (a computer's name, an agent id), when the person set it. */
   newTasks?: { where?: string; agent?: string },
 ): string {
   // A home alone shows no line (nothing to place), unless an agent's limit there is known (D478).

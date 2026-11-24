@@ -104,7 +104,7 @@ export interface HandoverDeps {
   /** The computers: the home first ("local"), then the workers (id and name). */
   computers: () => { device: string; name: string }[];
   rules: () => RuleView[];
-  /** D507: New tasks start (where: "local" or a worker's id; agent: a harness), when the person set it. */
+  /** D510: New tasks start (where: "local" or a worker's id; agent: a harness), when the person set it. */
   newTasks?: () => { where?: string; agent?: string } | undefined;
   /**
    * D395: the one resolver task_open uses (core/src/repo-where.ts): which computer has the
@@ -698,7 +698,7 @@ export function createHandover(d: HandoverDeps): Handover {
       const c = comps.find((x) => x.device === dev);
       if (c) where = resolved.how === "clone" ? { device: c.device, name: c.name, why: "repo", said: repos[0], clone: true } : { device: c.device, name: c.name, why: resolved.how === "prefer" ? "default" : "repo", said: repos[0], hasRepo: true };
     }
-    // D507: New tasks start's computer, for work with no repository (a repository's went through the resolver).
+    // D510: New tasks start's computer, for work with no repository (a repository's went through the resolver).
     const nt = d.newTasks?.();
     if (!where && !repos.length && nt?.where) {
       const c = comps.find((x) => x.device === nt.where);
@@ -830,7 +830,7 @@ export function createHandover(d: HandoverDeps): Handover {
     if (o.subject?.trim()) st.recent = [o.subject.trim().slice(0, 40), ...(st.recent ?? []).filter((s) => subjectKey(s) !== subjectKey(o.subject!))].slice(0, SUGGEST_MAX);
     const device = o.device && d.computers().some((c) => c.device === o.device) ? o.device : h.where.device;
     const devName = d.computers().find((c) => c.device === device)?.name ?? device;
-    // D507: New tasks start's agent is never a pin: each task's pick honours it where it can run.
+    // D510: New tasks start's agent is never a pin: each task's pick honours it where it can run.
     const harness = o.harness || (h.who.why === "default" ? undefined : h.who.harness);
     const { places } = await d.places().catch(() => ({ places: [] as PlaceChoice[] }));
     const lang = d.lang();

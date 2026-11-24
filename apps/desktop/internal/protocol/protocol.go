@@ -1761,12 +1761,12 @@ type Settings struct {
 	// Met are the first-time lines already met on any device (D451); nil
 	// from a home too old to keep them (then none is ever shown).
 	Met []string `json:"met"`
-	// NewTasks (D507) is 新任务默认 / New tasks start: where ("local" or a
+	// NewTasks (D510) is 新任务默认 / New tasks start: where ("local" or a
 	// worker's id) and which agent every new task starts with; nil: Ducter picks.
 	NewTasks *NewTasks `json:"newTasks,omitempty"`
 }
 
-// NewTasks is the person's default for new tasks (D507); an empty field is
+// NewTasks is the person's default for new tasks (D510); an empty field is
 // Ducter's own pick.
 type NewTasks struct {
 	Where string `json:"where,omitempty"`
@@ -1791,7 +1791,7 @@ type SettingsPatch struct {
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
 	// Met adds first-time lines met here (D451); never removes.
 	Met []string `json:"met,omitempty"`
-	// NewTasks replaces New tasks start whole (D507); a pointer to an empty
+	// NewTasks replaces New tasks start whole (D510); a pointer to an empty
 	// value clears it.
 	NewTasks *NewTasks `json:"newTasks,omitempty"`
 }

@@ -649,7 +649,7 @@ export function neverPick<P extends { harness: string; model?: string; why: Body
 }
 
 /**
- * D507: 新任务默认 / New tasks start, as the person said it in the conversation ("以后默认在 hel 上跑，
+ * D510: 新任务默认 / New tasks start, as the person said it in the conversation ("以后默认在 hel 上跑，
  * 用 Codex"): the same setting Settings › Partner writes (Settings.newTasks). The partner judges the
  * words; code only checks the names (a computer of this home, an agent that does tasks).
  */

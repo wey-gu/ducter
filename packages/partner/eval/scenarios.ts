@@ -2370,7 +2370,7 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
     rubric: "A standing preference about who does a kind of work. It keeps it as a rule (rule_save) and says it back in one short Chinese line in the user's terms (e.g. 好，以后 HawDB 的事交给 Codex。). No task opened, no explanation of rules or harnesses.",
   },
-  // D507: a default for every new task (where and who), said once, not a kind of work: New tasks start.
+  // D510: a default for every new task (where and who), said once, not a kind of work: New tasks start.
   {
     id: "new-tasks-default-zh",
     category: "rules",

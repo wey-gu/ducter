@@ -147,8 +147,12 @@ computer.
 
 If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out knowing who you are
 and what you're working on, from the same memory the AI tools you use elsewhere share. When it saves
-something worth keeping, its reply's **Details** shows one quiet line: **Noted “<what it
-saved>”**, with **Forget**. **Settings › Memory** lists them under **What it noted**.
+something worth keeping, one quiet line shows under its reply: **Noted “<what it saved>”**, with
+**Don't keep this** until you say something next; after that it folds into the reply's **Details**,
+with **Forget**. When something it remembered changed an answer, one quiet line under the answer says
+where from, such as **Remembered from what you said on Nov 10**; tap it to see the memory. **Settings ›
+Memory** shows **What I know about you** and what it noted this week. It saves only what you said
+yourself, in your words; it never keeps something it guessed from how you react.
 It also reads, never writes, the day's focus your Nowledge Mem keeps for you, so it knows what
 you're on when it suggests what to do first or picks the morning's few things; it never repeats it
 back. Ask it how you did something in another AI tool ("how did I fix this in Codex last week?")

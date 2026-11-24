@@ -12280,6 +12280,10 @@ button.chip-file {
 .chat-aside .btn.text {
   margin-inline-start: -10px;
 }
+/* D554: a quiet link in a step lines its words up with the step's text (its padding is for the hover). */
+.chat-step .grow > .btn.text {
+  margin-inline-start: -10px;
+}
 .chat-aside .chat-chip + .btn.text {
   margin-inline-start: 0;
 }

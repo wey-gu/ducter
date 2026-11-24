@@ -504,14 +504,10 @@ function MemHealthHead({ b }: { b: BridgeView | undefined }) {
   } else if (h.look === "signed_out") {
     (line = t("mem.health.signed_out")), (tone = "bad");
     if (!signing) act = <Btn kind="primary" size="sm" label={t("mem.health.signin")} about="Nowledge Mem" onClick={() => setSigning(true)} />;
-  } else if (h.look === "plugin") {
-    const who = agentWords(h.agents);
-    if (h.busy) (line = t("mem.health.plugin.busy", who)), (tone = undefined);
-    else {
-      (line = t("mem.health.plugin", who)), (tone = "bad");
-      if (homeDv) act = <Btn kind="primary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => h.agents.forEach((a) => A.installMem(homeDv.id, a))} />;
-    }
   }
+  // D554: an agent without Mem's plugin is an offer under the head, never Mem itself in the failed ink.
+  const p = h.look === "ok" ? h.plugin : undefined;
+  const who = p ? agentWords(p.agents) : "";
   const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
   const go = () => {
     if (!link.trim()) return;
@@ -523,7 +519,11 @@ function MemHealthHead({ b }: { b: BridgeView | undefined }) {
       <GHead tile={<MemTile faded={tone === "bad"} />} name="Nowledge Mem" line={line} tone={tone}>
         {act}
       </GHead>
-      {h.look === "plugin" && !h.busy && <GBlock><small class="mem-health-why">{t("mem.health.plugin.why")}</small></GBlock>}
+      {p && (
+        <GRow title={t("mem.health.plugin", who)} line={p.busy ? t("mem.health.plugin.busy", who) : t("mem.health.plugin.why")}>
+          {p.busy ? <Btn kind="secondary" size="sm" busy label={t("mem.health.plugin.going")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => {}} /> : homeDv && <Btn kind="secondary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => p.agents.forEach((a) => A.installMem(homeDv.id, a))} />}
+        </GRow>
+      )}
       {h.look === "signed_out" && signing && (
         <GBlock>
           <small class="mem-health-why">{t("mem.health.resign.how")}</small>
@@ -619,6 +619,13 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
         <span class="chat-mark" aria-hidden="true">2</span>
         <span class="grow">
           <p>{t("mem.step.signin")}</p>
+          {/* D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account. */}
+          {!busySign && (
+            <>
+              <small>{t("mem.step.account")}</small>
+              <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.step.account.go")} />
+            </>
+          )}
           {installed && (
             <>
               {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}

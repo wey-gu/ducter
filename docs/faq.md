@@ -293,12 +293,13 @@ your **Go**. See [Accounts your partner can read](accounts.md).
 
 ### Can it work with my own Claude Code, Codex or other agents?
 
-Coming soon: Nowledge Mem is still opening this up on its side. When it does, any agent of yours
-connected to Nowledge Mem (such as Claude Code, Codex or Grok Build) can message your partner
-through Nowledge Bridge: **Settings › Talk with your other agents** lets the session you have open
-hand your partner a job or ask for your call, and lets your partner ask that session what it knows. Either way, your
-partner checks with you first. Once Nowledge Mem is signed in, it connects by itself; one switch on
-that page turns it all off.
+Yes. Any agent of yours connected to Nowledge Mem (such as Claude Code, Codex or Grok Build) can
+message your partner through Nowledge Bridge: **Settings › Talk with your other agents** lets the
+session you have open hand your partner a job or ask for your call, and lets your partner ask that
+session what it knows. At first your partner checks with you before it takes on a job; on that page
+you can let one of your agents hand it work directly, up to a few tasks a day (past that it asks
+you), switch one back to asking, or stop listening to it. Once Nowledge Mem is signed in, it connects
+by itself; one switch on that page turns it all off.
 
 What it needs, and what you can do today from that same section:
 

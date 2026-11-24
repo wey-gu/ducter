@@ -118,8 +118,10 @@ type memUpd struct {
 // memHealthLook is what the Nowledge Mem head on Memory says about Mem's own
 // health (D375), the web's memHealthLook (mem-view.ts): Look unread (not read
 // yet, or it can't tell: the plain "Connected") | ok | old (CanUpdate, and
-// not when the update row offers it) | unreachable | signed_out | plugin
-// (Agents not connected; Busy while Mem's own command runs).
+// not when the update row offers it) | unreachable | signed_out. D554: ok
+// with Agents is agents on the home without Mem's plugin, an optional offer
+// as a row under the head (Busy while Mem's own command runs), never Mem
+// itself in the failed ink.
 type memHealthView struct {
 	Look      string
 	CanUpdate bool
@@ -163,7 +165,7 @@ func memHealthLook(h *protocol.MemHealth, b *protocol.BridgeView, home []protoco
 		if len(agents) == 0 {
 			return memHealthView{Look: "ok"}
 		}
-		return memHealthView{Look: "plugin", Agents: agents, Busy: busy}
+		return memHealthView{Look: "ok", Agents: agents, Busy: busy}
 	}
 	return memHealthView{Look: "unread"}
 }

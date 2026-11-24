@@ -65,12 +65,12 @@ export function memUpdate(b: BridgeView | undefined): MemUpdate | undefined {
  * unread (not read yet, or it can't tell: the plain "Connected"), ok (one calm line), or the one thing
  * wrong with its one action: old (this nmem has no doctor; Update when Ducter can run it, and not
  * when the update row already offers it), unreachable (Check again), signed_out (Sign in again: the
- * link field in place), plugin (these agents aren't connected: Connect, Mem's own command; busy while
- * it runs).
+ * link field in place). D554: agents on the home without Mem's plugin are optional, so Mem itself reads
+ * ok, with `plugin` (Connect, Mem's own command; busy while it runs) as a quiet row under the head.
  */
 export type MemHealthLook =
   | { look: "unread" }
-  | { look: "ok" }
+  | { look: "ok"; plugin?: { agents: string[]; busy: boolean } }
   | { look: "old"; canUpdate: boolean }
   | { look: "unreachable" }
   | { look: "signed_out" }
@@ -91,7 +91,7 @@ export function memHealthLook(h: MemHealth | undefined, b: BridgeView | undefine
       // An agent Mem's command just put in is connected: the next read says so.
       const agents = (h.agents ?? []).filter((a) => !home.find((x) => x.harness === a)?.mem?.fresh);
       if (!agents.length) return { look: "ok" };
-      return { look: "plugin", agents, busy: agents.some((a) => !!home.find((x) => x.harness === a)?.mem?.busy) };
+      return { look: "ok", plugin: { agents, busy: agents.some((a) => !!home.find((x) => x.harness === a)?.mem?.busy) } };
     }
   }
   return { look: "unread" };

@@ -23,11 +23,11 @@ test("unreachable and signed out are said as they are", () => {
   expect(memHealthLook({ issue: "signed_out" }, b())).toEqual({ look: "signed_out" });
 });
 
-test("plugin: the agents left, busy while Mem's own command runs, gone once it put one in", () => {
+test("plugin (D554: Mem itself ok, the agents an offer under it): the agents left, busy while Mem's own command runs, gone once it put one in", () => {
   const h = { issue: "plugin" as const, agents: ["claude-code", "codex"] };
-  expect(memHealthLook(h, b(), [])).toEqual({ look: "plugin", agents: ["claude-code", "codex"], busy: false });
-  expect(memHealthLook(h, b(), [{ harness: "codex", mem: { state: "absent", busy: true } }])).toEqual({ look: "plugin", agents: ["claude-code", "codex"], busy: true });
-  expect(memHealthLook(h, b(), [{ harness: "claude-code", mem: { state: "installed", fresh: true } }])).toEqual({ look: "plugin", agents: ["codex"], busy: false });
+  expect(memHealthLook(h, b(), [])).toEqual({ look: "ok", plugin: { agents: ["claude-code", "codex"], busy: false } });
+  expect(memHealthLook(h, b(), [{ harness: "codex", mem: { state: "absent", busy: true } }])).toEqual({ look: "ok", plugin: { agents: ["claude-code", "codex"], busy: true } });
+  expect(memHealthLook(h, b(), [{ harness: "claude-code", mem: { state: "installed", fresh: true } }])).toEqual({ look: "ok", plugin: { agents: ["codex"], busy: false } });
   expect(memHealthLook(h, b(), ["claude-code", "codex"].map((harness) => ({ harness, mem: { state: "installed", fresh: true as const } })))).toEqual({ look: "ok" });
 });
 

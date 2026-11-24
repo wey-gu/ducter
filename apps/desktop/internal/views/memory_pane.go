@@ -566,27 +566,29 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 				}
 			}
 		}
-	case "plugin":
+	}
+	a.headRow(c, "mem-app", a.memTile(c, tone == sideFailed), "Nowledge Mem", line, tone, act)
+	// D554: an agent without Mem's plugin is an offer under the head, never
+	// Mem itself in the failed ink.
+	if h.Look == "ok" && len(h.Agents) > 0 {
 		who := a.memAgentsWords(h.Agents)
+		about := spoken(a.L, who, "Nowledge Mem")
+		sub := a.L.T("mem.health.plugin.why")
+		var ctl func()
 		if h.Busy {
-			line, tone = a.L.T("mem.health.plugin.busy", who), sideMuted
+			sub = a.L.T("mem.health.plugin.busy", who)
 			c.After(500e6)
-		} else {
-			line, tone = a.L.T("mem.health.plugin", who), sideFailed
-			if home != nil {
-				act = func() {
-					if a.buttonFor(c, a.L.T("mem.health.plugin.go"), spoken(a.L, who, "Nowledge Mem"), btnPrimary, t.ControlSM, t.Surface) {
-						for _, x := range h.Agents {
-							a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: home.ID, Harness: x})
-						}
+			ctl = func() { a.busyButton(c, a.L.T("mem.health.plugin.going"), about, t.ControlSM, t.Surface) }
+		} else if home != nil {
+			ctl = func() {
+				if a.buttonFor(c, a.L.T("mem.health.plugin.go"), about, btnSecondary, t.ControlSM, t.Surface) {
+					for _, x := range h.Agents {
+						a.installMem(home.ID, x)
 					}
 				}
 			}
 		}
-	}
-	a.headRow(c, "mem-app", a.memTile(c, tone == sideFailed), "Nowledge Mem", line, tone, act)
-	if h.Look == "plugin" && !h.Busy {
-		a.textBlock(c, "mem-health-why", func() { a.note(c, a.L.T("mem.health.plugin.why")) })
+		a.tileRow(c, "mem-plugin", nil, a.L.T("mem.health.plugin", who), sub, ctl)
 	}
 	if h.Look == "signed_out" && a.memReSign {
 		a.textBlock(c, "mem-resign", func() {
@@ -825,6 +827,13 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 		}
 		// 2. Sign in.
 		a.chatStep(c, 2, a.L.T("mem.step.signin"), func() {
+			// D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account.
+			if phase != "signing_in" {
+				a.note(c, a.L.T("mem.step.account"))
+				if a.quietLink(c, "mem-account", a.L.T("mem.step.account.go"), a.L.T("mem.step.account.go")) {
+					a.openLink(memSite)
+				}
+			}
 			if !installed {
 				return
 			}

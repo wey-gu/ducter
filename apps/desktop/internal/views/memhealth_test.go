@@ -33,7 +33,7 @@ func TestMemHealthLookGo(t *testing.T) {
 		{&protocol.MemHealth{Issue: "old"}, &protocol.BridgeView{State: "update_mem", CanRun: true}, nil, memHealthView{Look: "unread"}},
 		{&protocol.MemHealth{Issue: "unreachable"}, on, nil, memHealthView{Look: "unreachable"}},
 		{&protocol.MemHealth{Issue: "signed_out"}, on, nil, memHealthView{Look: "signed_out"}},
-		{&protocol.MemHealth{Issue: "plugin", Agents: []string{"claude-code", "codex"}}, on, []protocol.DeviceHarness{{Harness: "codex", Mem: &protocol.MemPluginView{State: "absent", Busy: true}}}, memHealthView{Look: "plugin", Agents: []string{"claude-code", "codex"}, Busy: true}},
+		{&protocol.MemHealth{Issue: "plugin", Agents: []string{"claude-code", "codex"}}, on, []protocol.DeviceHarness{{Harness: "codex", Mem: &protocol.MemPluginView{State: "absent", Busy: true}}}, memHealthView{Look: "ok", Agents: []string{"claude-code", "codex"}, Busy: true}},
 		{&protocol.MemHealth{Issue: "plugin", Agents: []string{"codex"}}, on, []protocol.DeviceHarness{{Harness: "codex", Mem: &protocol.MemPluginView{State: "installed", Fresh: true}}}, memHealthView{Look: "ok"}},
 	}
 	for i, c := range cases {

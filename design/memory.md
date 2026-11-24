@@ -130,7 +130,8 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   asking something Mem may know. **Two per turn at most** (D490): each result says how many are
   left (`searchesLeftThisTurn`) and a third is refused; no word of the person's lifts it. Hits
   come back compact (title, ≤280 chars, date, kind; no ids or Spaces). They are background:
-  never pasted, never "I searched". Recall is invisible in the UI.
+  never pasted, never "I searched". The partner's words never show the search; when a recall
+  changed the answer, one quiet **想起了 / Remembered** line under it says from where (D304, below).
 - **`memory_add(title, content, said, importance?)`** for a stated preference, a decision, or a
   durable fact about the user's work or people (D490, grounded writes). `said` is the person's own
   words it rests on (or a task's report's, for a `remember` a task proposed), copied exactly: the
@@ -681,6 +682,9 @@ nmem reads it, `todo.md`).
 the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothing shows). Evidence:
 `research/144`.
 
+- **Before Mem is connected (D554):** step 2, sign in, opens with what it needs in the person's
+  words, **这一步要一个 Nowledge Mem 账号。还没有的话，先去 Nowledge Mem 的网站免费注册一个，再回来登录。**,
+  and the quiet link **去注册 Nowledge Mem** to mem.nowledge.co, from the first phase on.
 - **The read:** Mem's own `nmem --json doctor` (`protocol/src/mem-health.ts`): old (no doctor),
   unreachable (a saved address not answering; on the home also Mem's built-in default), signed_out
   (answers, refuses the key; *fresh* when never signed in), plugin (an installed Claude Code or Codex
@@ -690,8 +694,10 @@ the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothi
   glance; again after a sign-in, an update or Mem's own `connect`; `MemView.health`. The head says
   **已连上** until the first answer, then **已连上，一切正常**, or the one thing wrong in the failed ink
   with its one action: 更新 (when Ducter can run it, and not twice with the update row), 再看一次
-  (`mem_health`), 重新登录 (the link field in place under its own line: regenerate the connect prompt in Mem's Settings › Connectors), 接上 (D169's install for each agent, so Mem's own
-  command).
+  (`mem_health`), 重新登录 (the link field in place under its own line: regenerate the connect prompt in Mem's Settings › Connectors).
+  D554: plugin is not Mem in trouble: the head reads all well, and under it one quiet row,
+  **{agents} 还没接上 Nowledge Mem** with what it gives and **接上** (D169's install for each agent, so
+  Mem's own command; the busy button **接上中…** while it runs).
 - **A lent computer** (`core/worker-mem.ts`): the same read rides on `DeviceMemView.health` (and
   `ours` when its nmem is Ducter's copy); while the row would ask to sign in it says unreachable
   (再看一次, no paste box), an expired sign-in (the box), or too old (更新 by `uv tool upgrade

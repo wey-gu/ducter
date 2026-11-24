@@ -262,10 +262,14 @@ What your partner remembers about you has its own section, **Memory**.
   **Updated to 0.7.38; start Claude Code again to use it**. Nothing happens until you tap, and when
   every agent is up to date there is no row at all. The agent's own detail in **Your devices**
   says the same.
+- When Claude Code or Codex on the computer Ducter runs on isn't connected to Nowledge Mem yet, a
+  quiet row under Nowledge Mem says so, with **Connect**. Nowledge Mem itself still reads as working:
+  your partner's memory doesn't need it.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
   conversation on its own. This section then says what Nowledge Mem adds and walks you through it
   in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and
-  **Sign in to your Nowledge Mem**: paste what Nowledge Mem copies when you click **Generate
+  **Sign in to your Nowledge Mem**, which needs a Nowledge Mem account (**Sign up for Nowledge Mem**
+  takes you to its site if you don't have one yet): paste what Nowledge Mem copies when you click **Generate
   connect link & copy prompt** under its **Settings › Connectors › Any AI agent**. Already use the Nowledge Mem app?
   Open it on that computer and your partner finds it.
 - When the Nowledge Mem app on that computer is closed, the section says **Nowledge Mem isn't open**.

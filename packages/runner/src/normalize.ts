@@ -43,6 +43,8 @@ interface HarnessTask {
   ended: boolean;
   /** D515: a tool call still running when its turn completed (a Codex background terminal), by its call id. */
   call?: boolean;
+  /** D518: the tool that started it (Claude Code's Monitor names a watch). */
+  tool?: string;
 }
 
 /** D515: how much of a background job's own output its end carries to the task (the tail: where results are). */
@@ -139,7 +141,11 @@ export class Normalizer {
   /** D288: what the native frame said about a compaction about to be read (before / after). */
   private compactNative: NativeCompact | undefined;
 
-  constructor(private readonly usage: () => HarnessEvent["usage"] | undefined) {}
+  /** D518: canStop: the session can stop one task by its id (OAR stopTask); a start says so for the ones it can (never a Codex background terminal: OAR has no stop for a tool call). */
+  constructor(
+    private readonly usage: () => HarnessEvent["usage"] | undefined,
+    private readonly opts: { canStop?: boolean } = {},
+  ) {}
 
   /**
    * D288: what OAR leaves in the native frame, read before the frame's events are pushed: a
@@ -272,6 +278,8 @@ export class Normalizer {
         const id = String(ev.taskId ?? "");
         if (!id) break;
         const task: HarnessTask = { type: String(ev.taskType ?? "other"), description: ev.description, background: ev.background === true, ambient: ev.ambient === true, shown: false, ended: false };
+        const by = typeof ev.toolCallId === "string" ? this.tools.get(ev.toolCallId)?.name : undefined;
+        if (by && /^monitor$/i.test(by)) task.tool = by;
         this.tasks.set(id, task);
         if (task.background) this.show(id, task, out);
         break;
@@ -375,7 +383,8 @@ export class Normalizer {
   private bgEvent(id: string, task: HarnessTask, act: BackgroundAct, said: BackgroundSaid = {}): HarnessEvent {
     const what = taskWords(task.description);
     const text = { started: "running in the background", ended: "finished in the background", stopped: "stopped in the background", failed: "failed in the background" }[act];
-    return { role: "system", text: what ? `${text}: ${what}` : text, raw: { kind: "background", background: { id, act, type: task.type, ...(what ? { what } : {}), ...said } } };
+    const stop = act === "started" && this.opts.canStop && !task.call;
+    return { role: "system", text: what ? `${text}: ${what}` : text, raw: { kind: "background", background: { id, act, type: task.type, ...(task.tool ? { tool: task.tool } : {}), ...(what ? { what } : {}), ...said, ...(stop ? { stop: true } : {}) } } };
   }
 
   /** Flush buffered text (e.g. on stream end). */

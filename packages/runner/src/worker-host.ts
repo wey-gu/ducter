@@ -195,7 +195,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       harnessOf.set(a.key, String(a.spec?.harness ?? ""));
       // Answer first, then stream: the main registers its listener when the answer lands.
       setTimeout(() => void pump(a.key, s), 0);
-      return { sessionId: idOf(s), canSteer: s.canSteer };
+      return { sessionId: idOf(s), canSteer: s.canSteer, ...(typeof s.stopBackground === "function" ? { canStop: true } : {}) };
     },
     async send(a) {
       const s = need(a.key);
@@ -212,6 +212,13 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     },
     async interrupt(a) {
       await need(a.key).interrupt();
+      return {};
+    },
+    // D518: one background job of a session here, stopped by its agent's own stop.
+    async stopBackground(a) {
+      const s = need(a.key);
+      if (!s.stopBackground) throw new Error("this agent can't stop one job by itself");
+      await s.stopBackground(String(a.id ?? ""));
       return {};
     },
     async close(a) {

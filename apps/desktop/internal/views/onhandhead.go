@@ -592,6 +592,12 @@ func (a *App) whereMeta(task *store.Task) []string {
 	} else if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
 		meta = append(meta, task.Card.Helper.Name)
 	}
+	// D518: a running task's one quiet fact, its agent's jobs still running in the background.
+	if task.Card != nil && !finishedAtt(task.Attention()) && task.Attention() != protocol.Dropped {
+		if n := protocol.BgRunning(task.Card.Background); n > 0 {
+			meta = append(meta, a.L.T("bg.onhand", n))
+		}
+	}
 	return meta
 }
 

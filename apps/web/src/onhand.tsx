@@ -10,7 +10,7 @@ import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
-import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -699,6 +699,13 @@ export function whereMeta(task: Task): string[] {
   return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
+/** D518: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
+export function bgFact(task: Task): string[] {
+  const a = attention(task);
+  const n = bgRunning(task.card?.background);
+  return n > 0 && !finished(task) && a !== "dropped" && a !== "superseded" ? [t("bg.onhand", n)] : [];
+}
+
 /** D507: the tasks the board draws under their helper right now (so their rows don't name it again). */
 let NESTED = new Set<string>();
 
@@ -871,7 +878,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const wide = room !== "phone";
   // D261: where, quietly: its project when the board shows all of them, its computer with two or
   // more. Who does it and its branch are in the task.
-  const meta = room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : [];
+  const meta = [...(room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : []), ...bgFact(task)];
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
@@ -1026,6 +1033,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
   if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
+  meta.push(...bgFact(task));
   const pb = placeOf(task);
   const beat = task.acting
     ? t(`result.acting.${task.acting}`, pb.kind === "repo" ? (pb.baseBranch ?? "main") : "")
@@ -1253,7 +1261,7 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, bgRunning(c?.background), c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
 type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };

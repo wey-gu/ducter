@@ -101,6 +101,57 @@ and its output, D210; a server-owned terminal is a phase of its own, todo), the 
 harness reports one Ducter can show faithfully yet), comments on diff lines sent as context
 (todo).
 
+## In the background, over the composer (D518)
+
+What the task's own agent still runs beside its turn, in the opened task (the conductor depth),
+always in view while it runs: not a workbench page (that is hidden until asked for), a tray just
+above the composer. Code: `packages/protocol/src/background.ts` (the fold, the types),
+`packages/core/src/background.ts` (the index on the Log), `apps/web/src/bg-tray.tsx`,
+`apps/desktop/internal/views/bgtray.go`.
+
+- **Who:** the heavy developer whose Claude Code task runs a 40-minute bench, two subagents and a
+  Monitor on the log at once, and wants to see and stop one without stopping the task; the
+  consumer whose task said "running it in the background" and wants to know it is still going;
+  the fresh user, who meets it only when an agent goes to the background, as one plain row.
+- **Felt before:** the transcript said 在后台跑着 once, far up; nothing said what still ran, how
+  long, or let one be stopped; the composer's Pause stopped the whole turn. **After:** 放心 (what
+  runs, always in view, quietly), 好用 (one runaway stopped in one click), 顺滑 (folds away).
+- **Where it comes from:** the runner logs each start and end as a system `task_event` with
+  `raw.background` `{ id, act, type, tool?, what?, exitCode?, output? (its last 600 chars),
+  summary?, stop?, by? }` (D515's normalize.ts; Claude Code's background shells, Monitor and
+  subagents, Codex's background terminals and subagents, DeepSeek Harness's jobs, any agent OAR
+  reports tasks for). Core folds a task's acts into `TaskCard.background` `{ jobs, done }`: every
+  job still running and the newest 30 finished, each `{ id, kind (shell | agent | watch | other),
+  title (its own words, else its command, cut at a word end at 72), at, state (running | done |
+  failed | stopped | unknown), endedAt, exit, tail, stop }`. Read once per task from its stream,
+  then kept as the Log grows. A job whose session went (Ducter restarted, the session was let go,
+  the 12-hour ceiling) is **unknown**, never running forever.
+- **Shape:** a sunken tray (`SurfaceSunken`, a `LineSoft` hairline, `RadiusMD`) on the composer's
+  measure, built from the shared `TrayRow` / `trayRow` and `IconBtn` / `iconButton`. Its head:
+  **后台 {n} 个在跑 / {n} running in the background**, how long the oldest has run, the chevron.
+  One row per job: the kind's drawn mark (the transcript's prompt for a shell, its hand-off arrow
+  for a subagent, an eye for a watch), the title on one line (its whole in the tooltip), the
+  time in tabular figures (not mono: mono spaces 1 小时 20 分 apart), and 停下 / Stop, a small
+  muted square, only where the agent can stop that job. The finished fold **{n} 个做完了 / {n}
+  done** with the done tick; opened, newest first, a word only where it did not simply end well
+  (**退出码 2 / Exit 2** in the failed ink, **停下了 / Stopped**, **不知道结果 / Result unknown**),
+  how long it ran, and a row opens to **最后的输出 / Last output**. The list scrolls past 320.
+- **States:** nothing in the background: no tray; running: open by default on a computer, folded
+  on a phone (each device keeps the person's choice); only finished: the head is their fold
+  (**后台 {n} 个做完了 / {n} done in the background**), folded until opened; 在停… after Stop
+  until its end arrives; a refused stop says **它没能停下这个，还在跑。** for a moment.
+- **Motion:** the tray and its rows enter by the 220 ms rise and fade; hover warms a row to
+  `Surface`; press 70 ms; nothing glows or pulses; reduced motion: none. Times tick each second
+  in a job's first minute, then every 15 s.
+- **Stop:** `task_action` `stop_background` with the job's id → the runner → the session's
+  `stopBackground` (OAR `Session.stopTask`; a worker's session through its `stopBackground` op).
+  Claude Code (TaskStop), a Codex subagent (its turn interrupted), DeepSeek Harness's jobs
+  have it (OAR's `stopTask` capability); **a Codex background terminal has none in OAR 0.124** (it is a tool call, not a
+  task), so its row offers no Stop rather than a fake one (`todo.md`). The agent hears it: its
+  end reaches it as a stopped job, and D515's wake says the person stopped it from Ducter.
+- **On hand:** a running task's row carries one quiet fact, **后台 {n} 个在跑 / {n} running in the
+  background**, among its facts (D291).
+
 ## Editing and the agent
 
 - A save names the version the file was opened at (a content hash). If the agent (or anyone)

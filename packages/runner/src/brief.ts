@@ -382,6 +382,8 @@ export interface BackgroundEnd {
   output?: string;
   summary?: string;
   outputFile?: string;
+  /** D518: the person stopped it from Ducter. */
+  by?: "person";
 }
 
 /**
@@ -393,7 +395,7 @@ export interface BackgroundEnd {
 export function backgroundEnded(ends: BackgroundEnd[]): string {
   const word = { ended: "finished", failed: "failed", stopped: "was stopped" } as const;
   const one = (e: BackgroundEnd) => {
-    const head = `- ${e.what ? `\`${e.what.split("\n")[0]!.slice(0, 200)}\`` : "A background job"} ${word[e.act]}${e.exitCode !== undefined ? ` (exit code ${e.exitCode})` : ""}.`;
+    const head = `- ${e.what ? `\`${e.what.split("\n")[0]!.slice(0, 200)}\`` : "A background job"} ${word[e.act]}${e.by === "person" ? " by the user, from Ducter" : ""}${e.exitCode !== undefined ? ` (exit code ${e.exitCode})` : ""}.`;
     const said = [e.summary, e.outputFile ? `Its output is in ${e.outputFile}.` : ""].filter(Boolean).join(" ");
     const out = e.output?.trim() ? `\n  Its output ends:\n${e.output.trimEnd().split("\n").map((l) => `  > ${l}`).join("\n")}` : "";
     return `${head}${said ? ` ${said}` : ""}${out}`;

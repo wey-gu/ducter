@@ -350,7 +350,7 @@ type trayLine struct {
 func (a *App) trayRow(c *ui.Context, r trayLine) bool {
 	t := a.T
 	clicked := false
-	ui.Row(c.Key("tray:"+r.key)).AlignItems(ui.Center).MinWidth(0).Children(func() {
+	ui.Row(c.Key("tray:" + r.key)).AlignItems(ui.Center).MinWidth(0).Children(func() {
 		main := ui.Row(c.Key("trm")).Gap(t.S2).AlignItems(ui.Center).Grow(1).Shrink(1).MinWidth(0).
 			MinHeight(t.ControlSM).Padding(0, t.S3).Radius(t.RadiusSM)
 		hover := false

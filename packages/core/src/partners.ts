@@ -102,9 +102,17 @@ export function openPartners(opts: {
     const open = new Map<string, PartnerAsk>();
     for (const e of opts.log.read({ stream, kinds: ["decision"], limit: 500 }) as LogEvent<"decision">[]) {
       const d = e.body as Bodies["decision"];
-      if (!d.taskId) open.set(d.decisionId, { persona: id, decisionId: d.decisionId, question: d.question, at: e.ts });
+      // D517: an offer never needs the person (D453): it lives in its note, as every client counts it.
+      if (!d.taskId && !d.offer) open.set(d.decisionId, { persona: id, decisionId: d.decisionId, question: d.question, at: e.ts });
     }
     if (!open.size) return [];
+    // D517: a question put off till later (晚点再问我, D382) needs the person again only at its time.
+    const nowMs = now().getTime();
+    for (const s of stream === "channel" ? ["channel"] : [stream, "channel"])
+      for (const e of opts.log.read({ stream: s, kinds: ["decision_later"], limit: 2000 })) {
+        const l = e.body as Bodies["decision_later"];
+        if (open.has(l.decisionId) && Date.parse(l.until) > nowMs) open.delete(l.decisionId);
+      }
     // D312: a resolution lands in its question's own conversation; before D312 in the default's.
     const streams = stream === "channel" ? ["channel"] : [stream, "channel"];
     for (const s of streams) for (const e of opts.log.read({ stream: s, kinds: ["decision_resolved"], limit: 2000 })) open.delete((e.body as Bodies["decision_resolved"]).decisionId);

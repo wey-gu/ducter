@@ -33,6 +33,12 @@ the way to fix it right beside it:
 - it stopped without asking for anything: what your partner knows from its last words (for
   example, that its pull request was waiting on CI and nobody has looked since), and **Continue**.
 
+The number on your partner's face, on the app's icon and at the top of On hand is the same number:
+everything listed under **Needs you**, and only that. A question leaves it when you answer it. A
+task that stopped, didn't work out or has a pull request ready to merge leaves it once you've opened
+it on that device; it then stands with the rest (a stopped one under **Waiting**, one that didn't
+work out with what finished that day), still with its fix beside it.
+
 If Ducter is already fixing it by itself (starting it again, or cloning the code first), the task
 stands under **Working** saying so; you don't need to do anything. On the task's own page, the same
 failed start tried several times is one line: "Tried 3 times and it couldn't start: …".

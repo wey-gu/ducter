@@ -26,6 +26,11 @@ func TestD309Partners(t *testing.T) {
 		{ID: "default", Name: "Ducter", Look: "sand"},
 		{ID: "p2", Name: "小家", Look: "sage", Asks: 2},
 	}})
+	// D517: the count is On hand's items: another partner's questions as the home lists them there.
+	s.Apply(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Asks: []protocol.PartnerAsk{
+		{Persona: "p2", DecisionID: "d1", Question: "约周六 9:30 吗？"},
+		{Persona: "p2", DecisionID: "d2", Question: "要带疫苗本吗？"},
+	}}})
 	if !a.manyPartners() || a.shownPartner().Look != "sand" {
 		t.Fatal("two partners: the shown one is the default, on sand")
 	}

@@ -220,8 +220,8 @@ type App struct {
 	// D518: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
 	bgStopping map[string]bool
 	bgRefused  map[string]time.Time
-	heldFocus   bool
-	replyOpen   map[string]bool
+	heldFocus  bool
+	replyOpen  map[string]bool
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
 	laterOpen  map[string]bool
@@ -372,6 +372,7 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	partners partnersUI // D309
+	rail     railUI     // D517: the list of partners' own motion and held numbers
 	// cal is the calendar screens' own memory (D222).
 	cal      calUI
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards

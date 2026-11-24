@@ -101,7 +101,13 @@ task in {name}** where the bare ＋ stood.
    much); the filter it gave is gone, Find and the lens narrow. Under the line, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
 3. D467 round 4, D471: no forecast line; each wait's row says when it is back.
-4. Sections by attention (D467): 等你, 在做, 在等, D507's **你的帮手 / Your helpers**, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
+4. **One count (D517).** 等你's items are the person's one count: the Dock badge, the menu bar,
+   each partner's number in the list of partners, the conversation's line and the head all count
+   them, and each is drawn under 等你 with its action (a group with such a part stands there too).
+   A question leaves when answered; a stop, a failure or a PR to merge leaves once opened on this
+   device after it last changed, then stands with the rest (a stop in 在等, a failure with that
+   day's finished, a PR in 在等), its action kept. Offers and questions put off never count.
+   Sections by attention (D467): 等你, 在做, 在等, D507's **你的帮手 / Your helpers**, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
    then what **stopped** (a wait nothing brings back on its own: no waiter of any kind, not a
    question put off, not a computer that will come back, quiet for 30 minutes or more) with
    **接着做 / Continue** and **放下 / Put down** always shown and **上次有动静是 {ago}**, then what

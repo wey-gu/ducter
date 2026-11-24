@@ -85,6 +85,16 @@ func FaceClosed(px float32) *ui.Bitmap {
 	return loadAs(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size), shownLook())
 }
 
+// FaceClosedAs is FaceClosed in a given partner's clay (D517: each face in
+// the list of partners blinks in its own clay).
+func FaceClosedAs(look string, px float32) *ui.Bitmap {
+	size := 128
+	if px > 128 {
+		size = 256
+	}
+	return loadAs(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size), look)
+}
+
 // ArtClosed is the square idle art with its eyes closed, the size
 // Art(Idle, px) picks.
 func ArtClosed(px float32) *ui.Bitmap {

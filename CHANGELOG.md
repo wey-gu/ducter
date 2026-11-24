@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.39 - 2026-11-24
+
+<!-- whats-new
+zh: 伙伴栏更顺滑；等你的数字处处一致，处理完就消
+en: A smoother partner rail; one needs-you count that clears
+-->
+
+**The partner rail, redone**
+- On the Mac the rail owns the top-left corner like a native sidebar, with the window buttons in
+  their own band, and names show under each face at any width.
+- Switching partners keeps the rail still: the selection slides over and the conversation comes
+  in. Each partner breathes and blinks, and nudges when something new arrives; with reduced
+  motion it stays still.
+- The count on a face, the Dock, the menu bar and On hand's head are now one number, and every
+  item it counts sits under Needs you with its own action. Looking at a stopped task or answering
+  a question clears it.
+
 ## 0.1.38 - 2026-11-24
 
 <!-- whats-new

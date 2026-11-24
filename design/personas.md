@@ -77,10 +77,20 @@ A family that needs privacy from each other needs separate homes.
   in its conversation (the person's own words as **你：{text} / You: {text}**; nothing said yet:
   **管：{about} / Looks after: {about}**, else **还没聊过 / Nothing said yet**); and on the figure's
   shoulder, when something of its own waits on the person, that number in the needs-you colours.
-  The one shown sits on the surface (the clay card's ledge). A click shows its conversation. From
-  1000 to 1359 points the column keeps the figures and numbers only (80 points); the name is the
-  row's label and tooltip. On the Mac the column holds the window's traffic lights; it is the
-  conversation's only (On hand and an opened task are the person's, not a partner's).
+  The one shown sits on the surface (the clay card's ledge). A click shows its conversation. D517:
+  names and last lines from 1200 points on the Mac and 1360 on the web (On hand stands beside
+  there); under that each figure keeps its name under it (88 points), never a bare face, and no row
+  has a tooltip. On the Mac the column holds the window's traffic lights; it is the conversation's
+  only (On hand and an opened task are the person's, not a partner's).
+- **Alive and still (D517).** The list never moves on a switch (its numbers are held until the new
+  welcome): the chosen pebble glides to the row picked on a spring and the chosen figure stands a
+  touch taller; only the conversation comes in. Each figure breathes and blinks in its own clay, out
+  of step with the others, and hops once when something new comes from it (never the one shown).
+  The number is a clay pebble in the needs-you colours on its ledge. Reduce Motion stills it all.
+- **The number is the person's one count's (D517).** A row's number is that partner's part of what
+  On hand lists under 等你: its questions, and its tasks that ask, stopped, didn't work out or have
+  a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
+  hand's head; each item is under 等你 with its fix.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
   last shown. The bar's left has **‹** with the number of what waits in the other partners (label
   **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the

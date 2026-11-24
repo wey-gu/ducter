@@ -127,6 +127,25 @@ test("asks: a partner's own open questions, never its tasks' (those are On hand'
   expect(partners.list().map((p) => p.asks)).toEqual([1, 1]);
 });
 
+test("D517: an offer and a question put off till later never count as asks (no client shows them); a later one counts again at its time", () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default" });
+  stops.push(() => log.close());
+  let now = new Date("2026-11-24T10:00:00Z");
+  const partners = openPartners({ dataDir: t.dir, log, persona: { id: "default", name: "Ducter" }, on: true, now: () => now });
+  partners.add({ name: "小家" });
+  const ask = (decisionId: string, extra: object = {}) => log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: "要不要？", reversible: true, ...extra } as Bodies["decision"] });
+  ask("d_offer", { offer: true });
+  ask("d_later");
+  ask("d_open");
+  log.append({ stream: "channel", origin: "user", kind: "decision_later", body: { decisionId: "d_later", until: "2026-11-24T12:00:00Z", by: "user" } as Bodies["decision_later"] });
+  expect(partners.questions().map((q) => q.decisionId)).toEqual(["d_open"]);
+  expect(partners.list()[0]!.asks).toBe(1);
+  now = new Date("2026-11-24T12:30:00Z");
+  expect(partners.questions().map((q) => q.decisionId).sort()).toEqual(["d_later", "d_open"]);
+});
+
 // ---------- over the socket ----------
 
 async function client(core: Core, hello: object = {}) {

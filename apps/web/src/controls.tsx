@@ -168,6 +168,16 @@ export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
   );
 }
 
+/** D517: a count of what needs you, on a figure's shoulder or beside a back button: a clay pebble in
+ *  the needs-you surface and ink on its ledge (app.css .pl-n), the Mac's countPebble. */
+export function CountPebble(p: { n: number }) {
+  return (
+    <span class="pl-n" aria-hidden="true">
+      {p.n}
+    </span>
+  );
+}
+
 /** D273: a group's "add" row, the row anatomy of every Settings row: a plus in its icon tile, the
  *  title, one muted line. */
 export function AddRow(p: { label: string; help?: string; onClick: () => void }) {

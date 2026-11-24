@@ -29,7 +29,7 @@ import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
-import { DEFAULT_PARTNER, needsAcross, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import { spokenPeers } from "./mem-view.ts";
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
@@ -2034,9 +2034,28 @@ class AppState {
     return { ...b, lanes: b.lanes.map((l) => l.filter((t) => this.taskPartner(t) === shown)) } as ReturnType<Store["board"]>;
   }
 
-  /** D497: what waits on the person from another partner: its own questions and its tasks that need them. */
+  /** D517: each partner's number as the switch began, until the new welcome. */
+  railHeld?: Record<string, number>;
+  /** D517: when this page last switched partner (the list's figures don't hop while it settles). */
+  partnerSwitchedAt = 0;
+
+  /** D517: the person's one count's items (onhand.tsx needsYouItems, set when On hand's module loads):
+   *  every "needs you" number reads them, and On hand draws each under 等你. */
+  needsItems?: () => { partner: string }[];
+
+  /** D517: the person's one count, or one partner's part of it. */
+  needsCount(partner?: string): number {
+    // D517: while a switch waits for its welcome (the store starts over), the list keeps its numbers.
+    if (partner && this.railHeld && !this.S.welcomed) return this.railHeld[partner] ?? 0;
+    if (this.S.welcomed) this.railHeld = undefined;
+    const items = this.needsItems?.();
+    if (!items) return partner ? (this.partners?.find((p) => p.id === partner)?.asks ?? 0) : this.S.board().lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
+    return partner ? items.filter((i) => i.partner === partner).length : items.length;
+  }
+
+  /** D497, D517: what waits on the person from one partner: its part of the one count. */
   partnerNeeds(p: PartnerInfo): number {
-    return p.asks + this.S.board().lanes[LANE.needs]!.filter((t) => this.taskPartner(t) === p.id).length;
+    return this.needsCount(p.id);
   }
 
   /** D309: the partner shown, as the partners frame says it (undefined with one partner). */
@@ -2106,6 +2125,8 @@ class AppState {
   switchPartner(id: string) {
     if (id === (this.S.persona || this.partnerShown) || !this.partners?.some((p) => p.id === id)) return;
     this.partnersOpen = false;
+    if (this.S.welcomed) this.railHeld = Object.fromEntries(this.partners.map((p) => [p.id, this.needsCount(p.id)]));
+    this.partnerSwitchedAt = Date.now();
     savePartner((this.partnerShown = id));
     this.startOver();
     this.pending = [];
@@ -3592,8 +3613,8 @@ class AppState {
     if (held?.waits) add(0, held.resetKnown ? L.t("header.held", stamp(L, held.until)) : L.t("header.held.soon"));
     // D497: with more than one partner the line speaks for the partner it sits under (the others' own
     // numbers are on their faces beside it); with one, it is the person's one count (D309).
-    const here = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
-    const needs = this.manyPartners() ? here : needsAcross(here, this.partners, this.S.persona || this.partnerShown);
+    // D517: the same items as On hand's 等你 and the badges (a stop, a failure and a PR to merge too).
+    const needs = this.manyPartners() ? this.needsCount(this.S.persona || this.partnerShown || DEFAULT_PARTNER) : this.needsCount();
     if (needs) add(1, L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) add(2, L.t("header.working", b.lanes[LANE.working]!.length));

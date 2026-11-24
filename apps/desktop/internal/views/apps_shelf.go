@@ -113,7 +113,7 @@ func (a *App) appsView(c *ui.Context) {
 		}
 	}
 	apps := a.shelfApps()
-	ui.Scroll(c.Key("apps-scroll")).Grow(1).MinHeight(0).Children(func() {
+	a.toastsOver(ui.Scroll(c.Key("apps-scroll")).Grow(1).MinHeight(0)).Children(func() {
 		ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 			ui.Column(c.Key("apps-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 				ui.Column(c.Key("apps-head")).Gap(t.S1).Padding(0, t.S1).Children(func() {

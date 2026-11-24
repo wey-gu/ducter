@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.1.44 - 2026-11-24
+
+<!-- whats-new
+zh: 任务吃光内存不再拖垮整台服务器；评审循环当轮就报新请求
+en: A task that runs out of memory no longer takes your home down
+-->
+
+**A task can't take your home down**
+- On a Linux home, when the computer runs out of memory the kernel stops a task's heaviest
+  process, not Ducter, and the service keeps running. Ducter notes what was largest when memory
+  ran low, and `ducter doctor` says so. The service settings update themselves after the upgrade.
+
+**Review rounds**
+- A review request that arrives late in a round shows on the board that same round, and a new
+  request is mentioned to you once.
+- Times a task tells you are in your own time zone, never UTC.
+- A round that starts fresh by design no longer says its earlier record couldn't be continued.
+
+## 0.1.43 - 2026-11-24
+
+<!-- whats-new
+zh: 提示条有了固定位置；状态词读起来更自然
+en: Toasts have one place; status words read more naturally
+-->
+
+**Toasts in one place**
+- On the Mac, short notices like "Updated to {v}" appear centred over what you're looking at,
+  above the composer, never over it, and rise in and settle out. Pointing at one keeps it.
+
+**Status words**
+- Chinese status words read like a native app: 看守中, 评审中, CI 运行中, 可合并, 已暂停.
+
+## 0.1.42 - 2026-11-24
+
+<!-- whats-new
+zh: 新分支用英文短名；Antigravity 登录更稳
+en: New branches get short English names; Antigravity signs in reliably
+-->
+
+**Branch names your tools can read**
+- A new task's branch and folder get a short English name, with its issue number when it has
+  one (`ducter/11028-embedding-one-model`), following your repository's own branch rules when it
+  states them. Existing branches keep their names.
+
+**Antigravity signs in**
+- Signing in uses the same Antigravity the card checks, so a desktop app's launcher on the PATH
+  no longer gets in the way. An older Antigravity updates itself first, a wrong code says so, and
+  when it can't reach Google to confirm it says that instead of "not signed in".
+
 ## 0.1.41 - 2026-11-24
 
 <!-- whats-new

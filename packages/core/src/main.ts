@@ -4,6 +4,8 @@ import { startCore, type Core } from "./core.ts";
 import { DEFAULT_IDENTITY, loadPersona, readBundle } from "./persona.ts";
 import { bindMemIdentity, nmemRunner, readMemIdentity, refreshLane, renameMemIdentity } from "./mem-identity.ts";
 import { homedir } from "node:os";
+import { startMemoryWatch } from "./memory-watch.ts";
+import { refreshOnStart } from "./unit-refresh.ts";
 import { mkdirSync } from "node:fs";
 
 /**
@@ -229,12 +231,18 @@ export async function main(mods: BootModules = {}) {
   console.log(`[ducter] ${persona.name} is up at ${core.url} (identity: ${source}, data: ${core.dataDir})`);
   void identity.then((src) => src !== "default" && console.log(`[ducter] identity loaded from ${src}`));
 
+  // D524: on Linux, a task's heavy child goes before the home when memory runs out, and why is on record.
+  const memoryWatch = startMemoryWatch({ dataDir: core.dataDir, shed: () => core.shedCaches() });
+  // D524: a unit from an older Ducter gets today's settings now (daemon-reload, never a restart).
+  refreshOnStart(core.dataDir);
+
   let stopping = false;
   const shutdown = async (sig: string) => {
     if (stopping) return;
     stopping = true;
     console.log(`[ducter] ${sig}: shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
+    memoryWatch?.stop();
     for (const [label, part] of [["partner", partner], ["runner", runner]] as [string, any][]) {
       const t0 = Date.now();
       try {

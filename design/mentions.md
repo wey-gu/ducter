@@ -29,7 +29,7 @@ opens the list above the caret. Sections, each with its drawn glyph:
 |---|---|---|
 | 任务 / Tasks | on hand first (newest first), then earlier ones once words are typed | the cards; the Past index (⌘K's) |
 | 文件 / Files | files in the task's place, by name then path (inside a task only) | the workbench's `find`: `git ls-files` (tracked and untracked, never ignored), else a bounded walk |
-| 在照看的 / Looking after | Keeps on or paused | the Keeps |
+| 看守中 / Looking after | Keeps on or paused | the Keeps |
 | 伙伴 / Partners | the person's other partners | partners |
 | PR 和 issue / PRs and issues | PRs the tasks own, issues they were started from | the cards' `prs` and `source` |
 

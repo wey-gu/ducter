@@ -14,7 +14,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
-import { canBeOne, cutAtWord, cutAtWordEnd, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
+import { canBeOne, cutAtWord, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { HeldOpen, TaskGroups } from "../task-groups.ts";
@@ -261,18 +261,15 @@ export function commentFirst(note: string | undefined): { text?: string } | unde
 const commentable = (i: SourceItemRef) => i.kind === "github" && !i.pr;
 
 /**
- * D415: a hand-over task's branch says which to-do it is: `ducter/<number>-<the issue's own words>`
- * (several: their numbers, then the first one's words), so two tasks named by one subject never
- * collide and a branch list reads like the issues. undefined for a to-do with no number.
+ * D415, D522: a hand-over task's branch says which to-do it is: its number first
+ * (`ducter/<number>-<slug>`; several: their numbers), so two tasks named by one subject never
+ * collide and a branch list reads like the issues. The words after it are the slug writer's
+ * (runner/src/branch-name.ts), in ASCII. undefined for a to-do with no number.
  */
-export function todoBranch(items: SourceItemRef[]): string | undefined {
+export function todoNumber(items: SourceItemRef[]): string | undefined {
   const gh = items.filter((i) => i.kind === "github" && /^#\d+$/.test(i.label));
   if (!gh.length) return undefined;
-  const nums = gh.slice(0, 3).map((i) => i.label.slice(1)).join("-");
-  let words = gh[0]!.title.normalize("NFC").replace(/[A-Z]+/g, (x) => x.toLowerCase()).replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^[-\p{M}]+/u, "");
-  const chars = [...words];
-  words = cutAtWordEnd(chars.slice(0, 32).join(""), chars[32] ?? "").replace(/-+$/, ""); // D496: never inside a word
-  return `ducter/${nums}${words ? `-${words}` : ""}`;
+  return gh.slice(0, 3).map((i) => i.label.slice(1)).join("-");
 }
 
 // ---------- briefs ----------
@@ -756,11 +753,11 @@ export function createHandover(d: HandoverDeps): Handover {
     return out;
   }
 
-  /** D415: a hand-over task's place carries its to-do's branch name (a repository place not yet named). */
-  const named = (place: HeldOpen["place"], its: SourceItemRef[]): HeldOpen["place"] => {
-    if (!place || place.kind !== "repo" || place.branch || place.worktree) return place;
-    const branch = todoBranch(its);
-    return branch ? { ...place, branch } : place;
+  /** D415, D522: a hand-over task carries its to-do's number for its branch (a repository place not yet named). */
+  const todoOf = (place: HeldOpen["place"], its: SourceItemRef[]): { todo?: string } => {
+    if (!place || place.kind !== "repo" || place.branch || place.worktree) return {};
+    const todo = todoNumber(its);
+    return todo ? { todo } : {};
   };
   /** Several in one task: the first one's title (cut to leave room), and how many more. */
   const oneTitle = (its: SourceItemRef[], lang: Lang) => {
@@ -839,8 +836,9 @@ export function createHandover(d: HandoverDeps): Handover {
     const verdict = (i: SourceItem) => byRef(i.ref);
     const found = await foundOn(items, device);
     const input = (its: SourceItem[], o2: { itemNote?: string; title?: string; brief?: string }): HeldOpen => {
-      const place = named(placeOn(its[0]!, device, places, found), its);
+      const place = placeOn(its[0]!, device, places, found);
       return {
+        ...todoOf(place, its),
         persona,
         // D415: a task is titled by its own to-do (several: the first and how many more), never the subject.
         title: titleOf(o2.title || oneTitle(its, lang)),
@@ -1004,10 +1002,11 @@ export function createHandover(d: HandoverDeps): Handover {
     const mk = (refs: string[], part?: PlanPart): { open: HeldOpen; bind: SourceItemRef[] } | undefined => {
       const xs = refs.map((r) => by.get(r)).filter((i): i is SourceItem => !!i);
       if (!xs.length) return undefined;
-      const place = named(placeOn(xs[0]!, device, places, found), xs);
+      const place = placeOn(xs[0]!, device, places, found);
       const why = part?.why ? `\nWhy it is its own part here (from the plan): ${part.why}` : "";
       return {
         open: {
+          ...todoOf(place, xs),
           persona: g.persona,
           title: titleOf(part?.title || oneTitle(xs, lang)),
           brief: partBrief(xs, { ...(note ? { note } : {}), ...(part && notes[part.id] ? { itemNote: notes[part.id] } : {}), verdicts: xs.map((i) => byRef(i.ref)), ...(hv.commented ? { commented: hv.commented } : {}) }) + why,

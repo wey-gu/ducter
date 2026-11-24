@@ -13,12 +13,12 @@ import (
 )
 
 // D511: 照看 / Looking after (design/standing-work.md §6), as the web's
-// keep.tsx. A Keep on On hand is one sheet under 在照看的: its mark, its
+// keep.tsx. A Keep on On hand is one sheet under 看守中: its mark, its
 // title, its facts each its own element (D291), its last change, when it
 // wakes next at the right, and the tasks at work on it set in under it. What
 // waits for the person stands in 等你 once; the sheet says how many. A tap
 // opens the Keep's own page in the board's place (never Settings): its life,
-// 你说的, 在等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么照看
+// 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做
 // with 暂停 and 停下.
 
 // keepState is the Keep whose page is open ("" the list) and the page's own
@@ -216,7 +216,7 @@ func (a *App) waitsForYou(task *store.Task) bool {
 	return false
 }
 
-// keepSheet is one Keep under 在照看的: its head opens its page; its tasks at
+// keepSheet is one Keep under 看守中: its head opens its page; its tasks at
 // work nest under it (up to three).
 func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 	t := a.T
@@ -350,7 +350,7 @@ func (a *App) keepItemWords(x protocol.KeepItem) (string, ui.Color) {
 	return a.L.T("keep.item.rest"), t.InkMuted
 }
 
-// keepsSection is 在照看的 / Looking after on On hand.
+// keepsSection is 看守中 / Looking after on On hand.
 func (a *App) keepsSection(c *ui.Context, ks []protocol.KeepSheet) {
 	w := a.oh.listW
 	if w <= 0 {
@@ -784,7 +784,7 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 	})
 }
 
-// keepRules is 怎么照看 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
+// keepRules is 怎么做 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
 func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	t := a.T
 	w := float32(320)

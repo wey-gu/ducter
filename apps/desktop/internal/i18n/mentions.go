@@ -15,7 +15,7 @@ var zhMentions = Table{
 	"mention.keys.close":      "关",
 	"mention.group.tasks":     "任务",
 	"mention.group.files":     "文件",
-	"mention.group.keeps":     "在照看的",
+	"mention.group.keeps":     "看守中",
 	"mention.group.partners":  "伙伴",
 	"mention.group.code":      "PR 和 issue",
 	"mention.open.task":       "打开这个任务",

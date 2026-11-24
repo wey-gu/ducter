@@ -84,9 +84,12 @@ press Return. Or write anything of your own:
   its own while you do something else.
 
 Coding tasks work in their own copy of your project, on their own branch (named
-`ducter/…`), so your own checkout is left alone. The copy is a folder named after the project
-and the branch, in the Ducter folder: such as `~/ducter/worktrees/hawdb/fix-flaky-test`; on the
-Mac, an opened task shows its path over its changes.
+`ducter/…` in a few plain English words, such as `ducter/fix-flaky-test`, with the issue number
+first when the task is one of your issues, such as `ducter/11028-embedding-one-model`), so your own
+checkout is left alone. If your repository's contributing guide says how branches are named (a
+`feat/` prefix, say), the name follows it. The copy is a folder named after the project and the
+branch, in the Ducter folder: such as `~/ducter/worktrees/hawdb/fix-flaky-test`; on the Mac, an
+opened task shows its path over its changes.
 
 Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter makes there for you:
 `projects` (folders it made and repositories it cloned for you) and `worktrees` (tasks' copies). If you already have a

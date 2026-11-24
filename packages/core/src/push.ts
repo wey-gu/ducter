@@ -655,7 +655,10 @@ export function createPusher(opts: {
       }
       case "user_msg":
         // D516: any partner's conversation may be carried by a chat app; words passed on are no place.
-        if (partnerOfStream(e.stream) !== undefined && !(e.body as Bodies["user_msg"]).passed) lastVia = (e.body as Bodies["user_msg"]).via;
+        if (partnerOfStream(e.stream) !== undefined && !(e.body as Bodies["user_msg"]).passed) {
+          const v = (e.body as Bodies["user_msg"]).via;
+          lastVia = v === "share" ? undefined : v; // D537: a share is the phone's app
+        }
         return;
       case "decision_resolved": {
         const r = e.body as Bodies["decision_resolved"];

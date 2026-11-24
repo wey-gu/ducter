@@ -15,4 +15,7 @@
     <color name="failed_ink">#8A1F3B</color>
     <!-- D255: recording (the pill's dot). -->
     <color name="rec">#D8443A</color>
+    <!-- D537: the share sheet: a sunken tile, and the dim over the app it was shared from (app.css scrim). -->
+    <color name="sunken">#F7EBDA</color>
+    <color name="scrim">#592B2118</color>
 </resources>

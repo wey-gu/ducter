@@ -553,7 +553,8 @@ export function createChannels(deps: ChannelDeps): Channels {
   type UserAt = { seq: number; via?: ChannelKind; at: number };
   /** D277: iMessage is the Mac app's own bridge, not one of this hub's chat apps: for routing here it
    *  counts as the apps (the bridge answers its own turns; its push rule is core's channelUp). */
-  const hubVia = (v: Bodies["user_msg"]["via"]): ChannelKind | undefined => (v === "imessage" ? undefined : v);
+  // D537: a share came through the phone's app: it is answered there, like any app message.
+  const hubVia = (v: Bodies["user_msg"]["via"]): ChannelKind | undefined => (v === "imessage" || v === "share" ? undefined : v);
   const users = new Map<number, UserAt>(); // the person's messages this run (seq → where, when)
   const userAt = (seq: number): UserAt | undefined => {
     const known = users.get(seq);

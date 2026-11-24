@@ -14,6 +14,8 @@ struct DucterApp: App {
                 ButtonSpecimen()
             } else if UserDefaults.standard.bool(forKey: "glanceSpecimen") {
                 GlanceSpecimen()
+            } else if let kind = UserDefaults.standard.string(forKey: "shareSpecimen") {
+                ShareSpecimen(kind: kind)
             } else {
                 Root(state: state, shell: shell).tint(Pebble.accent)
             }
@@ -104,6 +106,9 @@ struct Root: View {
         // D293: the best of the home's ways that proves it is the home: on coming to the front, when
         // the way in use can't be reached, and every 30 s while open (leaving only after two misses).
         .onChange(of: scene) { _, p in if p == .active { Task { await state.lookForBetterWay(up: true) } } }
+        // D537: shares the share sheet couldn't send yet (the home was out of reach) go now.
+        .onChange(of: scene) { _, p in if p == .active, state.base != nil { Task { await ShareOutbox.drain() } } }
+        .onChange(of: shell.phase) { _, p in if p == .ready { Task { await ShareOutbox.drain() } } }
         .onChange(of: shell.phase) { _, p in if p == .unreachable { Task { await state.lookForBetterWay(up: true) } } }
         .task {
             while !Task.isCancelled {

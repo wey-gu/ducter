@@ -14,6 +14,8 @@
 //   POST /api/ambient/follow         D306: {kind: task|call, id, phase?, apns: {token, topic, env, relay?}} → {id}
 //   POST /api/ambient/unfollow       {id}: the phone stopped showing it
 //   POST /api/media                  D206: a picture (multipart: file, thumb?, preview?, name?) → {media}
+//   POST /api/share                  D537: from the phone's share sheet {clientId, note?, partner?, media?,
+//                                    url?, title?, text?, from?} → {ok, seq, partner}; one message
 // The assets are imported as files, so `bun build --compile` embeds them in the binary.
 import { MEDIA_LIMITS } from "@ducter/protocol";
 import type { Decisions } from "./decisions.ts";
@@ -285,6 +287,9 @@ export interface WebApiDeps {
   ambient?: import("./ambient.ts").Ambient;
   /** A paired device that offers its token over loopback (an SSH tunnel) is still that device. */
   deviceOf?: (req: Request) => { id: string } | undefined;
+  /** D537: the share sheet's message (ws.ts share), and the partners its picker shows. */
+  share?: (b: Record<string, unknown>) => { ok: true; seq: number; partner: string } | { ok: false; status: number; error: string };
+  partners?: () => { id: string; name: string; look: string }[];
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -329,6 +334,8 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         via: g.via,
         personaName: deps.personaName(),
         ...(deps.version ? { version: deps.version } : {}),
+        // D537: the share sheet's picker (each partner's id, name and look; the default first).
+        ...(deps.partners ? { partners: deps.partners() } : {}),
         ...(g.via === "device" ? { deviceId, deviceName: g.device.name } : {}),
         // apns: this home can notify the iPhone app (through the relay, or its own Apple key);
         // apnsVia says which; relay: "unreachable" when the relay failed the last time (D159).
@@ -414,6 +421,11 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     case "POST /api/media":
       if (!deps.media) return json(404, { error: "not found" });
       return deps.media.upload(req);
+    case "POST /api/share": {
+      if (!deps.share) return json(404, { error: "not found" });
+      const r = deps.share(await body());
+      return r.ok ? json(200, r) : json(r.status, { error: r.error });
+    }
     // D255: a lent phone sends back the recording of its screen it made (the body is the MP4; what
     // the phone says of it rides in the query). Only that phone, for a recording the home asked for.
     case "POST /api/handset/recording": {

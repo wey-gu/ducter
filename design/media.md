@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206, D239, D242, D259 and D286 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`, `.shots/d286/`
+> Design note for D206, D239, D242, D259, D286 and D537 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`, `.shots/d286/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -281,6 +281,70 @@ is read where it was handed over.
   file is a snapshot in the home's store that outlives it (a worker offline, a worktree cleaned
   up). The viewer shares its renderers, not its data path.
 
+## Sharing into Ducter (D537)
+
+A user: 「手机端期待可以有个分享、附言的功能，和 grokbot 一样」. Something seen in another app (a page in
+Safari, a photo, a post in X or WeChat, a PDF in Files) goes to the partner without saving it first
+or switching apps: Share, **Ducter**, a line, Send.
+
+| Who | Before | After | First time |
+|---|---|---|---|
+| Heavy multi-agent developer | Copies a PR's link, opens Ducter, pastes, types what to do | Share from GitHub or Safari, 「看下这个 PR 的 CI」, Send; the partner starts the task | Ducter is already in the share sheet's row of apps |
+| Consumer who uses Grok's app | Grok takes a share with a line; Ducter didn't | The same gesture: Share, a line, Send; its answer is in the conversation | The sheet is the same shape as Grok's: what you share, a line, Send |
+| Fresh user | Doesn't know a phone app can take things from another | Shares a photo of a letter with 「记一下，下周提醒我」 | Nothing to learn: Share is in every app |
+
+North star (D36): 好用 one sheet, the keyboard up, Send · 顺滑 no app switch, a tick and it's gone ·
+赏心悦目 the partner's own figure and clay, the link and the file drawn as themselves · 放心 nothing
+leaves before Send, no location leaves at all, a share that can't go waits and says so · 惊喜 the
+partner answers what it is, even with no note.
+
+- **The sheet.** **发给{name} / Send to {name}** with the partner's figure in its own clay (D497); what
+  is going on one clay card: a link as its title over its site (the page's title when the app gave
+  one), shared words (six lines), pictures (one at its own shape, several as a row of tiles), each
+  file as the conversation's file card (badge, name, size, a PDF's **{n} 页 / {n} pages**); the note
+  **想让{name}做什么？（可以不写）/ What should {name} do with it? (optional)**, focused; **发给 / To**
+  with each partner as a clay chip when there are several (D513), starting on the one the last share
+  went to; **取消 / Cancel** and the one primary **发送 / Send**. Sending: **在发… / Sending…**, then
+  **发给{name}了 / Sent to {name}** with a tick and a success haptic, and the sheet closes.
+- **What it takes:** one link, words, up to 10 pictures and files (**一次最多 10 个，先发前 10 个 / Up to
+  10 at a time: sending the first 10.**); a file over 50 MB is left out (**这个文件太大了：每个最多 50
+  MB，先不发它。**). Words that are one link alone are that link; a post's words that repeat its link
+  keep only what they add; one short line beside a link is its title.
+- **Ready on the phone, as Sending above:** pictures upright, at most 2048 px, re-encoded with no
+  metadata (location, camera, lens all gone: checked on the stored file); files as they are.
+- **The pairing is the app's.** iPhone: the token from the keychain group the app and its extensions
+  share (D159); the home's address, ways, key and the partners from the app group
+  `group.<app id>`, which the app writes whenever the page tells it something new. The share goes to
+  the best of the home's ways that proves it is the home (D293). Android: the app's own store.
+- **The wire.** `POST /api/media` for each picture or file, then `POST /api/share {clientId, note,
+  partner?, media?, url?, title?, text?, from?}` (behind the gate) → `{ok, seq, partner}`. The home
+  makes one `user_msg` (`shareMessage`): `text` is the note, a blank line, then the link under its
+  title or the shared words; `via: "share"`; `shared: {at, from?, link?}`, `at` where the shared thing
+  begins. So every client and chat app shows it as it is, with no new bubble. The clientId appends
+  once. A partner that is gone falls back to the default. `GET /api/me` lists the partners for the
+  picker.
+- **To the partner** (`renderShared`): `[user shared a link from Safari to you with their phone's share
+  sheet; their note, their own words] 帮我总结`, the thing fenced in `<shared>` as data, never
+  instructions or approval; a link is a page it hasn't read (rule 1: a look-up task when the note
+  needs it). No note: one short line saying what it looks like and offering the obvious thing (a
+  summary, keeping it, a reminder), starting nothing. The history line says it was shared.
+- **Never lost (the outbox).** One outbox on the web, D543's; the share sheet runs without the page,
+  so its outbox lives in the native shell, with D543's rules (a clientId, the home's dedupe, the
+  same words). Send puts the share in that outbox first, then sends. The home out of
+  reach: **现在连不上你的 Ducter。连上就发出去。/ Can't reach your Ducter right now. Sends when it's back.** (D543's words
+  for a message waiting in the page's outbox) and the sheet closes; it goes when the app next comes to the front or a share sheet
+  next opens, pictures already up not sent again. A home older than D537: **你的 Ducter 还要更新一下才收得
+  了分享，更新后会自动发出去。/ Your Ducter needs an update to take shares. This goes once it's
+  updated.** A week old, it is let go; another pairing drops them all. Not paired: the napping
+  figure and **先打开 Ducter 连上你的 Ducter，再来分享。/ Open Ducter and connect it first, then share
+  again.** with **知道了 / OK** (Android: **打开 Ducter / Open Ducter**).
+- **From which app:** Android gives the sending app (`Activity.referrer`), which rides as `from`; iOS
+  gives an extension no host app, so an iPhone's share never says.
+- **Where it lives:** iPhone `apps/ios/DucterShare` (the extension) and `apps/ios/ShareKit` (the sheet,
+  reading what came in, the outbox and sending; the app compiles it too, to empty the outbox and for
+  its Debug specimen `-shareSpecimen link|photo|pdf|text|many`); Android `ShareActivity.kt`,
+  `Share.kt`, `ShareSend.kt`.
+
 ## The apps
 
 - **iPhone:** the page's file input shows iOS's own menu (Photo Library, Take Photo, Choose File).
@@ -290,7 +354,7 @@ is read where it was handed over.
 
 ## Later (design/todo.md)
 
-Built by D259: files and PDFs sent by the user. Still phase 2: a share sheet into Ducter (iOS share
-extension, Android share intent); a PDF as a model's own document input through OAR; PDF text on the
+Built by D259: files and PDFs sent by the user. Built by D537: a share sheet into Ducter (iOS share
+extension, Android share intent). Still phase 2: a PDF as a model's own document input through OAR; PDF text on the
 home for an agent with no PDF reader. Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
 D239's later, built by D242: PDF pages drawn inside Ducter, expiring media keys, find in a long file. D439: an Office file a task shows with a PDF of the same name reads as its pages (`MediaRef.pages`, `documents.md`). Still later: Office files drawn without one, find in a PDF.

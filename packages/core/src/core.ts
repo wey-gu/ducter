@@ -2698,7 +2698,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const via = () => viaOf(req, srv.requestIP(req)?.address, reachRef?.ways() ?? []);
       const d = deviceRoutes(req, g, srv, workers, via);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, ambient, deviceOf: (r) => gate.deviceOf(r) });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name, version, media, handsets, ambient, deviceOf: (r) => gate.deviceOf(r), share: (b) => ws.share(b), partners: () => ws.partnerList() });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin

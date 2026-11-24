@@ -101,4 +101,27 @@
     <string name="glance_called">打完了</string>
     <string name="glance_no_answer">没人接</string>
     <string name="glance_not_connected">没打通</string>
+
+    <!-- D537: 分享到 Ducter / Share to Ducter. -->
+    <string name="share_target">发给你的伙伴</string>
+    <string name="share_title">发给%1$s</string>
+    <string name="share_note_hint">想让%1$s做什么？（可以不写）</string>
+    <string name="share_to">发给</string>
+    <string name="share_send">发送</string>
+    <string name="share_cancel">取消</string>
+    <string name="share_sending">在发…</string>
+    <string name="share_sent">发给%1$s了</string>
+    <string name="share_queued">现在连不上你的 Ducter。连上就发出去。</string>
+    <string name="share_too_old">你的 Ducter 还要更新一下才收得了分享，更新后会自动发出去。</string>
+    <string name="share_unpaired">先打开 Ducter 连上你的 Ducter，再来分享。</string>
+    <string name="share_open_app">打开 Ducter</string>
+    <string name="share_over">一次最多 10 个，先发前 10 个</string>
+    <string name="share_too_big">这个文件太大了：每个最多 50 MB</string>
+    <string name="share_nothing">这里没有能发的东西。</string>
+    <string name="share_refused">没发出去：你的 Ducter 没收下。</string>
+    <string name="share_pictures">%1$d 张图片</string>
+    <string name="share_picture">一张图片</string>
+    <plurals name="share_pages">
+        <item quantity="other">%d 页</item>
+    </plurals>
 </resources>

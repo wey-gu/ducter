@@ -166,6 +166,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
     /// D532: back to the front: the page redials its home now instead of waiting out its backoff.
     func resumed() {
         guard phase == .ready else { return }
+        checkAlive()
         web.evaluateJavaScript("dispatchEvent(new Event('ducterresume'))")
     }
 
@@ -248,8 +249,56 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         withAnimation(.easeOut(duration: 0.25)) { phase = .unreachable }
     }
 
+    // MARK: the page's process ending (D537 follow-up)
+
+    /// When the page's own process ended lately: a few in a row wait a little longer each time.
+    private var ended: [Date] = []
+    private var revive: DispatchWorkItem?
+
+    /// The page's process (WebContent) ended under it: a crash, or iOS taking its memory back while
+    /// the app was away. Never a blank page: the partner and 正在连接… cover it at once, and it loads
+    /// again; a process that won't start (it can fail again at once) is tried after 1, 2, 4 … 15 s,
+    /// each covered the same way. What the page was showing comes back from its kept screen (D209,
+    /// D543), and what waited in its outbox is still there.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        retry()
+        NSLog("[ducter] the page's process ended; loading it again")
+        ended = ended.filter { $0.timeIntervalSinceNow > -60 } + [Date()]
+        revive?.cancel()
+        withAnimation(.easeOut(duration: 0.2)) { phase = .loading }
+        let wait = min(15, ended.count <= 1 ? 0 : pow(2, Double(ended.count - 2)))
+        let work = DispatchWorkItem { [weak self] in self?.retry() }
+        revive = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait, execute: work)
+        watch()
+    }
+
+    /// A load after the process ended that never finishes (its new process never started) is
+    /// started again after 20 s: the cover stays, it never sits blank.
+    private var watching = false
+    private func watch() {
+        guard !watching else { return }
+        watching = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
+            guard let self else { return }
+            self.watching = false
+            guard self.phase == .loading, !self.ended.isEmpty else { return }
+            NSLog("[ducter] the page hasn't come back in 20 s; loading it again")
+            self.web.stopLoading()
+            self.retry()
+            self.watch()
+        }
+    }
+
+    /// Back in front: a page whose process is gone without a word (a blank view) is loaded again.
+    /// The page answers a trivial script at once when it is alive.
+    func checkAlive() {
+        guard phase == .ready, loaded != nil else { return }
+        var answered = false
+        web.evaluateJavaScript("1") { r, _ in if r != nil { answered = true } }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, !answered, self.phase == .ready else { return }
+            self.webViewWebContentProcessDidTerminate(self.web)
+        }
     }
 
     // MARK: the bridge

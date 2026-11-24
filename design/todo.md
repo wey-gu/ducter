@@ -1864,9 +1864,18 @@ note and a `Dn`) before it is built.
 - [ ] **Try D259 for real:** a PDF and a 40 MB deck from a real iPhone and Android over the
       tunnel, a real partner (haiku) answering from a sent PDF and a long log. Trigger: the next
       release with D259.
-- [ ] **Phase 2: a share sheet into Ducter.** An iOS share extension and an Android share intent
-      that open the conversation with the picture (or file) in the tray. Trigger: phase 2 files,
-      or the first time a picture has to be saved first to be sent.
+- [x] **Phase 2: a share sheet into Ducter.** Built by D537 as one sheet that sends (not the
+      conversation with a tray): media.md "Sharing into Ducter".
+- [ ] **D537 on real phones.** The extension opened from Safari, Photos, Files, WeChat and X on a
+      real iPhone (and from another app's share sheet in the Simulator, never driven here); the
+      Android sheet on a real phone from a real app (the emulator was driven with intents and the
+      app's own FileProvider); a 40 MB PDF over the tunnel; the outbox across a home restart. Trigger: the first TestFlight build with D537.
+- [ ] **D537's App Groups capability.** The release's export signs `group.<app id>` on the app and
+      `<app id>.share`; if automatic signing doesn't register the group, add it once by hand
+      (release/ios.md). Trigger: the first release after D537 (its TestFlight job).
+- [ ] **D537: say a waiting share in the app.** A share in the outbox is said only by the sheet; the
+      conversation could show it as "will send" until it lands. Trigger: a person asking where a
+      share went.
 - [ ] **Phase 3: video.** Send and view; the model sees ~6 frames taken on the sending device.
       Trigger: the first screen recording a task should look at.
 - [ ] **Phase 3: reply to a message** (quote one message or picture), and **link previews**.

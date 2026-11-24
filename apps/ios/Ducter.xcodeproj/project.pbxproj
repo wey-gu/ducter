@@ -7,31 +7,53 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04E0444F2281539145212594 /* ShareInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC80225F828611830C4212AC /* ShareInput.swift */; };
+		0539F78986A987C88ECE6AFF /* ShareSend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8254AD5EB17D35C8FF60B08E /* ShareSend.swift */; };
+		0E78F26ECE9720BEAEA1014F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE70874634C0BE491CD57671 /* Theme.swift */; };
 		12253FD137F9C417D4C81D00 /* DucterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B916A5E27898761A81FEB28D /* DucterApp.swift */; };
+		12AD5931D42EAE82C0D70396 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 678956EB3EC7A031EFAC8ACE /* ShareViewController.swift */; };
+		1F93D53343F5D56753BDDC6A /* Share.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1A164A8147F6DC347871EDDC /* Share.strings */; };
 		239F5A35418876FE9B40D017 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF0A95EBBD9D8AB9E7F38931 /* NotificationService.swift */; };
+		2467F85A5A838AA5A699ECA6 /* Reach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84704336FCF4C4D5ADBE36B2 /* Reach.swift */; };
 		24AAD08DDA66090595E2BA8A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C5B880B5BEE0A2A05E3B60 /* Store.swift */; };
 		2B8826AE33539926AC1E4ABC /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF24A8D192017C97A5783A0B /* Push.swift */; };
 		30FC2EF738C26CA47C534022 /* Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */; };
 		3BF33CE99B1B378892ED9FCA /* Glance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E66220192402AFDA88FDBEEC /* Glance.swift */; };
 		3C7CA7C0C771493667A2DC7B /* Glance.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2D381E652CD49B804B2D626D /* Glance.strings */; };
+		438BE27FF7DD4B9BEC164E11 /* ShareInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC80225F828611830C4212AC /* ShareInput.swift */; };
 		45C67028072AECABD8CFE461 /* BricolageGrotesque.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */; };
 		5BB00299EF14494B05764666 /* DucterNotify.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		615A6280BAAD69EFFE59F8C2 /* Paired.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E20FD5074DDBE29520C61A /* Paired.swift */; };
 		6993B16A49C4EC814B3A793A /* GlanceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7065DF49A8E17322541000 /* GlanceWidget.swift */; };
 		71627E4184D1E53396F4ACC5 /* HomeVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */; };
+		7286072B612D2F68EB820B63 /* Share.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3C5BB769E3A6C6BB2B008152 /* Share.xcassets */; };
 		7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46439BF3A0328223D2A49B23 /* PushCrypto.swift */; };
 		81A9148619D3B94044E551DB /* HomeOlder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */; };
 		823160352B9920B52BE25663 /* DucterLive.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37FD06E373B7723CF157DB7C /* DucterLive.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8BF570E88B6764DB50C4D379 /* ShareSend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8254AD5EB17D35C8FF60B08E /* ShareSend.swift */; };
 		8D8A7BB51699074F5E1C77B7 /* GlanceSpecimen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4109D87A8A1115678A1764 /* GlanceSpecimen.swift */; };
+		95D4E1BC6B9220A696E63A2C /* Reach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84704336FCF4C4D5ADBE36B2 /* Reach.swift */; };
+		A1992281817EB0645E4CA667 /* Paired.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E20FD5074DDBE29520C61A /* Paired.swift */; };
+		A40B690E501CC0874EB034F7 /* ShareSpecimen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4366D351EE56F4D7F50AE5A /* ShareSpecimen.swift */; };
 		A8A67290C3FE4008D63E86F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55B12901E540FA984F872F21 /* Assets.xcassets */; };
 		AD4ED5462FD2005D72767E67 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE70874634C0BE491CD57671 /* Theme.swift */; };
+		BB006DAB1BC3125ADA1BE6A1 /* Reach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84704336FCF4C4D5ADBE36B2 /* Reach.swift */; };
+		BD53D26780AC51209ABD06EF /* Paired.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E20FD5074DDBE29520C61A /* Paired.swift */; };
 		C4712D9552B8A8F6518BDC14 /* Glance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E66220192402AFDA88FDBEEC /* Glance.swift */; };
+		C9B5C6A3F95FC506B061B8C0 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137F965C33EB45EE835A222B /* ShareSheet.swift */; };
+		CA46DA5E0605318ED45592A6 /* ShareSpecimen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4366D351EE56F4D7F50AE5A /* ShareSpecimen.swift */; };
 		DC5CEF39E1D4BDC4FC0742B3 /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46439BF3A0328223D2A49B23 /* PushCrypto.swift */; };
 		DCB85F2E4949522F0862C01B /* Glance.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2D381E652CD49B804B2D626D /* Glance.strings */; };
+		DFB6F5F57E935B3A72E74725 /* DucterShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9AB627610C3319E705B110F7 /* DucterShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E436F4129C5F952C58F1EA96 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 70E7C9E410CD9145155ABA3E /* OFL.txt */; };
+		F1659445F6069DC17FC9A581 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137F965C33EB45EE835A222B /* ShareSheet.swift */; };
+		F24DA9A7AFF9AF3A59797F97 /* BricolageGrotesque.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */; };
 		F45B4A8E95DFC82D8EB3A735 /* WebShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E75A9097C852D0731F100D3 /* WebShell.swift */; };
 		F4BDC4E14519DB31DA4D00B3 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B2F0149E9B838910222A2FF5 /* Localizable.strings */; };
 		FC13E0E78A65CECAE0D6711B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B2D299316F9F82A05F46D56F /* InfoPlist.strings */; };
+		FDA8C92C1F4951CAE09E85C2 /* Share.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1A164A8147F6DC347871EDDC /* Share.strings */; };
 		FE6A74985CA2C81426A423EC /* GlanceLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36CB42EBD857B565E119BB0 /* GlanceLive.swift */; };
+		FF46B5993232E540E5F136FB /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46439BF3A0328223D2A49B23 /* PushCrypto.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +71,13 @@
 			remoteGlobalIDString = 13E7E3579F0ECCEF8877D770;
 			remoteInfo = DucterNotify;
 		};
+		B0152325DB6F360A6E38DC37 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CB19E1623F8180A15AF7E655 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52F2FA96555F1F8D5822960A;
+			remoteInfo = DucterShare;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,6 +89,7 @@
 			files = (
 				5BB00299EF14494B05764666 /* DucterNotify.appex in Embed Foundation Extensions */,
 				823160352B9920B52BE25663 /* DucterLive.appex in Embed Foundation Extensions */,
+				DFB6F5F57E935B3A72E74725 /* DucterShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -69,24 +99,35 @@
 /* Begin PBXFileReference section */
 		08C5B880B5BEE0A2A05E3B60 /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		0C6A33AE56013B455E109DCB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		137F965C33EB45EE835A222B /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		1A7065DF49A8E17322541000 /* GlanceWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceWidget.swift; sourceTree = "<group>"; };
 		1BA484EDBACF41372CE47F1E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		24B42D82D9DF61E529FD62C6 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		28F11E951AACB586EC351653 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Share.strings"; sourceTree = "<group>"; };
 		36E1820CEB79934CDC921D02 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		37FD06E373B7723CF157DB7C /* DucterLive.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterLive.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3C5BB769E3A6C6BB2B008152 /* Share.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Share.xcassets; sourceTree = "<group>"; };
 		46439BF3A0328223D2A49B23 /* PushCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushCrypto.swift; sourceTree = "<group>"; };
 		4BF9F36AA3F9F0F649BD85B2 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		555FFBF5B2E7FB2F09720CE3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		55B12901E540FA984F872F21 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = BricolageGrotesque.ttf; sourceTree = "<group>"; };
 		6548216897C56E24F23D5EFD /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		678956EB3EC7A031EFAC8ACE /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		67DC47251FA712A1E5991515 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6AA6F3161BFD70E2B040BF46 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Glance.strings"; sourceTree = "<group>"; };
 		70E7C9E410CD9145155ABA3E /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		780B1F8DF10D337E792AF3AD /* Ducter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ducter.entitlements; sourceTree = "<group>"; };
+		7AA614A110F801C6F1B69449 /* DucterShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterShare.entitlements; sourceTree = "<group>"; };
+		7AF92313D272371FF468D66A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Share.strings; sourceTree = "<group>"; };
 		7E75A9097C852D0731F100D3 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
 		7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterNotify.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8254AD5EB17D35C8FF60B08E /* ShareSend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSend.swift; sourceTree = "<group>"; };
+		84704336FCF4C4D5ADBE36B2 /* Reach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reach.swift; sourceTree = "<group>"; };
 		8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOlder.swift; sourceTree = "<group>"; };
 		8FCFF81082AA3BFF2B7A7EF8 /* Voice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice.swift; sourceTree = "<group>"; };
+		98E20FD5074DDBE29520C61A /* Paired.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paired.swift; sourceTree = "<group>"; };
+		9AB627610C3319E705B110F7 /* DucterShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1ABADBC4D4A99F18CC3BE68 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A2509E21008EBA71C43F73C2 /* DucterNotify.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterNotify.entitlements; sourceTree = "<group>"; };
 		A5311C8E594CA50AA0781FD6 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Glance.strings; sourceTree = "<group>"; };
@@ -97,17 +138,33 @@
 		CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeVersion.swift; sourceTree = "<group>"; };
 		CE70874634C0BE491CD57671 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		DF24A8D192017C97A5783A0B /* Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Push.swift; sourceTree = "<group>"; };
+		E4366D351EE56F4D7F50AE5A /* ShareSpecimen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSpecimen.swift; sourceTree = "<group>"; };
 		E66220192402AFDA88FDBEEC /* Glance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glance.swift; sourceTree = "<group>"; };
 		F042FC5CAD8F133B2246CB7B /* Ducter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ducter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC80225F828611830C4212AC /* ShareInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareInput.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		2A8D78901E14DA9F96474E14 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				98E20FD5074DDBE29520C61A /* Paired.swift */,
 				46439BF3A0328223D2A49B23 /* PushCrypto.swift */,
+				84704336FCF4C4D5ADBE36B2 /* Reach.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		373663CD7EFB4F25667A825B /* ShareKit */ = {
+			isa = PBXGroup;
+			children = (
+				FC80225F828611830C4212AC /* ShareInput.swift */,
+				8254AD5EB17D35C8FF60B08E /* ShareSend.swift */,
+				137F965C33EB45EE835A222B /* ShareSheet.swift */,
+				E4366D351EE56F4D7F50AE5A /* ShareSpecimen.swift */,
+				1A164A8147F6DC347871EDDC /* Share.strings */,
+			);
+			path = ShareKit;
 			sourceTree = "<group>";
 		};
 		3A9B24843FB39C1EECE19E59 /* DucterLive */ = {
@@ -169,12 +226,24 @@
 			path = .;
 			sourceTree = "<group>";
 		};
+		B76633EA602B82711DC5DD10 /* DucterShare */ = {
+			isa = PBXGroup;
+			children = (
+				7AA614A110F801C6F1B69449 /* DucterShare.entitlements */,
+				555FFBF5B2E7FB2F09720CE3 /* Info.plist */,
+				3C5BB769E3A6C6BB2B008152 /* Share.xcassets */,
+				678956EB3EC7A031EFAC8ACE /* ShareViewController.swift */,
+			);
+			path = DucterShare;
+			sourceTree = "<group>";
+		};
 		D2E7B5FDDB08C2663AA6139A /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				F042FC5CAD8F133B2246CB7B /* Ducter.app */,
 				37FD06E373B7723CF157DB7C /* DucterLive.appex */,
 				7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */,
+				9AB627610C3319E705B110F7 /* DucterShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -195,9 +264,11 @@
 				4DC31EF165BE50B145F55AA0 /* Ducter */,
 				3A9B24843FB39C1EECE19E59 /* DucterLive */,
 				F0928D168CD70BB5FA007686 /* DucterNotify */,
+				B76633EA602B82711DC5DD10 /* DucterShare */,
 				8A0D08A393016949B42775AE /* ios */,
 				82996E0FD6CE65DC84512F9E /* LiveShared */,
 				2A8D78901E14DA9F96474E14 /* Shared */,
+				373663CD7EFB4F25667A825B /* ShareKit */,
 				D2E7B5FDDB08C2663AA6139A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -220,6 +291,24 @@
 			);
 			productName = DucterNotify;
 			productReference = 7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		52F2FA96555F1F8D5822960A /* DucterShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C491EEA2513D6B81CE91AD18 /* Build configuration list for PBXNativeTarget "DucterShare" */;
+			buildPhases = (
+				10383303FEBC9B6D595E6F94 /* Sources */,
+				A6B548296BADAE6948F6A529 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DucterShare;
+			packageProductDependencies = (
+			);
+			productName = DucterShare;
+			productReference = 9AB627610C3319E705B110F7 /* DucterShare.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		670A579BDAE67EE52472DD2A /* DucterLive */ = {
@@ -253,6 +342,7 @@
 			dependencies = (
 				C412D22B30CEC4B60DA2EB47 /* PBXTargetDependency */,
 				CA291843623A74913DF3C31F /* PBXTargetDependency */,
+				3B5E20D142371327CC28F1B9 /* PBXTargetDependency */,
 			);
 			name = Ducter;
 			packageProductDependencies = (
@@ -268,9 +358,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					13E7E3579F0ECCEF8877D770 = {
+						DevelopmentTeam = JMU55RJW2K;
+						ProvisioningStyle = Automatic;
+					};
+					52F2FA96555F1F8D5822960A = {
 						DevelopmentTeam = JMU55RJW2K;
 						ProvisioningStyle = Automatic;
 					};
@@ -302,6 +396,7 @@
 				B1A4F1179EFF318DD898C60D /* Ducter */,
 				13E7E3579F0ECCEF8877D770 /* DucterNotify */,
 				670A579BDAE67EE52472DD2A /* DucterLive */,
+				52F2FA96555F1F8D5822960A /* DucterShare */,
 			);
 		};
 /* End PBXProject section */
@@ -317,6 +412,17 @@
 				FC13E0E78A65CECAE0D6711B /* InfoPlist.strings in Resources */,
 				F4BDC4E14519DB31DA4D00B3 /* Localizable.strings in Resources */,
 				E436F4129C5F952C58F1EA96 /* OFL.txt in Resources */,
+				FDA8C92C1F4951CAE09E85C2 /* Share.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A6B548296BADAE6948F6A529 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F24DA9A7AFF9AF3A59797F97 /* BricolageGrotesque.ttf in Resources */,
+				1F93D53343F5D56753BDDC6A /* Share.strings in Resources */,
+				7286072B612D2F68EB820B63 /* Share.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +437,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		10383303FEBC9B6D595E6F94 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				615A6280BAAD69EFFE59F8C2 /* Paired.swift in Sources */,
+				FF46B5993232E540E5F136FB /* PushCrypto.swift in Sources */,
+				95D4E1BC6B9220A696E63A2C /* Reach.swift in Sources */,
+				438BE27FF7DD4B9BEC164E11 /* ShareInput.swift in Sources */,
+				0539F78986A987C88ECE6AFF /* ShareSend.swift in Sources */,
+				C9B5C6A3F95FC506B061B8C0 /* ShareSheet.swift in Sources */,
+				A40B690E501CC0874EB034F7 /* ShareSpecimen.swift in Sources */,
+				12AD5931D42EAE82C0D70396 /* ShareViewController.swift in Sources */,
+				0E78F26ECE9720BEAEA1014F /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2926E467305C499F46890CE1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -345,7 +467,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				239F5A35418876FE9B40D017 /* NotificationService.swift in Sources */,
+				A1992281817EB0645E4CA667 /* Paired.swift in Sources */,
 				DC5CEF39E1D4BDC4FC0742B3 /* PushCrypto.swift in Sources */,
+				2467F85A5A838AA5A699ECA6 /* Reach.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -359,8 +483,14 @@
 				8D8A7BB51699074F5E1C77B7 /* GlanceSpecimen.swift in Sources */,
 				81A9148619D3B94044E551DB /* HomeOlder.swift in Sources */,
 				71627E4184D1E53396F4ACC5 /* HomeVersion.swift in Sources */,
+				BD53D26780AC51209ABD06EF /* Paired.swift in Sources */,
 				2B8826AE33539926AC1E4ABC /* Push.swift in Sources */,
 				7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */,
+				BB006DAB1BC3125ADA1BE6A1 /* Reach.swift in Sources */,
+				04E0444F2281539145212594 /* ShareInput.swift in Sources */,
+				8BF570E88B6764DB50C4D379 /* ShareSend.swift in Sources */,
+				F1659445F6069DC17FC9A581 /* ShareSheet.swift in Sources */,
+				CA46DA5E0605318ED45592A6 /* ShareSpecimen.swift in Sources */,
 				24AAD08DDA66090595E2BA8A /* Store.swift in Sources */,
 				AD4ED5462FD2005D72767E67 /* Theme.swift in Sources */,
 				30FC2EF738C26CA47C534022 /* Voice.swift in Sources */,
@@ -371,6 +501,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3B5E20D142371327CC28F1B9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 52F2FA96555F1F8D5822960A /* DucterShare */;
+			targetProxy = B0152325DB6F360A6E38DC37 /* PBXContainerItemProxy */;
+		};
 		C412D22B30CEC4B60DA2EB47 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 13E7E3579F0ECCEF8877D770 /* DucterNotify */;
@@ -384,6 +519,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		1A164A8147F6DC347871EDDC /* Share.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7AF92313D272371FF468D66A /* en */,
+				28F11E951AACB586EC351653 /* zh-Hans */,
+			);
+			name = Share.strings;
+			sourceTree = "<group>";
+		};
 		2D381E652CD49B804B2D626D /* Glance.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -650,6 +794,43 @@
 			};
 			name = Debug;
 		};
+		81B82021EC7406B880187BBB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DucterShare/DucterShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = DucterShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DUCTER_BUNDLE_ID).share";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8ED0922EEE79C1B3A08AE336 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DucterShare/DucterShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = DucterShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DUCTER_BUNDLE_ID).share";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -676,6 +857,15 @@
 			buildConfigurations = (
 				50CF11230644C9AE914F591B /* Debug */,
 				64E471A07B6A0B148C55CD14 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C491EEA2513D6B81CE91AD18 /* Build configuration list for PBXNativeTarget "DucterShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8ED0922EEE79C1B3A08AE336 /* Debug */,
+				81B82021EC7406B880187BBB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

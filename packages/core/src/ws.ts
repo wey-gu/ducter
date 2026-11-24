@@ -9,7 +9,7 @@ import type { CoreApi, LogStore, Runner } from "@ducter/protocol/src/internal.ts
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
-import { words as wordsIn, APP_ASK_MAX, keyRoutes } from "@ducter/protocol";
+import { words as wordsIn, APP_ASK_MAX, keyRoutes, shareMessage, type ShareRequest } from "@ducter/protocol";
 
 /** Said when no runner is up, in the conversation's language (a zh screen never reads it in English). */
 const NO_RUNNER = { en: "Tasks can't run right now.", zh: "现在开不了任务。" };
@@ -2867,6 +2867,36 @@ export function createWsHandler(deps: WsDeps) {
     present(): boolean {
       for (const ws of sockets) if (ws.data.live && ws.data.client !== "cli") return true;
       return false;
+    },
+    /**
+     * D537: POST /api/share, something sent from another app through the phone's share sheet:
+     * the person's note and the shared thing as one message, in the conversation of the partner it
+     * was for (the default's when that one is gone). The send frame's own path: its clientId
+     * appends once (a phone's outbox may send again), its media are ids the upload answered.
+     */
+    share(b: Record<string, unknown>): { ok: true; seq: number; partner: string } | { ok: false; status: number; error: string } {
+      const clientId = typeof b.clientId === "string" ? b.clientId.slice(0, 64) : "";
+      if (!clientId) return { ok: false, status: 400, error: "invalid" };
+      const asked = typeof b.partner === "string" ? b.partner : "";
+      const partner = asked && asked !== DEFAULT_PARTNER && deps.partners?.has(asked) ? asked : DEFAULT_PARTNER;
+      const dup = seen.get(clientId);
+      if (dup != null) return { ok: true, seq: dup, partner };
+      let media: MediaRef[];
+      try {
+        media = mediaOf(b.media);
+      } catch (err) {
+        return { ok: false, status: 400, error: (err as Error).message };
+      }
+      const m = shareMessage(b as Partial<ShareRequest>, media.length);
+      if (!m) return { ok: false, status: 400, error: "empty" };
+      const e = logUserMessage(log, decisions, { text: m.text, clientId, media, via: "share", shared: m.shared, ...(partner !== DEFAULT_PARTNER ? { stream: channelOf(partner) } : {}) });
+      remember(clientId, e.seq);
+      return { ok: true, seq: e.seq, partner };
+    },
+    /** D537: the person's partners for the share sheet's picker (id, name, look); the default first. */
+    partnerList(): { id: string; name: string; look: string }[] {
+      const ps = deps.partners?.list() ?? [];
+      return ps.map((p) => ({ id: p.id, name: p.name, look: p.look }));
     },
     /** D277: a chat app reaches the person now (a Mac app's iMessage bridge says on). */
     channelUp(via: string): boolean {

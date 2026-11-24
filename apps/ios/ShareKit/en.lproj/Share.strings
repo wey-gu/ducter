@@ -1,0 +1,18 @@
+/* D537: the share sheet (Share to Ducter). Words from the glossary (design/product-model.md). */
+"share.title" = "Send to %@";
+"share.note.placeholder" = "What should %@ do with it? (optional)";
+"share.to" = "To";
+"share.send" = "Send";
+"share.cancel" = "Cancel";
+"share.ok" = "OK";
+"share.loading" = "Getting it ready…";
+"share.sending" = "Sending…";
+"share.sent" = "Sent to %@";
+"share.queued" = "Can't reach your Ducter right now. Sends when it's back.";
+"share.homeOld" = "Your Ducter needs an update to take shares. This goes once it's updated.";
+"share.notPaired" = "Open Ducter and connect it first, then share again.";
+"share.nothing" = "There's nothing here Ducter can send.";
+"share.refused" = "Your Ducter couldn't take this one.";
+"share.tooMany" = "Up to 10 at a time: sending the first 10.";
+"share.tooBig" = "That file is too big: up to 50 MB each. It's left out.";
+"share.pages" = "%d pages";

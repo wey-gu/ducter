@@ -1,0 +1,18 @@
+/* D537：分享到 Ducter。词来自术语表（design/product-model.md）。 */
+"share.title" = "发给%@";
+"share.note.placeholder" = "想让%@做什么？（可以不写）";
+"share.to" = "发给";
+"share.send" = "发送";
+"share.cancel" = "取消";
+"share.ok" = "知道了";
+"share.loading" = "在准备…";
+"share.sending" = "在发…";
+"share.sent" = "发给%@了";
+"share.queued" = "现在连不上你的 Ducter。连上就发出去。";
+"share.homeOld" = "你的 Ducter 还要更新一下才收得了分享，更新后会自动发出去。";
+"share.notPaired" = "先打开 Ducter 连上你的 Ducter，再来分享。";
+"share.nothing" = "这里没有能发的东西。";
+"share.refused" = "你的 Ducter 没能收下这个。";
+"share.tooMany" = "一次最多 10 个，先发前 10 个。";
+"share.tooBig" = "这个文件太大了：每个最多 50 MB，先不发它。";
+"share.pages" = "%d 页";

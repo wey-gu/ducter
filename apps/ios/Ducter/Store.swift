@@ -23,6 +23,7 @@ final class AppState: ObservableObject {
             base = u
             entry = u.appendingPathComponent("app")
         }
+        mirror()
         #if DEBUG
         // Simulator runs: `xcrun simctl launch booted <bundle id> -pairLink '<link from ducter pair>'`.
         if let link = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["pairLink"] as? String, let t = PairTarget.parse(link) {
@@ -45,6 +46,7 @@ final class AppState: ObservableObject {
         }
         base = c.base
         defaults.set(c.base.absoluteString, forKey: "base")
+        Paired.base = c.base
         entry = c.code.map { var u = URLComponents(url: c.base.appendingPathComponent("pair"), resolvingAgainstBaseURL: false)!; u.fragment = "c=\($0)"; return u.url! } ?? c.base.appendingPathComponent("app")
     }
 
@@ -53,12 +55,23 @@ final class AppState: ObservableObject {
     /// The home's ways and key fingerprint, as the page last handed them over.
     var ways: [Way] {
         get { (defaults.data(forKey: "ways")).flatMap { try? JSONDecoder().decode([Way].self, from: $0) } ?? [] }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "ways") }
+        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "ways"); Paired.ways = newValue }
     }
 
     var fp: String? {
         get { defaults.string(forKey: "fp") }
-        set { defaults.set(newValue, forKey: "fp") }
+        set { defaults.set(newValue, forKey: "fp"); Paired.fp = newValue }
+    }
+
+    /// D537: the share sheet (an extension) sends as this device: what it needs goes to the app
+    /// group (the token is already in the shared keychain group). At launch for an app paired
+    /// before D537, then on every change.
+    private func mirror() {
+        Paired.base = base
+        Paired.ways = ways
+        Paired.fp = fp
+        Paired.locale = locale
+        Paired.personaName = personaName
     }
 
     /// What the page needs on another origin to be the same device (the token is in the Keychain).
@@ -77,6 +90,7 @@ final class AppState: ObservableObject {
         guard let u = URL(string: url.hasSuffix("/") ? url : url + "/"), u != base else { return }
         base = u
         defaults.set(u.absoluteString, forKey: "base")
+        Paired.base = u
         entry = u.appendingPathComponent("app")
     }
 
@@ -105,6 +119,9 @@ final class AppState: ObservableObject {
         for k in ["ways", "fp", "deviceId", "deviceName"] { defaults.removeObject(forKey: k) }
         defaults.removeObject(forKey: "apnsToken")
         defaults.set(false, forKey: "pushOn")
+        // D537: shares still waiting were for the Ducter left behind: they go nowhere now.
+        Paired.clear()
+        ShareOutbox.dropAll()
         // D159: the Ducter left behind can neither push to this phone nor read what comes next.
         PushKey.rotate()
         Task { await Relay.drop() }
@@ -122,12 +139,12 @@ final class AppState: ObservableObject {
 
     /// The partner's name, as the page last said it: the ⌘K menu item reads "Talk to {name}".
     @Published var personaName: String = UserDefaults.standard.string(forKey: "personaName") ?? "Ducter" {
-        didSet { defaults.set(personaName, forKey: "personaName") }
+        didSet { defaults.set(personaName, forKey: "personaName"); Paired.personaName = personaName }
     }
 
     var locale: String {
         get { defaults.string(forKey: "locale") ?? (Locale.preferredLanguages.first?.hasPrefix("zh") == true ? "zh" : "en") }
-        set { defaults.set(newValue, forKey: "locale") }
+        set { defaults.set(newValue, forKey: "locale"); Paired.locale = newValue }
     }
 }
 
@@ -168,125 +185,6 @@ struct PairTarget: Equatable {
         u.path = path
         guard let base = u.url else { return nil }
         return PairTarget(base: base, code: code?.isEmpty == true ? nil : code, fp: fp)
-    }
-}
-
-enum Keychain {
-    private static let service = (Bundle.main.bundleIdentifier ?? "co.nowledge.ducter.ios") + ".device"
-
-    /// Readable after the first unlock, so Go / Hold on a notification work on a locked phone
-    /// (iOS asks for Face ID first: the actions are marked authenticationRequired).
-    static var token: String? {
-        get {
-            var out: AnyObject?
-            let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "token", kSecReturnData as String: true]
-            guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
-            return String(data: d, encoding: .utf8)
-        }
-        set {
-            let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "token"]
-            SecItemDelete(q as CFDictionary)
-            guard let v = newValue, let d = v.data(using: .utf8) else { return }
-            var add = q
-            add[kSecValueData as String] = d
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(add as CFDictionary, nil)
-        }
-    }
-}
-
-
-/// D293: the home's ways to be reached and its key. The page hands them over (ways frame); the app
-/// opens the home at the best way that proves it is the home (it signs a fresh nonce with the key
-/// pinned at pairing), and moves without pairing again. The rules are packages/protocol/src/reach.ts:
-/// nearest first (same network, tailnet, domain, tunnel); while open, leave a way only after two
-/// misses in a row, and move up only after a better way answered twice in a row. A move reloads
-/// the page, so moving up waits for the app to come to the front.
-struct Way: Codable, Equatable {
-    var kind: String
-    var url: String
-    var primary: Bool?
-}
-
-enum Reach {
-    static let rank = ["lan": 0, "tailnet": 1, "domain": 2, "tunnel": 3]
-
-    static func ranked(_ ways: [Way]) -> [Way] {
-        ways.enumerated().sorted { a, b in
-            let ra = rank[a.element.kind] ?? 9, rb = rank[b.element.kind] ?? 9
-            if ra != rb { return ra < rb }
-            if (a.element.primary ?? false) != (b.element.primary ?? false) { return a.element.primary ?? false }
-            return a.offset < b.offset
-        }.map(\.element)
-    }
-
-    /// SHA-256 of the raw key, first 16 bytes, base64url without padding.
-    static func fingerprint(_ raw: Data) -> String {
-        b64u(Data(SHA256.hash(data: raw).prefix(16)))
-    }
-
-    static func b64u(_ d: Data) -> String {
-        d.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
-    }
-
-    static func unb64u(_ s: String) -> Data? {
-        var t = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
-        while t.count % 4 != 0 { t += "=" }
-        return Data(base64Encoded: t)
-    }
-
-    /// The answer counts only when its key is the pinned one and it signed this nonce.
-    static func check(key: String, sig: String, nonce: String, pinned: String) -> Bool {
-        guard let raw = unb64u(key), raw.count == 32, fingerprint(raw) == pinned, let s = unb64u(sig),
-              let pub = try? Curve25519.Signing.PublicKey(rawRepresentation: raw) else { return false }
-        return pub.isValidSignature(s, for: Data("ducter-home\n\(nonce)".utf8))
-    }
-
-    /// Asks base to prove it is the home with this fingerprint.
-    static func proves(_ base: String, pinned: String) async -> Bool {
-        var bytes = [UInt8](repeating: 0, count: 18)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-        let nonce = b64u(Data(bytes))
-        let root = base.hasSuffix("/") ? String(base.dropLast()) : base
-        guard let u = URL(string: "\(root)/.well-known/ducter-home?n=\(nonce)") else { return false }
-        var req = URLRequest(url: u)
-        req.timeoutInterval = 4
-        guard let (data, res) = try? await URLSession.shared.data(for: req), (res as? HTTPURLResponse)?.statusCode == 200,
-              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let key = j["key"] as? String, let sig = j["sig"] as? String else { return false }
-        return check(key: key, sig: sig, nonce: nonce, pinned: pinned)
-    }
-
-    /// The best way that proves it is the home: each tried 250 ms after the one before; a better
-    /// one still pending gets 300 ms more once a worse one answered. nil when none does.
-    static func race(_ ways: [Way], pinned: String) async -> String? {
-        let list = ranked(ways)
-        guard !list.isEmpty else { return nil }
-        return await withTaskGroup(of: (Int, Bool).self) { g in
-            for (i, w) in list.enumerated() {
-                g.addTask {
-                    try? await Task.sleep(nanoseconds: UInt64(i) * 250_000_000)
-                    return (i, await proves(w.url, pinned: pinned))
-                }
-            }
-            var got = [Int: Bool]()
-            var graceStarted = false, graceOver = false
-            for await (i, ok) in g {
-                if i < 0 { graceOver = true } else { got[i] = ok }
-                if ok, !graceStarted {
-                    graceStarted = true
-                    g.addTask {
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                        return (-1, false)
-                    }
-                }
-                if let best = got.filter(\.value).keys.min(), graceOver || (0..<best).allSatisfy({ got[$0] != nil }) {
-                    g.cancelAll()
-                    return list[best].url
-                }
-            }
-            return got.filter(\.value).keys.min().map { list[$0].url }
-        }
     }
 }
 

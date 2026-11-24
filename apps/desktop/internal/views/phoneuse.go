@@ -430,14 +430,14 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 	}
 	uiText(c, what).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("phone-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
-			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
-		}
 		if a.button(c, a.L.T("phoneuse.go.go"), btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
 		}
 		if a.button(c, a.L.T("phoneuse.go.hold"), btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
+		}
+		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
+			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
 		}
 	})
 }

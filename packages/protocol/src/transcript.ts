@@ -693,3 +693,88 @@ export function latestVoice(blocks: Block[]): string {
   }
   return "";
 }
+
+/**
+ * D544: a task in rounds repeats the same round that changed nothing (its review loop's 「没有新的请求，
+ * 9 个都没变」 nine times in a row). Consecutive rounds that changed nothing fold into one quiet row
+ * in the opened task, as the Keep's page folds them (又看过 {n} 次，都没有变化). A round is quiet from
+ * its structured outcome only, never its words (principle 21): it ended on a `done` report, or (a
+ * loop's rounds report progress) at the next wake with only progress reports; nothing was said to it
+ * (the person's words, the partner's, a Go relayed: only a wake starts it); no question, failure or
+ * block; and its review_report marked no PR `changed`. A run is two or more such rounds in a row.
+ * `keys` name each round: its wake's seq (the turn it opens) or, without one, its report's seq.
+ */
+export interface QuietRun {
+  keys: number[];
+  /** Each round's time (its last report's), in order. */
+  times: string[];
+  from: string;
+  to: string;
+}
+
+export function quietRuns(events: LogEvent[]): QuietRun[] {
+  const out: QuietRun[] = [];
+  let run: QuietRun | undefined;
+  let briefed = false;
+  // The round under way: its wake (when one started it), whether it reported, what breaks quiet.
+  let wake: { seq: number; ts: string } | undefined;
+  let reported: { seq: number; ts: string } | undefined;
+  let loud = false;
+  let last = 0;
+  const close = () => {
+    if (run && run.keys.length >= 2) out.push(run);
+    run = undefined;
+  };
+  const finish = (quiet: boolean, key: number, ts: string) => {
+    last = key;
+    if (!quiet) close();
+    else {
+      if (!run) run = { keys: [], times: [], from: ts, to: ts };
+      run.keys.push(key);
+      run.times.push(ts);
+      run.to = ts;
+    }
+    wake = undefined;
+    reported = undefined;
+    loud = false;
+  };
+  for (const ev of events) {
+    if (ev.kind === "task_open") {
+      if ((ev.body as Bodies["task_open"]).brief?.trim()) briefed = true;
+      continue;
+    }
+    const p = promptOf(ev, briefed);
+    if (p?.k === "wake") {
+      // A loop's round that reported only progress ends where the next wake begins.
+      if (wake && reported) finish(!loud, wake.seq, reported.ts);
+      else if (wake) close();
+      wake = { seq: ev.seq, ts: ev.ts };
+      continue;
+    }
+    if (p) loud = true;
+    if (ev.kind === "task_event") {
+      const tool = (ev.body as Bodies["task_event"]).tool;
+      if (tool && /(^|__)review_report$/.test(tool.name)) {
+        const prs = (tool.input as { prs?: { changed?: unknown }[] } | undefined)?.prs;
+        if (Array.isArray(prs) && prs.some((x) => x?.changed === true)) loud = true;
+      }
+      continue;
+    }
+    if (ev.kind !== "report") continue;
+    const r = ev.body as Bodies["report"];
+    if (r.state === "progress") {
+      reported = { seq: ev.seq, ts: ev.ts };
+      continue;
+    }
+    finish(r.state === "done" && !loud, wake?.seq ?? ev.seq, ev.ts);
+  }
+  // The round under way now is never folded (it may yet change something), nor the latest one
+  // finished: it is what the person reads now.
+  if (run && run.keys.at(-1) === last) {
+    run.keys.pop();
+    run.times.pop();
+    run.to = run.times.at(-1) ?? run.from;
+  }
+  close();
+  return out;
+}

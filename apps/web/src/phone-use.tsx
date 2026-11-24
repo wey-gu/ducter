@@ -782,8 +782,8 @@ export function PhoneAskBody({ d, compact }: { d: Ask; compact?: boolean }) {
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("phoneuse.go.go")} onClick={() => A.decide(d.decisionId, "go")} />
-          {d.taskId && !mine && <Btn kind="text" size={compact ? "sm" : undefined} label={t("phoneuse.go.look")} onClick={() => openPhone({ device: home, taskId: d.taskId, mode: "watch" })} />}
           <Btn kind="secondary" size={compact ? "sm" : undefined} label={t("phoneuse.go.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
+          {d.taskId && !mine && <Btn kind="text" size={compact ? "sm" : undefined} label={t("phoneuse.go.look")} onClick={() => openPhone({ device: home, taskId: d.taskId, mode: "watch" })} />}
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">

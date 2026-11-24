@@ -3392,3 +3392,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
   is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
 - [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
   conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.
+
+## The review loop posts what it reviewed (D540)
+
+- [ ] **A loop Keep's `until` reaches its rounds.** `keep_change until` on a loop writes the Keep but not the
+  loop's own `until` (loops.ts), so its rounds never hear a goal set after it started. Not synced in
+  D540 because hel's Keep `kp_8907c58d86` holds a one-off steer in `until` (2026-11-24 09:47 UTC): synced,
+  its rounds would read 「本轮优先直接评审 …#551…」 as the condition that ends the loop. *Trigger:* hel's
+  goal cleared (the partner's `keep_change until ""`), then sync both ways with a test.
+- [ ] **Clear hel's Keep goal.** `kp_8907c58d86`'s `until` holds the 09:47 UTC steer; the lead has the
+  partner run `keep_change until ""` on it. *Trigger:* hel upgraded to the release with D540 (0.1.48).
+- [ ] **An approval when the review finds nothing.** D540 posts a comment-only review stating the verdict,
+  never an Approve (it gates merges). Approvals would be their own standing permission (a new action).
+  *Trigger:* the author says approvals may go without asking too.
+- [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
+  change gets a review on GitHub. *Trigger:* hel on the release with D540.

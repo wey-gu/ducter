@@ -318,7 +318,8 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "mend_" + str(obj("mend")["how"]), Name: str(obj("mend")["name"])}, true
 	case truthy(r["stall"]):
 		return Block{Say: "stalled"}, true
-	case truthy(r["fresh"]):
+	// D528: a round's designed fresh session is silent; only a refused resume is said.
+	case truthy(r["fresh"]) && r["fresh"] != "round":
 		return Block{Say: "fresh"}, true
 	case truthy(r["effortDropped"]):
 		return Block{Say: "effort_dropped", Name: str(r["effortDropped"])}, true
@@ -1020,7 +1021,10 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 			switch {
 			case b.Role == "system":
 				// D266: the harness's own background work, started and ended, as a step of the stretch.
-				if st, failed, ok := backgroundStep(b.Raw); ok {
+				if st, failed, quiet, ok := backgroundStep(b.Raw); ok {
+					if quiet {
+						continue // D521: the tray says it
+					}
 					st.Target = redact.Text(st.Target)
 					outcome := "ok"
 					if failed {

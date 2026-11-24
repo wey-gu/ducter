@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { docAsk, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { docAsk, tailLines, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, APPS_HEADING, outsideOver, NUDGE, backgroundEnded, type BackgroundEnd, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -203,6 +203,8 @@ interface TaskRt {
   bgOwed?: boolean;
   /** D515: background jobs that ended since the last turn, what the wake turn says. */
   bgDone?: BackgroundEnd[];
+  /** D521: the jobs the person asked to stop from Ducter (their end says who stopped them). */
+  bgStopping?: Set<string>;
   bgSettle?: ReturnType<typeof setTimeout>;
   /** D266: merged while background work ran: archived once it ends. */
   archiveWhenQuiet?: Place;
@@ -533,14 +535,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     for (const [id, b] of t.bg)
       if (bgCeilingMs > 0 && at - b.seen >= bgCeilingMs) {
         t.bg.delete(id);
-        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true } });
+        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true, bgId: id, ...(b.what ? { bgWhat: b.what } : {}) } });
       }
     return t.bg.size;
   }
 
   /** D266: one background report from the harness (normalize.ts): counted, logged as a step. */
   function onBackground(t: TaskRt, ev: HarnessEvent) {
-    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string } & Omit<BackgroundEnd, "act" | "what"> }).background;
+    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string; tool?: string; stop?: boolean } & Omit<BackgroundEnd, "act" | "what"> }).background;
     if (!b?.id) return;
     const wasLive = bgLive(t);
     if (b.act === "started") (t.bg ??= new Map()).set(b.id, { ...(b.what ? { what: b.what } : {}), seen: now().getTime() });
@@ -549,9 +551,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const end: BackgroundEnd = { act: b.act === "failed" ? "failed" : b.act === "stopped" ? "stopped" : "ended", ...(b.what ? { what: b.what } : {}) };
       if (typeof b.exitCode === "number") end.exitCode = b.exitCode;
       for (const k of ["output", "summary", "outputFile"] as const) if (typeof b[k] === "string" && b[k]) end[k] = b[k];
+      if (end.act === "stopped" && t.bgStopping?.has(b.id)) end.by = "person";
       (t.bgDone ??= []).push(end);
     }
-    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}) } } });
+    const by = b.act !== "started" && t.bgStopping?.delete(b.id) && b.act === "stopped" ? "person" : undefined;
+    // D521: logged with its id, the tool that started it, whether it can be stopped and its output's
+    // tail, so core folds the task's background list from the Log (protocol background.ts).
+    const said = typeof b.output === "string" && b.output.trim() ? { output: tailLines(b.output) } : typeof b.summary === "string" && b.summary.trim() ? { summary: b.summary.slice(0, 500) } : {};
+    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { id: b.id, act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.tool ? { tool: b.tool } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}), ...said, ...(b.stop ? { stop: true } : {}), ...(by ? { by } : {}) } } });
     const live = bgLive(t);
     if (live > 0 || wasLive === 0 || t.dropped || isBusy(t)) return;
     // The last one ended between turns: the session may idle and park again.
@@ -1654,6 +1661,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project: open.project || undefined,
         mcpServerName: mcp.name,
         ...(open.language ? { language: open.language } : {}),
+        // D528: the person's zone: the times they read are written in it, never UTC.
+        ...((z) => (z ? { zone: z } : {}))(core.zone?.()),
         // D168: the user's Nowledge Mem plugin where it is on that computer, else Ducter's own
         // read-only memory; a browser task gets none (as with the Log, D62).
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
@@ -2783,6 +2792,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     stop() {
       return runner.dispose();
+    },
+
+    // D521: one background job stopped by its agent's own stop; its end comes as the job's own.
+    async stopBackground(taskId, jobId) {
+      const t = tasks.get(taskId);
+      if (!t) return { ok: false, message: "I can't find that task." };
+      await t.started.catch(() => {});
+      if (!t.bg?.has(jobId)) return { ok: false, message: "That one isn't running any more." };
+      const s = t.session;
+      if (!s?.stopBackground) return { ok: false, message: "Its agent can't stop just that one." };
+      (t.bgStopping ??= new Set()).add(jobId);
+      try {
+        await s.stopBackground(jobId);
+      } catch (err) {
+        t.bgStopping.delete(jobId);
+        return { ok: false, message: `Its agent didn't stop it: ${preview(String((err as Error)?.message ?? err), 200)}` };
+      }
+      logEvent(t, { role: "system", from: "runner", text: `the person stopped a background job${t.bg.get(jobId)?.what ? `: ${t.bg.get(jobId)!.what}` : ""}`, raw: { bgStop: jobId } });
+      return { ok: true };
     },
 
     async interrupt(taskId) {

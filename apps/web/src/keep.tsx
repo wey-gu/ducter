@@ -5,11 +5,12 @@
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
 // 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
-import { foldRounds, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
+import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
-import { clock, day, harnessName, spoken, when } from "./format.ts";
+import { BackRow, Btn, SectionHead, Tag, TimeCol } from "./controls.tsx";
+import { ComposerBox, echoed } from "./composer.tsx";
+import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
 import { healthLine, interval } from "./past.tsx";
@@ -18,14 +19,17 @@ import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** The Keep whose page is open (absent: On hand's list), the pages read, and the page's own state. */
-export const K = { open: "", pages: new Map<string, KeepPage>(), pause: false, stop: false, draft: "", undone: new Set<string>(), sig: "", askedAt: 0 };
+/** RAIL_COLS: a title in the rail, two lines at its width (Han counts two), cut at a word's end past them. */
+const RAIL_COLS = 38;
+
+/** The Keep whose page is open (absent: On hand's list), the pages read, and the page's own state (talk: the words being typed, the clientId in flight, the Keep last told). */
+export const K = { open: "", pages: new Map<string, KeepPage>(), pause: false, stop: false, undone: new Set<string>(), sig: "", askedAt: 0, talk: { text: "", sending: "", at: 0, sent: "" } };
 
 /** Opens a Keep's page in the board's place, and asks the home for it. */
 export function openKeep(id: string) {
   K.open = id;
   K.pause = K.stop = false;
-  K.draft = "";
+  K.talk = { text: "", sending: "", at: 0, sent: "" };
   A.send({ t: "keep", id });
   if (A.route.name !== "onhand") A.go({ name: "onhand" });
   else A.changed();
@@ -157,7 +161,7 @@ export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }
           {shown.map((x) => {
             const w = itemWords(x);
             return (
-              <button key={x.taskId} class="kp-h" onClick={() => A.go({ name: "task", id: x.taskId })} title={x.title}>
+              <button key={x.pr ?? x.taskId} class="kp-h" onClick={() => A.go({ name: "task", id: x.taskId })} title={x.title}>
                 <i class={`kp-dot ${x.at}`} aria-hidden="true" />
                 <span class="n">
                   {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
@@ -218,34 +222,52 @@ function wokeWords(r: KeepRound, k: KeepPage): string {
 
 const outWords = (r: KeepRound) => (r.state === "running" ? t("keep.round.running") : r.state === "failed" ? t("keep.round.failed") : r.state === "skipped" ? t("keep.round.skipped") : t(`keep.round.${r.spoke}`));
 
-/** A round's time: today its clock, else with its day. */
-const roundAt = (iso: string, now = Date.now()) => (day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now));
+/** D519: one round: its time in the column, what woke it, what happened in one line to the person
+ *  (the model's, once it has read the report), how it ended; the report as the task wrote it to
+ *  Ducter only behind 看细节, with the way to its task. */
+function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: boolean; onToggle: () => void }) {
+  const more = !!r.report;
+  return (
+    <div class={`kp-rd${open ? " open" : ""}`}>
+      <TimeCol at={r.at} text={colTime(A.L, r.at)} />
+      <span class="body">
+        <span class="why">{wokeWords(r, k)}</span>
+        {r.did && <span class="did">{r.did}</span>}
+        {open && (
+          <span class="kp-detail">
+            {r.report && <span class="rep">{r.report}</span>}
+            {r.taskId && <Btn kind="text" size="sm" chev label={t("keep.item.task")} onClick={() => A.go({ name: "task", id: r.taskId! })} />}
+          </span>
+        )}
+      </span>
+      <span class="end">
+        <span class={`out o-${r.spoke}${r.state === "failed" ? " failed" : ""}`}>{outWords(r)}</span>
+        {more && <Btn kind="text" size="sm" chev expanded={open} label={t("keep.round.details")} onClick={onToggle} />}
+      </span>
+    </div>
+  );
+}
 
 function Rounds({ k }: { k: KeepPage }) {
+  const [open, setOpen] = useState("");
   if (!k.rounds.length) return <p class="kp-empty">{t("keep.rounds.none")}</p>;
   return (
     <div class="kp-card kp-rounds">
-      {foldRounds(k.rounds).map((x, i) =>
-        "fold" in x ? (
-          <div key={`f${i}`} class="kp-quiet">
-            <span class="pips" aria-hidden="true">
-              {Array.from({ length: Math.min(6, x.fold) }, (_, j) => (
-                <i key={j} />
-              ))}
-            </span>
-            <span>{t("keep.rounds.fold", x.fold)}</span>
-          </div>
-        ) : (
-          <button key={`${x.round.at}${i}`} class="kp-rd" disabled={!x.round.taskId} onClick={() => x.round.taskId && A.go({ name: "task", id: x.round.taskId })}>
-            <span class="tm">{roundAt(x.round.at)}</span>
-            <span class="body">
-              <span class="why">{wokeWords(x.round, k)}</span>
-              {x.round.did && <span class="did">{x.round.did}</span>}
-            </span>
-            <span class={`out o-${x.round.spoke}${x.round.state === "failed" ? " failed" : ""}`}>{outWords(x.round)}</span>
-          </button>
-        ),
-      )}
+      {foldRounds(k.rounds).map((x, i) => {
+        if ("fold" in x)
+          return (
+            <div key={`f${i}`} class="kp-quiet">
+              <span class="pips" aria-hidden="true">
+                {Array.from({ length: Math.min(6, x.fold) }, (_, j) => (
+                  <i key={j} />
+                ))}
+              </span>
+              <span>{t("keep.rounds.fold", x.fold)}</span>
+            </div>
+          );
+        const id = `${x.round.at}|${x.round.taskId ?? ""}`;
+        return <Round key={id} r={x.round} k={k} open={open === id} onToggle={() => setOpen(open === id ? "" : id)} />;
+      })}
     </div>
   );
 }
@@ -259,12 +281,12 @@ function Items({ k }: { k: KeepPage }) {
         const facts = x.said ? prFacts(x.said) : [];
         const checks = x.said?.checks;
         return (
-          <div key={x.taskId} class="kp-item">
+          <div key={x.pr ?? x.taskId} class="kp-item">
             <i class={`kp-dot big ${x.at}`} aria-hidden="true" />
             <span class="body">
               <span class="t">
                 {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
-                <span>{x.title}</span>
+                <span>{noOrphan(x.title)}</span>
               </span>
               <span class={`st ${w.tone}`}>{w.text}</span>
               {checks && checks.total > 0 && (
@@ -351,40 +373,59 @@ function HowItRuns({ k }: { k: KeepPage }) {
   );
 }
 
+/** How long the talk box waits for the home to have the words before it gives them back. */
+const SEND_WAIT_MS = 10_000;
+
+/** D519: the talk box is the conversation's composer (composer.tsx): the same card, the same round
+ *  send. Sending: the words wait greyed and the send is pressed in until the home has them; then the
+ *  box empties and one line says the partner has it. */
 function Talk({ k }: { k: KeepPage }) {
-  const [text, setText] = useState("");
+  const tk = K.talk;
   const example = k.run === "perItem" ? t("keep.talk.helper") : k.everyMs ? t("keep.talk.every") : t("keep.talk.at");
+  if (tk.sending && (echoed(tk.sending) || Date.now() - tk.at > SEND_WAIT_MS)) {
+    const got = echoed(tk.sending);
+    tk.sending = "";
+    if (got) (tk.text = ""), (tk.sent = k.id);
+  }
   const send = () => {
-    const v = text.trim();
-    if (!v) return;
-    A.send({ t: "send", text: v, clientId: `p${Date.now().toString(36)}keep`, keep: k.id });
-    setText("");
-    A.toast(t("keep.talk.send"));
+    const v = tk.text.trim();
+    if (!v || tk.sending) return;
+    tk.sending = `p${Date.now().toString(36)}keep`;
+    tk.at = Date.now();
+    tk.sent = "";
+    A.send({ t: "send", text: v, clientId: tk.sending, keep: k.id });
+    setTimeout(() => A.changed(), SEND_WAIT_MS + 50);
+    A.changed();
   };
+  const place = t("keep.talk", example);
   return (
-    <form class="kp-talk" onSubmit={(e) => (e.preventDefault(), send())}>
-      <input value={text} placeholder={t("keep.talk", example)} aria-label={t("keep.talk", example)} onInput={(e) => setText((e.target as HTMLInputElement).value)} />
-      <Btn kind="accent" size="sm" label={t("keep.talk.send")} disabled={!text.trim()} onClick={send} />
-    </form>
+    <div class="kp-talk">
+      <ComposerBox id="keep-talk" value={tk.text} onInput={(v) => ((tk.text = v), (tk.sent = ""), A.changed())} onSend={send} sending={!!tk.sending} label={place} placeholder={place} />
+      {tk.sent === k.id && !tk.text && (
+        <p class="kp-sent" role="status">
+          {t("keep.talk.sent", A.S.personaName)}
+        </p>
+      )}
+    </div>
   );
 }
 
-/** The other Keeps beside an opened one (the rail beside an opened task, D244), wide only. */
+/** The other Keeps beside an opened one (the rail beside an opened task, D244), wide only: each its
+ *  mark, its title in two lines cut at a word's end, and one line; every row the same height, the
+ *  open one raised as the knob. */
 export function KeepRail() {
   const ks = A.S.onHand?.keeps ?? [];
   return (
     <aside class="kp-rail" aria-label={t("keep.section")}>
-      <button class="kp-back" onClick={closeKeep}>
-        <span aria-hidden="true">‹</span> {t("keep.back")}
-      </button>
-      <p class="lbl">{t("keep.section")}</p>
+      <BackRow label={t("keep.back")} onClick={closeKeep} />
+      <SectionHead label={t("keep.section")} />
       {ks.map((k) => {
         const facts = keepFacts(k).filter((f) => f.tone === "needs");
         return (
-          <button key={k.id} class={`k${k.id === K.open ? " on" : ""}`} onClick={() => openKeep(k.id)} aria-current={k.id === K.open ? "page" : undefined}>
-            <KeepMark life={k.life} />
+          <button key={k.id} class={`k${k.id === K.open ? " on" : ""}`} onClick={() => openKeep(k.id)} aria-current={k.id === K.open ? "page" : undefined} title={k.title}>
+            <KeepMark life={k.life} size={32} />
             <span class="kp-rtx">
-              <span class="t">{k.title}</span>
+              <span class="t">{noOrphan(cutAtWord(k.title, RAIL_COLS))}</span>
               <span class={facts.length ? "l needs" : "l"}>{facts[0]?.text ?? keepBeatWords(k)}</span>
             </span>
           </button>
@@ -407,35 +448,30 @@ export function KeepPageView({ room }: { room: string }) {
   }
   if (!k) return <div class="kp-page loading">{sheet ? t("keep.loading") : t("keep.gone")}</div>;
   const wide = room === "full";
+  // Its tasks' questions (its items', and its own loop's: D519), each once.
   const decisions = k.decisions.flatMap((id) => {
-    const item = k.items.find((x) => A.S.pendingDecision(x.taskId)?.decisionId === id);
-    const d = item ? A.S.pendingDecision(item.taskId) : undefined;
-    return d && item ? [{ d, taskId: item.taskId }] : [];
+    const taskId = [...new Set([...k.taskIds, ...k.items.map((x) => x.taskId)])].find((x) => A.S.pendingDecision(x)?.decisionId === id);
+    const d = taskId ? A.S.pendingDecision(taskId) : undefined;
+    return d && taskId ? [{ d, taskId }] : [];
   });
-  const chips = [
+  const chips: { text: string; tone: "on" | "needs" | "" }[] = [
     { text: t(`keep.life.${k.life}`), tone: k.life === "on" ? "on" : "" },
-    ...(k.asks ? [{ text: t("keep.asks", k.asks), tone: "needs" }] : []),
+    ...(k.asks ? [{ text: t("keep.asks", k.asks), tone: "needs" as const }] : []),
     { text: t("keep.since", when(A.L, k.since)), tone: "" },
-    ...(k.run === "perItem" && k.week ? [{ text: t("keep.week", k.week), tone: "" }] : []),
+    ...(k.run === "perItem" && k.week ? [{ text: t("keep.week", k.week), tone: "" as const }] : []),
   ];
   return (
     <div class={`kp-page${wide ? " wide" : ""}`}>
-      {!wide && (
-        <button class="kp-back" onClick={closeKeep}>
-          <span aria-hidden="true">‹</span> {t("keep.back")}
-        </button>
-      )}
+      {!wide && <BackRow label={t("keep.back")} onClick={closeKeep} />}
       <div class="kp-main">
         <header class="kp-ph">
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />
           <div>
             <p class="kick">{t("keep.kicker", A.S.personaName)}</p>
-            <h1>{k.title}</h1>
+            <h1>{noOrphan(k.title)}</h1>
             <p class="kp-life">
               {chips.map((c) => (
-                <span key={c.text} class={`chip ${c.tone}`}>
-                  {c.text}
-                </span>
+                <Tag key={c.text} text={c.text} tone={c.tone} />
               ))}
             </p>
           </div>
@@ -446,21 +482,21 @@ export function KeepPageView({ room }: { room: string }) {
         </div>
         {decisions.length > 0 && (
           <>
-            <h2 class="kp-h2">{t("keep.waiting")}</h2>
+            <SectionHead label={t("keep.waiting")} />
             {decisions.map(({ d, taskId }) => (
               <DecisionCard key={d.decisionId} d={d} taskId={taskId} />
             ))}
           </>
         )}
-        {/* A Keep in rounds is its one task: it holds something only when that task owns a PR. */}
-        {(k.run !== "same" || k.items.some((x) => x.pr)) && <h2 class="kp-h2">{t("keep.holding")}</h2>}
-        {(k.run !== "same" || k.items.some((x) => x.pr)) && <Items k={k} />}
-        <h2 class="kp-h2">{t("keep.rounds")}</h2>
+        {/* A Keep in rounds is its one task, never an item: it holds something only when that task keeps a PR open (D519). */}
+        {(k.run !== "same" || k.items.length > 0) && <SectionHead label={t("keep.holding")} />}
+        {(k.run !== "same" || k.items.length > 0) && <Items k={k} />}
+        <SectionHead label={t("keep.rounds")} />
         <Rounds k={k} />
         {k.life !== "done" && k.life !== "stopped" && <Talk k={k} />}
       </div>
       <div class="kp-side">
-        <h2 class="kp-h2">{t("keep.how")}</h2>
+        <SectionHead label={t("keep.how")} />
         <HowItRuns k={k} />
       </div>
     </div>

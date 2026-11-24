@@ -759,22 +759,39 @@ func editPaths(raw any) []string {
 // backgroundStep is the harness's own background work as a step (D266): the
 // runner logs it as a system line with raw.background {act, what}; act
 // started · ended · stopped · failed becomes start · end · stop, and failed
-// says it ended in a failure. ok is false for any other line.
-func backgroundStep(raw json.RawMessage) (st Step, failed, ok bool) {
+// says it ended in a failure. ok is false for any other line. D521: quiet
+// (the opened task's tray says it) for a start and for an end that simply
+// went well; a job the runner stopped hearing of (its ceiling) is "lost".
+func backgroundStep(raw json.RawMessage) (st Step, failed, quiet, ok bool) {
 	var r struct {
 		Background *struct {
-			Act  string `json:"act"`
-			What string `json:"what"`
+			Act      string `json:"act"`
+			What     string `json:"what"`
+			ExitCode *int   `json:"exitCode"`
 		} `json:"background"`
+		Ceiling bool   `json:"backgroundCeiling"`
+		BgWhat  string `json:"bgWhat"`
 	}
-	if len(raw) == 0 || json.Unmarshal(raw, &r) != nil || r.Background == nil {
-		return Step{}, false, false
+	if len(raw) == 0 || json.Unmarshal(raw, &r) != nil {
+		return Step{}, false, false, false
 	}
-	act := map[string]string{"started": "start", "ended": "end", "stopped": "stop", "failed": "end"}[r.Background.Act]
+	if r.Ceiling {
+		return Step{Kind: "background", Act: "lost", Target: strings.TrimSpace(r.BgWhat)}, false, false, true
+	}
+	if r.Background == nil {
+		return Step{}, false, false, false
+	}
+	b := r.Background
+	act := map[string]string{"started": "start", "ended": "end", "stopped": "stop", "failed": "end"}[b.Act]
 	if act == "" {
-		return Step{}, false, false
+		return Step{}, false, false, false
 	}
-	return Step{Kind: "background", Act: act, Target: strings.TrimSpace(r.Background.What)}, r.Background.Act == "failed", true
+	failed = b.Act == "failed" || (b.Act == "ended" && b.ExitCode != nil && *b.ExitCode != 0)
+	quiet = b.Act == "started" || (b.Act == "ended" && !failed)
+	if failed {
+		act = "fail"
+	}
+	return Step{Kind: "background", Act: act, Target: strings.TrimSpace(b.What)}, failed, quiet, true
 }
 
 // stepOf is what one tool call was, as a step.

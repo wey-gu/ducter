@@ -18,7 +18,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
-import { clock, day, shownDeviceName, span, stamp, when } from "./format.ts";
+import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
 import { Btn, Chev, CodeChip, Facts, FileChip, WorkHead } from "./controls.tsx";
 import { chipText, fileKind, fileName, itemsOf, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
@@ -137,6 +137,10 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   // D530: a step through a connected service (never a bare dot), and the earlier steps of a stretch.
   plug: () => <G><path d="M5.5 2v3M10.5 2v3M3 5h10v2.5Q13 11 8 11T3 7.5zM8 11v3.5" /></G>,
   more: () => <G><circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none" /></G>,
+  // D521: a watch (Claude Code's Monitor), an ended one's tick, and Stop's square.
+  watch: () => <G><path d="M1.8 8q6.2-7.4 12.4 0q-6.2 7.4-12.4 0z" /><circle cx="8" cy="8" r="1.9" /></G>,
+  check: () => <G><path d="M3.5 8.4 6.6 11.4 12.5 4.8" /></G>,
+  stop: () => <G><rect x="4.5" y="4.5" width="7" height="7" rx="1.6" fill="currentColor" stroke="none" opacity="0.7" /></G>,
 };
 
 /** A step's drawn mark by its kind (D216: On hand's latest line uses the transcript's marks). */
@@ -371,7 +375,7 @@ const Check = () => (
 export type Parts = { verb: string; code?: string; file?: string; path?: string; words?: string; more?: string; tip?: string };
 
 /** A step's drawn mark (D530): a web search a globe, a service's tool a plug, else its kind's. */
-const markOf = (st: Step): string => (st.kind === "searched" && st.act === "web" ? "browsed" : st.kind === "other" && st.via ? "plug" : st.kind);
+const stepMarkOf = (st: Step): string => (st.kind === "searched" && st.act === "web" ? "browsed" : st.kind === "other" && st.via ? "plug" : st.kind);
 
 /** A step in its row's words (D530): a plain verb (the present tense while it is the live one) and
  *  the object it acted on, never a verb alone and never a raw tool name. */
@@ -451,11 +455,11 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
   const detail = !st ? ((r.thought ?? "").includes("\n") || [...(p.words ?? "")].length >= 60 ? r.thought ?? "" : "") : !r.diff && (r.command || r.output) ? lines.join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const cls = `step${bad ? " bad" : ""}${st?.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
   const at = live && task ? tsOf(task, r.seq) : NaN;
   const inner = (
     <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[markOf(st)] ?? GLYPHS.other)!()}
+      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
       <span class="verb" title={p.tip || p.verb}>
         {p.verb}
       </span>
@@ -478,7 +482,7 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
           <Check />
           {r.ms >= 1000 ? dur(r.ms) : ""}
         </span>
-      ) : bad ? (
+      ) : bad && st?.kind !== "background" ? (
         <span class="bad-tag">{t("step.label.error")}</span>
       ) : null}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
@@ -1228,7 +1232,6 @@ function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
 }
 
 /** D284: a turn opened by what someone said (the brief, the person's own words, the partner's). */
-const saidTurn = (tu: Turn) => tu.prompt?.k === "brief" || tu.prompt?.k === "you" || tu.prompt?.k === "partner";
 
 /** D284: the person's Go on a card, said as they pressed it: 你点了「好，Done」. */
 export function goWords(p: Extract<Block, { k: "go" }>): string {
@@ -1243,17 +1246,19 @@ function atOf(task: Task, seq: number): string {
 /** D325: one row of the locator's list, said: its words, the brief's quiet label, its time apart (D291). */
 export type LocRow = { k: Landmark["k"]; line: string; tag?: string; at: string; quiet: boolean };
 
-/** D325: a landmark in words (the list draws only the rows near its view, so only those are said). */
-export function locatorRow(lm: Landmark, now = Date.now()): LocRow {
+/** D325: a landmark in words (the list draws only the rows near its view, so only those are said).
+ *  D526: with its task, the task handed over says what the task is (its title, the partner's plain
+ *  sentence), never the brief's words to the agent; its kind is said in the spoken label only. */
+export function locatorRow(lm: Landmark, now = Date.now(), task?: Task): LocRow {
   const at = lm.endAt ? span(A.L, lm.at, lm.endAt, now) : stamp(A.L, lm.at, now);
   switch (lm.k) {
     case "brief":
-      return { k: lm.k, line: lm.text ?? "", tag: t("locator.brief"), at, quiet: false };
+      return { k: lm.k, line: (task && title(task)) || lm.text || "", tag: t("locator.brief"), at, quiet: false };
     case "you":
     case "partner":
       return { k: lm.k, line: lm.text ?? t("locator.media"), at, quiet: false };
     case "report":
-      return { k: lm.k, line: lm.text ?? t("locator.report"), at, quiet: false };
+      return { k: lm.k, line: lm.text ?? t("locator.report"), ...(lm.s === "ask" ? { tag: t("locator.ask") } : {}), at, quiet: false };
     case "quiet": {
       if (lm.n) return { k: lm.k, line: t(lm.wakes ? "locator.wakes" : "locator.quiet", lm.n), at, quiet: true };
       const p = lm.p!;
@@ -1272,6 +1277,61 @@ export const taskLandmarks = (task: Task): Landmark[] => {
   if (!l) lmCache.set(slots, (l = landmarksOf(slots.map((s) => s.it))));
   return l;
 };
+
+/** D526: a landmark's mark, the same on the rail and in its card: its shape (dot: someone said it;
+ *  sq: a task handed over; ring: a result; ask: an ask, waiting or answered; faint: anything quiet),
+ *  its tone class (whose, or how it stood), and its rank where two meet on a crowded rail. */
+export type LocMark = { shape: "dot" | "sq" | "ring" | "ask" | "faint"; tone: string; rank: number };
+export function markOf(lm: Landmark, waiting: boolean): LocMark {
+  switch (lm.k) {
+    case "you":
+      return { shape: "dot", tone: "t-you", rank: 5 };
+    case "partner":
+      return { shape: "dot", tone: "t-partner", rank: 4 };
+    case "brief":
+      return { shape: "sq", tone: lm.by === "you" ? "t-you" : "t-partner", rank: 5 };
+    case "report":
+      if (lm.s === "ask") return waiting ? { shape: "ask", tone: "t-wait", rank: 7 } : { shape: "ask", tone: "t-progress", rank: 3 };
+      if (lm.s === "done") return { shape: "ring", tone: "t-done", rank: 3 };
+      if (lm.s === "failed") return { shape: "ring", tone: "t-failed", rank: 6 };
+      return { shape: "ring", tone: "t-progress", rank: 2 };
+  }
+  return { shape: "faint", tone: "t-faint", rank: 0 };
+}
+
+/** D526: the newest ask, while the task still waits on the person (else -1). */
+export function lastAsk(lms: Landmark[], waiting: boolean): number {
+  if (!waiting) return -1;
+  for (let i = lms.length - 1; i >= 0; i--) if (lms[i]!.k === "report") return lms[i]!.s === "ask" ? i : -1;
+  return -1;
+}
+
+/** D526: the rail's marks, one per landmark in order (`y` in px from the rail's top); where two would
+ *  touch the one that matters more is drawn, so a rail of thousands never smears. */
+export function railMarks(lms: Landmark[], h: number, ask: number, room = 7): (LocMark & { i: number; y: number })[] {
+  const out: (LocMark & { i: number; y: number })[] = [];
+  for (let i = 0; i < lms.length; i++) {
+    const m = { ...markOf(lms[i]!, i === ask), i, y: railY(i, lms.length, h) };
+    const last = out.at(-1);
+    if (last && m.y - last.y < room) {
+      if (m.rank > last.rank) out[out.length - 1] = m;
+      continue;
+    }
+    out.push(m);
+  }
+  return out;
+}
+
+/** D526: the rail is the card's list drawn small: landmark `i` of `n` on a rail `h` tall. */
+const RAIL_INSET = 6;
+export const railY = (i: number, n: number, h: number) => (n <= 1 ? h / 2 : RAIL_INSET + ((h - 2 * RAIL_INSET) * i) / (n - 1));
+export const railAt = (y: number, n: number, h: number) => (n <= 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((y - RAIL_INSET) / (h - 2 * RAIL_INSET)) * (n - 1)))));
+export const LOC_MARK_GAP = 12;
+/** D526: the marks a rail at rest shows (the person's words, a task handed over, a failure, an ask that waits). */
+export const LOC_REST_RANK = 5;
+
+/** D526: a mark, drawn. */
+const Mark = ({ m, y }: { m: LocMark; y?: number }) => <i class={`m m-${m.shape} ${m.tone}${y !== undefined && m.rank < LOC_REST_RANK ? " lo" : ""}`} style={y === undefined ? undefined : { top: `${y}px` }} aria-hidden="true" />;
 
 /** D325: the list's rows are one height, so it draws only those near its view. */
 export const LOC_ROW = 28;
@@ -1428,22 +1488,25 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     if (y !== el.scrollTop) (el.scrollTop = y), setTop(y);
   });
   if (turns.length < 3) return null;
-  const lms = open ? taskLandmarks(task) : [];
+  const lms = taskLandmarks(task);
+  if (!lms.length) return null;
   // The turns in view, as indexes of the session's turns.
   let first = -1, last = -1;
   turns.forEach((tu, i) => {
     if (seen.has(tu.seq)) (first = first < 0 ? i : first), (last = i);
   });
-  const [hereLo, hereHi] = open && first >= 0 ? landmarksIn(lms, first, last) : [0, 0];
+  let [hereLo, hereHi] = first >= 0 ? landmarksIn(lms, first, last) : [0, 0];
+  if (first >= 0 && hereHi <= hereLo) [hereLo, hereHi] = [Math.max(0, landmarkNear(lms, first)), Math.max(0, landmarkNear(lms, first)) + 1];
   const choose = (i: number, center: boolean) => {
     want.current = { i, center };
     setSel(i);
   };
+  // `at`: the landmark under the pointer; else the one nearest the turns in view.
   const show = (center: boolean, at?: number) => {
     clearTimeout(shut.current);
-    const k = at ?? (first >= 0 ? Math.round((first + last) / 2) : turns.length - 1);
+    const k = at ?? landmarkNear(lms, first >= 0 ? Math.round((first + last) / 2) : turns.length - 1);
     if (!open) setOpen(true);
-    choose(landmarkNear(taskLandmarks(task), k), center);
+    choose(k, center);
   };
   const go = (seq: number) => {
     const el = scroller.current;
@@ -1453,13 +1516,16 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     else goToTurn(task.id, seq);
     close();
   };
-  const h = Math.min(Math.max(turns.length * 8, 64), 360);
-  const pos = (i: number) => (turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0);
-  const lit = turns.map((tu, i) => (seen.has(tu.seq) ? i : -1)).filter((i) => i >= 0);
-  // The turn under the pointer on the rail.
+  // D526: one place per landmark, in order: the row the pointer chooses is the mark under it.
+  const h = Math.min(Math.max(lms.length * LOC_MARK_GAP, 64), 360);
+  const waiting = attention(task) === "needs_you";
+  const ask = lastAsk(lms, waiting);
+  const marks = railMarks(lms, h, ask);
+  const look = A.partners?.find((p) => p.id === task.card?.persona)?.look;
+  // The landmark under the pointer on the rail.
   const turnAtY = (e: MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    return Math.max(0, Math.min(turns.length - 1, Math.round(((e.clientY - r.top) / Math.max(1, r.height)) * (turns.length - 1))));
+    return railAt(e.clientY - r.top, lms.length, h);
   };
   const onKey = (e: KeyboardEvent) => {
     if (!open) return;
@@ -1467,7 +1533,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       e.preventDefault();
       e.stopPropagation();
       close();
-      nav.current?.querySelector<HTMLElement>(".rail")?.focus();
+      nav.current?.querySelector<HTMLElement>(".loc-rail")?.focus();
       return;
     }
     if (e.key === "Enter" && sel >= 0 && sel < lms.length) {
@@ -1499,8 +1565,9 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && !pinned && setOpen(false)}
     >
       <div
-        class="rail"
+        class="loc-rail"
         style={{ height: `${h}px` }}
+        data-look={look}
         tabIndex={0}
         role="button"
         aria-haspopup="listbox"
@@ -1515,10 +1582,11 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
         }}
         onFocus={() => !open && show(true)}
       >
-        {lit.length > 0 && <b class="thumb" style={{ top: `${pos(lit[0]!)}%`, height: `${pos(lit.at(-1)!) - pos(lit[0]!)}%` }} />}
-        {turns.map((tu, i) => (
-          <i key={tu.seq} class={`${seen.has(tu.seq) ? "here" : ""}${saidTurn(tu) ? "" : " quiet"}`} style={{ top: `${pos(i)}%` }} />
+        {first >= 0 && <b class="thumb" style={{ top: `${railY(hereLo, lms.length, h)}px`, height: `${railY(hereHi - 1, lms.length, h) - railY(hereLo, lms.length, h) + 14}px` }} />}
+        {marks.map((m) => (
+          <Mark key={m.i} m={m} y={m.y} />
         ))}
+        {open && sel >= 0 && sel < lms.length && <s class="loc-chosen" style={{ top: `${railY(sel, lms.length, h)}px` }} />}
       </div>
       <div
         ref={list}
@@ -1535,7 +1603,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
         <div class="loc-rows" style={{ height: `${lms.length * row}px` }}>
           {lms.slice(from, to).map((lm, k) => {
             const i = from + k;
-            const r = locatorRow(lm, now);
+            const r = locatorRow(lm, now, task);
             const here = i >= hereLo && i < hereHi;
             return (
               <div
@@ -1543,14 +1611,16 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
                 id={id(i)}
                 role="option"
                 aria-selected={i === sel}
+                aria-label={spoken(A.L, r.tag, r.line, r.at)}
                 class={`loc-row k-${r.k}${here ? " here" : ""}${r.quiet ? " quiet" : ""}${i === sel ? " sel" : ""}`}
                 style={{ top: `${i * row}px`, height: `${row}px` }}
                 onMouseMove={() => i !== sel && setSel(i)}
                 onClick={() => go(lm.seq)}
               >
-                <i />
-                {r.tag && <em class="tag">{r.tag}</em>}
-                <span>{r.line}</span>
+                <span class="mk">
+                  <Mark m={markOf(lm, i === ask)} />
+                </span>
+                <span class="w">{r.line}</span>
                 {r.at && <small class="at">{r.at}</small>}
               </div>
             );

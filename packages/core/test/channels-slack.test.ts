@@ -1,6 +1,6 @@
 // D276: the partner in the person's own Slack app (a bot user, Socket Mode), against a fake Slack.
 import { afterEach, expect, test } from "bun:test";
-import { slackManifest } from "../src/channels/index.ts";
+import { faceUrl, slackManifest } from "../src/channels/index.ts";
 import { channelRig, waitFor } from "./channels-rig.ts";
 import { png } from "./fixtures-media.ts";
 
@@ -114,7 +114,112 @@ test("the manifest makes a bot user with DM-only scopes and Socket Mode, never a
   expect(m.features.bot_user.display_name).toBe("小D");
   expect(m.settings.socket_mode_enabled).toBe(true);
   expect(m.settings.interactivity.is_enabled).toBe(true);
-  expect(m.settings.event_subscriptions.bot_events).toEqual(["message.im"]);
   expect(m.oauth_config.scopes.user).toBeUndefined();
   expect(m.oauth_config.scopes.bot).not.toContain("channels:history");
+  // D531: each partner's own name and face; nothing for the person to turn on or off.
+  expect(m.oauth_config.scopes.bot).toContain("chat:write.customize");
+  expect(m.settings.token_rotation_enabled).toBe(false);
+  // D531: the person can @ the partner in a channel it was added to.
+  expect(m.oauth_config.scopes.bot).toContain("app_mentions:read");
+  expect(m.settings.event_subscriptions.bot_events).toEqual(["app_mention", "message.im"]);
+});
+
+const SCOPES = ["app_mentions:read", "chat:write", "chat:write.customize", "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"];
+const PARTNERS = [
+  { id: "default", name: "Ducter" },
+  { id: "home", name: "小家" },
+];
+
+test("D531: the code comes with a link that opens the app's messages in Slack", async () => {
+  rig = channelRig({ slackScopes: SCOPES });
+  const { hub, sl } = rig;
+  expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
+  const c = hub.code("slack");
+  expect(c).toMatchObject({ ok: true, link: "https://slack.com/app_redirect?app=A0DUCTER&team=T0ACME" });
+  expect(slackView().reinstall).toBeUndefined();
+});
+
+test("D531: each partner posts under its own name and face; no name in front", async () => {
+  rig = channelRig({ slackScopes: SCOPES, partners: PARTNERS, looks: { default: "sand", home: "sage" } });
+  const { sl, log } = rig;
+  await rig.linked("slack");
+  expect(sl.sent("chat.postMessage").at(-1)).toMatchObject({ text: "连上了。以后在这儿跟我说就行。", username: "Ducter", icon_url: "https://ducter.ai/faces/sand.png" });
+  sl.says("UWEY", "小家，周六提醒我交房租");
+  const u = await waitFor(() => log.read({ stream: "channel:home", kinds: ["user_msg"], limit: 5 })[0]);
+  log.append({ stream: "channel:home", origin: "partner", kind: "ai_msg", body: { text: "好，周六早上九点提醒你。", replyTo: u.seq } });
+  const a = await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).startsWith("好，周六")));
+  expect(a).toMatchObject({ username: "小家", icon_url: faceUrl("sage") });
+  expect(String(a.text)).not.toStartWith("小家：");
+});
+
+test("D531: an app made before chat:write.customize posts plainly, with names in front, and Settings asks for a reinstall", async () => {
+  const old = SCOPES.filter((x) => x !== "chat:write.customize");
+  rig = channelRig({ slackScopes: old, partners: PARTNERS, looks: { default: "sand", home: "sage" } });
+  const { sl, log } = rig;
+  await rig.linked("slack");
+  expect(slackView()).toMatchObject({ state: "linked", reinstall: true });
+  expect(sl.sent("chat.postMessage").at(-1)!.username).toBeUndefined();
+  sl.says("UWEY", "小家，周六提醒我交房租");
+  const u = await waitFor(() => log.read({ stream: "channel:home", kinds: ["user_msg"], limit: 5 })[0]);
+  log.append({ stream: "channel:home", origin: "partner", kind: "ai_msg", body: { text: "好。", replyTo: u.seq } });
+  await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).startsWith("小家：好。")));
+  // The person reinstalls from the new manifest: the next answer shows it, and the faces come back.
+  sl.setScopes(SCOPES);
+  const answer = async (text: string) => {
+    const n = log.read({ stream: "channel:home", kinds: ["user_msg"], limit: 50 }).length;
+    sl.says("UWEY", `小家，${text}`);
+    const q = await waitFor(() => log.read({ stream: "channel:home", kinds: ["user_msg"], limit: 50 })[n]);
+    log.append({ stream: "channel:home", origin: "partner", kind: "ai_msg", body: { text, replyTo: q.seq } });
+    return waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).endsWith(text)));
+  };
+  await answer("第一句。");
+  await waitFor(() => slackView().reinstall === undefined);
+  const two = await answer("第二句。");
+  expect(two).toMatchObject({ text: "第二句。", username: "小家", icon_url: faceUrl("sage") });
+});
+
+test("D531: no scope list from Slack: it tries the face, and a missing_scope falls back to a plain post and asks for a reinstall", async () => {
+  rig = channelRig({ partners: PARTNERS, looks: { default: "sand" } });
+  const { hub, sl } = rig;
+  expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
+  await waitFor(() => sl.connected());
+  sl.setScopes(SCOPES.filter((x) => x !== "chat:write.customize"));
+  const c = hub.code("slack");
+  if (!c.ok) throw new Error("no code");
+  sl.says("UWEY", c.code);
+  await waitFor(() => slackView().reinstall === true);
+  // The words still got there, plainly, and the token is not treated as refused.
+  expect(sl.sent("chat.postMessage").some((m) => m.text === "连上了。以后在这儿跟我说就行。" && !m.username)).toBe(true);
+  expect(slackView().state).toBe("linked");
+});
+
+test("D531: the linked person's @-mention in a channel is answered in a thread under it; anyone else's gets nothing", async () => {
+  rig = channelRig({ zh: false, slackScopes: SCOPES });
+  const { hub, sl } = rig;
+  await rig.linked("slack");
+  const t = sl.mentions("UWEY", "C0TIME", "来吧！");
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  expect(u).toMatchObject({ text: "来吧！", via: "slack", clientId: `slack:C0TIME:${t}` });
+  rig.say("我在。", u.seq);
+  const a = await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "我在。"));
+  expect(a).toMatchObject({ channel: "C0TIME", thread_ts: t });
+  // The DM stays the person's window.
+  sl.says("UWEY", "and here?");
+  const d = await waitFor(() => rig!.userMsgs()[1]);
+  rig.say("Here too.", d.seq);
+  expect(await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "Here too."))).toMatchObject({ channel: "DUWEY" });
+  // A teammate's mention: nothing logged, nothing said; Settings hears someone tried.
+  const before = sl.sent("chat.postMessage").length;
+  sl.mentions("UTEAMMATE", "C0TIME", "who are you?");
+  await waitFor(() => slackView().strangerAt);
+  await hub.idle();
+  expect(sl.sent("chat.postMessage").length).toBe(before);
+  expect(rig.userMsgs().length).toBe(2);
+});
+
+test("D531: an app without app_mentions:read is asked to reinstall, even with its faces", async () => {
+  rig = channelRig({ slackScopes: SCOPES.filter((x) => x !== "app_mentions:read") });
+  const { hub, sl } = rig;
+  expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
+  expect(slackView()).toMatchObject({ state: "unlinked", reinstall: true });
 });

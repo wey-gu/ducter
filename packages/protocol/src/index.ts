@@ -50,6 +50,7 @@ export * from "./reach.ts";
 export * from "./fresh-look.ts";
 export * from "./doc-bar.ts";
 export * from "./free-budget.ts";
+export * from "./background.ts";
 export * from "./first-meet.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
@@ -678,6 +679,9 @@ export interface Bodies {
   task_loop: TaskLoopBody;
   // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
   keep: import("./keeps.ts").KeepBody;
+  // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
+  // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
+  keep_round: { keepId: string; round: string; line?: string; failed?: true };
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -1032,6 +1036,9 @@ export interface TaskCard {
   helper?: { id: string; name: string };
   /** D511: the Keep (照看) this task is a round or an item of, so a row anywhere says whose it is. */
   keep?: { id: string; name: string };
+  /** D521: the work its agent runs beside its turn (background shells, subagents, watches, jobs):
+   *  every one still running and the newest finished, folded from its Log (background.ts). */
+  background?: import("./background.ts").TaskBackground;
 }
 
 /**
@@ -1413,7 +1420,8 @@ export type ClientFrame =
   // D395: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
   // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in"; path?: string; force?: boolean; device?: string; place?: Place }
+  // D521: stop_background (job): stop one of its agent's background jobs (TaskCard.background), through the agent's own stop.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
@@ -3252,6 +3260,8 @@ export interface OwnedSeen {
  */
 export interface OwnedStanding {
   at: string;
+  /** The PR's own title as GitHub has it (a Keep's held PR is named by it). */
+  title?: string;
   head?: string;
   draft?: boolean;
   /** Each reviewer whose latest decisive review asks for changes: who, when, on which commit, the gist. */

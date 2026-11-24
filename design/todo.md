@@ -42,10 +42,15 @@ line.
 - [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
   and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
   *Trigger:* the first release with D520 on the author's Mac.
-- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
-  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
-  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
-  the same card.
+- [x] **The web client, iPhone and Android** keep the token on a 401 and leave only on a signed gone
+  (D532).
+- [ ] **D532 on a real phone:** the iPhone app (Simulator first) and an Android phone over hel's Caddy
+  through a hel restart: 正在重新连上 hel…, back by itself, and `ducterresume` redialing on coming to
+  the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
+  (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
+  with D532.
+- [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
+  the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
 ## Toasts, after D527 (`ui.md` "Toasts: one slot")
@@ -81,6 +86,9 @@ line.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
 - [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
+- [ ] **D519: the raw controls left in older views.** D161's guards deny by default now; views that drew raw controls before stand on a ceiling list (web `apps/web/test/controls.test.ts` `OLDER`: 27 files, 93; Mac `shared_controls_all_test.go` `olderViews`: 55 files, 120). Move each onto the shared set and lower its ceiling (the tests fail until it is lowered). *Trigger:* the next visible change to any of those files.
+- [ ] **D519: a Keep's silent fold folds rounds that have a line.** A round the model read as news should stay out of the fold; that is phase 4's recorded judgment (`news`), never a phrase match. *Trigger:* phase 4.
+- [ ] **D519: human eyes on the rounds' lines** (the cheap model's one line per report, zh and en) on hel's review loop. *Trigger:* the release with D519.
 - [ ] **Live on hel** (phase 6): the babysitter and the review loop migrated, a week read for silent-round rates and asks. *Trigger:* the release with D511.
 
 ## The same model another way, after D503 (`where.md` §21, research/219)
@@ -1010,6 +1018,8 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 
 ### Several partners in chat apps (D516, `channels.md` §10)
 
+- [ ] **D531 live on a real Slack** (trigger: the author's next Slack check on hel): the manifest imported as is, `app_redirect` landing on the Messages tab, `icon_url` from ducter.ai shown per message, a reinstall clearing the update line, a channel @-mention answered in its thread; and whether Slack answers `missing_scope` or drops a username quietly without `chat:write.customize`.
+- [ ] **Faces per partner from the home itself** (trigger: a home without internet to ducter.ai, or a partner's own look beyond the five): serve the PNG from the home when it has an https address (D228), else keep the site's.
 - [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
 - [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
 - [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
@@ -1041,6 +1051,11 @@ Built against a fake iLink and CDN only.
 - [ ] **agy on web work**: never routed there (`no_web`), since OAR refuses `exclude` for agy (draft §3). Trigger: an OAR release that supports it.
 - [ ] **A live background check in the probe**: `scripts/probe-harnesses.ts --live` runs research/222's two cheap runs (Claude Code haiku, Codex luna, scratch homes) and fails when `background.ownTurn` no longer holds. Trigger: the next Claude Code or Codex upgrade past the verified range.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
+- [ ] **Stop for a Codex background terminal** (D521): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
+- [ ] **Antigravity's and pi's background work in the tray** (D521): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
+- [ ] **The tray live** (D521): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D521.
+- [ ] **The background list on request** (D521's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
+- [ ] **iOS Simulator pass on the tray** (D521): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
 
 ## iMessage through the Mac app (D277, `design/imessage.md`)
 
@@ -1294,9 +1309,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **A long session, after D320**: (1) scroll a real 50,000-event loop on the author's VPS home
-      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) The
-      locator's rail draws one tick per turn: past about 2,000 turns the ticks merge; consider
-      drawing it by time or by density. (3) The browser app a run of steps is in no longer
+      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) Done by
+      D526: the rail draws one mark per landmark and keeps the one that matters where two touch;
+      still owed: whether a long quiet stretch should take more room (the rail by time). (3) The browser app a run of steps is in no longer
       carries from the turn before (a turn is built only when drawn). (4) Key redaction is slow
       on one megabyte-long token (a base64 blob): the cut at 20,000 characters bounds it at about
       half a second; a faster redaction for long tokens. (5) Placeholders are blank; a faint
@@ -3074,6 +3089,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D407: a routine fills an app (`apps.md`)
 
+- [ ] **D528 on hel**: the review loop's next rounds after release: a request that comes mid-round in that round's board and said once; no 之前的记录接不上了 at a round's start; times in the author's zone in reports and `wait_for` reasons. Trigger: D528 released and hel upgraded.
 - [ ] **Run the review board on hel**: the author's routine's next rounds with `title` and `ci` in its review_report, the offer after three, the board on his phone and Mac. Trigger: this branch merged and released.
 - [ ] **CI read by Ducter, not said by the task** (the board's CI pill is the task's word at the head it looked at; a check run that turns red between rounds shows next round). Trigger: a board showing green while GitHub shows red.
 - [ ] **Other routines' boards made from a template** like the review board (a price watch, a benchmark) instead of the partner writing each one. Trigger: three boards of the same kind made by the partner.
@@ -3271,9 +3287,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
-- [ ] **D530's step rows take the shared row hover** once the branch defining it lands (today a soft
-  tint into the row's own margin). *Trigger:* the shared row hover merges.
+- [ ] **D530's step rows take the shared row hover (D529).** D529 has landed, but its paper fill
+  (`groundPage()`, web `--sunken`) is the step chips' own ground in the light, so a hovered row would
+  swallow its chips; today the rows keep D530's soft tint into their own margin. Either the chips step
+  up on a hovered row or the paper's hover gets a second fill. *Trigger:* the next pass on the opened
+  task, or the author asks for one hover everywhere.
 - [ ] **D530: agy's `invoke_subagent` input keys** are inferred (`Description`, then `Prompt`); check
   them on a live agy run and add the recorded shape to `steps.json`. *Trigger:* the next agy task.
 - [ ] **On hand's latest line says a subagent as "做了 1 样别的事"** (D268's tally has no subagent
   kind). *Trigger:* the next On hand pass.
+
+## A task's heavy child and the server's memory (D524)
+
+- **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
+- **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).

@@ -161,3 +161,13 @@ func MD(at time.Time) string {
 	at = at.Local()
 	return fmt.Sprintf("%d/%d", int(at.Month()), at.Day())
 }
+
+// ColTime is a moment in a list's time column (D519): today its clock
+// ("14:28"), else its day alone (昨天, 周一, "11 月 22 日" / "Nov 22"), one
+// short line that never wraps. The web's colTime says the same.
+func ColTime(l Lang, at, now time.Time) string {
+	if dayDiff(at.Local(), now.Local()) == 0 {
+		return Clock(at)
+	}
+	return Day(l, at, now)
+}

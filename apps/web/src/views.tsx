@@ -5,6 +5,8 @@ import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
+import { AutoText, ComposerBox } from "./composer.tsx";
+import { BgTray } from "./bg-tray.tsx";
 import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
@@ -36,7 +38,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton } from "./controls.tsx";
+import { DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -231,11 +233,6 @@ const Clock = () => (
     <path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
   </svg>
 );
-const Arrow = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-    <path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-  </svg>
-);
 const Out = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3.5 10.5l7-7M5.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -266,44 +263,6 @@ const Back = () => (
 export const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
 
-function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; onEscape?: () => void; autoFocus?: boolean; id?: string }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, scaledRow(140))}px`;
-  }, [p.value]);
-  useEffect(() => {
-    if (p.autoFocus) ref.current?.focus();
-  }, []);
-  return (
-    <textarea
-      ref={ref}
-      id={p.id}
-      rows={1}
-      value={p.value}
-      placeholder={p.placeholder}
-      aria-label={p.label}
-      enterkeyhint="send"
-      onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)}
-      onKeyDown={(e) => {
-        // On a phone Return breaks the line and the button sends; with a keyboard Enter sends.
-        // ⌘⏎ sends everywhere, a keyboard on a phone or tablet included (D210).
-        if (e.key === "Enter" && !e.isComposing && p.onEnter && (e.metaKey || e.ctrlKey || (!e.shiftKey && !coarse()))) {
-          e.preventDefault();
-          p.onEnter();
-        }
-        // D482: Esc closes an ask's reply field and goes back to its buttons (never the sheet behind it).
-        if (e.key === "Escape" && !e.isComposing && p.onEscape) {
-          e.preventDefault();
-          e.stopPropagation();
-          p.onEscape();
-        }
-      }}
-    />
-  );
-}
 
 // ---------- decisions ----------
 
@@ -1753,6 +1712,40 @@ function Counts() {
   );
 }
 
+/**
+ * D532: the link lost for a while, said plainly above the composer (the Mac's linkLostNotice): what
+ * is wrong, where to look, when it tries next, Try now; for a home elsewhere a quiet 再连一次 too.
+ * The token and everything on screen stay; only the home's own word ends the pairing.
+ */
+export function LinkLost() {
+  const lost = A.link() === "lost";
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!lost) return;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [lost]);
+  if (!lost) return null;
+  const home = A.linkHome();
+  const far = A.linkElsewhere();
+  const left = Math.ceil(((A.conn?.nextAt ?? 0) - Date.now()) / 1000);
+  return (
+    <Notice
+      class="link-lost"
+      glyph="pebble"
+      title={far ? t("conn.lost.title", home) : t("conn.lost.title.local")}
+      body={far ? t("conn.lost.body", home) : t("conn.lost.body.local")}
+      sub={left > 0 ? t("conn.retry.in", left) : t("conn.retrying")}
+      actions={
+        <>
+          {far && A.onLinkAgain && <Btn kind="text" size="sm" label={t("conn.lost.again")} onClick={() => A.onLinkAgain?.()} />}
+          <Btn kind="secondary" size="sm" label={t("conn.retry")} onClick={() => A.linkRetry()} />
+        </>
+      }
+    />
+  );
+}
+
 function Held() {
   if (!A.held) return null;
   return (
@@ -1797,6 +1790,7 @@ function Composer({ taskId }: { taskId?: string }) {
   const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
     <div class="composer-wrap" ref={wrap}>
+      <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       {/* D305: hold to talk, over the conversation's composer. */}
@@ -1805,36 +1799,46 @@ function Composer({ taskId }: { taskId?: string }) {
       {!taskId && <TalkPanel />}
       {task && <HeldChips task={task} busy={busy} steers={steers} agent={agent} />}
       <Tray where={where} />
-      <div
-        class={`composer${!taskId && A.replying ? " has-reply" : ""}`}
+      <ComposerBox
+        id={taskId ? "composer-task" : "composer"}
+        class={!taskId && A.replying ? "has-reply" : ""}
+        value={value}
+        onInput={set}
+        onSend={() => submit()}
+        canSend={canSend}
+        label={label}
+        placeholder={place}
         onKeyDownCapture={(ev) => {
           if (busy && ev.key === "Enter" && ev.altKey && !ev.isComposing) ev.preventDefault(), ev.stopPropagation(), submit(true);
         }}
         onKeyDown={(ev) => !taskId && ev.key === "Escape" && A.replying && (ev.preventDefault(), A.cancelReply())}
-      >
-        {/* D236: what this replies to, pressed into the composer above the words. */}
-        {!taskId && <ComposerReply />}
-        <AddPictures where={where} />
-        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={() => submit()} label={label} placeholder={place} />
-        {/* D288: the context meter, a quiet ring by the task's composer. */}
-        {task && <ContextButton task={task} />}
-        {busy && canSend && steers && (
-          <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
-            {t("composer.after")}
-          </button>
-        )}
-        {busy && (
-          <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-              <rect x="3.5" y="3.5" width="9" height="9" rx="2" fill="currentColor" />
-            </svg>
-          </button>
-        )}
-        {!taskId && <MicButton />}
-        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!canSend} onClick={() => submit()}>
-          <Arrow />
-        </button>
-      </div>
+        before={
+          <>
+            {/* D236: what this replies to, pressed into the composer above the words. */}
+            {!taskId && <ComposerReply />}
+            <AddPictures where={where} />
+          </>
+        }
+        tools={
+          <>
+            {/* D288: the context meter, a quiet ring by the task's composer. */}
+            {task && <ContextButton task={task} />}
+            {busy && canSend && steers && (
+              <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
+                {t("composer.after")}
+              </button>
+            )}
+            {busy && (
+              <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                  <rect x="3.5" y="3.5" width="9" height="9" rx="2" fill="currentColor" />
+                </svg>
+              </button>
+            )}
+            {!taskId && <MicButton />}
+          </>
+        }
+      />
       {/* D354: the model and effort, always in sight while it can be switched; while it works, the steer hints after them. */}
       {(busy || (task && tunable(task))) && (
         <div class={`composer-hint${task && composerTune(task) ? " tuned" : ""}`}>
@@ -2721,6 +2725,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </button>
         </div>
       )}
+      {/* D521: its agent's background work, over the composer. */}
+      <BgTray taskId={id} bg={task.card?.background} />
       <TaskFoot task={task} blocks={blocks} />
       {/* A pending ask sits over the composer, where the answer is typed (D152). */}
       {d && !d.resolved && (

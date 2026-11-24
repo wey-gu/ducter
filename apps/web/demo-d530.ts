@@ -66,6 +66,16 @@ const think = (id: string, sAgo: number, ...thinking: string[]) => (at(sAgo), ev
   cmd(160, "gh pr view 1398 --json title,mergedAt", "", '{"title":"Memory: close on Esc"}');
   cmd(150, "bun test apps/desktop/src/memory", "Run the memory view's tests", "error: Cannot find module '@mem/ui-kit' from MemoryDetail.test.tsx", false);
   tool(id, 140, "invoke_subagent", { Description: w("在桌面版里重现 Esc 丢改动", "Reproduce the Esc data loss in the desktop app"), Prompt: "..." }, true, "");
+  if (process.env.DEMO_BG) {
+    // D521's tray over the composer, beside the steps: two still running, two done.
+    const bg = (sAgo: number, background: Record<string, unknown>) => (at(sAgo), ev(id, { role: "system", text: `${background.act} in the background`, raw: { background } } as never));
+    bg(330, { id: "b0", act: "started", type: "shell", what: "bun run dev --filter desktop", stop: true });
+    bg(320, { id: "b1", act: "started", type: "agent", what: w("盯着桌面版的控制台报错", "Watch the desktop app's console for errors"), stop: true });
+    bg(300, { id: "b2", act: "started", type: "shell", what: "bun test apps/desktop/src/search" });
+    bg(280, { id: "b2", act: "ended", type: "shell", what: "bun test apps/desktop/src/search", exitCode: 0, output: "48 pass\n0 fail" });
+    bg(270, { id: "b3", act: "started", type: "shell", what: "gh pr list --state merged --limit 30" });
+    bg(268, { id: "b3", act: "ended", type: "shell", what: "gh pr list --state merged --limit 30", exitCode: 0 });
+  }
 }
 
 // ---- the Claude Code fix, done ----

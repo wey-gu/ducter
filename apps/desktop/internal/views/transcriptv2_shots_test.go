@@ -231,3 +231,73 @@ func TestTranscriptV2Shots(t *testing.T) {
 		}
 	}
 }
+
+// TestTranscriptV2TrayShots: the live agy run's steps with D521's tray over
+// its composer (two running, 22 done), at 1150, zh light and en dark (and
+// the other two), with 2x crops of where the last step row meets the tray,
+// so the two share one rhythm and no hairline doubles. Same env as
+// TestTranscriptV2Shots.
+func TestTranscriptV2TrayShots(t *testing.T) {
+	dir := os.Getenv("DUCTER_TRANSCRIPT_V2_SHOTS")
+	if dir == "" {
+		t.Skip("DUCTER_TRANSCRIPT_V2_SHOTS=<dir> to write the shots")
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		lang i18n.Lang
+		dark bool
+	}{{i18n.ZH, false}, {i18n.EN, true}, {i18n.ZH, true}, {i18n.EN, false}} {
+		app, _ := iaApp(t, c.lang)
+		app.Status = client.Connected
+		app.LocaleFixed = true
+		f := &v2Fixture{ascFixture: ascFixture{app: app}, zh: c.lang == i18n.ZH}
+		app.Receive(protocol.ServerFrame{T: "events", Events: f.agyTask()})
+		at := func(ago time.Duration) string { return time.Now().Add(-ago).UTC().Format(time.RFC3339Nano) }
+		card := protocol.TaskCard{TaskID: "t_agy", Persona: "default", Title: f.w("用 agy 走查 Mem 的界面和交互", "Walk Mem's screens and interactions with agy"), Harness: "antigravity",
+			Attention: protocol.Working, Residency: "hot", OpenedAt: at(7 * time.Minute), UpdatedAt: at(time.Minute), Background: d518Jobs(c.lang, 2, 22)}
+		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{card}}})
+		tt := ui.NewTesterWith(app.View, 1150, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+		tt.SetDark(c.dark)
+		theme := "light"
+		if c.dark {
+			theme = "dark"
+		}
+		app.OpenTask("t_agy")
+		for i := 0; i < 4; i++ {
+			tt.Frame()
+			tt.Advance(200 * time.Millisecond)
+		}
+		scrollTaskTo(app, "t_agy", 1)
+		tt.Move(4, 990)
+		tt.Frame()
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		name := fmt.Sprintf("after-mac-tray-1150-%s-%s", c.lang, theme)
+		fh, err := os.Create(filepath.Join(dir, name+".png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = png.Encode(fh, tt.Image())
+		fh.Close()
+		r, ok := tt.Find(app.L.T("bg.head", 2))
+		if !ok {
+			t.Fatalf("%s: no tray head", name)
+		}
+		tt.SetScale(2)
+		tt.Frame()
+		tt.Frame()
+		img := tt.Image()
+		x0, y0 := int(r.X-60)*2, int(r.Y-170)*2
+		sub := img.SubImage(image.Rect(x0, y0, x0+720*2, y0+240*2))
+		fh, err = os.Create(filepath.Join(dir, name+"-crop2x.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = png.Encode(fh, sub)
+		fh.Close()
+	}
+}

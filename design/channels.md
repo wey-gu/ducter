@@ -1,7 +1,7 @@
 # Chat apps: Telegram, Slack and WeChat as more windows on the one conversation
 
 > Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
-> D276, D301 (WeChat, §9), D516 (several partners, §10) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> D276, D301 (WeChat, §9), D516 (several partners, §10), D531 (Slack as it is today, faces, @ in a channel, §11) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
 > (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
 > only.** No real Telegram bot or Slack workspace was used; see "What is not verified".
@@ -17,8 +17,10 @@
   else can talk to *my* partner there, and nothing it says there spends money or speaks as me.
   惊喜: the partner's name, and the same conversation everywhere.
 - **How it starts.** Settings › **聊天软件 / Chat apps** › Telegram: three steps (open BotFather and
-  send `/newbot`, name the bot, paste its key). Slack: five (copy the app manifest, create the app
-  from it, install, paste the two tokens, each under its own step), then DM the code. Nothing to
+  send `/newbot`, name the bot, paste its key). Slack: four, in Slack's own order and words (copy the
+  app manifest, create the app from it, install it from OAuth & Permissions and paste the bot token
+  shown there, make the app-level token and paste it), then **获得口令 / Get a code** and send it from
+  **在 Slack 里打开 / Open in Slack** (D531). Nothing to
   learn first; the group says what goes there and who else can see it (D283).
 
 ## 2. One conversation, many windows (D276 (1))
@@ -89,16 +91,19 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
 
 - **The partner speaks as itself.** Telegram: the person's own bot from BotFather, its token
   pasted once. Slack: the person's own Slack app with a bot user, from the manifest Ducter
-  shows (`slackManifest`: bot user named after the partner, the DM tab, Socket Mode,
-  interactivity, bot scopes `chat:write im:history im:read im:write users:read files:read
-  files:write`, event `message.im`, **no user scopes**), an app-level token (`xapp-`,
+  shows (`slackManifest`: bot user named after the partner, the DM tab, Socket Mode on, token
+  rotation off, interactivity, bot scopes `app_mentions:read chat:write chat:write.customize
+  im:history im:read im:write users:read files:read files:write`, events `app_mention message.im`,
+  **no user scopes**; D531), an app-level token (`xapp-`,
   `connections:write`) and the bot token (`xoxb-`). Never a user token, never sending as the
   person, no Telegram Business connection. Long polling and Socket Mode: no public address.
 - **Pairing reuses D83's code shape** (8 letters, 10 minutes, one use), minted by Settings, kept
   only as a hash and only in memory (a restart voids it). Telegram: the deep link
   `t.me/<bot>?start=<code>` (or `/start <code>` typed); Slack: the person DMs the code to the
-  bot. One linked account per chat app; a second code is refused while one is linked.
-- **Strangers get silence.** Anyone else, a group, a channel: nothing logged, nothing answered.
+  bot, opened by `https://slack.com/app_redirect?app=<A>&team=<T>` (D531). One linked account per chat app; a second code is refused while one is linked.
+- **Strangers get silence.** Anyone else, a group, a channel: nothing logged, nothing answered. The
+  one exception is the linked person's @-mention in a Slack channel (D531, §11); a teammate's
+  mention there is silence too.
   Settings shows **有人在 {app} 找过 {name}，没理他。/ Someone else wrote in {app} to {name}. It
   didn't answer.** at most once a day. Wrong codes lock a sender out after 5 tries in 10
   minutes; 30 wrong tries from anyone void every pending code.
@@ -107,8 +112,8 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
   step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
-  with **让我的账号连上 / Link my account**, then **在 Telegram 里打开 / Open in Telegram** and the
-  code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
+  with **获得口令 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
+  里打开 / Open in Slack** and the code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
   {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
   管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
   connected rests as its first row with **设置 / Set up** and that one line until pressed; then its steps
@@ -247,3 +252,43 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
   iLink's text limit (one reference says it cuts at 1,800; Ducter splits at 4,000).
 - **Not verified:** any of it on a real Telegram bot, Slack workspace or WeChat; whether naive
   people find the name address without the one line.
+
+## 11. Slack as it is today; faces; @ in a channel (D531)
+
+**Built 2026-11-24, checked against the fake Slack and Slack's docs only**; no real workspace.
+
+- **The moment.** The author followed our five Slack steps and Slack had moved on: the install button
+  lives under OAuth & Permissions and reads 「Install to <workspace>」, and that page shows a token
+  rotation notice and a PKCE box that look like steps. Then the partner sat in Slack with a blank face,
+  and his 「@Ducter 来吧！」 in a channel went unanswered with nothing in the home's log.
+- **The steps** (Settings, the docs): 1 copy the manifest; 2 Create New App › From a manifest › the
+  workspace › paste › Create (with 打开 Slack and an optional **下载头像 / Download its face** for
+  Basic Information › Display Information › App icon: a manifest can't carry an icon); 3 OAuth &
+  Permissions › **Install to {workspace}** › Allow, then paste the **Bot User OAuth Token** shown there,
+  with one line: token rotation and PKCE are not needed and are one-way in Slack, so leave them; 4
+  Basic Information › App-Level Tokens › **Generate Token and Scopes**, a name, Add Scope
+  `connections:write`, Generate, paste. The manifest sets Socket Mode on and token rotation off.
+- **The code.** **获得口令 / Get a code**; then **在 Slack 里打开和 {name} 的私信，把这个口令发给它：** with
+  **在 Slack 里打开 / Open in Slack** (`app_redirect`, the app id from `bots.info`, the workspace id
+  from `auth.test`) and how to find it by hand (search its name, or the sidebar's Apps, then
+  Messages).
+- **Faces.** With `chat:write.customize` each message carries `username` (the partner's name) and
+  `icon_url` (`https://ducter.ai/faces/<look>.png`, one 512 PNG per D497 look, on the site because a
+  home is often unreachable from Slack). The D516 name in front is dropped in Slack then.
+- **@ in a channel.** Event `app_mention` (scope `app_mentions:read`). The linked person's mention, the
+  bot's own `<@…>` taken out, is logged as their words `via: "slack"`; its answer, ack and status line
+  go in a thread under the mention (`thread_ts`: the thread it was in, else the mention); cards,
+  files and late results go to the DM. A mention in a DM is taken from `message.im` only. Anyone else's
+  mention: nothing, and the once-a-day stranger line in Settings. Teammates in that channel read the
+  thread: the linked line says so (**…频道里的人都看得到。**), beside the workspace-admins note.
+- **An older app.** Slack lists a bot token's scopes in `x-oauth-scopes` on every answer: missing
+  `chat:write.customize` or `app_mentions:read` puts `reinstall` on the view, and the group shows
+  **Slack 里的 App 要更新一下 / Your Slack app needs an update** with the steps and 拷贝 App 配置.
+  Without the header, a `missing_scope` on the first post with a face does the same (never a refused
+  token); posts go plainly meanwhile. A reinstall is seen on the next answer.
+- **The log.** Every Slack event and the hub's decision about it at info level, never the words or
+  who: `[slack] received: a mention`, `[slack] ignored: a message (channel) of subtype …`,
+  `[channels] slack: ignored: not the linked person`, `taken: a mention from the linked person`.
+- **Not verified:** a real workspace: Slack's importer reading this manifest, `app_redirect` opening
+  the Messages tab, `icon_url` fetched from ducter.ai, whether Slack answers `missing_scope` or
+  quietly drops a username without the scope, `x-oauth-scopes` on Socket Mode tokens' calls.

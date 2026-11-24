@@ -284,6 +284,9 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 			if quiet {
 				ink = t.InkMuted
 			}
+			if bad && r.Step != nil && r.Step.Kind == "background" {
+				ink = t.Failed.Ink // D521: a background failure says it in its words, in the error ink
+			}
 			verb := uiText(c, p.verb).FontSize(stepSize).FontWeight(500).TextColor(ink).SingleLine().MinWidth(0).Shrink(0.25).AccessHidden(true)
 			if p.tip != "" {
 				verb.Tooltip(p.tip)
@@ -327,7 +330,7 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 				// A subagent's row: done, and how long it took.
 				a.glyph(c, 12, drawCheck(t.InkMuted))
 				uiText(c, a.shortDur(time.Duration(*r.Ms)*time.Millisecond)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-			case bad:
+			case bad && (r.Step == nil || r.Step.Kind != "background"): // D521: a background failure says it in its words
 				uiText(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).Shrink(0)
 			}
 		})

@@ -4,7 +4,7 @@
 
 <!-- whats-new
 zh: 评审循环会真的把评审发出去；看守中的任务一眼看出下一轮
-en: The review loop really posts its reviews; a looked-after task shows its next round
+en: The review loop posts its reviews; a looked-after task shows its next round
 -->
 
 **The review loop posts its reviews**

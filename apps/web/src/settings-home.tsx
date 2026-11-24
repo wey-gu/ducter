@@ -229,6 +229,8 @@ function homeMem(): string {
   if (!A.settings) return "";
   const ph = memPhase(!!A.settings.memory, A.mem, A.bridge);
   if (ph === "on") {
+    // D552: Mem signed out or out of reach is never 「你说过的都在 Nowledge Mem 里」.
+    if (needsOf("memory").some((n) => n.key === "memhealth")) return t("home.mem.down");
     const n = groupNoted(A.mem?.noted ?? []).filter((g) => g.when !== "earlier").reduce((k, g) => k + g.items.length, 0);
     return n > 0 ? t("home.mem.week", n) : t("home.mem.on");
   }

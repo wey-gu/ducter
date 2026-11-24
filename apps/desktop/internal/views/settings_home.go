@@ -549,6 +549,12 @@ func (a *App) homeMem() string {
 	}
 	switch memPhase(st.Memory, a.S.Mem, a.S.Bridge) {
 	case "on":
+		// D552: Mem signed out or out of reach is never 「你说过的都在 Nowledge Mem 里」.
+		for _, n := range a.setNeeds() {
+			if n.key == "memhealth" {
+				return a.L.T("home.mem.down")
+			}
+		}
 		if m := a.S.Mem; m != nil {
 			if n := memWeek(m.Noted, a.Now()); n > 0 {
 				return a.L.T("home.mem.week", n)

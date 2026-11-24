@@ -194,6 +194,9 @@ func TestMemHealthNeedD552(t *testing.T) {
 		if fmt.Sprint(got) != "[memhealth]" {
 			t.Fatalf("%s: needs %v", lang, got)
 		}
+		if app.homeMem() != L.T("home.mem.down") {
+			t.Fatalf("%s: brief line %q over a signed-out Mem", lang, app.homeMem())
+		}
 		if app.paneSay(TabMemory, "") != "" {
 			t.Fatalf("%s: say %q over a signed-out Mem", lang, app.paneSay(TabMemory, ""))
 		}

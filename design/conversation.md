@@ -2,6 +2,12 @@
 
 > Design note for principles 6, 7 · Evidence: `research/16`, `research/01`.
 
+**One conversation per partner, listed as chats (D513).** The conversation is a messaging app's
+chat with one partner. With more than one partner the person sees them listed as a messaging app
+lists its chats (a column at the conversation's left on a computer, the level above it on a phone,
+`personas.md` "Switching"); each conversation stays its partner's own (D24), and its bar speaks for
+that partner only. With one partner there is no list and nothing about partners shows.
+
 ## Turn protocol (principle 6)
 
 **Language (D292, research/99).** The partner answers in the language of the person's latest

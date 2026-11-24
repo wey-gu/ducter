@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486, D497. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497, D513. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -24,8 +24,9 @@ tool, D486), and the reply says it is beside the name. Or Settings › 伙伴 (w
 伙伴 / Add a partner**, with one line of help (one for work and one for home, or one per person). The
 form asks three things: a name, **它管什么 / What it looks after** (optional, the person's words) and a
 colour (D24: creating one is light). Settings' foot, with one partner, says it can be asked for in
-words. Afterwards the bar shows the new partner beside the name (its face in its own clay and its name); one click shows its
-conversation.
+words. Afterwards the list of partners appears (D513): on a computer a column at the conversation's
+left with both, on a phone **‹** in the bar; the partner's reply says where. One tap shows the new
+one's conversation.
 
 ## Shared and isolated
 
@@ -43,8 +44,8 @@ conversation.
 
 **Privacy between partners.** A partner sees only its own conversation and its own memories. No
 partner can read another's Log stream: core never wakes one partner for another's words, and a
-client socket receives only the conversation it shows (the other partners arrive as counts, never
-words). Linking two partners (one may ask the other) stays a later, explicit act (product-model
+client socket receives only the conversation it shows (the other partners arrive as counts and,
+for the person's list, each one's last line, D513; never a partner's turn). Linking two partners (one may ask the other) stays a later, explicit act (product-model
 §8). Honest limit: the person who owns the home can open any partner; partners are not accounts.
 A family that needs privacy from each other needs separate homes.
 
@@ -52,10 +53,11 @@ A family that needs privacy from each other needs separate homes.
 
 - **One count, where the person is counted (D497).** The Dock badge, the menu bar's mark and On
   hand say one number across partners: On hand's needs-you cards (every partner's tasks) plus every
-  partner's own questions (`needsAcross`, protocol). **The bar says it by whose.** The counts line
-  sits under a partner's name, so it speaks for that partner (its own tasks and its conversation's
-  questions); each other partner's face beside it carries the number of what of its own waits on
-  the person. The bar's numbers add up to the person's one count. (D309 put the one count under
+  partner's own questions (`needsAcross`, protocol). **The list says it by whose (D513).** The
+  counts line sits under the shown partner's name, so it speaks for that partner (its own tasks and
+  its conversation's questions); each row of the list of partners carries the number of what of its
+  own waits on the person, and the phone's **‹** the sum of the others'. The rows' numbers add up to
+  the person's one count. (D309 put the one count under
   the shown partner's name: every naive rater read it as that partner's.)
 - **One On hand.** On hand stays one board for the person, never one per partner (D24). Each
   row and card carries its partner's small face in its own clay once there is more than one, and another
@@ -67,20 +69,31 @@ A family that needs privacy from each other needs separate homes.
   **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
   needs-you notice names the partner whose questions wait.
 
-## Switching (zero concepts, D497)
+## Switching: the list of partners (zero concepts, D513)
 
-- **Every other partner is in view, by face and name.** With a second partner, the bar's left keeps
-  the shown partner (its figure in its own clay, its name, its counts line); right after it sit the
-  others, each a small pill: its face in its own clay, its name, and, when something of its own
-  waits on the person, that number in the needs-you colours. Hover (the title on the web) says
-  **换到{name}，有 {n} 个等你 / Switch to {name}, {n} need you** and **管：{about} / Looks after:
-  {about}**. A click shows its conversation. On a phone the pill keeps the face and the number; the
-  name is its accessible label (room for four in 390).
+- **Every partner in one list, as a messaging app lists its chats.** With a second partner, a
+  computer (the Mac, the web from 1000) shows **伙伴们 / Your partners** as a column at the
+  conversation's left. Each row: the partner's figure in its own clay; its name; the last thing said
+  in its conversation (the person's own words as **你：{text} / You: {text}**; nothing said yet:
+  **管：{about} / Looks after: {about}**, else **还没聊过 / Nothing said yet**); and on the figure's
+  shoulder, when something of its own waits on the person, that number in the needs-you colours.
+  The one shown sits on the surface (the clay card's ledge). A click shows its conversation. From
+  1000 to 1359 points the column keeps the figures and numbers only (80 points); the name is the
+  row's label and tooltip. On the Mac the column holds the window's traffic lights; it is the
+  conversation's only (On hand and an opened task are the person's, not a partner's).
+- **On a phone the list is the level above the conversation.** The app opens on the conversation
+  last shown. The bar's left has **‹** with the number of what waits in the other partners (label
+  **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the
+  leading-edge swipe goes up to the list, a row goes back down into that partner's conversation.
+  Rows are a thumb tall (76); the list's bar has the places; with fewer than four, **再加一个伙伴 /
+  Add a partner** sits at its foot. `#partners` opens it.
+- **The bar speaks for the shown partner only**: its figure, name and counts line; no other partner
+  sits in it.
 - **Keys and words.** ⌥⌘1–⌥⌘4 show the first to fourth partner in Settings' order (the default
   first), on the Mac and the web; 键盘 / Keyboard lists them (**第 1 到第 4 个伙伴 / The first to
   fourth partner**). ⌘K 找什么都行 / Find anything lists each other partner as a place to go,
   **换到{name} / Switch to {name}**, found by its name.
-- **Mostly you never switch.** Words meant for another partner are passed on (D486); On hand lists
+- **Mostly you still never switch.** Words meant for another partner are passed on (D486); On hand lists
   every partner's asks with its face; a notification about another partner's own question opens
   that partner's conversation (web push `#p=<id>/d=<id>`, the Mac's notice by its id).
 - A switch is per device: this Mac can show the home partner while the phone shows the work one.
@@ -102,6 +115,42 @@ examples** (never the default's code or mail starters, never a sentence made by 
 words into a frame, principle 21). Built on the home from names only, no model (`partnerScreen`,
 core/src/first-screen.ts). Starters the partner writes itself when it is made or changed are owed
 (todo).
+
+## Switching between partners: the analysis behind D513
+
+**Who, in this moment.** The heavy developer with four (Ducter for work, 小家 for home, 多比 for
+reading and running, 小新 for bills) at the Mac at night: which of them wants something, and what
+was each last about? The consumer with two, one-handed on the phone on the way home. The fresh user
+with one, who must see nothing new.
+
+**Before (D497's pills).** The bar held the shown partner and a pill per other one. With four, the
+three pills crowded the counts line; on a phone they shrank to faces and slid under the update
+button, their numbers clipped. Who needed the person was a row of small numbers beside the one they
+were talking to, and nothing said what each was last about.
+
+**After.** 好用: every partner in one glance, with its own number and its last line, the shape every
+messaging app has taught. 放心: nothing waits unseen behind a tap; the numbers add up to the one count
+on the badge. 顺滑: a tap in; ‹ or the edge swipe back on a phone. With one partner: nothing at all.
+
+**How it starts.** The moment a second partner is made (by words, or Settings' form), the list
+appears with both: on a computer the column slides in at the conversation's left; on a phone ‹
+appears in the bar. The partner's one line says where it is. No hint card, no tour.
+
+**Shapes weighed** (each scored 1 to 5 on the five tests; 25 is best):
+
+| Shape | Scale 1–4 | Who needs you, at a glance | One hand on a phone | Nothing new with one | The per-person aggregate | Total |
+|---|---|---|---|---|---|---|
+| **A list, as a messaging app's chats (chosen):** a column on a computer, the level above the conversation on a phone | 5: four rows, room for more | 5: each row its number, its last line | 4: ‹ and the edge swipe; rows a thumb tall in the top half | 5: no column, no ‹ | 5: rows add up to the one count; On hand stays one board | 24 |
+| Bottom tabs on a phone, one per partner (and tabs on a computer) | 3: four tabs leave names cut | 4: a number per tab | 5: under the thumb | 4: the bar appears with the second partner and takes 56 points from every conversation forever | 4 | 20 |
+| A menu under the shown name, with one dot for the others | 4 | 2: behind a tap; the dot says "someone", not who | 2: at the top | 5 | 4 | 17 |
+| Pills in the bar (D497) | 2: three pills crowd the counts; faces only on a phone | 3: small numbers beside the shown one | 2: at the top, 32-point targets | 5 | 3: the bar's numbers sum, but split across two places | 15 |
+| Swipe between conversations (pages with dots) | 3 | 1: invisible until swiped | 4 | 4 | 3 | 12 |
+
+The list costs width on a computer (80 to 272 points; below 1360 it keeps only the figures and the
+numbers) and puts the others one tap away on a phone instead of in view. **Not taken:** the list as
+the phone's first screen on every open (WhatsApp's): an extra tap each time for the person who is
+mostly in one conversation; the app opens where they were, as iMessage does. A single group
+conversation stays out for D497's reason (it breaks isolation).
 
 ## Several partners: the analysis behind D497
 
@@ -126,9 +175,9 @@ a click, a key or a word; mostly none, since asks come to them (On hand, notific
 | Shape | For | Against | Verdict |
 |---|---|---|---|
 | A single group conversation with every partner in it | one place to read | breaks isolation (D24, each partner's context and memory its own); who answers becomes a routing puzzle in front of the person; a chief by another name | no |
-| A sidebar list of partners (a chat app's contact list) | familiar, scales | a whole column for two to four partners, on every screen, for something rarely done; the conversation loses width on the 13" Mac and is impossible on the phone | no |
+| A sidebar list of partners (a chat app's contact list) | familiar, scales | a whole column for two to four partners, on every screen, for something rarely done; the conversation loses width on the 13" Mac and is impossible on the phone | no (D497); taken by D513 once there are several |
 | Switch only by intent (say "ask 小家…", never a switch) | zero chrome | the person can't see or read the other conversation; passing on (D486) already covers intent | kept as the main path, not the only one |
-| Faces in the bar (chosen) | always in view, costs one line already there, legible by face and name, carries each one's own number | grows with the count: capped at four partners | yes |
+| Faces in the bar (chosen) | always in view, costs one line already there, legible by face and name, carries each one's own number | grows with the count: capped at four partners | yes (D497); superseded by D513 |
 | Swipe between conversations on the phone | quick | collides with the system back swipe and the bubbles' own swipe to reply; invisible | no (later only if asked) |
 
 **Distinctness.** Run through the metaphor process (research/215): six candidates and "no
@@ -148,7 +197,7 @@ initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles
   the art as drawn (the orange Pebble clay); `sage` green, `sky` blue, `plum` purple, `apricot` a
   coral (its id kept). Every state of the figure (idle, working, waiting, needs you, done, napping,
   the blink) is recoloured alike, so the figure keeps its life (D77). The page's own figure is the
-  shown partner's; a mark elsewhere (the bar's pills, On hand's cards and asks, passed words,
+  shown partner's; a mark elsewhere (the list of partners, On hand's cards and asks, passed words,
   Settings) is its partner's. Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
   **梅子 / Plum**, **珊瑚 / Coral**; the picker shows the figure in each. D309's stone (the face on a
   pale disc) is retired. A clay character per partner stays the later upgrade, owed through the
@@ -191,9 +240,11 @@ On every home (`DUCTER_PARTNERS=off` turns it off; `startCore({ partners })` in 
   ws shows each socket one conversation and sends another's never; a user message to a second
   partner lands in its own stream; the default partner is never woken by another's conversation;
   push names whose with more than one partner.
-- Web (wide and phone) and Mac: D497's recoloured figure, the other partners' pills in the bar
-  (face, name, their own number), ⌥⌘1–⌥⌘4 and Find anything, the bar's line by whose, the first
-  meeting, Settings › 伙伴's 伙伴们 (list, look, add, change, remove).
+- Web (wide and phone) and Mac: D497's recoloured figure; D513's list of partners (a column at the
+  conversation's left, slim from 1000 to 1359; on a phone the level above the conversation with ‹),
+  each row's last line from the partners frame (`PartnerInfo.last`); ⌥⌘1–⌥⌘4 and Find anything, the
+  bar's line by whose, the first meeting, Settings › 伙伴's 伙伴们 (list, look, add, change, remove;
+  D513: each row three lines, so a phone never squeezes the words).
   The Mac's menu bar lists the other partners with something waiting; its notice names whose.
 
 ## A second partner answers (D312)

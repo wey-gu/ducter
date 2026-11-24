@@ -1700,6 +1700,17 @@ type PartnerInfo struct {
 	Asks int    `json:"asks"`
 	// About is what it looks after, in the person's words (D486); "" when not said.
 	About string `json:"about,omitempty"`
+	// Last is the last thing said in its conversation, for the list of
+	// partners (D513); nil with one partner or nothing said yet.
+	Last *PartnerLast `json:"last,omitempty"`
+}
+
+// PartnerLast is one line of a partner's conversation for the list (D513).
+type PartnerLast struct {
+	Text string `json:"text"`
+	At   string `json:"at"`
+	// You: the person said it.
+	You bool `json:"you,omitempty"`
 }
 
 // PartnerAboutMax is how long a partner's "looks after" line may be (D486).

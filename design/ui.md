@@ -407,6 +407,19 @@ so the task's name keeps room. The partner's face and name are a second way into
 pointer: a face says what the partner is doing, D77, D112); the counts line is never part of that
 button (D270).
 
+**The list of partners (D513, `personas.md`).** Only with more than one partner. On a computer a
+column at the conversation's left, its own hairline (`--line` / `ChromeLine`) and the chrome's
+ground; on the Mac it holds the traffic lights (the conversation's bar then starts at 24). Its
+title **伙伴们** at the bar's one size (14/600) in the bar's height; rows 64 tall, radius `--r-md`:
+the figure (40) in its own clay with its number on its shoulder (18, the needs-you surface and ink,
+a 2-pt ring of the ground it sits on), the name (15/700 ink) and the last line (13 muted, one line,
+cut with an ellipsis). The row shown is the knob (the surface on its 4-pt ledge); hover is the
+sunken ground. 272 wide from 1360; from 1000 to 1359, 80 wide with the figures and numbers only.
+On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
+tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
+**‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no
+" · " joins: each fact its own element.
+
 **The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay
 ledge and a soft drop (`knob` on the Mac, `--knob` on the web). The place shown in the bar, the
 strip's filter on On hand, the project chosen in the lens column, the row open beside the rail or

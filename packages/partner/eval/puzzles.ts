@@ -583,7 +583,7 @@ export const puzzles: Scenario[] = [
     steps: [{ user: "再给我做一个伙伴吧，专门管家里的事，叫它小家" }],
     expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 100, outcome: { made: { name: "小家", about: /家/ } } },
     rubric:
-      "The person asked for a second partner named 小家 for things at home. Pass if 小家 is made at once with what it looks after in their words, and the reply is one short Chinese line that it is made and how to talk to it (its stone beside the name). Fail if it asks questions first, opens a task, explains settings at length, or claims it can't.",
+      "The person asked for a second partner named 小家 for things at home. Pass if 小家 is made at once with what it looks after in their words, and the reply is one short Chinese line that it is made and how to talk to it (its row in the list of partners: at the left on a computer, back with ‹ on a phone). Fail if it asks questions first, opens a task, explains settings at length, or claims it can't.",
   },
   {
     id: "wp-partner-pass-back-en",

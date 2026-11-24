@@ -83,7 +83,7 @@ line.
   the opened task and the Ongoing tab only. Trigger: the author reaches for them on On hand.
 - [x] **The iOS Simulator** for the phone board (dark zh), as D471 owed. Done by D501 (`.shots/d501/ios/05-onhand-zh-dark.png`).
 
-## Several partners, after D497 (`personas.md`, research/215)
+## Several partners, after D497 and D513 (`personas.md`, research/215)
 
 - [ ] **Human raters for the recoloured figure** (the LLM proxies are done): five people who never saw
   Ducter, the built bar with three partners, research/215's five questions. Trigger: the first
@@ -96,9 +96,18 @@ line.
   a partner-tool change, so a D175 eval. Trigger: the author asks for richer first meetings.
 - [ ] **On hand's figure** is the shown partner's clay though the board is everyone's: a neutral figure
   or the default's. Trigger: the author's review of D497's shots.
-- [ ] **The iPhone and Android shells** inherit the web; the iPhone app's pills and first meeting were seen
-  in the iOS Simulator by D501 (`.shots/d501/ios/01` to `04`; the repeated starter and the small faces
-  fixed); the Android app's are owed. Trigger: the next Android release.
+- [ ] **The iPhone and Android shells** inherit the web: D513's list of partners, ‹ and the edge swipe
+  (inside the iPhone app the swipe is the web's own, `edgeSwipe` with `inApp`) are to be seen in the iOS
+  Simulator and on an Android phone (the pills D501 saw there are gone). Trigger: the next iPhone or
+  Android release.
+- [ ] **D513 on a real phone with one hand:** the list's rows sit in the top half; a person with a big
+  phone may want them from the bottom (a reversed list, or the add row first). Trigger: the author's
+  review on the iPhone, or a rater says the rows are out of reach.
+- [ ] **The list's last line with a time** (13:05, 昨天 / Yesterday), as a messaging app's: left out of
+  D513 to keep each row two facts. Trigger: the author asks which partner spoke last.
+- [ ] **`second-partner-apart` on haiku** failed twice in D513's partner run on the judge reading 「想不起来」
+  as once knowing (main passed the same wording); the identity line for a second partner may need to
+  say "you were never told" plainly. Trigger: it fails in the next full haiku run.
 
 ## Copying a message, after D492 (`conversation.md` "Keeping your place and copying")
 

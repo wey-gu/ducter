@@ -2036,8 +2036,14 @@ class AppState {
     return this.partners!.find((p) => p.id === (this.S.persona || this.partnerShown));
   }
 
+  /** D513: #partners came before the home said who its partners are. */
+  partnersAsked = false;
+
   private applyPartners(f: Extract<ServerFrame, { t: "partners" }>) {
     this.partners = f.partners;
+    if (this.partnersAsked) (this.partnersAsked = false), (this.partnersOpen = this.manyPartners() && !wideNow());
+    // D513: back to one partner (another removed): no list stands in for the conversation.
+    if (!this.manyPartners()) this.partnersOpen = false;
     const ask = this.partnerAsk;
     if (ask && f.clientId === ask.cid) {
       if (f.error) ask.error = f.error;
@@ -2058,9 +2064,39 @@ class AppState {
     this.changed();
   }
 
+  /** D513: on a phone with more than one partner, the list of partners stands in for the
+   *  conversation (the level above it, as a messaging app's chats); wide, it is a column beside. */
+  partnersOpen = false;
+
+  /** D513: up to the list of partners (a phone's ‹, its edge swipe, #partners). */
+  showPartners() {
+    if (!this.manyPartners() || this.partnersOpen) return;
+    const go = () => {
+      this.partnersOpen = true;
+      this.sheet = null;
+      this.route = { name: "conv" };
+      this.changed();
+    };
+    if (!wideNow()) return navMove("back", go);
+    go();
+  }
+
+  /** D513: a partner's row in the list: its conversation (the same one: just back into it). */
+  openPartner(id: string) {
+    const go = () => {
+      const was = this.partnersOpen;
+      this.partnersOpen = false;
+      if (id !== (this.S.persona || this.partnerShown)) this.switchPartner(id);
+      else if (was || this.route.name !== "conv" || this.sheet) (this.route = { name: "conv" }), (this.sheet = null), this.changed();
+    };
+    if (this.partnersOpen && !wideNow()) return navMove("deeper", go);
+    go();
+  }
+
   /** D309: shows another partner's conversation: this page starts over on it (a new hello). */
   switchPartner(id: string) {
     if (id === (this.S.persona || this.partnerShown) || !this.partners?.some((p) => p.id === id)) return;
+    this.partnersOpen = false;
     savePartner((this.partnerShown = id));
     this.startOver();
     this.pending = [];
@@ -2773,6 +2809,14 @@ class AppState {
     if (task) {
       const [id, full] = task[1]!.split("/");
       return this.applyRoute(full === "full" ? { name: "task", id: decodeURIComponent(id!), full: true } : { name: "task", id: decodeURIComponent(id!) });
+    }
+    // D513: #partners: a phone's list of partners (wide, the list is always beside: the conversation).
+    if (hash === "#partners") {
+      history.replaceState(null, "", location.pathname);
+      this.route = { name: "conv" };
+      this.partnersOpen = this.manyPartners() && !wideNow();
+      if (!this.partners) this.partnersAsked = true;
+      return this.changed();
     }
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });

@@ -72,7 +72,7 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersSection, PartnerSwitch, PassedFrom } from "./partners.tsx";
+import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -1715,8 +1715,10 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
       {/* D270: two ways in. The face and the name open the partner's page (Settings is the visible
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
+      {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
+      {!wide && <PartnersBack />}
       <div class="who">
-        {/* D309: with more than one partner, the face sits on its partner's own clay stone. */}
+        {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
           <Avatar size={44} />
         </button>
@@ -1726,7 +1728,6 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
           </button>
           <Counts />
         </span>
-        <PartnerSwitch />
       </div>
       <Places onHand={!wide} />
     </header>

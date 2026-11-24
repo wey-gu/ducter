@@ -353,7 +353,6 @@ func (a *App) header(c *ui.Context) {
 					uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
 				})
 			})
-			a.partnerSwitch(c) // D309: the other partners, a click away
 		})
 	}, nil)
 }

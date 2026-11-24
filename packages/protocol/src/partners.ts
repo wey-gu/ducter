@@ -38,6 +38,36 @@ export interface PartnerInfo {
   asks: number;
   /** D486: what it looks after, in the person's own words ("家里的事、看病、孩子"); absent: not said. */
   about?: string;
+  /**
+   * D513: the last thing said in its conversation, for the person's list of partners (the Mac's
+   * and the web's): the words, when, and whether the person said them. Sent to the person's own
+   * clients only, with more than one partner; never in any partner's own turn.
+   */
+  last?: PartnerLast;
+}
+
+/** D513: one line of a partner's conversation for the list (at most PARTNER_LAST_MAX characters). */
+export interface PartnerLast {
+  text: string;
+  at: string;
+  /** The person said it (the list reads it as theirs). */
+  you?: boolean;
+}
+
+/** D513: how much of the last message the list carries (one line on a phone shows less). */
+export const PARTNER_LAST_MAX = 80;
+
+/** D513: a message's words as one list line: one line, trimmed, clipped; "" when there are none. */
+export function lastLine(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const one = v
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[*_`#>\[\]]/g, "")
+    .replace(/[\p{Cc}\p{Cf}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const chars = [...one];
+  return chars.length > PARTNER_LAST_MAX ? `${chars.slice(0, PARTNER_LAST_MAX - 1).join("")}…` : one;
 }
 
 /** D486: what a partner looks after: one short line in the person's words, trimmed, at most this long. */

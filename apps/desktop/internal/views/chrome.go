@@ -43,6 +43,10 @@ func chromeInset(c *ui.Context) (left, right float32) {
 func (a *App) chrome(c *ui.Context, key string, left, right func()) {
 	t := a.T
 	l, r := chromeInset(c)
+	// D513: the list of partners at the window's left holds the traffic lights.
+	if key == "conversation" && a.partnerRailShown() {
+		l = 24
+	}
 	bar := ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
 		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow()
 	a.holdBar(c, bar) // D290: the bar stays while its page comes in

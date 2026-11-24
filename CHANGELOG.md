@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.54 - 2026-11-25
+
+<!-- whats-new
+zh: 手机里一键分享给 Ducter；不再以 root 身份装 Ducter
+en: Share anything from your phone to Ducter; installs run as an ordinary user
+-->
+
+**Share to Ducter from any app**
+- On iPhone and Android, Ducter is in the share sheet: a link, text, photos or files, with a note
+  ("帮我总结"), to the partner you choose. Without a connection it waits and sends once you are back.
+
+**Installed as an ordinary user**
+- Running the install as root on Linux now sets Ducter up under an ordinary user, so every agent
+  can work. Still running as root, Ducter says so once and `ducter doctor` shows it.
+- When an agent can't start, its card says why in its own words and offers 换谁来做 / Hand it to
+  someone else; the same cause is never retried on the same agent.
+
+**A Keep's rounds**
+- Any run of quiet rounds folds into one line with its time span; open it in place.
+
 ## 0.1.53 - 2026-11-25
 
 <!-- whats-new

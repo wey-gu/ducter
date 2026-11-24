@@ -22618,6 +22618,8 @@ button.tray-main:focus-visible,
   }
   .icon-btn:active {
     transform: none;
+  }
+}
 
 /* ---------- D529: the one row hover ----------
    Hover never reflows: a row's size, line breaks and positions stay; what it reveals (×, ⋯, Pause)

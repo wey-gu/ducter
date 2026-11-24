@@ -642,6 +642,9 @@ export function TimeCol(p: { at: string; text: string }) {
     <time class="time-col" dateTime={p.at}>
       {p.text}
     </time>
+  );
+}
+
 /** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
  *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
  *  pointer (danger: the failed ink). The Mac's `iconButton`. */
@@ -688,6 +691,10 @@ export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words
         {p.act !== undefined && <span class="tray-act">{p.act}</span>}
       </div>
       {p.open && p.children}
+    </div>
+  );
+}
+
 /**
  * D532: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
  * just above the composer, a sunken tint (done, alert: their own surfaces), a drawn glyph at its

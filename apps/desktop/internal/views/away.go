@@ -21,12 +21,19 @@ type finishedCard struct {
 	failedIDs []string
 	openID    string
 	groupID   string
+	// D508: a finished repo task with a branch and no PR: ⋯ offers 合进
+	// {base} and 开草稿 PR (never on the row, where they pushed the time out).
+	integrate bool
+	base      string
 }
 
 // finishedMenu is what ⋯ offers, in order (the web's finishedMenu).
 func finishedMenu(f finishedCard) []string {
 	if len(f.failedIDs) > 0 {
 		return []string{"retry", "why", "remove"}
+	}
+	if f.openID != "" && f.integrate {
+		return []string{"merge", "open_pr", "open", "remove"}
 	}
 	if f.openID != "" {
 		return []string{"open", "remove"}
@@ -43,6 +50,12 @@ func finishedOf(task *store.Task) *finishedCard {
 	f := &finishedCard{name: shortTitle(task.Title()), taskIDs: []string{task.ID}, openID: task.ID}
 	if att == protocol.Failed {
 		f.failedIDs = []string{task.ID}
+	}
+	if p := task.Place(); att != protocol.Failed && p.Kind == "repo" && task.CanIntegrate() && integrated(task) == "" && !hasPR(task) && task.Acting == "" {
+		f.integrate, f.base = true, p.BaseBranch
+		if f.base == "" {
+			f.base = "main"
+		}
 	}
 	return f
 }
@@ -127,7 +140,14 @@ func (a *App) finishedItems(c *ui.Context, m *ui.Menu, f finishedCard, withRemov
 		if k == "remove" && !withRemove {
 			continue
 		}
-		if m.Item(a.L.T("away." + k)).Chosen() {
+		label := a.L.T("away." + k)
+		switch k {
+		case "merge":
+			label = a.L.T("result.merge", f.base)
+		case "open_pr":
+			label = a.L.T("result.pr")
+		}
+		if m.Item(label).Chosen() {
 			a.runFinished(c, k, f)
 		}
 	}
@@ -143,6 +163,11 @@ func (a *App) runFinished(c *ui.Context, k string, f finishedCard) {
 		}
 	case "remove":
 		a.PutAway(c, f)
+	case "merge", "open_pr":
+		if task := a.S.Task(f.openID); task != nil {
+			task.Acting = k
+			a.TaskAction(f.openID, k)
+		}
 	}
 }
 

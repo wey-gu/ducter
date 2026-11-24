@@ -80,7 +80,7 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
  */
 export function plainAsk(d: Bodies["decision"]): boolean {
   if (!d.taskId) return false;
-  if (d.pay || d.checkout || d.key || d.signIn || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
+  if (d.pay || d.checkout || d.key || d.signIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
   if (d.routineId || d.forApp || d.loop || d.board || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
   if (d.look?.left.length) return false;
   return !destructiveChoice(d.question, d.goLabel);
@@ -93,6 +93,9 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   // D151: the user signed in themselves in the live view; the task checks the page again.
   // D157: where it runs is the runner's to change (it re-places the task); the task hears nothing.
   if (d.where) return "";
+  // D505 (rev.): where a sign-in happens: Go moves the task (its first turn there says why), Hold puts the
+  // sign-in card up where it is; either way the next thing the task hears comes from that.
+  if (d.signInWhere) return "";
   // D448: a task's message to another agent: the partner tells the task what came of it.
   if (d.relay) return "";
   // D233: the task got the answer in the call it was waiting in; nothing to send again.
@@ -258,6 +261,9 @@ export function createDecisions(opts: {
           // D235: the same in the person's apps: Go does that one action; their own turn is Done.
           ...(q.computer ? { computer: q.computer, ...(q.computer.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           ...(q.where ? { where: q.where } : {}),
+          // D505 (rev.): the card's words are its code's (Go 换过去 / Move it there, Hold 我在这里登录 / I'll sign
+          // in here); unanswered it waits, no countdown (reversible, a Hold default with no time).
+          ...(q.signInWhere ? { signInWhere: { site: q.signInWhere.site, url: q.signInWhere.url, to: q.signInWhere.to }, goLabel: q.default?.trim() || "Move it there", defaultOption: "hold" as const, reversible: true, ...(q.signInWhere.hold ? { holdLabel: q.signInWhere.hold } : {}) } : {}),
           // D238: may it use the person's own phone now: no default ever (silence never lends a phone).
           ...(q.handset ? { handset: q.handset, goLabel: "Go", defaultOption: "hold" as const } : {}),
           // D437: what another AI still found in what this Go sends: said on the card, plainly.

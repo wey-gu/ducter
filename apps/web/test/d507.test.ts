@@ -10,7 +10,9 @@ describe("D507: a helper at a glance", () => {
   test("its address first, then nothing yet, its work, or what waits for the person", () => {
     expect(helperGlance({ mem: "connecting", items: [] })).toBe("address");
     expect(helperGlance({ mem: "ready", items: [] })).toBe("idle");
-    expect(helperGlance({ mem: "ready", items: [{ taskId: "a", title: "a", at: "work" }, { taskId: "b", title: "b", at: "ready" }] })).toBe("busy");
+    expect(helperGlance({ mem: "ready", items: [{ taskId: "a", title: "a", at: "work" }] })).toBe("busy");
+    // D508: a PR ready to merge waits for the person: the merge is theirs.
+    expect(helperGlance({ mem: "ready", items: [{ taskId: "a", title: "a", at: "work" }, { taskId: "b", title: "b", at: "ready" }] })).toBe("you");
     expect(helperGlance({ mem: "ready", items: [{ taskId: "a", title: "a", at: "work" }, { taskId: "b", title: "b", at: "you" }] })).toBe("you");
   });
 

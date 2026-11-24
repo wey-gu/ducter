@@ -470,6 +470,21 @@ Every pane but Memory, Agent messaging and On hand rendered against `demo-settin
 - **Two actions never say the same thing.** A linked chat app's account row says **换个账号 / Use another
   account**, not 解除连接 / Unlink above 断开 Telegram.
 
+## New tasks start (D510)
+
+**Who:** H with a server and a laptop who wants work off the lid; C with one favourite agent. F with one
+computer and one agent never sees it. **Where:** Settings › Partner, its own group **新任务默认 / New tasks
+start** right under 做事的 (who does the tasks), because it is the answer to "and which one by default?".
+Two rows, each a segmented choice (a pop-up past three on the web): **在哪儿做 / Where**
+(**自动 / Automatic**, then each computer that runs tasks by name; phones never) and **谁来做 / Who does
+it** (**自动**, then the signed-in agents; the chosen one's coin on the row). A row shows only when it
+has a choice. Each line says what the choice does in one or two clauses (**能做的都在 hel 上做。它连不上，
+或者要用别处才有的（你的 Chrome、某个 App），就换一台。**); the foot says it can be said in the conversation
+too. The said line after a tap: **新任务默认在 hel 上做 / New tasks now start on hel**, **新任务默认交给 Codex**,
+back to automatic **新任务在哪儿做，又由 {name} 来挑**. While an agent is set, 做事的's built-in rows (errands,
+code and the rest) step aside: the default speaks for them. Shots: `.shots/d510-new-tasks/` (Mac 1280,
+web 1400 and 390, zh, light and dark). `design/where.md` §23 has the mechanics.
+
 ## Not done
 
 - D459's leftovers: the phone's sign-in still answers with a boxed notice at the top (`partnerToast`), not
@@ -646,6 +661,17 @@ Kept: safe areas, dynamic type, no glyph drawn as an emoji, 44-tall text buttons
 (`todo.md`): a launch that once sat on **正在连接…** after the bundle or the appearance changed; a long first
 meeting opening scrolled past the figure; a long press, the keyboard and overscroll, which the Simulator
 can't be touched for from the shell.
+
+## 上网 / Web: Straight to your Chrome (D505 rev.)
+
+*Who:* a server-mode person whose Mac is a worker, back in Settings after saying 换过去 / Move it
+there on a site's first sign-in card, or wondering why a task went to their Mac without asking.
+*Felt:* they want to see what they agreed to and take it back in one tap. Under **已登录的网站 /
+Signed-in sites** in the home's 上网 / Web, and only when there is one: **直接用你的 Chrome /
+Straight to your Chrome**, one line (**这些网站要登录时，任务直接换到你 Mac 上已登录的 Chrome 接着做，不再先问。**),
+then one compact line per site on the head's left edge with a quiet **移除 / Remove** (as Your rules'). With a Mac whose Chrome can take a sign-in, Signed-in sites' empty line says the ask that comes first (**还没有。任务要登录哪个网站，会先问你：换到 {computer} 上你已登录的 Chrome 接着做，还是在这里登录。**). Removed, the next sign-in there asks again. No
+switch, no empty state: the list is made only by the card's Go (`where.md` §22). Built on web and
+the Mac; shots in `.shots/d505-ask-once/v2/`.
 
 ## Not done
 

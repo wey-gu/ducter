@@ -23,6 +23,7 @@ func TestDoneTodayFromTheSharedFixture(t *testing.T) {
 			At        string `json:"at"`
 			Now       string `json:"now"`
 			Zone      string `json:"zone"`
+			PROpen    bool   `json:"prOpen"`
 			Want      bool   `json:"want"`
 		} `json:"cases"`
 	}
@@ -35,7 +36,7 @@ func TestDoneTodayFromTheSharedFixture(t *testing.T) {
 			t.Fatal(err)
 		}
 		now := ParseTime(c.Now).In(loc)
-		if got := IsDoneToday(protocol.Attention(c.Attention), ParseTime(c.At), now); got != c.Want {
+		if got := IsDoneToday(protocol.Attention(c.Attention), ParseTime(c.At), now, c.PROpen); got != c.Want {
 			t.Errorf("%s: got %v, want %v", c.Name, got, c.Want)
 		}
 	}

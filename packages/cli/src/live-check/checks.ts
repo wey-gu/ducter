@@ -904,11 +904,11 @@ const miniWindow: Check = {
 
 const workerBrowser: Check = {
   name: "worker-browser",
-  decisions: ["D436"],
-  title: "A worker Mac's Ducter browser over a real socket: the card's picture, the live view, your click",
-  needs: ["a paired worker Mac, awake, with 上网 / Web on", "your phone", "a shop signed in on that worker's Ducter browser"],
+  decisions: ["D436", "D505"],
+  title: "A worker Mac's Ducter browser over a real socket: the card's picture, the live view, your click; a server home's sign-in through the Mac's Chrome",
+  needs: ["a paired worker Mac, awake, with 上网 / Web on", "your phone", "a shop signed in on that worker's Ducter browser", "D505: a server home, and a site signed in only in that Mac's own Chrome"],
   where: "the home",
-  minutes: 10,
+  minutes: 15,
   todo: "An errand to the checkout (D436, `errand.md`, research/185)",
   steps: [
     homeUp,
@@ -938,6 +938,28 @@ const workerBrowser: Check = {
     },
     yesNo("live", "The live view, through the worker", "Tap 去付款: does the live page open on the phone, moving as the worker's page does?"),
     yesNo("click", "Your click goes through", "Tap something harmless on the page (not pay): did the worker's page do it?"),
+    // D505: a server home signs in through the Mac's browser.
+    doNow(
+      "signin_ask",
+      "A sign-in only your Mac has (D505)",
+      "On a server home, from your phone, ask for something on a site you're signed in to only in that Mac's Chrome, without naming the Mac (\"看看我淘宝最近的订单\"). Wait for its answer.",
+    ),
+    {
+      id: "signin_mac",
+      title: "It ran on the Mac, in your Chrome, and no sign-in card came on the home",
+      by: "auto",
+      async run(c) {
+        const ev = c.env.events(["body_selected", "decision"], c.startedAt);
+        if (!ev) return noLog();
+        const mac = ev.filter((e) => e.kind === "body_selected" && e.body?.why?.where?.kind === "signed_in" && e.body.why.where.uses === "chrome");
+        const cards = ev.filter((e) => e.kind === "decision" && e.body?.signIn && !e.body.signIn.step).length;
+        const observed = { onMac: mac.length, signInCards: cards };
+        if (!mac.length) return { outcome: "fail", observed, note: "no task ran in the Mac's Chrome for a sign-in since the check began" };
+        return cards ? { outcome: "fail", observed, note: "a sign-in card came up as well" } : { outcome: "pass", observed };
+      },
+    },
+    yesNo("signin_line", "One line says where", "On the task, does one line say it continued on the Mac (换到 … 接着做), with 用你的 Chrome under it, and nothing asked of you?"),
+    yesNo("signin_sleep", "The Mac asleep: never the server by itself", "Close the Mac's lid and ask the same again: does it wait for the Mac or show today's sign-in card, never signing in on the server by itself?", { optional: true }),
   ],
 };
 

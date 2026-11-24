@@ -831,7 +831,8 @@ export interface Runner {
   switchBody?(taskId: string, harness: string, model?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
   // Optional (D157, E3): move a task to another computer (to.device: its name, "local" for the
   // home), with who does it there. A repo task's branch is pushed first; a folder never moves.
-  moveTask?(taskId: string, to: { device: string; name: string; homeName?: string }, harness?: string, model?: string): Promise<{ ok: boolean; message?: string }>;
+  /** signIn (D505): Ducter moved it there for a sign-in the person already has there (site, and what it browses with); always (D505 rev.): the site is on their straight-to-Chrome list. */
+  moveTask?(taskId: string, to: { device: string; name: string; homeName?: string; signIn?: { site: string; uses: "chrome" | "ducter"; always?: boolean } }, harness?: string, model?: string): Promise<{ ok: boolean; message?: string }>;
   drop(taskId: string): Promise<void>;
   // Optional: what a repo task's branch holds that its base doesn't, with its diff stat (D128:
   // On hand by project). Undefined when not a repo task or it can't tell.
@@ -895,7 +896,7 @@ export interface PhonePort {
 
 /** D395: task_open's pre-flight answer: the place to open in (checked, replaced, or a clone first), or what to tell the model. */
 export type PreflightResult =
-  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string; /** D476: the person's word on where this work runs, kept on the task. */ bound?: import("./index.ts").TaskBound }
+  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "prefer" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string; /** D476: the person's word on where this work runs, kept on the task. */ bound?: import("./index.ts").TaskBound }
   | { ok: false; error: string };
 
 /** D395: where a repository task works, resolved by code from the repository (core/src/repo-where.ts). */

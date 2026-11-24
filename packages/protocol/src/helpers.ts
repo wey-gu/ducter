@@ -67,17 +67,16 @@ export interface HelperView {
 export interface HelperItem {
   taskId: string;
   title: string;
-  /** "work": it is on it (at work, or waiting on CI or a review); "you": something waits for the
-   *  person (a question, a stop, a failure); "ready": finished, its PR open and waiting to be merged. */
+  /** "work": it is on it (at work, or its PR waiting on CI, a review or its next turn); "you":
+   *  something waits for the person (a question, a stop, a failure); "ready": finished, its PR ready
+   *  to merge (D508: the merge is the person's, so it waits for them too). */
   at: "work" | "you" | "ready";
   /** What waits for the person, in the task's words (its question, or why it stopped). */
   yours?: string;
   /** The PR it owns, owner/repo#n, once the task declared it (D483). */
   pr?: string;
-  /** Where that PR stood at the last look: GitHub's merge state (clean, blocked, dirty...) and the
-   *  standing in the task's words (owned.ts saidOf). */
-  merge?: string;
-  stands?: string;
+  /** D508: where that PR stands, in the one model every row reads (pr-state.ts `prSaid`). */
+  said?: import("./pr-state.ts").PrSaid;
 }
 
 /** D507: a helper that is on, with the work it keeps (HelperView's `open` is items.length). */
@@ -85,10 +84,11 @@ export interface HelperWork extends HelperView {
   items: HelperItem[];
 }
 
-/** D507: how a helper reads at a glance: nothing handed over, its work under way, or one waits for the person. */
+/** D507: how a helper reads at a glance: nothing handed over, its work under way, or one waits for the
+ *  person (D508: a PR ready to merge waits for them too). */
 export function helperGlance(h: Pick<HelperWork, "mem" | "items">): "address" | "idle" | "busy" | "you" {
   if (h.mem !== "ready" && !h.items.length) return "address";
-  if (h.items.some((x) => x.at === "you")) return "you";
+  if (h.items.some((x) => x.at === "you" || x.at === "ready")) return "you";
   return h.items.length ? "busy" : "idle";
 }
 

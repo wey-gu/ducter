@@ -219,7 +219,9 @@ func (a *App) memPluginRows(c *ui.Context) {
 		asking := can && d.card.memAsk == key
 		var control func()
 		if busy != "" {
-			control = func() { a.busyButton(c, busy, spoken(a.L, agent, a.deviceNameIn(dv), "Nowledge Mem"), t.ControlSM, t.Surface) }
+			control = func() {
+				a.busyButton(c, busy, spoken(a.L, agent, a.deviceNameIn(dv), "Nowledge Mem"), t.ControlSM, t.Surface)
+			}
 		} else if can && !asking {
 			control = func() {
 				if a.buttonFor(c, action, spoken(a.L, agent, a.deviceNameIn(dv), "Nowledge Mem"), btnSecondary, t.ControlSM, t.Surface) {

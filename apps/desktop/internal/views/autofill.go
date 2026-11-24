@@ -461,17 +461,6 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 		}
 		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if x != nil {
-				if s.sure {
-					if a.buttonFor(c, a.L.T("af.remove.go"), x.Label, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.SavedRemove{T: "saved_remove", ID: x.ID})
-						s.sentAt = a.Now()
-					}
-				} else if a.buttonFor(c, a.L.T("af.remove"), x.Label, btnText, t.ControlSM, t.Surface) {
-					s.sure = true
-				}
-			}
-			ui.Box(c).Grow(1)
 			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
 				if !ok {
 					s.missing = need
@@ -483,6 +472,17 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
 				s.editing = ""
 				a.clearForm()
+			}
+			ui.Box(c).Grow(1)
+			if x != nil {
+				if s.sure {
+					if a.buttonFor(c, a.L.T("af.remove.go"), x.Label, btnSecondary, t.ControlSM, t.Surface) {
+						a.send(protocol.SavedRemove{T: "saved_remove", ID: x.ID})
+						s.sentAt = a.Now()
+					}
+				} else if a.buttonFor(c, a.L.T("af.remove"), x.Label, btnText, t.ControlSM, t.Surface) {
+					s.sure = true
+				}
 			}
 		})
 	})
@@ -512,7 +512,6 @@ func (a *App) afDetails(c *ui.Context, details []protocol.DetailView) {
 			s.details[k] = v
 		}
 		ui.Row(c).Gap(t.S3).Children(func() {
-			ui.Box(c).Grow(1)
 			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
 				values := map[string]string{}
 				for _, k := range protocol.DetailOrder {

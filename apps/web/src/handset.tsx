@@ -481,7 +481,6 @@ export function HandsetAskBody({ d, compact }: { d: DecisionState; compact?: boo
       {open && cl?.handset && !cl.handset.linked && <div class="dl">{t(`${k}.away`, name)}</div>}
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          {compact && <span class="grow" />}
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t(`${k}.go`)} onClick={() => A.decide(d.decisionId, "go")} />
           <Btn kind="secondary" size={compact ? "sm" : undefined} label={t(`${k}.hold`)} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>

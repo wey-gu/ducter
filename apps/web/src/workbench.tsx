@@ -905,10 +905,10 @@ function FileView({ task }: { task: Task }) {
         <div class="wb-acts">
           {editing ? (
             <>
-              <span class="wb-unsaved">{f.draft !== a.text ? t("wb.unsaved") : ""}</span>
-              <span class="grow" />
               <Btn kind="primary" size="sm" label={f.saving ? t("wb.saving") : t("wb.save")} disabled={f.saving || f.draft === a.text} onClick={() => void save()} />
               <Btn kind="text" size="sm" label={t("wb.cancel")} onClick={() => ((f.draft = undefined), (f.conflict = false), A.changed())} />
+              <span class="grow" />
+              <span class="wb-unsaved">{f.draft !== a.text ? t("wb.unsaved") : ""}</span>
             </>
           ) : (
             <Btn kind="secondary" size="sm" label={t("wb.edit")} about={name} onClick={() => ((f.draft = a.text), A.changed(), requestAnimationFrame(() => ta.current?.focus()))} />

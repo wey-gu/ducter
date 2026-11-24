@@ -486,7 +486,7 @@ func (a *App) redoSheet(c *ui.Context) {
 				}
 			})
 		})
-		ui.Row(c.Key("redo-foot")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("redo-foot")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).AlignItems(ui.Center).Children(func() {
 			label := a.L.T("past.redo.go")
 			if r.busy {
 				label = a.L.T("past.redo.busy")

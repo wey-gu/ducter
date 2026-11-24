@@ -1320,12 +1320,16 @@ a {
 .btns .grow {
   flex: 1;
 }
-/* A decision's row: Reply… · Hold · Go, primary last. When the Go action is long, Reply… (a
-   flat text button) drops to its own line under the pair instead of splitting it; Go's own
-   words only shorten when even Hold and Go alone can't share a line. */
+/* A decision's row: Go · Hold · Reply…, primary first on the left (D482, D543). When the Go
+   action is long, Reply… (a flat text button) drops to its own line under the pair instead of
+   splitting it; Go's own words only shorten when even Go and Hold alone can't share a line. */
 .btns.decide {
-  flex-wrap: wrap-reverse;
+  flex-wrap: wrap;
   gap: 10px 12px;
+}
+/* Whichever of a pair is the primary now (a call sheet's Dial, then Done) stands first. */
+.btns.decide .pair > .btn.primary {
+  order: -1;
 }
 .btns.decide .pair {
   display: flex;
@@ -1339,7 +1343,7 @@ a {
 .btns.decide .pair .btn.primary {
   flex: 0 1 auto;
 }
-.btns.decide > .btn.text {
+.btns.decide > .btn.text:first-child {
   margin-left: -12px;
 }
 
@@ -4165,7 +4169,7 @@ a {
 }
 .acct-form .row {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--s2);
 }
 .acct-field {
@@ -4484,6 +4488,8 @@ a.btn {
   align-self: stretch;
   width: min(88%, var(--bubble-measure));
   display: flex;
+  /* D543: from the left edge, the primary first (a tray never centres its buttons). */
+  justify-content: flex-start;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
@@ -5479,7 +5485,7 @@ ol.tries b {
   position: sticky;
   bottom: calc(-1 * var(--s2));
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--s2);
   margin: 4px calc(-1 * var(--s2)) calc(-1 * var(--s2));
   padding: var(--s2);
@@ -6010,7 +6016,7 @@ button.dev-name {
 .about-rule-line .danger-text { margin-right: -8px; }
 .about-mem { color: var(--ink-muted); padding-bottom: var(--s1); }
 .about-edit { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r-sm); background: var(--bg); }
-.about-edit .btns { display: flex; justify-content: flex-end; gap: var(--s2); }
+.about-edit .btns { display: flex; justify-content: flex-start; gap: var(--s2); }
 .about-group > .btn { align-self: stretch; }
 /* D505 (rev.): Straight to your Chrome: one line per site on the note's own left edge, a quiet Remove at the right. */
 .chrome-sites { display: flex; flex-direction: column; }
@@ -6995,7 +7001,7 @@ dl.call-summary dd { margin: 0; }
 .call-card.question .q { font-size: var(--lg); font-family: var(--head); font-weight: 800; line-height: 1.3; }
 .call-q-head { display: flex; align-items: center; gap: 8px; font-size: var(--sm); font-weight: 800; color: var(--needs-ink); }
 .call-q-head .sub { color: var(--ink-muted); font-weight: 700; }
-.call-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.call-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
 .call-row { gap: 6px; }
 .call-row-top { display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .call-row-top:disabled { cursor: default; }
@@ -14836,7 +14842,7 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
 }
 .voice-card .btns {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: 12px;
 }
@@ -17378,7 +17384,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .redo-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .redo-notes p { margin: 0; font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
 .redo-err { margin: 10px 0 0; font-size: var(--sm); color: var(--failed-ink); }
-.redo-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-soft); }
+.redo-foot { display: flex; justify-content: flex-start; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-soft); }
 @media (max-width: 640px) {
   /* Pinned to both edges, no centring transform: on iOS a focused field otherwise scrolled the sheets sideways. */
   .redo-sheet { top: auto; bottom: 0; left: 0; right: 0; translate: none; width: auto; max-height: calc(100dvh - var(--safe-top) - 24px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
@@ -18489,7 +18495,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .talk-card .btns {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: 10px;
 }
@@ -23610,4 +23616,8 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   .info-btn .chev-g {
     display: none;
   }
+}
+/* D543: Mem's suggestion first, the row from the left edge (never a primary in the middle). */
+.g-acts.mem-check-acts {
+  justify-content: flex-start;
 }

@@ -96,17 +96,6 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 		}
 		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if x != nil {
-				if s.sure {
-					if a.buttonFor(c, a.L.T("af.remove.go"), x.Name, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.SavedRemove{T: "saved_remove", ID: x.ID})
-						s.sentAt = a.Now()
-					}
-				} else if a.buttonFor(c, a.L.T("af.remove"), x.Name, btnText, t.ControlSM, t.Surface) {
-					s.sure = true
-				}
-			}
-			ui.Box(c).Grow(1)
 			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
 				if !ok {
 					s.missing = need // the Mac walk of 0.0.98: never a Save that silently does nothing
@@ -122,6 +111,17 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 			if a.button(c, a.L.T("af.cancel"), btnSecondary, t.ControlSM, t.Surface) {
 				s.editing = ""
 				a.clearForm()
+			}
+			ui.Box(c).Grow(1)
+			if x != nil {
+				if s.sure {
+					if a.buttonFor(c, a.L.T("af.remove.go"), x.Name, btnSecondary, t.ControlSM, t.Surface) {
+						a.send(protocol.SavedRemove{T: "saved_remove", ID: x.ID})
+						s.sentAt = a.Now()
+					}
+				} else if a.buttonFor(c, a.L.T("af.remove"), x.Name, btnText, t.ControlSM, t.Surface) {
+					s.sure = true
+				}
 			}
 		})
 	})

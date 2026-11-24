@@ -137,7 +137,7 @@ func (a *App) phoneSpec(c *ui.Context, card string, dv *protocol.DeviceView, ab 
 				return
 			}
 			a.infoText(c, a.L.T("phoneuse.erase.ask"))
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
+			ui.Row(c).Gap(t.S2).Children(func() {
 				if a.button(c, a.L.T("phoneuse.erase.go"), btnPrimary, t.ControlSM, t.Bg) {
 					a.pu.eraseAsk = false
 					a.send(protocol.PhoneEraseReq{T: "phone_erase", Device: dv.ID, KeepSdk: true})
@@ -366,7 +366,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 				uiText(c, a.pu.errText).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 			}
 		}
-		ui.Row(c).Gap(t.S3).Justify(ui.End).Margin(t.S2, 0, 0, 0).Children(func() {
+		ui.Row(c).Gap(t.S3).Margin(t.S2, 0, 0, 0).Children(func() {
 			ready := tm != nil && tm.OK && a.pu.agreed && !a.pu.sending
 			if ready && a.button(c, a.L.T("phoneuse.install.go"), btnPrimary, t.ControlMD, t.Surface) {
 				acc := make([]protocol.Accepted, 0, len(tm.Licenses))

@@ -556,7 +556,7 @@ func (a *App) lendAgents(c *ui.Context, dv *protocol.DeviceView) (asking bool) {
 			}
 			a.infoText(c, a.L.T("ag.where"))
 			a.setupAnswer(c, dv)
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Margin(t.S2, 0, 0, 0).Children(func() {
+			ui.Row(c).Gap(t.S2).Margin(t.S2, 0, 0, 0).Children(func() {
 				if len(chosen) > 0 && a.button(c, a.L.T("lend.setup.go"), btnPrimary, t.ControlMD, t.Surface) {
 					a.agentSetupReq(dv, "install", protocol.AgentSetupReq{Harnesses: chosen})
 					a.ag.skipped[dv.ID] = true // asked once: from here on, the rows

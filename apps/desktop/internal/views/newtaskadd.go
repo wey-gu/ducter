@@ -158,19 +158,19 @@ func (a *App) addPanel(c *ui.Context) {
 }
 
 // panelFoot is the foot of a panel in the place list: a hairline, then
-// the quiet action at the start and the main one at the end, with room
+// the main action first and the quiet ones after it (D543), with room
 // under and beside the raised button so the list's edge never cuts its
 // lip (D272: 克隆 was clipped at the popover's bottom edge).
 func (a *App) panelFoot(c *ui.Context, key string, start, end func()) {
 	t := a.T
 	ui.Box(c.Key(key+"-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
 	ui.Row(c.Key(key)).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S2, t.S2, t.S1).Children(func() {
-		if start != nil {
-			start()
-		}
-		ui.Box(c).Grow(1)
+		// D543: read from the left edge: the clay (and its Cancel) first, the quiet asides after.
 		if end != nil {
 			end()
+		}
+		if start != nil {
+			start()
 		}
 	})
 }

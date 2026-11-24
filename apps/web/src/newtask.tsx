@@ -598,6 +598,14 @@ export function FolderBrowser() {
       </div>
       {repo && repo.root !== r?.path && <div class="adf-inrepo">{t("addfolder.inrepo", repo.name)}</div>}
       <div class="nt-browse-foot adf-foot">
+        {/* Primary first, on the left; the keys' hints after the room between. */}
+        {r?.ok && !atHome ? (
+          <Btn kind="primary" size="sm" class="adf-go" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!!nt.adding} onClick={() => A.ntBrowseUse()} />
+        ) : (
+          r?.ok && <small class="adf-pick">{t("addfolder.pick")}</small>
+        )}
+        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
+        <span class="nt-grow" />
         {fine && (
           <span class="adf-keys" aria-hidden="true">
             <span>
@@ -622,13 +630,6 @@ export function FolderBrowser() {
               {t("addfolder.keys.up")}
             </span>
           </span>
-        )}
-        <span class="nt-grow" />
-        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
-        {r?.ok && !atHome ? (
-          <Btn kind="primary" size="sm" class="adf-go" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!!nt.adding} onClick={() => A.ntBrowseUse()} />
-        ) : (
-          r?.ok && <small class="adf-pick">{t("addfolder.pick")}</small>
         )}
       </div>
     </div>

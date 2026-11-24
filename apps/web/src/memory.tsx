@@ -288,7 +288,8 @@ function CheckAnswers({ it }: { it: MemCheckItem }) {
   const about = it.title ?? it.pair?.map((p) => p.title).join(" / ") ?? "";
   return (
     <span class="g-acts mem-check-acts">
-      {it.answers.map((a) => (
+      {/* Mem's suggestion, the primary, first on the left (D543). */}
+      {[...it.answers].sort((x, y) => Number(y === it.suggest) - Number(x === it.suggest)).map((a) => (
         <Btn key={a} kind={a === it.suggest ? "primary" : "text"} size="sm" label={t(ANSWER_KEY[a])} about={about} onClick={() => (A.memSettle(it.id, a), say("mem-check", t(`said.mem.check.${a}`)))} />
       ))}
     </span>

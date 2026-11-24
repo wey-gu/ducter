@@ -501,7 +501,6 @@ func (a *App) talkPanel(c *ui.Context) {
 						}
 						return
 					}
-					ui.Box(c).Grow(1)
 					if a.button(c, a.L.T("talk.yes"), btnPrimary, t.ControlSM, t.SurfaceSunken) {
 						a.talkAnswer("go")
 					}

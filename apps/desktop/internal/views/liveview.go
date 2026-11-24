@@ -484,7 +484,7 @@ func (a *App) liveView(c *ui.Context) {
 				return false
 			}).TextCaret(ui.Rect{X: 0, Y: 0, W: 1, H: 16})
 		})
-		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			switch {
 			case watch:
 				// What the task is doing, calm; or whose browser, where.

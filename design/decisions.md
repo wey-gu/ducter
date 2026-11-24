@@ -3794,4 +3794,4 @@ Superseded:
 
 - **D532 (3)'s "the header's quiet line for 30 s" from the first second of a loss.** Superseded by D543 (1): nothing is said for the first 2.5 s.
 - **D535's removal of the static boot ground before the app's own render only.** Superseded by D543 (9): the first draw, whichever it is, empties `#app`.
-- **ui.md Buttons: "In a row the primary is last (macOS)".** Superseded by D543's review (the lead, PR #115): the primary is first, on the left, on every card of the web and the Mac (D482's grammar); a settings card's end line keeps its quiet text left and clay right (D314).
+- **ui.md Buttons: "In a row the primary is last (macOS)", and D314's end line (quiet text at the left edge, clay at the right).** Superseded by D543's review (the lead, PR #115): the primary is first, on the left, every row reads from its left edge (never pushed right, where a leading primary would stand in the middle), on every card of the web and the Mac and on the settings end lines too (D482's grammar); one named exception, a row whose words come first.

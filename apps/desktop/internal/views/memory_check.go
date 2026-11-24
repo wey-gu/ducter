@@ -61,8 +61,20 @@ func (a *App) memCheckAnswers(c *ui.Context, it protocol.MemCheckItem) {
 		}
 		about = strings.Join(ts, " / ")
 	}
-	ui.Row(c.Key("mck-acts:" + it.ID)).Gap(t.S2).Wrap().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("mck-acts:" + it.ID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+		// Mem's suggestion, the primary, first on the left (D543).
+		answers := make([]string, 0, len(it.Answers))
 		for _, ans := range it.Answers {
+			if ans == it.Suggest {
+				answers = append(answers, ans)
+			}
+		}
+		for _, ans := range it.Answers {
+			if ans != it.Suggest {
+				answers = append(answers, ans)
+			}
+		}
+		for _, ans := range answers {
 			kind := btnText
 			if ans == it.Suggest {
 				kind = btnPrimary

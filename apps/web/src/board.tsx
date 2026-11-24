@@ -6,7 +6,7 @@
 // (apps/desktop/internal/views/onhand.go).
 import type { ComponentChildren } from "preact";
 import { A } from "./app.ts";
-import { Facts, NavBtn, PlusMark } from "./controls.tsx";
+import { BackGlyph, Facts, NavBtn, PlusMark } from "./controls.tsx";
 import { spoken, when } from "./format.ts";
 import { LANE, title } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
@@ -56,8 +56,15 @@ export function FullTop({ task, children }: { task?: Task; children?: ComponentC
   // D535: on a Keep's page the breadcrumb is the way back: 对话 / 手头的事 / the Keep.
   const keep = !task && K.open ? (K.pages.get(K.open)?.title ?? A.S.onHand?.keeps?.find((k) => k.id === K.open)?.title ?? t("keep.section")) : "";
   const name = task ? shortTitle(title(task)) || t("task.unknown") : keep ? cutAtWord(keep, 40) : t("onhand.title");
+  // D544: a bar too narrow for the trail (a book fold's half, a pane) says only the way up, as a
+  // phone's does (D535: ‹ 手头的事); the place's name is its page's own head. CSS picks one.
+  const up = task || keep ? { label: t("onhand.title"), go: () => (keep ? closeKeep() : A.go({ name: "onhand", full: true })) } : { label: t("nav.conversation"), go: () => A.go({ name: "conv" }) };
   return (
     <header class="top crumbs">
+      <button class="back crumb-up" aria-label={up.label} onClick={up.go}>
+        <BackGlyph />
+        {up.label}
+      </button>
       <nav class="trail" aria-label={t("nav.onhand")}>
         <button class="crumb" onClick={() => A.go({ name: "conv" })}>
           {t("nav.conversation")}

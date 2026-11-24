@@ -87,4 +87,44 @@ describe("On hand beside the conversation on one grid (D544)", () => {
     expect(css).toMatch(/\.onhand-list\.room-side \.decision \{\n  padding-left: 16px;\n  padding-right: 16px;/);
     expect(css).toMatch(/\.onhand-list\.room-side \.ocard \.omark,\n\.onhand-list\.room-phone \.ocard \.omark \{\n  align-self: start;/);
   });
+  test("a bar too narrow for the trail says only the way up, the places one step away", () => {
+    expect(css).toMatch(/@container bar \(max-width: 720px\) \{\n  \.top\.crumbs \.trail \{\n    display: none;\n  \}\n  \.top\.crumbs \.crumb-up \{\n    display: flex;/);
+    expect(css).toMatch(/\.top\.crumbs \.acts \.places \{\n    display: none;/);
+  });
+});
+
+describe("rounds that changed nothing fold (D544)", () => {
+  // The Mac's TestQuietRounds, the same rounds: each a wake, its words, a review_report (a PR marked
+  // changed in every eighth), its progress report.
+  const rounds = (person?: number) => {
+    const evs: object[] = [{ seq: 1, ts: "2026-11-24T00:00:00Z", persona: "default", stream: "task:t", origin: "partner", kind: "task_open", body: { taskId: "t", title: "loop", brief: "每 45 分钟看一次。" } }];
+    for (let i = 0; i < 24; i++) {
+      const seq = 10 + i * 5;
+      const ts = (s: number) => new Date(Date.parse("2026-11-24T00:00:00Z") + i * 45 * 60_000 + s * 1000).toISOString();
+      const loud = i % 8 === 3;
+      evs.push(
+        { seq, ts: ts(0), persona: "default", stream: "task:t", origin: "partner", kind: "task_event", body: { taskId: "t", role: "user", from: "partner", text: "到时间了：「45 分钟后复查」。接着做。" } },
+        person === i
+          ? { seq: seq + 1, ts: ts(20), persona: "default", stream: "task:t", origin: "user", kind: "task_event", body: { taskId: "t", role: "user", text: "先看 #551" } }
+          : { seq: seq + 1, ts: ts(20), persona: "default", stream: "task:t", origin: "task", kind: "task_event", body: { taskId: "t", role: "assistant", text: "没有新的请求，9 个都没变。" } },
+        { seq: seq + 2, ts: ts(40), persona: "default", stream: "task:t", origin: "task", kind: "task_event", body: { taskId: "t", role: "tool", tool: { name: "mcp__ducter__review_report", input: { prs: [{ ref: "o/r#1", changed: loud }, { ref: "o/r#2", changed: false }] } } } },
+        { seq: seq + 3, ts: ts(60), persona: "default", stream: "task:t", origin: "task", kind: "report", body: { taskId: "t", state: "progress", summary: "没有新的请求，9 个都没变。", questions: [], evidence: [] } },
+      );
+    }
+    return evs as never[];
+  };
+  test("from the structured outcome only: a changed PR, the person's words, the latest round stay", async () => {
+    const { quietRuns } = await import("@ducter/protocol/src/transcript.ts");
+    expect(quietRuns(rounds()).map((r) => r.keys.length)).toEqual([3, 7, 7, 2]);
+    expect(quietRuns(rounds(5)).map((r) => r.keys.length)).toEqual([3, 5, 7, 2]);
+    const r = quietRuns(rounds())[0]!;
+    expect(r.keys).toEqual([10, 15, 20]);
+    expect(r.from < r.to).toBe(true);
+  });
+  test("a run of done reports with no wake folds too, and words decide nothing", async () => {
+    const { quietRuns } = await import("@ducter/protocol/src/transcript.ts");
+    const rep = (seq: number, state: string, summary: string) => ({ seq, ts: `2026-11-24T0${seq % 10}:00:00Z`, persona: "default", stream: "task:t", origin: "task", kind: "report", body: { taskId: "t", state, summary, questions: [], evidence: [] } });
+    const evs = [rep(1, "done", "改了很多东西"), rep(2, "done", "没有新的请求"), rep(3, "done", "没有新的请求"), rep(4, "needs_input", "要你定"), rep(5, "done", "x"), rep(6, "done", "y"), rep(7, "done", "z")] as never[];
+    expect(quietRuns(evs).map((r) => r.keys)).toEqual([[1, 2, 3], [5, 6]]);
+  });
 });

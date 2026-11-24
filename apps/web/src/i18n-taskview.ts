@@ -11,6 +11,7 @@ export const taskviewWords: { zh: Record<string, string>; en: Record<string, str
     // D544: the line that keeps a task in rounds who it is while its transcript is read.
     "loop.round": "第 %d 轮",
     "loop.top": "回到开头",
+    "loop.quiet": "又看过 %d 次，都没有变化，%s 到 %s",
     "task.tag.working": "进行中",
     "task.tag.queued": "还没开始",
     "task.tag.blocked": "等待中",
@@ -51,6 +52,7 @@ export const taskviewWords: { zh: Record<string, string>; en: Record<string, str
     "task.tag.needs_you": "Needs you",
     "loop.round": "Round %d",
     "loop.top": "Back to the top",
+    "loop.quiet": "Looked %d more times; nothing changed, %s to %s",
     "task.tag.working": "Working",
     "task.tag.queued": "Not started yet",
     "task.tag.blocked": "Waiting",

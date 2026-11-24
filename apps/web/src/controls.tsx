@@ -883,3 +883,10 @@ export function FactPill(p: { mark: ComponentChildren; facts: { text: string; le
     </button>
   );
 }
+
+/** The bar's way back (‹ 对话, ‹ 手头的事): the one drawn back mark, 18. */
+export const BackGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);

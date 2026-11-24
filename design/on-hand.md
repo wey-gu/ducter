@@ -373,7 +373,9 @@ D544: a task in rounds (a Keep's, or one of its own) keeps who it is while it is
 is out of view (it opens at its end, so at once), a slim clay line under the bar says the Keep's
 lantern, **看守中**, what waits for the person, **下一轮 18:49** (live) or **本轮进行中**, and **第 302
 轮**, each its own element; a tap opens the Keep's page (or, without a Keep, goes back to the head).
-Ordinary tasks get nothing.
+Ordinary tasks get nothing. Rounds that changed nothing (from their structured outcome: a done or
+progress-only round, nothing said to it, no PR marked `changed`) fold into one row, **又看过 9 次，都没有变化，
+13:15 到 17:45**, that opens on a click; the latest round stays.
 
 Beside the conversation (D544) On hand takes the phone's grid: the partner and its lead in the first
 row (the face 56, the lead `lg`), Find on the pane's left edge at its width, a section's name and an

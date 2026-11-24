@@ -1,6 +1,7 @@
 package views
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"os"
@@ -38,12 +39,27 @@ func loopApp(t *testing.T, lang i18n.Lang, rounds int) *App {
 	ts := protocol.TaskStream("t_loop")
 	evs := []protocol.LogEvent{protocol.NewEvent(1, at(-50*time.Hour), "default", ts, protocol.OriginPartner, protocol.KindTaskOpen,
 		protocol.TaskOpen{TaskID: "t_loop", Title: title, Harness: "codex", Brief: w("每 45 分钟看一次 nowledge-co 里等你评审的请求。", "Every 45 minutes, look at the requests waiting for your review in nowledge-co.")})}
+	// Each round as hel's run them: its wake, its words, a review_report (a PR marked changed in
+	// every eighth round, the rest unchanged), and its progress report.
 	for i := 0; i < 24; i++ {
-		seq := int64(10 + i*2)
+		seq := int64(10 + i*5)
+		t0 := time.Duration(-24+i) * 45 * time.Minute
+		loud := i%8 == 3
+		said := w("没有新的请求，9 个都没变。", "No new requests; all 9 unchanged.")
+		if loud {
+			said = w("#10849 有新提交，复审了；其余 8 个没变。等 #11024 的 CI。", "#10849 had new commits and was reviewed again; the other 8 unchanged. Waiting on #11024's CI.")
+		}
+		input := fmt.Sprintf(`{"prs":[{"ref":"nowledge-co/mem#10849","changed":%v},{"ref":"nowledge-co/mem#11024","changed":false}]}`, loud)
 		evs = append(evs,
-			protocol.NewEvent(seq, at(time.Duration(-24+i)*45*time.Minute), "default", ts, protocol.OriginTask, protocol.KindTaskEvent,
-				protocol.TaskEvent{TaskID: "t_loop", Role: "assistant", Text: w([]string{"没有新的请求，9 个都没变。", "#10849 有新提交，复审了；其余 8 个没变。等 #11024 的 CI。", "复审了 2 个新提交，2 份评审写好了等你看。"}[i%3], []string{"No new requests; all 9 unchanged.", "#10849 had new commits and was reviewed again; the other 8 unchanged. Waiting on #11024's CI.", "Reviewed 2 new commits; 2 reviews drafted for you to see."}[i%3])}),
-			protocol.NewEvent(seq+1, at(time.Duration(-24+i)*45*time.Minute+time.Minute), "default", ts, protocol.OriginTask, protocol.KindTaskEvent,
+			protocol.NewEvent(seq, at(t0), "default", ts, protocol.OriginPartner, protocol.KindTaskEvent,
+				protocol.TaskEvent{TaskID: "t_loop", Role: "user", From: "partner", Text: w("到时间了：「45 分钟后复查」。接着做。", `It's time: "Check again in 45 minutes". Carry on.`)}),
+			protocol.NewEvent(seq+1, at(t0+20*time.Second), "default", ts, protocol.OriginTask, protocol.KindTaskEvent,
+				protocol.TaskEvent{TaskID: "t_loop", Role: "assistant", Text: said}),
+			protocol.NewEvent(seq+2, at(t0+40*time.Second), "default", ts, protocol.OriginTask, protocol.KindTaskEvent,
+				protocol.TaskEvent{TaskID: "t_loop", Role: "tool", Tool: &protocol.ToolCall{Name: "mcp__ducter__review_report", Input: json.RawMessage(input)}}),
+			protocol.NewEvent(seq+3, at(t0+time.Minute), "default", ts, protocol.OriginTask, protocol.KindReport,
+				protocol.Report{TaskID: "t_loop", State: "progress", Summary: said}),
+			protocol.NewEvent(seq+4, at(t0+time.Minute+time.Second), "default", ts, protocol.OriginTask, protocol.KindTaskEvent,
 				protocol.TaskEvent{TaskID: "t_loop", Role: "system", Text: "turn completed"}))
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
@@ -118,7 +134,7 @@ func TestLoopLineShots(t *testing.T) {
 	_ = os.MkdirAll(dir, 0o755)
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, dark := range []bool{false, true} {
-			for _, w := range []int{1150, 1400} {
+			for _, w := range []int{1000, 1150, 1400} {
 				app := loopApp(t, lang, 302)
 				app.OpenTask("t_loop")
 				tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
@@ -150,6 +166,54 @@ func TestLoopLineShots(t *testing.T) {
 				write("end")
 			}
 		}
+	}
+}
+
+// D544: rounds that changed nothing fold from their structured outcome (the
+// review_report's changed, a done or progress report, nothing said to them);
+// a round with a PR marked changed stays, and so does the latest round.
+func TestQuietRounds(t *testing.T) {
+	app := loopApp(t, i18n.ZH, 302)
+	task := app.S.Task("t_loop")
+	var ns []int
+	for _, r := range quietRuns(task.Events) {
+		ns = append(ns, len(r.keys))
+	}
+	if fmt.Sprint(ns) != "[3 7 7 2]" {
+		t.Fatalf("runs %v, want [3 7 7 2] (the loud rounds 3, 11, 19 between; the latest finished round shown, the one under way open)", ns)
+	}
+	// A person's words in a round make it loud, whatever it reported.
+	evs := append([]protocol.LogEvent{}, task.Events...)
+	for i := range evs {
+		if evs[i].Seq == 10+5*5+1 { // round 5's words: the person's instead
+			evs[i] = protocol.NewEvent(evs[i].Seq, evs[i].TS, "default", evs[i].Stream, protocol.OriginUser, protocol.KindTaskEvent,
+				protocol.TaskEvent{TaskID: "t_loop", Role: "user", Text: "先看 #551"})
+		}
+	}
+	ns = nil
+	for _, r := range quietRuns(evs) {
+		ns = append(ns, len(r.keys))
+	}
+	if fmt.Sprint(ns) != "[3 5 7 2]" {
+		t.Errorf("with the person's words in round 5: %v, want [3 5 7 2]", ns)
+	}
+	// Drawn: at the end the run's one row, the loud round's words, nothing folded open.
+	app.OpenTask("t_loop")
+	tt := ui.NewTesterWith(app.View, 1150, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	for i := 0; i < 3; i++ {
+		tt.Frame()
+	}
+	fold := app.L.T("loop.quiet", 2, clock(quietRuns(task.Events)[3].from), clock(quietRuns(task.Events)[3].to))
+	if !tt.HasText(fold) {
+		t.Errorf("no fold row %q: %q", fold, tt.Texts())
+	}
+	if err := tt.Click(fold); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !quietOpen[quietKey(task, quietRuns(task.Events)[3].keys[0])] {
+		t.Errorf("the fold row didn't open")
 	}
 }
 

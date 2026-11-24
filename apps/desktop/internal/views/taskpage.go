@@ -252,6 +252,15 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 					return
 				}
 			}
+			// D544: a quiet round folded into the row of the run's first takes no room.
+			if i >= 1 && i <= len(turns) && i != len(turns) {
+				if tu := m.slots[i-1].Turn(); tu != nil && tu.Prompt != nil && tu.Prompt.K == "wake" {
+					if q, ok := quietOf(task)[tu.Prompt.Seq]; ok && !q.first && !quietOpen[quietKey(task, q.id)] {
+						ui.Box(c).Height(0)
+						return
+					}
+				}
+			}
 			top, bottom := float32(0), float32(0)
 			switch {
 			case i == 0:

@@ -23630,3 +23630,28 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   font-weight: 600;
   color: var(--needs-ink);
 }
+/* D544: the crumbs yield cleanly where the bar is narrow (a book fold's half, under 720): only the
+   way up, ‹ 手头的事, never a trail cut behind the pager. */
+.top.crumbs .crumb-up {
+  display: none;
+  flex: none;
+}
+@container bar (max-width: 720px) {
+  .top.crumbs .trail {
+    display: none;
+  }
+  .top.crumbs .crumb-up {
+    display: flex;
+  }
+  .top.crumbs .acts {
+    margin-left: auto;
+  }
+  /* The places are one step up (‹ 手头的事), as on a phone's opened task (D484); never cut at the edge. */
+  .top.crumbs .acts .places {
+    display: none;
+  }
+}
+/* D544: the watch card on the reading column's edges, as the head (D542). */
+.task-page > .watch {
+  margin-inline: auto;
+}

@@ -49,9 +49,11 @@ type composerOpts struct {
 	lead        func() // in the row, before the words (add pictures)
 	tools       func() // in the row, after the words (the mic, the context ring, Stop)
 	keys        func(k ui.TextKey) bool
-	onSend      func(text string) bool // true: sent (the words are emptied)
-	sendMenu    func(m *ui.Menu)       // the send's alternates, on right-click (D530: 等它做完再说)
-	box         func(box ui.Element)   // the card, before its children (drops)
+	// tray (D242, issue #68): the picture tray a paste fills; "" takes none.
+	tray     string
+	onSend   func(text string) bool // true: sent (the words are emptied)
+	sendMenu func(m *ui.Menu)       // the send's alternates, on right-click (D530: 等它做完再说)
+	box      func(box ui.Element)   // the card, before its children (drops)
 	// mentions (D534): @ and / work here, for the partner (where "") or a task.
 	mentions *mentionPlace
 }
@@ -113,6 +115,7 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			}
 			ta := ui.TextArea(c.Key(o.key), o.draft).Lines(1, lines).MinHeight(0).Placeholder(o.placeholder).Label(o.label).
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(fs).TextColor(ink).
+				OnPaste(func(text string) bool { return a.pasteFiles(o.tray, text) }).
 				OnTextKey(func(k ui.TextKey) bool {
 					// D534: the open @ or / list takes its keys first.
 					if o.mentions != nil && a.mentionKeys(o.key, o.mentions, k) {

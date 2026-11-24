@@ -667,3 +667,39 @@ func TestMediaShots(t *testing.T) {
 		frames("mac-"+l+"-11-close", 8)
 	}
 }
+
+// Issue #68: ⌘V comes as the Edit menu's paste: command, never as a key, so
+// the composer takes a picture or a copied file in its paste, and words
+// still paste as words.
+func TestPasteCommandFillsTheTray(t *testing.T) {
+	app, _, h := mediaApp(t, i18n.ZH)
+	tt := mediaTester(app, 1100, 900)
+	h.paste = pngBytes(photo(400, 300, 0.1))
+	tt.SetClipboard("")
+	tt.Command("paste")
+	tt.Frame()
+	if n := len(app.med().trays["conv"]); n != 1 {
+		t.Fatalf("a pasted picture: tray has %d", n)
+	}
+	// Words on the pasteboard paste as words, even with a picture beside them.
+	tt.SetClipboard("看看这个")
+	tt.Command("paste")
+	tt.Frame()
+	if n := len(app.med().trays["conv"]); n != 1 || !strings.Contains(app.draft, "看看这个") {
+		t.Errorf("words: tray %d, draft %q", n, app.draft)
+	}
+	// A file copied in Finder goes as itself, its name never into the words.
+	h.paste = nil
+	notes := filepath.Join(t.TempDir(), "notes.md")
+	if err := os.WriteFile(notes, []byte("# notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.pastedFiles = []string{notes}
+	tt.SetClipboard("notes.md")
+	before := app.draft
+	tt.Command("paste")
+	tt.Frame()
+	if n := len(app.med().trays["conv"]); n != 2 || app.draft != before {
+		t.Errorf("a copied file: tray %d, draft %q", n, app.draft)
+	}
+}

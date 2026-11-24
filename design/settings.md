@@ -122,7 +122,7 @@ sunken tray and a 128-pt coin breaking D289's grid; three stacked lines under th
 |---|---|---|---|---|
 | **First run, none signed in** | One row: **还没有能想事情的 AI agent**, **在下面登录一个，或者贴一个 API 密钥。** | Not shown (nothing to say that the row above didn't) | Its note says what it unlocks (**…就能开始想事情、做事**); a row per agent to install or sign in, then the key | Not shown: no limit can run out |
 | **One agent** (the author: Codex on a server) | The agent, its model (or **用它自己默认的模型**), its limit when it reports one; no Switch, no reassurance | One line on the paper: **现在每个任务都由 Codex 来做。** (its row would repeat the one above) | **有了第二个，Ducter 就能按事情挑；一个的额度用完了，另一个接着做。**; Claude Code **去装上** / **去登录**; the key | The switch, and **现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。** |
-| **Several agents** | The agent with **换一个** (the others listed in place, each **用它**), the model's choice with its one phrase, the reassurance as the group's last line | A row per signed-in agent (limit, **Ducter 想事情也用它** on the one it thinks with) with its **用它做事** switch; how it picks as the section's note; the rules; **打开任何一个任务，都能换别的 AI agent 接着做。** | **多一个，Ducter 挑的时候就多一个选择。** and the key | The switch |
+| **Several agents** | The agent with **换一个** (the others listed in place, each **用它**), the model's choice with its one phrase, the reassurance as the group's last line | A row per signed-in agent (limit, **Ducter 想事情也用它** on the one it thinks with) with its **用它做事** switch; how it picks as the section's note; the rules; **打开任何一个任务，都能换别的 AI agent 接着做。** | **多一个，我挑的时候就多一个选择。** (D551) and the key | The switch |
 | **On a server** | Same rows; the header says **住在 hel 上**, sign-in rows say **在 hel 上登录** | Same | The buttons go to Devices, where the server's card signs it in | Same |
 | **A pay-per-use key only** | The agent the key runs (DeepSeek Harness) with **用你贴的 API 密钥，按用量付费** | One line, as with one agent | The subscription agents, and the key row again (a second key) | As with one agent |
 | **A free key** (D449: OpenRouter's free models, a Gemini key) | pi with **OpenRouter 的免费额度，今天还剩约 12 次** (Gemini without a cap said: **Gemini 的免费额度，每天有上限，用完了到它的时间就恢复**) and **结果不再让另一个 AI 复查，额度先留给你自己的事**, in place of **按用量付费**; spent: **OpenRouter 的免费额度今天用完了，明天 8:00 恢复；想不等的话，充 $10 就能多很多。这期间发来的消息到时按顺序回** | pi's row **用免费额度，和伙伴共用** (with two or more agents) | As with a key | As with one agent |
@@ -534,7 +534,7 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   that can't be reached (Accounts), Mem's questions (D465) and a Mem plugin behind (D466) (Memory), updates
   (About on the Mac, Devices on the web). The brief names each with its button; the pane's head names its own.
 - **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
-  it is to the partner (**{name} 在这台上运行**, **帮 {name} 做事**, **这会儿连不上**); the home's card carries what
+  it is to the partner (D551: **我在这台上运行**, **帮我做事**, **这会儿连不上**); the home's card carries what
   lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
   On Overview and on Where it runs; a card opens Devices.
 - **Every pane's head is the partner speaking** (Mac `paneSpeaks`, the web the same): the pane's name, then the
@@ -649,7 +649,7 @@ dark theme on every pane (no finding of its own).
 
 ### Not changed, noted
 
-- The web lists a computer that is only a window on Overview (Siweis-MacBook-Pro) where the Mac doesn't.
+- The web lists a computer that is only a window on Overview (Siweis-MacBook-Pro) where the Mac doesn't. (Done in D551.)
   (Rows under a first-person head, Look and sound's head and the web's device hairlines: D501, below.)
 
 ## One voice (D501)
@@ -717,6 +717,41 @@ column, read in one glance, every row a target for a thumb. Under 600 wide, on t
 5. The partner's last word, then the list.
 
 The wide Overview (600 and up, and the Mac) is unchanged. Shots: `.shots/composer-polish/{before,after}/overview-*`.
+
+## Swept again (D551)
+
+The author's standing ask once more, after D547 redid Overview for a thumb. Every pane shot against
+`demo-settings-real.ts` on the Mac at 1000, 1150 and 1400 (`TestD475Shots`, now with Memory and Agent
+messaging) and the web at 390, 768, 1024 and 1400, zh and en, light and dark (`.shots/settings-sweep/`,
+before and after per pane). Opened most often first:
+
+| Pane | Who, and what they felt | Found | Now |
+|---|---|---|---|
+| 伙伴 / Partner | H choosing who does what; F from 改名字 | Four lines named the partner in its own pane (**每个任务 Ducter 挑…**, **多一个，Ducter 挑的时候…**, **跟 Ducter 说一条规则…**, **其中 10% 给 Ducter 留着**); on the Mac 新任务默认's **谁来做** as a track of five squeezed its line to **那 / 个。** at 1150 | In the first person (**每个任务我挑…**, **跟我说一条规则…**, **其中 10% 留着回你**); past three choices the row's control is the one pill (`fewOrPill`), as the web's Select |
+| 记忆 / Memory, Agent 通信 | C first meeting Mem | **…Ducter 会自己找到。**, **…Ducter 会自己连上…**, **…把事交给 Ducter。** under a head in the first person | **我会自己找到**, **我会自己连上**, **把事交给我** |
+| 通知 / Notifications | C and F: "will it bother me?" | The web's **等多久再按默认做** stacked its four choices under its words at every width (the old `set-item`); the preview's question left **个？** alone on a line on a phone | A row (`GRow`, `flat`), the choice at the right edge as on the Mac; the preview wraps without an orphan |
+| 你的设备 / Your devices (web) | H checking versions; C after a new phone | Rows 56 tall with 36 clay, unlike every other pane's 64 and 40; the home's row **Ducter 在这台上运行** under **我在 Hetzner Server 上运行…** | 64 tall, the clay at 40, the hairline from the name's edge; **我在这台上运行** |
+| 概览 / Overview, 在哪儿运行 / Where it runs | All three, to see whether something needs them | The web's sheet put seven devices two across in 200-tall cards (D547 had made the phone one glance, the wide view a long scroll); on the Mac at 1000 the computers stopped 145 short of the card under them; the cards said **帮 Ducter 做事** under **都好好的，我在这儿。**; the web listed a browser window as a place | Three across on the web (172); the Mac's grids share their row (`gridCardW`), one right edge; **我在这台上运行 / 帮我做事 / 随时找我**; a window on a computer is not a place (as the Mac) |
+| 账号 / Accounts | C | Tuwa's **录好了** before **去 Tuwa 录** (D543: the primary first); **Ducter 在 Tuwa 上替你关了**, **现在用 Ducter 自己的声音** | **去 Tuwa 录** then **录好了**; **我在 Tuwa 上替你关了**, **现在用我自己的声音** |
+| 待办来源 / To-do sources | H, C | **待办还是那个软件的，Ducter 只管做完。** | **…我只管做完。** |
+| 聊天软件 / Chat apps | C | **Ducter 不登录你的微信…** | **我不登录你的微信…** |
+| 密码和银行卡 / Passwords & cards | C | **让任务向我要密钥**: 我 meaning the person (D501 forbids) | **让任务向你要密钥 / Let tasks ask you for keys** |
+| 外观和声音 / Look and sound, 这台电脑 / This computer | Everyone, briefly | The web's four choices stacked under their words at every width, where the Mac sets them at the right edge | Rows, as Notifications' wait |
+| 关于 / About | H | Nothing new | Unchanged |
+
+Left, with a recommendation:
+
+- **About's versions card on the Mac:** the home's version sits left of **检查更新** while the other computers'
+  versions end at the card's edge, two right edges in one column. Recommended: **检查更新** in the card's last
+  line beside the night switch, every version on one edge.
+- **New tasks start's empty tile column:** while both are **自动** its two rows keep a 40 tile column with
+  nothing in it; the chosen agent's coin fills it once one is picked. Recommended: keep (the words would jump
+  52 on a pick); revisit if the group gains a mark of its own.
+- **Devices' cards and chips** still say **帮 {name} 做事** (a device's role, read among several partners);
+  Overview and the list now say 帮我做事. Recommended: the card in the first person too, in Devices' own pass.
+- **The Mac's preview wraps 到 / 期** in a Chinese word on Notifications' morning note at 1150; the web wraps it
+  whole. Recommended: `keepWords` over the preview's sentences.
+- **The web's partner rows** still put the model's pill on its own line at 390 (D475's choice, kept).
 
 ## Not done
 

@@ -398,7 +398,7 @@ func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
 	case dv.State == protocol.DeviceUnreachable:
 		return a.L.T("list.state.away"), t.Failed.Ink
 	case dv.Home:
-		return a.L.T("list.state.home", a.personaName()), t.InkMuted
+		return a.L.T("list.state.home"), t.InkMuted
 	case dv.Kind == "phone":
 		return a.L.T("list.state.now"), t.InkMuted
 	}

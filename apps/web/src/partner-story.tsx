@@ -85,7 +85,7 @@ const KeyMark = () => (
 function limitWords(h: DeviceHarness | undefined, brain: boolean): string {
   const al = h?.allowance;
   if (!al) return "";
-  if (brain && al.left <= PARTNER_RESERVE) return t("loadout.left.reserve", pct(al.left), A.S.personaName);
+  if (brain && al.left <= PARTNER_RESERVE) return t("loadout.left.reserve", pct(al.left));
   return al.resetsAt ? t("loadout.left.back", pct(al.left), when(A.L, al.resetsAt)) : t("loadout.left", pct(al.left));
 }
 
@@ -124,7 +124,7 @@ export function ThinksSection() {
     if (!held?.free) lines.push(budgetLine(budget));
     lines.push(t("loadout.budget.look"));
   } else if (h?.billing === "usage") lines.push(t("loadout.brain.key"));
-  else if (h?.allowance && !held?.waits) lines.push(h.allowance.left > PARTNER_RESERVE ? t("loadout.left.kept", pct(h.allowance.left), A.S.personaName) : limitWords(h, true));
+  else if (h?.allowance && !held?.waits) lines.push(h.allowance.left > PARTNER_RESERVE ? t("loadout.left.kept", pct(h.allowance.left)) : limitWords(h, true));
   const setBrain = (harness: string, model?: string, label?: string) => {
     const m = model ?? (A.agents ?? []).find((x) => x.harness === harness)?.models?.[0]?.id;
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
@@ -204,7 +204,7 @@ export function TasksSection() {
   const defaults = s.newTasks?.agent ? [] : A.ruleDefaults.filter((d) => d.work !== "errand" || !rules.some((r) => r.kinds?.includes("errand")));
   const nameOf = (d: { harness: string; model?: string }) => (d.model ? t("who.name", harnessName(d.harness), modelName(d.model)) : harnessName(d.harness));
   const rest = defaults.find((d) => d.work === "rest");
-  const note = ready.length === 1 ? t("loadout.tasks.only", harnessName(ready[0]!.harness)) : t("loadout.tasks.how", name);
+  const note = ready.length === 1 ? t("loadout.tasks.only", harnessName(ready[0]!.harness)) : t("loadout.tasks.how");
   if (ready.length === 1 && ready[0]!.harness === b.harness && !rules.length && !defaults.length)
     return (
       <section class="set">
@@ -260,7 +260,7 @@ export function TasksSection() {
                 <GRow key="default:rest" tile={<AgentTile harness={d.harness} />} title={t("loadout.default.rest", nameOf(d))} line={t("loadout.default.rest.line")} />
               ),
             )}
-            <AddRow label={t("loadout.rule.add", name)} help={t("loadout.rule.add.line")} onClick={() => A.tellRule()} />
+            <AddRow label={t("loadout.rule.add")} help={t("loadout.rule.add.line")} onClick={() => A.tellRule()} />
             <GFoot note={t("loadout.tasks.override")} />
           </>
         )}
@@ -343,7 +343,7 @@ export function AddSection() {
   if (!A.settings) return null;
   const name = A.S.personaName;
   const n = readyAgents().length;
-  const note = n === 0 ? t("loadout.add.none", name) : n === 1 ? t("loadout.add.one", name) : t("loadout.add.more", name);
+  const note = n === 0 ? t("loadout.add.none") : n === 1 ? t("loadout.add.one") : t("loadout.add.more");
   // Nothing to add "another" to yet: the first one is just "an AI agent".
   const title = t(n === 0 ? "loadout.add.title.first" : "loadout.add.title");
   const missing = (A.agents ?? []).filter((h) => !h.loggedIn && (h.harness === "claude-code" || h.harness === "codex"));

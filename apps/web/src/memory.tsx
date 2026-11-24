@@ -639,7 +639,6 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
 
 /** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
 function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "closed">; b: BridgeView | undefined }) {
-  const name = A.settings!.name;
   const home = homeOf(b);
   const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
   return (
@@ -652,7 +651,7 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
           <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
         </GRow>
         {phase !== "missing" && <MemSteps phase={phase} b={b} />}
-        <GFoot note={t("mem.setup.local", name, home || t("mem.setup.local.here"))} />
+        <GFoot note={t("mem.setup.local", home || t("mem.setup.local.here"))} />
       </Group>
     </>
   );
@@ -1358,7 +1357,7 @@ export function PeersPage() {
         <Group class="mem-g" label="Nowledge Mem">
           <GHead tile={<MemTile faded />} name="Nowledge Mem" line={t("peers.mem.what")} />
           {upd?.kind === "needed" || upd?.kind === "updating" ? <MemUpdateRow u={upd} b={b} /> : (mem === "install" || mem === "installing" || mem === "sign_in" || mem === "signing_in") && <MemSteps phase={mem} b={b} />}
-          <GFoot note={t("peers.mem.then", name)} />
+          <GFoot note={t("peers.mem.then")} />
         </Group>
       )}
       {phase === "joining" && (
@@ -1457,7 +1456,7 @@ export function PeersInvite() {
   return (
     <section class="set">
       <div class="set-invite">
-        <small class="grow">{t("peers.invite", name)}</small>
+        <small class="grow">{t("peers.invite")}</small>
         <Btn kind="text" size="sm" chev label={t("peers.invite.go")} onClick={() => ((A.peersAsked = true), (A.sheet = { kind: "settings", page: "peers" }), A.changed())} />
       </div>
     </section>

@@ -391,9 +391,9 @@ function NeedLine({ n, go, phone }: { n: SetNeed; go: (p: SettingsPage) => void;
 export function placeRole(dv: DeviceView): string {
   const name = A.S.personaName;
   if (dv.state === "unreachable") return t("home.role.away");
-  if (dv.home) return t("home.role.home", name);
-  if (dv.kind === "phone") return t("home.role.phone", name);
-  if ((dv.harnesses ?? []).some((h) => h.installed)) return t("home.role.worker", name);
+  if (dv.home) return t("home.role.home");
+  if (dv.kind === "phone") return t("home.role.phone");
+  if ((dv.harnesses ?? []).some((h) => h.installed)) return t("home.role.worker");
   return t("home.role.window", name);
 }
 
@@ -402,7 +402,6 @@ export type MapPlace = { key: string; art: string; name: string; role: string; n
 
 /** The person's computers (home first, then the ones that do tasks) and the handhelds that reach the home. */
 export function mapPlaces(): MapPlace[] {
-  const name = A.S.personaName;
   const devs = [...(A.devices ?? [])].sort((a, b) => Number(b.home) - Number(a.home));
   const out: MapPlace[] = devs.map((dv) => {
     const n = runningOn(dv);
@@ -414,7 +413,9 @@ export function mapPlaces(): MapPlace[] {
   for (const cl of clients) {
     if (hidden.has(cl.id) || cl.form === "cli") continue;
     const hand = /ios|iphone|android/i.test(cl.platform) || !/^(darwin|linux|win)/i.test(cl.platform);
-    const role = !hand ? t("home.role.window", name) : cl.handset?.added ? t("home.role.lent") : t("home.role.phone", name);
+    // D551, as the Mac: a browser window on a computer the home doesn't know as one is not a place of its own.
+    if (!hand) continue;
+    const role = cl.handset?.added ? t("home.role.lent") : t("home.role.phone");
     const now = cl.connected ? t("home.now.on") : cl.lastSeen ? t("home.now.seen", ago(A.L, cl.lastSeen)) : "";
     out.push({ key: `cl:${cl.id}`, art: clientArt(cl), name: cl.name, role, now, away: false, home: false });
   }

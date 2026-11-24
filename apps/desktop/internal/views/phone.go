@@ -365,11 +365,12 @@ func (a *App) phoneVoice(c *ui.Context, cv protocol.ConnectionView) {
 	v := cv.Phone.Voice
 	if v == nil || !v.Enrolled {
 		a.tileRow(c, "phone-voice", nil, a.L.T("phone.voice.title"), a.L.T("phone.voice.none"), func() {
-			if a.quietButton(c, "phone-voice-recorded", a.L.T("phone.voice.recorded"), a.L.T("phone.voice.title"), false, 0) {
-				a.send(protocol.PhoneVoice{T: "phone_voice", Action: "refresh"})
-			}
+			// D551: the primary first (D533, D543): record, then the quiet "done recording".
 			if a.buttonFor(c, a.L.T("phone.voice.record"), a.L.T("phone.voice.title"), btnSecondary, t.ControlSM, t.Surface) {
 				a.send(protocol.PhoneVoice{T: "phone_voice", Action: "record"})
+			}
+			if a.quietButton(c, "phone-voice-recorded", a.L.T("phone.voice.recorded"), a.L.T("phone.voice.title"), false, 0) {
+				a.send(protocol.PhoneVoice{T: "phone_voice", Action: "refresh"})
 			}
 		})
 		return

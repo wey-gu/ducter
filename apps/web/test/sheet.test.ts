@@ -27,7 +27,7 @@ describe("the character sheet (D161)", () => {
   test("the list says one word of state", () => {
     expect(listWord(zh, dev({}), { persona: "Ducter", running: 2 })).toEqual({ text: "在做 2 个任务", tone: "working" });
     expect(listWord(en, dev({}), { persona: "Ducter", running: 1 }).text).toBe("Doing 1 task");
-    expect(listWord(zh, dev({ home: true }), { persona: "Ducter", running: 0 }).text).toBe("Ducter 在这台上运行");
+    expect(listWord(zh, dev({ home: true }), { persona: "Ducter", running: 0 }).text).toBe("我在这台上运行");
     expect(listWord(en, dev({ state: "asleep" }), { persona: "Ducter", running: 0 }).text).toBe("Asleep");
     expect(listWord(en, dev({ update: { current: "0.0.6", how: "app", available: true, phase: "downloading" } }), { persona: "Ducter", running: 0 }).text).toBe("Updating");
   });

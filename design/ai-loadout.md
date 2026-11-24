@@ -286,7 +286,7 @@ stage, the tray in front; two cards beside it; the four D71 cards below).
    limit left." Tapping a token opens its line: limit, where it's signed in, the reserve, **按用量
    付费 / Pay per use** for API-billed harnesses, and a switch **用它做事 / Use it for tasks**
    (off = a hard filter in `fw_candidates`). Then **你的规则 / Your rules**, one sentence each,
-   **删除 / Remove**, and **跟 Ducter 说一条规则… / Tell Ducter a rule…** which opens the
+   **删除 / Remove**, and **跟我说一条规则… / Tell me a rule…** (D551) which opens the
    conversation (rules stay conversation-first, `focus-window.md`). With one account the card is
    one line: "做事也用 Claude Code。再登录一个 AI 账号，Ducter 就能按事情挑。" and a link to Devices.
 3. **States on the tray:** signed in (ring), installed with no model (pi: dashed ring, "先选模型 /

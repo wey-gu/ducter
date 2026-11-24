@@ -39,7 +39,7 @@ func TestWechatConnect(t *testing.T) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
-	if !hasTextLike(tt.Texts(), "Ducter 不登录你的微信") {
+	if !hasTextLike(tt.Texts(), "我不登录你的微信") {
 		t.Errorf("the honest line is missing: %q", tt.Texts())
 	}
 	// D365: it rests as its row until 设置 opens the steps.

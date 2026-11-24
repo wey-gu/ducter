@@ -645,7 +645,7 @@ func (a *App) placesMap(c *ui.Context) {
 			if strings.HasPrefix(art, "laptop") {
 				continue // an app window on a computer the home doesn't know as one: not a place of its own
 			}
-			role := a.L.T("home.role.phone", name)
+			role := a.L.T("home.role.phone")
 			if cl.Handset != nil && cl.Handset.Added {
 				role = a.L.T("home.role.lent")
 			}
@@ -661,10 +661,12 @@ func (a *App) placesMap(c *ui.Context) {
 	ui.Column(c.Key("places")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
 		// D500: a section head like every pane's (sectionHead): the text edge, the soft ink.
 		uiText(c.Key("places-label"), a.L.T("home.map")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(0, t.S5).Role(ui.RoleHeading)
-		ui.Row(c.Key("places-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
+		row := ui.Row(c.Key("places-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch)
+		cardW := gridCardW(row.LayoutBounds().W, 258, t.S3)
+		row.Children(func() {
 			for _, p := range places {
 				p := p
-				card := ui.Column(c.Key("place:"+p.key)).Width(258).MinHeight(168).Padding(t.S4, t.S5).Gap(t.S1).Radius(t.RadiusLG).Background(t.Surface).
+				card := ui.Column(c.Key("place:"+p.key)).Width(cardW).MinHeight(168).Padding(t.S4, t.S5).Gap(t.S1).Radius(t.RadiusLG).Background(t.Surface).
 					Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).
 					Label(spoken(a.L, p.name, p.role, p.now)).Focusable()
 				card.Children(func() {
@@ -710,6 +712,20 @@ func (a *App) placesMap(c *ui.Context) {
 	})
 }
 
+// gridCardW is a card's width in a grid of cards that fills its row (D551): as many columns
+// as fit at least min each, sharing the row so the grid's right edge meets the groups' under it.
+// The row's width is last frame's; before the first layout the card keeps min.
+func gridCardW(w, min, gap float32) float32 {
+	if w < min {
+		return min
+	}
+	cols := int((w + gap) / (min + gap))
+	if cols < 1 {
+		cols = 1
+	}
+	return float32(int((w-gap*float32(cols-1))/float32(cols)*100)) / 100
+}
+
 // accountPlaces is where the accounts are (D469 round 2): each source as its own place, its mark
 // and name, that the mail, calendars and messages pass through it, the accounts it brings (their
 // marks), and what the partner may do with them; a calling source says it asks before each call.
@@ -725,7 +741,9 @@ func (a *App) accountPlaces(c *ui.Context) {
 	}
 	ui.Column(c.Key("accts")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
 		uiText(c.Key("accts-label"), a.L.T("home.accts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(0, t.S5).Role(ui.RoleHeading)
-		ui.Row(c.Key("accts-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
+		row := ui.Row(c.Key("accts-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch)
+		cardW := gridCardW(row.LayoutBounds().W, 360, t.S3)
+		row.Children(func() {
 			for _, cv := range list {
 				cv := cv
 				var services []string
@@ -739,7 +757,7 @@ func (a *App) accountPlaces(c *ui.Context) {
 					}
 				}
 				down := cv.Phone == nil && sourceDown(cv)
-				card := ui.Column(c.Key("acct:"+cv.ID)).Width(392).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).
+				card := ui.Column(c.Key("acct:"+cv.ID)).Width(cardW).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).
 					Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(cv.Name).Focusable()
 				card.Children(func() {
 					ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -783,13 +801,13 @@ func (a *App) placeRole(dv *protocol.DeviceView, name string) string {
 	case dv.State == protocol.DeviceUnreachable:
 		return a.L.T("home.role.away")
 	case dv.Home:
-		return a.L.T("home.role.home", name)
+		return a.L.T("home.role.home")
 	case dv.Kind == "phone":
-		return a.L.T("home.role.phone", name)
+		return a.L.T("home.role.phone")
 	}
 	for _, h := range dv.Harnesses {
 		if h.Installed {
-			return a.L.T("home.role.worker", name)
+			return a.L.T("home.role.worker")
 		}
 	}
 	return a.L.T("home.role.window", name)

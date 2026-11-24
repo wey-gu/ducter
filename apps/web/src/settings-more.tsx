@@ -8,7 +8,7 @@ import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Seg, Toggle } from "./controls.tsx";
 import { KeyCard } from "./first-words.tsx";
-import { Said, say } from "./set-grid.tsx";
+import { GRow, Said, say } from "./set-grid.tsx";
 import { cheer } from "./settings-delight.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -172,10 +172,10 @@ export function setPaper(p: Paper) {
 export function PaperRow() {
   const cur = savedPaper();
   return (
-    <div class="set-item">
-      <b>{t("settings.look.mode")}</b>
+    // D551: a choice of a few is a row (D432): its title on the text edge, the choice at the right edge.
+    <GRow cls="flat" title={t("settings.look.mode")}>
       <Seg label={t("settings.look.mode")} value={cur} options={(["system", "light", "dark"] as const).map((v) => ({ v, label: t(`settings.look.mode.${v}`) }))} onPick={(v) => (setPaper(v), cheer())} />
-    </div>
+    </GRow>
   );
 }
 
@@ -224,11 +224,9 @@ export function densityKey(e: KeyboardEvent) {
 export function DensityRow() {
   const cur = savedDensity();
   return (
-    <div class="set-item">
-      <b>{t("density.title")}</b>
-      {/* D500: the shortcut only where there is a keyboard. */}
-      <small>{t(typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? "density.help.touch" : "density.help")}</small>
+    // D500: the shortcut only where there is a keyboard. D551: a row, as PaperRow.
+    <GRow cls="flat" title={t("density.title")} line={t(typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? "density.help.touch" : "density.help")}>
       <Seg label={t("density.title")} value={cur} options={(["comfortable", "compact"] as const).map((v) => ({ v, label: t(`density.${v}`) }))} onPick={(v) => (setDensity(v), cheer())} />
-    </div>
+    </GRow>
   );
 }

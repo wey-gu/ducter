@@ -20696,9 +20696,10 @@ html[data-text-size="large"] .brand-mark > svg {
 /* D469 round 2: the Overview shows the person's whole world. Computers and handhelds as larger clay
    cards with what each is doing now; the accounts at their real place (each source its own card with
    its accounts' marks and what Ducter may do with them); the partner's calm last word. A need whose
-   fix can run here opens the page's own ask in place (the D466 ask) or runs Devices' one tap. */
+   fix can run here opens the page's own ask in place (the D466 ask) or runs Devices' one tap.
+   D551: three across in the Settings sheet (as the Mac at 1150), so seven devices read in a glance. */
 .set-map .map-row {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
 }
 .set-map .map-card {
   padding: 18px;
@@ -21624,6 +21625,11 @@ html[data-text-size="large"] .brand-mark > svg {
    other list in Settings (D500 noted it); a pressed row's ground covers it. */
 .plist > .li-row + .li-row { position: relative; }
 .plist > .li-row + .li-row::before { content: ""; position: absolute; top: 0; inset-inline: 56px 10px; border-top: 1px solid var(--line); pointer-events: none; }
+/* D551: Your devices' list keeps every Settings row's rhythm (D289, D445): at least 64 tall, the clay in the
+   40 tile column, the hairline from the name's edge. */
+.set.devices .plist .li-row { min-height: 64px; gap: 12px; }
+.set.devices .plist .li-row img { width: 40px; height: 40px; }
+.set.devices .plist > .li-row + .li-row::before { inset-inline: 62px 10px; }
 
 /* ---------- D508: a PR's state on its row; a hover's actions in a slot of their own ---------- */
 /* A finished task whose PR is open says where the PR is: the phase in the state's ink, then its
@@ -24375,3 +24381,11 @@ html.kb #app {
   box-shadow: 0 -10px 28px -12px var(--scrim), 0 0 0 1px var(--line-soft);
   clip-path: inset(-40px -40px 0 -40px);
 }
+/* D551: the notification preview's words end on a word, never a lone 个？ on a line of its own. */
+.pv-note .pv-ask,
+.pv-note .pv-wait { text-wrap: pretty; }
+/* D551: a choice of a few as a row where the card has no tile column (This phone / This computer, the
+   default wait): the words on the card's text edge, the choice at the right edge (D432), dropping under
+   the words only when they would keep less than about 160 (D468). */
+.chat-row.flat { --chat-col: 0px; padding-left: var(--set-in, var(--s4)); flex-wrap: wrap; }
+.chat-row.flat > .grow { flex: 1 1 160px; }

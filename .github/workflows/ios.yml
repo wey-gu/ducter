@@ -54,7 +54,7 @@ jobs:
     name: TestFlight upload (internal only)
     if: github.event_name == 'workflow_dispatch' && inputs.testflight
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60 # D553: a fallback archives and exports twice
     steps:
       - uses: actions/checkout@v5
       - name: Sign and upload (scripts/ci/testflight.sh)

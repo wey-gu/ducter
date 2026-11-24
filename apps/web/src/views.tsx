@@ -37,7 +37,7 @@ import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gea
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
-import { Said, say, Waiting } from "./set-grid.tsx";
+import { GRow, Said, say, Waiting } from "./set-grid.tsx";
 import { BackGlyph, DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
@@ -3123,16 +3123,14 @@ function NotifySettings() {
       <section class="set">
         <h3>{t("partner.default.title")}</h3>
         <div class="set-card">
-          <div class="set-item">
-            <b>{t("partner.default.line")}</b>
-            <small>{t("partner.default.note")}</small>
+          <GRow cls="flat" title={t("partner.default.line")} line={t("partner.default.note")}>
             <Seg
               label={t("partner.default.line")}
               value={s.defaultAfterMin}
               options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
               onPick={(defaultAfterMin) => (A.setSettings({ defaultAfterMin }), say("default", t("said.default", defaultAfterMin < 60 ? t("partner.default.min", defaultAfterMin) : t("partner.default.hour", defaultAfterMin / 60))), cheer())}
             />
-          </div>
+          </GRow>
         </div>
         <Said k="default" />
       </section>
@@ -3466,16 +3464,12 @@ function PhoneSettings() {
       <div class="set-card">
         <PaperRow />
         <DensityRow />
-        <div class="set-item">
-          <b>{t("settings.lang.title")}</b>
-          <small>{t("settings.lang.help")}</small>
+        <GRow cls="flat" title={t("settings.lang.title")} line={t("settings.lang.help")}>
           <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => (A.setUiLang(v), cheer())} />
-        </div>
-        <div class="set-item">
-          <b>{t("settings.details.title")}</b>
-          <small>{t("settings.details.note")}</small>
+        </GRow>
+        <GRow cls="flat" title={t("settings.details.title")} line={t("settings.details.note")}>
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => (A.setDetails(v), cheer())} />
-        </div>
+        </GRow>
         <VoiceSettings />
         {/* D342: inside the Android app, its own version and 检查更新. */}
         <AppUpdateRow />

@@ -168,7 +168,7 @@ transcript, On hand, a push and the partner's reads show `••••••` ev
 What is not: the task's agent sees what its own commands print, and its harness keeps that in its
 own transcript. The card and the docs say so plainly.
 
-**Settings › Passwords & cards › 密钥 / Keys.** **让任务向我要密钥 / Let tasks ask me for keys** (on by
+**Settings › Passwords & cards › 密钥 / Keys.** **让任务向你要密钥 / Let tasks ask you for keys** (on by
 default) with **任务要用 API 密钥或部署密钥时，会在对话里问你要。关掉后，它只在报告里说需要哪一个。**;
 the kept keys (name; variable · last used; a head then `••••••`, or **已存 / kept**); **添加密钥 /
 Add a key** (它是什么 / What it is, 变量名 / Variable name, 密钥 / Key); Remove as for the others.

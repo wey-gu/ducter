@@ -80,7 +80,7 @@ What a task could still do: if it printed the key on purpose, it would see it it
 a key is given or refused is listed under **Where it was used**.
 
 In **Settings › Passwords & cards › Keys** you can add a key yourself, see which are kept (by name, never
-the key), remove one, or turn off **Let tasks ask me for keys**. When it's off, a task only says
+the key), remove one, or turn off **Let tasks ask you for keys**. When it's off, a task only says
 in its report which key it needs.
 
 For now this works for tasks on the computer Ducter runs on; a task on another of your computers

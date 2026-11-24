@@ -3045,6 +3045,10 @@ class AppState {
     // D535: the drill-ins are true to the place shown: once On hand is left, a Keep's page open
     // there closes, so On hand opens on its overview next time (a deep link opens the page straight).
     if (r.name !== "onhand") this.leftOnHand?.();
+    // D548: every way into the conversation (对话, ‹ 对话, ⌘1, back from a task or On hand) is the
+    // conversation of the partner shown last; the list of partners opens only from its own control
+    // (the others' faces), the edge swipe or #partners.
+    if (r.name === "conv") this.partnersOpen = false;
     this.route = r;
     if (r.name !== "conv") this.markRead();
     if (r.name === "task") this.history(r.id);
@@ -3054,6 +3058,9 @@ class AppState {
 
   /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification), #settings. */
   fromHash(hash = location.hash) {
+    // D548: a hash other than #partners never lands on the list of partners (the browser's back, a
+    // push, a link): the list is no page of its own, so back never bounces into it.
+    if (hash !== "#partners") this.partnersOpen = false;
     // D497: a push about another partner's own question names it first: #p=<partner>/d=<id>.
     const pm = /^#p=([^/]{1,64})\/(.+)$/.exec(hash);
     if (pm) {

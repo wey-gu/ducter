@@ -741,3 +741,107 @@ export function Notice(p: { tone?: "info" | "done" | "alert"; glyph?: "pebble"; 
     </div>
   );
 }
+
+// ---------- D530: the opened task's steps ----------
+
+const StackMark = () => (
+  <svg class="g" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <path d="M3 4.5h10M3 8h10M3 11.5h6" />
+  </svg>
+);
+
+/** D530: a turn's work under one quiet line: the drawn stack (the shared spinner while it works),
+ *  "12 步，3 条消息", a small × in the failed ink with how many failed, the chevron, and a hairline on
+ *  to the column's edge. The Mac's workHead. */
+export function WorkHead(p: { words: string; failed: number; live?: boolean; open: boolean; onClick: () => void }) {
+  const failed = p.failed > 0 ? t("work.failed", p.failed) : "";
+  return (
+    <button type="button" class={`work-head${p.open ? " open" : ""}`} aria-expanded={p.open} aria-label={spoken(A.L, p.words, failed)} onClick={p.onClick}>
+      <StackMark />
+      <span class="words">{p.words}</span>
+      {failed && (
+        <span class="failed" title={failed} aria-hidden="true">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" />
+          </svg>
+          {p.failed}
+        </span>
+      )}
+      <Chev open={p.open} />
+      <span class="rule" aria-hidden="true" />
+    </button>
+  );
+}
+
+/** D530: a step's object in mono on the inline code tint: one line, cut with an ellipsis, its whole
+ *  on hover. Never pressable on its own. The Mac's stepChip. */
+export function CodeChip(p: { text: string; title?: string }) {
+  return (
+    <code class="chip-code" title={p.title ?? p.text}>
+      {p.text}
+    </code>
+  );
+}
+
+const PageMark = () => (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">
+    <path d="M2.5 1.5h4.8l2.2 2.2v6.8h-7z M4.5 6h3M4.5 8.2h3" />
+  </svg>
+);
+const PictureMark = () => (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round">
+    <path d="M1.5 2.5h9v7h-9z M1.5 8.5l3-2.8 2.2 2 1.3-1 2.5 1.8" />
+    <circle cx="8" cy="4.6" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** D530: a file a step read or edited: its kind's small mark and its name in mono on the inline code
+ *  tint, its tail on hover; with onOpen it opens the file inside Ducter (D356's viewer). The Mac's
+ *  fileChip. */
+export function FileChip(p: { name: string; tail: string; picture?: boolean; cls?: string; onOpen?: () => void }) {
+  const cls = `chip-file${p.cls ? ` ${p.cls}` : ""}`;
+  const inner = (
+    <>
+      {p.picture ? <PictureMark /> : <PageMark />}
+      <span>{p.name}</span>
+    </>
+  );
+  return p.onOpen ? (
+    <button
+      type="button"
+      class={cls}
+      title={p.tail}
+      aria-label={t("file.open", p.name)}
+      onClick={(e) => {
+        e.stopPropagation();
+        p.onOpen!();
+      }}
+    >
+      {inner}
+    </button>
+  ) : (
+    <span class={cls} title={p.tail}>
+      {inner}
+    </span>
+  );
+}
+
+/** D530: a key drawn in its cap and what it does, in the small muted type: the working composer's
+ *  「↩ 插一句」 and 「⌥↩ 等它做完再说」. Keys are drawn, never typed glyphs. The Mac's keyHint. */
+export function KeyHint(p: { opt?: boolean; words: string }) {
+  return (
+    <span class="key-hint">
+      <kbd aria-hidden="true">
+        {p.opt && (
+          <svg width="11" height="11" viewBox="0 0 12 12">
+            <path d="M1.5 3h3l3.3 6h2.7M7.2 3h3.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        )}
+        <svg width="11" height="11" viewBox="0 0 12 12">
+          <path d="M10 2.5v4H3M5 4.5 3 6.5l2 2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </kbd>
+      {p.words}
+    </span>
+  );
+}

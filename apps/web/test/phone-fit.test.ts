@@ -68,7 +68,7 @@ describe("D311: the phone's small targets reach 44 tall", () => {
   const targets: [string, number][] = [
     [".recall-line", 24],
     [".inline-link", 19],
-    [".turns .worked", 28],
+    [".turns .work-head", 28],
     [".strip .cell", 28],
     [".lens-tabs .lens-row", 36],
     [".decision .asker", 24],

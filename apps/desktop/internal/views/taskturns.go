@@ -43,6 +43,13 @@ const (
 	groupMax = 60
 	// stepSize is a step line's words (D268): 13, secondary ink.
 	stepSize = 13
+	// stepRowH is every step row's height (D530): one rhythm; stepChipH
+	// a chip's in it.
+	stepRowH  = 28
+	stepChipH = 20
+	// stepTail is how many of a long stretch's rows show under "前面还有
+	// n 步" (D530), which opens the rest in place.
+	stepTail = 8
 )
 
 // blocks is the opened task's transcript as blocks, made once per change
@@ -54,12 +61,23 @@ func isWorking(task *store.Task) bool {
 	return att == protocol.Working || att == protocol.Queued
 }
 
-// turnFold is where a finished turn's work ends: the blocks before its
-// last words fold away (D268), when there is work among them; -1 for none.
-func turnFold(tu *Turn, live bool) int {
+// workEnd is where a turn's work ends (D530): while it works, all of it;
+// once done, the blocks before its last words; -1 when it has no steps.
+func workEnd(tu *Turn, live bool) int {
 	if live {
+		for i := range tu.Body {
+			if tu.Body[i].K == "steps" {
+				return len(tu.Body)
+			}
+		}
 		return -1
 	}
+	return turnFold(tu)
+}
+
+// turnFold is where a finished turn's work ends: the blocks before its
+// last words fold away (D268), when there is work among them; -1 for none.
+func turnFold(tu *Turn) int {
 	end := len(tu.Body)
 	for i := len(tu.Body) - 1; i >= 0; i-- {
 		if tu.Body[i].K == "voice" {
@@ -128,15 +146,26 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 	if !live && took > 0 {
 		a.tpage.took = a.L.T("turn.worked", a.shortDur(took))
 	}
+	// D530: the turn's work (everything before its last words; all of it
+	// while it works) under one quiet head: folded once the turn is done,
+	// open while it works.
 	from := 0
-	if fold := turnFold(tu, live); fold > 0 {
+	if end := workEnd(tu, live); end > 0 {
 		key := fmt.Sprintf("turn:%s:%d", task.ID, tu.Seq)
 		open := a.open[key]
-		if a.workedFold(c, key, a.L.T("turn.worked", a.shortDur(took)), open) {
-			a.open[key] = !open
+		if live {
+			open = !a.open[key+":shut"]
+		}
+		w := workOf(tu.Body[:end])
+		if a.workHead(c, key, a.workWords(w), w.Failed, live, open) {
+			if live {
+				a.open[key+":shut"] = open
+			} else {
+				a.open[key] = !open
+			}
 		}
 		if !open {
-			from = fold
+			from = end
 		}
 	}
 	for i := from; i < len(tu.Body); i++ {
@@ -146,25 +175,6 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		}
 		ui.Column(c.Key(fmt.Sprintf("b:%s:%d", b.K, b.Seq))).Gap(t.S1).MinWidth(0).Children(func() { a.block(c, task, b) })
 	}
-}
-
-// workedFold is a finished turn's fold: "做了 3 分 12 秒 ›" in 13 muted over a
-// hairline, opening its work in place.
-func (a *App) workedFold(c *ui.Context, key, label string, open bool) bool {
-	t := a.T
-	row := ui.Row(c.Key("fold:" + key)).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).MinWidth(0).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
-	hover := row.Hovered()
-	row.Children(func() {
-		ink := t.InkMuted
-		if hover {
-			ink = t.InkSoft
-		}
-		uiText(c, label).FontSize(stepSize).TextColor(ink).SingleLine().Shrink(0).AccessHidden(true)
-		ui.Box(c).Size(12, 12).Shrink(0).Draw(drawChevron(t.Faint, open))
-		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-	})
-	return row.Clicked()
 }
 
 // promptCard is the brief, or what the partner passed on: a quiet sunken
@@ -221,17 +231,7 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	case "saved":
 		a.savedLine(c, task, b)
 	case "steps":
-		ui.Column(c.Key("lines")).Gap(2).MinWidth(0).Children(func() {
-			for i := range b.Lines {
-				l := &b.Lines[i]
-				live := b.Live && i == len(b.Lines)-1
-				if l.K == "group" {
-					a.groupLine(c.Key(fmt.Sprintf("g%d", l.Seq)), task, l, live)
-				} else if l.Row != nil {
-					a.stepRow(c.Key(fmt.Sprintf("r%d", l.Row.Seq)), task, l.Row, live)
-				}
-			}
-		})
+		a.stepItems(c, task, b)
 	case "plan":
 		a.planCard(c, b)
 	case "report":
@@ -327,27 +327,6 @@ func (a *App) planCard(c *ui.Context, b *Block) {
 	})
 }
 
-// stepLine is a step's one line (D268): its mark at 16, its words at 13 in
-// secondary ink, what trails it, and a 12 chevron in faint ink when it
-// opens. It answers a click.
-func (a *App) stepLine(c *ui.Context, label string, expandable, open bool, children func(row ui.Element)) bool {
-	t := a.T
-	row := ui.Row(c.Key("line")).Gap(6).MinHeight(24).Padding(1, 6).Margin(0, -6).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).Label(label)
-	if expandable {
-		row.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
-		if row.Hovered() {
-			row.Background(t.SurfaceSunken.Mix(t.Bg, 0.4))
-		}
-	}
-	row.Children(func() {
-		children(row)
-		if expandable {
-			ui.Box(c).Size(12, 12).Shrink(0).Draw(drawChevron(t.Faint, open))
-		}
-	})
-	return expandable && row.Clicked()
-}
-
 // stepIcon is a step line's 16 mark: a small spinner while it is the live
 // one, else its kind's glyph in muted ink.
 func (a *App) stepIcon(c *ui.Context, kind string, live bool) {
@@ -359,166 +338,12 @@ func (a *App) stepIcon(c *ui.Context, kind string, live bool) {
 	a.glyph(c, 16, stepGlyph(kind)(t.InkMuted))
 }
 
-// tallyKindGlyph is a group's mark: the glyph of what it did most.
-func tallyKindGlyph(k string) string {
-	switch k {
-	case "web":
-		return "searched"
-	case "used":
-		return "other"
-	}
-	return k
-}
-
-// groupLine is a run of steps as one line (D268): what it did in at most
-// two phrases, or, while it runs, its latest step in the present tense with
-// a spinner; opened, each step, indented, scrolling past groupMax.
-func (a *App) groupLine(c *ui.Context, task *store.Task, l *Line, live bool) {
-	t := a.T
-	key := fmt.Sprintf("group:%s:%d", task.ID, l.Seq)
-	open := a.open[key]
-	words := a.tallyWords(l.Tally)
-	if live && len(l.Rows) > 0 {
-		words = a.liveRowWords(&l.Rows[len(l.Rows)-1])
-	}
-	words = autospace(words)
-	ui.Column(c).MinWidth(0).Children(func() {
-		if a.stepLine(c, words, true, open, func(ui.Element) {
-			kind := "other"
-			if len(l.Tally) > 0 {
-				kind = tallyKindGlyph(l.Tally[0].Kind)
-			}
-			a.stepIcon(c, kind, live)
-			uiText(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
-		}) {
-			a.open[key] = !open
-		}
-		if open {
-			// D271: it grows in place; a long run shows its first steps and
-			// the rest on a click, never a scroller inside the page.
-			all := a.open[key+":all"]
-			n := len(l.Rows)
-			if !all && n > groupMax {
-				n = groupMax
-			}
-			ui.Column(c.Key("steps")).Gap(2).Padding(2, 0, t.S1, 22).MinWidth(0).Children(func() {
-				for i := 0; i < n; i++ {
-					a.stepRow(c.Key(fmt.Sprintf("r%d", l.Rows[i].Seq)), task, &l.Rows[i], false)
-				}
-				if n < len(l.Rows) {
-					more := a.L.T("group.more", len(l.Rows)-n)
-					if a.quietLink(c.Key("more"), key+":more", more, more) {
-						a.open[key+":all"] = true
-					}
-				}
-			})
-		}
-	})
-}
-
-// stepRow is one step: its line, a failure's words under it, and what it
-// ran and printed, the edit's diff or its thinking, once opened.
-func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
-	t := a.T
-	words, code := a.rowWords(r)
-	if live {
-		words, code = a.liveRowWords(r), ""
-	}
-	words = autospace(words)
-	key := fmt.Sprintf("step:%s:%d", task.ID, r.Seq)
-	open := a.open[key]
-	detail := ""
-	switch {
-	case r.Step == nil:
-		detail = r.Thought
-	case len(r.Diff) == 0:
-		var parts []string
-		if r.Command != "" {
-			parts = append(parts, "$ "+unwrapShell(r.Command))
-		}
-		if r.Output != "" {
-			parts = append(parts, r.Output)
-		}
-		detail = strings.Join(parts, "\n")
-	}
-	expandable := detail != "" || len(r.Diff) > 0
-	bad, quiet := r.Outcome == "error", r.Outcome == "missing"
-	ui.Column(c).MinWidth(0).Children(func() {
-		clicked := a.stepLine(c, strings.TrimSpace(words+" "+code), expandable, open, func(row ui.Element) {
-			ink := t.InkSoft
-			switch {
-			case bad:
-				a.glyph(c, 16, drawCrossSmall(t.Failed.Ink))
-			case r.Step == nil:
-				if live {
-					a.stepIcon(c, "", true)
-				} else {
-					a.glyph(c, 16, drawThought(t.InkMuted))
-				}
-			default:
-				a.stepIcon(c, r.Step.Kind, live)
-			}
-			if quiet {
-				ink = t.InkMuted
-			}
-			if bad && r.Step != nil && r.Step.Kind == "background" {
-				ink = t.Failed.Ink // D521: a background failure says it in its words, in the error ink
-			}
-			uiText(c, words).FontSize(stepSize).TextColor(ink).SingleLine().MinWidth(0).Shrink(0.35).Tooltip(words).AccessHidden(true)
-			if code != "" {
-				// The subject: a command or a path, in mono, in ink.
-				uiText(c, code).Font(t.Mono).FontSize(12).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(code).AccessHidden(true)
-			}
-			if r.N > 1 {
-				uiText(c, fmt.Sprintf("×%d", r.N)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-			}
-			if r.Added > 0 {
-				uiText(c, fmt.Sprintf("+%d", r.Added)).Font(t.Mono).FontSize(12).TextColor(t.Done.Ink).Shrink(0)
-			}
-			if r.Removed > 0 {
-				uiText(c, fmt.Sprintf("−%d", r.Removed)).Font(t.Mono).FontSize(12).TextColor(t.Failed.Ink).Shrink(0)
-			}
-			if r.Step != nil && r.Step.Kind == "delegated" && r.Ms != nil && !live {
-				// A subagent's row: done, and how long it took.
-				a.glyph(c, 14, drawCheck(t.InkMuted))
-				uiText(c, a.shortDur(time.Duration(*r.Ms)*time.Millisecond)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-			}
-			if bad && (r.Step == nil || r.Step.Kind != "background") { // D521: a background failure says it in its words
-				uiText(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink.Alpha(0.85)).Shrink(0)
-			}
-		})
-		if clicked {
-			a.open[key] = !open
-		}
-		if bad && !open {
-			// The failure in words, one quiet line; the raw text when opened.
-			if w := a.failWords(r); w != "" {
-				uiText(c, autospace(w)).FontSize(stepSize).LineHeight(leadingFor(w, 1.5)).TextColor(t.InkSoft).MaxLines(2).MinWidth(0).
-					Padding(0, 0, 2, 22).Tooltip(r.Hint).Selectable()
-			}
-		}
-		switch {
-		case open && r.Step == nil:
-			// Its thinking, indented, quiet.
-			uiText(c, autospace(r.Thought)).FontSize(stepSize).LineHeight(1.5).TextColor(t.InkMuted).
-				Padding(2, 0, t.S1, 22).MinWidth(0).Selectable()
-		case open && len(r.Diff) > 0:
-			a.diffPanel(c, r)
-		case open && detail != "":
-			a.outputPanel(c, key, detail)
-			if r.OutputFull > 0 {
-				a.showAll(c, task, r.Seq, r.OutputFull, true) // D320: what it printed, cut at its most
-			}
-		}
-	})
-}
-
 // diffPanel is an edit's lines: what it put in on the done tint, what it
 // took out on the failed tint, context plain; a file's name heads its
 // lines when the edit touched several.
 func (a *App) diffPanel(c *ui.Context, r *StepRow) {
 	t := a.T
-	ui.Column(c.Key("diff")).Margin(t.S1, 0, t.S2, 22).Padding(t.S1, 0).Radius(8).Background(t.Sunken).Clip().MinWidth(0).Selectable().Children(func() {
+	ui.Column(c.Key("diff")).Margin(t.S1, 0, t.S2, 24).Padding(t.S1, 0).Radius(8).Background(t.Sunken).Clip().MinWidth(0).Selectable().Children(func() {
 		for i, l := range r.Diff {
 			text, ink := l, t.InkSoft
 			var bg *ui.Color
@@ -556,7 +381,7 @@ func (a *App) outputPanel(c *ui.Context, key, detail string) {
 	if !all && len(lines) > outputLines {
 		shown = strings.Join(lines[:outputLines], "\n")
 	}
-	ui.Column(c.Key("out")).Gap(t.S1).Margin(t.S1, 0, t.S2, 22).Padding(t.S2, t.S3).Radius(8).Background(t.Sunken).MinWidth(0).Children(func() {
+	ui.Column(c.Key("out")).Gap(t.S1).Margin(t.S1, 0, t.S2, 24).Padding(t.S2, t.S3).Radius(8).Background(t.Sunken).MinWidth(0).Children(func() {
 		uiText(c, shown).Font(t.Mono).FontSize(12).LineHeight(1.5).TextColor(t.InkSoft).Selectable()
 		if !all && len(lines) > outputLines {
 			more := a.L.T("step.lines.more", len(lines)-outputLines)
@@ -700,32 +525,109 @@ func (a *App) liveWords(blocks []Block) string {
 
 // ---------- the working line (D268) ----------
 
-// workingLine is where it is at now, at the transcript's end: what it is
-// doing in 13 with a light sweeping across it, the turn's clock at the
-// right in tabular figures. A retry says itself here; the live run's own
-// line above already says its step, so then this says only that it works.
+// workingLine is the transcript's foot while a turn is under way (D530): one
+// indicator for the moment, never two. While the live step's row is in view
+// (the work unfolded) that row carries the spinner and its clock, and there
+// is no line here. Folded, a hairline and one muted line with the shared
+// spinner: the current step in plain words and that step's time, 「正在跑命令，
+// 42 秒」; with no step under way, 「还在做，这一轮 5 分 1 秒」 (the turn's total
+// only labeled). A retry says itself here instead.
 func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks []Block) {
 	t := a.T
-	words := a.stateLabel(task.Attention())
-	if n := len(blocks); n > 0 {
-		// D271: only what the state proves: a retry, else that it works.
-		// Never "thinking" after its words: it may be doing anything.
-		if last := &blocks[n-1]; last.K == "note" && last.Say == "retry" {
-			words = a.noteLine(last)
-		}
-	}
-	since := ""
+	doing, seq := a.footWords(blocks)
+	folded := false
+	var turnAt time.Time
 	if len(turns) > 0 {
-		since = a.tsOf(task, turns[len(turns)-1].Seq)
+		tu := &turns[len(turns)-1]
+		folded = workEnd(tu, true) > 0 && a.open[fmt.Sprintf("turn:%s:%d", task.ID, tu.Seq)+":shut"]
+		turnAt = store.ParseTime(a.tsOf(task, tu.Seq))
 	}
-	ui.Row(c.Key("working")).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(words).Children(func() {
-		a.shimmerText(c, words, stepSize, t.State(string(protocol.Working)).Ink)
-		ui.Spacer(c)
-		if at := store.ParseTime(since); !at.IsZero() {
-			c.After(time.Second)
-			uiText(c, a.shortDur(a.Now().Sub(at))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+	retry := ""
+	if n := len(blocks); n > 0 {
+		// D271: only what the state proves: a retry, else what it is on.
+		if last := &blocks[n-1]; last.K == "note" && last.Say == "retry" {
+			retry = a.noteLine(last)
 		}
+	}
+	words := ""
+	switch {
+	case retry != "":
+		words = retry
+	case seq > 0 && !folded:
+		return // the live step's row says it, with its spinner and its clock
+	case seq > 0:
+		words = doing
+		if at := store.ParseTime(a.tsOf(task, seq)); !at.IsZero() {
+			c.After(time.Second)
+			words = a.L.T("foot.live", doing, a.shortDur(a.Now().Sub(at)))
+		}
+	default:
+		words = doing
+		if !turnAt.IsZero() {
+			c.After(time.Second)
+			words = a.L.T("foot.live", doing, a.L.T("foot.turn", a.shortDur(a.Now().Sub(turnAt))))
+		}
+	}
+	ui.Column(c.Key("working")).Gap(t.S1).MinWidth(0).Children(func() {
+		if seq == 0 {
+			ui.Box(c).Height(1).Background(t.LineSoft) // folded, the head's own rule is the one line
+		}
+		ui.Row(c).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(words).Children(func() {
+			ui.Box(c).Size(16, 16).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
+			uiText(c, words).FontSize(stepSize).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+		})
 	})
+}
+
+// footWords is what the agent is doing now, said plainly for the live line,
+// and the live step's seq (0: none under way): its latest step's kind in the
+// present, never its command or a tool's name (the step's own row says
+// those); 「还在做」 when its latest is words.
+func (a *App) footWords(blocks []Block) (string, int64) {
+	still := a.L.T("foot.still")
+	if len(blocks) == 0 {
+		return still, 0
+	}
+	b := &blocks[len(blocks)-1]
+	if b.K != "steps" || len(b.Lines) == 0 || !b.Live {
+		return still, 0
+	}
+	l := &b.Lines[len(b.Lines)-1]
+	var r *StepRow
+	switch {
+	case l.K == "group" && len(l.Rows) > 0:
+		r = &l.Rows[len(l.Rows)-1]
+	case l.K == "group":
+		if len(l.Tally) > 0 {
+			return a.footKind(l.Tally[0].Kind, "", ""), l.Seq
+		}
+		return still, 0
+	default:
+		r = l.Row
+	}
+	if r == nil {
+		return still, 0
+	}
+	if r.Step == nil {
+		return a.L.T("foot.thought"), r.Seq
+	}
+	return a.footKind(r.Step.Kind, r.Step.Act, r.Step.Via), r.Seq
+}
+
+func (a *App) footKind(kind, act, via string) string {
+	switch {
+	case kind == "other" && via != "":
+		return a.L.T("foot.used", serviceName(via))
+	case kind == "searched" && act == "web", kind == "web":
+		return a.L.T("foot.web")
+	case kind == "delegated":
+		return a.L.T("foot.sub")
+	}
+	switch kind {
+	case "ran", "read", "edited", "searched", "browsed", "computer", "waited":
+		return a.L.T("foot." + kind)
+	}
+	return a.L.T("foot.still")
 }
 
 // shimmerText is words at 45% with a brighter band sweeping across them,

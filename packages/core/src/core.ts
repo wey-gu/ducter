@@ -12,7 +12,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
@@ -64,7 +64,7 @@ import { CHECK_PATH, createAnywhere, type AnywhereCtl, type TunnelSys } from "./
 import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
-import { createHelpers, HELPER_RETRY_MS } from "./helpers.ts";
+import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -817,6 +817,44 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D498 (D210, D427): a working card says when this turn began (never since the task opened), and a
   // task in rounds carries its rhythm and where its rounds stand, so On hand says it as Ongoing.
   let ongoingRef: import("./ongoing.ts").Ongoing | undefined;
+  // D507 (D494): which task is which helper's work (the helper's claim went out naming it), kept as the
+  // Log grows, and the first messages each helper took (its week): On hand stands a helper's tasks under it.
+  let helpersRef: Helpers | undefined;
+  const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[] };
+  const indexHelper = (e: LogEvent) => {
+    if (e.kind !== "bridge_msg") return;
+    const b = e.body as Bodies["bridge_msg"];
+    if (!b.helper) return;
+    if (b.direction === "out" && b.taskId) helperIndex.tasks.set(b.taskId, b.helper);
+    if (b.direction === "in" && !b.inReplyTo && (!b.state || b.state === "held")) helperIndex.ins.push({ helper: b.helper, at: Date.parse(e.ts) });
+  };
+  for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) indexHelper(e);
+  log.subscribe((e) => {
+    if (e.kind !== "bridge_msg") return;
+    indexHelper(e);
+    onHandChanged();
+  });
+  /** D507: what each helper keeps now (the one model: On hand's sheet reads it, a helper's app will too). */
+  const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t), prs: (t) => work.owned.prs(t) });
+  const helperHolds = (taskId: string): boolean => {
+    const id = helperIndex.tasks.get(taskId);
+    return !!id && helperItemsOf(id).some((x) => x.taskId === taskId);
+  };
+  const helperWorks = (): HelperWork[] => (helpersRef?.views(helperCount) ?? []).filter((h) => h.state === "on").map((h) => ({ ...h, items: helperItemsOf(h.id) }));
+  const helpersDecorate = (o: OnHand): OnHand => {
+    const hs = helpersRef?.list() ?? [];
+    if (!hs.length) return o;
+    const name = new Map(hs.map((h) => [h.id, h.name]));
+    const on = helperWorks();
+    return {
+      ...o,
+      tasks: o.tasks.map((c) => {
+        const id = helperIndex.tasks.get(c.taskId);
+        return id && name.has(id) ? { ...c, helper: { id, name: name.get(id)! } } : c;
+      }),
+      ...(on.length ? { helpers: on } : {}),
+    };
+  };
   const turnsDecorate = (o: OnHand): OnHand => ({
     ...o,
     tasks: o.tasks.map((c) => {
@@ -836,7 +874,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))));
+    const on = helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -1114,24 +1152,26 @@ export function startCore(opts: CoreOptions = {}): Core {
   bridgeLink.onChange(() => settings.bridgeChanged());
   // D494: 帮手 / Helpers: named addresses of the person's in Bridge, owned by this home (helpers.json).
   // Their addresses are made while the home's Bridge is connected; a scratch home (byItself false) waits too.
-  const helpers = createHelpers({ dataDir, link: () => (bridgeLink.context() ? bridgeLink : undefined), partnerName: () => persona.name || "Ducter", home: () => computers.homeName() });
+  const helpers = createHelpers({
+    dataDir,
+    link: () => (bridgeLink.context() ? bridgeLink : undefined),
+    partnerName: () => persona.name || "Ducter",
+    home: () => computers.homeName(),
+    // D507: the partner's creation reply said the address was being made: when it is ready (or Mem
+    // refused the name) the person hears it once, in the conversation, as the partner's own line.
+    say: (h, how) => log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: helperSaidWords(langNow(), h, how) } }),
+  });
+  helpersRef = helpers;
   helpers.onChange(() => settings.bridgeChanged());
+  helpers.onChange(() => onHandChanged());
   bridgeLink.onChange(() => void helpers.tick());
   bridgeLink.onMemReady(() => void helpers.tick());
   const helperTimer = setInterval(() => void helpers.tick(), HELPER_RETRY_MS);
-  /** D494: a helper's work on hand (its tasks not ended) and what it took in the last 7 days, from the Log. */
+  /** D494: a helper's work on hand (its tasks it still holds, D507) and what it took in the last 7 days, from the Log. */
   const helperCount = (id: string) => {
-    const evs = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 });
     const since = Date.now() - 7 * 86_400_000;
-    let week = 0;
-    const tasksOf = new Set<string>();
-    for (const e of evs) {
-      const b = e.body as Bodies["bridge_msg"];
-      if (b.helper !== id) continue;
-      if (b.direction === "in" && !b.inReplyTo && Date.parse(e.ts) >= since) week++;
-      if (b.direction === "out" && b.taskId) tasksOf.add(b.taskId);
-    }
-    const open = [...tasksOf].filter((t) => ((a) => !!a && a !== "done" && a !== "failed" && a !== "dropped")(tasks.get(t)?.attention)).length;
+    const week = helperIndex.ins.filter((x) => x.helper === id && x.at >= since).length;
+    const open = [...helperIndex.tasks].filter(([t, h]) => h === id && helperHolds(t)).length;
     return { open, week };
   };
   (helperTimer as { unref?: () => void }).unref?.();

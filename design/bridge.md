@@ -1355,7 +1355,9 @@ nobody can rename, a timer wake only) and reported blocked (research/211).
   stone of its own. Not a routine: work starts on mail, and which task a message joins is the model's call.
 - **How it is made.** In one sentence: the partner's `helper` tool (make, stop, resume, set), listed while
   Bridge is on, never a task that loops or polls. The tool's answer says what is true: Ducter receives the
-  helper's mail and starts the work; nothing polls; no mailbox for the person to open.
+  helper's mail and starts the work; nothing polls; no mailbox for the person to open. D507: when its address
+  becomes ready the home says so once in the conversation, as the partner (and where its work will show); when
+  Mem refuses the name, once, with what to do; a wait says nothing (it connects by itself).
 - **How work flows.**
 
 ```
@@ -1373,9 +1375,11 @@ done or failed ─▶ the answer goes back from the helper's address (a wait is 
   Mem tells senders its mailbox is closed, and work on hand finishes; a reply from a helper is recovered with its
   own client by its operation, never resent.
 - **Shown** in Settings › Agent 通信 under **你的帮手 / Your helpers**, while there are any (words in the
-  glossary); its tasks are ordinary tasks on On hand.
+  glossary), and (D507) on On hand as its own sheet with the work it keeps under it until each PR merges or
+  closes (`on-hand.md` "A helper"). Its state is one home-side model (`HelperWork` in `OnHand.helpers`, built by
+  `helperItems` from its claims, the task cards and owned PRs): On hand reads it, and a helper's small app will.
 - **Not yet.** The live run against Mem (the author's step); `--watch` per helper (it is read at each check);
-  helpers listed on Ongoing; what Mem owes (`research/private/bridge-helpers-ask-2026-11-23.md`, not sent): a
+  a helper's app from `HelperWork`; what Mem owes (`research/private/bridge-helpers-ask-2026-11-23.md`, not sent): a
   field telling a session's connection from a home's, and whether a session connection can take identity mail.
 
 ## Open questions

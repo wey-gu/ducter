@@ -164,6 +164,15 @@ sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777; ends 
 ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
 ```
 
+**Poppler (D506).** The bundle's `install.sh` on Linux adds Poppler (`pdftotext`, `pdftoppm`, which
+the document check, D439, reads a PDF's pages with) from the system's packages when that needs no
+password: as root, or when `sudo -n true` works. apt (`poppler-utils`, one `apt-get update` and a
+retry when the lists are empty), dnf (`poppler-utils`), pacman (`poppler`), zypper
+(`poppler-tools`). A sudo that would ask, or a failed install, is never fatal: the one line to run is
+printed (`popplerCmd` in `packages/core/src/pkg-line.ts`, the same line `ducter doctor` shows on its
+**PDF pages** row). `DUCTER_NO_POPPLER=1` skips it. Nothing is bundled (D75). LibreOffice stays
+the person's choice (hundreds of MB; `todo.md`). `ducter check run poppler` reads the result.
+
 Reach it one of these ways (D265: none assumes a public IP):
 
 - **Tailscale (a server in a tailnet, no public port):** `ducter tailscale` on the server

@@ -204,6 +204,13 @@ Otherwise it lists your own domain and Tailscale, then an SSH tunnel for your Ma
 
 As `root` the data lives in `/root/.ducter`, and `ducter` works in the same shell right away.
 
+The install also adds Poppler, the small PDF tools Ducter uses to check each page of a document
+before you get it, when your server can add packages without a password (as `root`, or with a
+`sudo` that asks none). Otherwise it prints the one line to run, such as
+`sudo apt install poppler-utils`, and `ducter doctor` keeps showing it under **PDF pages**.
+Without Poppler Ducter still works; it just misses most layout mistakes in a PDF. To leave it
+out, put `DUCTER_NO_POPPLER=1` before `sh` in the install line.
+
 `ducter doctor` also tells you how to sign in Claude Code or Codex on a server that has no
 browser: `claude auth login` prints a link to open on any device and waits for the code, and
 `codex login --device-auth` works the same way. One is enough. With only Codex signed in,

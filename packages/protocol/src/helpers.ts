@@ -39,6 +39,8 @@ export interface Helper {
   mem: HelperMem;
   /** Why it is waiting or refused, in Mem's terms (shown behind 细节 / Details). */
   detail?: string;
+  /** D507: what the partner last said of its address in the conversation (once each: ready, refused). */
+  said?: "ready" | "refused";
 }
 
 /** A helper as Settings › Agent 通信 shows it. */
@@ -53,6 +55,41 @@ export interface HelperView {
   open: number;
   /** Work it took in the last 7 days. */
   week: number;
+}
+
+/**
+ * D507: one piece of work a helper keeps, as the home reads it: the task, the PR it owns and where that
+ * PR stands, and whether something waits for the person. A helper keeps a task until it ends, and a
+ * finished one while its PR is still open (a merge or a close lets it go). This is the one model of a
+ * helper's state: On hand's sheet reads it, and so will a helper's small app (D405/D407: the home
+ * writes the app's key from it, as review-board.ts writes `board` from review_report).
+ */
+export interface HelperItem {
+  taskId: string;
+  title: string;
+  /** "work": it is on it (at work, or waiting on CI or a review); "you": something waits for the
+   *  person (a question, a stop, a failure); "ready": finished, its PR open and waiting to be merged. */
+  at: "work" | "you" | "ready";
+  /** What waits for the person, in the task's words (its question, or why it stopped). */
+  yours?: string;
+  /** The PR it owns, owner/repo#n, once the task declared it (D483). */
+  pr?: string;
+  /** Where that PR stood at the last look: GitHub's merge state (clean, blocked, dirty...) and the
+   *  standing in the task's words (owned.ts saidOf). */
+  merge?: string;
+  stands?: string;
+}
+
+/** D507: a helper that is on, with the work it keeps (HelperView's `open` is items.length). */
+export interface HelperWork extends HelperView {
+  items: HelperItem[];
+}
+
+/** D507: how a helper reads at a glance: nothing handed over, its work under way, or one waits for the person. */
+export function helperGlance(h: Pick<HelperWork, "mem" | "items">): "address" | "idle" | "busy" | "you" {
+  if (h.mem !== "ready" && !h.items.length) return "address";
+  if (h.items.some((x) => x.at === "you")) return "you";
+  return h.items.length ? "busy" : "idle";
 }
 
 /** A helper's name as kept: one line, trimmed, clipped; "" when none. */

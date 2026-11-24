@@ -11,7 +11,8 @@
 #                                           #   (copy one to the server, run its install.sh there)
 #   scripts/install.sh --service            # Linux: also run Ducter as a systemd user service
 #
-# What it touches: $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (and, with --service,
+# What it touches: $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (on Linux, Poppler from the
+# system's packages when that needs no password: DUCTER_NO_POPPLER=1 skips it; with --service,
 # ~/.config/systemd/user/ducter.service). So `ducter` works right away: as root (or with a
 # writable /usr/local/bin) it links /usr/local/bin/ducter to it; otherwise, if $PREFIX/bin isn't
 # on PATH, it adds one marked block to your shell profile ("# added by Ducter"; added once,
@@ -34,7 +35,7 @@ while [ $# -gt 0 ]; do
     --linux) LINUX="$2"; shift 2 ;;
     --linux=*) LINUX="${1#*=}"; shift ;;
     --service) SERVICE=1; shift ;;
-    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -210,6 +211,47 @@ if [ "$ON_PATH" = 0 ]; then
     printf '    export PATH="%s:$PATH"\n' "$BIN"
   fi
 fi
+
+# D506: the document check reads a PDF's pages with Poppler (pdftotext, pdftoppm); without it most of
+# a PDF's layout mistakes go unseen. On Linux it comes from the system's own packages, so it is put
+# in here only when that needs no password (as root, or a sudo that asks none); otherwise the one
+# line to run is said, and `ducter doctor` keeps saying it. DUCTER_NO_POPPLER=1 leaves it alone.
+poppler() {
+  [ "$(uname)" = Linux ] || return 0
+  [ "${DUCTER_NO_POPPLER:-}" = 1 ] && return 0
+  if command -v pdftotext >/dev/null 2>&1 && command -v pdftoppm >/dev/null 2>&1; then return 0; fi
+  if command -v apt-get >/dev/null 2>&1; then
+    line="sudo apt install poppler-utils"; set -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -q poppler-utils
+  elif command -v dnf >/dev/null 2>&1; then
+    line="sudo dnf install poppler-utils"; set -- dnf install -y -q poppler-utils
+  elif command -v pacman >/dev/null 2>&1; then
+    line="sudo pacman -S poppler"; set -- pacman -S --noconfirm --needed poppler
+  elif command -v zypper >/dev/null 2>&1; then
+    line="sudo zypper install poppler-tools"; set -- zypper --non-interactive install poppler-tools
+  else
+    m "  · 没有 Poppler，PDF 的版面问题多半看不出来。用你的包管理器装上 poppler。" \
+      "  · No Poppler here, so most layout mistakes in a PDF go unseen. Add poppler with your package manager."
+    return 0
+  fi
+  as=""
+  if [ "$(id -u)" != 0 ]; then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then as="sudo -n"; else as=no; fi
+  fi
+  if [ "$as" != no ]; then
+    m "  · 正在装 Poppler（PDF 给你之前逐页检查用）…" "  · Adding Poppler (to check each page of a PDF before you get it)…"
+    # A fresh apt image may have no package lists yet: one update, then the install again.
+    if $as "$@" >"$WORK/poppler.log" 2>&1 ||
+      { [ "$1" = env ] && $as env DEBIAN_FRONTEND=noninteractive apt-get update -q >>"$WORK/poppler.log" 2>&1 && $as "$@" >>"$WORK/poppler.log" 2>&1; }; then
+      if command -v pdftotext >/dev/null 2>&1 && command -v pdftoppm >/dev/null 2>&1; then
+        ok "Poppler（PDF 逐页检查）" "Poppler (PDF pages are checked)"
+        return 0
+      fi
+    fi
+  fi
+  m "  · 没有 Poppler，PDF 的版面问题多半看不出来。装上它：" "  · No Poppler here, so most layout mistakes in a PDF go unseen. To add it:"
+  printf '    %s\n' "$line"
+}
+poppler
 
 if [ "$SERVICE" = 1 ]; then
   if [ "$(uname)" = "Linux" ]; then

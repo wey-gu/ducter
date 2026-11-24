@@ -418,7 +418,7 @@ type App struct {
 	installedSaid bool
 	// toastAt is where this frame's place said its toasts go (D523, toasts.go).
 	toastAt toastPlace
-	Quit          func()
+	Quit    func()
 	// ReportProblem collects diagnostics to attach (Help › Report a
 	// problem…); nil opens a new issue instead.
 	ReportProblem func()

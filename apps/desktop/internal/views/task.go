@@ -529,6 +529,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 			ui.Row(c).Children(func() {
 				a.composerBox(c, composerOpts{
 					key: "taskcomposer:" + task.ID, draft: &draft, placeholder: place, label: a.L.T("composer.task"), lines: 6, focus: a.focusComposer,
+					mentions: &mentionPlace{where: task.ID, task: true}, // D534
 					box: func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
 					before: func() {
 						if over {
@@ -635,6 +636,16 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			a.messageMedia(c, key, media, nil, true, "task:"+a.TaskID)
 		}
 		if text == "" {
+			goto note
+		}
+		if said, refs := splitRefs(text); len(refs) > 0 {
+			// D534: the person's words with their @ chips; what Ducter put after them for the agent is never shown.
+			r := t.BubbleRadius
+			b := ui.Column(c.Key("refs")).Background(t.UserBubble).Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80)
+			if waiting {
+				b.Opacity(0.7)
+			}
+			b.Children(func() { a.wordsWithRefs(c, "w", said, refs, t.OnUserBubble, taskProse) })
 			goto note
 		}
 		{

@@ -3244,3 +3244,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
+- [ ] **D534 live through the runner:** a Codex task given `$imagegen …` loads that skill, and a pi
+  task given `/skill:name` and `/template` expands them (both are listed token-free today; the
+  invocation is INFERRED for Codex and DOCUMENTED for pi, research/224). *Trigger:* the next
+  live check on hel with a Codex and a pi task.
+- [ ] **D534 OAR gaps** (drafts, not sent; research/224 §3): a structured Codex skill input
+  (`{type:"skill"}`) from `deliver`, so `$name` is exact; command catalogs for DeepSeek Harness
+  and Antigravity; Antigravity's `/compact` contract. Until then those commands are not offered.
+  *Trigger:* OAR publishes any of them, or the author asks for Codex's TUI commands in a task.
+- [ ] **D534 the marks in the words** are a tint behind them (web) and the text's own colour (Mac),
+  not atomic chips, and the Mac's list sits at the composer's start rather than at the caret.
+  *Trigger:* the author finds the marks too quiet or wants the list at the caret on the Mac.

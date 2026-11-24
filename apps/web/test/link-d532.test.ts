@@ -12,7 +12,7 @@ import { STANDING_PATH } from "@ducter/protocol/src/reach.ts";
 import { checkStanding } from "@ducter/protocol/src/reach-verify.ts";
 import { askStandingWeb, checkStandingWeb } from "@ducter/protocol/src/reach-verify-web.ts";
 import { Connection, backoff, type ConnStatus } from "../src/conn.ts";
-import { createLinkWatch, judge, linkState, LONG_OUTAGE_MS, memoStore, OLD_HOME_TRIES, OLD_HOME_WINDOW_MS, type LinkMemo } from "../src/link.ts";
+import { createLinkWatch, judge, linkState, LINK_QUIET_MS, LONG_OUTAGE_MS, memoStore, OLD_HOME_TRIES, OLD_HOME_WINDOW_MS, type LinkMemo } from "../src/link.ts";
 
 const stops: (() => void)[] = [];
 afterEach(() => {
@@ -208,7 +208,9 @@ test("a home restart mid-session: the proxy's 502s keep the token and the screen
   home.down();
   await until(() => d.conn.status === "offline");
   expect(d.conn.downSince).toBeGreaterThan(0);
-  expect(linkState(d.conn.status, d.conn.downSince, Date.now())).toBe("back");
+  // D543: under LINK_QUIET_MS it isn't said at all; then quietly; then plainly.
+  expect(linkState(d.conn.status, d.conn.downSince, d.conn.downSince + 100)).toBe("up");
+  expect(linkState(d.conn.status, d.conn.downSince, d.conn.downSince + LINK_QUIET_MS)).toBe("back");
   expect(linkState(d.conn.status, d.conn.downSince, d.conn.downSince + LONG_OUTAGE_MS)).toBe("lost");
   await Bun.sleep(700); // a few refused tries, each asking /api/me through the proxy (502)
   home.upAgain();

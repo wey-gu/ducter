@@ -125,6 +125,12 @@ nothing to do. If it lasts, check that the server is on and online (`ducter serv
 it), then tap **Try now**. You never need to connect again for this: Ducter asks you to connect
 again only when your Ducter itself says this device was disconnected.
 
+While it reconnects, everything on screen stays: you can keep reading the conversation and the
+tasks you opened recently, even if you close the app and open it again. A message you send waits on
+your phone with **Sends when it's back** under it, and goes once by itself as soon as your Ducter
+answers. Most answers to a question wait too. A payment, a key, a call or anything that deletes
+asks you to tap again once it's back, because those shouldn't happen later without you.
+
 ### `ducter tailscale` stops
 
 It says why and what to run next. Usually one of these:

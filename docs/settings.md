@@ -9,12 +9,15 @@ order: 4
 Everything you can change is in one place, **Settings**. Every screen has three small pictures
 at the top right: **Devices** (a laptop and a phone), **On hand** (three things in hand) and
 **Settings** (the gear), so you can get there from wherever you are; point at one to see its name.
+On a phone they share one button at the top right (a small grid of dots): tap it for **On hand**,
+**Your apps**, **Devices** and **Settings**.
 **⌘,** and **Ducter › Settings…** open Settings too. **⌘4**, **View › Partner** and clicking your
 partner's face or name at the top of the conversation open it on **Partner**. The line under the
 name (like "Working on 2") opens **On hand** at what it says.
 
 When there is something to update (Ducter on one of your computers, or an AI agent), an
-**Update** button appears at the top right of every screen, with how many there are. It opens the
+**Update** button appears at the top right of every screen, with how many there are (on a phone,
+a dot on the grid button, and **Update** first in its list). It opens the
 page where you update everything with one tap.
 
 On the left is a row of tabs; the one you pick shows on the right. Settings opens on the first,
@@ -33,7 +36,7 @@ On the left is a row of tabs; the one you pick shows on the right. Settings open
 | **Where it runs** | Which computer Ducter runs on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
 
-On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
+On a phone, tap the grid at the top right and then **Settings** (or your partner's name at the top of the conversation):
 Settings opens with the same overview at the top (your partner's few lines and your computers), then a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
 it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**), **An opened task** (**Comfortable** or **Compact**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
@@ -167,7 +170,9 @@ You can have up to four partners: one for work and one for home, say, or one for
 the family. With one partner, **Your partners** is the last group on the Partner page; once you have
 more, it comes first. Each has its own name, colour, conversation and memory, and none of them sees the
 others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
-counts for all of them.
+counts for all of them. On hand shows every partner's tasks, whichever partner you're talking to:
+each task, routine and standing job carries the small figure of the partner that started it, in
+that partner's colour, and an opened task says which partner gave it the work.
 
 - **Make one.** Tell your partner ("make me another partner for things at home, call it Home"), or
   open **Settings › Partner › Your partners › Add a partner** and give it a name, **What it looks

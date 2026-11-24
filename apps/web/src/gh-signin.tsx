@@ -103,17 +103,16 @@ export function GhSignIn({ which, inline }: { which: GhWhich; inline?: boolean }
       <div class="nt-browse-foot">
         {g.token ? (
           <>
-            <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntGhTokenMode(false, which)} />
-            <span class="nt-grow" />
             <Btn kind="primary" size="sm" label={t("newtask.gh.key.go")} disabled={!(g.tokenText ?? "").trim() || g.sending} onClick={() => A.ntGhTokenGo(which)} />
+            <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntGhTokenMode(false, which)} />
           </>
         ) : (
           <>
-            <Btn kind="text" size="sm" label={t("newtask.gh.key")} onClick={() => A.ntGhTokenMode(true, which)} />
-            <span class="nt-grow" />
-            <Btn kind="text" size="sm" label={t("newtask.gh.cancel")} onClick={() => A.ntGhCancel(which)} />
             {offer && <Btn kind="primary" size="sm" label={t("newtask.gh.install.go")} onClick={() => A.ntGhInstall(which)} />}
             {g.err && <Btn kind="primary" size="sm" label={g.nogh ? t("newtask.gh.recheck") : t("newtask.gh.again")} onClick={again} />}
+            <Btn kind="text" size="sm" label={t("newtask.gh.cancel")} onClick={() => A.ntGhCancel(which)} />
+            <span class="nt-grow" />
+            <Btn kind="text" size="sm" label={t("newtask.gh.key")} onClick={() => A.ntGhTokenMode(true, which)} />
           </>
         )}
       </div>

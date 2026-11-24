@@ -35,7 +35,7 @@ one's conversation.
 | Log | one database | its conversation: the default's is `channel`, another's `channel:<id>` (task streams are the tasks') |
 | Conversation | | yes: its words, questions, replies; another partner never reads them (isolated by default, D24) |
 | Memory (Mem) | the person's own profile in the one Mem (every partner's L1 reads it) | its own Mem identity (D18, D141); a second partner's is `ducter-<id>`, bound once Mem answers (D312), its bundle (profile and its own rules) read into its L1 at its session's start (D486) |
-| Tasks, routines | listed together in On hand | owned by the partner that opened them (D31: `card.persona`) |
+| Tasks, routines, Keeps, groups, waits | listed together in On hand (every partner's, D546) | owned by the partner that opened them (D31: `card.persona`; a Keep's, a group's, a routine's and a wait's `persona`, D546) |
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
 | Settings | notifications, quiet hours, look and sound, devices; **默认用什么想事情 / What partners think with by default** (D536) | its name, look, what it looks after (D486); what it thinks with when the person gives it its own (D536); later its own talk and memory switches |
@@ -59,15 +59,28 @@ A family that needs privacy from each other needs separate homes.
   own waits on the person, and the phone's **‹** the sum of the others'. The rows' numbers add up to
   the person's one count. (D309 put the one count under
   the shown partner's name: every naive rater read it as that partner's.)
-- **One On hand.** On hand stays one board for the person, never one per partner (D24). Each
-  row and card carries its partner's small face in its own clay once there is more than one, and another
-  partner's own questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you**
-  with the question; a click shows that partner, where it is answered (D312).
+- **One On hand.** On hand stays one board for the person, never one per partner (D24): every
+  partner's tasks, Keeps, groups, routines and waits, whichever partner is shown. Each row and card
+  (a task's row and card, an ask's card, a Keep's sheet, a group's card, a routine) carries its
+  partner's small face in its own clay once there is more than one, and another partner's own
+  questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you** with the
+  question; a click shows that partner, where it is answered (D312).
+- **Whose it is, never who is shown (D546).** Everything a partner owns is drawn and named as its
+  owner's: a task's state face (its row, the rail, the opened task's mark at 28), a wait's and a
+  goal's figure, its words **{name} 交给它的事 / What {name} asked**, **{name} 对它说 / {name} told
+  it**, **告诉{name} / Told {name}**, **{name} 提醒了它一句 / {name} gave it a note**, a Keep's
+  **{name} 看守中 / {name} is looking after**, a routine's **已暂停：{name} 停下的**. The owner is
+  the object's `persona` (absent, or a partner since removed: the default). With one partner
+  nothing changes: the art as drawn, and the name the default partner's own (which may not be
+  Ducter). The shown partner's clay is only for the page's own figure (the bar, On hand's head, an
+  empty page) and its own conversation's questions. No 只看{name}的 filter on On hand: the marks
+  already say whose, and the bar's count opens the shown partner's own (D546, todo).
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
   a task's title reads **小家：约牙医 / Home: Book the dentist**; a partner's own question carries
   its name as the title. The menu bar lists each other partner with something waiting:
   **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
-  needs-you notice names the partner whose questions wait.
+  needs-you notice names the partner whose things wait (D546: one owner, that one's name, a task of
+  Ducter's included while another is shown; things of several, the shown one's).
 
 ## Switching: the list of partners (zero concepts, D513)
 
@@ -220,8 +233,8 @@ initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles
   the art as drawn (the orange Pebble clay); `sage` green, `sky` blue, `plum` purple, `apricot` a
   coral (its id kept). Every state of the figure (idle, working, waiting, needs you, done, napping,
   the blink) is recoloured alike, so the figure keeps its life (D77). The page's own figure is the
-  shown partner's; a mark elsewhere (the list of partners, On hand's cards and asks, passed words,
-  Settings) is its partner's. Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
+  shown partner's; a mark elsewhere (the list of partners, On hand's rows, cards and asks, an opened
+  task's mark and its rail, a wait's figure, passed words, Settings) is its partner's (D546). Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
   **梅子 / Plum**, **珊瑚 / Coral**; the picker shows the figure in each. D309's stone (the face on a
   pale disc) is retired. A clay character per partner stays the later upgrade, owed through the
   metaphor process with real art (todo).

@@ -627,13 +627,13 @@ func (a *App) reviewSheet(c *ui.Context) {
 			}
 			ui.Row(c.Key("row")).Gap(10).Children(func() {
 				ui.Spacer(c)
-				if a.button(c, a.L.T("hand.plan.hold"), btnSecondary, t.ControlLG, t.Bg) {
-					r.open = false
-				}
 				if a.button(c, a.L.T("hand.review.go", len(keep)), btnPrimary, t.ControlLG, t.Bg) && len(keep) > 0 && !r.sending {
 					a.nextClient++
 					r.sendCid, r.sending, r.said = fmt.Sprintf("reviewgo%d", a.nextClient), true, ""
 					a.send(protocol.GroupReviewSendReq{T: "group_review_send", GroupID: r.groupID, Keep: keep, ClientID: r.sendCid})
+				}
+				if a.button(c, a.L.T("hand.plan.hold"), btnSecondary, t.ControlLG, t.Bg) {
+					r.open = false
 				}
 			})
 		})

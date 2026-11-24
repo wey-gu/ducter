@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.1.51 - 2026-11-25
+
+<!-- whats-new
+zh: 手机上从手头的事一点就回到对话；顶栏一行放得下
+en: On a phone, back from On hand lands in the conversation; a one-line header
+-->
+
+**Back to the conversation, on a phone**
+- With several partners, 对话 / Conversation, ‹, Back and a notification always return to the
+  conversation you were in. Your partners' list opens only from their faces or the edge swipe.
+
+**A calmer phone header**
+- One line: your other partners' faces on the left, the partner's name with what waits on you in
+  the middle, and one button on the right for On hand, Apps, Devices and Settings.
+
+## 0.1.50 - 2026-11-24
+
+<!-- whats-new
+zh: 断网也照样能看能发；每个任务显示它自己伙伴的样子
+en: Keeps working through a bad connection; each task shows its own partner
+-->
+
+**Through a bad connection**
+- A short drop says nothing; after a few seconds one quiet line says Ducter is reconnecting. What
+  is on screen stays readable, and the composer never locks.
+- A message sent while offline shows at once with 连上就发出去 / Sends when it's back, survives a
+  reload, and is delivered once when the connection returns. Drafts are kept per partner and task.
+- Reopening the app offline shows your last screen in a moment, instead of an error page.
+- A connection that looks open but is dead is noticed within seconds, not a minute.
+
+**Whose it is**
+- With several partners, every task, card and Keep shows the partner who owns it, its colour and
+  its name ("小玛交给它的事"), whichever partner you are talking to. Every partner's Keeps are on
+  On hand.
+
+**Buttons**
+- The main button comes first on every card, sheet and settings row.
+
 ## 0.1.49 - 2026-11-24
 
 <!-- whats-new

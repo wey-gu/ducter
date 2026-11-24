@@ -135,6 +135,8 @@ const zh: Record<string, string> = {
   "nav.devices": "设备",
   "nav.devices.label": "你的设备",
   "nav.settings": "设置",
+  // D548: a phone's one button for the places (手头的事, 你的小应用, 设备, 设置).
+  "nav.places": "其他地方",
   "nav.partner.about": "%s 的设置",
   "nav.update": "更新",
   "nav.update.n": "%d 项更新",
@@ -1160,6 +1162,8 @@ const en: Record<string, string> = {
   "nav.devices": "Devices",
   "nav.devices.label": "Your devices",
   "nav.settings": "Settings",
+  // D548: a phone's one button for the places (On hand, Your apps, Devices, Settings).
+  "nav.places": "Other places",
   "nav.partner.about": "%s's settings",
   "nav.update": "Update",
   "nav.update.n": "%d updates",

@@ -79,10 +79,10 @@ function SignInForm({ item, done }: { item?: SavedView; done: () => void }) {
       <Field id="af-pw" label={t("af.signin.password")} value={pw} onInput={setPw} type="password" auto="new-password" placeholder={item ? t("af.keep") : ""} />
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!site.trim() || !user.trim() || (!item && !pw)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -106,10 +106,10 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
       <div class="small sub">{t("af.card.nocvc")}</div>
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!name.trim() || !m || (!item && !num)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -130,10 +130,10 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
       <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? t("af.keep.with", item.hint ?? t("af.key.kept")) : ""} />
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!envOk || (!item && !value.trim())} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -184,9 +184,8 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
       })}
       <AfError />
       <div class="row">
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );
@@ -455,9 +454,8 @@ export function PayBody({ d, compact }: { d: DecisionState; compact?: boolean })
           )}
           <div class="small sub">{t("pay.why")}</div>
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("pay.hold")} about={p.site} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t("pay.go", `${p.currency} ${p.amount}`)} about={p.site} disabled={p.needsCvc && !ok} onClick={() => A.pay(d.decisionId, cvc)} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("pay.hold")} about={p.site} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         </>
       ) : (
@@ -487,9 +485,8 @@ export function FillBody({ d, compact }: { d: DecisionState; compact?: boolean }
       <div class="small sub">{t(f.kind === "signin" ? "fill.why.signin" : "fill.why.detail")}</div>
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("fill.hold")} about={f.site} onClick={() => A.decide(d.decisionId, "hold")} />
-          {compact && <span class="grow" />}
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("fill.go")} about={f.site} onClick={() => A.decide(d.decisionId, "go")} />
+          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("fill.hold")} about={f.site} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">
@@ -549,9 +546,8 @@ export function KeyBody({ d, compact }: { d: DecisionState; compact?: boolean })
           <Seg label={t("key.title", task)} value={once ? "once" : "keep"} options={[{ v: "keep", label: t("key.remember") }, { v: "once", label: t("key.once") }]} onPick={(v) => setOnce(v === "once")} />
           <div class="small sub">{t("key.note")}</div>
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("key.hold")} about={k.name} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t(once ? "key.go.once" : "key.go")} about={k.name} disabled={!value.trim()} onClick={() => (A.giveKey(d.decisionId, value, once), setValue(""))} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("key.hold")} about={k.name} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         </>
       ) : (

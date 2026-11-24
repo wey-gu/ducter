@@ -497,11 +497,11 @@ export function VoiceStrip() {
         <p>{t("voice.ask.why")}</p>
         <p class="voice-privacy">{t(privacyKey(v.avail?.where))}</p>
         <div class="btns">
-          <button type="button" class="btn secondary" onClick={() => v.later()}>
-            {t("voice.ask.later")}
-          </button>
           <button type="button" class="btn primary" onClick={() => void v.allowNow()}>
             {t("voice.ask.go")}
+          </button>
+          <button type="button" class="btn secondary" onClick={() => v.later()}>
+            {t("voice.ask.later")}
           </button>
         </div>
       </div>

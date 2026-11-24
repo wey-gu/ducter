@@ -68,6 +68,7 @@ Design notes:
 - `focus-window.md`: brief, report, checkpoint, body selection.
 - `focus-window-states.md`: the state machine.
 - `system.md`: adapter, identity/Mem, safety, storage, runtime.
+- `offline.md`: the web and phone client through a drop: the last screen readable, an outbox on the device, the app shell, a socket that proves itself, what waits and what asks again (D543).
 - `ui.md`: themes, tokens, zoom levels, canvases.
 - `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
 - `where.md`: which computer a task runs on, said and changed with who (D157).

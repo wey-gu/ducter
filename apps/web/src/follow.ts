@@ -86,19 +86,43 @@ const kv = (): Kv | undefined => {
   }
 };
 
-/** What was being typed to the partner when the page last closed. */
-export function readDraft(s: Kv | undefined = kv()): string {
+/** D543: each partner's draft is its own (the default partner's keeps the key it always had). */
+const draftKey = (partner?: string) => (!partner || partner === "default" ? DRAFT : `${DRAFT}:${partner}`);
+const split = (a?: string | Kv, b?: Kv): [string | undefined, Kv | undefined] => (typeof a === "object" ? [undefined, a] : [a, b ?? kv()]);
+
+/** What was being typed to the partner (this one, or the default) when the page last closed. */
+export function readDraft(a?: string | Kv, b?: Kv): string {
+  const [partner, s] = split(a, b);
   try {
-    return s?.getItem(DRAFT) ?? "";
+    return s?.getItem(draftKey(partner)) ?? "";
   } catch {
     return "";
   }
 }
 
 /** Keeps the draft (an empty one is forgotten). */
-export function keepDraft(v: string, s: Kv | undefined = kv()) {
+export function keepDraft(v: string, a?: string | Kv, b?: Kv) {
+  const [partner, s] = split(a, b);
   try {
-    if (v.trim()) s?.setItem(DRAFT, v.slice(0, 20_000));
-    else s?.removeItem(DRAFT);
+    if (v.trim()) s?.setItem(draftKey(partner), v.slice(0, 20_000));
+    else s?.removeItem(draftKey(partner));
+  } catch {}
+}
+
+const TASK_DRAFTS = "ducter.taskdrafts.v1";
+/** D543: what was typed into each task's composer and not sent (at most 50 tasks, 20 000 characters each). */
+export function readTaskDrafts(s: Kv | undefined = kv()): Record<string, string> {
+  try {
+    const m = JSON.parse(s?.getItem(TASK_DRAFTS) ?? "{}");
+    return m && typeof m === "object" ? (m as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+export function keepTaskDrafts(m: Record<string, string>, s: Kv | undefined = kv()) {
+  try {
+    const kept = Object.entries(m).filter(([, v]) => typeof v === "string" && v.trim()).slice(-50).map(([k, v]) => [k, v.slice(0, 20_000)]);
+    if (kept.length) s?.setItem(TASK_DRAFTS, JSON.stringify(Object.fromEntries(kept)));
+    else s?.removeItem(TASK_DRAFTS);
   } catch {}
 }

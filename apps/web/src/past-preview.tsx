@@ -333,8 +333,8 @@ export function RedoSheet({ dateOf }: { dateOf: (iso: string) => string }) {
           </div>
         )}
         <div class="redo-foot">
-          <Btn kind="text" size="sm" label={t("redo.cancel")} onClick={close} />
           {r.step && <Btn kind="primary" size="sm" label={t(r.busy ? "redo.busy" : "redo.go")} about="⌘ Enter" disabled={!!r.busy || !r.words.trim()} onClick={go} />}
+          <Btn kind="text" size="sm" label={t("redo.cancel")} onClick={close} />
         </div>
       </div>
     </>

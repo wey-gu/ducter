@@ -432,11 +432,11 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			// Try again, or tell it what to do instead: the primary
 			// opens the task's composer (D76).
 			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
-				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
-					a.TaskAction(task.ID, "reopen")
-				}
 				if a.buttonFor(c, a.L.T("task.action.tell"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
 					a.focusComposer = true
+				}
+				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
+					a.TaskAction(task.ID, "reopen")
 				}
 			})
 			return
@@ -498,7 +498,7 @@ func (a *App) sectionTitle(c *ui.Context, text string) ui.Element {
 
 // ---------- what it did (tasksteps.go) ----------
 
-func (a *App) reportLabel(r *protocol.Report) string {
+func (a *App) reportLabel(task *store.Task, r *protocol.Report) string {
 	key := "task.report"
 	switch r.State {
 	case "needs_input":
@@ -510,7 +510,7 @@ func (a *App) reportLabel(r *protocol.Report) string {
 	case "failed":
 		key = "task.report.failed"
 	}
-	return a.L.T(key, a.S.PersonaName)
+	return a.L.T(key, a.taskName(task))
 }
 
 // taskComposer is the box to talk to the task directly, at the bottom of

@@ -546,13 +546,13 @@ func (a *App) pileGo(c *ui.Context) {
 				}
 			}
 			ui.Row(c.Key("row")).Gap(10).Children(func() {
-				if a.button(c, a.L.T("pile.close.hold"), btnSecondary, t.ControlLG, t.Bg) {
-					p.open = false
-				}
 				if a.button(c, a.L.T("pile.close.go", len(refs)), btnPrimary, t.ControlLG, t.Bg) && len(refs) > 0 && !p.sending {
 					p.sending = true
 					a.send(protocol.PileRefsReq{T: "pile_close", Refs: refs, ClientID: p.cid})
 					p.open = false // the pile is watched ticking down underneath
+				}
+				if a.button(c, a.L.T("pile.close.hold"), btnSecondary, t.ControlLG, t.Bg) {
+					p.open = false
 				}
 			})
 			uiText(c.Key("foot"), a.L.T("pile.close.foot")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -564,12 +564,12 @@ func (a *App) pileGo(c *ui.Context) {
 				}
 			}
 			ui.Row(c.Key("row")).Gap(10).Children(func() {
-				if a.button(c, a.L.T("pile.read.hold"), btnSecondary, t.ControlLG, t.Bg) {
-					p.open = false
-				}
 				if a.button(c, a.L.T("pile.read.go", len(keep)), btnPrimary, t.ControlLG, t.Bg) && len(keep) > 0 && !p.sending {
 					p.sending = true
 					a.send(protocol.PreReadSendReq{T: "pre_read_send", Ref: p.read.Ref, Keep: keep, ClientID: p.cid})
+				}
+				if a.button(c, a.L.T("pile.read.hold"), btnSecondary, t.ControlLG, t.Bg) {
+					p.open = false
 				}
 			})
 			uiText(c.Key("foot"), a.L.T("pile.read.foot")).FontSize(t.SM).TextColor(t.InkMuted)

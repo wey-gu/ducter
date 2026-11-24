@@ -33,7 +33,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -62,7 +62,7 @@ import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
 import { PhoneMore, ShareButton, taskPr } from "./task-sheet.tsx";
-import { usePhone } from "./wide.ts";
+import { NARROW, usePhone, useRoomy } from "./wide.ts";
 import { prNumber } from "./task-words.ts";
 
 /** A pull request's drawn mark (D484): two branches meeting, never a font glyph. */
@@ -74,7 +74,7 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
+import { PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -173,12 +173,12 @@ function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
 
 /** The clay partner: the face for its state (or the one given), breathing; the idle face blinks.
  *  Faces cross-fade on a change, standing on the box's bottom edge. */
-export function Avatar({ size, state, still }: { size: number; state?: Face; still?: boolean }) {
+export function Avatar({ size, state, still, who }: { size: number; state?: Face; still?: boolean; /** D546: the owner's name when the face is a partner's object's (an opened task); else the shown partner. */ who?: string }) {
   const p = state ?? A.presence();
   const ref = useRef<HTMLSpanElement>(null);
   useBlink(ref, !still);
   return (
-    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
+    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], who ?? A.S.personaName)}>
       {ART.map((n) =>
         n === "idle" ? (
           <span key={n} class={`idle${n === p ? " on" : ""}`}>
@@ -565,11 +565,13 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const id = taskId || d.taskId;
   const task = id ? A.S.tasks.get(id) : undefined;
   return (
-    <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+    <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-look={task && !inTask ? A.lookOf(task.card?.persona) : undefined}>
       {d.asker && <PeerAsker d={d} />}
       {task && title(task) && !inTask && (
         // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
         <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
+          {/* D546: whose task asks, as its row says it (more than one partner). */}
+          <PartnerMark persona={task.card?.persona} />
           <span>{shortTitle(title(task))}</span>
           <Chev />
         </button>
@@ -594,9 +596,8 @@ export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean
       </div>
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} about={site} onClick={() => A.decide(d.decisionId, "hold")} />
-          {compact && <span class="grow" />}
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("signin.open")} about={site} onClick={() => A.openLive(d.decisionId, site, liveSize())} />
+          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} about={site} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">
@@ -1617,6 +1618,23 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
+  // D548: a narrow phone has one button for the places (the bar's middle keeps its one line).
+  const narrow = useRoomy(NARROW);
+  if (narrow) {
+    const update = n > 0 || running ? [{ key: "update", label: running ? t("nav.updating") : n > 1 ? t("nav.update.n", n) : t("nav.update"), glyph: <UpdatePebble />, on: false, go: () => A.openSettings("devices") }] : [];
+    return (
+      <PlacesMenu
+        dot={update.length > 0}
+        segs={[
+          ...update,
+          ...(onHand || here === "onhand" ? [{ key: "onhand", label: t("nav.onhand"), glyph: <OnHandMark />, on: here === "onhand", go: () => A.go({ name: "onhand" }) }] : []),
+          { key: "apps", label: t("apps.place"), glyph: <AppsMark />, on: here === "apps", go: () => openShelf() },
+          { key: "devices", label: t("nav.devices"), glyph: <DevicesMark />, on: here === "devices", go: () => A.openSettings("devices") },
+          { key: "settings", label: t("nav.settings"), glyph: <Gear />, on: here === "settings", go: () => A.openSettings() },
+        ]}
+      />
+    );
+  }
   return (
     <>
       {(n > 0 || running) && (
@@ -1651,6 +1669,8 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
   // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
   const phoneBar = usePhone();
   const fold = useSplit();
+  // D548: up to 560 wide the bar is one line: the others, the name over its one count, the places.
+  const narrow = useRoomy(NARROW);
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1697,10 +1717,14 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
       {!phoneBar && !fold && <RailToggle />}
       {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
       <div class="who">
-        {/* D497: with more than one partner, the figure is in its partner's own clay. */}
-        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
-        </button>
+        {/* D497: with more than one partner, the figure is in its partner's own clay. D548: on a narrow
+            phone with others beside, none (their stack holds the left; the composer says who); with one
+            partner a small one (24) before its name. */}
+        {!(narrow && A.manyPartners()) && (
+          <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+            <Avatar size={narrow ? 24 : phoneBar && A.manyPartners() ? 34 : 44} />
+          </button>
+        )}
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
             {A.S.personaName}
@@ -2012,7 +2036,7 @@ function NotifyAsk() {
       <div class="q">{t("notify.ask")}</div>
       <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
       <div class="btns">
-        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
+        {/* Primary first, on the left (ui.md Buttons). */}
         <Btn
           kind="primary"
           label={t("notify.on")}
@@ -2025,6 +2049,7 @@ function NotifyAsk() {
             if (A.push === "on") A.toast(t("notify.enabled"));
           }}
         />
+        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
       </div>
     </div>
   );
@@ -2114,6 +2139,16 @@ function ConvBody() {
               {p.reply ? <span class="words"><WordsWithRefs text={p.text} refs={p.refs} /></span> : <WordsWithRefs text={p.text} refs={p.refs} />}
             </div>
           ),
+        )}
+        {/* D543: with the link down, what waits says it goes once it's back (a clock, not an error). */}
+        {A.pending.some((p) => !p.failed) && A.link() !== "up" && (
+          <div class="queued" role="status">
+            <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="7" cy="7" r="5.6" />
+              <path d="M7 4.2V7l1.9 1.3" />
+            </svg>
+            <span>{t("conn.queued")}</span>
+          </div>
         )}
         {A.thinking() && <Presence />}
         {/* D298: nothing can think and the first words aren't the opening: the key card here. */}
@@ -2275,11 +2310,6 @@ export function OnHand() {
 /** A face that only shows a state holds still; the partner's own presence breathes. */
 const stillFace = (a: Attention) => a === "dropped" || a === "superseded";
 
-function reportLabel(r: Bodies["report"]) {
-  const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[r.state as string] ?? "task.report";
-  return t(k, A.S.personaName);
-}
-
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
 /** Who does a task and why, as one sentence for Details (D89). */
@@ -2296,7 +2326,7 @@ function whoSentence(task: Task): string {
   if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
   if (w?.kind === "unavailable" && w.from) return t("who.sentence.unavailable", who, harnessName(w.from));
   if (w?.kind === "you") return t("who.sentence.you", who);
-  if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  if (w?.kind === "default") return t("who.sentence.default", who, A.nameOf(task.card?.persona));
   // D372: the kind of work put it on a faster one; or the faster one missed and it carries on here.
   if (w?.kind === "kind" && w.keeps) return t("who.sentence.kind", who, padEnd(A.L, whoName(w.keeps.harness, w.keeps.model)));
   if (w?.kind === "retry" && w.from) return t(w.stalled ? "who.sentence.retry.stalled" : "who.sentence.retry", who, padEnd(A.L, whoName(w.from, w.fromModel)));
@@ -2560,8 +2590,8 @@ function FolderChangesView({ task }: { task: Task }) {
             {t(c.count === 1 ? "folder.confirm.one" : "folder.confirm", c.count, [...c.files.map(lastPart), ...(c.count > c.files.length ? ["…"] : [])].join(t("folder.sep")))}
           </div>
           <div class="btns">
-            <Btn kind="text" label={t("folder.confirm.no")} onClick={() => ((task.confirm = undefined), A.changed())} />
             <Btn kind="primary" label={t("folder.confirm.go")} onClick={() => A.folderAction(task.id, "undo", { force: true })} />
+            <Btn kind="text" label={t("folder.confirm.no")} onClick={() => ((task.confirm = undefined), A.changed())} />
           </div>
         </div>
       )}
@@ -2722,12 +2752,12 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       )}
       {/* D544: a task in rounds keeps who it is while its transcript is read. */}
       <LoopLine task={task} scroller={scroller} />
-      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
+      <main class="scroll task-page" data-look={A.lookOf(task.card?.persona)} ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
           {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the
               page (what it waits for is the wait line's words). */}
           <span class="face">
-            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} />
+            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} />
           </span>
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
@@ -2774,8 +2804,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             ) : a === "failed" ? (
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
-                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
                 <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer-task")?.focus()} />
+                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
               </div>
             ) : (
               <ResultActions task={task} inTask />
@@ -2901,8 +2931,8 @@ function NameRow() {
               if (e.key === "Escape") e.stopPropagation(), setEditing(false);
             }}
           />
-          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
           <Btn kind="primary" label={t("partner.rename")} onClick={save} />
+          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
         </>
       ) : (
         <>
@@ -3329,10 +3359,10 @@ function Accounts() {
             </>
           )}
           <div class="row">
-            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""), setNoKey(false), (A.connRefusal = undefined))} />
             <button type="submit" class="btn primary" disabled={A.connecting || (!hosted && !url.trim())}>
               <span class="lbl">{A.connecting ? t("acct.checking") : t("acct.check")}</span>
             </button>
+            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""), setNoKey(false), (A.connRefusal = undefined))} />
           </div>
         </form>
       )}

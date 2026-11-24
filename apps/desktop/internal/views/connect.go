@@ -159,11 +159,11 @@ func (a *App) connectCard(c *ui.Context) {
 				if a.conn.busy {
 					label = a.L.T("connect.busy")
 				}
-				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
-					a.conn.open = false
-				}
 				if a.button(c, label, btnPrimary, t.ControlLG, t.Surface) {
 					a.submitConnect()
+				}
+				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
+					a.conn.open = false
 				}
 			})
 			uiText(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)

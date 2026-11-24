@@ -192,11 +192,11 @@ func (a *App) partnerName(c *ui.Context) {
 			in.Focus()
 			ps.focused = true
 		}
-		if a.button(c, a.L.T("partner.rename.cancel"), btnText, t.ControlMD, t.Bg) {
-			ps.editing = false
-		}
 		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlMD, t.Bg) {
 			save()
+		}
+		if a.button(c, a.L.T("partner.rename.cancel"), btnText, t.ControlMD, t.Bg) {
+			ps.editing = false
 		}
 	})
 }

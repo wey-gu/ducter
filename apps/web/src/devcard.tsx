@@ -784,8 +784,8 @@ function Sites({ dv }: { dv: DeviceView }) {
           <>
             <div class="small">{t("sites.clear.ask")}</div>
             <div class="btns">
-              <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
               <Btn kind="primary" size="sm" label={t("sites.clear.go")} onClick={() => (setClearing(false), A.send({ t: "browser_sites_clear" }))} />
+              <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
             </div>
           </>
         ) : (

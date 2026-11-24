@@ -459,7 +459,7 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 
 // promptLine is a wake's or what Ducter told it, as a hairline's words
 // (D271); its time is drawn apart (D291, promptAt).
-func (a *App) promptLine(p *Block) string {
+func (a *App) promptLine(task *store.Task, p *Block) string {
 	if p.K == "wake" {
 		if p.Limit {
 			return a.L.T("wake.limit", p.Text)
@@ -484,7 +484,7 @@ func (a *App) promptLine(p *Block) string {
 	case "looked": // D437: another AI looked the result over first; the name is that AI
 		return a.L.T("told.looked", p.Name)
 	}
-	return a.L.T("told.other", a.S.PersonaName)
+	return a.L.T("told.other", a.taskName(task))
 }
 
 // promptAt is when a turn's prompt came, as a clock ("21:59"), or "".
@@ -648,14 +648,14 @@ func said(tu *Turn) bool {
 // locatorLine is a turn's line in the locator: the first line of what was
 // said, or the hairline's words for a wake; the brief carries its own quiet
 // label (D291), returned apart.
-func (a *App) locatorLine(tu *Turn) (line, tag string) {
+func (a *App) locatorLine(task *store.Task, tu *Turn) (line, tag string) {
 	p := tu.Prompt
 	if p == nil {
 		return "", ""
 	}
 	switch p.K {
 	case "wake", "told":
-		return a.promptLine(p), ""
+		return a.promptLine(task, p), ""
 	case "go":
 		return a.goWords(p), ""
 	case "brief":
@@ -1236,7 +1236,7 @@ func (a *App) landmarkWords(task *store.Task, lm *Landmark, now time.Time) landm
 			w.line = a.L.T("locator.quiet", lm.N)
 		default:
 			tu := Turn{Seq: lm.Seq, Prompt: promptBlock(lm.P)}
-			w.line, _ = a.locatorLine(&tu)
+			w.line, _ = a.locatorLine(task, &tu)
 		}
 	default:
 		w.quiet = true
@@ -1256,7 +1256,7 @@ func (a *App) taskHeadCompact(c *ui.Context, task *store.Task, m *taskMemo) {
 		a.tpage.headAt = head.Bounds()
 		head.Children(func() {
 			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
-				a.partnerFace(c, "task:"+task.ID, taskPresence(task), face)
+				a.ownerFace(c, "task:"+task.ID, a.taskPartner(task), taskPresence(task), face)
 			})
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
 				ui.Row(c.Key("titleline")).MinHeight(face).AlignItems(ui.Center).MinWidth(0).Children(func() {

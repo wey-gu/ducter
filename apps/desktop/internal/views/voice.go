@@ -488,11 +488,11 @@ func (a *App) voiceAskCard(c *ui.Context) {
 			uiText(c, a.voicePrivacy()).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkMuted)
 		})
 	}, func() {
-		if a.button(c, a.L.T("voice.ask.later"), btnSecondary, t.ControlSM, t.Surface) {
-			a.vox.phase = ""
-		}
 		if a.button(c, a.L.T("voice.ask.go"), btnPrimary, t.ControlSM, t.Surface) {
 			a.voiceAsk()
+		}
+		if a.button(c, a.L.T("voice.ask.later"), btnSecondary, t.ControlSM, t.Surface) {
+			a.vox.phase = ""
 		}
 	})
 }

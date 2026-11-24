@@ -504,16 +504,18 @@ type Usage struct {
 // cheap model's judgement. A task-less waiter renders as a compact row on
 // On hand; the On hand snapshot adds what it has seen so far.
 type Waiter struct {
-	WaiterID  string     `json:"waiterId"`
-	TaskID    string     `json:"taskId,omitempty"`
-	RoutineID string     `json:"routineId,omitempty"`
-	At        string     `json:"at,omitempty"`
-	Reason    string     `json:"reason"`
-	State     string     `json:"state"`          // armed | fired | cancelled | expired
-	Kind      string     `json:"kind,omitempty"` // timer | check | event | judge
-	Check     *CheckSpec `json:"check,omitempty"`
-	Event     *EventSpec `json:"event,omitempty"`
-	Judge     string     `json:"judge,omitempty"`
+	WaiterID  string `json:"waiterId"`
+	TaskID    string `json:"taskId,omitempty"`
+	RoutineID string `json:"routineId,omitempty"`
+	// D546: the partner that set it (On hand's waits are every partner's); "" the default.
+	Persona string     `json:"persona,omitempty"`
+	At      string     `json:"at,omitempty"`
+	Reason  string     `json:"reason"`
+	State   string     `json:"state"`          // armed | fired | cancelled | expired
+	Kind    string     `json:"kind,omitempty"` // timer | check | event | judge
+	Check   *CheckSpec `json:"check,omitempty"`
+	Event   *EventSpec `json:"event,omitempty"`
+	Judge   string     `json:"judge,omitempty"`
 	// Wakes is "task" when a timer wakes its task (D267), not the partner.
 	Wakes string `json:"wakes,omitempty"`
 	// Limit (D297): the task's agent hit its usage limit; the task rests
@@ -623,7 +625,9 @@ type Progress struct {
 
 // Routine is a routine (例行, D114) as On hand shows it (RoutineView).
 type Routine struct {
-	RoutineID    string         `json:"routineId"`
+	RoutineID string `json:"routineId"`
+	// D312, D546: the partner it is for (its runs report to it); "" the default.
+	Persona      string         `json:"persona,omitempty"`
 	Name         string         `json:"name"`
 	Trigger      RoutineTrigger `json:"trigger"`
 	TriggerWords string         `json:"triggerWords"`

@@ -545,9 +545,6 @@ func (a *App) benchDiffView(c *ui.Context, task *store.Task, b *benchTask) {
 			uiText(c, a.L.T("wb.revert.ask", path)).FontSize(t.SM).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S2).Children(func() {
 				ui.Spacer(c)
-				if a.button(c, a.L.T("wb.cancel"), btnText, t.ControlSM, t.Surface) {
-					b.revert = ""
-				}
 				if a.button(c, a.L.T("wb.revert.go"), btnPrimary, t.ControlSM, t.Surface) {
 					b.revert = ""
 					id := task.ID
@@ -560,6 +557,9 @@ func (a *App) benchDiffView(c *ui.Context, task *store.Task, b *benchTask) {
 						b.sel = ""
 						a.benchLoad(a.S.Task(id))
 					})
+				}
+				if a.button(c, a.L.T("wb.cancel"), btnText, t.ControlSM, t.Surface) {
+					b.revert = ""
 				}
 			})
 		})
@@ -608,11 +608,11 @@ func (a *App) benchFiles(c *ui.Context, task *store.Task, b *benchTask) {
 				uiText(c, a.L.T("wb.conflict")).FontSize(t.SM).TextColor(t.Ink)
 				ui.Row(c).Gap(t.S2).Children(func() {
 					ui.Spacer(c)
-					if a.button(c, a.L.T("wb.conflict.theirs"), btnText, t.ControlSM, t.Surface) {
-						a.benchOpenFile(task.ID, f.path)
-					}
 					if a.button(c, a.L.T("wb.conflict.mine"), btnPrimary, t.ControlSM, t.Surface) {
 						a.benchSave(task.ID, f, true)
+					}
+					if a.button(c, a.L.T("wb.conflict.theirs"), btnText, t.ControlSM, t.Surface) {
+						a.benchOpenFile(task.ID, f.path)
 					}
 				})
 			})

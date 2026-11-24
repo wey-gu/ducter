@@ -22,8 +22,8 @@ func d314Done(failed bool) *protocol.UpdateAllView {
 }
 
 // D314: 已全部更新's 完成 is the card's one decision, a small secondary
-// clay button at the right edge; with a failure, 再试一次 is that button
-// (last, at the right) and 完成 steps back to quiet text before it.
+// clay button; with a failure, 再试一次 is that button, first on the
+// left (D543), and 完成 steps back to quiet text after it.
 func TestD314UpdateAllDoneButton(t *testing.T) {
 	_, tt, _ := uaApp(t, i18n.ZH, d314Done(false), true)
 	done, ok := tt.Find("完成")
@@ -36,8 +36,8 @@ func TestD314UpdateAllDoneButton(t *testing.T) {
 	if !ok {
 		t.Fatalf("no 再试一次: %q", tt.Texts())
 	}
-	if done.X >= retry.X {
-		t.Errorf("完成 (%v) should stand before 再试一次 (%v)", done.X, retry.X)
+	if retry.X >= done.X {
+		t.Errorf("再试一次 (%v) should stand before 完成 (%v)", retry.X, done.X)
 	}
 }
 

@@ -229,12 +229,12 @@ func (a *App) aboutEdit(c *ui.Context, dv *protocol.DeviceView, id, words string
 		if i := a.choices(c, "about-work:"+dv.ID, a.L.T("about.which"), []string{a.L.T("about.w.heavy"), a.L.T("about.w.web"), a.L.T("about.w.all")}, sel); i >= 0 {
 			s.work = works[i]
 		}
-		ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-			if a.button(c, a.L.T("about.cancel"), btnSecondary, t.ControlSM, t.Bg) {
-				*s = aboutState{asked: true}
-			}
+		ui.Row(c).Gap(t.S2).Children(func() {
 			if a.button(c, a.L.T("about.keep"), btnPrimary, t.ControlSM, t.Bg) {
 				a.send(protocol.RuleWhere{T: "rule_where", ID: id, Device: dv.Name, Avoid: s.avoid, Work: s.work, Lang: string(a.L.Lang)})
+				*s = aboutState{asked: true}
+			}
+			if a.button(c, a.L.T("about.cancel"), btnSecondary, t.ControlSM, t.Bg) {
 				*s = aboutState{asked: true}
 			}
 		})

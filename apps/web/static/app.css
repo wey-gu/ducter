@@ -648,6 +648,11 @@ a {
 .boot-wait.static > * {
   animation-delay: 3s;
 }
+/* D543: the static ground is only ever the page's whole content; beside anything the app drew it
+   is gone (main.tsx removes it on the first draw; this holds even if a draw path ever misses it). */
+#app > .boot-wait.static:not(:only-child) {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .boot-wait:not(.failed) > * {
     animation-duration: 1ms;
@@ -1315,12 +1320,16 @@ a {
 .btns .grow {
   flex: 1;
 }
-/* A decision's row: Reply… · Hold · Go, primary last. When the Go action is long, Reply… (a
-   flat text button) drops to its own line under the pair instead of splitting it; Go's own
-   words only shorten when even Hold and Go alone can't share a line. */
+/* A decision's row: Go · Hold · Reply…, primary first on the left (D482, D543). When the Go
+   action is long, Reply… (a flat text button) drops to its own line under the pair instead of
+   splitting it; Go's own words only shorten when even Go and Hold alone can't share a line. */
 .btns.decide {
-  flex-wrap: wrap-reverse;
+  flex-wrap: wrap;
   gap: 10px 12px;
+}
+/* Whichever of a pair is the primary now (a call sheet's Dial, then Done) stands first. */
+.btns.decide .pair > .btn.primary {
+  order: -1;
 }
 .btns.decide .pair {
   display: flex;
@@ -1334,7 +1343,7 @@ a {
 .btns.decide .pair .btn.primary {
   flex: 0 1 auto;
 }
-.btns.decide > .btn.text {
+.btns.decide > .btn.text:first-child {
   margin-left: -12px;
 }
 
@@ -1396,7 +1405,7 @@ a {
 .decision .asker .chev-g {
   margin-inline-start: -5px;
 }
-.decision .asker span {
+.decision .asker > span:not(.partner-mark) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4160,7 +4169,7 @@ a {
 }
 .acct-form .row {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--s2);
 }
 .acct-field {
@@ -4479,6 +4488,8 @@ a.btn {
   align-self: stretch;
   width: min(88%, var(--bubble-measure));
   display: flex;
+  /* D543: from the left edge, the primary first (a tray never centres its buttons). */
+  justify-content: flex-start;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
@@ -5474,7 +5485,7 @@ ol.tries b {
   position: sticky;
   bottom: calc(-1 * var(--s2));
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--s2);
   margin: 4px calc(-1 * var(--s2)) calc(-1 * var(--s2));
   padding: var(--s2);
@@ -6005,7 +6016,7 @@ button.dev-name {
 .about-rule-line .danger-text { margin-right: -8px; }
 .about-mem { color: var(--ink-muted); padding-bottom: var(--s1); }
 .about-edit { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r-sm); background: var(--bg); }
-.about-edit .btns { display: flex; justify-content: flex-end; gap: var(--s2); }
+.about-edit .btns { display: flex; justify-content: flex-start; gap: var(--s2); }
 .about-group > .btn { align-self: stretch; }
 /* D505 (rev.): Straight to your Chrome: one line per site on the note's own left edge, a quiet Remove at the right. */
 .chrome-sites { display: flex; flex-direction: column; }
@@ -6990,7 +7001,7 @@ dl.call-summary dd { margin: 0; }
 .call-card.question .q { font-size: var(--lg); font-family: var(--head); font-weight: 800; line-height: 1.3; }
 .call-q-head { display: flex; align-items: center; gap: 8px; font-size: var(--sm); font-weight: 800; color: var(--needs-ink); }
 .call-q-head .sub { color: var(--ink-muted); font-weight: 700; }
-.call-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.call-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
 .call-row { gap: 6px; }
 .call-row-top { display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .call-row-top:disabled { cursor: default; }
@@ -7296,6 +7307,21 @@ dl.call-summary dd { margin: 0; }
 }
 .unsent .btn.text {
   color: var(--failed-ink);
+}
+/* D543: messages sent while the link is down wait on the device: one quiet line under them, a
+   messaging app's clock, never an error. */
+.queued {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: calc(var(--s1) * -0.5);
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.queued svg {
+  flex: none;
 }
 
 /* ---------- D286: a file, drawn as the thing it is ---------- */
@@ -14380,6 +14406,10 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
 }
 .trow .l1 .partner-mark { margin-right: 6px; }
 .tcard .c1 .partner-mark { margin-left: auto; }
+/* D546: a Keep's sheet says whose it is before its title, as a task's row does. */
+.kp-title .partner-mark { vertical-align: -3px; margin-right: 6px; }
+/* D546: a routine says whose it is before its name. */
+.row.routine .t .partner-mark { vertical-align: -3px; margin-right: 6px; }
 .other-ask {
   display: flex;
   align-items: center;
@@ -14816,7 +14846,7 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
 }
 .voice-card .btns {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: 12px;
 }
@@ -17358,7 +17388,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .redo-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .redo-notes p { margin: 0; font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
 .redo-err { margin: 10px 0 0; font-size: var(--sm); color: var(--failed-ink); }
-.redo-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-soft); }
+.redo-foot { display: flex; justify-content: flex-start; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-soft); }
 @media (max-width: 640px) {
   /* Pinned to both edges, no centring transform: on iOS a focused field otherwise scrolled the sheets sideways. */
   .redo-sheet { top: auto; bottom: 0; left: 0; right: 0; translate: none; width: auto; max-height: calc(100dvh - var(--safe-top) - 24px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
@@ -18469,7 +18499,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .talk-card .btns {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: 10px;
 }
@@ -21023,6 +21053,13 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .onhand-list:not(.room-rail) .ocard .o1 .meta {
   font-size: 0.75rem;
+}
+/* D546: whose it is leads the title on the card's own edge: no lead-in, its gap after it, standing
+   on the title's line (it took the facts' 8-point lead-in and touched the title). */
+.onhand-list:not(.room-rail) .ocard .o1 > .partner-mark {
+  margin-left: 0;
+  margin-right: 6px;
+  vertical-align: -3px;
 }
 .onhand-list:not(.room-rail) .ocard .o2 {
   font-size: 0.8125rem;
@@ -23591,6 +23628,10 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
     display: none;
   }
 }
+/* D543: Mem's suggestion first, the row from the left edge (never a primary in the middle). */
+.g-acts.mem-check-acts {
+  justify-content: flex-start;
+}
 
 /* D544: On hand beside the conversation (iPad, a foldable, a two-pane browser) on one grid, as the
    phone's: the partner and its lead share the first row, Find takes the pane's width on the left
@@ -23733,6 +23774,61 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 /* D544: the watch card on the reading column's edges, as the head (D542). */
 .task-page > .watch {
   margin-inline: auto;
+}
+
+/* ---------- D548: a narrow phone's bar is one line ---------- */
+/* Up to 560 wide: the other partners (a compact stack, when there are others), the shown partner's
+   name over its one count line (D535's door), then one button for the places (PlacesMenu). No large
+   face here: the conversation and the composer already say who. Every target 44 tall. */
+.places-menu { position: relative; flex: none; display: inline-flex; }
+.places-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-end: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  transition: background var(--t-hover) var(--ease), color var(--t-hover) var(--ease);
+}
+.places-btn:active,
+.places-btn.open { background: var(--sunken); color: var(--ink); }
+@media (hover: hover) {
+  .places-btn:hover { background: var(--sunken); color: var(--ink); }
+}
+.places-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.places-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+@media (max-width: 560px) {
+  .top { gap: 8px; }
+  .top .who { gap: 8px; }
+  .top .who-words { flex: 1 1 auto; min-width: 0; }
+  .top .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* One count line, never two: the door alone when something waits, else the first fact. */
+  .top .who .sum-row { flex-wrap: nowrap; }
+  .top .who .sum-row > .sum { display: none; }
+  .top .who .sum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top .who .sum .facts { flex-wrap: nowrap; }
+  .top .who .sum .facts > span:not(:first-child) { display: none; }
+  /* The others: their figures alone (two at most), the number on the stack; the stack says who is
+     there, its label says where it goes. */
+  .top .partners-back { min-width: 44px; margin-inline-start: -6px; margin-inline-end: 0; padding: 0 4px; }
+  .top .partners-back .pb-chev { display: none; }
+  .top .partners-back .pb-face:nth-child(n + 3) { display: none; }
+  .top .partners-back .pb-faces:has(> .pl-n) { margin-inline-end: 12px; }
 }
 
 /* ---------- D547: the composer, polished (composer.tsx ComposerBox; the Mac's composerBox) ----------

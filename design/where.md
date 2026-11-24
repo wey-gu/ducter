@@ -506,6 +506,16 @@ itself (`claude auth status`, fresh, never the card's cached probe): **正在和
 with the PATH as it is now, so an agent Ducter put in its tools folder while running is seen (hel,
 2026-11-24: it never was, and read 未登录 although claude was signed in).
 
+**Antigravity's sign-in (D523, research/223).** It runs on the agy the card trusts: the first copy
+whose own `--version` is a release at or above OAR's floor, never the desktop app's old editor link
+that may come first on the shell's PATH. A copy older than 1.5.9 runs its own `agy update` first.
+agy opens no browser by itself on either a Mac or Linux (a do-nothing `open` / `xdg-open` goes first
+on its PATH); the link is opened wherever the person is. The sign-in keeps the desktop session's bus
+(`DBUS_SESSION_BUS_ADDRESS`), so agy keeps its sign-in where the card and every task look, and
+passes `--gemini-dir` when `GEMINI_HOME` is set. Its confirm is `agy models`: signed in, signed out
+(not_seen), or no answer from Google, which ends **{agent} 登录完了，但它连不上自己的服务来确认，多半是网络或代理。看看那台电脑的网络，再试一次。** with 再试一次, never a bare 未登录.
+Each step leaves one `[sign-in] <agent>: …` line in that computer's log (never the link or a code).
+
 **DeepSeek Harness (D371, research/140).** Found inside its Mac app too (the `dsh` it carries, never
 on PATH; such a copy **随 DeepSeek Harness app 更新** and Ducter never updates it), and the home looks
 every 5 s like a worker, its fingerprint including DeepSeek Harness's own credential file. Signed in

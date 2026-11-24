@@ -14,9 +14,16 @@ line.
 - [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
   card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
   UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
-- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
-  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
-  into its own folder while running is spawned by its bare name.
+- [x] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. Done in D523: `spawnNow` /
+  `whichNow` everywhere, guarded by `packages/core/test/spawn-guard.test.ts`.
+- [ ] **D523: the colleague's Antigravity sign-in** on the release with D523, with the five facts in
+  `research/private/223-agy-colleague-questions.md` if it still fails.
+- [ ] **D523: give agents the person's proxy.** A home started by the Mac app has no shell
+  `https_proxy`, and agy (Go) reads only the env, so a computer that needs a proxy for Google can't
+  check or run agy; D523 only says so. *Trigger:* the colleague's answers show a proxy, or any agent
+  fails to reach its service from the Mac app while the terminal works. Capture the login shell's
+  proxy variables with its PATH (`captureLoginPath`) and pass them to every agent.
 
 ## The link to the home, after D520 (`system.md` Desktop)
 

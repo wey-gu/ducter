@@ -29,7 +29,8 @@ import { dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
 
 type RawHarness = Omit<DeviceHarness, "canBePartner">;
 
-export type ProbeExec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string }>;
+/** `out`: what it printed (both streams, or stdout alone with `err` beside it: a worker's run). */
+export type ProbeExec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string; err?: string }>;
 
 export interface HarnessProbeEnv {
   exec: ProbeExec;
@@ -127,7 +128,9 @@ export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" 
     if (v) return { version: v, how: "ducter" };
   }
   const cmd = HARNESS_FACTS[h].version.command[0]!;
-  const path = h === "antigravity" ? agyPaths(o)[0] : (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || o.which(cmd);
+  // D523: agy's copy is the one that answers (an editor's launcher link may come first on PATH).
+  const agy = h === "antigravity" ? await pickAgy(o) : undefined;
+  const path = h === "antigravity" ? (agy?.bin ?? agy?.oldBin ?? agyPaths(o)[0]) : (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || o.which(cmd);
   if (!path) return undefined;
   const r = await o.exec([path, ...HARNESS_FACTS[h].version.command.slice(1)], 15_000);
   const version = r.code === 0 ? versionIn(r.out) : undefined;
@@ -154,6 +157,56 @@ export function agyPaths(o: { which: (cmd: string) => string | null; env?: Recor
 /** D416: agy's own version line: a bare stable release, as OAR accepts it (prereleases are refused). */
 export function agyVersion(out: string): string | undefined {
   return /^(\d+\.\d+\.\d+)$/.exec(out.trim())?.[1];
+}
+
+/**
+ * D523: the agy OAR would run, chosen the way OAR chooses it: the first copy in agyPaths order whose
+ * own `--version` is a bare release at or above OAR's floor. A copy that doesn't answer that way is
+ * passed over: the Antigravity desktop app's old `~/.antigravity/antigravity/bin/agy` link (put on
+ * the shell's PATH by the app) is its editor's launcher, not the command line, and a sign-in run
+ * through it opened the editor and ended at once. Everything that runs agy (the card's check, its
+ * sign-in, its update) takes this one copy.
+ */
+export async function pickAgy(o: { exec: ProbeExec; which: (cmd: string) => string | null; env?: Record<string, string | undefined>; home?: string; exists?: (p: string) => boolean; floor?: string }): Promise<{ bin?: string; version?: string; trouble?: { kind: "too_old"; need: string } | { kind: "broken" }; old?: string; oldBin?: string }> {
+  let trouble: { kind: "too_old"; need: string } | { kind: "broken" } | undefined;
+  let old: string | undefined;
+  let oldBin: string | undefined;
+  const floor = o.floor ?? ANTIGRAVITY.minVersion;
+  for (const bin of agyPaths(o)) {
+    const v = await o.exec([bin, "--version"], 30_000);
+    const version = v.code === 0 ? agyVersion(v.out) : undefined;
+    if (!version) {
+      trouble ??= { kind: "broken" };
+      continue;
+    }
+    if ((compareVersions(version, floor) ?? -1) < 0) {
+      trouble = { kind: "too_old", need: floor };
+      old ??= version;
+      oldBin ??= bin;
+      continue;
+    }
+    return { bin, version };
+  }
+  return { ...(trouble ? { trouble } : {}), ...(old ? { old } : {}), ...(oldBin ? { oldBin } : {}) };
+}
+
+/**
+ * D523: is this agy signed in, by its own `agy models`: in (it answers), out (it says "Please
+ * sign in"), or unknown (anything else: no network to Google, a proxy it isn't given, a timeout).
+ * `tokenFile`: its file-kept sign-in is there (a server's, or a Linux with no D-Bus session; a Mac
+ * keeps it in the Keychain, so there is no file to fall back on there and a sign-in that ends in
+ * unknown says it couldn't check rather than "signed out").
+ */
+export async function agyAuth(o: { exec: ProbeExec; bin: string; env?: Record<string, string | undefined>; home?: string; exists?: (p: string) => boolean; timeoutMs?: number }): Promise<{ state: "in" | "out" | "unknown"; tokenFile: boolean; said?: string }> {
+  const env = o.env ?? process.env;
+  const home = o.home ?? env.HOME ?? homedir();
+  const m = await o.exec([o.bin, "models"], o.timeoutMs ?? 30_000);
+  const said = `${m.out}\n${m.err ?? ""}`;
+  const tokenFile = (o.exists ?? existsSync)(join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1)));
+  if (m.code === 0) return { state: "in", tokenFile };
+  if (ANTIGRAVITY.signedOut.test(said)) return { state: "out", tokenFile };
+  const line = said.split("\n").map((l) => l.trim()).filter(Boolean).pop()?.slice(0, 160);
+  return { state: "unknown", tokenFile, ...(line ? { said: line } : {}) };
 }
 
 const danglingLink = (p: string) => {
@@ -261,25 +314,14 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
   // D416: agy, as OAR would pick it: the first copy that answers at or above OAR's floor.
   const agy = async (): Promise<RawHarness> => {
     const exists = o.exists ?? existsSync;
-    let trouble: RawHarness["trouble"];
-    let old: string | undefined;
-    for (const bin of agyPaths({ which: o.which, env, home, exists })) {
-      const v = await o.exec([bin, "--version"], 30_000);
-      const version = v.code === 0 ? agyVersion(v.out) : undefined;
-      if (!version) {
-        trouble ??= { kind: "broken" };
-        continue;
-      }
-      if ((compareVersions(version, ANTIGRAVITY.minVersion) ?? -1) < 0) {
-        (trouble = { kind: "too_old", need: ANTIGRAVITY.minVersion }), (old ??= version);
-        continue;
-      }
+    const pick = await pickAgy({ exec: o.exec, which: o.which, env, home, exists });
+    if (pick.bin) {
       // Signed in: agy's own `agy models` (a remote call; OAR's authStatus reads the same). It says
-      // "Please sign in" when it isn't; anything else (no network) falls back to its token file.
-      const m = await o.exec([bin, "models"], 20_000);
-      const loggedIn = m.code === 0 || (!ANTIGRAVITY.signedOut.test(m.out) && exists(join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1))));
-      return { harness: "antigravity", installed: true, loggedIn };
+      // "Please sign in" when it isn't; anything else (no network) can't tell (agyAuth).
+      const auth = await agyAuth({ exec: o.exec, bin: pick.bin, env, home, exists });
+      return { harness: "antigravity", installed: true, loggedIn: auth.state === "in" || (auth.state === "unknown" && auth.tokenFile) };
     }
+    let trouble: RawHarness["trouble"] = pick.trouble;
     if (!trouble) {
       // Only the desktop app, or the link an older app left behind (pointing at nothing now).
       const apps = o.apps ?? ["/Applications", join(home, "Applications")];
@@ -287,7 +329,7 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
       const link = (o.dangling ?? danglingLink)(join(home, ...ANTIGRAVITY.appLinks));
       if (app || link) trouble = { kind: "app_only", app: "Antigravity" };
     }
-    return { harness: "antigravity", installed: false, loggedIn: false, ...(trouble ? { trouble } : {}), ...(old ? { version: old } : {}) };
+    return { harness: "antigravity", installed: false, loggedIn: false, ...(trouble ? { trouble } : {}), ...(pick.old ? { version: pick.old } : {}) };
   };
   const probes: [string, () => Promise<RawHarness>][] = [
     ["claude-code", claude],
@@ -312,4 +354,21 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
           .then((h) => deviceHarness(h)),
       ),
   );
+}
+
+/**
+ * D518, D523: is this agent signed in here now, by its own check run fresh: what a sign-in that
+ * ended well is confirmed with. Antigravity can also say it can't tell ("unknown": `agy models`
+ * got no answer from Google), which is not "signed out".
+ */
+export async function signedInNow(h: string, o: HarnessProbeEnv): Promise<boolean | "unknown"> {
+  if (h === "antigravity") {
+    const env = o.env ?? process.env;
+    const home = o.home ?? homedir();
+    const pick = await pickAgy({ exec: o.exec, which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) });
+    if (!pick.bin) return false;
+    const a = await agyAuth({ exec: o.exec, bin: pick.bin, env, home, ...(o.exists ? { exists: o.exists } : {}) });
+    return a.state === "in" ? true : a.state === "out" ? false : "unknown";
+  }
+  return (await probeHarnesses({ ...o, only: [h] }))[0]?.loggedIn ?? false;
 }

@@ -16,7 +16,7 @@ import type { Workers } from "./workers.ts";
 import { pairFragment, type DeviceVia, type HomeKey, type ReachWay } from "@ducter/protocol/src/reach.ts";
 import { probeHarnesses } from "./harness-probe.ts";
 import type { BrowserSetup } from "./browser/index.ts";
-import { whichNow } from "@ducter/protocol/src/which.ts";
+import { spawnNow, whichNow } from "@ducter/protocol/src/which.ts";
 
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
@@ -138,7 +138,7 @@ export const defaultExec: Exec = async (argv, timeoutMs = 15_000) => {
     // D518: the PATH as it is now. Without an env Bun looks a bare command up on the PATH the
     // process started with (research/132), so an agent Ducter put in its own tools folder while a
     // service ran (hel's Claude Code) read as installed (whichNow) and never answered: 未登录 forever.
-    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: process.env });
+    const p = spawnNow(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: process.env });
     const timer = setTimeout(() => p.kill(), timeoutMs);
     const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
     clearTimeout(timer);
@@ -207,7 +207,7 @@ function parseJson(s: string): any {
 }
 
 /** cua-driver on this machine, with the typed browser tools (the home's probe, and a worker's). */
-export function defaultCuaProbe(env: Record<string, string | undefined>, exec: Exec = defaultExec, which: (c: string) => string | null = (c) => Bun.which(c)): CuaProbe {
+export function defaultCuaProbe(env: Record<string, string | undefined>, exec: Exec = defaultExec, which: (c: string) => string | null = (c) => whichNow(c)): CuaProbe {
   return async () => {
     const bin = env.DUCTER_CUA_DRIVER || which("cua-driver") || (existsSync(CUA_APP_BIN) ? CUA_APP_BIN : "");
     if (!bin) return { missing: "cua-driver is not installed" };
@@ -222,7 +222,7 @@ export function defaultCuaProbe(env: Record<string, string | undefined>, exec: E
 }
 
 /** An AI agent's own browser tools ready on this machine (D130): Codex's, or Claude in Chrome connected. */
-export function defaultNativeProbe(env: Record<string, string | undefined>, which: (c: string) => string | null = (c) => Bun.which(c)): NativeBrowserProbe {
+export function defaultNativeProbe(env: Record<string, string | undefined>, which: (c: string) => string | null = (c) => whichNow(c)): NativeBrowserProbe {
   return async () => {
     if (codexNative(env)) return "codex";
     return (await claudeInChromeConnected({ env, which })) ? "claude" : undefined;

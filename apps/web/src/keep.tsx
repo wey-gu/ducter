@@ -1,9 +1,9 @@
 // D511: 照看 / Looking after (design/standing-work.md §6, the prototype apps/web/demo-standing-work.html).
-// A Keep on On hand is one sheet under 在照看的: its mark, its title, its facts each its own element
+// A Keep on On hand is one sheet under 看守中: its mark, its title, its facts each its own element
 // (D291), its last change, when it wakes next at the right, and the tasks at work on it set in under
 // it. What waits for the person stands in 等你 once; the sheet only says how many. A tap opens the
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
-// 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么照看 with 暂停 and 停下. The receipt
+// 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
 import { foldRounds, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import { useState } from "preact/hooks";
@@ -125,7 +125,7 @@ const prNum = (pr?: string) => (pr ? pr.replace(/^.*#/, "#") : "");
 
 // ---------- On hand: one sheet ----------
 
-/** One Keep under 在照看的: its head opens its page; its tasks at work nest under it (up to three). */
+/** One Keep under 看守中: its head opens its page; its tasks at work nest under it (up to three). */
 export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }) {
   const facts = keepFacts(k);
   const line = k.run === "perItem" && !k.health ? "" : keepLine(k);

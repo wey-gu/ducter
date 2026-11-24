@@ -38,6 +38,7 @@ export * from "./peer-self.ts";
 export * from "./did-glyphs.ts";
 export * from "./computer-name.ts";
 export * from "./done-today.ts";
+export * from "./tidy.ts";
 export * from "./rich.ts";
 export * from "./pins.ts";
 export * from "./made.ts";
@@ -866,6 +867,10 @@ export interface Bodies {
   // of a retry or repair (state going, then ok or failed), or a hand-over to the partner (rethink,
   // which wakes it). On the task's stream, origin "system". Read by `ducter repairs`.
   mend: import("./mend.ts").MendBody;
+  // D514: a task's working copy tidied away by Ducter (`git worktree remove`, never forced): what
+  // went, on which computer, how big, why. On the task's stream, origin "system". Read by Past
+  // tasks (工作副本已整理), the computer's card (整理过 n 个…) and `ducter worktrees`.
+  copy_tidied: import("./tidy.ts").CopyTidiedBody;
 }
 
 export interface Usage {
@@ -1619,6 +1624,8 @@ export type ClientFrame =
   | { t: "proactive_cross" }
   // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
   | { t: "repairs_week"; weeks?: number }
+  // D514: `ducter worktrees [--plan]`: every working copy Ducter made, what goes when and what stays and why; changes nothing. Answered with worktrees_plan_result.
+  | { t: "worktrees_plan" }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
   | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1970,6 +1977,7 @@ export type ServerFrame =
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
   | { t: "proactive_cross_result"; run?: import("./proactive.ts").ShadowRun; error?: string }
   | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
+  | { t: "worktrees_plan_result"; plan?: import("./tidy.ts").TidyPlan; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
@@ -2491,6 +2499,8 @@ export interface DeviceView {
    * at the home (Settings, 读它们留下的记录), only when it has records or said yes.
    */
   records?: DeviceRecordsView;
+  /** D514: the working copies Ducter tidied away on this computer so far, and the room it freed (its card's quiet line). */
+  tidied?: { count: number; bytes: number };
 }
 
 /**

@@ -242,6 +242,12 @@ export interface CoreApi {
   helpers?: HelpersApi;
   /** D511: 照看 / Looking after, every Keep on the home (core/src/keeps.ts); absent in tests and stubs. */
   keeps?: import("./keeps.ts").KeepsApi;
+  /**
+   * D514: what holds a task's working copy beyond its own state (a wait of its own, a Keep on or
+   * paused, an open PR it owns, the person's star or keep); undefined: nothing does. Absent in
+   * tests and stubs (then only the task's state, the copy's git and the windows decide).
+   */
+  tidyHold?(taskId: string): import("./tidy.ts").TidyHold | undefined;
   /** D206: pictures and files on the home (core/src/media.ts); absent in tests and stubs. */
   media?: MediaApi;
   /** D288: account limits a running session said, kept with the agent's last read (core/src/account-usage.ts); absent in tests and stubs. */
@@ -827,6 +833,8 @@ export interface Runner {
   // Optional: Undo a drop; merge the task branch into its base in the user's checkout; push +
   // open a draft PR (an outside effect). Each resolves with a user-facing message.
   undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  /** D514: every working copy Ducter made, what goes when and what stays and why (`ducter worktrees`); changes nothing. */
+  tidyPlan?(): Promise<import("./tidy.ts").TidyPlan>;
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   // Optional (D89): move a task to another AI agent. A running task is handed off: its session

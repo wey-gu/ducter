@@ -7,7 +7,7 @@
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
 import { folderInfo, realGit, type GitRun } from "@ducter/protocol/src/folder-info.ts";
-import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
+import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
 import { wbErrorOf, wbHost, type WbCall, type WbFetch } from "./workbench.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
@@ -233,6 +233,8 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
     changes: (a) => branchChanges(a.place),
     archive: (a) => archiveWorktree(a.place, o.dataDir, { unstarted: a.unstarted === true }),
+    // D514: read-only facts about a copy here, for the home's tidy (the removal itself is archive, checked again here).
+    copyFacts: (a) => copyFacts(a.place, o.dataDir),
     folderPrepare: (a) => folders.prepare(String(a.taskId), String(a.folder)),
     folderFinish: async (a) => {
       folders.finish(String(a.taskId));

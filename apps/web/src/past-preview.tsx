@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName } from "./format.ts";
+import { tidyWords } from "@ducter/protocol/src/tidy.ts";
 import { Menu, MenuHead, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -193,6 +194,8 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
             </span>
           </section>
         )}
+        {/* D514: its working copy was tidied away; Continue makes a fresh one from its branch. */}
+        {it.tidied && <p class="pv-last pv-tidied">{tidyWords(A.uiLang).past}</p>}
         <section class="pv-sec">
           <h4>{t("pv.steps")}</h4>
           {!st ? (

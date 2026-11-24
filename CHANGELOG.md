@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.38 - 2026-11-24
+
+<!-- whats-new
+zh: 聊天软件里所有伙伴在一个会话，开头叫名字就找到它
+en: All your partners in one chat; start with a name to reach one
+-->
+
+**Several partners in your chat apps**
+- In Telegram, Slack, WeChat and iMessage, every partner talks in the one chat you already have,
+  with its name in front ("小家: ..."). Reply to its message, or start with its name, and your
+  words go to it.
+- Asks from any partner reach you in that chat with their name, and a tap answers the right one.
+- iMessage answers from a partner other than the one first set up now come back to you.
+
+## 0.1.37 - 2026-11-24
+
+<!-- whats-new
+zh: 用完的工作副本自己整理，接着做时再拉一份
+en: Finished work copies tidy themselves; continuing brings one back
+-->
+
+**Work copies tidy themselves**
+- A task's copy of your repository is tidied a few days after the task is done, a week after
+  it is dropped, and at once after Ducter merges it. Anything that might still matter stays:
+  unsaved or unpushed changes, a task still going or waiting, an open PR, a starred task.
+- Your computer's card says what was tidied and how much space came back. Continue on a tidied
+  task and a fresh copy comes back by itself.
+- `ducter worktrees --plan` lists what would go without touching anything.
+
 ## 0.1.36 - 2026-11-24
 
 <!-- whats-new

@@ -248,6 +248,17 @@ the field says so: install it (`brew install gh` on macOS, `sudo apt install gh`
 If a computer says **Ducter on … needs an update**, update it in Devices first: an older Ducter
 can't add folders or clone there.
 
+### Do tasks' copies fill up my disk?
+
+No. Ducter tidies away the copies it made once nobody can need them: a few days after a task
+finished, after a merge, or a week after you cancelled one. It never touches a copy with
+changes that aren't committed, commits that aren't pushed anywhere, a task that is still going
+or waiting, an open pull request, a task you starred, or any folder it didn't make. The branch
+always stays, and **Continue** brings the copy back. Each computer's card in Settings says how
+many it tidied and how much room that freed; `ducter worktrees` lists every copy, which ones go
+and when, and why the others stay. To keep one whatever its age, star the task, or run
+`ducter worktrees keep <part of its title>`.
+
 ### What does uninstalling remove?
 
 `ducter uninstall --all` (or **Remove everything** in the Mac app) removes Ducter's data and the

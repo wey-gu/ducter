@@ -87,8 +87,10 @@ Your marks are kept on your home computer, so every device shows the same.
 
 - **接着做 / Continue:** the same task goes back to work and opens. If the AI agent still has its
   earlier session it carries on in it; if not, it starts again from the task's own saved progress
-  and tells you so. If its working copy was cleaned up after a merge, it is put back from the
-  branch. If it was on a computer that is away right now, Ducter says so.
+  and tells you so. If its working copy was tidied away (after a merge, a few days after it
+  finished, or a week after you cancelled it), the task says 工作副本已整理，接着做会重新拉一份 /
+  Its working copy was tidied away; Continue makes a fresh one, and Continue puts it back from the
+  branch without asking. If it was on a computer that is away right now, Ducter says so.
 - **换一个 agent 接着做 / Continue with another agent** (in ⋯): the same, with another AI agent; what
   the task had done goes over to it.
 - **带着它开新任务 / New task from this** (in ⋯): New task opens at the same place with a chip that

@@ -95,6 +95,7 @@ Design notes:
 - `documents.md`: 拿去就能发 / Ready to send, a document the person will send held to a bar, checked page by page, an Office file read as its pages (D439).
 - `standing-work.md`: 照看 / Looking after, one object for work Ducter keeps on: helpers, routines, loops and babysits as a Keep with wakes, a judged goal, held items, rounds, asks, rules; its sheet on On hand and its own page (D511, built: phases 1–3).
 - `move.md`: moving Ducter to another computer with nothing lost: what goes, what is redone and why, what follows the new address, work under way, the Mem/Bridge handover, cut-over and the way back; `ducter move --plan` first (D504).
+- `tidy.md`: 整理工作副本 / tidying the working copies Ducter made: the keep-rules, the windows (finished 3 days, dropped 7) from hel's Log, `git worktree remove` only, the quiet line, `ducter worktrees` (D514).
 - `self-repair.md`: what fails (task starts, mid-run, finish, the partner, state), the ladder Ducter climbs by itself within budgets, the partner as the judgment rung, the person once; `ducter repairs` (D473).
 - `handover.md`: handing over several to-dos: one sheet with a note and a shape, a group on Go, plan first for a subject, review together (D385, built).
 - `positioning.md`: what Ducter is in one line and one paragraph, zh and en: a personal AI for builders, on your own computers or servers; the GitHub description (D414).
@@ -169,6 +170,31 @@ Design notes:
 - **Theme:** Pebble by default; other themes are token sets. Components never hard-code
   colors, fonts, radii, shadows, or motion.
 - **Personas:** attention aggregates per person; conversations stay separate and isolated.
+
+## The UI bar (every change a person can see)
+
+Ducter's look is one strong, consistent style: clay, warm, game-like smooth, full of
+情绪价值. Iterating fast has let screens ship that were not up to it: an ad-hoc send button, a
+rail running under the traffic lights, a system tooltip, a sidebar that blinks out on a switch.
+Speed never excuses that. Every change a person can see clears this bar before it merges:
+
+1. **Load `.claude/skills/ducter-ui/SKILL.md` before touching a view.** It holds the reading
+   list, the checklist and the review protocol below in full.
+2. **Read the sources first:** `design/ui.md` (tokens, scales, Depth, Buttons, Shared controls
+   D161, One menu D421, motion D290, Art direction D53) and the approved style artifacts. Copy
+   an existing screen's patterns, never invent a new look for one view.
+3. **Only shared controls.** A button, field, composer, chip, row, menu, tooltip or chevron
+   comes from the D161 set (Mac `views/components.go` and friends, web `controls.tsx`). A
+   missing one is added to the set and to ui.md's table first. The guards are deny-by-default.
+4. **Walk the checklist** in the skill on every surface you touch: window chrome and edges,
+   alignment and rhythm, every state, motion, both themes, both languages at real lengths,
+   every width from 320 to 1400, keyboard and reduced motion.
+5. **Self-critique, then show.** Shots go to `.shots/<topic>/`: before and after, 2x crops of
+   corners and edges, the states and the transitions as frames. Critique them yourself with the
+   design skills (`impeccable` critique and polish, `kill-ai-slop`, `design-review`;
+   `ios-design-review` for the phone) and fix what they find before you report.
+6. **The lead reviews every shot before a merge** and rejects anything below the bar, however
+   small. "CI is green" is never "done" for a visible change.
 
 ## Engineering discipline
 

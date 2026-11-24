@@ -14,11 +14,17 @@
 //  - D301, WeChat (research/105): the scan is the pairing; it may write only inside the window
 //    after the person's words (caps.replyWindowMs, caps.windowSends), with no buttons and no edits,
 //    so a question asks for a typed 好 / 先等等 and there is no status line.
+//  - D516, several partners: one thread per chat app carries them all. The bot is the default
+//    partner's; another partner's words there lead with its name. The person's words go to the
+//    partner whose message they reply to, else the one named at their start (an address, like an
+//    @: the model still judges the rest and passes on, D486), else the one they are talking with
+//    (TURN_MS), else the default. Every partner's asks and results reach the one place.
 import { CHANNEL_KINDS } from "@ducter/protocol";
 import type { Bodies, ChannelKind, ChannelView, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
 import { fill, words as wordsIn } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { redact } from "@ducter/protocol/src/redact.ts";
+import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import { realClock, type Clock } from "../clock.ts";
 import type { MediaStore } from "../media.ts";
 import { defaultLine, inQuiet, quietEndsAt, type Quiet } from "../push.ts";
@@ -66,6 +72,8 @@ const HUB_WORDS = {
     failed: "没做成：{t}",
     reply: "回「好」就{label}，回「先等等」就先放着。",
     openAt: "在 Ducter 里看看：{url}",
+    as: "{name}：{text}",
+    hint: "想直接跟{name}说，开头写「{name}，」就行。",
   },
   en: {
     linked: "Linked. Talk to me here any time.",
@@ -83,6 +91,8 @@ const HUB_WORDS = {
     failed: "Didn't work: {t}",
     reply: "Reply “ok” to {label}, or “wait” to hold it.",
     openAt: "Open in Ducter: {url}",
+    as: "{name}: {text}",
+    hint: "To talk to {name} directly, start with “{name},”.",
   },
 };
 
@@ -98,6 +108,8 @@ export interface ChannelDeps {
   /** The conversation's language (D292); the hub's own words come through the fallback chain (ko → en). */
   lang: () => LangTag;
   personaName: () => string;
+  /** D516: the home's partners, the default first; absent or one: nothing about partners shows. */
+  partners?: () => { id: string; name: string }[];
   /** The home's https address when it has one (D228), for 在 Ducter 里看看 / Open in Ducter. */
   openUrl?: () => string | undefined;
   /** Tests: the adapters against fakes. */
@@ -200,6 +212,52 @@ export function createChannels(deps: ChannelDeps): Channels {
     reply: (label: string) => fill(w().reply, { label: label || w().goPlain }),
     openAt: (url: string) => fill(w().openAt, { url }),
   };
+
+  // ---------- D516: several partners in one thread ----------
+
+  const partnerList = () => deps.partners?.() ?? [];
+  const many = () => partnerList().length > 1;
+  /** Whose conversation an event is in (a stream that is no conversation, or a partner gone: the default's). */
+  const whoseOf = (stream: string): string => {
+    const p = partnerOfStream(stream);
+    return p && p !== DEFAULT_PARTNER && partnerList().some((x) => x.id === p) ? p : DEFAULT_PARTNER;
+  };
+  /** The partner the person is talking with in each chat app now: the one they last addressed, or
+   *  the one that last spoke into a quiet thread; it holds for TURN_MS. */
+  const withOf = new Map<ChannelKind, { id: string; at: number }>();
+  const holdThread = (kind: ChannelKind, id: string) => {
+    const cur = withOf.get(kind);
+    // A partner speaking never takes the thread from another the person is talking with now.
+    if (!cur || cur.id === id || clock.now() - cur.at >= TURN_MS) withOf.set(kind, { id, at: clock.now() });
+  };
+  /** The partner named at the start of the person's words ("小家，…", "@Home …"): an address, like an @. */
+  const addressed = (text: string): string | undefined => {
+    if (!many()) return undefined;
+    const t = text.replace(/^[@＠]\s*/u, "");
+    for (const p of [...partnerList()].sort((a, b) => b.name.length - a.name.length)) {
+      if (!p.name || t.slice(0, p.name.length).toLowerCase() !== p.name.toLowerCase()) continue;
+      const rest = t.slice(p.name.length);
+      if (rest === "" || /^[\s,，、:：;；!！?？.。~～]/u.test(rest)) return p.id;
+    }
+    return undefined;
+  };
+  /** Another partner's name, when the one thread carries more than one (the default is the bot's own). */
+  const otherName = (id: string) => (many() && id !== DEFAULT_PARTNER ? partnerList().find((p) => p.id === id)?.name : undefined);
+  /** A partner's words as they read in the one thread: another partner's lead with its name. */
+  const labelled = (kind: ChannelKind, id: string, text: string): string => {
+    holdThread(kind, id);
+    const name = otherName(id);
+    return name ? fill(w().as, { name, text }) : text;
+  };
+  /** The first time another partner speaks in a chat app, one line says how to talk to it there. */
+  const hintOf = (kind: ChannelKind, id: string): string => {
+    const name = otherName(id);
+    const hinted = store.get(kind)?.hinted ?? [];
+    if (!name || hinted.includes(id)) return "";
+    store.patch(kind, { hinted: [...hinted, id] });
+    return `\n\n${fill(w().hint, { name })}`;
+  };
+  const voiced = (kind: ChannelKind, id: string, text: string): string => labelled(kind, id, text) + hintOf(kind, id);
 
   // ---------- what is up ----------
 
@@ -522,7 +580,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     return b && "url" in b ? `\n\n${W.openAt(b.url)}` : `\n\n${W.open()}`;
   };
 
-  const sendCard = (kind: ChannelKind, d: Bodies["decision"], said: string, seq: number, mode: Route["mode"]) => {
+  const sendCard = (kind: ChannelKind, d: Bodies["decision"], said: string, seq: number, mode: Route["mode"], who: string = DEFAULT_PARTNER) => {
     const policy = cardPolicy(d);
     const acc = linkedOf(kind);
     if (!acc || cards.has(d.decisionId)) return;
@@ -530,21 +588,25 @@ export function createChannels(deps: ChannelDeps): Channels {
     cards.set(d.decisionId, card);
     let text: string;
     let buttons: OutButton[];
+    // D516: another partner's question leads with its name (its content never, for the never kind).
     if (policy === "never") {
-      card.words = W.never();
-      text = W.never() + openLine(kind, d.decisionId);
+      card.words = labelled(kind, who, W.never());
+      text = card.words + openLine(kind, d.decisionId);
       buttons = openButton(d.decisionId);
     } else if (policy === "open") {
-      text = said + openLine(kind, d.decisionId);
+      card.words = labelled(kind, who, said);
+      text = card.words + openLine(kind, d.decisionId);
       buttons = openButton(d.decisionId);
     } else {
       // D493: the default quotes the Go button as it reads there; with no buttons (WeChat), the option.
       const buttoned = !!live.get(kind)?.ch.caps.buttons;
-      text = `${said}\n\n_${defaultLine(d, deps.lang(), clock.now(), buttoned && d.goLabel ? W.go(d.goLabel) : undefined)}_`;
+      card.words = labelled(kind, who, said);
+      text = `${card.words}\n\n_${defaultLine(d, deps.lang(), clock.now(), buttoned && d.goLabel ? W.go(d.goLabel) : undefined)}_`;
       // No buttons there (WeChat): say which words answer it; the hub reads them (GO_WORDS).
       if (!buttoned) text += `\n\n${W.reply(d.goLabel)}`;
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
+    text += hintOf(kind, who);
     void say(kind, text, { buttons, seq }).then((ids) => {
       card.ids = ids;
       // Settled while it was on its way: show the end state at once.
@@ -583,7 +645,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       const w = words.get(d.decisionId);
       if (w) clock.clearTimeout(w.timer), words.delete(d.decisionId);
       if (!decisions.isPending(d.decisionId)) return;
-      const run = () => sendCard(r.kind, d, said, e.seq, r.mode);
+      const run = () => sendCard(r.kind, d, said, e.seq, r.mode, whoseOf(e.stream));
       if (r.mode === "own") own(run, d.decisionId);
       else run();
     };
@@ -594,12 +656,12 @@ export function createChannels(deps: ChannelDeps): Channels {
 
   // ---------- jobs: one status line, edited in place ----------
 
-  const onAck = (b: Bodies["ack"], seq: number) => {
+  const onAck = (b: Bodies["ack"], seq: number, who: string) => {
     const r = routeOf(b.replyTo);
     if (!r) return;
     const acc = linkedOf(r.kind);
     if (!acc) return;
-    const run = () => void say(r.kind, b.text, { seq });
+    const run = () => void say(r.kind, voiced(r.kind, who, b.text), { seq });
     if (r.mode === "own") own(run);
     else run();
     const job: Job = { kind: r.kind, chat: acc.chat, title: b.text };
@@ -638,6 +700,16 @@ export function createChannels(deps: ChannelDeps): Channels {
         case "user_msg": {
           if (e.origin !== "user") return;
           const b = e.body as Bodies["user_msg"];
+          // D516: words one partner passed on (D486) during a chat app's turn: the partner they went
+          // to answers in that chat app too, and the person is talking with it there now.
+          if (b.passed) {
+            const t = lastUser;
+            if (t?.via && clock.now() - t.at < TURN_MS) {
+              users.set(e.seq, { seq: e.seq, via: t.via, at: clock.now() });
+              withOf.set(t.via, { id: whoseOf(e.stream), at: clock.now() });
+            }
+            return;
+          }
           const via = hubVia(b.via);
           lastUser = { seq: e.seq, ...(via ? { via } : {}), at: clock.now() };
           users.set(e.seq, lastUser);
@@ -647,7 +719,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           return;
         }
         case "ack":
-          return onAck(e.body as Bodies["ack"], e.seq);
+          return onAck(e.body as Bodies["ack"], e.seq, whoseOf(e.stream));
         case "job_status":
           return onJob(e.body as Bodies["job_status"]);
         case "ai_msg": {
@@ -659,7 +731,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           // A late answer quotes the message it answers, so it never reads as about the last one.
           const quoted = r.mode === "own" && b.replyTo !== undefined ? svcOf.get(b.replyTo) : undefined;
           const run = () => {
-            if (b.text.trim()) void say(r.kind, b.text, { seq: e.seq, ...(quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
+            if (b.text.trim()) void say(r.kind, voiced(r.kind, whoseOf(e.stream), b.text), { seq: e.seq, ...(quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
             sendMedia(r.kind, b.media);
           };
           if (r.mode === "own") own(run);
@@ -673,7 +745,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           if (!place) return;
           // Each find is a sentence of its own, a paragraph as a person writes it, not a bulleted list (D291).
           const text = [b.opening, ...b.finds.map((f) => f.text), ...(b.leftOut ? [b.leftOut] : [])].filter(Boolean).join("\n\n");
-          if (own(() => void say(place, text + openLine(place), { seq: e.seq, buttons: openButton() }))) claims.add(`n:${b.noteId}`);
+          if (own(() => void say(place, voiced(place, whoseOf(e.stream), text) + openLine(place), { seq: e.seq, buttons: openButton() }))) claims.add(`n:${b.noteId}`);
           return;
         }
         case "decision":
@@ -760,9 +832,18 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (!text && !media.length) return;
     const replySeq = m.replyTo ? seqOf.get(`${kind}:${m.chat}:${m.replyTo}`) : undefined;
     const reply: ReplyWant | undefined = replySeq !== undefined ? { seq: replySeq } : undefined;
+    // D516: which partner the words are for: the one whose message they reply to, else the one
+    // named at their start, else the one the person is talking with here, else the default.
+    let to = DEFAULT_PARTNER;
+    if (many()) {
+      const replied = replySeq !== undefined ? log.read({ fromSeq: replySeq, limit: 1 })[0] : undefined;
+      const cur = withOf.get(kind);
+      to = (replied?.seq === replySeq && replied ? whoseOf(replied.stream) : undefined) ?? (m.forwarded ? undefined : addressed(text)) ?? (cur && clock.now() - cur.at < TURN_MS ? cur.id : DEFAULT_PARTNER);
+      withOf.set(kind, { id: to, at: clock.now() });
+    }
     fromChat++;
     try {
-      const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}) });
+      const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}), ...(to !== DEFAULT_PARTNER ? { stream: channelOf(to) } : {}) });
       seqOf.set(clientId, e.seq);
       svcOf.set(e.seq, { kind, chat: m.chat, id: m.id });
     } finally {

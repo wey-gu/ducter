@@ -2551,6 +2551,15 @@ type DeviceView struct {
 	// Records is the person's own AI agents' records on a computer for tasks
 	// (D377): only on a worker that says it, while looking is on at the home.
 	Records *DeviceRecordsView `json:"records,omitempty"`
+	// Tidied is the working copies Ducter tidied away on this computer so far
+	// and the room it freed (D514): the card's one quiet line.
+	Tidied *DeviceTidied `json:"tidied,omitempty"`
+}
+
+// DeviceTidied counts the working copies tidied away on a computer (D514).
+type DeviceTidied struct {
+	Count int     `json:"count"`
+	Bytes float64 `json:"bytes"`
 }
 
 // DeviceRecordsView is the person's own AI agents' records on a computer for

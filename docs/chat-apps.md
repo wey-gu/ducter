@@ -107,6 +107,25 @@ You can reply to one of your partner's messages (Telegram's Reply, or a Slack th
 message) and it answers about that one. Pictures and files work both ways. Something you forward
 from someone else is read as their words, not yours: your partner never takes instructions from it.
 
+## When you have more than one partner
+
+Your bot (or WeChat's ClawBot) is your first partner's. Your other partners talk to you in the
+same chat, each with its name in front: **小家：…** / **Home: …**.
+
+- **To talk to one of them, start with its name:** "小家，周六提醒我交房租" or "Home, remind me
+  about the rent on Saturday". "@Home …" works too.
+- **Reply to one of its messages** (Telegram's Reply, or a Slack thread under it) and that
+  partner answers.
+- **Keep talking and it stays with you.** Once you've started with a partner, what you say next
+  goes to it too, until you name someone else or leave the chat quiet for 15 minutes. Then it's
+  your first partner again.
+- **Every partner's questions and results come to the one place you last talked from**, each with
+  its partner's name. Answer them there as usual.
+- If you tell one partner something that's another's, it passes it on, and the other one answers
+  you in the same chat.
+
+The first time another partner writes to you in a chat app, it says how to talk to it directly.
+
 ## Who else can see it
 
 - **Telegram keeps a copy of your chats** on its servers.
@@ -127,3 +146,4 @@ else writes to your bot, it doesn't answer them; Settings tells you once that so
 
 - Slack's own assistant view (the status line and suggested prompts) where your plan has it.
 - A small "via Telegram" mark under your message in the Ducter app.
+- A Telegram bot or Slack app of its own for each of your partners.

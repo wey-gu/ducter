@@ -197,7 +197,7 @@ on it. The palette is not a place either: it is a way to any place and any task.
 Kept (D285): rename, star, tags, picture; D360 groups. Not added:
 
 - **Archive:** Ducter already keeps every task in Past tasks and removes a finished task's
-  worktree after a merge or 14 idle days, bringing it back from its branch on Continue; a verb
+  worktree after a merge or 3 idle days (D514, `tidy.md`), bringing it back from its branch on Continue; a verb
   would be a second way to do what happens by itself. Reopened when someone asks to hide tasks
   from Past tasks.
 - **Pin to the top of On hand:** the star already leads Past tasks and the palette's empty state

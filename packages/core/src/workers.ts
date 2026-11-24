@@ -6,6 +6,7 @@ import type { ServerWebSocket } from "bun";
 import type { WorkerInfo, WorkerLink, WorkerLinks, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { Device } from "./auth.ts";
 import type { DeviceVia, ReachWay } from "@ducter/protocol/src/reach.ts";
+import { parseResources, resourcesMoved } from "@ducter/protocol/src/resources.ts";
 
 /** D293: a worker keeps its sessions this long after its socket drops; the home waits a little longer. */
 export const HOLD_MS = 120_000;
@@ -51,6 +52,8 @@ export interface WorkerHello {
    * home reattaches these and ends the rest. Absent (a worker before D293): every session ended.
    */
   held?: string[];
+  /** D538: what that computer has and has free (its own look), updated on each heartbeat. */
+  resources?: import("@ducter/protocol").DeviceResources;
 }
 
 /** What the main last knew of a worker that isn't connected now. */
@@ -229,6 +232,8 @@ export function createWorkers(opts: {
   const live = new Map<string, Live>();
   const gone = new Map<string, WorkerAway>();
   const sleeping = new Set<string>();
+  /** D538: the look each worker's card last showed (clients hear a new one only when it moved). */
+  const shownRes = new Map<string, import("@ducter/protocol").DeviceResources>();
   const changeFns = new Set<() => void>();
   const changed = () => {
     for (const fn of changeFns) queueMicrotask(fn);
@@ -380,6 +385,8 @@ export function createWorkers(opts: {
           ...(hello.harnesses ? { harnesses: hello.harnesses } : {}),
           ...(web?.state === "on" && web.where ? { web: web.where } : {}),
           ...(hello.alwaysOn != null ? { alwaysOn: hello.alwaysOn } : hello.kind ? { alwaysOn: hello.kind !== "laptop" } : {}),
+          // D538: its memory now, for the partner's [devices] line (only while it is connected).
+          ...(online && hello.resources ? { resources: hello.resources } : {}),
         };
       };
       const up = [...live.values()].filter((l) => l.hello).map(({ ws, hello }) => info(ws.data.device.id, ws.data.device.name, true, hello!));
@@ -420,6 +427,10 @@ export function createWorkers(opts: {
           const entry = live.get(ws.data.device.id);
           if (entry?.ws !== ws) return;
           entry.hello = f as WorkerHello;
+          // D538: its look as it said hello (a worker before D538 sends none).
+          const res = parseResources(f.resources);
+          if (res) (entry.hello.resources = res), shownRes.set(ws.data.device.id, res);
+          else delete entry.hello.resources;
           gone.delete(ws.data.device.id);
           const restarted = typeof f.boot === "string" && st.boot !== undefined ? st.boot !== f.boot : st.version !== undefined && typeof f.version === "string" && st.version !== f.version;
           st.boot = typeof f.boot === "string" ? f.boot : undefined;
@@ -436,7 +447,17 @@ export function createWorkers(opts: {
           changed();
           if (f.update?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f.update);
           opts.onHello?.(ws.data.device.id, nameOf(st), f as WorkerHello, { restarted });
-        } else if (f?.t === "ping") send(ws, { t: "pong" });
+        } else if (f?.t === "ping") {
+          send(ws, { t: "pong" });
+          // D538: the computer's own look on its heartbeat: kept for placement on every beat, told
+          // to the clients only when it moved enough to show.
+          const entry = live.get(ws.data.device.id);
+          const res = f.res ? parseResources(f.res) : undefined;
+          if (entry?.hello && res) {
+            entry.hello.resources = res;
+            if (resourcesMoved(shownRes.get(ws.data.device.id), res)) shownRes.set(ws.data.device.id, res), changed();
+          }
+        }
         // The worker's OS is putting it to sleep: when its socket goes, it is 睡着了 / Asleep,
         // not 连不上 / Can't reach (A3: "Asleep" only when the device told us).
         else if (f?.t === "sleep") sleeping.add(ws.data.device.id), changed();

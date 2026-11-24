@@ -8,7 +8,7 @@ import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
 import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
-import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
+import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -495,7 +495,11 @@ class AppState {
   conn?: Connection;
   base!: URL;
   /** Messages sent and not yet echoed. pics (D206): pictures still going up; failed: one didn't, Retry sends. */
-  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying }[] = [];
+  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying; refs?: import("@ducter/protocol").Ref[] }[] = [];
+  /** D534: what was picked with @ or / into a composer's words ("" the partner's, else the task's id). */
+  refsFor = new Map<string, import("@ducter/protocol").Ref[]>();
+  /** D534: the home's answers to the composers' @ and / lists (mentions.ts sets this; no import cycle). */
+  mentionFrame?: (f: Extract<ServerFrame, { t: "mention_list" } | { t: "slash_list" }>) => void;
   /** D236: the one message the composer replies to (its imprint sits above the field). */
   replying?: Replying;
   /** D206: pictures picked for a message not sent yet: "" the conversation, a task id, "new" the New task card. */
@@ -888,6 +892,8 @@ class AppState {
     if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
     if (f.t === "keep_result") return this.onKeepFrame?.(f);
+    // D534: the composers' @ and / lists (mentions.ts).
+    if (f.t === "mention_list" || f.t === "slash_list") return void this.mentionFrame?.(f);
     // D391: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
     if (f.t === "past_steps_result" || f.t === "past_forked") return onStepsFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
@@ -3045,7 +3051,9 @@ class AppState {
     const clientId = `p${Date.now()}-${++this.nextClient}`;
     const reply = this.replying;
     this.replying = undefined;
-    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}) };
+    const refs = liveRefs(text, this.refsFor.get("") ?? []);
+    this.refsFor.delete("");
+    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}), ...(refs.length ? { refs } : {}) };
     noteFlights(pics);
     this.picks.delete("");
     this.pending.push(p);
@@ -3053,7 +3061,7 @@ class AppState {
     this.markRead();
     // D206: the pictures went up when they were picked; one still going holds the message (with its words).
     const want = reply ? { reply: wantOf(reply) } : {};
-    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want }), () => ((p.failed = true), this.changed()));
+    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want, ...(refs.length ? { refs } : {}) }), () => ((p.failed = true), this.changed()));
     this.changed();
     return true;
   }
@@ -3201,6 +3209,9 @@ class AppState {
     const clientId = `t${Date.now()}-${++this.nextClient}`;
     const sd = this.S.addSend(id, text, Date.now(), clientId);
     if (pics.length) noteFlights(pics), (sd.pics = pics), this.picks.delete(id);
+    const refs = liveRefs(text, this.refsFor.get(id) ?? []);
+    this.refsFor.delete(id);
+    if (refs.length) sd.refs = refs;
     const task = this.S.tasks.get(id);
     const busy = !!task && ["working", "queued"].includes(attention(task));
     const mode = queue ? "queue" : busy ? "steer" : undefined;
@@ -3211,7 +3222,7 @@ class AppState {
         (media) => {
           sd.failed = undefined;
           if (media.length) sd.media = media;
-          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}) });
+          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}), ...(refs.length ? { refs } : {}) });
         },
         () => ((sd.failed = this.L.t("media.failed")), (sd.retry = () => (pics.forEach((p) => p.state === "failed" && void this.lift(p)), (sd.failed = undefined), go(), this.changed())), this.changed()),
       );

@@ -54,7 +54,10 @@ export type WbRequest =
   | { op: "sim_frame"; udid: string; edge?: number }
   // One of the controls simctl has (research/64): Home, dark or light, text size, open a link, a
   // full screenshot. No taps: simctl has none.
-  | { op: "sim_act"; udid: string; act: SimAct; value?: string };
+  | { op: "sim_act"; udid: string; act: SimAct; value?: string }
+  // D534: files in the working copy whose path matches q (the @ list in a task's composer): a
+  // repo's tracked and untracked ones (git ls-files), else a folder's, walked to a bound.
+  | { op: "find"; q: string };
 
 export type WbAnswer =
   | { op: "files"; path: string; entries: WbEntry[]; more: number }
@@ -81,7 +84,8 @@ export type WbAnswer =
   | { op: "sims"; sims: WbSim[] }
   | { op: "sim_frame"; udid: string; /** data: URL (JPEG) */ image: string; w: number; h: number }
   // shot: the full screenshot (a PNG data: URL); otherwise the simulator's settings after the act.
-  | { op: "sim_act"; udid: string; act: SimAct; sim?: WbSim; image?: string };
+  | { op: "sim_act"; udid: string; act: SimAct; sim?: WbSim; image?: string }
+  | { op: "find"; q: string; paths: string[] };
 
 /** D220: a booted iOS Simulator on the task's computer. */
 export interface WbSim {

@@ -52,6 +52,8 @@ type composerOpts struct {
 	onSend      func(text string) bool // true: sent (the words are emptied)
 	sendMenu    func(m *ui.Menu)       // the send's alternates, on right-click (D530: 等它做完再说)
 	box         func(box ui.Element)   // the card, before its children (drops)
+	// mentions (D534): @ and / work here, for the partner (where "") or a task.
+	mentions *mentionPlace
 }
 
 // composerBox draws the one composer and returns its card.
@@ -112,6 +114,10 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			ta := ui.TextArea(c.Key(o.key), o.draft).Lines(1, lines).MinHeight(0).Placeholder(o.placeholder).Label(o.label).
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(fs).TextColor(ink).
 				OnTextKey(func(k ui.TextKey) bool {
+					// D534: the open @ or / list takes its keys first.
+					if o.mentions != nil && a.mentionKeys(o.key, o.mentions, k) {
+						return true
+					}
 					if o.keys != nil && o.keys(k) {
 						return true
 					}
@@ -130,6 +136,10 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			if o.autoFocus {
 				ta.AutoFocus()
 			}
+			if o.mentions != nil {
+				a.mentionMarks(ta, o.mentions, *o.draft)
+				a.mentionsDetect(o.key, o.mentions, ta, *o.draft)
+			}
 			if o.focus {
 				ta.Focus()
 			}
@@ -144,6 +154,9 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 				*o.draft = ""
 			}
 		})
+		if o.mentions != nil {
+			a.mentionPop(c, o.key, o.mentions, box, o.draft)
+		}
 	})
 	return box
 }

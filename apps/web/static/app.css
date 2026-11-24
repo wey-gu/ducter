@@ -23908,8 +23908,8 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 }
 /* Scrolling inside at its cap, the words fade into the card's edges instead of being cut. */
 .composer textarea[style*="overflow-y: auto"] {
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
 }
 .composer .send {
   -webkit-touch-callout: none;
@@ -24156,6 +24156,6 @@ html.kb #app {
 .composer > .mention-pop.sheet {
   bottom: 100%;
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  box-shadow: 0 -10px 28px -12px rgba(43, 33, 24, 0.22), 0 0 0 1px var(--line-soft);
+  box-shadow: 0 -10px 28px -12px var(--scrim), 0 0 0 1px var(--line-soft);
   clip-path: inset(-40px -40px 0 -40px);
 }

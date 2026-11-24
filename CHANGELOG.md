@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.51 - 2026-11-25
+
+<!-- whats-new
+zh: 手机上从手头的事一点就回到对话；顶栏一行放得下
+en: On a phone, back from On hand lands in the conversation; a one-line header
+-->
+
+**Back to the conversation, on a phone**
+- With several partners, 对话 / Conversation, ‹, Back and a notification always return to the
+  conversation you were in. Your partners' list opens only from their faces or the edge swipe.
+
+**A calmer phone header**
+- One line: your other partners' faces on the left, the partner's name with what waits on you in
+  the middle, and one button on the right for On hand, Apps, Devices and Settings.
+
 ## 0.1.50 - 2026-11-24
 
 <!-- whats-new

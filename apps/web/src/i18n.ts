@@ -36,6 +36,7 @@ import { firstWords } from "./i18n-first.ts";
 import { settingsHome, settingsMore } from "./i18n-settings.ts";
 import { delightWords } from "./i18n-delight.ts";
 import { d475Words } from "./i18n-d475.ts";
+import { linkWords } from "./i18n-link.ts";
 import { d484Words } from "./i18n-d484.ts";
 import { keepWords } from "./i18n-keep.ts";
 import { outwardWords } from "./i18n-outward.ts";
@@ -146,7 +147,6 @@ const zh: Record<string, string> = {
   "header.held.soon": "过一会儿接着回你",
   "header.summary.none": "手头没事，随时说",
   "conn.connecting": "正在连接…",
-  "conn.offline": "连不上 Ducter，正在重试",
   "composer.placeholder": "跟 %s 说点什么…",
   "composer.task": "直接跟它说…",
   "composer.send": "发送",
@@ -742,7 +742,6 @@ const zh: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "连接",
   "connect.busy": "正在连接…",
-  "connect.revoked": "这台手机已经和你的 Ducter 断开了。再连一次就能回来。",
   "connect.err.code": "这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。",
   "connect.err.locked": "试错太多次了。等 10 分钟再试，或者换一个新码。",
   "connect.err.unreachable": "连不上 %s。地址对吗？用 SSH 隧道的话，隧道还开着吗？",
@@ -1165,7 +1164,6 @@ const en: Record<string, string> = {
   "header.held.soon": "Answers again soon",
   "header.summary.none": "Nothing on hand. Say anything.",
   "conn.connecting": "Connecting…",
-  "conn.offline": "Can't reach Ducter, retrying",
   "composer.placeholder": "Say something to %s…",
   "composer.task": "Message it directly…",
   "composer.send": "Send",
@@ -1752,7 +1750,6 @@ const en: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "Connect",
   "connect.busy": "Connecting…",
-  "connect.revoked": "This phone was disconnected from your Ducter. Connect it again to come back.",
   "connect.err.code": "That code is wrong or has expired. Run ducter pair on that computer again.",
   "connect.err.locked": "Too many wrong codes. Wait 10 minutes, or get a new code.",
   "connect.err.unreachable": "Can't reach %s. Is the address right? If you use an SSH tunnel, is it still open?",
@@ -3518,6 +3515,9 @@ Object.assign(TABLES.en, groupWords.en);
 // D426: several things in one message, under it (i18n-asks.ts).
 Object.assign(TABLES.zh, asksWords.zh);
 Object.assign(TABLES.en, asksWords.en);
+// D523: the link to the home (i18n-link.ts), the Mac's words (D520).
+Object.assign(TABLES.zh, linkWords.zh);
+Object.assign(TABLES.en, linkWords.en);
 Object.assign(TABLES.zh, firstMeetWords.zh);
 Object.assign(TABLES.en, firstMeetWords.en);
 // D385: handing several over (i18n-handover.ts).

@@ -107,14 +107,14 @@ Check that the address is right. If you use an SSH tunnel, make sure it's still 
 `ducter service status`. An address ending in `.ts.net` (Tailscale) opens only on a device with
 the Tailscale app on, in the same Tailscale network.
 
-### The Mac app says "Reconnecting to …" or "Can't reach your Ducter on …"
+### "Reconnecting to …" or "Can't reach your Ducter on …"
 
-Your Mac is still connected to your Ducter; it just can't reach it right now. This happens when
-the server restarts or updates, when the Mac wakes from sleep, or when the network changes. The
-app keeps trying by itself and carries on where it left off, so there's nothing to do. If it lasts,
-check that the server is on and online (`ducter service status` on it), then tap **Try now**. You
-never need to connect the Mac again for this: the Mac app asks to be connected again only when
-your Ducter itself says this Mac was disconnected.
+Your Mac, phone or browser is still connected to your Ducter; it just can't reach it right now.
+This happens when the server restarts or updates, when the device wakes from sleep, or when the
+network changes. Ducter keeps trying by itself and carries on where it left off, so there's
+nothing to do. If it lasts, check that the server is on and online (`ducter service status` on
+it), then tap **Try now**. You never need to connect again for this: Ducter asks you to connect
+again only when your Ducter itself says this device was disconnected.
 
 ### `ducter tailscale` stops
 
@@ -147,14 +147,18 @@ The card shows which step stopped, and why:
   minutes to reach everyone. **Try again** in a minute.
 - **See the task** shows what it did and said. Check where it is with `ducter anywhere status`.
 
-### "This phone was disconnected from your Ducter"
+### "Your Ducter on … disconnected this phone"
 
 The device was removed with `ducter devices disconnect`. Connect it again with a new code from
-`ducter pair`.
+`ducter pair`. It reads "doesn't know this phone anymore" when the server's list of devices was
+reset.
 
 On a Mac the same moment reads "Your Ducter on *your server* disconnected this Mac", or "doesn't know
-this Mac anymore" when the server's list of devices was reset. The address is already filled in;
-run `ducter pair` on the server and type the new code.
+this Mac anymore". The address is already filled in; run `ducter pair` on the server and type the
+new code.
+
+A server running a Ducter older than 0.1.41 can't say this itself, so a phone connected to it
+waits about 15 minutes of refusals before asking to be connected again.
 
 ### No notifications on iPhone
 

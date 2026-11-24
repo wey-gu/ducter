@@ -29,6 +29,9 @@ import { applyDensity, applyPaper, densityKey } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
 import { watchTextSize } from "./text-scale.ts";
 import { BOOT_TIMEOUT_MS, BootWait, Guard, within, type BootState } from "./boot-wait.tsx";
+import { BackRow, Notice } from "./controls.tsx";
+import { createLinkWatch } from "./link.ts";
+import { askStandingWeb } from "@ducter/protocol/src/reach-verify-web.ts";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
 applyDensity(); // D457: and its own density
@@ -144,9 +147,45 @@ function App() {
   );
 }
 
-type PairView = { busy: boolean; error?: PairError | "revoked"; code: string };
+// ---------- D523: the link to the home, by D520's rule ----------
 
-function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => void }) {
+/** The home's name for the pair screen's line: its own name, else this address. */
+const goneHome = () => A.homeName || A.linkMemo.get().home || base.host;
+
+/**
+ * Something refused this device's token. Only the home's verified word (or an old home's 401 held
+ * over OLD_HOME_WINDOW_MS) clears it; anything else keeps the token, the screen and the retrying.
+ */
+const watch = createLinkWatch({
+  deps: () => {
+    const r = storage.get();
+    return r?.token ? { base, token: r.token, fp: r.fp, memo: A.linkMemo } : undefined;
+  },
+  me: async () => (await api.call<Me>("api/me")).status,
+  gone: async (why) => {
+    // The home said this device is disconnected (or no longer known): nothing it showed stays here.
+    A.conn?.stop();
+    forgetGlance();
+    storage.clear();
+    await kvSet("token", undefined);
+    return boot({ busy: false, code: "", error: why });
+  },
+});
+const refused = (now = false) => watch.unauthorized(now);
+const socketRefused = (now = false) => watch.refused(now);
+
+/** Once a page, after a welcome: whether this home can say a standing at all (then no 401 is ever taken alone). */
+let probed = false;
+async function probeStanding() {
+  const r = storage.get();
+  if (probed || !r?.token || !r.fp || A.linkMemo.get().standing) return;
+  probed = true;
+  if ((await askStandingWeb(base, r.token, r.fp)) === "live") A.linkMemo.set({ ...A.linkMemo.get(), standing: true });
+}
+
+type PairView = { busy: boolean; error?: PairError | "revoked" | "unknown"; code: string };
+
+function Pairing({ initial, onPaired, onBack }: { initial: PairView; onPaired: () => void; onBack?: () => void }) {
   const [v, setV] = useState<PairView>(initial);
   const submit = async (code: string) => {
     setV({ ...v, code, busy: true, error: undefined });
@@ -161,7 +200,9 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
   }, []);
   const err =
     v.error === "revoked"
-      ? t("connect.revoked")
+      ? t("connect.revoked", goneHome())
+      : v.error === "unknown"
+        ? t("connect.unknown", goneHome())
       : v.error === "locked"
         ? t("connect.err.locked")
         : v.error === "unreachable"
@@ -169,14 +210,19 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
           : v.error
             ? t("connect.err.code")
             : "";
+  // D523: the home's own word that this device was disconnected leads the screen, in its words; a
+  // wrong code stays under the field it is about.
+  const gone = v.error === "revoked" || v.error === "unknown";
   return (
     <div class="pairing">
+      {onBack && !v.busy && <BackRow label={t("connect.back")} onClick={onBack} />}
       <div class="face">
         <Avatar size={140} state={v.busy ? "working" : "idle"} />
       </div>
       <h1>{v.busy ? t("connect.pairing") : t("connect.title")}</h1>
       {!v.busy && (
         <>
+          {gone && <Notice body={err} />}
           <p>{t("connect.phone.body")}</p>
           <form
             onSubmit={(e) => {
@@ -197,7 +243,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
                 onInput={(e) => setV({ ...v, code: (e.target as HTMLInputElement).value })}
               />
             </div>
-            {err && (
+            {err && !gone && (
               <div class="err" role="alert">
                 {err}
               </div>
@@ -262,11 +308,12 @@ async function opening(pairing?: PairView) {
     run(me, had, device, glance);
     void api.call<Me>("api/me").then(async (r) => {
       if (r.status === 401) {
-        // Revoked (or no longer this machine): nothing it showed stays on the device.
+        // D523: a paired device asks the home; a 401 alone (a proxy while the home restarts) keeps
+        // the token and the screen. This machine's own page with no token has nothing to keep.
+        if (had) return void refused(true);
         A.conn?.stop();
         forgetGlance();
-        if (had) storage.clear(), await kvSet("token", undefined);
-        return boot({ busy: false, code: "", error: had ? "revoked" : undefined });
+        return boot({ busy: false, code: "", error: undefined });
       }
       if (r.status !== 200 || !r.data) return;
       A.me = r.data;
@@ -294,6 +341,13 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.onPhoneFrame = phoneFrame; // D217
   A.onHandsetFrame = handsetFrame; // D238
   A.onHandsetWelcome = () => void handsetHello();
+  // D523: a refused socket, Try now and a welcome reach the link's judge; 再连一次 opens the pair
+  // screen over the app (Back returns to it; the token stays until a new pairing replaces it).
+  watch.reset();
+  A.onLinkRefused = () => void socketRefused();
+  A.onLinkRetry = () => void socketRefused(true);
+  A.onLinkHeard = () => void probeStanding();
+  A.onLinkAgain = () => render(<Pairing initial={{ busy: false, code: "" }} onPaired={() => location.reload()} onBack={showApp} />, root);
   if (glance) A.restore(glance);
   A.start(base, api, me, token);
   A.fromHash();
@@ -330,6 +384,10 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {
     if (e.data?.t === "open") location.href = e.data.url;
   });
+  showApp();
+}
+
+function showApp() {
   render(
     <Guard t={t}>
       <App />

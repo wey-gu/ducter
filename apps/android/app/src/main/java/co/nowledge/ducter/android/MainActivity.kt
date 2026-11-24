@@ -164,6 +164,8 @@ class MainActivity : ComponentActivity() {
         // Back from Android's "Install unknown apps" switch: carry on with the update.
         (Updater.state.value as? UpdateState.NeedsPermission)?.let { if (packageManager.canRequestPackageInstalls()) Updater.install(this, it.r, it.apk) }
         if (helloed || store.base == null) quietCheck()
+        // D523: the page redials its home now (a WebView's visibilitychange doesn't always come).
+        if (phase == "ready") js("dispatchEvent(new Event('ducterresume'))")
         // D238: back from Android's settings (a step of the guide): the page sees where it stands now.
         Handset.changed(this)
         // D246: 用这台手机 is on (just now, or from before): ask once about notifications.

@@ -619,3 +619,28 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
     </button>
   );
 }
+
+/**
+ * D523: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
+ * just above the composer, a sunken tint (done, alert: their own surfaces), a drawn glyph at its
+ * start, 13/12px words, small buttons at its end.
+ */
+export function Notice(p: { tone?: "info" | "done" | "alert"; glyph?: "pebble"; title?: string; body?: string; sub?: string; actions?: ComponentChildren; class?: string }) {
+  return (
+    <div class={`notice ${p.tone ?? "info"}${p.class ? ` ${p.class}` : ""}`} role={p.tone === "alert" ? "alert" : "status"}>
+      {p.glyph === "pebble" && (
+        <svg class="notice-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          <ellipse cx="9" cy="11" rx="7" ry="5.4" fill="var(--ink-muted)" opacity="0.45" />
+          <ellipse cx="9" cy="9.6" rx="7" ry="5.4" fill="var(--ink-muted)" />
+          <ellipse cx="7.2" cy="7.6" rx="2.6" ry="1.3" fill="var(--surface)" opacity="0.35" />
+        </svg>
+      )}
+      <div class="notice-w">
+        {p.title && <b>{p.title}</b>}
+        {p.body && <span>{p.body}</span>}
+        {p.sub && <small>{p.sub}</small>}
+      </div>
+      {p.actions && <div class="notice-a">{p.actions}</div>}
+    </div>
+  );
+}

@@ -11,6 +11,9 @@ export interface DeviceRecord {
   name: string;
   personaName?: string;
   pairedAt: string;
+  /** D523: the home's key fingerprint, pinned at pairing (or at the first welcome after it): only an
+   *  answer signed by this key can end the pairing. */
+  fp?: string;
 }
 
 const KEY = "ducter.device.v1";
@@ -35,6 +38,16 @@ export const storage = {
     } catch {}
   },
 };
+
+/**
+ * D523: a device paired before its record kept the home's key learns it from the first welcome on
+ * an authenticated socket (only the home that issued this token says welcome to it). Never
+ * replaced: a home whose key changed is the one case no signature reaches (再连一次).
+ */
+export function pinFp(fp: string) {
+  const r = storage.get();
+  if (r && !r.fp && fp) storage.set({ ...r, fp });
+}
 
 /** Where this Ducter lives: the directory of the page (/app, /pair → the base). */
 export function baseUrl(href = location.href): URL {
@@ -101,7 +114,7 @@ export async function pair(base: URL, code: string, fetcher: typeof fetch = fetc
   }
   const body = (await res.json().catch(() => ({}))) as Record<string, string>;
   if (!res.ok) return { error: res.status === 429 ? "locked" : body.error === "expired" ? "expired" : res.status === 401 ? "invalid" : "unreachable" };
-  return { token: body.token!, deviceId: body.deviceId!, name: body.name!, personaName: body.personaName, pairedAt: new Date().toISOString() };
+  return { token: body.token!, deviceId: body.deviceId!, name: body.name!, personaName: body.personaName, pairedAt: new Date().toISOString(), ...(body.fp ? { fp: body.fp } : {}) };
 }
 
 export interface Me {
@@ -137,7 +150,15 @@ export type ConnStatus = "connecting" | "connected" | "offline";
 
 const KEEP = new Set(["decide", "task_action"]);
 const MSG = new Set(["send", "task_send"]);
-const BACKOFF = [500, 1000, 2000, 4000, 8000, 15000];
+/** D523 (the Mac's D520): quick at first, at most 5 s apart, 15 s once down for a minute; ±20%
+ *  jitter, so devices behind one proxy don't all knock at once when their home comes back. */
+const BACKOFF = [500, 1000, 2000, 4000, 5000];
+const BACKOFF_LONG = 15_000;
+const LONG_DOWN = 60_000;
+export const backoff = (attempt: number, downFor: number, rand = Math.random) => {
+  const base = downFor >= LONG_DOWN ? BACKOFF_LONG : BACKOFF[Math.min(attempt, BACKOFF.length - 1)]!;
+  return Math.round(base * (0.8 + 0.4 * rand()));
+};
 const LIVE_EVERY = 15_000;
 const LIVE_DEAD = 45_000;
 
@@ -160,6 +181,12 @@ export class Connection {
   private dueAt = 0;
   /** Called with each frame written to a welcomed socket (the app tracks actions in flight). */
   onWritten?: (f: ClientFrame) => void;
+  /** D523: a socket closed before its welcome (refused, or the home not up): the app may ask the
+   *  home whether this device still stands there. A refusal alone never ends a pairing. */
+  onRefused?: () => void;
+  /** When the next try is due (0: none waiting), and since when the link has been down. */
+  nextAt = 0;
+  downSince = 0;
 
   constructor(
     private url: string,
@@ -172,27 +199,49 @@ export class Connection {
   start() {
     this.stopped = false;
     this.open();
-    document.addEventListener("visibilitychange", this.wake);
-    addEventListener("online", this.wake);
+    if (typeof document === "object") document.addEventListener("visibilitychange", this.wake);
+    if (typeof addEventListener === "function") {
+      addEventListener("online", this.online);
+      // The iPhone and Android apps say when they come to the front (a web view's
+      // visibilitychange doesn't always come): the same as coming back to the tab.
+      addEventListener("ducterresume", this.wake);
+    }
   }
 
   stop() {
     this.stopped = true;
     clearTimeout(this.timer);
     this.ws?.close();
-    document.removeEventListener("visibilitychange", this.wake);
-    removeEventListener("online", this.wake);
+    this.nextAt = 0;
+    if (typeof document === "object") document.removeEventListener("visibilitychange", this.wake);
+    if (typeof removeEventListener === "function") {
+      removeEventListener("online", this.online);
+      removeEventListener("ducterresume", this.wake);
+    }
   }
 
   /** Coming back to the phone: reconnect now instead of waiting out the backoff. */
   private wake = () => {
-    if (document.visibilityState !== "visible" || this.stopped) return;
-    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
-      clearTimeout(this.timer);
-      this.attempt = 0;
-      this.open();
-    }
+    if ((typeof document === "object" && document.visibilityState === "hidden") || this.stopped) return;
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.retryNow();
   };
+
+  /** D523: the network came back: a socket from before it went may be dead while it looks open. */
+  private online = () => {
+    if (this.stopped) return;
+    if (this.ws?.readyState === WebSocket.OPEN && Date.now() - this.heardAt > 5_000) return void this.ws.close();
+    this.wake();
+  };
+
+  /** Try now (the notice's button, coming back): a fresh dial, the backoff from its start. */
+  retryNow() {
+    if (this.stopped) return;
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) return;
+    clearTimeout(this.timer);
+    this.attempt = 0;
+    this.nextAt = 0;
+    this.open();
+  }
 
   private setStatus(s: ConnStatus) {
     if (this.status !== s) (this.status = s), this.onStatus(s);
@@ -223,12 +272,16 @@ export class Connection {
     };
     ws.onclose = () => {
       if (this.ws !== ws) return;
+      const refused = !this.welcomed;
       this.welcomed = false;
       clearInterval(this.live);
       if (this.stopped) return;
+      if (!this.downSince) this.downSince = Date.now();
       this.setStatus(this.attempt === 0 && this.status === "connecting" ? "connecting" : "offline");
-      const wait = BACKOFF[Math.min(this.attempt++, BACKOFF.length - 1)]!;
-      this.timer = setTimeout(() => this.open(), wait);
+      const wait = backoff(this.attempt++, Date.now() - this.downSince);
+      this.nextAt = Date.now() + wait;
+      this.timer = setTimeout(() => ((this.nextAt = 0), this.open()), wait);
+      if (refused) this.onRefused?.();
     };
   }
 
@@ -245,6 +298,8 @@ export class Connection {
     if (f.t === "welcome") {
       this.welcomed = true;
       this.attempt = 0;
+      this.downSince = 0;
+      this.nextAt = 0;
       this.setStatus("connected");
       if (f.ping) this.keepAlive();
     }

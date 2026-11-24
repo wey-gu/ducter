@@ -1114,6 +1114,10 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const full = title(task);
   const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
   const about = named !== full ? full : undefined;
+  // D529: a row that shows its own actions (看看为什么, 再试一次, 到 GitHub 合并) keeps its ⋯ in that same
+  // group, revealed in place on hover or focus; never a second row of controls.
+  const acts = !!stuck || stopped || quiet || (failed && !!fin) || prr?.stands === "needs" || !!w?.limit?.handTo;
+  const joined = fin && !stacked && acts ? <FinishedActs f={fin} full={room === "full"} menuOnly /> : null;
   return (
     <div
       ref={ref}
@@ -1213,6 +1217,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       {stuck ? (
         <span class="oacts on">
           <StuckActs n={stuck} onRetry={fin ? () => runFinished("retry", fin, room === "full") : undefined} />
+          {joined}
         </span>
       ) : stopped || quiet ? (
         <span class="oacts on">
@@ -1222,27 +1227,32 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
           )}
           <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
+          {joined}
         </span>
       ) : failed && fin ? (
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(task)} onClick={() => runFinished("retry", fin, room === "full")} />
+          {joined}
         </span>
       ) : prr?.stands === "needs" ? (
         // D508: the one thing a ready PR needs: its merge, on GitHub.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("onhand.prs.merge")} about={full} onClick={() => window.open(prr.pr.url, "_blank", "noopener")} />
+          {joined}
         </span>
       ) : w?.limit?.handTo ? (
         // D471 (D297): a limit used up, with another agent that can take it now: its row offers it.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(w.limit.handTo.harness))} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "handoff")} />
+          {joined}
         </span>
       ) : (
         room !== "phone" && <RowActs task={task} room="card" />
       )}
       </span>
-      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. */}
-      {fin && !stacked && <FinishedActs f={fin} full={room === "full"} />}
+      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. D529: a row
+          with actions of its own has its ⋯ in that group (joined); else × and ⋯ come in over its time. */}
+      {fin && !stacked && !acts && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });

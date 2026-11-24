@@ -445,6 +445,13 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
     moment, with a light tap; a conversation pebble turns to the drawn check alone in the done ink
     (D495: no word on a pebble; **已拷贝** is its label); a menu that closed says **已拷贝** in the
     toast; a copy that failed says so, with Select text.
+- **Finding a place in an opened task (D524).** An opened task's conversation has the locator at its
+  right edge on a wide window: the list of what happened drawn small, one mark per landmark (the
+  person's words a dot in their orange, the partner's a dot in its clay, a task handed over a
+  square, a result a ring, an ask that waits a ring round a dot in the needs-you orange), quiet at
+  rest, its card in the one menu's clay when pointed at (`ui.md` "The locator's marks"). The partner's
+  conversation has none: it is a messaging app, and Jump to latest and the new-messages line keep
+  the place.
 - **The draft is kept** when the app is closed, until it is sent.
 - **Not here:** editing a sent message (the partner already acted on it; say a correction), read
   ticks, reactions. Find in the conversation is in `todo.md`.

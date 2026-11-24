@@ -8,7 +8,7 @@ import type { IndexTurn } from "../src/session.ts";
 import { landmarkNear, landmarksIn, landmarksOf } from "../src/landmarks.ts";
 import transcript from "./transcript.json";
 
-type M = { k: string; w?: string; at?: string };
+type M = { k: string; w?: string; at?: string; s?: string };
 const at = (h: number, m: number, day = 16) => new Date(Date.UTC(2026, 10, day, h, m)).toISOString();
 let seq = 100;
 const turn = (p: Record<string, unknown> | undefined, when: string, marks: M[] = []): IndexTurn => {
@@ -35,8 +35,16 @@ export const loop: IndexTurn[] = [
   turn({ k: "you", text: "" }, at(10, 40, 17), [{ k: "report" }]),
 ];
 
+/** D524: a brief the person wrote, a result, an ask that waits for them, a failure (the rail's marks). */
+export const marks: IndexTurn[] = [
+  turn({ k: "brief", text: "看一下 #11112", by: "you" }, at(11, 2, 17), [{ k: "report", w: "#11112 修好了", at: at(11, 30, 17), s: "done" }]),
+  wake(11, 45, 17, [{ k: "report", w: "要改公共接口，要我直接改吗？", at: at(11, 50, 17), s: "ask" }, { k: "report", w: "没跑通", at: at(11, 55, 17), s: "failed" }]),
+  turn({ k: "partner", text: "他说可以改" }, at(12, 1, 17)),
+];
+
 const cases: { name: string; turns: IndexTurn[] }[] = [
   { name: "a review loop across midnight", turns: loop },
+  { name: "D524: who handed it, results, asks and failures", turns: marks },
   { name: "empty", turns: [] },
   ...(transcript as unknown as { name: string; index: { turns: IndexTurn[] } }[]).map((c) => ({ name: `transcript: ${c.name}`, turns: c.index.turns })),
 ];

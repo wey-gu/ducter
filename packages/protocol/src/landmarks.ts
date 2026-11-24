@@ -8,7 +8,7 @@
 // session's order. Pure and language-neutral: each client says the words (i18n) and draws the
 // rows; the Go port is apps/desktop/internal/views/landmarks.go, and both pass
 // fixtures/landmarks.json.
-import type { IndexTurn } from "./session.ts";
+import type { IndexTurn, ReportMarkState } from "./session.ts";
 import type { Block } from "./transcript.ts";
 
 export type LandmarkKind = "brief" | "you" | "partner" | "quiet" | "report" | "compacted" | "switched" | "moved" | "interrupted";
@@ -30,6 +30,10 @@ export interface Landmark {
   /** When: the item's time, or a run's first and last. */
   at: string;
   endAt?: string;
+  /** D524: a brief the person wrote themselves (else the partner handed it over). */
+  by?: "you";
+  /** D524: how a report stood (absent: progress): its mark's shape and tone on the rail. */
+  s?: ReportMarkState;
 }
 
 const MARKS = new Set(["report", "compacted", "switched", "moved", "interrupted"]);
@@ -56,11 +60,12 @@ export function landmarksOf(turns: IndexTurn[]): Landmark[] {
     if (said(t)) {
       flush();
       const text = firstLine((t.p as { text?: string }).text ?? "");
-      out.push({ k: t.p!.k as LandmarkKind, from: i, to: i, seq: t.seq, ...(text ? { text } : {}), at: t.at });
+      const by = t.p!.k === "brief" && (t.p as { by?: string }).by === "you" ? { by: "you" as const } : {};
+      out.push({ k: t.p!.k as LandmarkKind, from: i, to: i, seq: t.seq, ...(text ? { text } : {}), at: t.at, ...by });
     } else if (t.p && !marks.some((m) => m.k === "report")) run.push({ i, t });
     for (const m of marks) {
       flush();
-      out.push({ k: m.k as LandmarkKind, from: i, to: i, seq: t.seq, ...(m.w ? { text: m.w } : {}), at: m.at ?? t.endAt });
+      out.push({ k: m.k as LandmarkKind, from: i, to: i, seq: t.seq, ...(m.w ? { text: m.w } : {}), at: m.at ?? t.endAt, ...(m.s ? { s: m.s } : {}) });
     }
   }
   flush();

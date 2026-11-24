@@ -82,10 +82,13 @@ func TestLocatorGlides(t *testing.T) {
 		if !hoverLocator(app, tt) {
 			t.Fatal("no locator")
 		}
-		line := unjoin(autospace(entries[0].line))
-		if err := tt.Click(line); err != nil {
-			t.Fatalf("reduce=%v: %v (%q)", reduce, err, texts(tt))
+		// D524: the brief's row says the task's title, as the header does: click the row itself.
+		e := entries[0]
+		row, ok := tt.AccessByRole(ui.RoleButton, spoken(app.L, e.tag, autospace(e.line), e.at))
+		if !ok {
+			t.Fatalf("reduce=%v: no row for the brief (%q)", reduce, texts(tt))
 		}
+		tt.ClickAt(row.Bounds.X+row.Bounds.W/2, row.Bounds.Y+row.Bounds.H/2)
 		// The first row in view, frame by frame: an eased run of rows that rests on the turn.
 		var firsts []int
 		for i := 0; i < 40; i++ {

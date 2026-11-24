@@ -64,6 +64,7 @@ func PebbleDark() *Tokens {
 	t.Clay = hex("#2A221B")
 	t.Looks = map[string]ui.Color{"sand": hex("#4A3A2A"), "sage": hex("#30452F"), "sky": hex("#263D53"), "plum": hex("#45304A"), "apricot": hex("#573622")}
 	t.LookRim = hex("#F6EBDD").Alpha(0.08)
+	t.ClayMark = hex("#C9A07C")
 	t.Notebook.Pages = hex("#F6EBDD")
 	t.Notebook.Shine = hex("#FFFFFF").Alpha(0.35)
 	// The Devices sea at dusk: the same scene, the light gone warm and low.

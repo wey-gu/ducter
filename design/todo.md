@@ -1243,9 +1243,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **A long session, after D320**: (1) scroll a real 50,000-event loop on the author's VPS home
-      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) The
-      locator's rail draws one tick per turn: past about 2,000 turns the ticks merge; consider
-      drawing it by time or by density. (3) The browser app a run of steps is in no longer
+      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) Done by
+      D524: the rail draws one mark per landmark and keeps the one that matters where two touch;
+      still owed: whether a long quiet stretch should take more room (the rail by time). (3) The browser app a run of steps is in no longer
       carries from the turn before (a turn is built only when drawn). (4) Key redaction is slow
       on one megabyte-long token (a base64 blob): the cut at 20,000 characters bounds it at about
       half a second; a faster redaction for long tokens. (5) Placeholders are blank; a faint

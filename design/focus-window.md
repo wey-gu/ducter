@@ -374,7 +374,8 @@ What the window writes is what the user reads when they open the task, in one co
   turn is built from its own events only when it is drawn and kept until they change
   (`slotsOf`), so a page or a live event builds only its own turns; a turn with nothing held is
   a blank of the index's height; a turn of more than 1,000 events is built from its newest.
-  The locator draws the whole session from the index; a click on a turn far away goes there at
+  The locator draws the whole session from the index (D524: one mark per landmark, by what it is
+  and whose; `ui.md` "The locator's marks"); a click on a turn far away goes there at
   once, its blank first, and it is tinted when it lands (a near one keeps D284's glide). A task
   nobody has open keeps its newest 2,000. A text over 20,000 characters (an output over 8,000)
   is cut, with **显示全部（{n} 字）/ Show all ({n} characters)** opening the whole, read from its

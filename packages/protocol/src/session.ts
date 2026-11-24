@@ -21,6 +21,18 @@ export interface IndexMark {
   at?: string;
   /** D325: a report's first line, cut at MARK_MAX, its keys hidden (the locator's list reads it). */
   w?: string;
+  /** D524: how a report stood, when not progress: done, failed, or an ask (needs input, blocked). */
+  s?: ReportMarkState;
+}
+
+/** D524: a report's state as the locator marks it: a result, a failure, an ask that waits for you. */
+export type ReportMarkState = "done" | "failed" | "ask";
+
+/** D524: a report's state as its mark says it (progress says nothing). */
+export function reportMarkState(state: string | undefined): ReportMarkState | undefined {
+  if (state === "done" || state === "failed") return state;
+  if (state === "needs_input" || state === "blocked") return "ask";
+  return undefined;
 }
 
 /** One turn of a session (D320): what opened it, its span of the stream, how tall it draws. */
@@ -138,11 +150,11 @@ export function indexAdd(ix: SessionIndex, ev: LogEvent): boolean {
   t.end = ev.seq;
   t.n++;
   t.endAt = ev.ts;
-  const mark = (k: IndexMark["k"], w?: string) => (t.marks ??= []).push({ seq: ev.seq, k, at: ev.ts, ...(w ? { w } : {}) });
+  const mark = (k: IndexMark["k"], w?: string, st?: ReportMarkState) => (t.marks ??= []).push({ seq: ev.seq, k, at: ev.ts, ...(w ? { w } : {}), ...(st ? { s: st } : {}) });
   if (ev.kind === "report") {
     ix.lastReport = ev.seq;
     const line = ((ev.body as Bodies["report"]).summary ?? "").split("\n").map((l) => l.trim()).find((l) => l) ?? "";
-    mark("report", line ? redact(cut(line, MARK_MAX)) : undefined);
+    mark("report", line ? redact(cut(line, MARK_MAX)) : undefined, reportMarkState((ev.body as Bodies["report"]).state));
   } else if (ev.kind === "checkpoint") {
     // D349: a saved note is one quiet line, not its words (unless it said them, already counted).
     const n = (ev.body as Bodies["checkpoint"]).text?.trim().length ?? 0;

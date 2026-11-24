@@ -40,7 +40,7 @@ func locatorWords(a *App, task *store.Task) []landmarkWords {
 	lms := a.locatorLandmarks(task)
 	out := make([]landmarkWords, len(lms))
 	for i := range lms {
-		out[i] = a.landmarkWords(&lms[i], a.Now())
+		out[i] = a.landmarkWords(task, &lms[i], a.Now())
 	}
 	return out
 }

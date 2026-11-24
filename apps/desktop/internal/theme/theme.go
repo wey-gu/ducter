@@ -89,6 +89,11 @@ type Tokens struct {
 	// sky, plum, apricot); LookRim their hairline. The web's --look-*.
 	Looks   map[string]ui.Color
 	LookRim ui.Color
+	// ClayMark is a partner's clay as a small drawn mark (D524, the
+	// locator): the default's sand clay deepened so it never reads as the
+	// person's orange; another partner's is it recoloured (LookTone). The
+	// web's --clay-mark.
+	ClayMark ui.Color
 	// Notebook is the partner's own blue notebook (its clay art's), drawn as
 	// Settings › 记忆 / Memory's mark (D257); the web's --notebook-*.
 	Notebook NotebookTokens
@@ -361,6 +366,7 @@ func Pebble() *Tokens {
 		Clay:     hex("#FFF4E6"),
 		Looks:    map[string]ui.Color{"sand": hex("#F1DCC0"), "sage": hex("#D3E6CB"), "sky": hex("#CFE2F3"), "plum": hex("#EAD5EA"), "apricot": hex("#FFD9B8")},
 		LookRim:  hex("#2B2118").Alpha(0.08),
+		ClayMark: hex("#9C6B45"),
 		Notebook: NotebookTokens{Cover: hex("#5FA6E4"), Ledge: hex("#3A78B0"), Pages: hex("#FFF6EA"), Shine: hex("#FFFFFF").Alpha(0.55), Strap: hex("#9A6236"), Clasp: hex("#F0C879")},
 		Isles: IslesTokens{
 			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),

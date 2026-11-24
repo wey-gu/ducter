@@ -364,7 +364,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				// board shows them all, its computer when it isn't the usual.
 				meta := a.whereMeta(task)
 				if rounds != nil && rounds.EveryMs > 0 {
-					meta = append(meta, a.L.T("og.round.every", a.duration(time.Duration(rounds.EveryMs)*time.Millisecond)))
+					meta = append(meta, a.L.T("og.round.every", a.rhythm(time.Duration(rounds.EveryMs)*time.Millisecond)))
 				}
 				for _, m := range meta {
 					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)

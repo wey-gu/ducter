@@ -718,9 +718,11 @@ func (a *App) handList(c *ui.Context) {
 		if len(its) == 0 {
 			continue
 		}
-		label := a.L.T("pile.g." + g)
+		var label string
 		if g == "do" {
 			label = a.L.T("pile.g.do", a.personaName())
+		} else {
+			label = a.L.T("pile.g." + g)
 		}
 		uiText(c.Key("gh:"+g), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(t.S4, t.S1, 0, t.S1).Role(ui.RoleText)
 		for _, it := range its {
@@ -1140,7 +1142,7 @@ func (a *App) handHowCol(c *ui.Context) {
 			}
 		}
 		for _, s := range how.Shapes {
-			line := a.L.T("hand.shape." + s + ".line")
+			var line string
 			switch s {
 			case "one_by_one":
 				if how.Repo != "" {
@@ -1150,6 +1152,8 @@ func (a *App) handHowCol(c *ui.Context) {
 				}
 			case "side_by_side":
 				line = a.L.T("hand.shape.side_by_side.line", max(1, how.Cap))
+			default:
+				line = a.L.T("hand.shape." + s + ".line")
 			}
 			why := ""
 			if s == "plan" && s == how.Shape {

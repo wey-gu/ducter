@@ -97,7 +97,7 @@ export function ComposerBox(p: {
   const ready = p.canSend ?? !!p.value.trim();
   const state = p.sending ? "sending" : ready ? "ready" : "empty";
   return (
-    <div class={`composer${p.sending ? " is-sending" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
+    <div class={`composer${p.before ? "" : " bare"}${p.sending ? " is-sending" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
       {p.before}
       <AutoText id={p.id} value={p.value} onInput={p.onInput} onEnter={() => state === "ready" && p.onSend()} label={p.label} placeholder={p.placeholder} autoFocus={p.autoFocus} disabled={p.sending} />
       {p.tools}

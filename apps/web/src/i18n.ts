@@ -3593,6 +3593,29 @@ export function guardEmptyArgs(fn: ((key: string, arg: number) => void) | undefi
   onEmptyArg = fn;
 }
 
+/** Tests (test/guard.ts): hears copy drawn with a placeholder left unfilled (a raw %s on screen; D519). */
+let onMissingArg: ((key: string, verbs: number, args: number) => void) | undefined;
+export function guardMissingArgs(fn: ((key: string, verbs: number, args: number) => void) | undefined) {
+  onMissingArg = fn;
+}
+
+/** How many arguments a format prints: %s/%d in order, or the highest %[n]s (%% none). */
+const verbsSeen = new Map<string, number>();
+export function verbsOf(fmt: string): number {
+  const known = verbsSeen.get(fmt);
+  if (known !== undefined) return known;
+  if (!fmt.includes("%")) return 0;
+  let i = 0;
+  let most = 0;
+  fmt.replace(/%(?:\[(\d+)\])?([sd%])/g, (_m, pos: string | undefined, verb: string) => {
+    if (verb === "%") return "";
+    most = Math.max(most, pos ? Number(pos) : ++i);
+    return "";
+  });
+  verbsSeen.set(fmt, most);
+  return most;
+}
+
 /** Which of n arguments a format prints (%s in order, %[2]s by position; %% none). */
 export function usedArgs(fmt: string, n: number): boolean[] {
   const used = new Array<boolean>(n).fill(false);
@@ -3630,6 +3653,11 @@ export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
     let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
     if (handheld === "ipad") v = onIpad(v);
     else if (handheld === "computer") v = onComputer(v);
+    if (onMissingArg) {
+      // D519: a placeholder printed with no argument for it (「%s 要求修改」 reached a person).
+      const want = verbsOf(v);
+      if (want > args.length) onMissingArg(key, want, args.length);
+    }
     if (!args.length) return v;
     if (onEmptyArg) {
       const used = usedArgs(v, args.length);

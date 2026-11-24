@@ -1581,6 +1581,10 @@ var OnEmptyArg func(key string, arg int)
 // never reaches a person (D370); the hook makes the call site get fixed.
 var OnExtraArg func(key string, verbs, args int)
 
+// OnMissingArg, when set (tests), hears copy drawn with a placeholder left
+// unfilled: 「%s 要求修改」 reached a person on a babysitter's row (D519).
+var OnMissingArg func(key string, verbs, args int)
+
 // verbCount is how many arguments a format prints in order, or -1 when it
 // picks them by position (%[2]s), where Sprintf never reports extras.
 func verbCount(format string) int {
@@ -1694,7 +1698,17 @@ func (s *Strings) T(key string, args ...any) string {
 		}
 	}
 	if len(args) == 0 {
+		if OnMissingArg != nil {
+			if n := verbCount(v); n != 0 {
+				OnMissingArg(key, n, 0)
+			}
+		}
 		return v
+	}
+	if OnMissingArg != nil {
+		if n := verbCount(v); n > len(args) {
+			OnMissingArg(key, n, len(args))
+		}
 	}
 	if OnEmptyArg != nil {
 		used := usedArgs(v, len(args))

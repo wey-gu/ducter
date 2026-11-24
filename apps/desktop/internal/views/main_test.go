@@ -27,7 +27,27 @@ func TestMain(m *testing.M) {
 		extra[fmt.Sprintf("%s (prints %d, given %d)", key, verbs, args)] = true
 		mu.Unlock()
 	}
+	missing := map[string]bool{}
+	i18n.OnMissingArg = func(key string, verbs, args int) {
+		mu.Lock()
+		missing[fmt.Sprintf("%s (prints %d, given %d)", key, verbs, args)] = true
+		mu.Unlock()
+	}
 	code := m.Run()
+	if len(missing) > 0 {
+		keys := make([]string, 0, len(missing))
+		for k := range missing {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		fmt.Fprintf(os.Stderr, "FAIL: copy drawn with a placeholder left unfilled (a raw %%s on screen; D519):\n")
+		for _, k := range keys {
+			fmt.Fprintf(os.Stderr, "  %s\n", k)
+		}
+		if code == 0 {
+			code = 1
+		}
+	}
 	if len(extra) > 0 {
 		keys := make([]string, 0, len(extra))
 		for k := range extra {

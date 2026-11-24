@@ -151,7 +151,9 @@ line.
 - **D490 on Codex.** The [[later]] mark and the preamble by position were measured on haiku only (a Codex run uses
   the person's own Codex sign-in). Owed: one Codex eval (`--harness codex`) against D462's 179–189, and the two
   shapes no longer collapsed that D462 saw only on Codex (the same ack twice before task_open; a preamble before a
-  lookup), each said twice now. Trigger: the next eval round with a Codex account set aside for it.
+  lookup), each said twice now. The 0.171 run (2026-11-24, 241/281) found one: parallel task_opens gave a second,
+  title-made ack; D512 keeps one ack a turn for its opens. The preamble before a lookup is still owed. Trigger: the
+  next eval round with a Codex account set aside for it.
 - **The main-AI mechanisms research/210 ranked after D490's** (§3, items 6–9), each with its eval first and an
   A/B read with `eval:compare`: a record of what the partner's session has seen, replayed with an honest preamble when unknown; a turn's
   replay decided from the harness's protocol state, never error text; keeping a subscription cache warm in the
@@ -3100,7 +3102,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **What Codex still gets wrong that is the model's, not the harness's:** a needs_input relay that adds its own question ("要现在付 73 元吗？"), rich answers on GPT-6-Luna (a chart or a choices question that becomes a task_send or a guess), Bridge lines that explain Spaces, the noticed answer's times. The persona is not forked per model; measure again on the next Codex model before forking. Trigger: a Codex eval below 185, or someone on Codex meeting one of these live.
 - [ ] **The correction round's cost:** a line that promised work with no tool costs one more model turn. Count it live (the partner's stats) before tuning the promise shapes. Trigger: a week of the partner on Codex on hel.
-- [ ] **Codex's read-only shell for the partner:** the partner on Codex keeps a read-only shell (its only way to read a file); the persona now says never to look in the place first. If an eval sees `commandExecution` again, turn `features.shell_tool` off for the partner and give it a read tool. Trigger: one eval run that uses it.
+- [x] **Codex's read-only shell for the partner** (built, D512): the 0.171 eval saw `commandExecution` in 3 scenarios, so the partner runs with `features.shell_tool=false`. No read tool was added: none of the scenarios needed a file read (the shell ran lookups its own tools already do).
+- [ ] **A read tool for the partner on Codex** (D512): with the shell off, the partner on Codex reads no file at all (Claude Code's partner keeps Read/Grep/Glob). Give it a small read-only Ducter tool only when a scenario or a live turn needs one. Trigger: an eval or live turn where the partner on Codex had to read a file and couldn't.
+- [ ] **Codex: the clean setup's other holes** (D512). (a) A person's server whose name has a dot stays on: Codex splits a `-c` key on every dot (codex-rs 0.171 `apply_toml_override`), so `mcp_servers."my.server".enabled=false` never matches; fold the person's servers turned off into the one `mcp_servers={…}` table Ducter's own servers ride in. (b) A clean Codex session with an `mcp__` tool denial gets OAR's thread `mcp_servers` table back (`withCodexToolDenials`), and with it the person's servers; none does today. (c) Codex defers MCP tools by model (gpt-6.2-sol: every server behind tool search, Ducter's included); measure the ack latency it costs the partner. Trigger: (a) a person with such a server; (b) the first clean Codex session that denies a tool; (c) the next Codex latency run.
 
 ## Settings as the partner's report (D469)
 

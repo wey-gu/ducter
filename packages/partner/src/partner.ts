@@ -198,6 +198,7 @@ interface TurnState {
   opensSeen: number;
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
+  openAcked?: boolean; // D512: a task_open's ack went out this turn (a later open says nothing of its own)
   looked?: boolean; // D380: a quick web look went out this turn (a short line after it is filler)
   handed?: boolean; // D385: to-dos were handed over after a line was said this turn (a short line after it repeats it)
   asked?: boolean; // the partner made a decision card (ask) this turn
@@ -1389,6 +1390,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     t.unboundAck = appendAck(t, text);
     return t.unboundAck;
   };
+  /**
+   * D512: a task_open's line this turn: the line written before it, else (the turn's first open
+   * only) one from its title. Parallel opens in one turn (many-asks-places-en: three at once) share
+   * the one ack; a later one gets its own job line and says nothing.
+   */
+  const openLine = (t: TurnState, title: string): { jobId: string } => {
+    const ack = claimAck(t) ?? (t.openAcked ? { jobId: newId("job") } : appendAck(t, ackFor(t, title)));
+    t.openAcked = true;
+    return ack;
+  };
 
   // ---------- what the user sees while waiting (D104) ----------
   // Only a turn the user is waiting on (it answers their message) shows; each tool call becomes a
@@ -1517,7 +1528,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (gk) (turn.groupsSeen ??= new Set()).add(gk);
           // D462: the same task_open again this turn (a duplicate call) says nothing of its own.
           const again = typeof title === "string" && !!turn.ackedTitles?.has(title.trim());
-          if (!ack && !laterPart && !again && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, ackFor(turn, title.trim()));
+          if (ack) turn.openAcked = true;
+          else if (!laterPart && !again && !turn.openAcked && typeof title === "string" && title.trim()) (turn.unboundAck = appendAck(turn, ackFor(turn, title.trim()))), (turn.openAcked = true);
           if (typeof title === "string" && title.trim()) (turn.ackedTitles ??= new Set()).add(title.trim());
           // Title and place are written, the brief is still coming: start the task now (D120).
           const callId = (ev.raw as { callId?: string } | undefined)?.callId;
@@ -1582,7 +1594,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       prev.used = true;
       prev.brief.reject(new Error("the call names another place"));
     }
-    const jobId = prev?.jobId ?? (claimAck(t) ?? appendAck(t, ackFor(t, title))).jobId;
+    const jobId = prev?.jobId ?? openLine(t, title).jobId;
+    t.unboundAck = null; // this open's line, taken: the next open never shares its job
     let settle!: EarlyOpen["brief"];
     const brief = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
     brief.catch(() => {});
@@ -2631,17 +2644,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
         let ack = claimAck(t);
-        if (!ack) {
+        if (!ack && !t.openAcked) {
           // The MCP call can overtake the streamed text; give the stream a moment.
           const until = Date.now() + ackWaitMs;
-          while (!ack && Date.now() < until) {
+          while (!ack && !t.openAcked && Date.now() < until) {
             await Bun.sleep(10);
             ack = claimAck(t);
           }
         }
         const later = !!groupName && !!groups?.named(core.persona.id, groupName);
         if (!ack && later) ack = { jobId: newId("job") } as NonNullable<typeof ack>;
-        if (!ack) ack = appendAck(t, ackFor(t, args.title));
+        // D512: the turn's ack is out (a parallel open): this one says nothing of its own.
+        if (!ack) ack = openLine(t, args.title);
+        t.openAcked = true;
         t.unboundAck = null;
         t.opensHandled++;
         jobId = ack.jobId;

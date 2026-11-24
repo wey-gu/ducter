@@ -249,6 +249,51 @@ export function codexLeftoverServers(command: string, args: string[], overlay: R
   leftovers.set(key, off);
   return off;
 }
+/**
+ * D512: Ducter's own servers for a clean Codex session, as one `-c mcp_servers={…}` launch
+ * override ahead of the overrides that turn the person's servers off, never as OAR's thread/start
+ * `config.mcp_servers`. Codex's app-server appends a thread's config to the launch's `-c` list
+ * and sets each entry at its dotted path into one layer (codex-rs 0.171.0
+ * config/src/overrides.rs `build_cli_overrides_layer`, app-server/src/config_manager.rs
+ * `load_with_validation`): a whole `mcp_servers` table there replaced the
+ * `mcp_servers.<name>.enabled=false` entries set before it, and the merge with config.toml then
+ * brought every one of the person's servers back (the 0.171 eval: context7, Mem, cua-driver and
+ * node_repl behind tool search, and context7 called). `codex mcp list` never sees a thread's
+ * config, so it showed them off. Here the table comes first and the dotted `enabled=false`
+ * entries land inside it. A header's value rides in the session's env (`env_http_headers`), a
+ * stdio server's env through `env_vars`: no secret in the process's arguments.
+ */
+export function codexOwnServers(servers: McpServer[]): { args: string[]; env: Record<string, string> } {
+  const env: Record<string, string> = {};
+  const key = (k: string) => (/^[A-Za-z0-9_-]+$/.test(k) ? k : JSON.stringify(k));
+  const str = (v: string) => JSON.stringify(v); // a JSON string is a TOML basic string
+  const tables = servers.map((m, i) => {
+    const fields: string[] = [];
+    if ("url" in m && m.url) {
+      fields.push(`url = ${str(m.url)}`);
+      const headers = Object.entries(m.headers ?? {});
+      if (headers.length) {
+        const named = headers.map(([h, v], j) => {
+          const name = `DUCTER_CODEX_MCP_${i}_HEADER_${j}`;
+          env[name] = v;
+          return `${key(h)} = ${str(name)}`;
+        });
+        fields.push(`env_http_headers = { ${named.join(", ")} }`);
+      }
+    } else if ("command" in m) {
+      fields.push(`command = ${str(m.command)}`, `args = [${(m.args ?? []).map(str).join(", ")}]`);
+      const vars = Object.entries(m.env ?? {});
+      if (vars.length) {
+        for (const [k, v] of vars) env[k] = v;
+        fields.push(`env_vars = [${vars.map(([k]) => str(k)).join(", ")}]`);
+      }
+    }
+    fields.push("enabled = true");
+    return `${key(m.name)} = { ${fields.join(", ")} }`;
+  });
+  return { args: tables.length ? ["-c", `mcp_servers={ ${tables.join(", ")} }`] : [], env };
+}
+
 /** `-c` overrides that turn these servers off (a name Codex can't take bare is quoted, as codexCleanArgs does). */
 export function codexServersOff(names: string[]): string[] {
   return names.flatMap((n) => ["-c", `mcp_servers.${/^[A-Za-z0-9_-]+$/.test(n) ? n : JSON.stringify(n)}.enabled=false`]);
@@ -512,7 +557,9 @@ function readOnlyFor(h: HarnessId, a: { disallowed: string[]; launchArgs?: strin
   if (h === "codex") {
     // Under any sandbox codex declines an MCP call not marked readOnlyHint (with approvals off it
     // can't ask; measured: task_open and wait_for refused). See the MCP URL in adaptSpec.
-    return { ...a, launchArgs: [...(a.launchArgs ?? []), "-c", 'sandbox_mode="read-only"'] };
+    // D512: and no shell at all (harness-facts readOnly): under the read-only sandbox the partner
+    // still ran commands (3 scenarios of the 0.171 eval); what a place holds is a task's to read.
+    return { ...a, launchArgs: [...(a.launchArgs ?? []), ...(HARNESS_FACTS.codex.readOnly.value.args ?? []), "-c", 'sandbox_mode="read-only"'] };
   }
   return { ...a, disallowed };
 }
@@ -702,6 +749,15 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     if (!w.supported) throw new Error(`${h} can't run a quick web look (harness-facts webLook)`);
     if (w.args.length) launchArgs = [...(launchArgs ?? []).filter((a, i, all) => a !== "--tools" && all[i - 1] !== "--tools"), ...w.args];
     if (h === "claude-code") disallowed = []; // an allowlist: nothing else is there to deny
+    mcpServers = [];
+  }
+
+  // D512: a clean Codex session takes Ducter's own servers as one launch override placed before
+  // the person's servers are turned off, never as OAR's thread config (codexOwnServers).
+  if (h === "codex" && launchArgs && (clean || spec.userConfiguration === "exclude") && mcpServers.length) {
+    const own = codexOwnServers(mcpServers);
+    launchArgs = [...own.args, ...launchArgs];
+    env = { ...env, ...own.env };
     mcpServers = [];
   }
 

@@ -65,6 +65,16 @@
   and PostCompact hooks and `compact_prompt` exist (binary strings).
 - **Events.** `compaction_started` and `compaction_ended` both reach Ducter.
 - **Browser.** Computer Use works headless under OAR (research/38).
+- **0.171.0: tool search by model, and the clean setup's one table (D512).** A model whose
+  catalog entry supports tool search (`gpt-6.2-sol`) gets every MCP server as a deferred
+  namespace behind tool search and code mode's `exec`; no config switch keeps them direct
+  (`features.tool_search` is removed). The app-server sets a thread's `config` after the launch's
+  `-c` list in one layer, so OAR's thread `mcp_servers` table replaced the clean setup's
+  `enabled=false` entries and the person's servers came back (`codex mcp list` never sees a
+  thread's config). Ducter's own servers now ride in the launch as one `mcp_servers={…}` table
+  ahead of those entries, the bearer through `env_http_headers`. `features.shell_tool=false`
+  drops `exec_command` and `write_stdin`. VERIFIED with `codex debug prompt-input`
+  (`packages/runner/test/codex-prompt-input.test.ts`) and the eval's rollouts.
 
 ## pi 1.4.0–1.5.1 and DeepSeek Harness 0.2.2-rc.1 (D177, research/50)
 

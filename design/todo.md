@@ -30,6 +30,9 @@ line.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
 - [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
+- [ ] **D519: the raw controls left in older views.** D161's guards deny by default now; views that drew raw controls before stand on a ceiling list (web `apps/web/test/controls.test.ts` `OLDER`: 27 files, 93; Mac `shared_controls_all_test.go` `olderViews`: 55 files, 120). Move each onto the shared set and lower its ceiling (the tests fail until it is lowered). *Trigger:* the next visible change to any of those files.
+- [ ] **D519: a Keep's silent fold folds rounds that have a line.** A round the model read as news should stay out of the fold; that is phase 4's recorded judgment (`news`), never a phrase match. *Trigger:* phase 4.
+- [ ] **D519: human eyes on the rounds' lines** (the cheap model's one line per report, zh and en) on hel's review loop. *Trigger:* the release with D519.
 - [ ] **Live on hel** (phase 6): the babysitter and the review loop migrated, a week read for silent-round rates and asks. *Trigger:* the release with D511.
 
 ## The same model another way, after D503 (`where.md` §21, research/219)

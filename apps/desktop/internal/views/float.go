@@ -10,6 +10,7 @@ package views
 // with ShowInactive; this is what it shows and says.
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -456,7 +457,11 @@ func (a *App) floatField(c *ui.Context) {
 				return false
 			})
 		a.micButton(c)
-		if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnAccent, drawSend) {
+		st := sendEmpty
+		if strings.TrimSpace(a.draft) != "" {
+			st = sendReady
+		}
+		if a.sendButton(c, a.L.T("composer.send"), t.ControlMD, st) {
 			if a.floatSend(a.draft) {
 				a.draft = ""
 			}

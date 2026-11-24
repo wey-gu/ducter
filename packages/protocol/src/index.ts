@@ -678,6 +678,9 @@ export interface Bodies {
   task_loop: TaskLoopBody;
   // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
   keep: import("./keeps.ts").KeepBody;
+  // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
+  // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
+  keep_round: { keepId: string; round: string; line?: string; failed?: true };
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -3248,6 +3251,8 @@ export interface OwnedSeen {
  */
 export interface OwnedStanding {
   at: string;
+  /** The PR's own title as GitHub has it (a Keep's held PR is named by it). */
+  title?: string;
   head?: string;
   draft?: boolean;
   /** Each reviewer whose latest decisive review asks for changes: who, when, on which commit, the gist. */

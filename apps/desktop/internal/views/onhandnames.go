@@ -49,8 +49,13 @@ func cols(s string) int {
 
 // sayName is a task named inside a sentence: its short title whole when it
 // fits max columns, else cut at a word's end with "…".
-func sayName(title string, max int) string {
-	s := shortTitle(title)
+func sayName(title string, max int) string { return sayWords(shortTitle(title), max) }
+
+// sayWords is any words shown short (a Keep's title in the rail, D519): whole
+// when they fit max columns, else cut at a word's end with "…" (the web's
+// cutAtWord), parentheses kept.
+func sayWords(text string, max int) string {
+	s := untrail(strings.Join(strings.Fields(text), " "))
 	if cols(s) <= max {
 		return s
 	}

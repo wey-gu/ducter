@@ -581,19 +581,6 @@ func (a *App) glyph(c *ui.Context, size float32, draw func(p *ui.Painter, r ui.R
 	ui.Box(c).Size(size, size).Draw(draw).Shrink(0)
 }
 
-func drawSend(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		var arrow ui.Path
-		arrow.MoveTo(cx, cy+7)
-		arrow.LineTo(cx, cy-7)
-		arrow.MoveTo(cx-6, cy-1)
-		arrow.LineTo(cx, cy-7)
-		arrow.LineTo(cx+6, cy-1)
-		p.StrokePath(&arrow, 2.4, col)
-	}
-}
-
 // drawPrompt is a terminal's prompt: a chevron and a cursor line.
 func drawPrompt(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {

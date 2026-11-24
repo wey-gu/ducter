@@ -600,3 +600,28 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
     </button>
   );
 }
+
+/** D519: a section's name over its card, the quiet label On hand's sections wear (a heading). */
+export function SectionHead(p: { label: string; end?: ComponentChildren }) {
+  return (
+    <h2 class="sec-head">
+      <span class="nm">{p.label}</span>
+      {p.end && <span class="end">{p.end}</span>}
+    </h2>
+  );
+}
+
+/** D519: a small state word on its own tint (a Keep's 照看中, 1 件在等你, 从 11 月 22 日起): on, needs, or plain. */
+export function Tag(p: { text: string; tone?: "on" | "needs" | "" }) {
+  return <span class={`tag${p.tone ? ` ${p.tone}` : ""}`}>{p.text}</span>;
+}
+
+/** D519: a list's time column: one line, tabular figures, one fixed width, so the rows line up (today
+ *  its clock, else its day: format.ts colTime). */
+export function TimeCol(p: { at: string; text: string }) {
+  return (
+    <time class="time-col" dateTime={p.at}>
+      {p.text}
+    </time>
+  );
+}

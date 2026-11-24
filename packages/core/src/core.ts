@@ -66,7 +66,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { createKeeps, keepEndAsk, registerKeepTools, type Keeps } from "./keeps.ts";
+import { createKeeps, keepEndAsk, keepRoundAsk, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -310,7 +310,7 @@ export interface CoreOptions {
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
-  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk };
+  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk };
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; cross?: import("./proactive/cross.ts").CrossAsk; monthTokens?: number; zone?: string };
@@ -1617,6 +1617,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
     });
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
+  if (opts.keeps?.roundAsk) keeps.setRoundAsk(opts.keeps.roundAsk);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
   registerKeepTools(mcp, keeps, () => persona.id);
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
@@ -2583,6 +2584,9 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
+      if (!opts.keeps?.roundAsk)
+        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
       // D226: the harness it really thinks with (D150's fallback included), never the unset default:
       // a Codex-only home once triaged every mail on a Claude Code that wasn't there, and said nothing.
@@ -2630,6 +2634,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
     async stop() {
+      keepsRef?.stop(); // D519: its rounds' reading stops with the home
       ws.stop();
       agentLimits.stop();
       loadout.stop();

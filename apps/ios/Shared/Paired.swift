@@ -19,53 +19,55 @@ enum Paired {
         (Bundle.main.object(forInfoDictionaryKey: "DucterAppGroup") as? String).flatMap { $0.isEmpty || $0.hasPrefix("$(") ? nil : $0 } ?? "group.\(appBundleId)"
     }
 
-    /// The app group's defaults; the process's own when the group isn't there (a build without it).
-    static var defaults: UserDefaults { UserDefaults(suiteName: groupId) ?? .standard }
+    /// The app group's folder (the share outbox lives in it); nil when the build has no group
+    /// (D553: DUCTER_SHARE=0, or a self-signed build that dropped it).
+    static let container: URL? = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 
-    /// The app group's folder (the share outbox lives in it); nil when the build has no group.
-    static var container: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId) }
+    /// The app group's defaults; nil without the group, so the app's copies for the share sheet
+    /// are no-ops in a build that has no share sheet (D553).
+    static var defaults: UserDefaults? { container == nil ? nil : UserDefaults(suiteName: groupId) }
 
     static var base: URL? {
-        get { defaults.string(forKey: "base").flatMap(URL.init(string:)) }
-        set { defaults.set(newValue?.absoluteString, forKey: "base") }
+        get { defaults?.string(forKey: "base").flatMap(URL.init(string:)) }
+        set { defaults?.set(newValue?.absoluteString, forKey: "base") }
     }
 
     static var ways: [Way] {
-        get { defaults.data(forKey: "ways").flatMap { try? JSONDecoder().decode([Way].self, from: $0) } ?? [] }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "ways") }
+        get { defaults?.data(forKey: "ways").flatMap { try? JSONDecoder().decode([Way].self, from: $0) } ?? [] }
+        set { defaults?.set(try? JSONEncoder().encode(newValue), forKey: "ways") }
     }
 
     static var fp: String? {
-        get { defaults.string(forKey: "fp") }
-        set { defaults.set(newValue, forKey: "fp") }
+        get { defaults?.string(forKey: "fp") }
+        set { defaults?.set(newValue, forKey: "fp") }
     }
 
     /// The page's language ("zh" or "en"), so the share sheet speaks as the app does.
     static var locale: String? {
-        get { defaults.string(forKey: "locale") }
-        set { defaults.set(newValue, forKey: "locale") }
+        get { defaults?.string(forKey: "locale") }
+        set { defaults?.set(newValue, forKey: "locale") }
     }
 
     static var personaName: String? {
-        get { defaults.string(forKey: "personaName") }
-        set { defaults.set(newValue, forKey: "personaName") }
+        get { defaults?.string(forKey: "personaName") }
+        set { defaults?.set(newValue, forKey: "personaName") }
     }
 
     /// D513: the person's partners as the home last listed them (GET /api/me), the default first.
     static var partners: [SharePartner] {
-        get { defaults.data(forKey: "partners").flatMap { try? JSONDecoder().decode([SharePartner].self, from: $0) } ?? [] }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "partners") }
+        get { defaults?.data(forKey: "partners").flatMap { try? JSONDecoder().decode([SharePartner].self, from: $0) } ?? [] }
+        set { defaults?.set(try? JSONEncoder().encode(newValue), forKey: "partners") }
     }
 
     /// The partner the last share went to: the picker starts there.
     static var lastPartner: String? {
-        get { defaults.string(forKey: "share.lastPartner") }
-        set { defaults.set(newValue, forKey: "share.lastPartner") }
+        get { defaults?.string(forKey: "share.lastPartner") }
+        set { defaults?.set(newValue, forKey: "share.lastPartner") }
     }
 
     /// Another home, or none: nothing of the old one stays for the share sheet.
     static func clear() {
-        for k in ["base", "ways", "fp", "personaName", "partners", "share.lastPartner"] { defaults.removeObject(forKey: k) }
+        for k in ["base", "ways", "fp", "personaName", "partners", "share.lastPartner"] { defaults?.removeObject(forKey: k) }
     }
 }
 

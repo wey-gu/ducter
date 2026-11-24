@@ -98,6 +98,7 @@
 
 /* Begin PBXFileReference section */
 		08C5B880B5BEE0A2A05E3B60 /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		0AE641496AEA35F447968897 /* DucterNoShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterNoShare.entitlements; sourceTree = "<group>"; };
 		0C6A33AE56013B455E109DCB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		137F965C33EB45EE835A222B /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		1A7065DF49A8E17322541000 /* GlanceWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceWidget.swift; sourceTree = "<group>"; };
@@ -182,6 +183,7 @@
 				55B12901E540FA984F872F21 /* Assets.xcassets */,
 				780B1F8DF10D337E792AF3AD /* Ducter.entitlements */,
 				B916A5E27898761A81FEB28D /* DucterApp.swift */,
+				0AE641496AEA35F447968897 /* DucterNoShare.entitlements */,
 				C36CB42EBD857B565E119BB0 /* GlanceLive.swift */,
 				BC4109D87A8A1115678A1764 /* GlanceSpecimen.swift */,
 				8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */,
@@ -562,10 +564,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Ducter/Ducter.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "$(DUCTER_APP_ENTITLEMENTS_$(DUCTER_SHARE))";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
+				EXCLUDED_SOURCE_FILE_NAMES = "$(DUCTER_SHARE_EXCLUDED_$(DUCTER_SHARE))";
 				INFOPLIST_FILE = Ducter/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -695,10 +698,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Ducter/Ducter.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "$(DUCTER_APP_ENTITLEMENTS_$(DUCTER_SHARE))";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
+				EXCLUDED_SOURCE_FILE_NAMES = "$(DUCTER_SHARE_EXCLUDED_$(DUCTER_SHARE))";
 				INFOPLIST_FILE = Ducter/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

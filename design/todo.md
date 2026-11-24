@@ -9,6 +9,14 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## The share sheet on TestFlight, after D553 (`design/release/ios.md` step 5)
+
+- [ ] **Turn the share extension on: after the portal step, the next release ships it automatically.**
+  The author registers `group.co.nowledge.ducter.ios` on `co.nowledge.ducter.ios` and
+  `co.nowledge.ducter.ios.share` (ios.md step 5); then check the release's iOS job has no D553
+  warning and 分享到 Ducter / Share to Ducter shows in the iPhone's share sheet. Trigger: the portal
+  step.
+
 ## Keys copied between computers, after D539 (`autofill.md` §9, `system.md` "Keys copied between computers")
 
 - [ ] **The first real copy, Mac to hel and haswell.** Trigger: the first release with D539. The

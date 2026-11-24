@@ -174,7 +174,7 @@ jobs:
     needs: meta
     # Xcode 26 / the iOS 26 SDK, which App Store Connect requires for uploads.
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60 # D553: a fallback archives and exports twice
     env:
       # A separate Admin key may be set as ASC_*; otherwise the notary key is used.
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_NOTARY_KEY_ID }}

@@ -35,7 +35,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID)
         INFOPLIST_FILE: Ducter/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Ducter/Ducter.entitlements
+        # D553: DUCTER_SHARE=0 (Config.xcconfig) drops the app group and doesn't embed DucterShare.
+        CODE_SIGN_ENTITLEMENTS: $(DUCTER_APP_ENTITLEMENTS_$(DUCTER_SHARE))
+        EXCLUDED_SOURCE_FILE_NAMES: $(DUCTER_SHARE_EXCLUDED_$(DUCTER_SHARE))
         CODE_SIGN_STYLE: Automatic
         # iPhone and iPad, one universal app (D176).
         TARGETED_DEVICE_FAMILY: "1,2"

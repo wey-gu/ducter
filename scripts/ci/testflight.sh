@@ -8,7 +8,8 @@
 #
 #   DUCTER_TESTFLIGHT_DRY_RUN=1   archive and ad-hoc sign, then stop: proves the Release build
 #                                 compiles and its entitlements resolve, needs no key and touches
-#                                 no Apple account.
+#                                 no Apple account. Builds it twice, with the share sheet and
+#                                 without it (the fallback below), so neither rots.
 #   DUCTER_TESTFLIGHT_PUBLIC=0    upload only: don't add it to "Public Beta" or submit it for review.
 #
 # Signing touches no certificate (D221). The archive is built unsigned and then ad-hoc signed
@@ -21,6 +22,12 @@
 # instead would make a new Apple Development certificate on every throwaway runner, and Apple
 # revokes the oldest when the account fills (the "null null" revocation mail). Cloud-managed
 # certificates need the key's role to be Admin (design/release/README.md).
+#
+# D553: the share sheet (DucterShare, D537) needs the App Group on the app's and the extension's
+# App IDs, a one-time step in the Apple portal (design/release/ios.md step 5). Until it is done the
+# export can't make their profiles; then the app is archived again with DUCTER_SHARE=0 (no
+# extension, no app group) and that is uploaded, with a warning. Any other export error fails as
+# before. Once the portal step is done the first export succeeds and the share sheet ships.
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -77,20 +84,17 @@ case "$SDK" in
   2[0-6].*|27.0*) echo "::warning::iOS SDK $SDK: iPhone Duo will show the app letterboxed until it is built with the iOS 27.1 SDK or later (design/release/ios.md)." ;;
 esac
 
-set -- -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
-  -destination 'generic/platform=iOS' -archivePath "$WORK/$SCHEME.xcarchive" \
-  MARKETING_VERSION="$MARKETING_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-  DEVELOPMENT_TEAM="$TEAM"
-
 ARCHIVE="$WORK/$SCHEME.xcarchive"
 APP="$ARCHIVE/Products/Applications/$SCHEME.app"
+SHARE=1
+STEP5="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-wey-gu/ducter}/blob/main/design/release/ios.md#one-time-setup-in-the-apple-account-the-author-does-this-nothing-was-created"
 
 # Ad-hoc signs every bundle in the archive, innermost first, each with its target's entitlements
 # file with $(VAR) references resolved from the build settings. Export re-signs them for the App
 # Store and keeps these entitlements (aps-environment becomes "production" there).
 adhoc_sign() {
   xcodebuild -showBuildSettings -project "$PROJECT" -alltargets -configuration Release \
-    DEVELOPMENT_TEAM="$TEAM" 2>/dev/null >"$WORK/settings.txt"
+    DEVELOPMENT_TEAM="$TEAM" DUCTER_SHARE="$SHARE" 2>/dev/null >"$WORK/settings.txt"
   find "$APP" -depth \( -name '*.framework' -o -name '*.dylib' -o -name '*.appex' -o -name '*.app' \) |
   while IFS= read -r bundle; do
     name="$(basename "$bundle")"
@@ -125,15 +129,33 @@ adhoc_sign() {
     { echo "the ad-hoc signed app lost its entitlements" >&2; exit 1; }
 }
 
-echo "archiving $SCHEME $MARKETING_VERSION ($BUILD_NUMBER), unsigned"
-xcodebuild archive "$@" CODE_SIGNING_ALLOWED=NO -quiet
-adhoc_sign
-echo "ad-hoc signed with entitlements; no certificate used"
+# Archives unsigned with DUCTER_SHARE=$SHARE, ad-hoc signs, and checks that the share extension
+# and the app group are both in (1) or both out (0).
+archive() {
+  rm -rf "$ARCHIVE"
+  echo "archiving $SCHEME $MARKETING_VERSION ($BUILD_NUMBER), unsigned, DUCTER_SHARE=$SHARE"
+  xcodebuild archive -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+    -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+    MARKETING_VERSION="$MARKETING_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+    DEVELOPMENT_TEAM="$TEAM" DUCTER_SHARE="$SHARE" CODE_SIGNING_ALLOWED=NO -quiet
+  adhoc_sign
+  echo "ad-hoc signed with entitlements; no certificate used"
+  group=0
+  if codesign -d --entitlements - --xml "$APP" 2>/dev/null | plutil -p - | grep -q application-groups; then group=1; fi
+  appex=0
+  if [ -d "$APP/PlugIns/DucterShare.appex" ]; then appex=1; fi
+  [ "$group" = "$SHARE" ] && [ "$appex" = "$SHARE" ] ||
+    { echo "DUCTER_SHARE=$SHARE built the app group=$group, the share extension=$appex" >&2; exit 1; }
+}
+
+archive
 
 if [ "$DRY" = 1 ]; then
   /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' -c 'Print CFBundleShortVersionString' \
     -c 'Print CFBundleVersion' "$APP/Info.plist"
-  echo "dry run OK: nothing signed for distribution, nothing uploaded"
+  SHARE=0
+  archive
+  echo "dry run OK, with and without the share extension: nothing signed for distribution, nothing uploaded"
   exit 0
 fi
 
@@ -168,10 +190,42 @@ cat >"$WORK/ExportOptions.plist" <<EOF
 </plist>
 EOF
 
-echo "signing for the App Store and uploading to App Store Connect"
-# shellcheck disable=SC2086
-xcodebuild -exportArchive -archivePath "$ARCHIVE" \
-  -exportOptionsPlist "$WORK/ExportOptions.plist" -exportPath "$WORK/export" $AUTH
+# Signs and uploads the archive; its output also goes to export.log. POSIX sh has no pipefail, so
+# xcodebuild's status comes back through a file.
+export_upload() {
+  echo "signing for the App Store and uploading to App Store Connect (DUCTER_SHARE=$SHARE)"
+  rm -rf "$WORK/export"
+  # shellcheck disable=SC2086
+  { xcodebuild -exportArchive -archivePath "$ARCHIVE" \
+      -exportOptionsPlist "$WORK/ExportOptions.plist" -exportPath "$WORK/export" $AUTH 2>&1 &&
+      echo 0 >"$WORK/export.rc" || echo $? >"$WORK/export.rc"; } | tee "$WORK/export.log"
+  return "$(cat "$WORK/export.rc")"
+}
+
+# D553: the export failed only because the App IDs lack the App Group (step 5): at least one
+# missing profile (or a profile without the app-group entitlement), and every error line is one of
+# those or the "Authentication failed" Xcode prints with them. Anything else is a real failure and
+# fails the job as before.
+missing_app_group() {
+  grep -q -E "No profiles for '[^']*' were found|com\.apple\.security\.application-groups" "$WORK/export.log" || return 1
+  ! grep 'error:' "$WORK/export.log" |
+    grep -v -E "exportArchive:? (Authentication failed|No profiles for '[^']*' were found|.*com\.apple\.security\.application-groups)" |
+    grep -q .
+}
+
+if ! export_upload; then
+  if ! missing_app_group; then
+    echo "the export failed (above), and not for the App Group (D553): no fallback" >&2
+    exit 1
+  fi
+  echo "::warning::iPhone app: this TestFlight build leaves out the share extension (Share to Ducter). The export couldn't make profiles with the App Group, so the app was rebuilt without it (DUCTER_SHARE=0). Register group.co.nowledge.ducter.ios on co.nowledge.ducter.ios and co.nowledge.ducter.ios.share once, design/release/ios.md step 5: $STEP5 ; the next release then ships it by itself."
+  SHARE=0
+  archive
+  export_upload
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    echo "iPhone app uploaded **without the share extension**: the App Group isn't on the App IDs yet ([ios.md step 5]($STEP5))." >>"$GITHUB_STEP_SUMMARY"
+  fi
+fi
 
 echo "uploaded $SCHEME $MARKETING_VERSION ($BUILD_NUMBER). App Store Connect processes it for"
 echo "TestFlight in about 5-15 minutes; internal testers get it as soon as it is processed."

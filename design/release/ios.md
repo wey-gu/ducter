@@ -101,16 +101,26 @@ xcrun altool --upload-app -f "$RUNNER_TEMP/export/Ducter.ipa" -t ios \
    APNs key on the home, and `DUCTER_PUSH_RELAY = ` (empty) in `Local.xcconfig` so the app doesn't
    register with Nowledge's relay. People who install the TestFlight build need nothing: their
    home sends through the relay.
-5. **App Groups (D537), once.** The export's automatic signing (`-allowProvisioningUpdates` with the
-   API key) is expected to register `group.co.nowledge.ducter.ios`, turn on App Groups for
-   `co.nowledge.ducter.ios` and register `co.nowledge.ducter.ios.share` with it (INFERRED: Xcode's
-   automatic signing does this for capabilities in the entitlements; not yet seen on this account).
-   If the release's TestFlight job fails at export with a profile that lacks
-   `com.apple.security.application-groups`: Certificates, Identifiers & Profiles → Identifiers → +
-   → App Groups → `group.co.nowledge.ducter.ios`; then the App IDs `co.nowledge.ducter.ios` and
-   `co.nowledge.ducter.ios.share` → App Groups → Configure → that group; run the release's iOS job
-   again. The TestFlight job never blocks a release. `ios.yml` run by hand with `testflight=true`
-   checks the signing path without a release.
+5. **App Groups (D537), once. Not done yet.** The export's automatic signing
+   (`-allowProvisioningUpdates` with the API key) does **not** register them on this account
+   (VERIFIED, releases 0.1.54 on: `exportArchive Authentication failed`, `No profiles for
+   'co.nowledge.ducter.ios' were found`, the same for `.share`). By hand: Certificates, Identifiers
+   & Profiles → Identifiers → + → App Groups → `group.co.nowledge.ducter.ios`; then the App IDs
+   `co.nowledge.ducter.ios` and `co.nowledge.ducter.ios.share` (register `.share` first if it is
+   missing) → App Groups → Configure → that group.
+
+   **Until then the iPhone app ships without the share sheet (D553).** `testflight.sh` exports the
+   full app first; when the export fails with only those errors (missing profiles, plus the
+   "Authentication failed" Xcode prints with them, or a profile without
+   `com.apple.security.application-groups`), it archives again with `DUCTER_SHARE=0`
+   (`Config.xcconfig`: the app without `DucterShare.appex` and without the app group, its
+   entitlements from `Ducter/DucterNoShare.entitlements`) and uploads that, with a `::warning::`
+   and a line in the job summary pointing here. Any other export error fails the job as before.
+   The app without the group keeps its pairing to itself (`Paired` writes nothing) and its share
+   outbox is never filled. Nothing to switch back: once the portal step is done, the next release's
+   first export succeeds and the share sheet ships. The dry run (`ios.yml`) archives both ways,
+   checking that the extension and the group are both in or both out. `ios.yml` run by hand with
+   `testflight=true` checks the signing path without a release.
 6. **TestFlight testers.** App Store Connect → the app → TestFlight → Internal Testing → add
    yourself. Internal builds need no review.
 7. **Public beta.** An external group named **Public Beta** with a public link

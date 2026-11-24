@@ -133,7 +133,7 @@ file). `ShareActivity` is a native bottom sheet over the dimmed app the thing ca
 Pebble.kt: the partner in its own clay (LOOK_CLAY as a colour matrix) and **发给{name}**, what is going
 (a link card, the words, up to 10 pictures in a row, a card per file as D286 draws it), the note with
 the keyboard up, **发给** with each partner as a clay chip on its ledge when there are several (starting
-on the last one used; never a pill), **取消** and **发送**. Nothing leaves the
+on the last one used; never a pill), **发送** first, on the left, then **取消** (ui.md "Buttons"). Nothing leaves the
 phone before Send. Pictures are made ready on the phone as D206 does; files go as they are, up to
 50 MB. Every share goes first into the app's own outbox (`files/outbox/<clientId>/`), then
 `POST /api/media` and `POST /api/share` with the paired token, trying the home's other ways (D293)

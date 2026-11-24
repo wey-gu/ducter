@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.55 - 2026-11-25
+
+<!-- whats-new
+zh: 设置每一页重新打磨：伙伴用「我」说话，排版更整齐
+en: Every Settings pane polished: your partner speaks as itself, rows line up
+-->
+
+**Settings, every pane**
+- Your partner speaks as itself everywhere in Settings ("每个任务我挑…", "跟我说一条规则…"), and
+  Passwords and cards asks tasks to come to you for keys.
+- Choices with many options become a menu instead of a crowded row; Notifications, Appearance and
+  This computer put their options beside the words, as on the Mac.
+- Your computers line up on Overview and Where it runs, and a browser window is no longer listed
+  as a place. Accounts puts the main button first.
+
+**iPhone builds keep coming**
+- Until the share extension's App Group is set up for this app, the iPhone build ships without it
+  instead of not shipping.
+
 ## 0.1.54 - 2026-11-25
 
 <!-- whats-new

@@ -3,7 +3,7 @@
 import type { ServerWebSocket } from "bun";
 
 /**
- * scopes: the bot token's scopes as Slack lists them in x-oauth-scopes (D527; absent: no header).
+ * scopes: the bot token's scopes as Slack lists them in x-oauth-scopes (D531; absent: no header).
  * A post with a username or icon_url without chat:write.customize answers missing_scope.
  */
 export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: string[] } = {}) {
@@ -129,7 +129,7 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
       envelope("events_api", { event: { type: "message", subtype: "file_share", channel: `D${user}`, channel_type: "im", user, text: "", ts: t, files: [{ id: "Fx", name, size: bytes.length, url_private_download: `http://127.0.0.1:${server.port}${path}` }] } });
       return t;
     },
-    /** D527: user @-mentions the bot in a channel it was added to (Slack's app_mention event). */
+    /** D531: user @-mentions the bot in a channel it was added to (Slack's app_mention event). */
     mentions(user: string, channel: string, text: string, extra: Record<string, unknown> = {}) {
       const t = nextTs();
       envelope("events_api", { event: { type: "app_mention", channel, user, text: `<@UBOT> ${text}`, ts: t, event_ts: t, ...extra } });
@@ -148,7 +148,7 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
     failNext(method: string, status: number, answer: any, headers?: Record<string, string>) {
       failures.push({ method, status, answer, headers });
     },
-    /** D527: the app reinstalled with other scopes. */
+    /** D531: the app reinstalled with other scopes. */
     setScopes: (s: string[] | undefined) => void (scopes = s),
     stop: () => server.stop(true),
   };

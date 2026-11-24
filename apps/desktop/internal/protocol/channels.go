@@ -18,7 +18,7 @@ type ChannelView struct {
 	Scan *ChannelScan `json:"scan,omitempty"`
 	// D301, WeChat once linked: until when it may still write on its own.
 	OpenUntil string `json:"openUntil,omitempty"`
-	// D527, Slack: the app was made before the current manifest (its own
+	// D531, Slack: the app was made before the current manifest (its own
 	// name and face, @-mentions): Settings asks for a reinstall.
 	Reinstall bool `json:"reinstall,omitempty"`
 }

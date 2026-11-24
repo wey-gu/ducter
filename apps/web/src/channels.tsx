@@ -78,7 +78,7 @@ A.onChannelFrame = (f) => {
 const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : "Telegram");
 const BOTFATHER = "https://t.me/BotFather";
 const SLACK_APPS = "https://api.slack.com/apps?new_app=1";
-/** D527: the partner's face, as Slack shows it per message; the same PNG to upload as the app's icon. */
+/** D531: the partner's face, as Slack shows it per message; the same PNG to upload as the app's icon. */
 const faceOf = () => `https://ducter.ai/faces/${A.partners?.find((p) => p.id === "default")?.look ?? "sand"}.png`;
 
 export function ChatAppsSettings() {
@@ -351,7 +351,7 @@ function Link({ v }: { v: ChannelView }) {
   );
 }
 
-/** D527: an app made before the current manifest: one plain line, the new manifest one press away. */
+/** D531: an app made before the current manifest: one plain line, the new manifest one press away. */
 function Reinstall({ manifest }: { manifest: string }) {
   const [copied, setCopied] = useState(false);
   return (

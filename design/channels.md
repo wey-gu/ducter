@@ -1,7 +1,7 @@
 # Chat apps: Telegram, Slack and WeChat as more windows on the one conversation
 
 > Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
-> D276, D301 (WeChat, §9), D516 (several partners, §10), D527 (Slack as it is today, faces, @ in a channel, §11) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> D276, D301 (WeChat, §9), D516 (several partners, §10), D531 (Slack as it is today, faces, @ in a channel, §11) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
 > (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
 > only.** No real Telegram bot or Slack workspace was used; see "What is not verified".
@@ -20,7 +20,7 @@
   send `/newbot`, name the bot, paste its key). Slack: four, in Slack's own order and words (copy the
   app manifest, create the app from it, install it from OAuth & Permissions and paste the bot token
   shown there, make the app-level token and paste it), then **拿一个码 / Get a code** and send it from
-  **在 Slack 里打开 / Open in Slack** (D527). Nothing to
+  **在 Slack 里打开 / Open in Slack** (D531). Nothing to
   learn first; the group says what goes there and who else can see it (D283).
 
 ## 2. One conversation, many windows (D276 (1))
@@ -94,15 +94,15 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   shows (`slackManifest`: bot user named after the partner, the DM tab, Socket Mode on, token
   rotation off, interactivity, bot scopes `app_mentions:read chat:write chat:write.customize
   im:history im:read im:write users:read files:read files:write`, events `app_mention message.im`,
-  **no user scopes**; D527), an app-level token (`xapp-`,
+  **no user scopes**; D531), an app-level token (`xapp-`,
   `connections:write`) and the bot token (`xoxb-`). Never a user token, never sending as the
   person, no Telegram Business connection. Long polling and Socket Mode: no public address.
 - **Pairing reuses D83's code shape** (8 letters, 10 minutes, one use), minted by Settings, kept
   only as a hash and only in memory (a restart voids it). Telegram: the deep link
   `t.me/<bot>?start=<code>` (or `/start <code>` typed); Slack: the person DMs the code to the
-  bot, opened by `https://slack.com/app_redirect?app=<A>&team=<T>` (D527). One linked account per chat app; a second code is refused while one is linked.
+  bot, opened by `https://slack.com/app_redirect?app=<A>&team=<T>` (D531). One linked account per chat app; a second code is refused while one is linked.
 - **Strangers get silence.** Anyone else, a group, a channel: nothing logged, nothing answered. The
-  one exception is the linked person's @-mention in a Slack channel (D527, §11); a teammate's
+  one exception is the linked person's @-mention in a Slack channel (D531, §11); a teammate's
   mention there is silence too.
   Settings shows **有人在 {app} 找过 {name}，没理他。/ Someone else wrote in {app} to {name}. It
   didn't answer.** at most once a day. Wrong codes lock a sender out after 5 tries in 10
@@ -112,7 +112,7 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
   step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
-  with **拿一个码 / Get a code** (D527), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
+  with **拿一个码 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
   里打开 / Open in Slack** and the code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
   {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
   管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
@@ -253,7 +253,7 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
 - **Not verified:** any of it on a real Telegram bot, Slack workspace or WeChat; whether naive
   people find the name address without the one line.
 
-## 11. Slack as it is today; faces; @ in a channel (D527)
+## 11. Slack as it is today; faces; @ in a channel (D531)
 
 **Built 2026-11-24, checked against the fake Slack and Slack's docs only**; no real workspace.
 

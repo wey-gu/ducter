@@ -110,7 +110,7 @@ export interface ChannelDeps {
   personaName: () => string;
   /** D516: the home's partners, the default first; absent or one: nothing about partners shows. */
   partners?: () => { id: string; name: string }[];
-  /** D527: a partner's name and look (the default's too, with one partner), for a chat app that shows each sender's own. */
+  /** D531: a partner's name and look (the default's too, with one partner), for a chat app that shows each sender's own. */
   face?: (id: string) => { name: string; look: string } | undefined;
   /** The home's https address when it has one (D228), for 在 Ducter 里看看 / Open in Ducter. */
   openUrl?: () => string | undefined;
@@ -170,7 +170,7 @@ interface Card {
 interface Job {
   kind: ChannelKind;
   who: string;
-  /** D527: the thread under a channel @-mention it answers in. */
+  /** D531: the thread under a channel @-mention it answers in. */
   thread?: string;
   chat: string;
   title: string;
@@ -246,7 +246,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     }
     return undefined;
   };
-  /** D527: the chat app shows each message's own sender (Slack with chat:write.customize): no name in front. */
+  /** D531: the chat app shows each message's own sender (Slack with chat:write.customize): no name in front. */
   const shows = (kind: ChannelKind) => {
     const l = live.get(kind);
     return !!deps.face && !!l?.ch.caps.as && l.bot?.customize !== false;
@@ -415,7 +415,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (l?.trouble) return { ...base, state: "cant_connect", reason: l.trouble };
       if (!l?.up) return { ...base, state: "starting" };
       const until = rec.linked ? openUntil(kind) : undefined;
-      // D527: a Slack app made before chat:write.customize: Settings asks for a reinstall.
+      // D531: a Slack app made before chat:write.customize: Settings asks for a reinstall.
       const reinstall = l.ch.caps.as && (l.bot?.customize === false || l.bot?.reinstall === true);
       return { ...base, state: rec.linked ? "linked" : "unlinked", ...(until ? { openUntil: new Date(until).toISOString() } : {}), ...(reinstall ? { reinstall: true } : {}) };
     });
@@ -441,7 +441,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     const parts = cutPoints(text, max).map(([s, e]) => text.slice(s, e));
     const ids: string[] = [];
     const chat = o.chat ?? acc.chat;
-    // D527: the partner's own name and face, where the app shows a sender per message.
+    // D531: the partner's own name and face, where the app shows a sender per message.
     const face = l.ch.caps.as ? deps.face?.(o.who ?? DEFAULT_PARTNER) : undefined;
     const as = face ? { name: face.name, icon: faceUrl(face.look) } : undefined;
     const run = async () => {
@@ -528,9 +528,9 @@ export function createChannels(deps: ChannelDeps): Channels {
   // ---------- where things go ----------
 
   /** The chat app a turn's answer goes to now: the turn's own, while it is now; else the person's place. */
-  /** chat, thread (D527): a turn started by an @-mention in a Slack channel answers in a thread under it. */
+  /** chat, thread (D531): a turn started by an @-mention in a Slack channel answers in a thread under it. */
   type Route = { kind: ChannelKind; mode: "turn" | "own"; chat?: string; thread?: string };
-  /** D527: the person's @-mentions in a shared channel this run (their seq → the channel and the thread to answer in). */
+  /** D531: the person's @-mentions in a shared channel this run (their seq → the channel and the thread to answer in). */
   const mentionOf = new Map<number, { chat: string; thread: string }>();
   const placeNow = (): ChannelKind | undefined => {
     const r = store.lastRoute();
@@ -800,7 +800,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (id && /^(telegram|slack|wechat):/.test(id)) remember(id);
   }
 
-  /** D527: why the person's words were taken or dropped, at info level (never the words or who). */
+  /** D531: why the person's words were taken or dropped, at info level (never the words or who). */
   const note = (kind: ChannelKind, what: string) => console.info(`[channels] ${kind}: ${what}`);
   const stranger = (kind: ChannelKind) => {
     const at = store.get(kind)?.strangerAt;
@@ -812,7 +812,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   const inbound = async (kind: ChannelKind, m: InMessage) => {
     const rec = store.get(kind);
     if (!rec) return;
-    // Groups and channels are never the person's window: silence. D527: an @-mention of the bot
+    // Groups and channels are never the person's window: silence. D531: an @-mention of the bot
     // in a Slack channel it was added to is, for the linked person only.
     if (!m.direct && !m.mention) return note(kind, "ignored: not a direct message");
     const acc = rec.linked;
@@ -878,7 +878,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}), ...(to !== DEFAULT_PARTNER ? { stream: channelOf(to) } : {}) });
       seqOf.set(clientId, e.seq);
       svcOf.set(e.seq, { kind, chat: m.chat, id: m.id });
-      // D527: its answer goes in a thread under the mention (or in the thread it was made in).
+      // D531: its answer goes in a thread under the mention (or in the thread it was made in).
       if (m.mention) mentionOf.set(e.seq, { chat: m.chat, thread: m.replyTo ?? m.id });
       note(kind, m.mention ? "taken: a mention from the linked person" : "taken: a message from the linked person");
     } finally {
@@ -1013,7 +1013,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (!rec || !live.get(kind)?.up) return { ok: false, reason: "not_connected" };
       if (rec.linked || kind === "wechat") return { ok: false, reason: "busy" }; // WeChat: the scan linked it
       const c = store.newCode(kind);
-      // D527: Slack's link opens the app's messages, where the code goes (the bot as it is now, else as stored).
+      // D531: Slack's link opens the app's messages, where the code goes (the bot as it is now, else as stored).
       const appId = live.get(kind)?.bot?.appId ?? rec.bot?.appId;
       const teamId = live.get(kind)?.bot?.teamId ?? rec.bot?.teamId;
       const link = kind === "telegram" && rec.bot?.handle ? `https://t.me/${rec.bot.handle}?start=${c.raw}` : kind === "slack" && appId ? slackAppLink(appId, teamId) : undefined;

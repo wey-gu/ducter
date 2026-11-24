@@ -12,7 +12,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D527: Slack's setup walked as Slack is today, state by state: the four
+// D531: Slack's setup walked as Slack is today, state by state: the four
 // steps, the code with 在 Slack 里打开 / Open in Slack, linked, and the one
 // line that asks an older app for a reinstall.
 //

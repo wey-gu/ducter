@@ -1,4 +1,4 @@
-// A demo core for D527: Slack's setup as Slack is today, walked in Settings › 聊天软件 / Chat apps.
+// A demo core for D531: Slack's setup as Slack is today, walked in Settings › 聊天软件 / Chat apps.
 // Real core and real web client; Slack is a stub adapter (nothing leaves the machine, no workspace).
 //   DUCTER_PORT=7981 DUCTER_DATA_DIR=$(mktemp -d) DEMO_SLACK=off bun apps/web/demo-slack-setup.ts
 // then open http://127.0.0.1:7981/app#settings=chats.

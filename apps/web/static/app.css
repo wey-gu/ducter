@@ -11920,7 +11920,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .chat-aside .chat-chip + .btn.text {
   margin-inline-start: 0;
 }
-/* D527: two quiet links side by side (Open Slack, Download its face): only the first sits on the column's edge. */
+/* D531: two quiet links side by side (Open Slack, Download its face): only the first sits on the column's edge. */
 .chat-aside .btn.text + .btn.text {
   margin-inline-start: 0;
 }

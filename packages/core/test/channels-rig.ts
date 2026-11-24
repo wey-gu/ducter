@@ -27,7 +27,7 @@ export async function waitFor<T>(fn: () => T | undefined | false | null, ms = 40
   }
 }
 
-export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[]; /** D527: each partner's look (Slack's per-message face). */ looks?: Record<string, string>; slackScopes?: string[] } = {}) {
+export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[]; /** D531: each partner's look (Slack's per-message face). */ looks?: Record<string, string>; slackScopes?: string[] } = {}) {
   const t = tempDir();
   const clock = new FakeClock(Date.parse("2026-11-16T04:00:00Z")); // 12:00 in Shanghai
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });

@@ -116,10 +116,10 @@ test("the manifest makes a bot user with DM-only scopes and Socket Mode, never a
   expect(m.settings.interactivity.is_enabled).toBe(true);
   expect(m.oauth_config.scopes.user).toBeUndefined();
   expect(m.oauth_config.scopes.bot).not.toContain("channels:history");
-  // D527: each partner's own name and face; nothing for the person to turn on or off.
+  // D531: each partner's own name and face; nothing for the person to turn on or off.
   expect(m.oauth_config.scopes.bot).toContain("chat:write.customize");
   expect(m.settings.token_rotation_enabled).toBe(false);
-  // D527: the person can @ the partner in a channel it was added to.
+  // D531: the person can @ the partner in a channel it was added to.
   expect(m.oauth_config.scopes.bot).toContain("app_mentions:read");
   expect(m.settings.event_subscriptions.bot_events).toEqual(["app_mention", "message.im"]);
 });
@@ -130,7 +130,7 @@ const PARTNERS = [
   { id: "home", name: "小家" },
 ];
 
-test("D527: the code comes with a link that opens the app's messages in Slack", async () => {
+test("D531: the code comes with a link that opens the app's messages in Slack", async () => {
   rig = channelRig({ slackScopes: SCOPES });
   const { hub, sl } = rig;
   expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
@@ -139,7 +139,7 @@ test("D527: the code comes with a link that opens the app's messages in Slack", 
   expect(slackView().reinstall).toBeUndefined();
 });
 
-test("D527: each partner posts under its own name and face; no name in front", async () => {
+test("D531: each partner posts under its own name and face; no name in front", async () => {
   rig = channelRig({ slackScopes: SCOPES, partners: PARTNERS, looks: { default: "sand", home: "sage" } });
   const { sl, log } = rig;
   await rig.linked("slack");
@@ -152,7 +152,7 @@ test("D527: each partner posts under its own name and face; no name in front", a
   expect(String(a.text)).not.toStartWith("小家：");
 });
 
-test("D527: an app made before chat:write.customize posts plainly, with names in front, and Settings asks for a reinstall", async () => {
+test("D531: an app made before chat:write.customize posts plainly, with names in front, and Settings asks for a reinstall", async () => {
   const old = SCOPES.filter((x) => x !== "chat:write.customize");
   rig = channelRig({ slackScopes: old, partners: PARTNERS, looks: { default: "sand", home: "sage" } });
   const { sl, log } = rig;
@@ -178,7 +178,7 @@ test("D527: an app made before chat:write.customize posts plainly, with names in
   expect(two).toMatchObject({ text: "第二句。", username: "小家", icon_url: faceUrl("sage") });
 });
 
-test("D527: no scope list from Slack: it tries the face, and a missing_scope falls back to a plain post and asks for a reinstall", async () => {
+test("D531: no scope list from Slack: it tries the face, and a missing_scope falls back to a plain post and asks for a reinstall", async () => {
   rig = channelRig({ partners: PARTNERS, looks: { default: "sand" } });
   const { hub, sl } = rig;
   expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
@@ -193,7 +193,7 @@ test("D527: no scope list from Slack: it tries the face, and a missing_scope fal
   expect(slackView().state).toBe("linked");
 });
 
-test("D527: the linked person's @-mention in a channel is answered in a thread under it; anyone else's gets nothing", async () => {
+test("D531: the linked person's @-mention in a channel is answered in a thread under it; anyone else's gets nothing", async () => {
   rig = channelRig({ zh: false, slackScopes: SCOPES });
   const { hub, sl } = rig;
   await rig.linked("slack");
@@ -217,7 +217,7 @@ test("D527: the linked person's @-mention in a channel is answered in a thread u
   expect(rig.userMsgs().length).toBe(2);
 });
 
-test("D527: an app without app_mentions:read is asked to reinstall, even with its faces", async () => {
+test("D531: an app without app_mentions:read is asked to reinstall, even with its faces", async () => {
   rig = channelRig({ slackScopes: SCOPES.filter((x) => x !== "app_mentions:read") });
   const { hub, sl } = rig;
   expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);

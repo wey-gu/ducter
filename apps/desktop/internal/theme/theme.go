@@ -173,6 +173,9 @@ type Tokens struct {
 	// for a screen or a notice coming in, Bouncy for the living message
 	// and the equip.
 	Bouncy, Snappy     ui.Animation
+	// Hover is the one row hover (D519): its fill and what it reveals
+	// cross-fade over 140 ms, easing out; nothing moves.
+	Hover ui.Animation
 	PressDur, EnterDur time.Duration
 	// Breathe is one breath of a waiting bead (D279), slower than any
 	// reading rhythm; Pop is the moment a wait comes true.
@@ -414,6 +417,7 @@ func Pebble() *Tokens {
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,
+		Hover:    ui.Animation{Duration: 140 * time.Millisecond},
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Breathe: 3200 * time.Millisecond, Pop: 560 * time.Millisecond,
 		AppearDur: 360 * time.Millisecond,

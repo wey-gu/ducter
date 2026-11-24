@@ -50,8 +50,10 @@ func (a *App) helperSheet(c *ui.Context, h protocol.HelperWork) {
 	}
 	ui.Column(c.Key("helper:"+h.ID)).Width(w).Radius(16).Background(t.Surface).Clip().
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
+		prev, prevIn, prevActs, prevNeeds := a.oh.rowFirst, a.oh.inHelper, a.oh.actsCol, a.oh.needsSheet
+		a.oh.needsSheet = you > 0 // D519: its rows' hover warms within the sheet's ledge
+		defer func() { a.oh.needsSheet = prevNeeds }()
 		a.helperHead(c, h, you, w)
-		prev, prevIn, prevActs := a.oh.rowFirst, a.oh.inHelper, a.oh.actsCol
 		a.oh.inHelper = true
 		// D508: a PR ready to merge offers its merge: the sheet keeps the column for it.
 		a.oh.actsCol = false
@@ -94,9 +96,11 @@ func (a *App) helperHead(c *ui.Context, h protocol.HelperWork, you int, w float3
 	}
 	row := ui.Row(c.Key("head")).Width(w).Gap(14).Padding(padY, 12, padY, 16).MinHeight(64).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(h.Name).Focusable().Tooltip(a.L.T("helper.see", h.Name))
-	if row.Hovered() {
-		row.Background(t.Ink.Alpha(0.03))
+	ground := groundNeutral()
+	if a.oh.needsSheet {
+		ground = groundLedge(&t.NeedsYou)
 	}
+	a.rowHover(c, row, ground, false) // D519
 	row.Children(func() {
 		size := float32(32)
 		if a.compact() {

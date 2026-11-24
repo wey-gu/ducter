@@ -88,16 +88,8 @@ func (a *App) outsideCard(c *ui.Context, it *protocol.OutsideItem, terms []strin
 	busy := ps.adopting == it.Agent+":"+it.ID
 	card := ui.Row(c).Gap(t.S3+2).Padding(t.S3+2, t.S4, t.S3+2, t.S3+2).Radius(t.RadiusLG - 4).AlignItems(ui.Center).
 		Background(t.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(it.Title).Focusable()
-	hover := card.Hovered() || focus
-	lift := float32(0)
-	if hover {
-		lift = 1
-	}
-	k := lift
-	if !c.Preferences().ReduceMotion {
-		k = card.AnimateTo("lift", lift, t.Snappy)
-		card.Translate(0, -2*k)
-	}
+	hover := card.Hovered() || card.FocusWithin() || focus
+	k := a.cardLift(c, card, hover)
 	card.Shadow(0, 2+5*k, 6+12*k, -2, t.Ink.Alpha(0.04+0.06*k)).Shadow(0, 2+2*k, 0, 0, t.Line)
 	card.Children(func() {
 		a.pastPebble(c, "art", it.Kind, "", pastPebble)
@@ -128,7 +120,8 @@ func (a *App) outsideCard(c *ui.Context, it *protocol.OutsideItem, terms []strin
 				}
 			})
 		})
-		if hover || busy {
+		// D519: its actions keep their room and fade in; the words never rewrap.
+		a.revealSlot(c, "reveal", hover || busy, func() {
 			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
 				label := a.L.T("past.continue")
 				if busy {
@@ -139,7 +132,7 @@ func (a *App) outsideCard(c *ui.Context, it *protocol.OutsideItem, terms []strin
 				}
 				a.outsideMore(c, it)
 			})
-		}
+		})
 	})
 	if card.Clicked() && !busy {
 		ps.focus = key

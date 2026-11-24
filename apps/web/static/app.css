@@ -54,6 +54,12 @@
 
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
+  /* D519: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
+     within that tint; never grey. Over --t-hover, easing out; nothing moves. */
+  --row-hover: color-mix(in srgb, var(--surface) 45%, var(--surface-sunken));
+  --row-hover-needs: color-mix(in srgb, var(--surface) 50%, var(--needs-surface));
+  --row-press: color-mix(in srgb, var(--surface) 10%, var(--surface-sunken));
+  --t-hover: 140ms;
   --needs-ink: #8a3a0c;
   --needs-ledge: #f0c29e;
   --working-dot: #4ba8f0;
@@ -233,6 +239,8 @@
     --highlight: #5a4512;
     --highlight-ink: #ffe9a8;
     --needs-surface: #3d2414;
+    --row-hover: color-mix(in srgb, var(--surface) 10%, var(--surface-raised));
+    --row-hover-needs: color-mix(in srgb, var(--surface) 55%, var(--needs-surface));
     --needs-ink: #ffc39b;
     --needs-ledge: #24150b;
     --working-surface: #15283a;
@@ -318,6 +326,8 @@
   --highlight: #5a4512;
   --highlight-ink: #ffe9a8;
   --needs-surface: #3d2414;
+  --row-hover: color-mix(in srgb, var(--surface) 10%, var(--surface-raised));
+  --row-hover-needs: color-mix(in srgb, var(--surface) 55%, var(--needs-surface));
   --needs-ink: #ffc39b;
   --needs-ledge: #24150b;
   --working-surface: #15283a;
@@ -22317,4 +22327,130 @@ html[data-text-size="large"] .brand-mark > svg {
 @media (max-width: 360px) {
   .top:has(.partners-back) .who-face { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
+}
+
+/* ---------- D519: the one row hover ----------
+   Hover never reflows: a row's size, line breaks and positions stay; what it reveals (×, ⋯, Pause)
+   keeps its room or comes in over the time in a fixed slot, and is there for Tab too (opacity
+   only, never display or visibility). The fill warms within the row's ground (--row-hover, or
+   --row-hover-needs on a sheet standing on the needs-you ledge), never grey. A free-standing card
+   lifts by its shadow alone, never by moving (D76). Over --t-hover; reduced motion: no fades. */
+.ocard,
+.trow,
+.onhand-list:not(.room-rail) .ocard {
+  transition: background-color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease);
+}
+.ocard .tacts,
+.ocard .fin-acts,
+.trow .tacts,
+.ocard .ocol > .tacts,
+.ocard .obeat {
+  transition: opacity var(--t-hover) var(--ease);
+}
+@media (hover: hover) {
+  .ocard:hover,
+  .ocard.src-sum:hover,
+  .tcard:hover,
+  .tcompact:hover,
+  button.bcard:hover,
+  .pcard.on,
+  .pcard.open {
+    transform: none;
+  }
+  .onhand-list:not(.room-rail) .ocard:hover,
+  .onhand-list:not(.room-rail) .ocard:has(:focus-visible),
+  .onhand-list:not(.room-rail) .ocard.stopped:hover,
+  .onhand-list:not(.room-rail) .ocard.a-failed:hover {
+    background: var(--row-hover);
+  }
+  .onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard:hover,
+  .onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard:has(:focus-visible),
+  .onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard:hover,
+  .onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard:has(:focus-visible) {
+    background: var(--row-hover-needs);
+  }
+  .trow:hover {
+    background: var(--sunken);
+  }
+}
+/* Revealed in place: always laid out, faded in. */
+.ocard .tacts,
+.onhand-list:not(.room-rail) .ocard .ocol > .tacts {
+  display: flex;
+  opacity: 0;
+}
+.ocard .tacts.on,
+.ocard:hover .tacts,
+.ocard:focus-within .tacts,
+.onhand-list:not(.room-rail) .ocard .ocol > .tacts.on,
+.onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts,
+.onhand-list:not(.room-rail) .ocard:focus-within .ocol > .tacts {
+  opacity: 1;
+}
+/* Over the time where the sheet keeps no action column: the time fades as they come, on the row's
+   own fill (no white patch on a warm hover). */
+.onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard .ocol > .tacts {
+  padding-left: 16px;
+  background: var(--row-hover);
+}
+.onhand-list:not(.room-rail) .ocards.hsheet.needs:not(:has(.ocol > .on)) .ocard .ocol > .tacts {
+  background: var(--row-hover-needs);
+}
+@media (hover: hover) {
+  .ocard:has(.tacts):hover .obeat,
+  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
+    display: block;
+  }
+  .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):hover .obeat,
+  .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):focus-within .obeat {
+    opacity: 0;
+  }
+}
+/* Beside the conversation a row stacks: its Pause comes in over its right end, never under it. */
+.onhand-list.room-side .ocard .ocol > .tacts:not(.on) {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  padding: 0 0 0 16px;
+  background: var(--row-hover);
+  transform: translateY(-50%);
+}
+/* × and ⋯ over the time take the row's hover fill. */
+.onhand-list:not(.room-rail) .ocard .fin-acts {
+  background: var(--row-hover);
+}
+.onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard .fin-acts,
+.onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard .fin-acts {
+  background: var(--row-hover-needs);
+}
+/* A row that shows its own actions: its ⋯ is the last of that group, in its room, faded in. */
+.ocard .oacts .fin-acts,
+.onhand-list:not(.room-rail) .ocard .oacts .fin-acts {
+  position: static;
+  padding: 0;
+  margin-left: 2px;
+  background: none;
+  transform: none;
+}
+.onhand-list:not(.room-rail) .ocards:has(.ocol > .on) .ocard .ocol {
+  width: 15rem;
+}
+@media (max-width: 1099px) {
+  .onhand-list.room-full .ocards:has(.ocol > .on) .ocard .ocol {
+    width: 13.5rem;
+  }
+}
+/* The rail's rows lie on the paper: what they reveal sits on the paper's hover. */
+.trow .tacts {
+  background: linear-gradient(to right, transparent, var(--sunken) 24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocard,
+  .trow,
+  .ocard .tacts,
+  .ocard .fin-acts,
+  .trow .tacts,
+  .ocard .obeat {
+    transition: none;
+  }
 }

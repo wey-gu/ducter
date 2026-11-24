@@ -320,12 +320,12 @@ func (a *App) shelfConfirm(c *ui.Context, m *protocol.AppMeta) {
 	ui.Column(c.Key("confirm")).Gap(t.S2).Padding(t.S3).Radius(t.RadiusMD).Background(t.Failed.Surface).Role(ui.RoleAlert).Children(func() {
 		uiText(c, keepWords(autospace(a.L.T("apps.del.q", m.Name)))).FontSize(t.MD).FontWeight(800).TextColor(t.Failed.Ink)
 		uiText(c, keepWords(autospace(a.L.T("apps.del.body")))).FontSize(t.SM).TextColor(t.Failed.Ink)
-		ui.Row(c.Key("acts")).Gap(t.S2).Justify(ui.End).Children(func() {
-			if a.buttonFor(c, a.L.T("apps.del.no"), m.Name, btnSecondary, t.ControlSM, t.Failed.Surface) {
-				a.shelf.asking = ""
-			}
+		ui.Row(c.Key("acts")).Gap(t.S2).Children(func() {
 			if a.buttonFor(c, a.L.T("apps.del.go"), m.Name, btnPrimary, t.ControlSM, t.Failed.Surface) {
 				a.deleteApp(m)
+			}
+			if a.buttonFor(c, a.L.T("apps.del.no"), m.Name, btnSecondary, t.ControlSM, t.Failed.Surface) {
+				a.shelf.asking = ""
 			}
 		})
 	})

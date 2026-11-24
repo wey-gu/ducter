@@ -12,8 +12,8 @@
 //    reads and writes "channel" and "partner" as its own streams (channel:<id>, partner:<id>), sees
 //    only its own tasks, conversation and waits, registers its tools on its own partner role, and
 //    keeps its own digests, activity and memory port. The default partner keeps the core itself.
-import type { LogEvent, TaskCard } from "@ducter/protocol";
-import type { AppendInput, CoreApi, LogStore, MemIdentity, SpineStore, TaskMemoryPort, TaskRegistry } from "@ducter/protocol/src/internal.ts";
+import type { Brain, HarnessId, LogEvent, TaskCard } from "@ducter/protocol";
+import type { AppendInput, BrainHoldPort, CoreApi, LogStore, MemIdentity, SpineStore, TaskMemoryPort, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import { actingPersona } from "./acting.ts";
 import type { CoreMcpHub } from "./mcp.ts";
@@ -137,6 +137,8 @@ export interface PartnerViewOptions {
   activity: CoreApi["activity"];
   /** Its memory for its own tasks (createPartner sets it). */
   setTaskMemory: (port: TaskMemoryPort | undefined) => void;
+  /** D536: what it thinks with when the person gave it its own (read live); absent: the default partner's. */
+  brain?: () => Brain | undefined;
 }
 
 /** The core as another partner's session sees it. */
@@ -180,12 +182,31 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     onHand: () => core.tasks.onHand(),
     setState: (t, a, r, why) => core.tasks.setState(t, a, r, why),
   };
+  // D536: its own brain, when the person gave it one: its session, digests and looks run on it.
+  const ownBrain = () => o.brain?.();
   const settings = core.settings && {
-    get: () => core.settings!.get(),
+    get: () => {
+      const s = core.settings!.get();
+      const b = ownBrain();
+      return b ? { ...s, brain: b } : s;
+    },
     // Forgetting, correcting and the trusted agents are the default's (Settings › 伙伴), for now.
     setForgetter: () => {},
     setCorrector: () => {},
     setMemState: (s: "connected" | "missing") => core.settings!.setMemState(s),
+  };
+  // D536: the holds as seen from its own agent while it has one, else the default's view of them.
+  const hold = core.brainHold;
+  const asOwn = hold?.as?.(() => ownBrain()?.harness ?? ("claude-code" as HarnessId));
+  const ownHold = () => (ownBrain() && asOwn ? asOwn : undefined);
+  const pick = () => ownHold() ?? hold!;
+  const holdPort: BrainHoldPort | undefined = hold && {
+    now: () => pick().now(),
+    hit: (h) => pick().hit(h),
+    ...(hold.ahead ? { ahead: () => (pick().ahead ?? hold.ahead!)() } : {}),
+    ok: (h) => hold.ok(h),
+    onChange: (fn) => hold.onChange(fn),
+    ...(hold.blind ? { blind: () => hold.blind!() } : {}),
   };
   let taskMemory: TaskMemoryPort | undefined;
   const view: CoreApi = {
@@ -207,9 +228,18 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     dataDir: core.dataDir,
     ...(core.workers ? { workers: core.workers } : {}),
     ...(settings ? { settings } : {}),
-    ...(core.partnerFallback ? { partnerFallback: () => core.partnerFallback!() } : {}),
-    // D435: one hold per agent account, whichever partner's turn found it out.
-    ...(core.brainHold ? { brainHold: core.brainHold } : {}),
+    // D536: with its own brain no D150 fallback applies (it was chosen); only its own agent's hold.
+    ...(core.partnerFallback || core.brainHold
+      ? {
+          partnerFallback: () => {
+            if (!ownBrain()) return core.partnerFallback?.();
+            const to = ownHold()?.now()?.to;
+            return to ? { harness: to } : undefined;
+          },
+        }
+      : {}),
+    // D435: one hold per agent account, whichever partner's turn found it out (D536: seen from its own agent).
+    ...(core.brainHold ? { brainHold: holdPort } : {}),
     ...(core.bodies ? { bodies: core.bodies } : {}),
     ...(core.connections ? { connections: core.connections } : {}),
     ...(o.activity ? { activity: o.activity } : {}),
@@ -227,6 +257,8 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     // person's, so every partner's [devices] line says the same.
     ...(core.homeDevice ? { homeDevice: () => core.homeDevice!() } : {}),
     ...(core.codeOn ? { codeOn: () => core.codeOn!() } : {}),
+    // D538: the person's computer rules and the heavy work on each computer are the household's, not one partner's.
+    ...(core.placement ? { placement: () => core.placement!() } : {}),
     ...(core.agentLimits ? { agentLimits: () => core.agentLimits!() } : {}),
     // D486: who the person's partners are, as this one sees them.
     ...(core.partnersNow ? { partnersNow: () => ({ ...core.partnersNow!(), me: id }) } : {}),

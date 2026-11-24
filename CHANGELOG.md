@@ -1,5 +1,180 @@
 # Changelog
 
+## 0.1.52 - 2026-11-25
+
+<!-- whats-new
+zh: 看守中的规则可以就地改，改了能撤销
+en: Change what Ducter looks after right on its page, and undo it
+-->
+
+**Change a Keep in place**
+- On a Keep's page each rule has 改 / Change: how often it wakes, until when, when it speaks up,
+  its limit, and where and who does it. A change applies at once and can be undone.
+- Edit what you said, and Ducter shows which rules that changes (old struck through, new in bold)
+  before you apply it.
+- Changes show in the rounds as one plain sentence; an undo removes its change, and several within
+  ten minutes become one line.
+
+## 0.1.51 - 2026-11-25
+
+<!-- whats-new
+zh: 手机上从手头的事一点就回到对话；顶栏一行放得下
+en: On a phone, back from On hand lands in the conversation; a one-line header
+-->
+
+**Back to the conversation, on a phone**
+- With several partners, 对话 / Conversation, ‹, Back and a notification always return to the
+  conversation you were in. Your partners' list opens only from their faces or the edge swipe.
+
+**A calmer phone header**
+- One line: your other partners' faces on the left, the partner's name with what waits on you in
+  the middle, and one button on the right for On hand, Apps, Devices and Settings.
+
+## 0.1.50 - 2026-11-24
+
+<!-- whats-new
+zh: 断网也照样能看能发；每个任务显示它自己伙伴的样子
+en: Keeps working through a bad connection; each task shows its own partner
+-->
+
+**Through a bad connection**
+- A short drop says nothing; after a few seconds one quiet line says Ducter is reconnecting. What
+  is on screen stays readable, and the composer never locks.
+- A message sent while offline shows at once with 连上就发出去 / Sends when it's back, survives a
+  reload, and is delivered once when the connection returns. Drafts are kept per partner and task.
+- Reopening the app offline shows your last screen in a moment, instead of an error page.
+- A connection that looks open but is dead is noticed within seconds, not a minute.
+
+**Whose it is**
+- With several partners, every task, card and Keep shows the partner who owns it, its colour and
+  its name ("小玛交给它的事"), whichever partner you are talking to. Every partner's Keeps are on
+  On hand.
+
+**Buttons**
+- The main button comes first on every card, sheet and settings row.
+
+## 0.1.49 - 2026-11-24
+
+<!-- whats-new
+zh: 评审循环会真的把评审发出去；看守中的任务一眼看出下一轮
+en: The review loop posts its reviews; a looked-after task shows its next round
+-->
+
+**The review loop posts its reviews**
+- With your standing word to post reviews, each round posts them itself, including a short
+  comment-only review for a PR with nothing blocking. It never leaves a draft in a report.
+- "This round, review #551 first" reaches the next round and is cleared after it.
+- Anything outside what you allowed becomes a card in Needs you at once, not a line that waits
+  45 minutes.
+
+**A looked-after task, while you read**
+- Scrolled down a long round task, a slim line keeps 看守中, what waits on you, the next round's
+  time and the round number. Tap it to open the Keep.
+- Rounds where nothing changed fold into one quiet line you can open.
+- On a narrow pane the header shows the way back instead of a clipped path.
+
+## 0.1.48 - 2026-11-24
+
+<!-- whats-new
+zh: 切换伙伴即点即到；一个密钥一下复制到你的另一台电脑
+en: Switching partners is instant; copy a key to your other computer in one tap
+-->
+
+**Switching partners, instant**
+- Each partner's conversation stays where you left it, draft included, and appears the moment you
+  tap. On an iPad, an unfolded phone or a phone, the other partners are always one tap away.
+- On a computer or tablet, the partner list can shrink to faces or hide; the button beside it
+  says what it will do.
+
+**Copy a key to your other computer**
+- When a task on hel or haswell needs a key your Mac already has, Ducter asks once: 复制 / Copy.
+  The key travels encrypted between your own computers, is never shown and never enters the
+  chat; each computer's card lists the keys Ducter keeps there, by name, with Remove.
+
+**On hand on a tablet or an unfolded phone**
+- Tapping an item opens that item: something Ducter looks after opens its page, and a task opens
+  at its conversation, not at another task's files.
+- An opened task's head is one line: its state, who works on it, the project. The model and the
+  context sit inside the composer, so the steps get the height.
+
+## 0.1.47 - 2026-11-24
+
+<!-- whats-new
+zh: 每个伙伴可以有自己的模型；任务的每一步看得清清楚楚
+en: Each partner can think with its own model; a task's steps read clearly
+-->
+
+**Each partner, its own model**
+- Give a partner its own AI, model and thinking depth in Settings › 伙伴, or just say it ("小玛用
+  Opus"). Partners you haven't set follow your default.
+
+**A task's steps**
+- An opened task shows each step on one line, with its command or files as small chips and a
+  failure's own words under it. While it works, the step it is on shows what it is doing and for
+  how long.
+- The composer while a task works has only Stop and Send. Hold Option with Return (or right-click
+  Send) to say something after this turn ends.
+
+**Everything that needs you is one tap away**
+- Every count of what waits on you opens the next item, in the conversation or On hand. Esc goes
+  back one level at a time, and the way back is always in the header.
+
+**Fixes**
+- On the Mac, ⌘V pastes a screenshot or a file copied in Finder into the composer (thanks
+  @kikko-me, #68).
+- A handover group with nothing left in it no longer shows a card that opens nothing.
+
+## 0.1.46 - 2026-11-24
+
+<!-- whats-new
+zh: 输入 @ 指一个任务，/ 用一个动作；说一次哪台电脑放什么活
+en: Type @ to point at a task, / to do something; tell Ducter once where work goes
+-->
+
+**@ and / in the composer**
+- Type @ to point at a task, a file, something Ducter looks after, a partner, or a PR. Your
+  partner gets the real thing: its state, its latest report and what it changed.
+- Type / to start a task, look after something, set a reminder or use one of your skills. In a
+  task, / lists that agent's own commands.
+
+**Which computer gets which work**
+- Each computer's card has 关于这台 / About this computer: what it measured of itself (memory,
+  free memory, cores, disk) and what you told Ducter about it.
+- Say once "haswell has lots of memory, put verification there" and every partner places work
+  that way. Heavy work never starts on a computer without the memory for it; it waits and says
+  why.
+
+## 0.1.45 - 2026-11-24
+
+<!-- whats-new
+zh: 看守中的事有了自己的页；Slack 换上伙伴的名字和头像
+en: Looking-after work gets its own page; Slack shows your partner's face
+-->
+
+**Looking after**
+- Each piece of work Ducter looks after opens to its own page: its goal, its rounds, what it
+  holds and what it asks you, with the one composer to talk to it.
+
+**In the background**
+- An opened task shows what it left running in the background in a quiet tray: each item's
+  state and time, and a failure in plain words.
+
+**Smoother lists and marks**
+- Pointing at a row tints it without moving anything around it.
+- The marks beside a long conversation are drawn from the theme, readable in light and dark.
+
+**Back online by itself**
+- The web and phone clients reconnect on their own after your home restarts, instead of asking
+  you to pair again.
+
+**Slack**
+- The setup follows Slack's pages as they are today, step by step. 获得口令 / Get a code links
+  you, with a button that opens the chat with your partner in Slack.
+- Each partner speaks in Slack with its own name and face. Mention it in a channel and it
+  answers in the thread, for you only.
+- After upgrading, paste the new app config into your Slack app's App Manifest page and
+  reinstall the app once; Settings reminds you.
+
 ## 0.1.44 - 2026-11-24
 
 <!-- whats-new

@@ -49,8 +49,29 @@ func cols(s string) int {
 
 // sayName is a task named inside a sentence: its short title whole when it
 // fits max columns, else cut at a word's end with "…".
-func sayName(title string, max int) string {
-	s := shortTitle(title)
+func sayName(title string, max int) string { return sayWords(shortTitle(title), max) }
+
+// noOrphan keeps a wrapped CJK line from ending with one character alone
+// (「…东京的机 / 票」): the last two Han characters, before any "…", are
+// joined so they wrap together (D519). For words drawn on more than one
+// line; the web's noOrphan does the same.
+func noOrphan(s string) string {
+	rs := []rune(strings.ReplaceAll(s, string(wordJoiner), ""))
+	end := len(rs)
+	if end > 0 && rs[end-1] == '…' {
+		end--
+	}
+	if end < 2 || !isHan(rs[end-1]) || !isHan(rs[end-2]) {
+		return s
+	}
+	return string(rs[:end-1]) + string(wordJoiner) + string(rs[end-1:])
+}
+
+// sayWords is any words shown short (a Keep's title in the rail, D519): whole
+// when they fit max columns, else cut at a word's end with "…" (the web's
+// cutAtWord), parentheses kept.
+func sayWords(text string, max int) string {
+	s := untrail(strings.Join(strings.Fields(text), " "))
 	if cols(s) <= max {
 		return s
 	}

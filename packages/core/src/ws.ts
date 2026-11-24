@@ -1,9 +1,9 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
-import { brainNow } from "./brain.ts";
+import { brainNow, brainOptions } from "./brain.ts";
 import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, KeepChange, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -21,7 +21,7 @@ import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
-import type { RulesStore } from "./rules.ts";
+import { placeRuleText, type RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import { firstScreen, partnerScreen, starters, type FirstScreenInput } from "./first-screen.ts";
@@ -36,6 +36,7 @@ import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import type { Partners } from "./partners.ts";
 import { actAs } from "./acting.ts";
+import { cleanRefs, liveRefs, withRefs } from "@ducter/protocol/src/mentions.ts";
 import { appIdeas } from "./app-ideas.ts";
 
 export interface WsData {
@@ -172,6 +173,8 @@ export interface WsDeps {
   handsets?: import("./handset/index.ts").Handsets;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code); absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
+  /** D539: keys copied between the person's computers (the card's Go, Settings' lists). */
+  keyCopy?: import("./key-copy.ts").KeyCopy;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D388: `ducter proactive replay`: a dry engine over the last days of the real accounts. */
@@ -194,6 +197,8 @@ export interface WsDeps {
   /** D486: removes another partner (core's: its session ends too); absent: partners.remove alone. */
   removePartner?: (id: string) => { ok: true } | { ok: false; error: import("./partners.ts").PartnerError };
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; /** D511 */ keeps?: import("./keeps.ts").Keeps; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
+  /** D534: @ and / in the composers (mentions.ts); absent in tests that don't need them. */
+  mentions?: import("./mentions.ts").Mentions;
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
   /**
@@ -379,7 +384,11 @@ export function createWsHandler(deps: WsDeps) {
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
     const helpers = deps.helpers?.views() ?? [];
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}), ...(helpers.length ? { helpers } : {}) };
+    // D536: with more than one partner, what each one's own 想事情用 picker may offer.
+    const many = (deps.partners?.list().length ?? 1) > 1;
+    const options = many ? brainOptions(home, (h) => deps.models?.peek?.("local", h)) : [];
+    if (many) for (const o of options) if (o.harness !== now.harness) refreshBrainModels(o.harness);
+    return { t: "settings", ...v, brainNow: now, ...(options.length ? { brainOptions: options } : {}),...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}), ...(helpers.length ? { helpers } : {}) };
   };
   /** A fresh settings frame to these subscribers, from a change rather than a frame they sent. */
   const pushSettings = (subs: ServerWebSocket<WsData>[]) => {
@@ -620,8 +629,16 @@ export function createWsHandler(deps: WsDeps) {
         if (s.data.partner && !deps.partners?.has(s.data.partner)) delete s.data.partner;
         send(s, partnersFrame(s));
       }
+      // D536: a second partner made (or the last other removed): Settings' pickers come (or go).
+      const many = (deps.partners?.list().length ?? 1) > 1;
+      if (many !== wasMany && deps.settings) {
+        wasMany = many;
+        const subs = [...sockets].filter((ws) => ws.data.settings);
+        if (subs.length) pushSettings(subs);
+      }
     }, batchMs);
   };
+  let wasMany = (deps.partners?.list().length ?? 1) > 1;
   const offPartners = deps.partners?.onChange(partnersChanged);
 
   const unsubscribe = log.subscribe((e) => {
@@ -915,10 +932,14 @@ export function createWsHandler(deps: WsDeps) {
         // D236: a reply carries its quote from the Log; one to an open question answers it.
         // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
+        // D534: what the words refer to with @ or /, resolved to the real objects (only the ones still in the words).
+        const wanted = liveRefs(f.text ?? "", cleanRefs(f.refs));
+        const held = wanted.length && deps.mentions ? await deps.mentions.resolve(wanted).catch(() => []) : [];
+        const refs = held.length ? { refs: held } : {};
         // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
         if (ws.data.partner && deps.partners?.has(ws.data.partner)) {
           // D516: iMessage on a Mac showing it: the bridge marks the turn by its via and answers there.
-          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), stream: channelOf(ws.data.partner) });
+          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...refs, stream: channelOf(ws.data.partner) });
           return;
         }
         // D405: typed in an app's sheet: about that app.
@@ -927,7 +948,7 @@ export function createWsHandler(deps: WsDeps) {
         // D511: typed on a Keep's page: about that Keep (the partner changes it with keep_change).
         const kp = typeof f.keep === "string" ? deps.past?.keeps?.get(f.keep) : undefined;
         const keep = kp ? { keep: { id: kp.keepId, title: kp.title } } : {};
-        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app, ...keep });
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app, ...keep, ...refs });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "partners": {
@@ -942,7 +963,7 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "partner_set": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}) });
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}), ...(f.brain !== undefined ? { brain: f.brain } : {}) });
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_remove": {
@@ -968,6 +989,13 @@ export function createWsHandler(deps: WsDeps) {
         // waits in memory for that one fill. Go without it is refused, so nothing is half-paid.
         // D233: a key card: Go carries the key (into Autofill and the task's key file, never the
         // Log); Hold is 不给 / Don't give. Either answers the task, in its waiting call or by resuming it.
+        // D539: a copy card: Go copies the key between the person's computers (the card stays, saying
+        // why, when nothing could go); Hold doesn't. Its Go is only ever this tap.
+        if (deps.keyCopy?.isCopyAsk(f.decisionId)) {
+          if (f.option !== "go" && f.option !== "hold") throw new Error("a copy card is answered with Copy or Not now");
+          void deps.keyCopy.answer(f.decisionId, f.option).catch((err) => console.warn(`[keys] copy ${f.decisionId}: ${(err as Error).message}`));
+          return;
+        }
         const keys = deps.autofill?.keys;
         if (keys?.isKeyAsk(f.decisionId)) {
           if (f.option === "go") keys.answer(f.decisionId, { value: String(f.key ?? ""), once: f.once === true });
@@ -1066,6 +1094,19 @@ export function createWsHandler(deps: WsDeps) {
         refreshFirstScreens();
         return;
       }
+      case "kept_keys":
+      case "kept_key_remove": {
+        // D539: the names a computer keeps for Ducter's tasks there, read there; remove forgets one there.
+        const kc = deps.keyCopy;
+        const device = String(f.device ?? "local").slice(0, 120);
+        if (!kc) return send(ws, { t: "kept_keys", device, ok: false, why: "unsupported" });
+        if (f.t === "kept_key_remove") {
+          const r = await kc.remove(device, String(f.env ?? ""));
+          if (!r.ok) return send(ws, { t: "kept_keys", device, ok: false, why: r.why });
+        }
+        send(ws, { t: "kept_keys", device, ...(await kc.list(device)), ...(f.t === "kept_key_remove" ? { removed: String(f.env ?? "") } : {}) });
+        return;
+      }
       case "saved":
       case "saved_put":
       case "saved_remove":
@@ -1113,7 +1154,10 @@ export function createWsHandler(deps: WsDeps) {
         decisions.answeredByMessage(f.taskId, f.text ?? "", "user");
         // D268: sent while it works, it steers by default; "queue" waits for the turn to end.
         const mode = f.mode === "queue" || f.mode === "steer" ? f.mode : undefined;
-        const delivering = r.send(f.taskId, f.text ?? "", mode, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
+        // D534: what the words refer to with @, resolved (a task's report and changes), read by the task after the words.
+        const wanted = liveRefs(f.text ?? "", cleanRefs(f.refs));
+        const held = wanted.length && deps.mentions ? await deps.mentions.resolve(wanted, { forTask: f.taskId }).catch(() => []) : [];
+        const delivering = r.send(f.taskId, withRefs(f.text ?? "", held), mode, "user", f.clientId, media.length ? media : undefined).then((x) => x.delivered);
         if (key) taskSending.set(key, delivering);
         try {
           send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering, ...(f.clientId ? { clientId: f.clientId } : {}) });
@@ -1151,6 +1195,13 @@ export function createWsHandler(deps: WsDeps) {
               if (!r) return result(false, noRunnerLine());
               await r.interrupt(f.taskId);
               return result(true);
+            case "stop_background": {
+              // D521: one background job, through its agent's own stop; its end comes as its own act.
+              if (!r?.stopBackground) return result(false, noRunnerLine());
+              if (typeof f.job !== "string" || !f.job) return result(false, "Which one?");
+              const s = await r.stopBackground(f.taskId, f.job);
+              return result(s.ok, s.message);
+            }
             case "drop": {
               try {
                 await r?.drop(f.taskId);
@@ -1638,6 +1689,16 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.rules = true;
         // A revoke pushes a fresh frame to every subscriber; an unknown id: answer this one.
         if (!deps.standing.revoke(String(f.id ?? ""))) send(ws, await rulesFrame());
+        return;
+      }
+      case "rule_where": {
+        // D538: 关于这台 / About this computer: a placement rule added, or one changed (多放 / 少放, which work).
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        const device = String(f.device ?? "").trim();
+        const work = f.work === "heavy" || f.work === "web" ? f.work : "all";
+        if (!device) return send(ws, await rulesFrame());
+        deps.rules.addWhere({ text: placeRuleText(typeof f.lang === "string" ? f.lang : undefined, device, f.avoid === true, work), device, ...(f.avoid === true ? { avoid: true } : {}), ...(work === "heavy" ? { heavy: true } : work === "web" ? { web: true } : {}), ...(typeof f.id === "string" && f.id ? { id: f.id } : {}) });
         return;
       }
       case "rule_remove": {
@@ -2214,6 +2275,20 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       // D285: 做过的事 / Past tasks.
+      case "mention_find": {
+        // D534: the @ list for what is typed after @.
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        const q = typeof f.q === "string" ? f.q.slice(0, 80) : "";
+        const items = deps.mentions ? await deps.mentions.find(q, typeof f.taskId === "string" ? f.taskId : undefined) : [];
+        return send(ws, { t: "mention_list", id, items });
+      }
+      case "slash_find": {
+        // D534: the / list: the partner's (no taskId) or that task's.
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        const taskId = typeof f.taskId === "string" ? f.taskId : undefined;
+        const r = deps.mentions ? await deps.mentions.slash(taskId) : { entries: [] };
+        return send(ws, { t: "slash_list", id, ...(taskId ? { taskId } : {}), entries: r.entries, ...(r.harness ? { harness: r.harness } : {}) });
+      }
       case "past": {
         if (!deps.past) throw new Error("past tasks are not available");
         const query = f.query && typeof f.query === "object" ? f.query : {};
@@ -2260,6 +2335,34 @@ export function createWsHandler(deps: WsDeps) {
         const id = String(f.id ?? "").slice(0, 64);
         const page = k.page(id);
         send(ws, { t: "keep_result", id, ...(page ? { keep: page } : {}) });
+        return;
+      }
+      case "keep_change": {
+        // D533: an edit on a Keep's page: the same path as the partner's keep_change, checked in core.
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const kid = String(f.id ?? "").slice(0, 64);
+        const c0 = (f.change ?? {}) as Record<string, unknown>;
+        const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2400) : undefined);
+        const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+        const at = c0.at && typeof c0.at === "object" ? (c0.at as KeepChange["at"]) : undefined;
+        const change: KeepChange = Object.fromEntries(
+          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at }).filter(([, v]) => v !== undefined),
+        );
+        const r = await k.change(kid, change, { by: "you", undo: f.undo === true }).catch((err: Error) => ({ ok: false as const, error: err.message }));
+        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
+        const page = k.page(kid);
+        send(ws, { t: "keep_result", id: kid, ...(page ? { keep: page } : {}) });
+        ongoingChanged();
+        return;
+      }
+      case "keep_words": {
+        // D533: edited words read once into the rules they change; nothing applies until the person's Go.
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const kid = String(f.id ?? "").slice(0, 64);
+        const proposal = await k.propose(kid, String(f.said ?? "").slice(0, 2400)).catch((err: Error) => ({ ok: false as const, said: String(f.said ?? ""), error: err.message }));
+        send(ws, { t: "keep_proposal", id: kid, proposal });
         return;
       }
       case "keep_action": {
@@ -2384,6 +2487,16 @@ export function createWsHandler(deps: WsDeps) {
         const stream = channelOf(ws.data.partner);
         const { events, more } = channelPage(log, stream, before, f.limit);
         send(ws, { t: "channel_history", events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), beforeSeq: before, more });
+        return;
+      }
+      case "partner_peek": {
+        // D541: another partner's newest stretch, for the person's own client to draw a switch at once.
+        const id = String(f.persona ?? "");
+        if (id !== DEFAULT_PARTNER && !deps.partners?.has(id)) throw new Error("no such partner");
+        const stream = channelOf(id === DEFAULT_PARTNER ? undefined : id);
+        const head = log.head();
+        const { events, more } = channelPage(log, stream, head + 1, Math.max(1, Math.min(Math.floor(Number(f.limit)) || 50, 200)));
+        send(ws, { t: "partner_peek", persona: id, events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), headSeq: head, more });
         return;
       }
       case "task_history": {

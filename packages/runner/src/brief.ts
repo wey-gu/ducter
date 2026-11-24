@@ -31,7 +31,7 @@ export interface BriefInput {
   /** D449: the task thinks on a free key with a small daily allowance shared with the partner: be frugal. */
   frugal?: boolean;
   /** D499: the steps the user already allowed this task to take without asking, with their words. */
-  goes?: { action: StandingAction; words: string }[];
+  goes?: { action: StandingAction; words: string; /** D540: the owners it holds in (absent: anywhere). */ where?: string[] }[];
 }
 
 /**
@@ -40,7 +40,12 @@ export interface BriefInput {
  */
 export function goesBrief(goes: NonNullable<BriefInput["goes"]>): string {
   if (!goes.length) return "";
-  const lines = goes.map((g) => `- ${STEP_WORDS[g.action]}: the user said "${g.words.slice(0, 200)}".`);
+  // D540: PR reviews have one means (review_report, posted by Ducter at once), said with the fact.
+  const lines = goes.map((g) =>
+    g.action === "pr_review"
+      ? `- ${STEP_WORDS[g.action]}${g.where?.length ? ` in ${g.where.join(", ")}` : ""}: the user said "${g.words.slice(0, 200)}". Every finished review goes through \`review_report\` (its body alone when there is nothing to change) and Ducter posts it to GitHub at once; never run gh pr review yourself, never leave it in a report, never hold it for the next round.`
+      : `- ${STEP_WORDS[g.action]}: the user said "${g.words.slice(0, 200)}".`,
+  );
   return `
 ## What you may do without asking
 
@@ -169,12 +174,13 @@ ${b.goes?.length ? goesBrief(b.goes) : ""}
 
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
+- "blocked" is a wait something else ends by itself (CI, another computer, a usage limit). When only the user can unblock you (a step in their hands, a choice), it is "needs_input" with one question, so they get a card. A key or token a command or config needs: call \`ask_for_key\` (Ducter brings it from another of their computers, or asks them on a card); never tell them to set or paste it themselves.
 ${languageLine(b.language)}
 ${timeLine(b.zone)}
 - \`summary\` is written for the user, not for you: they read it as it is, often on their phone. Open with the result in one plain sentence anyone could follow (what is now true for them), then at most a few short lines on what stands. Write ordinary sentences with ordinary spacing: a number keeps its unit and its spaces ("16 checks, 15 passed", "16 项检查，15 项通过"), never glued into notes like "16checks15success". Leave out your own bookkeeping (round numbers, counters, ledger or note file names, ids, hashes) unless the user needs one to act; it goes in \`evidence\` or your checkpoint. At most 600 characters; shorter is better.
 - Say what changed since your last report, not everything again.
 - Work that repeats (a watcher, a review every so often): a round that found nothing new for the user doesn't report at all; call \`wait_for\` with the time of the next round and end your turn (silence means nothing changed). Report only when something new needs them: a new request, a change with new findings, a draft ready to send. Then say what still stands too, never "nothing new" alone while things wait on them ("8 review requests wait on you: 3 had new commits and are reviewed again, 5 unchanged").
-- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief (or "What you may do without asking") says to do it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts the drafts the person said may go without asking, and asks once a round for the rest; never post or ask about them yourself. Call it from the round's final look (after you check once more for new requests); if a later look finds more, call it again with the whole list: the later call replaces the earlier one for that round.
+- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief (or "What you may do without asking") says to do it without asking: write each draft to a file, then at once one \`needs_input\` report for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`; a draft in a progress report is never posted, and nobody acts on it. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts at once the reviews the person said may go without asking, and puts the rest on one card at once; never post or ask about them yourself. Call it from the round's final look (after you check once more for new requests); if a later look finds more, call it again with the whole list: the later call replaces the earlier one for that round.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
@@ -394,6 +400,8 @@ export interface BackgroundEnd {
   output?: string;
   summary?: string;
   outputFile?: string;
+  /** D521: the person stopped it from Ducter. */
+  by?: "person";
 }
 
 /**
@@ -405,7 +413,7 @@ export interface BackgroundEnd {
 export function backgroundEnded(ends: BackgroundEnd[]): string {
   const word = { ended: "finished", failed: "failed", stopped: "was stopped" } as const;
   const one = (e: BackgroundEnd) => {
-    const head = `- ${e.what ? `\`${e.what.split("\n")[0]!.slice(0, 200)}\`` : "A background job"} ${word[e.act]}${e.exitCode !== undefined ? ` (exit code ${e.exitCode})` : ""}.`;
+    const head = `- ${e.what ? `\`${e.what.split("\n")[0]!.slice(0, 200)}\`` : "A background job"} ${word[e.act]}${e.by === "person" ? " by the user, from Ducter" : ""}${e.exitCode !== undefined ? ` (exit code ${e.exitCode})` : ""}.`;
     const said = [e.summary, e.outputFile ? `Its output is in ${e.outputFile}.` : ""].filter(Boolean).join(" ");
     const out = e.output?.trim() ? `\n  Its output ends:\n${e.output.trimEnd().split("\n").map((l) => `  > ${l}`).join("\n")}` : "";
     return `${head}${said ? ` ${said}` : ""}${out}`;

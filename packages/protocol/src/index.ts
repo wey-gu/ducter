@@ -4,6 +4,7 @@
 
 export * from "./harnesses.ts";
 export * from "./fuzzy.ts";
+export * from "./mentions.ts";
 import type { FirstMeet } from "./first-meet.ts";
 export * from "./api-keys.ts";
 export * from "./key-routes.ts";
@@ -14,6 +15,8 @@ import type { KeyResult } from "./api-keys.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
+export * from "./key-copy.ts";
+import type { CopyKeyAsk } from "./key-copy.ts";
 import type { FillAsk, KeyAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
 export * from "./media.ts";
@@ -51,11 +54,13 @@ export * from "./reach.ts";
 export * from "./fresh-look.ts";
 export * from "./doc-bar.ts";
 export * from "./free-budget.ts";
+export * from "./background.ts";
 export * from "./first-meet.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
 export * from "./handover.ts";
+export * from "./hand-group.ts";
 export * from "./standing.ts";
 export * from "./asks.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
@@ -214,6 +219,8 @@ export interface Question {
   phone?: PhoneAsk;
   /** D233: a task asks the person for a key (set by Ducter's ask_for_key, never by report_to_main). */
   key?: KeyAsk;
+  /** D539: copy a key the person has on another computer to this task's (set by ask_for_key only). */
+  copyKey?: CopyKeyAsk;
   /** D235: one action in the person's apps that commits (go), or their own turn (user); set by the app tools only. */
   computer?: ComputerAsk;
   /** D238: may this task use the person's own phone now (set by the home's handset code only). */
@@ -356,7 +363,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string } };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -405,6 +412,7 @@ export interface Bodies {
     checkout?: CheckoutAsk; // D436: 去付款 / Go to checkout: the person pays in the live view; Go = 付好了 / I've paid, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
     key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
+    copyKey?: CopyKeyAsk; // D539: 复制密钥 / Copy a key from one of the person's computers to others, for Ducter's tasks there; only the person's own Go copies; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     computer?: ComputerAsk; // D235: one action in the person's apps that commits (Go does it once), or their own turn (Go = 好了 / Done)
     handset?: HandsetAsk; // D238: may this task use the person's own phone now (Go starts it there, with its indicator); no default
@@ -468,6 +476,9 @@ export interface Bodies {
   // D499 by "said": a task's ask answered Go by Ducter for the person, under what they said (a kept
   // 不用问我的, or their words about this task): `said` their words, `action` the step it covered,
   // `standing` the permission's id. Shown 按你说过的，没再问你 / Went ahead, as you said.
+  // D539: a key copied between the person's computers on their Go (names only, never a value), or
+  // one removed from a computer in Settings (removed: that computer's name, by "user").
+  key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
@@ -679,6 +690,12 @@ export interface Bodies {
   task_loop: TaskLoopBody;
   // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
   keep: import("./keeps.ts").KeepBody;
+  // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
+  // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
+  keep_round: { keepId: string; round: string; line?: string; failed?: true };
+  // D533: a change to a Keep, by the person on its page or by the partner (keep_change), on stream
+  // keep:<keepId>: each field from and to, shown as a line among its rounds.
+  keep_edit: { keepId: string } & import("./keeps.ts").KeepEditLine;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -1033,6 +1050,9 @@ export interface TaskCard {
   helper?: { id: string; name: string };
   /** D511: the Keep (照看) this task is a round or an item of, so a row anywhere says whose it is. */
   keep?: { id: string; name: string };
+  /** D521: the work its agent runs beside its turn (background shells, subagents, watches, jobs):
+   *  every one still running and the newest finished, folded from its Log (background.ts). */
+  background?: import("./background.ts").TaskBackground;
 }
 
 /**
@@ -1151,7 +1171,8 @@ export type NewTaskWhen =
   | { kind: "until"; condition: string };
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
-export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number; limitAuto?: boolean };
+/** D546 persona: the partner that set it (absent: the default); On hand lists every partner's waits. */
+export type WaiterView = Bodies["waiter"] & { persona?: string; armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number; limitAuto?: boolean };
 
 /**
  * D297: a wait on an AI agent's usage limit. `harness` is whose limit; every task on that account
@@ -1379,7 +1400,7 @@ export type ClientFrame =
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string; /** D534: what the words refer to with @ or / (mentions.ts). */ refs?: import("./mentions.ts").Ref[] } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.
@@ -1399,7 +1420,13 @@ export type ClientFrame =
   // one's decision event and its resolution, so every surface agrees with the home.
   | { t: "asks_get"; ids: string[] }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
-  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
+  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue"; /** D534: what the words refer to with @ (mentions.ts). */ refs?: import("./mentions.ts").Ref[] }
+  // D534: the @ list for what is typed after @: tasks (on hand and earlier), Keeps, partners, PRs
+  // and issues Ducter knows, and (taskId) files in that task's place. Answered by mention_list.
+  | { t: "mention_find"; id: string; q: string; taskId?: string }
+  // D534: the / list: Ducter's actions and the person's skills (no taskId), or that task's agent's
+  // own commands and skills and Ducter's task actions. Answered by slash_list.
+  | { t: "slash_find"; id: string; taskId?: string }
   // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said
   // now (now: steered in while it works, else the next turn). The card's next on_hand answers it;
   // an id no longer held (it already went) gets an error frame "task_held: …".
@@ -1414,7 +1441,8 @@ export type ClientFrame =
   // D395: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
   // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in"; path?: string; force?: boolean; device?: string; place?: Place }
+  // D521: stop_background (job): stop one of its agent's background jobs (TaskCard.background), through the agent's own stop.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
@@ -1433,6 +1461,10 @@ export type ClientFrame =
   // oldest seq the client holds), at most `limit` (default 300, at most 2,000). Answered with a
   // channel_history frame.
   | { t: "channel_history"; beforeSeq: number; limit?: number }
+  // D541: the newest stretch of another partner's conversation (at most `limit`, default 50, at
+  // most 200), so a switch to it draws at once. The person's own clients only; the socket keeps
+  // showing its partner. Answered with a partner_peek frame.
+  | { t: "partner_peek"; persona: string; limit?: number }
   // D320: the task's session index (one small row per turn): all of it, or its turns from fromSeq on
   // (the first seq of the last turn the client holds). Answered with a task_index frame.
   | { t: "task_index"; taskId: string; fromSeq?: number }
@@ -1544,7 +1576,8 @@ export type ClientFrame =
   // Switching is a new hello with persona: the socket then shows that partner's conversation.
   | { t: "partners" }
   | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
-  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  // D536: brain, what another partner thinks with (null: the same as the default partner's, Settings.brain).
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; brain?: Brain | null; clientId?: string }
   // D486: removes another partner (never the default): its conversation stays in the Log, unread;
   // its tasks and routines become the default's; a device showing it shows the default's.
   | { t: "partner_remove"; id: string; clientId?: string }
@@ -1570,6 +1603,9 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
+  // D538: a placement rule kept from a computer's 关于这台 / About this computer: add one, or change
+  // the one `id` names (prefer or avoid, and which work: heavy, web, or all). A fresh rules frame follows.
+  | { t: "rule_where"; id?: string; device: string; avoid?: boolean; work: "heavy" | "web" | "all"; lang?: string }
   // D413: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
   | { t: "standing_revoke"; id: string }
   // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
@@ -1753,7 +1789,10 @@ export type ClientFrame =
   | { t: "saved_remove"; id: string }
   | { t: "saved_forget_site"; id: string; site: string }
   // D233: 让任务向我要密钥 / Let tasks ask me for keys (on by default); answered with a saved frame.
-  | { t: "saved_ask_keys"; on: boolean };
+  | { t: "saved_ask_keys"; on: boolean }
+  // D539: Ducter 存着的密钥 / Keys Ducter keeps on one computer (names only): answered with kept_keys.
+  | { t: "kept_keys"; device: string }
+  | { t: "kept_key_remove"; device: string; env: string };
 
 /** D151: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =
@@ -1900,6 +1939,8 @@ export interface AgentModels {
 export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "past" | "no_condition" | "ducter_data" | "failed";
 
 export type ServerFrame =
+  // D539: the keys Ducter keeps on that computer (names, where from, when; never a value).
+  | ({ t: "kept_keys"; device: string; removed?: string } & import("./key-copy.ts").KeptKeysAnswer)
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
   // the same hash is on that machine, so the place paths it sees are its own.
   | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string; /** D293: the home answers {t:"ping"} with {t:"pong"}, so a client may close a socket silent for 45 s. */ ping?: true; /** D293: the home's key fingerprint. */ fp?: string }
@@ -1912,8 +1953,13 @@ export type ServerFrame =
   // D509: an older page of the conversation, oldest first, beforeSeq echoed; events superseded by a
   // newer one (a living message revised) are left out. more: older events remain.
   | { t: "channel_history"; events: LogEvent[]; beforeSeq: number; more: boolean }
+  // D541: another partner's newest stretch (as "channel" events, oldest first); headSeq the Log's
+  // head when read, more: older events remain. A hello with persona and its cursor carries on from it.
+  | { t: "partner_peek"; persona: string; events: LogEvent[]; headSeq: number; more: boolean }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
+  | { t: "mention_list"; id: string; items: import("./mentions.ts").MentionItem[] } // D534
+  | { t: "slash_list"; id: string; taskId?: string; entries: import("./mentions.ts").SlashEntry[]; /** the task's agent, for the section's name */ harness?: string } // D534
   | { t: "sent"; taskId: string; delivered: Delivery; clientId?: string } // ack for task_send (D325: its clientId; "queued" = held, TaskCard.held)
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).
@@ -1946,7 +1992,7 @@ export type ServerFrame =
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
   // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
   // your terminal shows in Settings for them.
-  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; /** D536: with more than one partner. */ brainOptions?: BrainOption[]; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D465: whether Nowledge Mem took the answer (ok false: it's back on the page, to settle in Mem).
@@ -2501,6 +2547,32 @@ export interface DeviceView {
   records?: DeviceRecordsView;
   /** D514: the working copies Ducter tidied away on this computer so far, and the room it freed (its card's quiet line). */
   tidied?: { count: number; bytes: number };
+  /**
+   * D538: what Ducter measured on this computer itself (the home's own look; a worker's heartbeat),
+   * never asked of the person. Absent from a worker before D538.
+   */
+  resources?: DeviceResources;
+}
+
+/**
+ * D538: a computer's own measurements, in bytes. memFree: what programs can still take now (Linux
+ * MemAvailable; on a Mac free, inactive, purgeable and speculative pages). diskFree: the disk Ducter's
+ * folder is on. cpu: the processor's own name; gpu: a graphics card Ducter can name (nvidia-smi).
+ * oom: the times the kernel stopped a program there for memory in the last day (Linux: the service's
+ * own cgroup), newest last.
+ */
+export interface DeviceResources {
+  at: string;
+  memTotal: number;
+  memFree: number;
+  cores: number;
+  load?: number;
+  swapTotal?: number;
+  diskFree?: number;
+  diskTotal?: number;
+  cpu?: string;
+  gpu?: string;
+  oom?: string[];
 }
 
 /**
@@ -2967,6 +3039,19 @@ export interface ContextWindows {
 export interface Brain {
   harness: HarnessId;
   model?: string;
+  /** D536: how hard it thinks (one of the model's own levels, ListedModel.efforts); absent: the model's own default. */
+  effort?: string;
+}
+
+/**
+ * D536: one agent a partner may think with on the home, with its models as the default card lists
+ * them (brainNow's rows, each with its effort levels where the agent's live list names them). Sent
+ * in the settings frame while the home has more than one partner, so each partner's 想事情用 picker
+ * offers only what the home has.
+ */
+export interface BrainOption {
+  harness: HarnessId;
+  models: BrainNow["models"];
 }
 
 /**
@@ -2990,7 +3075,7 @@ export interface BrainNow extends Brain {
    * doesn't know (D390: never guessed from a live list's order). default: what the agent runs
    * when no model is named.
    */
-  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true }[];
+  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true; /** D536: its effort levels, from the live list (absent: none to pick). */ efforts?: string[]; defaultEffort?: string }[];
 }
 
 /**
@@ -3253,6 +3338,8 @@ export interface OwnedSeen {
  */
 export interface OwnedStanding {
   at: string;
+  /** The PR's own title as GitHub has it (a Keep's held PR is named by it). */
+  title?: string;
   head?: string;
   draft?: boolean;
   /** Each reviewer whose latest decisive review asks for changes: who, when, on which commit, the gist. */

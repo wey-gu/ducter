@@ -116,7 +116,7 @@
     <string name="share_cancel">Cancel</string>
     <string name="share_sending">Sending…</string>
     <string name="share_sent">Sent to %1$s</string>
-    <string name="share_queued">Can\'t reach your Ducter right now. It will go as soon as it can.</string>
+    <string name="share_queued">Can\'t reach your Ducter right now. Sends when it\'s back.</string>
     <string name="share_too_old">Your Ducter needs an update to take shares; this goes once it\'s updated.</string>
     <string name="share_unpaired">Open Ducter and connect it first, then share again.</string>
     <string name="share_open_app">Open Ducter</string>

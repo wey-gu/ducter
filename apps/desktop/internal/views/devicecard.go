@@ -36,6 +36,7 @@ type sheetState struct {
 	fold      string               // D398: the card whose fold (how it's connected, disconnect) is open
 	lockSteps string               // D398: the phone whose 锁屏时也能借给任务 steps are open
 	handOff   string               // D398: the phone whose 用这台手机 chip asked before turning off
+	keptSure  string               // D539: "device:ENV" whose 删掉 asked once (确定删掉)
 }
 
 const (
@@ -116,6 +117,12 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		// D514: what Ducter tidied away here, one quiet line; nothing before the first.
 		if dv.Tidied != nil && dv.Tidied.Count > 0 {
 			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)
+		}
+		// D538: what this computer measured of itself, and the person's rules about it.
+		a.aboutComputer(c, dv)
+		// D539: the keys Ducter keeps on this computer for its tasks here (names only), folded.
+		if dv.Kind != "phone" {
+			a.keptKeysFold(c, dv)
 		}
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.
@@ -1448,13 +1455,13 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		n := a.runningOn(dv)
 		note("stop", false, func() {
 			a.infoText(c, a.L.T("chip.stop.ask", a.deviceNameIn(dv), n))
-			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
+			ui.Row(c).Gap(t.S2).Children(func() {
+				if a.button(c, a.L.T("chip.stop.after"), btnPrimary, t.ControlSM, t.Bg) {
+					s.stopAsk, s.stopAfter = "", dv.ID
+				}
 				if a.button(c, a.L.T("chip.stop.now"), btnText, t.ControlSM, t.Bg) {
 					s.stopAsk = ""
 					a.setWork(false)
-				}
-				if a.button(c, a.L.T("chip.stop.after"), btnPrimary, t.ControlSM, t.Bg) {
-					s.stopAsk, s.stopAfter = "", dv.ID
 				}
 			})
 		})

@@ -11,10 +11,85 @@
 // A partner can also be made, renamed or handed the person's words from the conversation.
 import { useState } from "preact/hooks";
 import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
-import type { PartnerAsk } from "@ducter/protocol";
+import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { AddRow, Btn, Chev, CountPebble } from "./controls.tsx";
+import { Coin } from "./coin.tsx";
+import { AddRow, Btn, Chev, CountPebble, Facts, Field, IconBtn } from "./controls.tsx";
+import { phoneNow } from "./wide.ts";
+import { currentSplit } from "./fold.ts";
+import { harnessName, modelName } from "./format.ts";
+import { Select } from "./menu.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
+
+/** D536: the models the home offers an agent to think with (settings.brainOptions, else brainNow's own). */
+function brainModels(harness: string) {
+  return A.brainOptions?.find((o) => o.harness === harness)?.models ?? (A.brainNow?.harness === harness ? A.brainNow.models : []);
+}
+
+/** D536: what a partner thinks with as set: its own, else none (it follows the default's). The default's is brainNow. */
+function thinksOf(p: PartnerInfo): Brain | undefined {
+  if (p.id === DEFAULT_PARTNER) return A.brainNow ?? A.settings?.brain;
+  return p.brain;
+}
+
+/** D536: the line under a partner's name: its agent's coin, the agent, its model and effort, each its own fact; else the same as the default's. */
+function ThinksLine({ p }: { p: PartnerInfo }) {
+  const b = thinksOf(p);
+  if (!b) return <small class="partner-thinks same">{t("partners.thinks.same", A.defaultName())}</small>;
+  const m = b.model ? (brainModels(b.harness).find((x) => x.id === b.model)?.label ?? modelName(b.model)) : undefined;
+  return (
+    <small class="partner-thinks">
+      <Coin harness={b.harness} size={18} />
+      <Facts items={[t("partners.thinks.with", harnessName(b.harness)), m, b.effort ? t("partners.thinks.effort", t(`effort.${b.effort}`)) : null, p.id === DEFAULT_PARTNER && (A.partners?.length ?? 0) > 1 ? t("partners.thinks.default") : null]} />
+    </small>
+  );
+}
+
+const SAME = "same";
+
+/** D536: 改一下's 想事情用 for another partner: the same as the default's, or an agent the home has, its model and its effort. A pick applies at once, as a colour does. */
+function ThinksPick({ p }: { p: PartnerInfo }) {
+  const opts = A.brainOptions ?? [];
+  if (!opts.length || p.id === DEFAULT_PARTNER) return null;
+  const own = p.brain;
+  const agents = [{ v: SAME, label: t("partners.thinks.same.pick", A.defaultName()) }, ...opts.map((o) => ({ v: o.harness as string, label: harnessName(o.harness) }))];
+  const models = own ? brainModels(own.harness) : [];
+  const model = own ? (models.find((m) => m.id === own.model) ?? models.find((m) => m.default) ?? models[0]) : undefined;
+  const efforts = model?.efforts ?? [];
+  const set = (b: Brain | null) => A.setPartner(p.id, { brain: b });
+  const pickAgent = (v: string) => {
+    if (v === SAME) return own && set(null);
+    if (own?.harness === v) return;
+    const ms = brainModels(v);
+    const m = ms.find((x) => x.default) ?? ms[0];
+    set({ harness: v as HarnessId, ...(m ? { model: m.id } : {}) });
+  };
+  return (
+    <span class="partner-thinks-pick">
+      <span class="pick">
+        <span class="small">{t("partners.thinks.title")}</span>
+        <Select label={t("partners.thinks.title")} value={own?.harness ?? SAME} options={agents} onPick={pickAgent} />
+      </span>
+      {own && model && models.length > 1 && (
+        <span class="pick">
+          <span class="small">{t("loadout.brain.model")}</span>
+          <Select label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={(v) => v !== own.model && set({ harness: own.harness, model: v })} />
+        </span>
+      )}
+      {own && model && efforts.length > 0 && (
+        <span class="pick">
+          <span class="small">{t("newtask.effort")}</span>
+          <Select
+            label={t("newtask.effort")}
+            value={own.effort && efforts.includes(own.effort) ? own.effort : ""}
+            options={[{ v: "", label: t("newtask.effort.default") }, ...efforts.map((e) => ({ v: e, label: t(`effort.${e}`) }))]}
+            onPick={(v) => set({ harness: own.harness, model: model.id, ...(v ? { effort: v } : {}) })}
+          />
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
  *  "stone" stays for the code (D309's disc); nothing on screen says it. */
@@ -49,7 +124,7 @@ export function OtherAsk({ a }: { a: PartnerAsk }) {
   const p = A.partners?.find((x) => x.id === a.persona);
   if (!p) return null;
   return (
-    <button class="other-ask" data-look={p.look} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
+    <button class="other-ask" data-look={p.look} data-ask={a.decisionId} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
       <Stone look={p.look} size={32} />
       <span class="ask-words">
         <span class="who">{t("partners.asks.from", p.name)}</span>
@@ -105,10 +180,22 @@ function RailFace({ p, i, size, needs, hop }: { p: PartnerInfo; i: number; size:
 function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; shown: string; face: number }) {
   const on = p.id === shown;
   const needs = A.partnerNeeds(p);
-  const label = on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
+  const label = on && needs ? t("door.pebble", p.name, needs) : on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
   return (
     <li>
-      <button class={on ? "pl-row on" : "pl-row"} data-look={p.look} aria-current={on ? "true" : undefined} aria-label={label} onClick={() => A.openPartner(p.id)}>
+      <button
+        class={on ? "pl-row on" : "pl-row"}
+        data-look={p.look}
+        aria-current={on ? "true" : undefined}
+        aria-label={label}
+        onClick={(e) => {
+          // D535: the pebble is a door (the next item of this partner's that waits); so is the row
+          // of the partner shown while something waits (the keyboard's way to it).
+          const pebble = (e.target as HTMLElement | null)?.closest?.(".pl-n");
+          if (needs > 0 && (pebble || on)) return void A.openDoor?.(p.id);
+          A.openPartner(p.id);
+        }}
+      >
         <RailFace p={p} i={i} size={face} needs={needs} hop={hopOf(p, needs, shown)} />
         <span class="pl-words" aria-hidden="true">
           <span class="pl-name">{p.name}</span>
@@ -123,7 +210,7 @@ function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; show
  *  Wide (`side`), a column at the conversation's left: each row its face, name, last line and
  *  number; a narrower window keeps the faces and numbers (app.css). On a phone (`home`), the
  *  level above the conversation: the list, a tap in, back with ‹ or the edge swipe. */
-export function PartnerList({ at, places }: { at: "side" | "home"; places?: preact.ComponentChildren }) {
+export function PartnerList({ at, places, slim, thin }: { at: "side" | "home"; places?: preact.ComponentChildren; slim?: boolean; thin?: boolean }) {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
   const at_ = Math.max(0, A.partners!.findIndex((p) => p.id === shown));
@@ -132,13 +219,13 @@ export function PartnerList({ at, places }: { at: "side" | "home"; places?: prea
       {/* D517: the chosen pebble glides to the row picked, on a spring; the rows never move. */}
       <li class="pl-knob" aria-hidden="true" />
       {A.partners!.map((p, i) => (
-        <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : 40} />
+        <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : thin ? 30 : 40} />
       ))}
     </ul>
   );
   if (at === "side")
     return (
-      <nav class="pane partners" aria-label={t("partners.title")}>
+      <nav class={`pane partners${thin ? " thin" : slim ? " slim" : ""}${Date.now() - A.railAt < 600 ? " rail-in" : ""}`} aria-label={t("partners.title")}>
         <header class="top">
           <h1 class="level">{t("partners.title")}</h1>
         </header>
@@ -164,20 +251,50 @@ export function PartnerList({ at, places }: { at: "side" | "home"; places?: prea
   );
 }
 
-/** D513: a phone's way up to the list from a conversation: ‹ with the number of what waits on the
- *  person in the other partners (a messaging app's back button with its unread count). */
+/** D513, D541: a phone's way up to the list from a conversation (and a fold's, where no column
+ *  stands beside): ‹ and the other partners' own figures, a small stack in their clays, with the
+ *  number of what waits on the person in them. A lone ‹ read as "back"; the faces say who is there. */
 export function PartnersBack() {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
-  const elsewhere = A.partners!.filter((p) => p.id !== shown).reduce((n, p) => n + A.partnerNeeds(p), 0);
+  const others = A.partners!.filter((p) => p.id !== shown);
+  const elsewhere = others.reduce((n, p) => n + A.partnerNeeds(p), 0);
   const label = elsewhere ? t("partners.back.asks", elsewhere) : t("partners.back");
   return (
-    <button class="partners-back" aria-label={label} onClick={() => A.showPartners()}>
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-        <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      {elsewhere > 0 && <CountPebble n={elsewhere} />}
+    <button class="partners-back" aria-label={label} onClick={() => (A.railMode === "hidden" && !phoneNow() && !currentSplit() ? A.setRail("") : A.showPartners())}>
+      <Chev back cls="pb-chev" />
+      <span class="pb-faces" aria-hidden="true">
+        {others.slice(0, 3).map((p) => (
+          <span key={p.id} class="pb-face stone" data-look={p.look}>
+            <img src="app/art/idle.webp" alt="" draggable={false} />
+          </span>
+        ))}
+        {elsewhere > 0 && <CountPebble n={elsewhere} />}
+      </span>
     </button>
+  );
+}
+
+/** D545: the header's toggle for the list beside the conversation: narrower (the faces alone),
+ *  hidden, and back. A drawn glyph alone (the shared IconBtn): a window with its side column, the
+ *  column as wide as the list will be after the press. */
+export function RailToggle() {
+  if (!A.manyPartners()) return null;
+  const next = A.nextRail();
+  const label = t(next === "thin" ? "partners.rail.thin" : next === "hidden" ? "partners.rail.hide" : "partners.rail.show");
+  // The glyph says how the list stands now, in the places' family (an 18-px mark, a 1.6 stroke, the
+  // muted ink): the window's outline and the list's edge inside it, wide as the width has it,
+  // narrow when thin, dashed when hidden.
+  const edge = A.railMode === "thin" ? 5 : 7.5;
+  return (
+    <span class="rail-toggle">
+      <IconBtn label={label} onClick={() => A.setRail(next)}>
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="2" y="3.5" width="14" height="11" rx="2.5" />
+          <path d={`M${edge} 3.5v11`} stroke-dasharray={A.railMode === "hidden" ? "0.6 2.6" : undefined} />
+        </svg>
+      </IconBtn>
+    </span>
   );
 }
 
@@ -259,19 +376,21 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
         <span class="grow partner-words">
           {editing ? (
             <>
-              <input class="name-input" value={draft} maxLength={PARTNER_NAME_MAX} aria-label={t("partners.rename")} autoFocus onInput={(e) => setDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
-              <input class="name-input about-input" value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} aria-label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={(e) => setAboutDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
+              <Field strong value={draft} maxLength={PARTNER_NAME_MAX} label={t("partners.rename")} autoFocus onInput={setDraft} onKeyDown={keys} />
+              <Field value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={setAboutDraft} onKeyDown={keys} />
             </>
           ) : (
             <>
               <b>{p.name}</b>
               {p.about ? <small class="partner-about">{t("partners.about.shown", p.about)}</small> : null}
+              <ThinksLine p={p} />
             </>
           )}
           {shown ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
       <LookPick value={p.look} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+      {editing && <ThinksPick p={p} />}
       <span class="partner-acts">
         {editing ? (
           <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />
@@ -297,37 +416,22 @@ function AddForm({ done }: { done: () => void }) {
     setName("");
     setAbout("");
   };
+  const addKeys = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && !e.isComposing) go();
+    if (e.key === "Escape") e.stopPropagation(), done();
+  };
   return (
     <div class="set-item partner-add">
       <span class="partner-add-head">
         <Stone look={look} size={48} />
         <label class="acct-field grow">
           <span class="small">{t("partners.add.name")}</span>
-          <input
-            value={name}
-            maxLength={PARTNER_NAME_MAX}
-            placeholder={t("partners.add.placeholder")}
-            autoFocus
-            onInput={(e) => setName((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.isComposing) go();
-              if (e.key === "Escape") e.stopPropagation(), done();
-            }}
-          />
+          <Field value={name} label={t("partners.add.name")} maxLength={PARTNER_NAME_MAX} placeholder={t("partners.add.placeholder")} autoFocus onInput={setName} onKeyDown={addKeys} />
         </label>
       </span>
       <label class="acct-field">
         <span class="small">{t("partners.about")}</span>
-        <input
-          value={about}
-          maxLength={PARTNER_ABOUT_MAX}
-          placeholder={t("partners.about.placeholder")}
-          onInput={(e) => setAbout((e.target as HTMLInputElement).value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.isComposing) go();
-            if (e.key === "Escape") e.stopPropagation(), done();
-          }}
-        />
+        <Field value={about} label={t("partners.about")} maxLength={PARTNER_ABOUT_MAX} placeholder={t("partners.about.placeholder")} onInput={setAbout} onKeyDown={addKeys} />
       </label>
       <span class="small">{t("partners.look")}</span>
       <LookPick value={look} label={t("partners.look")} onPick={setLook} />
@@ -337,8 +441,8 @@ function AddForm({ done }: { done: () => void }) {
         </p>
       )}
       <div class="btns">
-        <Btn kind="text" label={t("partners.add.cancel")} onClick={done} />
         <Btn kind="primary" label={t("partners.add.go")} disabled={!name.trim()} onClick={go} />
+        <Btn kind="text" label={t("partners.add.cancel")} onClick={done} />
       </div>
     </div>
   );

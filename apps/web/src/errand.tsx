@@ -57,9 +57,8 @@ export function CheckoutBody({ d, compact }: { d: DecisionState; compact?: boole
         <>
           <div class="small sub co-why">{t("co.why")}</div>
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("co.hold")} about={c.site} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t("co.go")} about={c.site} onClick={go} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("co.hold")} about={c.site} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         </>
       ) : (
@@ -89,9 +88,8 @@ export function StepBody({ d, compact }: { d: DecisionState; compact?: boolean }
       </div>
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("step.later")} about={s.site} onClick={() => A.decide(d.decisionId, "hold")} />
-          {compact && <span class="grow" />}
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("step.open")} about={s.site} onClick={() => A.openLive(d.decisionId, s.site, liveSize())} />
+          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("step.later")} about={s.site} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">

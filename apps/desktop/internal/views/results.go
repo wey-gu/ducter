@@ -276,11 +276,11 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		} else {
 			// The primary last, as macOS orders a group (D76). No remote,
 			// no PR to open: only Merge.
-			if !noRemote(task) && a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
-				act("open_pr")
-			}
 			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlMD, t.Surface) {
 				act("merge")
+			}
+			if !noRemote(task) && a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
+				act("open_pr")
 			}
 		}
 	})

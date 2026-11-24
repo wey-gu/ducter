@@ -336,8 +336,8 @@ function LendAgents({ dv, done, setDone }: { dv: DeviceView; done: boolean; setD
           <p class="lend-note">{t("ag.where")}</p>
           <SetupAnswer dv={dv} />
           <div class="lend-acts">
-            <Btn kind="secondary" label={t("lend.setup.skip")} onClick={() => setSkipped(true)} />
             <Btn kind="primary" label={t("lend.setup.go")} disabled={!offer.some((o) => chosen[o.harness])} onClick={go} />
+            <Btn kind="secondary" label={t("lend.setup.skip")} onClick={() => setSkipped(true)} />
           </div>
         </>
       ) : (

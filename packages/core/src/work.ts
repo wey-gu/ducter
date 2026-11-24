@@ -37,6 +37,10 @@ export interface Work {
   /** false: this event must not wake the partner (a try of an `until` loop that is still going). */
   wakes(e: LogEvent): boolean;
   setJudge(j: Judge | undefined): void;
+  /** D533: a Keep's rules as they are now, told to each round of a task in rounds (or a routine's run) once the person changed them. */
+  setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
+  /** D533: a Keep's rules as they are now, told to each round of a task in rounds (or a routine's run) once the person changed them. */
+  setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
   stop(): void;
 }
 
@@ -62,6 +66,8 @@ export interface WorkOptions {
   lang?: () => import("@ducter/protocol").LangTag;
   /** D429: the computers, for the keeper: names, an awake one to move a late loop to, the move. */
   loopsWhere?: import("./loops.ts").LoopWhere;
+  /** D540: what a round's wake carries besides its own lines (the person's one-off ask for it, what they allowed without asking), in that language. */
+  roundNote?: (taskId: string, lang: import("@ducter/protocol").LangTag) => string | undefined;
 }
 
 const expand = (p: string) => (p.startsWith("~/") ? homedir() + p.slice(1) : p === "~" ? homedir() : p);
@@ -212,7 +218,8 @@ export function createWork(o: WorkOptions): Work {
 
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
-  const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
+  let keepRules: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined;
+  const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone, rules: (routineId) => keepRules?.({ routineId }) });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
   // D528: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
   const localTime = (ms: number, from?: number): string => {
@@ -235,7 +242,7 @@ export function createWork(o: WorkOptions): Work {
       .read({ stream: `task:${w.taskId}`, kinds: ["waiter_look"], limit: 400 })
       .filter((e) => (e.body as Bodies["waiter_look"]).waiterId === w.waiterId)
       .slice(-3)
-      .map((e) => `${e.ts.slice(11, 16)} UTC ${(e.body as Bodies["waiter_look"]).summary}`);
+      .map((e) => `${localTime(Date.parse(e.ts))} ${(e.body as Bodies["waiter_look"]).summary}`);
     return looks.length ? looks.join("; ") : w.observed ?? "nothing yet";
   };
 
@@ -265,7 +272,11 @@ export function createWork(o: WorkOptions): Work {
       const wake = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       // D429: a round of a task in rounds says how a round ends (progress; done only for the person's until).
       const loop = !w.limit ? loops.get(w.taskId) : undefined;
-      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${fill(c.roundNow, { now: localTime((o.clock ?? realClock).now()) })}` : wake;
+      // D540: the person's one-off ask for this round and what they allowed without asking come with it.
+      const note = loop?.state === "on" ? o.roundNote?.(w.taskId, langOfText(w.reason)) : undefined;
+      // D533: the person changed how it is looked after: this round hears its rules as they are now.
+      const rulesNow = loop?.state === "on" ? keepRules?.({ taskId: w.taskId }) : undefined;
+      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${fill(c.roundNow, { now: localTime((o.clock ?? realClock).now()) })}${rulesNow ? `\n\n${rulesNow}` : ""}${note ? `\n\n${note}` : ""}` : wake;
       const text = w.limit ? said : withPRs(w.taskId, said);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
@@ -602,6 +613,7 @@ export function createWork(o: WorkOptions): Work {
     routines,
     loops,
     owned,
+    setKeepRules: (f) => void (keepRules = f),
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
@@ -613,7 +625,8 @@ export function createWork(o: WorkOptions): Work {
       return {
         ...on,
         // A routine's own watch is shown on its routine card, not as a wait.
-        waiters: on.waiters.filter((w) => !w.routineId).map((w) => views.get(w.waiterId) ?? w),
+        // D546: the live view keeps whose wait it is (the registry knows the partner that set it).
+        waiters: on.waiters.filter((w) => !w.routineId).map((w) => { const v = views.get(w.waiterId); return v ? (w.persona ? { ...v, persona: w.persona } : v) : w; }),
         routines: routines.views(),
         missed: waiters.missed(),
       };

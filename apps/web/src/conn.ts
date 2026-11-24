@@ -1,7 +1,8 @@
 // The phone's connection to core: the device token (pairing), the authenticated HTTP API, and the
-// client WebSocket with reconnect-by-cursor and an outbox that holds what the user chose until the
-// server has said welcome. Messages (send, task_send) don't wait here: the app keeps them until
-// echoed and sends them again after every welcome (core dedupes by clientId).
+// client WebSocket with reconnect-by-cursor and an outbox that holds a task action until the server
+// has said welcome. Messages (send, task_send) and answers to cards (decide) don't wait here: the
+// app keeps them in its own outbox (outbox.ts, D543), durable on this device, until the home has
+// them, and sends them again after every welcome (core dedupes by clientId; a closed card says how).
 import type { BrowserScreenHints, ClientFrame, ClientShape, ServerFrame } from "@ducter/protocol";
 import { shapeFromBrowser } from "@ducter/protocol";
 
@@ -11,6 +12,9 @@ export interface DeviceRecord {
   name: string;
   personaName?: string;
   pairedAt: string;
+  /** D532: the home's key fingerprint, pinned at pairing (or at the first welcome after it): only an
+   *  answer signed by this key can end the pairing. */
+  fp?: string;
 }
 
 const KEY = "ducter.device.v1";
@@ -35,6 +39,16 @@ export const storage = {
     } catch {}
   },
 };
+
+/**
+ * D532: a device paired before its record kept the home's key learns it from the first welcome on
+ * an authenticated socket (only the home that issued this token says welcome to it). Never
+ * replaced: a home whose key changed is the one case no signature reaches (再连一次).
+ */
+export function pinFp(fp: string) {
+  const r = storage.get();
+  if (r && !r.fp && fp) storage.set({ ...r, fp });
+}
 
 /** Where this Ducter lives: the directory of the page (/app, /pair → the base). */
 export function baseUrl(href = location.href): URL {
@@ -101,7 +115,7 @@ export async function pair(base: URL, code: string, fetcher: typeof fetch = fetc
   }
   const body = (await res.json().catch(() => ({}))) as Record<string, string>;
   if (!res.ok) return { error: res.status === 429 ? "locked" : body.error === "expired" ? "expired" : res.status === 401 ? "invalid" : "unreachable" };
-  return { token: body.token!, deviceId: body.deviceId!, name: body.name!, personaName: body.personaName, pairedAt: new Date().toISOString() };
+  return { token: body.token!, deviceId: body.deviceId!, name: body.name!, personaName: body.personaName, pairedAt: new Date().toISOString(), ...(body.fp ? { fp: body.fp } : {}) };
 }
 
 export interface Me {
@@ -135,11 +149,25 @@ export class Api {
 
 export type ConnStatus = "connecting" | "connected" | "offline";
 
-const KEEP = new Set(["decide", "task_action"]);
-const MSG = new Set(["send", "task_send"]);
-const BACKOFF = [500, 1000, 2000, 4000, 8000, 15000];
+const KEEP = new Set(["task_action"]);
+const MSG = new Set(["send", "task_send", "decide"]);
+/** D532 (the Mac's D520): quick at first, at most 5 s apart, 15 s once down for a minute; ±20%
+ *  jitter, so devices behind one proxy don't all knock at once when their home comes back. */
+const BACKOFF = [500, 1000, 2000, 4000, 5000];
+const BACKOFF_LONG = 15_000;
+const LONG_DOWN = 60_000;
+export const backoff = (attempt: number, downFor: number, rand = Math.random) => {
+  const base = downFor >= LONG_DOWN ? BACKOFF_LONG : BACKOFF[Math.min(attempt, BACKOFF.length - 1)]!;
+  return Math.round(base * (0.8 + 0.4 * rand()));
+};
 const LIVE_EVERY = 15_000;
 const LIVE_DEAD = 45_000;
+/** D543: a socket asked to prove it is alive (coming back, the network back, a message written)
+ *  that hears nothing for this long is dead though it looks open (a phone that moved networks):
+ *  closed and dialled again, instead of the 45 s the steady ping takes. */
+export const PROBE_MS = 4_000;
+/** D543: a dial that hasn't heard its welcome by then is dead too (opened into a dead network): let go and dialled again. */
+export const WELCOME_WAIT_MS = 8_000;
 
 /** D284: the page can unzip a gzipped frame (Safari 16.4+, every current browser). */
 const CAN_GUNZIP = typeof DecompressionStream !== "undefined";
@@ -160,6 +188,12 @@ export class Connection {
   private dueAt = 0;
   /** Called with each frame written to a welcomed socket (the app tracks actions in flight). */
   onWritten?: (f: ClientFrame) => void;
+  /** D532: a socket closed before its welcome (refused, or the home not up): the app may ask the
+   *  home whether this device still stands there. A refusal alone never ends a pairing. */
+  onRefused?: () => void;
+  /** When the next try is due (0: none waiting), and since when the link has been down. */
+  nextAt = 0;
+  downSince = 0;
 
   constructor(
     private url: string,
@@ -172,27 +206,74 @@ export class Connection {
   start() {
     this.stopped = false;
     this.open();
-    document.addEventListener("visibilitychange", this.wake);
-    addEventListener("online", this.wake);
+    if (typeof document === "object") document.addEventListener("visibilitychange", this.wake);
+    if (typeof addEventListener === "function") {
+      addEventListener("online", this.online);
+      // The iPhone and Android apps say when they come to the front (a web view's
+      // visibilitychange doesn't always come): the same as coming back to the tab.
+      addEventListener("ducterresume", this.wake);
+      // D543: the window coming to the front (a desktop browser, an iPad's split view) too.
+      addEventListener("focus", this.wake);
+    }
   }
 
   stop() {
     this.stopped = true;
     clearTimeout(this.timer);
     this.ws?.close();
-    document.removeEventListener("visibilitychange", this.wake);
-    removeEventListener("online", this.wake);
+    this.nextAt = 0;
+    if (typeof document === "object") document.removeEventListener("visibilitychange", this.wake);
+    if (typeof removeEventListener === "function") {
+      removeEventListener("online", this.online);
+      removeEventListener("ducterresume", this.wake);
+      removeEventListener("focus", this.wake);
+    }
   }
 
   /** Coming back to the phone: reconnect now instead of waiting out the backoff. */
   private wake = () => {
-    if (document.visibilityState !== "visible" || this.stopped) return;
-    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
-      clearTimeout(this.timer);
-      this.attempt = 0;
-      this.open();
-    }
+    if ((typeof document === "object" && document.visibilityState === "hidden") || this.stopped) return;
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.retryNow();
+    // D543: an open socket after a sleep may be half-open (nothing closes it): it proves itself.
+    else if (this.ws.readyState === WebSocket.OPEN) this.probe();
   };
+
+  /** D532: the network came back: a socket from before it went may be dead while it looks open. */
+  private online = () => {
+    if (this.stopped) return;
+    if (this.ws?.readyState === WebSocket.OPEN && Date.now() - this.heardAt > 5_000) return void this.abandon(this.ws);
+    this.wake();
+  };
+
+  private probing?: ReturnType<typeof setTimeout>;
+  /** The home answers {t:"ping"} (welcome.ping). */
+  private pings = false;
+  /**
+   * D543: asks the open socket to prove it is alive: a ping (to a home that answers them) and
+   * PROBE_MS to hear anything at all. Nothing heard: it is closed and dialled again, and what waits
+   * in the app's outbox goes on the new one. One probe at a time; a stalled link that would have
+   * recovered costs a redial, never a lost or doubled message.
+   */
+  probe(ms = PROBE_MS) {
+    const ws = this.ws;
+    if (this.stopped || this.probing || !ws || ws.readyState !== WebSocket.OPEN || !this.welcomed) return;
+    const from = Date.now();
+    if (this.pings) ws.send(JSON.stringify({ t: "ping" }));
+    this.probing = setTimeout(() => {
+      this.probing = undefined;
+      if (this.ws === ws && ws.readyState === WebSocket.OPEN && this.heardAt < from) this.abandon(ws);
+    }, ms);
+  }
+
+  /** Try now (the notice's button, coming back): a fresh dial, the backoff from its start. */
+  retryNow() {
+    if (this.stopped) return;
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) return;
+    clearTimeout(this.timer);
+    this.attempt = 0;
+    this.nextAt = 0;
+    this.open();
+  }
 
   private setStatus(s: ConnStatus) {
     if (this.status !== s) (this.status = s), this.onStatus(s);
@@ -207,6 +288,8 @@ export class Connection {
     // D284: a large frame (a task's history) comes gzipped where the page can unzip it.
     ws.binaryType = "arraybuffer";
     ws.onopen = () => ws.send(JSON.stringify({ ...this.hello(), ...(CAN_GUNZIP ? { gzip: true } : {}) }));
+    clearTimeout(this.helloWait);
+    this.helloWait = setTimeout(() => !this.welcomed && this.abandon(ws), WELCOME_WAIT_MS);
     ws.onmessage = (m) => {
       this.heardAt = Date.now();
       const data = m.data as string | ArrayBuffer;
@@ -221,15 +304,42 @@ export class Connection {
         .catch(() => {})
         .finally(() => void this.unzipping--);
     };
-    ws.onclose = () => {
-      if (this.ws !== ws) return;
-      this.welcomed = false;
-      clearInterval(this.live);
-      if (this.stopped) return;
-      this.setStatus(this.attempt === 0 && this.status === "connecting" ? "connecting" : "offline");
-      const wait = BACKOFF[Math.min(this.attempt++, BACKOFF.length - 1)]!;
-      this.timer = setTimeout(() => this.open(), wait);
-    };
+    ws.onclose = () => this.closed(ws);
+  }
+
+  /**
+   * D543: a socket found dead while it looks open (the probe, the steady ping, the network back) is
+   * let go at once: close() on a half-open socket waits for a closing handshake that never comes
+   * (Chrome held it 5 s to a minute in the measurements), so the page carries on as if it closed.
+   */
+  private abandon(ws: WebSocket) {
+    if (this.ws !== ws) return;
+    ws.onmessage = null;
+    try {
+      ws.close();
+    } catch {}
+    this.closed(ws);
+  }
+
+  private helloWait?: ReturnType<typeof setTimeout>;
+
+  private closed(ws: WebSocket) {
+    if (this.ws !== ws) return;
+    // Let go: its own close event, if it ever comes, is no longer this page's business.
+    this.ws = undefined;
+    clearTimeout(this.helloWait);
+    clearTimeout(this.probing);
+    this.probing = undefined;
+    const refused = !this.welcomed;
+    this.welcomed = false;
+    clearInterval(this.live);
+    if (this.stopped) return;
+    if (!this.downSince) this.downSince = Date.now();
+    this.setStatus(this.attempt === 0 && this.status === "connecting" ? "connecting" : "offline");
+    const wait = backoff(this.attempt++, Date.now() - this.downSince);
+    this.nextAt = Date.now() + wait;
+    this.timer = setTimeout(() => ((this.nextAt = 0), this.open()), wait);
+    if (refused) this.onRefused?.();
   }
 
   private unzipping = 0;
@@ -244,8 +354,12 @@ export class Connection {
     }
     if (f.t === "welcome") {
       this.welcomed = true;
+      clearTimeout(this.helloWait);
       this.attempt = 0;
+      this.downSince = 0;
+      this.nextAt = 0;
       this.setStatus("connected");
+      this.pings = !!f.ping;
       if (f.ping) this.keepAlive();
     }
     if (f.t === "pong") return;
@@ -268,7 +382,7 @@ export class Connection {
       const late = now - this.dueAt > LIVE_EVERY + 10_000;
       this.dueAt = now;
       if (late) this.heardAt = now;
-      else if (now - this.heardAt > LIVE_DEAD) return ws.close();
+      else if (now - this.heardAt > LIVE_DEAD) return this.abandon(ws);
       ws.send(JSON.stringify({ t: "ping" }));
     }, LIVE_EVERY);
   }
@@ -286,6 +400,8 @@ export class Connection {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(f));
       if (this.welcomed) this.onWritten?.(f);
+      // D543: something the person waits on went out: within PROBE_MS the socket shows it is alive.
+      if (MSG.has(f.t)) this.probe();
     } else if (KEEP.has(f.t)) this.outbox.push(f);
   }
 

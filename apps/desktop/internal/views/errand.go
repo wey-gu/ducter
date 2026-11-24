@@ -72,11 +72,11 @@ func (a *App) checkoutButtons(c *ui.Context, d *store.DecisionState, st decision
 	}
 	uiText(c, a.L.T("co.why")).FontSize(t.XS).TextColor(t.InkMuted)
 	ui.Row(c.Key("co-go:" + d.DecisionID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("co.hold"), co.Site, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("co.go"), co.Site, btnPrimary, st.height, st.quietBg) {
 			a.OpenLive(d.DecisionID, co.Site)
+		}
+		if a.buttonFor(c, a.L.T("co.hold"), co.Site, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }
@@ -102,11 +102,11 @@ func (a *App) stepButtons(c *ui.Context, d *store.DecisionState, st decisionStyl
 	})
 	uiText(c, a.L.T("step.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("step-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("step.later"), s.Site, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("step.open"), s.Site, btnPrimary, st.height, st.quietBg) {
 			a.OpenLive(d.DecisionID, s.Site)
+		}
+		if a.buttonFor(c, a.L.T("step.later"), s.Site, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }

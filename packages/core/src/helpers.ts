@@ -84,7 +84,9 @@ export interface Helpers {
   byName(name: string): Helper | undefined;
   /** The person asked for one: kept at once; its address is made in the background. */
   make(a: { name: string; about: string; brief: string; persona?: string }): { ok: true; helper: Helper } | { ok: false; error: "empty" | "taken" | "full" };
-  set(id: string, a: { about?: string; brief?: string }): Helper | undefined;
+  set(id: string, a: { about?: string; brief?: string; daily?: number }): Helper | undefined;
+  /** D533: a new name other agents find it by: its Mem identity stays, its address is brought up to date. */
+  rename(id: string, name: string): { ok: true; helper: Helper } | { ok: false; error: "empty" | "taken" | "gone" };
   /** Stopped: its connection ended (senders hear its mailbox is closed); its work on hand keeps going. */
   stop(id: string): Promise<Helper | undefined>;
   resume(id: string): Helper | undefined;
@@ -192,7 +194,32 @@ export function createHelpers(o: {
       return { ok: true, helper };
     },
     set(id, a) {
-      return update(id, (h) => ({ ...h, ...(a.about !== undefined ? { about: cleanLine(a.about, HELPER_ABOUT_MAX) } : {}), ...(a.brief !== undefined ? { brief: cleanBrief(a.brief) } : {}) }));
+      return update(id, (h) => ({ ...h, ...(a.about !== undefined ? { about: cleanLine(a.about, HELPER_ABOUT_MAX) } : {}), ...(a.brief !== undefined ? { brief: cleanBrief(a.brief) } : {}), ...(a.daily !== undefined ? { daily: a.daily } : {}) }));
+    },
+    rename(id, name0) {
+      const name = cleanHelperName(name0);
+      if (!name) return { ok: false, error: "empty" };
+      const hs = read();
+      const h = hs.find((x) => x.id === id);
+      if (!h) return { ok: false, error: "gone" };
+      if (hs.some((x) => x.id !== id && same(x.name, name))) return { ok: false, error: "taken" };
+      const h1 = update(id, (x) => ({ ...x, name }))!;
+      // Its identity is the same; its card in Mem carries the new name. The new connection comes first,
+      // then the one before it ends, so work handed to it meanwhile still arrives.
+      // Not connected yet: the next tick enrolls it under the new name.
+      const link = o.link();
+      const before = h1.link;
+      if (h1.state === "on" && before && link)
+        void link
+          .connectAs(h1.agentId, name, card(h1))
+          .then(async (r) => {
+            if (!r.ok) return; // the address it had keeps working; Mem's card says the new name next time
+            const h2 = update(id, (x) => ({ ...x, link: { context: r.context, connectionId: r.connectionId, spaceId: r.spaceId }, mem: "ready" }));
+            if (h2 && r.connectionId !== before.connectionId) await link.revokeConnection(before.connectionId).catch(() => false);
+          })
+          .catch(() => {});
+      else if (h1.state === "on") void api.tick();
+      return { ok: true, helper: h1 };
     },
     async stop(id) {
       const h = read().find((x) => x.id === id);

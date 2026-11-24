@@ -20,10 +20,13 @@ var sharedControls = map[string]bool{
 	// switches, choices and rows (shared.go, partner.go, settings.go)
 	"switchControl": true, "choices": true, "selectRow": true, "disclosureRow": true, "linkRow": true,
 	"dangerText": true, "moreButton": true, "candRow": true, "railTab": true, "sideLink": true,
+	"factPill": true, // D544: a task in rounds' line under the bar (shared.go)
 	// the D161 pieces: the renamable name, coins, chips, the list's rows
 	"cardName": true, "coinTile": true, "socketTile": true, "abilityChip": true, "listRow": true, "trayToken": true,
 	// D166: an app a source can read, on the accounts card
 	"appTile": true,
+	// D545: the other partners' faces with what waits in them, the way back to a hidden list
+	"othersStack": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
 	"pill": true, "menuRow": true, "menuRowEl": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed
@@ -34,6 +37,14 @@ var sharedControls = map[string]bool{
 	"sheetFold": true, "extraStep": true,
 	// D518: a step's number in a short numbered sequence
 	"stepNumber": true,
+	// D530: the opened task's steps: the work's head, a step's row, its object chip and its file chip
+	"workHead": true, "stepLine": true, "stepChip": true, "fileChip": true,
+	// D519: the one composer and its send, the section head, the tag, the time column, a menu's opener
+	"composerBox": true, "sendButton": true, "secHead": true, "tag": true, "timeCol": true, "menuOpener": true,
+	// D533: a rule row edited in place, a line of words, a number with its unit
+	"editRow": true, "numberField": true,
+	// D521: a quiet tray's dense row (the opened task's background work)
+	"trayRow": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.
@@ -41,7 +52,7 @@ var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go", "chats.go", "imessage.go",
-	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go",
+	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go", "bgtray.go",
 }
 
 // adHoc reports a call that makes a control by hand.

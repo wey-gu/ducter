@@ -49,6 +49,9 @@ func (a *App) whereCandReason(cd protocol.Candidate) string {
 		if cd.Waits == "asleep" {
 			return a.L.T("switch.waits")
 		}
+		if cd.Waits == "room" { // D538
+			return a.L.T("switch.waits.room")
+		}
 		return a.L.T("switch.waits.away")
 	}
 	return ""

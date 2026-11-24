@@ -32,7 +32,7 @@ import { logUserMessage, type ReplyDecisions } from "../reply.ts";
 import { cutPoints } from "./format.ts";
 import { createOutbox, type Outbox } from "./outbox.ts";
 import { ChannelError, type BotInfo, type Channel, type InMessage, type InTap, type OutButton, type Trouble } from "./port.ts";
-import { createSlack, isSlackAppToken, isSlackBotToken, slackManifest } from "./slack.ts";
+import { createSlack, faceUrl, isSlackAppToken, isSlackBotToken, slackAppLink, slackManifest } from "./slack.ts";
 import { openChannelStore, type ChannelRec, type ChannelStore } from "./store.ts";
 import { createTelegram, isTelegramToken } from "./telegram.ts";
 import { createWechat, wechatLogin, WECHAT_API, type WechatLogin } from "./wechat.ts";
@@ -110,6 +110,8 @@ export interface ChannelDeps {
   personaName: () => string;
   /** D516: the home's partners, the default first; absent or one: nothing about partners shows. */
   partners?: () => { id: string; name: string }[];
+  /** D531: a partner's name and look (the default's too, with one partner), for a chat app that shows each sender's own. */
+  face?: (id: string) => { name: string; look: string } | undefined;
   /** The home's https address when it has one (D228), for 在 Ducter 里看看 / Open in Ducter. */
   openUrl?: () => string | undefined;
   /** Tests: the adapters against fakes. */
@@ -145,7 +147,7 @@ type Policy = "buttons" | "open" | "never";
 
 /** research/79 §6: which cards a chat app may answer with a button. */
 export function cardPolicy(d: Bodies["decision"]): Policy {
-  if (d.pay || d.key || d.fill || d.signIn || d.checkout) return "never"; // D436: paying is in the live view
+  if (d.pay || d.key || d.copyKey || d.fill || d.signIn || d.checkout) return "never"; // D436: paying is in the live view
   // D505 (rev.): where a sign-in happens widens access to their Chrome: answered in Ducter itself (and 我在这里登录 opens a live view).
   if (!d.reversible || d.signInWhere || d.phone || d.computer || d.handset || d.call || d.cal || d.anywhere || d.memPlugin || d.asker || d.trust || d.findId) return "open";
   return "buttons";
@@ -167,6 +169,9 @@ interface Card {
 }
 interface Job {
   kind: ChannelKind;
+  who: string;
+  /** D531: the thread under a channel @-mention it answers in. */
+  thread?: string;
   chat: string;
   title: string;
   statusId?: string;
@@ -241,12 +246,17 @@ export function createChannels(deps: ChannelDeps): Channels {
     }
     return undefined;
   };
+  /** D531: the chat app shows each message's own sender (Slack with chat:write.customize): no name in front. */
+  const shows = (kind: ChannelKind) => {
+    const l = live.get(kind);
+    return !!deps.face && !!l?.ch.caps.as && l.bot?.customize !== false;
+  };
   /** Another partner's name, when the one thread carries more than one (the default is the bot's own). */
   const otherName = (id: string) => (many() && id !== DEFAULT_PARTNER ? partnerList().find((p) => p.id === id)?.name : undefined);
   /** A partner's words as they read in the one thread: another partner's lead with its name. */
   const labelled = (kind: ChannelKind, id: string, text: string): string => {
     holdThread(kind, id);
-    const name = otherName(id);
+    const name = shows(kind) ? undefined : otherName(id);
     return name ? fill(w().as, { name, text }) : text;
   };
   /** The first time another partner speaks in a chat app, one line says how to talk to it there. */
@@ -405,7 +415,9 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (l?.trouble) return { ...base, state: "cant_connect", reason: l.trouble };
       if (!l?.up) return { ...base, state: "starting" };
       const until = rec.linked ? openUntil(kind) : undefined;
-      return { ...base, state: rec.linked ? "linked" : "unlinked", ...(until ? { openUntil: new Date(until).toISOString() } : {}) };
+      // D531: a Slack app made before chat:write.customize: Settings asks for a reinstall.
+      const reinstall = l.ch.caps.as && (l.bot?.customize === false || l.bot?.reinstall === true);
+      return { ...base, state: rec.linked ? "linked" : "unlinked", ...(until ? { openUntil: new Date(until).toISOString() } : {}), ...(reinstall ? { reinstall: true } : {}) };
     });
 
   const setTrouble = (kind: ChannelKind, t: Trouble | undefined) => {
@@ -418,7 +430,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   // ---------- sending ----------
 
   /** Says text in that chat, split to the app's length; buttons under the last part. Returns the ids. */
-  const say = (kind: ChannelKind, text: string, o: { buttons?: OutButton[]; replyTo?: string; silent?: boolean; seq?: number } = {}): Promise<string[]> => {
+  const say = (kind: ChannelKind, text: string, o: { buttons?: OutButton[]; replyTo?: string; silent?: boolean; seq?: number; who?: string; chat?: string } = {}): Promise<string[]> => {
     const l = live.get(kind);
     const acc = linkedOf(kind);
     if (!l || !acc) return Promise.resolve([]);
@@ -428,7 +440,10 @@ export function createChannels(deps: ChannelDeps): Channels {
     const max = l.ch.caps.maxText - 64;
     const parts = cutPoints(text, max).map(([s, e]) => text.slice(s, e));
     const ids: string[] = [];
-    const chat = acc.chat;
+    const chat = o.chat ?? acc.chat;
+    // D531: the partner's own name and face, where the app shows a sender per message.
+    const face = l.ch.caps.as ? deps.face?.(o.who ?? DEFAULT_PARTNER) : undefined;
+    const as = face ? { name: face.name, icon: faceUrl(face.look) } : undefined;
     const run = async () => {
       for (let i = 0; i < parts.length; i++) {
         const last = i === parts.length - 1;
@@ -437,7 +452,7 @@ export function createChannels(deps: ChannelDeps): Channels {
             // D301: an app that only answers: stop where its window ends (checked in the line, so
             // messages waiting their turn see the ones before them).
             if (l.ch.caps.replyWindowMs && !reach(kind)) return "";
-            const id = await l.ch.send(chat, { text: parts[i]!, ...(last && o.buttons?.length && l.ch.caps.buttons ? { buttons: o.buttons } : {}), ...(i === 0 && o.replyTo ? { replyTo: o.replyTo } : {}), ...(o.silent && l.ch.caps.silent ? { silent: true } : {}) });
+            const id = await l.ch.send(chat, { text: parts[i]!, ...(last && o.buttons?.length && l.ch.caps.buttons ? { buttons: o.buttons } : {}), ...(i === 0 && o.replyTo ? { replyTo: o.replyTo } : {}), ...(o.silent && l.ch.caps.silent ? { silent: true } : {}), ...(as ? { as } : {}) });
             spend(kind);
             return id;
           });
@@ -513,7 +528,10 @@ export function createChannels(deps: ChannelDeps): Channels {
   // ---------- where things go ----------
 
   /** The chat app a turn's answer goes to now: the turn's own, while it is now; else the person's place. */
-  type Route = { kind: ChannelKind; mode: "turn" | "own" };
+  /** chat, thread (D531): a turn started by an @-mention in a Slack channel answers in a thread under it. */
+  type Route = { kind: ChannelKind; mode: "turn" | "own"; chat?: string; thread?: string };
+  /** D531: the person's @-mentions in a shared channel this run (their seq → the channel and the thread to answer in). */
+  const mentionOf = new Map<number, { chat: string; thread: string }>();
   const placeNow = (): ChannelKind | undefined => {
     const r = store.lastRoute();
     return r !== "app" && reach(r) ? r : undefined;
@@ -525,7 +543,10 @@ export function createChannels(deps: ChannelDeps): Channels {
     // Words about something Ducter started (a report, a routine): its own, to the person's place.
     if (!u) return place ? { kind: place, mode: "own" } : undefined;
     // A turn that is still now answers where it started; an app's turn is not mirrored.
-    if (clock.now() - u.at < TURN_MS) return u.via && reach(u.via) ? { kind: u.via, mode: "turn" } : undefined;
+    if (clock.now() - u.at < TURN_MS) {
+      const at = mentionOf.get(replyTo);
+      return u.via && reach(u.via) ? { kind: u.via, mode: "turn", ...(at ? { chat: at.chat, thread: at.thread } : {}) } : undefined;
+    }
     // A late result: to the person's place, once.
     return place ? { kind: place, mode: "own" } : undefined;
   };
@@ -608,7 +629,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
     text += hintOf(kind, who);
-    void say(kind, text, { buttons, seq }).then((ids) => {
+    void say(kind, text, { buttons, seq, who }).then((ids) => {
       card.ids = ids;
       // Settled while it was on its way: show the end state at once.
       if (!decisions.isPending(d.decisionId)) settleCard(d.decisionId);
@@ -662,17 +683,18 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (!r) return;
     const acc = linkedOf(r.kind);
     if (!acc) return;
-    const run = () => void say(r.kind, voiced(r.kind, who, b.text), { seq });
+    const at = r.chat ? { chat: r.chat, ...(r.thread ? { replyTo: r.thread } : {}) } : {};
+    const run = () => void say(r.kind, voiced(r.kind, who, b.text), { seq, who, ...at });
     if (r.mode === "own") own(run);
     else run();
-    const job: Job = { kind: r.kind, chat: acc.chat, title: b.text };
+    const job: Job = { kind: r.kind, who, chat: r.chat ?? acc.chat, ...(r.thread ? { thread: r.thread } : {}), title: b.text };
     jobs.set(b.jobId, job);
     // An app that can't edit gets no status line: one more message there, never brought up to date.
     if (!live.get(r.kind)?.ch.caps.edit) return void jobs.set(b.jobId, job);
     job.timer = clock.setTimeout(() => {
       job.timer = undefined;
       if (job.done || jobs.get(b.jobId) !== job || !ready(job.kind) || inQuiet(clock.now(), deps.quiet())) return;
-      void say(job.kind, W.still(job.title), { silent: true }).then((ids) => {
+      void say(job.kind, W.still(job.title), { silent: true, who: job.who, chat: job.chat, ...(job.thread ? { replyTo: job.thread } : {}) }).then((ids) => {
         job.statusId = ids[0];
         if (job.done && job.statusId) void edit(job.kind, job.chat, job.statusId, job.finalLine!);
       });
@@ -732,7 +754,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           // A late answer quotes the message it answers, so it never reads as about the last one.
           const quoted = r.mode === "own" && b.replyTo !== undefined ? svcOf.get(b.replyTo) : undefined;
           const run = () => {
-            if (b.text.trim()) void say(r.kind, voiced(r.kind, whoseOf(e.stream), b.text), { seq: e.seq, ...(quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
+            if (b.text.trim()) void say(r.kind, voiced(r.kind, whoseOf(e.stream), b.text), { seq: e.seq, who: whoseOf(e.stream), ...(r.chat ? { chat: r.chat, ...(r.thread ? { replyTo: r.thread } : {}) } : quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
             sendMedia(r.kind, b.media);
           };
           if (r.mode === "own") own(run);
@@ -746,7 +768,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           if (!place) return;
           // Each find is a sentence of its own, a paragraph as a person writes it, not a bulleted list (D291).
           const text = [b.opening, ...b.finds.map((f) => f.text), ...(b.leftOut ? [b.leftOut] : [])].filter(Boolean).join("\n\n");
-          if (own(() => void say(place, voiced(place, whoseOf(e.stream), text) + openLine(place), { seq: e.seq, buttons: openButton() }))) claims.add(`n:${b.noteId}`);
+          if (own(() => void say(place, voiced(place, whoseOf(e.stream), text) + openLine(place), { seq: e.seq, buttons: openButton(), who: whoseOf(e.stream) }))) claims.add(`n:${b.noteId}`);
           return;
         }
         case "decision":
@@ -779,6 +801,8 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (id && /^(telegram|slack|wechat):/.test(id)) remember(id);
   }
 
+  /** D531: why the person's words were taken or dropped, at info level (never the words or who). */
+  const note = (kind: ChannelKind, what: string) => console.info(`[channels] ${kind}: ${what}`);
   const stranger = (kind: ChannelKind) => {
     const at = store.get(kind)?.strangerAt;
     if (at && clock.now() - Date.parse(at) < DAY_MS) return;
@@ -788,20 +812,28 @@ export function createChannels(deps: ChannelDeps): Channels {
 
   const inbound = async (kind: ChannelKind, m: InMessage) => {
     const rec = store.get(kind);
-    if (!rec || !m.direct) return; // groups and channels are never the person's window: silence
+    if (!rec) return;
+    // Groups and channels are never the person's window: silence. D531: an @-mention of the bot
+    // in a Slack channel it was added to is, for the linked person only.
+    if (!m.direct && !m.mention) return note(kind, "ignored: not a direct message");
     const acc = rec.linked;
+    if (m.mention && (!acc || m.from.id !== acc.id)) {
+      // Anyone else's mention gets nothing, in the channel or anywhere (the bot is one person's).
+      note(kind, acc ? "ignored: a mention, not from the linked person" : "ignored: a mention before an account is linked");
+      return void (acc && stranger(kind));
+    }
     if (!acc) {
       // Not linked yet: only a live code links, and a wrong one gets silence.
-      if (!m.forwarded && store.redeem(kind, m.text, m.from.id)) {
-        store.patch(kind, { linked: { id: m.from.id, chat: m.chat, name: m.from.name || m.from.id, at: new Date(clock.now()).toISOString() } });
-        store.setLastRoute(kind);
-        changed();
-        void say(kind, W.linked());
-      }
+      if (m.forwarded || !store.redeem(kind, m.text, m.from.id)) return note(kind, "ignored: not linked yet, and no live code");
+      store.patch(kind, { linked: { id: m.from.id, chat: m.chat, name: m.from.name || m.from.id, at: new Date(clock.now()).toISOString() } });
+      store.setLastRoute(kind);
+      changed();
+      note(kind, "linked");
+      void say(kind, W.linked());
       return;
     }
-    if (m.from.id !== acc.id) return stranger(kind);
-    if (m.chat !== acc.chat) store.patch(kind, { linked: { ...acc, chat: m.chat } });
+    if (m.from.id !== acc.id) return note(kind, "ignored: not the linked person"), stranger(kind);
+    if (!m.mention && m.chat !== acc.chat) store.patch(kind, { linked: { ...acc, chat: m.chat } });
     // D301: the person's words open the window again.
     if (live.get(kind)?.ch.caps.replyWindowMs) {
       store.patch(kind, { heardAt: new Date(clock.now()).toISOString(), sentSince: 0 });
@@ -847,6 +879,9 @@ export function createChannels(deps: ChannelDeps): Channels {
       const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}), ...(to !== DEFAULT_PARTNER ? { stream: channelOf(to) } : {}) });
       seqOf.set(clientId, e.seq);
       svcOf.set(e.seq, { kind, chat: m.chat, id: m.id });
+      // D531: its answer goes in a thread under the mention (or in the thread it was made in).
+      if (m.mention) mentionOf.set(e.seq, { chat: m.chat, thread: m.replyTo ?? m.id });
+      note(kind, m.mention ? "taken: a mention from the linked person" : "taken: a message from the linked person");
     } finally {
       fromChat--;
     }
@@ -906,6 +941,7 @@ export function createChannels(deps: ChannelDeps): Channels {
         message: (m) => inbound(kind, m),
         tap: (t) => tap(kind, t),
         trouble: (t) => live.get(kind) === l && setTrouble(kind, t),
+        changed: () => live.get(kind) === l && changed(),
       });
       l.bot = bot;
       l.up = true;
@@ -961,7 +997,7 @@ export function createChannels(deps: ChannelDeps): Channels {
         const bot = await bring(kind, rec);
         // The same bot again keeps its linked account and its place in the updates.
         const same = before?.bot?.id === bot.id;
-        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}) });
+        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}), ...(bot.teamId ? { teamId: bot.teamId } : {}), ...(bot.appId ? { appId: bot.appId } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}) });
         changed();
         return { ok: true };
       } catch (err) {
@@ -978,7 +1014,11 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (!rec || !live.get(kind)?.up) return { ok: false, reason: "not_connected" };
       if (rec.linked || kind === "wechat") return { ok: false, reason: "busy" }; // WeChat: the scan linked it
       const c = store.newCode(kind);
-      return { ok: true, code: c.code, expiresAt: c.expiresAt, ...(kind === "telegram" && rec.bot?.handle ? { link: `https://t.me/${rec.bot.handle}?start=${c.raw}` } : {}) };
+      // D531: Slack's link opens the app's messages, where the code goes (the bot as it is now, else as stored).
+      const appId = live.get(kind)?.bot?.appId ?? rec.bot?.appId;
+      const teamId = live.get(kind)?.bot?.teamId ?? rec.bot?.teamId;
+      const link = kind === "telegram" && rec.bot?.handle ? `https://t.me/${rec.bot.handle}?start=${c.raw}` : kind === "slack" && appId ? slackAppLink(appId, teamId) : undefined;
+      return { ok: true, code: c.code, expiresAt: c.expiresAt, ...(link ? { link } : {}) };
     },
     unlink(kind) {
       if (!store.get(kind)?.linked) return false;

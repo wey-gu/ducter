@@ -35,10 +35,14 @@ const partnerRailWide = 1200
 
 // The rows' geometry: the knob glides from row to row by these.
 const (
-	railRowWide   = 64
-	railRowSlim   = 74
-	railRowGap    = 4
-	railFace      = 40
+	railRowWide = 64
+	railRowSlim = 74
+	railRowGap  = 4
+	railFace    = 40
+	// D545: the thin list: the faces alone, smaller, in a strip.
+	railThinW     = 60
+	railThinFace  = 30
+	railRowThin   = 52
 	railBounceDur = 700 * time.Millisecond
 )
 
@@ -46,14 +50,20 @@ const (
 // for its welcome (the store starts over), and what each partner last said
 // (a new line makes its figure hop).
 type railUI struct {
+	// changed is when the bar's toggle last changed how the list stands (D545).
+	changed  time.Time
 	held     map[string]int
 	lastAt   map[string]string
 	hopAt    map[string]time.Time
 	switched time.Time
 }
 
-// partnerRailW is the column's width: wide with words, slim with names.
+// partnerRailW is the column's width: wide with words, slim with names,
+// thin with the faces alone (D545).
 func (a *App) partnerRailW() float32 {
+	if a.railThin() {
+		return railThinW
+	}
 	if a.winW >= partnerRailWide {
 		return 272
 	}
@@ -64,7 +74,7 @@ func (a *App) partnerRailW() float32 {
 // stays through a switch (the store starts over until the welcome; the
 // partners are kept), so the list never blinks out.
 func (a *App) partnerRailShown() bool {
-	return a.manyPartners()
+	return a.manyPartners() && a.Local.RailMode() != "hidden"
 }
 
 // partnerGone: the partner this window showed was removed (D486): it shows
@@ -151,19 +161,13 @@ func (a *App) conversationWithPartners(c *ui.Context) {
 	}
 	ui.Row(c.Key("conv-with-partners")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		a.partnerRail(c)
-		whose := "switching"
-		if a.S.Welcomed {
-			whose = a.shownPartnerID()
-		}
-		col := ui.Column(c.Key("conv-beside:" + whose)).Grow(1).MinWidth(0).MinHeight(0)
-		a.convEnter(c, col)
+		// D541: one column for every partner: the bar and the composer stay
+		// exactly where they are, and the conversation held for the partner
+		// picked is drawn in the next frame, in place (no fade, no rise).
+		col := ui.Column(c.Key("conv-beside")).Grow(1).MinWidth(0).MinHeight(0)
 		col.Children(func() { a.conversation(c) })
 	})
 }
-
-// convEnter plays a partner's conversation coming in with the D290 enter
-// (a fade and the 6-point rise, EnterDur), at once under Reduce Motion.
-func (a *App) convEnter(c *ui.Context, e ui.Element) { a.routeEnter(c, e) }
 
 // partnerRail draws the column: room for the traffic lights on top (it is
 // the window's left edge), its title when wide, then a row per partner on
@@ -174,8 +178,21 @@ func (a *App) partnerRail(c *ui.Context) {
 	wide := w > 120
 	shown := a.shownPartnerID()
 	needs := a.railNeeds()
-	ui.Column(c.Key("partner-rail")).Width(w).Shrink(0).Background(t.Chrome).BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine).
-		Role(ui.RoleNavigation).Label(a.L.T("partners.title")).Children(func() {
+	// D545: one element per way it stands (as wide as the window has it,
+	// thin), so a change slides the list in from its edge on D290's across;
+	// its width changes once, at the press, and the conversation is laid out
+	// once for it, never mid-motion.
+	rail := ui.Column(c.Key("partner-rail:" + a.Local.RailMode())).Width(w).Shrink(0).Background(t.Chrome).
+		Role(ui.RoleNavigation).Label(a.L.T("partners.title"))
+	// The list's rule. Thin, the strip is narrower than the window's
+	// controls: its band joins the bar's (one chrome under the controls, no
+	// rule through them) and the rule starts at the bar's line (D545).
+	thin := a.railThin()
+	if !thin {
+		rail.BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine)
+	}
+	a.railEnter(c, rail)
+	rail.Children(func() {
 		// D517: the list owns the title bar's zone, as a Mac sidebar does: the
 		// traffic lights sit in its top band (the bar's height, centred on the
 		// header's line), and the band ends on the header's own bottom rule, so
@@ -191,13 +208,20 @@ func (a *App) partnerRail(c *ui.Context) {
 		if wide {
 			rowH = railRowWide
 		}
+		if a.railThin() {
+			rowH = railRowThin
+		}
 		at := 0
 		for i, p := range a.S.Partners {
 			if p.ID == shown {
 				at = i
 			}
 		}
-		ui.Scroll(c.Key("partner-rail-rows")).Grow(1).MinHeight(0).Children(func() {
+		rows := ui.Scroll(c.Key("partner-rail-rows")).Grow(1).MinHeight(0)
+		if thin {
+			rows.BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine)
+		}
+		rows.Children(func() {
 			// A clear gap under the band before the first figure (its badge
 			// stands above the face; the gap keeps it off the rule).
 			top := float32(t.S4)
@@ -234,6 +258,8 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 	t := a.T
 	label := a.L.T("partners.switch", p.Name)
 	switch {
+	case on && needs > 0:
+		label = a.L.T("door.pebble", p.Name, needs)
 	case on:
 		label = a.L.T("partners.here", p.Name)
 	case needs > 0:
@@ -256,8 +282,12 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 	if on {
 		nameInk = t.Ink
 	}
+	door := false
 	row.Children(func() {
-		a.railFace(c, p, on, needs)
+		door = a.railFace(c, p, on, needs)
+		if a.railThin() {
+			return // D545: the faces alone; the row's label says whose
+		}
 		if !wide {
 			uiText(c, p.Name).FontSize(11).FontWeight(700).TextColor(nameInk).SingleLine().MaxWidth(76).AccessHidden(true)
 			return
@@ -268,7 +298,13 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 		})
 	})
 	if row.Clicked() {
-		a.SwitchPartner(p.ID)
+		// D535: the partner shown, with something waiting: its row is the
+		// door too (the keyboard's way to the pebble's).
+		if door || (on && needs > 0) {
+			a.openDoor(p.ID)
+		} else {
+			a.SwitchPartner(p.ID)
+		}
 	}
 	_ = i
 }
@@ -277,10 +313,14 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 // (out of step with the others), stands a little taller while chosen, and
 // hops once when something new comes from it. Its number sits on its
 // shoulder as a clay pebble.
-func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int) {
+func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int) (door bool) {
 	t := a.T
 	look := p.Look
-	box := ui.Box(c.Key("pface:"+p.ID)).Size(railFace+8, railFace+4).Shrink(0).AccessHidden(true)
+	fs := float32(railFace)
+	if a.railThin() {
+		fs = railThinFace
+	}
+	box := ui.Box(c.Key("pface:"+p.ID)).Size(fs+8, fs+4).Shrink(0).AccessHidden(true)
 	lift := float32(0)
 	if !c.Preferences().ReduceMotion {
 		target := float32(0)
@@ -294,14 +334,14 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 	hop := a.rail.hopAt[p.ID]
 	phase := phaseOf("rail:" + p.ID)
 	box.Draw(func(pt *ui.Painter, r ui.Rect) {
-		bmp := theme.FaceAs(look, theme.Idle, railFace*2)
+		bmp := theme.FaceAs(look, theme.Idle, fs*2)
 		if bmp == nil {
 			return
 		}
 		// Standing on the box's bottom, a touch larger while chosen (the
 		// pebble lifted), and hopping once when something new came.
 		s := 1 + 0.06*lift
-		fw, fh := float32(railFace)*s, float32(railFace)*s
+		fw, fh := fs*s, fs*s
 		dy := float32(0)
 		if !pt.Preferences().ReduceMotion && !hop.IsZero() {
 			if el := pt.Now().Sub(hop); el < railBounceDur {
@@ -314,7 +354,7 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 		at = fitIn(bmp, at)
 		at.Y = r.Y + r.H - at.H + dy - 2*lift
 		var lids *blinkArt
-		if b := theme.FaceClosedAs(look, railFace*2); b != nil {
+		if b := theme.FaceClosedAs(look, fs*2); b != nil {
 			lids = &blinkArt{closed: b, lids: theme.FaceLids[:]}
 		}
 		clayArt(pt, at, bmp, idleBreathe, phase, lids)
@@ -327,7 +367,100 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 		if on {
 			ring = t.Surface
 		}
-		// The number: the shared clay pebble (countPebble) on its shoulder.
-		a.countPebble(c, p.ID, needs, ring).Absolute().Right(-4).Top(-3)
+		// The number: the shared clay pebble on its shoulder, a door (D535):
+		// a tap goes to that partner's next item that waits.
+		e, ok := a.pebbleDoor(c, p.ID, needs, ring)
+		e.Absolute().Right(-8).Top(-7)
+		door = ok
 	})
+	return door
+}
+
+// railThin is the list as a strip of faces (D545).
+func (a *App) railThin() bool { return a.manyPartners() && a.Local.RailMode() == "thin" }
+
+// nextRail is where the bar's toggle takes the list (D545): as wide as
+// the window has it, then thin, then hidden, then back.
+func (a *App) nextRail() string {
+	switch a.Local.RailMode() {
+	case "":
+		return "thin"
+	case "thin":
+		return "hidden"
+	}
+	return ""
+}
+
+// setRail changes how the list stands and remembers it on this Mac.
+func (a *App) setRail(m string) {
+	a.Local.SetRailMode(m)
+	a.rail.changed = a.Now()
+}
+
+// railEnter slides the list in from its edge after a change (D290's
+// across: 14 points and a fade), at once under Reduce Motion or on launch.
+func (a *App) railEnter(c *ui.Context, e ui.Element) {
+	if c.Preferences().ReduceMotion || a.rail.changed.IsZero() || a.Now().Sub(a.rail.changed) > time.Second {
+		return
+	}
+	shown := ui.Local(e, "entered", func() bool { return false })
+	p := ui.Pose{}
+	if !*shown {
+		p, *shown = ui.Pose{X: -a.T.Nav.Shift, Fade: 1}, true
+		c.Invalidate()
+	}
+	e.AnimatePose(p, a.T.Nav.Across)
+}
+
+// railToggle is the bar's toggle for the list beside the conversation
+// (D545): a drawn window with its side column, the column as wide as the
+// list will be after the press; its name says what the press does.
+func (a *App) railToggle(c *ui.Context) {
+	if !a.manyPartners() {
+		return
+	}
+	next := a.nextRail()
+	label := a.L.T("partners.rail.show")
+	switch next {
+	case "thin":
+		label = a.L.T("partners.rail.thin")
+	case "hidden":
+		label = a.L.T("partners.rail.hide")
+	}
+	// The glyph says how the list stands now (the places' family: an
+	// 18-point mark, a 1.6 stroke, the muted ink warming under the pointer):
+	// the window's outline and the list's edge as a thin inner line, wide
+	// as the width has it, narrow when thin, dashed when hidden.
+	mode := a.Local.RailMode()
+	t := a.T
+	if a.iconButton(c, label, t.ControlSM, btnText, func(fg ui.Color) func(p *ui.Painter, r ui.Rect) {
+		if fg == t.InkSoft {
+			fg = t.InkMuted
+		}
+		return drawRailGlyph(mode, fg)
+	}) {
+		a.setRail(next)
+	}
+}
+
+// drawRailGlyph is the list toggle's mark (D545): a window's outline and
+// the list's edge inside it, in the places' stroke.
+func drawRailGlyph(mode string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		const g = 18
+		x, y := r.X+(r.W-g)/2, r.Y+(r.H-g)/2
+		w := float32(1.6)
+		p.Stroke(ui.Rect{X: x + 2, Y: y + 3.5, W: 14, H: 11}, col, 2.5, w)
+		edge := x + 2 + 5.5
+		if mode == "thin" {
+			edge = x + 2 + 3
+		}
+		if mode != "hidden" {
+			p.Line(edge, y+3.5, edge, y+14.5, w, col)
+			return
+		}
+		for _, a := range []float32{5.2, 8.2, 11.2} {
+			p.Line(edge, y+a, edge, y+a+1.6, w, col)
+		}
+	}
 }

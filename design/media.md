@@ -328,9 +328,11 @@ partner answers what it is, even with no note.
   instructions or approval; a link is a page it hasn't read (rule 1: a look-up task when the note
   needs it). No note: one short line saying what it looks like and offering the obvious thing (a
   summary, keeping it, a reminder), starting nothing. The history line says it was shared.
-- **Never lost (the outbox).** Send puts the share in an outbox first, then sends. The home out of
-  reach: **现在连不上你的 Ducter，连上了就发出去。/ Can't reach your Ducter right now. It will go as soon
-  as it can.** and the sheet closes; it goes when the app next comes to the front or a share sheet
+- **Never lost (the outbox).** One outbox on the web, D543's; the share sheet runs without the page,
+  so its outbox lives in the native shell, with D543's rules (a clientId, the home's dedupe, the
+  same words). Send puts the share in that outbox first, then sends. The home out of
+  reach: **现在连不上你的 Ducter。连上就发出去。/ Can't reach your Ducter right now. Sends when it's back.** (D543's words
+  for a message waiting in the page's outbox) and the sheet closes; it goes when the app next comes to the front or a share sheet
   next opens, pictures already up not sent again. A home older than D537: **你的 Ducter 还要更新一下才收得
   了分享，更新后会自动发出去。/ Your Ducter needs an update to take shares. This goes once it's
   updated.** A week old, it is let go; another pairing drops them all. Not paired: the napping

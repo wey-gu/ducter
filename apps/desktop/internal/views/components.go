@@ -243,6 +243,79 @@ func (a *App) countPebble(c *ui.Context, key string, n int, ground ui.Color) ui.
 	})
 }
 
+// needsDoor is a needs-you count as a door (D535, ui.md "Shared controls"):
+// its words in the needs-you ink on a small clay pill of the needs-you
+// surface, the drawn chevron after them; it sinks into its ledge as it is
+// pressed and shows the keyboard's ring. A tap opens the next item.
+func (a *App) needsDoor(c *ui.Context, key, words, about string) bool {
+	t := a.T
+	b := ui.Row(c.Key("door:"+key)).Gap(t.S1).AlignItems(ui.Center).Height(t.ChipSM+6).Padding(0, t.S2, 0, t.S3).
+		Radius(t.Pill).Background(t.NeedsYou.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(spoken(a.L, words, about)).Focusable().Shrink(0)
+	ledge := float32(2)
+	switch {
+	case b.Pressed():
+		ledge = 0
+		if !c.Preferences().ReduceMotion {
+			b.Translate(0, 2)
+		}
+		b.Background(t.NeedsYou.Surface.Mix(t.NeedsYou.Dot, 0.24))
+	case b.Hovered():
+		b.Background(t.NeedsYou.Surface.Mix(t.NeedsYou.Dot, 0.14))
+	}
+	if ledge > 0 {
+		b.Shadow(0, ledge, 0, 0, t.NeedsYou.Ledge)
+	}
+	if b.FocusVisible() {
+		b.Border(2, t.Accent)
+	}
+	b.Children(func() {
+		uiText(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine().AccessHidden(true)
+		a.glyph(c, 12, drawChevron(t.NeedsYou.Ink, false))
+	})
+	return b.Clicked()
+}
+
+// pebbleDoor is countPebble as a door (D535): the same pebble with a
+// pointer's room round it (4 on each side); under the pointer it lifts a
+// point off its ledge, pressed it sinks. The caller places the element and
+// reads the bool (pressed). The pebble stays out of the accessibility tree:
+// its row says the count and opens the same door from the keyboard.
+func (a *App) pebbleDoor(c *ui.Context, key string, n int, ground ui.Color) (ui.Element, bool) {
+	hit := ui.Box(c.Key("pdoor:" + key)).Padding(4).Cursor(ui.CursorPointer).AccessHidden(true)
+	y := float32(0)
+	switch {
+	case hit.Pressed():
+		y = 1
+	case hit.Hovered():
+		y = -1
+	}
+	hit.Children(func() {
+		p := a.countPebble(c, key, n, ground)
+		if !c.Preferences().ReduceMotion {
+			p.Translate(0, p.AnimateTo("lift", y, a.T.Snappy))
+		}
+	})
+	return hit, hit.Clicked()
+}
+
+// countDoor is 「n 个等你」 in the conversation's bar: the count's own words
+// in the needs-you ink, a text button of the bar (the crumbs' tint under
+// the pointer), the door to the next item; it says whether it was pressed.
+func (a *App) countDoor(c *ui.Context, words string, tint ui.Color) bool {
+	t := a.T
+	l := uiText(c.Key("who-needs"), words).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine().
+		Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(spoken(a.L, words, a.L.T("door.line.about"))).Focusable()
+	if l.Hovered() || l.Pressed() {
+		l.Background(tint)
+	}
+	if l.FocusVisible() {
+		l.Border(2, t.Accent)
+	}
+	return l.Clicked()
+}
+
 // lift raises an element a little while hovered: the chip → card motion.
 func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 	if c.Preferences().ReduceMotion {
@@ -595,19 +668,6 @@ func (a *App) glyph(c *ui.Context, size float32, draw func(p *ui.Painter, r ui.R
 	ui.Box(c).Size(size, size).Draw(draw).Shrink(0)
 }
 
-func drawSend(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		var arrow ui.Path
-		arrow.MoveTo(cx, cy+7)
-		arrow.LineTo(cx, cy-7)
-		arrow.MoveTo(cx-6, cy-1)
-		arrow.LineTo(cx, cy-7)
-		arrow.LineTo(cx+6, cy-1)
-		p.StrokePath(&arrow, 2.4, col)
-	}
-}
-
 // drawPrompt is a terminal's prompt: a chevron and a cursor line.
 func drawPrompt(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
@@ -780,6 +840,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.keyButtons(c, d, st) // D233: what and why, the masked field, remember or once
 		return
 	}
+	if d.CopyKey != nil {
+		a.copyKeyButtons(c, d, st) // D539: what, from, to, the note; 先不 · 复制
+		return
+	}
 	if d.Handset != nil && d.Handset.Kind == "record" {
 		a.handsetRecordButtons(c, d, st) // D280: the person's turn on the phone, to allow a recording
 		return
@@ -800,13 +864,13 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 			uiText(c, d.Draft.First).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 		}
 		ui.Row(c.Key("draft-acts:" + d.DecisionID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
-				a.Decide(d.DecisionID, "hold", "")
-			}
 			if a.buttonFor(c, a.L.T("draft.see"), d.Question, btnPrimary, st.height, st.quietBg) {
 				a.draftJump = d.FindID
 				a.Route = RouteConversation
 				a.markRead()
+			}
+			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
+				a.Decide(d.DecisionID, "hold", "")
 			}
 		})
 		return
@@ -1108,6 +1172,119 @@ func (a *App) decisionAbout(d *store.DecisionState) string {
 	return string(q)
 }
 
+// ---------- the one row hover (D529) ----------
+
+// rowGround is what a row or card stands on, for its hover (D529): the
+// neutral clay card, a neutral card on a tinted ledge (a sheet in 等你), or
+// a card tinted in a state's own surface.
+type rowGround struct {
+	tint *theme.StateColors // nil: neutral
+	own  bool               // the row's own fill is the tint's surface
+	page bool               // a row lying flat on the page's paper, no card under it
+}
+
+func groundNeutral() rowGround                    { return rowGround{} }
+func groundPage() rowGround                       { return rowGround{page: true} }
+func groundLedge(s *theme.StateColors) rowGround  { return rowGround{tint: s} }
+func groundTinted(s *theme.StateColors) rowGround { return rowGround{tint: s, own: true} }
+
+// rowHoverFill is the fill a hovered row takes on its ground: a neutral
+// card warms toward SurfaceSunken (light) or lifts toward SurfaceRaised
+// (dark, where sunken is the darker); a card on a tinted ledge warms within
+// that tint; a tinted card deepens a little within its own. Never grey.
+func (a *App) rowHoverFill(g rowGround) (rest, hover ui.Color) {
+	t := a.T
+	switch {
+	case g.page:
+		return t.Bg, t.Sunken // the paper warms to its sunken tint
+	case g.tint != nil && g.own:
+		return g.tint.Surface, g.tint.Surface.Mix(g.tint.Ledge, 0.28)
+	case g.tint != nil && t.Dark:
+		return t.Surface, t.Surface.Mix(g.tint.Surface, 0.45)
+	case g.tint != nil:
+		return t.Surface, t.Surface.Mix(g.tint.Surface, 0.5)
+	case t.Dark:
+		return t.Surface, t.Surface.Mix(t.SurfaceRaised, 0.9)
+	}
+	return t.Surface, t.Surface.Mix(t.SurfaceSunken, 0.55)
+}
+
+// rowPressFill is a pressed row's fill: a step deeper within the same
+// ground (sunk, in dark too).
+func (a *App) rowPressFill(g rowGround) ui.Color {
+	t := a.T
+	switch {
+	case g.page:
+		return t.Sunken.Mix(t.SurfaceSunken, 0.6)
+	case g.tint != nil && g.own:
+		return g.tint.Surface.Mix(g.tint.Ledge, 0.5)
+	case g.tint != nil:
+		return t.Surface.Mix(g.tint.Surface, 0.8)
+	}
+	return t.Surface.Mix(t.SurfaceSunken, 0.9)
+}
+
+// rowHover is the one row hover (D529), for every row and card a pointer
+// can open: the fill cross-fades to rowHoverFill over Hover (140 ms; at
+// once under reduced motion) and nothing else changes: no size, no line
+// break, no position. on adds a reason of the caller's to show it (the
+// keys on it, its menu open). It says whether the row is revealed (pointed
+// at, the keyboard focus inside it, or on), for revealSlot.
+func (a *App) rowHover(c *ui.Context, row ui.Element, g rowGround, on bool) bool {
+	revealed := on || row.Hovered() || row.FocusWithin()
+	rest, hover := a.rowHoverFill(g)
+	k := float32(0)
+	if revealed {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = row.AnimateTo("hover", k, a.T.Hover)
+	}
+	switch {
+	case row.Pressed():
+		row.Background(a.rowPressFill(g))
+	case k >= 0.999:
+		row.Background(hover)
+	case k > 0.001:
+		row.Background(rest.Mix(hover, k))
+	case g.own:
+		row.Background(rest)
+	}
+	return revealed
+}
+
+// cardLift is a free-standing card's hover (Past tasks; D76, D529): it
+// lifts by its shadow alone (the drop opens, the ledge deepens), never by
+// moving, over Hover; at once under reduced motion. It returns how far.
+func (a *App) cardLift(c *ui.Context, card ui.Element, on bool) float32 {
+	k := float32(0)
+	if on {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = card.AnimateTo("lift", k, a.T.Hover)
+	}
+	return k
+}
+
+// revealSlot holds a row's hover-revealed controls (×, ⋯, Pause; D529).
+// They are always built, so their room is kept and the keyboard reaches
+// them (Tab into the row reveals them, as hover does); they cross-fade in
+// over Hover and never push anything. A row that already shows actions
+// puts its slot in that same action group.
+func (a *App) revealSlot(c *ui.Context, key string, on bool, build func()) ui.Element {
+	slot := ui.Row(c.Key(key)).Gap(2).AlignItems(ui.Center).Shrink(0)
+	k := float32(0)
+	if on {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = slot.AnimateTo("reveal", k, a.T.Hover)
+	}
+	slot.Opacity(k).Children(build)
+	return slot
+}
+
 // stepNumber is a step's number in a short numbered sequence: a sunken disc
 // with the number (the lend sheet's three steps; D518 a sign-in's two).
 func (a *App) stepNumber(c *ui.Context, n int) {
@@ -1115,4 +1292,26 @@ func (a *App) stepNumber(c *ui.Context, n int) {
 	ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
 		uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 	})
+}
+
+// lineField is the shared one-line field (D536; the web's Field): the
+// control height, as wide as its column allows up to 420, a hairline that
+// becomes the one accent ring while typing in it. strong: a name, bolder.
+func (a *App) lineField(c *ui.Context, key, label string, v *string, placeholder string, strong bool, submit func()) ui.Element {
+	t := a.T
+	in := ui.TextInput(c.Key("input:"+key), v).Placeholder(placeholder).Label(label).
+		FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).
+		Width(420).MaxWidthPercent(100)
+	if strong {
+		in.FontWeight(700)
+	}
+	if in.Focused() {
+		in.Border(2, t.Accent)
+	} else {
+		in.Border(1, t.Line2)
+	}
+	if submit != nil {
+		in.OnSubmit(submit)
+	}
+	return in
 }

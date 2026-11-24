@@ -44,6 +44,11 @@ export interface PartnerInfo {
    * clients only, with more than one partner; never in any partner's own turn.
    */
   last?: PartnerLast;
+  /**
+   * D536: what this partner thinks with, when the person gave it its own (another partner only;
+   * absent: the same as the default partner's, Settings.brain, the 默认用什么想事情 card).
+   */
+  brain?: import("./index.ts").Brain;
 }
 
 /** D513: one line of a partner's conversation for the list (at most PARTNER_LAST_MAX characters). */

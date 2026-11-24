@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { docAsk, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { docAsk, tailLines, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, APPS_HEADING, outsideOver, NUDGE, backgroundEnded, type BackgroundEnd, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -25,6 +25,10 @@ import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
 /** D157: a task waits for a computer that said it was going to sleep: 在等 · MacBook 睡着了. */
 export const asleepReason = (device: string) => `device:asleep:${device}`;
+/** D538: heavy work waits for room on that computer (its memory free, its heavy tasks under its share). */
+export const roomReason = (device: string) => `device:room:${device}`;
+/** D538: how often a task waiting for room looks again. */
+export const ROOM_LOOK_MS = 15_000;
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
@@ -34,6 +38,8 @@ export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
   /** D394: a task's own round runs in a fresh session once the last one compacted (default on). */
   freshRounds?: boolean;
+  /** D538: how often a task waiting for room looks again (tests). */
+  roomLookMs?: number;
   defaultHarness?: HarnessId;
   defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
   gh?: string; // GitHub CLI binary (tests)
@@ -203,6 +209,8 @@ interface TaskRt {
   bgOwed?: boolean;
   /** D515: background jobs that ended since the last turn, what the wake turn says. */
   bgDone?: BackgroundEnd[];
+  /** D521: the jobs the person asked to stop from Ducter (their end says who stopped them). */
+  bgStopping?: Set<string>;
   bgSettle?: ReturnType<typeof setTimeout>;
   /** D266: merged while background work ran: archived once it ends. */
   archiveWhenQuiet?: Place;
@@ -242,6 +250,8 @@ interface TaskRt {
   lang?: LangTag; // the language the user reads its reports in (D292: any tag)
   /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
   waiting?: StartCtx;
+  /** D538: it waits for room on its computer: the look that starts it when there is. */
+  roomTimer?: ReturnType<typeof setInterval>;
   /** D157: the user moved it to another computer; its next session starts with movedOver. */
   movedFrom?: { from: string; to: string; repo: boolean; /** D505: Ducter moved it for the person's sign-in there. */ signIn?: { site: string; uses: "chrome" | "ducter"; always?: boolean } };
   /** D299: carried on from a session the person ran outside Ducter, by another agent: its first session starts with outsideOver. */
@@ -533,14 +543,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     for (const [id, b] of t.bg)
       if (bgCeilingMs > 0 && at - b.seen >= bgCeilingMs) {
         t.bg.delete(id);
-        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true } });
+        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true, bgId: id, ...(b.what ? { bgWhat: b.what } : {}) } });
       }
     return t.bg.size;
   }
 
   /** D266: one background report from the harness (normalize.ts): counted, logged as a step. */
   function onBackground(t: TaskRt, ev: HarnessEvent) {
-    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string } & Omit<BackgroundEnd, "act" | "what"> }).background;
+    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string; tool?: string; stop?: boolean } & Omit<BackgroundEnd, "act" | "what"> }).background;
     if (!b?.id) return;
     const wasLive = bgLive(t);
     if (b.act === "started") (t.bg ??= new Map()).set(b.id, { ...(b.what ? { what: b.what } : {}), seen: now().getTime() });
@@ -549,9 +559,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const end: BackgroundEnd = { act: b.act === "failed" ? "failed" : b.act === "stopped" ? "stopped" : "ended", ...(b.what ? { what: b.what } : {}) };
       if (typeof b.exitCode === "number") end.exitCode = b.exitCode;
       for (const k of ["output", "summary", "outputFile"] as const) if (typeof b[k] === "string" && b[k]) end[k] = b[k];
+      if (end.act === "stopped" && t.bgStopping?.has(b.id)) end.by = "person";
       (t.bgDone ??= []).push(end);
     }
-    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}) } } });
+    const by = b.act !== "started" && t.bgStopping?.delete(b.id) && b.act === "stopped" ? "person" : undefined;
+    // D521: logged with its id, the tool that started it, whether it can be stopped and its output's
+    // tail, so core folds the task's background list from the Log (protocol background.ts).
+    const said = typeof b.output === "string" && b.output.trim() ? { output: tailLines(b.output) } : typeof b.summary === "string" && b.summary.trim() ? { summary: b.summary.slice(0, 500) } : {};
+    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { id: b.id, act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.tool ? { tool: b.tool } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}), ...said, ...(b.stop ? { stop: true } : {}), ...(by ? { by } : {}) } } });
     const live = bgLive(t);
     if (live > 0 || wasLive === 0 || t.dropped || isBusy(t)) return;
     // The last one ended between turns: the session may idle and park again.
@@ -857,8 +872,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await prepareSpec(t);
     // D156: its agent is being updated on this machine: start once the updater is done (at most 15 min).
     for (const end = Date.now() + 15 * 60_000; harnessHold.has(t.spec.harness) && !t.ops.device && Date.now() < end; ) await Bun.sleep(1000);
-    const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
-    const session = await t.ops.harness.start(spec);
+    let spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
+    // D539: the keys copied for this task, by name; the computer it runs on reads their values (the
+    // home here, a worker there: worker-host.ts). Never kept in t.spec, never in the Log.
+    const refs = core.keyCopy?.refsFor(t.id) ?? [];
+    if (refs.length) spec = { ...spec, keyRefs: refs };
+    const session = await t.ops.harness.start(refs.length && !t.ops.device && core.keyCopy ? core.keyCopy.withKeys(spec) : spec);
     t.session = session;
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
@@ -1673,7 +1692,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // D449: on a free key whose day is shared with the partner, the task is asked to be frugal.
         ...(core.freeBudget?.frugal?.(open.harness ?? "") ? { frugal: true } : {}),
         // D499: what the user already allowed this task to do without asking (kept for it, or for its repo's owner).
-        ...((g) => (g.length ? { goes: g.map((s) => ({ action: s.action, words: s.text })) } : {}))(core.goesFor?.(id) ?? []),
+        ...((g) => (g.length ? { goes: g.map((s) => ({ action: s.action, words: s.text, ...(s.orgs?.length ? { where: s.orgs } : {}) })) } : {}))(core.goesFor?.(id) ?? []),
       }),
       mcp: [mcp],
       permissionMode: "bypass",
@@ -1959,13 +1978,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // right now doesn't refuse the task: it waits for it there and starts when it's back.
     const ops = opsFor(input.place);
     const away = ops.device && !ops.device.online() ? ops.device : undefined;
+    // D538: heavy work where there is no room now: it waits there, planned when it starts.
+    const roomy = !away && pick?.waits === "room" && !!core.bodies?.room;
     const project = input.project ?? "";
     const persona = input.persona || core.persona.id;
     const partnerName = partnerNameOf(persona);
     let resolved: ResolvedPlace = { place: input.place ?? { kind: "none" }, cwd: "" };
     let sidecar: BrowserSidecar | undefined;
     let sidecarInput: SidecarInput | undefined;
-    if (!away) {
+    if (!away && !roomy) {
       resolved = await ops.plan(input.place, id, title);
       // A worker plans its own place; it can't turn it into something this machine then runs
       // (a browser place's browser is the worker's own, D157).
@@ -2016,6 +2037,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       waitThere(t, start);
       // The best computer sleeps and another could do it now, visibly differently: one line, wait by default.
       if (pick?.waits && pick.now) askWhere(t, pick, you);
+      return core.tasks.get(id) ?? card;
+    }
+    if (roomy) {
+      // D538: 在等 hel 腾出内存 / Waiting for room on hel. It starts the moment there is (hel, 2026-11-24:
+      // one task's tsc×3, Playwright and Vite at once on 7.6 GB with no swap stopped the home).
+      const name = ops.device?.name ?? pick?.why.where?.device ?? core.homeDevice?.()?.name ?? "this computer";
+      core.tasks.setState(id, "blocked", "provisioning", roomReason(name));
+      logEvent(t, { role: "system", from: "runner", text: `waiting for room on ${name}: heavy work starts there when it has the memory free`, raw: { device: pick?.deviceId ?? "local", name, waits: "room" } });
+      waitRoom(t, start, pick?.deviceId ?? "local");
       return core.tasks.get(id) ?? card;
     }
     core.tasks.setState(id, "queued", "provisioning");
@@ -2221,6 +2251,28 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     });
   }
 
+  /** D538: a heavy task waits for room on its computer; each look asks core, and the first yes starts it. */
+  function waitRoom(t: TaskRt, c: StartCtx, device: string) {
+    t.waiting = c;
+    clearInterval(t.roomTimer);
+    let looking = false;
+    t.roomTimer = setInterval(() => {
+      if (t.dropped || t.session || !t.waiting) return void clearInterval(t.roomTimer);
+      if (looking) return;
+      looking = true;
+      void core.bodies!.room!(device)
+        .then((ok) => {
+          if (!ok || t.dropped || !t.waiting) return;
+          clearInterval(t.roomTimer);
+          t.roomTimer = undefined;
+          return beginThere(t);
+        })
+        .catch(() => {})
+        .finally(() => (looking = false));
+    }, opts.roomLookMs ?? ROOM_LOOK_MS);
+    (t.roomTimer as { unref?: () => void }).unref?.();
+  }
+
   /** D157: the computer a waiting task waits for is here (or the user moved it): plan and start. */
   async function beginThere(t: TaskRt) {
     const c = t.waiting;
@@ -2259,7 +2311,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    * free) waits for the computer; Go does it now on the other one. The task hears nothing of it.
    */
   function askWhere(t: TaskRt, pick: NonNullable<Awaited<ReturnType<NonNullable<CoreApi["bodies"]>["choose"]>>> & { harness: string }, you: boolean) {
-    if (!("now" in pick) || !pick.now || !pick.waits) return;
+    // D538: a wait for room asks nothing: it starts by itself, and the person can move it.
+    if (!("now" in pick) || !pick.now || !pick.waits || pick.waits === "room") return;
     const now = pick.now;
     const w = words(WHERE_WORDS, t.lang);
     const dev = pick.why.where?.device ?? pick.device ?? "";
@@ -2787,6 +2840,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return runner.dispose();
     },
 
+    // D521: one background job stopped by its agent's own stop; its end comes as the job's own.
+    async stopBackground(taskId, jobId) {
+      const t = tasks.get(taskId);
+      if (!t) return { ok: false, message: "I can't find that task." };
+      await t.started.catch(() => {});
+      if (!t.bg?.has(jobId)) return { ok: false, message: "That one isn't running any more." };
+      const s = t.session;
+      if (!s?.stopBackground) return { ok: false, message: "Its agent can't stop just that one." };
+      (t.bgStopping ??= new Set()).add(jobId);
+      try {
+        await s.stopBackground(jobId);
+      } catch (err) {
+        t.bgStopping.delete(jobId);
+        return { ok: false, message: `Its agent didn't stop it: ${preview(String((err as Error)?.message ?? err), 200)}` };
+      }
+      logEvent(t, { role: "system", from: "runner", text: `the person stopped a background job${t.bg.get(jobId)?.what ? `: ${t.bg.get(jobId)!.what}` : ""}`, raw: { bgStop: jobId } });
+      return { ok: true };
+    },
+
     async interrupt(taskId) {
       const t = get(taskId);
       await t.started;
@@ -2903,6 +2975,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
       return answer;
     },
+
+    // D534: the task's agent's own commands and skills in its place, for the / list. A worker's
+    // task is read through its own port when that port can (else nothing is offered but the fixed).
+    async native(taskId) {
+      const t = tasks.get(taskId);
+      const card = core.tasks.get(taskId);
+      const h = t?.base.harness ?? card?.harness;
+      if (!h) return undefined;
+      const facts = HARNESS_FACTS[h as HarnessId]?.nativeCommands.value;
+      const port = t?.ops.harness ?? harness;
+      const place = card?.place ?? t?.card.place;
+      const cwd = t?.spec.cwd ?? (place && !t?.ops.device ? cwdOf(place, taskId, core.dataDir) : undefined);
+      if (!facts || !port?.inventory || !cwd) return { harness: h };
+      const read = (k: "commands" | "skills") => (facts.discover.includes(k) ? Promise.race([port.inventory!(h, k, cwd), Bun.sleep(20_000).then(() => undefined)]) : Promise.resolve(undefined));
+      const [commands, skills] = await Promise.all([read("commands"), read("skills")]);
+      return { harness: h, ...(commands ? { commands } : {}), ...(skills ? { skills } : {}) };
+    },
+
+    inventory: async (h, kind, cwd) => (harness.inventory ? await harness.inventory(h, kind, cwd) : undefined),
 
     pageRoute(taskId) {
       const t = tasks.get(taskId);

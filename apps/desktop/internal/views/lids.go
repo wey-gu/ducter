@@ -30,6 +30,14 @@ func faceBlink(px float32) *blinkArt {
 	return nil
 }
 
+// faceBlinkAs is faceBlink in a partner's clay (D546: an owned face blinks in its owner's).
+func faceBlinkAs(look string, px float32) *blinkArt {
+	if b := theme.FaceClosedAs(look, px); b != nil {
+		return &blinkArt{closed: b, lids: theme.FaceLids[:]}
+	}
+	return nil
+}
+
 // squareBlink is the blink of the square idle art (theme.Art), its lids
 // mapped through where the cut-out art sits in the square.
 func squareBlink(px float32) *blinkArt {

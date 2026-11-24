@@ -21,25 +21,60 @@ import (
 // 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做
 // with 暂停 and 停下.
 
+// keepTwoColMin is the board width under which a Keep's rules go under its
+// body (the board beside the rail in a window just under 1000 wide).
+const keepTwoColMin = 600
+
 // keepState is the Keep whose page is open ("" the list) and the page's own
 // state.
 type keepState struct {
 	open    string
-	pause   bool
 	stop    bool
 	said    string
 	askedAt time.Time
 	sig     string
+	// D519: the talk box's words in flight (their clientId and when), the
+	// Keep last told, and the round whose 看细节 is open.
+	sending string
+	sentAt  time.Time
+	told    string
+	round   string
+	// D533: a rule or the person's words being changed in place.
+	edit  keepEdit
+	sideW float32 // D533: the rules column's width this frame
+	focus bool    // the talk box takes the focus once
 }
 
 // openKeep opens a Keep's page in On hand's place and asks the home for it.
 func (a *App) openKeep(id string) {
 	a.oh.keep = keepState{open: id, askedAt: time.Now()}
+	// D533: answers to edits made before this page opened are not this page's.
+	a.oh.keep.edit.seen, a.oh.keep.edit.seenProp = a.S.KeepChanged[id], a.S.KeepProposals[id]
 	a.send(protocol.KeepReq{T: "keep", ID: id})
 	a.Route = RouteOnHand
 }
 
 func (a *App) closeKeep() { a.oh.keep = keepState{} }
+
+// keepOfTask is the Keep whose own work a task is (a Keep in rounds: its
+// rounds' task), so a row of it opens the Keep's page (D542); a Keep's item
+// (one PR it babysits) is a task of its own.
+func (a *App) keepOfTask(id string) string {
+	if a.S.OnHand == nil {
+		return ""
+	}
+	for _, k := range a.S.OnHand.Keeps {
+		if k.Run == "perItem" {
+			continue
+		}
+		for _, x := range k.TaskIDs {
+			if x == id {
+				return k.ID
+			}
+		}
+	}
+	return ""
+}
 
 // keepMark is the mark (§8): a lantern, lit while on, dim when paused, out
 // with a tick when done, out when stopped. A flat placeholder until the clay
@@ -125,7 +160,7 @@ func (a *App) keepFacts(k *protocol.KeepSheet) []keepFact {
 		out = append(out, keepFact{text: a.L.T("keep.asks", k.Asks), needs: true})
 	}
 	if k.EveryMs > 0 {
-		out = append(out, keepFact{text: a.L.T("keep.every", a.duration(time.Duration(k.EveryMs)*time.Millisecond))})
+		out = append(out, keepFact{text: a.L.T("keep.every", a.rhythm(time.Duration(k.EveryMs)*time.Millisecond))})
 	} else if k.Cadence != "" {
 		out = append(out, keepFact{text: k.Cadence})
 	}
@@ -223,9 +258,7 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 		line := a.keepLine(k)
 		row := ui.Row(c.Key("head")).Width(w).Gap(14).Padding(14, 16, 14, 16).MinHeight(64).AlignItems(ui.Start).
 			Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(a.L.T("keep.open", k.Title)).Focusable()
-		if row.Hovered() {
-			row.Background(t.Ink.Alpha(0.03))
-		}
+		a.rowHover(c, row, groundNeutral(), false) // D529
 		row.Children(func() {
 			a.keepMark(c, k.ID, k.Life, 40)
 			ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
@@ -233,7 +266,10 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 				if k.Life == "paused" {
 					ink = t.InkMuted
 				}
-				uiText(c.Key("title"), k.Title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2)
+				ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					a.partnerMark(c, "keep-"+k.ID, k.Persona) // D546: whose Keep, as a task row says whose task
+					uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0)
+				})
 				if len(facts) > 0 {
 					ui.Row(c.Key("facts")).Gap(t.S3).Wrap().Children(func() {
 						for i, f := range facts {
@@ -277,12 +313,11 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 		ui.Column(c.Key("held")).Width(w).Padding(0, 16, 8, 70).Children(func() {
 			for i, x := range nested {
 				if i == 3 {
-					more := ui.Row(c.Key("more")).Padding(8, 0).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Children(func() {
-						uiText(c, a.L.T("keep.more", len(nested)-3)).FontSize(t.SM).TextColor(t.InkMuted)
+					ui.Row(c.Key("more")).Padding(4, 0).Children(func() {
+						if a.quietButton(c, "more", a.L.T("keep.more", len(nested)-3), k.Title, false, 1) {
+							a.openKeep(k.ID)
+						}
 					})
-					if more.Clicked() {
-						a.openKeep(k.ID)
-					}
 					break
 				}
 				x := x
@@ -339,7 +374,7 @@ func (a *App) keepItemWords(x protocol.KeepItem) (string, ui.Color) {
 	case x.At == "you":
 		return a.L.T("keep.item.you"), t.NeedsYou.Ink
 	case x.Said != nil:
-		return a.L.T("onhand.prs." + x.Said.Phase), t.Working.Ink
+		return a.prPhaseWords(*x.Said, ""), t.Working.Ink
 	case x.At == "work":
 		return a.L.T("keep.item.work"), t.Working.Ink
 	}
@@ -359,38 +394,47 @@ func (a *App) keepsSection(c *ui.Context, ks []protocol.KeepSheet) {
 	})
 }
 
+// keepRailW is the rail beside an opened Keep: two lines of a title at the
+// small type beside its mark.
+const keepRailW = 264
+
+// keepRailCols is a title in the rail: two lines at its width (Han count
+// two), cut at a word's end past them.
+const keepRailCols = 38
+
 // keepRail lists the other Keeps beside an opened one (the rail beside an
-// opened task, D244), from railFrom.
+// opened task, D244), from railFrom: each its mark, its title in two lines
+// cut at a word's end, and one line; every row the same height, the open one
+// raised as the knob (D270).
 func (a *App) keepRail(c *ui.Context) {
 	t := a.T
-	ui.Column(c.Key("keep-rail")).Width(lensColW).Shrink(0).Gap(2).Padding(t.S5, t.S3, t.S5, t.S5).Children(func() {
-		back := ui.Row(c.Key("back")).Padding(4, 4, 12, 4).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Children(func() {
-			uiText(c, "‹ "+a.L.T("keep.back")).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
-		})
-		if back.Clicked() {
-			a.closeKeep()
-		}
-		uiText(c.Key("lbl"), a.L.T("keep.section")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Margin(0, 0, 6, 12)
+	ui.Column(c.Key("keep-rail")).Width(keepRailW).Shrink(0).Gap(2).Padding(t.S5, t.S3, t.S5, t.S5).Children(func() {
+		// D535: the way back is the header's breadcrumb (对话 / 手头的事 / the
+		// Keep), never a link here: the column is one list under its head.
+		a.secHead(c, "rail", a.L.T("keep.section"))
 		if a.S.OnHand == nil {
 			return
 		}
 		for i := range a.S.OnHand.Keeps {
 			k := &a.S.OnHand.Keeps[i]
 			on := k.ID == a.oh.keep.open
-			r := ui.Row(c.Key("k:"+k.ID)).Gap(10).Padding(10, 12).Radius(t.RadiusMD).AlignItems(ui.Center).
+			r := ui.Row(c.Key("k:"+k.ID)).Gap(10).Padding(10, 12).MinHeight(72).Radius(t.RadiusMD).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(k.Title).Focusable()
-			if on {
-				r.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line)
+			switch {
+			case on:
+				a.knob(r)
+			case r.Hovered():
+				r.Background(t.Ink.Alpha(0.04))
 			}
 			r.Children(func() {
-				a.keepMark(c, k.ID, k.Life, 40)
+				a.keepMark(c, k.ID, k.Life, 32)
 				ui.Column(c.Key("tx")).Gap(1).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-					uiText(c.Key("t"), k.Title).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).MaxLines(2)
+					uiText(c.Key("t"), noOrphan(sayWords(k.Title, keepRailCols))).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(1.35).MaxLines(2)
 					sub, ink := a.keepBeat(k), t.InkMuted
 					if k.Asks > 0 {
 						sub, ink = a.L.T("keep.asks", k.Asks), t.NeedsYou.Ink
 					}
-					uiText(c.Key("l"), sub).FontSize(t.XS).TextColor(ink)
+					uiText(c.Key("l"), sub).FontSize(t.XS).TextColor(ink).SingleLine()
 				})
 			})
 			if r.Clicked() {
@@ -422,12 +466,17 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 	// The page follows On hand: asked again when its sheet changed.
 	sig := ks.open
 	if sheet != nil {
-		sig = fmt.Sprintf("%s|%d|%d|%s|%v", ks.open, len(sheet.Items), sheet.Asks, sheet.Life, sheet.Line)
+		line := ""
+		if sheet.Line != nil {
+			line = sheet.Line.At + sheet.Line.Text
+		}
+		sig = fmt.Sprintf("%s|%d|%d|%s|%s|%d|%s", ks.open, len(sheet.Items), sheet.Asks, sheet.Life, line, sheet.Lines, sheet.NextAt)
 	}
 	if sig != ks.sig || (k == nil && time.Since(ks.askedAt) > 1500*time.Millisecond) {
 		ks.sig, ks.askedAt = sig, time.Now()
 		a.send(protocol.KeepReq{T: "keep", ID: ks.open})
 	}
+	a.keepEditSync(ks.open)
 	if k == nil {
 		msg := a.L.T("keep.loading")
 		if sheet == nil {
@@ -436,36 +485,31 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 		uiText(c.Key("keep-loading"), msg).FontSize(t.MD).TextColor(t.InkMuted).Margin(t.S6, 0)
 		return
 	}
-	wide := w >= 860
-	mainW := w
+	// D533: two columns hold down to the 1000-wide window (the rules card narrows to 256); only
+	// below that the rules go under the body. 1150 is the common laptop window.
+	wide := w >= keepTwoColMin
+	mainW, sideW := w, min(w, 320)
 	if wide {
-		mainW = w - 320 - t.S6
+		sideW = max(256, min(320, w*0.34))
+		mainW = w - sideW - t.S6
 	}
+	a.oh.keep.sideW = sideW
 	body := func() {
 		ui.Column(c.Key("keep-main")).Width(mainW).Shrink(1).MinWidth(0).Gap(4).Children(func() { a.keepMain(c, k, mainW) })
-		ui.Column(c.Key("keep-side")).Width(min(w, 320)).Shrink(0).Gap(4).Children(func() {
+		ui.Column(c.Key("keep-side")).Width(sideW).Shrink(0).Gap(4).Children(func() {
 			a.keepH2(c, "how", a.L.T("keep.how"))
 			a.keepRules(c, k)
 		})
 	}
 	if !wide {
-		ui.Column(c.Key("keep-page")).Width(w).Gap(4).Children(func() {
-			back := ui.Row(c.Key("back")).Padding(4, 4, 8, 4).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Children(func() {
-				uiText(c, "‹ "+a.L.T("keep.back")).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
-			})
-			if back.Clicked() {
-				a.closeKeep()
-			}
-			body()
-		})
+		// D535: narrow, the way back is the header's breadcrumb too.
+		ui.Column(c.Key("keep-page")).Width(w).Gap(4).Children(body)
 		return
 	}
 	ui.Row(c.Key("keep-page")).Width(w).Gap(t.S6).AlignItems(ui.Start).Children(body)
 }
 
-func (a *App) keepH2(c *ui.Context, key, s string) {
-	uiText(c.Key("h2:"+key), s).FontSize(a.T.XS).FontWeight(700).TextColor(a.T.InkMuted).Margin(22, 0, 8, 4)
-}
+func (a *App) keepH2(c *ui.Context, key, s string) { a.secHead(c, key, s) }
 
 func (a *App) keepCard(c *ui.Context, key string, w float32, body func()) {
 	t := a.T
@@ -478,39 +522,36 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 	ui.Row(c.Key("ph")).Gap(18).AlignItems(ui.Start).Margin(0, 0, 12, 0).Children(func() {
 		a.keepMark(c, "page", k.Life, 64)
 		ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			uiText(c.Key("kick"), a.L.T("keep.kicker", a.S.PersonaName)).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
-			uiText(c.Key("title"), k.Title).FontSize(t.XXL).FontWeight(800).TextColor(t.Ink).LineHeight(1.2).Margin(2, 0, 8, 0)
+			uiText(c.Key("kick"), a.L.T("keep.kicker", a.ownerName(k.Persona))).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
+			uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.XXL).FontWeight(800).TextColor(t.Ink).LineHeight(1.2).Margin(2, 0, 8, 0)
 			ui.Row(c.Key("life")).Gap(8).Wrap().Children(func() {
-				chip := func(key, s string, bg, ink ui.Color, bold bool) {
-					e := uiText(c.Key("chip:"+key), s).FontSize(t.SM).TextColor(ink).Padding(3, 10).Radius(999).Background(bg)
-					if bold {
-						e.FontWeight(700)
-					}
+				life := tagPlain
+				if k.Life == "on" {
+					life = tagOn
 				}
-				on := k.Life == "on"
-				if on {
-					chip("life", a.L.T("keep.life."+k.Life), t.Done.Surface, t.Done.Ink, true)
-				} else {
-					chip("life", a.L.T("keep.life."+k.Life), t.SurfaceSunken, t.InkSoft, false)
-				}
+				a.tag(c, "life", a.L.T("keep.life."+k.Life), life)
 				if k.Asks > 0 {
-					chip("asks", a.L.T("keep.asks", k.Asks), t.NeedsYou.Surface, t.NeedsYou.Ink, true)
+					a.tag(c, "asks", a.L.T("keep.asks", k.Asks), tagNeeds)
 				}
-				chip("since", a.L.T("keep.since", a.when(store.ParseTime(k.Since))), t.SurfaceSunken, t.InkSoft, false)
+				a.tag(c, "since", a.L.T("keep.since", a.when(store.ParseTime(k.Since))), tagPlain)
 				if k.Run == "perItem" && k.Week > 0 {
-					chip("week", a.L.T("keep.week", k.Week), t.SurfaceSunken, t.InkSoft, false)
+					a.tag(c, "week", a.L.T("keep.week", k.Week), tagPlain)
 				}
 			})
 		})
 	})
-	ui.Column(c.Key("said")).Width(w).Gap(2).Padding(12, 14).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		uiText(c.Key("k"), a.L.T("keep.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		uiText(c.Key("v"), keepWords(autospace(k.Said))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft)
-	})
+	a.keepSaid(c, k, w)
 	// 在等你: its tasks' questions, answered in place (the same card as in 等你).
+	// Its tasks' questions: its items', and its own loop's (D519), each once.
 	var asking []*store.Task
+	seen := map[string]bool{}
+	ids := append([]string{}, k.TaskIDs...)
 	for _, x := range k.Items {
-		if task := a.S.Task(x.TaskID); task != nil && a.S.PendingDecision(task.ID) != nil {
+		ids = append(ids, x.TaskID)
+	}
+	for _, id := range ids {
+		if task := a.S.Task(id); task != nil && !seen[id] && a.S.PendingDecision(task.ID) != nil {
+			seen[id] = true
 			asking = append(asking, task)
 		}
 	}
@@ -523,13 +564,9 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 		}
 		a.oh.listW = prev
 	}
-	hasPR := false
-	for _, x := range k.Items {
-		if x.PR != "" {
-			hasPR = true
-		}
-	}
-	if k.Run != "same" || hasPR {
+	// A Keep in rounds is its one task, never an item: it holds something
+	// only when that task keeps a PR open (D519).
+	if k.Run != "same" || len(k.Items) > 0 {
 		a.keepH2(c, "holding", a.L.T("keep.holding"))
 		if len(k.Items) == 0 {
 			uiText(c.Key("holding-none"), a.L.T("keep.holding.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(14, 16).Radius(16).Background(t.SurfaceSunken).Width(w)
@@ -552,7 +589,11 @@ func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
 	for i, x := range k.Items {
 		x := x
-		r := ui.Row(c.Key("it:"+x.TaskID)).Width(w).Gap(12).Padding(14, 16).AlignItems(ui.Start)
+		key := x.TaskID
+		if x.PR != "" {
+			key = x.PR
+		}
+		r := ui.Row(c.Key("it:"+key)).Width(w).Gap(12).Padding(14, 16).AlignItems(ui.Start)
 		if i > 0 {
 			r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 		}
@@ -563,7 +604,7 @@ func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
 					if n := keepPRNum(x.PR); n != "" && !strings.Contains(x.Title, n) {
 						uiText(c.Key("pr"), n).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 					}
-					uiText(c.Key("title"), x.Title).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
+					uiText(c.Key("title"), noOrphan(x.Title)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
 				})
 				text, ink := a.keepItemWords(x)
 				uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
@@ -610,27 +651,38 @@ func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
 		return a.L.T("keep.woke.first")
 	}
 	if k.EveryMs > 0 {
-		return a.L.T("keep.woke.every", a.duration(time.Duration(k.EveryMs)*time.Millisecond))
+		return a.L.T("keep.woke.every", a.rhythm(time.Duration(k.EveryMs)*time.Millisecond))
 	}
 	return a.L.T("keep.woke.time")
 }
 
 // keepRounds are its rounds, newest first; silent ones after the first four
-// fold into one line with small pips.
+// fold into one line with small pips. D519: each round is its time in the
+// column, what woke it, what happened in one line to the person (the
+// model's, once it read the report), how it ended, and 看细节 with the
+// report as the task wrote it to Ducter and the way to its task.
 func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
 	shown, fold := 0, 0
 	first := true
 	line := func(key string) ui.Element {
-		r := ui.Row(c.Key(key)).Width(w).Gap(12).Padding(11, 16).AlignItems(ui.Start)
+		r := ui.Row(c.Key(key)).Width(w).Gap(12).Padding(11, 10, 11, 16).AlignItems(ui.Start)
 		if !first {
 			r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 		}
 		first = false
 		return r
 	}
+	ks := &a.oh.keep
 	for i, r := range k.Rounds {
-		quiet := r.Spoke == "silent" && r.State != "running" && r.State != "failed"
+		// D533: a change the person or the partner made is never folded away.
+		quiet := r.Spoke == "silent" && r.State != "running" && r.State != "failed" && r.Woke != "edit"
+		if r.Woke == "edit" && r.Edit != nil {
+			r := r
+			shown++
+			line(fmt.Sprint("rd", i)).Children(func() { a.keepEditRound(c, r) })
+			continue
+		}
 		if quiet && shown >= 4 {
 			fold++
 			continue
@@ -638,39 +690,64 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 		shown++
 		r := r
 		at := store.ParseTime(r.At)
-		row := line(fmt.Sprint("rd", i))
-		if r.TaskID != "" {
-			row.Cursor(ui.CursorPointer).Role(ui.RoleLink).Focusable()
-		}
-		row.Children(func() {
-			uiText(c.Key("tm"), a.soon(at)).FontSize(t.SM).TextColor(t.InkMuted).Width(64).Shrink(0)
+		id := r.At + "|" + r.TaskID
+		open := ks.round == id
+		line(fmt.Sprint("rd", i)).Children(func() {
+			a.timeCol(c, "t", at)
 			ui.Column(c.Key("b")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 				uiText(c.Key("why"), a.keepRoundWoke(r, k)).FontSize(t.XS).TextColor(t.InkMuted)
 				if r.Did != "" {
 					uiText(c.Key("did"), keepWords(autospace(r.Did))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
 				}
+				if open {
+					ui.Column(c.Key("detail")).Gap(4).Margin(6, 0, 0, 0).AlignItems(ui.Start).Children(func() {
+						if r.Report != "" {
+							uiText(c.Key("rep"), keepWords(autospace(r.Report))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.55)).
+								Padding(10, 12).Radius(t.RadiusSM).Background(t.SurfaceSunken)
+						}
+						if r.TaskID != "" {
+							a.textRow(c, t.ControlSM).Children(func() {
+								if a.buttonFor(c, a.L.T("keep.item.task"), k.Title, btnText, t.ControlSM, t.Surface) {
+									a.OpenTask(r.TaskID)
+								}
+							})
+						}
+					})
+				}
 			})
-			out, ink, bold := a.L.T("keep.round."+r.Spoke), t.InkMuted, false
-			switch {
-			case r.State == "running":
-				out = a.L.T("keep.round.running")
-			case r.State == "failed":
-				out, ink = a.L.T("keep.round.failed"), t.Failed.Ink
-			case r.State == "skipped":
-				out = a.L.T("keep.round.skipped")
-			case r.Spoke == "asked":
-				ink, bold = t.NeedsYou.Ink, true
-			case r.Spoke == "told":
-				ink, bold = t.InkSoft, true
-			}
-			e := uiText(c.Key("out"), out).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(0)
-			if bold {
-				e.FontWeight(700)
-			}
+			ui.Column(c.Key("end")).Gap(2).AlignItems(ui.End).Shrink(0).Children(func() {
+				out, ink, bold := a.L.T("keep.round."+r.Spoke), t.InkMuted, false
+				switch {
+				case r.State == "running":
+					out = a.L.T("keep.round.running")
+				case r.State == "failed":
+					out, ink = a.L.T("keep.round.failed"), t.Failed.Ink
+				case r.State == "skipped":
+					out = a.L.T("keep.round.skipped")
+				case r.Spoke == "asked":
+					ink, bold = t.NeedsYou.Ink, true
+				case r.Spoke == "told":
+					ink, bold = t.InkSoft, true
+				}
+				e := uiText(c.Key("out"), out).FontSize(t.XS).TextColor(ink).SingleLine()
+				if bold {
+					e.FontWeight(700)
+				}
+				if r.Report != "" {
+					chev := 1
+					if open {
+						chev = 2
+					}
+					if a.quietButton(c, "det", a.L.T("keep.round.details"), "", false, chev) {
+						if open {
+							ks.round = ""
+						} else {
+							ks.round = id
+						}
+					}
+				}
+			})
 		})
-		if r.TaskID != "" && row.Clicked() {
-			a.OpenTask(r.TaskID)
-		}
 	}
 	if fold > 0 {
 		line("fold").AlignItems(ui.Center).Children(func() {
@@ -684,10 +761,18 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 	}
 }
 
-// keepTalk is the talk box under the rounds: what is typed goes to the
-// partner with the Keep attached (keep_change changes it).
+// keepSendWait is how long the talk box waits for the home to have the
+// words before it gives them back.
+const keepSendWait = 10 * time.Second
+
+// keepTalk is the talk box under the rounds (D519): the conversation's
+// composer, the same card and round send. What is typed goes to the partner
+// with the Keep attached (keep_change changes it). Sending: the words wait
+// greyed, the send pressed in, until the home has them; then the box
+// empties and one line says the partner has it.
 func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
+	ks := &a.oh.keep
 	example := a.L.T("keep.talk.at")
 	switch {
 	case k.Run == "perItem":
@@ -695,153 +780,40 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 	case k.EveryMs > 0:
 		example = a.L.T("keep.talk.every")
 	}
-	ph := a.L.T("keep.talk", example)
-	ui.Row(c.Key("talk")).Width(w).Gap(10).Margin(22, 0, 0, 0).Padding(8, 8, 8, 18).Radius(t.RadiusXL).Background(t.Surface).
-		Shadow(0, 2, 0, 0, t.Line).AlignItems(ui.Center).Children(func() {
-		in := ui.TextInput(c.Key("talk-in"), &a.oh.keep.said).Placeholder(ph).Label(ph).Grow(1).MinWidth(0).Height(t.ControlMD).FontSize(t.MD)
-		send := a.buttonFor(c, a.L.T("keep.talk.send"), k.Title, btnAccent, t.ControlSM, t.Surface)
-		if (send || in.Submitted()) && strings.TrimSpace(a.oh.keep.said) != "" {
-			a.send(protocol.KeepSay{T: "send", Text: strings.TrimSpace(a.oh.keep.said), ClientID: fmt.Sprintf("m%dkeep", time.Now().UnixNano()), Keep: k.ID})
-			a.oh.keep.said = ""
+	if ks.sending != "" {
+		got := false
+		for _, e := range a.S.Channel {
+			if e.User != nil && e.User.ClientID == ks.sending {
+				got = true
+				break
+			}
 		}
-	})
-}
-
-// keepRules is 怎么做 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
-func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
-	t := a.T
-	w := float32(320)
-	a.keepCard(c, "rules", w, func() {
-		ui.Column(c.Key("rules")).Width(w).Padding(4, 16, 16, 16).Children(func() {
-			type rule struct {
-				k     string
-				v     []string
-				muted string
+		if got || time.Since(ks.sentAt) > keepSendWait {
+			ks.sending = ""
+			if got {
+				ks.said, ks.told = "", k.ID
 			}
-			var wakes []string
-			onlyArrives := true
-			for _, x := range k.Wakes {
-				switch x.Kind {
-				case "arrives":
-					wakes = append(wakes, a.L.T("keep.wake.arrives"))
-				case "every":
-					onlyArrives = false
-					wakes = append(wakes, a.L.T("keep.every", a.duration(time.Duration(x.EveryMs)*time.Millisecond)))
-				case "at":
-					onlyArrives = false
-					wakes = append(wakes, x.Words)
-				default:
-					if x.Words != "" {
-						onlyArrives = false
-						wakes = append(wakes, a.L.T("keep.wake.changes", x.Words))
-					} else {
-						wakes = append(wakes, a.L.T("keep.wake.changes.prs"))
+		}
+	}
+	ph := a.L.T("keep.talk", example)
+	ui.Column(c.Key("talk")).Width(w).Gap(t.S2).Margin(22, 0, 0, 0).Children(func() {
+		ui.Row(c).Width(w).Children(func() {
+			a.composerBox(c, composerOpts{
+				key: "keep-talk", draft: &ks.said, placeholder: ph, label: ph, lines: 4, sending: ks.sending != "", focus: ks.focus,
+				onSend: func(text string) bool {
+					text = strings.TrimSpace(text)
+					if text == "" {
+						return false
 					}
-				}
-			}
-			speaks := k.Speaks
-			if speaks == "" {
-				speaks = a.L.T("keep.speaks.default")
-			}
-			rules := []rule{{"keep.rule.wakes", wakes, ""}}
-			// Its end as given, or as the model read it from their words; nothing until it has (never a guess).
-			switch {
-			case k.Until != "":
-				rules = append(rules, rule{"keep.rule.until", []string{k.Until}, ""})
-			case k.NoEnd:
-				rules = append(rules, rule{"keep.rule.until", []string{a.L.T("keep.until.none")}, ""})
-			}
-			rules = append(rules, rule{"keep.rule.speaks", []string{speaks}, a.L.T("keep.speaks.quiet")})
-			if k.Limits != "" || k.Run == "perItem" {
-				l := k.Limits
-				if l == "" {
-					l = a.L.T("keep.limits.helper")
-				}
-				rules = append(rules, rule{"keep.rule.limits", []string{l}, ""})
-			}
-			if k.Where != nil {
-				var parts []string
-				if k.Where.DeviceName != "" {
-					parts = append(parts, k.Where.DeviceName)
-				}
-				if k.Where.Harness != "" {
-					parts = append(parts, harnessName(k.Where.Harness))
-				}
-				sep := a.L.T("keep.where.sep")
-				if len(parts) > 0 {
-					rules = append(rules, rule{"keep.rule.where", []string{strings.Join(parts, sep)}, ""})
-				}
-			}
-			if k.Address != nil {
-				rules = append(rules, rule{"keep.rule.address", []string{a.L.T("keep.address.name", k.Address.Name)}, a.L.T("keep.address." + k.Address.Mem)})
-			}
-			for i, r := range rules {
-				row := ui.Column(c.Key("ru:"+r.k)).Gap(2).Padding(12, 0)
-				if i < len(rules)-1 {
-					row.BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft)
-				}
-				row.Children(func() {
-					uiText(c.Key("k"), a.L.T(r.k)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-					for j, v := range r.v {
-						uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
-					}
-					if r.muted != "" {
-						uiText(c.Key("m"), r.muted).FontSize(t.SM).TextColor(t.InkMuted)
-					}
-				})
-			}
-			if k.Life == "done" || k.Life == "stopped" {
-				return
-			}
-			ks := &a.oh.keep
-			ui.Row(c.Key("acts")).Gap(8).Wrap().Padding(14, 0, 0, 0).Children(func() {
-				if k.Life == "paused" {
-					if a.buttonFor(c, a.L.T("keep.resume"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "resume"})
-					}
-				} else if a.buttonFor(c, a.L.T("keep.pause"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-					ks.pause, ks.stop = !ks.pause, false
-				}
-				if k.Life == "on" && !onlyArrives && a.buttonFor(c, a.L.T("keep.look"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "look_now"})
-				}
-				if a.buttonFor(c, a.L.T("keep.stop"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-					ks.stop, ks.pause = !ks.stop, false
-				}
+					ks.sending, ks.sentAt, ks.told = fmt.Sprintf("m%dkeep", time.Now().UnixNano()), time.Now(), ""
+					a.send(protocol.KeepSay{T: "send", Text: text, ClientID: ks.sending, Keep: k.ID})
+					return false // the words stay, greyed, until the home has them
+				},
 			})
-			if ks.pause {
-				ui.Column(c.Key("pause-menu")).Gap(2).Padding(6).Margin(10, 0, 0, 0).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-					now := a.Now()
-					morning := time.Date(now.Year(), now.Month(), now.Day()+1, 8, 0, 0, 0, now.Location())
-					for _, p := range []struct {
-						key   string
-						until time.Time
-					}{{"keep.pause.hour", now.Add(time.Hour)}, {"keep.pause.morning", morning}, {"keep.pause.week", now.Add(7 * 24 * time.Hour)}, {"keep.pause.resume", time.Time{}}} {
-						if a.buttonFor(c, a.L.T(p.key), k.Title, btnText, t.ControlSM, t.SurfaceSunken) {
-							f := protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "pause"}
-							if !p.until.IsZero() {
-								f.Until = p.until.UTC().Format(time.RFC3339)
-							}
-							a.send(f)
-							ks.pause = false
-						}
-					}
-				})
-			}
-			if ks.stop {
-				ui.Column(c.Key("stop-ask")).Gap(10).Padding(12).Margin(10, 0, 0, 0).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-					uiText(c.Key("q"), a.L.T("keep.stop.ask")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-					ui.Row(c.Key("acts")).Gap(8).Children(func() {
-						if a.buttonFor(c, a.L.T("keep.stop.go"), k.Title, btnPrimary, t.ControlSM, t.SurfaceSunken) {
-							a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "stop"})
-							ks.stop = false
-						}
-						if a.buttonFor(c, a.L.T("keep.stop.keep"), k.Title, btnSecondary, t.ControlSM, t.SurfaceSunken) {
-							ks.stop = false
-						}
-					})
-				})
-			}
 		})
+		ks.focus = false
+		if ks.told == k.ID && ks.said == "" {
+			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.ownerName(k.Persona))).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
+		}
 	})
 }

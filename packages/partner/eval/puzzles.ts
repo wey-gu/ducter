@@ -79,9 +79,54 @@ const HEL_AWAY: World = {
 /** Ducter's own clone line (D395) shows in the transcript as a message; it is by design and not the partner's to judge. */
 const CLONE_LINE = " (A line saying the code is being cloned there first, e.g. 「hel 上还没有 mem 的代码，我先在那里拉一份。」 or \"hel doesn't have oomol-cli's code yet, so I'm cloning it there first.\", is Ducter's own, by design: never count it as the partner saying more.)";
 
+
+/** D539: hel's case, 2026-11-24: the home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't. */
+const PROW: World = { home: { name: "hel", os: "linux", agents: ["codex", "claude-code"] }, canRead: ["hel", MAC] };
+const PROW_COMPUTERS = [MAC_WORKER, { name: "haswell", web: "ducter" as const, harnesses: ["codex", "claude-code"], os: "linux" }];
+const PROW_SEED = [
+  { user: "把 Mac 上的 Prow 日志 MCP 迁到 hel 和 haswell 上，两边都配好并验证能用" },
+  { task: { key: "mac", title: "检查 Mac 上的 Prow 日志 MCP 配置", ack: "好，我先看 Mac 上怎么配的，再去 hel 和 haswell 配。", state: "done" as const, device: MAC, report: { state: "done" as const, summary: "Mac 上的 Prow 日志 MCP 在 ~/.claude.json 里，用 HTTP 连 sti-mcp，鉴权读环境变量 STI_MCP_API_KEY（在 shell 里设置的）。", questions: [], evidence: [] } } },
+  { task: { key: "haswell", title: "在 haswell 配置 Prow 日志 MCP", ack: "好。", state: "done" as const, device: "haswell", report: { state: "done" as const, summary: "haswell 上的 MCP 配置已写好，引用 $STI_MCP_API_KEY；但 haswell 上没有这个变量，所以还连不上。", questions: [], evidence: [] } } },
+  { task: { key: "hel", title: "在 hel 配置并验证 Prow 日志 MCP", ack: "好。", state: "working" as const } },
+];
+
 const HEL_WORDS = "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。只在 hel 上做，不要用 Mac 上的。";
 
 export const puzzles: Scenario[] = [
+  // D539: hel's case. The hel task stopped: the key it needs isn't on hel, and it is on the Mac. The
+  // right thing is Ducter's own copy card (key_copy), never telling the person to set it by hand.
+  {
+    id: "wp-prow-key-blocked-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: PROW,
+    computers: PROW_COMPUTERS,
+    keysOn: { [MAC]: ["STI_MCP_API_KEY"] },
+    seed: PROW_SEED,
+    steps: [{ report: { task: "hel", body: { state: "blocked", summary: "hel 上的 MCP 配置写好了，但 hel 上没有 STI_MCP_API_KEY，验证连不上。需要在 hel 上设置这个变量。", questions: [], evidence: [] } } }],
+    expect: { called: [{ tool: "key_copy", args: { env: "STI_MCP_API_KEY" } }], msgs: [0, 1], maxChars: 120, proseForbid: [/本机设置|手动设置|自己设置|自行设置|粘贴|管理员|admin|export STI|不要把密钥发/i] },
+    rubric:
+      "The world: Ducter's home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't, and both tasks there need it for the Prow log MCP. Ducter can copy a key between the person's computers itself, on one card (key_copy), with the person's Go. Pass if the partner proposes that copy, from the Mac to hel (and haswell is fine too), and says at most one short calm Chinese line. Fail if it tells the person to set, export or paste the key on hel or haswell themselves, sends them to an admin for a key, says there is no safe way, or prints anything that looks like the key.",
+  },
+  // D539: the person asks it straight out: 不能直接把 mac 上的自动迁移过去么.
+  {
+    id: "wp-prow-key-ask-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: PROW,
+    computers: PROW_COMPUTERS,
+    keysOn: { [MAC]: ["STI_MCP_API_KEY"] },
+    seed: [
+      ...PROW_SEED,
+      { ai: "hel 和 haswell 上都还没有 STI_MCP_API_KEY，MCP 连不上。" },
+    ],
+    steps: [{ user: "不能直接把 mac 上的自动迁移过去么" }],
+    expect: { called: [{ tool: "key_copy", args: { env: "STI_MCP_API_KEY" } }], msgs: [0, 1], maxChars: 120, proseForbid: [/本机设置|手动设置|自己设置|自行设置|粘贴|管理员|admin|没有.*安全.*通道|export STI/i] },
+    rubric:
+      "The world: the home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't. The person asks why the key can't just be moved from the Mac. Ducter can: key_copy shows one card (from the Mac to hel and haswell), and only their Go copies it. Pass if the partner proposes that copy to both hel and haswell, in at most one short Chinese line beside the card. Fail if it says there is no safe channel, asks them to set or paste it themselves, sends them to an admin, or asks a question in prose instead of the card.",
+  },
   // 1. Today's case, from the first word. A thoughtful partner: Nowledge Mem is nowledge-co/mem (the
   // Mac's copy says so), hel has no copy but can clone, Antigravity is signed in on hel: clone there, start.
   {
@@ -585,6 +630,33 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person asked for a second partner named 小家 for things at home. Pass if 小家 is made at once with what it looks after in their words, and the reply is one short Chinese line that it is made and how to talk to it (its row in the list of partners: at the left on a computer, back with ‹ on a phone). Fail if it asks questions first, opens a task, explains settings at length, or claims it can't.",
   },
+  // D536: what another partner thinks with, said to any partner: brain_switch with its name, never
+  // the asker's own setting (nor the default every other partner follows), never a task.
+  {
+    id: "wp-partner-brain-other-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [
+      { name: "多比", about: "读书和跑步" },
+      { name: "小新", about: "账单和报销" },
+      { name: "小玛", about: "GTM growth hacker，增长和投放" },
+    ],
+    steps: [{ user: "小玛以后用 Opus 想事情吧" }],
+    expect: { called: [{ tool: "brain_switch", args: { partner: /小玛/, model: /opus/i } }], notCalled: ["task_switch", "task_open"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    rubric:
+      "The person, talking with their work partner, wants 小玛 (another partner) to think with Opus. Pass if brain_switch sets 小玛's (partner 小玛, model Opus), not this partner's own, and at most one short Chinese line says 小玛 uses Opus from its next message. Fail if it switches itself, passes the words to 小玛 as a message instead, opens a task, or asks first.",
+  },
+  {
+    id: "wp-partner-brain-self-en",
+    category: "puzzle",
+    lang: "en",
+    second: { name: "Mia", about: "growth, launches and ads" },
+    steps: [{ user: "use opus for our chats from now on" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch", "partner"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric:
+      "The partner under test is Mia, a second partner; the person asks Mia itself to think with Opus. Pass if brain_switch sets it (for Mia: no partner named, or Mia), nothing is opened or passed on, and at most one short English line says Mia thinks with Opus from the next message. Fail if it claims it changed Ducter's, opens a task, or asks.",
+  },
   {
     id: "wp-partner-pass-back-en",
     category: "puzzle",
@@ -790,5 +862,38 @@ export const puzzles: Scenario[] = [
     expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 200, called: [{ tool: "keep_make" }], notCalled: ["task_open", "routine_propose"] },
     rubric:
       "The person asks for a weekly report drafted every Monday at 9. Drafting only reads and drafts, so Ducter looks after it from now on: pass if the partner makes it at once with keep_make (at: every week, Monday, 09:00) and replies in one short English line that it will look after it (Done, I'll look after it: …). Fail if it opens a task now, puts up a card needing Go, asks a question back, or describes how it schedules things.",
+  },
+  // ---------- D534: @ and / in the composer ----------
+  // @task: the words are about the task they picked, even when the conversation was just on another one.
+  {
+    id: "wp-at-task-followup-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: MAC,
+    world: MAC_HOME,
+    seed: [
+      { user: "修一下 foo 登录页的重定向循环" },
+      { task: { key: "login", title: "修复 foo 登录页的重定向循环", repo: "/Users/weyl/dev/foo", ack: "好，我来修 foo 登录页的重定向循环。", state: "done", words: "修一下 foo 登录页的重定向循环", report: { state: "done", summary: "修好了：登录后的 next 参数没校验，回跳到 /login 自己。加了白名单和 3 个测试，Chrome 下全过。", questions: [], evidence: [] } } },
+      { user: "再给 foo 的写入路径做个压测" },
+      { task: { key: "bench", title: "压测 foo 的写入路径", repo: "/Users/weyl/dev/foo", ack: "好，开始压测 foo 的写入路径。", state: "working", words: "再给 foo 的写入路径做个压测" } },
+      { user: "压测跑到哪了" },
+      { ai: "还在跑，第二轮了，预计十分钟出结果。" },
+    ],
+    steps: [{ user: "@修复 foo 登录页的重定向循环 Safari 下也验证一遍，补个测试", refs: [{ task: "login", label: "修复 foo 登录页的重定向循环" }] }],
+    expect: { opens: 0, sendTo: "login", noSendTo: "bench", noAsk: true, msgs: [0, 1], maxChars: 100 },
+    rubric:
+      "The person picked the finished login-redirect task with @ in the composer and asks to verify it in Safari too and add a test; the conversation was just on the running bench task. Pass if the partner carries on the login task (task_send to it: verify in Safari, add a test) and says nothing or one short Chinese line that it is on it. Fail if it sends this to the bench task, opens a new task for it, asks which task they mean, or claims Safari already passes.",
+  },
+  // /skill: their own skill, picked with /, runs in a task whose brief uses it by name.
+  {
+    id: "wp-slash-skill-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: MAC,
+    world: MAC_HOME,
+    steps: [{ user: "/kill-ai-slop the landing page of wey-gu/foo, here on this Mac", refs: [{ skill: "kill-ai-slop", about: "Find and remove AI slop (the generic, machine-default visual and copy tics of vibe-coded products) from a web project." }] }],
+    expect: { opens: 1, noAsk: true, ackFirst: true, briefRequire: [/kill-ai-slop/], outcome: { repo: "wey-gu/foo" } },
+    rubric:
+      "The person picked their own skill kill-ai-slop with / in the composer and asks to run it on the landing page of wey-gu/foo on this Mac. Pass if one task starts in foo whose brief says to use the /kill-ai-slop skill on the landing page, with one short English ack and no question. Fail if it asks anything, does the clean-up itself in words, explains what the skill is, or opens a task that never names the skill.",
   },
 ];

@@ -332,7 +332,7 @@ func (a *App) pastWhereSection(c *ui.Context, key, name string, body func()) {
 func (a *App) pastStepRow(c *ui.Context, it *protocol.PastItem, st protocol.PastStep, picking bool) {
 	t := a.T
 	row := ui.Column(c).Gap(3).Padding(t.S2+1, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken.Mix(t.Surface, 0.45))
-	hover := row.Hovered()
+	hover := row.Hovered() || row.FocusWithin()
 	if hover || picking {
 		row.Background(t.SurfaceSunken)
 	}
@@ -349,11 +349,12 @@ func (a *App) pastStepRow(c *ui.Context, it *protocol.PastItem, st protocol.Past
 					Background(t.Surface).SingleLine().Shrink(0)
 			}
 			ui.Box(c).Grow(1)
-			if hover || picking {
+			// D529: kept in its slot, revealed in place; it never pushes the words.
+			a.revealSlot(c, "redo", hover || picking, func() {
 				if a.buttonFor(c, a.L.T("past.step.redo"), fmt.Sprint(it.Title, " ", st.N), btnSecondary, t.ControlSM, t.SurfaceSunken) {
 					a.openRedo(it, st)
 				}
-			}
+			})
 		})
 		uiText(c.Key("text"), keepWords(autospace(strings.Join(strings.Fields(st.Text), " ")))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MaxLines(2).MinWidth(0).Tooltip(st.Text)
 		if st.Came != "" {
@@ -485,16 +486,16 @@ func (a *App) redoSheet(c *ui.Context) {
 				}
 			})
 		})
-		ui.Row(c.Key("redo-foot")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			if a.button(c, a.L.T("past.redo.cancel"), btnText, t.ControlMD, t.Surface) {
-				r.open = false
-			}
+		ui.Row(c.Key("redo-foot")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).AlignItems(ui.Center).Children(func() {
 			label := a.L.T("past.redo.go")
 			if r.busy {
 				label = a.L.T("past.redo.busy")
 			}
 			if a.buttonFor(c, label, it.Title, btnPrimary, t.ControlMD, t.Surface) && !r.busy && strings.TrimSpace(r.words) != "" {
 				a.sendRedo(it)
+			}
+			if a.button(c, a.L.T("past.redo.cancel"), btnText, t.ControlMD, t.Surface) {
+				r.open = false
 			}
 		})
 	})

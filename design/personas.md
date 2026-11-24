@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486, D497, D513, D516. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497, D513, D516, D536. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -35,10 +35,10 @@ one's conversation.
 | Log | one database | its conversation: the default's is `channel`, another's `channel:<id>` (task streams are the tasks') |
 | Conversation | | yes: its words, questions, replies; another partner never reads them (isolated by default, D24) |
 | Memory (Mem) | the person's own profile in the one Mem (every partner's L1 reads it) | its own Mem identity (D18, D141); a second partner's is `ducter-<id>`, bound once Mem answers (D312), its bundle (profile and its own rules) read into its L1 at its session's start (D486) |
-| Tasks, routines | listed together in On hand | owned by the partner that opened them (D31: `card.persona`) |
+| Tasks, routines, Keeps, groups, waits | listed together in On hand (every partner's, D546) | owned by the partner that opened them (D31: `card.persona`; a Keep's, a group's, a routine's and a wait's `persona`, D546) |
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
-| Settings | notifications, quiet hours, look and sound, devices | its name, look, what it looks after (D486); later its own talk and memory switches |
+| Settings | notifications, quiet hours, look and sound, devices; **默认用什么想事情 / What partners think with by default** (D536) | its name, look, what it looks after (D486); what it thinks with when the person gives it its own (D536); later its own talk and memory switches |
 | Chat apps (Telegram, Slack, WeChat, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one they are talking with); its words there lead with its name |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
@@ -59,20 +59,33 @@ A family that needs privacy from each other needs separate homes.
   own waits on the person, and the phone's **‹** the sum of the others'. The rows' numbers add up to
   the person's one count. (D309 put the one count under
   the shown partner's name: every naive rater read it as that partner's.)
-- **One On hand.** On hand stays one board for the person, never one per partner (D24). Each
-  row and card carries its partner's small face in its own clay once there is more than one, and another
-  partner's own questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you**
-  with the question; a click shows that partner, where it is answered (D312).
+- **One On hand.** On hand stays one board for the person, never one per partner (D24): every
+  partner's tasks, Keeps, groups, routines and waits, whichever partner is shown. Each row and card
+  (a task's row and card, an ask's card, a Keep's sheet, a group's card, a routine) carries its
+  partner's small face in its own clay once there is more than one, and another partner's own
+  questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you** with the
+  question; a click shows that partner, where it is answered (D312).
+- **Whose it is, never who is shown (D546).** Everything a partner owns is drawn and named as its
+  owner's: a task's state face (its row, the rail, the opened task's mark at 28), a wait's and a
+  goal's figure, its words **{name} 交给它的事 / What {name} asked**, **{name} 对它说 / {name} told
+  it**, **告诉{name} / Told {name}**, **{name} 提醒了它一句 / {name} gave it a note**, a Keep's
+  **{name} 看守中 / {name} is looking after**, a routine's **已暂停：{name} 停下的**. The owner is
+  the object's `persona` (absent, or a partner since removed: the default). With one partner
+  nothing changes: the art as drawn, and the name the default partner's own (which may not be
+  Ducter). The shown partner's clay is only for the page's own figure (the bar, On hand's head, an
+  empty page) and its own conversation's questions. No 只看{name}的 filter on On hand: the marks
+  already say whose, and the bar's count opens the shown partner's own (D546, todo).
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
   a task's title reads **小家：约牙医 / Home: Book the dentist**; a partner's own question carries
   its name as the title. The menu bar lists each other partner with something waiting:
   **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
-  needs-you notice names the partner whose questions wait.
+  needs-you notice names the partner whose things wait (D546: one owner, that one's name, a task of
+  Ducter's included while another is shown; things of several, the shown one's).
 
 ## Switching: the list of partners (zero concepts, D513)
 
 - **Every partner in one list, as a messaging app lists its chats.** With a second partner, a
-  computer (the Mac, the web from 1000) shows **伙伴们 / Your partners** as a column at the
+  computer (the Mac, the web from 700; D541: from 700 to 999 the slim list) shows **伙伴们 / Your partners** as a column at the
   conversation's left. Each row: the partner's figure in its own clay; its name; the last thing said
   in its conversation (the person's own words as **你：{text} / You: {text}**; nothing said yet:
   **管：{about} / Looks after: {about}**, else **还没聊过 / Nothing said yet**); and on the figure's
@@ -84,15 +97,20 @@ A family that needs privacy from each other needs separate homes.
   only (On hand and an opened task are the person's, not a partner's).
 - **Alive and still (D517).** The list never moves on a switch (its numbers are held until the new
   welcome): the chosen pebble glides to the row picked on a spring and the chosen figure stands a
-  touch taller; only the conversation comes in. Each figure breathes and blinks in its own clay, out
+  touch taller; the conversation changes in place, at once (D541). Each figure breathes and blinks in its own clay, out
   of step with the others, and hops once when something new comes from it (never the one shown).
   The number is a clay pebble in the needs-you colours on its ledge. Reduce Motion stills it all.
 - **The number is the person's one count's (D517).** A row's number is that partner's part of what
   On hand lists under 等你: its questions, and its tasks that ask, stopped, didn't work out or have
   a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
   hand's head; each item is under 等你 with its fix.
+- **Thin or hidden (D545).** Beside the conversation (not on a phone), the bar's first control
+  narrows the list to its faces and their numbers, hides it, and brings it back; each device
+  remembers it. Hidden, the other partners' faces stay in the bar with what waits in them, and a
+  press brings the list back; nothing waiting is lost.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
-  last shown. The bar's left has **‹** with the number of what waits in the other partners (label
+  last shown. The bar's left has **‹** and the other partners' own figures, a small stack in their
+  clays (D541: a lone ‹ read as "back"), with the number of what waits in them (label
   **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the
   leading-edge swipe goes up to the list, a row goes back down into that partner's conversation.
   Rows are a thumb tall (76); the list's bar has the places; with fewer than four, **再加一个伙伴 /
@@ -108,8 +126,16 @@ A family that needs privacy from each other needs separate homes.
   that partner's conversation (web push `#p=<id>/d=<id>`, the Mac's notice by its id).
 - A switch is per device: this Mac can show the home partner while the phone shows the work one.
   It is remembered on the device, survives a reconnect and a relaunch.
-- Underneath: a switch is a new hello with `persona`; the socket then shows that conversation
-  (as its `channel`), and the client starts over on it (no glance of another partner is painted).
+- **Instant, as a messaging app switches chats (D541).** The other partner's conversation is there in
+  the frame the click lands in, where it was left: its place in the list, its draft, its unsent
+  messages. No fade, no rise; the bar's face and name change where they stand; the bar and the
+  composer never move and keep the keyboard. Nothing blank, nothing "connecting", On hand untouched.
+- Underneath (D541): each conversation a window or page has shown stays held; once connected, each
+  other partner's newest 50 events are asked for (`partner_peek`), so one never shown draws at once
+  too. A switch is a new hello with `persona` and the cursor of what is held: the home sends only
+  what is newer, and frames of the conversation left still on the way are dropped until its welcome.
+  What is the person's (On hand, tasks, devices, settings) is never swapped. A partner never shown
+  on a home before D541 waits for its welcome, with nothing of another's painted.
 
 ## Meeting a partner (D497)
 
@@ -207,8 +233,8 @@ initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles
   the art as drawn (the orange Pebble clay); `sage` green, `sky` blue, `plum` purple, `apricot` a
   coral (its id kept). Every state of the figure (idle, working, waiting, needs you, done, napping,
   the blink) is recoloured alike, so the figure keeps its life (D77). The page's own figure is the
-  shown partner's; a mark elsewhere (the list of partners, On hand's cards and asks, passed words,
-  Settings) is its partner's. Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
+  shown partner's; a mark elsewhere (the list of partners, On hand's rows, cards and asks, an opened
+  task's mark and its rail, a wait's figure, passed words, Settings) is its partner's (D546). Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
   **梅子 / Plum**, **珊瑚 / Coral**; the picker shows the figure in each. D309's stone (the face on a
   pale disc) is retired. A clay character per partner stays the later upgrade, owed through the
   metaphor process with real art (todo).
@@ -257,6 +283,32 @@ On every home (`DUCTER_PARTNERS=off` turns it off; `startCore({ partners })` in 
   D513: each row three lines, so a phone never squeezes the words).
   The Mac's menu bar lists the other partners with something waiting; its notice names whose.
 
+## What each thinks with (D536)
+
+**Who, in this moment.** The heavy developer whose work partner is on Codex and who wants the growth
+partner, 小玛, on Claude Code Opus: another strength and another account's limit. The consumer who
+wants the kids' partner on a faster, cheaper model. The fresh user with one partner, who sees nothing new.
+
+**One default, an optional own.** Settings › 伙伴's card titled **默认用什么想事情 / What partners
+think with by default** (with one partner it stays **想事情用 / What I think with**) is Settings.brain:
+the default partner's and every partner's that has none of its own. Under each partner's name in
+伙伴们 a line says what it thinks with: its agent's coin, **想事情用 {agent} / Thinks with {agent}**,
+its model and **思考：{level} / Effort: {level}**, each its own fact; the default's row adds **默认 /
+The default**; one that follows says **想事情跟 {default} 一样 / Thinks with the same as {default}**.
+**改一下 / Change** on another partner shows **想事情用 / Thinks with** (**跟 {default} 一样 / Same as
+{default}**, or each agent the home can think with), **用哪个模型 / Which model** and **思考深度 /
+Effort** (**默认 / Default** first), applied at once as a colour is. Kept in partners.json
+(`PartnerInfo.brain`); the default's own is never there.
+
+**What runs on it.** Its conversation, its memory digests and its holds (D435, seen from its own agent:
+another agent answers while its own is held). Core's own work for the person (triage, the bar, quick
+web looks) stays on the default's. D503's reserve keeps every agent a partner thinks with. Its tasks
+still start by New tasks start (D510) and the rules, never by its own brain.
+
+**By words.** 「小玛用 Opus」 said to any partner is `brain_switch` with that partner's name; said to
+itself, its own; 「跟 Ducter 一样就行」 is `same`. The `[partners]` line says what this partner thinks
+with and whose setting it is, and what the others think with of their own.
+
 ## A second partner answers (D312)
 
 Built:
@@ -302,7 +354,8 @@ iMessage have one identity, and a bot per partner on Telegram is an upgrade for 
    hand work to is a helper (`bridge.md` "Helpers"), not a partner; a helper made in another partner's
    conversation keeps that partner (its tasks are its), its mail still read by the one home.
 2. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
-3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
+3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use (what it thinks
+   with is its own since D536). A task default per partner (its tasks on its own agent): later, when asked.
 4. **A bot of its own per partner** (D516 (7)): a Telegram bot or Slack app bound to a chosen
    partner, its own contact in the chat app's list; and iMessage on its own connection, so it
    follows the one-thread rules instead of the partner the Mac shows.

@@ -767,12 +767,7 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	a.sep(c)
 	b := ui.Row(c.Key("link:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable()
-	switch {
-	case b.Pressed():
-		b.Background(t.Ink.Alpha(0.06))
-	case b.Hovered():
-		b.Background(t.Ink.Alpha(0.03))
-	}
+	a.rowHover(c, b, groundNeutral(), false) // D529
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
@@ -789,36 +784,35 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	return b.Clicked()
 }
 
-// actions is a card's last line: its clay buttons at the right end, a
-// quiet text button (if any) at the left.
+// actions is a card's last line, read from its left edge like every row
+// (D543): its clay buttons first, the primary leading, then the quiet
+// text button (Cancel, Back) after them.
 func (a *App) actions(c *ui.Context, key string, quiet, buttons func()) {
 	t := a.T
 	a.sep(c)
 	ui.Row(c.Key("actions:"+key)).Gap(t.S2).Padding(t.S3, t.S5, t.S4, t.S5).AlignItems(ui.Center).Children(func() {
-		if quiet != nil {
-			a.textRow(c, t.ControlMD).Gap(t.S1).Children(quiet)
-		}
-		ui.Box(c).Grow(1)
-		if buttons != nil {
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
-		}
+		a.cardEndLine(c, t.ControlMD, quiet, buttons)
 	})
 }
 
 // cardEnd is actions' line inside a card that pads its own content (a
-// sheet card): no hairline, no padding of its own; the quiet text button
-// at the left on the text edge, the clay ones at the right edge (D314).
+// sheet card): no hairline, no padding of its own; the same order.
 func (a *App) cardEnd(c *ui.Context, h float32, quiet, buttons func()) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		if quiet != nil {
-			a.textRow(c, h).Gap(t.S1).Children(quiet)
-		}
-		ui.Box(c).Grow(1)
-		if buttons != nil {
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
-		}
+		a.cardEndLine(c, h, quiet, buttons)
 	})
+}
+
+// cardEndLine is a card's last line: the clay first, the quiet way out after it.
+func (a *App) cardEndLine(c *ui.Context, h float32, quiet, buttons func()) {
+	t := a.T
+	if buttons != nil {
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
+	}
+	if quiet != nil {
+		a.textRow(c, h).Gap(t.S1).Children(quiet)
+	}
 }
 
 // versionText is "0.3.0 (abc1234)", or what is known of it.

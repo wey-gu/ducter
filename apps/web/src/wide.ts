@@ -37,6 +37,9 @@ export function useWide(): boolean {
 /** A phone's width (under 700, where sheets rise from the bottom and the header holds only the
  *  screen's own actions; D484). Follows the width as it changes. */
 export const PHONE = "(max-width: 699px)";
+/** D548: a narrow phone (the bar keeps one line: the others, the name over one count, one button
+ *  for the places). */
+export const NARROW = "(max-width: 560px)";
 export const phoneNow = () => typeof matchMedia === "function" && matchMedia(PHONE).matches;
 export function usePhone(): boolean {
   const [phone, setPhone] = useState(phoneNow);
@@ -97,6 +100,8 @@ export function escUp(e: KeyboardEvent) {
   if (A.route.name === "task" && escPause(A.route.id)) return void e.preventDefault();
   const el = document.activeElement;
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
+  // D535: a drill-in inside On hand (a Keep's page) goes up to the overview first.
+  if (A.route.name === "onhand" && A.upInPlace?.()) return void e.preventDefault();
   const up = upFrom(A.route);
   if (up) A.go(up);
 }

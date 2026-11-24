@@ -98,6 +98,8 @@ type Send struct {
 	At time.Time
 	// Media are the pictures sent with it (D206), shown until its echo.
 	Media []protocol.MediaRef
+	// Refs (D534): what its words refer to with @, sent again with a resend.
+	Refs []protocol.Ref
 }
 
 // CheckpointAt is a checkpoint with its time.
@@ -424,12 +426,18 @@ type Store struct {
 	PartnerAnswer *protocol.ServerFrame
 	// Past is 做过的事 / Past tasks (D285, past.go).
 	Past PastState
+	// Mentions is the composers' @ and / lists (D534, mentions.go).
+	Mentions MentionsState
 	// Did is 替你做过的 / Done for you (D300, did.go).
 	Did DidState
 	// KeepPages (D511) are the Keeps' pages this window read (keep_result),
 	// by id; KeepsVersion counts their changes.
 	KeepPages    map[string]*protocol.KeepPage
 	KeepsVersion int
+	// KeepChanged and KeepProposals (D533) are, by Keep, the last edit's
+	// result (keep_changed) and the rules read from edited words (keep_proposal).
+	KeepChanged   map[string]*protocol.KeepEditFrame
+	KeepProposals map[string]*protocol.KeepEditFrame
 
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
@@ -470,6 +478,12 @@ type Store struct {
 	Older     OlderState
 	Jobs      map[string]*Job
 	Decisions map[string]*DecisionState
+	// KeyCopies (D539): what a copy card's Go did, by decision: the
+	// computers that got the key and those that didn't (why).
+	KeyCopies map[string]*protocol.KeyCopy
+	// KeptKeys (D539): the keys Ducter keeps on each computer, by device,
+	// as it last answered (names only).
+	KeptKeys map[string]*protocol.ServerFrame
 	// sentReplies (D470 round 2): replies shown as sent, by the message answered and the words.
 	sentReplies map[string]bool
 	Tasks       map[string]*Task
@@ -565,6 +579,8 @@ type Store struct {
 	Helpers []protocol.HelperView
 	// BrainNow is what the partner thinks with right now (D150).
 	BrainNow *protocol.BrainNow
+	// BrainOptions is D536: what each partner's own 想事情用 may offer.
+	BrainOptions []protocol.BrainOption
 	// Connections (D96), once asked for; nil means not yet. Oo is what the
 	// oo CLI is set up with. ConnResult is the last add/remove answer, for
 	// the page to turn into one line.
@@ -784,6 +800,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "saved":
 		fc := f
 		s.Saved = &fc
+	case "kept_keys": // D539
+		fc := f
+		if s.KeptKeys == nil {
+			s.KeptKeys = map[string]*protocol.ServerFrame{}
+		}
+		s.KeptKeys[f.Device] = &fc
 	case "browser_sites":
 		fc := f
 		s.BrowserSites = &fc
@@ -827,6 +849,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Mem = f.Mem
 		}
 		s.BrainNow = f.BrainNow
+		s.BrainOptions = f.BrainOptions
 		s.Bridge = f.Bridge
 		s.OwnAgents = f.OwnAgents
 		s.Helpers = f.Helpers
@@ -1004,8 +1027,26 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			delete(s.KeepPages, f.ID)
 		}
 		s.KeepsVersion++
+	case "keep_changed":
+		if s.KeepChanged == nil {
+			s.KeepChanged = map[string]*protocol.KeepEditFrame{}
+		}
+		if f.KeepEdit != nil {
+			s.KeepChanged[f.ID] = f.KeepEdit
+		}
+		s.KeepsVersion++
+	case "keep_proposal":
+		if s.KeepProposals == nil {
+			s.KeepProposals = map[string]*protocol.KeepEditFrame{}
+		}
+		if f.KeepEdit != nil {
+			s.KeepProposals[f.ID] = f.KeepEdit
+		}
+		s.KeepsVersion++
 	case "made_result":
 		s.applyMade(f) // D383 (past.go)
+	case "mention_list", "slash_list":
+		s.applyMentions(f) // D534 (mentions.go)
 	case "past_steps_result", "past_forked":
 		s.applyPastSteps(f) // D391 (past.go)
 	case "did_result":
@@ -1298,6 +1339,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			m.EndedAt = ev.TS
 			s.Missed[w.WaiterID] = &m
 		}
+	}
+	if kc, ok := body.(*protocol.KeyCopy); ok {
+		if kc.DecisionID != "" {
+			if s.KeyCopies == nil {
+				s.KeyCopies = map[string]*protocol.KeyCopy{}
+			}
+			s.KeyCopies[kc.DecisionID] = kc
+		}
+		return
 	}
 	if cc, ok := body.(*protocol.ConnectionCall); ok {
 		// D222: a decision's write, staged then run on Go; the latest wins.

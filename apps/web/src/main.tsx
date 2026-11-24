@@ -2,9 +2,9 @@
 // this browser may talk to core (local, or a paired device), then run the app.
 import { PhoneInstallSheet, PhoneLiveSheet, phoneFrame } from "./phone-use.tsx";
 import { HandsetGuideSheet, handsetFrame, handsetHello } from "./handset.tsx";
-import { render } from "preact";
+import { render, type ComponentChild } from "preact";
 import { useEffect, useReducer, useState } from "preact/hooks";
-import { A } from "./app.ts";
+import { A, savedPartner } from "./app.ts";
 import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } from "./conn.ts";
 import { kvSet } from "./idb.ts";
 import { forgetGlance, loadGlance, type Glance } from "./glance.ts";
@@ -17,7 +17,7 @@ import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { PartnerList, partnerKey } from "./partners.tsx";
-import { escUp, useFill, useSplit, useWide } from "./wide.ts";
+import { escUp, phoneNow, useFill, usePhone, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
 import { nthKey, walkKey } from "./onhand.tsx";
@@ -29,6 +29,9 @@ import { applyDensity, applyPaper, densityKey } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
 import { watchTextSize } from "./text-scale.ts";
 import { BOOT_TIMEOUT_MS, BootWait, Guard, within, type BootState } from "./boot-wait.tsx";
+import { BackRow, Notice } from "./controls.tsx";
+import { createLinkWatch } from "./link.ts";
+import { askStandingWeb } from "@ducter/protocol/src/reach-verify-web.ts";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
 applyDensity(); // D457: and its own density
@@ -69,6 +72,8 @@ function App() {
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
   const wide = useWide();
+  // D541: under 700 the list of partners is the level above the conversation; from 700 it stands beside.
+  const phone = usePhone();
   // D182: on a foldable the panes split at the fold, left and right (a book) or top and bottom
   // (tabletop); app.css places them from --fold-a and --fold-gap.
   const split = useSplit();
@@ -115,11 +120,13 @@ function App() {
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
-          {/* D513: with more than one partner, the list of them at the conversation's left. */}
-          {!split && <PartnerList at="side" />}
-          {/* D517: picking a partner brings its conversation in (keyed by whose it is); the list stays still. */}
-          <section key={A.manyPartners() ? `conv:${A.S.persona || "switching"}` : "conv"} class={A.manyPartners() ? "pane conv conv-in" : "pane conv"} aria-label={t("nav.conversation")}>
-            <Conversation />
+          {/* D513: with more than one partner, the list of them at the conversation's left; D541: on a
+              fold the conversation's bar holds the others' faces instead, and the list opens over it. */}
+          {!split && A.railMode !== "hidden" && <PartnerList at="side" thin={A.railMode === "thin"} />}
+          {/* D541: picking a partner shows its conversation in place, in this frame (held, or peeked);
+              the list, the bar and the composer stay still. */}
+          <section class="pane conv" aria-label={t("nav.conversation")}>
+            {split && A.partnersOpen && A.manyPartners() ? <PartnerList at="home" /> : <Conversation />}
           </section>
           <section class="pane side" aria-label={r.name === "task" ? undefined : t("nav.onhand")}>
             {r.name === "task" ? <TaskView key={r.id} id={r.id} /> : <OnHand />}
@@ -128,7 +135,21 @@ function App() {
       ) : (
         <>
           {/* D513: a phone's list of partners is the level above the conversation. */}
-          {r.name === "conv" && (A.partnersOpen && A.manyPartners() ? <PartnerList at="home" places={<Places onHand />} /> : <Conversation />)}
+          {r.name === "conv" &&
+            (A.partnersOpen && A.manyPartners() ? (
+              <PartnerList at="home" places={<Places onHand />} />
+            ) : A.manyPartners() && !phone && A.railMode !== "hidden" ? (
+              // D541: between a phone and two panes (700–999: an iPad upright, a foldable open), the
+              // slim list of faces and numbers at the conversation's left, as from 1000.
+              <div class="panes mid">
+                <PartnerList at="side" slim thin={A.railMode === "thin"} />
+                <section class="pane conv" aria-label={t("nav.conversation")}>
+                  <Conversation />
+                </section>
+              </div>
+            ) : (
+              <Conversation />
+            ))}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
           {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}
@@ -144,9 +165,48 @@ function App() {
   );
 }
 
-type PairView = { busy: boolean; error?: PairError | "revoked"; code: string };
+// ---------- D532: the link to the home, by D520's rule ----------
 
-function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => void }) {
+/** The home's name for the pair screen's line: its own name, else this address. */
+const goneHome = () => A.homeName || A.linkMemo.get().home || base.host;
+
+/**
+ * Something refused this device's token. Only the home's verified word (or an old home's 401 held
+ * over OLD_HOME_WINDOW_MS) clears it; anything else keeps the token, the screen and the retrying.
+ */
+const watch = createLinkWatch({
+  deps: () => {
+    const r = storage.get();
+    return r?.token ? { base, token: r.token, fp: r.fp, memo: A.linkMemo } : undefined;
+  },
+  me: async () => (await api.call<Me>("api/me")).status,
+  gone: async (why) => {
+    // The home said this device is disconnected (or no longer known): nothing it showed stays here.
+    A.conn?.stop();
+    forgetGlance();
+    // D543: what waited to be sent, and the tasks kept for reading, were this pairing's.
+    A.outbox.clear();
+    void A.taskWins.clear();
+    storage.clear();
+    await kvSet("token", undefined);
+    return boot({ busy: false, code: "", error: why });
+  },
+});
+const refused = (now = false) => watch.unauthorized(now);
+const socketRefused = (now = false) => watch.refused(now);
+
+/** Once a page, after a welcome: whether this home can say a standing at all (then no 401 is ever taken alone). */
+let probed = false;
+async function probeStanding() {
+  const r = storage.get();
+  if (probed || !r?.token || !r.fp || A.linkMemo.get().standing) return;
+  probed = true;
+  if ((await askStandingWeb(base, r.token, r.fp)) === "live") A.linkMemo.set({ ...A.linkMemo.get(), standing: true });
+}
+
+type PairView = { busy: boolean; error?: PairError | "revoked" | "unknown"; code: string };
+
+function Pairing({ initial, onPaired, onBack }: { initial: PairView; onPaired: () => void; onBack?: () => void }) {
   const [v, setV] = useState<PairView>(initial);
   const submit = async (code: string) => {
     setV({ ...v, code, busy: true, error: undefined });
@@ -161,7 +221,9 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
   }, []);
   const err =
     v.error === "revoked"
-      ? t("connect.revoked")
+      ? t("connect.revoked", goneHome())
+      : v.error === "unknown"
+        ? t("connect.unknown", goneHome())
       : v.error === "locked"
         ? t("connect.err.locked")
         : v.error === "unreachable"
@@ -169,14 +231,19 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
           : v.error
             ? t("connect.err.code")
             : "";
+  // D532: the home's own word that this device was disconnected leads the screen, in its words; a
+  // wrong code stays under the field it is about.
+  const gone = v.error === "revoked" || v.error === "unknown";
   return (
     <div class="pairing">
+      {onBack && !v.busy && <BackRow label={t("connect.back")} onClick={onBack} />}
       <div class="face">
         <Avatar size={140} state={v.busy ? "working" : "idle"} />
       </div>
       <h1>{v.busy ? t("connect.pairing") : t("connect.title")}</h1>
       {!v.busy && (
         <>
+          {gone && <Notice body={err} />}
           <p>{t("connect.phone.body")}</p>
           <form
             onSubmit={(e) => {
@@ -197,7 +264,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
                 onInput={(e) => setV({ ...v, code: (e.target as HTMLInputElement).value })}
               />
             </div>
-            {err && (
+            {err && !gone && (
               <div class="err" role="alert">
                 {err}
               </div>
@@ -222,9 +289,27 @@ startAutospace(document.body); // the CJK-Latin gap where the browser lacks text
 // D254: every code block's own Copy, wherever a message draws one.
 listenForCodeCopy(() => ({ copy: t("reply.copy"), copied: t("conv.copied"), failed: t("conv.copy.failed") }), (s) => A.toast(s));
 
+/**
+ * D543 (D535's leftover): every draw into the page goes through here. Preact's first render into a
+ * root that already holds other DOM diffs against it instead of replacing it: it reuses an element
+ * of the same tag and leaves the rest where they are. index.html's static boot ground is a <main>:
+ * at a phone's width the app's own <main> took it over (so it seemed to go), at two panes (from
+ * about 1000 wide) nothing matched and it stayed in #app beside the app, a full-height block over
+ * it. D535 removed it only before the app's own render; any other first draw (and a cached older
+ * bundle) left it. So the first draw, whichever it is, empties the root of what Preact didn't make.
+ */
+let painted = false;
+function paint(vnode: ComponentChild) {
+  if (!painted) {
+    painted = true;
+    root.replaceChildren();
+  }
+  render(vnode, root);
+}
+
 /** D474: the ground while the page can't show the app yet, or why it couldn't, with Try again. */
 function wait(state: BootState) {
-  render(<BootWait t={t} state={state} onRetry={() => void boot()} />, root);
+  paint(<BootWait t={t} state={state} onRetry={() => void boot()} />);
 }
 
 /** D474: whatever goes wrong while opening, the page says so with Try again; it never stays blank. */
@@ -233,13 +318,13 @@ async function boot(pairing?: PairView) {
     await opening(pairing);
   } catch (e) {
     console.error("[ducter] opening the page failed", e);
-    render(<BootWait t={t} state={{ kind: "broken" }} onRetry={() => location.reload()} />, root);
+    paint(<BootWait t={t} state={{ kind: "broken" }} onRetry={() => location.reload()} />);
   }
 }
 
 async function opening(pairing?: PairView) {
   if (pairing) {
-    render(<Pairing initial={pairing} onPaired={() => void boot()} />, root);
+    paint(<Pairing initial={pairing} onPaired={() => void boot()} />);
     return;
   }
   // D293: the app opened the home at another of its addresses (another origin, empty storage):
@@ -256,17 +341,20 @@ async function opening(pairing?: PairView) {
   // last screen from the glance, the socket opening alongside, and who we are asked meanwhile.
   // Nothing waits on a round trip before the first frame.
   const device = storage.get()?.deviceId ?? (had ? "" : "local");
-  const glance = device ? loadGlance(device) : undefined;
+  const glance = device ? loadGlance(device, undefined, savedPartner()) : undefined;
   if (had || glance) {
     const me: Me = glance?.me ?? { via: had ? "device" : "local", personaName: storage.get()?.personaName ?? "Ducter", push: { supported: false } };
+    // D543: what an earlier page sent and the home hasn't got shows again in the first frame.
+    await within(A.outbox.load(device || "local"), 500, []);
     run(me, had, device, glance);
     void api.call<Me>("api/me").then(async (r) => {
       if (r.status === 401) {
-        // Revoked (or no longer this machine): nothing it showed stays on the device.
+        // D532: a paired device asks the home; a 401 alone (a proxy while the home restarts) keeps
+        // the token and the screen. This machine's own page with no token has nothing to keep.
+        if (had) return void refused(true);
         A.conn?.stop();
         forgetGlance();
-        if (had) storage.clear(), await kvSet("token", undefined);
-        return boot({ busy: false, code: "", error: had ? "revoked" : undefined });
+        return boot({ busy: false, code: "", error: undefined });
       }
       if (r.status !== 200 || !r.data) return;
       A.me = r.data;
@@ -283,6 +371,7 @@ async function opening(pairing?: PairView) {
   if (r.status === 401) return boot({ busy: false, code: "", error: undefined });
   if (r.status === 0) return wait({ kind: "unreachable", host: base.host });
   const me: Me = r.data ?? { via: "local", personaName: "Ducter", push: { supported: false } };
+  await within(A.outbox.load("local"), 500, []);
   run(me, had, "local");
 }
 
@@ -294,7 +383,15 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.onPhoneFrame = phoneFrame; // D217
   A.onHandsetFrame = handsetFrame; // D238
   A.onHandsetWelcome = () => void handsetHello();
+  // D532: a refused socket, Try now and a welcome reach the link's judge; 再连一次 opens the pair
+  // screen over the app (Back returns to it; the token stays until a new pairing replaces it).
+  watch.reset();
+  A.onLinkRefused = () => void socketRefused();
+  A.onLinkRetry = () => void socketRefused(true);
+  A.onLinkHeard = () => void probeStanding();
+  A.onLinkAgain = () => paint(<Pairing initial={{ busy: false, code: "" }} onPaired={() => location.reload()} onBack={showApp} />);
   if (glance) A.restore(glance);
+  A.restoreOutbox(); // D543
   A.start(base, api, me, token);
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
@@ -318,9 +415,10 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
     edgeSwipe(
       page,
       // D513: in a conversation with more than one partner, the swipe goes up to the list of them.
-      () => !wideNow() && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
+      // D545: and on any width, with the list hidden, it brings the list back.
+      () => (!wideNow() || (A.route.name === "conv" && A.manyPartners() && A.railMode === "hidden")) && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
       () => {
-        if (A.route.name === "conv") return A.showPartners();
+        if (A.route.name === "conv") return A.railMode === "hidden" && !phoneNow() ? A.setRail("") : A.showPartners();
         if (history.length > 1 && location.hash) return history.back();
         history.replaceState(null, "", location.pathname);
         A.applyRoute({ name: "conv" });
@@ -330,11 +428,16 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {
     if (e.data?.t === "open") location.href = e.data.url;
   });
-  render(
+  showApp();
+}
+
+function showApp() {
+  // D535, D543: index.html's static boot ground never stays beside the app (paint empties the root
+  // of what Preact didn't draw on the first draw, whichever draw that is).
+  paint(
     <Guard t={t}>
       <App />
     </Guard>,
-    root,
   );
 }
 

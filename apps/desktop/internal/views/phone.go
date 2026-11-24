@@ -192,12 +192,12 @@ func (a *App) phoneSignIn(c *ui.Context) {
 				uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 			})
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				if a.buttonFor(c, a.L.T("phone.signin.open"), name, btnPrimary, t.ControlMD, t.Surface) {
+					a.openLink(firstNonEmpty(si.VerifyURLComplete, si.VerifyURL))
+				}
 				if a.buttonFor(c, a.L.T("phone.signin.cancel"), name, btnText, t.ControlMD, t.Surface) {
 					a.send(protocol.ConnectionSignInCancel{T: "connection_signin_cancel"})
 					a.S.SignIn, p.connecting = nil, false
-				}
-				if a.buttonFor(c, a.L.T("phone.signin.open"), name, btnPrimary, t.ControlMD, t.Surface) {
-					a.openLink(firstNonEmpty(si.VerifyURLComplete, si.VerifyURL))
 				}
 			})
 		})
@@ -765,11 +765,11 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 	}
 	ui.Row(c.Key("callq:" + d.DecisionID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 		if d.Call.YesNo {
-			if a.buttonFor(c, a.L.T("call.q.no"), d.Question, btnSecondary, t.ControlMD, t.NeedsYou.Surface) {
-				a.Decide(d.DecisionID, "reply", "no")
-			}
 			if a.buttonFor(c, a.L.T("call.q.yes"), d.Question, btnPrimary, t.ControlMD, t.NeedsYou.Surface) {
 				a.Decide(d.DecisionID, "reply", "yes")
+			}
+			if a.buttonFor(c, a.L.T("call.q.no"), d.Question, btnSecondary, t.ControlMD, t.NeedsYou.Surface) {
+				a.Decide(d.DecisionID, "reply", "no")
 			}
 			return
 		}
@@ -801,7 +801,11 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 				}
 				return false
 			})
-		if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) {
+		st := sendEmpty
+		if strings.TrimSpace(draft) != "" {
+			st = sendReady
+		}
+		if a.sendButton(c, a.L.T("composer.send"), t.ControlMD, st) {
 			send(draft)
 			draft = ""
 		}

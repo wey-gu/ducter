@@ -47,7 +47,7 @@ It arrives in that partner's conversation as one message: your line, then the li
 shared. Photos are made smaller and lose where they were taken, as always; up to 10 pictures and
 files at a time, 50 MB each. Nothing is sent until you tap **Send**.
 
-If your Ducter can't be reached right then, the sheet says **It will go as soon as it can**, and it
+If your Ducter can't be reached right then, the sheet says **Sends when it's back**, and it
 goes the next time Ducter opens on your phone. You need to have connected the Ducter app once;
 sharing uses that connection.
 

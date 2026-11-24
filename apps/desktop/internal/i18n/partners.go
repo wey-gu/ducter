@@ -47,7 +47,22 @@ var zhPartners = Table{
 	"partners.you":               "你：%s",
 	"partners.empty":             "还没聊过",
 	"partners.back":              "所有伙伴",
+	"partners.rail.thin":         "收窄伙伴栏",
+	"partners.rail.hide":         "收起伙伴栏",
+	"partners.rail.show":         "显示伙伴栏",
 	"partners.back.asks":         "所有伙伴，别处有 %d 个等你",
+	// D536: what each partner thinks with: its own, else the default partner's.
+	"partners.thinks.title":       "想事情用",
+	"partners.thinks.with":        "想事情用 %s",
+	"partners.thinks.same":        "想事情跟 %s 一样",
+	"partners.thinks.same.pick":   "跟 %s 一样",
+	"partners.thinks.effort":      "思考：%s",
+	"partners.thinks.default":     "默认",
+	"partners.thinks.acct":        "%s想事情也用它",
+	"partners.thinks.and":         "、",
+	"loadout.brain.title.default": "默认用什么想事情",
+	"loadout.brain.default.note":  "%s 和没单独选的伙伴都用这个。要给哪个伙伴单独选，点它的「改一下」。",
+	"said.effort":                 "好，从你的下一句话开始，思考深度用「%s」。",
 }
 
 var enPartners = Table{
@@ -93,7 +108,22 @@ var enPartners = Table{
 	"partners.you":               "You: %s",
 	"partners.empty":             "Nothing said yet",
 	"partners.back":              "All your partners",
+	"partners.rail.thin":         "Narrow your partners",
+	"partners.rail.hide":         "Hide your partners",
+	"partners.rail.show":         "Show your partners",
 	"partners.back.asks":         "All your partners, %d need you elsewhere",
+	// D536: what each partner thinks with: its own, else the default partner's.
+	"partners.thinks.title":       "Thinks with",
+	"partners.thinks.with":        "Thinks with %s",
+	"partners.thinks.same":        "Thinks with the same as %s",
+	"partners.thinks.same.pick":   "Same as %s",
+	"partners.thinks.effort":      "Effort: %s",
+	"partners.thinks.default":     "The default",
+	"partners.thinks.acct":        "Also thinks for %s",
+	"partners.thinks.and":         " and ",
+	"loadout.brain.title.default": "What partners think with by default",
+	"loadout.brain.default.note":  "%s and every partner without its own choice use this. To give one its own, choose Change on its row.",
+	"said.effort":                 "Got it: from your next message, I use %s effort.",
 }
 
 func init() {

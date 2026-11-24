@@ -132,14 +132,25 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 			continue // D471: one part left is that task's own row, never a group of one
 		}
 		if hv := g.Hand; hv != nil {
-			// D385: what waits for the person (the plan, the review) stands in Needs you.
-			if (hv.Plan != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held")) || hv.Review == "ready" {
-				bg.lane = 0
-			} else if len(bg.ids) == 0 {
-				if hv.Review == "sent" {
-					continue
+			// D535: one rule on every client (protocol.HandStand, the shared
+			// fixture): its plan or review waiting for the person is 等你; tasks
+			// on the board set its lane; parts held in line alone stand in 在做,
+			// each saying where it waits; nothing on the board and nothing in
+			// line (the author's 「通用设置 / Macbook Pro M3」, opening nothing
+			// all day) is not listed.
+			queued := 0
+			for _, r := range bg.rows {
+				if r.taskID == "" {
+					queued++
 				}
-				bg.lane = 1
+			}
+			switch protocol.HandStand(hv, len(bg.ids), queued) {
+			case protocol.HandNeeds:
+				bg.lane = 0
+			case protocol.HandQueued:
+				bg.lane = int(store.LaneWorking)
+			case protocol.HandNone:
+				continue
 			}
 		} else if len(bg.ids) == 0 {
 			continue
@@ -301,6 +312,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	// D467: the board's one card shape: radius 16, the clay ledge, its state mark at the head.
 	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(12, 16, 12, 14).Radius(16).Background(t.Surface).
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Role(ui.RoleGroup).Label(g.Name)
+	a.doorCard(c, card, "g:"+g.ID) // D535
 	// D454: a group none of whose parts is at work can leave On hand.
 	fin := finishedGroup(bg)
 	a.contextMenu(c, card, func(m *ui.Menu) {
@@ -325,7 +337,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 			a.PutAway(c, *fin)
 		}
 	})
-	hover := card.Hovered()
+	hover := card.Hovered() || card.FocusWithin()
 	card.Children(func() {
 		ui.Row(c.Key("head")).Gap(14).AlignItems(ui.Center).MinHeight(32).Children(func() {
 			if a.oh.groupRename == g.ID {
@@ -341,6 +353,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					a.oh.groupRename = ""
 				}
 			} else {
+				a.partnerMark(c, "group-"+g.ID, g.Persona) // D546: whose group
 				uiText(c, g.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 			}
 			ui.Spacer(c)
@@ -349,11 +362,8 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 			if fin != nil {
-				if hover {
-					a.awayX(c, "away", *fin)
-				} else {
-					ui.Box(c.Key("away")).Size(24, 24).Shrink(0).AccessHidden(true) // the ×'s place, so the head never moves
-				}
+				// D529: the × in its kept room, faded in; the head never moves.
+				a.revealSlot(c, "away-at", hover, func() { a.awayX(c, "away", *fin) })
 			}
 		})
 		var held []groupRow
@@ -409,9 +419,14 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 							words = a.L.T("group.held.on", a.computerName(r.device))
 						}
 						uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-						if i := heldIndex(held, r.key); i > 0 && row.Hovered() && a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
-							to := i - 1
-							send(protocol.TaskGroupFrame{Op: "move", Member: r.key, To: &to})
+						if i := heldIndex(held, r.key); i > 0 {
+							// D529: 往前 in its kept room, faded in on the part's hover.
+							a.revealSlot(c, "up", row.Hovered() || row.FocusWithin(), func() {
+								if a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
+									to := i - 1
+									send(protocol.TaskGroupFrame{Op: "move", Member: r.key, To: &to})
+								}
+							})
 						}
 					case k == "needs":
 						uiText(c, a.L.T("lane.needs_you")).FontSize(t.XS).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()

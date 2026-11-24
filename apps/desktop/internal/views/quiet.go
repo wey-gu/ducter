@@ -45,12 +45,27 @@ func (a *App) quietButton(c *ui.Context, key, label, about string, strong bool, 
 		if hover {
 			col = t.Ink
 		}
+		if chevron < 0 { // D519: back, the chevron before the words
+			a.glyph(c, 12, drawBackChevron(col))
+		}
 		uiText(c, label).FontSize(t.SM).FontWeight(w).TextColor(col).SingleLine().AccessHidden(about != "")
-		if chevron != 0 {
+		if chevron > 0 {
 			a.glyph(c, 12, drawChevron(col, chevron > 1))
 		}
 	})
 	return b.Clicked()
+}
+
+// drawBackChevron is a small ‹: a way back.
+func drawBackChevron(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx+1.5, cy-3.5)
+		m.LineTo(cx-2, cy)
+		m.LineTo(cx+1.5, cy+3.5)
+		p.StrokePath(&m, 1.8, col)
+	}
 }
 
 // drawChevron is a small › (down when open).
@@ -398,7 +413,17 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		a.handPlanCard(c, d, false)
 		return
 	}
-	ui.Column(c.Key("ask:" + d.DecisionID)).Gap(t.S2).Children(func() {
+	col := ui.Column(c.Key("ask:" + d.DecisionID)).Gap(t.S2)
+	// D535: found by a needs-you count's door: a needs-you wash behind the
+	// question and its buttons deepens once and settles (room for it kept
+	// by a padding its margin gives back, so nothing moves).
+	if !inTask {
+		col.Padding(t.S2).Margin(-t.S2).Radius(t.RadiusLG)
+		if k := a.foundAt(c, d.Seq, ""); k > 0 {
+			col.Background(t.NeedsYou.Surface.Alpha(0.85 * k))
+		}
+	}
+	col.Children(func() {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
@@ -443,6 +468,11 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			// D151: Sign in opens the live view; answered, it says signed in or not now.
 
 			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
+		if d.CopyKey != nil {
+			// D539: what goes from where to where, the note, 先不 · 复制; answered in place.
+			a.underBubble(c, func() { a.copyKeyButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}
 		if d.Phone != nil {

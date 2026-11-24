@@ -133,6 +133,10 @@ type KeyView struct {
 	Hint    string `json:"hint,omitempty"`
 	AddedAt string `json:"addedAt"`
 	UsedAt  string `json:"usedAt,omitempty"`
+	// D539: a key Ducter keeps on a computer (kept_keys): where it was
+	// copied from, and when.
+	From string `json:"from,omitempty"`
+	At   string `json:"at,omitempty"`
 }
 
 // KeyAsk is {task} 需要一个密钥 / {task} needs a key (D233).
@@ -183,3 +187,54 @@ var DetailFill = map[string]bool{
 
 // DetailOrder is the details form, in the order a booking asks for them.
 var DetailOrder = []string{"name", "email", "phone", "birthday", "address", "passport_number", "passport_country", "passport_expiry", "known_traveler", "loyalty", "seat", "meal"}
+
+// KeyComputer is one computer in a copy (D539): its device id ("local" =
+// the home) and the name the person knows it by.
+type KeyComputer struct {
+	Device string `json:"device"`
+	Name   string `json:"name"`
+}
+
+// CopyKeyAsk is the 复制密钥 / Copy a key card (D539): set only by
+// Ducter's code, never by a task's report.
+type CopyKeyAsk struct {
+	Env     string        `json:"env"`
+	Name    string        `json:"name"`
+	From    KeyComputer   `json:"from"`
+	To      []KeyComputer `json:"to"`
+	Source  string        `json:"source"` // shell | ducter
+	Why     string        `json:"why,omitempty"`
+	TaskIDs []string      `json:"taskIds,omitempty"`
+}
+
+// KeyCopyFailed is one computer a copy couldn't reach, and why
+// (offline | old | gone | failed).
+type KeyCopyFailed struct {
+	Name string `json:"name"`
+	Why  string `json:"why"`
+}
+
+// KeyCopy is the key_copy event (D539): names only, never a value.
+type KeyCopy struct {
+	DecisionID string          `json:"decisionId,omitempty"`
+	Env        string          `json:"env"`
+	Name       string          `json:"name"`
+	From       string          `json:"from"`
+	To         []string        `json:"to"`
+	Failed     []KeyCopyFailed `json:"failed,omitempty"`
+	Removed    string          `json:"removed,omitempty"`
+	By         string          `json:"by"`
+}
+
+// KeptKeysReq asks a computer for the keys Ducter keeps there (D539).
+type KeptKeysReq struct {
+	T      string `json:"t"` // kept_keys
+	Device string `json:"device"`
+}
+
+// KeptKeyRemove forgets one there.
+type KeptKeyRemove struct {
+	T      string `json:"t"` // kept_key_remove
+	Device string `json:"device"`
+	Env    string `json:"env"`
+}

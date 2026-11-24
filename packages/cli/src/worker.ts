@@ -24,6 +24,7 @@ import { createWorkerRecords } from "@ducter/core/src/worker-records.ts";
 import { createLocalAgents } from "@ducter/core/src/local-agents/index.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
+import { createResourceProbe } from "@ducter/protocol/src/resources.ts";
 import { probeEnv } from "./doctor.ts";
 import { createWorkerAgentUpdater } from "@ducter/core/src/agents.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -290,7 +291,15 @@ export async function cmdWorker(o: {
     get agentUpdates(): string[] {
       return agentUpdater.updating();
     },
+    // D538: what this computer has and has free now (memory, cores, disk, the kernel's stops), also
+    // on every heartbeat (the ping), so placement sees it without asking anyone.
+    resources: undefined as unknown,
   };
+  const probe = createResourceProbe({ dir: o.dataDir });
+  const lookRes = () => probe.look().then((r) => void (hello.resources = r)).catch(() => {});
+  await lookRes();
+  const resTimer = setInterval(lookRes, 15_000);
+  (resTimer as { unref?: () => void }).unref?.();
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
   const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
   const s = saved;
@@ -300,11 +309,13 @@ export async function cmdWorker(o: {
   // D524: a worker runs tasks too: its children go before it when memory runs out, and an older unit gets today's settings.
   startMemoryWatch({ dataDir });
   refreshOnStart(dataDir);
+  // D539: the keys Ducter keeps on this computer for its tasks here (copied with the person's Go).
+  const keptKeys = runnerMod.createKeyShelf({ dataDir });
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, keys: keptKeys, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {
@@ -442,7 +453,8 @@ async function stayConnected(
       const up = (x: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x));
       const pinger = createPinger({
         clock: realClock,
-        ping: () => up({ t: "ping" }),
+        // D538: the computer's own look rides on the heartbeat (an older home ignores it).
+        ping: () => up({ t: "ping", ...(hello.resources ? { res: hello.resources } : {}) }),
         // A half-open socket after a network change, or a wake from sleep: drop it and dial again.
         kill: (why) => {
           if (why === "woke") backoff = 1000;

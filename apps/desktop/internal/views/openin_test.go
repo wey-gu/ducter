@@ -57,8 +57,9 @@ func TestOpenInMenu(t *testing.T) {
 		// This Mac's own Ducter: the menu, Finder, then each editor, then each
 		// terminal (D201), each group in the order found (the one used last first).
 		_, tt, calls := open(lang, "", repo, nil)
-		if !tt.HasText(tildePath(wt)) {
-			t.Errorf("%s: the path isn't shown: %q", lang, tt.Texts())
+		// D530: the place is the header's; the transcript never prints the raw path.
+		if tt.HasText(tildePath(wt)) {
+			t.Errorf("%s: the raw path shows: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "open-in-"+string(lang))
 		if err := tt.Click(about); err != nil {
@@ -93,13 +94,13 @@ func TestOpenInMenu(t *testing.T) {
 			t.Errorf("%s: Open in Ghostty opened %+v", lang, *calls)
 		}
 
-		// A Ducter elsewhere, its place on that computer: no menu, the path as text.
+		// A Ducter elsewhere, its place on that computer: no menu, and no raw path (D530).
 		_, tt, _ = open(lang, "wss://hel.example.com/ws", repo, nil)
 		if _, ok := tt.Find(about); ok {
 			t.Errorf("%s: %s shows for a remote place", lang, about)
 		}
-		if !tt.HasText(tildePath(wt)) {
-			t.Errorf("%s: a remote place's path isn't shown: %q", lang, tt.Texts())
+		if tt.HasText(tildePath(wt)) {
+			t.Errorf("%s: a remote place's raw path shows: %q", lang, tt.Texts())
 		}
 
 		// A Ducter elsewhere whose task runs on this Mac's own worker: the menu.

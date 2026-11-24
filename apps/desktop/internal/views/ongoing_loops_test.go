@@ -62,7 +62,7 @@ func TestOngoingLoopLines(t *testing.T) {
 			pastWord(lang, "Ada's MacBook Pro 睡着了，醒了马上补一轮", "Ada's MacBook Pro is asleep; it catches up as soon as it wakes"),
 			pastWord(lang, "被误停，已经接着跑了", "Stopped by mistake at"),
 			pastWord(lang, "额度用完了", "Out of allowance"),
-			pastWord(lang, "每 45 分钟一轮", "A round every 45 min"),
+			pastWord(lang, "每 45 分钟一轮", "A round every 45 minutes"),
 			pastWord(lang, "上一轮", "Last round"),
 			"Codex", "Claude Code", "Ada's MacBook Air",
 			// D429: the awake computer, its own fact, and the move as the card's one fix.
@@ -126,7 +126,7 @@ func TestOngoingMoreIsTheClayMenu(t *testing.T) {
 		if strings.Join(got, "|") != strings.Join(want, "|") {
 			t.Fatalf("%s: menu %q, want %q", lang, got, want)
 		}
-		if err := tt.ChooseMenuItem(app.L.T("og.rhythm"), app.L.T("og.rhythm.m", app.duration(time.Hour))); err != nil {
+		if err := tt.ChooseMenuItem(app.L.T("og.rhythm"), app.L.T("og.rhythm.m", app.rhythm(time.Hour))); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()

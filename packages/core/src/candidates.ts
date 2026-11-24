@@ -11,7 +11,8 @@
 // continuity, then the agent's own rank, then the home. One reason says why that computer.
 import { HARNESSES, harnessName, isHarnessId, isWorkKind, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type DeviceView, type KindDefault, type Place, type RuleView, type Settings, type TaskNeeds, type WhereBlock, type WhereWhy, type WorkKind } from "@ducter/protocol";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
-import { neverFor, ruleFor, rulesOut, type RuleWork } from "./rules.ts";
+import { neverFor, placeRulesFor, ruleFor, rulesOut, type RuleWork } from "./rules.ts";
+import { roomFor } from "@ducter/protocol/src/resources.ts";
 
 /** One AI agent and model, as the tier table knows it. smart: the strongest; fast: quick and light on the limit. */
 interface Tier {
@@ -63,7 +64,13 @@ export interface Computer {
   phone?: boolean;
   /** D235: 用电脑 / Use the computer is on here (with macOS's two switches). */
   computer?: boolean;
+  /** D538: its memory as it measured it (bytes); absent: not known (a worker before D538), no opinion. */
+  mem?: { total: number; free: number };
+  /** D538: heavy tasks running or starting there now (the home counts them). */
+  heavyNow?: number;
 }
+
+export { HEAVY_FREE, HEAVY_PER, heavySlots, roomFor } from "@ducter/protocol/src/resources.ts";
 
 /** The computers that run tasks (the home and its workers), from the devices frame. */
 export function computersOf(devices: DeviceView[], sites?: (deviceId: string) => string[]): Computer[] {
@@ -86,6 +93,7 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
         ...(sites ? { sites: sites(d.id) } : {}),
         ...(phone?.state === "on" && !phone.setup ? { phone: true } : {}),
         ...(computer?.state === "on" ? { computer: true } : {}),
+        ...(d.resources && d.state === "awake" ? { mem: { total: d.resources.memTotal, free: d.resources.memFree } } : {}),
       };
     });
 }
@@ -212,8 +220,12 @@ interface Row extends Candidate {
   tier: Tier;
 }
 
-/** Steps of the ranking, in order; the index into Row.key. */
-const STEP = { ok: 0, now: 1, word: 2, access: 3, prefer: 4, keeps: 5, continuity: 6, agent: 7, home: 8 } as const;
+/**
+ * Steps of the ranking, in order; the index into Row.key. D538: avoid (the person's 少放 rule for this
+ * work) comes right after what it needs, so an avoided computer takes it only when no other can;
+ * now includes room for heavy work; word includes a 多放 rule's computer.
+ */
+const STEP = { ok: 0, avoid: 1, now: 2, word: 3, access: 4, prefer: 5, keeps: 6, continuity: 7, agent: 8, home: 9 } as const;
 
 /** D510: the ruleId a pick's why carries when the person's New tasks start set it. */
 export const NEW_TASKS = "new_tasks";
@@ -225,6 +237,8 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
   const rule = ruleFor(inp.rules, inp.work);
   // D372: "别用 Claude Code 订酒店": the rows a rule rules out for this work (a pin still may).
   const nevers = neverFor(inp.rules, inp.work);
+  // D538: the person's placement rules for this work: 多放 and 少放 a computer, newest first.
+  const places = placeRulesFor(inp.rules, inp.work, inp.needs, inp.place);
   const all: Row[] = [];
   for (const c of comps) {
     const f = fit(c, inp.needs, inp.place);
@@ -240,9 +254,14 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         const blocked = blocked0 ?? (out ? ("ruled_out" as const) : undefined);
         const ruled = !!rule && rule.harness === t.harness && (!rule.model || rule.model === t.model);
         const left = h.allowance?.left;
-        const waits = c.state === "awake" ? undefined : c.state;
-        // The person's word: their pin of a computer, then their rule (its agent, its computer).
-        const word = (inp.pinDevice && isComputer(c, inp.pinDevice) ? 4 : 0) + (ruled ? 2 : 0) + (rule?.device && isComputer(c, rule.device) ? 1 : 0);
+        // D538: heavy work waits for room where there is none (the runner starts it when there is).
+        const waits = c.state === "awake" ? (inp.needs?.heavy && !roomFor(c) ? ("room" as const) : undefined) : c.state;
+        const pinned = !!inp.pinDevice && isComputer(c, inp.pinDevice);
+        // D538: the newest placement rule for this computer says which way (a pin in the moment passes 少放).
+        const placed = places.find((r) => isComputer(c, r.device));
+        const avoided = !!placed?.where?.avoid && !pinned;
+        // The person's word: their pin of a computer, then their rule (its agent, its computer; D538: a 多放 rule's).
+        const word = (pinned ? 4 : 0) + (ruled ? 2 : 0) + ((rule?.device && isComputer(c, rule.device)) || (placed && !placed.where?.avoid) ? 1 : 0);
         // Least access that does the job: Ducter's own browser (signed in where needed) over the user's Chrome.
         // D235: work in a Mac app goes to a Mac where the person added 用电脑 / Use the computer.
         const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : inp.needs?.app && c.computer ? 1 : 0;
@@ -254,7 +273,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         // what the task needs (least access): their computer, then their agent.
         const nt = inp.settings.newTasks;
         const prefer = (nt?.where && isComputer(c, nt.where) ? 2 : 0) + (nt?.agent && t.harness === nt.agent ? 1 : 0);
-        const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, prefer, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
+        const key = [blocked ? 0 : 1, avoided ? 0 : 1, waits ? 0 : 1, word, access, prefer, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
         const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
         all.push({
           harness: t.harness,
@@ -384,6 +403,13 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
     // Nobody else can. Say what only this computer has.
     // D510: a repository placed on the computer New tasks start names (its copy there, or cloned there).
     const nt = inp.settings.newTasks;
+    if (inp.place?.kind === "repo") {
+      // D538: a repository placed here by the person's 多放 rule, or because another hadn't the room.
+      const r = placeRulesFor(inp.rules, inp.work, needs, inp.place).find((x) => !x.where?.avoid && isComputer(c, x.device));
+      if (r) return { ...base, kind: "you", ruleId: r.id, text: r.text };
+      const short = needs?.heavy && roomFor(c) ? inp.computers?.find((x) => x.id !== c.id && x.state === "awake" && !roomFor(x)) : undefined;
+      if (short) return { ...base, kind: "room", other: short.name };
+    }
     if (inp.place?.kind === "repo" && nt?.where && isComputer(c, nt.where)) return { ...base, kind: "you", ruleId: NEW_TASKS };
     if (inp.place && (inp.place.kind === "repo" || inp.place.kind === "folder")) return { ...base, kind: "changes_here" };
     if (needs?.app) return { ...base, kind: "only_here", thing: "app", app: needs.app };
@@ -395,12 +421,22 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
     return { ...base, kind: c.home ? "home" : "only_here", ...(c.home ? {} : { thing: "agent" as const, agent: top.harness }) };
   }
   const step = top.key.findIndex((v, i) => v !== other.key[i]);
+  // D538: the person's placement rules for this work (多放 here, or 少放 the other one).
+  const places = placeRulesFor(inp.rules, inp.work, needs, inp.place);
   switch (step) {
+    case STEP.avoid: {
+      const r = places.find((x) => x.where?.avoid && isComputer(other.comp, x.device));
+      return r ? { ...base, kind: "you", ruleId: r.id, text: r.text } : { ...base, kind: "agent_here", agent: top.harness };
+    }
     case STEP.now:
+      // D538: the other computer is awake but hasn't the memory free for heavy work.
+      if (other.waits === "room") return { ...base, kind: "room", other: other.comp.name };
       return { ...base, kind: "awake", other: other.comp.name };
     case STEP.word: {
       if (inp.pinDevice && isComputer(c, inp.pinDevice)) return { ...base, kind: "you" };
       if (rule?.device && isComputer(c, rule.device)) return { ...base, kind: "you", ruleId: rule.id, text: rule.text };
+      const r = places.find((x) => !x.where?.avoid && isComputer(c, x.device));
+      if (r) return { ...base, kind: "you", ruleId: r.id, text: r.text };
       return { ...base, kind: "agent_here", agent: top.harness };
     }
     case STEP.access:
@@ -466,7 +502,7 @@ export interface BodyPick {
   device?: string;
   deviceId?: string;
   home?: boolean;
-  waits?: "asleep" | "unreachable";
+  waits?: "asleep" | "unreachable" | "room";
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
   /** D157: the best row on another computer that can start now, when the pick waits (the ask's other choice). */

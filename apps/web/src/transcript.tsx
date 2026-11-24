@@ -9,18 +9,22 @@
 import type { Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
-import { inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
+import { inTurn, lastSeq, latestVoice, quietRuns, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
 import { builtTurns, indexOf, lowerBound, slotsOf, type SessionIndex, type Slot, type TurnCache } from "@ducter/protocol/src/session.ts";
 import { landmarkNear, landmarksIn, landmarksOf, type Landmark } from "@ducter/protocol/src/landmarks.ts";
-import { tokensShort } from "@ducter/protocol";
+import { splitRefs, tokensShort } from "@ducter/protocol";
+import { WordsWithRefs } from "./composer.tsx";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
-import { clock, day, shownDeviceName, span, stamp, when } from "./format.ts";
+import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
-import { Btn, Chev, Facts } from "./controls.tsx";
+import { Btn, Chev, CodeChip, Facts, FileChip, Tag, WorkHead, type TagTone } from "./controls.tsx";
+import { composerTune } from "./composer-tune.tsx";
+import { chipText, fileKind, fileName, itemsOf, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
+import { openFileLink } from "./fileview.tsx";
 import { SourceChip } from "./todos.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
@@ -132,6 +136,13 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
   chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
   group: () => <G><path d="M3 4.5h10M3 8h10M3 11.5h6" /></G>,
+  // D530: a step through a connected service (never a bare dot), and the earlier steps of a stretch.
+  plug: () => <G><path d="M5.5 2v3M10.5 2v3M3 5h10v2.5Q13 11 8 11T3 7.5zM8 11v3.5" /></G>,
+  more: () => <G><circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none" /></G>,
+  // D521: a watch (Claude Code's Monitor), an ended one's tick, and Stop's square.
+  watch: () => <G><path d="M1.8 8q6.2-7.4 12.4 0q-6.2 7.4-12.4 0z" /><circle cx="8" cy="8" r="1.9" /></G>,
+  check: () => <G><path d="M3.5 8.4 6.6 11.4 12.5 4.8" /></G>,
+  stop: () => <G><rect x="4.5" y="4.5" width="7" height="7" rx="1.6" fill="currentColor" stroke="none" opacity="0.7" /></G>,
 };
 
 /** A step's drawn mark by its kind (D216: On hand's latest line uses the transcript's marks). */
@@ -360,41 +371,122 @@ const Check = () => (
   </svg>
 );
 
-/** One step (D268): its mark, its words, the subject it names in ink (a command in mono), an
- *  edit's counts; a failure keeps its words with a small × and says what went wrong in a line; it
- *  opens to its output or its diff when it has something to show. Live, it says what it is doing. */
-function Row({ r, live }: { r: StepRow; live?: boolean }) {
-  const [open, setOpen] = useState(false);
-  if (!r.step) return <Thought r={r} live={live} />;
+// ---------- D530: the steps as rows ----------
+
+/** What a step's row says, apart: a plain verb, its object as a mono chip or a file chip, muted words. */
+export type Parts = { verb: string; code?: string; file?: string; path?: string; words?: string; more?: string; tip?: string };
+
+/** A step's drawn mark (D530): a web search a globe, a service's tool a plug, else its kind's. */
+const stepMarkOf = (st: Step): string => (st.kind === "searched" && st.act === "web" ? "browsed" : st.kind === "other" && st.via ? "plug" : st.kind);
+
+/** A step in its row's words (D530): a plain verb (the present tense while it is the live one) and
+ *  the object it acted on, never a verb alone and never a raw tool name. */
+export function rowParts(r: StepRow, live = false): Parts {
+  const now = (k: string, past: string) => (live ? t(`now.${k}`) : past);
+  const label = (k: string) => t(`step.label.${k}`);
+  if (!r.step) {
+    const head = (r.thought ?? "").split("\n")[0]!.trim();
+    const took = r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
+    return { verb: now("thought", took), words: head };
+  }
   const st = r.step;
-  const delegated = st.kind === "delegated";
-  const [words, code] = live ? liveRow(r) : delegated ? [st.target ? t("step.delegated.to", st.target) : t("step.delegated.bare"), ""] : st.kind === "other" && st.via ? [r.outcome === "error" ? serviceName(st.via) : capFirst(r.n > 1 ? t("tally.used", serviceName(st.via), r.n) : t("tally.used.one", serviceName(st.via))), ""] : rowWords(r);
-  const detail = !r.diff ? [r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean).join("\n") : "";
+  if (r.outcome === "missing") {
+    const [verb, code] = rowWords(r);
+    return { verb, ...(code ? { code } : {}) };
+  }
+  const cmd = unwrapShell(r.command ?? "");
+  switch (st.kind) {
+    case "delegated":
+      return { verb: now("sub", label("sub")), ...(st.target ? { words: st.target } : {}) };
+    case "other":
+      if (st.via) {
+        const { act, object } = toolAct(st.target ?? "");
+        return { verb: t("use.say", serviceName(st.via), t(`use.act.${act}`)), ...(object ? { code: object } : {}) };
+      }
+      if (st.target) return { verb: label("other"), code: st.target };
+      break;
+    case "ran": {
+      const code = cmd ? chipText(cmd) : st.target ?? "";
+      const verb = st.act ? capFirst(stepWords(st)) : code ? now("ran", label("ran")) : t("step.ran.bare");
+      return { verb, ...(code ? { code } : {}), tip: st.says || cmd.split("\n")[0]! };
+    }
+    case "read":
+      if (st.act === "list" && st.target) return { verb: label("list"), code: st.target };
+      if (st.act) return { verb: capFirst(stepWords(st)) };
+      if (st.target) return { verb: now("read", label("read")), file: st.target, ...(r.path ? { path: r.path } : {}) };
+      return { verb: t("step.read.bare") };
+    case "edited":
+      if (st.act) return { verb: capFirst(stepWords(st)) };
+      if (st.target) return { verb: now("edited", label("edited")), file: st.target, ...(r.path ? { path: r.path } : {}), ...(st.more ? { more: t("step.edited.others", st.more) } : {}) };
+      return { verb: t("step.edited.bare") };
+    case "searched":
+      if (st.act === "web" && st.target) return { verb: now("web", label("web")), words: st.target };
+      if (!st.act && st.target) return { verb: now("searched", label("searched")), code: st.target };
+      if (!st.act) return { verb: t("step.searched.bare") };
+      break;
+  }
+  return { verb: capFirst(stepWords(st)) };
+}
+
+/** The task the transcript is shown in, for a file chip's open (D356 finds it by the path, too). */
+const shownTask = () => (A.route.name === "task" ? A.route.id : undefined);
+
+/** A file chip of a step (D530): opens the file in Ducter's viewer when its path is known. */
+const StepFile = ({ tail, path, cls }: { tail: string; path?: string; cls?: string }) => (
+  <FileChip name={fileName(tail)} tail={tail} picture={fileKind(tail) === "picture"} {...(cls ? { cls } : {})} {...(path ? { onOpen: () => openFileLink(path, shownTask()) } : {})} />
+);
+
+/** A clock that ticks once a second while it is shown: how long since `from`. */
+function Since({ from }: { from: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, []);
+  return <span class="took">{dur(Date.now() - from)}</span>;
+}
+
+/** One step (D530): its row 28 tall (the mark, the verb in 13 medium, its object in a chip, muted
+ *  words, its counts, at the right what it took or that it failed, a chevron when it opens), a
+ *  failure's words under it, and what it ran and printed, its diff or its thinking once opened. */
+function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
+  const [open, setOpen] = useState(false);
+  const p = rowParts(r, live);
+  const st = r.step;
+  const lines = [st?.says, r.command && `$ ${unwrapShell(r.command)}`, r.output].filter(Boolean);
+  const detail = !st ? ((r.thought ?? "").includes("\n") || [...(p.words ?? "")].length >= 60 ? r.thought ?? "" : "") : !r.diff && (r.command || r.output) ? lines.join("\n") : "";
   const opens = !!detail || !!r.diff;
   const bad = r.outcome === "error";
-  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
-  const mono = st.kind === "ran" || (live && !!code);
+  const cls = `step${bad ? " bad" : ""}${st?.kind === "background" ? " bg" : ""}${r.outcome === "missing" ? " quiet" : ""}${open ? " open" : ""}${live ? " running" : ""}`;
+  const at = live && task ? tsOf(task, r.seq) : NaN;
   const inner = (
     <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : (bad ? GLYPHS.error : GLYPHS[st.kind] ?? GLYPHS.other)!()}
-      <span class="sum" title={st.kind === "other" ? st.target : words}>
-        {words}
+      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
+      <span class="verb" title={p.tip || p.verb}>
+        {p.verb}
       </span>
-      {code && (
-        <code class={`subj${mono ? " mono" : ""}`} title={code}>
-          {code}
-        </code>
-      )}
-      {r.n > 1 && !st.via && <span class="times">×{r.n}</span>}
-      {r.added ? <span class="plus">+{r.added}</span> : null}
-      {r.removed ? <span class="minus">−{r.removed}</span> : null}
-      {delegated && !live && (
-        <span class="took">
-          <Check />
-          {r.ms !== undefined && r.ms >= 1000 ? dur(r.ms) : ""}
+      {p.file && <StepFile tail={p.file} {...(p.path ? { path: p.path } : {})} />}
+      {p.code && <CodeChip text={p.code} title={r.command ? unwrapShell(r.command) : p.code} />}
+      {p.words && (
+        <span class={`words${hanClass(p.words)}`} title={p.words}>
+          {p.words}
         </span>
       )}
-      {bad && <span class="bad-tag">{t("step.label.error")}</span>}
+      {p.more && <span class="times">{p.more}</span>}
+      {r.n > 1 && <span class="times">×{r.n}</span>}
+      {r.added ? <span class="plus">+{r.added}</span> : null}
+      {r.removed ? <span class="minus">−{r.removed}</span> : null}
+      <span class="grow" />
+      {live && Number.isFinite(at) ? (
+        <Since from={at} />
+      ) : st?.kind === "delegated" && r.ms !== undefined ? (
+        <span class="took">
+          <Check />
+          {r.ms >= 1000 ? dur(r.ms) : ""}
+        </span>
+      ) : bad && st?.kind !== "background" ? (
+        <span class="bad-tag">{t("step.label.error")}</span>
+      ) : null}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );
@@ -408,82 +500,78 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
       ) : (
         <div class={cls}>{inner}</div>
       )}
-      {hint && <div class={`failline${hanClass(hint)}`}>{hint}</div>}
-      {open && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
+      {hint && !open && (r.code ? <div class={`failline${hanClass(hint)}`}>{hint}</div> : <div class="failline raw" title={hint}><code>{hint}</code></div>)}
+      {open && !st && (
+        <div class="thought-text">
+          {(r.thought ?? "")
+            .split("\n")
+            .filter(Boolean)
+            .map((h, i) => (
+              <p key={i}>{h}</p>
+            ))}
+        </div>
+      )}
+      {open && st && (r.diff ? <Diff r={r} /> : <Output text={detail} />)}
       {open && r.outputFull ? <ShowAll seq={r.seq} n={r.outputFull} /> : null}
     </div>
   );
 }
 
-/** A stretch of thinking (D268): how long it thought; open, its headings. Live, its first heading. */
-function Thought({ r, live }: { r: StepRow; live?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const heads = (r.thought ?? "").split("\n").filter(Boolean);
-  const words = live ? heads[0] || t("live.thinking") : r.ms !== undefined && r.ms >= 1000 ? t("think.took", dur(r.ms)) : t("think.brief");
-  const opens = !live && heads.length > 0;
-  const inner = (
-    <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.thought!()}
-      <span class="sum">{words}</span>
-      {opens && <span class="chev">{GLYPHS.chev!()}</span>}
-    </>
-  );
+/** A run of file reads as one row (D530): "读了 3 个文件" and the files' chips, the rest counted. */
+const FILES_SHOWN = 3;
+function FilesRow({ rows }: { rows: StepRow[] }) {
+  const names = rows.map((r) => fileName(r.step!.target!));
   return (
     <div class="sline">
-      {opens ? (
-        <button class={`step quiet${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-          {inner}
-        </button>
-      ) : (
-        <div class={`step quiet${live ? " running" : ""}`}>{inner}</div>
-      )}
-      {open && (
-        <div class="thought-text">
-          {heads.map((h, i) => (
-            <p key={i}>{h}</p>
-          ))}
-        </div>
-      )}
+      <div class="step files" aria-label={[t("step.read.files", rows.length), ...names].join(" ")}>
+        {GLYPHS.read!()}
+        <span class="verb">{t("step.read.files", rows.length)}</span>
+        {rows.slice(0, FILES_SHOWN).map((r, i) => (
+          <StepFile key={r.seq} tail={r.step!.target!} {...(i ? { cls: "extra" } : {})} {...(r.path ? { path: r.path } : {})} />
+        ))}
+        {rows.length > FILES_SHOWN && (
+          <span class="times more-wide" title={names.slice(FILES_SHOWN).join("\n")}>
+            {t("step.files.more", rows.length - FILES_SHOWN)}
+          </span>
+        )}
+        {/* D530: at a phone's width, the first file and the rest counted (app.css). */}
+        <span class="times more-narrow" title={names.slice(1).join("\n")}>
+          {t("step.files.more", rows.length - 1)}
+        </span>
+      </div>
     </div>
   );
 }
 
-/** A run of steps between two things said, as one line (D268): what it did, in at most two phrases;
- *  open, each step. While it runs, only its latest step, in the present tense, with a small spinner. */
-const GROUP_MAX = 60;
-function Group({ l, live }: { l: Extract<Line, { k: "group" }>; live?: boolean }) {
-  const [open, setOpen] = useState(false);
+/** How many of a long stretch's rows show under "前面还有 n 步" (D530), which opens the rest in place. */
+const STEP_TAIL = 8;
+
+/** A stretch of steps (D530): its rows, a run of file reads as one; past STEP_TAIL, its last rows
+ *  under "前面还有 n 步". The live stretch's last step is its own row, in the present tense. */
+function Stretch({ task, b, live }: { task: Task; b: Extract<Block, { k: "steps" }>; live: boolean }) {
   const [all, setAll] = useState(false);
-  const latest = l.rows.at(-1)!;
-  const [lw, lc] = live ? liveRow(latest) : ["", ""];
-  const words = live ? lw : groupWords(l.tally);
+  const items: Item[] = itemsOf(b.lines);
+  const last = items.at(-1);
+  if (live && last?.k === "files") {
+    items.pop();
+    const rest = last.rows.slice(0, -1);
+    if (rest.length >= 2) items.push({ k: "files", seq: rest[0]!.seq, rows: rest });
+    else for (const r of rest) items.push({ k: "row", row: r });
+    items.push({ k: "row", row: last.rows.at(-1)! });
+  }
+  const from = !all && items.length > STEP_TAIL ? items.length - STEP_TAIL : 0;
+  const earlier = items.slice(0, from).reduce((a, it) => a + (it.k === "files" ? it.rows.length : it.row.step ? it.row.n : 1), 0);
   return (
-    <div class="sline">
-      <button class={`step steprun${open ? " open" : ""}${live ? " running" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        {live ? <span class="spin sm" aria-hidden="true" /> : GLYPHS.group!()}
-        <span class="sum" title={groupWords(l.tally)}>
-          {words}
-        </span>
-        {live && lc && (
-          <code class={`subj${latest.step?.kind === "ran" ? " mono" : ""}`} title={lc}>
-            {lc}
-          </code>
-        )}
-        <span class="chev">{GLYPHS.chev!()}</span>
-      </button>
-      {/* D271: it grows in place, never a scroller of its own; a long run shows its first steps. */}
-      {open && (
-        <div class="group-rows">
-          {(all ? l.rows : l.rows.slice(0, GROUP_MAX)).map((r) => (
-            <Row key={r.seq} r={r} />
-          ))}
-          {!all && l.rows.length > GROUP_MAX && (
-            <button class="qlink more" onClick={() => setAll(true)}>
-              {t("group.more", l.rows.length - GROUP_MAX)}
-            </button>
-          )}
+    <div class="lines">
+      {from > 0 && (
+        <div class="sline">
+          <button class="step earlier-steps" onClick={() => setAll(true)}>
+            {GLYPHS.more!()}
+            <span class="words">{t("steps.earlier", earlier)}</span>
+          </button>
         </div>
       )}
+      {items.slice(from).map((it, i, shown) => (it.k === "files" ? <FilesRow key={`f${it.seq}`} rows={it.rows} /> : <Row key={it.row.seq} r={it.row} task={task} live={live && i === shown.length - 1} />))}
     </div>
   );
 }
@@ -649,21 +737,15 @@ function BlockView({ task, b, live, took, times, last }: { task: Task; b: Block;
       return <Voice task={task} b={b} took={took} times={times} last={last} />;
     case "saved":
       return <Saved task={task} b={b} />;
-    case "steps": {
-      const n = b.lines.length - 1;
-      return (
-        <div class="lines">
-          {b.lines.map((l, i) => (l.k === "group" ? <Group key={`g${l.seq}`} l={l} live={live && b.live && i === n} /> : <Row key={l.row.seq} r={l.row} live={live && b.live && i === n} />))}
-        </div>
-      );
-    }
+    case "steps":
+      return <Stretch task={task} b={b} live={!!live && !!b.live} />;
     case "plan":
       return <PlanCard b={b} />;
     case "report": {
       const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[b.state as string] ?? "task.report";
       return (
         <div class="tx said" dir="auto">
-          <small>{t(k, A.S.personaName)}</small>
+          <small>{t(k, A.nameOf(task.card?.persona))}</small>
           {b.text}
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
           <DocLine left={b.docLeft} at={`report:${task.id}`} />
@@ -743,13 +825,19 @@ export function steerReceipt(task: Task, seq: number): "wait" | "read" | undefin
 }
 
 /** Your words to the task, with how they went in (D207, D268, D325). */
+function YouWords({ text }: { text: string }) {
+  const s = splitRefs(text);
+  return <WordsWithRefs text={s.text} refs={s.refs} />;
+}
+
 function YouBubble({ task, b }: { task: Task; b: Extract<Block, { k: "you" }> }) {
   const r = steerReceipt(task, b.seq);
   return (
     <>
       <div class="tx you" dir="auto">
         {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
-        {b.text}
+        {/* D534: the person's words with their @ chips; what Ducter put after them for the agent is never shown. */}
+        <YouWords text={b.text} />
       </div>
       {r && (
         <div class={`rcpt ${r}`} role="status">
@@ -793,30 +881,106 @@ export function wakesOf(task: Task): { n: number; lastAt: number } {
 
 /** A turn's body (D268): a finished turn folds its steps and interim words under "Worked for 3m
  *  12s", keeping its last words in view; the live turn never folds. */
+/** D530: a turn's work in words: "12 步，3 条消息" / "12 steps, 3 messages". */
+export function workWords(w: Work): string {
+  if (!w.steps) return t("work.thought");
+  const s = w.steps === 1 ? t("work.steps.one") : t("work.steps", w.steps);
+  return s + (w.messages === 1 ? t("work.msgs.one") : w.messages > 1 ? t("work.msgs", w.messages) : "");
+}
+
+/** The live turns folded by the person (task:turn), which the live line reads (D530). */
+const liveShut = new Set<string>();
+
+/** A turn's answer (D530): its work (everything before its last words; all of it while it works)
+ *  under one quiet head, folded once the turn is done and open while it works; its last words after. */
+// ---------- D544: rounds that changed nothing, folded ----------
+
+type QuietMember = { id: string; first: boolean; n: number; from: string; to: string };
+const quietCache = new WeakMap<Task, { n: number; m: Map<number, QuietMember> }>();
+/** Each folded round's key (its wake's seq, or its report's) to its run (protocol quietRuns). */
+export function quietOf(task: Task): Map<number, QuietMember> {
+  const c = quietCache.get(task);
+  if (c && c.n === task.events.length) return c.m;
+  const m = new Map<number, QuietMember>();
+  for (const r of quietRuns(task.events)) {
+    const id = `${task.id}:${r.keys[0]}`;
+    r.keys.forEach((k, i) => m.set(k, { id, first: i === 0, n: r.keys.length, from: r.from, to: r.to }));
+  }
+  quietCache.set(task, { n: task.events.length, m });
+  return m;
+}
+/** The runs opened by a tap, this session; `quietTick` redraws the turns they touch. */
+const quietOpen = new Set<string>();
+let quietTick = 0;
+
+function QuietFold({ q }: { q: QuietMember }) {
+  const open = quietOpen.has(q.id);
+  return (
+    <div class="quiet-fold">
+      <WorkHead
+        words={t("loop.quiet", q.n, clock(q.from), clock(q.to))}
+        failed={0}
+        open={open}
+        onClick={() => (open ? quietOpen.delete(q.id) : quietOpen.add(q.id), quietTick++, A.changed())}
+      />
+    </div>
+  );
+}
+
+/** A turn's blocks with its quiet rounds (no wake of their own: one turn holding many) folded: each
+ *  round's blocks up to its report go, the run's first leaves the fold row in their place. */
+type Drawn = Block | { k: "qfold"; seq: number; q: QuietMember };
+function foldQuietBody(task: Task, body: Block[]): Drawn[] {
+  const q = quietOf(task);
+  if (!q.size) return body;
+  const out: Drawn[] = [];
+  let unit: Block[] = [];
+  for (const b of body) {
+    unit.push(b);
+    if (b.k !== "report") continue;
+    const m = q.get(b.seq);
+    if (!m) out.push(...unit);
+    else {
+      if (m.first) out.push({ k: "qfold", seq: b.seq, q: m });
+      if (quietOpen.has(m.id)) out.push(...unit);
+    }
+    unit = [];
+  }
+  out.push(...unit);
+  return out;
+}
+
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
-  const [open, setOpen] = useState(false);
-  const body = turn.body;
+  const [done, setDone] = useState(false);
+  // The live turn's fold is shared with the live line (D530: it shows only while folded).
+  const key = `${task.id}:${turn.seq}`;
+  const toggled = live ? liveShut.has(key) : done;
+  const [, bump] = useState(0);
+  const setToggled = (v: boolean) => (live ? (v ? liveShut.add(key) : liveShut.delete(key), bump((n) => n + 1), A.changed()) : setDone(v));
+  // D544: the rounds that changed nothing, folded (a fold row stands in a block's place).
+  const body = foldQuietBody(task, turn.body) as Block[];
   let lastVoice = -1;
   for (let i = body.length - 1; i >= 0; i--)
     if (body[i]!.k === "voice") {
       lastVoice = i;
       break;
     }
-  const head = lastVoice >= 0 ? body.slice(0, lastVoice) : body;
-  const foldable = !live && head.some((b) => b.k === "steps");
+  const head = live ? body : lastVoice >= 0 ? body.slice(0, lastVoice) : body;
+  const foldable = head.some((b) => b.k === "steps");
   const from = body.length ? tsOf(task, turn.prompt?.seq ?? body[0]!.seq) : NaN;
   const to = body.length ? tsOf(task, lastSeq(body.at(-1)!)) : NaN;
   const took = dur(Number.isFinite(from) && Number.isFinite(to) ? Math.max(0, to - from) : 0);
   const worked = !live && Number.isFinite(from) && Number.isFinite(to) && to > from ? t("turn.worked", took) : "";
   const answer = !live && lastVoice >= 0 ? body[lastVoice]!.seq : undefined;
-  const draw = (bs: Block[]) => foldErrors(bs).map(({ b, times }) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />);
+  const draw = (bs: Block[]) =>
+    foldErrors(bs).map(({ b, times }) => ((b as Drawn).k === "qfold" ? <QuietFold key={`q${b.seq}`} q={(b as unknown as Extract<Drawn, { k: "qfold" }>).q} /> : <BlockView key={`${b.k}${b.seq}`} task={task} b={b} live={live} took={worked} times={times} last={b.seq === answer} />));
   if (!foldable) return <>{draw(body)}</>;
+  // Done: folded until opened. While it works: open until folded.
+  const open = live ? !toggled : toggled;
+  const w = workOf(head);
   return (
     <>
-      <button class={`worked${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span>{t("turn.worked", took)}</span>
-        <span class="chev">{GLYPHS.chev!()}</span>
-      </button>
+      <WorkHead words={workWords(w)} failed={w.failed} live={live} open={open} onClick={() => setToggled(!toggled)} />
       {open && <div class="worked-body">{draw(head)}</div>}
       {draw(body.slice(head.length))}
     </>
@@ -832,16 +996,25 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
   render() {
     const { task, turn, live } = this.props;
     const p = turn.prompt;
+    // D544: a round that changed nothing, opened by its own wake: folded into its run's one row.
+    const q = p?.k === "wake" && !live ? quietOf(task).get(p.seq) : undefined;
+    if (q && !quietOpen.has(q.id))
+      return (
+        <section class="turn quiet" data-seq={this.props.seq ?? turn.seq}>
+          {q.first && <QuietFold q={q} />}
+        </section>
+      );
     return (
       <section class="turn" data-seq={this.props.seq ?? turn.seq}>
+        {q?.first && <QuietFold q={q} />}
         {(p?.k === "wake" || p?.k === "told") && (
           <div class="tx-divider wake" role="separator" title={p.text}>
-            <span>{promptLine(p)}</span>
+            <span>{promptLine(p, A.nameOf(task.card?.persona))}</span>
             {seqClock(task, p.seq) && <span class="when">{seqClock(task, p.seq)}</span>}
           </div>
         )}
-        {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
-        {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
+        {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.nameOf(task.card?.persona))} />}
+        {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.nameOf(task.card?.persona))} />}
         {p?.k === "you" && <YouBubble task={task} b={p} />}
         {p?.k === "go" && (
           <div class="tx go-chip" title={p.text}>
@@ -867,7 +1040,7 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   const turns = own ? taskTurns(task) : turnsOf(blocks);
   const moving = taskInTurn(task);
   const view = (tu: Turn, last: boolean, seq?: number) => (
-    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}`} />
+    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}:${quietTick}`} />
   );
   const items: JSX.Element[] = own ? [] : turns.map((tu, i, shown) => view(tu, i === shown.length - 1));
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.
@@ -1089,9 +1262,10 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   );
 }
 
-/** The working line at the transcript's end (D268): what it is on, shimmering, and the turn's
- *  clock at the right; a retry takes its words while it is the latest thing. D271: never
- *  "thinking" after its words, only that it works. */
+/** The transcript's foot while a turn is under way (D530): a hairline, then one muted line in the
+ *  step rows' rhythm: the shared spinner (the one thing on the page that moves while it works) and
+ *  what it is doing now in plain words with the turn's clock, 「正在跑命令，41 秒」; 「还在做」 when its
+ *  latest is words; a retry takes its words while it is the latest thing. Never the link's blue. */
 function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -1099,15 +1273,47 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
     return () => clearInterval(h);
   }, []);
   const last = blocks.at(-1);
-  const words = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : t(`state.${attention(task)}`);
+  const [doing, seq] = footWords(blocks);
   const tu = turns.at(-1);
-  const start = tu ? tsOf(task, tu.seq) : NaN;
+  const folded = !!tu && tu.body.some((b) => b.k === "steps") && liveShut.has(`${task.id}:${tu.seq}`);
+  const retry = last?.k === "note" && last.say === "retry";
+  // One indicator for the moment (D530): unfolded, the live step's row carries the spinner and its
+  // clock, and there is no line; folded, the step and that step's time; with no step under way,
+  // the turn's total, labeled.
+  if (!retry && seq && !folded) return null;
+  const since = (ms: number) => (Number.isFinite(ms) ? dur(Date.now() - ms) : "");
+  const stepTime = seq ? since(tsOf(task, seq)) : "";
+  const turnTime = tu ? since(tsOf(task, tu.seq)) : "";
+  const words = retry ? t("note.retry", (last as { name?: string }).name ?? "") : seq ? (stepTime ? t("foot.live", doing, stepTime) : doing) : turnTime ? t("foot.live", doing, t("foot.turn", turnTime)) : doing;
   return (
-    <div class="working-line" role="status">
-      <span class="shimmer">{words}</span>
-      {Number.isFinite(start) && <span class="clock">{dur(Date.now() - start)}</span>}
+    <div class={`work-foot${seq ? " folded" : ""}`} role="status" aria-label={words}>
+      <span class="spin sm" aria-hidden="true" />
+      <span class="state" aria-hidden="true">
+        {words}
+      </span>
     </div>
   );
+}
+
+/** What the agent is doing now, said plainly for the live line (D530): its latest step's kind in
+ *  the present, never its command or a tool's name (the step's own row says those). The Mac's
+ *  footWords. */
+export function footWords(blocks: Block[]): [string, number] {
+  const b = blocks.at(-1);
+  if (b?.k !== "steps" || !b.live) return [t("foot.still"), 0];
+  const l = b.lines.at(-1);
+  if (!l) return [t("foot.still"), 0];
+  if (l.k === "group" && !l.rows.length) return [footKind(l.tally[0]?.kind ?? ""), l.seq];
+  const r = l.k === "group" ? l.rows.at(-1)! : l.row;
+  if (!r.step) return [t("foot.thought"), r.seq];
+  return [footKind(r.step.kind, r.step.act, r.step.via), r.seq];
+}
+
+function footKind(kind: string, act?: string, via?: string): string {
+  if (kind === "other" && via) return t("foot.used", serviceName(via));
+  if ((kind === "searched" && act === "web") || kind === "web") return t("foot.web");
+  if (kind === "delegated") return t("foot.sub");
+  return ["ran", "read", "edited", "searched", "browsed", "computer", "waited"].includes(kind) ? t(`foot.${kind}`) : t("foot.still");
 }
 
 /** When a turn's prompt came, as a clock ("21:59"), or "". */
@@ -1117,21 +1323,20 @@ function seqClock(task: Task, seq: number): string {
 }
 
 /** A wake's or what Ducter told the agent, as a hairline's words (D271); its time is drawn apart (D291). */
-function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
+function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>, who: string): string {
   if (p.k === "wake" && p.limit) return t("wake.limit", p.text);
   if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over");
   if (p.say === "lent") return t("told.lent", p.name ?? "");
   // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.
   if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, shownDeviceName(p.name ?? ""));
   if (p.say === "returned") return p.name ? t("told.returned.name", p.name) : t("told.returned");
-  if (p.say === "other") return t("told.other", A.S.personaName);
+  if (p.say === "other") return t("told.other", who); // D546: the task's own partner
   // D437: the name is the AI that looked (Claude Code, Codex).
   if (p.say === "looked") return t("told.looked", p.name ?? "");
   return t(`told.${p.say}`);
 }
 
 /** D284: a turn opened by what someone said (the brief, the person's own words, the partner's). */
-const saidTurn = (tu: Turn) => tu.prompt?.k === "brief" || tu.prompt?.k === "you" || tu.prompt?.k === "partner";
 
 /** D284: the person's Go on a card, said as they pressed it: 你点了「好，Done」. */
 export function goWords(p: Extract<Block, { k: "go" }>): string {
@@ -1146,21 +1351,23 @@ function atOf(task: Task, seq: number): string {
 /** D325: one row of the locator's list, said: its words, the brief's quiet label, its time apart (D291). */
 export type LocRow = { k: Landmark["k"]; line: string; tag?: string; at: string; quiet: boolean };
 
-/** D325: a landmark in words (the list draws only the rows near its view, so only those are said). */
-export function locatorRow(lm: Landmark, now = Date.now()): LocRow {
+/** D325: a landmark in words (the list draws only the rows near its view, so only those are said).
+ *  D526: with its task, the task handed over says what the task is (its title, the partner's plain
+ *  sentence), never the brief's words to the agent; its kind is said in the spoken label only. */
+export function locatorRow(lm: Landmark, now = Date.now(), task?: Task): LocRow {
   const at = lm.endAt ? span(A.L, lm.at, lm.endAt, now) : stamp(A.L, lm.at, now);
   switch (lm.k) {
     case "brief":
-      return { k: lm.k, line: lm.text ?? "", tag: t("locator.brief"), at, quiet: false };
+      return { k: lm.k, line: (task && title(task)) || lm.text || "", tag: t("locator.brief"), at, quiet: false };
     case "you":
     case "partner":
       return { k: lm.k, line: lm.text ?? t("locator.media"), at, quiet: false };
     case "report":
-      return { k: lm.k, line: lm.text ?? t("locator.report"), at, quiet: false };
+      return { k: lm.k, line: lm.text ?? t("locator.report"), ...(lm.s === "ask" ? { tag: t("locator.ask") } : {}), at, quiet: false };
     case "quiet": {
       if (lm.n) return { k: lm.k, line: t(lm.wakes ? "locator.wakes" : "locator.quiet", lm.n), at, quiet: true };
       const p = lm.p!;
-      const line = p.k === "wake" || p.k === "told" ? promptLine(p) : p.k === "go" ? goWords(p) : "text" in p ? p.text.split("\n")[0]! : "";
+      const line = p.k === "wake" || p.k === "told" ? promptLine(p, A.nameOf(task?.card?.persona)) : p.k === "go" ? goWords(p) : "text" in p ? p.text.split("\n")[0]! : "";
       return { k: lm.k, line, at, quiet: true };
     }
   }
@@ -1175,6 +1382,61 @@ export const taskLandmarks = (task: Task): Landmark[] => {
   if (!l) lmCache.set(slots, (l = landmarksOf(slots.map((s) => s.it))));
   return l;
 };
+
+/** D526: a landmark's mark, the same on the rail and in its card: its shape (dot: someone said it;
+ *  sq: a task handed over; ring: a result; ask: an ask, waiting or answered; faint: anything quiet),
+ *  its tone class (whose, or how it stood), and its rank where two meet on a crowded rail. */
+export type LocMark = { shape: "dot" | "sq" | "ring" | "ask" | "faint"; tone: string; rank: number };
+export function markOf(lm: Landmark, waiting: boolean): LocMark {
+  switch (lm.k) {
+    case "you":
+      return { shape: "dot", tone: "t-you", rank: 5 };
+    case "partner":
+      return { shape: "dot", tone: "t-partner", rank: 4 };
+    case "brief":
+      return { shape: "sq", tone: lm.by === "you" ? "t-you" : "t-partner", rank: 5 };
+    case "report":
+      if (lm.s === "ask") return waiting ? { shape: "ask", tone: "t-wait", rank: 7 } : { shape: "ask", tone: "t-progress", rank: 3 };
+      if (lm.s === "done") return { shape: "ring", tone: "t-done", rank: 3 };
+      if (lm.s === "failed") return { shape: "ring", tone: "t-failed", rank: 6 };
+      return { shape: "ring", tone: "t-progress", rank: 2 };
+  }
+  return { shape: "faint", tone: "t-faint", rank: 0 };
+}
+
+/** D526: the newest ask, while the task still waits on the person (else -1). */
+export function lastAsk(lms: Landmark[], waiting: boolean): number {
+  if (!waiting) return -1;
+  for (let i = lms.length - 1; i >= 0; i--) if (lms[i]!.k === "report") return lms[i]!.s === "ask" ? i : -1;
+  return -1;
+}
+
+/** D526: the rail's marks, one per landmark in order (`y` in px from the rail's top); where two would
+ *  touch the one that matters more is drawn, so a rail of thousands never smears. */
+export function railMarks(lms: Landmark[], h: number, ask: number, room = 7): (LocMark & { i: number; y: number })[] {
+  const out: (LocMark & { i: number; y: number })[] = [];
+  for (let i = 0; i < lms.length; i++) {
+    const m = { ...markOf(lms[i]!, i === ask), i, y: railY(i, lms.length, h) };
+    const last = out.at(-1);
+    if (last && m.y - last.y < room) {
+      if (m.rank > last.rank) out[out.length - 1] = m;
+      continue;
+    }
+    out.push(m);
+  }
+  return out;
+}
+
+/** D526: the rail is the card's list drawn small: landmark `i` of `n` on a rail `h` tall. */
+const RAIL_INSET = 6;
+export const railY = (i: number, n: number, h: number) => (n <= 1 ? h / 2 : RAIL_INSET + ((h - 2 * RAIL_INSET) * i) / (n - 1));
+export const railAt = (y: number, n: number, h: number) => (n <= 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((y - RAIL_INSET) / (h - 2 * RAIL_INSET)) * (n - 1)))));
+export const LOC_MARK_GAP = 12;
+/** D526: the marks a rail at rest shows (the person's words, a task handed over, a failure, an ask that waits). */
+export const LOC_REST_RANK = 5;
+
+/** D526: a mark, drawn. */
+const Mark = ({ m, y }: { m: LocMark; y?: number }) => <i class={`m m-${m.shape} ${m.tone}${y !== undefined && m.rank < LOC_REST_RANK ? " lo" : ""}`} style={y === undefined ? undefined : { top: `${y}px` }} aria-hidden="true" />;
 
 /** D325: the list's rows are one height, so it draws only those near its view. */
 export const LOC_ROW = 28;
@@ -1331,22 +1593,25 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     if (y !== el.scrollTop) (el.scrollTop = y), setTop(y);
   });
   if (turns.length < 3) return null;
-  const lms = open ? taskLandmarks(task) : [];
+  const lms = taskLandmarks(task);
+  if (!lms.length) return null;
   // The turns in view, as indexes of the session's turns.
   let first = -1, last = -1;
   turns.forEach((tu, i) => {
     if (seen.has(tu.seq)) (first = first < 0 ? i : first), (last = i);
   });
-  const [hereLo, hereHi] = open && first >= 0 ? landmarksIn(lms, first, last) : [0, 0];
+  let [hereLo, hereHi] = first >= 0 ? landmarksIn(lms, first, last) : [0, 0];
+  if (first >= 0 && hereHi <= hereLo) [hereLo, hereHi] = [Math.max(0, landmarkNear(lms, first)), Math.max(0, landmarkNear(lms, first)) + 1];
   const choose = (i: number, center: boolean) => {
     want.current = { i, center };
     setSel(i);
   };
+  // `at`: the landmark under the pointer; else the one nearest the turns in view.
   const show = (center: boolean, at?: number) => {
     clearTimeout(shut.current);
-    const k = at ?? (first >= 0 ? Math.round((first + last) / 2) : turns.length - 1);
+    const k = at ?? landmarkNear(lms, first >= 0 ? Math.round((first + last) / 2) : turns.length - 1);
     if (!open) setOpen(true);
-    choose(landmarkNear(taskLandmarks(task), k), center);
+    choose(k, center);
   };
   const go = (seq: number) => {
     const el = scroller.current;
@@ -1356,13 +1621,16 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     else goToTurn(task.id, seq);
     close();
   };
-  const h = Math.min(Math.max(turns.length * 8, 64), 360);
-  const pos = (i: number) => (turns.length > 1 ? (i / (turns.length - 1)) * 100 : 0);
-  const lit = turns.map((tu, i) => (seen.has(tu.seq) ? i : -1)).filter((i) => i >= 0);
-  // The turn under the pointer on the rail.
+  // D526: one place per landmark, in order: the row the pointer chooses is the mark under it.
+  const h = Math.min(Math.max(lms.length * LOC_MARK_GAP, 64), 360);
+  const waiting = attention(task) === "needs_you";
+  const ask = lastAsk(lms, waiting);
+  const marks = railMarks(lms, h, ask);
+  const look = A.partners?.find((p) => p.id === task.card?.persona)?.look;
+  // The landmark under the pointer on the rail.
   const turnAtY = (e: MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    return Math.max(0, Math.min(turns.length - 1, Math.round(((e.clientY - r.top) / Math.max(1, r.height)) * (turns.length - 1))));
+    return railAt(e.clientY - r.top, lms.length, h);
   };
   const onKey = (e: KeyboardEvent) => {
     if (!open) return;
@@ -1370,7 +1638,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       e.preventDefault();
       e.stopPropagation();
       close();
-      nav.current?.querySelector<HTMLElement>(".rail")?.focus();
+      nav.current?.querySelector<HTMLElement>(".loc-rail")?.focus();
       return;
     }
     if (e.key === "Enter" && sel >= 0 && sel < lms.length) {
@@ -1402,8 +1670,9 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
       onBlurCapture={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && !pinned && setOpen(false)}
     >
       <div
-        class="rail"
+        class="loc-rail"
         style={{ height: `${h}px` }}
+        data-look={look}
         tabIndex={0}
         role="button"
         aria-haspopup="listbox"
@@ -1418,10 +1687,11 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
         }}
         onFocus={() => !open && show(true)}
       >
-        {lit.length > 0 && <b class="thumb" style={{ top: `${pos(lit[0]!)}%`, height: `${pos(lit.at(-1)!) - pos(lit[0]!)}%` }} />}
-        {turns.map((tu, i) => (
-          <i key={tu.seq} class={`${seen.has(tu.seq) ? "here" : ""}${saidTurn(tu) ? "" : " quiet"}`} style={{ top: `${pos(i)}%` }} />
+        {first >= 0 && <b class="thumb" style={{ top: `${railY(hereLo, lms.length, h)}px`, height: `${railY(hereHi - 1, lms.length, h) - railY(hereLo, lms.length, h) + 14}px` }} />}
+        {marks.map((m) => (
+          <Mark key={m.i} m={m} y={m.y} />
         ))}
+        {open && sel >= 0 && sel < lms.length && <s class="loc-chosen" style={{ top: `${railY(sel, lms.length, h)}px` }} />}
       </div>
       <div
         ref={list}
@@ -1438,7 +1708,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
         <div class="loc-rows" style={{ height: `${lms.length * row}px` }}>
           {lms.slice(from, to).map((lm, k) => {
             const i = from + k;
-            const r = locatorRow(lm, now);
+            const r = locatorRow(lm, now, task);
             const here = i >= hereLo && i < hereHi;
             return (
               <div
@@ -1446,14 +1716,16 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
                 id={id(i)}
                 role="option"
                 aria-selected={i === sel}
+                aria-label={spoken(A.L, r.tag, r.line, r.at)}
                 class={`loc-row k-${r.k}${here ? " here" : ""}${r.quiet ? " quiet" : ""}${i === sel ? " sel" : ""}`}
                 style={{ top: `${i * row}px`, height: `${row}px` }}
                 onMouseMove={() => i !== sel && setSel(i)}
                 onClick={() => go(lm.seq)}
               >
-                <i />
-                {r.tag && <em class="tag">{r.tag}</em>}
-                <span>{r.line}</span>
+                <span class="mk">
+                  <Mark m={markOf(lm, i === ask)} />
+                </span>
+                <span class="w">{r.line}</span>
                 {r.at && <small class="at">{r.at}</small>}
               </div>
             );
@@ -1563,16 +1835,34 @@ export function whereParts(p: Place): string[] {
 
 /** One quiet line (D152): where it stands, how long it took once finished (while it works the clock
  *  is in the foot, D210), who does it, where, and Switch who does it. */
-export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; stateLabel: string; mark?: JSX.Element; onSwitch?: () => void }) {
+/** D542: an attention state's Tag tint, in its state's ink (never link blue). */
+export function stateTone(a: string): TagTone {
+  if (a === "needs_you") return "needs";
+  if (a === "working" || a === "queued") return "working";
+  if (a === "blocked") return "waiting";
+  if (a === "failed") return "failed";
+  if (a === "done" || a === "done_claimed") return "on";
+  return "";
+}
+
+/** D542: who does it, said once: the agent; its model and effort only when the composer's chip
+ *  doesn't already show them. Where: the project (and the computer, taskWhere); the branch is the
+ *  bar's (its branch button, or ⋯ on a phone), never said twice. */
+export function headFacts(task: Task, chip: boolean): string[] {
+  const m = modelOf(task);
+  const e = effortOf(task);
+  const p = placeOf(task);
+  const where = whereParts(p).filter((x) => p.kind !== "repo" || x !== p.branch);
+  return [harnessName(harnessOf(task)), !chip && m && modelName(m), !chip && e && effortWord(A.L, e), ...where].filter((x): x is string => !!x);
+}
+
+export function TaskMeta({ task, stateLabel, onSwitch }: { task: Task; stateLabel: string; onSwitch?: () => void }) {
   const a = attention(task);
   const done = finished(task);
   const [whyFor, setWhy] = useState(""); // the task whose why is open (a tap; one task at a time)
   const why = whyFor === task.id;
-  const h = harnessOf(task);
-  const m = modelOf(task);
-  const e = effortOf(task);
-  // D291: who does it and where, each fact its own small element.
-  const facts = [harnessName(h), m && modelName(m), e && effortWord(A.L, e), ...whereParts(placeOf(task))].filter((x): x is string => !!x);
+  // D291: who does it and where, each fact its own small element; D542: each said once.
+  const facts = headFacts(task, !!composerTune(task));
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
   let when = "";
   if (!Number.isNaN(start)) {
@@ -1592,8 +1882,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
           the first beside the face and gives the facts the page's whole width (one line on a wide
           screen, as before). */}
       <span class="st-line">
-        {mark}
-        <b>{stateLabel}</b>
+        {/* D542: the state in the shared Tag, on its state's tint. */}
+        <Tag text={stateLabel} tone={stateTone(a)} />
         {when && <span class="when">{when}</span>}
       </span>
       <span class="st-facts">
@@ -1615,12 +1905,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
         )}
         {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
         {task.card?.source && <SourceChip src={task.card.source} />}
-        {onSwitch && (
-          <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
-            {t("who.switch")}
-            <Chev />
-          </button>
-        )}
+        {/* D542: the shared quiet link. */}
+        {onSwitch && <Btn kind="text" size="sm" chev expanded={A.switchFor === task.id} class="st-switch" label={t("who.switch")} onClick={onSwitch} />}
       </span>
     </div>
     {why && on.why && <div class="where-why small sub">{on.why}</div>}

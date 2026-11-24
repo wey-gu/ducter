@@ -140,7 +140,12 @@ func (a *App) noteStatus(id string, st rowMark) {
 
 // stillFace is a clay face drawn still (a row's: rows never breathe).
 func stillFace(c *ui.Context, key string, p theme.Presence, size float32) ui.Element {
-	bmp := theme.Face(p, size*2)
+	return stillFaceAs(c, key, "", p, size)
+}
+
+// stillFaceAs is stillFace in a partner's clay (D546: a row's face is its task's owner's).
+func stillFaceAs(c *ui.Context, key, look string, p theme.Presence, size float32) ui.Element {
+	bmp := theme.FaceAs(look, p, size*2)
 	return ui.Box(c.Key(key)).Size(size, size).Shrink(0).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
 		if bmp != nil {
 			pt.Image(bmp, fitIn(bmp, r), ui.Contain)
@@ -168,14 +173,15 @@ func (a *App) statusFace(c *ui.Context, task *store.Task, st rowMark) {
 			delete(a.oh.handed, task.ID)
 		}
 	}
+	look := a.taskLook(task) // D546: its owner's clay, whoever is shown
 	box.Children(func() {
 		p := statusPresence(task, st)
 		if k >= 1 {
-			stillFace(c, "f:"+string(p), p, faceSize)
+			stillFaceAs(c, "f:"+string(p), look, p, faceSize)
 			return
 		}
-		out := stillFace(c, "f:out", theme.Working, faceSize).Absolute().Left(0).Top(0).Opacity(max(0, 1-k/0.4))
-		in := stillFace(c, "f:"+string(p), p, faceSize).Absolute().Left(0).Top(0).Opacity(min(1, k/0.45))
+		out := stillFaceAs(c, "f:out", look, theme.Working, faceSize).Absolute().Left(0).Top(0).Opacity(max(0, 1-k/0.4))
+		in := stillFaceAs(c, "f:"+string(p), look, p, faceSize).Absolute().Left(0).Top(0).Opacity(min(1, k/0.45))
 		if !still {
 			q := min(1, k/0.4)
 			out.Translate(0, 5*q).Scale(1-0.2*q, 1-0.2*q)

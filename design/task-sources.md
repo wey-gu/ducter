@@ -171,6 +171,15 @@ person asked it to) are posted in the round through
 the same write (`by: "rule"`, `standing`, `said` = their words), the card carries only the rest, and
 the first post under a new permission is one partner line listing what went with links. The request is tied to the
 task by its read, not bound (a binding's end comments or closes, which a review must not).
+**Every review can go (D540).** A PR reviewed this round carries the review's own `body` (its
+conclusion and what was checked, in the PR's language) beside its notes; with no notes the body is
+the whole review, so a PR with nothing to change still gets one on GitHub. `changed` means reviewed
+this round: a new head, a new request, the person's ask, or no review of the task's yet at this
+head. A call between rounds (the person asked about one PR) replaces the round's report and posts at
+once; a PR already posted at the same head is never posted twice. While a pr_review permission
+holds, every round's wake and the task's brief say it as a fact with where, the person's words and
+the one means (review_report, posted at once; never `gh pr review` by the task, never a draft left in
+a report, never held for the next round). A draft outside it is on one card at once.
 
 What it never does: post at hand-over, close without the sheet's Go, close a vault line (a tick says
 it was done: a closable-looking line can wait instead), give a PR a verdict (only comments), or speak

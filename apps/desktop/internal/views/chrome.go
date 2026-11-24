@@ -45,7 +45,13 @@ func (a *App) chrome(c *ui.Context, key string, left, right func()) {
 	l, r := chromeInset(c)
 	// D513: the list of partners at the window's left holds the traffic lights.
 	if key == "conversation" && a.partnerRailShown() {
-		l = 24
+		// D545: a thin list is narrower than the window's controls: the bar's
+		// words start clear of them.
+		if a.railThin() {
+			l = max(24, l-railThinW)
+		} else {
+			l = 24
+		}
 	}
 	bar := ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
 		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow()
@@ -72,6 +78,12 @@ const barText = 14
 // crumb is one step of the breadcrumb: a button back up to a zoom level,
 // in muted ink at the bar's one size.
 func (a *App) crumb(c *ui.Context, label string, to Route) {
+	a.crumbDo(c, label, func() { a.Route = to })
+}
+
+// crumbDo is a step of the breadcrumb that goes up inside a place (D535:
+// 手头的事 over a Keep's page closes the page): the same button as crumb.
+func (a *App) crumbDo(c *ui.Context, label string, do func()) {
 	t := a.T
 	l := uiText(c.Key("crumb:"+label), label).FontSize(barText).FontWeight(600).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Focusable().Padding(t.S1+2, t.S2).Radius(t.RadiusSM).SingleLine().Shrink(0)
@@ -83,7 +95,7 @@ func (a *App) crumb(c *ui.Context, label string, to Route) {
 		l.TextColor(t.Ink).Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
 	}
 	if l.Clicked() {
-		a.Route = to
+		do()
 	}
 	uiText(c, "/").FontSize(barText).TextColor(t.Faint).Shrink(0).AccessHidden(true)
 }

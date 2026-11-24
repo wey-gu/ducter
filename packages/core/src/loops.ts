@@ -120,6 +120,8 @@ export interface Loops {
   rhythm(taskId: string): number | undefined;
   /** 多久跑一轮 / How often: every this many minutes, from the round now waiting. */
   every(taskId: string, minutes: number, by: "user" | "partner"): { ok: boolean; message?: string; nextAt?: string };
+  /** D533: its end in the person's words, as they changed it on its Keep (empty: none). */
+  setUntil(taskId: string, until: string): boolean;
   pause(taskId: string): boolean;
   resume(taskId: string): boolean;
   end(taskId: string, by: "user" | "partner" | "condition"): boolean;
@@ -672,6 +674,12 @@ export function createLoops(o: {
         if (cur) waiters.cancel(cur.waiterId, { by: "user", replacedBy: w.waiterId });
       }
       return { ok: true, nextAt: iso(due) };
+    },
+    setUntil(taskId, until) {
+      const s = loops.get(taskId);
+      if (!s || s.b.state === "ended") return false;
+      write(s, { until: until.trim() || undefined });
+      return true;
     },
     pause(taskId) {
       const s = loops.get(taskId);

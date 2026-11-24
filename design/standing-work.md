@@ -21,6 +21,10 @@
 - **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
   now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
 - **What waits for the person** is in 等你 once, naming the Keep; the sheet says the count.
+- **One round's ask (D540).** "让 review 的 loop 这轮先审 #551" is the partner's `keep_change`
+  `next_round` (with `look_now` to start now), kept on the Keep as `next` in the person's words: the
+  next round's wake carries it first and it is gone; a round under way hears it at once. It is never
+  written into `until`, which is when the Keep ends for good.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The
@@ -28,6 +32,28 @@
   or if it failed, 做到什么时候 says nothing rather than guess. No phrase matching.
 - **Code reads facts only**: what woke a round, what it reported, whether it asked. A round is
   `told` only where a rule says so (a routine that reports every run). Goals and news are phase 4.
+- **D519, the page polished to the bar.** The talk box is the conversation's composer (`ComposerBox` / `composerBox`,
+  `design/ui.md`), with its sending state and one line once the partner has the words. A Keep in rounds is its one
+  task, never an item: it holds the PRs that task keeps open, each named by the PR's own title, and its question is
+  the Keep's. A round shows what happened in one line to the person, read once from its report by the cheap model
+  and recorded (`keep_round`); the report stays behind 看细节. Every wake is a round (the timer is written on the
+  channel; a wake with no report is a silent round). The time column (`TimeCol`) is today's clock or the day alone;
+  the rail gives each title two lines cut at a word's end, rows of one height, the open one the knob.
+- **D533, changed in place.** Each rule in 怎么做 has a quiet **改 / Change** and its own control (`EditRow`
+  with D536's `Field`, `NumberField`, `Seg` and D510's pickers; Mac `editRow`, `lineField`, `numberField`): a
+  rhythm in minutes, a clock (every day or weekdays, a time), the goal in words, when it speaks as three
+  choices, a helper's cap a day (1–30, `Helper.daily`, read by the partner's start-without-asking count), where and
+  who, the name in Bridge. A change applies at once with **撤销 / Undo** under the card, and stands among the
+  rounds in words, **你把每 45 分钟一轮改成了每小时一轮** (`keep_edit`; an undone change leaves no line, changes
+  within ten minutes are one line with the net change). **你说的** is editable words: saving them
+  asks the cheap model once which rules they change, shown as a diff for one Go (**照这样改**), or **只改说的话**.
+  One path: the page's `keep_change` frame and the partner's `keep_change` tool are `keeps.change(id, c, { by })`,
+  checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every
+  round of a loop and every run of a routine is told its rules as they are now (`rulesFor`).
+- **D535, the way in and out.** The page lives only while On hand is shown (leaving On hand closes it; a deep
+  link opens it straight); the way back is the header's breadcrumb **对话 / 手头的事 / {the Keep}** (‹ 手头的事
+  beside the conversation and on a phone), never a link in the page or its rail, which is one list under the
+  shared section head. `on-hand.md` "Navigation".
 - **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address
   (a helper, `run: perItem`); a first look now is the model's call (a fare has a value today, a weekly
   report doesn't). Rounds that would act outward unasked still go through `routine_propose`'s Go.
@@ -205,19 +231,23 @@ the side column after the rounds.
 
 1. **Head**: the lantern (64), **{name} 看守中**, the title (28/800), its life as chips (**看守中**, **1 个在等你**,
    **11 月 24 日 08:47 起**, **这周接了 3 个**).
-2. **你说的 / You said**: the person's words, verbatim.
+2. **你说的 / You said**: the person's words, verbatim; editable (D533), the rules they change shown as a diff for one Go.
 3. **等你 / Waiting for you**: its asks, answered in place (the same card as in 等你).
 4. A picture only when the Keep has one number that moves toward its goal (the fare: one point a morning and
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
-5. **手上的 / What it holds**: each item with its standing (a PR: its line, its checks as small squares, who
+5. **手上的 / What it holds** (D519: a Keep in rounds holds the PRs its task keeps open, each named by its own title;
+   the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
    approved; D508's words), **打开 PR ›**, and its task one tap away.
-6. **每一轮 / Rounds**: newest first; each round its time, what woke it (**#11030 的 CI 变了**, **Codex 交过来一个
-   PR**, **到点了（每 45 分钟）**), what it did in one line, and **没出声 / 说了一句 / 问了你**; silent rounds fold
-   into one line with small pips (**昨天起又看过 18 次，都没有变化**). A round opens its task at that point.
-7. **Change by talking**: a composer under the rounds, its placeholder an example from this Keep
+6. **每一轮 / Rounds**: newest first; each round its time in the time column (today the clock, else the day alone),
+   what woke it (**#11030 的 CI 变了**, **Codex 交过来一个 PR**, **到点了（每 45 分钟）**), what happened in one line
+   to the person (D519: the cheap model's reading of the report, recorded once; never the report's words to Ducter),
+   and **没出声 / 说了一句 / 问了你**; **看细节 / Details** shows the report as written and the way to its task. Silent
+   rounds fold into one line with small pips (**又看过 18 次，都没有变化**). Every wake is a round, reported or not.
+7. **Change by talking**: the conversation's composer under the rounds (D519), its placeholder an example from this Keep
    (**想改什么，直接说：「ducter 仓库的 PR 也接」**). What is typed goes to the partner with the Keep attached; the
-   partner changes it with one tool (`keep_change`) and says the change in one line.
-8. **怎么做 / How it runs** (the side column): when it wakes, until, when it speaks, limits, where and who, and
+   partner changes it with one tool (`keep_change`) and says the change in one line. While the home takes the words
+   the send stays pressed in; then the box empties and one line says **{partner} 收到了，改好会在对话里说一声。**
+8. **怎么做 / How it runs** (the side column; each rule changed in place with **改**, D533): when it wakes, until, when it speaks, limits, where and who, and
    for a Keep with an address **别的 agent 怎么找到它** (its Mem name and **已连上**; the Bridge details one more tap
    in, never the page's subject). At its foot **暂停 ▾** (1 小时, 明天早上, 一周, 直到我恢复) and **停下** (in the
    failed ink, asks once).

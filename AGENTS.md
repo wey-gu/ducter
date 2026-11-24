@@ -68,6 +68,7 @@ Design notes:
 - `focus-window.md`: brief, report, checkpoint, body selection.
 - `focus-window-states.md`: the state machine.
 - `system.md`: adapter, identity/Mem, safety, storage, runtime.
+- `offline.md`: the web and phone client through a drop: the last screen readable, an outbox on the device, the app shell, a socket that proves itself, what waits and what asks again (D543).
 - `ui.md`: themes, tokens, zoom levels, canvases.
 - `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
 - `where.md`: which computer a task runs on, said and changed with who (D157).
@@ -82,6 +83,7 @@ Design notes:
 - `computer-use.md`: 用电脑 / Use the computer, tasks in the person's Mac apps (D235).
 - `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
 - `past.md`: 做过的事 / Past tasks and 一直在跑的 / Ongoing: finding, marking, continuing, pausing (D285).
+- `mentions.md`: @ and / in the composers: referring to a task, file, partner or PR; Ducter's actions, the person's skills and each agent's own commands that really reach it (D534).
 - `sessions.md`: every task open: ⌘K 找什么都行 / Find anything, where a task stopped, its steps, a new task from any step, and the partner's task_find / task_fork (D391).
 - `imessage.md`: the partner in iMessage through the Mac app: chat.db, AppleScript, identity, pairing (D277).
 - `task-sources.md`: 待办来源 / To-do sources, the person's GitHub issues and Obsidian Tasks bound to tasks: who owns which field, offered never started, writing back behind a Go (D341).

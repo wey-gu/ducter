@@ -55,10 +55,14 @@ type pendingMsg struct {
 	sent bool
 	// reply (D236): the one message it answers.
 	reply *replyTo
+	// refs (D534): what its words refer to with @ or /.
+	refs []protocol.Ref
 }
 
 // App is the window's state.
 type App struct {
+	// mnState (D534): the composers' @ and / (mentions.go).
+	mnState *mentionsState
 	// ctlAvail is the width a row's control may take while it is built
 	// (wordsThenControl, last frame's); 0 outside a row (D468).
 	ctlAvail float32
@@ -222,8 +226,11 @@ type App struct {
 	taskDrafts map[string]string
 	// D325: the held message being changed in place over a task's composer.
 	heldEditing *heldEdit
-	heldFocus   bool
-	replyOpen   map[string]bool
+	// D521: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
+	bgStopping map[string]bool
+	bgRefused  map[string]time.Time
+	heldFocus  bool
+	replyOpen  map[string]bool
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
 	laterOpen  map[string]bool
@@ -291,6 +298,8 @@ type App struct {
 	headRows map[int64]bool
 	// fl is the conversation's place (D254, follow.go).
 	fl follow
+	// sw is the partner switch (D541, partner_switch.go): the conversations held aside.
+	sw partnerSwitch
 	// forgotten are the Noted lines forgotten from a message's Details.
 	forgotten map[int64]bool
 	// recall is the 想起了 line's card and 这周记下的 (D304, recall.go).
@@ -340,6 +349,8 @@ type App struct {
 	undoUntil time.Time
 	// dev is Your devices and abilities' own state.
 	dev devicesState
+	// about is a device card's 关于这台 / About this computer: the rule being changed or added (D538).
+	about aboutState
 	// Desktop is the window app's hands on macOS (focus, notifications);
 	// nil in tests that don't need it.
 	Desktop Desktop
@@ -366,6 +377,7 @@ type App struct {
 	planNotes  map[string]map[string]string // D385: a plan card's 给这个的话…, by decision then part
 	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
 	planJump   int64                        // D385: 看方案: the plan card's seq to find in the conversation
+	door       doorState                    // D535: the last item a needs-you count opened, and the one being found
 	draftJump  string                       // D403: 看草稿: the find to find in the conversation
 	rv         reviewState                  // D385: 一起过目 / Review together's sheet
 	pins       pinsState                    // D381: 置顶 / Pinned's sheet (pins.go)
@@ -527,7 +539,7 @@ func (a *App) resendUnechoed() {
 	for _, p := range a.pending {
 		// A message whose pictures are still going up goes when they land.
 		if !echoed[p.clientID] && (len(p.atts) == 0 || allReady(p.atts)) {
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want(), Refs: p.refs})
 		}
 	}
 	for _, t := range a.S.Tasks {
@@ -537,7 +549,7 @@ func (a *App) resendUnechoed() {
 				for _, m := range sd.Media {
 					ids = append(ids, m.ID)
 				}
-				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID, Media: ids})
+				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID, Media: ids, Refs: sd.Refs})
 			}
 		}
 	}
@@ -610,6 +622,7 @@ func (a *App) View(c *ui.Context) {
 	a.drainActionResults(c)
 	a.watchStopAfter() // D161: 做完再停 lands wherever the window is
 	a.shortcuts(c)
+	a.settleNav() // D535: a Keep's page lives only while On hand is shown
 	a.titleTick(c)
 	a.sayInstalled(c)
 	a.toastAt = toastPlace{} // the place says again where its toasts go
@@ -709,6 +722,9 @@ func (a *App) shortcuts(c *ui.Context) {
 	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):
 		a.ToLatest() // D254: to the newest message
 	case c.Shortcut(0, ui.KeyEscape):
+		if a.closePops() {
+			break // D534: Esc closes a composer's @ or / list first, and nothing else
+		}
 		if a.Route == RoutePast {
 			a.pastEsc() // D285: clears, then goes back
 			break
@@ -729,6 +745,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		if a.locatorEsc() {
 			break // D325: the locator's card closes first
+		}
+		if a.Route == RouteOnHand && a.keepEsc() {
+			break // D533: a Keep's open editor closes first
 		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()
@@ -755,7 +774,13 @@ func (a *App) Up() {
 			}
 		}
 		a.Route = RouteOnHand
-	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
+	case RouteOnHand:
+		if a.oh.keep.open != "" {
+			a.closeKeep() // D535: a Keep's page goes up to On hand's overview first
+			return
+		}
+		a.Route = RouteConversation
+	case RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
 	case RoutePast:
 		a.pastBack()
@@ -881,11 +906,12 @@ func (a *App) sendMessage(text string) {
 		}
 		a.rp.pressIn[id] = true
 	}
-	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready, reply: reply})
+	refs := a.takeRefs("", text) // D534
+	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready, reply: reply, refs: refs})
 	a.thinkingSince = a.Now()
 	a.markRead()
 	if ready {
-		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts), Reply: reply.want()})
+		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts), Reply: reply.want(), Refs: refs})
 	}
 	a.list.ScrollToEnd()
 }
@@ -1114,6 +1140,7 @@ func (a *App) Welcomed() {
 // forgetShown drops everything shown from a Log: it started over, or the
 // app now talks to another Ducter.
 func (a *App) forgetShown() {
+	a.forgetKept()
 	a.S.Reset()
 	a.pending, a.diffs = nil, map[string]*diffPane{}
 	a.actSent, a.inDoubt = nil, nil
@@ -1130,6 +1157,14 @@ func (a *App) forgetShown() {
 // that started over (its head behind our cursor) resets the store and
 // says hello again from the start.
 func (a *App) Receive(f protocol.ServerFrame) {
+	switched := f.T == "welcome" && a.sw.to != "" && a.sw.sameSock
+	if a.switchFrame(&f) {
+		return // D541: the conversation the switch left
+	}
+	if f.T == "partner_peek" {
+		a.tookPeek(f)
+		return
+	}
 	if a.S.Stale(f) {
 		a.forgetShown()
 		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
@@ -1147,9 +1182,20 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	a.Local.SetPersonaName(a.S.PersonaName) // D262: the next launch starts with it
 	switch f.T {
 	case "welcome":
-		a.Welcomed()
+		if switched {
+			a.switchWelcomed()
+		} else {
+			a.sw.peeked = nil // a new socket asks again
+			a.Welcomed()
+		}
+		a.peekOthers()
+	case "partners":
+		a.peekOthers()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+		if f.Action == "stop_background" && !f.OK {
+			a.bgRefusedFor(f.TaskID)
+		}
 	case "outside_adopted":
 		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
 	case "outside_hidden":
@@ -1264,6 +1310,26 @@ func (a *App) duration(d time.Duration) string {
 		return a.L.T("time.min", int(d.Minutes()))
 	}
 	return a.L.T("time.hour", int(d.Hours()))
+}
+
+// rhythm is how often, as people say it (D533): 每 45 分钟, 每小时, 每 2 小时,
+// 每天 (never 每 1 小时); every hour, every 2 hours. duration says a span.
+func (a *App) rhythm(d time.Duration) string {
+	m := int(d.Round(time.Minute).Minutes())
+	if m < 1 {
+		m = 1
+	}
+	switch {
+	case m%1440 == 0 && m == 1440:
+		return a.L.T("every.day")
+	case m%1440 == 0:
+		return a.L.T("every.days", m/1440)
+	case m == 60:
+		return a.L.T("every.hour")
+	case m%60 == 0:
+		return a.L.T("every.hours", m/60)
+	}
+	return a.L.T("every.min", m)
 }
 
 func (a *App) ago(ts string) string {

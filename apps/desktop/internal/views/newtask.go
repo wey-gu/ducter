@@ -1215,6 +1215,7 @@ func (a *App) wordsField(c *ui.Context) {
 		ta := ui.TextArea(c.Key(fmt.Sprintf("nt-words:%d", nt.seq)), &nt.words).Lines(4, 10).MinHeight(0).
 			Placeholder(a.L.T("newtask.placeholder")).Label(a.L.T("newtask.what")).
 			Background(t.Bg).Border(1, t.LineSoft).Radius(t.RadiusMD).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.5)).
+			OnPaste(func(text string) bool { return a.pasteFiles("nt", text) }).
 			OnTextKey(func(k ui.TextKey) bool {
 				if a.pictureKeys("nt", k) {
 					return true
@@ -1252,7 +1253,19 @@ func (a *App) newTaskFoot(c *ui.Context) {
 		start = a.L.T("newtask.schedule")
 	}
 	ui.Row(c.Key("nt-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
-		ui.Row(c.Key("nt-foot-line")).Grow(1).MinWidth(0).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		// D543: read from the left edge: Start first, Cancel after it, then the line (keys, or what happened).
+		if nt.sending != "" {
+			ui.Spinner(c).Size(16, 16)
+			uiText(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
+		} else {
+			if a.buttonFor(c, start, a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {
+				a.StartNewTask()
+			}
+			if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
+				nt.open, nt.err, nt.errEmpty, nt.started, nt.startedTask = false, "", false, "", ""
+			}
+		}
+		ui.Row(c.Key("nt-foot-line")).Grow(1).MinWidth(0).Gap(t.S2).Justify(ui.End).AlignItems(ui.Center).Children(func() {
 			switch {
 			case nt.err != "":
 				uiText(c.Key("nt-err"), nt.err).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink).Shrink(1).MinWidth(0).MaxLines(2).Role(ui.RoleStatus)
@@ -1272,17 +1285,6 @@ func (a *App) newTaskFoot(c *ui.Context) {
 				})
 			}
 		})
-		if nt.sending != "" {
-			ui.Spinner(c).Size(16, 16)
-			uiText(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
-			return
-		}
-		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
-			nt.open, nt.err, nt.errEmpty, nt.started, nt.startedTask = false, "", false, "", ""
-		}
-		if a.buttonFor(c, start, a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {
-			a.StartNewTask()
-		}
 	})
 }
 

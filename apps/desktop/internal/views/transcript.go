@@ -30,7 +30,9 @@ type StepRow struct {
 	N       int    `json:"n"`
 	Outcome string `json:"outcome"` // ok | error | missing (a probe that found nothing)
 	Command string `json:"command,omitempty"`
-	Output  string `json:"output,omitempty"`
+	// Path (D530) is the whole path a file tool read or edited: what its file chip opens.
+	Path   string `json:"path,omitempty"`
+	Output string `json:"output,omitempty"`
 	// OutputFull (D320): what it printed was cut at outputMax; its whole length.
 	OutputFull int `json:"outputFull,omitempty"`
 	// Hint is a real failure in words (D268): the service's message
@@ -371,7 +373,7 @@ func shellCommand(raw json.RawMessage) string {
 		return s
 	}
 	o, _ := v.(map[string]any)
-	for _, k := range []string{"command", "cmd", "script", "code"} {
+	for _, k := range []string{"command", "cmd", "script", "code", "CommandLine"} {
 		switch x := o[k].(type) {
 		case string:
 			if strings.TrimSpace(x) != "" {
@@ -1009,6 +1011,9 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 					cmd, _ := clipText(shellCommand(b.Tool.Input), outputMax)
 					row.Command = redact.Text(cmd)
 				}
+				if st.Kind == "read" || st.Kind == "edited" {
+					row.Path = redact.Text(stepPath(b.Tool))
+				}
 				addRow(ev.Seq, row)
 				continue
 			}
@@ -1016,7 +1021,10 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 			switch {
 			case b.Role == "system":
 				// D266: the harness's own background work, started and ended, as a step of the stretch.
-				if st, failed, ok := backgroundStep(b.Raw); ok {
+				if st, failed, quiet, ok := backgroundStep(b.Raw); ok {
+					if quiet {
+						continue // D521: the tray says it
+					}
 					st.Target = redact.Text(st.Target)
 					outcome := "ok"
 					if failed {

@@ -7,14 +7,18 @@ import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
-import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import type { View } from "@ducter/protocol/src/session.ts";
-import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { Api, Connection, deviceName, myShape, pinFp, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { heard, LINK_QUIET_MS, LONG_OUTAGE_MS, linkState, memoStore, type LinkState } from "./link.ts";
+import { ANSWER_TTL_MS, frameOf, Outbox, type OutItem } from "./outbox.ts";
+import { taskWindows } from "./taskwin.ts";
+import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -25,12 +29,40 @@ import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage,
 import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, stamp, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
-import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
+import { forgetGlance, keepEvents, loadGlance, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
-import { keepDraft, readDraft } from "./follow.ts";
+import { keepDraft, keepTaskDrafts, readDraft, readTaskDrafts } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
+import { switchPlace } from "./conv-place.ts";
 import { DEFAULT_PARTNER, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import { spokenPeers } from "./mem-view.ts";
+
+/** D543: a Map whose every change is kept a moment later (the task drafts, kept on this device). */
+class KeptMap extends Map<string, string> {
+  private timer?: ReturnType<typeof setTimeout>;
+  private ready = false;
+  constructor(
+    init: Record<string, string>,
+    private keep: (m: Record<string, string>) => void,
+  ) {
+    super(Object.entries(init));
+    this.ready = true;
+  }
+  override set(k: string, v: string) {
+    super.set(k, v);
+    if (this.ready) this.later();
+    return this;
+  }
+  override delete(k: string) {
+    const had = super.delete(k);
+    if (had) this.later();
+    return had;
+  }
+  private later() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.keep(Object.fromEntries([...this].filter(([, v]) => v.trim()))), 300);
+  }
+}
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
 const PARTNER_KEY = "ducter.partner";
@@ -40,6 +72,18 @@ export function savedPartner(): string {
     return localStorage.getItem(PARTNER_KEY) || lastPartner;
   } catch {
     return lastPartner;
+  }
+}
+/** D545: how the list of partners stands beside the conversation on this device: "" as the width
+ *  has it, "thin" (the faces and their numbers), "hidden". */
+export type RailMode = "" | "thin" | "hidden";
+const RAIL_KEY = "ducter.rail";
+function savedRail(): RailMode {
+  try {
+    const v = localStorage.getItem(RAIL_KEY);
+    return v === "thin" || v === "hidden" ? v : "";
+  } catch {
+    return "";
   }
 }
 function savePartner(id: string) {
@@ -63,6 +107,8 @@ export interface Replying {
 }
 export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? { findId: r.findId } : {}), ...(r.ask !== undefined ? { ask: r.ask } : r.part ? { part: r.part } : {}) });
 
+/** D541: how many of another partner's newest events a peek asks for. */
+const PEEK_SIZE = 50;
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
 /** D284: an opened task's newest window, each older page after it, and how far the background pages. */
@@ -376,6 +422,8 @@ class AppState {
   peersAsked = false;
   /** What the partner thinks with right now (D150), and the computer Ducter runs on. */
   brainNow?: BrainNow;
+  /** D536: with more than one partner, what each one's own 想事情用 picker may offer. */
+  brainOptions?: BrainOption[];
   homeName?: string;
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
@@ -394,6 +442,8 @@ class AppState {
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code) (names, last four, where used; never a secret). */
   saved?: Extract<ServerFrame, { t: "saved" }>;
+  /** D539: Ducter 存着的密钥 / Keys Ducter keeps, per computer (names only), as each last answered. */
+  keptKeys = new Map<string, Extract<ServerFrame, { t: "kept_keys" }>>();
   /** The last save or remove from this window failed (its form shows why). */
   savedFailed = false;
   private savedDone?: () => void;
@@ -494,7 +544,20 @@ class AppState {
   conn?: Connection;
   base!: URL;
   /** Messages sent and not yet echoed. pics (D206): pictures still going up; failed: one didn't, Retry sends. */
-  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying }[] = [];
+  pending: { clientId: string; text: string; pics?: Pic[]; failed?: boolean; reply?: Replying; refs?: import("@ducter/protocol").Ref[]; /** D543: a message kept from an earlier page: its pictures' ids (they went up then). */ media?: string[] }[] = [];
+  /** D543: what was sent and the home doesn't have yet, kept on this device (outbox.ts). */
+  outbox = new Outbox();
+  /** D543: the tasks opened lately, kept on this device (taskwin.ts). */
+  taskWins = taskWindows();
+  /** D543: ids unique across this person's devices, not only this page (a clientId is deduped by the home). */
+  private pageTag = Math.random().toString(36).slice(2, 7);
+  cid(kind: string) {
+    return `${kind}${Date.now()}-${this.pageTag}-${++this.nextClient}`;
+  }
+  /** D534: what was picked with @ or / into a composer's words ("" the partner's, else the task's id). */
+  refsFor = new Map<string, import("@ducter/protocol").Ref[]>();
+  /** D534: the home's answers to the composers' @ and / lists (mentions.ts sets this; no import cycle). */
+  mentionFrame?: (f: Extract<ServerFrame, { t: "mention_list" } | { t: "slash_list" }>) => void;
   /** D236: the one message the composer replies to (its imprint sits above the field). */
   replying?: Replying;
   /** D206: pictures picked for a message not sent yet: "" the conversation, a task id, "new" the New task card. */
@@ -507,15 +570,16 @@ class AppState {
   fileLink?: { path: string; taskId?: string; n: number; error?: FileOpenError; message?: string };
   /** D254: what is typed to the partner survives the app being closed (a phone's web view is
    *  often let go in the background): kept in this browser until it is sent or cleared. */
-  private draftNow = readDraft();
+  private draftNow = readDraft(savedPartner());
   get draft() {
     return this.draftNow;
   }
   set draft(v: string) {
     this.draftNow = v;
-    keepDraft(v);
+    keepDraft(v, this.partnerShown);
   }
-  taskDrafts = new Map<string, string>();
+  /** D543: each partner's draft is its own, and a task's draft survives the page too. */
+  taskDrafts: Map<string, string> = new KeptMap(readTaskDrafts(), keepTaskDrafts);
   replyOpen = new Set<string>();
   /** D382: the cards whose 晚点再问我 / Ask me later times are open; and the one picking its own time. */
   laterOpen = new Set<string>();
@@ -635,10 +699,16 @@ class AppState {
       (s) => {
         this.status = s;
         // D209: the app, which opened this page from its cache, learns whether the home answers.
-        if (s !== "connecting" && inApp()) tellReach(s === "connected");
+        // D543: a page that shows a kept screen never asks the app for its can't-reach screen: the
+        // last screen stays readable and the page says the link itself. Only a page with nothing
+        // kept to show does.
+        if (s !== "connecting" && inApp() && (s === "connected" || !this.keptScreen())) tellReach(s === "connected");
+        this.linkTick();
         this.changed();
       },
     );
+    // D532: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
+    this.conn.onRefused = () => (this.linkTick(), this.changed(), this.onLinkRefused?.());
     this.conn.onWritten = (f) => {
       if (f.t === "task_action" && (f.action === "merge" || f.action === "open_pr")) this.actSent.set(f.taskId, f.action);
     };
@@ -720,6 +790,7 @@ class AppState {
         ...(this.me ? { me: this.me } : {}),
         savedAt: Date.now(),
       });
+      this.keepTaskWindows(now);
     };
     if (now) save();
     else this.glanceTimer = setTimeout(save, 1200);
@@ -748,16 +819,30 @@ class AppState {
   }
 
   /** Forgets everything this page holds (a Log that started over, a device revoked). */
-  private startOver() {
+  private startOver(forget = true) {
     this.S = new Store();
+    this.convs.clear(); // D541: what was held came from a Log that is no more
+    this.switchTo = undefined;
     this.kept.clear();
     this.fromGlance = false;
-    forgetGlance();
+    if (forget) forgetGlance();
   }
 
   receive(f: ServerFrame) {
     // D405: the apps list, an opened app, its keys and the answers to its asks.
     if (onAppsFrame(f)) return;
+    if (f.t === "partner_peek") return void this.tookPeek(f);
+    // D541: until a switch's welcome, what comes of the conversation it left is not this one's.
+    const switched = f.t === "welcome" && !!this.switchTo;
+    if (this.switchTo) {
+      if (f.t === "welcome") this.switchTo = undefined;
+      else if (f.t === "activity" || f.t === "first_screen" || f.t === "channel_history") return;
+      else if (f.t === "events") {
+        const evs = f.events.filter((e) => e.stream !== "channel");
+        if (!evs.length) return;
+        f = { ...f, events: evs };
+      }
+    }
     // A cursor replay as long as the home sends at once: the glance is too old to catch up from.
     // Start from the home's own fresh replay instead (it ends with on_hand, like any replay).
     if (f.t === "events" && this.fromGlance && f.events.length >= REPLAY_MAX) {
@@ -777,6 +862,9 @@ class AppState {
       // The Log started over (its data was reset): forget everything and say hello from scratch.
       this.startOver();
       this.pending = [];
+      // D543: what was kept for that Log (its waiting messages, its tasks' windows) belongs to it.
+      this.outbox.clear();
+      void this.taskWins.clear();
       this.actSent.clear();
       this.inDoubt = undefined;
       this.historyAsked.clear();
@@ -796,6 +884,7 @@ class AppState {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());
     }
+    if (f.t === "kept_keys") return void (this.keptKeys.set(f.device, f), this.changed());
     if (f.t === "saved") {
       this.saved = f;
       if (f.ok === true) (this.savedFailed = false), this.savedDone?.(), (this.savedDone = undefined);
@@ -826,6 +915,8 @@ class AppState {
       learnModelLabels(devices.flatMap((d) => d.harnesses)); // D355: a model in its agent's own words
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
+      // D532: the home's name, for the link's words on a later open while it can't be reached.
+      if (home?.name && this.linkMemo.get().home !== home.name) this.linkMemo.set({ ...this.linkMemo.get(), home: home.name });
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
     if (f.t === "lend") return void ((this.lend = applyLend(this.lend, f)), this.changed());
@@ -882,6 +973,10 @@ class AppState {
     if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
     if (f.t === "keep_result") return this.onKeepFrame?.(f);
+    // D533: an edit's result and the rules read from edited words, for the Keep's page.
+    if (f.t === "keep_changed" || f.t === "keep_proposal") return this.onKeepEdit?.(f);
+    // D534: the composers' @ and / lists (mentions.ts).
+    if (f.t === "mention_list" || f.t === "slash_list") return void this.mentionFrame?.(f);
     // D391: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
     if (f.t === "past_steps_result" || f.t === "past_forked") return onStepsFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
@@ -932,14 +1027,30 @@ class AppState {
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
+    this.settleOutbox(f);
     this.onAmbient?.();
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
+    // D521: a stop the agent refused: the row runs on, and says so once.
+    if (f.t === "action_result" && f.action === "stop_background" && !f.ok) {
+      for (const k of this.bgStopping.keys()) if (k.startsWith(`${f.taskId}|`)) this.bgStopping.delete(k);
+      this.toast(this.L.t("bg.stop.failed"));
+    }
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
-    if (f.t === "welcome") {
+    if (f.t === "welcome" && switched) {
+      // D541: a switch on a socket that stayed up: what it asked for it still hears; only this
+      // partner's unsent messages go (the home drops a repeat).
+      this.pins = [];
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
+    } else if (f.t === "welcome") {
+      this.peeked.clear(); // D541: a new socket asks again
+      // D532: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
+      if (f.fp) pinFp(f.fp);
+      heard(this.linkMemo);
+      this.onLinkHeard?.();
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D381: what is pinned comes right after, for the default conversation only.
       this.pins = [];
@@ -957,7 +1068,14 @@ class AppState {
       if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
       this.actSent.clear();
       // A message whose pictures are still going up goes when they are (afterUpload).
-      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
+      const resent = new Set<string>();
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics ? p.pics.map((x) => x.ref!.id) : p.media, ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) {
+        if ("clientId" in r && r.clientId) resent.add(r.clientId);
+        this.send(r);
+      }
+      // D543: and what an earlier page left in the outbox (a card's answer, another partner's waits for its own socket).
+      for (const p of this.pending) resent.add(p.clientId);
+      this.flushOutbox(resent);
       // D204: a clone in flight goes again with its id: the home answers the same clone, not a second.
       const k = this.nt.clone;
       if (k?.cid) {
@@ -985,6 +1103,7 @@ class AppState {
       // restarted home may read again (or no longer).
       if (this.proactiveDay) this.askDay();
     }
+    if (f.t === "welcome") this.peekOthers();
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
     // D481: questions this page and the home disagree about: the home's own events for them.
@@ -995,7 +1114,7 @@ class AppState {
     // D209: the last screen follows what the home sent (on_hand closes a replay: caught up).
     if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
     if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
-    if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome") this.keepGlance();
+    if (f.t === "events" || f.t === "on_hand" || f.t === "first_screen" || f.t === "welcome" || f.t === "task_history") this.keepGlance();
     if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || (typeof document === "object" && document.hidden));
     this.followUserLanguage();
     this.drainActionResults();
@@ -1011,6 +1130,7 @@ class AppState {
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
+    this.brainOptions = f.brainOptions;
     if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
     // D329: an Undo Mem didn't take: said quietly on that line until the next settings frame.
     this.undoFailed = f.undid && !f.undid.ok ? f.undid.seq : undefined;
@@ -1106,9 +1226,14 @@ class AppState {
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
   /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
   openPast?: (q?: string, tab?: "past" | "made" | "ongoing") => void;
+  /** D535: set by keep.tsx: On hand was left, its Keep's page closes. */
+  leftOnHand?: () => void;
+  /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
+  upInPlace?: () => boolean;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;
   onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
+  onKeepEdit?: (f: Extract<ServerFrame, { t: "keep_changed" | "keep_proposal" }>) => void;
   onPastWelcome?: () => void;
 
   command(c: string) {
@@ -1362,7 +1487,7 @@ class AppState {
     if (!nt.adding || f.clientId !== nt.adding) return;
     nt.adding = "";
     if (!f.ok || !f.place) {
-      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : f.reason === "old" ? this.L.t("newtask.old", this.ntBrowseName()) : this.L.t("newtask.err.failed", f.message || "");
+      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : f.reason === "old" ? this.L.t("newtask.old", this.ntBrowseName()) : (f.message ? this.L.t("newtask.err.failed", f.message) : this.L.t("newtask.err.failed.bare"));
       return this.changed();
     }
     const p = f.place;
@@ -2036,7 +2161,10 @@ class AppState {
 
   /** D517: the person's one count's items (onhand.tsx needsYouItems, set when On hand's module loads):
    *  every "needs you" number reads them, and On hand draws each under 等你. */
-  needsItems?: () => { partner: string }[];
+  needsItems?: () => { partner: string; key: string }[];
+
+  /** D535: opens the next item of a needs-you count where it lives (onhand.tsx openDoor). */
+  openDoor?: (partner?: string) => boolean;
 
   /** D517: the person's one count, or one partner's part of it. */
   needsCount(partner?: string): number {
@@ -2057,6 +2185,25 @@ class AppState {
   shownPartner(): PartnerInfo | undefined {
     if (!this.manyPartners()) return undefined;
     return this.partners!.find((p) => p.id === (this.S.persona || this.partnerShown));
+  }
+
+  /** D546: the partner that owns an object (a task's card.persona, a Keep's, a group's, a routine's):
+   *  absent or no longer a partner reads as the default. Undefined with one partner. */
+  ownerOf(persona?: string): PartnerInfo | undefined {
+    if (!this.manyPartners()) return undefined;
+    return this.partners!.find((p) => p.id === persona) ?? this.partners!.find((p) => p.id === DEFAULT_PARTNER);
+  }
+
+  /** D546: the owner's clay for an object's art (data-look on its root): undefined with one partner,
+   *  so the art is as drawn; never the shown partner's unless it is the owner. */
+  lookOf(persona?: string): PartnerLook | undefined {
+    return this.ownerOf(persona)?.look;
+  }
+
+  /** D546: the owner's name for an object's words (「小玛交给它的事」); with one partner the one
+   *  partner's own name, whatever it was given. */
+  nameOf(persona?: string): string {
+    return this.ownerOf(persona)?.name ?? (this.S.personaName || this.defaultName());
   }
 
   /** D513: #partners came before the home said who its partners are. */
@@ -2084,12 +2231,32 @@ class AppState {
     }
     const shown = f.partners.find((p) => p.id === f.shown);
     if (shown && shown.name !== this.S.personaName) this.S.personaName = shown.name;
+    this.peekOthers();
     this.changed();
   }
 
   /** D513: on a phone with more than one partner, the list of partners stands in for the
    *  conversation (the level above it, as a messaging app's chats); wide, it is a column beside. */
   partnersOpen = false;
+
+  /** D545: the list beside the conversation: as the width has it, thin, or hidden (this device's). */
+  railMode: RailMode = savedRail();
+  /** D545: when it last changed, for its slide (app.css .rail-in). */
+  railAt = 0;
+  setRail(mode: RailMode) {
+    if (mode === this.railMode) return;
+    this.railMode = mode;
+    this.railAt = Date.now();
+    try {
+      if (mode) localStorage.setItem(RAIL_KEY, mode);
+      else localStorage.removeItem(RAIL_KEY);
+    } catch {}
+    this.changed();
+  }
+  /** D545: the header's toggle: as wide as the width has it, then thin, then hidden, then back. */
+  nextRail(): RailMode {
+    return this.railMode === "" ? "thin" : this.railMode === "thin" ? "hidden" : "";
+  }
 
   /** D513: up to the list of partners (a phone's ‹, its edge swipe, #partners). */
   showPartners() {
@@ -2116,26 +2283,82 @@ class AppState {
     go();
   }
 
-  /** D309: shows another partner's conversation: this page starts over on it (a new hello). */
+  /** D541: each partner's conversation this page has shown (or peeked), held aside with its draft,
+   *  its unsent messages and its reply, by partner. */
+  private convs = new Map<string, { S: Store; kept: Map<number, LogEvent>; pending: AppState["pending"]; draft: string; replying?: Replying }>();
+  /** D541: the partner a switch's hello went for, until its welcome: frames of the conversation it
+   *  left that were already on their way are dropped. */
+  private switchTo?: string;
+  /** D541: the partners whose newest stretch this socket asked for. */
+  private peeked = new Set<string>();
+
+  /** D309, D541: shows another partner's conversation at once: the one held (or peeked) is drawn in
+   *  this frame, and the hello carries its cursor, so the home sends only what is newer. */
   switchPartner(id: string) {
     if (id === (this.S.persona || this.partnerShown) || !this.partners?.some((p) => p.id === id)) return;
     this.partnersOpen = false;
+    // D517: a partner never shown and not peeked waits for its welcome: the rows keep their numbers.
     if (this.S.welcomed) this.railHeld = Object.fromEntries(this.partners.map((p) => [p.id, this.needsCount(p.id)]));
     this.partnerSwitchedAt = Date.now();
+    const from = this.S.persona || this.partnerShown;
+    // D543: the partner left keeps its last screen under its own name (a cold start, or a switch
+    // back after this page is gone, shows it with the link down).
+    if (this.S.persona) this.keepGlance(true);
     savePartner((this.partnerShown = id));
-    this.startOver();
-    this.pending = [];
-    this.actSent.clear();
-    this.inDoubt = undefined;
-    this.historyAsked.clear();
-    this.livingAway.clear();
-    this.draft = "";
-    this.replying = undefined;
+    this.convs.set(from, { S: this.S, kept: this.kept, pending: this.pending, draft: this.draft, replying: this.replying });
+    const next = this.convs.get(id);
+    this.convs.delete(id);
+    const S = next?.S ?? new Store();
+    // The person's own (On hand and its tasks, waits) stays as it is, live: never a partner's.
+    S.onHand = this.S.onHand;
+    S.awayNow = this.S.awayNow;
+    S.tasks = this.S.tasks;
+    S.waiters = this.S.waiters;
+    S.missed = this.S.missed;
+    S.arrived = this.S.arrived;
+    S.persona = id;
+    S.personaName = this.partners.find((p) => p.id === id)!.name;
+    this.S = S;
+    this.kept = next?.kept ?? new Map();
+    // D543: a partner this page holds nothing of reads from its kept last screen at once.
+    const g = !next && this.glanceDevice ? loadGlance(this.glanceDevice, undefined, id) : undefined;
+    if (g?.events.length) {
+      S.apply({ t: "events", events: g.events });
+      for (const ev of g.events) this.kept.set(ev.seq, ev);
+    }
+    this.pending = next?.pending ?? [];
+    // D543: its draft is its own, kept on this device (the setter would write this one's as "").
+    this.draftNow = next?.draft ?? readDraft(id);
+    this.replying = next?.replying;
+    // D543: what waited for this partner in the outbox shows again with its pending mark.
+    this.restoreOutbox();
+    switchPlace(from, id);
     this.route = { name: "conv" };
     this.sheet = null;
-    this.S.personaName = this.partners.find((p) => p.id === id)!.name;
+    this.switchTo = id;
     this.conn?.rehello();
     this.changed();
+  }
+
+  /** D541: once a socket is up, the newest stretch of each other partner this page holds nothing of. */
+  private peekOthers() {
+    if (!this.manyPartners() || !this.S.welcomed || this.switchTo) return;
+    const shown = this.S.persona || this.partnerShown;
+    for (const p of this.partners!) {
+      if (p.id === shown || this.convs.has(p.id) || this.peeked.has(p.id)) continue;
+      this.peeked.add(p.id);
+      this.send({ t: "partner_peek", persona: p.id, limit: PEEK_SIZE });
+    }
+  }
+
+  /** D541: a peek's conversation, held for a switch (unless it is shown or held already). */
+  private tookPeek(f: Extract<ServerFrame, { t: "partner_peek" }>) {
+    if (f.persona === (this.S.persona || this.partnerShown) || this.convs.has(f.persona)) return;
+    const S = new Store();
+    S.apply({ t: "welcome", persona: f.persona, personaName: this.partners?.find((p) => p.id === f.persona)?.name ?? "", headSeq: f.headSeq } as ServerFrame);
+    S.apply({ t: "events", events: f.events });
+    if (!f.more) S.older.done = true;
+    this.convs.set(f.persona, { S, kept: new Map(f.events.map((e) => [e.seq, e])), pending: [], draft: "" });
   }
 
   /** D309: 再加一个伙伴 / Add a partner; D486: with what it looks after. */
@@ -2156,7 +2379,7 @@ class AppState {
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string }) {
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string; /** D536: null: the same as the default partner's. */ brain?: Brain | null }) {
     if (id === DEFAULT_PARTNER && patch.name) {
       this.setSettings({ name: patch.name });
       const { name: _n, ...rest } = patch;
@@ -2165,7 +2388,15 @@ class AppState {
     }
     const cid = `ps-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "set" };
-    if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    const { brain, ...words } = patch;
+    if (this.partners)
+      this.partners = this.partners.map((p) => {
+        if (p.id !== id) return p;
+        const next = { ...p, ...words };
+        if (brain === null) delete next.brain;
+        else if (brain) next.brain = brain;
+        return next;
+      });
     this.send({ t: "partner_set", id, ...patch, clientId: cid });
     this.changed();
   }
@@ -2227,6 +2458,8 @@ class AppState {
   }
   /** D208: 现在就打 / Call now on a Go card that waits for the callee's hours: the Go, now. */
   callNow(decisionId: string, callId: string) {
+    // D543: a call placed late is not what was asked for: with the link down it asks again.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(decisionId);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -2812,6 +3045,13 @@ class AppState {
   }
 
   applyRoute(r: Route) {
+    // D535: the drill-ins are true to the place shown: once On hand is left, a Keep's page open
+    // there closes, so On hand opens on its overview next time (a deep link opens the page straight).
+    if (r.name !== "onhand") this.leftOnHand?.();
+    // D548: every way into the conversation (对话, ‹ 对话, ⌘1, back from a task or On hand) is the
+    // conversation of the partner shown last; the list of partners opens only from its own control
+    // (the others' faces), the edge swipe or #partners.
+    if (r.name === "conv") this.partnersOpen = false;
     this.route = r;
     if (r.name !== "conv") this.markRead();
     if (r.name === "task") this.history(r.id);
@@ -2821,6 +3061,9 @@ class AppState {
 
   /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification), #settings. */
   fromHash(hash = location.hash) {
+    // D548: a hash other than #partners never lands on the list of partners (the browser's back, a
+    // push, a link): the list is no page of its own, so back never bounces into it.
+    if (hash !== "#partners") this.partnersOpen = false;
     // D497: a push about another partner's own question names it first: #p=<partner>/d=<id>.
     const pm = /^#p=([^/]{1,64})\/(.+)$/.exec(hash);
     if (pm) {
@@ -2902,6 +3145,10 @@ class AppState {
    */
   history(id: string, force = false) {
     const t = this.S.tasks.get(id);
+    // D543: a task opened lately reads from its kept window at once (the link down, or before the
+    // home's own answer lands); the home's history replaces it when it comes.
+    this.openedLately(id);
+    if (!t?.historyLoaded) void this.hydrateTask(id);
     if (!this.S.welcomed) return;
     // D320: its session index first (all of it, or from its last turn after a new socket).
     if (!t?.indexPending && (!t?.index || t.indexStale)) {
@@ -2913,6 +3160,42 @@ class AppState {
     if (!force && (this.historyAsked.has(id) || t?.historyLoaded) && !t?.histStale) return this.windowStep(id);
     this.historyAsked.add(id);
     this.askHistory(id, 0);
+  }
+
+  /** D543: the tasks opened on this page, the newest first (their windows are kept with the glance). */
+  private opened: string[] = [];
+  private openedLately(id: string) {
+    if (this.opened[0] === id) return;
+    this.opened = [id, ...this.opened.filter((x) => x !== id)].slice(0, 6);
+  }
+  private hydrated = new Set<string>();
+  /** D543: a kept window, applied as the pages the store already takes, marked stale so the home is asked again. */
+  async hydrateTask(id: string) {
+    if (this.hydrated.has(id) || !this.glanceDevice) return;
+    this.hydrated.add(id);
+    const w = await this.taskWins.get(this.glanceDevice, id);
+    const t = this.S.tasks.get(id);
+    if (!w || t?.historyLoaded) return;
+    this.S.apply({ t: "task_history", taskId: id, events: w.events, more: true });
+    const now = this.S.task(id);
+    now.histStale = true;
+    if (w.index && !now.index) this.S.apply({ t: "task_index", taskId: id, index: w.index }), (now.indexStale = true);
+    this.changed();
+  }
+  /** D543: keeps the windows of the tasks opened lately (with the glance: a moment after it settles, and on hide). */
+  private keptWinAt = new Map<string, number>();
+  private keepTaskWindows(now = false) {
+    if (!this.glanceDevice) return;
+    for (const id of this.opened) {
+      const t = this.S.tasks.get(id);
+      if (!t?.historyLoaded || !t.events.length) continue;
+      // A task at work changes all the time: its window is written at most every 30 s (and on hide).
+      const sig = t.version;
+      if (!now && (this.keptWinAt.get(id) ?? 0) > Date.now() - 30_000) continue;
+      if (this.keptWinAt.get(`${id}#v`) === sig) continue;
+      this.keptWinAt.set(id, Date.now()).set(`${id}#v`, sig);
+      void this.taskWins.keep({ device: this.glanceDevice, taskId: id, events: t.events, ...(t.index ? { index: t.index } : {}), at: Date.now() });
+    }
   }
 
   private askHistory(id: string, beforeSeq: number) {
@@ -3008,13 +3291,129 @@ class AppState {
   sendWords(text: string) {
     text = text.trim();
     if (!text) return;
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     this.pending.push({ clientId, text });
     this.thinkingSince = Date.now();
     this.markRead();
-    this.send({ t: "send", text, clientId });
+    this.sendKept({ t: "send", text, clientId });
     haptic("light");
     this.changed();
+  }
+
+  /**
+   * D543: a message to the partner or a task: written to the outbox (outbox.ts) first, so it
+   * survives the page, then sent if the link is up. After every welcome what the home hasn't
+   * echoed or acked goes again (core dedupes by clientId); its echo takes it out of the outbox.
+   */
+  sendKept(f: Extract<ClientFrame, { t: "send" } | { t: "task_send" }>, quote?: Replying) {
+    const device = this.glanceDevice || "local";
+    if (f.t === "send")
+      this.outbox.put({ kind: "send", device, persona: this.S.persona || this.partnerShown, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.reply ? { reply: f.reply } : {}), ...(quote ? { quote: { from: quote.from, quote: quote.quote, seq: quote.seq } } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
+    else if (f.clientId) this.outbox.put({ kind: "task_send", device, taskId: f.taskId, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.mode ? { mode: f.mode } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
+    this.send(f);
+  }
+
+  /** D543: a card's answer that is safe to apply late (the home still checks the card is open). */
+  private safeLate(d: DecisionState | undefined, option: "go" | "hold" | "reply"): boolean {
+    // D340: a Go that deletes something is never sent late: the person looks again.
+    if (option === "go" && d && destructiveChoice(d.question, d.goLabel)) return false;
+    return true;
+  }
+
+  /** D543: a tap that can't wait for the link: the card stays open, and one toast says why. */
+  private askAgainLater() {
+    haptic("warning");
+    this.toast(this.L.t("conn.ask.again", this.linkHome()));
+    this.changed();
+  }
+
+  /** D543: the link is up and the home has said welcome: a tap now reaches it now. */
+  linkUp(): boolean {
+    return this.status === "connected" && this.S.welcomed;
+  }
+
+  /**
+   * D543: after a welcome, what the outbox holds that this page hasn't sent again already (kept
+   * from an earlier page): messages for the partner this socket speaks for and for tasks, and the
+   * answers still young enough to send. An answer kept too long opens its card again.
+   */
+  private flushOutbox(sent: Set<string>) {
+    const now = Date.now();
+    const persona = this.S.persona || this.partnerShown;
+    const stale: string[] = [];
+    // A card shown as answered whose answer isn't kept (a payment, a key, a call, lost with the old
+    // socket) opens again: the replay closes it if the home did get it.
+    const kept = new Set(this.outbox.items.flatMap((i) => (i.kind === "decide" ? [i.decisionId] : [])));
+    for (const d of this.S.decisions.values()) if (d.pending && !d.resolved && !kept.has(d.decisionId)) d.pending = undefined;
+    for (const i of this.outbox.items) {
+      if (i.kind === "decide") {
+        if (now - i.at > ANSWER_TTL_MS) {
+          stale.push(i.decisionId);
+          continue;
+        }
+        const d = this.S.decisions.get(i.decisionId);
+        if (d && !d.resolved && !d.pending) d.pending = i.option;
+        this.send(frameOf(i));
+        continue;
+      }
+      if (sent.has(i.clientId)) continue;
+      if (i.kind === "send" && i.persona !== persona) continue; // another partner's: when its conversation is shown
+      this.send(frameOf(i));
+    }
+    if (stale.length) {
+      this.outbox.dropAnswer(stale);
+      for (const id of stale) {
+        const d = this.S.decisions.get(id);
+        if (d && !d.resolved) d.pending = undefined;
+      }
+      this.toast(this.L.t("conn.answer.stale"));
+    }
+  }
+
+  /** D543: what the home now has (an echo, a task's "sent", a card's resolution) leaves the outbox. */
+  private settleOutbox(f: ServerFrame) {
+    if (!this.outbox.items.length) return;
+    if (f.t === "sent" && f.clientId) return void this.outbox.dropClient([f.clientId]);
+    if (f.t !== "events") return;
+    const ids: string[] = [];
+    const answered: string[] = [];
+    for (const e of f.events) {
+      if (e.kind === "user_msg") {
+        const c = (e.body as { clientId?: string }).clientId;
+        if (c) ids.push(c);
+      } else if (e.kind === "task_event") {
+        const c = (e.body as { clientId?: string }).clientId;
+        if (c) ids.push(c);
+      } else if (e.kind === "decision_resolved") answered.push((e.body as { decisionId: string }).decisionId);
+    }
+    this.outbox.dropClient(ids);
+    this.outbox.dropAnswer(answered);
+  }
+
+  /**
+   * D543: what an earlier page left in the outbox shows again at once, with its pending mark: the
+   * messages for the partner shown here, a task's messages on its task, an answer on its card.
+   */
+  restoreOutbox() {
+    const persona = this.S.persona || this.partnerShown;
+    const have = new Set(this.pending.map((p) => p.clientId));
+    for (const i of this.outbox.items) {
+      if (i.kind === "send") {
+        if (i.persona !== persona || have.has(i.clientId)) continue;
+        have.add(i.clientId);
+        this.pending.push({ clientId: i.clientId, text: i.text, ...(i.media?.length ? { media: i.media } : {}), ...(i.refs?.length ? { refs: i.refs } : {}), ...(i.quote ? { reply: { ...i.quote, ...(i.reply?.findId ? { findId: i.reply.findId } : {}), ...(i.reply?.part ? { part: i.reply.part } : {}), ...(i.reply?.ask !== undefined ? { ask: i.reply.ask } : {}) } } : {}) });
+      } else if (i.kind === "task_send") {
+        const t = this.S.task(i.taskId);
+        if (t.sends.some((s) => s.clientId === i.clientId)) continue;
+        const sd = this.S.addSend(i.taskId, i.text, i.at, i.clientId);
+        if (i.media?.length) sd.media = i.media;
+        if (i.mode) sd.mode = i.mode;
+        if (i.refs?.length) sd.refs = i.refs;
+      } else {
+        const d = this.S.decisions.get(i.decisionId);
+        if (d && !d.resolved && !d.pending) d.pending = i.option;
+      }
+    }
   }
 
   sendMessage(text: string, force = false): boolean {
@@ -3027,10 +3426,12 @@ class AppState {
       return false;
     }
     this.held = undefined;
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     const reply = this.replying;
     this.replying = undefined;
-    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}) };
+    const refs = liveRefs(text, this.refsFor.get("") ?? []);
+    this.refsFor.delete("");
+    const p: AppState["pending"][number] = { clientId, text, ...(pics.length ? { pics } : {}), ...(reply ? { reply } : {}), ...(refs.length ? { refs } : {}) };
     noteFlights(pics);
     this.picks.delete("");
     this.pending.push(p);
@@ -3038,7 +3439,7 @@ class AppState {
     this.markRead();
     // D206: the pictures went up when they were picked; one still going holds the message (with its words).
     const want = reply ? { reply: wantOf(reply) } : {};
-    this.afterUpload(pics, (media) => this.send({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want }), () => ((p.failed = true), this.changed()));
+    this.afterUpload(pics, (media) => this.sendKept({ t: "send", text, clientId, ...(media.length ? { media } : {}), ...want, ...(refs.length ? { refs } : {}) }, reply), () => ((p.failed = true), this.changed()));
     this.changed();
     return true;
   }
@@ -3183,9 +3584,12 @@ class AppState {
       return false;
     }
     this.held = undefined;
-    const clientId = `t${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("t");
     const sd = this.S.addSend(id, text, Date.now(), clientId);
     if (pics.length) noteFlights(pics), (sd.pics = pics), this.picks.delete(id);
+    const refs = liveRefs(text, this.refsFor.get(id) ?? []);
+    this.refsFor.delete(id);
+    if (refs.length) sd.refs = refs;
     const task = this.S.tasks.get(id);
     const busy = !!task && ["working", "queued"].includes(attention(task));
     const mode = queue ? "queue" : busy ? "steer" : undefined;
@@ -3196,7 +3600,7 @@ class AppState {
         (media) => {
           sd.failed = undefined;
           if (media.length) sd.media = media;
-          this.send({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}) });
+          this.sendKept({ t: "task_send", taskId: id, text, clientId, ...(media.length ? { media } : {}), ...(mode ? { mode } : {}), ...(refs.length ? { refs } : {}) });
         },
         () => ((sd.failed = this.L.t("media.failed")), (sd.retry = () => (pics.forEach((p) => p.state === "failed" && void this.lift(p)), (sd.failed = undefined), go(), this.changed())), this.changed()),
       );
@@ -3355,6 +3759,8 @@ class AppState {
   }
   /** D191: Go on a 付款 / Pay card, with the card's security code (it goes with this Go only). */
   pay(id: string, cvc: string) {
+    // D543: a payment carries the card's security code: never kept to send late. With the link down it asks again.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(id);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -3365,6 +3771,8 @@ class AppState {
   }
   /** D233: 保存，继续 / Save and continue on a key card: the key goes with this Go only (kept unless once). */
   giveKey(id: string, key: string, once: boolean) {
+    // D543: a key is never written down to wait for the link: with it down, this asks again later.
+    if (!this.linkUp()) return this.askAgainLater();
     const d = this.S.decisions.get(id);
     if (d) d.pending = "go";
     if (navigator.vibrate) navigator.vibrate(8);
@@ -3372,6 +3780,24 @@ class AppState {
     this.markRead();
     this.send({ t: "decide", decisionId: id, option: "go", key, once });
     this.changed();
+  }
+  /** D539: Copy on a 复制密钥 card: the copy runs at the home; the card says what came of it. */
+  copyKey(id: string) {
+    const d = this.S.decisions.get(id);
+    if (d) d.pending = "go";
+    this.S.keyCopies.delete(id);
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go" });
+    this.changed();
+  }
+  /** D539: the keys Ducter keeps on a computer (asked fresh each time the list is shown). */
+  askKeptKeys(device: string) {
+    this.send({ t: "kept_keys", device });
+  }
+  removeKeptKey(device: string, env: string) {
+    this.send({ t: "kept_key_remove", device, env });
   }
   /** D233: 让任务向我要密钥 / Let tasks ask me for keys. */
   setAskKeys(on: boolean) {
@@ -3381,7 +3807,11 @@ class AppState {
   }
   decide(id: string, option: "go" | "hold" | "reply", text?: string) {
     const d = this.S.decisions.get(id);
+    // D543: with the link down, an answer that is safe late waits in the outbox (its card shows it
+    // given); one that isn't (a Go that deletes something) asks again once the link is back.
+    if (!this.linkUp() && !this.safeLate(d, option)) return this.askAgainLater();
     if (d) d.pending = option;
+    this.outbox.put({ kind: "decide", device: this.glanceDevice || "local", decisionId: id, option, ...(text ? { text } : {}), at: Date.now() });
     this.replyOpen.delete(id);
     if (navigator.vibrate) navigator.vibrate(8);
     haptic(option === "go" ? "success" : "light");
@@ -3393,12 +3823,12 @@ class AppState {
   /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
   sendLeftDraft(d: DecisionState, text: string) {
     this.replyDraft.delete(d.decisionId);
-    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const clientId = this.cid("p");
     const reply: Replying | undefined = d.seq ? { seq: d.seq, from: "partner", quote: (d.said || d.question).slice(0, 120) } : undefined;
     this.pending.push({ clientId, text, ...(reply ? { reply } : {}) });
     this.thinkingSince = Date.now();
     this.markRead();
-    this.send({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) });
+    this.sendKept({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) }, reply);
     haptic("light");
     this.changed();
   }
@@ -3430,6 +3860,16 @@ class AppState {
     const t = this.S.tasks.get(id);
     if (t && (action === "merge" || action === "open_pr")) t.acting = action;
     this.send({ t: "task_action", taskId: id, action });
+    this.changed();
+  }
+
+  /** D521: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */
+  bgStopping = new Map<string, number>();
+  stopBackground(id: string, job: string) {
+    const k = `${id}|${job}`;
+    if (this.bgStopping.has(k)) return;
+    this.bgStopping.set(k, Date.now());
+    this.send({ t: "task_action", taskId: id, action: "stop_background", job });
     this.changed();
   }
 
@@ -3542,7 +3982,8 @@ class AppState {
   /** The partner owes an answer: the user's last message has no ack or reply after it. */
   thinking(): boolean {
     // A message held for a picture that didn't go up isn't with the partner yet (D206).
-    if (this.pending.some((p) => !p.failed)) return true;
+    // D543: not while the link is down: the message waits on this device (it says so), nobody thinks yet.
+    if (this.pending.some((p) => !p.failed)) return this.link() === "up";
     // D435: nobody can answer until its own agent is back: the messages wait, it isn't thinking (the header says when).
     if (this.brainNow?.held?.waits) return false;
     // D380: a quick web look is out: its line stays under the words that named it, until the answer.
@@ -3557,7 +3998,8 @@ class AppState {
   }
 
   presence(): "idle" | "working" | "needsyou" | "done" | "napping" | "waiting" {
-    if (this.status === "offline") return "napping";
+    // D543: a drop too short to say doesn't put the partner to sleep either.
+    if (this.status === "offline" && this.link() !== "up") return "napping";
     if (this.S.openDecisions().length) return "needsyou";
     const b = this.S.board();
     if (b.lanes[LANE.working]!.length || this.thinking()) return "working";
@@ -3568,6 +4010,58 @@ class AppState {
       return "done";
     }
     return "idle";
+  }
+
+  // ---------- the link to the home (D532, the web's D520) ----------
+
+  /** What this device remembers of its home's answers (link.ts). */
+  linkMemo = memoStore(typeof localStorage === "undefined" ? undefined : localStorage);
+  /** The link as the person meets it now. */
+  link(now = Date.now()): LinkState {
+    return linkState(this.status, this.conn?.downSince ?? 0, now);
+  }
+  /** The home in the link's words: its own name when it is elsewhere ("hel"), else Ducter. */
+  linkHome(): string {
+    if (this.me?.via === "local") return "Ducter";
+    const name = this.homeName || this.linkMemo.get().home;
+    if (name) return name;
+    const h = this.base?.hostname ?? "";
+    return h && !/^(localhost|127\.|\[?::1\]?$)/.test(h) ? h : "Ducter";
+  }
+  /** The home is another computer than this page's (a phone, or a browser elsewhere). */
+  linkElsewhere(): boolean {
+    return this.me?.via !== "local";
+  }
+  /** Try now: a fresh dial, and a fresh question to the home if it refuses. */
+  linkRetry() {
+    this.conn?.retryNow();
+    this.onLinkRetry?.();
+    this.changed();
+  }
+  /** main.tsx: asks the home whether this device still stands there (Try now asks at once). */
+  onLinkRetry?: () => void;
+  /** main.tsx: a socket was refused before its welcome. */
+  onLinkRefused?: () => void;
+  /** main.tsx: the home said welcome (it learns once whether the home can say a standing). */
+  onLinkHeard?: () => void;
+  /** main.tsx: 再连一次, the pair screen over the app (a home whose key changed: no signature reaches it). */
+  onLinkAgain?: () => void;
+  private linkTimer?: ReturnType<typeof setTimeout>;
+  /** A quiet loss becomes a plain one by itself: one redraw when LONG_OUTAGE_MS is up. */
+  private linkTick() {
+    clearTimeout(this.linkTimer);
+    const down = this.conn?.downSince ?? 0;
+    if (this.status === "connected" || !down) return;
+    // D543: one redraw when a quiet drop becomes worth saying, one when it becomes a long one.
+    const quiet = LINK_QUIET_MS - (Date.now() - down);
+    const left = LONG_OUTAGE_MS - (Date.now() - down);
+    if (quiet > 0) this.linkTimer = setTimeout(() => (this.changed(), this.linkTick()), quiet + 20);
+    else if (left > 0) this.linkTimer = setTimeout(() => this.changed(), left + 20);
+  }
+
+  /** D543: the page shows something it kept (a last screen, a conversation): readable while the link is down. */
+  keptScreen(): boolean {
+    return this.fromGlance || this.S.channel.length > 0 || !!this.S.onHand;
   }
 
   /** 今天做完 / Done today over the whole board, the same count On hand and the menu bar say (D310). */
@@ -3581,9 +4075,12 @@ class AppState {
 
   /** The counts line, and where it leads (D270): link is false while it says connecting or
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
-  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
+  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number; needs?: string } {
     const L = this.L;
-    if (this.status === "offline") return { words: L.t("conn.offline"), link: false, filter: 0 };
+    // D532: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
+    const ls = this.link();
+    if (ls === "back") return { words: L.t("conn.reconnecting", this.linkHome()), link: false, filter: 0 };
+    if (ls === "lost") return { words: L.t("conn.offline", this.linkHome()), link: false, filter: 0 };
     // D209: painted from the last screen, the line it showed then stands until the home answers
     // (a second at most), rather than "connecting" on every open.
     if (!this.S.welcomed && !this.fromGlance) return { words: L.t("conn.connecting"), link: false, filter: 0 };
@@ -3609,7 +4106,7 @@ class AppState {
     const done = doneTodayOf(b.lanes[LANE.done]!);
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
-    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
+    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0, ...(needs ? { needs: L.t("header.needs", needs) } : {}) };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

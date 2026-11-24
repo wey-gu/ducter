@@ -79,10 +79,10 @@ function SignInForm({ item, done }: { item?: SavedView; done: () => void }) {
       <Field id="af-pw" label={t("af.signin.password")} value={pw} onInput={setPw} type="password" auto="new-password" placeholder={item ? t("af.keep") : ""} />
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!site.trim() || !user.trim() || (!item && !pw)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -106,10 +106,10 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
       <div class="small sub">{t("af.card.nocvc")}</div>
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!name.trim() || !m || (!item && !num)} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.label} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.label} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -130,10 +130,10 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
       <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? t("af.keep.with", item.hint ?? t("af.key.kept")) : ""} />
       <AfError />
       <div class="row">
-        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} disabled={!envOk || (!item && !value.trim())} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
+        <span class="grow" />
+        {item && (sure ? <DangerButton label={t("af.remove.go")} about={item.name} onClick={() => A.savedRemove(item.id, done)} /> : <Btn kind="text" label={t("af.remove")} about={item.name} onClick={() => setSure(true)} />)}
       </div>
     </div>
   );
@@ -184,9 +184,8 @@ function DetailsForm({ details, done }: { details: DetailView[]; done: () => voi
       })}
       <AfError />
       <div class="row">
-        <span class="grow" />
-        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
         <Btn kind="primary" label={t("af.save")} onClick={save} />
+        <Btn kind="secondary" label={t("af.cancel")} onClick={done} />
       </div>
     </div>
   );
@@ -455,9 +454,8 @@ export function PayBody({ d, compact }: { d: DecisionState; compact?: boolean })
           )}
           <div class="small sub">{t("pay.why")}</div>
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("pay.hold")} about={p.site} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t("pay.go", `${p.currency} ${p.amount}`)} about={p.site} disabled={p.needsCvc && !ok} onClick={() => A.pay(d.decisionId, cvc)} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("pay.hold")} about={p.site} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         </>
       ) : (
@@ -487,9 +485,8 @@ export function FillBody({ d, compact }: { d: DecisionState; compact?: boolean }
       <div class="small sub">{t(f.kind === "signin" ? "fill.why.signin" : "fill.why.detail")}</div>
       {open ? (
         <div class={compact ? "tray" : "btns decide"}>
-          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("fill.hold")} about={f.site} onClick={() => A.decide(d.decisionId, "hold")} />
-          {compact && <span class="grow" />}
           <Btn kind="primary" size={compact ? "sm" : undefined} label={t("fill.go")} about={f.site} onClick={() => A.decide(d.decisionId, "go")} />
+          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("fill.hold")} about={f.site} onClick={() => A.decide(d.decisionId, "hold")} />
         </div>
       ) : (
         <div class={compact ? "said" : "resolved"} role="status">
@@ -549,9 +546,8 @@ export function KeyBody({ d, compact }: { d: DecisionState; compact?: boolean })
           <Seg label={t("key.title", task)} value={once ? "once" : "keep"} options={[{ v: "keep", label: t("key.remember") }, { v: "once", label: t("key.once") }]} onPick={(v) => setOnce(v === "once")} />
           <div class="small sub">{t("key.note")}</div>
           <div class={compact ? "tray" : "btns decide"}>
-            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("key.hold")} about={k.name} onClick={() => A.decide(d.decisionId, "hold")} />
-            {compact && <span class="grow" />}
             <Btn kind="primary" size={compact ? "sm" : undefined} label={t(once ? "key.go.once" : "key.go")} about={k.name} disabled={!value.trim()} onClick={() => (A.giveKey(d.decisionId, value, once), setValue(""))} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("key.hold")} about={k.name} onClick={() => A.decide(d.decisionId, "hold")} />
           </div>
         </>
       ) : (
@@ -564,3 +560,105 @@ export function KeyBody({ d, compact }: { d: DecisionState; compact?: boolean })
 }
 
 export type { SavedInput };
+
+// ---------- D539: 复制密钥 / Copy a key ----------
+
+const computersSaid = (names: string[]) => (names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(t("acct.sep"))}${t("copykey.and")}${names.at(-1)}`);
+
+/** D539: the card's title: 把 Mac 上的 X 复制到 hel 和 haswell？ / Copy X from Mac to hel and haswell? */
+export function copyKeyTitle(d: DecisionState): string {
+  const k = d.copyKey!;
+  return t("copykey.title", k.env, k.from.name, computersSaid(k.to.map((x) => x.name)));
+}
+
+/** D539: 复制密钥 / Copy a key: what, from where to where, the note, then 先不 · 复制. No default, no field: the key is never typed. */
+export function CopyKeyBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
+  const k = d.copyKey!;
+  const run = A.S.keyCopies.get(d.decisionId);
+  // Nothing went (the copy ran and every computer said no): the card is open again, saying why.
+  const failedAll = !!run && !run.to.length && !d.resolved;
+  const open = (!d.resolved && !d.pending) || failedAll;
+  const copying = !d.resolved && d.pending === "go" && !run;
+  const why = (w: string) => t(`copykey.why.${["offline", "old", "gone"].includes(w) ? w : "failed"}`);
+  return (
+    <>
+      {!compact && <div class="q">{copyKeyTitle(d)}</div>}
+      <dl class="pay-facts key-facts">
+        <dt>{t("key.env")}</dt>
+        <dd>
+          <code class="af-env">{k.env}</code>
+        </dd>
+        {k.name !== k.env && (
+          <>
+            <dt>{t("key.what")}</dt>
+            <dd>{k.name}</dd>
+          </>
+        )}
+        <dt>{t("copykey.from")}</dt>
+        <dd>{k.from.name}</dd>
+        <dt>{t("copykey.to")}</dt>
+        <dd>{computersSaid(k.to.map((x) => x.name))}</dd>
+        {k.why && (
+          <>
+            <dt>{t("key.why")}</dt>
+            <dd class="key-why">{k.why}</dd>
+          </>
+        )}
+      </dl>
+      {run?.failed?.map((f) => (
+        <div class="small warn" role="status" key={f.name}>
+          {t("copykey.failed", f.name, why(f.why))}
+        </div>
+      ))}
+      {open ? (
+        <>
+          <div class="small sub">{t("copykey.note")}</div>
+          <div class={compact ? "tray" : "btns decide"}>
+            {/* D482: the action first, then 先不 as the quieter one. */}
+            <Btn kind="primary" size={compact ? "sm" : undefined} label={t(failedAll ? "copykey.retry" : "copykey.go")} about={k.env} onClick={() => A.copyKey(d.decisionId)} />
+            <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("copykey.hold")} about={k.env} onClick={() => A.decide(d.decisionId, "hold")} />
+            {compact && <span class="grow" />}
+          </div>
+        </>
+      ) : (!d.resolved && !d.pending) || d.resolved?.by === "ended" ? null : (
+        <div class={compact ? "said" : "resolved"} role="status">
+          {copying ? t("copykey.copying") : d.resolved?.option === "go" || d.pending === "go" ? t("copykey.done", computersSaid(run?.to.length ? run.to : k.to.map((x) => x.name))) : d.resolved?.option === "hold" || d.pending === "hold" ? t("copykey.held") : ""}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** D539: Ducter 存着的密钥 / Keys Ducter keeps, on one computer's card: names only, each removable. */
+export function KeptKeys({ device }: { device: string }) {
+  const [sure, setSure] = useState("");
+  useEffect(() => A.askKeptKeys(device), [device]);
+  const f = A.keptKeys.get(device);
+  if (!f) return null;
+  if (!f.ok) return <div class="small">{t(f.why === "offline" ? "kept.offline" : f.why === "unsupported" ? "kept.old" : "kept.failed")}</div>;
+  return (
+    <div class="dev-web kept-keys">
+      <div class="small">{t("kept.lede")}</div>
+      {!f.keys.length && <div class="small sub">{t("kept.none")}</div>}
+      {f.keys.map((k) => (
+        <div class="dev-site" key={k.env}>
+          <span class="af-mark af-key" aria-hidden="true">
+            <KeyGlyph />
+          </span>
+          <div class="dev-site-what">
+            <div class="dev-site-name">{k.name}</div>
+            <div class="small">
+              <code class="af-env">{k.env}</code>
+            </div>
+            {k.from && <div class="small">{t("kept.from", k.from)}</div>}
+          </div>
+          {sure === k.env ? (
+            <DangerButton label={t("kept.remove.sure")} about={k.name} onClick={() => (setSure(""), A.removeKeptKey(device, k.env))} />
+          ) : (
+            <Btn kind="text" size="sm" label={t("kept.remove")} about={k.name} onClick={() => setSure(k.env)} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

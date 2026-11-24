@@ -7,7 +7,7 @@ import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_K
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, roomFor, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D395: the levels tried, in order, when the model doesn't offer the one asked for in words. */
@@ -21,6 +21,8 @@ import { taskStream, type CoreRegistry } from "./registry.ts";
 import { neverFor, rulesOut, type RuleWork, type RulesStore } from "./rules.ts";
 import type { SaidStore } from "./said.ts";
 import type { SettingsStore } from "./settings.ts";
+import type { Partners } from "./partners.ts";
+import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 import type { AccountUsage } from "@ducter/protocol";
 import type { AgentLimit } from "./agent-limits.ts";
 import { overReserve, sameModelRoutes } from "./routes.ts";
@@ -34,6 +36,10 @@ export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
   choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476: the person's word on where it runs */ bound?: TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
+  /** D538: whether that computer ("local" the home) has room for heavy work now (a task waiting for room asks). */
+  room(device: string): Promise<boolean>;
+  /** D538: heavy tasks at work or starting now, per computer ("local" the home). */
+  heavyNow(): Map<string, number>;
   /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
   candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }, opts?: { every?: true }): Promise<Candidate[]>;
@@ -79,7 +85,8 @@ export function createLoadout(o: {
   /** D247: the person's Android app is connected without 用这台手机: a phone task opens and its card offers to turn it on. */
   handsetOffer?: () => string | undefined;
   /** D503: the agent the partner thinks with and its account on the home as last read (no read here). */
-  reserve?: () => { harness: string; usage?: AccountUsage } | undefined;
+  /** D503: the agent the partner thinks with and its account on the home as last read (no read here); D536: one per agent any partner thinks with. */
+  reserve?: () => { harness: string; usage?: AccountUsage } | { harness: string; usage?: AccountUsage }[] | undefined;
   /** D503: every agent's limit per computer, as last known. */
   limitsNow?: () => AgentLimit[];
 }): Loadout {
@@ -98,7 +105,9 @@ export function createLoadout(o: {
     const f = await frameOf(v);
     if (!f) return undefined;
     clients = f.reach?.clients;
-    const comps = computersOf(f.devices, o.sites);
+    // D538: each computer's heavy tasks at work or starting now, beside its measured memory.
+    const heavy = heavyOn();
+    const comps = computersOf(f.devices, o.sites).map((c) => (heavy.get(c.id) ? { ...c, heavyNow: heavy.get(c.id)! } : c));
     const which = whichPhone(needs);
     // D251: Ducter's own phone only where it is on (用手机); the person's phone never stands in.
     if (which === "ducter") return comps;
@@ -110,6 +119,21 @@ export function createLoadout(o: {
     // D247: no phone anywhere, but their Android app is here: the task opens, and offers it there.
     if (!comps.some((c) => c.phone) && o.handsetOffer?.()) return comps.map((c) => ({ ...c, phone: true }));
     return comps;
+  };
+  /**
+   * D538: heavy tasks (the partner's needs.heavy, kept on the task's own task_open) at work or about
+   * to start, per computer ("local" for the home). A task waiting for room isn't one of them.
+   */
+  const heavyOn = (): Map<string, number> => {
+    const n = new Map<string, number>();
+    for (const c of o.tasks.list?.() ?? []) {
+      if (c.attention !== "working" && c.attention !== "queued") continue;
+      const open = o.log.read({ stream: taskStream(c.taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      if (!open?.needs?.heavy) continue;
+      const d = ("device" in c.place && c.place.device) || "local";
+      n.set(d, (n.get(d) ?? 0) + 1);
+    }
+    return n;
   };
   /** A computer the user named in the place (not the home's "local" default), for a place that can go anywhere. */
   const pinOf = (place?: Place) => {
@@ -168,7 +192,8 @@ export function createLoadout(o: {
    * agent and model signed in to another account elsewhere when there is one; else it stays.
    */
   const keepForPartner = async <P extends BodyChoice>(pick: P, work: Parameters<Loadout["choose"]>[0], comps: Computer[] | undefined): Promise<P> => {
-    const r = o.reserve?.();
+    const rs = o.reserve?.();
+    const r = (Array.isArray(rs) ? rs : rs ? [rs] : []).find((x) => x.harness === pick.harness);
     if (!r || !comps || comps.length < 2) return pick;
     const onHome = pick.home ?? (!pick.deviceId || comps.find((c) => c.id === pick.deviceId)?.home === true);
     if (!overReserve({ harness: pick.harness, partnerHarness: r.harness, onHome, usage: r.usage })) return pick;
@@ -181,6 +206,14 @@ export function createLoadout(o: {
 
   const api: Loadout = {
     computers,
+    heavyNow: () => heavyOn(),
+
+    async room(device) {
+      const comps = await computers();
+      const c = comps?.find((x) => x.id === device || (device === "local" && x.home));
+      // Gone from the frame, or no frame at all: no opinion; the task starts and its computer says.
+      return !c || (c.state === "awake" && roomFor(c));
+    },
 
     stop() {
       stopped = true;
@@ -477,11 +510,11 @@ export function createLoadout(o: {
 }
 
 /** The partner's rule tools: save a rule the person agreed to, list the rules (role "partner"). */
-export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
+export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore, o?: { computers?: () => { id: string; name: string; home: boolean }[] }) {
   mcp.register(
     "partner",
     "rule_save",
-    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. The user removes rules on the Partner page; never remove one yourself.",
+    "The user's standing rules about all their work: save one for who does which kind of work, for every task of that kind from now on (shown on the Partner page as Your rules); one thing Ducter looks after is changed with keep_change, not here. Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. A computer for some work (\"验证的活多放 haswell\", \"hel 别跑浏览器\"): place, device, for; no harness. The user removes rules on the Partner page; never remove one yourself.",
     {
       type: "object",
       properties: {
@@ -493,11 +526,24 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
         kind: { type: "array", items: { type: "string", enum: [...WORK_KINDS] }, description: "The task_open kinds it covers (订酒店、看机票这类: errand)" },
         never: { type: "boolean", description: "NOT this agent (or model) for it" },
         no_second_look: { type: "boolean", description: "这类不用复查: no other AI looks this kind's results over first (kind; none: all work); no harness" },
+        place: { type: "string", enum: ["prefer", "avoid"], description: "More (prefer) or less (avoid) of it on device" },
+        for: { type: "string", enum: ["heavy", "web", "all"], description: "With place: heavy, web or all work" },
       },
       required: ["text"],
     },
-    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown; no_second_look?: unknown }) => {
+    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown; no_second_look?: unknown; place?: unknown; for?: unknown }) => {
       try {
+        // D538: which computer gets which work: a placement rule, the person's own, shared by every partner.
+        if (a.place === "prefer" || a.place === "avoid") {
+          const device = typeof a.device === "string" ? a.device.trim() : "";
+          if (!device) return { ok: false, error: "A computer rule names its computer: device, as [devices] names it." };
+          const comps = o?.computers?.();
+          const hit = comps?.find((c) => c.name.toLowerCase() === device.toLowerCase() || c.id === device || (c.home && device === "local"));
+          if (comps && !hit) return { ok: false, error: `No computer called "${device}". The [devices] line lists them: ${comps.map((c) => c.name).join(", ")}.` };
+          const kinds = (Array.isArray(a.kind) ? a.kind.map(String) : typeof a.kind === "string" ? [a.kind] : []).filter(isWorkKind);
+          const r = rules.addWhere({ text: String(a.text ?? ""), device: hit?.name ?? device, ...(a.place === "avoid" ? { avoid: true } : {}), ...(a.for === "heavy" ? { heavy: true } : a.for === "web" ? { web: true } : {}), ...(kinds.length ? { kinds } : {}), ...(Array.isArray(a.match) ? { match: a.match.map(String) } : {}) });
+          return { ok: true, rule: r, note: `Saved: it shows on ${r.device}'s card (About this computer) and on the Partner page. Say it back in one short line in their words.` };
+        }
         // D499 (retiring D437's word reader): the partner keeps 这类不用复查 itself; code keeps only what it names.
         if (a.no_second_look === true) {
           const kinds = (Array.isArray(a.kind) ? a.kind.map(String) : typeof a.kind === "string" ? [a.kind] : []).filter(isWorkKind);
@@ -745,26 +791,43 @@ export function registerNewTasksTool(mcp: CoreMcpHub, o: { settings: SettingsSto
  * model matched to its agent's live list on the home. It takes effect from the person's next
  * message (the session ends and the next one starts on it, partner.ts runKey).
  */
-export function registerBrainSwitchTool(mcp: CoreMcpHub, o: { settings: SettingsStore; models?: ModelCatalog; home: () => Pick<DeviceHarness, "harness" | "loggedIn">[] | undefined }) {
+export function registerBrainSwitchTool(mcp: CoreMcpHub, o: { settings: SettingsStore; models?: ModelCatalog; home: () => Pick<DeviceHarness, "harness" | "loggedIn">[] | undefined; partners?: Partners }) {
   mcp.register(
     "partner",
     "brain_switch",
-    "When the user asks YOU to think or talk with another model or AI agent (\"用 astra 跟我聊\", \"switch yourself to Opus\"); a task's model is task_switch. model: as the user said it (matched to the agent's own list). It takes effect from their next message. Call it first; after, one short line.",
+    "When the user asks a partner (you, or another by name: \"小玛用 Opus\") to think or talk with another model, AI agent or effort (\"用 astra 跟我聊\", \"switch yourself to Opus\"); a task's is task_switch. model: as said (matched to the agent's own list). partner: another's name; omit for yourself. same: back to the first partner's. Takes effect from their next message. Call it first; after, one short line.",
     {
       type: "object",
       properties: {
         model: { type: "string" },
         harness: { type: "string", enum: HARNESS_IDS.filter((h) => HARNESSES[h].partner), description: "Only to change the agent" },
+        effort: { type: "string", description: "Only if named" },
+        partner: { type: "string" },
+        same: { type: "boolean" },
       },
     },
-    async (a: { model?: unknown; harness?: unknown }) => {
+    async (a: { model?: unknown; harness?: unknown; effort?: unknown; partner?: unknown; same?: unknown }, ctx?: { persona?: string }) => {
       const home = o.home();
-      const cur = effectiveBrain(o.settings.get().brain, o.settings.brainChosen(), home);
+      // D536: whose brain: the partner named, else the caller. The first partner's is Settings.brain,
+      // the default every other partner follows until it has its own (partners.json).
+      const ps = o.partners?.on() ? o.partners : undefined;
+      const named = typeof a.partner === "string" && a.partner.trim() ? a.partner.trim() : "";
+      const who = named ? ps?.byName(named) : ps?.get(ctx?.persona ?? DEFAULT_PARTNER);
+      if (named && !who) return { ok: false, error: `No partner called "${named}". The user's partners: ${(ps?.list() ?? []).map((p) => p.name).join(", ") || "only you"}.` };
+      const other = who && who.id !== DEFAULT_PARTNER ? who : undefined;
+      const base = effectiveBrain(o.settings.get().brain, o.settings.brainChosen(), home);
+      if (a.same === true) {
+        if (!other) return { ok: false, error: "The first partner's is the default the others follow: say which model or agent instead." };
+        if (other.brain) o.partners!.set(other.id, { brain: null });
+        return { ok: true, partner: other.name, same: true, note: `Done: ${other.name} thinks with what the first partner does again (${harnessName(base.harness)}). One short line.` };
+      }
+      const cur = other?.brain ? { ...other.brain, auto: false } : base;
       const harness = typeof a.harness === "string" && a.harness ? a.harness : cur.harness;
       if (!isHarnessId(harness) || !HARNESSES[harness].partner) return { ok: false, error: `${harness} can't be what you think with.` };
       if (home && !home.find((x) => x.harness === harness)?.loggedIn) return { ok: false, error: `${harnessName(harness)} isn't signed in on the computer Ducter runs on. Say so in one line.` };
       const said = typeof a.model === "string" ? a.model.trim() : "";
-      if (!said && harness === cur.harness) return { ok: false, error: "Say which model or AI agent." };
+      const effortSaid = typeof a.effort === "string" ? a.effort.trim().toLowerCase() : "";
+      if (!said && !effortSaid && harness === cur.harness) return a.harness ? { ok: true, already: true, harness, note: "Already so: say it in one short line." } : { ok: false, error: "Say which model, AI agent or effort." };
       const list = await o.models?.get("local", harness, SWITCH_LIST_MS);
       let model: string | undefined;
       if (said) {
@@ -775,11 +838,28 @@ export function registerBrainSwitchTool(mcp: CoreMcpHub, o: { settings: Settings
           else return { ok: false, error: `${harnessName(harness)} has no model "${said}" here. It offers: ${r.none.join(", ")}.` };
         } else model = r.id;
       }
+      // A model said keeps no effort of the old one; an effort alone keeps the model.
+      if (!said && harness === cur.harness) model = cur.model;
+      let effort: string | undefined;
+      if (effortSaid) {
+        const e = checkEffort(harness, model, effortSaid, list);
+        if (!e.ok) return { ok: false, error: `Not set: ${e.why}. Say so in one line.` };
+        effort = effortSaid;
+      } else if (!said && harness === cur.harness) effort = cur.effort;
       const label = model ? (list?.find((m) => m.id === model)?.label ?? model) : undefined;
-      const named = { harness, ...(model ? { model, label } : {}) };
-      if (harness === cur.harness && model === cur.model && !cur.auto) return { ok: true, already: true, ...named, note: "Already so: say it in one short line." };
-      o.settings.set({ brain: { harness, ...(model ? { model } : {}) } });
-      return { ok: true, ...named, note: "Done: from the user's next message you think with it; your name, memory and this conversation stay. One short line, nothing about sessions." };
+      const shown = { ...(who && ps && ps.list().length > 1 ? { partner: who.name } : {}), harness, ...(model ? { model, label } : {}), ...(effort ? { effort } : {}) };
+      const brain = { harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
+      const mine = !named || who?.id === (ctx?.persona ?? DEFAULT_PARTNER);
+      if (other?.brain && harness === cur.harness && model === cur.model && effort === cur.effort) return { ok: true, already: true, ...shown, note: "Already so: say it in one short line." };
+      if (!other && harness === cur.harness && model === cur.model && effort === cur.effort && !cur.auto) return { ok: true, already: true, ...shown, note: "Already so: say it in one short line." };
+      if (other) {
+        const r = o.partners!.set(other.id, { brain });
+        if (!r.ok) return { ok: false, error: `Not set (${r.error}).` };
+        return { ok: true, ...shown, note: mine ? "Done: from the user's next message you think with it; your name, memory and this conversation stay. One short line, nothing about sessions." : `Done: ${other.name} thinks with it from its next message; its own memory and conversation stay. One short line.` };
+      }
+      o.settings.set({ brain });
+      const followers = (ps?.list() ?? []).filter((p) => p.id !== DEFAULT_PARTNER && !p.brain).map((p) => p.name);
+      return { ok: true, ...shown, ...(followers.length ? { alsoFor: followers } : {}), note: `Done: from the user's next message ${mine ? "you think" : `${who?.name ?? "it"} thinks`} with it; name, memory and conversation stay.${followers.length ? ` It is the default, so ${followers.join(", ")} (no own setting) follow it too.` : ""} One short line, nothing about sessions.` };
     },
   );
 }

@@ -106,12 +106,17 @@ const BOARD_ROWS = {
 };
 const REVIEW_TASK = { key: "rev", title: "看 nowledge-co 里请我 review 的 PR", ack: "好，每 45 分钟去看一轮，审好的先给你过目再发。", state: "working" as const, harness: "codex" };
 
+/** D534: one thing the user picked with @ or / (the label is what the words hold after @ or /). */
+export type EvalRef = { task: string; label: string } | { skill: string; about?: string } | { action: "keep" | "remind"; label: string };
+
 export type Step =
   // images (D206): pictures sent with the words, as repo-relative paths (the app's own art: no fixture binaries).
   // replyTo (D236): the user replies to the earlier message that has these words.
   // app (D405, with scenario.apps): "ask" = the first seeded app asked this (ducter.ask, on the user's tap);
   // "about" = the user typed it in that app's sheet.
-  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about" }
+  // refs (D534): what the user picked with @ or / in the composer: a seeded task by key, or one of
+  // their skills or Ducter's actions by name (the home resolves them as mentions.ts does).
+  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[] }
   // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
   | { users: UserSay[] }
   // told (D340): what the user typed straight into that task's own box before this report, oldest first.
@@ -210,7 +215,7 @@ export interface Expect {
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
   /** D157: some opened task's needs has each of these (a string matches case-insensitively as a part; false = absent or false). */
-  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; buy?: boolean; phone?: boolean | string | (boolean | string)[] };
+  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; buy?: boolean; heavy?: boolean; phone?: boolean | string | (boolean | string)[] };
   /** Some opened task names this agent (harness). */
   harness?: string;
   /** D372: no opened task names this agent. */
@@ -431,7 +436,9 @@ export interface Scenario {
    * D376: the person's other computers beside the home ("local"), as the [devices] line shows them;
    * task_switch's move to one is recorded, never made.
    */
-  computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[]; /** D478: false = can't reach it now. */ online?: boolean; /** D478: its platform as [devices] says it (default macOS). */ os?: string }[];
+  computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[]; /** D478: false = can't reach it now. */ online?: boolean; /** D478: its platform as [devices] says it (default macOS). */ os?: string; /** D538: its memory as it measured it: [total GB, free GB now]. */ mem?: [number, number] }[];
+  /** D538: the home's memory as it measured it: [total GB, free GB now]. */
+  homeMem?: [number, number];
   /**
    * D395: which computers have a clone of which repository (by computer name, "local" for the
    * home: its paths), and which can read a repository they don't have (canRead). Absent: every
@@ -468,6 +475,11 @@ export interface Scenario {
    * card) and its mender run over it for real; only git, the disk and the agents are fake.
    */
   world?: World;
+  /**
+   * D539: variables in the person's shell on each computer (by name; the home by its own name), as
+   * Ducter's look there finds them. Fake values, never the person's; a copy runs between fake shelves.
+   */
+  keysOn?: Record<string, string[]>;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -2398,6 +2410,37 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "new_tasks", args: { where: /hel/i } }], notCalled: ["rule_save", "task_open"] },
     rubric: "A standing default for where every new task starts (hel), not a kind of work and no agent named. It keeps it (new_tasks with where hel) and says it back in one short English line. No task opened, no rule for a kind of work, no agent chosen for them.",
   },
+  // D538: which computer gets which work, said once: a computer rule (the person's, every partner's), never a task.
+  {
+    id: "computer-rule-prefer-zh",
+    category: "rules",
+    lang: "zh",
+    homeMem: [7.6, 1.0],
+    computers: [{ name: "haswell", web: "ducter", harnesses: ["codex", "claude-code"], os: "Linux", mem: [64, 41] }],
+    steps: [{ user: "haswell 内存比较大，以后跑验证、跑测试这种活多放它上面" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save", args: { place: "prefer", device: /haswell/i } }], notCalled: ["task_open", "new_tasks"] },
+    rubric: "A standing preference about which computer takes a kind of work (heavy verification on haswell), not a default for every task and not about an AI agent. It keeps it as a computer rule (rule_save place prefer, device haswell, for heavy) and says it back in one short Chinese line in the user's terms. No task opened; it never asks how much memory haswell has ([devices] says it).",
+  },
+  {
+    id: "computer-rule-avoid-en",
+    category: "rules",
+    lang: "en",
+    computers: [{ name: "hel", web: "ducter", harnesses: ["codex"], os: "Linux", mem: [7.6, 1.2] }],
+    steps: [{ user: "Please don't run browser stuff on hel anymore, it keeps running out of memory." }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "rule_save", args: { place: "avoid", device: /hel/i } }], notCalled: ["task_open"] },
+    rubric: "A standing preference about which computer avoids a kind of work (web/browser work off hel). It keeps it as a computer rule (rule_save place avoid, device hel, for web) and says it back in one short English line. No task opened, no lecture about memory.",
+  },
+  // D538: heavy verification is needs.heavy; Ducter puts it where there is room.
+  {
+    id: "heavy-verify-zh",
+    category: "where",
+    lang: "zh",
+    homeMem: [7.6, 1.0],
+    computers: [{ name: "haswell", web: "ducter", harnesses: ["codex", "claude-code"], os: "Linux", mem: [64, 41] }],
+    steps: [{ user: "在 ~/dev/ducter 里把全部测试和 typecheck 跑一遍，再用 Playwright 把网页过一遍，有挂的告诉我" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 90, needs: { heavy: true } },
+    rubric: "Heavy verification (the whole test suite, type checks, Playwright). One short Chinese ack naming the action; the task's needs say heavy. Placing it on haswell (the computer with room in [devices]) or leaving the computer to Ducter both pass; putting it on the home with 1.0 GB free without saying why fails. It never asks which computer.",
+  },
   // ---------- D372: the kind of work picks who does it (live: hel, 2026-11-18) ----------
   {
     id: "kind-errand-first-zh",
@@ -2907,6 +2950,37 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "review 那个别跑了" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"], noAsk: true },
     rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
+  },
+  {
+    // D533: who does a Keep's rounds is one of its rules, changed through keep_change like its rhythm (the page's 谁来做 too).
+    id: "loop-agent-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "review 那个以后让 Codex 来做" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change", args: { agent: "codex" } }], notCalled: ["task_open", "keep_make", "routine_propose"], noAsk: true },
+    rubric: "The user wants the review loop's rounds done by Codex from now on. The partner changes who does it on the same loop (keep_change with agent codex) and says so in one short Chinese line. Fail if it opens a new task, makes a second loop, or asks a question back.",
+  },
+  {
+    // D540: hel 2026-11-24 09:47 UTC: the partner wrote this into the loop's goal (until), which no round reads.
+    id: "loop-this-round-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "请 review 的 loop 直接 review https://github.com/nowledge-co/nowledge-labs-website/pull/551 吧" }],
+    // Either route reaches the loop's own task now (D540): keep_change next_round, or task_send to it.
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user asks the review loop to review one PR now. The partner hands that ask to the loop's own task now: keep_change next_round naming #551 with look_now is best; a message to the loop's task reaches the same task and is fine too. Its one short Chinese line names #551 and that it is reviewed now. Writing it as the loop's goal (until), opening a new task, or asking back is wrong.",
   },
   {
     id: "loop-status-en",

@@ -33,6 +33,8 @@ export interface BrainHoldPort {
    * partner is installed and signed in): a message waits for the first one, said once by code.
    */
   blind?(): boolean;
+  /** D536: the same holds for a partner that thinks with its own agent (base: that agent). */
+  as?(base: () => HarnessId): Omit<BrainHoldPort, "as">;
 }
 
 export interface AppendInput<K extends EventKind = EventKind> {
@@ -170,7 +172,13 @@ export interface CoreApi {
   /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
   branchAsk?(prompt: string): Promise<string>;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
-  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
+  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
+  /**
+   * D538: where work goes, as the person said it and as it stands: their computer rules (多放 / 少放 a
+   * computer for heavy, web or all work), what Mem holds about computers not kept as a rule here yet
+   * (offered once), and the heavy tasks running per computer ("local" the home).
+   */
+  placement?(): { rules: { device: string; text: string; avoid?: boolean; heavy?: boolean; web?: boolean }[]; hints?: { text: string }[]; heavy?: Record<string, number> };
   /**
    * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
    * closed (box): it reaches the partner, the answers can't go back. Only what isn't whole.
@@ -212,6 +220,12 @@ export interface CoreApi {
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
   /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
   zone?(): string;
+  /**
+   * D539: keys copied to a computer for Ducter's tasks there: which variables a task holds (its
+   * session gets them at start, read on the computer it runs on), and the home's own shelf, which
+   * puts them in a session on the home.
+   */
+  keyCopy?: { refsFor(taskId: string): string[]; withKeys(spec: SessionSpec): SessionSpec };
   /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
   goesFor?(taskId: string): import("./standing.ts").StandingView[];
   /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */
@@ -493,6 +507,11 @@ export interface BodyChooser {
   // its name, "local" for the home), whether it waits there, and what it uses.
   // D202: effort, the user's pick, is checked against the chosen model's levels on its computer.
   choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
+  /**
+   * D538: whether that computer ("local" for the home, else a worker's id) has room for heavy work
+   * now (its memory free and its heavy tasks under its share). A task waiting for room asks this.
+   */
+  room?(device: string): Promise<boolean>;
 }
 
 /** D157: who does a new task, on which computer, and why. */
@@ -503,7 +522,8 @@ export interface BodyChoice {
   device?: string;
   deviceId?: string;
   home?: boolean;
-  waits?: "asleep" | "unreachable";
+  /** D538: room: heavy work, and that computer hasn't the memory free for it now (it waits for room). */
+  waits?: "asleep" | "unreachable" | "room";
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
   now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
@@ -601,7 +621,10 @@ export interface WorkerInfo {
   /** D157: how it browses for tasks (its 上网), when it is on. */
   web?: "chrome" | "ducter";
   /** D157: it doesn't sleep. */
-  alwaysOn?: boolean;}
+  alwaysOn?: boolean;
+  /** D538: what it has and has free now, from its heartbeat (only while it is connected). */
+  resources?: import("./index.ts").DeviceResources;
+}
 
 /** The main's handle on one worker. Stable across reconnects. */
 export interface WorkerLink {
@@ -663,6 +686,8 @@ export interface SessionSpec {
   // hooks, user MCP servers). The partner always isolates; tasks keep it by default (system.md).
   isolateUserConfig?: boolean;
   env?: Record<string, string>; // extra env for the harness process (never logged)
+  /** D539: keys Ducter keeps on the computer this runs on, by variable: that computer puts their values in env at start (never carried in the spec). */
+  keyRefs?: string[];
   resumeSessionId?: string;
   // Per-task narrowing (e.g. a browser place): extra denied tools, and for claude-code only,
   // extra launch flags and whether to leave out the user's own Claude config.
@@ -761,6 +786,8 @@ export interface HarnessSession {
   events(): AsyncIterable<HarnessEvent>;
   /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
   compact?(): Promise<void>;
+  /** D521: stop one background job by its id (OAR's stopTask), where the runtime has it; rejects with its reason. Absent: nothing here can stop one. */
+  stopBackground?(id: string): Promise<void>;
   /** D293: a session on a worker: its worker dropped and holds it (away), or came back with it (back). */
   onLink?(fn: (state: "away" | "back") => void): void;
 }
@@ -776,6 +803,18 @@ export interface HarnessPort {
   accountUsage?(harness: string): Promise<{ usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }>;
   /** D416: the agent's own sign-out (OAR runtime logout: Antigravity's ACP logout), confirmed by its own status. Never throws. */
   logout?(harness: string): Promise<{ ok: boolean; detail?: string }>;
+  /** D534: the agent's own slash commands or skills in that folder (OAR's inventories, token-free),
+   *  or undefined when it can't say (no catalog, not installed, signed out). Never throws. */
+  inventory?(harness: string, kind: "commands" | "skills", cwd: string): Promise<NativeEntry[] | undefined>;
+}
+
+/** D534: one command or skill an agent lists (OAR CommandEntry / SkillEntry). */
+export interface NativeEntry {
+  name: string;
+  description?: string;
+  source?: string;
+  /** false: the agent says a person can't run it by name. */
+  userInvocable?: boolean;
 }
 
 /** D202: one model as an AI agent lists it (OAR listModels), the disabled ones left out. */
@@ -825,6 +864,8 @@ export interface Runner {
   // Throws when that id is no longer held (it already went).
   held?(taskId: string, id: string, op: "edit" | "drop" | "now", text?: string): Promise<{ delivered?: Delivery }>;
   interrupt(taskId: string): Promise<void>;
+  // Optional (D521): stop one of the task's background jobs (TaskCard.background) through its agent's own stop.
+  stopBackground?(taskId: string, jobId: string): Promise<{ ok: boolean; message?: string }>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
   /** D395: a task that couldn't start starts in this place instead (its brief and agent stay). */
@@ -870,6 +911,12 @@ export interface Runner {
   // reads the Log); exclude: ports never offered (Ducter's own). A write or a revert is the
   // user's own change: the task hears of it with its next turn.
   workbench?(taskId: string, req: import("./workbench.ts").WbRequest, o?: { said?: number[]; exclude?: number[]; simSaid?: boolean }): Promise<import("./workbench.ts").WbAnswer>;
+  // Optional (D534): the task's agent's own commands and skills in its place (HarnessPort.inventory
+  // with the task's folder), for the / list in its composer. Undefined when it can't say.
+  native?(taskId: string): Promise<{ harness: string; commands?: NativeEntry[]; skills?: NativeEntry[] } | undefined>;
+  // Optional (D534): an agent's own skills or commands in a folder on the home (the person's own,
+  // for the partner's / list), through the runner's harness port.
+  inventory?(harness: string, kind: "commands" | "skills", cwd: string): Promise<NativeEntry[] | undefined>;
   // Optional (D214): where a task's page is reached from the home: "here" (this machine's
   // loopback), or a fetch that carries the request to its worker. undefined: no such task.
   pageRoute?(taskId: string): { here: true } | { here: false; fetch(a: { port: number; method: string; path: string; headers: [string, string][]; body?: string }): Promise<{ status: number; headers: [string, string][]; body: string }> } | undefined;
@@ -930,6 +977,8 @@ export interface PlacesPort {
     where?: { on?: string; only?: boolean; not?: string[] };
     /** D477: the task this one opens again (a rethink): its recorded word on where carries over. */
     replaces?: string;
+    /** D538: what the task needs (heavy work and the person's placement rules are checked against the computer). */
+    needs?: TaskNeeds;
   }): Promise<PreflightResult>;
   /** D120's early open: a place on this computer that is that repository now (read at once, no git). */
   quick(place: Place, remote?: string): boolean;

@@ -55,6 +55,8 @@ import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
 import { ASKS_MAX, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
+import { roomFor } from "../../protocol/src/resources.ts";
+import type { DeviceResources } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
@@ -72,7 +74,7 @@ import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
-import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, setRenderZone, type RenderCtx } from "./render.ts";
 import { namesAgent, relayAnswer, relayHead, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { destructiveChoice } from "../../protocol/src/destructive.ts";
@@ -686,7 +688,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D85: what the partner thinks with (Settings.brain), read at each session start (the setting
   // can change between sessions). Only a partner-capable harness is taken from the setting;
   // opts.harness is the eval's seam and may name any. DUCTER_PARTNER_MODEL stays a test override.
-  const partnerRun = (): { harness: HarnessId; model?: string } => {
+  // D536: a partner of the person's own setting (another partner's own, through its view's
+  // settings) runs on it, its effort too; the effort goes only with the model it was set for.
+  const partnerRun = (): { harness: HarnessId; model?: string; effort?: string } => {
     const envH = process.env.DUCTER_PARTNER_HARNESS;
     const fallback: Brain = isHarnessId(envH) && HARNESSES[envH].partner && envH !== "claude-code" ? { harness: envH } : { harness: "claude-code", model: "opus" };
     const set = core.settings?.get().brain;
@@ -696,7 +700,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const harness = opts.harness ?? brain.harness;
     const model =
       opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? (harness === brain.harness ? brain.model : undefined) ?? (harness === "claude-code" ? "opus" : undefined);
-    return { harness, ...(model ? { model } : {}) };
+    const effort = !opts.model && harness === brain.harness && (brain as Brain).effort && model === brain.model ? (brain as Brain).effort : undefined;
+    return { harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
   };
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
   const fsIn = opts.fs ?? realFs;
@@ -818,7 +823,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D205: Bridge turned on or off while a session is live: the next turn starts a fresh one, so
   // its tools (listed only while it is on) are the ones the session sees.
   let liveBridge = !!bridge;
-  const runKey = () => (partnerRun().model === liveModel ? "" : "!") + (!!bridge === liveBridge ? "" : "b");
+  // D536: and the effort it was started with (an effort switch restarts too).
+  let liveEffort: string | undefined;
+  const runKey = () => {
+    const r = partnerRun();
+    return (r.model === liveModel && r.effort === liveEffort ? "" : "!") + (!!bridge === liveBridge ? "" : "b");
+  };
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
   // cut off by a restart is run again with all of its triggers, and what it already did is
@@ -1637,6 +1647,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const s = await runner.harness.start({
       harness: run.harness,
       ...(run.model ? { model: run.model } : {}),
+      ...(run.effort ? { effort: run.effort } : {}),
       cwd,
       systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
@@ -1665,6 +1676,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!resumeSessionId) contextTokens = 0;
     lastPromptHash = promptHash();
     liveModel = run.model;
+    liveEffort = run.effort;
     liveBridge = !!bridge;
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
@@ -1746,6 +1758,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function buildInput(batch: LogEvent[], fresh: boolean, note?: string): string {
     // Things the user did by button since our last turn (merge, open PR): context, not triggers.
     const noted = fresh ? [] : userActions.splice(0);
+    // D539 (D528): the person's zone, so every time this turn reads (and says) is theirs, never UTC.
+    setRenderZone(core.zone?.());
     const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
     // Spike (J-Q7): a task opened for another agent's request owes that agent its outcome.
     for (const e of batch) {
@@ -1846,10 +1860,23 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const workersNow = core.workers?.list() ?? [];
     // D510: New tasks start, by name, so the partner leaves place.device and harness to it.
     const ntWhere = nt?.where ? (nt.where === "local" ? home?.name || "local" : workersNow.find((w) => w.id === nt.where)?.name) : undefined;
-    const devices = renderDevices(workersNow, home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()), core.settings?.get().limitHandoff === true, nt ? { ...(ntWhere ? { where: ntWhere } : {}), ...(nt.agent ? { agent: nt.agent } : {}) } : undefined);
+    // D538: the person's computer rules, Mem's hints, and the heavy tasks on each computer now.
+    const placement = core.placement?.();
+    const heavyOn = (id: string) => placement?.heavy?.[id] ?? 0;
+    const devices = renderDevices(
+      workersNow.map((w) => ({ ...w, heavyNow: heavyOn(w.id) })),
+      home ? { ...home, heavyNow: heavyOn("local"), ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined,
+      core.codeOn?.(),
+      limits,
+      new Date(now()),
+      core.settings?.get().limitHandoff === true,
+      nt ? { ...(ntWhere ? { where: ntWhere } : {}), ...(nt.agent ? { agent: nt.agent } : {}) } : undefined,
+      placement,
+    );
     if (devices) deltas.push(devices);
     // D486: the person's other partners, while there are any (one partner: no line).
-    const partnersLine = renderPartners(core.partnersNow?.());
+    // D536: with what each thinks (its own setting, else the first partner's, the default).
+    const partnersLine = renderPartners(core.partnersNow?.(), partnerRun());
     if (partnersLine) deltas.push(partnersLine);
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
@@ -1858,6 +1885,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const owned = new Map((core.owned?.() ?? []).map((x) => [x.taskId, x.refs.map((r) => (x.said?.[r] ? `${r} (${x.said[r]})` : r))]));
     const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()), owned);
     if (live) deltas.push(live);
+    // D533: what Ducter looks after, each by its id, so a change to one is keep_change on that one.
+    const keepsLine = renderKeeps(core.keeps?.sheets(core.persona.id) ?? []);
+    if (keepsLine) deltas.push(keepsLine);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
     const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET);
     if (helpersLine) deltas.push(helpersLine);
@@ -2414,6 +2444,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             buy: { type: "boolean", description: "It buys or books something (a ticket, a hotel, what is in a cart): it does everything up to the checkout in Ducter's own browser and stops there for the user to pay with their own tap" },
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
+            heavy: { type: "boolean", description: "Heavy on memory (builds, tests, type checks, Playwright, a dev server, evals): goes where [devices] shows room" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
             phone: { type: "string", enum: ["mine", "ducter", "any"], description: "It works in an app on a phone; which phone. mine: the user's own, with their apps, accounts and messages (用我的手机, 我的微信, their orders, \"on my Pixel\"). ducter: Ducter's own clean phone with none of their accounts (用你的手机 = yours, Ducter's; 在安卓上试我们的 App, install an APK, a fresh phone). any: either does (an app anyone can open, nothing of theirs). Unsure: mine. Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
@@ -2553,7 +2584,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { replaced: `${replaces} (${what})` };
       };
       if (core.places) {
-        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(replaces ? { replaces } : {}) });
+        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(replaces ? { replaces } : {}), ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)) });
         if (!pf.ok) {
           const early = t?.early.find((e) => !e.used);
           if (early) {
@@ -5046,10 +5077,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (ins.length !== 1) return undefined;
     const m = ins[0]!.body as Bodies["bridge_msg"];
     // D494: work handed to an on helper by one of the person's own agents: making the helper was the go
-    // (at most HELPER_DAILY a day each; the next asks). A teammate's agent still goes through its card.
+    // (at most HELPER_DAILY a day each, or the cap the person set on its Keep, D533; the next asks). A teammate's agent still goes through its card.
     if (m.helper) {
       const h = core.helpers?.get(m.helper);
-      if (!m.mine || h?.state !== "on" || helperClaims(h.id, DAY_MS) >= HELPER_DAILY) return undefined;
+      if (!m.mine || h?.state !== "on" || helperClaims(h.id, DAY_MS) >= (h.daily ?? HELPER_DAILY)) return undefined;
       return { ...m, agent: m.agent ?? m.host ?? m.from ?? "agent" };
     }
     if (!m.mine || !m.agent || !core.settings?.get().peers?.trusted.includes(m.agent)) return undefined;
@@ -6053,6 +6084,8 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     ...(str(r.site) ? { site: str(r.site)!.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./i, "").toLowerCase() } : {}),
     ...(str(r.app) ? { app: str(r.app) } : {}),
     ...(r.long === true ? { long: true } : {}),
+    // D538: heavy on memory and cores, the partner's judgment from the words and the repository.
+    ...(r.heavy === true ? { heavy: true } : {}),
     ...(r.draw === true ? { draw: true } : {}),
     ...(r.buy === true ? { buy: true, browse: true } : {}), // D436: buying or booking is web work in Ducter's own browser
     // D251: which phone; true (before D251) and "any" are either.
@@ -6126,14 +6159,22 @@ const PARTNER_ABOUT_SHOWN = 80;
  * partners at most, their "looks after" clipped). Facts only: who they are, what each looks after,
  * how many of their own questions wait on the user. Nothing of their conversations, tasks or memory.
  */
-export function renderPartners(now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number }[] } | undefined): string {
+export function renderPartners(
+  now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number; brain?: { harness: string; model?: string; effort?: string } }[] } | undefined,
+  /** D536: what this partner runs on now. */
+  run?: { harness: string; model?: string; effort?: string },
+): string {
   if (!now || now.list.length < 2) return "";
   const me = now.list.find((p) => p.id === now.me);
   const others = now.list.filter((p) => p.id !== now.me);
   if (!me || !others.length) return "";
   const clipAbout = (a: string) => ([...a].length > PARTNER_ABOUT_SHOWN ? [...a].slice(0, PARTNER_ABOUT_SHOWN - 1).join("") + "…" : a);
-  const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
-  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}. The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass.`;
+  // D536: what each thinks with, compact; a partner with none of its own follows the first partner's.
+  const brainWords = (b: { harness: string; model?: string; effort?: string }) => `${isHarnessId(b.harness) ? HARNESSES[b.harness].name : b.harness}${b.model ? ` ${b.model}` : ""}${b.effort ? ` (effort ${b.effort})` : ""}`;
+  const first = now.list[0]!;
+  const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.brain ? `, thinks with ${brainWords(p.brain)}` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
+  const mine = run ? ` You think with ${brainWords(run)}${me.brain ? " (your own setting)" : me.id === first.id ? " (the default the others without their own follow)" : ` (the same as ${first.name}'s)`}.` : "";
+  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}.${mine} The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass; what one thinks with: brain_switch.`;
 }
 
 export function renderPins(pins: readonly PinView[]): string {
@@ -6229,20 +6270,45 @@ const codeWords = (code: { device: string; name: string; remote?: string }[] | u
   return `, code: ${shown.join(", ")}${here.length > CODE_MAX ? ` and ${here.length - CODE_MAX} more` : ""}`;
 };
 
+/** D538: a computer's memory, measured by itself: "memory 7.6 GB (1.0 GB free now, no room for heavy work)". */
+const GiB = 2 ** 30;
+const memWords = (r: DeviceResources | undefined, heavyNow = 0) => {
+  if (!r) return "";
+  const g = (n: number) => `${(n / GiB).toFixed(n < 10 * GiB ? 1 : 0)} GB`;
+  const room = roomFor({ mem: { total: r.memTotal, free: r.memFree }, heavyNow });
+  const stops = r.oom?.length ? `, ${r.oom.length} out-of-memory stop${r.oom.length > 1 ? "s" : ""} in the last day` : "";
+  return `, memory ${g(r.memTotal)} (${g(r.memFree)} free now${room ? "" : ", no room for heavy work"}), ${r.cores} cores${r.gpu ? `, ${r.gpu}` : ""}${stops}`;
+};
+
+/** D538: the person's computer rules and Mem's hints, for the [devices] line. */
+export interface PlacementFacts {
+  rules: { device: string; text: string; avoid?: boolean; heavy?: boolean; web?: boolean }[];
+  /** What the person told their other agents in Mem about computers, not kept as a rule here yet (offered once). */
+  hints?: { text: string }[];
+}
+const placementWords = (p: PlacementFacts | undefined) => {
+  if (!p) return "";
+  const rules = p.rules.slice(-6).map((r) => `${r.avoid ? "less" : "more"} ${r.heavy ? "heavy work" : r.web ? "web work" : "work"} on ${r.device} ("${r.text.slice(0, 80)}")`);
+  const hints = (p.hints ?? []).slice(0, 2).map((h) => `"${h.text.replace(/[\n<>]/g, " ").slice(0, 120)}"`);
+  return `${rules.length ? ` The user's computer rules (theirs, before any default): ${rules.join("; ")}.` : ""}${hints.length ? ` In Mem, said to their other agents and not a rule here yet: ${hints.join("; ")}: offer once to keep it as a computer rule (ask; Go = rule_save place), never keep it silently.` : ""}`;
+};
+
 /**
  * The partner's world on every turn (L4), compact: each computer with its state, its agents (signed
  * in, or installed but not), and the code Ducter knows is on it with origins (D477). Facts only: the
  * partner places work from them and from the person's words; nothing here decides for it.
  */
 export function renderDevices(
-  workers: { id?: string; name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; alwaysOn?: boolean }[],
-  home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents; web?: "chrome" | "ducter" },
+  workers: { id?: string; name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; alwaysOn?: boolean; resources?: DeviceResources; heavyNow?: number }[],
+  home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; resources?: DeviceResources; heavyNow?: number },
   code?: { device: string; name: string; remote?: string }[],
   limits?: AgentLimitFact[],
   now = new Date(),
   handoff?: boolean,
   /** D510: New tasks start (a computer's name, an agent id), when the person set it. */
   newTasks?: { where?: string; agent?: string },
+  /** D538: the person's computer rules and Mem's hints about computers. */
+  placement?: PlacementFacts,
 ): string {
   // A home alone shows no line (nothing to place), unless an agent's limit there is known (D478).
   if (!workers.length && !(home && limits?.some((l) => l.device === "local" && l.state === "used_up"))) return "";
@@ -6255,12 +6321,12 @@ export function renderDevices(
     const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
     const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
     const web = browses(w.web);
-    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${agentsWords(w.harnesses, ", no AI signed in", limits, w.id, now)}${w.id ? codeWords(code, w.id) : ""})`;
+    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${memWords(w.online ? w.resources : undefined, w.heavyNow)}${web}${agentsWords(w.harnesses, ", no AI signed in", limits, w.id, now)}${w.id ? codeWords(code, w.id) : ""})`;
   };
   // D476's finding, kept: the home by its name, the names the person calls it, and its own agents.
   const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
-  const homeWords = home ? `local (Ducter's home${home.name ? `: ${clipName(home.name)}` : ""}${also.length ? `, also called ${also.join(", ")}` : ""}${browses(home.web)}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in", limits, "local", now) : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
-  return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says.${limits?.some((l) => l.state === "used_up") ? (handoff ? " By the user's setting, a task whose agent runs out is handed to another signed-in agent at once." : " By the user's setting (D297's default), a task whose agent runs out waits for the reset; handing it to another agent is the user's choice.") : ""} Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).${newTasks?.where || newTasks?.agent ? ` By the user's setting, new tasks start${newTasks.where ? ` on ${newTasks.where}` : ""}${newTasks.agent ? ` with ${newTasks.agent}` : ""} whenever it can do them: leave place.device${newTasks.agent ? " and harness" : ""} out unless the user's words name another.` : ""}`;
+  const homeWords = home ? `local (Ducter's home${home.name ? `: ${clipName(home.name)}` : ""}${also.length ? `, also called ${also.join(", ")}` : ""}${memWords(home.resources, home.heavyNow)}${browses(home.web)}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in", limits, "local", now) : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
+  return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says.${limits?.some((l) => l.state === "used_up") ? (handoff ? " By the user's setting, a task whose agent runs out is handed to another signed-in agent at once." : " By the user's setting (D297's default), a task whose agent runs out waits for the reset; handing it to another agent is the user's choice.") : ""} Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).${workers.some((w) => w.resources) || home?.resources ? " Heavy work (builds, test suites, type checks, a browser or Playwright, a dev server, an eval) is needs.heavy and goes where there is room." : ""}${placementWords(placement)}${newTasks?.where || newTasks?.agent ? ` By the user's setting, new tasks start${newTasks.where ? ` on ${newTasks.where}` : ""}${newTasks.agent ? ` with ${newTasks.agent}` : ""} whenever it can do them: leave place.device${newTasks.agent ? " and harness" : ""} out unless the user's words name another.` : ""}`;
 }
 
 /** D478: live tasks shown in the [live] line (the rest are named by count). */
@@ -6316,6 +6382,17 @@ export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: stri
     return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""})`;
   };
   return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. It is shown in ${paneName("peers", lang)}.`;
+}
+/**
+ * D533: what Ducter looks after for the person, every turn while there is any: each Keep by its id and
+ * title, how it wakes, and the task it runs in, so "review 那个以后让 Codex 来做" names one Keep to change
+ * with keep_change (not a rule for all work). Facts only.
+ */
+export function renderKeeps(ks: import("@ducter/protocol").KeepSheet[]): string {
+  if (!ks.length) return "";
+  const how = (k: import("@ducter/protocol").KeepSheet) => (k.run === "perItem" ? "takes work handed to it" : k.everyMs ? `every ${Math.round(k.everyMs / 60_000)} min` : (k.cadence ?? "on the clock"));
+  const one = (k: import("@ducter/protocol").KeepSheet) => `${k.id} "${clipLine(k.title, 60)}" (${how(k)}${k.life === "paused" ? ", paused" : ""}${k.run === "same" && k.taskIds[0] ? `, task ${k.taskIds[0]}` : ""})`;
+  return `[keeps] What you look after for the user: ${ks.slice(0, 8).map(one).join("; ")}. A change to one of these (its rhythm, who does it, where, when it speaks, its end) is keep_change with its id.`;
 }
 const clipLine = (s: string, n: number) => ([...s.replace(/\s+/g, " ").trim()].length > n ? [...s.replace(/\s+/g, " ").trim()].slice(0, n - 1).join("") + "…" : s.replace(/\s+/g, " ").trim());
 

@@ -9,6 +9,51 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Keys copied between computers, after D539 (`autofill.md` §9, `system.md` "Keys copied between computers")
+
+- [ ] **The first real copy, Mac to hel and haswell.** Trigger: the first release with D539. The
+  author's Prow log MCP key: the card from the partner, Go, the next task on each server has it,
+  the MCP answers; then remove it on haswell. Record what the card and the list said.
+- [ ] **A key pasted on the home for a task on a worker** (D233's paste card, sealed to that
+  worker's offer the same way). Trigger: a worker task that needs a key no computer of theirs has.
+- [ ] **A config entry as a source** (a literal header in an MCP config, a `.env` file the person
+  names). Trigger: a key that lives only in a config file, not in the shell.
+- [ ] **A rotated key, everywhere it was copied.** The list knows where each copy is; a rotate
+  offers to copy the new value to each. Trigger: the person rotates a key that was copied.
+
+## Whose it is, after D546 (`personas.md` "Whose it is, never who is shown")
+
+- [ ] **只看{name}的 / Only {name}'s, a chip on On hand** that narrows the one board to one
+  partner's things. Not built: with at most four partners the owner's mark on every row says whose,
+  and the bar's count already opens the shown partner's own. Trigger: a real board of the author's
+  past about 20 rows a day where he scrolls past other partners' work to find one partner's.
+- [ ] **Past tasks across partners.** Core lists the shown partner's own (`past.ts` query by
+  persona), so its rows need no mark. If Past ever lists every partner's, `PastItem` gets a
+  `persona` and each row its owner's mark. Trigger: the author looks in Past for a task another
+  partner opened.
+- [ ] **A wait that ended unmet** (`missed`) carries no persona; its row is drawn in the shown
+  partner's clay. Trigger: a task-less missed wait of another partner shows on the author's board.
+- [ ] **Two marks on a rail row** (the owner's small mark before the title and the state face, both
+  in the owner's clay) were so before D546. If the lead finds it doubled, keep only the state face
+  there. Trigger: the lead's review of `.shots/owner-marks/`.
+
+## A partner switch, after D541 (`personas.md` "Switching")
+
+- [ ] **The switch on the author's own home.** Trigger: the first release with D541. On the Mac app
+  against hel over the internet, four partners: a switch to each (seen and never seen) shows its
+  conversation at once, with no blank frame; time it with `TestD541Live` pointed at hel's address
+  through the app's own token, never by reading hel's data.
+- [ ] **The iPhone, iPad and Android apps** load the same web client: check a switch on a phone (the
+  list's row goes deeper, D513) shows the peeked conversation with no blank page. Trigger: the
+  first release with D541.
+- [ ] **A held conversation answered elsewhere** (a question answered on the phone while another
+  partner was shown) shows its old card for one round trip. If the author notices, mark held
+  questions from the partners frame's counts before the delta lands. Trigger: the author sees it.
+- [ ] **The first frame of a never-shown partner on the Mac** lays out its peeked rows for the first
+  time (the tester's software raster took 60 to 300 ms for it on a loaded machine, against 40 to
+  90 for a held one). Trigger: the switch feels heavy on a real Mac; then lay out the peek's rows
+  off screen once it lands.
+
 ## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
 
 - [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of
@@ -42,10 +87,25 @@ line.
 - [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
   and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
   *Trigger:* the first release with D520 on the author's Mac.
-- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
-  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
-  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
-  the same card.
+- [x] **The web client, iPhone and Android** keep the token on a 401 and leave only on a signed gone
+  (D532).
+- [ ] **D532 on a real phone:** the iPhone app (Simulator first) and an Android phone over hel's Caddy
+  through a hel restart: 正在重新连上 hel…, back by itself, and `ducterresume` redialing on coming to
+  the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
+  (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
+  with D532.
+- [ ] **D543 on a real phone on a real network** (`offline.md`): a train or a lift with the iPhone
+  app and an Android phone: the last screen stays, a message sent in a tunnel lands once, a cold start
+  offline opens to the kept screen with no can't-reach screen over it. *Trigger:* the first release
+  with D543.
+- [ ] **D543: pictures picked while the link is down** wait in memory with their words (D206's
+  upload needs the link); keep the picture's bytes in IndexedDB too, so a reload keeps them.
+  *Trigger:* a person who loses one.
+- [ ] **D543: a picture never seen offline** is a broken box (media needs the token, so the shell
+  doesn't keep it); keep the conversation's recent thumbnails with the glance. *Trigger:* the author
+  reading on a train.
+- [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
+  the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
 ## Toasts, after D527 (`ui.md` "Toasts: one slot")
@@ -59,6 +119,18 @@ line.
   ("更新到 0.1.35 了：…。看看都改了什么"), under a 新消息 divider like real news. Decide whether it
   is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
   bubble. *Trigger:* the author says the bubble reads wrong.
+
+## Each partner thinks with its own, after D536 (`personas.md` "What each thinks with")
+
+- [ ] **The author's review** of the line under each name, 改一下's three pop-ups and the default card's
+  new title, on hel with four partners. *Check:* 小玛 on Claude Code Opus answers on it from its next
+  message, its digest runs there, and 「小玛用 Opus」 said to Ducter sets 小玛's, not Ducter's.
+- [ ] **A live run** with two partner sessions on two agents, one of them hitting its limit: the other
+  partner keeps answering on its own, the held one's next agent answers meanwhile.
+- [ ] **A task default per partner** (its tasks on its own agent too). *Trigger:* a person asks for it
+  ("小玛的活都用 Claude Code"); today a rule for a kind of work or New tasks start covers it.
+- [ ] **A partner's own agent signed out** says so on its row and falls back (today the row shows the
+  setting and its turns fail until D435 holds the agent). *Trigger:* the first report of a partner on a signed-out agent.
 
 ## New tasks start, after D510 (`where.md` §23)
 
@@ -81,6 +153,12 @@ line.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
 - [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
+- [ ] **D519: the raw controls left in older views.** D161's guards deny by default now; views that drew raw controls before stand on a ceiling list (web `apps/web/test/controls.test.ts` `OLDER`: 27 files, 93; Mac `shared_controls_all_test.go` `olderViews`: 55 files, 120). Move each onto the shared set and lower its ceiling (the tests fail until it is lowered). *Trigger:* the next visible change to any of those files.
+- [ ] **D519: a Keep's silent fold folds rounds that have a line.** A round the model read as news should stay out of the fold; that is phase 4's recorded judgment (`news`), never a phrase match. *Trigger:* phase 4.
+- [ ] **D533: a watched change's words and an arrival's sources changed in place.** A Keep that wakes on a watched fact or on work handed to it changes those only by talking: the watch's look (a check, a page) is mechanism, and words alone would not change what is looked at. *Trigger:* routines can re-arm a condition from new words (a `rewatch`), or the author asks for it.
+- [x] **D533: "review 那个以后让 Codex 来做" changes the loop's agent.** Passes on haiku since the tools open with their objects and the `[keeps]` line names each Keep (`2026-11-24-haiku-d533-review.md`). The eval scenario `loop-agent-zh` fails on haiku (twice): it saves a rule (`rule_save`) for future work instead of `keep_change` agent on the loop, even with the tool's description naming the case. The page's 谁来做 works. *Trigger:* the next persona or tool-description pass, or a sonnet run that passes it.
+- [ ] **D533: human eyes on the words' diff** (the cheap model's reading of edited words into rules, zh and en) on hel's Keeps. *Trigger:* the release with D533.
+- [ ] **D519: human eyes on the rounds' lines** (the cheap model's one line per report, zh and en) on hel's review loop. *Trigger:* the release with D519.
 - [ ] **Live on hel** (phase 6): the babysitter and the review loop migrated, a week read for silent-round rates and asks. *Trigger:* the release with D511.
 
 ## The same model another way, after D503 (`where.md` §21, research/219)
@@ -1010,6 +1088,8 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 
 ### Several partners in chat apps (D516, `channels.md` §10)
 
+- [ ] **D531 live on a real Slack** (trigger: the author's next Slack check on hel): the manifest imported as is, `app_redirect` landing on the Messages tab, `icon_url` from ducter.ai shown per message, a reinstall clearing the update line, a channel @-mention answered in its thread; and whether Slack answers `missing_scope` or drops a username quietly without `chat:write.customize`.
+- [ ] **Faces per partner from the home itself** (trigger: a home without internet to ducter.ai, or a partner's own look beyond the five): serve the PNG from the home when it has an https address (D228), else keep the site's.
 - [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
 - [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
 - [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
@@ -1041,6 +1121,11 @@ Built against a fake iLink and CDN only.
 - [ ] **agy on web work**: never routed there (`no_web`), since OAR refuses `exclude` for agy (draft §3). Trigger: an OAR release that supports it.
 - [ ] **A live background check in the probe**: `scripts/probe-harnesses.ts --live` runs research/222's two cheap runs (Claude Code haiku, Codex luna, scratch homes) and fails when `background.ownTurn` no longer holds. Trigger: the next Claude Code or Codex upgrade past the verified range.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
+- [ ] **Stop for a Codex background terminal** (D521): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
+- [ ] **Antigravity's and pi's background work in the tray** (D521): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
+- [ ] **The tray live** (D521): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D521.
+- [ ] **The background list on request** (D521's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
+- [ ] **iOS Simulator pass on the tray** (D521): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
 
 ## iMessage through the Mac app (D277, `design/imessage.md`)
 
@@ -1294,9 +1379,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **A long session, after D320**: (1) scroll a real 50,000-event loop on the author's VPS home
-      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) The
-      locator's rail draws one tick per turn: past about 2,000 turns the ticks merge; consider
-      drawing it by time or by density. (3) The browser app a run of steps is in no longer
+      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) Done by
+      D526: the rail draws one mark per landmark and keeps the one that matters where two touch;
+      still owed: whether a long quiet stretch should take more room (the rail by time). (3) The browser app a run of steps is in no longer
       carries from the turn before (a turn is built only when drawn). (4) Key redaction is slow
       on one megabyte-long token (a base64 blob): the cut at 20,000 characters bounds it at about
       half a second; a faster redaction for long tokens. (5) Placeholders are blank; a faint
@@ -3047,7 +3132,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **D372: a preference only in Mem.** Done in D379 (2026-11-19) for a memory the partner's recall returns: read by code, applied, asked once to keep.
 - [x] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`). Done in D379: Ducter applies it by code.
 - [ ] **D379: a Mem-only saying the partner never recalls** (said to another tool, never in this conversation) still waits for a recall; a quiet Mem search for agent sayings (one query per agent, a few times a day) would catch it. Trigger: a task goes to an agent a memory says not to use, with no recall in that turn.
-- [ ] **D401: a where said in passing** ("要登录的网页都在 MacBook 上做", "验证都去 haswell") is still kept only by the partner's rule_save; a rule names an agent, and a where-only saying has none. Trigger: a task opened on another computer after the person said where this kind goes.
+- [x] **D401: a where said in passing** ("要登录的网页都在 MacBook 上做", "验证都去 haswell"): D538 keeps it as a computer rule (rule_save place, no agent), shown on that computer's card.
 - [ ] **D402: Discord read as the person** (a user connection, not OOMOL's bot): watch it when a source offers one with mentions and DMs. Trigger: such a connector in oo or OpenConnector.
 - [ ] **D402: the morning note names an account it couldn't read** ("Discord 还读不了") once, the first morning after it stopped. Trigger: a person who never opens Settings › Accounts asks why Discord was never mentioned.
 - [ ] **D379: sayings in other languages** (the parser knows zh and en words; a ko or ja saying is not read). Trigger: a person who says it in another language.
@@ -3281,8 +3366,72 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
+- [ ] **D530's step rows take the shared row hover (D529).** D529 has landed, but its paper fill
+  (`groundPage()`, web `--sunken`) is the step chips' own ground in the light, so a hovered row would
+  swallow its chips; today the rows keep D530's soft tint into their own margin. Either the chips step
+  up on a hovered row or the paper's hover gets a second fill. *Trigger:* the next pass on the opened
+  task, or the author asks for one hover everywhere.
+- [ ] **D530: agy's `invoke_subagent` input keys** are inferred (`Description`, then `Prompt`); check
+  them on a live agy run and add the recorded shape to `steps.json`. *Trigger:* the next agy task.
+- [ ] **On hand's latest line says a subagent as "做了 1 样别的事"** (D268's tally has no subagent
+  kind). *Trigger:* the next On hand pass.
 
 ## A task's heavy child and the server's memory (D524)
 
 - **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
 - **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).
+
+- [ ] **D534 live through the runner:** a Codex task given `$imagegen …` loads that skill, and a pi
+  task given `/skill:name` and `/template` expands them (both are listed token-free today; the
+  invocation is INFERRED for Codex and DOCUMENTED for pi, research/224). *Trigger:* the next
+  live check on hel with a Codex and a pi task.
+- [ ] **D534 OAR gaps** (drafts, not sent; research/224 §3): a structured Codex skill input
+  (`{type:"skill"}`) from `deliver`, so `$name` is exact; command catalogs for DeepSeek Harness
+  and Antigravity; Antigravity's `/compact` contract. Until then those commands are not offered.
+  *Trigger:* OAR publishes any of them.
+- [ ] **D534 the marks in the words** are a tint behind them (web) and the text's own colour (Mac),
+  not atomic chips, and the Mac's list sits at the composer's start rather than at the caret.
+  *Trigger:* the author finds the marks too quiet or wants the list at the caret on the Mac.
+
+## Which computer gets which work (D538, `where.md` §24)
+
+- [ ] **Live on hel and haswell:** a heavy verification task the author asks for lands on haswell
+  with **hel 内存不够**, and the card's 关于这台 shows both computers' real numbers. *Trigger:* the
+  release with D538 on both.
+- [ ] **A real Mem write:** a computer rule mirrored into the author's Space, read back by his own
+  Claude Code, then removed and archived (only fakes so far). *Trigger:* the author's go for one
+  real write.
+- [ ] **D524's memory watch on the card:** the day's out-of-memory stops come from the cgroup's own
+  counter; D524's memory watch keeps the biggest process at each stop (`memory-watch.json`), so the
+  card could name what was stopped. *Trigger:* the author asks what was stopped.
+- [ ] **A per-task memory fence** (`systemd-run --scope` with MemoryMax per task, D524's open item):
+  room only keeps a heavy task from starting where there is none; a task that grows after it starts
+  is still fenced only by the unit. *Trigger:* another OOM with D538 on.
+- [ ] **The ask for a pinned computer without room:** "hel 内存不够，等它，还是现在在 haswell 上做？",
+  like D157's asleep ask; today a pinned heavy task just waits. *Trigger:* the author waits on one.
+- [ ] **A computer's look on a phone app and the iPhone:** `DeviceView.resources` is on the frame;
+  the native apps don't show 关于这台 yet. *Trigger:* the next phone pass.
+
+## Every count a door (D535, `on-hand.md` "Navigation")
+
+- [ ] **The menu bar's count and the Dock badge as doors** to the first item (today they bring the window
+  in front where it was). Trigger: the author reaches for the Dock badge and lands somewhere else.
+- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 等你 while On hand
+  is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
+- [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
+  conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.
+
+## The review loop posts what it reviewed (D540)
+
+- [ ] **A loop Keep's `until` reaches its rounds.** `keep_change until` on a loop writes the Keep but not the
+  loop's own `until` (loops.ts), so its rounds never hear a goal set after it started. Not synced in
+  D540 because hel's Keep `kp_8907c58d86` holds a one-off steer in `until` (2026-11-24 09:47 UTC): synced,
+  its rounds would read 「本轮优先直接评审 …#551…」 as the condition that ends the loop. *Trigger:* hel's
+  goal cleared (the partner's `keep_change until ""`), then sync both ways with a test.
+- [ ] **Clear hel's Keep goal.** `kp_8907c58d86`'s `until` holds the 09:47 UTC steer; the lead has the
+  partner run `keep_change until ""` on it. *Trigger:* hel upgraded to the release with D540 (0.1.48).
+- [ ] **An approval when the review finds nothing.** D540 posts a comment-only review stating the verdict,
+  never an Approve (it gates merges). Approvals would be their own standing permission (a new action).
+  *Trigger:* the author says approvals may go without asking too.
+- [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
+  change gets a review on GitHub. *Trigger:* hel on the release with D540.

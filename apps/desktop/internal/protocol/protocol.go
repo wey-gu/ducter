@@ -106,6 +106,7 @@ const (
 	KindDecisionLater    = "decision_later"
 	KindDecisionBack     = "decision_back"
 	KindDecisionSeen     = "decision_seen"
+	KindKeyCopy          = "key_copy" // D539: a key copied between the person's computers (names only)
 	KindReadReceipt      = "read_receipt"
 	KindTaskOpen         = "task_open"
 	KindTaskState        = "task_state"
@@ -134,6 +135,8 @@ type UserMsg struct {
 	// Passed (D486): the person's words, said to another partner and passed
 	// on by it (that partner's id).
 	Passed *PassedFrom `json:"passed,omitempty"`
+	// Refs (D534): what the words refer to with @ or /, as the home resolved it.
+	Refs []HeldRef `json:"refs,omitempty"`
 }
 
 // PassedFrom names the partner that passed the person's words on (D486).
@@ -226,6 +229,10 @@ type Decision struct {
 	// Key (D233): a task asks the person for a key; Go carries it (Hold is
 	// 不给 / Don't give).
 	Key *KeyAsk `json:"key,omitempty"`
+	// CopyKey (D539): 复制密钥 / Copy a key from one of the person's
+	// computers to others, for Ducter's tasks there. No default; only the
+	// person's own Copy on this card copies.
+	CopyKey *CopyKeyAsk `json:"copyKey,omitempty"`
 	// Phone (D217): a tap on Ducter's phone that commits (Go taps it once),
 	// or the user's own turn on the phone (Go = 好了 / Done).
 	Phone *PhoneAsk `json:"phone,omitempty"`
@@ -497,16 +504,18 @@ type Usage struct {
 // cheap model's judgement. A task-less waiter renders as a compact row on
 // On hand; the On hand snapshot adds what it has seen so far.
 type Waiter struct {
-	WaiterID  string     `json:"waiterId"`
-	TaskID    string     `json:"taskId,omitempty"`
-	RoutineID string     `json:"routineId,omitempty"`
-	At        string     `json:"at,omitempty"`
-	Reason    string     `json:"reason"`
-	State     string     `json:"state"`          // armed | fired | cancelled | expired
-	Kind      string     `json:"kind,omitempty"` // timer | check | event | judge
-	Check     *CheckSpec `json:"check,omitempty"`
-	Event     *EventSpec `json:"event,omitempty"`
-	Judge     string     `json:"judge,omitempty"`
+	WaiterID  string `json:"waiterId"`
+	TaskID    string `json:"taskId,omitempty"`
+	RoutineID string `json:"routineId,omitempty"`
+	// D546: the partner that set it (On hand's waits are every partner's); "" the default.
+	Persona string     `json:"persona,omitempty"`
+	At      string     `json:"at,omitempty"`
+	Reason  string     `json:"reason"`
+	State   string     `json:"state"`          // armed | fired | cancelled | expired
+	Kind    string     `json:"kind,omitempty"` // timer | check | event | judge
+	Check   *CheckSpec `json:"check,omitempty"`
+	Event   *EventSpec `json:"event,omitempty"`
+	Judge   string     `json:"judge,omitempty"`
 	// Wakes is "task" when a timer wakes its task (D267), not the partner.
 	Wakes string `json:"wakes,omitempty"`
 	// Limit (D297): the task's agent hit its usage limit; the task rests
@@ -616,7 +625,9 @@ type Progress struct {
 
 // Routine is a routine (例行, D114) as On hand shows it (RoutineView).
 type Routine struct {
-	RoutineID    string         `json:"routineId"`
+	RoutineID string `json:"routineId"`
+	// D312, D546: the partner it is for (its runs report to it); "" the default.
+	Persona      string         `json:"persona,omitempty"`
 	Name         string         `json:"name"`
 	Trigger      RoutineTrigger `json:"trigger"`
 	TriggerWords string         `json:"triggerWords"`
@@ -889,6 +900,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &DecisionBack{}
 	case KindDecisionSeen:
 		v = &DecisionSeen{}
+	case KindKeyCopy:
+		v = &KeyCopy{}
 	case KindReadReceipt:
 		v = &ReadReceipt{}
 	case KindTaskOpen:
@@ -1051,6 +1064,9 @@ type TaskCard struct {
 	Helper *TaskHelper `json:"helper,omitempty"`
 	// Keep (D511): the Keep this task is a round or an item of.
 	Keep *TaskKeep `json:"keep,omitempty"`
+	// Background (D521): the work its agent runs beside its turn, every one
+	// still running and the newest finished, folded from its Log by core.
+	Background *TaskBackground `json:"background,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.
@@ -1342,6 +1358,8 @@ type Send struct {
 	App string `json:"app,omitempty"`
 	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
 	Via string `json:"via,omitempty"`
+	// Refs (D534): what the words refer to with @ or /.
+	Refs []Ref `json:"refs,omitempty"`
 }
 
 // ChannelStatus (D277) is how the Mac app's iMessage bridge stands: on |
@@ -1390,6 +1408,8 @@ type TaskSend struct {
 	// Mode (D268): "steer" (sent while it works, read at its next step) or
 	// "queue" (after this turn); empty for the runner's own choice.
 	Mode string `json:"mode,omitempty"`
+	// Refs (D534): what the words refer to with @.
+	Refs []Ref `json:"refs,omitempty"`
 }
 
 type TaskAction struct {
@@ -1406,6 +1426,45 @@ type TaskAction struct {
 	// Place (D472, start_in): the folder the person chose for a task that
 	// couldn't start (D455's sheet).
 	Place *Place `json:"place,omitempty"`
+	// Job (D521, stop_background): the background job to stop.
+	Job string `json:"job,omitempty"`
+}
+
+// TaskBackground (D521) is a task's background work: every job still
+// running and the newest finished; Done counts every finished one.
+type TaskBackground struct {
+	Jobs []BgJob `json:"jobs"`
+	Done int     `json:"done"`
+}
+
+// BgJob is one job its agent runs beside its turn: Kind shell | agent |
+// watch | other; State running | done | failed | stopped | unknown; At its
+// start, EndedAt its end; Exit its exit code (nil: none said); Tail its
+// output's last lines; Stop: its agent can stop it.
+type BgJob struct {
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Title   string `json:"title"`
+	At      string `json:"at"`
+	State   string `json:"state"`
+	EndedAt string `json:"endedAt,omitempty"`
+	Exit    *int   `json:"exit,omitempty"`
+	Tail    string `json:"tail,omitempty"`
+	Stop    bool   `json:"stop,omitempty"`
+}
+
+// BgRunning is how many of a task's background jobs are running.
+func BgRunning(b *TaskBackground) int {
+	if b == nil {
+		return 0
+	}
+	n := 0
+	for _, j := range b.Jobs {
+		if j.State == "running" {
+			n++
+		}
+	}
+	return n
 }
 
 type Read struct {
@@ -1428,6 +1487,15 @@ type ChannelHistoryReq struct {
 	T         string `json:"t"` // "channel_history"
 	BeforeSeq int64  `json:"beforeSeq"`
 	Limit     int    `json:"limit,omitempty"`
+}
+
+// PartnerPeekReq asks for another partner's newest stretch (D541), answered
+// with a partner_peek frame (Persona, Events, HeadSeq, More): a switch to it
+// draws at once, and its hello's cursor carries on from there.
+type PartnerPeekReq struct {
+	T       string `json:"t"` // "partner_peek"
+	Persona string `json:"persona"`
+	Limit   int    `json:"limit,omitempty"`
 }
 
 // TaskIndexReq asks for a task's session index (D320): all of it, or its
@@ -1710,6 +1778,9 @@ type PartnerInfo struct {
 	// Last is the last thing said in its conversation, for the list of
 	// partners (D513); nil with one partner or nothing said yet.
 	Last *PartnerLast `json:"last,omitempty"`
+	// Brain is what it thinks with when the person gave it its own
+	// (D536); nil: the same as the default partner's (Settings.Brain).
+	Brain *Brain `json:"brain,omitempty"`
 }
 
 // PartnerLast is one line of a partner's conversation for the list (D513).
@@ -1746,13 +1817,23 @@ type PartnerAdd struct {
 // PartnerSet renames a partner, changes its look or what it looks after
 // (D309, D486). About is a pointer so "" clears it.
 type PartnerSet struct {
-	T        string  `json:"t"` // "partner_set"
-	ID       string  `json:"id"`
-	Name     string  `json:"name,omitempty"`
-	Look     string  `json:"look,omitempty"`
-	About    *string `json:"about,omitempty"`
-	ClientID string  `json:"clientId,omitempty"`
+	T     string  `json:"t"` // "partner_set"
+	ID    string  `json:"id"`
+	Name  string  `json:"name,omitempty"`
+	Look  string  `json:"look,omitempty"`
+	About *string `json:"about,omitempty"`
+	// Brain is D536's own 想事情用: a Brain, or SameBrain (JSON null) for
+	// the default partner's again; nil leaves it.
+	Brain    any    `json:"brain,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
 }
+
+// SameBrain marshals as null: a partner thinks with the default partner's
+// again (D536).
+type SameBrain struct{}
+
+// MarshalJSON is null.
+func (SameBrain) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
 
 // PartnerRemove removes another partner (D486): its conversation stays,
 // its tasks become the default's.
@@ -2263,6 +2344,17 @@ type BrainModel struct {
 	Label   string `json:"label"`
 	Kind    string `json:"kind,omitempty"`
 	Default bool   `json:"default,omitempty"`
+	// Efforts are its effort levels from the live list (D536); none: no
+	// effort to pick.
+	Efforts       []string `json:"efforts,omitempty"`
+	DefaultEffort string   `json:"defaultEffort,omitempty"`
+}
+
+// BrainOption is one agent a partner may think with on the home, with its
+// models (D536; the settings frame, with more than one partner).
+type BrainOption struct {
+	Harness string       `json:"harness"`
+	Models  []BrainModel `json:"models"`
 }
 
 // Forgot says how a memory_forget went: "mem" (Mem forgot it) or
@@ -2516,6 +2608,25 @@ type DeviceView struct {
 	// Tidied is the working copies Ducter tidied away on this computer so far
 	// and the room it freed (D514): the card's one quiet line.
 	Tidied *DeviceTidied `json:"tidied,omitempty"`
+	// Resources is what Ducter measured on this computer itself (D538): its
+	// memory, cores, disk and the kernel's out-of-memory stops.
+	Resources *DeviceResources `json:"resources,omitempty"`
+}
+
+// DeviceResources is a computer's own measurements, in bytes (D538,
+// packages/protocol/src/index.ts DeviceResources).
+type DeviceResources struct {
+	At        string   `json:"at"`
+	MemTotal  float64  `json:"memTotal"`
+	MemFree   float64  `json:"memFree"`
+	Cores     int      `json:"cores"`
+	Load      *float64 `json:"load,omitempty"`
+	SwapTotal *float64 `json:"swapTotal,omitempty"`
+	DiskFree  *float64 `json:"diskFree,omitempty"`
+	DiskTotal *float64 `json:"diskTotal,omitempty"`
+	CPU       string   `json:"cpu,omitempty"`
+	GPU       string   `json:"gpu,omitempty"`
+	OOM       []string `json:"oom,omitempty"`
 }
 
 // DeviceTidied counts the working copies tidied away on a computer (D514).
@@ -2861,10 +2972,12 @@ type ClientFrame struct {
 type ServerFrame struct {
 	T string `json:"t"` // welcome | events | on_hand | task_history | sent | error
 	// Keep (D511): keep_result's page (ID is the Keep's); absent: no such Keep.
-	Keep        *KeepPage `json:"keep,omitempty"`
-	Persona     string    `json:"persona,omitempty"`
-	PersonaName string    `json:"personaName,omitempty"`
-	Machine     string    `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	Keep *KeepPage `json:"keep,omitempty"`
+	// KeepEdit (D533): keep_changed and keep_proposal, read on their own.
+	KeepEdit    *KeepEditFrame `json:"-"`
+	Persona     string         `json:"persona,omitempty"`
+	PersonaName string         `json:"personaName,omitempty"`
+	Machine     string         `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
 	// a socket silent for 45 s may be closed and dialled again.
 	Ping bool `json:"ping,omitempty"`
@@ -2944,7 +3057,10 @@ type ServerFrame struct {
 	// BrainNow is what the partner thinks with right now (D150): Brain,
 	// unless core runs it on a signed-in agent instead (Why "only_codex", "only_signed_in").
 	BrainNow *BrainNow `json:"brainNow,omitempty"`
-	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// BrainOptions is D536: with more than one partner, what each one's
+	// own 想事情用 may offer.
+	BrainOptions []BrainOption `json:"brainOptions,omitempty"`
+	Forgot       *Forgot       `json:"forgot,omitempty"`
 	// D304: how a memory_correct went: "mem" (Mem took it) or "here" (only here).
 	Corrected *Forgot `json:"corrected,omitempty"`
 	// D329: Undid says a 撤销 / Undo didn't go through (OK false).
@@ -3089,6 +3205,9 @@ type ServerFrame struct {
 	// D233: 密钥 / Keys, and 让任务向我要密钥 (nil = on).
 	SavedKeys []KeyView `json:"keys,omitempty"`
 	AskKeys   *bool     `json:"askKeys,omitempty"`
+	// D539: kept_keys answers for Device (OK, Why, the names in SavedKeys);
+	// Removed names the one just removed.
+	Removed string `json:"removed,omitempty"`
 	// D193: connection_signin (the device sign-in); phone_voice_result uses
 	// Action, OK, URL, Reason, Message.
 	SignIn *SignInView `json:"signIn,omitempty"`
@@ -3117,6 +3236,9 @@ type ServerFrame struct {
 	PastSteps *PastStepsFrame `json:"-"`
 	// D383: made_result (made.go), decoded on its own.
 	Made *MadeFrame `json:"-"`
+	// Mentions and Slash (D534): mention_list's and slash_list's own shapes.
+	Mentions *MentionList `json:"-"`
+	Slash    *SlashList   `json:"-"`
 	// D405: apps, app_open, app_data, app_ask_refused (apps.go), decoded on their own.
 	AppsF *AppsFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
@@ -3342,6 +3464,11 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	switch head.T {
 	case "apps", "app_open", "app_data", "app_ask_refused":
 		return decodeApps(data, ServerFrame{T: head.T})
+	case "keep_changed", "keep_proposal":
+		return decodeKeepEdit(data, ServerFrame{T: head.T})
+	case "mention_list", "slash_list":
+		// D534: the composers' @ and / lists ("items" and "entries" are their own shapes).
+		return decodeMentions(data, ServerFrame{T: head.T})
 	case "mem_answered":
 		// D465: its "answer" is a word where the shared struct's is the workbench's.
 		return decodeMemAnswered(data, ServerFrame{T: head.T})
@@ -3367,9 +3494,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "kept_keys", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result", "partner_peek":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "past_steps_result", "past_forked":

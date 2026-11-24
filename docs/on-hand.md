@@ -7,7 +7,18 @@ order: 2.5
 # On hand
 
 **On hand** (手头的事) lists everything your partner is doing for you. Open it from the button
-in the conversation's header, or press ⌘2.
+in the conversation's header, or press ⌘2. It always opens on the whole list.
+
+## Getting to what needs you
+
+Wherever you see how many things need you, tap the number: "2 need you" under your partner's name,
+the small number on a partner's face, or the line **2 waiting on you ›** just above where you type
+(shown while what waits is out of sight). It takes you straight to the first one: a question your
+partner asked scrolls into view in the conversation; anything else opens On hand with that task
+picked out and briefly lit up. Tap again for the next one; after the last, it starts over.
+
+The way back is always at the top: **Conversation / On hand / …** on a Mac or a wide screen, **‹**
+on a phone. Esc goes back one step.
 
 ## What you see
 
@@ -169,12 +180,37 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   one before and after. **⌃1** to **⌃9** open the first to ninth task on hand. **⌘/** lists every
   key. **⌘⇧D** makes an open task **Compact** (your partner's picture small beside the title,
   more of the work on screen) and back. If you open the **Workbench** and the window is too narrow for all three, the
-  Workbench takes the list's place until you close it.
+  Workbench takes the list's place until you close it. The Workbench belongs to the task you
+  opened it in: the next task you open starts at its conversation, with the list back beside it.
+- In the list beside a task, something under **Looking after** that runs in rounds opens its own page, with
+  the others under Looking after at its left. On a touch screen, a tap anywhere on a row opens it.
 - In the list beside a task, a row says only its title and a small picture of your partner while
   something is going on: raising a flag when it needs you, reading while it works, smiling with
   its phone when it has a **New result** you haven't opened yet. Open the task and the picture
   goes. A task that finishes while you're looking elsewhere keeps that smile in every list until
   you open it.
+
+## Work running in the background
+
+An agent often starts something that keeps going after its turn: a long build or benchmark, a
+command that waits for a server, a helper agent (a subagent) working on part of the task, or a
+watch on a log. Ducter shows these in the open task, just above where you type:
+
+- **3 running in the background** heads the list, with how long the oldest has been going. One
+  row per job: a mark for what it is (a command, a subagent, a watch), the agent's own words for
+  it (or the command, shortened), and how long it has run.
+- **Stop** (a small square at the end of a row) stops just that one, through the agent's own
+  way of stopping it; the agent hears that you stopped it. A row has no Stop when its agent
+  can't stop that kind of job by itself (a command Codex keeps running in the background, for
+  now). To stop everything, use **Pause** by the message box.
+- What ended folds under **22 done**. Open it to see each one's result: **Exit 2** when a
+  command failed, **Stopped**, or **Result unknown** when Ducter restarted before it heard the
+  end. Open a row to read the last lines of its output.
+- Click the heading to fold the list away; on a computer it stays the way you left it. On a
+  phone the list starts folded.
+
+On hand says it too: a task at work with jobs still running shows **3 running in the
+background** in its row.
 
 ## At a glance
 
@@ -220,8 +256,10 @@ The tasks at work on it are listed under it; one that needs you (a question, a p
 merge) is under **Needs you** instead, with its name, and the card only says how many wait.
 
 Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
-(each pull request with its checks), every round (newest first; the quiet ones fold into one line),
-and **How it runs**. Type what to change in the box under the rounds ("make it every hour", "tell me
+(each pull request with its own title and checks), every round (newest first, each in one plain line
+of what happened; **Details** shows what the task reported; the quiet ones fold into one line),
+and **How it runs**. To go back to the whole list, tap **On hand** at the top (or press Esc); when
+you leave On hand and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.
 

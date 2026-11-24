@@ -1,0 +1,15 @@
+{
+  "_": "D535: where a hand-over's group stands on On hand (src/hand-group.ts; the Mac's internal/protocol/handgroup.go).",
+  "cases": [
+    { "_": "its plan is ready for the person", "hand": { "plan": { "state": "ready" } }, "onBoard": 0, "queued": 0, "want": "needs" },
+    { "_": "its plan was held", "hand": { "plan": { "state": "held" } }, "onBoard": 1, "queued": 2, "want": "needs" },
+    { "_": "its plan failed", "hand": { "plan": { "state": "failed" } }, "onBoard": 0, "queued": 0, "want": "needs" },
+    { "_": "its review is ready", "hand": { "review": "ready" }, "onBoard": 0, "queued": 0, "want": "needs" },
+    { "_": "still planning, its plan task on the board", "hand": { "plan": { "state": "planning" } }, "onBoard": 1, "queued": 3, "want": "board" },
+    { "_": "a part at work", "hand": {}, "onBoard": 1, "queued": 1, "want": "board" },
+    { "_": "nothing on the board, parts in line", "hand": {}, "onBoard": 0, "queued": 2, "want": "queued" },
+    { "_": "the author's 通用设置: every task it started off the board, nothing in line", "hand": {}, "onBoard": 0, "queued": 0, "want": "none" },
+    { "_": "its review was sent", "hand": { "review": "sent" }, "onBoard": 0, "queued": 1, "want": "none" },
+    { "_": "its review was sent, a part still on the board", "hand": { "review": "sent" }, "onBoard": 1, "queued": 0, "want": "board" }
+  ]
+}

@@ -26,6 +26,9 @@ type Landmark struct {
 	Wakes bool                  `json:"wakes,omitempty"`
 	At    string                `json:"at"`
 	EndAt string                `json:"endAt,omitempty"`
+	// D526: a brief the person wrote themselves; how a report stood.
+	By string `json:"by,omitempty"`
+	S  string `json:"s,omitempty"`
 }
 
 var landmarkMarks = map[string]bool{"report": true, "compacted": true, "switched": true, "moved": true, "interrupted": true}
@@ -71,7 +74,11 @@ func landmarksOf(turns []protocol.IndexTurn) []Landmark {
 		switch {
 		case saidIndexTurn(t):
 			flush()
-			out = append(out, Landmark{K: t.P.K, From: i, To: i, Seq: t.Seq, Text: firstWords(t.P.Text), At: t.At})
+			lm := Landmark{K: t.P.K, From: i, To: i, Seq: t.Seq, Text: firstWords(t.P.Text), At: t.At}
+			if t.P.K == "brief" && t.P.By == "you" {
+				lm.By = "you"
+			}
+			out = append(out, lm)
 		case t.P != nil && !reports:
 			run = append(run, i)
 		}
@@ -84,7 +91,7 @@ func landmarksOf(turns []protocol.IndexTurn) []Landmark {
 			if at == "" {
 				at = t.EndAt
 			}
-			out = append(out, Landmark{K: m.K, From: i, To: i, Seq: t.Seq, Text: m.W, At: at})
+			out = append(out, Landmark{K: m.K, From: i, To: i, Seq: t.Seq, Text: m.W, At: at, S: m.S})
 		}
 	}
 	flush()

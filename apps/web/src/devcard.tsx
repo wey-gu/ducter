@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, Fold, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
+import { AboutComputer } from "./about-computer.tsx";
 import { ago, behind, harnessName, memWords, phaseLine as phaseWords, spoken } from "./format.ts";
 import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, lendWord, listWord, statusLine, versionFacts, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
@@ -32,6 +33,7 @@ import { AgentRow, SetupAnswer, canSignOut } from "./agent-setup.tsx";
 import { MemOnDevice } from "./worker-mem.tsx";
 import { MemAction } from "./mem-plugin.tsx";
 import { RecordsOnDevice } from "./worker-records.tsx";
+import { KeptKeys } from "./autofill.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -257,6 +259,14 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <DucterLine dv={dv} />
       {/* D514: what Ducter tidied away here, one quiet line; nothing before the first. */}
       {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{A.L.t("card.tidied", dv.tidied.count, tidySize(dv.tidied.bytes))}</div>}
+      {/* D538: what this computer measured of itself, and the person's rules about it. */}
+      {dv.kind !== "phone" && <AboutComputer dv={dv} />}
+      {/* D539: the keys Ducter keeps on this computer for its tasks here (names only), folded. */}
+      {dv.kind !== "phone" && (
+        <Fold title={t("kept.title")}>
+          <KeptKeys device={dv.home ? "local" : dv.id} />
+        </Fold>
+      )}
       {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
       {dv.home && <Ways home={dv.name} />}
       {!dv.home && (
@@ -774,8 +784,8 @@ function Sites({ dv }: { dv: DeviceView }) {
           <>
             <div class="small">{t("sites.clear.ask")}</div>
             <div class="btns">
-              <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
               <Btn kind="primary" size="sm" label={t("sites.clear.go")} onClick={() => (setClearing(false), A.send({ t: "browser_sites_clear" }))} />
+              <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
             </div>
           </>
         ) : (

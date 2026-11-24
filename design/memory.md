@@ -735,6 +735,32 @@ share the one memory there. Evidence and the live install: `research/136`.
   nmem is said as **太旧**, never shown; a paste that wasn't spent (not a link, too old, install
   failed, Mem unreachable) stays in the box.
 
+## Computer rules in Mem (D538, built 2026-11-24)
+
+*Who and how it feels:* the developer who told Ducter once 「haswell 内存大，验证的活多放它」 opens his own
+Claude Code on the MacBook the next day and asks it to run the full test suite: it already suggests
+haswell. The consumer never sees any of this; the fresh user has no Mem and loses nothing.
+
+- **Not identity.** A computer rule is the person's word on where their work runs, kept in Ducter's
+  rule store (`where.md` §24) and read by placement from there. It is never in a persona's AI Identity
+  or its L1 (`system.md`, "Identity and Mem boundary"): who the partner is, not where work runs.
+- **Mirrored while Mem is on** (`core/src/placement-mem.ts`): each computer rule becomes one memory in
+  the person's Space, unit type `preference`, label `computer-placement`, `source_app = ducter`, written
+  by the default partner's identity, upserted by a stable id (`ducter-placement-<rule id>`) so a changed
+  rule updates its memory. Its words are a statement about the person, never an order: "Prefers heavy
+  work (builds, test suites, type checks, browsers) to run more on the computer "haswell". In their
+  words: "…". (Kept in Ducter as a computer rule.)". A rule removed in Ducter is archived in Mem
+  (never deleted). Mem away: tried again on the next change or start. The card shows **也记在 Nowledge
+  Mem 里，你别的 AI 也知道** under a mirrored rule.
+- **Read back as hints, never as rules.** Every 30 minutes (and when Mem connects) Ducter lists the
+  memories labelled `computer-placement`; those this home didn't write (another agent the person told,
+  another Ducter) go to the partner once each in `[devices]`, to offer keeping as a computer rule (an
+  ask, Go = rule_save). Unlabelled memories about computers reach the partner as D487's known lines
+  like any preference; nothing becomes a rule without the person's yes.
+- **Off:** memory off, no Mem, or `DUCTER_MEMORY=off`: nothing is written or read; placement is the same.
+- **Measured:** `placement.test.ts` over a fake Mem (written only while on, labelled, upserted once,
+  archived on removal, hints once each, Ducter's own mirror never a hint). No real Mem write yet.
+
 ## Open (measure in the prototype)
 
 - Roll-up loss over months: unmeasured anywhere. Confidence is low.

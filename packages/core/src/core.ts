@@ -1,6 +1,8 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
+import { createBackgroundIndex } from "./background.ts";
 import { createWbFrames } from "./workbench.ts";
+import { createMentions } from "./mentions.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
 import { createFreeBudget } from "./free-budget.ts";
@@ -26,6 +28,9 @@ import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createTidied, holdOf } from "./tidied.ts";
+import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
+import { roomFor } from "./candidates.ts";
+import { createPlacementMem, HINTS_EVERY_MS, type PlacementMemClient } from "./placement-mem.ts";
 import { createRedo } from "./redo.ts";
 import { createOutside } from "./outside.ts";
 import { createMade, type Made } from "./made.ts";
@@ -50,6 +55,8 @@ import { gatherLeads, modelSpotter } from "./proactive/wider.ts";
 import { modelCross } from "./proactive/cross.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
+import { createKeyCopy } from "./key-copy.ts";
+import { MCP_CALL_WAIT } from "@ducter/protocol/src/harness-facts.ts";
 import { openPartners, type Partners, type PartnerError } from "./partners.ts";
 import { registerPartnerTool } from "./partner-tool.ts";
 import { DEFAULT_PARTNER, channelOf, isOtherChannel } from "@ducter/protocol/src/partners.ts";
@@ -66,7 +73,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { createKeeps, keepEndAsk, registerKeepTools, type Keeps } from "./keeps.ts";
+import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -148,6 +155,25 @@ import { agentSignature, widenAgentPath } from "./agent-path.ts";
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
  *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
+/**
+ * D540: model-visible: what every round of a review task hears when the person said reviews go
+ * without asking: the fact (where, their words) and the one means (review_report posts at once).
+ */
+const REVIEW_GO = {
+  zh: {
+    line: "对方说过 PR 评审不用问、直接发（{where}，原话：「{said}」）。写好的评审都用 review_report 交上来，Ducter 当场发到 GitHub：挑不出问题的，也把结论写在 body 里发出去；一个 PR 这一轮没有新提交但还没发过评审，也照样交（changed 填 true）。不要自己跑 gh pr review，不要把草稿写进报告等别人发，也不要留到下一轮。",
+    where: "{orgs} 下的 PR",
+    any: "所有 PR",
+    sep: "、",
+  },
+  en: {
+    line: 'The person said PR reviews go without asking ({where}; their words: "{said}"). Send every finished review through review_report and Ducter posts it to GitHub at once: when you find nothing to change, the body with your conclusion is the review and goes too; a PR with no new commit this round but no review posted yet goes the same way (changed: true). Never run gh pr review yourself, never leave a draft in a report for someone else to post, never hold it for the next round.',
+    where: "PRs in {orgs}",
+    any: "every PR",
+    sep: ", ",
+  },
+};
+
 /** D394: what a review task's round says (review_report). */
 const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
 const REVIEW_ROUND_SCHEMA = {
@@ -163,9 +189,10 @@ const REVIEW_ROUND_SCHEMA = {
           title: { type: "string", description: "The PR's title" },
           head: { type: "string", description: "The head commit you looked at (sha)" },
           ci: { type: "string", enum: ["passing", "failing", "pending", "none"], description: "Its checks at that head" },
-          changed: { type: "boolean", description: "true: its head moved and you reviewed it again this round" },
+          changed: { type: "boolean", description: "true: you reviewed it this round (its head moved, it is new, the person asked, or no review of yours is on it at this head yet)" },
           gist: { type: "string", description: "One line in the person's language: what the PR does" },
           mention: { type: "boolean", description: "true when it only mentions or assigns the person and didn't ask for their review" },
+          body: { type: "string", description: "Only when changed: the review's own words in the PR's language: your conclusion and what you checked, a few lines. With no notes it is the whole review (nothing to change still gets one)" },
           notes: {
             type: "array",
             description: "Only when changed: your drafted review comments, at most 6",
@@ -212,6 +239,11 @@ export interface CoreOptions {
   defaultDelayMs?: number;
   /** D233: how long ask_for_key waits in the call for the person (tests); default per harness. */
   keyWaitMs?: number;
+  /**
+   * D539 test and eval seams: the home's shelf of kept keys, and how an op is called on a computer
+   * ("local" = the home), so fake workers answer keys_has, keys_offer, keys_seal and keys_take.
+   */
+  keyCopy?: { shelf?: import("@ducter/protocol/src/key-shelf.ts").KeyShelf; call?: import("./key-copy.ts").KeyCall };
   batchMs?: number;
   sweepMs?: number; // how often live device sockets are re-checked for revocation (default 10 s)
   push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
@@ -311,7 +343,7 @@ export interface CoreOptions {
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
-  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk };
+  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk; rulesAsk?: import("./keeps.ts").KeepRulesAsk };
   /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
   branchAsk?: (prompt: string) => Promise<string>;
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
@@ -407,6 +439,8 @@ export interface Core extends CoreApi {
   computer?: ComputerUse;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code). */
   autofill: Autofill;
+  /** D539: keys copied between the person's computers. */
+  keyCopy: import("./key-copy.ts").KeyCopy;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -434,6 +468,8 @@ export interface Core extends CoreApi {
   partnerSessions(): Map<string, Partner>;
   /** D486: another partner's own Mem bundle as identity text (main.ts reads it at its session's start). */
   setPartnerBundle(id: string, text: string | undefined): void;
+  /** D538: the Mem client the person's computer rules are mirrored through, while Mem is on (main.ts). */
+  setPlacementMem?(c: PlacementMemClient | undefined): void;
   /** D486: removes another partner: its session ends, its conversation stays, its tasks become the default's. */
   removePartner(id: string): { ok: true } | { ok: false; error: PartnerError };
 }
@@ -601,7 +637,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     return p === DEFAULT_PARTNER ? undefined : p;
   });
   const rules = openRules(dataDir);
-  registerRuleTools(mcp, rules);
+  // D538: a computer rule names one of the home's computers (checked when the rule is saved).
+  registerRuleTools(mcp, rules, { computers: () => whereComputers() });
   // D381: what the person pinned at the top of the conversation.
   const pins = openPins({ dataDir, log });
   // D405: the apps the partner made (the partner frees an app's ask when it answers it).
@@ -647,6 +684,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D528: the person's zone (theirs from Settings or their device), not the server's clock.
     zone: () => zone(),
     lang: () => langNow(),
+    // D540: a round's wake carries the person's one-off ask for it (keep_change next_round) and,
+    // for a review task, the standing permission to post reviews with its means.
+    roundNote: (taskId, l) => {
+      const ask = keepsRef?.takeNext(taskId);
+      const lines = [ask ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l)].filter(Boolean);
+      return lines.length ? lines.join("\n\n") : undefined;
+    },
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
       nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
@@ -875,7 +919,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const keepsDecorate = (o: OnHand): OnHand => {
     const ks = keepsRef;
     if (!ks) return o;
-    const sheets = ks.sheets(persona.id);
+    // D546: every partner's Keeps (D24: one On hand), each sheet carrying its own persona.
+    const others = partners.on() ? partners.list().map((p) => p.id).filter((id) => isOther(id)) : [];
+    const sheets = [persona.id, ...others].flatMap((id) => ks.sheets(id));
     if (!sheets.length) return o;
     const of = new Map<string, { id: string; name: string }>();
     for (const s of sheets) for (const t of s.taskIds) of.set(t, { id: s.id, name: s.title });
@@ -897,10 +943,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       return rounds || turnAt ? { ...c, ...(rounds ? { rounds } : {}), ...(turnAt ? { turnAt } : {}) } : c;
     }),
   });
+  // D521: each task's background work, from its Log (its agent's background shells, subagents, watches, jobs).
+  const backgroundIndex = createBackgroundIndex(log);
+  log.subscribe((e) => {
+    if (backgroundIndex.onEvent(e)) onHandChanged();
+  });
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))))));
+    const on = backgroundIndex.decorate(keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -922,6 +973,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   let taskSourcesRef: TaskSources | undefined;
   // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
   let isReview: (taskId: string) => boolean = () => false;
+  /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
+  function reviewGoLine(taskId: string, l: LangTag): string {
+    if (!isReview(taskId)) return "";
+    const s = standing.list().find((x) => x.action === "pr_review" && !x.taskId);
+    if (!s) return "";
+    const w = words(REVIEW_GO, l);
+    const where = s.orgs?.length ? fill(w.where, { orgs: s.orgs.join(w.sep) }) : w.any;
+    return fill(w.line, { where, said: s.text.slice(0, 200) });
+  }
   const boards = createBoards({
     log,
     apps,
@@ -969,6 +1029,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     personaName: () => persona.name,
     // D516: every partner in the one thread of each chat app (the bot is the default's).
     partners: () => (partners.on() ? partners.list().map((p) => ({ id: p.id, name: p.name })) : []),
+    // D531: each partner's own name and face where the chat app shows a sender per message (Slack).
+    face: (id) => {
+      const p = partners.get(id) ?? partners.get(DEFAULT_PARTNER);
+      return p ? { name: p.name, look: p.look } : undefined;
+    },
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
       return v?.state === "on" && v.hostname ? `https://${v.hostname}/` : undefined;
@@ -1054,7 +1119,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   autofillRef = autofill;
   // D233: 密钥 / Keys a task asks the person for. No key value ever enters the Log: every event's
   // body is scrubbed of them on the way in (a command that printed one shows dots everywhere).
-  const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
+  // D539: keys copied between the person's computers on their Go; a task's ask_for_key looks there too.
+  const keyWait = (h: string) => opts.keyWaitMs ?? MCP_CALL_WAIT[h as HarnessId]?.value ?? 50_000;
+  const keyCopy = createKeyCopy({
+    dataDir,
+    log,
+    decisions,
+    tasks,
+    mcp,
+    workers: () => workersRef,
+    homeName: () => computers.homeName(),
+    computers: () => computers.workers?.() ?? [],
+    lang: () => langNow(),
+    waitMs: keyWait,
+    ...(opts.keyCopy?.shelf ? { shelf: opts.keyCopy.shelf } : {}),
+    ...(opts.keyCopy?.call ? { call: opts.keyCopy.call } : {}),
+  });
+  const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, copy: keyCopy, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
   autofill.keys = keys;
   {
     const append = log.append.bind(log);
@@ -1140,7 +1221,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     });
   const loadout = createLoadout({ log, tasks, settings, rules, said, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer(),
     // D503: the partner's own account, as last read, is kept for the partner when another way to the same model exists.
-    reserve: () => { const h = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness; const usage = accountUsage.peek(h)?.usage; return { harness: h, ...(usage ? { usage } : {}) }; },
+    // D536: and every agent another partner thinks with of its own.
+    reserve: () => {
+      const hs = new Set<string>([effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness]);
+      for (const p of partners.list()) if (p.brain) hs.add(p.brain.harness);
+      return [...hs].map((h) => { const usage = accountUsage.peek(h)?.usage; return { harness: h, ...(usage ? { usage } : {}) }; });
+    },
     limitsNow: () => agentLimits.now(),
   });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
@@ -1149,7 +1235,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
   registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
   // D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with.
-  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow() });
+  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow(), partners });
   // D372: an errand on a fast tier that fails or stalls carries on on the smartest, once.
   kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
   log.subscribe((e) => kindRetryRef?.onEvent(e));
@@ -1344,6 +1430,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         mem: () => otherMem(id),
         activity: { set: (a) => ws.setActivity(a, id) },
         setTaskMemory: (p) => (p ? taskMemOf.set(id, p) : taskMemOf.delete(id)),
+        // D536: what it thinks with, when the person gave it its own.
+        brain: () => partners.get(id)?.brain,
       });
       views.set(id, v);
     }
@@ -1398,6 +1486,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       }),
     ];
   };
+  // D538: the awake computers without room for heavy work now, with their free memory (no frame: none).
+  const noRoomNow = async () => ((await loadout.computers().catch(() => undefined)) ?? []).filter((c) => c.state === "awake" && !roomFor(c)).map((c) => ({ id: c.id, ...(c.mem ? { free: c.mem.free } : {}) }));
   const repoWhere = createRepoWhere({
     computers: whereComputers,
     async clones(dev, remote, probe, ms) {
@@ -1418,6 +1508,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     rules: () => rules.list(),
     // D510: New tasks start's computer, preferred for a repository whenever it can have the code.
     prefer: () => settings.get().newTasks?.where,
+    // D538: heavy work goes where there is room (each computer's own measured memory, its heavy tasks).
+    noRoom: async () => (await noRoomNow()).map((x) => x.id),
   });
   // D510: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
   registerNewTasksTool(mcp, { settings, computers: whereComputers });
@@ -1425,8 +1517,19 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.homeDevice = () => {
     const home = whereComputers()[0]!;
     const hs = devicesView?.harnessesNow();
-    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
+    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}), ...(homeLook ? { resources: homeLook } : {}) };
   };
+  // D538: the person's computer rules (Ducter's own rules.json is their source of truth), mirrored to
+  // Mem as the person's preferences while Mem is on; Mem's own labelled ones come back as hints.
+  const placementMem = createPlacementMem({ dataDir, rules, on: () => (memOnRef?.() ?? false) && !!placementClient, client: () => placementClient, persona: () => persona.id });
+  rules.onChange(() => void placementMem.sync().catch(() => {}));
+  const hintsTimer = setInterval(() => void placementMem.refreshHints().catch(() => {}), HINTS_EVERY_MS);
+  (hintsTimer as { unref?: () => void }).unref?.();
+  api.placement = () => ({
+    rules: rules.list().filter((r) => r.where && r.device).map((r) => ({ device: r.device!, text: r.text, ...(r.where!.avoid ? { avoid: true } : {}), ...(r.where!.heavy ? { heavy: true } : {}), ...(r.where!.web ? { web: true } : {}) })),
+    hints: placementMem.takeHints(),
+    heavy: Object.fromEntries(loadout.heavyNow()),
+  });
   // D480: what isn't whole about the person's own agents' mail, for the partner: the mailboxes Mem lists closed.
   api.agentMail = () => {
     if (!settings.get().memory) return [];
@@ -1435,6 +1538,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
+    rules: () => rules.list(),
+    noRoom: () => noRoomNow(),
     tasks,
     opened: (id) => {
       const b = log.read({ stream: `task:${id}`, kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
@@ -1472,11 +1577,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   // D528: the person's zone for a task's brief (a server's own clock is often UTC).
   api.zone = () => zone();
-  api.goesFor = (taskId) =>
-    TASK_STEP_ACTIONS.flatMap((a) => {
+  // D539: the keys a task holds, put in its session on the computer it runs on.
+  api.keyCopy = { refsFor: (id) => keyCopy.refsFor(id), withKeys: (spec) => keyCopy.withKeys(spec) };
+  api.goesFor = (taskId) => [
+    ...TASK_STEP_ACTIONS.flatMap((a) => {
       const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
       return s ? [s] : [];
-    });
+    }),
+    // D540: a review task's brief says the person let reviews go without asking, and how they go.
+    ...(isReview(taskId) ? standing.list().filter((s) => s.action === "pr_review" && !s.taskId).slice(0, 1) : []),
+  ];
   api.askOf = (decisionId) => {
     const d = decisions.get(decisionId);
     if (!d?.taskId) return undefined;
@@ -1603,12 +1713,22 @@ export function startCore(opts: CoreOptions = {}): Core {
     ongoing: () => ongoingRef,
     helperTasks: () => helperIndex.tasks,
     helperWeek: (id) => helperCount(id).week,
+    // D533: a task in rounds moved on its page (another computer, another agent), as task_switch moves it.
+    move: async (taskId, to) => {
+      const c = tasks.get(taskId);
+      if (!c) return { ok: false, message: "I can't find that task." };
+      const harness = to.harness ?? c.harness;
+      return loadout.switchTask(taskId, harness, harness === c.harness ? c.model : undefined, runner, to.device);
+    },
+    deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
     persona: () => persona.id,
     isOf: (p, want) => (want === persona.id ? !isOther(p) : p === want),
     lang: () => langNow(),
     zone: () => opts.work?.defaultZone,
     clock,
     onChange: () => (onHandChanged(), wsUp && ws.ongoingChanged()),
+    // D540: a one-off ask while a round is under way reaches it now.
+    tell: (taskId, text) => (runner ? runner.send(taskId, text, undefined, "partner").then(() => true) : Promise.resolve(false)),
   }));
   let keepSync = false;
   const syncKeeps = () => {
@@ -1628,8 +1748,12 @@ export function startCore(opts: CoreOptions = {}): Core {
       mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
     });
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
+  if (opts.keeps?.roundAsk) keeps.setRoundAsk(opts.keeps.roundAsk);
+  if (opts.keeps?.rulesAsk) keeps.setRulesAsk(opts.keeps.rulesAsk);
+  // D533: a round of a Keep the person changed hears its rules as they are now.
+  work.setKeepRules((of) => keeps.rulesFor(of));
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
-  registerKeepTools(mcp, keeps, () => persona.id);
+  registerKeepTools(mcp, keeps, () => persona.id, (name) => (name === "local" || name === computers.homeName() ? "local" : ((computers.workers?.() ?? []).find((w) => w.name === name || w.id === name)?.id ?? (computers.nameOf(name) ? name : undefined))));
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
@@ -1689,6 +1813,32 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
+  // D534: @ and / in the composers: plain lookups over what the home already holds.
+  const mentions = createMentions({
+    persona: () => persona.id,
+    tasks: () => tasks.list(),
+    task: (id) => tasks.get(id),
+    past: (q, limit) => past.query(persona.id, { q, limit }).items,
+    pastItem: (id) => past.item(id),
+    pastReport: (id) => past.report(id),
+    keeps: () => (keepsRef?.all() ?? []).map((k) => ({ id: k.keepId, title: k.title, life: k.life, persona: k.persona })),
+    keep: (id) => {
+      const k = keepsRef?.get(id);
+      return k ? { id: k.keepId, title: k.title, life: k.life, say: keepsRef?.say(id) } : undefined;
+    },
+    partners: () => (partners.on() ? partners.list() : []),
+    files: async (taskId, q) => {
+      const a = await workbench.handle(taskId, { op: "find", q });
+      return a.ok && a.answer.op === "find" ? a.answer.paths : [];
+    },
+    changes: async (taskId) => {
+      const a = await workbench.handle(taskId, { op: "changes" });
+      return a.ok && a.answer.op === "changes" ? a.answer.files.map((f) => ({ path: f.path, ...(f.adds != null ? { adds: f.adds } : {}), ...(f.dels != null ? { dels: f.dels } : {}) })) : undefined;
+    },
+    native: async (taskId) => runner?.native?.(taskId),
+    // The person's own skills as their tasks see them: Claude Code's, else Codex's, on the home.
+    skills: async () => (await runner?.inventory?.("claude-code", "skills", homedir())) ?? (await runner?.inventory?.("codex", "skills", homedir())),
+  });
   const ws = createWsHandler({
     home: {
       fp: identity.fp,
@@ -1706,7 +1856,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;
@@ -1741,6 +1891,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let memPluginsRef: MemPlugins | undefined;
   // D366: memory on and the home's Mem connected (D169's gate), set once memPlugins is made.
   let memOnRef: (() => boolean) | undefined;
+  /** D538: the Mem client computer rules are mirrored through (main.ts sets it; none in tests). */
+  let placementClient: PlacementMemClient | undefined;
   let memRelayRef: import("./mem-relay.ts").MemRelay | undefined;
   let memCarriedRef: (() => boolean) | undefined;
   // D366: Nowledge Mem on a computer for tasks: the worker's own mem_setup op.
@@ -2077,7 +2229,24 @@ export function startCore(opts: CoreOptions = {}): Core {
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
   // D514: the working copies tidied on each computer, for its card's quiet line.
   const tidiedCount = createTidied(log, () => devicesView?.changed());
-  devicesView = createDevicesView({ tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D538: the home looks at itself every 15 s (memory, cores, disk, the kernel's stops); its card
+  // hears a new look only when it moved enough to show. Tests and demos that fake the probes give
+  // their own look, or none.
+  const homeProbe = opts.deviceProbes ? opts.deviceProbes.resources : ((p) => () => p.look())(createResourceProbe({ dir: dataDir }));
+  let homeLook: import("@ducter/protocol").DeviceResources | undefined;
+  const lookHome = () =>
+    homeProbe?.()
+      .then((r) => {
+        if (!r) return;
+        const moved = resourcesMoved(homeLook, r);
+        homeLook = r;
+        if (moved) devicesView?.changed();
+      })
+      .catch(() => {});
+  void lookHome();
+  const homeLookTimer = homeProbe ? setInterval(lookHome, 15_000) : undefined;
+  (homeLookTimer as { unref?: () => void } | undefined)?.unref?.();
+  devicesView = createDevicesView({ resources: () => homeLook, tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -2370,7 +2539,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round from your final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. If a later look in the same round finds more, call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, from your round's final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it this round), and for each one reviewed its review: body (your conclusion, in the PR's own language; alone when there is nothing to change) and drafted comments (kind problem or suggestion, path, line, text). Ducter posts at once what the person said may go without asking, and puts the rest on one card at once; never post reviews yourself and never leave a draft in a report. Whenever a later look finds more (or the person asks about one PR between rounds), call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
@@ -2622,6 +2791,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     handsets,
     ...(computer ? { computer } : {}),
     autofill,
+    keyCopy,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     anywhere,
@@ -2635,6 +2805,13 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
+      // Not in tests (a fake agent would take it for a task's session): they pass a fake.
+      if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
+        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D533: the person's edited words read once into the rules they change, shown as a diff before one Go.
+      if (!opts.keeps?.rulesAsk)
+        keepsRef?.setRulesAsk(keepRulesAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-rules", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
       // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.
       if (!opts.branchAsk && process.env.NODE_ENV !== "test") {
@@ -2685,6 +2862,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (text?.trim()) bundleOf.set(id, text.trim());
       else bundleOf.delete(id);
     },
+    setPlacementMem(c) {
+      placementClient = c;
+      void placementMem.sync().then(() => placementMem.refreshHints(true));
+    },
     removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
     shedCaches() {
@@ -2692,6 +2873,9 @@ export function startCore(opts: CoreOptions = {}): Core {
       outsideReader.forget();
     },
     async stop() {
+      keepsRef?.stop(); // D519: its rounds' reading stops with the home
+      clearInterval(homeLookTimer);
+      clearInterval(hintsTimer);
       ws.stop();
       agentLimits.stop();
       loadout.stop();
@@ -2702,6 +2886,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       computer?.close();
       autofill.stop();
       keys.stop();
+      keyCopy.stop();
       devicesView?.stop();
       anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();

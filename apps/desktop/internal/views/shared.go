@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -325,4 +326,295 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 		}
 	})
 	return n > 0 && fold.Clicked()
+}
+
+// ---------- D530: the opened task's steps ----------
+
+// workHead is a turn's work under one quiet line (D530): the drawn stack
+// (never a spinner: the live step's row or the live line carries it), "12 步，3 条消息" in 13 secondary
+// ink, a small × in the failed ink with how many failed, the chevron, and a
+// hairline on to the column's edge. Hovered, the words darken and nothing
+// moves. It answers a click. The web's WorkHead.
+func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open bool) bool {
+	t := a.T
+	name := words
+	if failed > 0 {
+		name = spoken(a.L, words, a.L.T("work.failed", failed))
+	}
+	row := ui.Row(c.Key("work:" + key)).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(name)
+	hover := row.Hovered()
+	row.Children(func() {
+		ink := t.InkMuted
+		if hover {
+			ink = t.InkSoft
+		}
+		// D530: the head never spins (live or not): open, the live step's row
+		// does; folded, the live line under it does.
+		a.glyph(c, 16, drawStack(ink))
+		uiText(c, words).FontSize(stepSize).FontWeight(500).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+		if failed > 0 {
+			ui.Row(c.Key("failed")).Gap(2).AlignItems(ui.Center).Shrink(0).Tooltip(a.L.T("work.failed", failed)).Children(func() {
+				a.glyph(c, 12, drawCrossSmall(t.Failed.Ink))
+				uiText(c, strconv.Itoa(failed)).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).FontFeatures("tnum").AccessHidden(true)
+			})
+		}
+		a.glyph(c, 12, drawChevron(t.Faint, open))
+		ui.Box(c).Height(1).Grow(1).MinWidth(t.S4).Background(t.LineSoft)
+	})
+	return row.Clicked()
+}
+
+// stepLine is a step's one row (D268, D530): 28 tall, its mark at 16, what
+// it holds, and a 12 chevron in faint ink when it opens; hovered, a soft
+// tint under it that moves nothing (it pads into its own negative margin).
+// It answers a click. The web's .step.
+func (a *App) stepLine(c *ui.Context, label string, expandable, open bool, children func(row ui.Element)) bool {
+	t := a.T
+	row := ui.Row(c.Key("line")).Gap(t.S2).MinHeight(stepRowH).Padding(0, 6).Margin(0, -6).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).Label(label)
+	if expandable {
+		row.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+		if row.Hovered() {
+			row.Background(t.SurfaceSunken.Mix(t.Bg, 0.4))
+		}
+	}
+	row.Children(func() {
+		children(row)
+		if expandable {
+			ui.Box(c).Size(12, 12).Shrink(0).Draw(drawChevron(t.Faint, open))
+		}
+	})
+	return expandable && row.Clicked()
+}
+
+// stepChip is a step's object in mono on the inline code tint (D530): a
+// command cut at a word's end, a pattern, a service's object; one line,
+// cut with an ellipsis, its whole on hover. Never pressable on its own.
+// The web's .chip.code.
+func (a *App) stepChip(c *ui.Context, text, tip string) {
+	t := a.T
+	if tip == "" {
+		tip = text
+	}
+	ui.Row(c.Key("chip")).Height(stepChipH).Padding(0, 6).Radius(t.RadiusXS).Background(chipGround(t)).AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tip).Children(func() {
+		uiText(c, text).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+	})
+}
+
+// fileChip is a file a step read or edited (D530): its kind's small mark and
+// its name in mono on the inline code tint, its tail on hover; when the
+// path is known it opens the file inside Ducter (D356's viewer), a deeper
+// tint under it on hover. The web's FileChip.
+func (a *App) fileChip(c *ui.Context, key, tail, path, taskID string) {
+	t := a.T
+	name := chipFileName(tail)
+	el := ui.Row(c.Key("file:"+key)).Gap(4).Height(stepChipH).Padding(0, 6, 0, 4).Radius(t.RadiusXS).Background(chipGround(t)).
+		AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tail)
+	if path != "" {
+		el.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("file.open", name))
+		if el.Hovered() {
+			el.Background(t.LineSoft)
+		}
+		if el.Clicked() {
+			a.OpenFileLink(path, taskID)
+		}
+	}
+	el.Children(func() {
+		mark := drawPage
+		if chipFileKind(tail) == "picture" {
+			mark = drawPictureSM
+		}
+		a.glyph(c, 12, mark(t.InkMuted))
+		uiText(c, name).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+	})
+}
+
+// chipGround is a step chip's ground (D530): the inline code tint in the
+// light; in the dark one step above it (Surface), so the chip reads on the
+// page. The web's --chip-ground.
+func chipGround(t *theme.Tokens) ui.Color {
+	if t.Dark {
+		return t.Surface
+	}
+	return t.Sunken
+}
+
+// trayLine is one dense row of a quiet tray (D521, the opened task's 后台 /
+// In the background): a drawn mark (markAbout names it), its words on one
+// line cut with an ellipsis, its facts at the right edge (a state word, a
+// time in mono), a chevron when it opens (open non-nil), and an action slot
+// apart at its far right (act; reserve keeps the slot empty so the columns
+// line up). head: the tray's own head row (stronger words).
+type trayLine struct {
+	key, words, markAbout string
+	mark                  func(ui.Color) func(*ui.Painter, ui.Rect)
+	markInk               ui.Color
+	head                  bool
+	state, time           string
+	stateInk              ui.Color
+	open                  *bool
+	act                   func()
+	reserve               bool
+}
+
+// trayRow draws one trayLine; it says whether the row was pressed (only a
+// row that opens is pressable). The web's TrayRow.
+func (a *App) trayRow(c *ui.Context, r trayLine) bool {
+	t := a.T
+	clicked := false
+	ui.Row(c.Key("tray:" + r.key)).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		main := ui.Row(c.Key("trm")).Gap(t.S2).AlignItems(ui.Center).Grow(1).Shrink(1).MinWidth(0).
+			MinHeight(t.ControlSM).Padding(0, t.S3).Radius(t.RadiusSM)
+		hover := false
+		if r.open != nil {
+			name := r.words
+			if *r.open {
+				name = spoken(a.L, r.words, a.L.T("bg.hide"))
+			} else {
+				name = spoken(a.L, r.words, a.L.T("bg.show"))
+			}
+			main.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable()
+			hover = main.Hovered()
+			if main.Pressed() {
+				main.Background(t.LineSoft)
+			} else if hover {
+				main.Background(t.Surface)
+			}
+			clicked = main.Clicked()
+		}
+		main.Children(func() {
+			if r.mark != nil {
+				ink := t.InkMuted
+				if r.markInk != (ui.Color{}) {
+					ink = r.markInk
+				}
+				g := ui.Box(c).Size(16, 16).Draw(r.mark(ink)).Shrink(0)
+				if r.markAbout != "" {
+					g.Label(r.markAbout).Tooltip(r.markAbout)
+				}
+			}
+			ink, w := t.InkSoft, 500
+			if r.head {
+				w = 700
+			}
+			if hover {
+				ink = t.Ink
+			}
+			uiText(c, r.words).FontSize(t.SM).FontWeight(w).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).Grow(1).Tooltip(r.words)
+			if r.state != "" {
+				si := t.InkMuted
+				if r.stateInk != (ui.Color{}) {
+					si = r.stateInk
+				}
+				uiText(c, r.state).FontSize(t.XS).TextColor(si).SingleLine().Shrink(0)
+			}
+			if r.time != "" {
+				uiText(c, r.time).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+			}
+			if r.open != nil {
+				ci := t.InkMuted
+				if hover {
+					ci = t.Ink
+				}
+				a.glyph(c, 12, drawChevron(ci, *r.open))
+			}
+		})
+		if r.act != nil || r.reserve {
+			ui.Row(c.Key("tra")).Width(t.ControlSM).Height(t.ControlSM).Justify(ui.Center).AlignItems(ui.Center).Shrink(0).Children(func() {
+				if r.act != nil {
+					r.act()
+				}
+			})
+		}
+	})
+	return clicked
+}
+
+// pillFact is one fact on a factPill: the lead in ink, one in the needs ink,
+// the rest muted; each its own element (D291).
+type pillFact struct {
+	text  string
+	lead  bool
+	needs bool
+}
+
+// factPill is a slim clay pill on the reading measure (D544: a task in
+// rounds' line under the bar): a 24 mark, then its facts, the whole one
+// action. It reports a click.
+func (a *App) factPill(c *ui.Context, key, label string, mark func(), facts []pillFact) bool {
+	t := a.T
+	row := ui.Row(c.Key(key)).Grow(1).MaxWidth(readMeasure).MinHeight(36).Gap(t.S3).Padding(4, 14, 4, 8).AlignItems(ui.Center).
+		Radius(999).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Border(1, t.LineSoft).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
+	if row.Hovered() {
+		row.Background(t.SurfaceRaised)
+	}
+	row.Children(func() {
+		ui.Box(c.Key("mk")).Size(24, 24).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(mark)
+		for i, f := range facts {
+			tx := uiText(c.Key(i), f.text).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+			switch {
+			case f.lead:
+				tx.FontWeight(700).TextColor(t.Ink)
+			case f.needs:
+				tx.FontWeight(600).TextColor(t.NeedsYou.Ink)
+			}
+		}
+	})
+	return row.Clicked()
+}
+
+// othersStack (shared, D545) is the way back to the list of partners while
+// it is hidden: the
+// other partners' own figures, a small stack in their clays, with the
+// number of what waits on the person in them (the web's PartnersBack).
+func (a *App) othersStack(c *ui.Context) {
+	if !a.manyPartners() || a.Local.RailMode() != "hidden" {
+		return
+	}
+	t := a.T
+	shown := a.shownPartnerID()
+	var others []protocol.PartnerInfo
+	n := 0
+	for _, p := range a.S.Partners {
+		if p.ID != shown {
+			others = append(others, p)
+			n += a.partnerNeeds(p)
+		}
+	}
+	label := a.L.T("partners.back")
+	if n > 0 {
+		label = a.L.T("partners.back.asks", n)
+	}
+	b := ui.Row(c.Key("others-stack")).Height(t.ControlSM).AlignItems(ui.Center).Padding(0, t.S1).Radius(t.RadiusSM).Shrink(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
+	if b.Hovered() || b.Pressed() || b.FocusVisible() {
+		b.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
+	}
+	b.Children(func() {
+		ui.Box(c.Key("faces")).Shrink(0).Children(func() {
+			ui.Row(c).Children(func() {
+				for i, p := range others {
+					if i >= 3 {
+						break
+					}
+					disc := ui.Box(c.Key("d"+p.ID)).Size(24, 24).Radius(12).Background(t.SurfaceSunken).Border(2, t.Chrome).AlignItems(ui.Center).Justify(ui.End).Shrink(0)
+					if i > 0 {
+						disc.Margin(0, 0, 0, -7)
+					}
+					disc.ZIndex(3 - i)
+					disc.Children(func() { a.stone(c, "stack-"+p.ID, p.Look, 20) })
+				}
+			})
+			if n > 0 {
+				a.countPebble(c, "others", n, t.Chrome).Absolute().Right(-19).Top(-9)
+			}
+		})
+		if n > 0 {
+			ui.Box(c).Width(16).Shrink(0)
+		}
+	})
+	if b.Clicked() {
+		a.setRail("")
+	}
 }

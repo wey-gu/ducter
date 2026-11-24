@@ -19,6 +19,13 @@ func (a *App) onHand(c *ui.Context) {
 	b := a.S.Board()
 	a.placeBar(c, "onhand", RouteOnHand, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
+		// D535: on a Keep's page the breadcrumb is the way back, at every
+		// width: 对话 / 手头的事 / {the Keep}, 手头的事 closing the page.
+		if title, ok := a.keepCrumb(); ok {
+			a.crumbDo(c, a.L.T("onhand.title"), a.closeKeep)
+			a.chromeTitle(c, title)
+			return
+		}
 		a.chromeTitle(c, a.L.T("onhand.title"))
 	}, func() {
 		// 新建 / New task: the place's own action, a clay button in the bar
@@ -66,7 +73,7 @@ func (a *App) onHand(c *ui.Context) {
 				if keepOpen {
 					avail := w - 2*t.S6
 					if w >= railFrom {
-						avail -= lensColW
+						avail -= keepRailW
 					}
 					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
 					return
@@ -212,6 +219,10 @@ func (a *App) waitReason(task *store.Task) string {
 	// D157: waiting for a computer that said it was going to sleep.
 	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
 		return a.L.T("where.waiting", d)
+	}
+	// D538: heavy work waiting for room on its computer.
+	if d, ok := strings.CutPrefix(r, "device:room:"); ok {
+		return a.L.T("where.waiting.room", d)
 	}
 	if r == "browser:native_missing" { // D207
 		return a.L.T("wait.native_missing")
@@ -488,8 +499,10 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
 	// D493: 8 under each card, so its ledge never touches the next one.
-	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
-		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
+	a.doorCard(c, card, "t:"+task.ID) // D535
+	card.Children(func() {
 		a.askerRow(c, task)
 		rep := task.Report()
 		q := ""
@@ -512,6 +525,19 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	})
 }
 
+// ownedTitle (D546) is a card's title with whose task it is before it: its
+// partner's mark, once there is more than one.
+func (a *App) ownedTitle(c *ui.Context, task *store.Task, size float32) {
+	if !a.manyPartners() {
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(size).FontWeight(800).Balance()
+		return
+	}
+	ui.Row(c.Key("owned")).Gap(a.T.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		a.partnerMark(c, "t-"+task.ID, a.taskPartner(task))
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(size).FontWeight(800).Balance().Grow(1).Shrink(1).MinWidth(0)
+	})
+}
+
 // askerRow is what the ask is about: the task's short title as a link
 // (its hover says the whole title, who and where), and how long ago. No
 // coin: at this size it reads as an emoji (D213).
@@ -523,6 +549,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 		for _, why := range a.whereWhy(task) {
 			tip += "\n" + why
 		}
+		a.partnerMark(c, "ask-"+task.ID, a.taskPartner(task)) // D546: whose task asks
 		l := ui.Row(c.Key("asker")).Gap(2).AlignItems(ui.Center).Grow(1).MinWidth(0).Cursor(ui.CursorPointer).
 			Role(ui.RoleLink).Label(task.Title()).Focusable().Tooltip(tip)
 		hover := l.Hovered() || l.Pressed()
@@ -609,7 +636,7 @@ func (a *App) whereLines(c *ui.Context, d *store.DecisionState) {
 
 // genericAsk is a go/hold ask drawn by decideRow (D482), not a card of its own kind.
 func genericAsk(d *store.DecisionState) bool {
-	return d.Checkout == nil && d.SignIn == nil && d.Phone == nil && d.Pay == nil && d.Fill == nil && d.Key == nil &&
+	return d.Checkout == nil && d.SignIn == nil && d.Phone == nil && d.Pay == nil && d.Fill == nil && d.Key == nil && d.CopyKey == nil &&
 		!(d.Handset != nil && d.Handset.Kind == "record") && !(d.Draft != nil && d.FindID != "")
 }
 
@@ -670,10 +697,10 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 			}
 			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
 		}
-		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		a.ownedTitle(c, task, t.MD)
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
-			a.goal(c, u.Until, false)
+			a.goal(c, u.Until, a.taskLook(task), false)
 			if line := a.untilLine(u.Until); line != "" {
 				uiText(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 			}
@@ -698,7 +725,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		a.ownedTitle(c, task, t.MD)
 		// What it waits for, said alone: the clock or the wait's bubble
 		// already says it is waiting (D291); when it comes back is its own
 		// muted time.
@@ -773,8 +800,10 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callBody(c, d) })
 		return
 	}
-	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
-		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
+	a.doorCard(c, card, "d:"+d.DecisionID) // D535
+	card.Children(func() {
 		if d.Asker != nil {
 			// X1 (D170): the agent's coin and who it is stand where a task's title would.
 			a.peerAskerRow(c, d.Asker)

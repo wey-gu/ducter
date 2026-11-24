@@ -389,11 +389,11 @@ export function TalkPanel() {
         <p>{t("talk.ask.why")}</p>
         <p class="voice-privacy">{t(`voice.privacy.${c.where ?? "device"}`)}</p>
         <div class="btns">
-          <button type="button" class="btn secondary" onClick={() => c.later()}>
-            {t("voice.ask.later")}
-          </button>
           <button type="button" class="btn primary" onClick={() => void c.allow()}>
             {t("talk.ask.go")}
+          </button>
+          <button type="button" class="btn secondary" onClick={() => c.later()}>
+            {t("voice.ask.later")}
           </button>
         </div>
       </div>
@@ -476,11 +476,11 @@ export function TalkPanel() {
             </div>
           ) : (
             <div class="btns">
-              <button type="button" class="btn secondary" onClick={() => c.answer("hold")}>
-                {t("talk.no")}
-              </button>
               <button type="button" class="btn primary" onClick={() => c.answer("go")}>
                 {t("talk.yes")}
+              </button>
+              <button type="button" class="btn secondary" onClick={() => c.answer("hold")}>
+                {t("talk.no")}
               </button>
             </div>
           )}

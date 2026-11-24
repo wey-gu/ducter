@@ -4,13 +4,16 @@
 // waits for, its question, its result), and on a repo task its branch, +/−, and a draft PR or a
 // merge. Density grows with use: the find field from ten tasks, by project from two projects,
 // keys and selection only where a keyboard and a pointer are.
+import { copyKeyTitle } from "./autofill.tsx";
 import { cantClause } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
-import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
+import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
+import { still } from "./nav.ts";
+import { wideNow } from "./fold.ts";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -38,7 +41,7 @@ import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
-import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
+import { healthLine, rhythm, RepeatGlyph, reviewLine } from "./past.tsx";
 import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import { cutAtWord } from "@ducter/protocol";
@@ -93,7 +96,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   const r = reportOf(task);
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    const q = d?.question || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words.
+    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
@@ -185,6 +189,13 @@ export function stoppedWait(task: Task, now = Date.now()): boolean {
   const at = lastChange(task);
   return Number.isFinite(at) && now - at >= STOPPED_AFTER;
 }
+/** D539: a group's part as its row reads it: a wait that stopped with nothing to bring it back is
+ *  the person's (等你), never 在等, the same as the task's own row (stoppedWait). */
+function memberAttention(id: string) {
+  const t = A.S.tasks.get(id);
+  if (!t) return undefined;
+  return stoppedWait(t) ? "needs_you" : attention(t);
+}
 /** D467: finished on today's local date, done (or done and being checked): 今天做完 lists these. */
 export function doneToday(task: Task, now = Date.now()): boolean {
   const a = attention(task);
@@ -245,28 +256,32 @@ export function groupLaneOf(lanes: Task[][]) {
 /** D517: the person's one count's items, from one source: the Dock and app badge, the conversation's
  *  line, a partner's number in the list of partners and On hand's head all count these, and On hand
  *  draws each of them under 等你. A lens counts its tasks; all (and Other) the questions of no task too. */
-export function needsYouItems(lens = "", now = Date.now()): { partner: string }[] {
+export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
-  const out: { partner: string }[] = [];
+  const out: NeedItem[] = [];
   const inLine = new Set<string>();
-  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))) {
+  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => memberAttention(id))) {
     if (!g.stopped) continue;
     for (const id of g.ids) inLine.add(id);
     const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
-    out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER });
+    out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER, key: `g:${g.g.id}`, groupId: g.g.id });
   }
   for (const x of [...l[LANE.needs]!, ...parts.stopped, ...parts.ready, ...parts.failed]) {
     if (attention(x) === "failed" && inLine.has(x.id)) continue; // a part of a stopped line is the line's
-    out.push({ partner: A.taskPartner(x) });
+    out.push({ partner: A.taskPartner(x), key: `t:${x.id}`, taskId: x.id });
   }
   if (looseIn(lens)) {
     const shown = A.S.persona || A.partnerShown || DEFAULT_PARTNER;
-    for (const _ of A.S.partnerDecisions()) out.push({ partner: shown });
-    for (const a of A.otherAsks()) out.push({ partner: a.persona });
+    for (const d of A.S.partnerDecisions()) out.push({ partner: shown, key: `d:${d.decisionId}`, decisionId: d.decisionId });
+    for (const a of A.otherAsks()) out.push({ partner: a.persona, key: `a:${a.decisionId}`, askId: a.decisionId });
   }
   return out;
 }
+
+/** D535: one item of the person's one count, and where it lives: a stopped line, a task, the
+ *  partner's own question (its card in the conversation), another partner's (On hand's 等你). */
+export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; decisionId?: string; askId?: string };
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
  *  way (not the partner's rethink, which may still ask the person). Said on its row in the words
@@ -754,6 +769,13 @@ export function whereMeta(task: Task): string[] {
   return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
+/** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
+export function bgFact(task: Task): string[] {
+  const a = attention(task);
+  const n = bgRunning(task.card?.background);
+  return n > 0 && !finished(task) && a !== "dropped" && a !== "superseded" ? [t("bg.onhand", n)] : [];
+}
+
 /** D507: the tasks the board draws under their helper right now (so their rows don't name it again). */
 let NESTED = new Set<string>();
 
@@ -926,18 +948,17 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const wide = room !== "phone";
   // D261: where, quietly: its project when the board shows all of them, its computer with two or
   // more. Who does it and its branch are in the task.
-  const meta = room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : [];
+  const meta = [...(room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : []), ...bgFact(task)];
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
-    L.focus = task.id;
-    A.go({ name: "task", id: task.id, full: room === "full" || room === "rail" });
+    openRow(task.id, room);
   };
   return (
-    <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
+    <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id} data-look={A.lookOf(task.card?.persona)}>
       <button class="tmain" onClick={onClick} title={title(task)} aria-current={opened ? "page" : undefined}>
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
@@ -975,6 +996,16 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     </div>
   );
 });
+
+/** D542: what a row's tap opens. In the rail a Keep's own work (its rounds' task) is the Keep: its
+ *  row opens the Keep's page, never the round's task; any other row opens its task, at the whole
+ *  screen from the board and the rail, at its conversation (the workbench is the task's own). */
+export function openRow(taskId: string, room: Room) {
+  const kept = room === "rail" ? keepOfTask(taskId) : undefined;
+  if (kept) return openKeep(kept);
+  L.focus = taskId;
+  A.go({ name: "task", id: taskId, full: room === "full" || room === "rail" });
+}
 
 /** D287: results already celebrated this session, so a done card's little moment plays once. */
 const cheered = new Map<string, number>();
@@ -1080,7 +1111,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
-  if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
+  if (rounds?.everyMs) meta.push(t("og.round.every", rhythm(rounds.everyMs)));
+  meta.push(...bgFact(task));
   const pb = placeOf(task);
   const beat = task.acting
     ? t(`result.acting.${task.acting}`, pb.kind === "repo" ? (pb.baseBranch ?? "main") : "")
@@ -1106,11 +1138,16 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const full = title(task);
   const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
   const about = named !== full ? full : undefined;
+  // D529: a row that shows its own actions (看看为什么, 再试一次, 到 GitHub 合并) keeps its ⋯ in that same
+  // group, revealed in place on hover or focus; never a second row of controls.
+  const acts = !!stuck || stopped || quiet || (failed && !!fin) || prr?.stands === "needs" || !!w?.limit?.handTo;
+  const joined = fin && !stacked && acts ? <FinishedActs f={fin} full={room === "full"} menuOnly /> : null;
   return (
     <div
       ref={ref}
       class={`ocard a-${a}${prr ? ` pr-${prr.stands}` : ""}${stopped ? " stopped" : ""}${quiet ? " quiet" : ""}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`}
       data-row={task.id}
+      data-look={A.lookOf(task.card?.persona)}
     >
       <button class="omain" onClick={onClick} title={about}>
         <StateMark k={k} frac={next?.frac ?? 0} beat={latestOf(task)?.seq} still={stepQuiet || rest} />
@@ -1205,6 +1242,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       {stuck ? (
         <span class="oacts on">
           <StuckActs n={stuck} onRetry={fin ? () => runFinished("retry", fin, room === "full") : undefined} />
+          {joined}
         </span>
       ) : stopped || quiet ? (
         <span class="oacts on">
@@ -1214,27 +1252,32 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
           )}
           <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
+          {joined}
         </span>
       ) : failed && fin ? (
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(task)} onClick={() => runFinished("retry", fin, room === "full")} />
+          {joined}
         </span>
       ) : prr?.stands === "needs" ? (
         // D508: the one thing a ready PR needs: its merge, on GitHub.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("onhand.prs.merge")} about={full} onClick={() => window.open(prr.pr.url, "_blank", "noopener")} />
+          {joined}
         </span>
       ) : w?.limit?.handTo ? (
         // D471 (D297): a limit used up, with another agent that can take it now: its row offers it.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(w.limit.handTo.harness))} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "handoff")} />
+          {joined}
         </span>
       ) : (
         room !== "phone" && <RowActs task={task} room="card" />
       )}
       </span>
-      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. */}
-      {fin && !stacked && <FinishedActs f={fin} full={room === "full"} />}
+      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. D529: a row
+          with actions of its own has its ⋯ in that group (joined); else × and ⋯ come in over its time. */}
+      {fin && !stacked && !acts && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });
@@ -1308,7 +1351,7 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, bgRunning(c?.background), c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
 type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };
@@ -1503,7 +1546,7 @@ export function OnHandList({ room }: { room: Room }) {
   // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
   // D517: a group with a part that waits for the person stands in 等你, where the head counts it.
   const laneOf = groupLaneOf(lanes);
-  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
+  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => memberAttention(id))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
   // D507: each helper that is on is its own sheet, its work under it until it lets go (the task ended
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for
@@ -1809,8 +1852,10 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
     }
   }, [atWork.join(","), A.S.welcomed]);
   return (
-    <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
+    <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} data-look={A.lookOf(b.g.persona)} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
+        {/* D546: whose line of work it is, once there is more than one partner (a part's own row says it again only when another's). */}
+        <PartnerMark persona={b.g.persona} />
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
         ) : (
@@ -2385,3 +2430,110 @@ export function Peek() {
 // D517: the app's counts (the conversation's line, a partner's number in the list) read the same items as
 // On hand's 等你.
 A.needsItems = () => needsYouItems("");
+
+// ---------- D535: every needs-you count is a door ----------
+
+/** D535: the last item a count's door opened (its key), for the next tap's step. */
+export const door = { last: "" };
+
+/** D535: a count's items in the order 等你 draws them (a stopped line, the partner's own questions,
+ *  another partner's, then the tasks); partner "" is the person's one count, else that partner's part. */
+export function doorItems(partner = ""): NeedItem[] {
+  const all = needsYouItems("").filter((i) => !partner || i.partner === partner);
+  const rank = (i: NeedItem) => (i.groupId ? 0 : i.decisionId ? 1 : i.askId ? 2 : 3);
+  return all.map((i, n) => ({ i, n })).sort((a, b) => rank(a.i) - rank(b.i) || a.n - b.n).map((x) => x.i);
+}
+
+/** D535: the item after the one last opened; the first when that one is gone or was the last. */
+export function nextDoor(items: { key: string }[], last: string): number {
+  const at = items.findIndex((i) => i.key === last);
+  return at < 0 ? 0 : (at + 1) % items.length;
+}
+
+/** D535: whose items the conversation's line opens: with more than one partner the shown one's. */
+export const barDoorPartner = () => (A.manyPartners() ? A.S.persona || A.partnerShown || DEFAULT_PARTNER : "");
+
+/** D535: opens the next item of a count where it lives: the partner's own question in the
+ *  conversation (scrolled to, its tint deepening once), else On hand's overview with the item
+ *  focused, scrolled to and deepening once. A second tap steps on; after the last, the first. */
+export function openDoor(partner = ""): boolean {
+  const items = doorItems(partner);
+  if (!items.length) return false;
+  const it = items[nextDoor(items, door.last)]!;
+  door.last = it.key;
+  if (K.open) closeKeepHere();
+  if (it.decisionId && A.S.channel.some((e) => e.decision?.decisionId === it.decisionId)) {
+    // Wide, the conversation stands beside On hand: it is found there without leaving the pane.
+    const convShown = A.route.name === "conv" || (wideNow() && !A.route.full);
+    if (!convShown) A.go({ name: "conv" });
+    else A.changed();
+    // Found in the conversation itself, never its copy in On hand's 等你 beside it.
+    findIn(() => `main[role="log"] #d-${CSS.escape(it.decisionId!)}`);
+    return true;
+  }
+  L.filter = 0;
+  L.find = "";
+  L.focus = it.taskId ?? "";
+  L.walked = !!it.taskId;
+  // The lens kept on this device stays when it holds the item; else All.
+  const lens = readLens();
+  if (lens) {
+    const task = it.taskId ? A.S.tasks.get(it.taskId) : undefined;
+    const holds = task ? lensOf(task) === lens : (it.decisionId || it.askId) && lens === OTHER;
+    if (!holds) setLens("");
+    L.focus = it.taskId ?? "";
+    L.walked = !!it.taskId;
+  }
+  if (A.route.name !== "onhand") A.go({ name: "onhand", ...(A.route.name === "task" && A.route.full ? { full: true } : {}) });
+  else A.changed();
+  findIn(() => `.onhand-list:not(.room-rail) :is(${itemSelector(it)})`);
+  return true;
+}
+
+/** D535: scrolls an element to the middle of its own list, and only that list: scrollIntoView also
+ *  moves every scrolling ancestor, the page itself included, which slid the two panes off the window. */
+export function centerIn(el: HTMLElement) {
+  let sc = el.parentElement;
+  while (sc && !(sc.scrollHeight > sc.clientHeight && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+  if (!sc) return;
+  const r = el.getBoundingClientRect();
+  const box = sc.getBoundingClientRect();
+  const top = sc.scrollTop + (r.top - box.top) - Math.max(0, (box.height - r.height) / 2);
+  sc.scrollTo({ top: Math.max(0, top), behavior: still() ? "auto" : "smooth" });
+}
+
+/** D535: closes a Keep's page without a render of its own (the door's move renders once). */
+function closeKeepHere() {
+  K.open = "";
+  K.pause = K.stop = false;
+}
+
+/** D535: the element On hand draws for an item: its row, its line's card, its question's card. */
+function itemSelector(it: NeedItem): string {
+  if (it.groupId) return `[data-group="${CSS.escape(it.groupId)}"]`;
+  if (it.askId) return `[data-ask="${CSS.escape(it.askId)}"]`;
+  if (it.decisionId) return `#d-${CSS.escape(it.decisionId)}`;
+  const d = it.taskId ? A.S.pendingDecision(it.taskId) : undefined;
+  const row = `[data-row="${CSS.escape(it.taskId ?? "")}"]`;
+  return d ? `#d-${CSS.escape(d.decisionId)}, ${row}` : row;
+}
+
+/** D535: once On hand has drawn it (a few frames at most, through a page's move), the item is
+ *  scrolled to the middle of its list and its tint deepens once (app.css .door-found); at once and
+ *  colour only under reduced motion. */
+function findIn(sel: () => string, tries = 24) {
+  if (typeof document !== "object" || typeof requestAnimationFrame !== "function") return;
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(sel());
+    if (!el) return tries > 0 ? findIn(sel, tries - 1) : undefined;
+    centerIn(el);
+    el.classList.remove("door-found");
+    void el.offsetWidth; // a second find on the same element plays again
+    el.classList.add("door-found");
+    const off = () => el.classList.remove("door-found");
+    el.addEventListener("animationend", off, { once: true });
+    setTimeout(off, 1800);
+  });
+}
+
+A.openDoor = openDoor;

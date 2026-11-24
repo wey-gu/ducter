@@ -336,7 +336,7 @@ func (a *App) flushMediaSends() {
 		p := &a.pending[i]
 		if len(p.atts) > 0 && !p.sent && allReady(p.atts) {
 			p.sent = true
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want(), Refs: p.refs})
 		}
 	}
 	m := a.med()
@@ -377,6 +377,25 @@ func (a *App) pickInto(tray string) {
 	}
 	var paths []string
 	a.later(func() { paths, _ = a.Media.PickFiles(a.L.T("media.add")) }, func() { a.AddPictureFiles(tray, paths) })
+}
+
+// pasteFiles is a composer's paste (issue #68: ⌘V arrives as the Edit
+// menu's paste: command, never as a key): files copied in Finder go to the
+// tray as themselves, and a picture goes there when the pasteboard holds no
+// words (a screenshot, Copy in Preview); words paste as words. It says
+// whether it took the paste.
+func (a *App) pasteFiles(tray, text string) bool {
+	if tray == "" || a.Media == nil {
+		return false
+	}
+	if files := a.Media.PastedFiles(); len(files) > 0 {
+		a.AddPictureFiles(tray, files)
+		return true
+	}
+	if text != "" {
+		return false
+	}
+	return a.pasteInto(tray)
 }
 
 // pictureKeys is ⌘V in a composer: a picture on the pasteboard goes to the
@@ -948,7 +967,8 @@ func (a *App) sendToTaskWith(id, text, cid, mode string, atts []*attach) {
 	}
 	sd := a.S.AddSend(id, text, cid)
 	sd.At, sd.Media = a.Now(), refsOf(atts)
-	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts), Mode: mode})
+	sd.Refs = a.takeRefs(id, text) // D534
+	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid, Media: idsOf(atts), Mode: mode, Refs: sd.Refs})
 }
 
 // waitingTaskSends are a task's messages whose pictures are still going up.

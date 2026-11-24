@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -69,9 +70,24 @@ func TestD325Composer(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		app, tt, sent := d325Task(t, lang, "claude-code", true)
-		for _, w := range []string{L.T("held.head"), L.T("held.now"), L.T("delivery.steer.read"), L.T("delivery.steer.wait"), L.T("composer.steer.hint"), L.T("composer.queue.hint")} {
+		for _, w := range []string{L.T("held.head"), L.T("held.now"), L.T("delivery.steer.read"), L.T("delivery.steer.wait")} {
 			if !tt.HasText(w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
+			}
+		}
+		// D530: the two keys under the box only while the words have the focus; 做完再说 is no
+		// pill beside Send any more (the send's own menu holds it).
+		if slices.Contains(tt.Texts(), L.T("send.steer")) {
+			t.Errorf("%s: the keys or a 做完再说 pill without the focus: %q", lang, tt.Texts())
+		}
+		app.focusComposer = true
+		tt.Frame()
+		tt.Frame()
+		// D542: nor with the focus: a row that came with it moved the box under the pointer; the
+		// two ways are in the words' place and the send's own menu.
+		for _, w := range []string{L.T("send.steer")} { // send.after's words are also the held head's in English
+			if slices.Contains(tt.Texts(), w) {
+				t.Errorf("%s: focused, a row of keys under the box: %q", lang, tt.Texts())
 			}
 		}
 		task := app.S.Task("k1")
@@ -112,12 +128,13 @@ func TestD325NoSteer(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		_, tt, _ := d325Task(t, lang, "pi", true)
-		for _, w := range []string{L.T("composer.nosteer.hint", "pi"), L.T("held.head.nosteer", "pi")} {
+		// D542: said over its held words and in the words' place, never in a row under the box.
+		for _, w := range []string{L.T("held.head.nosteer", "pi")} {
 			if !tt.HasText(w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
-		for _, w := range []string{L.T("composer.steer.hint"), L.T("held.now")} {
+		for _, w := range []string{L.T("send.steer"), L.T("held.now")} {
 			if tt.HasText(w) {
 				t.Errorf("%s: %q shows for an agent that can't steer", lang, w)
 			}

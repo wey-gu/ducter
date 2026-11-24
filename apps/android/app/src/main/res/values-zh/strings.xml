@@ -111,7 +111,7 @@
     <string name="share_cancel">取消</string>
     <string name="share_sending">在发…</string>
     <string name="share_sent">发给%1$s了</string>
-    <string name="share_queued">现在连不上你的 Ducter，连上了就发出去。</string>
+    <string name="share_queued">现在连不上你的 Ducter。连上就发出去。</string>
     <string name="share_too_old">你的 Ducter 还要更新一下才收得了分享，更新后会自动发出去。</string>
     <string name="share_unpaired">先打开 Ducter 连上你的 Ducter，再来分享。</string>
     <string name="share_open_app">打开 Ducter</string>

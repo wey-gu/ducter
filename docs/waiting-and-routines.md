@@ -48,7 +48,9 @@ to GitHub, the first time with one line listing what went, every one in Done for
 listed in Settings › Partner under "Without asking", where Take back ends it (or say "ask me
 before posting reviews"). Saying it to a review that runs every so often works the same way
 ("keep posting the reviews yourself"), and every round after that posts on its own, pull
-requests that only mention you included. One in a place it hasn't looked before still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Looking after,
+requests that only mention you included, and a pull request where it found nothing to change
+gets its review too. To have it look at one pull request now, say so ("review website#551 this
+round"): that round does it first, and the review is on GitHub when it's done. One in a place it hasn't looked before still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Looking after,
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 
@@ -68,6 +70,18 @@ the conversation with the same button, once. Under it: the last round and what c
 which computer and which AI agent run it. **⋯ › How often** sets it (every 15 minutes
 to every 4 hours). You can ask too: "how is my loop doing?" (one line back: how often, the next round, on time or not), "make the review every hour",
 "pause it until tomorrow", "stop it".
+
+You can also change it yourself, on its own page (open it from On hand › Looking after). Under
+**How it runs**, each rule has **Change** beside its name: how often it wakes (a number of minutes,
+or every day or weekdays at a time), when it ends, when it speaks (when there's news, only when you
+need to decide, or after every round), its limit (for one your agents hand work to, how many pieces
+a day before it asks you), which computer and which AI agent do it, and the name your agents find it
+by. A change takes effect at once, and **Undo** under the card puts it back. **You said** can be
+edited too: when you save your new words, Ducter reads which rules they change and shows them
+(every 45 minutes, struck, beside every hour) before anything changes; **Change it** applies them, **Only the words**
+keeps the rules as they are. Every change, yours or your partner's, is written among its rounds
+("You changed every 45 minutes to every hour"); undoing a change takes its line away. Its next round follows it. No change, by hand
+or in words, lets it send, pay or delete without asking you.
 
 ## "Remind me …" and what you said you'd do
 

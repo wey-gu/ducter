@@ -15,6 +15,8 @@ const KindBodySelected = "body_selected"
 type Brain struct {
 	Harness string `json:"harness"`
 	Model   string `json:"model,omitempty"`
+	// Effort is how hard it thinks (D536): one of the model's own levels; "" its default.
+	Effort string `json:"effort,omitempty"`
 }
 
 // TaskAccount is one account's 用它做事 / Use it for tasks switch.
@@ -42,6 +44,30 @@ type RuleView struct {
 	// other); Never: never this agent (model) for that work (D372).
 	Kinds []string `json:"kinds,omitempty"`
 	Never bool     `json:"never,omitempty"`
+	// Where: a computer rule (D538, Harness ""): more (or, Avoid, less) of
+	// heavy work, web work or all work on Device.
+	Where *PlaceRule `json:"where,omitempty"`
+}
+
+// PlaceRule is what a computer rule says (D538): Avoid (少放) or not (多放),
+// for Heavy work, Web work, or neither (all work); Mem: the Nowledge Mem
+// memory it is mirrored to while Mem is on.
+type PlaceRule struct {
+	Avoid bool   `json:"avoid,omitempty"`
+	Heavy bool   `json:"heavy,omitempty"`
+	Web   bool   `json:"web,omitempty"`
+	Mem   string `json:"mem,omitempty"`
+}
+
+// RuleWhere adds a computer rule from a computer's 关于这台 / About this
+// computer, or changes the one ID names (D538). Work: heavy | web | all.
+type RuleWhere struct {
+	T      string `json:"t"` // "rule_where"
+	ID     string `json:"id,omitempty"`
+	Device string `json:"device"`
+	Avoid  bool   `json:"avoid,omitempty"`
+	Work   string `json:"work"`
+	Lang   string `json:"lang,omitempty"`
 }
 
 // KindDefault is the built-in default for a kind of work when no rule

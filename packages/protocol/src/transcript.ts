@@ -10,7 +10,7 @@ import type { Bodies, CantStart, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { briefShown } from "./brief-shown.ts";
-import { backgroundStep, splitTool, stepOf, type Step } from "./steps.ts";
+import { backgroundStep, splitTool, stepOf, stepPath, type Step } from "./steps.ts";
 import { harnessName } from "./harnesses.ts";
 import { editDiff } from "./editdiff.ts";
 
@@ -27,6 +27,8 @@ export interface StepRow {
   outcome: Outcome;
   /** The command as it ran (shell steps), keys hidden: what opens on a tap, in mono. */
   command?: string;
+  /** D530: the whole path a file tool read or edited, keys hidden: what its file chip opens. */
+  path?: string;
   /** What it printed, keys hidden, at most 40 lines. */
   output?: string;
   /** D320: what it printed was cut at OUTPUT_MAX characters: its whole length (Show all opens it). */
@@ -288,7 +290,7 @@ const clipLines = (s: string, n: number) => s.split("\n").slice(0, n).join("\n")
 function shellCommand(input: unknown): string {
   if (typeof input === "string") return input;
   const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  for (const k of ["command", "cmd", "script", "code"]) {
+  for (const k of ["command", "cmd", "script", "code", "CommandLine"]) {
     const v = o[k];
     if (typeof v === "string" && v.trim()) return v.trim();
     if (Array.isArray(v) && v.every((x) => typeof x === "string")) return (v as string[]).join(" ");
@@ -629,8 +631,9 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
           const fail = outcome === "error" ? failOf(full) : undefined;
           const hint = fail ? { ...(fail.hint ? { hint: redact(fail.hint) } : {}), ...(fail.code ? { code: fail.code } : {}) } : {};
           const d = st.kind === "edited" && st.act !== "mkdir" ? editDiff(b.tool.input) : undefined;
+          const path = st.kind === "read" || st.kind === "edited" ? redact(stepPath(b.tool)) : "";
           const diff = d ? { diff: d.lines.map((l) => redact(l)), ...(d.more ? { diffMore: d.more } : {}), ...(d.added ? { added: d.added } : {}), ...(d.removed ? { removed: d.removed } : {}) } : {};
-          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}), ...(output && outputFull ? { outputFull } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
+          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(path ? { path } : {}), ...(output ? { output } : {}), ...(output && outputFull ? { outputFull } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
           break;
         }
         const text = (b.text ?? "").trim();
@@ -638,6 +641,7 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
           // D266: the harness's own background work, started and ended, as a step of the stretch.
           const bg = backgroundStep(b.raw);
           if (bg) {
+            if (bg.quiet) break; // D521: the tray says it
             if (bg.step.target) bg.step.target = redact(bg.step.target);
             addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
             break;
@@ -688,4 +692,89 @@ export function latestVoice(blocks: Block[]): string {
     if (b.k === "voice") return b.text.split("\n")[0]!;
   }
   return "";
+}
+
+/**
+ * D544: a task in rounds repeats the same round that changed nothing (its review loop's 「没有新的请求，
+ * 9 个都没变」 nine times in a row). Consecutive rounds that changed nothing fold into one quiet row
+ * in the opened task, as the Keep's page folds them (又看过 {n} 次，都没有变化). A round is quiet from
+ * its structured outcome only, never its words (principle 21): it ended on a `done` report, or (a
+ * loop's rounds report progress) at the next wake with only progress reports; nothing was said to it
+ * (the person's words, the partner's, a Go relayed: only a wake starts it); no question, failure or
+ * block; and its review_report marked no PR `changed`. A run is two or more such rounds in a row.
+ * `keys` name each round: its wake's seq (the turn it opens) or, without one, its report's seq.
+ */
+export interface QuietRun {
+  keys: number[];
+  /** Each round's time (its last report's), in order. */
+  times: string[];
+  from: string;
+  to: string;
+}
+
+export function quietRuns(events: LogEvent[]): QuietRun[] {
+  const out: QuietRun[] = [];
+  let run: QuietRun | undefined;
+  let briefed = false;
+  // The round under way: its wake (when one started it), whether it reported, what breaks quiet.
+  let wake: { seq: number; ts: string } | undefined;
+  let reported: { seq: number; ts: string } | undefined;
+  let loud = false;
+  let last = 0;
+  const close = () => {
+    if (run && run.keys.length >= 2) out.push(run);
+    run = undefined;
+  };
+  const finish = (quiet: boolean, key: number, ts: string) => {
+    last = key;
+    if (!quiet) close();
+    else {
+      if (!run) run = { keys: [], times: [], from: ts, to: ts };
+      run.keys.push(key);
+      run.times.push(ts);
+      run.to = ts;
+    }
+    wake = undefined;
+    reported = undefined;
+    loud = false;
+  };
+  for (const ev of events) {
+    if (ev.kind === "task_open") {
+      if ((ev.body as Bodies["task_open"]).brief?.trim()) briefed = true;
+      continue;
+    }
+    const p = promptOf(ev, briefed);
+    if (p?.k === "wake") {
+      // A loop's round that reported only progress ends where the next wake begins.
+      if (wake && reported) finish(!loud, wake.seq, reported.ts);
+      else if (wake) close();
+      wake = { seq: ev.seq, ts: ev.ts };
+      continue;
+    }
+    if (p) loud = true;
+    if (ev.kind === "task_event") {
+      const tool = (ev.body as Bodies["task_event"]).tool;
+      if (tool && /(^|__)review_report$/.test(tool.name)) {
+        const prs = (tool.input as { prs?: { changed?: unknown }[] } | undefined)?.prs;
+        if (Array.isArray(prs) && prs.some((x) => x?.changed === true)) loud = true;
+      }
+      continue;
+    }
+    if (ev.kind !== "report") continue;
+    const r = ev.body as Bodies["report"];
+    if (r.state === "progress") {
+      reported = { seq: ev.seq, ts: ev.ts };
+      continue;
+    }
+    finish(r.state === "done" && !loud, wake?.seq ?? ev.seq, ev.ts);
+  }
+  // The round under way now is never folded (it may yet change something), nor the latest one
+  // finished: it is what the person reads now.
+  if (run && run.keys.at(-1) === last) {
+    run.keys.pop();
+    run.times.pop();
+    run.to = run.times.at(-1) ?? run.from;
+  }
+  close();
+  return out;
 }

@@ -403,11 +403,11 @@ export function SelectText() {
       <div class="select-card">
         <div class="select-words">{text}</div>
         <div class="btns">
-          <button type="button" class="btn secondary" onClick={() => void copyAndSay(text, (ok) => (A.toast(t(ok ? "conv.copied" : "conv.copy.failed")), ok && close()))}>
-            {t("conv.select.all")}
-          </button>
           <button type="button" class="btn primary" onClick={close}>
             {t("conv.select.done")}
+          </button>
+          <button type="button" class="btn secondary" onClick={() => void copyAndSay(text, (ok) => (A.toast(t(ok ? "conv.copied" : "conv.copy.failed")), ok && close()))}>
+            {t("conv.select.all")}
           </button>
         </div>
       </div>

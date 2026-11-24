@@ -230,9 +230,9 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 			acts = true // a row here always shows what to do: the sheet keeps a column for it
 		}
 	}
-	prev := a.oh.actsCol
-	a.oh.actsCol = acts
-	defer func() { a.oh.actsCol = prev }()
+	prev, prevNeeds := a.oh.actsCol, a.oh.needsSheet
+	a.oh.actsCol, a.oh.needsSheet = acts, ledge == t.NeedsYou.Ledge
+	defer func() { a.oh.actsCol, a.oh.needsSheet = prev, prevNeeds }()
 	ui.Column(c.Key("cards:"+tasks[0].ID)).Width(w).Radius(16).Background(t.Surface).Clip().
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
 		for i, task := range tasks {
@@ -279,11 +279,15 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	if !a.oh.rowFirst {
 		card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 	}
-	hover := card.Hovered()
-	still := c.Preferences().ReduceMotion
-	if hover {
-		card.Background(t.Ink.Alpha(0.03))
+	// D529: the one row hover: the fill warms within the sheet's own ground,
+	// and what it reveals fades in where its room was kept.
+	ground := groundNeutral()
+	if a.oh.needsSheet {
+		ground = groundLedge(&t.NeedsYou)
 	}
+	hover := a.rowHover(c, card, ground, false)
+	a.doorRow(c, card, "t:"+task.ID) // D535: found by a needs-you count's door (over the hover's ground)
+	still := c.Preferences().ReduceMotion
 	if focus {
 		card.Border(2, t.Accent.Alpha(0.75)).Radius(14)
 		card.AccessSelected(true)
@@ -309,9 +313,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	// D471: the time on one edge of the sheet; what to do on one column; D508:
 	// a hover's own actions in a slot of their own, so they never cover the
 	// time or run past the sheet's edge.
-	whenW, actsW, hoverW := float32(112), float32(216), float32(64)
+	// D529: the slot holds × and ⋯ at the shared icon size (2 × 36 + 2); the
+	// action column holds two fixes and the ⋯ that joins them.
+	whenW, actsW, hoverW := float32(112), float32(252), float32(76)
 	if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) { // D507: a row set in under its helper keeps its sheet's columns
-		whenW, actsW, hoverW = 92, 184, 60
+		whenW, actsW, hoverW = 92, 216, 76
 	}
 	slot := !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)
 	// D508: the title whole in its two lines, else cut at a word's end; the
@@ -359,7 +365,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				// board shows them all, its computer when it isn't the usual.
 				meta := a.whereMeta(task)
 				if rounds != nil && rounds.EveryMs > 0 {
-					meta = append(meta, a.L.T("og.round.every", a.duration(time.Duration(rounds.EveryMs)*time.Millisecond)))
+					meta = append(meta, a.L.T("og.round.every", a.rhythm(time.Duration(rounds.EveryMs)*time.Millisecond)))
 				}
 				for _, m := range meta {
 					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
@@ -466,7 +472,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				}
 			}
 			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
-				a.goal(c, u.Until, false)
+				a.goal(c, u.Until, a.taskLook(task), false)
 			}
 			// D498: no step for a while: when the last one was, quietly (a fact; the
 			// partner judges a stall, D481).
@@ -486,14 +492,13 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if slot {
 			// D508: the hover's own slot (× and ⋯, or Pause), inside the row's
 			// padding: the time beside it stays where it is.
-			ui.Row(c.Key("hover")).Width(hoverW).Gap(2).AlignItems(ui.Center).Justify(ui.End).Shrink(0).Children(func() {
-				if !hover {
-					return
-				}
-				a.rowActs(c, task, true)
-				if f := finishedOf(task); f != nil {
-					a.finishedActs(c, *f)
-				}
+			ui.Row(c.Key("hover")).Width(hoverW).AlignItems(ui.Center).Justify(ui.End).Shrink(0).Children(func() {
+				a.revealSlot(c, "reveal", hover, func() {
+					a.rowActs(c, task, true)
+					if f := finishedOf(task); f != nil {
+						a.finishedActs(c, *f)
+					}
+				})
 			})
 		}
 		ui.Column(c.Key("when")).Width(whenW).AlignItems(ui.End).Shrink(0).Children(func() {
@@ -518,15 +523,15 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if !a.oh.actsCol {
 			return
 		}
-		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).Wrap().AlignItems(ui.Center).Shrink(0).Children(func() {
+		// D529: one action group on one line: the row's own actions, then what
+		// hover reveals in the room kept for it; never a line of its own below.
+		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
 			switch {
 			case stopped:
 				a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
 			case failed:
 				a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
-				if hover {
-					a.finishedActs(c, *finishedOf(task))
-				}
+				a.revealSlot(c, "reveal", hover, func() { a.finishedMore(c, *finishedOf(task)) })
 			case att == protocol.Blocked && a.S.WaiterFor(task.ID) != nil && a.S.WaiterFor(task.ID).Limit != nil && a.S.WaiterFor(task.ID).Limit.HandTo != nil:
 				// D471 (D297): a limit used up, with another agent that can take it now.
 				w := a.S.WaiterFor(task.ID)
@@ -547,14 +552,14 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					acted = true
 					c.OpenURL(pr.URL)
 				}
-				if hover {
-					a.finishedActs(c, *finishedOf(task))
-				}
-			case hover && (finishedOf(task) != nil || att == protocol.Working):
-				a.rowActs(c, task, true)
-				if f := finishedOf(task); f != nil {
-					a.finishedActs(c, *f)
-				}
+				a.revealSlot(c, "reveal", hover, func() { a.finishedMore(c, *finishedOf(task)) })
+			case finishedOf(task) != nil || att == protocol.Working:
+				a.revealSlot(c, "reveal", hover, func() {
+					a.rowActs(c, task, true)
+					if f := finishedOf(task); f != nil {
+						a.finishedActs(c, *f)
+					}
+				})
 			}
 		})
 	})
@@ -591,6 +596,12 @@ func (a *App) whereMeta(task *store.Task) []string {
 		meta = append(meta, task.Card.Keep.Name)
 	} else if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
 		meta = append(meta, task.Card.Helper.Name)
+	}
+	// D521: a running task's one quiet fact, its agent's jobs still running in the background.
+	if task.Card != nil && !finishedAtt(task.Attention()) && task.Attention() != protocol.Dropped {
+		if n := protocol.BgRunning(task.Card.Background); n > 0 {
+			meta = append(meta, a.L.T("bg.onhand", n))
+		}
 	}
 	return meta
 }

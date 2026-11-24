@@ -6,10 +6,11 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { spoken } from "./format.ts";
+import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** One clay button family (D76): primary last in a row, at most one per group. chev: a text button
+/** One clay button family (D76): primary first in a row, on the left (D533), at most one per group. chev: a text button
  *  that opens something in place ends in a drawn chevron, turned down while open (never a font's
  *  arrow: iOS draws some of those as an emoji or a missing glyph; D211). */
 export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean; chev?: boolean }) {
@@ -73,6 +74,35 @@ export function PlaceSeg(p: { segs: { key: string; label: string; about: string;
         </button>
       ))}
     </nav>
+  );
+}
+
+/** D548: the places on a narrow phone: one button (44, a drawn grid of nine dots) that opens the one
+ *  clay menu (D421) with each place, its mark and its name, the place shown checked; a quiet accent
+ *  dot on the button while an update waits (its row first in the menu). The wider bars keep
+ *  PlaceSeg. */
+export function PlacesMenu(p: { segs: { key: string; label: string; glyph: ComponentChildren; on: boolean; go: () => void }[]; dot?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const at = useRef<HTMLSpanElement>(null);
+  const label = A.L.t("nav.places");
+  return (
+    <span class="places-menu" ref={at}>
+      <button type="button" class={`places-btn${open ? " open" : ""}`} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          {[4, 9, 14].flatMap((y) => [4, 9, 14].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" fill="currentColor" />))}
+        </svg>
+        {p.dot && <span class="places-dot" aria-hidden="true" />}
+      </button>
+      {open && (
+        <Menu class="pmenu places-list" label={label} anchor={at} focusFirst onClose={() => setOpen(false)}>
+          {p.segs.map((s) => (
+            <MenuItem key={s.key} glyph={s.glyph} checked={s.on || undefined} onClick={() => (setOpen(false), !s.on && s.go())}>
+              {s.label}
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
+    </span>
   );
 }
 
@@ -165,6 +195,28 @@ export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
     <svg class={`chev-g${p.open ? " open" : ""}${p.back ? " back" : ""}${p.cls ? ` ${p.cls}` : ""}`} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
+  );
+}
+
+/** D535: a needs-you count as a door (the Mac's needsDoor): its words in the needs-you ink on a small
+ *  clay pill of the needs-you surface, the drawn chevron after them; it sinks into its ledge pressed.
+ *  A tap opens the next item that waits (app.css .needs-door). */
+export function NeedsDoor(p: { words: string; about: string; onClick: () => void; cls?: string }) {
+  return (
+    <button type="button" class={`needs-door${p.cls ? ` ${p.cls}` : ""}`} aria-label={spoken(A.L, p.words, p.about)} onClick={p.onClick}>
+      <span>{p.words}</span>
+      <Chev />
+    </button>
+  );
+}
+
+/** D535: 「n 个等你」 in the conversation's bar (the Mac's countDoor): the count's own words in the
+ *  needs-you ink, a quiet button of the bar, the door to the next item. */
+export function CountDoor(p: { words: string; about: string; onClick: () => void }) {
+  return (
+    <button type="button" class="sum-needs" aria-label={spoken(A.L, p.words, p.about)} onClick={p.onClick}>
+      {p.words}
+    </button>
   );
 }
 
@@ -602,6 +654,24 @@ export function TextBox(p: { value: string; label: string; lang?: string; class?
   );
 }
 
+/** D536: one line of words someone types (a partner's name, what it looks after): 44 tall, a hairline
+ *  that becomes the one accent ring while typing in it (never the page's outer focus ring on top).
+ *  The Mac's `lineField`. */
+export function Field(p: { value: string; label: string; placeholder?: string; maxLength?: number; autoFocus?: boolean; strong?: boolean; onInput: (v: string) => void; onKeyDown?: (e: KeyboardEvent) => void }) {
+  return (
+    <input
+      class={`field${p.strong ? " strong" : ""}`}
+      value={p.value}
+      aria-label={p.label}
+      placeholder={p.placeholder}
+      maxLength={p.maxLength}
+      autoFocus={p.autoFocus}
+      onInput={(e) => p.onInput((e.target as HTMLInputElement).value)}
+      onKeyDown={p.onKeyDown}
+    />
+  );
+}
+
 /** D457: one part of a path's breadcrumb that steps back there (the folder browser's). */
 export function CrumbStep(p: { label: string; onClick: () => void }) {
   return (
@@ -619,3 +689,309 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
     </button>
   );
 }
+
+/** D519: a section's name over its card, the quiet label On hand's sections wear (a heading). */
+export function SectionHead(p: { label: string; end?: ComponentChildren }) {
+  return (
+    <h2 class="sec-head">
+      <span class="nm">{p.label}</span>
+      {p.end && <span class="end">{p.end}</span>}
+    </h2>
+  );
+}
+
+/** D519: a small state word on its own tint (a Keep's 照看中, 1 件在等你, 从 11 月 22 日起): on, needs, or plain. */
+/** D542: a Tag's tint: on (done), needs, and the other states' own (working, waiting, failed); plain sunken. */
+export type TagTone = "on" | "needs" | "working" | "waiting" | "failed" | "";
+export function Tag(p: { text: string; tone?: TagTone }) {
+  return <span class={`tag${p.tone ? ` ${p.tone}` : ""}`}>{p.text}</span>;
+}
+
+/** D519: a list's time column: one line, tabular figures, one fixed width, so the rows line up (today
+ *  its clock, else its day: format.ts colTime). */
+export function TimeCol(p: { at: string; text: string }) {
+  return (
+    <time class="time-col" dateTime={p.at}>
+      {p.text}
+    </time>
+  );
+}
+
+/**
+ * D533: a rule row changed in place (a Keep's 怎么照看): its name, a quiet 改 / Change at the name's
+ * right while it may change, its value lines and a muted one. Open: the control in the slot under
+ * the name, then 保存 / Save (primary, first, on the left) and 取消 / Cancel; Enter saves, Escape cancels. `error`
+ * stands under the control in the failed ink; `busy` says the change is on its way.
+ */
+export function EditRow(p: {
+  label: string;
+  values: string[];
+  muted?: string;
+  editable: boolean;
+  open: boolean;
+  busy?: boolean;
+  error?: string;
+  onOpen: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  children?: ComponentChildren;
+}) {
+  return (
+    <div
+      class={`edit-row${p.open ? " open" : ""}`}
+      onKeyDown={(e) => {
+        if (!p.open) return;
+        if (e.key === "Escape") e.stopPropagation(), p.onCancel();
+        if (e.key === "Enter" && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLButtonElement)) e.preventDefault(), p.onSave();
+      }}
+    >
+      <span class="er-head">
+        <span class="k">{p.label}</span>
+        {p.editable && !p.open && <Btn kind="text" size="sm" label={t("keep.edit")} about={t("keep.edit.about", p.label)} onClick={p.onOpen} />}
+      </span>
+      {!p.open &&
+        p.values.map((v) => (
+          <span key={v} class="v">
+            {v}
+          </span>
+        ))}
+      {!p.open && p.muted && <span class="v m">{p.muted}</span>}
+      {p.open && (
+        <>
+          <div
+            class="er-slot"
+            ref={(el) => {
+              // Open: the keys are the row's at once (Escape cancels, Enter saves), even when its control is a choice, not a field.
+              if (el && !el.closest(".edit-row")?.contains(document.activeElement)) (el.querySelector<HTMLElement>("input, textarea, [aria-checked=true], button") ?? el).focus({ preventScroll: true });
+            }}
+          >
+            {p.children}
+          </div>
+          {p.error && (
+            <p class="er-err" role="alert">
+              {p.error}
+            </p>
+          )}
+          <span class="er-acts">
+            <Btn kind="primary" size="sm" label={p.busy ? t("keep.edit.saving") : t("keep.edit.save")} disabled={p.busy} onClick={p.onSave} />
+            <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** D533: a whole number with its unit word after it ([45] 分钟一轮), on D536's Field: digits only; the caller checks its range. */
+export function NumberField(p: { value: string; label: string; unit: string; autoFocus?: boolean; onInput: (v: string) => void }) {
+  return (
+    <span class="num-field">
+      <Field value={p.value} label={p.label} maxLength={5} autoFocus={p.autoFocus} onInput={(v) => p.onInput(v.replace(/[^\d]/g, "").slice(0, 5))} />
+      <span class="unit">{p.unit}</span>
+    </span>
+  );
+}
+
+/** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
+ *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
+ *  pointer (danger: the failed ink). The Mac's `iconButton`. */
+export function IconBtn(p: { label: string; about?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
+  return (
+    <button type="button" class={`icon-btn${p.danger ? " danger" : ""}`} title={p.label} aria-label={p.about ? spoken(A.L, p.label, p.about) : p.label} disabled={p.disabled} onClick={p.onClick}>
+      {p.children}
+    </button>
+  );
+}
+
+/**
+ * D521: one dense row of a quiet tray (the opened task's 后台 / In the background): a drawn mark,
+ * its words cut with an ellipsis (the whole in the tooltip), its facts at the right edge in mono
+ * (a time, a state), an optional chevron when it opens (open: what it holds, under it), and an
+ * optional action apart at its far right (an IconBtn). head: the tray's own head row (stronger
+ * words). The Mac's `trayRow`.
+ */
+export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words: string; head?: boolean; tone?: string; side?: ComponentChildren; open?: boolean; onClick?: () => void; act?: ComponentChildren; children?: ComponentChildren }) {
+  const inner = (
+    <>
+      {p.mark && (
+        <span class="tray-mark" role={p.markAbout ? "img" : undefined} aria-label={p.markAbout} title={p.markAbout}>
+          {p.mark}
+        </span>
+      )}
+      <span class="tray-words" title={p.words}>
+        {p.words}
+      </span>
+      {p.side && <span class="tray-side">{p.side}</span>}
+      {p.onClick && p.open !== undefined && <Chev open={p.open} cls="tray-chev" />}
+    </>
+  );
+  return (
+    <div class={`tray-row${p.head ? " head" : ""}${p.tone ? ` ${p.tone}` : ""}${p.act !== undefined ? " has-act" : ""}`}>
+      <div class="tray-line">
+        {p.onClick ? (
+          <button type="button" class="tray-main" aria-expanded={p.open} onClick={p.onClick}>
+            {inner}
+          </button>
+        ) : (
+          <span class="tray-main">{inner}</span>
+        )}
+        {p.act !== undefined && <span class="tray-act">{p.act}</span>}
+      </div>
+      {p.open && p.children}
+    </div>
+  );
+}
+
+/**
+ * D532: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
+ * just above the composer, a sunken tint (done, alert: their own surfaces), a drawn glyph at its
+ * start, 13/12px words, small buttons at its end.
+ */
+export function Notice(p: { tone?: "info" | "done" | "alert"; glyph?: "pebble"; title?: string; body?: string; sub?: string; actions?: ComponentChildren; class?: string }) {
+  return (
+    <div class={`notice ${p.tone ?? "info"}${p.class ? ` ${p.class}` : ""}`} role={p.tone === "alert" ? "alert" : "status"}>
+      {p.glyph === "pebble" && (
+        <svg class="notice-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          <ellipse cx="9" cy="11" rx="7" ry="5.4" fill="var(--ink-muted)" opacity="0.45" />
+          <ellipse cx="9" cy="9.6" rx="7" ry="5.4" fill="var(--ink-muted)" />
+          <ellipse cx="7.2" cy="7.6" rx="2.6" ry="1.3" fill="var(--surface)" opacity="0.35" />
+        </svg>
+      )}
+      <div class="notice-w">
+        {p.title && <b>{p.title}</b>}
+        {p.body && <span>{p.body}</span>}
+        {p.sub && <small>{p.sub}</small>}
+      </div>
+      {p.actions && <div class="notice-a">{p.actions}</div>}
+    </div>
+  );
+}
+
+// ---------- D530: the opened task's steps ----------
+
+const StackMark = () => (
+  <svg class="g" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <path d="M3 4.5h10M3 8h10M3 11.5h6" />
+  </svg>
+);
+
+/** D530: a turn's work under one quiet line: the drawn stack (the shared spinner while it works),
+ *  "12 步，3 条消息", a small × in the failed ink with how many failed, the chevron, and a hairline on
+ *  to the column's edge. The Mac's workHead. */
+export function WorkHead(p: { words: string; failed: number; live?: boolean; open: boolean; onClick: () => void }) {
+  const failed = p.failed > 0 ? t("work.failed", p.failed) : "";
+  return (
+    <button type="button" class={`work-head${p.open ? " open" : ""}`} aria-expanded={p.open} aria-label={spoken(A.L, p.words, failed)} onClick={p.onClick}>
+      <StackMark />
+      <span class="words">{p.words}</span>
+      {failed && (
+        <span class="failed" title={failed} aria-hidden="true">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" />
+          </svg>
+          {p.failed}
+        </span>
+      )}
+      <Chev open={p.open} />
+      <span class="rule" aria-hidden="true" />
+    </button>
+  );
+}
+
+/** D530: a step's object in mono on the inline code tint: one line, cut with an ellipsis, its whole
+ *  on hover. Never pressable on its own. The Mac's stepChip. */
+export function CodeChip(p: { text: string; title?: string }) {
+  return (
+    <code class="chip-code" title={p.title ?? p.text}>
+      {p.text}
+    </code>
+  );
+}
+
+const PageMark = () => (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">
+    <path d="M2.5 1.5h4.8l2.2 2.2v6.8h-7z M4.5 6h3M4.5 8.2h3" />
+  </svg>
+);
+const PictureMark = () => (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round">
+    <path d="M1.5 2.5h9v7h-9z M1.5 8.5l3-2.8 2.2 2 1.3-1 2.5 1.8" />
+    <circle cx="8" cy="4.6" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** D530: a file a step read or edited: its kind's small mark and its name in mono on the inline code
+ *  tint, its tail on hover; with onOpen it opens the file inside Ducter (D356's viewer). The Mac's
+ *  fileChip. */
+export function FileChip(p: { name: string; tail: string; picture?: boolean; cls?: string; onOpen?: () => void }) {
+  const cls = `chip-file${p.cls ? ` ${p.cls}` : ""}`;
+  const inner = (
+    <>
+      {p.picture ? <PictureMark /> : <PageMark />}
+      <span>{p.name}</span>
+    </>
+  );
+  return p.onOpen ? (
+    <button
+      type="button"
+      class={cls}
+      title={p.tail}
+      aria-label={t("file.open", p.name)}
+      onClick={(e) => {
+        e.stopPropagation();
+        p.onOpen!();
+      }}
+    >
+      {inner}
+    </button>
+  ) : (
+    <span class={cls} title={p.tail}>
+      {inner}
+    </span>
+  );
+}
+
+/** D530: a key drawn in its cap and what it does, in the small muted type: the working composer's
+ *  「↩ 插一句」 and 「⌥↩ 等它做完再说」. Keys are drawn, never typed glyphs. The Mac's keyHint. */
+export function KeyHint(p: { opt?: boolean; words: string }) {
+  return (
+    <span class="key-hint">
+      <kbd aria-hidden="true">
+        {p.opt && (
+          <svg width="11" height="11" viewBox="0 0 12 12">
+            <path d="M1.5 3h3l3.3 6h2.7M7.2 3h3.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        )}
+        <svg width="11" height="11" viewBox="0 0 12 12">
+          <path d="M10 2.5v4H3M5 4.5 3 6.5l2 2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </kbd>
+      {p.words}
+    </span>
+  );
+}
+
+/** D544: a slim clay pill on the reading measure: a 24 mark, then its facts (the lead in ink, one in
+ *  the needs ink, the rest muted; each its own element, D291), the whole one action. The Mac's
+ *  factPill (shared.go). */
+export function FactPill(p: { mark: ComponentChildren; facts: { text: string; lead?: boolean; needs?: boolean }[]; label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button class={`fact-pill${p.on ? " on" : ""}`} tabIndex={p.on ? 0 : -1} aria-hidden={!p.on} onClick={p.onClick} aria-label={p.label}>
+      <span class="fp-mk" aria-hidden="true">
+        {p.mark}
+      </span>
+      {p.facts.map((f, i) => (
+        <span key={i} class={f.lead ? "fp lead" : f.needs ? "fp needs" : "fp"} aria-hidden="true">
+          {f.text}
+        </span>
+      ))}
+    </button>
+  );
+}
+
+/** The bar's way back (‹ 对话, ‹ 手头的事): the one drawn back mark, 18. */
+export const BackGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);

@@ -58,7 +58,7 @@ describe("the brief and the tools say the bar (D349)", () => {
   test("D394: a repeating round that found nothing new is silent; what reaches people waits for Go", () => {
     expect(b).toContain("a round that found nothing new for the user doesn't report at all");
     expect(b).toContain('never "nothing new" alone while things wait on them');
-    expect(b).toContain("one `needs_input` report per round for all of them");
+    expect(b).toContain("at once one `needs_input` report for all of them");
     expect(b).toContain("Post after Go, once.");
   });
 

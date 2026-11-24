@@ -18,6 +18,9 @@ type ChannelView struct {
 	Scan *ChannelScan `json:"scan,omitempty"`
 	// D301, WeChat once linked: until when it may still write on its own.
 	OpenUntil string `json:"openUntil,omitempty"`
+	// D531, Slack: the app was made before the current manifest (its own
+	// name and face, @-mentions): Settings asks for a reinstall.
+	Reinstall bool `json:"reinstall,omitempty"`
 }
 
 // ChannelScan is WeChat's QR (D301): rows of "1"/"0", the same text as a

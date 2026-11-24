@@ -8,7 +8,7 @@
 "share.loading" = "在准备…";
 "share.sending" = "在发…";
 "share.sent" = "发给%@了";
-"share.queued" = "现在连不上你的 Ducter，连上了就发出去。";
+"share.queued" = "现在连不上你的 Ducter。连上就发出去。";
 "share.homeOld" = "你的 Ducter 还要更新一下才收得了分享，更新后会自动发出去。";
 "share.notPaired" = "先打开 Ducter 连上你的 Ducter，再来分享。";
 "share.nothing" = "这里没有能发的东西。";

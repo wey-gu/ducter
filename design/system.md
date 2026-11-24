@@ -269,6 +269,16 @@ changes.
   pinned) and signs it in with the person's one-time link through Mem's own `nmem connect`, which
   also connects that computer's Codex and Claude Code. Only when the home has Mem; the link is never
   kept; the home's `NMEM_CLI_PATH` never goes to a task elsewhere.
+- **What is identity, and what isn't (D538).** A persona's AI Identity is who the partner is: its
+  name, its voice, what it knows about the person. Where the person's work runs is not: a computer's
+  memory, cores and load are measured by the computer itself (`where.md` §24), never remembered, and
+  the person's word on which computer gets which work ("haswell 内存大，验证的活多放它", "hel 别跑浏览器")
+  is a computer rule in Ducter's rule store, shared by every partner. It is never written into an
+  identity profile or its L1. While Mem is on it is also mirrored into the person's Space as their own
+  preference (label `computer-placement`, `source_app = ducter`, the default partner's identity as the
+  writer, one memory per rule, archived when the rule is removed), so their other agents outside
+  Ducter know it; `rules.json` stays the source of truth placement reads (`memory.md`, "Computer
+  rules in Mem").
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta (D368, built): read-only in the background at most every 30 minutes, given once per
@@ -276,8 +286,8 @@ changes.
   never said as read; the morning note ranks its finds by its focus (`memory.md`, "Working
   Memory and past conversations").
 - **Writes to Mem.** Ducter writes only its own persona, via compare-and-swap, and user edits
-  win. It also writes distilled memories and, if the user opts in, finished window
-  transcripts. It never mirrors the channel and never creates Spaces without opt-in.
+  win. It also writes distilled memories, the person's computer rules while Mem is on (D538), and,
+  if the user opts in, finished window transcripts. It never mirrors the channel and never creates Spaces without opt-in.
 - **Provenance on every Mem write.** It records *who*, *through what*, and *from where*:
   - who: the persona's AI Identity (`agent_id`), set wherever Mem accepts it;
   - through what: `source_app = ducter`;
@@ -569,8 +579,34 @@ window as it was.
 - *Where:* `packages/core/src/auth.ts` (`standing`), `core.ts` (`STANDING_PATH`),
   `protocol/src/reach.ts`; the Mac's `internal/remote/standing.go`, `internal/client`
   (`Gone`, `GoneError`, `ErrRefused`, `Redial`, `Nudge`) and `views/link.go` (`App.Linked`, the
-  one place that decides). The web client, iPhone and Android still treat an HTTP 401 from their
-  own origin as revoked (`todo.md`).
+  one place that decides).
+- *The web client, and the iPhone, iPad and Android apps that show it (D532):* the same rule. A
+  401 from `/api/me` or a socket closed before its welcome never clears the token: the page asks
+  `/api/me` (at most every 5 s), and on a 401 asks the standing (at most every 30 s; Try now and
+  a resume ask at once) and checks it with WebCrypto (`protocol/src/reach-verify-web.ts`, the
+  same answers as `reach-verify.ts`) against the fingerprint pinned at pairing (`fp` in the pair
+  answer; a record from before pins the first welcome's). Only a verified `revoked` or `unknown`
+  clears the token and shows the pair screen in those words ("…已经断开了这台手机 / …disconnected
+  this phone"), the address being the page's own. A proof that doesn't verify, or nothing pinned,
+  never does. *An old home* (no standing: a 404 or an unsigned 401 there) is taken the old way
+  only after 5 such answers, the first and last at least 15 minutes apart with no welcome
+  between; a home that has ever answered a standing never is (the page asks once after a welcome
+  to learn that). A restart behind a proxy lasts seconds to minutes; a revoke lasts. Retrying is
+  the Mac's (500 ms doubling to 5 s, 15 s after a minute, ±20%), at once on `online` (a socket
+  silent for 5 s is dropped first), on `visibilitychange` and on `ducterresume`, which the iPhone
+  app (`scenePhase` active) and the Android app (`onResume`) send. The header line and, from 30 s,
+  the notice above the composer (`Notice`, `controls.tsx`) use the Mac's words; **再连一次**
+  opens the pair screen over the app with **返回 / Back**, keeping the token. *Where:*
+  `apps/web/src/link.ts` (`judge`, `createLinkWatch`), `conn.ts` (`Connection`), `main.tsx`
+  (`gone`, the one place the token is cleared), `views.tsx` (`LinkLost`).
+- *Through a drop (D543, `offline.md`):* the web client says nothing for the first 2.5 s of a
+  loss (`LINK_QUIET_MS`), then the line above, so a flapping link never flickers. A page showing
+  a kept screen never tells the iPhone or Android app `reach: false` (no can't-reach screen over
+  something readable). What is sent while down waits in an outbox on the device (IndexedDB) and
+  goes after the next welcome with its clientId; a payment, a key, a Go that deletes and Call now
+  never wait and ask again. An open socket proves itself on coming back, on `online`, on `focus`
+  and on every message written (a ping and 4 s), else it is dialled again. The browser has an app
+  shell (`sw.ts`); the apps keep their own cache (D209).
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's
@@ -1440,3 +1476,74 @@ the *secret*. The model never sees passwords, card numbers or one-time codes.
   was used** (D191); every write goes through its Go card.
 - **Open:** whether the encrypted volume survives a gVisor sandbox restart; filling through
   cua-driver (only Ducter's own browser fills today).
+
+### Keys copied between computers (D539, `autofill.md` §9)
+
+A key the person already has on one of their computers (a variable in their shell there, or
+Ducter's own `keys.env` there) goes to another of their computers for Ducter's tasks there, on
+one Go: **复制密钥 / Copy a key**. Built 2026-11-24 (`packages/protocol/src/key-shelf.ts`,
+`key-seal.ts`, `packages/core/src/key-copy.ts`).
+
+**Who judges (principle 21).** The model says which variable a piece of work needs and where it
+is: the partner's `key_copy {env, from, to[]}`, or a task's `ask_for_key`, for which Ducter itself
+asks the person's other connected computers whether they have that name. Code checks the rest:
+the name is a key variable (D233's rule), every computer is the home or a worker paired with it,
+`from` really has it (`keys_has`, a yes or no), and only the person's own tap on the card copies.
+The card has no default, no countdown, no standing permission (`plainAsk` false), no chat-app
+button (`cardPolicy` "never"), is never answered by a message, and `decisions.decide(go)` refuses
+it from any path but the copy itself. Nothing a task or a page says can start a copy: the card is
+made only by Ducter's code from a tool call, and the value is only ever moved by the Go.
+
+**How it moves.** Every computer has the same ops (worker-host `extraOps`, the home calls its own):
+
+1. `keys_offer` on each target: a fresh X25519 pair for this one copy. The public half goes to
+   the home; the private half stays in that process's memory, two minutes at most, used once.
+2. `keys_seal` on the source: it reads the value there (its process environment, its
+   `keys.env`, else the person's login shell printing that one variable between markers:
+   `$SHELL -ilc`, the name checked first) and seals it to the offer: an ephemeral X25519 of its
+   own, HKDF-SHA256, AES-256-GCM, with `<copy id>:<variable>` as associated data. Only the box
+   leaves.
+3. `keys_take` on the target: opens the box with the offer and keeps the value in its shelf.
+
+The home carries the box between the two worker links (or is itself one end); it never holds the
+value in clear, in memory or on disk. The seal is end to end between the two Ducter processes,
+so it holds over any way a worker reaches the home, a sealed one (TLS, Tailscale) or a plain
+socket on a LAN.
+
+**Where the value lives.**
+
+| Where | What |
+|---|---|
+| the source computer | where it always was (the person's shell or `keys.env`); read once per copy |
+| on the wire | the sealed box only, inside the worker link's frames |
+| the home | nothing (only ciphertext, in memory, for the seconds a copy takes) |
+| the target's shelf | `<dataDir>/kept-keys/keys.enc`, AES-256-GCM, 0600; its lock apart from it: the login keychain on a Mac (service **Ducter Keys**), a 0600 key file on Linux (`protocol/src/lock-key.ts`, the Autofill lock's code) |
+| a task on the target | its session's environment, set there at start from the shelf by name (`SessionSpec.keyRefs`; the home sends only names), and for a session already running a 0600 file (`<dataDir>/task-keys/<task>.kept.env`) it sources inside one command; both go when the task ends |
+| the person's shell profile | never touched, unless they ask a task to put it there |
+
+**What is logged.** One `key_copy` event per Go (stream `keys`): the variable, its name, from
+which computer to which, what didn't go and why, `by: "go"`; one per removal (`removed`, `by:
+"user"`). Never a value. The home's Log scrub takes every value kept on the home out of every
+event (D233's scrub); a worker replaces every value kept there with `••••••` in a task's events
+before they go up, so a command that prints it shows dots on every screen and in every model
+call Ducter makes.
+
+**Threat model.**
+
+- *Protected:* the Log, the snapshot, every client frame, chat apps, push, the partner's and the
+  judge's model calls, the home's disk and memory, a backup of any data folder alone (the lock is
+  apart), an eavesdropper on an unsealed worker link, a replayed or altered box (one-use offer,
+  bound associated data, GCM), a task or a page that asks for a copy (only the person's Go copies),
+  a copy to a computer that isn't the person's (only paired ones).
+- *Not protected, said plainly:* the task's own agent sees what its commands print and keeps it in
+  its own transcript (the D233 limit); anyone who can read the target's user files on Linux has
+  the shelf and its key file (a keychain on a Mac); a home compromised *at the time of a copy*
+  could hand a target's offer of its own and read that one copy (the home is the person's own
+  control plane; an attacker there already drives everything); a worker taken over can read what
+  its own shelf keeps.
+- *Revoking:* Settings, the computer's card, **Ducter 存着的密钥 / Keys Ducter keeps**, 删掉 /
+  Remove (asked once): the shelf forgets it and every task file there drops it at once. The key
+  itself is the person's: rotating it is theirs, at its issuer.
+
+**Older workers** answer `unknown op`: the tool says that computer runs an older Ducter that
+can't keep copied keys yet; the list on its card says to update it.

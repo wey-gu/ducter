@@ -2,7 +2,7 @@
 
 How On hand lets one person take in 3 or 50 tasks at a glance and step into any of them. Decided
 in D216 (one list), D244 (the rail beside an opened task), D261 (projects as a lens, the strip,
-the folds), D287 (the partner at its head, the work as cards) and D315 (one short line, the strip of what is
+the folds), D535 (every count a door, the overview on arrival, the header the way back; Navigation below), D287 (the partner at its head, the work as cards) and D315 (one short line, the strip of what is
 there, headings with character; the review below), D467 (the board by attention: what stopped needs
 you, today is today, a source is one summary card, no day beside it) and D471 (one ledger, designed on
 the author's real board: the partner's one sentence, then each section one sheet of rows on one grid,
@@ -134,11 +134,12 @@ task in {name}** where the bare ＋ stood.
 ### The row (D467, D471)
 
 Every task on the board is one row of its section's sheet, the sheet's full width, at least 60 high
-(48 in D457's compact density), a hairline above it but the first; hover tints it, the row under the
-keys has the accent outline. D471's one grid: **the mark** (24), **the words**, **the time** on one
+(48 in D457's compact density), a hairline above it but the first; hover warms it within its sheet's ground (D529: never grey, never
+a change of size or place), the row under the keys has the accent outline. D471's one grid: **the mark** (24), **the words**, **the time** on one
 right edge (112 pt; 92 under 700), and, on a sheet whose rows carry an action (what stopped, what
-didn't work out, a quiet wait, a limit with a hand-over), **one column for what to do** (216; 184) so
-every first button starts at one x; elsewhere a hover's actions come in over the time. Beside the
+didn't work out, a quiet wait, a limit with a hand-over), **one column for what to do** (252; 216, D529: two fixes and the ⋯ that joins them) so
+every first button starts at one x, and its ⋯ stands last in that group (D529); elsewhere a hover's
+actions come in beside the time (the Mac) or over it on the row's own fill (the web), faded in, pushing nothing. Beside the
 conversation and on the phone (D471 rev., one hand, 390 to 430) a row stacks: the task first (up to
 two lines), why under it (up to three), then a quiet line of where and when (the project, a computer
 that isn't the usual, a PR it made, the time: each its own element, wrapping, never past the edge),
@@ -154,7 +155,7 @@ detail, on hover and in the task.
 | Quiet (working) | D498: no progress line. After ten minutes with no step, under the living line, **上一步 {ago} / last step {ago}** in the quiet ink (a fact; the partner judges a stall, D481). The living line is D498's `saidOf`: this turn's latest line in a sentence (the agent's words, a step that said what it was for, or the unworded steps as one gist, **跑了 3 条命令，看了 2 个文件**), never a bare command; a failed step the task went past keeps the quiet ink. The client asks once for a working task's history |
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**): D508: the PR Ducter watches for it first, else the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
 | Under its PR (D508) | A finished task whose PR is open is not done: its living line is where the PR stands (`pr-state.ts`), the phase in the state's ink and its facts each its own element: **在等 CI 跑完**, **CI 没过** (**没过的：{names}**), **在等评审** (**等 {who} 看**), **{who} 要求修改**, **和 {base} 有冲突**, **还是草稿**, **可以合了** (**{who} 通过了评审**), CI as **CI 过了 {n}/{m}** or **CI 都过了**; its mark the waiting ring at rest (ready: the flag); its right edge when it last moved. Ready stands in 等你 with **到 GitHub 合并 / Merge on GitHub**; every other open phase in 在等; merged or closed in 今天做完 (**已合并** beside its +a −d). Never 合进 {base} or 开草稿 PR while a PR holds the branch |
-| Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover, in a slot of its own inside the row (D508: never over the time, never past the sheet's edge), Pause, D454's × and ⋯; a branch with no PR has 合进 {base} and 开草稿 PR in that ⋯ |
+| Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover, in a slot of its own inside the row (D508: never over the time, never past the sheet's edge), Pause, D454's × and ⋯ (D529: always laid out, faded in, Tab reaches them; on a row with its own action only its ⋯, last in that group); a branch with no PR has 合进 {base} and 开草稿 PR in that ⋯ |
 
 A new result pops once the first time it is drawn (D313). A group (D360) is the same card with its
 name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
@@ -242,6 +243,10 @@ on hand (the empty state doesn't show over it). Sheets and their Go: `task-sourc
 
 D471: a group draws only the parts whose tasks are on the board (one removed or gone is no row: on
 the author's board it drew a lone order number); with one part left it is that task's own row.
+D535: a hand-over's group (D385) stands by one rule on every client (`handGroupStand` in
+`packages/protocol`, its Go port `HandStand`, one fixture): its plan or review waiting for the person in
+等你 as its card; with tasks on the board, by its most urgent one; with only parts held in line, in 在做,
+each part saying where it waits; with nothing on the board and nothing in line, nowhere.
 
 Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
 section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs
@@ -319,10 +324,62 @@ unknown icon).
   or, once quiet, **上次有动静是 2 天前**. The right end says where: the project (under All, from
   two groups) and the computer (with two or more). The branch and the agent are in the task.
 
+D542: a row opens what it names. A Keep in rounds stands in the rail as its round's task; its row
+opens the Keep's page (the other Keeps at its left from 1120, the page on the right), never the
+round's task; a Keep's item (one PR it babysits) opens its own task. A task opens at its
+conversation, never at another task's workbench page (`workbench.md`). On a touch screen a tap
+anywhere on a row opens the row: what a row reveals on hover takes no tap while faded.
+
+## Navigation: where things live and how you move (D535)
+
+Three zoom levels, one header shape at each (D262, D270), one way back. The Mac at 1000, 1150 and
+1400 and the web at 1400, 1000 and on a phone follow the same table.
+
+| Level | Where it lives | In | Out | The header says |
+|---|---|---|---|---|
+| **The conversation** | The window's default; with two or more partners the list of them at its left (a phone: the level above it) | ⌘1, 对话 in any breadcrumb, Esc from On hand | the places' marks, a count's door, a task's line | the partner's face and name, then its counts (「n 个等你」 its own door, the rest a link to On hand) |
+| **手头的事 / On hand** | The overview: the partner's line, 等你, 在做, 在等, 看守中, 今天做完; the project column from 1100 (a row of names narrower) | ⌘2, the places' On hand mark, the counts line, a count's door, 手头的事 in a breadcrumb | 对话, Esc, a row or a sheet | 对话 / 手头的事 (Mac and web whole screen); beside the conversation its own name; on a phone ‹ 对话 |
+| **A Keep's page** | In On hand's place; the other Keeps as one list at its left from 1100 (Mac) or at the whole screen (web), under the shared section head, the open one the knob | its sheet on On hand, the rail, a deep link (its card in the conversation, Settings' helper row, ⌘K, a push, `#keep=`) | the breadcrumb's 手头的事, Esc, ‹ 手头的事 | 对话 / 手头的事 / {the Keep} at every width (web beside the conversation and phone: ‹ 手头的事); never a back link inside the page or its column |
+| **An opened task** | Its own page; beside it On hand's rail where there is room (D244) | a row, a card's 打开任务, ⌘O / ⌘K, a door's item opened, a push | 手头的事 or 对话 in the breadcrumb, Esc (back where it was opened from, D244) | 对话 / 手头的事 / {the task} (web beside the conversation: ‹ 手头的事; a phone ‹ 对话) |
+
+**What persists between visits.** On hand always opens on its overview: a Keep's page lives only while
+On hand is shown, and leaving On hand closes it (a deep link opens it straight). The project lens is
+kept per device (D261). Find, the 等你 filter and the selection are let go on Esc and when a count's
+door opens. The conversation keeps its place (D254) and each partner its own. An opened task keeps
+its draft and the rail its lens.
+
+**Every count leads to its items.** The person's one count (D517) is a door wherever it shows: the
+conversation's 「n 个等你」, a partner's pebble in the list (and that partner's row while shown), the
+mini window's count and the line pinned over the composer, **有 n 个等你定 ›**, while something it
+counts is out of view. A tap opens the next item in 等你's order (a stopped line, the partner's own
+questions, another partner's, then the tasks): the partner's own question in the conversation,
+scrolled to with a needs-you wash that deepens once; anything else On hand's overview with the item
+focused, scrolled to the middle, its tint or edge deepening once (Reduce Motion: the colour only).
+The next tap steps on; after the last, the first. The Dock badge and the menu bar's count open the
+window; the menu bar's own list names each item. On hand's head line is a sentence, not a door: 等你
+under it is the list.
+
+**The breadcrumb is the one way back.** Every crumb but the last goes there and is a button; the last
+is the place, in full ink, never a button (D270). Esc goes up exactly one level (a Keep's page to the
+overview, the overview to the conversation, a task to where it came from). No page draws its own
+back link where the header already has one.
+
 ## The opened task
 
 A waiting task's headline is the row's waiting line, never its title again; under it one line, when
 it looks again and since when it has been quiet. The rest is D152/D210's transcript.
+
+D544: a task in rounds (a Keep's, or one of its own) keeps who it is while it is read. Once its head
+is out of view (it opens at its end, so at once), a slim clay line under the bar says the Keep's
+lantern, **看守中**, what waits for the person, **下一轮 18:49** (live) or **本轮进行中**, and **第 302
+轮**, each its own element; a tap opens the Keep's page (or, without a Keep, goes back to the head).
+Ordinary tasks get nothing. Rounds that changed nothing (from their structured outcome: a done or
+progress-only round, nothing said to it, no PR marked `changed`) fold into one row, **又看过 9 次，都没有变化，
+13:15 到 17:45**, that opens on a click; the latest round stays.
+
+Beside the conversation (D544) On hand takes the phone's grid: the partner and its lead in the first
+row (the face 56, the lead `lg`), Find on the pane's left edge at its width, a section's name and an
+ask on the rows' inner edge (16), an ask's question at `lg`, a row's mark on its title's first line.
 
 ## Review 2026-11-17 (D315)
 

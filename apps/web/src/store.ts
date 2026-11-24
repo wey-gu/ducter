@@ -72,6 +72,8 @@ export interface Send {
   clientId?: string;
   /** D268: sent while it works: steered into its next step, or queued until it is done. */
   mode?: "steer" | "queue";
+  /** D534: what its words refer to with @ (sent with it; a resend sends them again). */
+  refs?: import("@ducter/protocol").Ref[];
   delivered?: Delivery;
   failed?: string;
   seq?: number;
@@ -304,6 +306,8 @@ export class Store {
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
   /** D222: what a Go on a change card ran (the connection_call with its decision id), the latest by seq. */
   calRuns = new Map<string, { state: Bodies["connection_call"]["state"]; link?: string; error?: string; seq: number }>();
+  /** D539: what a copy card's Go did: the computers that got the key, and those that didn't (why). */
+  keyCopies = new Map<string, Bodies["key_copy"]>();
 
   /** A welcome from a Log that no longer holds what we've seen (its data was reset). */
   stale(f: ServerFrame) {
@@ -551,6 +555,11 @@ export class Store {
       const c = ev.body as Bodies["connection_call"];
       const had = c.decisionId ? this.calRuns.get(c.decisionId) : undefined;
       if (c.decisionId && c.op === "write" && (!had || had.seq <= ev.seq)) this.calRuns.set(c.decisionId, { state: c.state, ...(c.link ? { link: c.link } : {}), ...(c.error ? { error: c.error } : {}), seq: ev.seq });
+    }
+    if (ev.kind === "key_copy") {
+      const b = ev.body as Bodies["key_copy"];
+      if (b.decisionId) this.keyCopies.set(b.decisionId, b);
+      return;
     }
     if (ev.stream !== "channel") {
       if (ev.kind === "decision") this.addDecision(ev as Ev<"decision">);
@@ -1024,13 +1033,13 @@ export class Store {
   /** What to send again after a welcome, in order: messages to the partner not yet echoed, then
    *  direct task messages not yet acked. Core dedupes both by clientId, so a copy it already has
    *  is echoed (or acked) again, never appended twice. */
-  resends(pending: { clientId: string; text: string; media?: string[]; reply?: import("@ducter/protocol").ReplyWant }[]): ClientFrame[] {
+  resends(pending: { clientId: string; text: string; media?: string[]; reply?: import("@ducter/protocol").ReplyWant; refs?: import("@ducter/protocol").Ref[] }[]): ClientFrame[] {
     const echoed = new Set<string>();
     for (const e of this.channel) if (e.user?.clientId) echoed.add(e.user.clientId);
-    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}), ...(p.reply ? { reply: p.reply } : {}) }));
+    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}), ...(p.reply ? { reply: p.reply } : {}), ...(p.refs?.length ? { refs: p.refs } : {}) }));
     for (const t of this.tasks.values())
       for (const sd of t.sends)
-        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}), ...(sd.mode ? { mode: sd.mode } : {}) });
+        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}), ...(sd.mode ? { mode: sd.mode } : {}), ...(sd.refs?.length ? { refs: sd.refs } : {}) });
     return out;
   }
 

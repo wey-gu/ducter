@@ -39,7 +39,7 @@ func (a *App) task(c *ui.Context) {
 	if w <= 0 {
 		w = 1280
 	}
-	rail, bench := panes(w, a.bench.open && a.benchOpenable(task))
+	rail, bench := panes(w, a.benchShown(task))
 	// D271: the task's own column, for the locator (wide only).
 	a.tpage.colW = w
 	if rail {
@@ -146,8 +146,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	// D238: the person's own phone is said in the task's head (handsetTaskLine), never here (D339).
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnText, t.ControlSM, t.Chrome) {
-		a.bench.open, a.bench.tab = true, "phone"
-		a.benchLoad(task)
+		a.benchShow(task, "phone")
 	}
 	a.moreMenu(c, task)
 }
@@ -185,7 +184,7 @@ func (a *App) dropItem(c *ui.Context, m *ui.Menu, task *store.Task) {
 func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	t := a.T
 	att := task.Attention()
-	state := a.stateLabel(att)
+	state := a.tagLabel(att) // D542: D525's native register (进行中, 等待中, 已完成, 没完成)
 	if a.yourTurn(task) {
 		state = a.L.T("task.your.turn")
 	} else if att == protocol.Blocked {
@@ -201,15 +200,14 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 		when = a.taskClock(c, task)
 	}
 	// One quiet line (D152): where it stands and its one clock, then who does it and where.
-	ui.Column(c.Key("meta")).Gap(2).Children(func() {
-		// D291: the state word in its ink, and apart, its clock in muted figures.
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			uiText(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
-			if when != "" {
-				uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
-			}
-			a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
-		})
+	// D542: one wrapping line, as the web's: the state's Tag, its clock, the
+	// to-do, who does it (once), where, and 换谁来做.
+	ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Wrap().MinWidth(0).Children(func() {
+		a.tag(c, "state", state, stateTone(att)) // D542: the shared Tag, in its state's ink
+		if when != "" {
+			uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
+		}
+		a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
 		a.taskWho(c, task)
 	})
 }
@@ -323,6 +321,34 @@ const (
 // of the meta line and a headline of two lines, so they read as one block.
 const taskFaceW = 96
 
+// stateTone is an attention state's Tag tint, in its state's ink (D542).
+func stateTone(att protocol.Attention) tagTone {
+	switch att {
+	case protocol.NeedsYou:
+		return tagNeeds
+	case protocol.Working, protocol.Queued:
+		return tagWorking
+	case protocol.Blocked:
+		return tagWaiting
+	case protocol.Failed:
+		return tagFailed
+	case protocol.Done, protocol.DoneClaimed:
+		return tagOn
+	}
+	return tagPlain
+}
+
+// tagLabel is the opened task's state Tag word (D542), in D525's register.
+func (a *App) tagLabel(att protocol.Attention) string {
+	if att == protocol.DoneClaimed {
+		att = protocol.Done
+	}
+	return a.L.T("task.tag." + string(att))
+}
+
+// taskMarkW is the partner's mark inline before an opened task's title (D542).
+const taskMarkW = 28
+
 // taskPresence is the face an opened task shows: done, needs you (also
 // for one that didn't work: it frowns and holds up its flag), working,
 // napping while it waits, idle otherwise.
@@ -406,11 +432,11 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			// Try again, or tell it what to do instead: the primary
 			// opens the task's composer (D76).
 			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
-				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
-					a.TaskAction(task.ID, "reopen")
-				}
 				if a.buttonFor(c, a.L.T("task.action.tell"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
 					a.focusComposer = true
+				}
+				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
+					a.TaskAction(task.ID, "reopen")
 				}
 			})
 			return
@@ -472,7 +498,7 @@ func (a *App) sectionTitle(c *ui.Context, text string) ui.Element {
 
 // ---------- what it did (tasksteps.go) ----------
 
-func (a *App) reportLabel(r *protocol.Report) string {
+func (a *App) reportLabel(task *store.Task, r *protocol.Report) string {
 	key := "task.report"
 	switch r.State {
 	case "needs_input":
@@ -484,7 +510,7 @@ func (a *App) reportLabel(r *protocol.Report) string {
 	case "failed":
 		key = "task.report.failed"
 	}
-	return a.L.T(key, a.S.PersonaName)
+	return a.L.T(key, a.taskName(task))
 }
 
 // taskComposer is the box to talk to the task directly, at the bottom of
@@ -492,6 +518,10 @@ func (a *App) reportLabel(r *protocol.Report) string {
 func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D493: what sits over the task's composer shares its measure and edges.
+	// D521: its agent's background work first, furthest from the words.
+	if task.Card != nil && task.Card.Background != nil && len(task.Card.Background.Jobs) > 0 {
+		a.aboveComposerAt(c, readMeasure, func() { a.bgTray(c, task) })
+	}
 	if a.held != nil && a.held.taskID == task.ID {
 		a.aboveComposerAt(c, readMeasure, func() { a.heldLine(c) })
 	}
@@ -500,10 +530,11 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	}
 	draft := a.taskDrafts[task.ID]
 	tray := "task:" + task.ID
-	// D268, D325: while it works, Return steers it (read at its next step);
-	// ⌥↩ or 做完再说 / After this holds it for after this turn; an agent that
-	// can't steer holds it either way and says so. Stop sits by Send. Held
-	// words are chips over the composer.
+	// D268, D325, D530: while it works, Return steers it (read at its next
+	// step); ⌥↩, or the send's own menu (right-click), holds it for after
+	// this turn; an agent that can't steer holds it either way and says so.
+	// Stop sits by Send, one family of clay buttons. Held words are chips over
+	// the composer.
 	working := task.Attention() == protocol.Working
 	agent := task.Harness()
 	steers := protocol.HarnessSteers(agent)
@@ -526,76 +557,72 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S4, t.S5).Children(func() {
 		ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S1).Children(func() {
 			a.heldChips(c, task, working, steers)
-			box := ui.Column(c.Key("taskcomposer-box")).Padding(t.S2, t.S2, t.S2, t.S3).
-				Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
-			over := a.takeDrops(box, tray) // D206
-			box.Children(func() {
-				if over {
-					a.dropHint(c)
-				}
-				a.picTray(c, tray)
-				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					a.addPicturesButton(c, tray)
-					ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(place).
-						Label(a.L.T("composer.task")).
-						Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-						OnTextKey(func(k ui.TextKey) bool {
-							if a.pictureKeys(tray, k) {
-								return true
+			var over bool
+			var box ui.Element
+			ui.Row(c).Children(func() {
+				box = a.composerBox(c, composerOpts{
+					key: "taskcomposer:" + task.ID, draft: &draft, placeholder: place, label: a.L.T("composer.task"), lines: 6, focus: a.focusComposer,
+					mentions: &mentionPlace{where: task.ID, task: true},              // D534
+					tray:     tray,                                                   // #68
+					box:      func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
+					before: func() {
+						if over {
+							a.dropHint(c)
+						}
+						a.picTray(c, tray)
+					},
+					lead: func() { a.addPicturesButton(c, tray) },
+					tools: func() {
+						// D542: the model and effort, and the context ring (D288), in
+						// the composer's own row before Stop and Send: no row under it.
+						a.composerTune(c, task)
+						a.contextRing(c, task)
+						if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
+							a.TaskAction(task.ID, "interrupt")
+						}
+					},
+					keys: func(k ui.TextKey) bool {
+						if a.pictureKeys(tray, k) {
+							return true
+						}
+						if k.Key == ui.KeyEnter && k.Mods == ui.Alt {
+							if a.SendToTaskMode(task.ID, k.Text(), mode(true)) {
+								k.SetText("")
+								a.taskDrafts[task.ID] = ""
 							}
-							if k.Key == ui.KeyEnter && (k.Mods == 0 || k.Mods == ui.Alt) {
-								if a.SendToTaskMode(task.ID, k.Text(), mode(k.Mods == ui.Alt)) {
-									k.SetText("")
-									// D207: the key runs after this frame's draft was
-									// stored; empty the stored one too, or the next
-									// frame puts the sent words back.
-									a.taskDrafts[task.ID] = ""
-								}
-								return true
-							}
+							return true
+						}
+						return false
+					},
+					canSend: ptrBool(strings.TrimSpace(draft) != "" || len(a.med().trays[tray]) > 0),
+					sendMenu: func(m *ui.Menu) {
+						if !working || !steers {
+							return
+						}
+						if m.Item(a.L.T("send.steer")).Shortcut(0, ui.KeyEnter).Chosen() && a.SendToTaskMode(task.ID, draft, "steer") {
+							draft, a.taskDrafts[task.ID] = "", ""
+						}
+						if m.Item(a.L.T("send.after")).Shortcut(ui.Alt, ui.KeyEnter).Chosen() && a.SendToTaskMode(task.ID, draft, "queue") {
+							draft, a.taskDrafts[task.ID] = "", ""
+						}
+					},
+					onSend: func(text string) bool {
+						if !a.SendToTaskMode(task.ID, text, mode(false)) {
 							return false
-						})
-					if a.focusComposer {
-						ta.Focus()
-						a.focusComposer = false
-					}
-					a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
-					if working && steers && strings.TrimSpace(draft) != "" {
-						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
-							draft = ""
 						}
-					}
-					if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
-						a.TaskAction(task.ID, "interrupt")
-					}
-					if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-						if a.SendToTaskMode(task.ID, draft, mode(false)) {
-							draft = ""
-						}
-					}
+						// D207: the key runs after this frame's draft was stored; empty the
+						// stored one too, or the next frame puts the sent words back.
+						a.taskDrafts[task.ID] = ""
+						return true
+					},
 				})
+				a.focusComposer = false
 			})
-			// D354: the model and effort under the box, always in sight while it
-			// can be switched; while it works, the steer hints after them.
-			if working || canSwitch(task) {
-				start := t.S4
-				if _, m, _, ok := a.liveTune(task, task.Place().Device); ok && m != nil && canSwitch(task) {
-					start = t.S2 // the chips' own padding lines their words up with the hints'
-				}
-				ui.Row(c.Key("composer-foot")).Gap(t.S2).Padding(0, t.S4, 0, start).AlignItems(ui.Center).Children(func() {
-					a.composerTune(c, task)
-					if !working {
-						return
-					}
-					if !steers {
-						uiText(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
-						return
-					}
-					uiText(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
-					ui.Spacer(c)
-					uiText(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)
-				})
-			}
+			// D542: no row under the box, at rest or on focus (a row that came
+			// with the focus moved the box under the pointer): Return's two ways
+			// are in the words' place and the send's own menu; an agent that
+			// can't steer says so in the words' place and over its held words.
+			_ = box
 		})
 	})
 	a.taskDrafts[task.ID] = draft
@@ -636,6 +663,16 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			a.messageMedia(c, key, media, nil, true, "task:"+a.TaskID)
 		}
 		if text == "" {
+			goto note
+		}
+		if said, refs := splitRefs(text); len(refs) > 0 {
+			// D534: the person's words with their @ chips; what Ducter put after them for the agent is never shown.
+			r := t.BubbleRadius
+			b := ui.Column(c.Key("refs")).Background(t.UserBubble).Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80)
+			if waiting {
+				b.Opacity(0.7)
+			}
+			b.Children(func() { a.wordsWithRefs(c, "w", said, refs, t.OnUserBubble, taskProse) })
 			goto note
 		}
 		{

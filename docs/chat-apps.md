@@ -43,7 +43,7 @@ steps below use the names Slack shows:
 4. Open **OAuth & Permissions** on the left and choose **Install to** *your workspace*, then
    **Allow**. Copy the **Bot User OAuth Token** that appears (it starts with `xoxb-`) and paste it
    into its field.
-   - That page also offers token rotation and PKCE. Leave both alone: Ducter doesn't need them, and
+   - That page also offers Token Rotation and PKCE. Leave both alone: Ducter doesn't need them, and
      Slack can't turn them off once they're on.
    - If your workspace needs an admin to approve apps, the button asks them instead, and you wait
      for their yes.

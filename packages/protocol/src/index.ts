@@ -32,6 +32,7 @@ export * from "./reply.ts";
 export * from "./context-meter.ts";
 export * from "./handset.ts";
 export * from "./channels.ts";
+export * from "./share.ts";
 export * from "./past.ts";
 export * from "./did.ts";
 export * from "./peer-self.ts";
@@ -355,7 +356,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string } };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string } };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.

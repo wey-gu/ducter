@@ -9,5 +9,10 @@
 	<array>
 		<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
 	</array>
+	<!-- D537: the share sheet (DucterShare) sends as this device: the pairing and its outbox. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.$(DUCTER_BUNDLE_ID)</string>
+	</array>
 </dict>
 </plist>

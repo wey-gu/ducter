@@ -106,4 +106,24 @@
     <string name="glance_called">Called</string>
     <string name="glance_no_answer">No answer</string>
     <string name="glance_not_connected">Didn\'t connect</string>
+
+    <!-- D537: 分享到 Ducter / Share to Ducter (the share sheet, ShareActivity). -->
+    <string name="share_target">Send to your partner</string>
+    <string name="share_title">Send to %1$s</string>
+    <string name="share_note_hint">What should %1$s do with it? (optional)</string>
+    <string name="share_to">To</string>
+    <string name="share_send">Send</string>
+    <string name="share_cancel">Cancel</string>
+    <string name="share_sending">Sending…</string>
+    <string name="share_sent">Sent to %1$s</string>
+    <string name="share_queued">Can\'t reach your Ducter right now. It will go as soon as it can.</string>
+    <string name="share_too_old">Your Ducter needs an update to take shares; this goes once it\'s updated.</string>
+    <string name="share_unpaired">Open Ducter and connect it first, then share again.</string>
+    <string name="share_open_app">Open Ducter</string>
+    <string name="share_over">Up to 10 at a time: sending the first 10</string>
+    <string name="share_too_big">That file is too big: up to 50 MB each</string>
+    <string name="share_nothing">There\'s nothing here Ducter can send.</string>
+    <string name="share_refused">It didn\'t go: your Ducter didn\'t take it.</string>
+    <string name="share_pictures">%1$d pictures</string>
+    <string name="share_picture">A picture</string>
 </resources>

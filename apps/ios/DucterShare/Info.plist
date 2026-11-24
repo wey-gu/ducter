@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Ducter</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+	</array>
+	<!-- D537: the device token the app saved (shared keychain group) and the pairing (app group). -->
+	<key>DucterKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	<key>DucterAppGroup</key>
+	<string>group.$(DUCTER_BUNDLE_ID)</string>
+	<!-- A self-deployed Ducter may live on a LAN address, a tailnet name or an SSH tunnel (as the app). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>To reach your Ducter when it runs on a computer at home.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BricolageGrotesque.ttf</string>
+	</array>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.share-services</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<!-- A link, words, up to ten pictures and files (D206, D259). -->
+			<key>NSExtensionActivationRule</key>
+			<dict>
+				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
+				<integer>1</integer>
+				<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
+				<integer>1</integer>
+				<key>NSExtensionActivationSupportsText</key>
+				<true/>
+				<key>NSExtensionActivationSupportsImageWithMaxCount</key>
+				<integer>10</integer>
+				<key>NSExtensionActivationSupportsMovieWithMaxCount</key>
+				<integer>10</integer>
+				<key>NSExtensionActivationSupportsFileWithMaxCount</key>
+				<integer>10</integer>
+				<key>NSExtensionActivationSupportsAttachmentsWithMaxCount</key>
+				<integer>10</integer>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

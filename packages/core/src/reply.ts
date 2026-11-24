@@ -163,7 +163,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
 export function logUserMessage(
   log: LogStore,
   decisions: ReplyDecisions,
-  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"]; /** D405: about one of the person's apps, or its ask. */ app?: Bodies["user_msg"]["app"]; /** D309: a second partner's conversation (channelOf); absent: the default's. */ stream?: string },
+  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"]; /** D405: about one of the person's apps, or its ask. */ app?: Bodies["user_msg"]["app"]; /** D537: through the share sheet. */ shared?: Bodies["user_msg"]["shared"]; /** D309: a second partner's conversation (channelOf); absent: the default's. */ stream?: string },
 ): LogEvent<"user_msg"> {
   let reply: ReplyRef | undefined;
   if (m.reply) {
@@ -186,6 +186,7 @@ export function logUserMessage(
     ...(m.via ? { via: m.via } : {}),
     ...(m.forwarded ? { forwarded: m.forwarded } : {}),
     ...(m.app ? { app: m.app } : {}),
+    ...(m.shared ? { shared: m.shared } : {}),
   };
   const e = log.append({ stream: m.stream ?? "channel", origin: "user", kind: "user_msg", body });
   if (answers) {

@@ -21,14 +21,14 @@ class Store(context: Context) {
     fun connect(t: PairTarget): String {
         if (base != t.base) {
             // D293: another pairing: the new home says its own ways; a link names its key.
-            p.edit().remove("ways").remove("device.token").remove("device.id").remove("device.name").apply()
+            p.edit().remove("ways").remove("device.token").remove("device.id").remove("device.name").remove("share.partners").remove("share.last").apply()
             fp = t.fp
         }
         base = t.base
         return if (t.code != null) "${t.base}pair#c=${t.code}" else "${t.base}app"
     }
 
-    fun forget() = p.edit().remove("base").remove("ways").remove("fp").remove("device.token").remove("device.id").remove("device.name").apply()
+    fun forget() = p.edit().remove("base").remove("ways").remove("fp").remove("device.token").remove("device.id").remove("device.name").remove("share.partners").remove("share.last").apply()
 
     // D293: following the home to its best way, without pairing again.
 
@@ -73,6 +73,16 @@ class Store(context: Context) {
     var locale: String
         get() = p.getString("locale", null) ?: if (Locale.getDefault().language == "zh") "zh" else "en"
         set(v) = p.edit().putString("locale", v).apply()
+
+    /** D537: the partners GET /api/me last said (JSON), for the share sheet's picker when the home can't be reached. */
+    var sharePartners: String?
+        get() = p.getString("share.partners", null)
+        set(v) = p.edit().putString("share.partners", v).apply()
+
+    /** D537: the partner the last share went to: the share sheet's picker starts there. */
+    var lastSharePartner: String?
+        get() = p.getString("share.last", null)
+        set(v) = p.edit().putString("share.last", v).apply()
 
     var personaName: String
         get() = p.getString("personaName", null) ?: "Ducter"

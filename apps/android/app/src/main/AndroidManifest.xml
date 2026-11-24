@@ -84,6 +84,34 @@
             </intent-filter>
         </activity>
 
+        <!-- D537: 分享到 Ducter / Share to Ducter: Android's share sheet hands a link, words, pictures or
+             files to a sheet of Ducter's own over the app they came from; nothing goes before Send. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Ducter.Share"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|density|fontScale|layoutDirection">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="application/*" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="application/*" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- D206: a photo taken for the conversation is handed to the camera through this. -->
         <provider
             android:name="androidx.core.content.FileProvider"

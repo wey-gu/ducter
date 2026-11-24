@@ -27,6 +27,9 @@
 	</array>
 	<key>DucterKeychainGroup</key>
 	<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	<!-- D537: what the share sheet needs of the pairing, and its outbox (apps/ios/Shared/Paired.swift). -->
+	<key>DucterAppGroup</key>
+	<string>group.$(DUCTER_BUNDLE_ID)</string>
 	<!-- D306: the Lock Screen glance (a followed task, a live call). Behind DUCTER_LIVE_ACTIVITIES
 	     until its push path is checked on a real iPhone. -->
 	<key>NSSupportsLiveActivities</key>

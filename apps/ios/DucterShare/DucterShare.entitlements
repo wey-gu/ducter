@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- D537: the device token the app saved after pairing (apps/ios/Shared/Paired.swift). -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	</array>
+	<!-- D537: which home, its ways and the partners, and the outbox of shares still to send. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.$(DUCTER_BUNDLE_ID)</string>
+	</array>
+</dict>
+</plist>

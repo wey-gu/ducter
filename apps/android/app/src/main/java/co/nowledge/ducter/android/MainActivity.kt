@@ -172,6 +172,8 @@ class MainActivity : ComponentActivity() {
         if (helloed && phase == "ready") homeCheck()
         // D293: the best of the home's ways, now and every 30 s while open.
         lookForBetterWay(up = true)
+        // D537: a share that couldn't go from the share sheet goes now (quietly; the page shows it as it lands).
+        ShareSender.drainSoon(this)
         web.removeCallbacks(lookEvery)
         web.postDelayed(lookEvery, 30_000)
     }

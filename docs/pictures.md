@@ -31,6 +31,26 @@ everything stored inside it is removed, including where it was taken.
 If a picture doesn't go up (the connection dropped), your words and the picture stay where they
 are, with **Didn't send** and **Retry**. Nothing you typed is lost.
 
+## Share from another app
+
+On your phone, anything you can share goes to your partner without saving it first: a page in
+Safari, a photo, a post, a PDF in Files.
+
+1. Tap **Share** in that app and pick **Ducter** (the first time, you may need to find it under
+   **More** and move it up the row).
+2. Add a line if you like: "Summarize this", "Remind me next week". Leave it empty and your partner
+   tells you what it got and offers what it could do with it.
+3. With more than one partner, pick who it's for under **To** (it starts on the one you shared to
+   last). Tap **Send**.
+
+It arrives in that partner's conversation as one message: your line, then the link or what you
+shared. Photos are made smaller and lose where they were taken, as always; up to 10 pictures and
+files at a time, 50 MB each. Nothing is sent until you tap **Send**.
+
+If your Ducter can't be reached right then, the sheet says **It will go as soon as it can**, and it
+goes the next time Ducter opens on your phone. You need to have connected the Ducter app once;
+sharing uses that connection.
+
 ## Send a file
 
 Any file goes the same way as a picture: a PDF, a Word document, a spreadsheet, a log, some code,

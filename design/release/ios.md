@@ -12,11 +12,11 @@ that the main serves at `/app`, plus APNs notifications through the notification
 | Project | `apps/ios/Ducter.xcodeproj` (committed; generated from `apps/ios/project.yml` by `xcodegen`, so CI needs no generator) |
 | Scheme | `Ducter` (shared: `Ducter.xcodeproj/xcshareddata/xcschemes/Ducter.xcscheme`) |
 | Configurations | `Debug` (simulator, APNs sandbox), `Release` (archive, APNs production) |
-| Bundle id | `co.nowledge.ducter.ios` (`DUCTER_BUNDLE_ID` in `apps/ios/Config.xcconfig`); the extension `DucterNotify` is `co.nowledge.ducter.ios.notify` (D159) |
+| Bundle id | `co.nowledge.ducter.ios` (`DUCTER_BUNDLE_ID` in `apps/ios/Config.xcconfig`); the extension `DucterNotify` is `co.nowledge.ducter.ios.notify` (D159), `DucterLive` `.live` (D306), the Share Extension `DucterShare` `.share` (D537) |
 | Team | `JMU55RJW2K` (Nowledge Labs, LLC; `DEVELOPMENT_TEAM` in `Config.xcconfig`) |
 | Signing | Automatic (`CODE_SIGN_STYLE = Automatic`) |
-| Entitlements | `apps/ios/Ducter/Ducter.entitlements`: `aps-environment = development` (distribution signing rewrites it to `production`) and `keychain-access-groups` `$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared`; `DucterNotify/DucterNotify.entitlements`: the same keychain group |
-| Capabilities the App IDs need | The app: Push Notifications. The extension: none. Keychain sharing within the team needs no capability; no app groups, no iCloud, no associated domains |
+| Entitlements | `apps/ios/Ducter/Ducter.entitlements`: `aps-environment = development` (distribution signing rewrites it to `production`) and `keychain-access-groups` `$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared`; `DucterNotify/DucterNotify.entitlements`: the same keychain group; D537: the app and `DucterShare/DucterShare.entitlements` also list the app group `group.$(DUCTER_BUNDLE_ID)` (`com.apple.security.application-groups`), and the share extension the keychain group |
+| Capabilities the App IDs need | The app: Push Notifications and App Groups (`group.co.nowledge.ducter.ios`). `.share`: App Groups (the same group). `.notify`, `.live`: none. Keychain sharing within the team needs no capability; no iCloud, no associated domains |
 | Version | `MARKETING_VERSION` (default `0.1.0`), build `CURRENT_PROJECT_VERSION` (default `1`); override both on the command line |
 | Deployment target | iOS 17.0, universal (D176): iPhone in portrait and landscape, iPad in all four orientations with Split View, Slide Over and Stage Manager (`UIRequiresFullScreen` false, one scene); the extension too |
 | Icons | The one `AppIcon` 1024 source; Xcode makes every iPhone and iPad size (`AppIcon76x76` for iPad) |
@@ -101,9 +101,19 @@ xcrun altool --upload-app -f "$RUNNER_TEMP/export/Ducter.ipa" -t ios \
    APNs key on the home, and `DUCTER_PUSH_RELAY = ` (empty) in `Local.xcconfig` so the app doesn't
    register with Nowledge's relay. People who install the TestFlight build need nothing: their
    home sends through the relay.
-5. **TestFlight testers.** App Store Connect → the app → TestFlight → Internal Testing → add
+5. **App Groups (D537), once.** The export's automatic signing (`-allowProvisioningUpdates` with the
+   API key) is expected to register `group.co.nowledge.ducter.ios`, turn on App Groups for
+   `co.nowledge.ducter.ios` and register `co.nowledge.ducter.ios.share` with it (INFERRED: Xcode's
+   automatic signing does this for capabilities in the entitlements; not yet seen on this account).
+   If the release's TestFlight job fails at export with a profile that lacks
+   `com.apple.security.application-groups`: Certificates, Identifiers & Profiles → Identifiers → +
+   → App Groups → `group.co.nowledge.ducter.ios`; then the App IDs `co.nowledge.ducter.ios` and
+   `co.nowledge.ducter.ios.share` → App Groups → Configure → that group; run the release's iOS job
+   again. The TestFlight job never blocks a release. `ios.yml` run by hand with `testflight=true`
+   checks the signing path without a release.
+6. **TestFlight testers.** App Store Connect → the app → TestFlight → Internal Testing → add
    yourself. Internal builds need no review.
-6. **Public beta.** An external group named **Public Beta** with a public link
+7. **Public beta.** An external group named **Public Beta** with a public link
    (https://testflight.apple.com/join/Z4GvWt7t; first build submitted 2026-11-10). After each
    upload `scripts/ci/testflight.sh` runs `scripts/ci/testflight-beta.ts`: it waits (up to 20
    minutes, `TESTFLIGHT_WAIT_MINUTES`) for the build's `processingState` to be `VALID`, adds it to

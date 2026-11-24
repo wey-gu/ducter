@@ -22,11 +22,15 @@ targets:
       - path: Ducter
       - path: Shared
       - path: LiveShared
+      # D537: the share sheet's screen and sending; the app empties its outbox and shows its specimen.
+      - path: ShareKit
     dependencies:
       # Opens sealed notifications (D159); embedded in the app's PlugIns.
       - target: DucterNotify
       # D306: draws the Lock Screen glance (Live Activities); embedded in the app's PlugIns.
       - target: DucterLive
+      # D537: 分享到 Ducter / Share to Ducter, the share sheet's Ducter; embedded in the app's PlugIns.
+      - target: DucterShare
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID)
@@ -76,6 +80,29 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID).live
         INFOPLIST_FILE: DucterLive/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+      configs:
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: -O
+  DucterShare:
+    # D537: the Share Extension (com.apple.share-services). Its own App ID, <app id>.share; the
+    # App Groups capability (group.<app id>, shared with the app) and the keychain group. Automatic
+    # signing (CI: -allowProvisioningUpdates with the App Store Connect key) registers both.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DucterShare
+      - path: ShareKit
+      - path: Shared
+      - path: Ducter/Theme.swift
+      - path: Ducter/Fonts/BricolageGrotesque.ttf
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID).share
+        INFOPLIST_FILE: DucterShare/Info.plist
+        CODE_SIGN_ENTITLEMENTS: DucterShare/DucterShare.entitlements
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES

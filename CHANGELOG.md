@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.34 - 2026-11-24
+
+<!-- whats-new
+zh: 照看：帮手、例行和盯着的事，都有自己的一页
+en: Looking after: helpers, routines and watches each get a page
+-->
+
+**Looking after**
+- Work Ducter keeps on for you, such as a PR babysitter, a review every 45 minutes or a fare it
+  checks each morning, now lives in one place on On hand: Looking after. Each shows what it
+  holds, what waits for you and when it wakes next.
+- Tap one for its own page: what you said, what waits for you, what it holds, each round and
+  whether it spoke, how it looks after things, and Pause or Stop. Change it by saying so there.
+- Say it once to your partner ("keep an eye on the Dec 20 Shanghai to Tokyo fare") and it's set
+  up at once, with a receipt to check.
+- Your existing routines, loops and helpers move over by themselves, nothing lost.
+
 ## 0.1.33 - 2026-11-24
 
 <!-- whats-new

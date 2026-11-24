@@ -110,7 +110,7 @@ func TestD533Shots(t *testing.T) {
 	e := &h.app.oh.keep.edit
 	rules := func() image.Rectangle { return image.Rect(width-372, 40, width-4, 900) }
 	edited := false
-	for _, w := range []int{1400, 1150} {
+	for _, w := range []int{1400, 1150, 1000} {
 		width = w
 		h.tt.SetSize(w, 1500)
 		h.tt.Move(2, 2)

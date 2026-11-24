@@ -686,7 +686,15 @@ export function EditRow(p: {
       {!p.open && p.muted && <span class="v m">{p.muted}</span>}
       {p.open && (
         <>
-          <div class="er-slot">{p.children}</div>
+          <div
+            class="er-slot"
+            ref={(el) => {
+              // Open: the keys are the row's at once (Escape cancels, Enter saves), even when its control is a choice, not a field.
+              if (el && !el.closest(".edit-row")?.contains(document.activeElement)) (el.querySelector<HTMLElement>("input, textarea, [aria-checked=true], button") ?? el).focus({ preventScroll: true });
+            }}
+          >
+            {p.children}
+          </div>
           {p.error && (
             <p class="er-err" role="alert">
               {p.error}

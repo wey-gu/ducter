@@ -72,7 +72,7 @@ A family that needs privacy from each other needs separate homes.
 ## Switching: the list of partners (zero concepts, D513)
 
 - **Every partner in one list, as a messaging app lists its chats.** With a second partner, a
-  computer (the Mac, the web from 1000) shows **伙伴们 / Your partners** as a column at the
+  computer (the Mac, the web from 700; D541: from 700 to 999 the slim list) shows **伙伴们 / Your partners** as a column at the
   conversation's left. Each row: the partner's figure in its own clay; its name; the last thing said
   in its conversation (the person's own words as **你：{text} / You: {text}**; nothing said yet:
   **管：{about} / Looks after: {about}**, else **还没聊过 / Nothing said yet**); and on the figure's
@@ -92,7 +92,8 @@ A family that needs privacy from each other needs separate homes.
   a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
   hand's head; each item is under 等你 with its fix.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
-  last shown. The bar's left has **‹** with the number of what waits in the other partners (label
+  last shown. The bar's left has **‹** and the other partners' own figures, a small stack in their
+  clays (D541: a lone ‹ read as "back"), with the number of what waits in them (label
   **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the
   leading-edge swipe goes up to the list, a row goes back down into that partner's conversation.
   Rows are a thumb tall (76); the list's bar has the places; with fewer than four, **再加一个伙伴 /

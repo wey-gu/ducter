@@ -453,7 +453,13 @@ breath, no blink, no hop. D541: a pick shows that partner's conversation in plac
 frame, held or peeked (no fade, no rise, never blank); the bar and the composer don't move.
 On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
 tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
-**‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no
+the way up (D541): the drawn chevron (`Chev back`, 16) and the other partners' own figures, a stack
+of up to three 24-pt discs in their clays (each on the sunken ground with a 1.5 ring of the page,
+overlapping 9, the nearest on top), the others' number as a `CountPebble` on the stack's shoulder;
+44 tall; at 360 and under, one figure and the number. A lone ‹ read as "back"; the faces say who is
+there. The same in a fold's conversation pane (no column stands beside there); the list then opens
+over that pane. From 700 to 999 (an iPad upright, a foldable open: one column) the slim list (88)
+stands at the conversation's left and the column grows by its width. No pills, no coloured edge, no
 " · " joins: each fact its own element.
 
 **The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay

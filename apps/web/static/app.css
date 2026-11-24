@@ -22461,6 +22461,8 @@ html[data-text-size="large"] .brand-mark > svg {
    it: there the bar drops the face (‹ and the name say who), the name and its first count keep room. */
 @media (max-width: 360px) {
   .top:has(.partners-back) .who-face { display: none; }
+  /* D541: the narrowest phones keep one of the others' figures (the stack's top), with the number. */
+  .top .partners-back .pb-face:nth-child(n + 2) { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
 /* D521: the shared TrayRow and IconBtn (controls.tsx): one dense quiet row of a tray, a drawn glyph as a button. */

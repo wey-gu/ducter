@@ -78,8 +78,24 @@ describe("D513: the list of partners", () => {
     expect(main).toMatch(/A\.partnersOpen && A\.manyPartners\(\) \? <PartnerList at="home"/);
     // The phone's edge swipe from a conversation goes up to the list.
     expect(main).toContain("if (A.route.name === \"conv\") return A.showPartners();");
-    expect(src("views.tsx")).toContain("{!wide && <PartnersBack />}");
+    expect(src("views.tsx")).toContain("{((!wide && phoneBar) || fold) && <PartnersBack />}");
     expect(src("app.ts")).toContain('hash === "#partners"');
+  });
+  test("D541: a way to the others at every width: the slim list from 700, the others' faces in a phone's and a fold's bar", () => {
+    const main = src("main.tsx");
+    // 700–999 (an iPad upright, a foldable open): the slim list beside the one column.
+    expect(main).toContain('<PartnerList at="side" slim />');
+    expect(main).toContain("A.manyPartners() && !phone ? (");
+    expect(css).toContain(".pane.partners.slim { flex-basis: 88px; }");
+    expect(css).toContain("#app:has(> .panes.mid)");
+    // A fold: the list opens over the conversation's pane, from the bar.
+    expect(main).toContain('split && A.partnersOpen && A.manyPartners() ? <PartnerList at="home" />');
+    // The bar's way up is never a bare ‹: the others' own figures, with what waits in them.
+    const back = fn("PartnersBack");
+    expect(back).toContain('<Chev back cls="pb-chev" />');
+    expect(back).toContain('class="pb-face stone" data-look={p.look}');
+    expect(back).toContain("<CountPebble n={elsewhere} />");
+    expect(back).not.toContain("<svg");
   });
   test("with one partner nothing shows: no list, no ‹", () => {
     expect(fn("PartnerList")).toMatch(/if \(!A\.manyPartners\(\)\) return null;/);

@@ -170,14 +170,18 @@ func TestD535NoCardThatOpensNothing(t *testing.T) {
 				// Parts still held in line on that computer: it stands, and says so.
 				{ID: "g_held", Name: "整理 hawdb 的 issue", By: "user", Persona: "default", CreatedAt: now, Hand: hand(),
 					Members: []protocol.GroupMember{{Key: "k1", Title: "给 #120 写复现", Device: "dev_m3"}, {Key: "k2", Title: "关掉重复的 #98", Device: "dev_m3"}}},
+				// Its plan ready for the person, nothing of it on the board: 等你.
+				{ID: "g_plan", Name: "整理 dotfiles", By: "user", Persona: "default", CreatedAt: now,
+					Hand:    &protocol.GroupHandView{Shape: "plan", Plan: &protocol.GroupPlanView{TaskID: "t_plan", State: "ready"}},
+					Members: []protocol.GroupMember{{TaskID: "t_plan"}, {Key: "k1", Title: "把 zsh 配置拆开"}}},
 			},
 		}})
-		var ids []string
+		lanes := map[string]int{}
 		for _, g := range app.boardGroups(app.S.Board()) {
-			ids = append(ids, g.g.ID)
+			lanes[g.g.ID] = g.lane
 		}
-		if strings.Join(ids, ",") != "g_held" {
-			t.Fatalf("%s: groups on the board %v; want only g_held", lang, ids)
+		if _, ok := lanes["g_stale"]; ok || lanes["g_held"] != 1 || lanes["g_plan"] != 0 || len(lanes) != 2 {
+			t.Fatalf("%s: groups and their lanes %v; want g_held in 在做 (1), g_plan in 等你 (0), no g_stale", lang, lanes)
 		}
 		app.Route = RouteOnHand
 		tt := ui.NewTesterWith(app.View, 1150, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})

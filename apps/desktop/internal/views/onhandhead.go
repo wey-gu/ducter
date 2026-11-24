@@ -279,7 +279,6 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	if !a.oh.rowFirst {
 		card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 	}
-	a.doorRow(c, card, "t:"+task.ID) // D535: found by a needs-you count's door
 	// D529: the one row hover: the fill warms within the sheet's own ground,
 	// and what it reveals fades in where its room was kept.
 	ground := groundNeutral()
@@ -287,6 +286,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		ground = groundLedge(&t.NeedsYou)
 	}
 	hover := a.rowHover(c, card, ground, false)
+	a.doorRow(c, card, "t:"+task.ID) // D535: found by a needs-you count's door (over the hover's ground)
 	still := c.Preferences().ReduceMotion
 	if focus {
 		card.Border(2, t.Accent.Alpha(0.75)).Radius(14)

@@ -56,6 +56,7 @@ export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
 export * from "./handover.ts";
+export * from "./hand-group.ts";
 export * from "./standing.ts";
 export * from "./asks.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";

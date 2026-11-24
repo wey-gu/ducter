@@ -243,6 +243,10 @@ on hand (the empty state doesn't show over it). Sheets and their Go: `task-sourc
 
 D471: a group draws only the parts whose tasks are on the board (one removed or gone is no row: on
 the author's board it drew a lone order number); with one part left it is that task's own row.
+D535: a hand-over's group (D385) stands by one rule on every client (`handGroupStand` in
+`packages/protocol`, its Go port `HandStand`, one fixture): its plan or review waiting for the person in
+等你 as its card; with tasks on the board, by its most urgent one; with only parts held in line, in 在做,
+each part saying where it waits; with nothing on the board and nothing in line, nowhere.
 
 Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
 section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs

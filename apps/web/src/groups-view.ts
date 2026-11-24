@@ -3,6 +3,7 @@
 // web's tests read it without a DOM; onhand.tsx draws it (the Mac's views/groups.go does the same).
 import type { GroupMember, TaskGroupView } from "@ducter/protocol";
 import type { Attention } from "@ducter/protocol";
+import { handGroupStand } from "@ducter/protocol";
 
 /** One member as the card draws it. */
 export type MemberRow =
@@ -45,7 +46,12 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
     if (!g.hand && rows.length < 2) continue;
     const all = [...rows.flatMap((r) => (r.kind === "task" ? [r.taskId] : [])), ...(plan ? [plan] : [])];
     const lanes = all.map(laneOf).filter((l) => l >= 0);
-    if (!lanes.length) continue;
+    // D535: a hand-over stands by the one rule every client shares (handGroupStand, the shared
+    // fixture): its plan or review waiting is 等你, its tasks on the board set its lane, parts held in
+    // line alone stand in 在做 (each saying where it waits), nothing on the board and nothing in line
+    // is not listed.
+    const stand = g.hand ? handGroupStand(g.hand, lanes.length, rows.filter((r) => r.kind === "held").length) : lanes.length ? "board" : "none";
+    if (stand === "none") continue;
     const ids = new Set(all.filter((id) => laneOf(id) >= 0));
     const done = rows.filter((r) => markOf(r) === "done").length;
     let stopped: BoardGroup["stopped"];
@@ -56,8 +62,8 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
     }
     // A stopped line waits for the person: it stands with what needs them. D385: so does a plan
     // waiting to be looked at, and a finished hand-over offering review together.
-    const waits = !!g.hand && ((!!g.hand.plan && (g.hand.plan.state === "ready" || g.hand.plan.state === "held" || g.hand.plan.state === "failed")) || g.hand.review === "ready");
-    out.push({ g, lane: stopped || waits ? 0 : Math.min(...lanes), rows, ids, done, of: rows.length, ...(stopped ? { stopped } : {}) });
+    const lane = stopped || stand === "needs" ? 0 : stand === "queued" ? 1 : Math.min(...lanes);
+    out.push({ g, lane, rows, ids, done, of: rows.length, ...(stopped ? { stopped } : {}) });
   }
   return out;
 }

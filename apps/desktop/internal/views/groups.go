@@ -132,19 +132,25 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 			continue // D471: one part left is that task's own row, never a group of one
 		}
 		if hv := g.Hand; hv != nil {
-			// D385: what waits for the person (the plan, the review) stands in Needs you.
-			if (hv.Plan != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held")) || hv.Review == "ready" {
-				bg.lane = 0
-			} else if len(bg.ids) == 0 {
-				// D535: nothing of it is on the board. With parts still held in
-				// line it stands in 在做 and says so; with none (every task it
-				// started is off the board: removed, or finished days ago) it is
-				// a card with only its name and its computer that opens nothing
-				// (the author's 「通用设置 / Macbook Pro M3」, all day): not listed.
-				if hv.Review == "sent" || len(bg.rows) == 0 {
-					continue
+			// D535: one rule on every client (protocol.HandStand, the shared
+			// fixture): its plan or review waiting for the person is 等你; tasks
+			// on the board set its lane; parts held in line alone stand in 在做,
+			// each saying where it waits; nothing on the board and nothing in
+			// line (the author's 「通用设置 / Macbook Pro M3」, opening nothing
+			// all day) is not listed.
+			queued := 0
+			for _, r := range bg.rows {
+				if r.taskID == "" {
+					queued++
 				}
-				bg.lane = 1
+			}
+			switch protocol.HandStand(hv, len(bg.ids), queued) {
+			case protocol.HandNeeds:
+				bg.lane = 0
+			case protocol.HandQueued:
+				bg.lane = int(store.LaneWorking)
+			case protocol.HandNone:
+				continue
 			}
 		} else if len(bg.ids) == 0 {
 			continue

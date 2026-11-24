@@ -47,9 +47,13 @@ function RuleRow({ rule, onEdit }: { rule: RuleView; onEdit: () => void }) {
   );
 }
 
-export function AboutComputer({ dv }: { dv: DeviceView }) {
-  // The rules arrive by the rules frame (this socket keeps them fresh once it asked).
+/** Asks for the rules frame once the fold is open (this socket keeps them fresh once it asked). */
+function AskRules() {
   useEffect(() => A.send({ t: "rules" }), []);
+  return null;
+}
+
+export function AboutComputer({ dv }: { dv: DeviceView }) {
   // One edit at a time: a rule's id, or "+" for a new one.
   const [edit, setEdit] = useState<string | null>(null);
   const facts = aboutFacts(dv);
@@ -57,6 +61,7 @@ export function AboutComputer({ dv }: { dv: DeviceView }) {
   const sum = aboutSummary(dv);
   return (
     <Fold title={t("about.title")} summary={sum ? t(sum.key, ...sum.args) : ""}>
+      <AskRules />
       <div class="about">
         {facts.length > 0 && (
           <div class="about-group">

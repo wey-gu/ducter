@@ -123,7 +123,7 @@ export function createLoadout(o: {
    */
   const heavyOn = (): Map<string, number> => {
     const n = new Map<string, number>();
-    for (const c of o.tasks.list()) {
+    for (const c of o.tasks.list?.() ?? []) {
       if (c.attention !== "working" && c.attention !== "queued") continue;
       const open = o.log.read({ stream: taskStream(c.taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
       if (!open?.needs?.heavy) continue;

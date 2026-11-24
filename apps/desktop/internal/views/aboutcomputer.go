@@ -127,15 +127,16 @@ type aboutState struct {
 func (a *App) aboutComputer(c *ui.Context, dv *protocol.DeviceView) {
 	t := a.T
 	s := &a.about
-	if !s.asked {
-		s.asked = true
-		a.send(protocol.RulesReq{T: "rules"})
-	}
 	summary := ""
 	if r := dv.Resources; r != nil {
 		summary = a.L.T("about.sum", sizeWords(r.MemTotal), sizeWords(r.MemFree))
 	}
 	a.sheetFold(c, aboutFoldK+dv.ID, a.L.T("about.title"), summary, false, func() {
+		// The rules frame is asked for once the fold opens (this socket stays told of changes).
+		if !s.asked {
+			s.asked = true
+			a.send(protocol.RulesReq{T: "rules"})
+		}
 		ui.Column(c.Key("about:"+dv.ID)).Gap(t.S4).Padding(t.S2, t.S2, t.S1, t.S2).Children(func() {
 			if facts := a.aboutFacts(dv); len(facts) > 0 {
 				ui.Column(c).Gap(t.S2).Children(func() {

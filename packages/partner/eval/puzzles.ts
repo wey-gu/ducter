@@ -79,9 +79,54 @@ const HEL_AWAY: World = {
 /** Ducter's own clone line (D395) shows in the transcript as a message; it is by design and not the partner's to judge. */
 const CLONE_LINE = " (A line saying the code is being cloned there first, e.g. 「hel 上还没有 mem 的代码，我先在那里拉一份。」 or \"hel doesn't have oomol-cli's code yet, so I'm cloning it there first.\", is Ducter's own, by design: never count it as the partner saying more.)";
 
+
+/** D539: hel's case, 2026-11-24: the home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't. */
+const PROW: World = { home: { name: "hel", os: "linux", agents: ["codex", "claude-code"] }, canRead: ["hel", MAC] };
+const PROW_COMPUTERS = [MAC_WORKER, { name: "haswell", web: "ducter" as const, harnesses: ["codex", "claude-code"], os: "linux" }];
+const PROW_SEED = [
+  { user: "把 Mac 上的 Prow 日志 MCP 迁到 hel 和 haswell 上，两边都配好并验证能用" },
+  { task: { key: "mac", title: "检查 Mac 上的 Prow 日志 MCP 配置", ack: "好，我先看 Mac 上怎么配的，再去 hel 和 haswell 配。", state: "done" as const, device: MAC, report: { state: "done" as const, summary: "Mac 上的 Prow 日志 MCP 在 ~/.claude.json 里，用 HTTP 连 sti-mcp，鉴权读环境变量 STI_MCP_API_KEY（在 shell 里设置的）。", questions: [], evidence: [] } } },
+  { task: { key: "haswell", title: "在 haswell 配置 Prow 日志 MCP", ack: "好。", state: "done" as const, device: "haswell", report: { state: "done" as const, summary: "haswell 上的 MCP 配置已写好，引用 $STI_MCP_API_KEY；但 haswell 上没有这个变量，所以还连不上。", questions: [], evidence: [] } } },
+  { task: { key: "hel", title: "在 hel 配置并验证 Prow 日志 MCP", ack: "好。", state: "working" as const } },
+];
+
 const HEL_WORDS = "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。只在 hel 上做，不要用 Mac 上的。";
 
 export const puzzles: Scenario[] = [
+  // D539: hel's case. The hel task stopped: the key it needs isn't on hel, and it is on the Mac. The
+  // right thing is Ducter's own copy card (key_copy), never telling the person to set it by hand.
+  {
+    id: "wp-prow-key-blocked-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: PROW,
+    computers: PROW_COMPUTERS,
+    keysOn: { [MAC]: ["STI_MCP_API_KEY"] },
+    seed: PROW_SEED,
+    steps: [{ report: { task: "hel", body: { state: "blocked", summary: "hel 上的 MCP 配置写好了，但 hel 上没有 STI_MCP_API_KEY，验证连不上。需要在 hel 上设置这个变量。", questions: [], evidence: [] } } }],
+    expect: { called: [{ tool: "key_copy", args: { env: "STI_MCP_API_KEY" } }], msgs: [0, 1], maxChars: 120, proseForbid: [/本机设置|手动设置|自己设置|自行设置|粘贴|管理员|admin|export STI|不要把密钥发/i] },
+    rubric:
+      "The world: Ducter's home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't, and both tasks there need it for the Prow log MCP. Ducter can copy a key between the person's computers itself, on one card (key_copy), with the person's Go. Pass if the partner proposes that copy, from the Mac to hel (and haswell is fine too), and says at most one short calm Chinese line. Fail if it tells the person to set, export or paste the key on hel or haswell themselves, sends them to an admin for a key, says there is no safe way, or prints anything that looks like the key.",
+  },
+  // D539: the person asks it straight out: 不能直接把 mac 上的自动迁移过去么.
+  {
+    id: "wp-prow-key-ask-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: PROW,
+    computers: PROW_COMPUTERS,
+    keysOn: { [MAC]: ["STI_MCP_API_KEY"] },
+    seed: [
+      ...PROW_SEED,
+      { ai: "hel 和 haswell 上都还没有 STI_MCP_API_KEY，MCP 连不上。" },
+    ],
+    steps: [{ user: "不能直接把 mac 上的自动迁移过去么" }],
+    expect: { called: [{ tool: "key_copy", args: { env: "STI_MCP_API_KEY" } }], msgs: [0, 1], maxChars: 120, proseForbid: [/本机设置|手动设置|自己设置|自行设置|粘贴|管理员|admin|没有.*安全.*通道|export STI/i] },
+    rubric:
+      "The world: the home is hel; the Mac has STI_MCP_API_KEY in its shell; hel and haswell don't. The person asks why the key can't just be moved from the Mac. Ducter can: key_copy shows one card (from the Mac to hel and haswell), and only their Go copies it. Pass if the partner proposes that copy to both hel and haswell, in at most one short Chinese line beside the card. Fail if it says there is no safe channel, asks them to set or paste it themselves, sends them to an admin, or asks a question in prose instead of the card.",
+  },
   // 1. Today's case, from the first word. A thoughtful partner: Nowledge Mem is nowledge-co/mem (the
   // Mac's copy says so), hel has no copy but can clone, Antigravity is signed in on hel: clone there, start.
   {

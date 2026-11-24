@@ -457,3 +457,38 @@ test("D202: the worker answers the home's models op from its own agents (null wh
   expect(sent.find((f) => f.id === 1)).toEqual({ t: "res", id: 1, ok: true, result: [{ id: "opus", label: "Opus 5.5", efforts: ["low", "high"] }] });
   expect(sent.find((f) => f.id === 2)).toEqual({ t: "res", id: 2, ok: true, result: null });
 });
+
+// D539: a key copied to a computer reaches a task there by reference: the home sends only its name
+// (keyRefs), the computer it runs on reads the value from its own shelf into the session's
+// environment at start, and a command that prints it there sends dots up, never the value.
+test("D539: a task on a worker gets the key kept there in its session's environment, by name only; what it prints goes up as dots", async () => {
+  const VALUE = "sti-fake-7c41e2b9d0a35f68e1";
+  const seen = { options: [] as any[] };
+  const { createKeyShelf } = await import("@ducter/protocol/src/key-shelf.ts");
+  const { fileKey } = await import("@ducter/protocol/src/lock-key.ts");
+  const shelfDir = join(dir, "worker-keys");
+  const keys = createKeyShelf({ dataDir: shelfDir, env: {}, shell: async () => undefined, lock: fileKey(join(shelfDir, "kept-keys")) });
+  // Kept there the way a copy keeps it: an offer, a box sealed to it, taken.
+  const { sealKey } = await import("@ducter/protocol/src/key-seal.ts");
+  const { pub } = (await keys.ops.keys_offer!({ env: "STI_MCP_API_KEY", copy: "copy000001" })) as { pub: string };
+  await keys.ops.keys_take!({ env: "STI_MCP_API_KEY", name: "Prow log MCP key", from: "Mac", copy: "copy000001", sealed: sealKey(pub, VALUE, "copy000001:STI_MCP_API_KEY") });
+  const w = fakeWorker(async (t) => {
+    await t.tool("Bash", JSON.stringify({ command: "echo $STI_MCP_API_KEY" }), () => `printed ${VALUE}`);
+    await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "MCP answers" }, "tsk00009"));
+  }, seen, { keys });
+  core.workers = { link: (d) => (d === "vps-2" || d === "w1" ? w.link : undefined), list: () => [] };
+  const sentSpecs: string[] = [];
+  const call = w.link.call.bind(w.link);
+  w.link.call = ((op: string, args: unknown, ms?: number) => (sentSpecs.push(JSON.stringify({ op, args })), call(op, args, ms))) as typeof w.link.call;
+  (core as any).keyCopy = { refsFor: (id: string) => (id === "tsk00009" ? ["STI_MCP_API_KEY"] : []), withKeys: (s: any) => s };
+  const runner = createRunner(core, { newId: () => "tsk00009" });
+  const card = await runner.openTask({ persona: "p1", title: "Set up the Prow log MCP on vps-2", brief: "set it up", place: { kind: "none", device: "vps-2" } });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done");
+  expect(seen.options[0].env.STI_MCP_API_KEY).toBe(VALUE);
+  expect(sentSpecs.find((s) => s.includes('"op":"start"'))).toContain('"keyRefs":["STI_MCP_API_KEY"]');
+  expect(sentSpecs.join("\n")).not.toContain(VALUE);
+  expect(JSON.stringify(core.events)).not.toContain(VALUE);
+  expect(JSON.stringify(core.events)).toContain("••••••");
+  await runner.dispose();
+});

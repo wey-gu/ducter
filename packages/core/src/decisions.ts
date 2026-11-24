@@ -17,7 +17,7 @@ export type DecisionHook = (taskId: string, text: string, resolved: Bodies["deci
 
 export interface Decisions {
   /** extra.delivered (D233): the task already has the answer; it is not forwarded. extra.msgSeq (D236): the reply message that answered it, when the answer was a reply in the conversation. */
-  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number }): LogEvent<"decision_resolved">;
+  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number; copied?: true }): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   /** D443: a task's questions still open (oldest first), for a reply to its line under a message. */
@@ -80,7 +80,7 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
  */
 export function plainAsk(d: Bodies["decision"]): boolean {
   if (!d.taskId) return false;
-  if (d.pay || d.checkout || d.key || d.signIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
+  if (d.pay || d.checkout || d.key || d.copyKey || d.signIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
   if (d.routineId || d.forApp || d.loop || d.board || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
   if (d.look?.left.length) return false;
   return !destructiveChoice(d.question, d.goLabel);
@@ -102,6 +102,8 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   if (r.delivered) return "";
   // D238: the phone answers that one itself (handset/index.ts tells the task once it is on, or why not).
   if (d.handset) return "";
+  // D539: copied to its computer (its ask_for_key now gives it at once), or not.
+  if (d.copyKey) return r.option === "go" ? `The person copied ${d.copyKey.env} (${d.copyKey.name}) to this computer for you. Call ask_for_key for ${d.copyKey.env} again now: it comes at once. Carry on with the work that needed it.` : r.option === "hold" ? `The person chose not to copy ${d.copyKey.env} here. Don't ask for it again in this task; carry on with what you can do without it, and say in your report what is left undone and why.` : "";
   // D233: a key given (it is in the task's key file now) or refused; both resume the task.
   if (d.key) return r.option === "go" ? keyReadyText(d.key, true) : r.option === "hold" ? keyRefusedText(d.key) : "";
   // D436: the errand's stop. 付好了 is the person's word that they paid, not something the task saw.
@@ -256,6 +258,8 @@ export function createDecisions(opts: {
           ...(q.fill ? { fill: q.fill } : {}),
           // D233: a key: no default ever; Go carries the value, Hold is 不给 / Don't give.
           ...(q.key ? { key: q.key, goLabel: "Save and continue", defaultOption: "hold" as const } : {}),
+          // D539: copy a key from another of the person's computers: no default ever; only their own Go copies.
+          ...(q.copyKey ? { copyKey: q.copyKey, goLabel: "Copy", holdLabel: "Not now", defaultOption: "hold" as const, reversible: false } : {}),
           // D217: a commit on Ducter's phone has no default (Go taps it once); the user's turn on it is Done.
           ...(q.phone ? { phone: q.phone, ...(q.phone.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           // D235: the same in the person's apps: Go does that one action; their own turn is Done.
@@ -324,7 +328,7 @@ export function createDecisions(opts: {
     if (left.length && left.every((id) => laterAt.has(id))) setAttention(taskId, "blocked"); // D382: only put-off ones left
     else if (!left.length) {
       // D233: 不给 / Don't give on a key is an answer the task carries on with, not a wait.
-      if (r.option === "hold" && !d.key && !d.checkout) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting (D436: 先不买 is an answer it finishes on)
+      if (r.option === "hold" && !d.key && !d.copyKey && !d.checkout) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting (D436: 先不买 is an answer it finishes on)
       else setAttention(taskId, "working");
     }
     const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);
@@ -519,7 +523,7 @@ export function createDecisions(opts: {
         if (resolved.has(id) || !all.has(id)) continue;
         // D233: a key is never answered by a message (a key never goes through the conversation):
         // its card stays until the person gives it or says no.
-        if (all.get(id)!.key) continue;
+        if (all.get(id)!.key || all.get(id)!.copyKey) continue;
         silent.add(id);
         log.append({
           stream: "channel",
@@ -542,6 +546,8 @@ export function createDecisions(opts: {
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
       if (option === "reply" && !text?.trim()) throw new Error("reply needs text");
       if (dropped(all.get(decisionId)!.taskId)) throw new Error("That task was dropped. Undo the drop first, then answer.");
+      // D539: a copy card's Go is the person's tap on that card, after the copy ran (key-copy.ts): never another path.
+      if (option === "go" && all.get(decisionId)!.copyKey && !extra?.copied) throw new Error("a copy card is answered on the card itself");
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
       if (text) body.text = text;
       if (extra?.delivered) body.delivered = true;

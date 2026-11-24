@@ -394,6 +394,8 @@ class AppState {
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code) (names, last four, where used; never a secret). */
   saved?: Extract<ServerFrame, { t: "saved" }>;
+  /** D539: Ducter 存着的密钥 / Keys Ducter keeps, per computer (names only), as each last answered. */
+  keptKeys = new Map<string, Extract<ServerFrame, { t: "kept_keys" }>>();
   /** The last save or remove from this window failed (its form shows why). */
   savedFailed = false;
   private savedDone?: () => void;
@@ -796,6 +798,7 @@ class AppState {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());
     }
+    if (f.t === "kept_keys") return void (this.keptKeys.set(f.device, f), this.changed());
     if (f.t === "saved") {
       this.saved = f;
       if (f.ok === true) (this.savedFailed = false), this.savedDone?.(), (this.savedDone = undefined);
@@ -3372,6 +3375,24 @@ class AppState {
     this.markRead();
     this.send({ t: "decide", decisionId: id, option: "go", key, once });
     this.changed();
+  }
+  /** D539: Copy on a 复制密钥 card: the copy runs at the home; the card says what came of it. */
+  copyKey(id: string) {
+    const d = this.S.decisions.get(id);
+    if (d) d.pending = "go";
+    this.S.keyCopies.delete(id);
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go" });
+    this.changed();
+  }
+  /** D539: the keys Ducter keeps on a computer (asked fresh each time the list is shown). */
+  askKeptKeys(device: string) {
+    this.send({ t: "kept_keys", device });
+  }
+  removeKeptKey(device: string, env: string) {
+    this.send({ t: "kept_key_remove", device, env });
   }
   /** D233: 让任务向我要密钥 / Let tasks ask me for keys. */
   setAskKeys(on: boolean) {

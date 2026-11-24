@@ -780,6 +780,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.keyButtons(c, d, st) // D233: what and why, the masked field, remember or once
 		return
 	}
+	if d.CopyKey != nil {
+		a.copyKeyButtons(c, d, st) // D539: what, from, to, the note; 先不 · 复制
+		return
+	}
 	if d.Handset != nil && d.Handset.Kind == "record" {
 		a.handsetRecordButtons(c, d, st) // D280: the person's turn on the phone, to allow a recording
 		return

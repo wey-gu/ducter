@@ -76,7 +76,7 @@ import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
-import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
+import { AutofillSettings, CopyKeyBody, copyKeyTitle, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
@@ -538,6 +538,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.fill) return <FillBody d={d} />;
   // D233: a task asks for a key: the field is on the card itself, never a reply.
   if (d.key) return <KeyBody d={d} />;
+  // D539: copy a key from another of the person's computers: what, from, to; Copy or Not now.
+  if (d.copyKey) return <CopyKeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
   // D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
   if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
@@ -1173,6 +1175,14 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
         <div class="bubble" dir="auto">{t("key.title", keyTask(d))}</div>
         {(buttons || !open) && <KeyBody d={d} compact />}
+      </div>
+    );
+  // D539: 复制密钥 / Copy a key, receipt-like: the facts and the two buttons on the card itself.
+  if (d.copyKey)
+    return (
+      <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble" dir="auto">{copyKeyTitle(d)}</div>
+        {(buttons || !open) && <CopyKeyBody d={d} compact />}
       </div>
     );
   return (

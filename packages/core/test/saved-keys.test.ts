@@ -219,11 +219,12 @@ describe("ask_for_key", () => {
     expect(keyCards()).toHaveLength(0);
   });
 
-  test("a task on another computer: said plainly, no card", async () => {
+  test("a task on another computer, the key nowhere Ducter can find: said plainly, no card (D539)", async () => {
     start(5000);
     openTask("t10", "Deploy from the server", { kind: "none", device: "hel" });
     const out = await ask("t10", { env: "DO_TOKEN", name: "DO token" });
-    expect(out).toContain("runs on another computer");
+    expect(out).toContain("isn't on this computer");
+    expect(out).toContain("needs_input");
     expect(keyCards()).toHaveLength(0);
   });
 

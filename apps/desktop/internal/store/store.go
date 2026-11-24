@@ -470,6 +470,12 @@ type Store struct {
 	Older     OlderState
 	Jobs      map[string]*Job
 	Decisions map[string]*DecisionState
+	// KeyCopies (D539): what a copy card's Go did, by decision: the
+	// computers that got the key and those that didn't (why).
+	KeyCopies map[string]*protocol.KeyCopy
+	// KeptKeys (D539): the keys Ducter keeps on each computer, by device,
+	// as it last answered (names only).
+	KeptKeys map[string]*protocol.ServerFrame
 	// sentReplies (D470 round 2): replies shown as sent, by the message answered and the words.
 	sentReplies map[string]bool
 	Tasks       map[string]*Task
@@ -784,6 +790,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "saved":
 		fc := f
 		s.Saved = &fc
+	case "kept_keys": // D539
+		fc := f
+		if s.KeptKeys == nil {
+			s.KeptKeys = map[string]*protocol.ServerFrame{}
+		}
+		s.KeptKeys[f.Device] = &fc
 	case "browser_sites":
 		fc := f
 		s.BrowserSites = &fc
@@ -1298,6 +1310,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			m.EndedAt = ev.TS
 			s.Missed[w.WaiterID] = &m
 		}
+	}
+	if kc, ok := body.(*protocol.KeyCopy); ok {
+		if kc.DecisionID != "" {
+			if s.KeyCopies == nil {
+				s.KeyCopies = map[string]*protocol.KeyCopy{}
+			}
+			s.KeyCopies[kc.DecisionID] = kc
+		}
+		return
 	}
 	if cc, ok := body.(*protocol.ConnectionCall); ok {
 		// D222: a decision's write, staged then run on Go; the latest wins.

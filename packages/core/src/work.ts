@@ -235,7 +235,7 @@ export function createWork(o: WorkOptions): Work {
       .read({ stream: `task:${w.taskId}`, kinds: ["waiter_look"], limit: 400 })
       .filter((e) => (e.body as Bodies["waiter_look"]).waiterId === w.waiterId)
       .slice(-3)
-      .map((e) => `${e.ts.slice(11, 16)} UTC ${(e.body as Bodies["waiter_look"]).summary}`);
+      .map((e) => `${localTime(Date.parse(e.ts))} ${(e.body as Bodies["waiter_look"]).summary}`);
     return looks.length ? looks.join("; ") : w.observed ?? "nothing yet";
   };
 

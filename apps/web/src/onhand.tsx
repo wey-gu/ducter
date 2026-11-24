@@ -4,6 +4,7 @@
 // waits for, its question, its result), and on a repo task its branch, +/−, and a draft PR or a
 // merge. Density grows with use: the find field from ten tasks, by project from two projects,
 // keys and selection only where a keyboard and a pointer are.
+import { copyKeyTitle } from "./autofill.tsx";
 import { cantClause } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
@@ -93,7 +94,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   const r = reportOf(task);
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    const q = d?.question || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words.
+    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
@@ -185,6 +187,13 @@ export function stoppedWait(task: Task, now = Date.now()): boolean {
   const at = lastChange(task);
   return Number.isFinite(at) && now - at >= STOPPED_AFTER;
 }
+/** D539: a group's part as its row reads it: a wait that stopped with nothing to bring it back is
+ *  the person's (等你), never 在等, the same as the task's own row (stoppedWait). */
+function memberAttention(id: string) {
+  const t = A.S.tasks.get(id);
+  if (!t) return undefined;
+  return stoppedWait(t) ? "needs_you" : attention(t);
+}
 /** D467: finished on today's local date, done (or done and being checked): 今天做完 lists these. */
 export function doneToday(task: Task, now = Date.now()): boolean {
   const a = attention(task);
@@ -250,7 +259,7 @@ export function needsYouItems(lens = "", now = Date.now()): { partner: string }[
   const parts = boardParts(l, now);
   const out: { partner: string }[] = [];
   const inLine = new Set<string>();
-  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))) {
+  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => memberAttention(id))) {
     if (!g.stopped) continue;
     for (const id of g.ids) inLine.add(id);
     const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
@@ -1503,7 +1512,7 @@ export function OnHandList({ room }: { room: Room }) {
   // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
   // D517: a group with a part that waits for the person stands in 等你, where the head counts it.
   const laneOf = groupLaneOf(lanes);
-  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
+  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => memberAttention(id))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
   // D507: each helper that is on is its own sheet, its work under it until it lets go (the task ended
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for

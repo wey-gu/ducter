@@ -212,6 +212,12 @@ export interface CoreApi {
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
   /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
   zone?(): string;
+  /**
+   * D539: keys copied to a computer for Ducter's tasks there: which variables a task holds (its
+   * session gets them at start, read on the computer it runs on), and the home's own shelf, which
+   * puts them in a session on the home.
+   */
+  keyCopy?: { refsFor(taskId: string): string[]; withKeys(spec: SessionSpec): SessionSpec };
   /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
   goesFor?(taskId: string): import("./standing.ts").StandingView[];
   /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */
@@ -663,6 +669,8 @@ export interface SessionSpec {
   // hooks, user MCP servers). The partner always isolates; tasks keep it by default (system.md).
   isolateUserConfig?: boolean;
   env?: Record<string, string>; // extra env for the harness process (never logged)
+  /** D539: keys Ducter keeps on the computer this runs on, by variable: that computer puts their values in env at start (never carried in the spec). */
+  keyRefs?: string[];
   resumeSessionId?: string;
   // Per-task narrowing (e.g. a browser place): extra denied tools, and for claude-code only,
   // extra launch flags and whether to leave out the user's own Claude config.

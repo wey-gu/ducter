@@ -32,6 +32,7 @@ import { AgentRow, SetupAnswer, canSignOut } from "./agent-setup.tsx";
 import { MemOnDevice } from "./worker-mem.tsx";
 import { MemAction } from "./mem-plugin.tsx";
 import { RecordsOnDevice } from "./worker-records.tsx";
+import { KeptKeys } from "./autofill.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -257,6 +258,12 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <DucterLine dv={dv} />
       {/* D514: what Ducter tidied away here, one quiet line; nothing before the first. */}
       {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{A.L.t("card.tidied", dv.tidied.count, tidySize(dv.tidied.bytes))}</div>}
+      {/* D539: the keys Ducter keeps on this computer for its tasks here (names only), folded. */}
+      {dv.kind !== "phone" && (
+        <Fold title={t("kept.title")}>
+          <KeptKeys device={dv.home ? "local" : dv.id} />
+        </Fold>
+      )}
       {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
       {dv.home && <Ways home={dv.name} />}
       {!dv.home && (

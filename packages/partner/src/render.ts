@@ -16,11 +16,30 @@ function clip(s: string, n: number): string {
   return t.length <= n ? t : t.slice(0, n - 1) + "…";
 }
 
-function hhmm(iso: string): string {
+/**
+ * D539 (D528): the person's time zone (IANA), set by the partner each turn from core.zone(). Every
+ * time the partner reads is in it, never the server's clock (hel's is UTC, and a partner that read
+ * 06:08 there said 「06:08 UTC」 to someone in Shanghai). Unset: this process's own zone.
+ */
+let ZONE: string | undefined;
+export function setRenderZone(zone: string | undefined): void {
+  try {
+    ZONE = zone ? (new Intl.DateTimeFormat("en", { timeZone: zone }), zone) : undefined;
+  } catch {
+    ZONE = undefined; // not a zone Intl knows: the process's own
+  }
+}
+export function renderZone(): string | undefined {
+  return ZONE;
+}
+
+/** A time as the person reads it: their date and HH:MM, in their zone. */
+export function hhmm(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const f = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...(ZONE ? { timeZone: ZONE } : {}) });
+  const parts = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 /**
@@ -53,8 +72,8 @@ export function renderPromises(ps: readonly { at: string; text: string; tasks: {
 }
 
 export function renderTime(now: Date): string {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return `[time] ${hhmm(now.toISOString())} ${days[now.getDay()]}`;
+  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", ...(ZONE ? { timeZone: ZONE } : {}) }).format(now);
+  return `[time] ${hhmm(now.toISOString())} ${day}${ZONE ? ` (${ZONE}, the user's time)` : ""}`;
 }
 
 /** D206: pictures and files in words an agent can name them by: "picture 3f2a91c04b7e (1290×2796)". */
@@ -158,7 +177,7 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
   }
   // D491: blocked is the task's stop, not the user's question: what can be cleared without them is.
   if (r.state === "blocked")
-    lines.push("  (It stopped at something in its way and asks the user nothing. If it or you can clear it without them (an update or a retry on Ducter's own phone or computer, a sign-in already saved, another agent with room), task_send it to do that and carry on; the user needs no word, and never a promise of the result. Tell them only what only they can do, in one short line.)");
+    lines.push("  (It stopped at something in its way and asks the user nothing. If it or you can clear it without them (an update or a retry on Ducter's own phone or computer, a sign-in already saved, another agent with room), task_send it to do that and carry on; the user needs no word, and never a promise of the result. Tell them only what only they can do, in one short line; a key they already have on another of their computers isn't that: key_copy it.)");
   return lines.join("\n");
 }
 

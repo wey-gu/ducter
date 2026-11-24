@@ -41,6 +41,7 @@ OK).
 | Private details: passport number and expiry, birthday, address, known traveler number, loyalty numbers | Autofill on the home | the fill code only; clients see "kept" and a hint (•••678) |
 | The owner's own password manager | the owner's devices | untouched; on a Mac it fills in their own Chrome |
 | A key a task asked for (D233, §8): name, variable, value | Autofill on the home (or only the task's grant, just this once) | the task's key file on the home, loaded inside one command; clients see the name, the variable and a head (`dop_v1_••••••`) or "kept" |
+| A key copied to a computer (D539, §9): name, variable, value | that computer's own shelf (`kept-keys/keys.enc`, its lock in the keychain or a 0600 file), never the home's | a task there by reference, in its session's environment; clients see the name, the variable and where it came from |
 
 **At rest:** `<dataDir>/saved/<persona>.enc`, AES-256-GCM, 0600. The key is apart from it: on a
 Mac in the login keychain (generic password, service `Ducter Autofill`, an account per data folder,
@@ -118,7 +119,7 @@ object goes through the metaphor process first (`todo.md`).
   research/54 §7) as a second rail behind the same Pay card.
 - Face ID / Touch ID on the Pay card (the code is the fact only the owner has, for now).
 - Codes from a connected mailbox; TOTP secrets.
-- A key for a task on a worker (§8).
+- A key pasted on the home for a task on a worker (§8; a key the person has on another computer is copied, §9).
 
 ## 8. Keys a task asks for (D233)
 
@@ -142,7 +143,7 @@ the person answers it.
 | A key is kept under `env` | given to the task at once (a use listed); the answer says how to load it |
 | Given to this task already | the same answer (`again: true` instead asks anew: the key didn't work) |
 | The switch is off | no card; the task is told to say in its report which key it needs and why |
-| The task runs on a worker | no card; the task is told plainly a key can't reach it there yet |
+| The task runs on a worker | D539 (§9): kept there, given at once; on another of the person's computers, a copy card; else no card, and the task is told to ask with a `needs_input` question if it can't go on |
 | Otherwise | a key card; the call waits up to the harness's MCP limit (`MCP_CALL_WAIT`: Claude Code 5 min, the others 50 s) |
 | Answered while the call waits | the answer comes back in the call; the resolution is `delivered`, never forwarded again |
 | Answered later (the run ended, or Ducter restarted) | the task is resumed with one message (D10's forward through `runner.send`) |
@@ -175,3 +176,62 @@ Add a key** (它是什么 / What it is, 变量名 / Variable name, 密钥 / Key)
 **你没给 {name} / You didn't give {name}**, with the task. A variable is `^[A-Z_][A-Z0-9_]{0,63}$`
 and never one that changes how a shell starts (PATH, LD_*, DYLD_*, NODE_OPTIONS, BASH_ENV…) or
 Ducter's own (DUCTER_*, NMEM_*).
+
+## 9. A key you already have, copied to your other computers (D539)
+
+Status: built 2026-11-24 on the home, the worker, the web client and the Mac app, for the author's
+review; checked with core's `key-copy.test.ts` over fake computers (the Mac has the variable in its
+shell, hel and haswell don't, an older worker can't), the runner's worker test (a session on a
+worker gets it by name), the partner eval's two puzzles from hel's case; shots in
+`.shots/secret-copy/`. Not yet tried between the author's real computers. The mechanism and its
+threat model: `system.md` "Keys copied between computers".
+
+**Who and what they feel.** The developer moving his Prow log MCP from the Mac to hel and haswell:
+the key is in his Mac's shell, the config needs it on the other two. Before (hel, 2026-11-24): the
+hel task sat in 在等 for forty minutes, the partner told him 「请在 hel 本机设置
+STI_MCP_API_KEY，不要把密钥发到聊天里」, and when he asked 「不能直接把 mac 上的自动迁移过去么」 it
+said there was no safe channel and to ask a Prow admin. Ducter has had an authenticated link to
+each of his computers all along. After: one card, **复制**, done; the task carries on by itself.
+The consumer with a laptop and a home mini: a key they set once on the laptop works for the
+errand on the mini. A fresh user never meets it until a task needs a key that is on another of
+their computers, and then it is one card in their own words. Easy (one tap, nothing to paste),
+smooth (the task that waited is answered in its own call), delightful (a receipt-like card that
+says from where to where), trustworthy (asked every time, never shown, the home never holds it),
+pleasantly surprising (the key they set on the Mac months ago just works on the server).
+
+**When the card comes.** Only from a tool call, never from what a task or a page says:
+
+- a task calls `ask_for_key` and the variable isn't kept for it: Ducter asks the person's other
+  connected computers whether they have it (a yes or no each); found, the task's card is a copy
+  card for it, and the task waits on it in **等你 / Needs you**, as for D233's key card;
+- the partner sees work on one computer needs a key the person has on another (a task's report, or
+  their own words): `key_copy {env, from, to[]}` puts the card in the conversation.
+
+It is never automatic: a copy widens where a secret lives (the D61 floor's spirit). No default, no
+countdown, no standing permission, no chat-app button, never answered by a message.
+
+**The card** (the decision's `copyKey`), receipt-like like the key card: the title **把 {from} 上的
+{env} 复制到 {to}？ / Copy {env} from {from} to {to}?**; the facts **变量名 / Variable** (mono),
+**要什么 / What** (when it has words of its own), **来自 / From**, **复制到 / To**, **为什么 / Why**;
+the note **只给 Ducter 的任务用，不显示，不进聊天记录。 / Only for Ducter's tasks there. Never shown,
+never in the conversation.**; **先不 / Not now** · **复制 / Copy**. After: **正在复制… / Copying…**,
+then **已复制到 {to} / Copied to {to}** or **没有复制 / Not copied**. A computer it couldn't reach
+says so under the facts: **没能复制到 {name}：它现在没连上 / Couldn't copy to {name}: it isn't
+connected now** (or that its Ducter is too old, or that the key is no longer where it was). When
+nothing went, the card stays open with **再试一次 / Try again**.
+
+**How a task uses it.** Kept on its computer, the variable is the task's by reference: its session
+starts with it in its environment (so a config that names `$STI_MCP_API_KEY`, an MCP server's
+included, just works), and a session already running gets a 0600 file there to source inside one
+command (D233's rule: never print it). The person's own shell profile is never touched.
+
+**Settings: each computer's card**, a fold **Ducter 存着的密钥 / Keys Ducter keeps** (with the count):
+**只给 Ducter 在这台电脑上的任务用，锁着存在这台电脑上，谁也看不到内容。 / Only for Ducter's tasks on this
+computer, locked on it. Nobody can see what they hold.**; each key its name, its variable (mono),
+**从 {computer} 复制来 / Copied from {computer}**, and **删掉 / Remove** (asked once: **确定删掉 /
+Remove it**). Empty: **还没有。这台电脑上的任务要用另一台电脑上的密钥时，Ducter 会问你要不要复制过来。**
+Away: **它现在没连上，连上后能看到。** Too old: **这台电脑上的 Ducter 还不能存密钥，更新一下就行。**
+
+**Not in v1.** Copying a key pasted into Passwords & cards › Keys on the home to a worker (the
+D233 paste card still serves home tasks only), a config file's entry as a source (an MCP config's
+literal header), and rotating a key everywhere it was copied (`todo.md`).

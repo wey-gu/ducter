@@ -36,6 +36,7 @@ type sheetState struct {
 	fold      string               // D398: the card whose fold (how it's connected, disconnect) is open
 	lockSteps string               // D398: the phone whose 锁屏时也能借给任务 steps are open
 	handOff   string               // D398: the phone whose 用这台手机 chip asked before turning off
+	keptSure  string               // D539: "device:ENV" whose 删掉 asked once (确定删掉)
 }
 
 const (
@@ -116,6 +117,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		// D514: what Ducter tidied away here, one quiet line; nothing before the first.
 		if dv.Tidied != nil && dv.Tidied.Count > 0 {
 			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)
+		}
+		// D539: the keys Ducter keeps on this computer for its tasks here (names only), folded.
+		if dv.Kind != "phone" {
+			a.keptKeysFold(c, dv)
 		}
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.

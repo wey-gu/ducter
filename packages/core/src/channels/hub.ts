@@ -145,7 +145,7 @@ type Policy = "buttons" | "open" | "never";
 
 /** research/79 §6: which cards a chat app may answer with a button. */
 export function cardPolicy(d: Bodies["decision"]): Policy {
-  if (d.pay || d.key || d.fill || d.signIn || d.checkout) return "never"; // D436: paying is in the live view
+  if (d.pay || d.key || d.copyKey || d.fill || d.signIn || d.checkout) return "never"; // D436: paying is in the live view
   // D505 (rev.): where a sign-in happens widens access to their Chrome: answered in Ducter itself (and 我在这里登录 opens a live view).
   if (!d.reversible || d.signInWhere || d.phone || d.computer || d.handset || d.call || d.cal || d.anywhere || d.memPlugin || d.asker || d.trust || d.findId) return "open";
   return "buttons";

@@ -9,6 +9,18 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Keys copied between computers, after D539 (`autofill.md` §9, `system.md` "Keys copied between computers")
+
+- [ ] **The first real copy, Mac to hel and haswell.** Trigger: the first release with D539. The
+  author's Prow log MCP key: the card from the partner, Go, the next task on each server has it,
+  the MCP answers; then remove it on haswell. Record what the card and the list said.
+- [ ] **A key pasted on the home for a task on a worker** (D233's paste card, sealed to that
+  worker's offer the same way). Trigger: a worker task that needs a key no computer of theirs has.
+- [ ] **A config entry as a source** (a literal header in an MCP config, a `.env` file the person
+  names). Trigger: a key that lives only in a config file, not in the shell.
+- [ ] **A rotated key, everywhere it was copied.** The list knows where each copy is; a rotate
+  offers to copy the new value to each. Trigger: the person rotates a key that was copied.
+
 ## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
 
 - [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of

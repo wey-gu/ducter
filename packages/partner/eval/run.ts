@@ -11,6 +11,8 @@
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
 // Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
 // never reads or writes the user's real Nowledge Mem.
+import { createKeyShelf } from "../../protocol/src/key-shelf.ts";
+import { fileKey } from "../../protocol/src/lock-key.ts";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -527,7 +529,27 @@ function worldCoreOptions(sc: Scenario, dataDir: string) {
   // The person's projects, as Ducter keeps them (projects.json in its data folder).
   if (w.projects?.length)
     writeFileSync(join(dataDir, "projects.json"), JSON.stringify({ version: 1, projects: w.projects.map((p) => ({ name: p.name, place: { kind: "repo", device: worldDev(sc, p.computer), repoPath: p.path }, addedAt: "2026-11-01T00:00:00.000Z", ...(p.origin ? { remote: remoteKey(p.origin) } : {}) })) }));
+  // D539: each computer's shelf of kept keys, its shell holding the scenario's variables (fake values).
+  const shelves = new Map<string, ReturnType<typeof createKeyShelf>>();
+  const shelfOf = (dev: string) => {
+    let s = shelves.get(dev);
+    if (!s) {
+      const dir = mkdtempSync(join(dataDir, `keys-${dev}-`));
+      const have = new Set(sc.keysOn?.[nameOf(dev)] ?? []);
+      s = createKeyShelf({ dataDir: dir, env: {}, shell: async (e) => (have.has(e) ? `eval-fake-${e.toLowerCase()}-0000` : undefined), lock: fileKey(join(dir, "kept-keys")) });
+      shelves.set(dev, s);
+    }
+    return s;
+  };
   return {
+    keyCopy: {
+      shelf: shelfOf("local"),
+      call: async (dev: string, op: string, args: object) => {
+        const fn = shelfOf(dev).ops[op];
+        if (!fn) throw new Error(`unknown op ${op}`);
+        return fn(args);
+      },
+    },
     platform: w.home.os,
     hostAliases: w.home.aliases ?? [],
     homeClones: (remote: string, probe: boolean) => clones("local", remote, probe),

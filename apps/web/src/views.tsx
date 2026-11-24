@@ -33,7 +33,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -89,14 +89,14 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, FullTop } from "./board.tsx";
-import { L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
+import { barDoorPartner, centerIn, doorItems, L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
 import { dateOf, PastSheet } from "./past.tsx";
 import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
-import { KeepReceipt } from "./keep.tsx";
+import { closeKeep, K, KeepReceipt } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
@@ -557,7 +557,7 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -1052,7 +1052,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -1633,7 +1633,7 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   );
 }
 
-function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean }) {
+function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
   // D176: side by side, the conversation's own header carries the face and the places, and On hand
   // is already in view: its pane's header names it instead of going back to a conversation that is
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
@@ -1653,14 +1653,16 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
   if (back || level)
     return (
       <header class="top">
-        {wide && level ? (
+        {wide && level && !up ? (
           <h1 class="level">{level}</h1>
         ) : (
           // Side by side, an opened task goes back to On hand: the conversation never left.
           // D262: the crumb is the place it goes back to, in one word, as on the Mac (‹ 对话).
-          <button class="back" aria-label={wide ? t("nav.onhand") : back} onClick={() => (wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
+          // D535: inside On hand (a Keep's page) it goes up one level, beside the conversation and
+          // on a phone alike, as an opened task's does: ‹ 手头的事.
+          <button class="back" aria-label={up ? up.label : wide ? t("nav.onhand") : back} onClick={() => (up ? up.go() : wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
             <Back />
-            {wide ? t("nav.onhand") : t("nav.conversation")}
+            {up ? up.label : wide ? t("nav.onhand") : t("nav.conversation")}
           </button>
         )}
         <span style={{ flex: 1 }} />
@@ -1706,8 +1708,22 @@ function Counts() {
         {s.words || " "}
       </div>
     );
+  // D535: 「n 个等你」 is a door of its own (the next item that waits); the rest opens On hand.
+  const rest = (s.parts ?? []).filter((p) => p !== s.needs);
+  const toOnHand = () => ((OnHandState.filter = s.needs ? 0 : s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }));
+  if (s.needs)
+    return (
+      <span class="sum-row" role="status">
+        <CountDoor words={s.needs} about={t("door.line.about")} onClick={() => A.openDoor?.(barDoorPartner())} />
+        {rest.length > 0 && (
+          <button class="sum" title={t("nav.onhand")} aria-label={spoken(A.L, ...rest)} onClick={toOnHand}>
+            <Facts items={rest} />
+          </button>
+        )}
+      </span>
+    );
   return (
-    <button class={s.parts?.length ? "sum" : "sum none"} role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+    <button class={s.parts?.length ? "sum" : "sum none"} role="status" title={t("nav.onhand")} aria-label={s.words} onClick={toOnHand}>
       {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );
@@ -2085,8 +2101,38 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
+      <DoorLine scroller={scroller} />
       <Composer />
     </>
+  );
+}
+
+/** D535: 「有 n 个等你定 ›」, pinned over the composer while something the conversation's count
+ *  counts is out of view (a task's item always is: it lives in On hand; the partner's own question
+ *  while its card is scrolled away). A tap is the count's door. */
+function DoorLine({ scroller }: { scroller: preact.RefObject<HTMLElement> }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const f = () => tick((n) => n + 1);
+    el.addEventListener("scroll", f, { passive: true });
+    return () => el.removeEventListener("scroll", f);
+  }, [scroller.current]);
+  if (!A.S.welcomed) return null;
+  const p = barDoorPartner();
+  const items = doorItems(p);
+  if (!items.length) return null;
+  const box = scroller.current?.getBoundingClientRect();
+  const inView = (id: string) => {
+    const r = box && scroller.current?.querySelector(`#d-${CSS.escape(id)}`)?.getBoundingClientRect();
+    return !!r && !!box && r.bottom > box.top && r.top < box.bottom;
+  };
+  if (items.every((i) => i.decisionId && inView(i.decisionId))) return null;
+  return (
+    <div class="door-line">
+      <NeedsDoor words={t("door.line", items.length)} about={t("door.line.about")} onClick={() => A.openDoor?.(p)} />
+    </div>
   );
 }
 
@@ -2184,9 +2230,9 @@ export function OnHand() {
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
-      <Top back={t("nav.back")} plus level={t("onhand.title")} />
+      <Top back={t("nav.back")} plus={!K.open} level={t("onhand.title")} up={K.open ? { label: t("onhand.title"), go: closeKeep } : undefined} />
       <main class="scroll" style={{ gap: 16 }}>
-        {!wide && <h1 class="page-title">{t("onhand.title")}</h1>}
+        {!wide && !K.open && <h1 class="page-title">{t("onhand.title")}</h1>}
         {nothing ? (
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (

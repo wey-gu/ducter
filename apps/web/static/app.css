@@ -22982,3 +22982,111 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   .mention-pop { animation: none; }
   .mp-breath { animation: none; }
 }
+
+/* D535: every needs-you count is a door. In the conversation's bar 「n 个等你」 is its own quiet
+   button in the needs-you ink (the rest of the line still opens On hand); over the composer, while
+   what waits is out of view, one clay pill 「有 n 件等你定 ›」. */
+.top .who .sum-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.top .who .sum-needs {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: min(var(--xs), 18px);
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--needs-ink);
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .top .who .sum-needs:hover {
+    background: color-mix(in srgb, var(--surface-sunken) 55%, var(--bg));
+  }
+}
+.needs-door {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--pill);
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  font-size: var(--sm);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 var(--needs-ledge);
+  transition:
+    transform 70ms var(--ease),
+    box-shadow 70ms var(--ease),
+    background-color 160ms var(--ease);
+}
+@media (hover: hover) {
+  .needs-door:hover {
+    background: color-mix(in srgb, var(--needs-surface) 86%, var(--needs-dot));
+  }
+}
+.needs-door:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--needs-ledge);
+  background: color-mix(in srgb, var(--needs-surface) 76%, var(--needs-dot));
+}
+.needs-door .chev-g {
+  flex: none;
+}
+.door-line {
+  display: flex;
+  padding: 0 12px 2px;
+}
+@media (pointer: coarse) {
+  .needs-door {
+    min-height: 36px;
+  }
+}
+/* Found by a door: the item's tint deepens to the needs-you surface once and settles (the Mac's
+   find); a card already in that surface deepens its own (flash); under reduced motion a still ring
+   for the find's length instead. */
+@keyframes door-found {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30%,
+  55% {
+    background-color: var(--needs-surface);
+  }
+}
+.trow.door-found,
+.gpart.door-found {
+  animation: door-found 1.4s var(--ease);
+}
+.tgroup.door-found,
+.other-ask.door-found {
+  animation: door-found 1.4s var(--ease);
+}
+.decision.door-found,
+.askq.door-found {
+  animation: flash 1.4s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .door-found {
+    box-shadow: inset 0 0 0 2px var(--needs-ledge);
+  }
+}
+/* D535: a partner's pebble is a door: under the pointer it lifts a point off its ledge. */
+.pl-face > .pl-n {
+  cursor: pointer;
+  transition: transform 160ms var(--ease);
+}
+@media (hover: hover) {
+  .pl-face > .pl-n:hover {
+    transform: translateY(-1px);
+  }
+}
+.pl-face > .pl-n:active {
+  transform: translateY(1px);
+}

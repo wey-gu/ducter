@@ -1127,6 +1127,10 @@ class AppState {
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
   /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
   openPast?: (q?: string, tab?: "past" | "made" | "ongoing") => void;
+  /** D535: set by keep.tsx: On hand was left, its Keep's page closes. */
+  leftOnHand?: () => void;
+  /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
+  upInPlace?: () => boolean;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;
   onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
@@ -2057,7 +2061,10 @@ class AppState {
 
   /** D517: the person's one count's items (onhand.tsx needsYouItems, set when On hand's module loads):
    *  every "needs you" number reads them, and On hand draws each under 等你. */
-  needsItems?: () => { partner: string }[];
+  needsItems?: () => { partner: string; key: string }[];
+
+  /** D535: opens the next item of a needs-you count where it lives (onhand.tsx openDoor). */
+  openDoor?: (partner?: string) => boolean;
 
   /** D517: the person's one count, or one partner's part of it. */
   needsCount(partner?: string): number {
@@ -2833,6 +2840,9 @@ class AppState {
   }
 
   applyRoute(r: Route) {
+    // D535: the drill-ins are true to the place shown: once On hand is left, a Keep's page open
+    // there closes, so On hand opens on its overview next time (a deep link opens the page straight).
+    if (r.name !== "onhand") this.leftOnHand?.();
     this.route = r;
     if (r.name !== "conv") this.markRead();
     if (r.name === "task") this.history(r.id);
@@ -3661,7 +3671,7 @@ class AppState {
 
   /** The counts line, and where it leads (D270): link is false while it says connecting or
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
-  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
+  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number; needs?: string } {
     const L = this.L;
     // D532: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
     const ls = this.link();
@@ -3692,7 +3702,7 @@ class AppState {
     const done = doneTodayOf(b.lanes[LANE.done]!);
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
-    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
+    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0, ...(needs ? { needs: L.t("header.needs", needs) } : {}) };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

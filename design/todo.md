@@ -3323,3 +3323,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
   like D157's asleep ask; today a pinned heavy task just waits. *Trigger:* the author waits on one.
 - [ ] **A computer's look on a phone app and the iPhone:** `DeviceView.resources` is on the frame;
   the native apps don't show 关于这台 yet. *Trigger:* the next phone pass.
+
+## Every count a door (D535, `on-hand.md` "Navigation")
+
+- [ ] **The menu bar's count and the Dock badge as doors** to the first item (today they bring the window
+  in front where it was). Trigger: the author reaches for the Dock badge and lands somewhere else.
+- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 等你 while On hand
+  is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
+- [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
+  conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.

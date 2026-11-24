@@ -168,6 +168,28 @@ export function Chev(p: { open?: boolean; back?: boolean; cls?: string }) {
   );
 }
 
+/** D535: a needs-you count as a door (the Mac's needsDoor): its words in the needs-you ink on a small
+ *  clay pill of the needs-you surface, the drawn chevron after them; it sinks into its ledge pressed.
+ *  A tap opens the next item that waits (app.css .needs-door). */
+export function NeedsDoor(p: { words: string; about: string; onClick: () => void; cls?: string }) {
+  return (
+    <button type="button" class={`needs-door${p.cls ? ` ${p.cls}` : ""}`} aria-label={spoken(A.L, p.words, p.about)} onClick={p.onClick}>
+      <span>{p.words}</span>
+      <Chev />
+    </button>
+  );
+}
+
+/** D535: 「n 个等你」 in the conversation's bar (the Mac's countDoor): the count's own words in the
+ *  needs-you ink, a quiet button of the bar, the door to the next item. */
+export function CountDoor(p: { words: string; about: string; onClick: () => void }) {
+  return (
+    <button type="button" class="sum-needs" aria-label={spoken(A.L, p.words, p.about)} onClick={p.onClick}>
+      {p.words}
+    </button>
+  );
+}
+
 /** D517: a count of what needs you, on a figure's shoulder or beside a back button: a clay pebble in
  *  the needs-you surface and ink on its ledge (app.css .pl-n), the Mac's countPebble. */
 export function CountPebble(p: { n: number }) {

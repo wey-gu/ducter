@@ -173,7 +173,9 @@ await seed.stop();
 
 // A start in between, as after an upgrade: the migration makes each a Keep; then the fare watch gets
 // the person's words, its goal and when it speaks, and its receipt card, as keep_make writes them.
-const mid = startCore({ dataDir, persona, push: false, ooSource: noOo, work });
+// A Keep's end is read once by the cheap model from the person's words (D511): here a fake answers as it would.
+const endAsk = async (k: { title: string }) => (/babysitter/i.test(k.title) ? { until: w("每个 PR 跟到能合并为止", "Each PR until it can merge") } : {});
+const mid = startCore({ dataDir, persona, push: false, ooSource: noOo, work, keeps: { endAsk } });
 mid.setRunner(stubRunner(mid));
 mid.setPartner({ onTrigger() {} });
 mid.keeps!.sync();
@@ -186,7 +188,7 @@ const ids = mid.keeps!.all().map((k) => `${k.title}=${k.keepId}`);
 await mid.stop();
 
 // Serve from a core over the same Log, as after a restart.
-const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", work });
+const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", work, keeps: { endAsk } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 console.log(`[demo] D511 Looking after (${zh ? "zh" : "en"}) at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);

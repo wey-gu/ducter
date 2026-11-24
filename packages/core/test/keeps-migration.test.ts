@@ -8,6 +8,7 @@ import { join } from "node:path";
 import type { Bodies, KeepBody, OnHand, RoutineBody, ServerFrame, TaskCard, TaskLoopBody } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "../src/core.ts";
+import type { KeepEndAsk } from "../src/keeps.ts";
 import { tempDir } from "./helpers.ts";
 import { seedOld } from "./fixtures/keeps-old.ts";
 
@@ -17,8 +18,17 @@ afterEach(async () => {
   stops = [];
 });
 
+/** The fake cheap model: reads a Keep's end from its words as a model would, and counts each ask. */
+const asked: string[] = [];
+const fakeEnd: KeepEndAsk = async (w) => {
+  asked.push(w.title);
+  if (w.title === "Watch the nightly hawdb build") throw new Error("the model timed out");
+  if (/babysitter/i.test(w.title)) return { until: "每个 PR 跟到能合并为止" };
+  return {};
+};
+
 function boot(dir: string) {
-  const core = startCore({ dataDir: dir, port: 0, batchMs: 5, deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "laptop" } });
+  const core = startCore({ dataDir: dir, port: 0, batchMs: 5, keeps: { endAsk: fakeEnd }, deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "laptop" } });
   core.setPartner({ onTrigger: () => {} });
   let n = 0;
   core.setRunner({
@@ -71,11 +81,22 @@ describe("D511: the migration on start", () => {
     // Helpers (helpers.json): a task per item, woken by arrivals and its PRs' changes; its name the title.
     expect(byFrom("helper", "nowledge-mem-pr-babysitter")).toMatchObject({ run: "perItem", life: "on", made: "helpers.json", title: "Nowledge Mem PR Babysitter", wakes: [{ kind: "arrives" }, { kind: "changes" }] });
     expect(byFrom("helper", "docs-proofreader")).toMatchObject({ life: "stopped" });
-    // A helper's goal is each piece of work's own end, read from what it takes (the person's words).
-    expect(byFrom("helper", "nowledge-mem-pr-babysitter")!.until).toBe("每个 PR 跟到能合并为止");
-    // A Keep with no end says none: the loop the person gave no end, the weekly routine.
-    expect(byFrom("loop", "t_review")!.until).toBeUndefined();
-    expect(byFrom("routine", "rt_weekly")!.until).toBeUndefined();
+    // Its end, read once by the (fake) cheap model from the person's words and recorded as its judgment.
+    await Bun.sleep(30);
+    expect(keeps.get(byFrom("helper", "nowledge-mem-pr-babysitter")!.keepId)).toMatchObject({ until: "每个 PR 跟到能合并为止", end: { said: "until" } });
+    // Their words give no end: recorded as none, and the page says 没有终点.
+    expect(keeps.get(byFrom("routine", "rt_weekly")!.keepId)).toMatchObject({ end: { said: "none" } });
+    expect(keeps.get(byFrom("routine", "rt_weekly")!.keepId)!.until).toBeUndefined();
+    expect(keeps.sheets("default").find((x) => x.title === "周报")!.noEnd).toBe(true);
+    // The model failed: recorded, nothing said under 做到什么时候 (neither a goal nor 没有终点).
+    const failed = keeps.sheets("default").find((x) => x.title === "Watch the nightly hawdb build")!;
+    expect(keeps.get(failed.id)!.end?.said).toBe("failed");
+    expect(failed.until).toBeUndefined();
+    expect(failed.noEnd).toBeUndefined();
+    // A goal the person stated (the fare's, D427's loop) is never asked about; an ended Keep neither.
+    expect(asked).not.toContain("Docs proofreader");
+    const askedFirst = asked.length;
+    expect(askedFirst).toBeGreaterThan(0);
     expect(keeps.all()).toHaveLength(9);
     for (const k of keeps.all()) expect(k.migratedAt).toBeTruthy();
 
@@ -113,7 +134,10 @@ describe("D511: the migration on start", () => {
     const before = keepEvents(again).length;
     expect(again.keeps!.all()).toHaveLength(9);
     again.keeps!.sync();
+    await Bun.sleep(30);
     expect(keepEvents(again).length).toBe(before);
+    // Asked once per Keep, never again (a failed ask included: it says nothing rather than guess).
+    expect(asked.length).toBe(askedFirst);
   });
 
   test("On hand: each Keep on or paused is a sheet under 在照看的, and its tasks name it", async () => {

@@ -298,7 +298,8 @@ function HowItRuns({ k }: { k: KeepPage }) {
   const where = [k.where?.deviceName ?? (k.where ? t("keep.where.home") : ""), k.where?.harness ? harnessName(k.where.harness) : ""].filter(Boolean);
   const rules: { k: string; v: string[]; muted?: string }[] = [
     { k: "keep.rule.wakes", v: wakeLines(k) },
-    { k: "keep.rule.until", v: [k.until ?? t("keep.until.none")] },
+    // Its end as the person gave it, or as the model read it from their words; nothing until it has (never a guess).
+    ...(k.until || k.noEnd ? [{ k: "keep.rule.until", v: [k.until ?? t("keep.until.none")] }] : []),
     { k: "keep.rule.speaks", v: [k.speaks ?? t("keep.speaks.default")], muted: t("keep.speaks.quiet") },
     ...(k.limits || k.run === "perItem" ? [{ k: "keep.rule.limits", v: [k.limits ?? t("keep.limits.helper")] }] : []),
     ...(where.length ? [{ k: "keep.rule.where", v: [where.join(t("keep.where.sep"))] }] : []),

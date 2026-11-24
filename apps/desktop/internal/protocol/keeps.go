@@ -59,6 +59,7 @@ type KeepSheet struct {
 	Run         string          `json:"run"`  // same, fresh, perItem
 	Wakes       []KeepWake      `json:"wakes"`
 	Until       string          `json:"until,omitempty"`
+	NoEnd       bool            `json:"noEnd,omitempty"`
 	Items       []KeepItem      `json:"items"`
 	TaskIDs     []string        `json:"taskIds"`
 	Asks        int             `json:"asks"`

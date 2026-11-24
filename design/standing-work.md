@@ -21,6 +21,11 @@
 - **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
   now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
 - **What waits for the person** is in 等你 once, naming the Keep; the sheet says the count.
+- **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
+  with none) has its end read once from their own words (about and brief) by the cheap model of the
+  agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The
+  answer is recorded on the Keep (`end`: until, none, failed) and never asked again; until it answers,
+  or if it failed, 做到什么时候 says nothing rather than guess. No phrase matching.
 - **Code reads facts only**: what woke a round, what it reported, whether it asked. A round is
   `told` only where a rule says so (a routine that reports every run). Goals and news are phase 4.
 - **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address

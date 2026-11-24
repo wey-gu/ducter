@@ -29,6 +29,7 @@ line.
 - [ ] **照看过的 / Looked after before** in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
+- [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
 - [ ] **Live on hel** (phase 6): the babysitter and the review loop migrated, a week read for silent-round rates and asks. *Trigger:* the release with D511.
 
 ## The same model another way, after D503 (`where.md` §21, research/219)

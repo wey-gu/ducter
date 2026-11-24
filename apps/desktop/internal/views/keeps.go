@@ -732,15 +732,19 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					}
 				}
 			}
-			until := k.Until
-			if until == "" {
-				until = a.L.T("keep.until.none")
-			}
 			speaks := k.Speaks
 			if speaks == "" {
 				speaks = a.L.T("keep.speaks.default")
 			}
-			rules := []rule{{"keep.rule.wakes", wakes, ""}, {"keep.rule.until", []string{until}, ""}, {"keep.rule.speaks", []string{speaks}, a.L.T("keep.speaks.quiet")}}
+			rules := []rule{{"keep.rule.wakes", wakes, ""}}
+			// Its end as given, or as the model read it from their words; nothing until it has (never a guess).
+			switch {
+			case k.Until != "":
+				rules = append(rules, rule{"keep.rule.until", []string{k.Until}, ""})
+			case k.NoEnd:
+				rules = append(rules, rule{"keep.rule.until", []string{a.L.T("keep.until.none")}, ""})
+			}
+			rules = append(rules, rule{"keep.rule.speaks", []string{speaks}, a.L.T("keep.speaks.quiet")})
 			if k.Limits != "" || k.Run == "perItem" {
 				l := k.Limits
 				if l == "" {

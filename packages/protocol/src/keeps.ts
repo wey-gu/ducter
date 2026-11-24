@@ -66,6 +66,9 @@ export interface KeepBody {
   /** When it ended (done or stopped). */
   endedAt?: string;
   made: KeepMade;
+  /** The model's one reading of its end from the person's words, recorded (principle 21): `until`
+   *  then holds its sentence; none: their words give no end; failed: nothing is said. Never asked again. */
+  end?: { at: string; said: "until" | "none" | "failed" };
   /** Carried over on start from `made`'s older record (D511's migration), never changing that record. */
   migratedAt?: string;
 }
@@ -108,6 +111,8 @@ export interface KeepSheet {
   run: KeepRun;
   wakes: KeepWake[];
   until?: string;
+  /** The model read the person's words as giving no end (没有终点). Neither this nor `until`: say nothing. */
+  noEnd?: true;
   /** What it holds now (each item's task, what waits for the person first). */
   items: KeepItem[];
   /** Every task this Keep owns now: a client stands them under the sheet, never in 在做 or 在等;

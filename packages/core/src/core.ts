@@ -642,7 +642,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
-    // D524: the person's zone (theirs from Settings or their device), not the server's clock.
+    // D528: the person's zone (theirs from Settings or their device), not the server's clock.
     zone: () => zone(),
     lang: () => langNow(),
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
@@ -1468,7 +1468,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     const fromClone = clone?.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/[\w.-]+?(?:\.git)?\/?$/)?.[1];
     return (fromClone ?? work.owned.of(taskId)[0]?.split("/")[0])?.toLowerCase();
   };
-  // D524: the person's zone for a task's brief (a server's own clock is often UTC).
+  // D528: the person's zone for a task's brief (a server's own clock is often UTC).
   api.zone = () => zone();
   api.goesFor = (taskId) =>
     TASK_STEP_ACTIONS.flatMap((a) => {
@@ -2355,7 +2355,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     return yes;
   };
   isReview = isReviewTask;
-  // D524: the round a review_report belongs to: the task's own timer (or condition) that last woke
+  // D528: the round a review_report belongs to: the task's own timer (or condition) that last woke
   // it. Two reports under the same wake are one round; the later is its final look.
   const roundOf = (taskId: string): string | undefined => {
     const ws = log.read({ stream: "channel", kinds: ["waiter"], limit: 2000 });
@@ -2379,7 +2379,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
-      // D524: a later call in the same round replaced the earlier one; a new request was said to the person once.
+      // D528: a later call in the same round replaced the earlier one; a new request was said to the person once.
       const again = r.replaced ? "It replaces this round's earlier review_report. " : "";
       const told = r.told?.length ? `The person was told once of the new request${r.told.length === 1 ? "" : "s"} (${r.told.join(", ")}); don't report ${r.told.length === 1 ? "it" : "them"} for that alone. ` : "";
       return went || r.drafted

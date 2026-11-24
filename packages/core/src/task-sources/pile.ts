@@ -106,7 +106,7 @@ interface MySubjects {
 const noMine = (): MySubjects => ({ of: {}, as: {}, gone: [], made: [] });
 
 /**
- * D394: a review task's standing after its last round. D524: `round` is the wake that began it (a
+ * D394: a review task's standing after its last round. D528: `round` is the wake that began it (a
  * later review_report in the same round replaces the earlier one), `was` the formal requests the
  * round before it ended with, `told` the requests (ref@head) already said once in the conversation.
  */
@@ -115,9 +115,9 @@ type RoundState = ReviewStanding & { decisionId?: string; n?: number; prs?: Roun
 /** D407: one pull request as the review task's last round saw it (the board's row). */
 type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string; mention?: boolean };
 
-/** D524: the formal review requests of a round (not the PRs that only mention the person). */
+/** D528: the formal review requests of a round (not the PRs that only mention the person). */
 const formalOf = (prs: RoundPr[] | undefined): string[] => (prs ?? []).filter((p) => !p.mention).map((p) => p.ref);
-/** D524: a request said once: the same PR at the same head is never said again. */
+/** D528: a request said once: the same PR at the same head is never said again. */
 const toldKey = (p: RoundPr) => `${p.ref}@${p.head ?? ""}`;
 
 const fresh = (): State => ({ verdicts: {}, chosen: {}, items: [], queue: [], handed: {}, reads: {} });
@@ -192,7 +192,7 @@ const W = {
     standingNow: "刚才等着的 {n} 份评审已经发到 GitHub：{links}",
     standingNow1: "刚才等着的那份评审已经发到 GitHub：{links}",
     listSep: "、",
-    // D524: a formal review request a round newly brought, said once in one line.
+    // D528: a formal review request a round newly brought, said once in one line.
     newAsk1: "新来了一个评审请求：{link}「{title}」。",
     newAsk1Bare: "新来了一个评审请求：{link}。",
     newAsks: "新来了 {n} 个评审请求：{links}。",
@@ -1115,7 +1115,7 @@ export function createPile(d: PileDeps): Pile {
       for (const k of keys.slice(0, Math.max(0, keys.length - 40))) delete st.reads[k];
       const rounds = (st.rounds ??= {});
       const prev = rounds[taskId];
-      // D524: a second report in the same round (the end-of-round look found more) replaces the
+      // D528: a second report in the same round (the end-of-round look found more) replaces the
       // first: the round's report is its final look's, and it is still one round.
       const same = !!(when?.round && prev?.round === when.round);
       const was = same ? (prev?.was ?? []) : formalOf(prev?.prs);
@@ -1124,7 +1124,7 @@ export function createPile(d: PileDeps): Pile {
       // Every draft of this task still unsent goes on the one card (an earlier round's too).
       const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
       const sentBefore = same ? (prev?.posted ?? 0) : 0;
-      // D524: a formal review request this round newly brought is said once, in one line: whatever
+      // D528: a formal review request this round newly brought is said once, in one line: whatever
       // the drafts, whatever its commits; never again for the same PR at the same head. The first
       // round ever says nothing (its report is the whole list).
       const told = [...(prev?.told ?? [])];

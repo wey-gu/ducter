@@ -316,7 +316,7 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "mend_" + str(obj("mend")["how"]), Name: str(obj("mend")["name"])}, true
 	case truthy(r["stall"]):
 		return Block{Say: "stalled"}, true
-	// D524: a round's designed fresh session is silent; only a refused resume is said.
+	// D528: a round's designed fresh session is silent; only a refused resume is said.
 	case truthy(r["fresh"]) && r["fresh"] != "round":
 		return Block{Say: "fresh"}, true
 	case truthy(r["effortDropped"]):

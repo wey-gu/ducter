@@ -550,9 +550,9 @@ test("D483: a look that ran out goes to the task with its facts; the keeper neve
   expect(armed(b, id).find((w) => w.check)?.until).toBeDefined();
 });
 
-// ---------- D524: a round's times are the person's, never the server's UTC ----------
+// ---------- D528: a round's times are the person's, never the server's UTC ----------
 
-test("D524: wait_for gives the next round in the person's time and a round's wake says their clock, on a home whose clock is UTC", async () => {
+test("D528: wait_for gives the next round in the person's time and a round's wake says their clock, on a home whose clock is UTC", async () => {
   const b = boot({ core: { proactive: { zone: "Asia/Shanghai" } } });
   open(b);
   const a = (await waitFor(b, "swj3zc4w")) as { ok: boolean; at?: string; atLocal?: string; note?: string };

@@ -56,7 +56,7 @@ export interface WorkOptions {
   /** D483: how often owned PRs are looked at (tests). */
   ownedEveryMs?: number;
   defaultZone?: string;
-  /** D524: the person's time zone now (Settings, their device), for the times a task is told. */
+  /** D528: the person's time zone now (Settings, their device), for the times a task is told. */
   zone?: () => string | undefined;
   /** D427: the language the person talks in now (the keeper's cards). */
   lang?: () => import("@ducter/protocol").LangTag;
@@ -103,7 +103,7 @@ const W = {
     // D429: a task in rounds: a round's end is progress, never done (Ducter brings the next one).
     round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。",
     roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
-    // D524: the person's clock, not the server's: a round's times are said in it.
+    // D528: the person's clock, not the server's: a round's times are said in it.
     roundNow: "对方那里现在是 {now}。写给对方的时间都按对方的时区，或者说「45 分钟后」，不写 UTC。",
   },
   en: {
@@ -214,7 +214,7 @@ export function createWork(o: WorkOptions): Work {
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
-  // D524: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
+  // D528: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
   const localTime = (ms: number, from?: number): string => {
     const z = o.zone?.() ?? o.defaultZone;
     const tz = z ? { timeZone: z } : {};
@@ -368,7 +368,7 @@ export function createWork(o: WorkOptions): Work {
         ok: true,
         waiterId: w.waiterId,
         at: w.at,
-        // D524: the time as the person reads it; `at` is UTC and is never said to them.
+        // D528: the time as the person reads it; `at` is UTC and is never said to them.
         atLocal: localTime(at, now),
         ...(before.length ? { replaced: before.map((v) => v.at) } : {}),
         ...(rhythm ? { rhythm: `every ${Math.round(rhythm / 60_000)} min, as the person set it` } : {}),

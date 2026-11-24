@@ -227,7 +227,7 @@ talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens
 
 - **The agent's session is gone** (an old Claude Code session pruned, another computer): Continue
   still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line), only when the
-  agent refused the resume: a round's own fresh session (D394) says nothing (D524).
+  agent refused the resume: a round's own fresh session (D394) says nothing (D528).
 - **The worktree was removed** (merged, or tidied past its window, D514 `tidy.md`): the preview
   says **工作副本已整理，接着做会重新拉一份**; Continue adds it back from the kept branch, or from
   `origin/<branch>` when the local one was deleted since; a branch gone from both makes Continue

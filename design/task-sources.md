@@ -158,7 +158,7 @@ day (their day, their zone); every group count is code's count of verdicts still
 over. None is a number a model wrote.
 
 **A review task's drafts (D394).** A task of the person's that reviews their requests every so often
-reports each round with `review_report`, from the round's final look (D524: a later call in the
+reports each round with `review_report`, from the round's final look (D528: a later call in the
 same round replaces the earlier one, so a request found by the end-of-round look is in that round's
 report and board; a formal request the round newly brought is said once in one line, **新来了一个评审请求：{link}「{title}」。**,
 never again at the same head); the drafts for PRs it reviewed again land as those PRs'

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// D524: a round's designed fresh session says nothing; only a resume the agent refused is said.
+// D528: a round's designed fresh session says nothing; only a resume the agent refused is said.
 func TestFreshRoundIsSilent(t *testing.T) {
 	if b, ok := noteOf("a fresh session for this round", json.RawMessage(`{"fresh":"round"}`)); ok {
 		t.Fatalf("a round's fresh session is said: %+v", b)

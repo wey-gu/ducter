@@ -14,7 +14,7 @@ export interface BriefInput {
   mcpServerName: string; // the Ducter MCP server name, e.g. "ducter"
   /** The language the user reads reports in, a BCP 47 tag (D292); absent: the brief's own words decide. */
   language?: LangTag;
-  /** D524: the user's time zone (IANA): every time they read is written in it. */
+  /** D528: the user's time zone (IANA): every time they read is written in it. */
   zone?: string;
   /** D168: plugin = the user's Nowledge Mem plugin is on in this session; ducter = Ducter's own read-only memory stands in. Absent: none (off, or a browser). */
   memory?: "plugin" | "ducter";
@@ -113,7 +113,7 @@ function languageLine(lang: BriefInput["language"]): string {
 }
 
 /**
- * D524: hel's review rounds said 「下一轮将在 07:13 UTC 进行」: the server's clock and the tools'
+ * D528: hel's review rounds said 「下一轮将在 07:13 UTC 进行」: the server's clock and the tools'
  * ISO times are UTC, the person is not. Model-visible (snapshot-tested).
  */
 export function timeLine(zone: string | undefined): string {

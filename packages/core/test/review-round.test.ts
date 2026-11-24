@@ -187,7 +187,7 @@ async function until(ok: () => unknown, ms = 3000) {
   }
 }
 
-// D524: hel's round 298 reported once at 06:26:01, a request arrived at 06:26:40, the end-of-round
+// D528: hel's round 298 reported once at 06:26:01, a request arrived at 06:26:40, the end-of-round
 // look found it at 06:27:17, and the board showed it only a round later. Now the final look's
 // report replaces the first in the same round, and the new request is said once.
 test("a request that arrives between the first look and the final look is in that round's report and board, said once", async () => {

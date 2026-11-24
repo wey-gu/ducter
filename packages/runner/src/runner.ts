@@ -1654,7 +1654,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project: open.project || undefined,
         mcpServerName: mcp.name,
         ...(open.language ? { language: open.language } : {}),
-        // D524: the person's zone: the times they read are written in it, never UTC.
+        // D528: the person's zone: the times they read are written in it, never UTC.
         ...((z) => (z ? { zone: z } : {}))(core.zone?.()),
         // D168: the user's Nowledge Mem plugin where it is on that computer, else Ducter's own
         // read-only memory; a browser task gets none (as with the Log, D62).

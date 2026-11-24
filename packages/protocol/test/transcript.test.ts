@@ -116,7 +116,7 @@ test("D268: a retry says itself only while it is the latest thing", () => {
   expect(after.some((b) => b.k === "note" && b.say === "retry")).toBe(false);
 });
 
-// D524: hel's review loop said 「之前的记录接不上了」 every round (129 rounds, 0 refused resumes):
+// D528: hel's review loop said 「之前的记录接不上了」 every round (129 rounds, 0 refused resumes):
 // the designed fresh session of a round (D394) was read as a refused resume.
 test("a round's fresh session is silent; a refused resume is said", () => {
   expect(noteOf("a fresh session for this round", { fresh: "round" })).toBeUndefined();

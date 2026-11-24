@@ -150,7 +150,7 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   const md = o("mend");
   if (md && ["reopen", "clone_here", "start_at", "clear_lock", "rethink", "stall"].includes(String(md.how))) return { say: `mend_${String(md.how)}` as NoteSay, ...(str(md.name) ? { name: str(md.name) } : {}) };
   if (r.stall) return { say: "stalled" };
-  // D524: only a resume the agent refused is said. A round's fresh session (D394's designed path:
+  // D528: only a resume the agent refused is said. A round's fresh session (D394's designed path:
   // a long rest or a compaction, seeded from the checkpoints) is silent: it was said every round.
   if (r.fresh && r.fresh !== "round") return { say: "fresh" };
   if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };

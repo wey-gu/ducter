@@ -460,8 +460,10 @@ type Store struct {
 	// receipts don't count, or reading would never settle).
 	ChannelSeq int64
 
-	Channel   []*Entry
-	bySeq     map[int64]*Entry
+	Channel []*Entry
+	bySeq   map[int64]*Entry
+	// Older is the conversation's paging back, a page at a time (D506, older.go).
+	Older     OlderState
 	Jobs      map[string]*Job
 	Decisions map[string]*DecisionState
 	// sentReplies (D470 round 2): replies shown as sent, by the message answered and the words.
@@ -693,6 +695,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "welcome":
 		s.Persona, s.HeadSeq, s.Machine = f.Persona, f.HeadSeq, f.Machine
 		s.Welcomed = true
+		s.Older.Asked = 0                    // D506: a page asked on the old socket never comes
 		s.asksAsked, s.asksWanted = nil, nil // D481: a new socket asks again for what it still lacks
 		// D284: a new socket: what a task's history missed meanwhile is asked
 		// again when it opens, and a request the old socket carried is gone.
@@ -944,6 +947,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.OnHand != nil {
 			s.applyOnHand(f.OnHand)
 		}
+	case "channel_history":
+		s.applyOlder(f) // D506 (older.go)
 	case "task_history":
 		t := s.task(f.TaskID)
 		for _, ev := range f.Events {
@@ -1306,6 +1311,7 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	if _, dup := s.bySeq[ev.Seq]; dup {
 		return
 	}
+	s.heldChannel(ev.Seq) // D506: where paging back starts
 	if ev.Kind != protocol.KindReadReceipt {
 		s.ChannelSeq = max(s.ChannelSeq, ev.Seq)
 	}
@@ -1573,7 +1579,9 @@ func firstN(s string, n int) string {
 }
 
 func (s *Store) add(e *Entry) {
-	e.FirstSeq = e.Event.Seq
+	if e.FirstSeq == 0 { // an older page's row keeps the place it was first shown at (D506)
+		e.FirstSeq = e.Event.Seq
+	}
 	s.bySeq[e.Event.Seq] = e
 	// Keep seq order even when a history or a reconnect delivers late.
 	i := sort.Search(len(s.Channel), func(i int) bool { return s.Channel[i].FirstSeq > e.FirstSeq })

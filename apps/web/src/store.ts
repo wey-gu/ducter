@@ -228,6 +228,12 @@ export function windowAsk(S: Store, id: string, view: View | undefined): Ask | u
   return nextAsk(t.index, t.spans, t.events, v);
 }
 
+/** D506: a decision's own words and when it was asked, from an older page. */
+function pick(d: DecisionState): Partial<DecisionState> {
+  const { resolved: _r, pending: _p, said: _s, later: _l, backAt: _b, elsewhere: _e, ...own } = d;
+  return own;
+}
+
 export class Store {
   persona = "";
   personaName = "Ducter";
@@ -242,6 +248,12 @@ export class Store {
   welcomed = false;
   channel: Entry[] = [];
   bySeq = new Map<number, Entry | null>();
+  /**
+   * D506: the conversation's paging back. from: the oldest channel seq held (everything from it to
+   * the newest is held whole); done: the home said nothing older remains; asked: the beforeSeq of
+   * the page on its way (0: none).
+   */
+  older = { from: 0, done: false, asked: 0 };
   /** D426: lines that came before their message was loaded (history paging), kept until it is. */
   asksWaiting = new Map<number, Bodies["asks"]>();
   jobs = new Map<string, Job>();
@@ -321,6 +333,7 @@ export class Store {
         this.headSeq = f.headSeq;
         this.welcomed = true;
         if (f.personaName) this.personaName = f.personaName;
+        this.older.asked = 0; // D506: a page asked on the old socket never comes
         this.asksAsked.clear(); // D481: a new socket asks again for what it still lacks
         this.asksWanted.length = 0;
         // D284: a new socket: what a task's history missed meanwhile is asked again when it opens.
@@ -378,6 +391,8 @@ export class Store {
         if (ft) ft.folder = f.changes ?? undefined;
         return;
       }
+      case "channel_history":
+        return this.applyOlder(f);
       case "task_history": {
         // D284: the newest window first, then older pages; HistFrom..newest is held whole.
         const t = this.task(f.taskId);
@@ -543,6 +558,7 @@ export class Store {
       return;
     }
     if (this.bySeq.has(ev.seq)) return;
+    if (!this.older.from || ev.seq < this.older.from) this.older.from = ev.seq; // D506: where paging back starts
     if (ev.kind !== "read_receipt") this.channelSeq = Math.max(this.channelSeq, ev.seq);
     const entry = (e: Partial<Entry>) => this.add({ ev, firstSeq: ev.seq, revision: 0, ...e });
     switch (ev.kind) {
@@ -766,6 +782,93 @@ export class Store {
       default:
         this.bySeq.set(ev.seq, null);
     }
+  }
+
+  /** D506: an older page can be asked for now (something held, not all of it, none on its way). */
+  moreOlder(): boolean {
+    return this.welcomed && this.older.from > 1 && !this.older.done && !this.older.asked;
+  }
+
+  /**
+   * D506: an older page of the conversation joins what is held. It is older than everything here,
+   * so it is folded on a scratch store of its own, in seq order as the Log wrote it, then joined:
+   * its rows go in front, and what it knows of a job, a decision, a find or a set fills in only what
+   * this store does not know yet (what is held came later and wins). A wait from back then is
+   * history, not news: it changes nothing.
+   */
+  private applyOlder(f: Extract<ServerFrame, { t: "channel_history" }>) {
+    if (!f.beforeSeq || f.beforeSeq !== this.older.asked) return; // another conversation's, or an old socket's
+    this.older.asked = 0;
+    const evs = f.events.filter((e) => e.stream === "channel" && e.seq < f.beforeSeq);
+    if (!f.more || !evs.length) this.older.done = true;
+    if (!evs.length) return;
+    const sc = new Store();
+    sc.welcomed = true;
+    for (const ev of evs) sc.applyEvent(ev);
+    const revised = new Set<string>();
+    for (const [id, e] of this.notes) {
+      revised.add(id);
+      if (e.finds?.revises) revised.add(e.finds.revises);
+    }
+    const jobRow = new Map(this.channel.flatMap((e) => (e.job ? [[e.job.id, e] as const] : [])));
+    const setShown = new Set(this.channel.flatMap((e) => (e.set ? [e.set.setId] : [])));
+    const added = new Set<Entry>();
+    const front: Entry[] = [];
+    const moved = new Set<Entry>(); // a job's line here, from a status before its ack came: it moves to its first word
+    for (const e of sc.channel) {
+      if (this.bySeq.has(e.firstSeq)) continue;
+      if (e.finds && revised.has(e.finds.noteId)) continue;
+      if (e.set && setShown.has(e.set.setId)) continue;
+      if (e.peer?.direction === "in" && e.peer.state === "set_aside" && this.setAside.has(`${e.peer.from}|${e.ev.ts.slice(0, 10)}`)) continue;
+      if (e.job) {
+        const j = this.jobs.get(e.job.id);
+        if (j) {
+          j.ack ??= e.job.ack;
+          j.status ??= e.job.status;
+          const row = jobRow.get(j.id);
+          if (row) (moved.add(row), this.bySeq.set(row.firstSeq, null));
+          e.job = j;
+        }
+      }
+      if (e.user) {
+        const w = this.asksWaiting.get(e.ev.seq);
+        if (w) (e.asks = w), this.asksWaiting.delete(e.ev.seq); // the latest lines came first
+      }
+      added.add(e);
+      front.push(e);
+    }
+    this.channel = front.concat(moved.size ? this.channel.filter((e) => !moved.has(e)) : this.channel);
+    for (const [seq, e] of sc.bySeq) if (!this.bySeq.has(seq)) this.bySeq.set(seq, e && added.has(e) ? e : null);
+    const fill = <K, V>(dst: Map<K, V>, src: Map<K, V>, ok: (v: V) => boolean = () => true) => {
+      for (const [k, v] of src) if (!dst.has(k) && ok(v)) dst.set(k, v);
+    };
+    fill(this.jobs, sc.jobs);
+    for (const [id, d] of sc.decisions) {
+      const m = this.decisions.get(id);
+      if (!m) this.decisions.set(id, d);
+      else if (!m.seq) this.decisions.set(id, { ...d, ...m, ...pick(d), said: m.said ?? d.said }); // known only by what came later
+    }
+    fill(this.findStates, sc.findStates);
+    fill(this.findSends, sc.findSends);
+    fill(this.findAsks, sc.findAsks);
+    fill(this.calRuns, sc.calRuns);
+    fill(this.notes, sc.notes, (e) => added.has(e));
+    fill(this.recalled, sc.recalled);
+    fill(this.outOps, sc.outOps);
+    fill(this.pings, sc.pings);
+    fill(this.pingAt, sc.pingAt);
+    fill(this.asksWaiting, sc.asksWaiting);
+    for (const [k, v] of sc.setAside) {
+      const had = this.setAside.get(k);
+      this.setAside.set(k, had ? { n: had.n + v.n, seq: had.seq } : v);
+    }
+    for (const k of sc.sentReplies) this.sentReplies.add(k);
+    const notedHas = new Set(this.noted.map((n) => n.seq));
+    this.noted = sc.noted.filter((n) => !notedHas.has(n.seq)).concat(this.noted);
+    this.taskPeers = sc.taskPeers.concat(this.taskPeers);
+    this.readUpTo = Math.max(this.readUpTo, sc.readUpTo);
+    this.lastUserSeq = Math.max(this.lastUserSeq, sc.lastUserSeq);
+    for (const ev of evs) if (ev.seq < this.older.from) this.older.from = ev.seq;
   }
 
   private add(e: Entry) {

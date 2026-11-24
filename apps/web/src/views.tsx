@@ -84,7 +84,7 @@ import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { DensityRow, HandoffSettings, PaperRow, RecordsSettings, savedDensity } from "./settings-more.tsx";
 import { AddSection, brainHeld, heldAt, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
-import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
+import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
@@ -2012,6 +2012,8 @@ export function Conversation() {
   let lastUser: number | undefined;
   // D254: keeping your place (conv-follow.tsx): following the end, the way back, the divider.
   const follow = useFollow(scroller, rows, A.pending.length);
+  // D506: older messages page in as the reader nears the top, and the place is kept.
+  const older = useOlder(scroller, rows);
   const divider = dividerSeq();
   const empty = rows.length === 0 && A.pending.length === 0 && A.S.welcomed;
   // D305: the reply to a message sent by voice, read aloud (with the setting on).
@@ -2027,7 +2029,8 @@ export function Conversation() {
       <PinStrip />
       {/* D410: pinned apps, one tap each. */}
       <PinnedApps />
-      <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => follow.onScroll(e.currentTarget as HTMLDivElement)}>
+      <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => (follow.onScroll(e.currentTarget as HTMLDivElement), older.onScroll(e.currentTarget as HTMLDivElement))}>
+        <OlderWait />
         <div class="spacer" />
         <DropHint on={dropping} />
         {empty && <Hello />}

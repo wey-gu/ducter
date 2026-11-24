@@ -1305,6 +1305,7 @@ export interface UntilView {
 // Semantics:
 //  - hello.cursor: the server replies welcome, then replays channel events with seq > cursor
 //    (cursor omitted = the last 200 channel events), then on_hand, then streams live events.
+//    Older channel events are pulled a page at a time with channel_history (D506).
 //    Task streams are never pushed in bulk; clients pull them with task_history and receive
 //    live task_event/task_state for every task afterwards.
 //  - read.upToSeq: the user has seen the channel up to this seq. The living message is frozen
@@ -1386,6 +1387,10 @@ export type ClientFrame =
   // beforeSeq = the oldest seq it holds; limit is at most 2,000.
   // D320: afterSeq = the newest seq it holds of a far stretch: the page after it, oldest first.
   | { t: "task_history"; taskId: string; beforeSeq?: number; afterSeq?: number; limit?: number }
+  // D506: an older page of the conversation this socket shows: the events before beforeSeq (the
+  // oldest seq the client holds), at most `limit` (default 300, at most 2,000). Answered with a
+  // channel_history frame.
+  | { t: "channel_history"; beforeSeq: number; limit?: number }
   // D320: the task's session index (one small row per turn): all of it, or its turns from fromSeq on
   // (the first seq of the last turn the client holds). Answered with a task_index frame.
   | { t: "task_index"; taskId: string; fromSeq?: number }
@@ -1860,6 +1865,9 @@ export type ServerFrame =
   // beforeSeq (echoed). more: older events remain (absent from a home before D284).
   // D320: with afterSeq (echoed), the page after it, and more: newer events remain.
   | { t: "task_history"; taskId: string; events: LogEvent[]; more?: boolean; beforeSeq?: number; afterSeq?: number }
+  // D506: an older page of the conversation, oldest first, beforeSeq echoed; events superseded by a
+  // newer one (a living message revised) are left out. more: older events remain.
+  | { t: "channel_history"; events: LogEvent[]; beforeSeq: number; more: boolean }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
   | { t: "sent"; taskId: string; delivered: Delivery; clientId?: string } // ack for task_send (D325: its clientId; "queued" = held, TaskCard.held)

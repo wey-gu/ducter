@@ -402,6 +402,20 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
   front. Sending takes the line away.
 - **Read means seen.** The conversation counts as read only while its end is in view.
 - **The place is kept** while On hand or a task has the phone's screen.
+- **The whole conversation scrolls back (D506).** Opening holds only its newest stretch (the
+  home's last 200 events, about a tenth of them messages). As the reader nears the top (a screen and
+  a half on the web, twelve rows on the Mac) the page before the oldest event held is asked for
+  (`channel_history`, 300 events), one at a time, again while they stay near it, until the home says
+  none remain: no button, no end of the road short of the first message. A page lands above the
+  reader and the line they were reading does not move (the Mac's list keeps its rows by key; the web
+  puts the first row in view back where it was, in every engine, WebKit included). While a page is on
+  its way one quiet line floats over the top, **正在载入更早的消息 / Loading earlier messages**,
+  taking no room and fading in only when the page takes longer than a blink. Days and the 15-minute
+  time lines read as before; the row that stood on top while more could come keeps its time line, so
+  nothing shifts when the page lands over it. A page is folded on its own and joined in front: what
+  came later wins (a job's newest status, an answer, the latest lines of an ask), and a wait from back
+  then is history, not news. Older messages of the person's own are never a send (the end is not
+  taken back).
 - **Copy (D492).** A whole message is one press away wherever it is read:
   - *With a mouse*, the pebbles beside a message (D256's gutter) carry **拷贝 / Copy** with the copy
     mark: on the web a column, Reply on the message's bottom line, Copy over it, **朗读 / Read

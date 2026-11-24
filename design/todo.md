@@ -1281,9 +1281,14 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       show a disabled line yet). Trigger: MyGo's menu gains a header item, or a reader asks.
 - [ ] **The draft across devices:** kept per device today; a draft started on the phone and
       finished on the Mac would need the home to keep it. Trigger: asked for.
-- [ ] **Older messages:** a fresh open replays the last 200 channel events (core `REPLAY_FRESH`);
-      not checked in D254 is whether scrolling to the top of a longer conversation brings older
-      ones, keeping the place. Trigger: a conversation longer than the replay.
+- [x] **Older messages:** done as D506 (pages of 300 events as the reader nears the top, the
+      place kept, a quiet line while one is on its way).
+- [ ] **A reply's imprint further back than what is held** (D236's toast "further back than this
+      screen goes"): page back to the original and land on it. Trigger: asked for, or the toast is
+      seen in use.
+- [ ] **Older messages on a real iPhone and Android:** D506 was driven in WebKit and Chromium at
+      phone width; a flick with momentum on a device (iOS's rubber band at the top) is not yet seen.
+      Trigger: the next device pass.
 
 ## The reply pebble (D256)
 

@@ -1,0 +1,22 @@
+{
+  "about": "D506: a morning that crosses midnight, as both clients fold it. Folding the newest stretch (from `cut` on, the window a fresh open gets) and then the older page before it must show the same conversation as folding it all in order: the same rows in the same places, a job's newest status, a resolved question still resolved, a wait that fired not armed again, the living message once. The page leaves out what core's channelPage leaves out (seq 5, revised by 6).",
+  "cut": 11,
+  "events": [
+    { "seq": 1, "ts": "2026-11-23T15:58:00.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "user_msg", "body": { "text": "把 CI 上那个时好时坏的测试修一下" } },
+    { "seq": 2, "ts": "2026-11-23T15:58:03.000Z", "persona": "default", "stream": "channel", "origin": "partner", "kind": "ack", "body": { "jobId": "job_ci", "text": "好，我开一个任务去修，修好了告诉你。", "replyTo": 1 } },
+    { "seq": 3, "ts": "2026-11-23T15:58:04.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "job_status", "body": { "jobId": "job_ci", "text": "开始修了", "state": "running", "taskId": "t_ci" } },
+    { "seq": 4, "ts": "2026-11-23T15:58:05.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "waiter", "body": { "waiterId": "w_ci", "taskId": "t_ci", "reason": "等 CI 跑完", "state": "armed", "kind": "check" } },
+    { "seq": 5, "ts": "2026-11-23T16:01:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "living_msg", "body": { "items": [{ "taskId": "t_ci", "kind": "progress", "title": "修 flaky 测试", "text": "在跑第二遍" }] } },
+    { "seq": 6, "ts": "2026-11-23T16:03:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "living_msg", "supersedes": 5, "body": { "items": [{ "taskId": "t_ci", "kind": "decision", "title": "修 flaky 测试", "text": "要把重试次数调到 3 吗？", "decisionId": "d_retry" }] } },
+    { "seq": 7, "ts": "2026-11-23T16:03:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "decision", "body": { "decisionId": "d_retry", "taskId": "t_ci", "question": "要把重试次数调到 3 吗？", "goLabel": "调到 3", "defaultOption": "hold", "reversible": true } },
+    { "seq": 8, "ts": "2026-11-23T16:04:00.000Z", "persona": "default", "stream": "channel", "origin": "partner", "kind": "ai_msg", "body": { "text": "修测试的任务问：要把重试次数调到 3 吗？我建议不调，先找出时好时坏的原因。" } },
+    { "seq": 9, "ts": "2026-11-23T16:05:00.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "user_msg", "body": { "text": "不调，先找原因" } },
+    { "seq": 10, "ts": "2026-11-23T16:05:30.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "read_receipt", "body": { "upToSeq": 9 } },
+    { "seq": 11, "ts": "2026-11-23T16:05:31.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "decision_resolved", "body": { "decisionId": "d_retry", "option": "hold", "by": "user", "text": "不调，先找原因" } },
+    { "seq": 12, "ts": "2026-11-23T16:06:00.000Z", "persona": "default", "stream": "channel", "origin": "partner", "kind": "ai_msg", "body": { "text": "好，不调。我让它先看是哪一步不稳。" } },
+    { "seq": 13, "ts": "2026-11-23T16:40:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "waiter", "body": { "waiterId": "w_ci", "taskId": "t_ci", "reason": "等 CI 跑完", "state": "fired", "kind": "check", "observed": "CI 跑完了" } },
+    { "seq": 14, "ts": "2026-11-23T16:41:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "job_status", "body": { "jobId": "job_ci", "text": "修好了：一个测试用了真时钟，改成假时钟后连跑 20 次都过了", "state": "done", "taskId": "t_ci" } },
+    { "seq": 15, "ts": "2026-11-23T16:42:00.000Z", "persona": "default", "stream": "channel", "origin": "partner", "kind": "ai_msg", "body": { "text": "修好了。是一个测试用了真时钟，改成假时钟以后连跑 20 次都过了。" } },
+    { "seq": 16, "ts": "2026-11-23T16:43:00.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "user_msg", "body": { "text": "漂亮" } }
+  ]
+}

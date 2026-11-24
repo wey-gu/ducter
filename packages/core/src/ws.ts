@@ -5,7 +5,7 @@ import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, P
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
-import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
+import type { CoreApi, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
@@ -84,11 +84,13 @@ export interface WsData {
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
 /** D284: frames longer than this go gzipped to a client that asked (hello.gzip). */
 const GZIP_MIN = 16 * 1024;
-const REDACTED = new Set<string>(["events", "task_history", "task_index", "on_hand", "task_new_result", "action_result"]);
+const REDACTED = new Set<string>(["events", "channel_history", "task_history", "task_index", "on_hand", "task_new_result", "action_result"]);
 /** D390: how long a Settings frame waits on the partner's agent to list its models before giving up on pushing them. */
 const BRAIN_MODELS_WAIT_MS = 30_000;
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
+const CHANNEL_PAGE = 300; // D506: an older page of the conversation, by default
+const CHANNEL_PAGE_MAX = 2000;
 const SEEN_WINDOW = 2000; // user messages (by clientId) remembered for idempotent send
 const TASK_SEEN_WINDOW = 500; // task_event lines scanned for a task_send resend
 
@@ -247,6 +249,22 @@ export interface WorkFrames {
 export function dropSuperseded(events: LogEvent[]): LogEvent[] {
   const replaced = new Set(events.map((e) => e.supersedes).filter((s) => s != null));
   return events.filter((e) => !replaced.has(e.seq));
+}
+
+/**
+ * D506: a page of the conversation before `beforeSeq`, oldest first, and whether older events remain.
+ * What a newer event superseded is left out: a revision inside the page, and the page's newest
+ * living message when the first one after the page revised it (one message is open at a time per
+ * conversation, so its next revision is the next living message there).
+ */
+export function channelPage(log: Pick<LogStore, "read">, stream: string, beforeSeq: number, limit = CHANNEL_PAGE): { events: LogEvent[]; more: boolean } {
+  const n = Math.max(1, Math.min(Math.floor(limit) || CHANNEL_PAGE, CHANNEL_PAGE_MAX));
+  const page = log.read({ stream, beforeSeq, limit: n + 1 });
+  const more = page.length > n;
+  let events = dropSuperseded(more ? page.slice(1) : page);
+  const next = log.read({ stream, fromSeq: beforeSeq, limit: 1, kinds: ["living_msg"] })[0];
+  if (next?.supersedes != null) events = events.filter((e) => e.seq !== next.supersedes);
+  return { events, more };
 }
 
 export function createWsHandler(deps: WsDeps) {
@@ -2308,6 +2326,15 @@ export function createWsHandler(deps: WsDeps) {
           apps++;
         }
         send(ws, { t: "open_result", taskId: f.taskId, ok: true, apps });
+        return;
+      }
+      case "channel_history": {
+        // D506: an older page of the conversation this socket shows, as the reader nears its top.
+        const before = Math.floor(Number(f.beforeSeq));
+        if (!Number.isFinite(before) || before < 1) throw new Error("channel_history needs beforeSeq");
+        const stream = channelOf(ws.data.partner);
+        const { events, more } = channelPage(log, stream, before, f.limit);
+        send(ws, { t: "channel_history", events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), beforeSeq: before, more });
         return;
       }
       case "task_history": {

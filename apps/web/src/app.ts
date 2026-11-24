@@ -68,6 +68,8 @@ const REPLAY_MAX = 5000;
 /** D284: an opened task's newest window, each older page after it, and how far the background pages. */
 export const HISTORY_FIRST = 200;
 export const HISTORY_PAGE = 300;
+/** D506: an older page of the conversation (events; about a tenth are messages). */
+export const OLDER_PAGE = 300;
 export const HISTORY_LIMIT = 2000;
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
@@ -2880,6 +2882,18 @@ class AppState {
     if (t?.index) return;
     const before = olderPage(t);
     if (before) this.askHistory(id, before);
+  }
+
+  /**
+   * D506: the reader is near the top of the conversation: the page before the oldest event held.
+   * One at a time; the next is asked as they keep going up.
+   */
+  moreOlder() {
+    if (!this.S.moreOlder()) return;
+    const before = this.S.older.from;
+    this.S.older.asked = before;
+    this.send({ t: "channel_history", beforeSeq: before, limit: OLDER_PAGE });
+    this.changed();
   }
 
   // ---------- actions ----------

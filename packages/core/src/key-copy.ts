@@ -264,7 +264,7 @@ export function createKeyCopy(o: {
       const r = await api.propose({ env: String(args.env ?? ""), from: String(args.from ?? ""), to: Array.isArray(args.to) ? args.to.map(String) : [String(args.to ?? "")], ...(args.name ? { name: String(args.name) } : {}), ...(args.why ? { why: String(args.why) } : {}), ...(ctx.persona ? { persona: ctx.persona } : {}) });
       if (!r.ok) return { ok: false, error: r.error };
       if (!r.decisionId) return { ok: true, note: `Already there: ${r.already?.join(", ")} keep ${String(args.env)} for Ducter's tasks. Nothing to copy; carry on.` };
-      return { ok: true, needsGo: true, note: `The card is on screen: it says what goes where, with Copy and Not now. Say one short line at most, or nothing: the card speaks for itself (never name its buttons, never the key, no steps for them to do by hand). Then end your turn; on their Go it copies by itself${r.already?.length ? ` (${r.already.join(", ")} already had it)` : ""}.` };
+      return { ok: true, needsGo: true, note: `The card is on screen: what goes from where to where, and its buttons. End your turn now and write nothing more: the card is the whole ask (never describe it or its buttons, never the key, no steps for them by hand). On their Go it copies by itself${r.already?.length ? ` (${r.already.join(", ")} already had it)` : ""}.` };
     },
     () => o.computers().length > 0,
   );

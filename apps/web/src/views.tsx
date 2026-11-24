@@ -1686,7 +1686,7 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={44} />
+          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
         </button>
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>

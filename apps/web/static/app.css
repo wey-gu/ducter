@@ -21622,8 +21622,9 @@ html[data-text-size="large"] .brand-mark > svg {
   .pane.partners .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
   .pane.partners .pl-last { display: none; }
 }
-/* D541: the same slim list from 700 to 999 (an iPad upright, a foldable open), at the conversation's
-   left in the one column, which grows by the list's width so the conversation keeps its measure. */
+/* D541: the same slim list from 700 to 999 (an iPad upright, a foldable open): a rail flush with the
+   window's left edge as from 1000, its rule running the window's height; the conversation beside it
+   keeps its measure (720) centred in what is left. */
 .pane.partners.slim { flex-basis: 88px; }
 .pane.partners.slim > .top .level { visibility: hidden; }
 .pane.partners.slim .pl-rows { --row: 74px; padding-inline: 6px; }
@@ -21633,8 +21634,10 @@ html[data-text-size="large"] .brand-mark > svg {
 .pane.partners.slim .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
 .pane.partners.slim .pl-last { display: none; }
 #app:has(> .panes.mid) {
-  width: min(728px, calc(100% - var(--safe-left) - var(--safe-right)));
-  margin-left: max(var(--safe-left), calc((100% - 728px) / 2));
+  width: auto;
+  margin: 0;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 .panes.mid .pane.conv { flex: 1 1 0; }
 /* A phone: the list is the level above the conversation, rows a thumb's height. */
@@ -21667,31 +21670,33 @@ html[data-text-size="large"] .brand-mark > svg {
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding-inline-end: 2px;
 }
+/* Each figure a 24-pt disc on a 2-pt ring of the page, the next 30% under it (7 pt), the nearest on
+   top; the number sits outside the stack, on its top right shoulder, never over a face. */
 .pb-face {
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background: var(--sunken);
-  box-shadow: 0 0 0 1.5px var(--bg);
+  box-shadow: 0 0 0 2px var(--bg);
   overflow: hidden;
   align-items: center;
 }
-.pb-face + .pb-face { margin-inline-start: -9px; }
+.pb-face + .pb-face { margin-inline-start: -7px; }
 .pb-face:nth-child(1) { z-index: 3; }
 .pb-face:nth-child(2) { z-index: 2; }
 .pb-face:nth-child(3) { z-index: 1; }
 .pb-face img { width: 22px; margin-top: 3px; }
-.top .partners-back .pb-chev { width: 16px; height: 16px; margin-inline-end: 1px; }
+.top .partners-back .pb-chev { width: 16px; height: 16px; margin-inline-end: 2px; }
 .top .partners-back .pb-chev path { stroke-width: 2.2; }
-.top .partners-back:has(.pb-faces) { margin-inline-end: 2px; }
+.pb-faces:has(> .pl-n) { margin-inline-end: 15px; }
 .pb-faces > .pl-n {
   position: absolute;
-  top: -6px;
-  right: -8px;
+  top: -9px;
+  inset-inline-end: -19px;
   z-index: 4;
 }
+.top .partners-back:has(.pb-faces) { margin-inline-end: 4px; }
 /* A phone's bar with ‹: the counts line keeps one fact, whole (the first: what needs you comes first; the
    rest is in its label), so the bar stays one line tall beside the places. */
 @media (max-width: 600px) {

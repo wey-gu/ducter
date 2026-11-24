@@ -36,7 +36,7 @@
   channel; a wake with no report is a silent round). The time column (`TimeCol`) is today's clock or the day alone;
   the rail gives each title two lines cut at a word's end, rows of one height, the open one the knob.
 - **D533, changed in place.** Each rule in 怎么做 has a quiet **改 / Change** and its own control (`EditRow`
-  with `LineField`, `NumberField`, `Seg` and D510's pickers; Mac `editRow`, `lineField`, `numberField`): a
+  with D536's `Field`, `NumberField`, `Seg` and D510's pickers; Mac `editRow`, `lineField`, `numberField`): a
   rhythm in minutes, a clock (every day or weekdays, a time), the goal in words, when it speaks as three
   choices, a helper's cap a day (1–30, `Helper.daily`, read by the partner's start-without-asking count), where and
   who, the name in Bridge. A change applies at once with **撤销 / Undo** under the card, and stands among the
@@ -46,6 +46,10 @@
   One path: the page's `keep_change` frame and the partner's `keep_change` tool are `keeps.change(id, c, { by })`,
   checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every
   round of a loop and every run of a routine is told its rules as they are now (`rulesFor`).
+- **D535, the way in and out.** The page lives only while On hand is shown (leaving On hand closes it; a deep
+  link opens it straight); the way back is the header's breadcrumb **对话 / 手头的事 / {the Keep}** (‹ 手头的事
+  beside the conversation and on a phone), never a link in the page or its rail, which is one list under the
+  shared section head. `on-hand.md` "Navigation".
 - **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address
   (a helper, `run: perItem`); a first look now is the model's call (a fare has a value today, a weekly
   report doesn't). Rounds that would act outward unasked still go through `routine_propose`'s Go.

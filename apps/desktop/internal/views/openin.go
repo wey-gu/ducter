@@ -147,18 +147,3 @@ func (a *App) openFolder(with, path string) {
 		a.Win.Update(func() { fail(err) })
 	}()
 }
-
-// workFolderLine is the working copy's path over its changes (D198): small,
-// mono and selectable, so it can be copied into a terminal or an editor by
-// hand, here or on the computer it is on. Under the home folder it reads
-// ~/… (no user name on screen; a shell and Finder's Go to Folder take it).
-func (a *App) workFolderLine(c *ui.Context, task *store.Task) {
-	t := a.T
-	path := workFolder(task.Place())
-	if path == "" {
-		return
-	}
-	shown := tildePath(path)
-	uiText(c.Key("workfolder"), shown).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).
-		Selectable().MinWidth(0).Label(a.L.T("task.folder.about", shown))
-}

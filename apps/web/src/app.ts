@@ -7,7 +7,7 @@ import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -377,6 +377,8 @@ class AppState {
   peersAsked = false;
   /** What the partner thinks with right now (D150), and the computer Ducter runs on. */
   brainNow?: BrainNow;
+  /** D536: with more than one partner, what each one's own 想事情用 picker may offer. */
+  brainOptions?: BrainOption[];
   homeName?: string;
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
@@ -1034,6 +1036,7 @@ class AppState {
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
     if (f.bridge?.state !== "elsewhere" && !(f.bridge?.state === "connected" && f.bridge.others?.length)) this.bridgeHere = false;
     this.brainNow = f.brainNow;
+    this.brainOptions = f.brainOptions;
     if (f.settings.name && this.showsDefault()) this.S.personaName = f.settings.name; // D309: the default's name
     // D329: an Undo Mem didn't take: said quietly on that line until the next settings frame.
     this.undoFailed = f.undid && !f.undid.ok ? f.undid.seq : undefined;
@@ -1129,6 +1132,10 @@ class AppState {
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
   /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
   openPast?: (q?: string, tab?: "past" | "made" | "ongoing") => void;
+  /** D535: set by keep.tsx: On hand was left, its Keep's page closes. */
+  leftOnHand?: () => void;
+  /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
+  upInPlace?: () => boolean;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;
   onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
@@ -2060,7 +2067,10 @@ class AppState {
 
   /** D517: the person's one count's items (onhand.tsx needsYouItems, set when On hand's module loads):
    *  every "needs you" number reads them, and On hand draws each under 等你. */
-  needsItems?: () => { partner: string }[];
+  needsItems?: () => { partner: string; key: string }[];
+
+  /** D535: opens the next item of a needs-you count where it lives (onhand.tsx openDoor). */
+  openDoor?: (partner?: string) => boolean;
 
   /** D517: the person's one count, or one partner's part of it. */
   needsCount(partner?: string): number {
@@ -2180,7 +2190,7 @@ class AppState {
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string }) {
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string; /** D536: null: the same as the default partner's. */ brain?: Brain | null }) {
     if (id === DEFAULT_PARTNER && patch.name) {
       this.setSettings({ name: patch.name });
       const { name: _n, ...rest } = patch;
@@ -2189,7 +2199,15 @@ class AppState {
     }
     const cid = `ps-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "set" };
-    if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    const { brain, ...words } = patch;
+    if (this.partners)
+      this.partners = this.partners.map((p) => {
+        if (p.id !== id) return p;
+        const next = { ...p, ...words };
+        if (brain === null) delete next.brain;
+        else if (brain) next.brain = brain;
+        return next;
+      });
     this.send({ t: "partner_set", id, ...patch, clientId: cid });
     this.changed();
   }
@@ -2836,6 +2854,9 @@ class AppState {
   }
 
   applyRoute(r: Route) {
+    // D535: the drill-ins are true to the place shown: once On hand is left, a Keep's page open
+    // there closes, so On hand opens on its overview next time (a deep link opens the page straight).
+    if (r.name !== "onhand") this.leftOnHand?.();
     this.route = r;
     if (r.name !== "conv") this.markRead();
     if (r.name === "task") this.history(r.id);
@@ -3664,7 +3685,7 @@ class AppState {
 
   /** The counts line, and where it leads (D270): link is false while it says connecting or
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
-  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
+  summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number; needs?: string } {
     const L = this.L;
     // D532: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
     const ls = this.link();
@@ -3695,7 +3716,7 @@ class AppState {
     const done = doneTodayOf(b.lanes[LANE.done]!);
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) add(4, L.t("header.done", done));
-    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0 };
+    return { words: parts.length ? spoken(L, ...parts) : L.t("header.summary.none"), parts, link: true, filter: kinds.length === 1 ? kinds[0]! : 0, ...(needs ? { needs: L.t("header.needs", needs) } : {}) };
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

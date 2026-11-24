@@ -375,6 +375,7 @@ type App struct {
 	planNotes  map[string]map[string]string // D385: a plan card's 给这个的话…, by decision then part
 	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
 	planJump   int64                        // D385: 看方案: the plan card's seq to find in the conversation
+	door       doorState                    // D535: the last item a needs-you count opened, and the one being found
 	draftJump  string                       // D403: 看草稿: the find to find in the conversation
 	rv         reviewState                  // D385: 一起过目 / Review together's sheet
 	pins       pinsState                    // D381: 置顶 / Pinned's sheet (pins.go)
@@ -619,6 +620,7 @@ func (a *App) View(c *ui.Context) {
 	a.drainActionResults(c)
 	a.watchStopAfter() // D161: 做完再停 lands wherever the window is
 	a.shortcuts(c)
+	a.settleNav() // D535: a Keep's page lives only while On hand is shown
 	a.titleTick(c)
 	a.sayInstalled(c)
 	a.toastAt = toastPlace{} // the place says again where its toasts go
@@ -770,7 +772,13 @@ func (a *App) Up() {
 			}
 		}
 		a.Route = RouteOnHand
-	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
+	case RouteOnHand:
+		if a.oh.keep.open != "" {
+			a.closeKeep() // D535: a Keep's page goes up to On hand's overview first
+			return
+		}
+		a.Route = RouteConversation
+	case RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
 	case RoutePast:
 		a.pastBack()

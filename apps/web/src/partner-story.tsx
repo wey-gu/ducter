@@ -94,7 +94,9 @@ export function ThinksSection() {
   const s = A.settings;
   const [choosing, setChoosing] = useState(false);
   if (!s) return null;
-  const title = t("loadout.brain.title");
+  // D536: with more than one partner this is the default every partner without its own follows.
+  const many = (A.partners?.length ?? 0) > 1;
+  const title = many ? t("loadout.brain.title.default") : t("loadout.brain.title");
   if (noBrain())
     return (
       <section class="set">
@@ -137,6 +139,7 @@ export function ThinksSection() {
   return (
     <section class="set">
       <h3>{title}</h3>
+      {many && <p class="g-note">{t("loadout.brain.default.note", A.defaultName())}</p>}
       <Group label={title}>
         <GHead tile={<AgentTile harness={b.harness} />} name={harnessName(b.harness)} line={lines.join("\n")}>
           {choosing ? (
@@ -161,6 +164,20 @@ export function ThinksSection() {
             )}
           </GRow>
         )}
+        {/* D536: how hard it thinks, where the model names its levels (its own default first). */}
+        {!choosing && model?.efforts?.length ? (
+          <GRow title={t("newtask.effort")}>
+            <Select
+              label={t("newtask.effort")}
+              value={b.effort && model.efforts.includes(b.effort) && (b.model ?? model.id) === model.id ? b.effort : ""}
+              options={[{ v: "", label: t("newtask.effort.default") }, ...model.efforts.map((e) => ({ v: e, label: t(`effort.${e}`) }))]}
+              onPick={(e) => {
+                A.setSettings({ brain: { harness: b.harness, model: model.id, ...(e ? { effort: e } : {}) } });
+                say("brain", t("said.effort", (e ? t(`effort.${e}`) : t("newtask.effort.default")).toLocaleLowerCase()));
+              }}
+            />
+          </GRow>
+        ) : null}
         {(others.length > 0 || models.length > 1) && <GFoot note={t("loadout.brain.keep")} />}
       </Group>
       <Said k="brain" />
@@ -213,6 +230,9 @@ export function TasksSection() {
             if (h.allowance?.sharedBy && h.allowance.sharedBy > 1) lines.push(t("loadout.acct.shared", h.allowance.sharedBy));
           }
           if (h.harness === b.harness && h.canBePartner) lines.push(t("loadout.acct.thinks"));
+          // D536: the other partners that think with this agent of their own.
+          const own = (A.partners ?? []).filter((p) => p.brain?.harness === h.harness).map((p) => p.name);
+          if (own.length) lines.push(t("partners.thinks.acct", own.join(t("partners.thinks.and"))));
           const on = accounts[h.harness]?.enabled !== false;
           return (
             <GRow key={h.harness} tile={<AgentTile harness={h.harness} />} title={agent} line={lines.join("\n") || undefined}>

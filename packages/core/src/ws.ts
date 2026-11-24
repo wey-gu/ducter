@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
-import { brainNow } from "./brain.ts";
+import { brainNow, brainOptions } from "./brain.ts";
 import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, KeepChange, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
@@ -382,7 +382,11 @@ export function createWsHandler(deps: WsDeps) {
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
     const helpers = deps.helpers?.views() ?? [];
-    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}), ...(helpers.length ? { helpers } : {}) };
+    // D536: with more than one partner, what each one's own 想事情用 picker may offer.
+    const many = (deps.partners?.list().length ?? 1) > 1;
+    const options = many ? brainOptions(home, (h) => deps.models?.peek?.("local", h)) : [];
+    if (many) for (const o of options) if (o.harness !== now.harness) refreshBrainModels(o.harness);
+    return { t: "settings", ...v, brainNow: now, ...(options.length ? { brainOptions: options } : {}),...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}), ...(helpers.length ? { helpers } : {}) };
   };
   /** A fresh settings frame to these subscribers, from a change rather than a frame they sent. */
   const pushSettings = (subs: ServerWebSocket<WsData>[]) => {
@@ -623,8 +627,16 @@ export function createWsHandler(deps: WsDeps) {
         if (s.data.partner && !deps.partners?.has(s.data.partner)) delete s.data.partner;
         send(s, partnersFrame(s));
       }
+      // D536: a second partner made (or the last other removed): Settings' pickers come (or go).
+      const many = (deps.partners?.list().length ?? 1) > 1;
+      if (many !== wasMany && deps.settings) {
+        wasMany = many;
+        const subs = [...sockets].filter((ws) => ws.data.settings);
+        if (subs.length) pushSettings(subs);
+      }
     }, batchMs);
   };
+  let wasMany = (deps.partners?.list().length ?? 1) > 1;
   const offPartners = deps.partners?.onChange(partnersChanged);
 
   const unsubscribe = log.subscribe((e) => {
@@ -949,7 +961,7 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "partner_set": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}) });
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}), ...(f.brain !== undefined ? { brain: f.brain } : {}) });
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_remove": {

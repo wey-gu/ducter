@@ -327,6 +327,117 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 	return n > 0 && fold.Clicked()
 }
 
+// ---------- D530: the opened task's steps ----------
+
+// workHead is a turn's work under one quiet line (D530): the drawn stack
+// (never a spinner: the live step's row or the live line carries it), "12 步，3 条消息" in 13 secondary
+// ink, a small × in the failed ink with how many failed, the chevron, and a
+// hairline on to the column's edge. Hovered, the words darken and nothing
+// moves. It answers a click. The web's WorkHead.
+func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open bool) bool {
+	t := a.T
+	name := words
+	if failed > 0 {
+		name = spoken(a.L, words, a.L.T("work.failed", failed))
+	}
+	row := ui.Row(c.Key("work:" + key)).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(name)
+	hover := row.Hovered()
+	row.Children(func() {
+		ink := t.InkMuted
+		if hover {
+			ink = t.InkSoft
+		}
+		// D530: the head never spins (live or not): open, the live step's row
+		// does; folded, the live line under it does.
+		a.glyph(c, 16, drawStack(ink))
+		uiText(c, words).FontSize(stepSize).FontWeight(500).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+		if failed > 0 {
+			ui.Row(c.Key("failed")).Gap(2).AlignItems(ui.Center).Shrink(0).Tooltip(a.L.T("work.failed", failed)).Children(func() {
+				a.glyph(c, 12, drawCrossSmall(t.Failed.Ink))
+				uiText(c, strconv.Itoa(failed)).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).FontFeatures("tnum").AccessHidden(true)
+			})
+		}
+		a.glyph(c, 12, drawChevron(t.Faint, open))
+		ui.Box(c).Height(1).Grow(1).MinWidth(t.S4).Background(t.LineSoft)
+	})
+	return row.Clicked()
+}
+
+// stepLine is a step's one row (D268, D530): 28 tall, its mark at 16, what
+// it holds, and a 12 chevron in faint ink when it opens; hovered, a soft
+// tint under it that moves nothing (it pads into its own negative margin).
+// It answers a click. The web's .step.
+func (a *App) stepLine(c *ui.Context, label string, expandable, open bool, children func(row ui.Element)) bool {
+	t := a.T
+	row := ui.Row(c.Key("line")).Gap(t.S2).MinHeight(stepRowH).Padding(0, 6).Margin(0, -6).Radius(t.RadiusXS).AlignItems(ui.Center).MinWidth(0).Label(label)
+	if expandable {
+		row.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+		if row.Hovered() {
+			row.Background(t.SurfaceSunken.Mix(t.Bg, 0.4))
+		}
+	}
+	row.Children(func() {
+		children(row)
+		if expandable {
+			ui.Box(c).Size(12, 12).Shrink(0).Draw(drawChevron(t.Faint, open))
+		}
+	})
+	return expandable && row.Clicked()
+}
+
+// stepChip is a step's object in mono on the inline code tint (D530): a
+// command cut at a word's end, a pattern, a service's object; one line,
+// cut with an ellipsis, its whole on hover. Never pressable on its own.
+// The web's .chip.code.
+func (a *App) stepChip(c *ui.Context, text, tip string) {
+	t := a.T
+	if tip == "" {
+		tip = text
+	}
+	ui.Row(c.Key("chip")).Height(stepChipH).Padding(0, 6).Radius(t.RadiusXS).Background(chipGround(t)).AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tip).Children(func() {
+		uiText(c, text).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+	})
+}
+
+// fileChip is a file a step read or edited (D530): its kind's small mark and
+// its name in mono on the inline code tint, its tail on hover; when the
+// path is known it opens the file inside Ducter (D356's viewer), a deeper
+// tint under it on hover. The web's FileChip.
+func (a *App) fileChip(c *ui.Context, key, tail, path, taskID string) {
+	t := a.T
+	name := chipFileName(tail)
+	el := ui.Row(c.Key("file:"+key)).Gap(4).Height(stepChipH).Padding(0, 6, 0, 4).Radius(t.RadiusXS).Background(chipGround(t)).
+		AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tail)
+	if path != "" {
+		el.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("file.open", name))
+		if el.Hovered() {
+			el.Background(t.LineSoft)
+		}
+		if el.Clicked() {
+			a.OpenFileLink(path, taskID)
+		}
+	}
+	el.Children(func() {
+		mark := drawPage
+		if chipFileKind(tail) == "picture" {
+			mark = drawPictureSM
+		}
+		a.glyph(c, 12, mark(t.InkMuted))
+		uiText(c, name).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+	})
+}
+
+// chipGround is a step chip's ground (D530): the inline code tint in the
+// light; in the dark one step above it (Surface), so the chip reads on the
+// page. The web's --chip-ground.
+func chipGround(t *theme.Tokens) ui.Color {
+	if t.Dark {
+		return t.Surface
+	}
+	return t.Sunken
+}
+
 // trayLine is one dense row of a quiet tray (D521, the opened task's 后台 /
 // In the background): a drawn mark (markAbout names it), its words on one
 // line cut with an ellipsis, its facts at the right edge (a state word, a

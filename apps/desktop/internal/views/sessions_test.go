@@ -175,7 +175,7 @@ func TestPaletteKeys(t *testing.T) {
 	if rows[0].kind != palPast || rows[0].item.TaskID != "s_rust_build" {
 		t.Fatalf("first row %#v", rows[0])
 	}
-	if !hasT(tt, "⌘") || !hasT(tt, "⌥") { // the Return key itself is drawn
+	if !hasT(tt, "⌘") { // the Return and Option keys are drawn (D530)
 		t.Errorf("the foot bar's keys: %q", tt.Texts())
 	}
 	tt.Key(ui.Cmd, ui.KeyEnter)

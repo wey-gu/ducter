@@ -348,7 +348,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					ui.Row(c.Key("at-time")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 						uiText(c.Key("l"), a.L.T("keep.edit.at.time")).FontSize(t.SM).TextColor(t.InkSoft).Shrink(0)
 						ui.Box(c.Key("f")).Width(96).Shrink(0).Children(func() {
-							a.lineField(c, "at-time", a.L.T("keep.edit.at.time"), &e.draft2, "08:00", wk.save, cancel)
+							a.editLine(c, "at-time", a.L.T("keep.edit.at.time"), &e.draft2, "08:00", wk.save, cancel)
 						})
 					})
 				}
@@ -372,7 +372,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					a.keepSend(k, "until", protocol.KeepChange{Until: &v}, false)
 				}
 				r.editor = func() {
-					a.lineField(c, "until", a.L.T("keep.rule.until"), &e.draft, a.L.T("keep.edit.until.ph"), r.save, cancel)
+					a.editLine(c, "until", a.L.T("keep.rule.until"), &e.draft, a.L.T("keep.edit.until.ph"), r.save, cancel)
 				}
 				rules = append(rules, r)
 			}
@@ -435,7 +435,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					a.keepSend(k, "limits", protocol.KeepChange{Limits: &v}, false)
 				}
 				r.editor = func() {
-					a.lineField(c, "limits", a.L.T("keep.rule.limits"), &e.draft, a.L.T("keep.edit.limits.ph"), r.save, cancel)
+					a.editLine(c, "limits", a.L.T("keep.rule.limits"), &e.draft, a.L.T("keep.edit.limits.ph"), r.save, cancel)
 				}
 				rules = append(rules, r)
 			}
@@ -499,7 +499,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					a.keepSend(k, "address", protocol.KeepChange{Address: v}, false)
 				}
 				r.editor = func() {
-					a.lineField(c, "address", a.L.T("keep.rule.address"), &e.draft, a.L.T("keep.edit.address.ph"), r.save, cancel)
+					a.editLine(c, "address", a.L.T("keep.rule.address"), &e.draft, a.L.T("keep.edit.address.ph"), r.save, cancel)
 				}
 				rules = append(rules, r)
 			}
@@ -754,4 +754,10 @@ func (a *App) keepEditRound(c *ui.Context, r protocol.KeepRound) {
 			uiText(c.Key(fmt.Sprint("l", j)), keepWords(autospace(l))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 		}
 	})
+}
+
+// editLine is D536's one-line field in an open rule row: it takes the keys
+// at once, Enter saves and Escape cancels.
+func (a *App) editLine(c *ui.Context, key, label string, v *string, placeholder string, save, cancel func()) {
+	a.lineField(c, "edit:"+key, label, v, placeholder, false, nil).AutoFocus().OnTextKey(fieldKeys(save, cancel))
 }

@@ -9,7 +9,7 @@ import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepChan
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { BackRow, Btn, EditRow, LineField, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol } from "./controls.tsx";
+import { Btn, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
@@ -515,12 +515,12 @@ function HowItRuns({ k }: { k: KeepPage }) {
               options={[{ v: "day", label: t("keep.edit.at.day") }, { v: "weekday", label: t("keep.edit.at.weekday") }, ...(k.at && k.at.every !== "day" && k.at.every !== "weekday" ? [{ v: k.at.every, label: wakeLines(k)[0] ?? k.at.every }] : [])]}
               onPick={set("every")}
             />
-            <LineField value={d.time ?? ""} label={t("keep.edit.at.time")} placeholder="08:00" mode="numeric" autoFocus onInput={set("time")} />
+            <Field value={d.time ?? ""} label={t("keep.edit.at.time")} placeholder="08:00" maxLength={5} autoFocus onInput={set("time")} />
           </span>
         ),
     }),
     ...(k.until || k.noEnd
-      ? [row({ field: "until", label: "keep.rule.until", values: [k.until ?? t("keep.until.none")], draft: () => ({ until: k.until ?? "" }), editor: () => <LineField value={d.until ?? ""} label={t("keep.rule.until")} placeholder={t("keep.edit.until.ph")} autoFocus onInput={set("until")} /> })]
+      ? [row({ field: "until", label: "keep.rule.until", values: [k.until ?? t("keep.until.none")], draft: () => ({ until: k.until ?? "" }), editor: () => <Field value={d.until ?? ""} label={t("keep.rule.until")} placeholder={t("keep.edit.until.ph")} autoFocus onInput={set("until")} /> })]
       : []),
     row({
       field: "speaks",
@@ -533,7 +533,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
     ...(helper
       ? [row({ field: "cap", label: "keep.rule.limits", values: [t("keep.cap", k.cap ?? 10)], draft: () => ({ cap: String(k.cap ?? 10) }), editor: () => <NumberField value={d.cap ?? ""} label={t("keep.rule.limits")} unit={t("keep.edit.cap.unit")} autoFocus onInput={set("cap")} /> })]
       : k.limits || ed.has("limits")
-        ? [row({ field: "limits", label: "keep.rule.limits", values: [k.limits ?? t("keep.limits.none")], draft: () => ({ limits: k.limits ?? "" }), editor: () => <LineField value={d.limits ?? ""} label={t("keep.rule.limits")} placeholder={t("keep.edit.limits.ph")} autoFocus onInput={set("limits")} /> })]
+        ? [row({ field: "limits", label: "keep.rule.limits", values: [k.limits ?? t("keep.limits.none")], draft: () => ({ limits: k.limits ?? "" }), editor: () => <Field value={d.limits ?? ""} label={t("keep.rule.limits")} placeholder={t("keep.edit.limits.ph")} autoFocus onInput={set("limits")} /> })]
         : []),
     ...(whereWords.length || canWhere || canWho
       ? [
@@ -562,7 +562,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
         ]
       : []),
     ...(k.address
-      ? [row({ field: "address", label: "keep.rule.address", values: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`), draft: () => ({ address: k.address!.name }), editor: () => <LineField value={d.address ?? ""} label={t("keep.rule.address")} placeholder={t("keep.edit.address.ph")} autoFocus onInput={set("address")} /> })]
+      ? [row({ field: "address", label: "keep.rule.address", values: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`), draft: () => ({ address: k.address!.name }), editor: () => <Field value={d.address ?? ""} label={t("keep.rule.address")} placeholder={t("keep.edit.address.ph")} autoFocus onInput={set("address")} /> })]
       : []),
   ];
   const done = K.done?.id === k.id ? K.done : undefined;
@@ -735,7 +735,7 @@ export function KeepRail() {
   const ks = A.S.onHand?.keeps ?? [];
   return (
     <aside class="kp-rail" aria-label={t("keep.section")}>
-      <BackRow label={t("keep.back")} onClick={closeKeep} />
+      {/* D535: no back link here: the way back is the header's breadcrumb (对话 / 手头的事 / the Keep). */}
       <SectionHead label={t("keep.section")} />
       {ks.map((k) => {
         const facts = keepFacts(k).filter((f) => f.tone === "needs");
@@ -780,7 +780,7 @@ export function KeepPageView({ room }: { room: string }) {
   ];
   return (
     <div class={`kp-page${wide ? " wide" : ""}`}>
-      {!wide && <BackRow label={t("keep.back")} onClick={closeKeep} />}
+      {/* D535: the way back is the header's (‹ 手头的事 beside the conversation and on a phone). */}
       <div class="kp-main">
         <header class="kp-ph">
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />
@@ -865,5 +865,10 @@ export function KeepReceipt({ card }: { card: KeepCard }) {
 }
 
 A.openKeep = openKeep;
+A.upInPlace = () => (K.open ? (closeKeep(), true) : false);
+A.leftOnHand = () => {
+  K.open = "";
+  K.pause = K.stop = false;
+};
 A.onKeepFrame = onKeepFrame;
 A.onKeepEdit = onKeepEdit;

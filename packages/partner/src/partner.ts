@@ -688,7 +688,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D85: what the partner thinks with (Settings.brain), read at each session start (the setting
   // can change between sessions). Only a partner-capable harness is taken from the setting;
   // opts.harness is the eval's seam and may name any. DUCTER_PARTNER_MODEL stays a test override.
-  const partnerRun = (): { harness: HarnessId; model?: string } => {
+  // D536: a partner of the person's own setting (another partner's own, through its view's
+  // settings) runs on it, its effort too; the effort goes only with the model it was set for.
+  const partnerRun = (): { harness: HarnessId; model?: string; effort?: string } => {
     const envH = process.env.DUCTER_PARTNER_HARNESS;
     const fallback: Brain = isHarnessId(envH) && HARNESSES[envH].partner && envH !== "claude-code" ? { harness: envH } : { harness: "claude-code", model: "opus" };
     const set = core.settings?.get().brain;
@@ -698,7 +700,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const harness = opts.harness ?? brain.harness;
     const model =
       opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? (harness === brain.harness ? brain.model : undefined) ?? (harness === "claude-code" ? "opus" : undefined);
-    return { harness, ...(model ? { model } : {}) };
+    const effort = !opts.model && harness === brain.harness && (brain as Brain).effort && model === brain.model ? (brain as Brain).effort : undefined;
+    return { harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
   };
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
   const fsIn = opts.fs ?? realFs;
@@ -820,7 +823,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D205: Bridge turned on or off while a session is live: the next turn starts a fresh one, so
   // its tools (listed only while it is on) are the ones the session sees.
   let liveBridge = !!bridge;
-  const runKey = () => (partnerRun().model === liveModel ? "" : "!") + (!!bridge === liveBridge ? "" : "b");
+  // D536: and the effort it was started with (an effort switch restarts too).
+  let liveEffort: string | undefined;
+  const runKey = () => {
+    const r = partnerRun();
+    return (r.model === liveModel && r.effort === liveEffort ? "" : "!") + (!!bridge === liveBridge ? "" : "b");
+  };
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
   // cut off by a restart is run again with all of its triggers, and what it already did is
@@ -1639,6 +1647,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const s = await runner.harness.start({
       harness: run.harness,
       ...(run.model ? { model: run.model } : {}),
+      ...(run.effort ? { effort: run.effort } : {}),
       cwd,
       systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
@@ -1667,6 +1676,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!resumeSessionId) contextTokens = 0;
     lastPromptHash = promptHash();
     liveModel = run.model;
+    liveEffort = run.effort;
     liveBridge = !!bridge;
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
@@ -1863,7 +1873,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     );
     if (devices) deltas.push(devices);
     // D486: the person's other partners, while there are any (one partner: no line).
-    const partnersLine = renderPartners(core.partnersNow?.());
+    // D536: with what each thinks (its own setting, else the first partner's, the default).
+    const partnersLine = renderPartners(core.partnersNow?.(), partnerRun());
     if (partnersLine) deltas.push(partnersLine);
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
@@ -6146,14 +6157,22 @@ const PARTNER_ABOUT_SHOWN = 80;
  * partners at most, their "looks after" clipped). Facts only: who they are, what each looks after,
  * how many of their own questions wait on the user. Nothing of their conversations, tasks or memory.
  */
-export function renderPartners(now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number }[] } | undefined): string {
+export function renderPartners(
+  now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number; brain?: { harness: string; model?: string; effort?: string } }[] } | undefined,
+  /** D536: what this partner runs on now. */
+  run?: { harness: string; model?: string; effort?: string },
+): string {
   if (!now || now.list.length < 2) return "";
   const me = now.list.find((p) => p.id === now.me);
   const others = now.list.filter((p) => p.id !== now.me);
   if (!me || !others.length) return "";
   const clipAbout = (a: string) => ([...a].length > PARTNER_ABOUT_SHOWN ? [...a].slice(0, PARTNER_ABOUT_SHOWN - 1).join("") + "…" : a);
-  const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
-  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}. The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass.`;
+  // D536: what each thinks with, compact; a partner with none of its own follows the first partner's.
+  const brainWords = (b: { harness: string; model?: string; effort?: string }) => `${isHarnessId(b.harness) ? HARNESSES[b.harness].name : b.harness}${b.model ? ` ${b.model}` : ""}${b.effort ? ` (effort ${b.effort})` : ""}`;
+  const first = now.list[0]!;
+  const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.brain ? `, thinks with ${brainWords(p.brain)}` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
+  const mine = run ? ` You think with ${brainWords(run)}${me.brain ? " (your own setting)" : me.id === first.id ? " (the default the others without their own follow)" : ` (the same as ${first.name}'s)`}.` : "";
+  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}.${mine} The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass; what one thinks with: brain_switch.`;
 }
 
 export function renderPins(pins: readonly PinView[]): string {

@@ -65,5 +65,19 @@
   {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "nmem doctor --json", "description": "Check that Mem answers from this machine"}}, "want": {"kind": "ran", "act": "mem_check", "says": "Check that Mem answers from this machine"}},
   {"harness": "codex", "tool": {"name": "exec_command", "input": {"cmd": "codex plugin add nowledge-mem", "justification": "Install the Mem plugin into Codex."}}, "want": {"kind": "ran", "target": "codex plugin add", "says": "Install the Mem plugin into Codex"}},
   {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'nmem connect --token nmem_ct_8fK2pQx7Lm4vRz9TbW3y'"}}, "want": {"kind": "ran", "act": "mem_connect"}},
-  {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "gh pr checks 9950 --watch"}}, "want": {"kind": "ran", "act": "pr_look"}}
+  {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "gh pr checks 9950 --watch"}}, "want": {"kind": "ran", "act": "pr_look"}},
+  {"harness": "antigravity", "tool": {"name": "mcp_ducter_log_read", "input": {"fromSeq": 0}}, "want": {"kind": "other", "hidden": true}},
+  {"harness": "codex", "tool": {"name": "ducter.log_read", "input": {}}, "want": {"kind": "other", "hidden": true}},
+  {"harness": "antigravity", "tool": {"name": "mcp_github_get_pull_request", "input": {"pull_number": 612}}, "want": {"kind": "other", "target": "get pull request", "via": "github"}},
+  {"harness": "antigravity", "tool": {"name": "read_file", "input": {"Path": "/root/ducter/worktrees/mem/x/apps/desktop/src/search/SearchView.tsx"}}, "want": {"kind": "read", "target": "search/SearchView.tsx"}},
+  {"harness": "antigravity", "tool": {"name": "view_file", "input": {"AbsolutePath": "/root/mem/README.md"}}, "want": {"kind": "read", "target": "mem/README.md"}},
+  {"harness": "antigravity", "tool": {"name": "list_dir", "input": {"DirectoryPath": "/root/mem/apps"}}, "want": {"kind": "read", "act": "list", "target": "mem/apps"}},
+  {"harness": "antigravity", "tool": {"name": "run_command", "input": {"CommandLine": "gh auth status", "Cwd": "/root/mem", "toolSummary": "Check the GitHub CLI is signed in"}}, "want": {"kind": "ran", "target": "gh auth status", "says": "Check the GitHub CLI is signed in"}},
+  {"harness": "antigravity", "tool": {"name": "edit_file", "input": {"Path": "/root/mem/apps/desktop/src/memory/MemoryDetail.tsx"}}, "want": {"kind": "edited", "target": "memory/MemoryDetail.tsx"}},
+  {"harness": "antigravity", "tool": {"name": "write_to_file", "input": {"TargetFile": "/root/mem/notes/walk.md"}}, "want": {"kind": "edited", "target": "notes/walk.md"}},
+  {"harness": "antigravity", "tool": {"name": "grep_search", "input": {"Query": "onEscape", "SearchPath": "/root/mem/apps"}}, "want": {"kind": "searched", "target": "onEscape"}},
+  {"harness": "antigravity", "tool": {"name": "find_by_name", "input": {"Pattern": "*.test.tsx", "SearchDirectory": "/root/mem"}}, "want": {"kind": "searched", "target": "*.test.tsx"}},
+  {"harness": "antigravity", "tool": {"name": "search_web", "input": {"query": "electron esc keydown capture"}}, "want": {"kind": "searched", "act": "web", "target": "electron esc keydown capture"}},
+  {"harness": "antigravity", "tool": {"name": "read_url_content", "input": {"Url": "https://example.org/docs/keys/escape"}}, "want": {"kind": "browsed", "act": "fetch", "target": "example.org/docs/keys"}},
+  {"harness": "antigravity", "tool": {"name": "invoke_subagent", "input": {"Description": "Walk Settings: try every switch", "Prompt": "Open Settings and..."}}, "want": {"kind": "delegated", "target": "Walk Settings: try every switch"}}
 ]

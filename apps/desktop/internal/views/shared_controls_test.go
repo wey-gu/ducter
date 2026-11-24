@@ -34,10 +34,12 @@ var sharedControls = map[string]bool{
 	"sheetFold": true, "extraStep": true,
 	// D518: a step's number in a short numbered sequence
 	"stepNumber": true,
+	// D530: the opened task's steps: the work's head, a step's row, its object chip and its file chip
+	"workHead": true, "stepLine": true, "stepChip": true, "fileChip": true,
 	// D519: the one composer and its send, the section head, the tag, the time column, a menu's opener
 	"composerBox": true, "sendButton": true, "secHead": true, "tag": true, "timeCol": true, "menuOpener": true,
 	// D533: a rule row edited in place, a line of words, a number with its unit
-	"editRow": true, "lineField": true, "numberField": true,
+	"editRow": true, "numberField": true,
 	// D521: a quiet tray's dense row (the opened task's background work)
 	"trayRow": true,
 }

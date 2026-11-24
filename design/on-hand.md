@@ -2,7 +2,7 @@
 
 How On hand lets one person take in 3 or 50 tasks at a glance and step into any of them. Decided
 in D216 (one list), D244 (the rail beside an opened task), D261 (projects as a lens, the strip,
-the folds), D287 (the partner at its head, the work as cards) and D315 (one short line, the strip of what is
+the folds), D535 (every count a door, the overview on arrival, the header the way back; Navigation below), D287 (the partner at its head, the work as cards) and D315 (one short line, the strip of what is
 there, headings with character; the review below), D467 (the board by attention: what stopped needs
 you, today is today, a source is one summary card, no day beside it) and D471 (one ledger, designed on
 the author's real board: the partner's one sentence, then each section one sheet of rows on one grid,
@@ -243,6 +243,10 @@ on hand (the empty state doesn't show over it). Sheets and their Go: `task-sourc
 
 D471: a group draws only the parts whose tasks are on the board (one removed or gone is no row: on
 the author's board it drew a lone order number); with one part left it is that task's own row.
+D535: a hand-over's group (D385) stands by one rule on every client (`handGroupStand` in
+`packages/protocol`, its Go port `HandStand`, one fixture): its plan or review waiting for the person in
+等你 as its card; with tasks on the board, by its most urgent one; with only parts held in line, in 在做,
+each part saying where it waits; with nothing on the board and nothing in line, nowhere.
 
 Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
 section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs
@@ -319,6 +323,40 @@ unknown icon).
   11:39**, D279),
   or, once quiet, **上次有动静是 2 天前**. The right end says where: the project (under All, from
   two groups) and the computer (with two or more). The branch and the agent are in the task.
+
+## Navigation: where things live and how you move (D535)
+
+Three zoom levels, one header shape at each (D262, D270), one way back. The Mac at 1000, 1150 and
+1400 and the web at 1400, 1000 and on a phone follow the same table.
+
+| Level | Where it lives | In | Out | The header says |
+|---|---|---|---|---|
+| **The conversation** | The window's default; with two or more partners the list of them at its left (a phone: the level above it) | ⌘1, 对话 in any breadcrumb, Esc from On hand | the places' marks, a count's door, a task's line | the partner's face and name, then its counts (「n 个等你」 its own door, the rest a link to On hand) |
+| **手头的事 / On hand** | The overview: the partner's line, 等你, 在做, 在等, 看守中, 今天做完; the project column from 1100 (a row of names narrower) | ⌘2, the places' On hand mark, the counts line, a count's door, 手头的事 in a breadcrumb | 对话, Esc, a row or a sheet | 对话 / 手头的事 (Mac and web whole screen); beside the conversation its own name; on a phone ‹ 对话 |
+| **A Keep's page** | In On hand's place; the other Keeps as one list at its left from 1100 (Mac) or at the whole screen (web), under the shared section head, the open one the knob | its sheet on On hand, the rail, a deep link (its card in the conversation, Settings' helper row, ⌘K, a push, `#keep=`) | the breadcrumb's 手头的事, Esc, ‹ 手头的事 | 对话 / 手头的事 / {the Keep} at every width (web beside the conversation and phone: ‹ 手头的事); never a back link inside the page or its column |
+| **An opened task** | Its own page; beside it On hand's rail where there is room (D244) | a row, a card's 打开任务, ⌘O / ⌘K, a door's item opened, a push | 手头的事 or 对话 in the breadcrumb, Esc (back where it was opened from, D244) | 对话 / 手头的事 / {the task} (web beside the conversation: ‹ 手头的事; a phone ‹ 对话) |
+
+**What persists between visits.** On hand always opens on its overview: a Keep's page lives only while
+On hand is shown, and leaving On hand closes it (a deep link opens it straight). The project lens is
+kept per device (D261). Find, the 等你 filter and the selection are let go on Esc and when a count's
+door opens. The conversation keeps its place (D254) and each partner its own. An opened task keeps
+its draft and the rail its lens.
+
+**Every count leads to its items.** The person's one count (D517) is a door wherever it shows: the
+conversation's 「n 个等你」, a partner's pebble in the list (and that partner's row while shown), the
+mini window's count and the line pinned over the composer, **有 n 个等你定 ›**, while something it
+counts is out of view. A tap opens the next item in 等你's order (a stopped line, the partner's own
+questions, another partner's, then the tasks): the partner's own question in the conversation,
+scrolled to with a needs-you wash that deepens once; anything else On hand's overview with the item
+focused, scrolled to the middle, its tint or edge deepening once (Reduce Motion: the colour only).
+The next tap steps on; after the last, the first. The Dock badge and the menu bar's count open the
+window; the menu bar's own list names each item. On hand's head line is a sentence, not a door: 等你
+under it is the list.
+
+**The breadcrumb is the one way back.** Every crumb but the last goes there and is a button; the last
+is the place, in full ink, never a button (D270). Esc goes up exactly one level (a Keep's page to the
+overview, the overview to the conversation, a task to where it came from). No page draws its own
+back link where the header already has one.
 
 ## The opened task
 

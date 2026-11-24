@@ -101,17 +101,7 @@ func fieldKeys(onEnter, onEsc func()) func(k ui.TextKey) bool {
 	}
 }
 
-// lineField is one line of words in a sunken well, in the reading face
-// (a goal, a name, a time).
-func (a *App) lineField(c *ui.Context, key, label string, value *string, placeholder string, onEnter, onEsc func()) {
-	t := a.T
-	ui.TextInput(c.Key("lf:"+key), value).Placeholder(placeholder).Label(label).AutoFocus().
-		Font(t.Body).FontSize(t.MD).TextColor(t.Ink).Padding(t.S2, t.S3).Radius(t.RadiusSM).
-		Background(t.SurfaceSunken).Border(1, t.LineSoft).WidthPercent(100).
-		OnTextKey(fieldKeys(onEnter, onEsc))
-}
-
-// numberField is digits in a short sunken well with their unit after them
+// numberField is digits in D536's one-line field, 88 wide, with their unit after them
 // (45 分钟一轮). It keeps only the digits typed; the caller checks the range
 // and says it under the row.
 func (a *App) numberField(c *ui.Context, key, label string, value *string, unit string, onEnter, onEsc func()) {
@@ -120,9 +110,8 @@ func (a *App) numberField(c *ui.Context, key, label string, value *string, unit 
 		*value = d
 	}
 	ui.Row(c.Key("nf:" + key)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		ui.TextInput(c.Key("in"), value).Label(spoken(a.L, label, unit)).AutoFocus().
-			Font(t.Body).FontSize(t.MD).TextColor(t.Ink).Padding(t.S2, t.S3).Radius(t.RadiusSM).
-			Background(t.SurfaceSunken).Border(1, t.LineSoft).Width(88).Shrink(0).
+		// D536's one-line field, 88 wide for a number.
+		a.lineField(c, "nf-in:"+key, spoken(a.L, label, unit), value, "", false, nil).Width(88).Shrink(0).AutoFocus().
 			OnTextKey(fieldKeys(onEnter, onEsc))
 		uiText(c.Key("unit"), unit).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 	})

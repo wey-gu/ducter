@@ -196,6 +196,9 @@ export interface PreRead extends PreReadSummary {
   title: string;
   url?: string;
   notes: PreReadNote[];
+  /** D540: the review's own words (its conclusion, what was checked), in the PR's language: with no
+   *  notes it is the whole review, so a PR with nothing to change still gets one. */
+  body?: string;
   /** One line in the person's language: what the PR does. */
   gist?: string;
   /** D394: read by a task of the person's (a review that runs every so often), at this head. */

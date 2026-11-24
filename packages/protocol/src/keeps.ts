@@ -71,6 +71,9 @@ export interface KeepBody {
   end?: { at: string; said: "until" | "none" | "failed" };
   /** Carried over on start from `made`'s older record (D511's migration), never changing that record. */
   migratedAt?: string;
+  /** D540: a one-off ask for its next round only, in the person's words ("这一轮先审 #551"): the
+   *  round's wake carries it first, then it is gone. Never its goal (`until`). */
+  next?: { text: string; at: string };
 }
 
 /** One thing a Keep holds now: a task at work on it, with the PR it owns and where that PR stands. */
@@ -247,6 +250,8 @@ export interface KeepChange {
   at?: Extract<RoutineTrigger, { kind: "time" }>;
   /** A gesture: pause (until a time), resume, look now, stop. */
   act?: KeepAction;
+  /** D540: a one-off ask for its next round only (a task in rounds); empty clears it. */
+  next?: string;
 }
 
 export interface KeepsApi {

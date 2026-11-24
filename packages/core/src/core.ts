@@ -73,7 +73,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { createKeeps, keepEndAsk, keepRoundAsk, registerKeepTools, type Keeps } from "./keeps.ts";
+import { createKeeps, keepEndAsk, keepRoundAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -155,6 +155,25 @@ import { agentSignature, widenAgentPath } from "./agent-path.ts";
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
  *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
+/**
+ * D540: model-visible: what every round of a review task hears when the person said reviews go
+ * without asking: the fact (where, their words) and the one means (review_report posts at once).
+ */
+const REVIEW_GO = {
+  zh: {
+    line: "对方说过 PR 评审不用问、直接发（{where}，原话：「{said}」）。写好的评审都用 review_report 交上来，Ducter 当场发到 GitHub：挑不出问题的，也把结论写在 body 里发出去；一个 PR 这一轮没有新提交但还没发过评审，也照样交（changed 填 true）。不要自己跑 gh pr review，不要把草稿写进报告等别人发，也不要留到下一轮。",
+    where: "{orgs} 下的 PR",
+    any: "所有 PR",
+    sep: "、",
+  },
+  en: {
+    line: 'The person said PR reviews go without asking ({where}; their words: "{said}"). Send every finished review through review_report and Ducter posts it to GitHub at once: when you find nothing to change, the body with your conclusion is the review and goes too; a PR with no new commit this round but no review posted yet goes the same way (changed: true). Never run gh pr review yourself, never leave a draft in a report for someone else to post, never hold it for the next round.',
+    where: "PRs in {orgs}",
+    any: "every PR",
+    sep: ", ",
+  },
+};
+
 /** D394: what a review task's round says (review_report). */
 const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
 const REVIEW_ROUND_SCHEMA = {
@@ -170,9 +189,10 @@ const REVIEW_ROUND_SCHEMA = {
           title: { type: "string", description: "The PR's title" },
           head: { type: "string", description: "The head commit you looked at (sha)" },
           ci: { type: "string", enum: ["passing", "failing", "pending", "none"], description: "Its checks at that head" },
-          changed: { type: "boolean", description: "true: its head moved and you reviewed it again this round" },
+          changed: { type: "boolean", description: "true: you reviewed it this round (its head moved, it is new, the person asked, or no review of yours is on it at this head yet)" },
           gist: { type: "string", description: "One line in the person's language: what the PR does" },
           mention: { type: "boolean", description: "true when it only mentions or assigns the person and didn't ask for their review" },
+          body: { type: "string", description: "Only when changed: the review's own words in the PR's language: your conclusion and what you checked, a few lines. With no notes it is the whole review (nothing to change still gets one)" },
           notes: {
             type: "array",
             description: "Only when changed: your drafted review comments, at most 6",
@@ -664,6 +684,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D528: the person's zone (theirs from Settings or their device), not the server's clock.
     zone: () => zone(),
     lang: () => langNow(),
+    // D540: a round's wake carries the person's one-off ask for it (keep_change next_round) and,
+    // for a review task, the standing permission to post reviews with its means.
+    roundNote: (taskId, l) => {
+      const ask = keepsRef?.takeNext(taskId);
+      const lines = [ask ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l)].filter(Boolean);
+      return lines.length ? lines.join("\n\n") : undefined;
+    },
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
       nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
@@ -946,6 +973,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   let taskSourcesRef: TaskSources | undefined;
   // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
   let isReview: (taskId: string) => boolean = () => false;
+  /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
+  function reviewGoLine(taskId: string, l: LangTag): string {
+    if (!isReview(taskId)) return "";
+    const s = standing.list().find((x) => x.action === "pr_review" && !x.taskId);
+    if (!s) return "";
+    const w = words(REVIEW_GO, l);
+    const where = s.orgs?.length ? fill(w.where, { orgs: s.orgs.join(w.sep) }) : w.any;
+    return fill(w.line, { where, said: s.text.slice(0, 200) });
+  }
   const boards = createBoards({
     log,
     apps,
@@ -1543,11 +1579,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.zone = () => zone();
   // D539: the keys a task holds, put in its session on the computer it runs on.
   api.keyCopy = { refsFor: (id) => keyCopy.refsFor(id), withKeys: (spec) => keyCopy.withKeys(spec) };
-  api.goesFor = (taskId) =>
-    TASK_STEP_ACTIONS.flatMap((a) => {
+  api.goesFor = (taskId) => [
+    ...TASK_STEP_ACTIONS.flatMap((a) => {
       const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
       return s ? [s] : [];
-    });
+    }),
+    // D540: a review task's brief says the person let reviews go without asking, and how they go.
+    ...(isReview(taskId) ? standing.list().filter((s) => s.action === "pr_review" && !s.taskId).slice(0, 1) : []),
+  ];
   api.askOf = (decisionId) => {
     const d = decisions.get(decisionId);
     if (!d?.taskId) return undefined;
@@ -1680,6 +1719,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     zone: () => opts.work?.defaultZone,
     clock,
     onChange: () => (onHandChanged(), wsUp && ws.ongoingChanged()),
+    // D540: a one-off ask while a round is under way reaches it now.
+    tell: (taskId, text) => (runner ? runner.send(taskId, text, undefined, "partner").then(() => true) : Promise.resolve(false)),
   }));
   let keepSync = false;
   const syncKeeps = () => {
@@ -2487,7 +2528,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round from your final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. If a later look in the same round finds more, call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, from your round's final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it this round), and for each one reviewed its review: body (your conclusion, in the PR's own language; alone when there is nothing to change) and drafted comments (kind problem or suggestion, path, line, text). Ducter posts at once what the person said may go without asking, and puts the rest on one card at once; never post reviews yourself and never leave a draft in a report. Whenever a later look finds more (or the person asks about one PR between rounds), call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");

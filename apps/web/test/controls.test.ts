@@ -24,7 +24,7 @@ describe("only shared controls (D161)", () => {
   test("controls.tsx is the registry: each control is exported once", () => {
     const reg = src("controls.tsx");
     const names = [...reg.matchAll(/^export function (\w+)/gm)].map((m) => m[1]);
-    expect(names).toEqual(["Btn", "NavBtn", "PlaceSeg", "LinkBtn", "TextLink", "Chev", "NeedsDoor", "CountDoor", "CountPebble", "AddRow", "Toggle", "How", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "Fold", "StepNumber", "StepRow", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow", "Facts", "OpenRow", "Switch", "TextBox", "Field", "CrumbStep", "OptionRow", "SectionHead", "Tag", "TimeCol", "IconBtn", "TrayRow", "Notice", "WorkHead", "CodeChip", "FileChip", "KeyHint"]);
+    expect(names).toEqual(["Btn", "NavBtn", "PlaceSeg", "LinkBtn", "TextLink", "Chev", "NeedsDoor", "CountDoor", "CountPebble", "AddRow", "Toggle", "How", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "Fold", "StepNumber", "StepRow", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow", "Facts", "OpenRow", "Switch", "TextBox", "Field", "CrumbStep", "OptionRow", "SectionHead", "Tag", "TimeCol", "IconBtn", "TrayRow", "Notice", "WorkHead", "CodeChip", "FileChip", "KeyHint", "FactPill"]);
     // design/ui.md lists the same set.
     const ui = readFileSync(new URL("../../../design/ui.md", import.meta.url), "utf8");
     for (const n of names) expect(ui).toContain(`\`${n}\``);

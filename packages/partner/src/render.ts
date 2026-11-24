@@ -861,7 +861,7 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     const g = ctx?.taskGroup?.(c.taskId);
     const group = g ? ` · group "${clip(g.name, 40)}" part ${g.part} of ${g.of}${g.held.length ? `; held in line: ${g.held.map((h) => `"${clip(h, 60)}"`).join(", ")}` : ""}` : "";
     // D511: a task in rounds is something Ducter looks after: its rhythm, a pause or a stop go through keep_change.
-    const kept = ctx?.keptBy?.(c.taskId) && ACTIVE.has(c.attention) ? " · Ducter looks after it in rounds (keep_change, never task_send, changes or stops it)" : "";
+    const kept = ctx?.keptBy?.(c.taskId) && ACTIVE.has(c.attention) ? " · Ducter looks after it in rounds (keep_change, never task_send, changes it, stops it or gives its next round an ask: next_round)" : "";
     return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${group}${kept}${where}${last}`;
   };
   const out: string[] = [];

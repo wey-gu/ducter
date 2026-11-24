@@ -530,6 +530,40 @@ func (a *App) trayRow(c *ui.Context, r trayLine) bool {
 	return clicked
 }
 
+// pillFact is one fact on a factPill: the lead in ink, one in the needs ink,
+// the rest muted; each its own element (D291).
+type pillFact struct {
+	text  string
+	lead  bool
+	needs bool
+}
+
+// factPill is a slim clay pill on the reading measure (D544: a task in
+// rounds' line under the bar): a 24 mark, then its facts, the whole one
+// action. It reports a click.
+func (a *App) factPill(c *ui.Context, key, label string, mark func(), facts []pillFact) bool {
+	t := a.T
+	row := ui.Row(c.Key(key)).Grow(1).MaxWidth(readMeasure).MinHeight(36).Gap(t.S3).Padding(4, 14, 4, 8).AlignItems(ui.Center).
+		Radius(999).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Border(1, t.LineSoft).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
+	if row.Hovered() {
+		row.Background(t.SurfaceRaised)
+	}
+	row.Children(func() {
+		ui.Box(c.Key("mk")).Size(24, 24).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(mark)
+		for i, f := range facts {
+			tx := uiText(c.Key(i), f.text).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+			switch {
+			case f.lead:
+				tx.FontWeight(700).TextColor(t.Ink)
+			case f.needs:
+				tx.FontWeight(600).TextColor(t.NeedsYou.Ink)
+			}
+		}
+	})
+	return row.Clicked()
+}
+
 // othersStack (shared, D545) is the way back to the list of partners while
 // it is hidden: the
 // other partners' own figures, a small stack in their clays, with the

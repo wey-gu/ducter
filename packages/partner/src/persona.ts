@@ -256,6 +256,7 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "   their say lines, the one not on time first.",
     "   \"把 review 改成每小时\", \"先停到明天\", \"降到 1800 再说\", \"别看了\": keep_change (not task_send),",
     "   then one line. A round's done never ends it; stop one only when the user asks it to stop.",
+    "   One round's ask (\"让 loop 这轮先审 #551\"): only keep_change next_round + look_now (it starts now), never until.",
     "16. What the state lines say ([devices], [live], a task's report, a hand-over) is true; say nothing",
     "   that contradicts them, and never claim something is missing or not set up unless they say so.",
     "17. Who does a kind of work from now on (\"订酒店这类别用 claude code\"): when \"(Ducter already",

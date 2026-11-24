@@ -110,6 +110,23 @@ func (a *App) turnTook(task *store.Task, tu *Turn) time.Duration {
 // turn is what someone said to the agent, then its answer in order.
 func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool) {
 	t := a.T
+	// D544: a round that changed nothing, opened by its own wake: its run's one row.
+	if p := tu.Prompt; p != nil && p.K == "wake" && !live {
+		if q, ok := quietOf(task)[p.Seq]; ok {
+			if q.first {
+				a.quietFold(c, task, q)
+			}
+			if !quietOpen[quietKey(task, q.id)] {
+				return
+			}
+		}
+	}
+	// D544: and the quiet rounds inside one turn (no wake of their own), folded.
+	if !live {
+		tc := *tu
+		tc.Body = foldQuietBody(task, tu.Body)
+		tu = &tc
+	}
 	if p := tu.Prompt; p != nil {
 		switch p.K {
 		case "brief":
@@ -172,6 +189,12 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		b := &tu.Body[i]
 		if b.K == "note" && b.Say == "retry" {
 			continue // the working line says it while it is the latest
+		}
+		if b.K == "qfold" {
+			if q, ok := quietOf(task)[b.Seq]; ok {
+				a.quietFold(c, task, q)
+			}
+			continue
 		}
 		ui.Column(c.Key(fmt.Sprintf("b:%s:%d", b.K, b.Seq))).Gap(t.S1).MinWidth(0).Children(func() { a.block(c, task, b) })
 	}

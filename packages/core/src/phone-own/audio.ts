@@ -7,6 +7,7 @@
 // written to disk: no recording is ever kept (D189 (9)). Tests use `loopbackBridge`.
 import { existsSync } from "node:fs";
 import { pickTag, type LangTag } from "@ducter/protocol";
+import { spawnNow } from "@ducter/protocol/src/which.ts";
 
 export interface AudioBridge {
   /** Starts listening: `onPcm` gets the line's audio as 16-bit mono at `inRate`. */
@@ -86,7 +87,7 @@ export function parseMacDevices(inputs: string, outputs: string): { inputs: stri
 }
 
 async function run(argv: string[], ms = 8000): Promise<{ out: string; err: string; code: number }> {
-  const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  const p = spawnNow(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
   const t = setTimeout(() => p.kill(), ms);
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   clearTimeout(t);

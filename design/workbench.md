@@ -91,7 +91,9 @@ task's own actions, each 44 points (D484): **分享 / Share**, the workbench whe
 **查看 PR #{n}** (a PR the agent opened), **打开工作台**, **换谁来做** and **取消任务**; the places are one
 Back away. (The branch mark alone read as a share glyph, and its sheet, a bare `.sheet` without
 research/123's frame, drew as a sliver in the header.) The rows, each only when it has something: the computer; the folder (`~/…`, selectable, Copy path; on the Mac, Open in the
-editor used last, D198); the branch and the base it came off; the changes against the base
+editor used last, D198); the branch and the base it came off (a new task's branch is ASCII words
+the cheapest model wrote, `ducter/11028-embedding-one-model`, D522; the header still names the task
+by its title); the changes against the base
 (opening the workbench's Changes; the workbench's live list when loaded, else the card's count);
 Open draft PR / Merge into {base} under the result card's rule, or what became of them; and who
 has worked on it when that changed (each body, D89). No task-to-task lineage: Ducter has none yet.

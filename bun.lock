@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "@ducter/cli",
-      "version": "0.1.39",
+      "version": "0.1.0",
       "bin": {
         "ducter": "src/main.ts",
       },

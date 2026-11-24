@@ -22202,7 +22202,6 @@ html[data-text-size="large"] .brand-mark > svg {
   line-height: 1.35;
   color: var(--ink);
   overflow-wrap: break-word;
-  text-wrap: balance;
 }
 .kp-rail .l {
   font-size: var(--xs);

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -32,6 +33,26 @@ func TestMain(m *testing.M) {
 		mu.Lock()
 		missing[fmt.Sprintf("%s (prints %d, given %d)", key, verbs, args)] = true
 		mu.Unlock()
+	}
+	// D519: a template read with no arguments is fine; drawn, it fails.
+	templates := map[string]string{}
+	i18n.OnTemplate = func(key, template string) {
+		mu.Lock()
+		templates[template] = key
+		mu.Unlock()
+	}
+	onDrawn = func(text string) {
+		if !strings.Contains(text, "%") {
+			return
+		}
+		text = unjoin(text)
+		mu.Lock()
+		defer mu.Unlock()
+		for tpl, key := range templates {
+			if strings.Contains(text, tpl) {
+				missing[key+" (drawn with its placeholders unfilled)"] = true
+			}
+		}
 	}
 	code := m.Run()
 	if len(missing) > 0 {

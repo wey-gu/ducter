@@ -222,7 +222,7 @@ func (a *App) takeHand() {
 		} else {
 			h.said = r.Error
 			if h.said == "" {
-				h.said = a.L.T("newtask.err.failed")
+				h.said = a.L.T("newtask.err.failed.bare")
 			}
 		}
 	}

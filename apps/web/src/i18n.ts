@@ -124,6 +124,7 @@ const zh: Record<string, string> = {
   "newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。",
   "newtask.err.offline": "那台设备现在连不上。",
   "newtask.err.failed": "没能开始：%s",
+  "newtask.err.failed.bare": "没能开始",
   "newtask.err.unknown": "没能开始，再试一次？",
   "nav.onhand": "手头的事",
   // D262: the shell's way to the other places.
@@ -1143,6 +1144,7 @@ const en: Record<string, string> = {
   "newtask.err.ducter_data": "That is where Ducter keeps its own data, so no task works there. Pick another folder, or No folder.",
   "newtask.err.offline": "That device can't be reached right now.",
   "newtask.err.failed": "It didn't start: %s",
+  "newtask.err.failed.bare": "It didn't start",
   "newtask.err.unknown": "It didn't start. Try again?",
   "nav.onhand": "On hand",
   // D262: the shell's way to the other places.

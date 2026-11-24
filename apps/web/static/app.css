@@ -29,6 +29,8 @@
   --sunken: #f7ebda;
   --surface-sunken: #f3e6d3; /* sunken-2 */
   --surface-raised: #fffbf0;
+  /* D519: a list's time column (TimeCol): "14:28", 昨天 or "11 月 22 日" on one line. */
+  --time-col: 76px;
   --ink: #2b2118;
   --ink-soft: #4a3d30;
   --ink-muted: #75654f;
@@ -1754,11 +1756,30 @@ a {
 .reply textarea::placeholder {
   color: var(--ink-muted);
 }
+/* D519: the composer's send (composer.tsx SendButton): empty rests at 45%, not pressable; sending
+   stays in full color, pressed into its ledge until the home has the words; the words wait greyed. */
 .send {
   flex-shrink: 0;
 }
 .send:disabled {
   opacity: 0.45;
+}
+.send.sending:disabled {
+  opacity: 1;
+  transform: translateY(var(--lh));
+  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 0 0 var(--seam), 0 0 0 var(--ledge-c), var(--drop-pressed);
+  cursor: progress;
+}
+.send.sending svg {
+  opacity: 0.55; /* the arrow waits, muted (reduced motion keeps this, without the press) */
+}
+@media (prefers-reduced-motion: reduce) {
+  .send.sending:disabled {
+    transform: none;
+  }
+}
+.composer.is-sending textarea {
+  color: var(--ink-muted);
 }
 
 /* ---------- empty conversation ---------- */
@@ -6844,8 +6865,8 @@ dl.call-summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;
 dl.call-summary > div { display: contents; }
 dl.call-summary dt { color: var(--ink-muted); font-weight: 700; white-space: nowrap; }
 dl.call-summary dd { margin: 0; }
-.call-reply { display: flex; gap: 8px; align-items: center; }
-.call-reply input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink); font: inherit; font-size: var(--sm); }
+/* D519: a call's reply is the conversation's composer (composer.tsx). */
+.call-reply .composer { margin-bottom: 0; }
 .call-card.question .q { font-size: var(--lg); font-family: var(--head); font-weight: 800; line-height: 1.3; }
 .call-q-head { display: flex; align-items: center; gap: 8px; font-size: var(--sm); font-weight: 800; color: var(--needs-ink); }
 .call-q-head .sub { color: var(--ink-muted); font-weight: 700; }
@@ -17424,23 +17445,9 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .app-stage > .past-none { margin: auto; }
 .app-frame { flex: 1; width: 100%; height: 100%; border: 0; background: var(--bg); display: block; }
-.app-foot { display: flex; gap: 10px; align-items: center; margin: 12px 28px 0; }
-.app-ask {
-  flex: 1;
-  min-width: 0;
-  height: max(44px, 2.75rem);
-  box-sizing: border-box;
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--r-btn);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--md);
-  box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line);
-}
-.app-ask::placeholder { color: var(--ink-muted); }
-.app-ask:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* D519: the ask is the conversation's composer (composer.tsx). */
+.app-foot { margin: 12px 28px 0; }
+.app-foot .composer { margin-bottom: 0; }
 .app-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 30px 16px; font-size: var(--xs); color: var(--ink-muted); }
 @media (max-width: 640px) {
   .app-sheet { width: 100vw; }
@@ -21809,20 +21816,6 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-side {
   min-width: 0;
 }
-.kp-back {
-  align-self: flex-start;
-  display: inline-flex;
-  gap: 4px;
-  margin: 0 0 12px 4px;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-muted);
-  font: inherit;
-  font-size: var(--sm);
-  font-weight: 600;
-  cursor: pointer;
-}
 .kp-ph {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
@@ -21843,6 +21836,7 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 800;
   line-height: 1.2;
   color: var(--ink);
+  text-wrap: balance;
 }
 .kp-life {
   display: flex;
@@ -21850,7 +21844,8 @@ html[data-text-size="large"] .brand-mark > svg {
   gap: 6px 8px;
   margin: 0;
 }
-.kp-life .chip {
+/* D519: shared pieces (controls.tsx Tag, SectionHead, TimeCol), from tokens only. */
+.tag {
   padding: 3px 10px;
   border-radius: var(--pill);
   background: var(--sunken);
@@ -21858,15 +21853,38 @@ html[data-text-size="large"] .brand-mark > svg {
   font-size: var(--sm);
   white-space: nowrap;
 }
-.kp-life .chip.on {
+.tag.on {
   background: var(--done-surface);
   color: var(--done-ink);
   font-weight: 700;
 }
-.kp-life .chip.needs {
+.tag.needs {
   background: var(--needs-surface);
   color: var(--needs-ink);
   font-weight: 700;
+}
+.sec-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  margin: 18px 0 4px;
+  padding: 0 4px;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.sec-head .end {
+  margin-left: auto;
+}
+.time-col {
+  flex: none;
+  width: var(--time-col);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 .kp-said {
   display: flex;
@@ -21884,15 +21902,8 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 700;
   color: var(--ink-muted);
 }
-.kp-h2 {
-  margin: 26px 0 8px 4px;
-  font-size: var(--xs);
-  font-weight: 700;
-  color: var(--ink-muted);
-  letter-spacing: 0.04em;
-}
-.kp-side > .kp-h2:first-child {
-  margin-top: 4px;
+.kp-side > .sec-head:first-child {
+  margin-top: 0;
 }
 .kp-card {
   border-radius: 16px;
@@ -21929,6 +21940,7 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 600;
   line-height: 1.4;
   color: var(--ink);
+  text-wrap: pretty;
 }
 .kp-item .t b {
   font-weight: 700;
@@ -21967,40 +21979,53 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-checks i.f {
   background: var(--failed-dot);
 }
+/* D519: a round: the time column, what woke it and what happened, how it ended with 看细节 under it. */
 .kp-rd {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: var(--time-col) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: baseline;
-  width: 100%;
-  padding: 11px 16px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
+  padding: 11px 10px 11px 16px;
   font-size: var(--sm);
-  text-align: left;
-  cursor: pointer;
-}
-.kp-rd:disabled {
-  cursor: default;
 }
 .kp-rd + .kp-rd,
-.kp-rounds .kp-quiet {
+.kp-rd + .kp-quiet,
+.kp-quiet + .kp-rd {
   border-top: 1px solid var(--line-soft);
-}
-.kp-rd:not(:disabled):hover {
-  background: var(--surface-raised);
-}
-.kp-rd .tm {
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
 }
 .kp-rd .body {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+.kp-rd .end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.kp-rd .end .btn {
+  margin-top: -4px;
+}
+.kp-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+}
+.kp-detail .rep {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.kp-detail .btn {
+  margin-left: -10px;
 }
 .kp-rd .why {
   font-size: var(--xs);
@@ -22045,28 +22070,16 @@ html[data-text-size="large"] .brand-mark > svg {
   border-radius: 50%;
   background: var(--line-2);
 }
+/* D519: the talk box is the conversation's composer (`.composer`), set under the rounds. */
 .kp-talk {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-top: 22px;
-  padding: 8px 8px 8px 18px;
-  border-radius: var(--r-xl);
-  background: var(--surface);
-  box-shadow: var(--base);
 }
-.kp-talk input {
-  flex: 1;
-  min-width: 0;
-  min-height: 40px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--md);
-  outline: none;
+.kp-talk .composer {
+  margin-bottom: 0;
 }
-.kp-talk input::placeholder {
+.kp-sent {
+  margin: 8px 0 0 18px;
+  font-size: var(--sm);
   color: var(--ink-muted);
 }
 .kp-rules {
@@ -22106,30 +22119,9 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-stop .btn.stop {
   color: var(--failed-ink);
 }
+/* D519: Pause's choices are the one clay menu (menu.tsx, D421); only its place here. */
 .kp-menu {
-  display: flex;
-  flex-direction: column;
   margin-top: 10px;
-  padding: 6px;
-  border-radius: var(--r-md);
-  background: var(--sunken);
-}
-.kp-menu button {
-  min-height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--sm);
-  text-align: left;
-  cursor: pointer;
-}
-.kp-menu button:hover,
-.kp-menu button:focus-visible {
-  background: var(--surface);
-  outline: none;
 }
 .kp-stop {
   margin-top: 10px;
@@ -22157,18 +22149,20 @@ html[data-text-size="large"] .brand-mark > svg {
   gap: 2px;
   padding: 4px 8px 12px 0;
 }
-.kp-rail .lbl {
-  margin: 0 0 6px 12px;
-  font-size: var(--xs);
-  font-weight: 700;
-  color: var(--ink-muted);
-  letter-spacing: 0.04em;
+.kp-rail .set-back {
+  margin: 0 0 4px;
 }
+.kp-rail .sec-head {
+  margin-top: 4px;
+  padding: 0 12px;
+}
+/* D519: every row the same height (two title lines and its line), the open one the knob. */
 .kp-rail .k {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
+  min-height: calc(2 * 1.35 * var(--sm) + 1.4 * var(--xs) + 21px);
   padding: 10px 12px;
   border: 0;
   border-radius: var(--r-md);
@@ -22188,15 +22182,27 @@ html[data-text-size="large"] .brand-mark > svg {
   gap: 1px;
   min-width: 0;
 }
+.kp-rail .k:not(.on):hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
 .kp-rail .t {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font-size: var(--sm);
   font-weight: 600;
   line-height: 1.35;
   color: var(--ink);
+  overflow-wrap: break-word;
 }
 .kp-rail .l {
   font-size: var(--xs);
+  line-height: 1.4;
   color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .kp-rail .l.needs {
   color: var(--needs-ink);
@@ -22301,11 +22307,24 @@ html[data-text-size="large"] .brand-mark > svg {
   .kp-ph h1 {
     font-size: var(--lg);
   }
+  /* D519: a phone keeps the three columns; its time column narrower (today a clock, else 昨天 or a short date). */
   .kp-rd {
-    grid-template-columns: 52px minmax(0, 1fr);
+    --time-col: 64px;
+    gap: 10px;
+    padding-left: 14px;
   }
-  .kp-rd .out {
+  /* An open round gives its report the row's width: how it ended and Details go under it. */
+  .kp-rd.open {
+    grid-template-columns: var(--time-col) minmax(0, 1fr);
+  }
+  .kp-rd.open .end {
     grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .kp-talk {
+    margin-bottom: 12px;
   }
   .kp-item {
     grid-template-columns: 24px minmax(0, 1fr);

@@ -801,7 +801,11 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 				}
 				return false
 			})
-		if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) {
+		st := sendEmpty
+		if strings.TrimSpace(draft) != "" {
+			st = sendReady
+		}
+		if a.sendButton(c, a.L.T("composer.send"), t.ControlMD, st) {
 			send(draft)
 			draft = ""
 		}

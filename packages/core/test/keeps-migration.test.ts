@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { Bodies, KeepBody, OnHand, RoutineBody, ServerFrame, TaskCard, TaskLoopBody } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "../src/core.ts";
-import type { KeepEndAsk } from "../src/keeps.ts";
+import type { KeepEndAsk, KeepRoundAsk } from "../src/keeps.ts";
 import { tempDir } from "./helpers.ts";
 import { seedOld } from "./fixtures/keeps-old.ts";
 
@@ -27,8 +27,8 @@ const fakeEnd: KeepEndAsk = async (w) => {
   return {};
 };
 
-function boot(dir: string) {
-  const core = startCore({ dataDir: dir, port: 0, batchMs: 5, keeps: { endAsk: fakeEnd }, deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "laptop" } });
+function boot(dir: string, roundAsk?: KeepRoundAsk) {
+  const core = startCore({ dataDir: dir, port: 0, batchMs: 5, keeps: { endAsk: fakeEnd, ...(roundAsk ? { roundAsk } : {}) },deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }], kind: async () => "laptop" } });
   core.setPartner({ onTrigger: () => {} });
   let n = 0;
   core.setRunner({
@@ -111,14 +111,15 @@ describe("D511: the migration on start", () => {
 
     // Its history: the rounds its mechanism already wrote.
     const review = keeps.page(byFrom("loop", "t_review")!.keepId)!;
-    expect(review.rounds.map((r) => [r.woke, r.spoke, r.did])).toEqual([
-      ["time", "silent", "没有新的请求。"],
-      ["time", "asked", "上一轮：2 个有新提交已复审，7 个没变；2 份评审草稿等你看。"],
-      ["first", "silent", "第一轮：9 个请求在等你，7 个没变。"],
+    // D519: a report is the task's words to Ducter, kept for 看细节; the round's line is the model's (none here).
+    expect(review.rounds.map((r) => [r.woke, r.spoke, r.report, r.did])).toEqual([
+      ["time", "silent", "没有新的请求。", undefined],
+      ["time", "asked", "上一轮：2 个有新提交已复审，7 个没变；2 份评审草稿等你看。", undefined],
+      ["first", "silent", "第一轮：9 个请求在等你，7 个没变。", undefined],
     ]);
-    expect(review.line?.text).toBe("没有新的请求。");
+    expect(review.line).toBeUndefined();
     const weekly = keeps.page(byFrom("routine", "rt_weekly")!.keepId)!;
-    expect(weekly.rounds.map((r) => [r.spoke, r.did])).toEqual([
+    expect(weekly.rounds.map((r) => [r.spoke, r.report])).toEqual([
       ["told", "周报草稿写好了：9 个 PR 合并。"],
       ["told", "周报草稿写好了：12 个 PR 合并。"],
     ]);
@@ -276,5 +277,56 @@ describe("D511: a Keep made, changed, stopped", () => {
     const k = core.keeps!.all().find((x) => x.from.kind === "loop" && x.from.taskId === "t1") as KeepBody;
     expect(k).toMatchObject({ made: "task_loop", life: "on", run: "same" });
     expect(k.migratedAt).toBeUndefined();
+  });
+});
+
+describe("D519: a Keep's page says what happened, to the person", () => {
+  test("each round's line is the model's reading of its report, asked once and recorded; wakes with no report are rounds too", async () => {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    seedOld(t.dir);
+    const reads: string[] = [];
+    // The fake cheap model: one plain line per report, as a model would write it to the person.
+    const fakeRound: KeepRoundAsk = async (w) => {
+      reads.push(w.report);
+      if (w.report.includes("请 Ducter")) return { line: "发布端的授权已用上，例行检查照旧" };
+      return { line: `读过：${[...w.report].slice(0, 6).join("")}` };
+    };
+    const core = boot(t.dir, fakeRound);
+    const keeps = core.keeps!;
+    const id = keeps.all().find((k) => k.from.kind === "loop" && k.from.taskId === "t_review")!.keepId;
+    // Today's rounds as the home writes them (hel, 2026-11-24): its timer fires on the channel; one
+    // round reported to Ducter in its own words, the next two said nothing at all.
+    const fire = (n: number) => core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_today_${n}`, taskId: "t_review", wakes: "task", reason: "持续评审", state: "fired", at: new Date().toISOString() } as Bodies["waiter"] });
+    fire(1);
+    core.log.append({ stream: "task:t_review", origin: "task", kind: "report", body: { taskId: "t_review", state: "done", summary: "请 Ducter 在发布端应用用户对 #11024 的授权，无需再发确认卡。周期检查继续。", questions: [], evidence: [] } });
+    fire(2);
+    fire(3);
+    // The PR its rounds keep open, named by GitHub's own title.
+    core.log.append({ stream: "task:t_review", origin: "system", kind: "owned_news", body: { taskId: "t_review", pr: "nowledge-co/mem#11024", news: [], seen: { since: new Date().toISOString(), state: "open", standing: { at: new Date().toISOString(), title: "fix(release): sign the macOS build in CI" } } } });
+    let page = keeps.page(id)!;
+    for (let i = 0; i < 100 && page.rounds.filter((r) => r.did).length < 4; i++) await Bun.sleep(10), (page = keeps.page(id)!);
+    // Newest first: the two silent wakes, then the round that reported (its line, its report behind 看细节).
+    expect(page.rounds.slice(0, 3).map((r) => [r.woke, r.spoke, r.did, r.report])).toEqual([
+      ["time", "silent", undefined, undefined],
+      ["time", "silent", undefined, undefined],
+      ["time", "silent", "发布端的授权已用上，例行检查照旧", "请 Ducter 在发布端应用用户对 #11024 的授权，无需再发确认卡。周期检查继续。"],
+    ]);
+    expect(page.rounds).toHaveLength(6);
+    expect(page.rounds.slice(3).every((r) => r.did?.startsWith("读过："))).toBe(true);
+    expect(page.line?.text).toBe("发布端的授权已用上，例行检查照旧");
+    expect(page.lines).toBe(4);
+    // What it holds: the PR, titled as itself; never the loop's own task under the Keep's title.
+    expect(page.items.map((x) => [x.title, x.pr])).toEqual([["fix(release): sign the macOS build in CI", "nowledge-co/mem#11024"]]);
+    expect(reads.filter((r) => /请 Ducter|一轮|没有新的请求/.test(r))).toHaveLength(4);
+    keeps.page(id);
+    await core.stop();
+    // A second start: every line kept, none of its rounds read again (the other Keeps' newest are read once now).
+    const again = boot(t.dir, fakeRound);
+    stops.push(() => again.stop());
+    const p2 = again.keeps!.page(id)!;
+    await Bun.sleep(30);
+    expect(p2.rounds.filter((r) => r.did).length).toBe(4);
+    expect(reads.filter((r) => /请 Ducter|一轮|没有新的请求/.test(r))).toHaveLength(4);
   });
 });

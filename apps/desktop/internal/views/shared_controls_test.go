@@ -34,6 +34,8 @@ var sharedControls = map[string]bool{
 	"sheetFold": true, "extraStep": true,
 	// D518: a step's number in a short numbered sequence
 	"stepNumber": true,
+	// D519: the one composer and its send, the section head, the tag, the time column, a menu's opener
+	"composerBox": true, "sendButton": true, "secHead": true, "tag": true, "timeCol": true, "menuOpener": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

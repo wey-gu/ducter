@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { longestThatFits, WORDS_LINES } from "../src/composer.tsx";
+import { longestThatFits, WORDS_LINES } from "../src/words-fit.ts";
 import { strings } from "../src/i18n.ts";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");

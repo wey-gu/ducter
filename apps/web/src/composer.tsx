@@ -21,6 +21,7 @@ import { harnessName } from "./format.ts";
 import { Menu, MenuItem } from "./menu.tsx";
 import { askMentions, closeMentions, M, mentionSections, pickRef, runSlash, slashOf, slashSections, type PopRow, type PopSection } from "./mentions.ts";
 import { scaledRow } from "./text-scale.ts";
+import { longestThatFits, WORDS_LINES } from "./words-fit.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -38,8 +39,6 @@ export const Arrow = () => (
 /** What the words hand the composer around them (D534): keys first, and where the caret went. */
 type WordsHooks = { taRef?: { current: HTMLTextAreaElement | null }; keys?: (e: KeyboardEvent) => boolean; onCaret?: () => void; aria?: JSX.HTMLAttributes<HTMLTextAreaElement> };
 
-/** D547: the first (longest) of the choices whose width fits the room, else the last (shortest). */
-export const longestThatFits = (choices: readonly string[], width: (s: string) => number, room: number): string => choices.find((c) => width(c) <= room) ?? choices.at(-1) ?? "";
 
 /** The longest of the placeholders that fits the words' width on one line (D547: never cut, at 320
  *  in zh or en). Measured on a canvas in the textarea's own font; the last one is the shortest. */
@@ -55,8 +54,6 @@ export function fitPlaceholder(el: HTMLTextAreaElement, choices: readonly string
   return longestThatFits(choices, (c) => ctx.measureText(c).width, room - 2);
 }
 
-/** D547: the most lines the words grow to before they scroll inside (five, as a messaging app). */
-export const WORDS_LINES = 5;
 
 /** Words that grow with what is typed, up to five lines, then scroll inside; the cap follows the
  *  words' own line height and padding, so it holds at any text size (D452). Enter sends with a

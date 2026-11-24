@@ -270,7 +270,8 @@ describe("Poppler on a Linux home", () => {
       sh("apt-get", `echo "apt-get $*" >> ${log}; case "$1" in update) touch ${d}/updated ;; install) ${install} ;; esac`);
       if (o.has) sh("pdftotext", ""), sh("pdftoppm", "");
       const r = spawnSync("sh", [join(import.meta.dir, "install.sh"), "--from", join(d, "from"), "--prefix", join(d, "p")], {
-        env: { HOME: d, PATH: `${fake}:${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", DUCTER_INSTALL_FOR: "worker" },
+        // D549: as root these model the Poppler step alone (the handover to an ordinary user is tested below).
+        env: { HOME: d, PATH: `${fake}:${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", DUCTER_INSTALL_FOR: "worker", ...(o.root ? { DUCTER_AS_ROOT: "1" } : {}) },
         encoding: "utf8",
       });
       let calls = "";
@@ -311,4 +312,82 @@ describe("Poppler on a Linux home", () => {
     expect(r.calls).toBe("");
     expect(r.out).not.toContain("Poppler");
   });
+});
+
+// D549 (hel, 2026-11-24: Ducter as root; Claude Code refused every task). Run as root, the bundle's
+// install.sh installs for an ordinary user and runs the rest as that user, with linger on. A fake
+// Linux records what root did; the real run as root (useradd, linger, the user unit, a working
+// home and a worker) was a throwaway Debian 12 VM (research/225).
+describe("as root on Linux: an ordinary user", () => {
+  const asRoot = (o: { users?: string[]; env?: Record<string, string>; args?: string[] } = {}) => {
+    const d = mkdtempSync(join(tmpdir(), "ducter-root-sh-"));
+    try {
+      const fake = join(d, "fake");
+      mkdirSync(join(d, "from"), { recursive: true });
+      mkdirSync(fake, { recursive: true });
+      writeFileSync(join(d, "from/ducter"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const log = join(d, "calls.log");
+      const users = join(d, "users");
+      writeFileSync(users, (o.users ?? []).join("\n") + "\n");
+      const sh = (name: string, body: string) => writeFileSync(join(fake, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+      const rec = (name: string) => `echo "${name} $*" >> ${log}`;
+      sh("uname", 'case "${1:-}" in -m) echo x86_64 ;; *) echo Linux ;; esac');
+      // id: root for this shell (0) unless the run is already the user's; a user's id when named.
+      sh("id", `if [ "\${1:-}" = -gn ]; then echo "$2"; elif [ -n "\${2:-}" ]; then grep -qx "$2" ${users} && echo 1001 || exit 1; elif [ -n "\${DUCTER_INSTALL_USER:-}" ]; then echo 1001; else echo 0; fi`);
+      sh("useradd", `${rec("useradd")}; for a; do last="$a"; done; echo "$last" >> ${users}`);
+      sh("getent", `grep -qx "$2" ${users} && echo "$2:x:1001:1001::${d}/home/$2:/bin/bash"`);
+      sh("loginctl", rec("loginctl"));
+      sh("systemctl", rec("systemctl"));
+      sh("chown", rec("chown"));
+      // runuser -u U -- env -i K=V... cmd: recorded, then run (as this same test user) with that env.
+      sh("runuser", `${rec("runuser")}; shift 3; exec "$@"`);
+      sh("apt-get", "exit 0");
+      mkdirSync(join(d, "home"), { recursive: true });
+      for (const u of o.users ?? []) mkdirSync(join(d, "home", u), { recursive: true });
+      const r = spawnSync("sh", [join(import.meta.dir, "install.sh"), "--from", join(d, "from"), ...(o.args ?? [])], {
+        env: { HOME: join(d, "roothome"), PATH: `${fake}:/usr/bin:/bin`, DUCTER_LOCALE: "en", DUCTER_NO_POPPLER: "1", ...(o.env ?? {}) },
+        encoding: "utf8",
+      });
+      let calls = "";
+      try {
+        calls = readFileSync(log, "utf8");
+      } catch {}
+      return { status: r.status, out: r.stdout + r.stderr, calls, installed: existsSync(join(d, "home", (o.env?.DUCTER_USER ?? o.env?.SUDO_USER ?? "ducter"), ".local/bin/ducter")), rootInstalled: existsSync(join(d, "roothome/.local/bin/ducter")) };
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  };
+
+  test("a fresh server logged into as root: makes `ducter`, turns linger on, installs and runs as it", () => {
+    const r = asRoot();
+    expect(r.status).toBe(0);
+    expect(r.calls).toContain("useradd --create-home --shell /bin/bash ducter");
+    expect(r.calls).toContain("loginctl enable-linger ducter");
+    expect(r.calls).toMatch(/runuser -u ducter -- env -i HOME=\S+\/home\/ducter USER=ducter/);
+    expect(r.installed).toBe(true);
+    expect(r.rootInstalled).toBe(false);
+    expect(r.out).toContain("Ducter is installed for the ordinary user ducter, and runs as ducter");
+    expect(r.out).toContain("sudo -iu ducter");
+  }, 60_000);
+
+  test("with sudo: the person who came with it; DUCTER_USER names another; no user is made when there is one", () => {
+    const viaSudo = asRoot({ users: ["wey"], env: { SUDO_USER: "wey" } });
+    expect(viaSudo.status).toBe(0);
+    expect(viaSudo.calls).not.toContain("useradd");
+    expect(viaSudo.calls).toContain("runuser -u wey --");
+    expect(viaSudo.out).toContain("using the user wey");
+    const named = asRoot({ env: { DUCTER_USER: "w", SUDO_USER: "wey" } });
+    expect(named.calls).toContain("useradd --create-home --shell /bin/bash w");
+    expect(named.calls).toContain("runuser -u w --");
+  }, 60_000);
+
+  test("--service goes with it; --as-root (or DUCTER_AS_ROOT=1) keeps everything as root", () => {
+    expect(asRoot({ args: ["--service"] }).calls).toMatch(/runuser -u ducter -- .*install\.sh --service/);
+    for (const r of [asRoot({ args: ["--as-root"] }), asRoot({ env: { DUCTER_AS_ROOT: "1" } })]) {
+      expect(r.status).toBe(0);
+      expect(r.calls).not.toContain("runuser");
+      expect(r.calls).not.toContain("useradd");
+      expect(r.rootInstalled).toBe(true);
+    }
+  }, 60_000);
 });

@@ -293,6 +293,7 @@ const LINES = {
     agent: "没能开始：{what} 没能在 {computer} 上启动",
     not_installed: "没能开始：{computer} 上还没装 {what}",
     signed_out: "没能开始：{what} 在 {computer} 上还没登录",
+    refuses_root: "没能开始：{what} 不肯在 {computer} 上以 root 身份运行",
     old: "没能开始：{computer} 上的 Ducter 版本太旧，还用不了 {what}",
     away: "没能开始：{computer} 连不上了",
     other: "没能开始：{what} 在 {computer} 上一开始就出了错",
@@ -308,6 +309,7 @@ const LINES = {
     agent: "Couldn't start: {what} didn't start on {computer}",
     not_installed: "Couldn't start: {what} isn't installed on {computer}",
     signed_out: "Couldn't start: {what} isn't signed in on {computer}",
+    refuses_root: "Couldn't start: {what} won't run as root on {computer}",
     old: "Couldn't start: Ducter on {computer} is too old for {what}",
     away: "Couldn't start: {computer} can't be reached",
     other: "Couldn't start: {what} hit an error as it started on {computer}",
@@ -486,7 +488,7 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       // D415: the agent's own name when it is the agent that didn't start; a repository's name for a
       // lock (the lock's own path is never the card's word); else the repository or the folder.
       const repoOf = c?.place.kind === "repo" ? basename(c.place.repoPath) : "";
-      const agentWhy = p.why === "agent" || p.why === "not_installed" || p.why === "signed_out" || p.why === "old" || p.why === "other";
+      const agentWhy = p.why === "agent" || p.why === "not_installed" || p.why === "signed_out" || p.why === "old" || p.why === "refuses_root" || p.why === "other";
       // D472: a folder that isn't there may still be a repository Ducter knows by its name (a project's origin).
       // D476: from every project and task place Ducter knows, and the task's own words ("Nowledge Mem").
       const folderName = basename(p.path) || "";

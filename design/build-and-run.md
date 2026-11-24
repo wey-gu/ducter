@@ -165,6 +165,20 @@ sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777; ends 
 ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
 ```
 
+**Run as root (D549, research/225).** On Linux as root, the bundle's `install.sh` installs for an
+ordinary user and runs the rest as that user. The user is `SUDO_USER`, else `DUCTER_USER`, else
+`ducter`, made with `useradd --create-home` when it isn't there. Root does only the root parts:
+that user, Poppler, `loginctl enable-linger` and `systemctl start user@<uid>`. Then it copies the
+bundle into `~<user>/.cache/ducter-install` and runs it there with `runuser -u <user> -- env -i
+HOME=… XDG_RUNTIME_DIR=/run/user/<uid> DBUS_SESSION_BUS_ADDRESS=…` (`su` when there's no
+runuser), `--service` and `--prefix` carried. It ends with `sudo -iu <user>`. The site's worker
+line (`sh -s -- worker …`) does the same, then joins as that user. `--as-root` or
+`DUCTER_AS_ROOT=1` keeps the old way. `ducter up --headless` and `service install` as root print
+one line about it, and `ducter doctor` has a **Runs as** row. Checked: `scripts/install-sh.test.ts`
+(a fake Linux root), and for real in a throwaway Debian 12 VM with systemd (Lima): a home as
+`ducter` with linger, `/health` up and nothing under /root, the sudo user, `--as-root`, and a
+worker joined as another user.
+
 **Poppler (D506).** The bundle's `install.sh` on Linux adds Poppler (`pdftotext`, `pdftoppm`, which
 the document check, D439, reads a PDF's pages with) from the system's packages when that needs no
 password: as root, or when `sudo -n true` works. apt (`poppler-utils`, one `apt-get update` and a

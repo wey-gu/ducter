@@ -9,7 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
 import { migrateKeys } from "@ducter/protocol/src/keys.ts";
-import { isCompiled, width, type Host, type Style } from "./doctor.ts";
+import { ROOT_FIX, isCompiled, width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import type { Tailnet } from "./tailscale.ts";
 import { homeIdentity } from "@ducter/core/src/home-key.ts";
@@ -530,6 +530,8 @@ export async function cmdService(o: {
     return 0;
   }
 
+  // D549: a home or worker put in as root works, but said once: Claude Code won't take its tasks.
+  if ((o.uid ?? process.getuid?.()) === 0) console.log("  " + t("headless.root", { fix: ROOT_FIX }));
   // D102: keys an older install left in the unit's EnvironmentFile move to keys.env first.
   migrateKeys(o.dataDir);
   const login = o.worker ? await serviceLoginPath(host, o.dataDir) : [];
@@ -594,6 +596,8 @@ export async function cmdSystemWorker(o: { t: T; style: Style; host: Host; dataD
     return 0;
   }
   if (!existsSync(join(o.dataDir, "worker.json"))) return console.log(t("service.mac.joinFirst")), 1;
+  // D549: a worker as root works, but Claude Code won't take its tasks: said once.
+  console.log("  " + t("headless.root", { fix: ROOT_FIX }));
   migrateKeys(o.dataDir);
   const home = homedir();
   const login = await serviceLoginPath(host, o.dataDir);

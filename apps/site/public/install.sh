@@ -9,6 +9,11 @@
 #       # keep it doing tasks as a service. Safe to run again: an install already at this version
 #       # and a join that still works are kept. The line comes from 借一台电脑来干活 / Lend a computer.
 #
+# Linux, run as root (a fresh server you logged into as root): Ducter is installed for an ordinary
+# user and runs as it (D549): the user you came from with sudo, else DUCTER_USER, else a user
+# `ducter`, made when it isn't there, with linger on. Claude Code won't run as root, and a task
+# running as root can change the whole computer. `sh -s -- --as-root` keeps everything as root.
+#
 # Mac (Apple silicon): downloads the signed app from the latest GitHub release, checks its
 # SHA-256 and its notarization, and puts Ducter.app in /Applications. Then it links
 # ~/.local/bin/ducter to the app's own `ducter` command (Contents/Helpers/ducter), as the app's
@@ -218,13 +223,14 @@ install_linux() {
 # worker_args worker <address> --code <code> [--name <name>]: sets W_URL, W_CODE, W_NAME.
 worker_args() {
   shift
-  W_URL="" W_CODE="" W_NAME=""
+  W_URL="" W_CODE="" W_NAME="" W_ROOT="${DUCTER_AS_ROOT:-0}"
   while [ $# -gt 0 ]; do
     case "$1" in
       --code) [ $# -ge 2 ] || fail "--code needs the code."; W_CODE="$2"; shift 2 ;;
       --code=*) W_CODE="${1#*=}"; shift ;;
       --name) [ $# -ge 2 ] || fail "--name needs a name."; W_NAME="$2"; shift 2 ;;
       --name=*) W_NAME="${1#*=}"; shift ;;
+      --as-root) W_ROOT=1; shift ;;
       -*) fail "worker doesn't take $1. Use: worker <address> --code <code>" ;;
       *) [ -z "$W_URL" ] || fail "worker takes one address; got $W_URL and $1."; W_URL="$1"; shift ;;
     esac
@@ -247,8 +253,20 @@ installed() { [ -x "$1" ] && "$1" version 2>/dev/null | sed -n 's/^ducter \([^ ]
 # worker_main: install (unless this version is here), then join and keep the worker running.
 worker_main() {
   reach_home "$W_URL"
+  # D549: as root on Linux, the worker is installed for an ordinary user and runs as it (the bundle's
+  # install.sh makes that user: the sudo user, else DUCTER_USER, else `ducter`), so Claude Code
+  # can take its tasks. --as-root keeps everything as root.
+  AS=""
+  if [ "$os" = Linux ] && [ "$(id -u)" = 0 ] && [ "$W_ROOT" != 1 ]; then
+    if [ -n "${DUCTER_USER:-}" ]; then AS="$DUCTER_USER"
+    elif [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then AS="$SUDO_USER"
+    else AS=ducter; fi
+  fi
+  as_home() { getent passwd "$AS" 2>/dev/null | cut -d: -f6; }
   if [ "$os" = Darwin ]; then
     cli="${DUCTER_APP_DIR:-/Applications}/Ducter.app/Contents/Helpers/ducter"
+  elif [ -n "$AS" ]; then
+    cli="$(as_home)/.local/bin/ducter"
   else
     cli="${DUCTER_PREFIX:-$HOME/.local}/bin/ducter"
   fi
@@ -256,16 +274,25 @@ worker_main() {
     say "Ducter $VERSION is already installed."
   elif [ "$os" = Darwin ]; then
     DUCTER_NO_OPEN=1 install_mac
+  elif [ "$W_ROOT" = 1 ]; then
+    INSTALL_FOR=worker install_linux --as-root
   else
     INSTALL_FOR=worker install_linux
   fi
+  [ -z "$AS" ] || cli="$(as_home)/.local/bin/ducter"
   [ -x "$cli" ] || fail "ducter isn't at $cli after installing."
   say ""
   say "Joining $W_URL…"
-  if [ -n "$W_NAME" ]; then
-    "$cli" worker "$W_URL" --code "$W_CODE" --name "$W_NAME" --service </dev/null
+  set -- "$cli" worker "$W_URL" --code "$W_CODE"
+  [ -z "$W_NAME" ] || set -- "$@" --name "$W_NAME"
+  set -- "$@" --service
+  if [ -n "$AS" ]; then
+    uid="$(id -u "$AS")"
+    say "  (as $AS)"
+    runuser -u "$AS" -- env -i HOME="$(as_home)" USER="$AS" LOGNAME="$AS" PATH=/usr/local/bin:/usr/bin:/bin \
+      XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" ${LANG:+LANG="$LANG"} "$@" </dev/null
   else
-    "$cli" worker "$W_URL" --code "$W_CODE" --service </dev/null
+    "$@" </dev/null
   fi
 }
 

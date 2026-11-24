@@ -76,8 +76,8 @@ ducter up               # starts your partner (on a Mac, the app opens too)
 
 On a Mac, `ducter` comes with the app: the link points at the command inside **Ducter** in
 Applications, so it updates with the app. On Linux the same line installs the `ducter` bundle
-for your server's CPU. So that `ducter` works right away: as root, the installer also links
-`/usr/local/bin/ducter`, which is on every `PATH`; otherwise, if `~/.local/bin` isn't on your
+for your server's CPU. Run as root, it installs for an ordinary user instead
+([Signed in as root](#signed-in-as-root)). So that `ducter` works right away: if `~/.local/bin` isn't on your
 `PATH` yet, it adds it in your shell's profile (one block marked `# added by Ducter`) and prints
 the line that does the same in the terminal you're in. A `ducter` you put there yourself is left
 alone. To install the app without the
@@ -202,7 +202,33 @@ This server is in your tailnet (hel.tail1234.ts.net). To reach it from your phon
 
 Otherwise it lists your own domain and Tailscale, then an SSH tunnel for your Mac alone.
 
-As `root` the data lives in `/root/.ducter`, and `ducter` works in the same shell right away.
+### Signed in as root
+
+Many servers let you in as `root` at first. Run the install line as `root` and it installs
+Ducter for an ordinary user, then runs it as that user. That user is the one you came from with
+`sudo`. Without `sudo`, it's a user named `ducter`, made for you. Two reasons:
+
+- **Claude Code won't run as root.** It refuses, for safety, and never starts a task there.
+  Codex and the other agents do run, but every task could then change anything on the server.
+- **A task can't own the whole server.** As an ordinary user, a task works in that user's
+  folders, not the whole computer.
+
+The service still starts with the server: the install turns on *linger* for that user, so it
+runs without anyone logged in. The data lives in that user's `~/.ducter`. To use `ducter`,
+switch to the user first:
+
+```sh
+sudo -iu ducter
+ducter doctor
+```
+
+To choose the user yourself, put `DUCTER_USER=<name>` before `sh`. To keep everything as `root`
+anyway, add `--as-root` after `--service`. Ducter works then, but Claude Code doesn't take its
+tasks, and `ducter doctor` says so under **Runs as**. Its card in **Your devices** reads **Won't
+run as root**, and Ducter gives that work to another agent.
+
+Already running Ducter as `root`? Install it again as above, for an ordinary user. Then sign
+your AI agents in again as that user, and connect your devices to it.
 
 The install also adds Poppler, the small PDF tools Ducter uses to check each page of a document
 before you get it, when your server can add packages without a password (as `root`, or with a

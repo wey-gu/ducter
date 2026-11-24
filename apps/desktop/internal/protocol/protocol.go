@@ -2443,7 +2443,8 @@ type DeviceHarness struct {
 
 // AgentTrouble is an agent partly there (D416): too_old (Need: the version
 // it must reach), broken (its command line doesn't answer), app_only (only
-// its desktop app App, no command line).
+// its desktop app App, no command line), root (D549: it refuses to run as
+// root, and Ducter runs as root there).
 type AgentTrouble struct {
 	Kind string `json:"kind"`
 	Need string `json:"need,omitempty"`

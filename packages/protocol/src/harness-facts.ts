@@ -152,6 +152,12 @@ export interface HarnessFacts {
    * refuses fails the session's first call, before any work.
    */
   toolSchema: Fact<SchemaDialect[]>;
+  /**
+   * D549: what it does when it runs as root (uid 0) with approvals off, as Ducter starts it.
+   * refuses: it exits at once with `said` on stderr, so Ducter never offers it on a computer where
+   * Ducter itself runs as root (the probe's trouble "root"); runs: it starts as usual.
+   */
+  root: Fact<{ as: "refuses" | "runs"; said?: string }>;
 }
 
 /**
@@ -331,6 +337,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "claude-code": {
     harness: "claude-code",
     // D479: Claude models only; Claude Code passes an MCP tool's schema through as input_schema.
+    root: { value: { as: "refuses", said: "--dangerously-skip-permissions cannot be used with root/sudo privileges for security reasons" }, evidence: { kind: "VERIFIED", how: "research/225: claude 2.1.331 run as root in a throwaway Debian container: exit 1 with that line on stderr, with --dangerously-skip-permissions and with --permission-mode bypassPermissions; its check is getuid() === 0 unless an undocumented IS_SANDBOX=1, which Ducter never sets (the docs: run it as a non-root user)", date: "2026-11-24", version: "2.1.331" } },
     toolSchema: { value: ["anthropic"], evidence: { kind: "DOCUMENTED", source: "Claude Code sends MCP tools to the Messages API as input_schema; Anthropic tool use docs" } },
     version: { command: ["claude", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 2.1.322 re-verified live 2026-11-10 (D175 (2), research/48 addendum): windows 1M / 200K,
@@ -462,6 +469,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   codex: {
     harness: "codex",
     // D479: OpenAI models; MCP tools go out non-strict (codex-rs/tools/src/responses_api.rs strict: false).
+    root: { value: { as: "runs" }, evidence: { kind: "VERIFIED", how: "research/225: codex-cli 0.172.0 as root in a throwaway Debian container: codex exec --dangerously-bypass-approvals-and-sandbox and codex app-server both start; no root check", date: "2026-11-24", version: "0.172.0" } },
     toolSchema: { value: ["openai"], evidence: { kind: "VERIFIED", how: "read openai/codex main codex-rs/tools/src/{responses_api,json_schema}.rs: MCP tools strict: false, a missing type filled in", date: "2026-11-22", version: "codex main" } },
     version: { command: ["codex", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 0.169.1 re-checked 2026-11-18 (D352): `codex debug models` and OAR listModels list two new
@@ -592,6 +600,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   pi: {
     harness: "pi",
     // D479: pi runs any provider's model (Anthropic, OpenAI, Google, DeepSeek): the tools must suit them all.
+    root: { value: { as: "runs" }, evidence: { kind: "VERIFIED", how: "research/225: pi 0.73.1 as root in a throwaway Debian container: pi -p starts and asks for a model key; no root check", date: "2026-11-24", version: "0.73.1" } },
     toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "pi passes MCP schemas to whichever provider the session's model is on (OAR's MCP extension registers them as pi tools); its Google provider is the Gemini API" } },
     version: { command: ["pi", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 1.5.1 re-checked 2026-11-10 (D175 (2)): every flag Ducter passes is in `pi --help`, still no
@@ -643,6 +652,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "deepseek-harness": {
     harness: "deepseek-harness",
     // D479: DeepSeek's API is OpenAI-compatible function calling.
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "research/225: no root check in OAR's dsh runtime and none reported; not run as root yet (a live check is owed)" } },
     toolSchema: { value: ["openai"], evidence: { kind: "INFERRED", why: "DeepSeek's chat API takes OpenAI-shaped tools; DSH bridges MCP tools to it" } },
     // It ships prereleases (0.2.2-rc.1): the version keeps its tag, which orders before 0.2.2.
     version: { command: ["dsh", "--version"], pattern: /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/ },
@@ -724,6 +734,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   antigravity: {
     harness: "antigravity",
     // D479: agy hands MCP tools to Gemini as FunctionDeclaration.parameters (OpenAPI subset), whichever model is chosen.
+    root: { value: { as: "runs" }, evidence: { kind: "DOCUMENTED", source: "D524: hel, which runs Ducter as root, ran agy tasks (vd8hamrb, 2026-11-24) to their work; OAR's agy runtime has no root check (research/225)" } },
     toolSchema: { value: ["gemini"], evidence: { kind: "VERIFIED", how: "hel 2026-11-22: GenerateContentRequest.tools[0].function_declarations[18].parameters... missing field, on Ducter's wait_for", date: "2026-11-22", version: "1.5.14" } },
     // agy prints a bare release ("1.5.13"); OAR accepts only that line (version.js).
     version: { command: ["agy", "--version"], pattern: /^(\d+\.\d+\.\d+)\s*$/m },

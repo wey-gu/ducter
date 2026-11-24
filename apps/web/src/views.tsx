@@ -106,7 +106,7 @@ import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
-import { CantStartView } from "./cant.tsx";
+import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
@@ -997,6 +997,12 @@ function wordsDueIn(task: Task): number {
   return Number.isNaN(at) ? 0 : Math.max(0, at + WORDS_MS - Date.now());
 }
 
+/** D549: the task couldn't start and its own fixes hold 换谁来做: the meta line leaves its link out (shown once). */
+function cantSwitches(task: Task): boolean {
+  const c = attention(task) === "failed" ? cantOf(task) : undefined;
+  return !!c && cantFixes(c).some((f) => f.act === "switch");
+}
+
 /** A living item the partner didn't report itself, said as one sentence (D104): a task that
  *  didn't work, or one that came back. Work under way and waits are not said; the header and
  *  On hand carry them (with Details shown, they show as lines). */
@@ -1013,7 +1019,10 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   if (wait > 0) return <Presence kind="result" />;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
-  const said = sayable(it.text, A.readerLang(task));
+  // D549: a task that couldn't start says why without the card's own lead (没能开始：), which
+  // "{title}没做成：" already says: never two leads in one sentence.
+  const cant = it.kind === "failed" && task ? cantOf(task) : undefined;
+  const said = cant ? cantClause(cant) : sayable(it.text, A.readerLang(task));
   const kind = it.kind === "failed" ? "living.failed" : "living.done";
   const text = said ? (it.title ? t(kind, it.title, said) : said) : t(`${kind}.short`, it.title || t("living.it"));
   return (
@@ -2761,7 +2770,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </span>
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
-            <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
+            <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch && !cantSwitches(task) ? () => A.openSwitch(task.id) : undefined} />
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // cantLine (D415, D472) is the line, each why with the words it takes.
@@ -28,7 +29,7 @@ func (a *App) cantLine(k *protocol.CantStart) string {
 			return a.L.T("cant.other_bare")
 		}
 		return a.L.T("cant.other", k.Computer, k.What)
-	case "agent", "not_installed", "signed_out", "old":
+	case "agent", "not_installed", "signed_out", "old", "refuses_root":
 		what := k.What
 		if what == "" {
 			what = harnessName(k.Harness)
@@ -52,7 +53,7 @@ func (a *App) cantClause(k *protocol.CantStart) string {
 
 // cantFix is one fix: what it does and its label; the first is primary.
 type cantFix struct {
-	act    string // start_at | clone_here | clear_lock | reopen | pick | install | login | update | why
+	act    string // start_at | clone_here | clear_lock | reopen | pick | install | login | update | switch | why
 	label  string
 	kind   btnKind
 	device string
@@ -106,12 +107,16 @@ func (a *App) cantFixes(k *protocol.CantStart) []cantFix {
 		if k.Why == "old" {
 			add("update", a.L.T("cant.update", k.Computer), "")
 		}
+		if k.Why == "refuses_root" {
+			add("switch", a.L.T("who.switch"), "")
+		}
 		on()
 		if k.CloneHere {
 			add("clone_here", a.L.T("cant.clone_to", k.Computer), "")
 		}
 	}
-	if len(out) == 0 || !place {
+	// D549: never for an agent that refuses root there: the same start fails the same way.
+	if (len(out) == 0 || !place) && k.Why != "refuses_root" {
 		add("reopen", a.L.T("task.action.retry"), "")
 	}
 	for i := range out {
@@ -135,12 +140,27 @@ func (a *App) cantHint(k *protocol.CantStart) string {
 		return a.L.T("cant.place.hint", k.What, k.Computer)
 	case placeWhy(k.Why) && k.PickHere:
 		return a.L.T("cant.pick.hint", k.Computer)
-	case k.Why == "not_installed" || k.Why == "signed_out" || k.Why == "old":
+	case k.Why == "not_installed" || k.Why == "signed_out" || k.Why == "old" || k.Why == "refuses_root":
 		return a.L.T("cant." + k.Why + ".hint")
 	case (k.Why == "other" || k.Why == "away") && k.Elsewhere == nil:
 		return a.L.T("cant.retry.hint")
 	}
 	return ""
+}
+
+// cantOffersSwitch: the task couldn't start and its own fixes hold 换谁来做 (D549),
+// so the meta line leaves its own link out: the action shows once.
+func (a *App) cantOffersSwitch(task *store.Task) bool {
+	k := task.Cant()
+	if task.Attention() != protocol.Failed || k == nil {
+		return false
+	}
+	for _, f := range a.cantFixes(k) {
+		if f.act == "switch" {
+			return true
+		}
+	}
+	return false
 }
 
 // doCantFix does one fix (a tap on the page or in the brief).
@@ -159,6 +179,12 @@ func (a *App) doCantFix(id string, k *protocol.CantStart, f cantFix) {
 		a.OpenDevices()
 	case "update":
 		a.OpenDevices()
+	case "switch":
+		// D549: another agent, picked in 换谁来做 (the one that refused stays greyed with why).
+		if a.lo.switchFor != id {
+			a.openSwitch(id)
+		}
+		a.OpenTask(id)
 	case "why":
 		if a.cantOpen == nil {
 			a.cantOpen = map[string]bool{}

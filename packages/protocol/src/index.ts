@@ -1069,7 +1069,7 @@ export interface CantStart {
    * that computer (装上); signed_out: it isn't signed in there (登录); old: that computer's Ducter
    * is too old for it (更新). "other" is only what is truly unknown, said with what is known.
    */
-  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "not_installed" | "signed_out" | "old" | "away" | "other";
+  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "not_installed" | "signed_out" | "old" | "refuses_root" | "away" | "other";
   /** The computer it was to start on, by name. */
   computer: string;
   /** D472: that computer's device id ("local" for the home), for a fix done there (a folder chosen on it, a sign-in). */
@@ -2338,7 +2338,7 @@ export interface DeviceHarness {
  *  - app_only: only its desktop app (`app`) is there, which carries no command line (or only a
  *    link an older app left, pointing at nothing); 安装 puts the command line beside it.
  */
-export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string };
+export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string } | { kind: "root" };
 
 /** D363: what an agent_setup asks of a device. */
 export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look" | "logout";

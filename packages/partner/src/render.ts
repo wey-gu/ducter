@@ -597,6 +597,8 @@ const MEND_WHY: Record<string, string> = {
   not_installed: "its agent isn't installed on that computer",
   signed_out: "its agent isn't signed in on that computer",
   old: "Ducter on that computer is too old for its agent",
+  // D549: Claude Code's own check (research/225).
+  refuses_root: "its agent refuses to run as root, and Ducter runs as root on that computer",
   away: "that computer couldn't be reached",
   other: "something went wrong as it started",
 };
@@ -651,7 +653,11 @@ export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: 
   const itSaid = cant?.detail ? ` Its agent said: "${clip(cant.detail, 160)}".` : "";
   const tried = m.tried.length ? ` Ducter already ${m.tried.map((t) => `${MEND_HOW[t.how] ?? t.how}${t.on ? ` on ${t.on}` : ""}`).join(", then ")}; that didn't do it.` : "";
   const left = [cant?.elsewhere ? `${cant.elsewhere.name} has a copy` : "", cant?.cloneHere ? "it can be cloned where it was to work" : ""].filter(Boolean).join("; ");
-  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${itSaid}${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]${factsLine(facts)}`;
+  // D549: a cause that holds until something changes there (hel, 2026-11-24: Claude Code as root,
+  // opened again on Claude Code three times): the same agent on the same computer fails the same way.
+  const agent = cant?.harness ? harnessName(cant.harness) : "its agent";
+  const same = m.same ? ` This cause doesn't change by trying again: ${agent}${where} will fail the same way, so open it on another agent there, or on another computer the user allows.` : "";
+  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${itSaid}${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}${same}]${factsLine(facts)}`;
   if (m.again)
     return `${head} It came back to you a second time. Ask the user once now, in one short line in their language, with the one real fix as the choice (which repository or folder, which computer, or signing in its agent). No error text, no list of what failed.`;
   return (

@@ -27,8 +27,10 @@ A computer added this way only does tasks. It can't read your conversation or de
    ```
 
    It installs Ducter, joins your Ducter with that one-time code, and keeps running in the
-   background: it starts again after a restart. You don't need to be an administrator; if you
-   run it as root, it runs as a system service instead.
+   background: it starts again after a restart. You don't need to be an administrator. If you
+   run it as root on Linux, it installs for an ordinary user and runs as that user: the one you
+   came from with `sudo`, else a user named `ducter`. Claude Code won't run as root
+   ([Signed in as root](install.md#signed-in-as-root)).
 4. Ducter shows **Waiting for it to connect…** until it arrives, then **nas is here**, with
    its system. Rename it there if you like.
 5. **Which AIs should it have?** Codex and Claude Code are already checked; tap **Install**.

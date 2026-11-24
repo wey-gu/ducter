@@ -203,3 +203,39 @@ test("a task opened more than a day ago that fails again (a restart) is left to 
   await s.settle(10_000);
   expect(s.mends("old")).toEqual([]);
 });
+
+// D549: hel, 2026-11-24: Claude Code refused to run as root; the rethink opened the same work on
+// Claude Code again three times (kwhtu5a7, 8dqqpdjd, fwvw9h5y) before Codex took it.
+const root: CantStart = { why: "refuses_root", computer: "Hetzner Server", what: "Claude Code", harness: "claude-code", device: "local", detail: "Claude Code exited as it started: --dangerously-skip-permissions cannot be used with root/sudo privileges for security reasons" };
+
+test("a cause that holds on that computer is never retried: straight to the partner, which hears it won't change", async () => {
+  const s = setup();
+  s.open("kwhtu5a7", "Update the Mem plugin");
+  s.fail("kwhtu5a7", root);
+  await s.settle(60_000);
+  expect(s.restarts).toEqual([]);
+  expect(s.mends("kwhtu5a7")).toEqual([expect.objectContaining({ cls: "start", rung: "rethink", why: "refuses_root", same: true })]);
+  expect(s.mends("kwhtu5a7")[0]!.again).toBeUndefined();
+  for (const why of ["not_installed", "signed_out", "old"] as const) {
+    s.open(`t-${why}`, "x");
+    s.fail(`t-${why}`, { ...root, why });
+    await s.settle(60_000);
+    expect(s.mends(`t-${why}`).map((m) => [m.rung, m.same])).toEqual([["rethink", true]]);
+  }
+  expect(s.restarts).toEqual([]);
+});
+
+test("the work opened again with replaces is the same work: its second failure asks the person, a third is left to its card", async () => {
+  const s = setup();
+  s.open("kwhtu5a7", "Update the Mem plugin");
+  s.fail("kwhtu5a7", root);
+  await s.settle();
+  s.open("8dqqpdjd", "Update the Mem plugin", "partner", "kwhtu5a7");
+  s.fail("8dqqpdjd", root);
+  await s.settle();
+  expect(s.mends("8dqqpdjd")).toEqual([expect.objectContaining({ rung: "rethink", again: true, same: true })]);
+  s.open("fwvw9h5y", "Update the Mem plugin", "partner", "8dqqpdjd");
+  s.fail("fwvw9h5y", root);
+  await s.settle();
+  expect(s.mends("fwvw9h5y")).toEqual([]);
+});

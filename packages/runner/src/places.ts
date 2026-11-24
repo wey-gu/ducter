@@ -108,7 +108,7 @@ export function placeProblem(message: string): { why: PlaceWhy; path: string } |
 }
 
 export type PlaceWhy = "no_repo" | "no_folder" | "clone_failed" | "busy";
-export type StartWhy = PlaceWhy | "agent" | "not_installed" | "signed_out" | "old" | "away" | "other";
+export type StartWhy = PlaceWhy | "agent" | "not_installed" | "signed_out" | "old" | "refuses_root" | "away" | "other";
 
 /**
  * D415: every start failure, read into a word the card can say: its place (above), the agent that
@@ -118,13 +118,16 @@ export type StartWhy = PlaceWhy | "agent" | "not_installed" | "signed_out" | "ol
 export function startProblem(message: string): { why: StartWhy; path: string } {
   const p = placeProblem(message);
   if (p) return p;
+  // D549: an agent that won't run as root (Claude Code's own check, or Ducter's pre-flight saying it):
+  // nothing a retry, another place or a sign-in changes on that computer.
+  if (/cannot be used with root\/sudo privileges|refuses to run as root/i.test(message)) return { why: "refuses_root", path: "" };
   if (/can't be reached|is offline|not connected|went away|disconnected/i.test(message)) return { why: "away", path: "" };
   // D472: the common agent failures have their own word and their own fix (install it there, sign
   // in there, update that computer's Ducter), so "other" is what is truly unknown.
   if (/\bis not installed\b|command not found|spawn \S+ ENOENT|not found on PATH|needs node or the \S+ command on PATH/i.test(message)) return { why: "not_installed", path: "" };
   if (/not (?:signed|logged) in|please (?:sign|log) ?in|\b(?:sign|log) ?in (?:required|again|first)|unauthori[sz]ed|\b401\b|invalid (?:api key|credentials)|authentication (?:failed|required)|credentials? (?:expired|missing)/i.test(message)) return { why: "signed_out", path: "" };
   if (/unknown op \w+|needs a newer Ducter|unknown harness|harness \S+ is not supported/i.test(message)) return { why: "old", path: "" };
-  if (/session|harness|not installed|command not found|ENOENT|spawn|signed? in|log ?in|auth|api key|quota|rate.?limit/i.test(message)) return { why: "agent", path: "" };
+  if (/session|harness|exited as it started|not installed|command not found|ENOENT|spawn|signed? in|log ?in|auth|api key|quota|rate.?limit/i.test(message)) return { why: "agent", path: "" };
   return { why: "other", path: "" };
 }
 

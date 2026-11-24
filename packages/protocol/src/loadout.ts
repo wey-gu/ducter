@@ -191,7 +191,7 @@ export interface TaskBody {
  * picked), offline (its device can't be reached), ruled_out (D372: the person's rule says never
  * this one for this kind of work).
  */
-export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" | "no_model" | "offline" | "ruled_out" | WhereBlock;
+export type CandidateBlock = "not_installed" | "signed_out" | "refuses_root" | "off" | "reserve" | "no_model" | "offline" | "ruled_out" | WhereBlock;
 
 /**
  * D157: why a computer can't take a task (the switch sheet greys its rows with this). no_browser:

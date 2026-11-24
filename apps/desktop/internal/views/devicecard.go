@@ -457,7 +457,7 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 	d := a.devState()
 	s := &d.card.sheet
 	name := harnessName(h.Harness)
-	off := !h.LoggedIn || dv.State != protocol.DeviceAwake
+	off := !h.LoggedIn || (h.Trouble != nil && h.Trouble.Kind == "root") || dv.State != protocol.DeviceAwake
 	dot := agentBehind(&h)
 	out, avail := "", ""
 	if !h.LoggedIn {
@@ -653,10 +653,12 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 		// doesn't run Ducter on: its row, with 登录 and the sign-in in place.
 		// D416: its own sign-out running (or refused) shows in its row too.
 		signingOut := h.Login != nil && (h.Login.State == "signing_out" || h.Login.Reason == "signout_failed")
-		if (!h.Installed || !h.LoggedIn || signingOut) && !manage {
+		// D549: it won't run as root there: its row says so and why, on every computer.
+		root := h.Installed && h.Trouble != nil && h.Trouble.Kind == "root"
+		if root || ((!h.Installed || !h.LoggedIn || signingOut) && !manage) {
 			a.agentRow(c, dv, h, nil)
 			a.setupAnswer(c, dv)
-			if h.Installed && h.Login == nil {
+			if h.Installed && h.Login == nil && !root {
 				uiText(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 			return

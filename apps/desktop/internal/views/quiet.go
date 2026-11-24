@@ -349,6 +349,15 @@ func (a *App) livingWords(it protocol.LivingItem) string {
 		k = "living.failed"
 	}
 	said := say.Sayable(it.Text, a.tongueOf(it.TaskID))
+	// D549: a task that couldn't start says why without the card's own lead
+	// (没能开始：), which "{title}没做成：" already says.
+	if it.Kind == "failed" && a.S != nil {
+		if task := a.S.Task(it.TaskID); task != nil && task.Attention() == protocol.Failed {
+			if k := task.Cant(); k != nil {
+				said = a.cantClause(k)
+			}
+		}
+	}
 	switch {
 	case said != "" && it.Title != "":
 		return a.L.T(k, it.Title, said)

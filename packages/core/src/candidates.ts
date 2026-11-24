@@ -123,6 +123,8 @@ export interface CandidateInput {
 /** Why this agent can't take a task now, if it can't. */
 export function blockOf(h: DeviceHarness | undefined, s: CandidateInput["settings"]): CandidateBlock | undefined {
   if (!h || !h.installed) return "not_installed";
+  // D549: there and maybe signed in, but it won't run as root, and Ducter runs as root there.
+  if (h.trouble?.kind === "root") return "refuses_root";
   if (!h.loggedIn) return h.harness === "pi" ? "no_model" : "signed_out";
   if (isHarnessId(h.harness) && s.taskAccounts?.[h.harness]?.enabled === false) return "off";
   // Tasks never eat the part of the partner's own account kept for its answers.
@@ -331,6 +333,7 @@ function movedWhy(from: string, b: CandidateBlock, rule?: RuleView): BodyWhy {
 const BLOCK_WORDS: Record<CandidateBlock, string> = {
   not_installed: "it isn't installed on that device",
   signed_out: "it isn't signed in",
+  refuses_root: "it refuses to run as root, and Ducter runs as root on that computer (Ducter installed as an ordinary user there fixes it; another agent works now)",
   off: "Use it for tasks is off for it",
   reserve: "only the part of its limit kept for the partner is left",
   no_model: "no model is picked for it yet",

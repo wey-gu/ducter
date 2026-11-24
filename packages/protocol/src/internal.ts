@@ -172,7 +172,7 @@ export interface CoreApi {
   /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
   branchAsk?(prompt: string): Promise<string>;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
-  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
+  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string; /** D549 */ trouble?: { kind: string } }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
   /**
    * D538: where work goes, as the person said it and as it stands: their computer rules (多放 / 少放 a
    * computer for heavy, web or all work), what Mem holds about computers not kept as a rule here yet
@@ -615,7 +615,7 @@ export interface WorkerInfo {
   online: boolean;
   os?: string;
   arch?: string;
-  harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
+  harnesses?: { id: string; installed: boolean; loggedIn: boolean; /** D549 */ trouble?: { kind: string } }[];
   /** D157: it said it was going to sleep before its socket went (online false). */
   asleep?: boolean;
   /** D157: how it browses for tasks (its 上网), when it is on. */

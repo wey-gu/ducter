@@ -245,10 +245,15 @@ const en = {
   "check.memory.killed": "this server ran out of memory {n} times in the last day (last at {at}); a task's work was stopped",
   "check.memory.killedWho": "this server ran out of memory {n} times in the last day (last at {at}); the biggest then was a task's {who} ({mb} MB)",
   "check.memory.oldUnit": "the service is from an older Ducter: running out of memory would stop all of Ducter, not just the task's work",
+  "check.user": "Runs as",
+  "check.user.ok": "{user}, an ordinary user",
+  "check.user.root": "root: Claude Code won't run here, and every task can change the whole computer. Install Ducter as an ordinary user",
+  "check.claude.root": "installed, but it won't run as root (Ducter runs as root here)",
 
   "headless.ready": "{name} is running on {device}",
   "headless.listen": "Listening",
   "headless.public": "listening on {host} without TLS. Only connected devices get in; put Caddy in front for HTTPS (docs: scripts/caddy-setup.sh)",
+  "headless.root": "running as root: Claude Code won't take tasks here, and every task can change the whole computer. To run as an ordinary user: {fix}",
   "headless.next": "Connect a device: {pair}",
   "headless.notReady": "Not ready yet (Ducter still runs, and will use an AI once you sign one in):",
 
@@ -1106,10 +1111,15 @@ const zh: Record<MsgKey, string> = {
   "check.memory.killed": "这台服务器最近一天内存用完 {n} 次（最后一次 {at}），任务的活被停掉了",
   "check.memory.killedWho": "这台服务器最近一天内存用完 {n} 次（最后一次 {at}），当时最大的是任务跑的 {who}（{mb} MB）",
   "check.memory.oldUnit": "服务文件是旧版 Ducter 写的：内存一用完，整个 Ducter 都会停，而不只是任务的活",
+  "check.user": "运行身份",
+  "check.user.ok": "{user}，普通用户",
+  "check.user.root": "root：Claude Code 在这里不肯运行，而且每个任务都能改动整台电脑。用普通用户装 Ducter",
+  "check.claude.root": "已安装，但它不肯以 root 身份运行（这里的 Ducter 是 root）",
 
   "headless.ready": "{name} 在 {device} 上运行了",
   "headless.listen": "监听",
   "headless.public": "正在 {host} 上监听，没有 TLS。只有连上过的设备能进来；要 HTTPS，在前面放一个 Caddy（见 scripts/caddy-setup.sh）",
+  "headless.root": "正以 root 身份运行：Claude Code 不肯在这里做任务，而且每个任务都能改动整台电脑。换成普通用户运行：{fix}",
   "headless.next": "连接一台设备：{pair}",
   "headless.notReady": "还没准备好（Ducter 照常运行，等你登录一个 AI 后就能用）：",
 

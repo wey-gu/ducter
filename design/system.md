@@ -331,7 +331,8 @@ changes.
   which need approval and defaults to mostly auto-approve. A resumed worker checks the world
   against its intents before repeating anything.
 - **Isolation is only as strong as the environment.** A sandbox is strong; the user's Mac is
-  not, and Ducter says so.
+  not, and Ducter says so. On a server, the account Ducter runs as is the boundary: an ordinary
+  user by default, never root unless the person asks (D549).
 
 ### Who counts as local, and what that allows
 
@@ -453,6 +454,19 @@ when the partner suggests one, and then the steps below are what they copy and p
   `CLAUDE_CODE_OAUTH_TOKEN`, go in `~/.ducter/keys.env` (0600), which the unit never loads
   (D102); `service install` moves any key it finds in `env` there first. It enables linger itself when polkit allows (Ubuntu 24.04: yes, without sudo) and
   prints the `sudo loginctl enable-linger` line when not. Then it pairs the first device.
+- **Root (D549, research/225).** Ducter never refuses root, but it doesn't run as root by
+  default. The install line run as root on Linux (the bundle's `install.sh`, which the site's
+  script and a copied tarball both run; the site's worker line too) makes or picks an ordinary
+  user: `SUDO_USER`, else `DUCTER_USER`, else `ducter`. It turns on linger for that user and runs
+  the rest as that user, `--service` and the worker's join included. `--as-root` keeps root. Why:
+  Claude Code refuses to start as root whenever approvals are off, which is how every agent runs
+  (D16). Its documented way is a non-root user, and its override (`IS_SANDBOX`) is undocumented,
+  so Ducter never sets it. As root, a task (approvals off) can also change the whole server. A
+  home or worker still running as root says so once (`ducter up --headless`, `service install`),
+  and `ducter doctor` has a **Runs as** row. Each agent's behaviour under root is a registry fact
+  (`HARNESS_FACTS[h].root`). The probe marks an agent that refuses as trouble `root`. It is then
+  never offered there: its row reads **Won't run as root**, the chooser blocks it, it can't
+  carry the partner, the partner's [devices] line says so, and the OAR port refuses to start it.
 - Memory (D524): tasks' children (tsc, a dev server, a browser) run in the unit's cgroup. The
   unit has `OOMPolicy=continue` (a child the kernel stops takes only itself) and `MemoryMax=90%`
   (the unit runs short before the server does); no `MemoryHigh` (without swap it stalls the

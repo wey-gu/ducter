@@ -435,7 +435,7 @@ function CoinTray({ dv }: { dv: DeviceView }) {
               harness={h.harness}
               name={name}
               label={label}
-              off={!h.loggedIn || dv.state !== "awake"}
+              off={!h.loggedIn || h.trouble?.kind === "root" || dv.state !== "awake"}
               dot={dot}
               running={agentRunning(h) || arriving(h)}
               pop={Date.now() - (popped.get(k) ?? 0) < 600}
@@ -495,12 +495,14 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const name = harnessName(h.harness);
   // D363: being put there, or there and not signed in: its row, with 登录 and the sign-in in place.
   // D416: its own sign-out running (or refused) shows in its row too.
-  if (!h.installed || !h.loggedIn || h.login?.state === "signing_out" || h.login?.reason === "signout_failed")
+  // D549: it won't run as root there: its row says so and why, never 用它做事 or 登录.
+  const root = h.installed && h.trouble?.kind === "root";
+  if (root || !h.installed || !h.loggedIn || h.login?.state === "signing_out" || h.login?.reason === "signout_failed")
     return (
       <>
         <AgentRow dv={dv} h={h} />
         <SetupAnswer dv={dv} />
-        {h.installed && !h.login && <div class="ln">{t("coin.signin.why", dv.name)}</div>}
+        {h.installed && !h.login && !root && <div class="ln">{t("coin.signin.why", dv.name)}</div>}
       </>
     );
   const others = (A.devices ?? []).filter((o) => o.id !== dv.id && o.harnesses.some((x) => x.harness === h.harness && x.installed && x.loggedIn)).map((o) => o.name);

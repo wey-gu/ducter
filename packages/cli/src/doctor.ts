@@ -44,6 +44,8 @@ export interface Host {
   pairedDevices?(): number;
   /** Whether a file exists (CuaDriver.app in /Applications, off PATH). */
   exists?(path: string): boolean;
+  /** D549: the user id Ducter runs as (0 is root); absent: not known (tests, Windows). */
+  uid?(): number | undefined;
   /** The environment and a file reader, for pi's and DeepSeek Harness's keys (presence only). Absent: none. */
   env?: Record<string, string | undefined>;
   read?(path: string): string | undefined;
@@ -52,7 +54,7 @@ export interface Host {
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli" | "pdf" | "memory";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli" | "pdf" | "memory" | "user";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -126,6 +128,9 @@ export const SERVER_FIX = {
   linger: (u: string) => `sudo loginctl enable-linger ${u}`,
   devices: "ducter pair",
 };
+
+/** D549: the way off root: the install line run as root makes an ordinary user and installs there. */
+export const ROOT_FIX = "https://ducter.ai/docs/install#signed-in-as-root";
 
 /** Compares dotted versions numerically; non-numeric parts count as 0. */
 export function versionAtLeast(have: string, min: string): boolean {
@@ -220,9 +225,13 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   else if (!versionAtLeast(host.bunVersion, MIN_BUN)) bun = c("bun", "check.bun", "missing", true, "check.bun.old", { version: host.bunVersion, min: MIN_BUN }, FIX.bun);
   else bun = c("bun", "check.bun", "ok", true, "check.bun.ok", { version: host.bunVersion });
 
+  // D549 (research/225): Claude Code refuses to run as root with approvals off, as Ducter runs it.
+  const root = host.uid?.() === 0;
   // At least one harness is required; whichever is logged in carries the requirement.
-  const harnessReady = claude.loggedIn || codex.loggedIn;
-  const claudeCheck = claude.loggedIn
+  const harnessReady = (claude.loggedIn && !root) || codex.loggedIn;
+  const claudeCheck = claude.installed && root
+    ? c("claude", "check.claude", "warn", false, "check.claude.root", {}, ROOT_FIX)
+    : claude.loggedIn
     ? c("claude", "check.claude", "ok", true, claude.token ? "check.claude.token" : "check.claude.ok", { version: claude.version })
     : claude.installed
       ? c("claude", "check.claude", "missing", !harnessReady, loggedOut("claude"), {}, fix.claudeLogin, "signin")
@@ -310,7 +319,12 @@ async function serverChecks(host: Host, c: Mk, opts: DoctorOptions): Promise<Che
   const pdf = POPPLER_TOOLS.every((x) => host.which(x))
     ? c("pdf", "check.pdf", "ok", false, "check.pdf.ok")
     : c("pdf", "check.pdf", "missing", false, "check.pdf.missing", {}, popplerCmd("linux", (x) => !!host.which(x)));
-  return [service, devices, pdf, await memoryCheck(host, c, opts)];
+  // D549: who Ducter runs as. Root works, but Claude Code won't run there and a task can change the
+  // whole computer: said once here, with the way to an ordinary user.
+  const uid = host.uid?.();
+  const who = process.env.USER || "";
+  const runsAs = uid === undefined ? [] : [uid === 0 ? c("user", "check.user", "warn", false, "check.user.root", {}, ROOT_FIX) : c("user", "check.user", "ok", false, "check.user.ok", { user: who || String(uid) })];
+  return [...runsAs, service, devices, pdf, await memoryCheck(host, c, opts)];
 }
 
 /** D524: the home brought an older unit's settings up to date in the last week (unit-refresh.ts). */
@@ -515,6 +529,7 @@ export function realHost(): Host {
     compiled: isCompiled(),
     bunVersion: Bun.version,
     platform: process.platform,
+    uid: () => process.getuid?.(),
   };
 }
 

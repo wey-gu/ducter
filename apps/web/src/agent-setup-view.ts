@@ -10,13 +10,16 @@ export type AgentRowLook =
   | "queued"
   | "failed" // the last install didn't: one line, 再试一次
   | "install" // not there, Ducter can put it there: 安装
-  | "missing"; // not there, and Ducter can't (an older Ducter there, an agent it doesn't install)
+  | "missing" // not there, and Ducter can't (an older Ducter there, an agent it doesn't install)
+  | "cant"; // D549: there, but it won't run here (it refuses root, and Ducter runs as root there): why, no button
 
 export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "installable" | "setup" | "login" | "trouble">): AgentRowLook {
   if (h.setup?.phase === "installing") return "installing";
   if (h.setup?.phase === "queued") return "queued";
   // D416: a sign-out running (or one that didn't take) opens the panel on a signed-in row.
   if (h.installed && (h.login?.state === "signing_out" || h.login?.reason === "signout_failed")) return "login";
+  // D549: signed in or not, it won't run as root there: said once, never 登录 or 可以用.
+  if (h.installed && h.trouble?.kind === "root") return "cant";
   // D518: done is the agent's own check saying signed in: the row is ready at once (登录好了 its word).
   if (h.installed && h.loggedIn) return "ready";
   if (h.installed && h.login) return "login";
@@ -34,6 +37,7 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
   if (!tr) return undefined;
   if (tr.kind === "too_old") return { word: "ag.trouble.too_old", args: [h.version ?? "?", tr.need], button: "update" };
   if (tr.kind === "broken") return { word: "ag.trouble.broken", args: [], button: "reinstall" };
+  if (tr.kind === "root") return undefined; // D549: its own look ("cant"), not an install
   return { word: "ag.trouble.app_only", args: [tr.app], button: "install" };
 }
 

@@ -1517,7 +1517,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.homeDevice = () => {
     const home = whereComputers()[0]!;
     const hs = devicesView?.harnessesNow();
-    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}), ...(homeLook ? { resources: homeLook } : {}) };
+    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.trouble ? { trouble: h.trouble } : {}) })) } : {}), ...(homeLook ? { resources: homeLook } : {}) };
   };
   // D538: the person's computer rules (Ducter's own rules.json is their source of truth), mirrored to
   // Mem as the person's preferences while Mem is on; Mem's own labelled ones come back as hints.

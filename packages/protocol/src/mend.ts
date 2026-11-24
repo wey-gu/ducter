@@ -76,7 +76,19 @@ export interface MendBody {
   again?: boolean;
   /** rethink: no more automatic tries this hour on this home (the loop guard spoke, not the ladder). */
   budget?: boolean;
+  /**
+   * D549: rethink of a start whose cause holds until something changes on that computer (its agent
+   * refuses root, isn't installed, isn't signed in, Ducter there is too old): the same agent there
+   * fails the same way, so it is never tried again by Ducter and the partner hears so.
+   */
+  same?: boolean;
 }
+
+/**
+ * D549: the start failures whose cause is a fact of that computer, not luck: another try with the
+ * same agent there fails the same way (research/225: Claude Code as root exits at once, every time).
+ */
+export const SAME_CAUSE_WHYS: ReadonlySet<string> = new Set(["refuses_root", "not_installed", "signed_out", "old"]);
 
 /** D473: one week of self-repair, counted from the Log (`ducter repairs`). */
 export interface RepairWeek {

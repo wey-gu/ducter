@@ -10,6 +10,14 @@
 #   scripts/install.sh --linux DIR          # build Linux bundles DIR/linux-arm64 and DIR/linux-x64
 #                                           #   (copy one to the server, run its install.sh there)
 #   scripts/install.sh --service            # Linux: also run Ducter as a systemd user service
+#   scripts/install.sh --as-root            # Linux, run as root: install for root itself (not advised)
+#
+# Run as root on Linux (a fresh server you logged into as root), it installs Ducter for an
+# ordinary user and runs it as that user (D549): the one you came from with sudo ($SUDO_USER),
+# else DUCTER_USER, else a user named `ducter`, made here when it isn't there. Claude Code
+# refuses to run as root, and a task that runs as root can change the whole computer. It turns on
+# linger for that user, so its service starts at boot, and runs the rest of this script as it.
+# --as-root (or DUCTER_AS_ROOT=1) keeps the old way: everything as root.
 #
 # What it touches: $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (on Linux, Poppler from the
 # system's packages when that needs no password: DUCTER_NO_POPPLER=1 skips it; with --service,
@@ -20,14 +28,17 @@
 set -eu
 
 PREFIX="${DUCTER_PREFIX:-$HOME/.local}"
+PREFIX_SAID=""
 FROM=""
 BUNDLE=""
 LINUX=""
 SERVICE=0
+AS_ROOT="${DUCTER_AS_ROOT:-0}"
 while [ $# -gt 0 ]; do
   case "$1" in
-    --prefix) PREFIX="$2"; shift 2 ;;
-    --prefix=*) PREFIX="${1#*=}"; shift ;;
+    --prefix) PREFIX="$2"; PREFIX_SAID="$2"; shift 2 ;;
+    --prefix=*) PREFIX="${1#*=}"; PREFIX_SAID="$PREFIX"; shift ;;
+    --as-root) AS_ROOT=1; shift ;;
     --from) FROM="$2"; shift 2 ;;
     --from=*) FROM="${1#*=}"; shift ;;
     --bundle) BUNDLE="$2"; shift 2 ;;
@@ -35,7 +46,7 @@ while [ $# -gt 0 ]; do
     --linux) LINUX="$2"; shift 2 ;;
     --linux=*) LINUX="${1#*=}"; shift ;;
     --service) SERVICE=1; shift ;;
-    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -173,45 +184,6 @@ EOF
   exit 0
 fi
 
-BIN="$PREFIX/bin"
-mkdir -p "$BIN"
-install -m 0755 "$DUCTER_SRC" "$BIN/ducter"
-[ -n "$DESKTOP_SRC" ] && install -m 0755 "$DESKTOP_SRC" "$BIN/ducter-desktop"
-# Copies that arrived by AirDrop or a browser carry a quarantine flag; clear it on our two files only.
-if [ "$(uname)" = "Darwin" ] && command -v xattr >/dev/null 2>&1; then
-  for f in "$BIN/ducter" "$BIN/ducter-desktop"; do
-    [ -e "$f" ] && xattr -d com.apple.quarantine "$f" 2>/dev/null || true
-  done
-fi
-step "Ducter 装好了" "Ducter is installed"
-if [ -n "$DESKTOP_SRC" ]; then
-  ok "ducter 和桌面端 → $(tilde "$BIN")" "ducter and the desktop app → $(tilde "$BIN")"
-else
-  ok "ducter → $(tilde "$BIN")" "ducter → $(tilde "$BIN")"
-fi
-
-case ":$PATH:" in
-  *":$BIN:"*) ON_PATH=1 ;;
-  *) ON_PATH=0 ;;
-esac
-# What to type: `ducter` when it works in this shell, else the full path.
-DUCTER=ducter
-if [ "$ON_PATH" = 0 ]; then
-  if link_global "$BIN"; then
-    ok "ducter → /usr/local/bin/ducter" "ducter → /usr/local/bin/ducter"
-    case ":$PATH:" in *":/usr/local/bin:"*) ON_PATH=1 ;; esac
-  fi
-fi
-if [ "$ON_PATH" = 0 ]; then
-  DUCTER="$(tilde "$BIN")/ducter"
-  if add_path_rc "$BIN"; then
-    ok "$(tilde "$BIN") 已加进 PATH（$(tilde "$RC")），新开的终端里直接打 ducter" \
-      "$(tilde "$BIN") is on PATH in new terminals ($(tilde "$RC"))"
-    m "  在这个终端里马上能用：" "  To use it in this terminal now:"
-    printf '    export PATH="%s:$PATH"\n' "$BIN"
-  fi
-fi
-
 # D506: the document check reads a PDF's pages with Poppler (pdftotext, pdftoppm); without it most of
 # a PDF's layout mistakes go unseen. On Linux it comes from the system's own packages, so it is put
 # in here only when that needs no password (as root, or a sudo that asks none); otherwise the one
@@ -251,6 +223,115 @@ poppler() {
   m "  · 没有 Poppler，PDF 的版面问题多半看不出来。装上它：" "  · No Poppler here, so most layout mistakes in a PDF go unseen. To add it:"
   printf '    %s\n' "$line"
 }
+# D549: a fresh server is often logged into as root (Hetzner's default). Ducter isn't installed
+# for root there: Claude Code refuses to run as root, and a task that runs as root can change the
+# whole computer. The ordinary user it runs as: the one who came with sudo, else DUCTER_USER, else
+# `ducter` (made here when it isn't there). Root does only what needs root (that user, Poppler,
+# linger so the service starts at boot); everything else runs as that user, from a copy of this
+# folder it owns. --as-root (DUCTER_AS_ROOT=1) keeps it all as root.
+ducter_user() {
+  if [ -n "${DUCTER_USER:-}" ]; then printf '%s' "$DUCTER_USER"
+  elif [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then printf '%s' "$SUDO_USER"
+  else printf ducter; fi
+}
+as_user() {
+  U="$(ducter_user)"
+  made=0
+  if ! id -u "$U" >/dev/null 2>&1; then
+    if command -v useradd >/dev/null 2>&1; then useradd --create-home --shell /bin/bash "$U" >/dev/null
+    elif command -v adduser >/dev/null 2>&1; then adduser -D -s /bin/sh "$U" >/dev/null
+    else m "没法新建用户 $U（没有 useradd）。先建一个普通用户，再用 DUCTER_USER=<名字> 运行；或者用 --as-root。" \
+      "Couldn't make the user $U (no useradd). Make an ordinary user, then run this with DUCTER_USER=<name>; or pass --as-root."; exit 1
+    fi
+    made=1
+  fi
+  UHOME="$(getent passwd "$U" 2>/dev/null | cut -d: -f6)"
+  [ -n "$UHOME" ] || UHOME="/home/$U"
+  UUID="$(id -u "$U")"
+  UGROUP="$(id -gn "$U")"
+  step "这台电脑是用 root 登录的：Ducter 装给普通用户 $U，并以 $U 的身份运行" \
+    "You're root here: Ducter is installed for the ordinary user $U, and runs as $U"
+  if [ "$made" = 1 ]; then ok "新建了用户 $U（家目录 $UHOME）" "made the user $U (home $UHOME)"; else ok "用已有的用户 $U" "using the user $U"; fi
+  m "  （Claude Code 不肯以 root 身份运行，而且以 root 运行的任务能改动整台电脑。要照旧装给 root：加 --as-root）" \
+    "  (Claude Code won't run as root, and a task running as root can change the whole computer. To install for root anyway: --as-root)"
+  poppler
+  # Its service starts at boot and outlives every login: linger, and its user manager up now.
+  if command -v loginctl >/dev/null 2>&1; then
+    loginctl enable-linger "$U" 2>/dev/null && ok "$U 的服务开机就启动（linger）" "$U's service starts at boot (linger)"
+    systemctl start "user@$UUID.service" 2>/dev/null || true
+    i=0; while [ -d /run/systemd/system ] && [ ! -S "/run/user/$UUID/bus" ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
+  fi
+  D="$UHOME/.cache/ducter-install"
+  rm -rf "$D" && mkdir -p "$D"
+  cp "$FROM/ducter" "$D/ducter" && cp "$0" "$D/install.sh"
+  [ -x "$FROM/ducter-desktop" ] && cp "$FROM/ducter-desktop" "$D/ducter-desktop"
+  chown -R "$U:$UGROUP" "$UHOME/.cache" && chmod 0755 "$D/ducter" "$D/install.sh"
+  set --
+  [ "$SERVICE" = 1 ] && set -- --service
+  [ -n "$PREFIX_SAID" ] && set -- "$@" --prefix "$PREFIX_SAID"
+  ENV="HOME=$UHOME USER=$U LOGNAME=$U SHELL=/bin/bash PATH=/usr/local/bin:/usr/bin:/bin XDG_RUNTIME_DIR=/run/user/$UUID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$UUID/bus DUCTER_NO_POPPLER=1 DUCTER_INSTALL_USER=$U"
+  for v in DUCTER_LOCALE LANG LC_ALL DUCTER_INSTALL_FOR DUCTER_PORT DUCTER_HOST; do
+    eval "val=\${$v:-}"
+    if [ -n "$val" ]; then ENV="$ENV $v=$val"; fi
+  done
+  rc=0
+  if command -v runuser >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    runuser -u "$U" -- env -i $ENV sh "$D/install.sh" "$@" || rc=$?
+  else
+    # shellcheck disable=SC2086
+    su -s /bin/sh "$U" -c "env -i $ENV sh '$D/install.sh' $*" || rc=$?
+  fi
+  rm -rf "$D"
+  if [ "$rc" = 0 ]; then
+    printf '\n'
+    m "Ducter 以 $U 的身份运行，数据在 $UHOME/.ducter。用 ducter 命令时先切到 $U：" \
+      "Ducter runs as $U, its data in $UHOME/.ducter. To use the ducter command, switch to $U first:"
+    printf '  sudo -iu %s\n' "$U"
+  fi
+  exit $rc
+}
+if [ "$(uname)" = Linux ] && [ "$(id -u)" = 0 ] && [ "$AS_ROOT" != 1 ] && [ -n "$FROM" ]; then as_user; fi
+
+BIN="$PREFIX/bin"
+mkdir -p "$BIN"
+install -m 0755 "$DUCTER_SRC" "$BIN/ducter"
+[ -n "$DESKTOP_SRC" ] && install -m 0755 "$DESKTOP_SRC" "$BIN/ducter-desktop"
+# Copies that arrived by AirDrop or a browser carry a quarantine flag; clear it on our two files only.
+if [ "$(uname)" = "Darwin" ] && command -v xattr >/dev/null 2>&1; then
+  for f in "$BIN/ducter" "$BIN/ducter-desktop"; do
+    [ -e "$f" ] && xattr -d com.apple.quarantine "$f" 2>/dev/null || true
+  done
+fi
+step "Ducter 装好了" "Ducter is installed"
+if [ -n "$DESKTOP_SRC" ]; then
+  ok "ducter 和桌面端 → $(tilde "$BIN")" "ducter and the desktop app → $(tilde "$BIN")"
+else
+  ok "ducter → $(tilde "$BIN")" "ducter → $(tilde "$BIN")"
+fi
+
+case ":$PATH:" in
+  *":$BIN:"*) ON_PATH=1 ;;
+  *) ON_PATH=0 ;;
+esac
+# What to type: `ducter` when it works in this shell, else the full path.
+DUCTER=ducter
+if [ "$ON_PATH" = 0 ]; then
+  if link_global "$BIN"; then
+    ok "ducter → /usr/local/bin/ducter" "ducter → /usr/local/bin/ducter"
+    case ":$PATH:" in *":/usr/local/bin:"*) ON_PATH=1 ;; esac
+  fi
+fi
+if [ "$ON_PATH" = 0 ]; then
+  DUCTER="$(tilde "$BIN")/ducter"
+  if add_path_rc "$BIN"; then
+    ok "$(tilde "$BIN") 已加进 PATH（$(tilde "$RC")），新开的终端里直接打 ducter" \
+      "$(tilde "$BIN") is on PATH in new terminals ($(tilde "$RC"))"
+    m "  在这个终端里马上能用：" "  To use it in this terminal now:"
+    printf '    export PATH="%s:$PATH"\n' "$BIN"
+  fi
+fi
+
 poppler
 
 if [ "$SERVICE" = 1 ]; then

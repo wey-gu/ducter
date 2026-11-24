@@ -66,6 +66,23 @@ test("versions compare with prereleases", () => {
   expect(compareVersions("x", "0.2.1")).toBeNull();
 });
 
+test("D549: as root, Claude Code is there and signed in but can't take a task (trouble root, never the partner); Codex runs", async () => {
+  const base = {
+    which: (c: string) => (["claude", "codex"].includes(c) ? `/bin/${c}` : null),
+    exec: async (argv: string[]) => (argv[0]!.endsWith("claude") ? { code: 0, out: '{"loggedIn": true}' } : { code: 0, out: "Logged in using ChatGPT" }),
+    env: {},
+    home: "/root",
+    dataDir: "/root/.ducter",
+    read: () => undefined,
+    only: ["claude-code", "codex"],
+  };
+  expect(await probeHarnesses({ ...base, uid: () => 0 })).toEqual([
+    { harness: "claude-code", installed: true, loggedIn: true, canBePartner: false, billing: "plan", trouble: { kind: "root" } },
+    { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
+  ]);
+  expect((await probeHarnesses({ ...base, uid: () => 1000 }))[0]).toEqual({ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" });
+});
+
 test("D363: node alone is not pi (the single binary runs only a pi command)", async () => {
   const r = await probeHarnesses({ which: (c) => (c === "node" ? "/usr/bin/node" : null), exec: async () => ({ code: 1, out: "" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, only: ["pi"] });
   expect(r[0]).toMatchObject({ harness: "pi", installed: false });

@@ -27,6 +27,8 @@ async function rig() {
   const sent: ClientFrame[] = [];
   let hellos = 0;
   const fresh = A as unknown as { convs: Map<string, unknown>; peeked: Set<string>; switchTo?: string };
+  // Another test file may have stubbed A.send on the instance: frames go through the socket here.
+  delete (A as unknown as { send?: unknown }).send;
   fresh.convs = new Map();
   fresh.peeked = new Set();
   fresh.switchTo = undefined;

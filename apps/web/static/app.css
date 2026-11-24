@@ -54,7 +54,7 @@
 
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
-  /* D527: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
+  /* D529: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
      within that tint; never grey. Over --t-hover, easing out; nothing moves. */
   --row-hover: color-mix(in srgb, var(--surface) 45%, var(--surface-sunken));
   --row-hover-needs: color-mix(in srgb, var(--surface) 50%, var(--needs-surface));
@@ -22304,7 +22304,7 @@ html[data-text-size="large"] .brand-mark > svg {
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
 
-/* ---------- D527: the one row hover ----------
+/* ---------- D529: the one row hover ----------
    Hover never reflows: a row's size, line breaks and positions stay; what it reveals (×, ⋯, Pause)
    keeps its room or comes in over the time in a fixed slot, and is there for Tab too (opacity
    only, never display or visibility). The fill warms within the row's ground (--row-hover, or

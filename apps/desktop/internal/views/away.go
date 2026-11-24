@@ -172,7 +172,7 @@ func (a *App) runFinished(c *ui.Context, k string, f finishedCard) {
 }
 
 // awayX is the quiet × that removes a finished card: the shared icon
-// button (a text button's square at ControlSM; D527), the same as its ⋯.
+// button (a text button's square at ControlSM; D529), the same as its ⋯.
 func (a *App) awayX(c *ui.Context, key string, f finishedCard) {
 	t := a.T
 	label := a.L.T("away.remove.about", f.name)
@@ -185,7 +185,7 @@ func (a *App) awayX(c *ui.Context, key string, f finishedCard) {
 	}
 }
 
-// finishedActs is a finished row's × and ⋯, in its revealSlot (D527).
+// finishedActs is a finished row's × and ⋯, in its revealSlot (D529).
 func (a *App) finishedActs(c *ui.Context, f finishedCard) {
 	ui.Row(c.Key("fin")).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
 		a.awayX(c, "x", f)
@@ -195,7 +195,7 @@ func (a *App) finishedActs(c *ui.Context, f finishedCard) {
 
 // finishedMore is a finished row's ⋯ alone: on a row that already shows its
 // actions (看看为什么, 再试一次) it joins that group, and its menu holds the
-// remove the × would (D527).
+// remove the × would (D529).
 func (a *App) finishedMore(c *ui.Context, f finishedCard) {
 	t := a.T
 	label := a.L.T("away.more", f.name)

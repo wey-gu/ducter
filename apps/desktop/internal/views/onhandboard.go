@@ -267,7 +267,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 	case on:
 		a.knob(r) // D270: the chosen one is the knob
 	default:
-		a.rowHover(c, r, groundPage(), false) // D527
+		a.rowHover(c, r, groundPage(), false) // D529
 	}
 	a.arriving(c, r, name)
 	r.Children(func() {
@@ -328,7 +328,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 			case on:
 				a.knob(r) // D270: the chosen one is the knob
 			default:
-				a.rowHover(c, r, groundPage(), false) // D527
+				a.rowHover(c, r, groundPage(), false) // D529
 			}
 			r.Children(func() {
 				// D471: no faces in a row of names; where something needs you, the name in its ink.

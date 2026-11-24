@@ -120,7 +120,7 @@ func (a *App) outsideCard(c *ui.Context, it *protocol.OutsideItem, terms []strin
 				}
 			})
 		})
-		// D527: its actions keep their room and fade in; the words never rewrap.
+		// D529: its actions keep their room and fade in; the words never rewrap.
 		a.revealSlot(c, "reveal", hover || busy, func() {
 			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
 				label := a.L.T("past.continue")

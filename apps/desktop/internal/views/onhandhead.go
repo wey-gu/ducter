@@ -279,7 +279,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	if !a.oh.rowFirst {
 		card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 	}
-	// D527: the one row hover: the fill warms within the sheet's own ground,
+	// D529: the one row hover: the fill warms within the sheet's own ground,
 	// and what it reveals fades in where its room was kept.
 	ground := groundNeutral()
 	if a.oh.needsSheet {
@@ -312,7 +312,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	// D471: the time on one edge of the sheet; what to do on one column; D508:
 	// a hover's own actions in a slot of their own, so they never cover the
 	// time or run past the sheet's edge.
-	// D527: the slot holds × and ⋯ at the shared icon size (2 × 36 + 2); the
+	// D529: the slot holds × and ⋯ at the shared icon size (2 × 36 + 2); the
 	// action column holds two fixes and the ⋯ that joins them.
 	whenW, actsW, hoverW := float32(112), float32(252), float32(76)
 	if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) { // D507: a row set in under its helper keeps its sheet's columns
@@ -522,7 +522,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if !a.oh.actsCol {
 			return
 		}
-		// D527: one action group on one line: the row's own actions, then what
+		// D529: one action group on one line: the row's own actions, then what
 		// hover reveals in the room kept for it; never a line of its own below.
 		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
 			switch {

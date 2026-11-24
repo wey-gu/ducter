@@ -38,7 +38,7 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.mem.update.go")} }},
 		{"old-nmem-peers", TabPeers, protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel"},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("peers.mem.what"), L.T("bridge.update", "hel"), L.T("peers.mem.then", "小鸭")}
+				return []string{L.T("peers.mem.what"), L.T("bridge.update", "hel"), L.T("peers.mem.then")}
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("peers.switch", "小鸭")} }},
 		// D332: no Mem yet: one sentence of what it is, and its steps in place.
@@ -268,7 +268,7 @@ func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 		if tt.HasText(app.L.T("settings.tab.peers")) {
 			t.Fatalf("和你的其他 agent 通信 shows for a fresh user (%v): %q", b, tt.Texts())
 		}
-		if b != nil && !tt.HasText(app.L.T("peers.invite", "小鸭")) {
+		if b != nil && !tt.HasText(app.L.T("peers.invite")) {
 			t.Fatalf("no invitation on the Partner page (%v): %q", b, tt.Texts())
 		}
 	}

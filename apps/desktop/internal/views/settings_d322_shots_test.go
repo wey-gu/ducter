@@ -142,13 +142,13 @@ func TestD322PartnerStory(t *testing.T) {
 		}
 		// The author's case: Codex only, on a server.
 		tt, _ := frame(cases["one-agent"])
-		must(tt, "one", L.T("loadout.brain.title"), L.T("loadout.tasks.only", "Codex"), L.T("loadout.add.title"), L.T("loadout.add.one", "Ducter"),
+		must(tt, "one", L.T("loadout.brain.title"), L.T("loadout.tasks.only", "Codex"), L.T("loadout.add.title"), L.T("loadout.add.one"),
 			"Claude Code", L.T("loadout.add.install"), L.T("key.settings.row"), L.T("handoff.one"))
 		never(tt, "one", L.T("loadout.brain.keep"), L.T("loadout.switch"), L.T("loadout.signed_in"), L.T("loadout.brain.auto", "Codex"),
 			L.T("loadout.tray", "Hetzner Server"), L.T("loadout.tasks.devices"))
 		// Two agents: the choice, the reassurance, a switch per agent, how it picks.
 		tt, sent := frame(cases["two-agents"])
-		must(tt, "two", L.T("loadout.brain.keep"), L.T("loadout.tasks.how", "Ducter"), L.T("loadout.tasks.override"), L.T("loadout.add.more", "Ducter"))
+		must(tt, "two", L.T("loadout.brain.keep"), L.T("loadout.tasks.how"), L.T("loadout.tasks.override"), L.T("loadout.add.more"))
 		never(tt, "two", L.T("handoff.one"))
 		if err := tt.Click(spoken(L, L.T("loadout.switch"), L.T("loadout.brain.title"))); err != nil {
 			t.Fatalf("%s: %v", lang, err)
@@ -166,7 +166,7 @@ func TestD322PartnerStory(t *testing.T) {
 		}
 		// Nothing signed in: one empty row, the add block, no tasks or hand-off.
 		tt, _ = frame(cases["none"])
-		must(tt, "none", L.T("loadout.brain.none"), L.T("loadout.add.none", "Ducter"), L.T("loadout.add.signin.go"), L.T("loadout.add.install.go"))
+		must(tt, "none", L.T("loadout.brain.none"), L.T("loadout.add.none"), L.T("loadout.add.signin.go"), L.T("loadout.add.install.go"))
 		never(tt, "none", L.T("loadout.tasks.title"), L.T("handoff.title"))
 		// A key only: said as a key, paid per use.
 		tt, _ = frame(cases["key-only"])

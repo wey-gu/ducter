@@ -50,7 +50,7 @@ func TestSettingsOpensOnOverviewD469(t *testing.T) {
 		if app.settingsTab() != TabHome {
 			t.Fatalf("%s: opened on %q", lang, app.settingsTab())
 		}
-		for _, s := range []string{L.T("home.lead.ok"), L.T("home.lives.on", "hel"), L.T("home.l.reads"), L.T("home.map"), L.T("home.role.home", "小鸭")} {
+		for _, s := range []string{L.T("home.lead.ok"), L.T("home.lives.on", "hel"), L.T("home.l.reads"), L.T("home.map"), L.T("home.role.home")} {
 			if _, ok := tt.Find(s); !ok && lang == i18n.ZH {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}

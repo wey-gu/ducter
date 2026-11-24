@@ -83,7 +83,7 @@ interface State {
   picksId?: string;
   picksRefs?: string[];
   /** D394: a review task's standing after its last round, and its open round card. */
-  rounds?: Record<string, ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[] }>;
+  rounds?: Record<string, RoundState>;
   /** D415: the person's own subjects (分类), kept over every sort. */
   mine?: MySubjects;
 }
@@ -105,8 +105,20 @@ interface MySubjects {
 }
 const noMine = (): MySubjects => ({ of: {}, as: {}, gone: [], made: [] });
 
+/**
+ * D394: a review task's standing after its last round. D524: `round` is the wake that began it (a
+ * later review_report in the same round replaces the earlier one), `was` the formal requests the
+ * round before it ended with, `told` the requests (ref@head) already said once in the conversation.
+ */
+type RoundState = ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[]; round?: string; was?: string[]; told?: string[] };
+
 /** D407: one pull request as the review task's last round saw it (the board's row). */
 type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string; mention?: boolean };
+
+/** D524: the formal review requests of a round (not the PRs that only mention the person). */
+const formalOf = (prs: RoundPr[] | undefined): string[] => (prs ?? []).filter((p) => !p.mention).map((p) => p.ref);
+/** D524: a request said once: the same PR at the same head is never said again. */
+const toldKey = (p: RoundPr) => `${p.ref}@${p.head ?? ""}`;
 
 const fresh = (): State => ({ verdicts: {}, chosen: {}, items: [], queue: [], handed: {}, reads: {} });
 
@@ -180,6 +192,10 @@ const W = {
     standingNow: "刚才等着的 {n} 份评审已经发到 GitHub：{links}",
     standingNow1: "刚才等着的那份评审已经发到 GitHub：{links}",
     listSep: "、",
+    // D524: a formal review request a round newly brought, said once in one line.
+    newAsk1: "新来了一个评审请求：{link}「{title}」。",
+    newAsk1Bare: "新来了一个评审请求：{link}。",
+    newAsks: "新来了 {n} 个评审请求：{links}。",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
     reviewGo: "发出",
     reviewHold: "先不发",
@@ -216,6 +232,9 @@ const W = {
     standingNow: "The {n} reviews that were waiting are on GitHub now: {links}",
     standingNow1: "The review that was waiting is on GitHub now: {links}",
     listSep: ", ",
+    newAsk1: "A new review request: {link} “{title}”.",
+    newAsk1Bare: "A new review request: {link}.",
+    newAsks: "{n} new review requests: {links}.",
     reviewQ: "Send these {n} review comments on {where}{label}?",
     reviewGo: "Send",
     reviewHold: "Not now",
@@ -396,7 +415,7 @@ export interface Pile {
    * D394: a review task's round: every request waiting on the person, the ones reviewed again with
    * their drafted comments. The drafts become those PRs' pre-reads; one card asks to post them all.
    */
-  round(taskId: string, raw: unknown): Promise<{ ok: boolean; error?: string; drafted?: number; posted?: { ref: string; link?: string }[]; asking?: number; standing?: ReviewStanding }>;
+  round(taskId: string, raw: unknown, at?: { round?: string }): Promise<{ ok: boolean; error?: string; drafted?: number; posted?: { ref: string; link?: string }[]; asking?: number; standing?: ReviewStanding; replaced?: boolean; told?: string[] }>;
   /** D413: a standing permission was just said: post every waiting draft it covers now (its card shrinks or settles). */
   postWaiting(): Promise<{ taskId: string; posted: { ref: string; link?: string }[] }[]>;
   /** D413: the GitHub owners the review rounds look at now (a standing permission said without one is bounded by them). */
@@ -1064,7 +1083,7 @@ export function createPile(d: PileDeps): Pile {
     read(ref) {
       return st.reads[ref];
     },
-    async round(taskId, raw) {
+    async round(taskId, raw, when) {
       const r = parseRound(raw);
       if (!r.ok) return { ok: false, error: r.error };
       const at = new Date(d.now()).toISOString();
@@ -1096,18 +1115,32 @@ export function createPile(d: PileDeps): Pile {
       for (const k of keys.slice(0, Math.max(0, keys.length - 40))) delete st.reads[k];
       const rounds = (st.rounds ??= {});
       const prev = rounds[taskId];
+      // D524: a second report in the same round (the end-of-round look found more) replaces the
+      // first: the round's report is its final look's, and it is still one round.
+      const same = !!(when?.round && prev?.round === when.round);
+      const was = same ? (prev?.was ?? []) : formalOf(prev?.prs);
       // D413: what the person said may go without asking goes now; the rest waits on one card.
       const posted = await postStanding(taskId);
       // Every draft of this task still unsent goes on the one card (an earlier round's too).
       const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
-      const standing: ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[] } = {
+      const sentBefore = same ? (prev?.posted ?? 0) : 0;
+      // D524: a formal review request this round newly brought is said once, in one line: whatever
+      // the drafts, whatever its commits; never again for the same PR at the same head. The first
+      // round ever says nothing (its report is the whole list).
+      const told = [...(prev?.told ?? [])];
+      const brought = prev ? r.prs.filter((p) => !p.mention && !was.includes(p.ref) && !told.includes(toldKey(p))) : [];
+      for (const p of r.prs) if (!p.mention && (!prev || brought.includes(p)) && !told.includes(toldKey(p))) told.push(toldKey(p));
+      const standing: RoundState = {
         waiting: r.prs.length,
         again: r.prs.filter((p) => p.changed).length,
         same: r.prs.filter((p) => !p.changed).length,
-        ...(posted.length ? { posted: posted.length } : {}),
+        ...(posted.length + sentBefore ? { posted: posted.length + sentBefore } : {}),
         drafted: unsent.length,
         at,
-        n: (prev?.n ?? 0) + 1,
+        n: same ? (prev?.n ?? 1) : (prev?.n ?? 0) + 1,
+        ...(when?.round ? { round: when.round } : {}),
+        was,
+        told: told.slice(-200),
         // D407: the rows the board shows, as this round saw them (a title it didn't give: the last one known).
         prs: r.prs.map(({ notes: _n, ...p }) => {
           const title = p.title ?? st.reads[p.ref]?.title ?? prev?.prs?.find((x) => x.ref === p.ref)?.title ?? st.items.find((x) => x.ref === p.ref)?.title;
@@ -1118,9 +1151,17 @@ export function createPile(d: PileDeps): Pile {
       if (card) standing.decisionId = card;
       rounds[taskId] = standing;
       save();
+      if (brought.length) {
+        const w = W[d.lang()];
+        const link = (p: RoundPr) => `[${p.ref.replace(/^[^/]+\//, "")}](https://github.com/${p.ref.replace("#", "/pull/")})`;
+        const one = brought.length === 1 ? brought[0]! : undefined;
+        const title = one ? (one.title ?? st.items.find((x) => x.ref === one.ref)?.title) : undefined;
+        const text = one ? fill(title ? w.newAsk1 : w.newAsk1Bare, { link: link(one), title: title ?? "" }) : fill(w.newAsks, { n: brought.length, links: brought.map(link).join(w.listSep) });
+        d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } } as never);
+      }
       boardSubs.forEach((fn) => fn(taskId));
-      const { decisionId: _d, n: _n, prs: _p, ...out } = standing;
-      return { ok: true, drafted: drafted.length, posted, asking: unsent.length, standing: out };
+      const { decisionId: _d, n: _n, prs: _p, round: _r, was: _w, told: _t, ...out } = standing;
+      return { ok: true, drafted: drafted.length, posted, asking: unsent.length, standing: out, ...(same ? { replaced: true } : {}), ...(brought.length ? { told: brought.map((p) => p.ref) } : {}) };
     },
     reviewOrgs() {
       const refs = Object.values(st.rounds ?? {}).flatMap((x) => (x.prs ?? []).map((p) => p.ref));
@@ -1202,7 +1243,7 @@ export function createPile(d: PileDeps): Pile {
     standing(taskId) {
       const s0 = st.rounds?.[taskId];
       if (!s0) return undefined;
-      const { decisionId: _d, n: _n, prs: _p, ...out } = s0;
+      const { decisionId: _d, n: _n, prs: _p, round: _r, was: _w, told: _t, ...out } = s0;
       return out;
     },
     async readNewest(prs) {

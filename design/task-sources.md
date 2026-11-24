@@ -158,7 +158,10 @@ day (their day, their zone); every group count is code's count of verdicts still
 over. None is a number a model wrote.
 
 **A review task's drafts (D394).** A task of the person's that reviews their requests every so often
-reports each round with `review_report`; the drafts for PRs it reviewed again land as those PRs'
+reports each round with `review_report`, from the round's final look (D524: a later call in the
+same round replaces the earlier one, so a request found by the end-of-round look is in that round's
+report and board; a formal request the round newly brought is said once in one line, **新来了一个评审请求：{link}「{title}」。**,
+never again at the same head); the drafts for PRs it reviewed again land as those PRs'
 pre-reads (marked with the task and the head), so the same card and sheet show them. One card a
 round, **{n} 个 PR 的评审写好了，发到 GitHub？**, carries every unsent draft; Go posts each as one
 comment-only review (`source_write` op `review`), Hold posts nothing. **Under a standing

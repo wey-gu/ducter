@@ -640,6 +640,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
+    // D524: the person's zone (theirs from Settings or their device), not the server's clock.
+    zone: () => zone(),
     lang: () => langNow(),
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
@@ -1464,6 +1466,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const fromClone = clone?.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/[\w.-]+?(?:\.git)?\/?$/)?.[1];
     return (fromClone ?? work.owned.of(taskId)[0]?.split("/")[0])?.toLowerCase();
   };
+  // D524: the person's zone for a task's brief (a server's own clock is often UTC).
+  api.zone = () => zone();
   api.goesFor = (taskId) =>
     TASK_STEP_ACTIONS.flatMap((a) => {
       const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
@@ -2347,23 +2351,36 @@ export function startCore(opts: CoreOptions = {}): Core {
     return yes;
   };
   isReview = isReviewTask;
+  // D524: the round a review_report belongs to: the task's own timer (or condition) that last woke
+  // it. Two reports under the same wake are one round; the later is its final look.
+  const roundOf = (taskId: string): string | undefined => {
+    const ws = log.read({ stream: "channel", kinds: ["waiter"], limit: 2000 });
+    for (let i = ws.length - 1; i >= 0; i--) {
+      const w = ws[i]!.body as Bodies["waiter"];
+      if (w.taskId === taskId && w.wakes === "task" && w.state === "fired" && !w.limit) return w.waiterId;
+    }
+    return undefined;
+  };
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, once per round from your final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. If a later look in the same round finds more, call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
-      const r = await taskSources.pile.round(ctx.taskId, args);
+      const r = await taskSources.pile.round(ctx.taskId, args, { ...((k) => (k ? { round: k } : {}))(roundOf(ctx.taskId)) });
       if (!r.ok) return r.error ?? "Not kept.";
       // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
       boards.afterRound(ctx.taskId);
       // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
+      // D524: a later call in the same round replaced the earlier one; a new request was said to the person once.
+      const again = r.replaced ? "It replaces this round's earlier review_report. " : "";
+      const told = r.told?.length ? `The person was told once of the new request${r.told.length === 1 ? "" : "s"} (${r.told.join(", ")}); don't report ${r.told.length === 1 ? "it" : "them"} for that alone. ` : "";
       return went || r.drafted
-        ? `Kept. ${went}${asks}Don't post or ask yourself. Now wait_for the next round and end your turn.`
-        : "Kept: nothing new to ask the person. Now wait_for the next round and end your turn.";
+        ? `Kept. ${again}${told}${went}${asks}Don't post or ask yourself. Now wait_for the next round and end your turn.`
+        : `Kept: nothing new to ask the person. ${again}${told}Now wait_for the next round and end your turn.`;
     },
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );

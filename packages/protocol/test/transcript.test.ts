@@ -4,7 +4,7 @@ import { expect, test } from "bun:test";
 import cases from "../fixtures/transcript.json";
 import { cases as source } from "../fixtures/transcript-cases.ts";
 import type { LogEvent } from "../src/index.ts";
-import { blocksOf, failLine, failOf, inTurn, lastSeq, latestVoice, linesOf, serviceName, trivialOutput, turnsOf, wakeOf, type Block } from "../src/transcript.ts";
+import { blocksOf, failLine, failOf, inTurn, lastSeq, latestVoice, linesOf, noteOf, serviceName, trivialOutput, turnsOf, wakeOf, type Block } from "../src/transcript.ts";
 import { editDiff, linesDiff } from "../src/editdiff.ts";
 import { builtTurns, indexOf, slotsOf } from "../src/session.ts";
 
@@ -114,4 +114,11 @@ test("D268: a retry says itself only while it is the latest thing", () => {
   expect(live.at(-2)).toMatchObject({ k: "steps", live: true });
   const after = blocksOf("claude-code", [...base, retry, { ...base.at(-1)!, seq: 10000 }], true);
   expect(after.some((b) => b.k === "note" && b.say === "retry")).toBe(false);
+});
+
+// D524: hel's review loop said 「之前的记录接不上了」 every round (129 rounds, 0 refused resumes):
+// the designed fresh session of a round (D394) was read as a refused resume.
+test("a round's fresh session is silent; a refused resume is said", () => {
+  expect(noteOf("a fresh session for this round", { fresh: "round" })).toBeUndefined();
+  expect(noteOf("could not resume the session (gone)", { fresh: "resume_rejected" })).toEqual({ say: "fresh" });
 });

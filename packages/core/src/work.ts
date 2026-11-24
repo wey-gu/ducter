@@ -56,6 +56,8 @@ export interface WorkOptions {
   /** D483: how often owned PRs are looked at (tests). */
   ownedEveryMs?: number;
   defaultZone?: string;
+  /** D524: the person's time zone now (Settings, their device), for the times a task is told. */
+  zone?: () => string | undefined;
   /** D427: the language the person talks in now (the keeper's cards). */
   lang?: () => import("@ducter/protocol").LangTag;
   /** D429: the computers, for the keeper: names, an awake one to move a late loop to, the move. */
@@ -101,6 +103,8 @@ const W = {
     // D429: a task in rounds: a round's end is progress, never done (Ducter brings the next one).
     round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。",
     roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
+    // D524: the person's clock, not the server's: a round's times are said in it.
+    roundNow: "对方那里现在是 {now}。写给对方的时间都按对方的时区，或者说「45 分钟后」，不写 UTC。",
   },
   en: {
     time: 'It\'s time: "{reason}". Carry on.',
@@ -113,6 +117,7 @@ const W = {
     facts: "Its look: {check}. Its latest looks saw: {looks}.",
     round: "This is one round of your rounds: when it is done, report_to_main with state progress, never done; Ducter wakes you for the next one.",
     roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds. Ducter wakes you for the next one.',
+    roundNow: 'It is {now} where the person is. Write every time they read in their time zone, or as "in 45 minutes"; never UTC.',
   },
 };
 const wordsOf = (reason: string) => words(W, langOfText(reason));
@@ -209,7 +214,20 @@ export function createWork(o: WorkOptions): Work {
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
-  const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone, ...(o.loopsWhere ? { where: o.loopsWhere } : {}) });
+  // D524: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
+  const localTime = (ms: number, from?: number): string => {
+    const z = o.zone?.() ?? o.defaultZone;
+    const tz = z ? { timeZone: z } : {};
+    try {
+      const hm = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...tz }).format(new Date(ms));
+      const day = (t: number) => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", ...tz }).format(new Date(t));
+      const d = from !== undefined && day(ms) !== day(from) ? `${day(ms)} ` : "";
+      return from !== undefined && z ? `${d}${hm} (${z})` : `${d}${hm}`;
+    } catch {
+      return new Date(ms).toISOString().slice(11, 16);
+    }
+  };
+  const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.zone?.() ?? o.defaultZone, ...(o.loopsWhere ? { where: o.loopsWhere } : {}) });
 
   /** D483: what a wait's last looks saw (they are logged only when what they saw changed), oldest first. */
   const looksOf = (w: Bodies["waiter"]): string => {
@@ -247,7 +265,7 @@ export function createWork(o: WorkOptions): Work {
       const wake = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
       // D429: a round of a task in rounds says how a round ends (progress; done only for the person's until).
       const loop = !w.limit ? loops.get(w.taskId) : undefined;
-      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
+      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${fill(c.roundNow, { now: localTime((o.clock ?? realClock).now()) })}` : wake;
       const text = w.limit ? said : withPRs(w.taskId, said);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
@@ -350,12 +368,14 @@ export function createWork(o: WorkOptions): Work {
         ok: true,
         waiterId: w.waiterId,
         at: w.at,
+        // D524: the time as the person reads it; `at` is UTC and is never said to them.
+        atLocal: localTime(at, now),
         ...(before.length ? { replaced: before.map((v) => v.at) } : {}),
         ...(rhythm ? { rhythm: `every ${Math.round(rhythm / 60_000)} min, as the person set it` } : {}),
         note:
           loops.get(taskId)?.state === "on"
-            ? "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. Ducter keeps this task going in rounds until the person says stop: a round's report never ends it."
-            : "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
+            ? "Armed; it replaces any timer you had. If you tell the person when, say atLocal (their time) or \"in N minutes\", never UTC. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. Ducter keeps this task going in rounds until the person says stop: a round's report never ends it."
+            : "Armed; it replaces any timer you had. If you tell the person when, say atLocal (their time) or \"in N minutes\", never UTC. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
       };
     } catch (err) {
       return { ok: false, error: (err as Error).message };

@@ -3044,6 +3044,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D407: a routine fills an app (`apps.md`)
 
+- [ ] **D524 on hel**: the review loop's next rounds after release: a request that comes mid-round in that round's board and said once; no 之前的记录接不上了 at a round's start; times in the author's zone in reports and `wait_for` reasons. Trigger: D524 released and hel upgraded.
 - [ ] **Run the review board on hel**: the author's routine's next rounds with `title` and `ci` in its review_report, the offer after three, the board on his phone and Mac. Trigger: this branch merged and released.
 - [ ] **CI read by Ducter, not said by the task** (the board's CI pill is the task's word at the head it looked at; a check run that turns red between rounds shows next round). Trigger: a board showing green while GitHub shows red.
 - [ ] **Other routines' boards made from a template** like the review board (a price watch, a benchmark) instead of the partner writing each one. Trigger: three boards of the same kind made by the partner.

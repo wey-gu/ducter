@@ -171,3 +171,10 @@ describe("a watcher's report (D349; D394: a round with nothing new is silent)", 
     await runner.dispose();
   });
 });
+
+// D524: hel's review rounds wrote 「下一轮将在 07:13 UTC 进行」: the brief names the person's zone.
+test("the brief says times in the person's zone, never UTC", () => {
+  const b = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "none" } as never, cwd: "/w", mcpServerName: "ducter", zone: "Asia/Shanghai" });
+  expect(b).toContain("is in the user's time zone, Asia/Shanghai");
+  expect(b).toContain('never "UTC"');
+});

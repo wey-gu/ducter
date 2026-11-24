@@ -1121,7 +1121,7 @@ const (
 	// locRestRank: the marks a rail at rest shows (the person's words, a task
 	// handed over, a failure, an ask that waits).
 	locRestRank = 5
-	locTimeW   = 40
+	locTimeW    = 40
 )
 
 // railMark is a mark on the rail, at y from the rail's top.

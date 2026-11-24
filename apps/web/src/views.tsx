@@ -74,7 +74,7 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
+import { PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -1684,7 +1684,9 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
-      {((!wide && phoneBar) || fold) && <PartnersBack />}
+      {/* D545: beside the list (not a phone, not a fold), its toggle: narrower, hidden, back. */}
+      {!phoneBar && !fold && <RailToggle />}
+      {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>

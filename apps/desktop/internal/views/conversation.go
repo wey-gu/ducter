@@ -314,6 +314,8 @@ func (a *App) header(c *ui.Context) {
 		// doing, D77, D112).
 		tint := t.SurfaceSunken.Mix(t.Chrome, 0.45)
 		about := a.L.T("nav.partner.about", a.S.PersonaName)
+		a.railToggle(c)  // D545: the list beside: narrower, hidden, back
+		a.othersStack(c) // D545: hidden, the others' faces are the way back
 		ui.Row(c.Key("who")).Gap(t.S3 - 2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			// The clay partner, 44 points: it breathes and blinks (D77).
 			face := ui.Box(c.Key("who-face")).Shrink(0).Cursor(ui.CursorPointer).AccessHidden(true).Tooltip(about)

@@ -21836,6 +21836,25 @@ html[data-text-size="large"] .brand-mark > svg {
   padding-right: var(--safe-right);
 }
 .panes.mid .pane.conv { flex: 1 1 0; }
+/* D545: the list thin (the faces and their numbers, 52 wide) or hidden, by the bar's toggle and
+   remembered on the device. The list's width changes once, at the press; then only the list moves:
+   it slides in 14 from its edge on D290's across (the conversation never re-lays out mid-motion). */
+.pane.partners.thin { flex-basis: 56px; }
+.pane.partners.thin > .top .level { visibility: hidden; }
+.pane.partners.thin .pl-rows { --row: 50px; padding-inline: 5px; }
+.pane.partners.thin .pl-knob { left: 5px; right: 5px; }
+.pane.partners.thin .pl-row { flex-direction: row; justify-content: center; align-items: flex-end; gap: 0; padding: 0 0 5px; overflow: visible; }
+.pane.partners.thin .pl-words { display: none; }
+/* The number above the figure's head, on the tile's shoulder, never over its face. */
+.pane.partners.thin .pl-face > .pl-n { top: -12px; right: -11px; transform: scale(0.9); }
+.pane.partners.rail-in > * { animation: rail-in var(--t-across) var(--ease-push) both; }
+@keyframes rail-in {
+  from { opacity: 0; transform: translateX(-14px); }
+}
+.top .rail-toggle { flex: none; display: inline-flex; margin-inline-start: -6px; }
+@media (prefers-reduced-motion: reduce) {
+  .pane.partners.rail-in > * { animation: none; }
+}
 /* A phone: the list is the level above the conversation, rows a thumb's height. */
 .partners-home {
   padding-top: 4px;

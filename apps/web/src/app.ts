@@ -1366,7 +1366,7 @@ class AppState {
     if (!nt.adding || f.clientId !== nt.adding) return;
     nt.adding = "";
     if (!f.ok || !f.place) {
-      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : f.reason === "old" ? this.L.t("newtask.old", this.ntBrowseName()) : this.L.t("newtask.err.failed", f.message || "");
+      nt.err = f.reason === "offline" ? this.L.t("newtask.find.offline", this.ntBrowseName()) : f.reason === "old" ? this.L.t("newtask.old", this.ntBrowseName()) : (f.message ? this.L.t("newtask.err.failed", f.message) : this.L.t("newtask.err.failed.bare"));
       return this.changed();
     }
     const p = f.place;

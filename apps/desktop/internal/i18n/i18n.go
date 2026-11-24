@@ -1577,6 +1577,17 @@ var OnEmptyArg func(key string, arg int)
 // never reaches a person (D370); the hook makes the call site get fixed.
 var OnExtraArg func(key string, verbs, args int)
 
+// OnMissingArg, when set (tests), hears a call that passed fewer arguments
+// than the copy prints ("%!s(MISSING)" would reach a person; D519).
+var OnMissingArg func(key string, verbs, args int)
+
+// OnTemplate, when set (tests), hears copy returned with its placeholders
+// unfilled (a call with no arguments for a template that prints some). Code
+// may read a template to inspect or format it itself; drawing it is the bug
+// (「%s 要求修改」 on a babysitter's row, D519): the views' test hook checks
+// what is drawn against these.
+var OnTemplate func(key, template string)
+
 // verbCount is how many arguments a format prints in order, or -1 when it
 // picks them by position (%[2]s), where Sprintf never reports extras.
 func verbCount(format string) int {
@@ -1690,7 +1701,15 @@ func (s *Strings) T(key string, args ...any) string {
 		}
 	}
 	if len(args) == 0 {
+		if OnTemplate != nil && verbCount(v) != 0 {
+			OnTemplate(key, v)
+		}
 		return v
+	}
+	if OnMissingArg != nil {
+		if n := verbCount(v); n > len(args) {
+			OnMissingArg(key, n, len(args))
+		}
 	}
 	if OnEmptyArg != nil {
 		used := usedArgs(v, len(args))

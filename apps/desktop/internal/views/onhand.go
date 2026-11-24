@@ -60,7 +60,7 @@ func (a *App) onHand(c *ui.Context) {
 		if keepOpen && w >= railFrom {
 			a.keepRail(c)
 		}
-		ui.Scroll(c.Key("board")).Grow(1).MinWidth(0).Children(func() {
+		a.toastsOver(ui.Scroll(c.Key("board")).Grow(1).MinWidth(0)).Children(func() {
 			ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 				if empty {
 					ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
@@ -108,7 +108,7 @@ func (a *App) onHand(c *ui.Context) {
 						if a.oh.filter == 0 {
 							switch lens {
 							case "":
-								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 在照看的
+								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 看守中
 									a.routineShelf(c, false)
 								}
 							case lensOther:

@@ -1781,6 +1781,13 @@ a {
 .composer.is-sending textarea {
   color: var(--ink-muted);
 }
+/* D519: no leading control (pictures): the words keep the inset it would have given them. */
+.composer.bare {
+  padding-left: 24px;
+}
+.composer.is-sending textarea::selection {
+  background: transparent;
+}
 
 /* ---------- empty conversation ---------- */
 .hello {

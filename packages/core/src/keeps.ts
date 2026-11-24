@@ -46,7 +46,7 @@ const W = {
     idle: "「{title}」有活就接，现在手上没有。",
     paused: "「{title}」暂停了。",
     pausedUntil: "「{title}」暂停了，{until} 恢复。",
-    done: "「{title}」照看完了。",
+    done: "「{title}」做完了。",
     stopped: "「{title}」停下了。",
     untilLine: "一直做到：{until}。哪一轮看到它成立了，就在报告的第一句说出来，并写明凭什么。",
     speaksLine: "什么时候出声：{speaks}。其余时候不出声，没有变化就不用说。",

@@ -79,7 +79,7 @@ test("hel's failure, read: a lock git found is the repository being busy; anythi
 test("a worktree add that meets another git's lock is tried again and the task starts; Ducter's own reads take no optional lock", async () => {
   const repo = makeRepo();
   lockOnce(2);
-  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t1", "通用设置", join(dir, "data"));
+  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo, branch: "ducter/通用设置" /* named before D522 */ }, "t1", "通用设置", join(dir, "data"));
   await provisionPlace(r);
   expect(existsSync(join(r.cwd, "README.md"))).toBe(true);
   expect((await git(r.cwd, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/通用设置");
@@ -91,7 +91,7 @@ test("a worktree add that meets another git's lock is tried again and the task s
 test("a lock that stays is the card's busy, never a bare path; a branch the failed start left is used again", async () => {
   const repo = makeRepo();
   lockOnce(99);
-  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t1", "通用设置", join(dir, "data"));
+  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo, branch: "ducter/通用设置" /* named before D522 */ }, "t1", "通用设置", join(dir, "data"));
   const err = await provisionPlace(r).then(() => undefined, (e: Error) => e);
   expect(err?.message).toBe(`the repository is busy: ${repo}/.git/worktrees/通用设置/index.lock`);
   expect(placeProblem(err!.message)).toMatchObject({ why: "busy" });

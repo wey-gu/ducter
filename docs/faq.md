@@ -116,8 +116,10 @@ write to it directly while it works.
 ### Can I edit a task's code myself?
 
 Yes. Each coding task works in its own copy of your project, a folder named after the project and
-its branch, in the words you used for the task (such as `~/ducter/worktrees/hawdb/fix-flaky-test`,
-or `…/hawdb/修复登录页` for a task written in Chinese); the opened task on the Mac shows the path.
+its branch, a few plain English words for what the task does (such as
+`~/ducter/worktrees/hawdb/fix-flaky-test`, also for a task you wrote in Chinese, so the name types
+and pastes cleanly everywhere); the opened task on the Mac shows the path. Tasks that already have a
+branch keep its name.
 Tasks started before this version keep theirs in `~/.ducter/worktrees`.
 On the Mac, **Open** at the task's top right shows it in Finder, opens it in Cursor, Visual
 Studio Code or Zed, or opens it in Terminal, iTerm2, Ghostty or Warp, whichever you have, the one

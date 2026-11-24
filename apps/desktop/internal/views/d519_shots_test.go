@@ -106,7 +106,8 @@ func TestD519Shots(t *testing.T) {
 		// The talk box: focused with words (ready), then sending.
 		ph := h.app.L.T("keep.talk", h.app.L.T("keep.talk.every"))
 		h.app.oh.keep.said = h.app.L.T("keep.talk.every")
-		_ = h.tt.Click(ph)
+		_ = ph
+		h.app.oh.keep.focus = true // the caret in the box, as after a tap (a test click selects all)
 		settle()
 		shoot(fmt.Sprintf("mac-talk-ready-%d-%s-%s.png", w, lang, paper))
 		if w == 1400 {

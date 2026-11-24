@@ -39,6 +39,7 @@ import { openDeviceAuth } from "@ducter/core/src/auth.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { cmdKey } from "./key-cmd.ts";
 import { harnessName } from "@ducter/protocol";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by build.sh via --define
 
@@ -333,7 +334,7 @@ function desktopPlan(ctx: Ctx) {
     compiled: ctx.host.compiled,
     repoRoot: sourceRepoRoot(ctx.host.compiled),
     exists: existsSync,
-    which: (c) => Bun.which(c),
+    which: (c) => whichNow(c),
   });
 }
 

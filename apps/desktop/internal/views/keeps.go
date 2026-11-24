@@ -13,12 +13,12 @@ import (
 )
 
 // D511: 照看 / Looking after (design/standing-work.md §6), as the web's
-// keep.tsx. A Keep on On hand is one sheet under 在照看的: its mark, its
+// keep.tsx. A Keep on On hand is one sheet under 看守中: its mark, its
 // title, its facts each its own element (D291), its last change, when it
 // wakes next at the right, and the tasks at work on it set in under it. What
 // waits for the person stands in 等你 once; the sheet says how many. A tap
 // opens the Keep's own page in the board's place (never Settings): its life,
-// 你说的, 在等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么照看
+// 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做
 // with 暂停 and 停下.
 
 // keepState is the Keep whose page is open ("" the list) and the page's own
@@ -35,6 +35,7 @@ type keepState struct {
 	sentAt  time.Time
 	told    string
 	round   string
+	focus   bool // the talk box takes the focus once
 }
 
 // openKeep opens a Keep's page in On hand's place and asks the home for it.
@@ -216,7 +217,7 @@ func (a *App) waitsForYou(task *store.Task) bool {
 	return false
 }
 
-// keepSheet is one Keep under 在照看的: its head opens its page; its tasks at
+// keepSheet is one Keep under 看守中: its head opens its page; its tasks at
 // work nest under it (up to three).
 func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 	t := a.T
@@ -238,7 +239,7 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 				if k.Life == "paused" {
 					ink = t.InkMuted
 				}
-				uiText(c.Key("title"), k.Title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2)
+				uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(ink).MaxLines(2)
 				if len(facts) > 0 {
 					ui.Row(c.Key("facts")).Gap(t.S3).Wrap().Children(func() {
 						for i, f := range facts {
@@ -343,14 +344,14 @@ func (a *App) keepItemWords(x protocol.KeepItem) (string, ui.Color) {
 	case x.At == "you":
 		return a.L.T("keep.item.you"), t.NeedsYou.Ink
 	case x.Said != nil:
-		return a.L.T("onhand.prs." + x.Said.Phase), t.Working.Ink
+		return a.prPhaseWords(*x.Said, ""), t.Working.Ink
 	case x.At == "work":
 		return a.L.T("keep.item.work"), t.Working.Ink
 	}
 	return a.L.T("keep.item.rest"), t.InkMuted
 }
 
-// keepsSection is 在照看的 / Looking after on On hand.
+// keepsSection is 看守中 / Looking after on On hand.
 func (a *App) keepsSection(c *ui.Context, ks []protocol.KeepSheet) {
 	w := a.oh.listW
 	if w <= 0 {
@@ -398,7 +399,7 @@ func (a *App) keepRail(c *ui.Context) {
 			r.Children(func() {
 				a.keepMark(c, k.ID, k.Life, 32)
 				ui.Column(c.Key("tx")).Gap(1).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-					uiText(c.Key("t"), sayWords(k.Title, keepRailCols)).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(1.35).MaxLines(2)
+					uiText(c.Key("t"), noOrphan(sayWords(k.Title, keepRailCols))).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(1.35).MaxLines(2)
 					sub, ink := a.keepBeat(k), t.InkMuted
 					if k.Asks > 0 {
 						sub, ink = a.L.T("keep.asks", k.Asks), t.NeedsYou.Ink
@@ -487,7 +488,7 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 		a.keepMark(c, "page", k.Life, 64)
 		ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 			uiText(c.Key("kick"), a.L.T("keep.kicker", a.S.PersonaName)).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted)
-			uiText(c.Key("title"), k.Title).FontSize(t.XXL).FontWeight(800).TextColor(t.Ink).LineHeight(1.2).Margin(2, 0, 8, 0)
+			uiText(c.Key("title"), noOrphan(k.Title)).FontSize(t.XXL).FontWeight(800).TextColor(t.Ink).LineHeight(1.2).Margin(2, 0, 8, 0)
 			ui.Row(c.Key("life")).Gap(8).Wrap().Children(func() {
 				life := tagPlain
 				if k.Life == "on" {
@@ -571,7 +572,7 @@ func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
 					if n := keepPRNum(x.PR); n != "" && !strings.Contains(x.Title, n) {
 						uiText(c.Key("pr"), n).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 					}
-					uiText(c.Key("title"), x.Title).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
+					uiText(c.Key("title"), noOrphan(x.Title)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
 				})
 				text, ink := a.keepItemWords(x)
 				uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
@@ -759,7 +760,7 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 	ui.Column(c.Key("talk")).Width(w).Gap(t.S2).Margin(22, 0, 0, 0).Children(func() {
 		ui.Row(c).Width(w).Children(func() {
 			a.composerBox(c, composerOpts{
-				key: "keep-talk", draft: &ks.said, placeholder: ph, label: ph, lines: 4, sending: ks.sending != "",
+				key: "keep-talk", draft: &ks.said, placeholder: ph, label: ph, lines: 4, sending: ks.sending != "", focus: ks.focus,
 				onSend: func(text string) bool {
 					text = strings.TrimSpace(text)
 					if text == "" {
@@ -771,13 +772,14 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 				},
 			})
 		})
+		ks.focus = false
 		if ks.told == k.ID && ks.said == "" {
 			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.S.PersonaName)).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
 		}
 	})
 }
 
-// keepRules is 怎么照看 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
+// keepRules is 怎么做 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
 func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	t := a.T
 	w := float32(320)

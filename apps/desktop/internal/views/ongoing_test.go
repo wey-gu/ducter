@@ -95,7 +95,7 @@ func TestOngoingStateLines(t *testing.T) {
 			"t_review": "每 32 分钟看一次 | 下次 15:32",
 			"r_weekly": "暂停到周一 10:00",
 			"r_mail":   "已暂停：连着 3 次没成",
-			"r_deps":   "正在跑",
+			"r_deps":   "进行中",
 			"r_bench":  "等你",
 			"t_flight": "每 6 小时看一次 | 下次明天 17:00",
 		}},
@@ -132,7 +132,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 	app.Receive(ongoingFrame(ongoingFixture(i18n.ZH)))
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"等你", "正在跑", "等下一次", "暂停了", "每天早上看一眼 hawdb 的 CI"} {
+	for _, want := range []string{"等你", "进行中", "等下一次", "已暂停", "每天早上看一眼 hawdb 的 CI"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -195,7 +195,7 @@ func TestOngoingCountOnHand(t *testing.T) {
 	app.Route = RouteOnHand
 	tt := ui.NewTesterWith(app.View, 1280, 820, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("在照看的 3 个"); err != nil {
+	if err := tt.Click("看守中 3 个"); err != nil {
 		t.Fatalf("On hand's line: %v (%q)", err, tt.Texts())
 	}
 	if app.Route != RoutePast || app.past.tab != "ongoing" {

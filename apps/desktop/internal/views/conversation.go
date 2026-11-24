@@ -149,7 +149,9 @@ func (a *App) conversation(c *ui.Context) {
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	// D254: the list and the pebble over its foot share one pane.
 	a.readBack() // D305: the reply to a message sent by voice, read aloud
-	ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve).Children(func() {
+	pane := ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
+	a.toastsOver(pane) // D527: toasts centre over the conversation, beside the list of partners
+	pane.Children(func() {
 		ui.List(c, &a.list, len(rows), func(i int) {
 			e := rows[i].entry
 			var prev *store.Entry
@@ -204,15 +206,21 @@ func (a *App) conversation(c *ui.Context) {
 		a.olderWait(c) // D509: a page of older messages on its way
 	})
 	a.moreOlder(len(rows)) // D509: near the top, the page before
-	a.firstResultLine(c)
-	// One card at a time under the conversation: Ducter can't run in the
-	// background, else a gentle ask, else the Terminal offer.
-	if !a.linkLostNotice(c) && !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
-		a.cliOfferLine(c)
-	}
-	a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
-	a.doorLine(c, rows)             // D535: 有 n 件等你定 ›, while what waits is out of view
-	a.composer(c)
+	// D527: the foot, the composer and all that sits over it, is one
+	// column: toasts keep above its top.
+	foot := ui.Column(c.Key("conv-foot")).Shrink(0)
+	a.toastsAbove(foot)
+	foot.Children(func() {
+		a.firstResultLine(c)
+		// One card at a time under the conversation: Ducter can't run in the
+		// background, else a gentle ask, else the Terminal offer.
+		if !a.linkLostNotice(c) && !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
+			a.cliOfferLine(c)
+		}
+		a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
+		a.doorLine(c, rows)             // D535: 有 n 件等你定 ›, while what waits is out of view
+		a.composer(c)
+	})
 	a.readWhenSeen(c)
 }
 

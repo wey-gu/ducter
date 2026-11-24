@@ -9,14 +9,33 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
+
+- [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of
+  the author's real titles (zh and en, with and without a to-do number, one repository with a
+  `feat/` convention) through the cheapest model of Claude Code and Codex; check 3 to 6 words that
+  tell the task apart, the convention followed, and how long the start waited. Record the results.
+- [ ] **A GitHub ruleset's branch-name pattern** (`gh api repos/{o}/{r}/rulesets`) as one more source
+  of the repository's convention. Trigger: a repository whose convention lives only in a ruleset.
+- [ ] **A convention-shaped branch (`feat/…`) left by a task dropped before it started.**
+  `archiveWorktree` deletes only `ducter/` branches it made; record on the place that Ducter made
+  the branch, so a `feat/` one goes the same way. Trigger: the first such branch seen.
+
 ## Signing in on a server, after D518 (`where.md` "Signing in there")
 
 - [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
   card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
   UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
-- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
-  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
-  into its own folder while running is spawned by its bare name.
+- [x] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. Done in D523: `spawnNow` /
+  `whichNow` everywhere, guarded by `packages/core/test/spawn-guard.test.ts`.
+- [ ] **D523: the colleague's Antigravity sign-in** on the release with D523, with the five facts in
+  `research/private/223-agy-colleague-questions.md` if it still fails.
+- [ ] **D523: give agents the person's proxy.** A home started by the Mac app has no shell
+  `https_proxy`, and agy (Go) reads only the env, so a computer that needs a proxy for Google can't
+  check or run agy; D523 only says so. *Trigger:* the colleague's answers show a proxy, or any agent
+  fails to reach its service from the Mac app while the terminal works. Capture the login shell's
+  proxy variables with its PATH (`captureLoginPath`) and pass them to every agent.
 
 ## The link to the home, after D520 (`system.md` Desktop)
 
@@ -29,6 +48,17 @@ line.
   the same card.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
+## Toasts, after D527 (`ui.md` "Toasts: one slot")
+
+- [ ] **The author's review** of the slot from `.shots/whats-new-notice/`, and live on the Mac at
+  about 1150 after the next update.
+- [ ] **The web's toasts** centre on the window on a wide screen (`.toasts` is fixed, bottom
+  `safe + 84px`): centre them over the conversation's column and above its composer as the Mac
+  does, with the same leave motion. *Trigger:* the web client's next pass on wide windows.
+- [ ] **The update line in the conversation (D344)** still arrives as the partner's own message
+  ("更新到 0.1.35 了：…。看看都改了什么"), under a 新消息 divider like real news. Decide whether it
+  is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
+  bubble. *Trigger:* the author says the bubble reads wrong.
 
 ## New tasks start, after D510 (`where.md` §23)
 
@@ -47,7 +77,7 @@ line.
 - [x] **Build phases 1–3** (`standing-work.md` §11): the Keep and the migration, On hand and the page (web and Mac), `keep_make` / `keep_list` / `keep_change` with a haiku eval. Built 2026-11-24.
 - [ ] **Phase 4: goals and news as recorded judgments.** A round's report records `goal: met` with its evidence and `news` (the model's), code stops the Keep and says once; a round's `told` is then recorded, not only read from a routine's `reports`. World puzzles: the PR that merges, the booking email, a fare at the line. *Trigger:* next.
 - [ ] **The lantern and the track as clay art**, rated with images and the author before the mark is decided (prompt in `standing-work.md` §8); the beat and the lighting up as motion on the Mac. *Trigger:* phase 4 built.
-- [ ] **照看过的 / Looked after before** in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
+- [ ] **已结束 / Ended** Keeps in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
 - [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.

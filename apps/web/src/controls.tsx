@@ -940,3 +940,28 @@ export function KeyHint(p: { opt?: boolean; words: string }) {
     </span>
   );
 }
+
+/** D544: a slim clay pill on the reading measure: a 24 mark, then its facts (the lead in ink, one in
+ *  the needs ink, the rest muted; each its own element, D291), the whole one action. The Mac's
+ *  factPill (shared.go). */
+export function FactPill(p: { mark: ComponentChildren; facts: { text: string; lead?: boolean; needs?: boolean }[]; label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button class={`fact-pill${p.on ? " on" : ""}`} tabIndex={p.on ? 0 : -1} aria-hidden={!p.on} onClick={p.onClick} aria-label={p.label}>
+      <span class="fp-mk" aria-hidden="true">
+        {p.mark}
+      </span>
+      {p.facts.map((f, i) => (
+        <span key={i} class={f.lead ? "fp lead" : f.needs ? "fp needs" : "fp"} aria-hidden="true">
+          {f.text}
+        </span>
+      ))}
+    </button>
+  );
+}
+
+/** The bar's way back (‹ 对话, ‹ 手头的事): the one drawn back mark, 18. */
+export const BackGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);

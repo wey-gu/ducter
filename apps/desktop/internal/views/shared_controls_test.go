@@ -20,6 +20,7 @@ var sharedControls = map[string]bool{
 	// switches, choices and rows (shared.go, partner.go, settings.go)
 	"switchControl": true, "choices": true, "selectRow": true, "disclosureRow": true, "linkRow": true,
 	"dangerText": true, "moreButton": true, "candRow": true, "railTab": true, "sideLink": true,
+	"factPill": true, // D544: a task in rounds' line under the bar (shared.go)
 	// the D161 pieces: the renamable name, coins, chips, the list's rows
 	"cardName": true, "coinTile": true, "socketTile": true, "abilityChip": true, "listRow": true, "trayToken": true,
 	// D166: an app a source can read, on the accounts card

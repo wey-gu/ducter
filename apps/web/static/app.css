@@ -23798,3 +23798,146 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
     display: none;
   }
 }
+
+/* D544: On hand beside the conversation (iPad, a foldable, a two-pane browser) on one grid, as the
+   phone's: the partner and its lead share the first row, Find takes the pane's width on the left
+   edge (never pushed to the right under the lead), the lead at the pane's heading size, a
+   section's name on the cards' own inner edge, and a row's mark on its title's first line. */
+.room-side .oh-head.oh-brief {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 12px;
+  align-items: center;
+}
+.room-side .oh-head.oh-brief .oh-says {
+  display: contents;
+}
+.room-side .oh-head.oh-brief .blines {
+  grid-column: 1 / -1;
+}
+.room-side .oh-head.oh-brief .oh-say {
+  font-size: var(--lg);
+}
+.room-side .strip-row .find {
+  flex: 1 1 100%;
+}
+.room-side .strip-row .strip {
+  flex: 1 1 100%;
+  align-self: stretch;
+}
+.onhand-list.room-side .tsec h3,
+.onhand-list.room-phone .tsec h3 {
+  padding-left: 16px;
+}
+.onhand-list.room-side .ocard .omark,
+.onhand-list.room-phone .ocard .omark {
+  align-self: start;
+}
+/* D544: an ask beside the conversation sits on the same inner edge as the rows (16, the section's
+   name over it), its question at the pane's heading size: a 442 column has no room for a poster. */
+.onhand-list.room-side .decision {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.onhand-list.room-side .decision .q {
+  font-size: var(--lg);
+  line-height: 1.35;
+}
+/* D544: the line that keeps a task in rounds who it is once its head is out of view: a slim clay
+   strip just under the bar, on the reading column's edges; the lantern, 看守中, when the next round
+   comes and which round, each its own element. It comes in with the enter motion (a 4pt drop and a
+   fade) and goes the same way; reduced motion: no movement. */
+.loop-dock {
+  position: relative;
+  height: 0;
+  z-index: 3;
+}
+.fact-pill {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: min(37.5rem, calc(100% - 32px));
+  transform: translate(-50%, -4px);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 36px;
+  padding: 4px 14px 4px 8px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--surface);
+  box-shadow: var(--knob), inset 0 0 0 1px var(--rim);
+  font: inherit;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  text-align: left;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.fact-pill.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.fact-pill .fp-mk {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.fact-pill .fp {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.fact-pill .fp.lead {
+  font-weight: 700;
+  color: var(--ink);
+}
+@media (hover: hover), (any-hover: hover) {
+  .fact-pill.on:hover {
+    background: var(--surface-raised);
+  }
+}
+.fact-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fact-pill {
+    transition: opacity var(--t-fast) var(--ease);
+    transform: translate(-50%, 0);
+  }
+}
+.fact-pill .fp.needs {
+  font-weight: 600;
+  color: var(--needs-ink);
+}
+/* D544: the crumbs yield cleanly where the bar is narrow (a book fold's half, under 720): only the
+   way up, ‹ 手头的事, never a trail cut behind the pager. */
+.top.crumbs .crumb-up {
+  display: none;
+  flex: none;
+}
+@container bar (max-width: 720px) {
+  .top.crumbs .trail {
+    display: none;
+  }
+  .top.crumbs .crumb-up {
+    display: flex;
+  }
+  .top.crumbs .acts {
+    margin-left: auto;
+  }
+  /* The places are one step up (‹ 手头的事), as on a phone's opened task (D484); never cut at the edge. */
+  .top.crumbs .acts .places {
+    display: none;
+  }
+}
+/* D544: the watch card on the reading column's edges, as the head (D542). */
+.task-page > .watch {
+  margin-inline: auto;
+}

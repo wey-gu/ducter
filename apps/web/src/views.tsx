@@ -38,7 +38,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton, Notice } from "./controls.tsx";
+import { BackGlyph, DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -104,6 +104,7 @@ import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune } from "./composer-tune.tsx";
+import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
@@ -252,11 +253,7 @@ function StateMark({ a }: { a: Attention }) {
   if (a === "failed" || a === "dropped" || a === "superseded") return <Cross />;
   return <Forward />;
 }
-const Back = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-    <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-  </svg>
-);
+const Back = BackGlyph;
 
 // A finished task reads "Done": done_claimed means Ducter couldn't check its evidence and the
 // partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
@@ -2720,6 +2717,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           }
         />
       )}
+      {/* D544: a task in rounds keeps who it is while its transcript is read. */}
+      <LoopLine task={task} scroller={scroller} />
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
           {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the

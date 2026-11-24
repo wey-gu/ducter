@@ -73,6 +73,9 @@ export interface KeepBody {
   migratedAt?: string;
   /** D533: the last time the person (or the partner) changed it: from then on each round is told its rules as they are now. */
   editedAt?: string;
+  /** D540: a one-off ask for its next round only, in the person's words ("这一轮先审 #551"): the
+   *  round's wake carries it first, then it is gone. Never its goal (`until`). */
+  next?: { text: string; at: string };
 }
 
 /** One thing a Keep holds now: a task at work on it, with the PR it owns and where that PR stands. */
@@ -297,6 +300,8 @@ export interface KeepChange {
   address?: string;
   /** A gesture: pause (until a time), resume, look now, stop. */
   act?: KeepAction;
+  /** D540: a one-off ask for its next round only (a task in rounds); empty clears it. */
+  next?: string;
 }
 
 /** D533: what a change did: each field from and to, and the change that puts it back (Undo). */

@@ -154,6 +154,9 @@ const zh: Record<string, string> = {
   "header.summary.none": "手头没事，随时说",
   "conn.connecting": "正在连接…",
   "composer.placeholder": "跟 %s 说点什么…",
+  // D547: what the words say in a narrow box, so it is never cut (the longest that fits shows).
+  "composer.placeholder.short": "跟 %s 说…",
+  "composer.placeholder.bare": "说点什么…",
   "composer.task": "直接跟它说…",
   "composer.send": "发送",
   "composer.label": "跟 %s 说",
@@ -1178,6 +1181,8 @@ const en: Record<string, string> = {
   "header.summary.none": "Nothing on hand. Say anything.",
   "conn.connecting": "Connecting…",
   "composer.placeholder": "Say something to %s…",
+  "composer.placeholder.short": "Message %s…",
+  "composer.placeholder.bare": "Message…",
   "composer.task": "Message it directly…",
   "composer.send": "Send",
   "composer.label": "Talk to %s",

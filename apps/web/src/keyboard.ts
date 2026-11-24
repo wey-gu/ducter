@@ -18,7 +18,14 @@ export function keepAboveKeyboard(): void {
     const kb = keyboardInset(innerHeight, vv.height, vv.offsetTop);
     if (kb === last) return;
     last = kb;
-    document.documentElement.style.setProperty("--kb", `${kb}px`);
+    const root = document.documentElement;
+    root.style.setProperty("--kb", `${kb}px`);
+    // D547: the page ends where the keyboard begins (as the iPhone app's web view does): the
+    // composer stands right on the keyboard, with no safe-area gap and nothing panned behind it.
+    root.classList.toggle("kb", kb > 0);
+    if (kb > 0) root.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
+    else root.style.removeProperty("--vvh");
+    if (kb > 0 && (scrollY || vv.offsetTop)) requestAnimationFrame(() => scrollTo(0, 0));
     const a = document.activeElement as HTMLElement | null;
     if (kb > 0 && a && a.closest(".sheet, .ho-sheet") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) requestAnimationFrame(() => a.scrollIntoView({ block: "nearest" }));
   };

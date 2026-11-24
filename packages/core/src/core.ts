@@ -160,12 +160,18 @@ declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh
  * without asking: the fact (where, their words) and the one means (review_report posts at once).
  */
 const REVIEW_GO = {
-  zh: "对方说过 PR 评审不用问、直接发（{where}，原话：「{said}」）。写好的评审都用 review_report 交上来，Ducter 当场发到 GitHub：挑不出问题的，也把结论写在 body 里发出去；一个 PR 这一轮没有新提交但还没发过评审，也照样交（changed 填 true）。不要自己跑 gh pr review，不要把草稿写进报告等别人发，也不要留到下一轮。",
-  en: 'The person said PR reviews go without asking ({where}; their words: "{said}"). Send every finished review through review_report and Ducter posts it to GitHub at once: when you find nothing to change, the body with your conclusion is the review and goes too; a PR with no new commit this round but no review posted yet goes the same way (changed: true). Never run gh pr review yourself, never leave a draft in a report for someone else to post, never hold it for the next round.',
-  whereZh: "{orgs} 下的 PR",
-  whereEn: "PRs in {orgs}",
-  anyZh: "所有 PR",
-  anyEn: "every PR",
+  zh: {
+    line: "对方说过 PR 评审不用问、直接发（{where}，原话：「{said}」）。写好的评审都用 review_report 交上来，Ducter 当场发到 GitHub：挑不出问题的，也把结论写在 body 里发出去；一个 PR 这一轮没有新提交但还没发过评审，也照样交（changed 填 true）。不要自己跑 gh pr review，不要把草稿写进报告等别人发，也不要留到下一轮。",
+    where: "{orgs} 下的 PR",
+    any: "所有 PR",
+    sep: "、",
+  },
+  en: {
+    line: 'The person said PR reviews go without asking ({where}; their words: "{said}"). Send every finished review through review_report and Ducter posts it to GitHub at once: when you find nothing to change, the body with your conclusion is the review and goes too; a PR with no new commit this round but no review posted yet goes the same way (changed: true). Never run gh pr review yourself, never leave a draft in a report for someone else to post, never hold it for the next round.',
+    where: "PRs in {orgs}",
+    any: "every PR",
+    sep: ", ",
+  },
 };
 
 /** D394: what a review task's round says (review_report). */
@@ -970,9 +976,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (!isReview(taskId)) return "";
     const s = standing.list().find((x) => x.action === "pr_review" && !x.taskId);
     if (!s) return "";
-    const zh = l === "zh";
-    const where = s.orgs?.length ? fill(zh ? REVIEW_GO.whereZh : REVIEW_GO.whereEn, { orgs: s.orgs.join(zh ? "、" : ", ") }) : zh ? REVIEW_GO.anyZh : REVIEW_GO.anyEn;
-    return fill(zh ? REVIEW_GO.zh : REVIEW_GO.en, { where, said: s.text.slice(0, 200) });
+    const w = words(REVIEW_GO, l);
+    const where = s.orgs?.length ? fill(w.where, { orgs: s.orgs.join(w.sep) }) : w.any;
+    return fill(w.line, { where, said: s.text.slice(0, 200) });
   }
   const boards = createBoards({
     log,

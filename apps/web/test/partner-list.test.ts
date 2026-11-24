@@ -110,6 +110,11 @@ describe("D513: the list of partners", () => {
     // Each row's number holds while the switch waits for its welcome.
     expect(src("app.ts")).toContain("if (partner && this.railHeld && !this.S.welcomed) return this.railHeld[partner] ?? 0;");
   });
+  test("D517: at 320 the phone's bar with ‹ drops the face so the places never cover the name", () => {
+    const m = css.slice(css.indexOf("@media (max-width: 360px) {\n  .top:has(.partners-back) .who-face { display: none; }"));
+    expect(m.length).toBeGreaterThan(0);
+    expect(m).toContain(".top:has(.partners-back) .who-words { min-width: 0; }");
+  });
   test("D517: every motion of the list is still under Reduce Motion", () => {
     const m = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .pl-knob, .pl-hop { transition: none; }"));
     expect(m).toContain(".pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }");

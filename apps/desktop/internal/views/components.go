@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -227,6 +228,19 @@ func sameWords(detail, title string) bool {
 	}
 	d := norm(detail)
 	return d != "" && d == norm(title)
+}
+
+// countPebble is a count of what needs the person, on a figure's shoulder
+// or beside a back button (D517, ui.md "Shared controls"): a clay pebble in
+// the needs-you surface and ink on its ledge, ringed in the ground it sits
+// on. The caller places it (Absolute, Top, Right).
+func (a *App) countPebble(c *ui.Context, key string, n int, ground ui.Color) ui.Element {
+	t := a.T
+	return ui.Box(c.Key("pebble:"+key)).MinWidth(19).Height(18).Padding(0, 5).Radius(8).
+		Background(t.NeedsYou.Surface).Border(1.5, ground).Shadow(0, 2, 0, 0, t.NeedsYou.Ledge).
+		AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true).Children(func() {
+		uiText(c, strconv.Itoa(n)).FontSize(11).FontWeight(800).TextColor(t.NeedsYou.Ink)
+	})
 }
 
 // lift raises an element a little while hovered: the chip → card motion.

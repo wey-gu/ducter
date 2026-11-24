@@ -161,20 +161,9 @@ func (a *App) conversationWithPartners(c *ui.Context) {
 	})
 }
 
-// convEnter plays a partner's conversation coming in: a fade and a short
-// slide from the list's side, at once under Reduce Motion.
-func (a *App) convEnter(c *ui.Context, e ui.Element) {
-	if c.Preferences().ReduceMotion {
-		return
-	}
-	shown := ui.Local(e, "entered", func() bool { return false })
-	p := ui.Pose{}
-	if !*shown {
-		p, *shown = ui.Pose{X: -10, Fade: 1}, true
-		c.Invalidate()
-	}
-	e.AnimatePose(p, ui.Animation{Duration: a.T.EnterDur})
-}
+// convEnter plays a partner's conversation coming in with the D290 enter
+// (a fade and the 6-point rise, EnterDur), at once under Reduce Motion.
+func (a *App) convEnter(c *ui.Context, e ui.Element) { a.routeEnter(c, e) }
 
 // partnerRail draws the column: room for the traffic lights on top (it is
 // the window's left edge), its title when wide, then a row per partner on
@@ -257,8 +246,11 @@ func (a *App) partnerRailRow(c *ui.Context, i int, p protocol.PartnerInfo, on, w
 		row = ui.Column(c.Key("prow:"+p.ID)).Gap(3).AlignItems(ui.Center).Justify(ui.Center).Padding(0, 4)
 	}
 	row.Height(rowH).Radius(t.RadiusMD).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).AccessSelected(on).Focusable()
-	if !on && (row.Hovered() || row.Pressed()) {
+	if !on && (row.Hovered() || row.Pressed() || row.FocusVisible()) {
 		row.Background(t.SurfaceSunken.Alpha(0.7))
+	}
+	if row.FocusVisible() {
+		row.Border(2, t.Accent) // the keyboard's ring, as every focusable control has
 	}
 	nameInk := t.InkSoft
 	if on {
@@ -335,10 +327,7 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 		if on {
 			ring = t.Surface
 		}
-		// The number: a clay pebble in the needs-you colours on its ledge.
-		ui.Box(c.Key("pn:"+p.ID)).Absolute().Right(-4).Top(-3).MinWidth(19).Height(18).Padding(0, 5).Radius(8).
-			Background(t.NeedsYou.Surface).Border(1.5, ring).Shadow(0, 2, 0, 0, t.NeedsYou.Ledge).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-			uiText(c, fmt.Sprint(needs)).FontSize(11).FontWeight(800).TextColor(t.NeedsYou.Ink)
-		})
+		// The number: the shared clay pebble (countPebble) on its shoulder.
+		a.countPebble(c, p.ID, needs, ring).Absolute().Right(-4).Top(-3)
 	})
 }

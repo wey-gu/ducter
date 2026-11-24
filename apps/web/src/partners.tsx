@@ -13,7 +13,7 @@ import { useState } from "preact/hooks";
 import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import type { PartnerAsk } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { AddRow, Btn, Chev } from "./controls.tsx";
+import { AddRow, Btn, Chev, CountPebble } from "./controls.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
@@ -95,11 +95,7 @@ function RailFace({ p, i, size, needs, hop }: { p: PartnerInfo; i: number; size:
           <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
         </span>
       </span>
-      {needs > 0 && (
-        <span class="pl-n" aria-hidden="true">
-          {needs}
-        </span>
-      )}
+      {needs > 0 && <CountPebble n={needs} />}
     </span>
   );
 }
@@ -180,11 +176,7 @@ export function PartnersBack() {
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
         <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
-      {elsewhere > 0 && (
-        <span class="pl-n" aria-hidden="true">
-          {elsewhere}
-        </span>
-      )}
+      {elsewhere > 0 && <CountPebble n={elsewhere} />}
     </button>
   );
 }

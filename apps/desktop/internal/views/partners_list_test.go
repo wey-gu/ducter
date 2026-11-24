@@ -134,14 +134,17 @@ func TestD517RailCorner(t *testing.T) {
 			for _, left := range []float32{78, 0} { // the controls, then full screen
 				app, _ := iaApp(t, lang)
 				app.LocaleFixed = true
-				app.Receive(protocol.ServerFrame{T: "partners", Shown: "default", Partners: d513Partners(lang)})
+				ps := d513Partners(lang)
+				// The longest a name may be (24), in each language: cut inside its row, never out of it.
+				ps[3].Name = map[i18n.Lang]string{i18n.ZH: "账单报销保险和每个月的家庭开支都归它管着呢", i18n.EN: "Bills, receipts and taxes"}[lang]
+				app.Receive(protocol.ServerFrame{T: "partners", Shown: "default", Partners: ps})
 				tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 				tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: left})
 				d513Frames(tt)
 				if rw := app.partnerRailW(); rw < lights+12 {
 					t.Fatalf("%s %d: the list (%v) is no wider than the window's controls (%v)", lang, w, rw, lights)
 				}
-				for _, p := range d513Partners(lang) {
+				for _, p := range ps {
 					r, ok := tt.Find(p.Name)
 					if !ok {
 						t.Fatalf("%s %d: %s has no name on screen", lang, w, p.Name)

@@ -21497,9 +21497,9 @@ html[data-text-size="large"] .brand-mark > svg {
   .conv-in { animation: none; }
 }
 /* D517: a partner's conversation comes in when picked; the list beside it stays still. */
-.conv-in { animation: conv-in 280ms var(--ease) both; }
+.conv-in { animation: conv-in 220ms var(--ease) both; }
 @keyframes conv-in {
-  from { opacity: 0; transform: translateX(-10px); }
+  from { opacity: 0; transform: translateY(6px); }
 }
 .pl-words {
   flex: 1 1 auto;
@@ -22311,4 +22311,10 @@ html[data-text-size="large"] .brand-mark > svg {
     position: sticky;
     bottom: 8px;
   }
+}
+/* D517: at 320 the places, ‹ and the 44-point face left the name a few points and the places covered
+   it: there the bar drops the face (‹ and the name say who), the name and its first count keep room. */
+@media (max-width: 360px) {
+  .top:has(.partners-back) .who-face { display: none; }
+  .top:has(.partners-back) .who-words { min-width: 0; }
 }

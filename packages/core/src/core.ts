@@ -1503,7 +1503,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));
-  const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev) });
+  const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev), round: (id) => !!keepsRef?.isRound(id) });
   // D383: 给你做的 / Made for you: the files, pictures, tables and links Ducter made, from the Log.
   const made = createMade({ log, tasks, pins: () => pins.list(), app: (id) => apps.get(id), now: () => clock.now() });
   (api as { made?: Made }).made = made;

@@ -17,13 +17,14 @@ import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { Helper } from "@ducter/protocol/src/helpers.ts";
 import { realClock, type Clock } from "./clock.ts";
-import { intlLocale } from "./lang.ts";
+import { intlLocale, langOfText } from "./lang.ts";
 import { helperItems, type Helpers } from "./helpers.ts";
 import type { Loops } from "./loops.ts";
 import { sayOngoing, type Ongoing } from "./ongoing.ts";
 import type { CoreRegistry } from "./registry.ts";
 import type { Routines } from "./routines.ts";
 import { kindOf } from "./waiters.ts";
+import { untilIn } from "./loops.ts";
 
 const DAY = 86_400_000;
 /** Rounds a page shows at most (silent ones fold on the client). */
@@ -42,6 +43,8 @@ const W = {
     pausedUntil: "「{title}」暂停了，{until} 恢复。",
     done: "「{title}」照看完了。",
     stopped: "「{title}」停下了。",
+    eachPR: "每个 PR 跟到{end}为止",
+    eachWork: "每件交来的活做到{end}为止",
     untilLine: "一直做到：{until}。哪一轮看到它成立了，就在报告的第一句说出来，并写明凭什么。",
     speaksLine: "什么时候出声：{speaks}。其余时候不出声，没有变化就不用说。",
   },
@@ -54,6 +57,8 @@ const W = {
     pausedUntil: "“{title}” is paused; it resumes {until}.",
     done: "“{title}” is done.",
     stopped: "“{title}” is stopped.",
+    eachPR: "Each PR until {end}",
+    eachWork: "Each piece of work until {end}",
     untilLine: "Keep at it until: {until}. When a round sees that it holds, say so in the report's first line, with what shows it.",
     speaksLine: "When to speak: {speaks}. Otherwise stay silent; nothing new needs no word.",
   },
@@ -149,6 +154,7 @@ export function createKeeps(o: {
     };
   };
   const fromHelper = (h: Helper, kept?: KeepBody): Shape => ({
+    ...((u) => (u ? { until: u } : {}))(helperUntil(h)),
     title: h.name,
     said: h.about || h.brief,
     run: "perItem",
@@ -158,6 +164,23 @@ export function createKeeps(o: {
     createdAt: h.createdAt,
     ...(h.persona && h.persona !== "default" ? { persona: h.persona } : {}),
   });
+
+  /**
+   * D511: a helper's goal is each piece of work's own end ("一直跟到能合并", "follow until it can merge"),
+   * read from its brief (keep_make's own line first, then the end it was told) or what it takes, as
+   * D427 reads a loop's end from its brief (untilIn). Said per item: 每个 PR 跟到能合并为止.
+   */
+  const helperUntil = (h: Helper): string | undefined => {
+    const own = /(?:一直做到：|Keep at it until: )([^\n]+?)[。.]?(?:\n|$)/.exec(h.brief)?.[1]?.trim();
+    if (own) return own;
+    // What it takes is the person's own words, in their language: read first ("一直跟到能合并").
+    const follow = (s: string) => /(?:一直跟到|跟到|盯到)\s*([^。；;\n，,]{2,40}?)\s*(?:为止|[。；;\n，,]|$)/.exec(s)?.[1]?.trim();
+    const end = follow(h.about) ?? untilIn(h.about) ?? follow(h.brief) ?? untilIn(h.brief);
+    if (!end) return undefined;
+    const pr = /\bPRs?\b|pull request/i.test(`${h.about} ${h.brief}`);
+    // Said in the language of the words it came from, so it never mixes two.
+    return fill(words(W, langOfText(end))[pr ? "eachPR" : "eachWork"], { end });
+  };
 
   const sources = (): { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] => {
     const out: { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] = [];
@@ -175,15 +198,21 @@ export function createKeeps(o: {
     const now = clock.now();
     for (const s of sources()) {
       const id = byFrom.get(keyOf(s.from));
-      const kept = id ? byId.get(id) : undefined;
-      const shape = s.shape(kept);
+      const kept0 = id ? byId.get(id) : undefined;
+      const shape = s.shape(kept0);
       if (!shape) continue;
-      if (!kept) {
+      if (!kept0) {
         // The first start with Keeps carries over what was there (migratedAt); later ones are new.
         put({ keepId: newId(), ...shape, from: s.from, made: s.made, ...(booted ? {} : { migratedAt: iso(now) }), ...(shape.life === "done" || shape.life === "stopped" ? { endedAt: iso(now) } : {}) });
         made++;
         continue;
       }
+      // A helper carried over before its goal was read gets it once (a goal the person gave stays).
+      if (!kept0.until && shape.until && s.made === "helpers.json") {
+        put({ ...kept0, until: shape.until });
+        changed++;
+      }
+      const kept = byId.get(kept0.keepId)!;
       // Its life follows its mechanism (a pause there is a pause here); the person's words stay.
       const life = shape.life;
       if (life !== kept.life) {
@@ -335,7 +364,9 @@ export function createKeeps(o: {
     const said = rounds.find((r) => r.did && r.state !== "running");
     const f = k.from;
     const h = f.kind === "helper" ? o.helpers?.()?.get(f.helperId) : undefined;
-    const taskIds = [...new Set([...(f.kind === "loop" && k.life !== "done" && k.life !== "stopped" ? [f.taskId] : []), ...items.map((x) => x.taskId)])];
+    // D511: every task this Keep owns: its loop's task, the items it holds, and the tasks its rounds ran
+    // in (a routine's runs): those are its rounds, on its page and its line, never rows of their own.
+    const taskIds = [...new Set([...(f.kind === "loop" && k.life !== "done" && k.life !== "stopped" ? [f.taskId] : []), ...items.map((x) => x.taskId), ...(f.kind === "routine" ? routineTasks(f.routineId) : [])])];
     const week = f.kind === "helper" ? o.helperWeek(f.helperId) : rounds.filter((r) => Date.parse(r.at) >= now - 7 * DAY && r.state !== "skipped").length;
     const everyMs = og?.everyMs ?? (k.wakes.find((w) => w.kind === "every") as { everyMs?: number } | undefined)?.everyMs;
     return {
@@ -527,6 +558,7 @@ export function createKeeps(o: {
     all: () => [...byId.values()],
     get: (id) => byId.get(id),
     ofTask: (taskId) => ofTaskIndex().get(taskId),
+    isRound: (taskId) => [...byId.values()].some((k) => k.from.kind === "routine" && routineTasks(k.from.routineId).includes(taskId)),
     sheets(persona) {
       return [...byId.values()]
         .filter((k) => (k.life === "on" || k.life === "paused") && isOf(k.persona, persona))

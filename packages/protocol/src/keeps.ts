@@ -244,6 +244,8 @@ export interface KeepsApi {
   get(id: string): KeepBody | undefined;
   /** The Keep a task is a round or an item of. */
   ofTask(taskId: string): { id: string; name: string } | undefined;
+  /** A task a Keep ran one of its rounds in (a routine's run): its page holds it, not On hand's lanes or Past's list. */
+  isRound(taskId: string): boolean;
   /** On hand's 在照看的: this partner's Keeps on or paused. */
   sheets(persona: string): KeepSheet[];
   /** Ended ones, newest first (照看过的 / Looked after before). */

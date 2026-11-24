@@ -71,6 +71,11 @@ describe("D511: the migration on start", () => {
     // Helpers (helpers.json): a task per item, woken by arrivals and its PRs' changes; its name the title.
     expect(byFrom("helper", "nowledge-mem-pr-babysitter")).toMatchObject({ run: "perItem", life: "on", made: "helpers.json", title: "Nowledge Mem PR Babysitter", wakes: [{ kind: "arrives" }, { kind: "changes" }] });
     expect(byFrom("helper", "docs-proofreader")).toMatchObject({ life: "stopped" });
+    // A helper's goal is each piece of work's own end, read from what it takes (the person's words).
+    expect(byFrom("helper", "nowledge-mem-pr-babysitter")!.until).toBe("每个 PR 跟到能合并为止");
+    // A Keep with no end says none: the loop the person gave no end, the weekly routine.
+    expect(byFrom("loop", "t_review")!.until).toBeUndefined();
+    expect(byFrom("routine", "rt_weekly")!.until).toBeUndefined();
     expect(keeps.all()).toHaveLength(9);
     for (const k of keeps.all()) expect(k.migratedAt).toBeTruthy();
 
@@ -143,6 +148,19 @@ describe("D511: the migration on start", () => {
     expect(review.taskIds).toEqual(["t_review"]);
     expect(oh.tasks.find((c) => c.taskId === "t_review")?.keep).toEqual({ id: review.id, name: review.title });
     expect(oh.tasks.find((c) => c.taskId === "t_pr11030")?.keep?.name).toBe("Nowledge Mem PR Babysitter");
+    // A Keep's rounds are its own: the weekly report's two runs stand under it (never rows in 今天做完),
+    // name it, and Past's list leaves them out (words still find them).
+    const weekly = oh.keeps!.find((k) => k.run === "fresh" && k.life === "on")!;
+    expect(weekly.taskIds).toEqual(expect.arrayContaining(["t_week1", "t_week2"]));
+    expect(oh.tasks.find((c) => c.taskId === "t_week2")?.keep).toEqual({ id: weekly.id, name: "周报" });
+    expect(core.keeps!.isRound("t_week1")).toBe(true);
+    expect(core.keeps!.isRound("t_pr11030")).toBe(false); // an item a Keep opened stays its item
+    ws.send(JSON.stringify({ t: "past", id: "p1", query: {} }));
+    const past = await until<Extract<ServerFrame, { t: "past_result" }>>((f) => f.t === "past_result" && f.id === "p1");
+    expect(past.items.map((i) => i.taskId)).not.toContain("t_week1");
+    ws.send(JSON.stringify({ t: "past", id: "p2", query: { q: "周报" } }));
+    const found = await until<Extract<ServerFrame, { t: "past_result" }>>((f) => f.t === "past_result" && f.id === "p2");
+    expect(found.items.map((i) => i.taskId)).toContain("t_week1");
 
     // Its page, and a gesture: pause (the loop rests), resume.
     ws.send(JSON.stringify({ t: "keep", id: review.id }));

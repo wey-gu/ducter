@@ -453,6 +453,16 @@ when the partner suggests one, and then the steps below are what they copy and p
   `CLAUDE_CODE_OAUTH_TOKEN`, go in `~/.ducter/keys.env` (0600), which the unit never loads
   (D102); `service install` moves any key it finds in `env` there first. It enables linger itself when polkit allows (Ubuntu 24.04: yes, without sudo) and
   prints the `sudo loginctl enable-linger` line when not. Then it pairs the first device.
+- Memory (D524): tasks' children (tsc, a dev server, a browser) run in the unit's cgroup. The
+  unit has `OOMPolicy=continue` (a child the kernel stops takes only itself) and `MemoryMax=90%`
+  (the unit runs short before the server does); no `MemoryHigh` (without swap it stalls the
+  home). A unit an older Ducter wrote gets these at the next start under systemd (after an
+  update): only Ducter's own settings change, then `daemon-reload`, never an extra restart;
+  doctor's Stays on row says 已更新服务配置. The home's memory watch
+  (Linux, every 5 s) raises every process under it to oom_score_adj 500, so a task's child goes
+  before the home; when memory is low it logs the biggest processes under the home, sheds its
+  caches, and records that and every kill in `<dataDir>/memory-watch.json`, which `ducter doctor`
+  reads for its **Server memory (RAM)** row.
 - Binds **127.0.0.1 only** unless `--host` / `DUCTER_HOST` says otherwise. A public bind prints
   a warning: no TLS, paired devices only.
 
@@ -569,8 +579,26 @@ window as it was.
 - *Where:* `packages/core/src/auth.ts` (`standing`), `core.ts` (`STANDING_PATH`),
   `protocol/src/reach.ts`; the Mac's `internal/remote/standing.go`, `internal/client`
   (`Gone`, `GoneError`, `ErrRefused`, `Redial`, `Nudge`) and `views/link.go` (`App.Linked`, the
-  one place that decides). The web client, iPhone and Android still treat an HTTP 401 from their
-  own origin as revoked (`todo.md`).
+  one place that decides).
+- *The web client, and the iPhone, iPad and Android apps that show it (D532):* the same rule. A
+  401 from `/api/me` or a socket closed before its welcome never clears the token: the page asks
+  `/api/me` (at most every 5 s), and on a 401 asks the standing (at most every 30 s; Try now and
+  a resume ask at once) and checks it with WebCrypto (`protocol/src/reach-verify-web.ts`, the
+  same answers as `reach-verify.ts`) against the fingerprint pinned at pairing (`fp` in the pair
+  answer; a record from before pins the first welcome's). Only a verified `revoked` or `unknown`
+  clears the token and shows the pair screen in those words ("…已经断开了这台手机 / …disconnected
+  this phone"), the address being the page's own. A proof that doesn't verify, or nothing pinned,
+  never does. *An old home* (no standing: a 404 or an unsigned 401 there) is taken the old way
+  only after 5 such answers, the first and last at least 15 minutes apart with no welcome
+  between; a home that has ever answered a standing never is (the page asks once after a welcome
+  to learn that). A restart behind a proxy lasts seconds to minutes; a revoke lasts. Retrying is
+  the Mac's (500 ms doubling to 5 s, 15 s after a minute, ±20%), at once on `online` (a socket
+  silent for 5 s is dropped first), on `visibilitychange` and on `ducterresume`, which the iPhone
+  app (`scenePhase` active) and the Android app (`onResume`) send. The header line and, from 30 s,
+  the notice above the composer (`Notice`, `controls.tsx`) use the Mac's words; **再连一次**
+  opens the pair screen over the app with **返回 / Back**, keeping the token. *Where:*
+  `apps/web/src/link.ts` (`judge`, `createLinkWatch`), `conn.ts` (`Connection`), `main.tsx`
+  (`gone`, the one place the token is cleared), `views.tsx` (`LinkLost`).
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's

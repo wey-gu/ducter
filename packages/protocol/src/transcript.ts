@@ -150,7 +150,9 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   const md = o("mend");
   if (md && ["reopen", "clone_here", "start_at", "clear_lock", "rethink", "stall"].includes(String(md.how))) return { say: `mend_${String(md.how)}` as NoteSay, ...(str(md.name) ? { name: str(md.name) } : {}) };
   if (r.stall) return { say: "stalled" };
-  if (r.fresh) return { say: "fresh" };
+  // D528: only a resume the agent refused is said. A round's fresh session (D394's designed path:
+  // a long rest or a compaction, seeded from the checkpoints) is silent: it was said every round.
+  if (r.fresh && r.fresh !== "round") return { say: "fresh" };
   if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };
   if (o("browser")?.guard) return { say: "guard" };
   if (o("browser")?.driver === "cua") return { say: "to_own_browser" };
@@ -636,6 +638,7 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
           // D266: the harness's own background work, started and ended, as a step of the stretch.
           const bg = backgroundStep(b.raw);
           if (bg) {
+            if (bg.quiet) break; // D521: the tray says it
             if (bg.step.target) bg.step.target = redact(bg.step.target);
             addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
             break;

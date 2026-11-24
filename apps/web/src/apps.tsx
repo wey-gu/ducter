@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { APP_GLYPH_STROKE, APP_GLYPHS, APP_SANDBOX, appIcon, appState, appShowRef, appTint, type AppCard, type AppIcon, type AppIdea, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
 import { A } from "./app.ts";
+import { ComposerBox } from "./composer.tsx";
 import { stamp, when } from "./format.ts";
 import { url } from "./media.tsx";
 import { Menu, MenuItem, MenuSep } from "./menu.tsx";
@@ -398,7 +399,7 @@ export function AppSheet({ id }: { id: string }) {
   const o = AP.open;
   const meta = AP.list.find((a) => a.id === id);
   const frame = useRef<HTMLIFrameElement>(null);
-  const askRef = useRef<HTMLInputElement>(null);
+
   const [said, setSaid] = useState("");
   const [sent, setSent] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -406,7 +407,7 @@ export function AppSheet({ id }: { id: string }) {
   useEffect(() => {
     if (!o?.focus) return;
     o.focus = false;
-    askRef.current?.focus();
+    document.getElementById("app-ask")?.focus();
   });
   useEffect(() => {
     window.addEventListener("message", onMessage);
@@ -511,19 +512,8 @@ export function AppSheet({ id }: { id: string }) {
           )}
         </div>
         <div class="app-foot">
-          <input
-            ref={askRef}
-            class="app-ask"
-            dir="auto"
-            value={said}
-            placeholder={t("app.ask.ph", partner)}
-            aria-label={t("app.ask.ph", partner)}
-            onInput={(e) => ((setSaid((e.currentTarget as HTMLInputElement).value), setSent(false)))}
-            onKeyDown={(e) => e.key === "Enter" && !e.isComposing && (e.preventDefault(), send())}
-          />
-          <button type="button" class="btn sm primary" disabled={!said.trim()} onClick={send}>
-            <span class="lbl">{t("app.ask.send")}</span>
-          </button>
+          {/* D519: asking from inside the app is the conversation's composer (composer.tsx). */}
+          <ComposerBox id="app-ask" value={said} onInput={(v) => (setSaid(v), setSent(false))} onSend={send} label={t("app.ask.ph", partner)} placeholder={t("app.ask.ph", partner)} sendLabel={t("app.ask.send")} />
         </div>
         <p class="app-meta">
           {sent && (!meta || appState(meta) !== "changing") ? (

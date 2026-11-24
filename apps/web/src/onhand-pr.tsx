@@ -25,7 +25,11 @@ export function hasPR(task: Task): boolean {
 
 /** A PR's phase in the person's words (base: the branch it merges into). */
 export function prPhaseWords(s: PrSaid, base = "main"): string {
-  if (s.phase === "changes") return t("onhand.prs.changes", (s.by ?? []).join(t("onhand.prs.sep")));
+  // D519: every name filled, or the words without it (a babysitter's row read 「%s 要求修改」).
+  if (s.phase === "changes") {
+    const by = (s.by ?? []).filter((x) => x.trim());
+    return by.length ? t("onhand.prs.changes", by.join(t("onhand.prs.sep"))) : t("onhand.prs.changes.anon");
+  }
   if (s.phase === "conflict") return t("onhand.prs.conflict", base);
   return t(`onhand.prs.${s.phase}`);
 }

@@ -89,6 +89,15 @@ type Tokens struct {
 	// sky, plum, apricot); LookRim their hairline. The web's --look-*.
 	Looks   map[string]ui.Color
 	LookRim ui.Color
+	// ClayMark is a partner's clay as a small drawn mark (D526, the
+	// locator): the default's sand clay deepened so it never reads as the
+	// person's orange; another partner's is it recoloured (LookTone). The
+	// web's --clay-mark.
+	ClayMark ui.Color
+	// Locator is the locator's marks and knob (D526): each a graphic held
+	// to 3:1 on every ground it is drawn on (the page, the card, a hovered
+	// row, the track, the knob; locator_contrast_test.go). The web's --mark-*.
+	Locator LocatorTokens
 	// Notebook is the partner's own blue notebook (its clay art's), drawn as
 	// Settings › 记忆 / Memory's mark (D257); the web's --notebook-*.
 	Notebook NotebookTokens
@@ -172,7 +181,10 @@ type Tokens struct {
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
 	// and the equip.
-	Bouncy, Snappy     ui.Animation
+	Bouncy, Snappy ui.Animation
+	// Hover is the one row hover (D529): its fill and what it reveals
+	// cross-fade over 140 ms, easing out; nothing moves.
+	Hover              ui.Animation
 	PressDur, EnterDur time.Duration
 	// Breathe is one breath of a waiting bead (D279), slower than any
 	// reading rhythm; Pop is the moment a wait comes true.
@@ -299,6 +311,14 @@ type IslesTokens struct {
 	ParcelSpeed float32
 }
 
+// LocatorTokens are the locator's tones (D526): the person's words, an ask
+// that waits, a done, failed or progress result, anything quiet; the knob's
+// hairline; the ring round the mark chosen. The partner's words are ClayMark.
+type LocatorTokens struct {
+	You, Ask, Done, Failed, Progress, Quiet ui.Color
+	KnobRim, Chosen                         ui.Color
+}
+
 // NotebookTokens are the notebook's: its cover on a darker ledge, the
 // pages' edge, the highlight along its top, the strap and its clasp.
 type NotebookTokens struct {
@@ -361,6 +381,11 @@ func Pebble() *Tokens {
 		Clay:     hex("#FFF4E6"),
 		Looks:    map[string]ui.Color{"sand": hex("#F1DCC0"), "sage": hex("#D3E6CB"), "sky": hex("#CFE2F3"), "plum": hex("#EAD5EA"), "apricot": hex("#FFD9B8")},
 		LookRim:  hex("#2B2118").Alpha(0.08),
+		ClayMark: hex("#9C6B45"),
+		// D526: a step deeper than the orange of the person's bubble (2.3:1 on
+		// white), so a 5-pt dot keeps 3:1 on the sunken clay.
+		Locator: LocatorTokens{You: hex("#C85F1A"), Ask: hex("#C2581A"), Done: hex("#23864A"), Failed: hex("#C93A62"),
+			Progress: hex("#75654F"), Quiet: hex("#75654F"), KnobRim: hex("#907C66"), Chosen: hex("#4A3D30")},
 		Notebook: NotebookTokens{Cover: hex("#5FA6E4"), Ledge: hex("#3A78B0"), Pages: hex("#FFF6EA"), Shine: hex("#FFFFFF").Alpha(0.55), Strap: hex("#9A6236"), Clasp: hex("#F0C879")},
 		Isles: IslesTokens{
 			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),
@@ -414,6 +439,7 @@ func Pebble() *Tokens {
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,
+		Hover:    ui.Animation{Duration: 140 * time.Millisecond},
 		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
 		Breathe: 3200 * time.Millisecond, Pop: 560 * time.Millisecond,
 		AppearDur: 360 * time.Millisecond,

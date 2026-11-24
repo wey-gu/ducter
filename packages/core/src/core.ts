@@ -1,5 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
+import { createBackgroundIndex } from "./background.ts";
 import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
@@ -69,7 +70,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { createKeeps, keepEndAsk, registerKeepTools, type Keeps } from "./keeps.ts";
+import { createKeeps, keepEndAsk, keepRoundAsk, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -314,7 +315,7 @@ export interface CoreOptions {
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
-  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk };
+  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk };
   /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
   branchAsk?: (prompt: string) => Promise<string>;
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
@@ -416,6 +417,8 @@ export interface Core extends CoreApi {
   /** D228: 从外面连 / From outside (the tunnel and its guided setup). */
   anywhere: AnywhereCtl;
   setPartner(p: Partner): void;
+  /** D524: memory is low: drop what can be read again (the outside agents' session records). */
+  shedCaches(): void;
   stop(): Promise<void>;
   /** D309: 伙伴们 / Partners. */
   partners: Partners;
@@ -648,6 +651,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
+    // D528: the person's zone (theirs from Settings or their device), not the server's clock.
+    zone: () => zone(),
     lang: () => langNow(),
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
@@ -873,7 +878,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       ...(on.length ? { helpers: on } : {}),
     };
   };
-  // D511: 在照看的 / Looking after: each Keep its own sheet, and every task it owns names it.
+  // D511: 看守中 / Looking after: each Keep its own sheet, and every task it owns names it.
   const keepsDecorate = (o: OnHand): OnHand => {
     const ks = keepsRef;
     if (!ks) return o;
@@ -899,10 +904,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       return rounds || turnAt ? { ...c, ...(rounds ? { rounds } : {}), ...(turnAt ? { turnAt } : {}) } : c;
     }),
   });
+  // D521: each task's background work, from its Log (its agent's background shells, subagents, watches, jobs).
+  const backgroundIndex = createBackgroundIndex(log);
+  log.subscribe((e) => {
+    if (backgroundIndex.onEvent(e)) onHandChanged();
+  });
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))))));
+    const on = backgroundIndex.decorate(keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -971,6 +981,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     personaName: () => persona.name,
     // D516: every partner in the one thread of each chat app (the bot is the default's).
     partners: () => (partners.on() ? partners.list().map((p) => ({ id: p.id, name: p.name })) : []),
+    // D531: each partner's own name and face where the chat app shows a sender per message (Slack).
+    face: (id) => {
+      const p = partners.get(id) ?? partners.get(DEFAULT_PARTNER);
+      return p ? { name: p.name, look: p.look } : undefined;
+    },
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
       return v?.state === "on" && v.hostname ? `https://${v.hostname}/` : undefined;
@@ -1489,6 +1504,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const fromClone = clone?.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/[\w.-]+?(?:\.git)?\/?$/)?.[1];
     return (fromClone ?? work.owned.of(taskId)[0]?.split("/")[0])?.toLowerCase();
   };
+  // D528: the person's zone for a task's brief (a server's own clock is often UTC).
+  api.zone = () => zone();
   api.goesFor = (taskId) =>
     TASK_STEP_ACTIONS.flatMap((a) => {
       const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
@@ -1645,6 +1662,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
     });
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
+  if (opts.keeps?.roundAsk) keeps.setRoundAsk(opts.keeps.roundAsk);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
   registerKeepTools(mcp, keeps, () => persona.id);
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
@@ -2393,23 +2411,36 @@ export function startCore(opts: CoreOptions = {}): Core {
     return yes;
   };
   isReview = isReviewTask;
+  // D528: the round a review_report belongs to: the task's own timer (or condition) that last woke
+  // it. Two reports under the same wake are one round; the later is its final look.
+  const roundOf = (taskId: string): string | undefined => {
+    const ws = log.read({ stream: "channel", kinds: ["waiter"], limit: 2000 });
+    for (let i = ws.length - 1; i >= 0; i--) {
+      const w = ws[i]!.body as Bodies["waiter"];
+      if (w.taskId === taskId && w.wakes === "task" && w.state === "fired" && !w.limit) return w.waiterId;
+    }
+    return undefined;
+  };
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, once per round from your final look (the end-of-round check for new requests included): every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. If a later look in the same round finds more, call it again with the whole list: the later call replaces the earlier one for this round. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
-      const r = await taskSources.pile.round(ctx.taskId, args);
+      const r = await taskSources.pile.round(ctx.taskId, args, { ...((k) => (k ? { round: k } : {}))(roundOf(ctx.taskId)) });
       if (!r.ok) return r.error ?? "Not kept.";
       // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
       boards.afterRound(ctx.taskId);
       // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
+      // D528: a later call in the same round replaced the earlier one; a new request was said to the person once.
+      const again = r.replaced ? "It replaces this round's earlier review_report. " : "";
+      const told = r.told?.length ? `The person was told once of the new request${r.told.length === 1 ? "" : "s"} (${r.told.join(", ")}); don't report ${r.told.length === 1 ? "it" : "them"} for that alone. ` : "";
       return went || r.drafted
-        ? `Kept. ${went}${asks}Don't post or ask yourself. Now wait_for the next round and end your turn.`
-        : "Kept: nothing new to ask the person. Now wait_for the next round and end your turn.";
+        ? `Kept. ${again}${told}${went}${asks}Don't post or ask yourself. Now wait_for the next round and end your turn.`
+        : `Kept: nothing new to ask the person. ${again}${told}Now wait_for the next round and end your turn.`;
     },
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
@@ -2658,6 +2689,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
+      // Not in tests (a fake agent would take it for a task's session): they pass a fake.
+      if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
+        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
       // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.
       if (!opts.branchAsk && process.env.NODE_ENV !== "test") {
@@ -2714,7 +2749,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
+    shedCaches() {
+      firstReader.forget();
+      outsideReader.forget();
+    },
     async stop() {
+      keepsRef?.stop(); // D519: its rounds' reading stops with the home
       clearInterval(homeLookTimer);
       clearInterval(hintsTimer);
       ws.stop();

@@ -149,7 +149,9 @@ func (a *App) conversation(c *ui.Context) {
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	// D254: the list and the pebble over its foot share one pane.
 	a.readBack() // D305: the reply to a message sent by voice, read aloud
-	ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve).Children(func() {
+	pane := ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
+	a.toastsOver(pane) // D527: toasts centre over the conversation, beside the list of partners
+	pane.Children(func() {
 		ui.List(c, &a.list, len(rows), func(i int) {
 			e := rows[i].entry
 			var prev *store.Entry
@@ -204,14 +206,20 @@ func (a *App) conversation(c *ui.Context) {
 		a.olderWait(c) // D509: a page of older messages on its way
 	})
 	a.moreOlder(len(rows)) // D509: near the top, the page before
-	a.firstResultLine(c)
-	// One card at a time under the conversation: Ducter can't run in the
-	// background, else a gentle ask, else the Terminal offer.
-	if !a.linkLostNotice(c) && !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
-		a.cliOfferLine(c)
-	}
-	a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
-	a.composer(c)
+	// D527: the foot, the composer and all that sits over it, is one
+	// column: toasts keep above its top.
+	foot := ui.Column(c.Key("conv-foot")).Shrink(0)
+	a.toastsAbove(foot)
+	foot.Children(func() {
+		a.firstResultLine(c)
+		// One card at a time under the conversation: Ducter can't run in the
+		// background, else a gentle ask, else the Terminal offer.
+		if !a.linkLostNotice(c) && !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
+			a.cliOfferLine(c)
+		}
+		a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
+		a.composer(c)
+	})
 	a.readWhenSeen(c)
 }
 
@@ -979,58 +987,50 @@ func (a *App) composer(c *ui.Context) {
 	// so the mic held under it stays the same element as the strip comes.
 	ui.Column(c.Key("voice-above")).Children(func() { a.voiceAbove(c) })
 	ui.Row(c.Key("composer-row")).ObserveInput(a.voiceObserve).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
-		box := ui.Column(c.Key("composer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
-		over := a.takeDrops(box, "conv") // D206: pictures dropped on the composer
-		box.Children(func() {
-			if over {
-				a.dropHint(c)
-			}
-			a.composerReply(c) // D236: what this replies to, pressed into the card
-			a.picTray(c, "conv")
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				a.addPicturesButton(c, "conv")
-				ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
-				if r := a.rp.replying; r != nil {
-					label = a.replyLabel(r.from)
-					ph = label + "…"
-				}
-				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(ph).
-					Label(label).AutoFocus().
-					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-					OnTextKey(func(k ui.TextKey) bool {
-						if a.pictureKeys("conv", k) {
-							return true
-						}
-						if k.Key == ui.KeyEscape && k.Mods == 0 && a.vox.phase == "listen" {
-							a.voiceDrop() // D305: Esc drops what is being heard
-							return true
-						}
-						if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
-							return true // D236: Esc puts the reply away
-						}
-						a.speakStop() // D305: typing stops a reply being read
-						if k.Key == ui.KeyEnter && k.Mods == 0 {
-							if text := k.Text(); a.SendMessage(text) {
-								a.voiceSent(text)
-								k.SetText("")
-							}
-							return true
-						}
-						return false // Shift+Enter breaks the line
-					})
-				if a.focusComposer {
-					ta.Focus()
-					a.focusComposer = false
-				}
-				a.micButton(c) // D305: hold to talk
-				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-					if text := a.draft; a.SendMessage(text) {
-						a.voiceSent(text)
-						a.draft = ""
+		ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
+		if r := a.rp.replying; r != nil {
+			label = a.replyLabel(r.from)
+			ph = label + "…"
+		}
+		var over bool
+		ui.Row(c).Grow(1).MaxWidth(convWidth).Children(func() {
+			a.composerBox(c, composerOpts{
+				key: "composer", draft: &a.draft, placeholder: ph, label: label, autoFocus: true, focus: a.focusComposer,
+				box: func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
+				before: func() {
+					if over {
+						a.dropHint(c)
 					}
-				}
+					a.composerReply(c) // D236: what this replies to, pressed into the card
+					a.picTray(c, "conv")
+				},
+				lead:  func() { a.addPicturesButton(c, "conv") },
+				tools: func() { a.micButton(c) }, // D305: hold to talk
+				keys: func(k ui.TextKey) bool {
+					if a.pictureKeys("conv", k) {
+						return true
+					}
+					if k.Key == ui.KeyEscape && k.Mods == 0 && a.vox.phase == "listen" {
+						a.voiceDrop() // D305: Esc drops what is being heard
+						return true
+					}
+					if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
+						return true // D236: Esc puts the reply away
+					}
+					a.speakStop() // D305: typing stops a reply being read
+					return false
+				},
+				// Pictures alone may go.
+				canSend: ptrBool(strings.TrimSpace(a.draft) != "" || len(a.med().trays["conv"]) > 0),
+				onSend: func(text string) bool {
+					if !a.SendMessage(text) {
+						return false
+					}
+					a.voiceSent(text)
+					return true
+				},
 			})
+			a.focusComposer = false
 		})
 	})
 }

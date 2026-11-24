@@ -1062,7 +1062,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { 
     // D288: the window the harness read it against (Claude Code's modelUsage.contextWindow, Codex's modelContextWindow).
     const contextWindow = contextTokens !== undefined && ctx?.contextWindow && ctx.contextWindow > 0 ? ctx.contextWindow : undefined;
     return { ...(t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : {}), ...(contextTokens !== undefined ? { contextTokens } : {}), ...(contextWindow ? { contextWindow } : {}) };
-  });
+  }, { canStop: typeof s.stopTask === "function" });
   // One buffered queue feeding one async iterator; subscription starts at open (cursor 0).
   const buf: HarnessEvent[] = [];
   let wake: (() => void) | undefined;
@@ -1143,6 +1143,17 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { 
     async interrupt() {
       await s.abort();
     },
+    // D521: one background job stopped by the agent's own stop (Claude Code's TaskStop, a Codex
+    // subagent's turn interrupted, DeepSeek Harness's job kill). Accepted is only the agent's
+    // acknowledgement: its end comes as the job's own task_ended.
+    ...(typeof s.stopTask === "function"
+      ? {
+          async stopBackground(id: string) {
+            const r = (await s.stopTask!(id)) as { kind?: string; reason?: string };
+            if (r?.kind === "rejected") throw new Error(r.reason || "the agent refused to stop it");
+          },
+        }
+      : {}),
     // D282: the runtime's own manual compaction (Codex; Claude Code takes `/compact` as typed).
     ...(typeof s.compact === "function"
       ? {

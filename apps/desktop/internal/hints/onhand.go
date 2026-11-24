@@ -91,6 +91,21 @@ func (l *Local) SetBenchWidth(w float32) {
 	l.save()
 }
 
+// BgTrayShut says whether the opened task's background tray is folded (D521).
+func (l *Local) BgTrayShut() bool { return l != nil && l.st.BgTray == "shut" }
+
+// SetBgTrayShut keeps whether the background tray is folded.
+func (l *Local) SetBgTrayShut(shut bool) {
+	if l == nil {
+		return
+	}
+	l.st.BgTray = ""
+	if shut {
+		l.st.BgTray = "shut"
+	}
+	l.save()
+}
+
 // ScreensBoth says whether the Phone page shows its screens side by side.
 func (l *Local) ScreensBoth() bool { return l != nil && l.st.Screens == "both" }
 

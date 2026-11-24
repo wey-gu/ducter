@@ -67,7 +67,7 @@ func TestOnHandStandsUnderItsPR(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		all := strings.Join(tt.Texts(), " | ")
-		for _, want := range []string{"还是草稿", "CI 过了 6/10", "在等评审", "等 hawkingrei 看", "CI 过了 9/10", "可以合了", "hawkingrei 通过了评审", "到 GitHub 合并", "#11070"} {
+		for _, want := range []string{"草稿", "CI 通过 6/10", "评审中", "等 hawkingrei 评审", "CI 通过 9/10", "可合并", "hawkingrei 通过了评审", "到 GitHub 合并", "#11070"} {
 			if !strings.Contains(all, want) {
 				t.Fatalf("%d: missing %q in %s", w, want, all)
 			}
@@ -78,7 +78,7 @@ func TestOnHandStandsUnderItsPR(t *testing.T) {
 			}
 		}
 		// Hover a waiting PR row: its time stays, × and ⋯ come in their own slot.
-		r, ok := tt.Find("还是草稿")
+		r, ok := tt.Find("草稿")
 		if !ok {
 			t.Fatal("no draft row")
 		}
@@ -126,7 +126,7 @@ func TestHelperRowsStandUnderTheirPR(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"Nowledge Mem PR babysitter", "可以合了", "在等评审", "到 GitHub 合并"} {
+	for _, want := range []string{"Nowledge Mem PR babysitter", "可合并", "评审中", "到 GitHub 合并"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

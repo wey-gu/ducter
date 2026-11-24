@@ -1051,6 +1051,9 @@ type TaskCard struct {
 	Helper *TaskHelper `json:"helper,omitempty"`
 	// Keep (D511): the Keep this task is a round or an item of.
 	Keep *TaskKeep `json:"keep,omitempty"`
+	// Background (D521): the work its agent runs beside its turn, every one
+	// still running and the newest finished, folded from its Log by core.
+	Background *TaskBackground `json:"background,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.
@@ -1176,7 +1179,7 @@ type OnHand struct {
 	// Helpers (D507, D494) are the person's helpers that are on, each with
 	// the work it keeps: the home's one model of a helper's state.
 	Helpers []HelperWork `json:"helpers,omitempty"`
-	// Keeps (D511): 在照看的 / Looking after, each Keep on or paused its own
+	// Keeps (D511): 看守中 / Looking after, each Keep on or paused its own
 	// sheet. Present: it takes the place of Helpers and the cards' Rounds.
 	Keeps []KeepSheet `json:"keeps,omitempty"`
 }
@@ -1406,6 +1409,45 @@ type TaskAction struct {
 	// Place (D472, start_in): the folder the person chose for a task that
 	// couldn't start (D455's sheet).
 	Place *Place `json:"place,omitempty"`
+	// Job (D521, stop_background): the background job to stop.
+	Job string `json:"job,omitempty"`
+}
+
+// TaskBackground (D521) is a task's background work: every job still
+// running and the newest finished; Done counts every finished one.
+type TaskBackground struct {
+	Jobs []BgJob `json:"jobs"`
+	Done int     `json:"done"`
+}
+
+// BgJob is one job its agent runs beside its turn: Kind shell | agent |
+// watch | other; State running | done | failed | stopped | unknown; At its
+// start, EndedAt its end; Exit its exit code (nil: none said); Tail its
+// output's last lines; Stop: its agent can stop it.
+type BgJob struct {
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Title   string `json:"title"`
+	At      string `json:"at"`
+	State   string `json:"state"`
+	EndedAt string `json:"endedAt,omitempty"`
+	Exit    *int   `json:"exit,omitempty"`
+	Tail    string `json:"tail,omitempty"`
+	Stop    bool   `json:"stop,omitempty"`
+}
+
+// BgRunning is how many of a task's background jobs are running.
+func BgRunning(b *TaskBackground) int {
+	if b == nil {
+		return 0
+	}
+	n := 0
+	for _, j := range b.Jobs {
+		if j.State == "running" {
+			n++
+		}
+	}
+	return n
 }
 
 type Read struct {

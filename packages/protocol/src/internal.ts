@@ -216,6 +216,8 @@ export interface CoreApi {
    * is a task's plain question, not the floor, and that a kept permission covers the step there).
    */
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
+  zone?(): string;
   /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
   goesFor?(taskId: string): import("./standing.ts").StandingView[];
   /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */
@@ -774,6 +776,8 @@ export interface HarnessSession {
   events(): AsyncIterable<HarnessEvent>;
   /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
   compact?(): Promise<void>;
+  /** D521: stop one background job by its id (OAR's stopTask), where the runtime has it; rejects with its reason. Absent: nothing here can stop one. */
+  stopBackground?(id: string): Promise<void>;
   /** D293: a session on a worker: its worker dropped and holds it (away), or came back with it (back). */
   onLink?(fn: (state: "away" | "back") => void): void;
 }
@@ -838,6 +842,8 @@ export interface Runner {
   // Throws when that id is no longer held (it already went).
   held?(taskId: string, id: string, op: "edit" | "drop" | "now", text?: string): Promise<{ delivered?: Delivery }>;
   interrupt(taskId: string): Promise<void>;
+  // Optional (D521): stop one of the task's background jobs (TaskCard.background) through its agent's own stop.
+  stopBackground?(taskId: string, jobId: string): Promise<{ ok: boolean; message?: string }>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
   /** D395: a task that couldn't start starts in this place instead (its brief and agent stay). */

@@ -94,15 +94,19 @@ export interface KeepRound {
   woke: "time" | "arrival" | "change" | "now" | "first";
   /** What woke it, in words where there are some (#11030's CI; Codex). */
   wokeWhat?: string;
-  /** What it did, in one line (the round's report). */
+  /** What happened, in one line to the person in their language: the cheap model's reading of the
+   *  round's report, judged once and recorded (principle 21); absent until it has, never the raw
+   *  report. A helper's arrival says the piece of work it took. */
   did?: string;
+  /** The task's report as it wrote it (to Ducter), shown only behind 看细节 / Details. */
+  report?: string;
   /** silent; told: its result went to the person; asked: it waits for the person's answer. */
   spoke: "silent" | "told" | "asked";
   state: "running" | "done" | "failed" | "skipped";
   taskId?: string;
 }
 
-/** A Keep on On hand: one sheet under 在照看的 / Looking after (the home's one model of its state). */
+/** A Keep on On hand: one sheet under 看守中 / Looking after (the home's one model of its state). */
 export interface KeepSheet {
   id: string;
   title: string;
@@ -132,6 +136,8 @@ export interface KeepSheet {
   health?: OngoingHealth;
   /** Its last change in one sentence: the latest round that did something. */
   line?: { at: string; text: string };
+  /** How many of its rounds have their line yet: a client asks for the page again when it grows. */
+  lines?: number;
   /** D394: a review loop's standing after its last round. */
   reviews?: ReviewStanding;
   /** Rounds (or pieces of work taken) in the last 7 days. */
@@ -251,9 +257,9 @@ export interface KeepsApi {
   ofTask(taskId: string): { id: string; name: string } | undefined;
   /** A task a Keep ran one of its rounds in (a routine's run): its page holds it, not On hand's lanes or Past's list. */
   isRound(taskId: string): boolean;
-  /** On hand's 在照看的: this partner's Keeps on or paused. */
+  /** On hand's 看守中: this partner's Keeps on or paused. */
   sheets(persona: string): KeepSheet[];
-  /** Ended ones, newest first (照看过的 / Looked after before). */
+  /** Ended ones, newest first (已结束 / Ended). */
   ended(persona: string): KeepSheet[];
   page(id: string): KeepPage | undefined;
   act(id: string, a: KeepAction): Promise<{ ok: boolean; message?: string }>;

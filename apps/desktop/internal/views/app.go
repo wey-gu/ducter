@@ -222,8 +222,11 @@ type App struct {
 	taskDrafts map[string]string
 	// D325: the held message being changed in place over a task's composer.
 	heldEditing *heldEdit
-	heldFocus   bool
-	replyOpen   map[string]bool
+	// D521: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
+	bgStopping map[string]bool
+	bgRefused  map[string]time.Time
+	heldFocus  bool
+	replyOpen  map[string]bool
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
 	laterOpen  map[string]bool
@@ -418,7 +421,9 @@ type App struct {
 	// until it goes away.
 	PuttingIn     bool
 	installedSaid bool
-	Quit          func()
+	// toastAt is where this frame's place said its toasts go (D527, toasts.go).
+	toastAt toastPlace
+	Quit    func()
 	// ReportProblem collects diagnostics to attach (Help › Report a
 	// problem…); nil opens a new issue instead.
 	ReportProblem func()
@@ -612,6 +617,7 @@ func (a *App) View(c *ui.Context) {
 	a.shortcuts(c)
 	a.titleTick(c)
 	a.sayInstalled(c)
+	a.toastAt = toastPlace{} // the place says again where its toasts go
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
 		case a.PuttingIn:
@@ -659,6 +665,7 @@ func (a *App) View(c *ui.Context) {
 	}
 	a.viewer(c)     // D206: a picture, over everything
 	a.fileViewer(c) // D239: a file a task showed
+	a.toastSlot(c)  // D527: every toast, in the one slot over the place's own content
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
@@ -1148,6 +1155,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+		if f.Action == "stop_background" && !f.OK {
+			a.bgRefusedFor(f.TaskID)
+		}
 	case "outside_adopted":
 		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
 	case "outside_hidden":

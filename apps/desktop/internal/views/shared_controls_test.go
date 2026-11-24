@@ -34,6 +34,10 @@ var sharedControls = map[string]bool{
 	"sheetFold": true, "extraStep": true,
 	// D518: a step's number in a short numbered sequence
 	"stepNumber": true,
+	// D519: the one composer and its send, the section head, the tag, the time column, a menu's opener
+	"composerBox": true, "sendButton": true, "secHead": true, "tag": true, "timeCol": true, "menuOpener": true,
+	// D521: a quiet tray's dense row (the opened task's background work)
+	"trayRow": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.
@@ -41,7 +45,7 @@ var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go", "chats.go", "imessage.go",
-	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go",
+	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go", "bgtray.go",
 }
 
 // adHoc reports a call that makes a control by hand.

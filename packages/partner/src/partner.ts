@@ -6388,10 +6388,10 @@ export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: stri
  * title, how it wakes, and the task it runs in, so "review 那个以后让 Codex 来做" names one Keep to change
  * with keep_change (not a rule for all work). Facts only.
  */
-export function renderKeeps(ks: import("@ducter/protocol").KeepSheet[]): string {
+export function renderKeeps(ks: import("../../protocol/src/index.ts").KeepSheet[]): string {
   if (!ks.length) return "";
-  const how = (k: import("@ducter/protocol").KeepSheet) => (k.run === "perItem" ? "takes work handed to it" : k.everyMs ? `every ${Math.round(k.everyMs / 60_000)} min` : (k.cadence ?? "on the clock"));
-  const one = (k: import("@ducter/protocol").KeepSheet) => `${k.id} "${clipLine(k.title, 60)}" (${how(k)}${k.life === "paused" ? ", paused" : ""}${k.run === "same" && k.taskIds[0] ? `, task ${k.taskIds[0]}` : ""})`;
+  const how = (k: import("../../protocol/src/index.ts").KeepSheet) => (k.run === "perItem" ? "takes work handed to it" : k.everyMs ? `every ${Math.round(k.everyMs / 60_000)} min` : (k.cadence ?? "on the clock"));
+  const one = (k: import("../../protocol/src/index.ts").KeepSheet) => `${k.id} "${clipLine(k.title, 60)}" (${how(k)}${k.life === "paused" ? ", paused" : ""}${k.run === "same" && k.taskIds[0] ? `, task ${k.taskIds[0]}` : ""})`;
   return `[keeps] What you look after for the user: ${ks.slice(0, 8).map(one).join("; ")}. A change to one of these (its rhythm, who does it, where, when it speaks, its end) is keep_change with its id.`;
 }
 const clipLine = (s: string, n: number) => ([...s.replace(/\s+/g, " ").trim()].length > n ? [...s.replace(/\s+/g, " ").trim()].slice(0, n - 1).join("") + "…" : s.replace(/\s+/g, " ").trim());

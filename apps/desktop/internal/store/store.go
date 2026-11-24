@@ -98,6 +98,8 @@ type Send struct {
 	At time.Time
 	// Media are the pictures sent with it (D206), shown until its echo.
 	Media []protocol.MediaRef
+	// Refs (D534): what its words refer to with @, sent again with a resend.
+	Refs []protocol.Ref
 }
 
 // CheckpointAt is a checkpoint with its time.
@@ -424,6 +426,8 @@ type Store struct {
 	PartnerAnswer *protocol.ServerFrame
 	// Past is 做过的事 / Past tasks (D285, past.go).
 	Past PastState
+	// Mentions is the composers' @ and / lists (D534, mentions.go).
+	Mentions MentionsState
 	// Did is 替你做过的 / Done for you (D300, did.go).
 	Did DidState
 	// KeepPages (D511) are the Keeps' pages this window read (keep_result),
@@ -1009,6 +1013,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.KeepsVersion++
 	case "made_result":
 		s.applyMade(f) // D383 (past.go)
+	case "mention_list", "slash_list":
+		s.applyMentions(f) // D534 (mentions.go)
 	case "past_steps_result", "past_forked":
 		s.applyPastSteps(f) // D391 (past.go)
 	case "did_result":

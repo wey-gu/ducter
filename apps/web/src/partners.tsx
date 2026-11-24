@@ -122,7 +122,7 @@ export function OtherAsk({ a }: { a: PartnerAsk }) {
   const p = A.partners?.find((x) => x.id === a.persona);
   if (!p) return null;
   return (
-    <button class="other-ask" data-look={p.look} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
+    <button class="other-ask" data-look={p.look} data-ask={a.decisionId} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
       <Stone look={p.look} size={32} />
       <span class="ask-words">
         <span class="who">{t("partners.asks.from", p.name)}</span>
@@ -178,10 +178,22 @@ function RailFace({ p, i, size, needs, hop }: { p: PartnerInfo; i: number; size:
 function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; shown: string; face: number }) {
   const on = p.id === shown;
   const needs = A.partnerNeeds(p);
-  const label = on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
+  const label = on && needs ? t("door.pebble", p.name, needs) : on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
   return (
     <li>
-      <button class={on ? "pl-row on" : "pl-row"} data-look={p.look} aria-current={on ? "true" : undefined} aria-label={label} onClick={() => A.openPartner(p.id)}>
+      <button
+        class={on ? "pl-row on" : "pl-row"}
+        data-look={p.look}
+        aria-current={on ? "true" : undefined}
+        aria-label={label}
+        onClick={(e) => {
+          // D535: the pebble is a door (the next item of this partner's that waits); so is the row
+          // of the partner shown while something waits (the keyboard's way to it).
+          const pebble = (e.target as HTMLElement | null)?.closest?.(".pl-n");
+          if (needs > 0 && (pebble || on)) return void A.openDoor?.(p.id);
+          A.openPartner(p.id);
+        }}
+      >
         <RailFace p={p} i={i} size={face} needs={needs} hop={hopOf(p, needs, shown)} />
         <span class="pl-words" aria-hidden="true">
           <span class="pl-name">{p.name}</span>

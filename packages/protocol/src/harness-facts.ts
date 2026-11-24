@@ -21,6 +21,16 @@ export interface Fact<T> {
   evidence: Evidence;
 }
 
+/** D534: one agent's own commands as a task's composer offers them (HarnessFacts.nativeCommands). */
+export interface NativeCommands {
+  discover: ("commands" | "skills")[];
+  /** How a discovered skill is typed so the agent runs it ({name}); absent: skills come as commands. */
+  skillForm?: string;
+  fixed: string[];
+  hidden: string[];
+  how: string;
+}
+
 export interface ModelFact {
   /** The concrete id the name resolves to. */
   id: string;
@@ -84,6 +94,15 @@ export interface HarnessFacts {
    * Ducter waits the settle time, then wakes it.
    */
   background: Fact<{ ownTurn: "yes" | "no" | "unknown"; how: string }>;
+  /**
+   * D534: what the person can type after / in a task's composer and have this agent run, and where
+   * Ducter finds the list. discover: OAR's own catalogs, read at runtime in the task's place
+   * (`commands`: the agent's slash commands, its skills among them; `skills`: its skills, written
+   * as `skillForm`). fixed: always offered (Ducter runs /model and /effort the same on every agent,
+   * D282; /compact where OAR or the agent compacts). hidden: names that open a picker or screen of
+   * the agent's own terminal, never offered. A command that can't reach the agent is not listed.
+   */
+  nativeCommands: Fact<NativeCommands>;
   /** D156: where it's installed from and how each copy updates (research/42). */
   channels: Fact<AgentChannels>;
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
@@ -370,6 +389,15 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
     },
+    nativeCommands: {
+      value: {
+        discover: ["commands"],
+        fixed: ["model", "effort"],
+        hidden: ["color", "config", "heapdump", "focus", "output-style", "auto-mode-setup", "agents", "mcp", "design-consent", "design-revoke", "team-onboarding", "workflow-launch-exec", "rename", "reload-plugins"],
+        how: "a stream-json user message that starts with /: Claude Code runs it headless (its built-ins, the person's commands and skills, a project's); OAR's command catalog (initialize.commands joined with the skill files) lists them with their descriptions; /model and /effort are Ducter's (D282)",
+      },
+      evidence: { kind: "VERIFIED", how: "research/92 §4 (/review, /compact, /context, /cost, /clear, a command and a skill run headless); research/224: OAR 0.124 claudeCommands in a scratch project and home listed 50, the project's skill and command among them, token-free", date: "2026-11-24", version: "2.1.331" },
+    },
     background: {
       value: {
         ownTurn: "yes",
@@ -501,6 +529,16 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
+    nativeCommands: {
+      value: {
+        discover: ["skills"],
+        skillForm: "${name}",
+        fixed: ["compact", "model", "effort"],
+        hidden: [],
+        how: "its TUI's own slash commands (/review, /diff, /status…) are covered by Ducter's own surfaces (the workbench's changes, the review flow, the card), so none is needed through OAR; a bare /compact is OAR's manual compaction (thread/compact/start, D288); its skills (skills/list) are written $name in the words, which its model reads beside its skill listing",
+      },
+      evidence: { kind: "VERIFIED", how: "research/224: OAR 0.124 codexSkills listed the scratch project's .agents/skills and its system skills, token-free; commands unsupported (transport_unavailable); $name taken as a skill: DOCUMENTED (Codex skills docs), not run (no model call under the scratch home)", date: "2026-11-24", version: "0.172.0" },
+    },
     background: {
       value: {
         ownTurn: "no",
@@ -572,6 +610,16 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "MCP through Ducter's extension; loaded directly", evidence: { kind: "INFERRED", why: "no deferral in pi" } },
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
+    nativeCommands: {
+      value: {
+        discover: ["commands", "skills"],
+        skillForm: "/skill:{name}",
+        fixed: ["compact", "model", "effort"],
+        hidden: [],
+        how: "its RPC prompt expands a prompt template (/name) and a skill (/skill:name) as its own interactive mode does; OAR's get_commands lists the templates and extension commands, its skill reader the skills; /compact is OAR's compact()",
+      },
+      evidence: pi("research/224: OAR 0.124 createPiRuntime subprocess listed the scratch project's prompt template and its skills, token-free; the expansion in prompt: DOCUMENTED (pi docs/rpc.md), not run"),
+    },
     background: { value: { ownTurn: "unknown", how: "none of its own (read, bash, edit, write); an extension may add one" }, evidence: pi("`pi --help` (research/38): no background or subagent tool") },
     noTools: { value: { args: ["--no-tools"] }, evidence: { kind: "DOCUMENTED", source: "`pi --help` 1.5.1: --no-tools disables all tools by default (built-in and extension)" } },
     noWeb: { value: { how: "nothing to drop: its read-only allowlist (read, grep, find, ls) has no web tool", deny: [], args: [], rows: [] }, evidence: PI_LIVE },
@@ -631,6 +679,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "stdio MCP through Ducter's bridge; loaded up front, named mcp__<server>__<tool>", evidence: DSH_LIVE("research/50 §2: the session's tool list") },
     resume: { value: { supported: true, how: "OAR SessionOptions.resume, sessions kept under DSH_HOME/sessions" }, evidence: DSH_LIVE("research/50 §2: resumed by id with its history") },
     browser: { value: "none (web_search / web_fetch over DeepSeek's API; no browser)", evidence: DSH_LIVE("the acp profile's tool-web row") },
+    nativeCommands: {
+      value: { discover: [], fixed: ["compact", "model", "effort"], hidden: [], how: "OAR's manual compaction; its skills are listed (dshSkills) but how a person runs one by name is not known, so none are offered" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/dsh (read 2026-11-24, research/224): manualCompaction supported, no command catalog; not run (no dsh on this Mac)" },
+    },
     background: {
       value: { ownTurn: "unknown", how: "jobs (tool-jobs: a bash or pwsh run in the background, job/registered → job/settled) and subagents (subagent/start → subagent/end) are tasks; whether a job's end starts a turn is not known" },
       evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/dsh/{jobs,projection}.js (read 2026-11-24, research/222 §2); not run (no dsh on this Mac)" },
@@ -690,6 +742,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: AGY("session creation and resume: a native session/list entry with the same saved cwd is required"),
     },
     browser: { value: "none Ducter uses (its tools are agy's own: run_command, read_file, edit_file, web search)", evidence: AGY("shared activity mappings") },
+    nativeCommands: {
+      value: { discover: [], fixed: ["model", "effort"], hidden: [], how: "OAR says its /compact is advertised but unverified (manualCompaction unsupported) and exposes no command catalog; its skills need a sign-in to list and no way to run one by name is verified" },
+      evidence: { kind: "VERIFIED", how: "research/224: OAR 0.124 antigravity commands unsupported (transport_unavailable), skills not_authenticated under a scratch home", date: "2026-11-24", version: "1.5.16" },
+    },
     background: { value: { ownTurn: "unknown", how: "OAR maps no task events for agy; a background command or subagent of its own is not seen" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/antigravity (read 2026-11-24, research/222 §2): no task_started" } },
     noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR refuses disallowedTools and has no allowlist for agy: it is never a one-shot (partner false)" } },
     noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: AGY("disallowed tools: refused before launch") },

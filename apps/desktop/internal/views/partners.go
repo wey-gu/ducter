@@ -259,6 +259,7 @@ func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
 	if row.Hovered() {
 		row.Background(t.Surface.Mix(t.Ink, 0.03))
 	}
+	a.doorCard(c, row, "a:"+x.DecisionID) // D535
 	row.Children(func() {
 		a.stone(c, "oask-"+x.DecisionID, p.Look, 32)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {

@@ -55,10 +55,14 @@ type pendingMsg struct {
 	sent bool
 	// reply (D236): the one message it answers.
 	reply *replyTo
+	// refs (D534): what its words refer to with @ or /.
+	refs []protocol.Ref
 }
 
 // App is the window's state.
 type App struct {
+	// mnState (D534): the composers' @ and / (mentions.go).
+	mnState *mentionsState
 	// ctlAvail is the width a row's control may take while it is built
 	// (wordsThenControl, last frame's); 0 outside a row (D468).
 	ctlAvail float32
@@ -343,6 +347,8 @@ type App struct {
 	undoUntil time.Time
 	// dev is Your devices and abilities' own state.
 	dev devicesState
+	// about is a device card's 关于这台 / About this computer: the rule being changed or added (D538).
+	about aboutState
 	// Desktop is the window app's hands on macOS (focus, notifications);
 	// nil in tests that don't need it.
 	Desktop Desktop
@@ -369,6 +375,7 @@ type App struct {
 	planNotes  map[string]map[string]string // D385: a plan card's 给这个的话…, by decision then part
 	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
 	planJump   int64                        // D385: 看方案: the plan card's seq to find in the conversation
+	door       doorState                    // D535: the last item a needs-you count opened, and the one being found
 	draftJump  string                       // D403: 看草稿: the find to find in the conversation
 	rv         reviewState                  // D385: 一起过目 / Review together's sheet
 	pins       pinsState                    // D381: 置顶 / Pinned's sheet (pins.go)
@@ -530,7 +537,7 @@ func (a *App) resendUnechoed() {
 	for _, p := range a.pending {
 		// A message whose pictures are still going up goes when they land.
 		if !echoed[p.clientID] && (len(p.atts) == 0 || allReady(p.atts)) {
-			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want()})
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID, Media: idsOf(p.atts), Reply: p.reply.want(), Refs: p.refs})
 		}
 	}
 	for _, t := range a.S.Tasks {
@@ -540,7 +547,7 @@ func (a *App) resendUnechoed() {
 				for _, m := range sd.Media {
 					ids = append(ids, m.ID)
 				}
-				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID, Media: ids})
+				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID, Media: ids, Refs: sd.Refs})
 			}
 		}
 	}
@@ -613,6 +620,7 @@ func (a *App) View(c *ui.Context) {
 	a.drainActionResults(c)
 	a.watchStopAfter() // D161: 做完再停 lands wherever the window is
 	a.shortcuts(c)
+	a.settleNav() // D535: a Keep's page lives only while On hand is shown
 	a.titleTick(c)
 	a.sayInstalled(c)
 	a.toastAt = toastPlace{} // the place says again where its toasts go
@@ -712,6 +720,9 @@ func (a *App) shortcuts(c *ui.Context) {
 	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):
 		a.ToLatest() // D254: to the newest message
 	case c.Shortcut(0, ui.KeyEscape):
+		if a.closePops() {
+			break // D534: Esc closes a composer's @ or / list first, and nothing else
+		}
 		if a.Route == RoutePast {
 			a.pastEsc() // D285: clears, then goes back
 			break
@@ -758,7 +769,13 @@ func (a *App) Up() {
 			}
 		}
 		a.Route = RouteOnHand
-	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
+	case RouteOnHand:
+		if a.oh.keep.open != "" {
+			a.closeKeep() // D535: a Keep's page goes up to On hand's overview first
+			return
+		}
+		a.Route = RouteConversation
+	case RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
 	case RoutePast:
 		a.pastBack()
@@ -884,11 +901,12 @@ func (a *App) sendMessage(text string) {
 		}
 		a.rp.pressIn[id] = true
 	}
-	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready, reply: reply})
+	refs := a.takeRefs("", text) // D534
+	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, atts: atts, sent: ready, reply: reply, refs: refs})
 	a.thinkingSince = a.Now()
 	a.markRead()
 	if ready {
-		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts), Reply: reply.want()})
+		a.send(protocol.Send{T: "send", Text: text, ClientID: id, Media: idsOf(atts), Reply: reply.want(), Refs: refs})
 	}
 	a.list.ScrollToEnd()
 }

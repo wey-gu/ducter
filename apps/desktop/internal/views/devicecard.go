@@ -117,6 +117,8 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		if dv.Tidied != nil && dv.Tidied.Count > 0 {
 			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)
 		}
+		// D538: what this computer measured of itself, and the person's rules about it.
+		a.aboutComputer(c, dv)
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.
 		if dv.Home {

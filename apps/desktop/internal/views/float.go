@@ -366,25 +366,11 @@ func (a *App) floatWords(c *ui.Context, line floatLine) {
 }
 
 // floatNeeds is what needs the person, as a count: the only accent in the
-// window (the menu bar's dot, said). A tap opens On hand on it.
+// window (the menu bar's dot, said). D535: a door: a tap brings Ducter's
+// window in front on the next item that waits.
 func (a *App) floatNeeds(c *ui.Context, n int) {
-	t := a.T
-	words := a.L.T("header.needs", n)
-	b := ui.Row(c.Key("float-needs")).Gap(t.S1+2).AlignItems(ui.Center).Height(t.ChipSM+4).Padding(0, t.S2+2).
-		Radius(t.Pill).Background(t.NeedsYou.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).
-		Label(words).Tooltip(a.L.T("float.needs.open")).Focusable().Shrink(0)
-	if b.Hovered() || b.Pressed() {
-		b.Background(t.NeedsYou.Surface.Mix(t.NeedsYou.Dot, 0.18))
-	}
-	b.Children(func() {
-		ui.Box(c).Size(7, 7).Radius(4).Background(t.NeedsYou.Dot).Shrink(0).AccessHidden(true)
-		uiText(c, words).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine().AccessHidden(true)
-	})
-	if b.Clicked() {
-		a.floatOpen(func() {
-			a.Route = RouteOnHand
-			a.oh.filter, a.oh.focus = 1, ""
-		})
+	if a.needsDoor(c, "float", a.L.T("header.needs", n), a.L.T("door.line.about")) {
+		a.floatOpen(func() { a.openDoor("") })
 	}
 }
 

@@ -269,6 +269,16 @@ changes.
   pinned) and signs it in with the person's one-time link through Mem's own `nmem connect`, which
   also connects that computer's Codex and Claude Code. Only when the home has Mem; the link is never
   kept; the home's `NMEM_CLI_PATH` never goes to a task elsewhere.
+- **What is identity, and what isn't (D538).** A persona's AI Identity is who the partner is: its
+  name, its voice, what it knows about the person. Where the person's work runs is not: a computer's
+  memory, cores and load are measured by the computer itself (`where.md` §24), never remembered, and
+  the person's word on which computer gets which work ("haswell 内存大，验证的活多放它", "hel 别跑浏览器")
+  is a computer rule in Ducter's rule store, shared by every partner. It is never written into an
+  identity profile or its L1. While Mem is on it is also mirrored into the person's Space as their own
+  preference (label `computer-placement`, `source_app = ducter`, the default partner's identity as the
+  writer, one memory per rule, archived when the rule is removed), so their other agents outside
+  Ducter know it; `rules.json` stays the source of truth placement reads (`memory.md`, "Computer
+  rules in Mem").
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta (D368, built): read-only in the background at most every 30 minutes, given once per
@@ -276,8 +286,8 @@ changes.
   never said as read; the morning note ranks its finds by its focus (`memory.md`, "Working
   Memory and past conversations").
 - **Writes to Mem.** Ducter writes only its own persona, via compare-and-swap, and user edits
-  win. It also writes distilled memories and, if the user opts in, finished window
-  transcripts. It never mirrors the channel and never creates Spaces without opt-in.
+  win. It also writes distilled memories, the person's computer rules while Mem is on (D538), and,
+  if the user opts in, finished window transcripts. It never mirrors the channel and never creates Spaces without opt-in.
 - **Provenance on every Mem write.** It records *who*, *through what*, and *from where*:
   - who: the persona's AI Identity (`agent_id`), set wherever Mem accepts it;
   - through what: `source_app = ducter`;

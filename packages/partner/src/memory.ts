@@ -101,6 +101,10 @@ export interface MemoryAdd {
   id?: string;
   /** D329: write it as a new memory as is (a restore, an outbox replay): no search, no supersede. */
   plain?: boolean;
+  /** D538: Mem labels (`-l`), so the person's other agents can find it ("computer-placement"). */
+  labels?: string[];
+  /** D538: Mem's unit type (`--unit-type`): a placement rule is the person's preference. */
+  unitType?: SearchOpts["unitType"];
 }
 
 /** D329: the partner's own earlier memory a save took the place of (Mem's supersede). */
@@ -152,6 +156,8 @@ export interface MemoryClient {
   about?(): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
   /** D329: 撤销 / Undo on a Noted line: `nmem m archive` (hidden from recall, kept audit-readable; never deleted). */
   archive?(id: string): Promise<boolean>;
+  /** D538: the memories carrying one label, newest first (`nmem m list -l`), read only. */
+  labeled?(label: string, limit: number): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
   /** D329: an undone save's replaced memory comes back: its words read (`nmem m show`) and written again. */
   restore?(id: string, provenance: Provenance): Promise<boolean>;
 }
@@ -315,6 +321,8 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       // Content goes through stdin: a positional argument starting with "-" would parse as a flag.
       const args = ["m", "add", "--stdin", `--title=${m.title}`, "-i", imp.toFixed(2), "--source", "ducter", "--source-app", "ducter", "--source-msg", provenanceRef(m.provenance)];
       if (m.id && SAFE_ID.test(m.id)) args.push(`--id=${m.id}`);
+      for (const l of m.labels ?? []) if (SAFE_ID.test(l)) args.push("-l", l);
+      if (m.unitType) args.push("--unit-type", m.unitType);
       // Who: the persona's identity, always named (D141); with none bound yet, nmem's own fallback.
       const who = opts.identity?.();
       if (who) args.push("--agent-id", who.agentId, ...(who.space ? ["--space", who.space] : []));
@@ -356,6 +364,19 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
         hits.push(...aboutHits(list, k));
       });
       return any ? { ok: true, hits } : failure(rs[0]!);
+    },
+    async labeled(label, limit) {
+      if (!SAFE_ID.test(label)) return { ok: true, hits: [] };
+      const who = opts.identity?.();
+      const r = await run(["m", "list", "-l", label, "-n", String(Math.min(50, Math.max(1, limit))), ...(who?.space ? ["--space", who.space] : [])]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      try {
+        const j = JSON.parse(r.out);
+        const list: unknown[] = Array.isArray(j?.memories) ? j.memories : Array.isArray(j) ? j : [];
+        return { ok: true, hits: list.map((m) => compactHit(m)) };
+      } catch {
+        return { ok: false, reason: "unavailable", message: "Nowledge Mem gave an unreadable answer." };
+      }
     },
     async archive(id) {
       if (!SAFE_ID.test(id)) return false;

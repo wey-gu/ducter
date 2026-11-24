@@ -257,6 +257,8 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     // person's, so every partner's [devices] line says the same.
     ...(core.homeDevice ? { homeDevice: () => core.homeDevice!() } : {}),
     ...(core.codeOn ? { codeOn: () => core.codeOn!() } : {}),
+    // D538: the person's computer rules and the heavy work on each computer are the household's, not one partner's.
+    ...(core.placement ? { placement: () => core.placement!() } : {}),
     ...(core.agentLimits ? { agentLimits: () => core.agentLimits!() } : {}),
     // D486: who the person's partners are, as this one sees them.
     ...(core.partnersNow ? { partnersNow: () => ({ ...core.partnersNow!(), me: id }) } : {}),

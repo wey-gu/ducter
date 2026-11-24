@@ -19,6 +19,13 @@ func (a *App) onHand(c *ui.Context) {
 	b := a.S.Board()
 	a.placeBar(c, "onhand", RouteOnHand, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
+		// D535: on a Keep's page the breadcrumb is the way back, at every
+		// width: 对话 / 手头的事 / {the Keep}, 手头的事 closing the page.
+		if title, ok := a.keepCrumb(); ok {
+			a.crumbDo(c, a.L.T("onhand.title"), a.closeKeep)
+			a.chromeTitle(c, title)
+			return
+		}
 		a.chromeTitle(c, a.L.T("onhand.title"))
 	}, func() {
 		// 新建 / New task: the place's own action, a clay button in the bar
@@ -212,6 +219,10 @@ func (a *App) waitReason(task *store.Task) string {
 	// D157: waiting for a computer that said it was going to sleep.
 	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
 		return a.L.T("where.waiting", d)
+	}
+	// D538: heavy work waiting for room on its computer.
+	if d, ok := strings.CutPrefix(r, "device:room:"); ok {
+		return a.L.T("where.waiting.room", d)
 	}
 	if r == "browser:native_missing" { // D207
 		return a.L.T("wait.native_missing")
@@ -488,8 +499,10 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
 	// D493: 8 under each card, so its ledge never touches the next one.
-	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
-		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
+	a.doorCard(c, card, "t:"+task.ID) // D535
+	card.Children(func() {
 		a.askerRow(c, task)
 		rep := task.Report()
 		q := ""
@@ -773,8 +786,10 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callBody(c, d) })
 		return
 	}
-	ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
-		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
+	a.doorCard(c, card, "d:"+d.DecisionID) // D535
+	card.Children(func() {
 		if d.Asker != nil {
 			// X1 (D170): the agent's coin and who it is stand where a task's title would.
 			a.peerAskerRow(c, d.Asker)

@@ -134,6 +134,8 @@ type UserMsg struct {
 	// Passed (D486): the person's words, said to another partner and passed
 	// on by it (that partner's id).
 	Passed *PassedFrom `json:"passed,omitempty"`
+	// Refs (D534): what the words refer to with @ or /, as the home resolved it.
+	Refs []HeldRef `json:"refs,omitempty"`
 }
 
 // PassedFrom names the partner that passed the person's words on (D486).
@@ -1345,6 +1347,8 @@ type Send struct {
 	App string `json:"app,omitempty"`
 	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
 	Via string `json:"via,omitempty"`
+	// Refs (D534): what the words refer to with @ or /.
+	Refs []Ref `json:"refs,omitempty"`
 }
 
 // ChannelStatus (D277) is how the Mac app's iMessage bridge stands: on |
@@ -1393,6 +1397,8 @@ type TaskSend struct {
 	// Mode (D268): "steer" (sent while it works, read at its next step) or
 	// "queue" (after this turn); empty for the runner's own choice.
 	Mode string `json:"mode,omitempty"`
+	// Refs (D534): what the words refer to with @.
+	Refs []Ref `json:"refs,omitempty"`
 }
 
 type TaskAction struct {
@@ -2582,6 +2588,25 @@ type DeviceView struct {
 	// Tidied is the working copies Ducter tidied away on this computer so far
 	// and the room it freed (D514): the card's one quiet line.
 	Tidied *DeviceTidied `json:"tidied,omitempty"`
+	// Resources is what Ducter measured on this computer itself (D538): its
+	// memory, cores, disk and the kernel's out-of-memory stops.
+	Resources *DeviceResources `json:"resources,omitempty"`
+}
+
+// DeviceResources is a computer's own measurements, in bytes (D538,
+// packages/protocol/src/index.ts DeviceResources).
+type DeviceResources struct {
+	At        string   `json:"at"`
+	MemTotal  float64  `json:"memTotal"`
+	MemFree   float64  `json:"memFree"`
+	Cores     int      `json:"cores"`
+	Load      *float64 `json:"load,omitempty"`
+	SwapTotal *float64 `json:"swapTotal,omitempty"`
+	DiskFree  *float64 `json:"diskFree,omitempty"`
+	DiskTotal *float64 `json:"diskTotal,omitempty"`
+	CPU       string   `json:"cpu,omitempty"`
+	GPU       string   `json:"gpu,omitempty"`
+	OOM       []string `json:"oom,omitempty"`
 }
 
 // DeviceTidied counts the working copies tidied away on a computer (D514).
@@ -3186,6 +3211,9 @@ type ServerFrame struct {
 	PastSteps *PastStepsFrame `json:"-"`
 	// D383: made_result (made.go), decoded on its own.
 	Made *MadeFrame `json:"-"`
+	// Mentions and Slash (D534): mention_list's and slash_list's own shapes.
+	Mentions *MentionList `json:"-"`
+	Slash    *SlashList   `json:"-"`
 	// D405: apps, app_open, app_data, app_ask_refused (apps.go), decoded on their own.
 	AppsF *AppsFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
@@ -3411,6 +3439,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	switch head.T {
 	case "apps", "app_open", "app_data", "app_ask_refused":
 		return decodeApps(data, ServerFrame{T: head.T})
+	case "mention_list", "slash_list":
+		// D534: the composers' @ and / lists ("items" and "entries" are their own shapes).
+		return decodeMentions(data, ServerFrame{T: head.T})
 	case "mem_answered":
 		// D465: its "answer" is a word where the shared struct's is the workbench's.
 		return decodeMemAnswered(data, ServerFrame{T: head.T})

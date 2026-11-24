@@ -388,6 +388,10 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
 }
 
 function showApp() {
+  // D535: a page painted from its last screen (D209) renders the app without the waiting card first,
+  // so index.html's static boot ground was left in place, a full-height block that pushed the app
+  // off the window after every reload. It goes before the app comes in.
+  root.querySelector(":scope > .boot-wait.static")?.remove();
   render(
     <Guard t={t}>
       <App />

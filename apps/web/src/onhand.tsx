@@ -10,6 +10,8 @@ import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
+import { still } from "./nav.ts";
+import { wideNow } from "./fold.ts";
 import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
@@ -245,28 +247,32 @@ export function groupLaneOf(lanes: Task[][]) {
 /** D517: the person's one count's items, from one source: the Dock and app badge, the conversation's
  *  line, a partner's number in the list of partners and On hand's head all count these, and On hand
  *  draws each of them under 等你. A lens counts its tasks; all (and Other) the questions of no task too. */
-export function needsYouItems(lens = "", now = Date.now()): { partner: string }[] {
+export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
-  const out: { partner: string }[] = [];
+  const out: NeedItem[] = [];
   const inLine = new Set<string>();
   for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))) {
     if (!g.stopped) continue;
     for (const id of g.ids) inLine.add(id);
     const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
-    out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER });
+    out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER, key: `g:${g.g.id}`, groupId: g.g.id });
   }
   for (const x of [...l[LANE.needs]!, ...parts.stopped, ...parts.ready, ...parts.failed]) {
     if (attention(x) === "failed" && inLine.has(x.id)) continue; // a part of a stopped line is the line's
-    out.push({ partner: A.taskPartner(x) });
+    out.push({ partner: A.taskPartner(x), key: `t:${x.id}`, taskId: x.id });
   }
   if (looseIn(lens)) {
     const shown = A.S.persona || A.partnerShown || DEFAULT_PARTNER;
-    for (const _ of A.S.partnerDecisions()) out.push({ partner: shown });
-    for (const a of A.otherAsks()) out.push({ partner: a.persona });
+    for (const d of A.S.partnerDecisions()) out.push({ partner: shown, key: `d:${d.decisionId}`, decisionId: d.decisionId });
+    for (const a of A.otherAsks()) out.push({ partner: a.persona, key: `a:${a.decisionId}`, askId: a.decisionId });
   }
   return out;
 }
+
+/** D535: one item of the person's one count, and where it lives: a stopped line, a task, the
+ *  partner's own question (its card in the conversation), another partner's (On hand's 等你). */
+export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; decisionId?: string; askId?: string };
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
  *  way (not the partner's rethink, which may still ask the person). Said on its row in the words
@@ -2403,3 +2409,110 @@ export function Peek() {
 // D517: the app's counts (the conversation's line, a partner's number in the list) read the same items as
 // On hand's 等你.
 A.needsItems = () => needsYouItems("");
+
+// ---------- D535: every needs-you count is a door ----------
+
+/** D535: the last item a count's door opened (its key), for the next tap's step. */
+export const door = { last: "" };
+
+/** D535: a count's items in the order 等你 draws them (a stopped line, the partner's own questions,
+ *  another partner's, then the tasks); partner "" is the person's one count, else that partner's part. */
+export function doorItems(partner = ""): NeedItem[] {
+  const all = needsYouItems("").filter((i) => !partner || i.partner === partner);
+  const rank = (i: NeedItem) => (i.groupId ? 0 : i.decisionId ? 1 : i.askId ? 2 : 3);
+  return all.map((i, n) => ({ i, n })).sort((a, b) => rank(a.i) - rank(b.i) || a.n - b.n).map((x) => x.i);
+}
+
+/** D535: the item after the one last opened; the first when that one is gone or was the last. */
+export function nextDoor(items: { key: string }[], last: string): number {
+  const at = items.findIndex((i) => i.key === last);
+  return at < 0 ? 0 : (at + 1) % items.length;
+}
+
+/** D535: whose items the conversation's line opens: with more than one partner the shown one's. */
+export const barDoorPartner = () => (A.manyPartners() ? A.S.persona || A.partnerShown || DEFAULT_PARTNER : "");
+
+/** D535: opens the next item of a count where it lives: the partner's own question in the
+ *  conversation (scrolled to, its tint deepening once), else On hand's overview with the item
+ *  focused, scrolled to and deepening once. A second tap steps on; after the last, the first. */
+export function openDoor(partner = ""): boolean {
+  const items = doorItems(partner);
+  if (!items.length) return false;
+  const it = items[nextDoor(items, door.last)]!;
+  door.last = it.key;
+  if (K.open) closeKeepHere();
+  if (it.decisionId && A.S.channel.some((e) => e.decision?.decisionId === it.decisionId)) {
+    // Wide, the conversation stands beside On hand: it is found there without leaving the pane.
+    const convShown = A.route.name === "conv" || (wideNow() && !A.route.full);
+    if (!convShown) A.go({ name: "conv" });
+    else A.changed();
+    // Found in the conversation itself, never its copy in On hand's 等你 beside it.
+    findIn(() => `main[role="log"] #d-${CSS.escape(it.decisionId!)}`);
+    return true;
+  }
+  L.filter = 0;
+  L.find = "";
+  L.focus = it.taskId ?? "";
+  L.walked = !!it.taskId;
+  // The lens kept on this device stays when it holds the item; else All.
+  const lens = readLens();
+  if (lens) {
+    const task = it.taskId ? A.S.tasks.get(it.taskId) : undefined;
+    const holds = task ? lensOf(task) === lens : (it.decisionId || it.askId) && lens === OTHER;
+    if (!holds) setLens("");
+    L.focus = it.taskId ?? "";
+    L.walked = !!it.taskId;
+  }
+  if (A.route.name !== "onhand") A.go({ name: "onhand", ...(A.route.name === "task" && A.route.full ? { full: true } : {}) });
+  else A.changed();
+  findIn(() => `.onhand-list:not(.room-rail) :is(${itemSelector(it)})`);
+  return true;
+}
+
+/** D535: scrolls an element to the middle of its own list, and only that list: scrollIntoView also
+ *  moves every scrolling ancestor, the page itself included, which slid the two panes off the window. */
+export function centerIn(el: HTMLElement) {
+  let sc = el.parentElement;
+  while (sc && !(sc.scrollHeight > sc.clientHeight && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+  if (!sc) return;
+  const r = el.getBoundingClientRect();
+  const box = sc.getBoundingClientRect();
+  const top = sc.scrollTop + (r.top - box.top) - Math.max(0, (box.height - r.height) / 2);
+  sc.scrollTo({ top: Math.max(0, top), behavior: still() ? "auto" : "smooth" });
+}
+
+/** D535: closes a Keep's page without a render of its own (the door's move renders once). */
+function closeKeepHere() {
+  K.open = "";
+  K.pause = K.stop = false;
+}
+
+/** D535: the element On hand draws for an item: its row, its line's card, its question's card. */
+function itemSelector(it: NeedItem): string {
+  if (it.groupId) return `[data-group="${CSS.escape(it.groupId)}"]`;
+  if (it.askId) return `[data-ask="${CSS.escape(it.askId)}"]`;
+  if (it.decisionId) return `#d-${CSS.escape(it.decisionId)}`;
+  const d = it.taskId ? A.S.pendingDecision(it.taskId) : undefined;
+  const row = `[data-row="${CSS.escape(it.taskId ?? "")}"]`;
+  return d ? `#d-${CSS.escape(d.decisionId)}, ${row}` : row;
+}
+
+/** D535: once On hand has drawn it (a few frames at most, through a page's move), the item is
+ *  scrolled to the middle of its list and its tint deepens once (app.css .door-found); at once and
+ *  colour only under reduced motion. */
+function findIn(sel: () => string, tries = 24) {
+  if (typeof document !== "object" || typeof requestAnimationFrame !== "function") return;
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(sel());
+    if (!el) return tries > 0 ? findIn(sel, tries - 1) : undefined;
+    centerIn(el);
+    el.classList.remove("door-found");
+    void el.offsetWidth; // a second find on the same element plays again
+    el.classList.add("door-found");
+    const off = () => el.classList.remove("door-found");
+    el.addEventListener("animationend", off, { once: true });
+    setTimeout(off, 1800);
+  });
+}
+
+A.openDoor = openDoor;

@@ -306,6 +306,8 @@ export class Store {
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
   /** D222: what a Go on a change card ran (the connection_call with its decision id), the latest by seq. */
   calRuns = new Map<string, { state: Bodies["connection_call"]["state"]; link?: string; error?: string; seq: number }>();
+  /** D539: what a copy card's Go did: the computers that got the key, and those that didn't (why). */
+  keyCopies = new Map<string, Bodies["key_copy"]>();
 
   /** A welcome from a Log that no longer holds what we've seen (its data was reset). */
   stale(f: ServerFrame) {
@@ -553,6 +555,11 @@ export class Store {
       const c = ev.body as Bodies["connection_call"];
       const had = c.decisionId ? this.calRuns.get(c.decisionId) : undefined;
       if (c.decisionId && c.op === "write" && (!had || had.seq <= ev.seq)) this.calRuns.set(c.decisionId, { state: c.state, ...(c.link ? { link: c.link } : {}), ...(c.error ? { error: c.error } : {}), seq: ev.seq });
+    }
+    if (ev.kind === "key_copy") {
+      const b = ev.body as Bodies["key_copy"];
+      if (b.decisionId) this.keyCopies.set(b.decisionId, b);
+      return;
     }
     if (ev.stream !== "channel") {
       if (ev.kind === "decision") this.addDecision(ev as Ev<"decision">);

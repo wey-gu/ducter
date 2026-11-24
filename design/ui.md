@@ -352,6 +352,7 @@ ms, bounce 0.08), across 300 ms (`--t-across`), hero 440 ms (`--t-hero` on `--ea
 | go deeper (conversation → On hand → task) | page in from 28 pt on the push spring, its fade on a quick ease-out (`EnterDur`); the page left recedes 10, opaque under it | a full push from the trailing edge; the page left recedes a third and dims | the pane's page in from 28px; the one left recedes and fades |
 | come back | the reverse | the page left slides off the trailing edge on top | the reverse |
 | the card you opened | On hand's row (held on hover or focus) grows into the task's head (`Match` + `Fly`), and the head goes back into it | the row's `.tmain` and the head share `hero` | the same |
+| one partner to the next (the list of partners, ⌥⌘1–4; D541) | not a move in depth: the conversation is shown in place at once, where it was left (no fade, no rise); the knob glides (D517); the bar's face and name change where they stand; bar and composer stay | the same (from the list, the phone's row goes deeper as D513 has it) | the same |
 | one task to the next (rail, ⌘⇧], j/k; D343) | not a move in depth: nothing travels and no card flies; the task's column cross-fades in place on 140 ms ease-out (`Nav.Switch`), the head's words changing where they stand; bar and rail stay; reduced motion: at once | the page cross-fades in place (`--t-switch` 140 ms, ease-out) | the same |
 | a place beside another | page 14 toward its mark; the knob (its own piece under the marks) slides there | — | the knob goes to Devices or Settings while their sheet is over the board |
 | the bar | held still against its page (a pose turned back); its words cross-fade | named `bar`: stays, cross-fades | — (two bars) |
@@ -447,10 +448,22 @@ ledge), one element gliding from row to row on a spring (420 ms, bounce about 0.
 figure 6% taller; hover is a light sunken ground; no tooltip. A figure hops once (700 ms) when
 something new comes from its partner. D517: 272 wide from 1200 on the Mac and 1360 on the web;
 under that 88 wide, each figure with its name under it (11/700). Reduce Motion: no glide, no
-breath, no blink, no hop.
+breath, no blink, no hop. D541: a pick shows that partner's conversation in place in the next
+frame, held or peeked (no fade, no rise, never blank); the bar and the composer don't move.
 On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
 tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
-**‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no
+the way up (D541): the drawn chevron (`Chev back`, 16) and the other partners' own figures, a stack
+of up to three 24-pt discs in their clays (each on the sunken ground with a 1.5 ring of the page,
+overlapping 9, the nearest on top), the others' number as a `CountPebble` on the stack's shoulder;
+44 tall; at 360 and under, one figure and the number. A lone ‹ read as "back"; the faces say who is
+there. The same in a fold's conversation pane (no column stands beside there); the list then opens
+over that pane. From 700 to 999 (an iPad upright, a foldable open: one column) the slim list (88)
+stands at the conversation's left and the column grows by its width. D545: the bar's first control
+(a drawn window with its side column, `IconBtn` / `iconButton`) narrows the list to its faces (thin:
+30-pt figures on a 56-pt strip on the web, 60 on the Mac, the number above each head), hides it, and
+brings it back, remembered per device; hidden, the others' faces in the bar are the way back. The
+list's width changes once at the press and then the list alone slides in 14 on `--t-across`; on the
+Mac, thin, its band joins the bar's chrome under the window's controls. No pills, no coloured edge, no
 " · " joins: each fact its own element.
 
 **The knob (D270).** One look for "chosen", everywhere: the card's white raised on a 2-pt clay
@@ -574,6 +587,7 @@ A new control is added to the set (and to this table) before it is used.
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| The other partners' faces, a stack of up to three 24-pt discs in their clays with what waits in them on a `CountPebble`, the way up to (or back to a hidden) list of partners (D541, D545) | `othersStack` (`shared.go`) | `PartnersBack` |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |
 | A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |

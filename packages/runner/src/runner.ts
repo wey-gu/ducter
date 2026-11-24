@@ -872,8 +872,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await prepareSpec(t);
     // D156: its agent is being updated on this machine: start once the updater is done (at most 15 min).
     for (const end = Date.now() + 15 * 60_000; harnessHold.has(t.spec.harness) && !t.ops.device && Date.now() < end; ) await Bun.sleep(1000);
-    const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
-    const session = await t.ops.harness.start(spec);
+    let spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
+    // D539: the keys copied for this task, by name; the computer it runs on reads their values (the
+    // home here, a worker there: worker-host.ts). Never kept in t.spec, never in the Log.
+    const refs = core.keyCopy?.refsFor(t.id) ?? [];
+    if (refs.length) spec = { ...spec, keyRefs: refs };
+    const session = await t.ops.harness.start(refs.length && !t.ops.device && core.keyCopy ? core.keyCopy.withKeys(spec) : spec);
     t.session = session;
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context

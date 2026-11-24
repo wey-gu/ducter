@@ -470,6 +470,11 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}
+		if d.CopyKey != nil {
+			// D539: what goes from where to where, the note, 先不 · 复制; answered in place.
+			a.underBubble(c, func() { a.copyKeyButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
 		if d.Phone != nil {
 			// D217: the phone's own card: what it will tap, or the way onto the phone.
 			a.underBubble(c, func() { a.phoneButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })

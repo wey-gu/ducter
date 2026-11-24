@@ -74,7 +74,7 @@ import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
-import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, setRenderZone, type RenderCtx } from "./render.ts";
 import { namesAgent, relayAnswer, relayHead, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { destructiveChoice } from "../../protocol/src/destructive.ts";
@@ -1758,6 +1758,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function buildInput(batch: LogEvent[], fresh: boolean, note?: string): string {
     // Things the user did by button since our last turn (merge, open PR): context, not triggers.
     const noted = fresh ? [] : userActions.splice(0);
+    // D539 (D528): the person's zone, so every time this turn reads (and says) is theirs, never UTC.
+    setRenderZone(core.zone?.());
     const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
     // Spike (J-Q7): a task opened for another agent's request owes that agent its outcome.
     for (const e of batch) {

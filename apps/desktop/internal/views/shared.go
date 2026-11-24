@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -561,4 +562,59 @@ func (a *App) factPill(c *ui.Context, key, label string, mark func(), facts []pi
 		}
 	})
 	return row.Clicked()
+}
+
+// othersStack (shared, D545) is the way back to the list of partners while
+// it is hidden: the
+// other partners' own figures, a small stack in their clays, with the
+// number of what waits on the person in them (the web's PartnersBack).
+func (a *App) othersStack(c *ui.Context) {
+	if !a.manyPartners() || a.Local.RailMode() != "hidden" {
+		return
+	}
+	t := a.T
+	shown := a.shownPartnerID()
+	var others []protocol.PartnerInfo
+	n := 0
+	for _, p := range a.S.Partners {
+		if p.ID != shown {
+			others = append(others, p)
+			n += a.partnerNeeds(p)
+		}
+	}
+	label := a.L.T("partners.back")
+	if n > 0 {
+		label = a.L.T("partners.back.asks", n)
+	}
+	b := ui.Row(c.Key("others-stack")).Height(t.ControlSM).AlignItems(ui.Center).Padding(0, t.S1).Radius(t.RadiusSM).Shrink(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
+	if b.Hovered() || b.Pressed() || b.FocusVisible() {
+		b.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
+	}
+	b.Children(func() {
+		ui.Box(c.Key("faces")).Shrink(0).Children(func() {
+			ui.Row(c).Children(func() {
+				for i, p := range others {
+					if i >= 3 {
+						break
+					}
+					disc := ui.Box(c.Key("d"+p.ID)).Size(24, 24).Radius(12).Background(t.SurfaceSunken).Border(2, t.Chrome).AlignItems(ui.Center).Justify(ui.End).Shrink(0)
+					if i > 0 {
+						disc.Margin(0, 0, 0, -7)
+					}
+					disc.ZIndex(3 - i)
+					disc.Children(func() { a.stone(c, "stack-"+p.ID, p.Look, 20) })
+				}
+			})
+			if n > 0 {
+				a.countPebble(c, "others", n, t.Chrome).Absolute().Right(-19).Top(-9)
+			}
+		})
+		if n > 0 {
+			ui.Box(c).Width(16).Shrink(0)
+		}
+	})
+	if b.Clicked() {
+		a.setRail("")
+	}
 }

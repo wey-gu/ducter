@@ -74,11 +74,11 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
+import { PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
-import { useWide } from "./wide.ts";
-import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
+import { useSplit, useWide } from "./wide.ts";
+import { AutofillSettings, CopyKeyBody, copyKeyTitle, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
@@ -496,6 +496,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.fill) return <FillBody d={d} />;
   // D233: a task asks for a key: the field is on the card itself, never a reply.
   if (d.key) return <KeyBody d={d} />;
+  // D539: copy a key from another of the person's computers: what, from, to; Copy or Not now.
+  if (d.copyKey) return <CopyKeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
   // D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
   if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
@@ -1133,6 +1135,14 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
         {(buttons || !open) && <KeyBody d={d} compact />}
       </div>
     );
+  // D539: 复制密钥 / Copy a key, receipt-like: the facts and the two buttons on the card itself.
+  if (d.copyKey)
+    return (
+      <div ref={ref} class={`partner askq pay key copykey${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble" dir="auto">{copyKeyTitle(d)}</div>
+        {(buttons || !open) && <CopyKeyBody d={d} compact />}
+      </div>
+    );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
@@ -1638,6 +1648,9 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
+  const phoneBar = usePhone();
+  const fold = useSplit();
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1680,11 +1693,13 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
-      {!wide && <PartnersBack />}
+      {/* D545: beside the list (not a phone, not a fold), its toggle: narrower, hidden, back. */}
+      {!phoneBar && !fold && <RailToggle />}
+      {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={44} />
+          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
         </button>
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
@@ -2021,7 +2036,25 @@ function timeGap(prev: Entry | undefined, e: Entry): boolean {
   return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
 }
 
+/** D541: the bar and the composer stay mounted through a partner switch (they never move, and the
+ *  composer keeps the keyboard); only the messages between them are the partner's own, made anew for
+ *  each, landing where the reader was in it. */
 export function Conversation() {
+  return (
+    <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
+      <Top />
+      {/* D381: what is pinned, under the bar. */}
+      <PinStrip />
+      {/* D410: pinned apps, one tap each. */}
+      <PinnedApps />
+      <ConvBody key={A.S.persona || "shown"} />
+      <Composer />
+    </>
+  );
+}
+
+function ConvBody() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
@@ -2042,12 +2075,6 @@ export function Conversation() {
   useTalkFeed(rows);
   return (
     <>
-      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
-      <Top />
-      {/* D381: what is pinned, under the bar. */}
-      <PinStrip />
-      {/* D410: pinned apps, one tap each. */}
-      <PinnedApps />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => (follow.onScroll(e.currentTarget as HTMLDivElement), older.onScroll(e.currentTarget as HTMLDivElement))}>
         <OlderWait />
         <div class="spacer" />
@@ -2094,8 +2121,8 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
+      {/* D535's door reads this conversation's list; the composer stays outside, in Conversation (D541). */}
       <DoorLine scroller={scroller} />
-      <Composer />
     </>
   );
 }

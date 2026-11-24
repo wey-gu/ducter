@@ -622,7 +622,7 @@ func (a *App) whereLines(c *ui.Context, d *store.DecisionState) {
 
 // genericAsk is a go/hold ask drawn by decideRow (D482), not a card of its own kind.
 func genericAsk(d *store.DecisionState) bool {
-	return d.Checkout == nil && d.SignIn == nil && d.Phone == nil && d.Pay == nil && d.Fill == nil && d.Key == nil &&
+	return d.Checkout == nil && d.SignIn == nil && d.Phone == nil && d.Pay == nil && d.Fill == nil && d.Key == nil && d.CopyKey == nil &&
 		!(d.Handset != nil && d.Handset.Kind == "record") && !(d.Draft != nil && d.FindID != "")
 }
 

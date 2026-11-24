@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.48 - 2026-11-24
+
+<!-- whats-new
+zh: 切换伙伴即点即到；一个密钥一下复制到你的另一台电脑
+en: Switching partners is instant; copy a key to your other computer in one tap
+-->
+
+**Switching partners, instant**
+- Each partner's conversation stays where you left it, draft included, and appears the moment you
+  tap. On an iPad, an unfolded phone or a phone, the other partners are always one tap away.
+- On a computer or tablet, the partner list can shrink to faces or hide; the button beside it
+  says what it will do.
+
+**Copy a key to your other computer**
+- When a task on hel or haswell needs a key your Mac already has, Ducter asks once: 复制 / Copy.
+  The key travels encrypted between your own computers, is never shown and never enters the
+  chat; each computer's card lists the keys Ducter keeps there, by name, with Remove.
+
+**On hand on a tablet or an unfolded phone**
+- Tapping an item opens that item: something Ducter looks after opens its page, and a task opens
+  at its conversation, not at another task's files.
+- An opened task's head is one line: its state, who works on it, the project. The model and the
+  context sit inside the composer, so the steps get the height.
+
 ## 0.1.47 - 2026-11-24
 
 <!-- whats-new

@@ -298,6 +298,8 @@ type App struct {
 	headRows map[int64]bool
 	// fl is the conversation's place (D254, follow.go).
 	fl follow
+	// sw is the partner switch (D541, partner_switch.go): the conversations held aside.
+	sw partnerSwitch
 	// forgotten are the Noted lines forgotten from a message's Details.
 	forgotten map[int64]bool
 	// recall is the 想起了 line's card and 这周记下的 (D304, recall.go).
@@ -1135,6 +1137,7 @@ func (a *App) Welcomed() {
 // forgetShown drops everything shown from a Log: it started over, or the
 // app now talks to another Ducter.
 func (a *App) forgetShown() {
+	a.forgetKept()
 	a.S.Reset()
 	a.pending, a.diffs = nil, map[string]*diffPane{}
 	a.actSent, a.inDoubt = nil, nil
@@ -1151,6 +1154,14 @@ func (a *App) forgetShown() {
 // that started over (its head behind our cursor) resets the store and
 // says hello again from the start.
 func (a *App) Receive(f protocol.ServerFrame) {
+	switched := f.T == "welcome" && a.sw.to != "" && a.sw.sameSock
+	if a.switchFrame(&f) {
+		return // D541: the conversation the switch left
+	}
+	if f.T == "partner_peek" {
+		a.tookPeek(f)
+		return
+	}
 	if a.S.Stale(f) {
 		a.forgetShown()
 		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
@@ -1168,7 +1179,15 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	a.Local.SetPersonaName(a.S.PersonaName) // D262: the next launch starts with it
 	switch f.T {
 	case "welcome":
-		a.Welcomed()
+		if switched {
+			a.switchWelcomed()
+		} else {
+			a.sw.peeked = nil // a new socket asks again
+			a.Welcomed()
+		}
+		a.peekOthers()
+	case "partners":
+		a.peekOthers()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
 		if f.Action == "stop_background" && !f.OK {

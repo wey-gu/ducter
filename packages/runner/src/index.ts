@@ -12,3 +12,4 @@ export { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts"
 export { remoteOps, deviceOf, isOffline, DeviceOfflineError, DEVICE_BACK, type PlaceOps } from "./remote.ts";
 export { createWorkerHost, rewriteMcp, type WorkerHost, type WorkerHostOptions } from "./worker-host.ts";
 export { unreachableReason } from "./runner.ts";
+export { createKeyShelf, shellVar, keyEnvOk, type KeyShelf, type KeyShelfOptions } from "@ducter/protocol/src/key-shelf.ts";

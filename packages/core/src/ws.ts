@@ -173,6 +173,8 @@ export interface WsDeps {
   handsets?: import("./handset/index.ts").Handsets;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code); absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
+  /** D539: keys copied between the person's computers (the card's Go, Settings' lists). */
+  keyCopy?: import("./key-copy.ts").KeyCopy;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D388: `ducter proactive replay`: a dry engine over the last days of the real accounts. */
@@ -987,6 +989,13 @@ export function createWsHandler(deps: WsDeps) {
         // waits in memory for that one fill. Go without it is refused, so nothing is half-paid.
         // D233: a key card: Go carries the key (into Autofill and the task's key file, never the
         // Log); Hold is 不给 / Don't give. Either answers the task, in its waiting call or by resuming it.
+        // D539: a copy card: Go copies the key between the person's computers (the card stays, saying
+        // why, when nothing could go); Hold doesn't. Its Go is only ever this tap.
+        if (deps.keyCopy?.isCopyAsk(f.decisionId)) {
+          if (f.option !== "go" && f.option !== "hold") throw new Error("a copy card is answered with Copy or Not now");
+          void deps.keyCopy.answer(f.decisionId, f.option).catch((err) => console.warn(`[keys] copy ${f.decisionId}: ${(err as Error).message}`));
+          return;
+        }
         const keys = deps.autofill?.keys;
         if (keys?.isKeyAsk(f.decisionId)) {
           if (f.option === "go") keys.answer(f.decisionId, { value: String(f.key ?? ""), once: f.once === true });
@@ -1083,6 +1092,19 @@ export function createWsHandler(deps: WsDeps) {
         o.hideFolder(path, !!f.hidden);
         if (f.hidden) forgetRecords(path);
         refreshFirstScreens();
+        return;
+      }
+      case "kept_keys":
+      case "kept_key_remove": {
+        // D539: the names a computer keeps for Ducter's tasks there, read there; remove forgets one there.
+        const kc = deps.keyCopy;
+        const device = String(f.device ?? "local").slice(0, 120);
+        if (!kc) return send(ws, { t: "kept_keys", device, ok: false, why: "unsupported" });
+        if (f.t === "kept_key_remove") {
+          const r = await kc.remove(device, String(f.env ?? ""));
+          if (!r.ok) return send(ws, { t: "kept_keys", device, ok: false, why: r.why });
+        }
+        send(ws, { t: "kept_keys", device, ...(await kc.list(device)), ...(f.t === "kept_key_remove" ? { removed: String(f.env ?? "") } : {}) });
         return;
       }
       case "saved":
@@ -2437,6 +2459,16 @@ export function createWsHandler(deps: WsDeps) {
         const stream = channelOf(ws.data.partner);
         const { events, more } = channelPage(log, stream, before, f.limit);
         send(ws, { t: "channel_history", events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), beforeSeq: before, more });
+        return;
+      }
+      case "partner_peek": {
+        // D541: another partner's newest stretch, for the person's own client to draw a switch at once.
+        const id = String(f.persona ?? "");
+        if (id !== DEFAULT_PARTNER && !deps.partners?.has(id)) throw new Error("no such partner");
+        const stream = channelOf(id === DEFAULT_PARTNER ? undefined : id);
+        const head = log.head();
+        const { events, more } = channelPage(log, stream, head + 1, Math.max(1, Math.min(Math.floor(Number(f.limit)) || 50, 200)));
+        send(ws, { t: "partner_peek", persona: id, events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), headSeq: head, more });
         return;
       }
       case "task_history": {

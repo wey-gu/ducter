@@ -55,6 +55,8 @@ import { gatherLeads, modelSpotter } from "./proactive/wider.ts";
 import { modelCross } from "./proactive/cross.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
+import { createKeyCopy } from "./key-copy.ts";
+import { MCP_CALL_WAIT } from "@ducter/protocol/src/harness-facts.ts";
 import { openPartners, type Partners, type PartnerError } from "./partners.ts";
 import { registerPartnerTool } from "./partner-tool.ts";
 import { DEFAULT_PARTNER, channelOf, isOtherChannel } from "@ducter/protocol/src/partners.ts";
@@ -217,6 +219,11 @@ export interface CoreOptions {
   defaultDelayMs?: number;
   /** D233: how long ask_for_key waits in the call for the person (tests); default per harness. */
   keyWaitMs?: number;
+  /**
+   * D539 test and eval seams: the home's shelf of kept keys, and how an op is called on a computer
+   * ("local" = the home), so fake workers answer keys_has, keys_offer, keys_seal and keys_take.
+   */
+  keyCopy?: { shelf?: import("@ducter/protocol/src/key-shelf.ts").KeyShelf; call?: import("./key-copy.ts").KeyCall };
   batchMs?: number;
   sweepMs?: number; // how often live device sockets are re-checked for revocation (default 10 s)
   push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
@@ -412,6 +419,8 @@ export interface Core extends CoreApi {
   computer?: ComputerUse;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code). */
   autofill: Autofill;
+  /** D539: keys copied between the person's computers. */
+  keyCopy: import("./key-copy.ts").KeyCopy;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -1072,7 +1081,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   autofillRef = autofill;
   // D233: 密钥 / Keys a task asks the person for. No key value ever enters the Log: every event's
   // body is scrubbed of them on the way in (a command that printed one shows dots everywhere).
-  const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
+  // D539: keys copied between the person's computers on their Go; a task's ask_for_key looks there too.
+  const keyWait = (h: string) => opts.keyWaitMs ?? MCP_CALL_WAIT[h as HarnessId]?.value ?? 50_000;
+  const keyCopy = createKeyCopy({
+    dataDir,
+    log,
+    decisions,
+    tasks,
+    mcp,
+    workers: () => workersRef,
+    homeName: () => computers.homeName(),
+    computers: () => computers.workers?.() ?? [],
+    lang: () => langNow(),
+    waitMs: keyWait,
+    ...(opts.keyCopy?.shelf ? { shelf: opts.keyCopy.shelf } : {}),
+    ...(opts.keyCopy?.call ? { call: opts.keyCopy.call } : {}),
+  });
+  const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, copy: keyCopy, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
   autofill.keys = keys;
   {
     const append = log.append.bind(log);
@@ -1514,6 +1539,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   // D528: the person's zone for a task's brief (a server's own clock is often UTC).
   api.zone = () => zone();
+  // D539: the keys a task holds, put in its session on the computer it runs on.
+  api.keyCopy = { refsFor: (id) => keyCopy.refsFor(id), withKeys: (spec) => keyCopy.withKeys(spec) };
   api.goesFor = (taskId) =>
     TASK_STEP_ACTIONS.flatMap((a) => {
       const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
@@ -1775,7 +1802,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
+    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;
@@ -2710,6 +2737,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     handsets,
     ...(computer ? { computer } : {}),
     autofill,
+    keyCopy,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     anywhere,
@@ -2801,6 +2829,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       computer?.close();
       autofill.stop();
       keys.stop();
+      keyCopy.stop();
       devicesView?.stop();
       anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();

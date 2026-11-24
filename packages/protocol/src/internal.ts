@@ -210,6 +210,8 @@ export interface CoreApi {
    * is a task's plain question, not the floor, and that a kept permission covers the step there).
    */
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
+  zone?(): string;
   /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
   goesFor?(taskId: string): import("./standing.ts").StandingView[];
   /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */

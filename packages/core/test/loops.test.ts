@@ -549,3 +549,17 @@ test("D483: a look that ran out goes to the task with its facts; the keeper neve
   expect((await call()).ok).toBe(true);
   expect(armed(b, id).find((w) => w.check)?.until).toBeDefined();
 });
+
+// ---------- D528: a round's times are the person's, never the server's UTC ----------
+
+test("D528: wait_for gives the next round in the person's time and a round's wake says their clock, on a home whose clock is UTC", async () => {
+  const b = boot({ core: { proactive: { zone: "Asia/Shanghai" } } });
+  open(b);
+  const a = (await waitFor(b, "swj3zc4w")) as { ok: boolean; at?: string; atLocal?: string; note?: string };
+  const local = (ms: number) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Shanghai" }).format(new Date(ms));
+  expect(a.atLocal).toBe(`${local(Date.parse(a.at!))} (Asia/Shanghai)`);
+  expect(a.note).toContain("say atLocal (their time)");
+  b.clock.advance(45 * MIN);
+  await flush();
+  expect(b.woke[0]!.text).toContain(`对方那里现在是 ${local(b.clock.now())}。`);
+});

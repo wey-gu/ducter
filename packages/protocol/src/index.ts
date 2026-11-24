@@ -1116,7 +1116,7 @@ export interface OnHand {
   /** D507 (D494): the person's helpers that are on, each with the work it keeps (HelperWork, the one
    *  home-side model of a helper's state): On hand gives each its own sheet with its work under it. */
   helpers?: import("./helpers.ts").HelperWork[];
-  /** D511: 在照看的 / Looking after: every Keep on or paused (and one ended today), each its own sheet.
+  /** D511: 看守中 / Looking after: every Keep on or paused (and one ended today), each its own sheet.
    *  It takes the place of `helpers` and the cards' `rounds` for a client that reads it (an older
    *  client still reads those, kept for it). */
   keeps?: import("./keeps.ts").KeepSheet[];

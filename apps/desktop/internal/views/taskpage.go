@@ -306,8 +306,13 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 			a.jumpToLatest(c, ls)
 		}
 	})
-	a.taskFoot(c, task, m.blocks)
-	a.taskComposer(c, task)
+	// D527: the foot and the composer are one column: toasts keep above it.
+	foot := ui.Column(c.Key("task-foot")).Shrink(0)
+	a.toastsAbove(foot)
+	foot.Children(func() {
+		a.taskFoot(c, task, m.blocks)
+		a.taskComposer(c, task)
+	})
 }
 
 // taskHead is the page's head (D74, D89 layout): the clay partner's state

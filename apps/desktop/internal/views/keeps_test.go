@@ -37,7 +37,7 @@ func TestKeepRoundsNotInDoneToday(t *testing.T) {
 	if tt.HasText("12 月 20 日上海飞东京的机票的票价") {
 		t.Errorf("the round is a row on On hand: %q", tt.Texts())
 	}
-	if !tt.HasText("在照看的") || !tt.HasText("改签确认") {
+	if !tt.HasText("看守中") || !tt.HasText("改签确认") {
 		t.Errorf("On hand lost its own rows: %q", tt.Texts())
 	}
 }

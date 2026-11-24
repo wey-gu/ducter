@@ -108,7 +108,7 @@ field's words are shared with the first tab. `made.md`.
 
 ## 一直在跑的 / Ongoing
 
-> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 照看 / Looking after (a Keep), with its own page; see `standing-work.md`. The tab and the link read **在照看的 / Looking after**; the list below is its mechanism's view. Ended Keeps under **照看过的 / Looked after before** are owed (`todo.md`).
+> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 看守中 / Looking after (a Keep), with its own page; see `standing-work.md`. The tab and the link read **看守中 / Looking after**; the list below is its mechanism's view. Ended Keeps under **照看过的 / Looked after before** are owed (`todo.md`).
 
 > D494: a helper (`bridge.md` "Helpers") is not listed here yet: it starts on mail, not time, and lives in
 > Settings › Agent 通信; each piece of work it takes is a task, and one that repeats is a task in rounds
@@ -226,7 +226,8 @@ talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens
 ## Edge cases
 
 - **The agent's session is gone** (an old Claude Code session pruned, another computer): Continue
-  still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line).
+  still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line), only when the
+  agent refused the resume: a round's own fresh session (D394) says nothing (D528).
 - **The worktree was removed** (merged, or tidied past its window, D514 `tidy.md`): the preview
   says **工作副本已整理，接着做会重新拉一份**; Continue adds it back from the kept branch, or from
   `origin/<branch>` when the local one was deleted since; a branch gone from both makes Continue

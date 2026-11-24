@@ -383,7 +383,7 @@ export function Workbench({ task, sheet }: { task: Task; sheet?: boolean }) {
   );
   if (sheet)
     return (
-      <div class="bench as-sheet" role="dialog" aria-modal="true" aria-label={t("wb.toggle")}>
+      <div class="bench as-sheet" data-look={A.lookOf(task.card?.persona)} role="dialog" aria-modal="true" aria-label={t("wb.toggle")}>
         <header class="bench-head">
           {strip}
           <button class="bench-x" aria-label={t("wb.close")} onClick={() => toggleBench(task.id, false)}>
@@ -396,7 +396,7 @@ export function Workbench({ task, sheet }: { task: Task; sheet?: boolean }) {
       </div>
     );
   return (
-    <aside class="bench as-column" aria-label={t("wb.toggle")}>
+    <aside class="bench as-column" data-look={A.lookOf(task.card?.persona)} aria-label={t("wb.toggle")}>
       <Resizer />
       <header class="bench-head">
         {strip}

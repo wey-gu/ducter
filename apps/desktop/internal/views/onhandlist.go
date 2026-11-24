@@ -880,7 +880,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				}
 			})
 			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {
-				a.goal(c, u.Until, false)
+				a.goal(c, u.Until, a.taskLook(task), false)
 			}
 			if att == protocol.Blocked && !rail {
 				if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {

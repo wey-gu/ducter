@@ -1396,7 +1396,7 @@ a {
 .decision .asker .chev-g {
   margin-inline-start: -5px;
 }
-.decision .asker span {
+.decision .asker > span:not(.partner-mark) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14380,6 +14380,10 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
 }
 .trow .l1 .partner-mark { margin-right: 6px; }
 .tcard .c1 .partner-mark { margin-left: auto; }
+/* D546: a Keep's sheet says whose it is before its title, as a task's row does. */
+.kp-title .partner-mark { vertical-align: -3px; margin-right: 6px; }
+/* D546: a routine says whose it is before its name. */
+.row.routine .t .partner-mark { vertical-align: -3px; margin-right: 6px; }
 .other-ask {
   display: flex;
   align-items: center;
@@ -21023,6 +21027,13 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .onhand-list:not(.room-rail) .ocard .o1 .meta {
   font-size: 0.75rem;
+}
+/* D546: whose it is leads the title on the card's own edge: no lead-in, its gap after it, standing
+   on the title's line (it took the facts' 8-point lead-in and touched the title). */
+.onhand-list:not(.room-rail) .ocard .o1 > .partner-mark {
+  margin-left: 0;
+  margin-right: 6px;
+  vertical-align: -3px;
 }
 .onhand-list:not(.room-rail) .ocard .o2 {
   font-size: 0.8125rem;

@@ -142,7 +142,7 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 	if big {
 		h, gh, who = 40, 10, 36
 	}
-	face := theme.Face(theme.Waiting, who*2)
+	face := theme.FaceAs(a.ownerLook(a.waitPartner(w)), theme.Waiting, who*2) // D546
 	ui.Box(c.Key("groove")).Height(h).Grow(1).MinWidth(80).Role(ui.RoleImage).Label(a.waitCaption(w)).Draw(func(p *ui.Painter, r ui.Rect) {
 		y := r.Y + h - gh - 4
 		w0 := r.W - 10
@@ -233,7 +233,7 @@ func nextFew(r *protocol.Routine) []string {
 // lights lit as they pass ("6 盏灯里亮了 4 盏", "16 处里好了 12 处"); when
 // nothing can be counted, no picture of progress: Ducter at work and the
 // latest try in one line ("第 2 次 · 还在改").
-func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
+func (a *App) goal(c *ui.Context, u *protocol.Until, look string, big bool) {
 	t := a.T
 	met := u.State == "met"
 	n := len(u.Tries)
@@ -290,7 +290,7 @@ func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 	}
 	ui.Row(c.Key("goal")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		if !met {
-			if face := theme.Face(theme.Working, 26*scale*2); face != nil {
+			if face := theme.FaceAs(look, theme.Working, 26*scale*2); face != nil { // D546: its task's owner's clay
 				ui.Image(c, face).Size(26*scale, 26*scale).Shrink(0).AccessHidden(true)
 			}
 		}
@@ -337,7 +337,7 @@ func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 	u := task.Card.Until
 	ui.Column(c.Key("until")).Gap(t.S3).Children(func() {
 		a.heading(c, a.L.T("until.title", u.Condition), t.LG)
-		a.goal(c, u, true)
+		a.goal(c, u, a.taskLook(task), true)
 		ui.Column(c.Key("tries")).Gap(2).Children(func() {
 			for _, x := range u.Tries {
 				words := x.Summary
@@ -794,7 +794,7 @@ func (a *App) pausedWhy(r *protocol.Routine) string {
 	case r.PausedBy == "user":
 		return a.L.T("routine.paused.by_you")
 	}
-	return a.L.T("routine.paused.by_partner", a.S.PersonaName)
+	return a.L.T("routine.paused.by_partner", a.ownerName(r.Persona))
 }
 
 // arrived is how long ago a task's wait came true, if within the moment
@@ -880,10 +880,13 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			a.waitBubble(c, waitGlyph(r.Trigger.Check, r.Trigger.Event), 40)
 		}
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			name := uiText(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(800).MaxLines(2).Balance()
-			if paused {
-				name.TextColor(t.InkMuted)
-			}
+			ui.Row(c.Key("name")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+				a.partnerMark(c, "routine-"+r.RoutineID, r.Persona) // D546: whose routine
+				name := uiText(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(800).MaxLines(2).Balance().Grow(1).Shrink(1).MinWidth(0)
+				if paused {
+					name.TextColor(t.InkMuted)
+				}
+			})
 			// A condition routine's name already says its condition.
 			if r.Trigger.Kind == "time" && !strings.Contains(r.Name, r.TriggerWords) {
 				uiText(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)

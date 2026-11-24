@@ -745,7 +745,7 @@ function BlockView({ task, b, live, took, times, last }: { task: Task; b: Block;
       const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[b.state as string] ?? "task.report";
       return (
         <div class="tx said" dir="auto">
-          <small>{t(k, A.S.personaName)}</small>
+          <small>{t(k, A.nameOf(task.card?.persona))}</small>
           {b.text}
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
           <DocLine left={b.docLeft} at={`report:${task.id}`} />
@@ -941,12 +941,12 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
       <section class="turn" data-seq={this.props.seq ?? turn.seq}>
         {(p?.k === "wake" || p?.k === "told") && (
           <div class="tx-divider wake" role="separator" title={p.text}>
-            <span>{promptLine(p)}</span>
+            <span>{promptLine(p, A.nameOf(task.card?.persona))}</span>
             {seqClock(task, p.seq) && <span class="when">{seqClock(task, p.seq)}</span>}
           </div>
         )}
-        {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)} />}
-        {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.S.personaName)} />}
+        {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.nameOf(task.card?.persona))} />}
+        {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.nameOf(task.card?.persona))} />}
         {p?.k === "you" && <YouBubble task={task} b={p} />}
         {p?.k === "go" && (
           <div class="tx go-chip" title={p.text}>
@@ -1255,14 +1255,14 @@ function seqClock(task: Task, seq: number): string {
 }
 
 /** A wake's or what Ducter told the agent, as a hairline's words (D271); its time is drawn apart (D291). */
-function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
+function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>, who: string): string {
   if (p.k === "wake" && p.limit) return t("wake.limit", p.text);
   if (p.k === "wake") return t(p.timer ? "wake.timer" : "wake.over");
   if (p.say === "lent") return t("told.lent", p.name ?? "");
   // D280: the loan of the person's phone ended (taken back, given back, lost), named by the phone.
   if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, shownDeviceName(p.name ?? ""));
   if (p.say === "returned") return p.name ? t("told.returned.name", p.name) : t("told.returned");
-  if (p.say === "other") return t("told.other", A.S.personaName);
+  if (p.say === "other") return t("told.other", who); // D546: the task's own partner
   // D437: the name is the AI that looked (Claude Code, Codex).
   if (p.say === "looked") return t("told.looked", p.name ?? "");
   return t(`told.${p.say}`);
@@ -1299,7 +1299,7 @@ export function locatorRow(lm: Landmark, now = Date.now(), task?: Task): LocRow 
     case "quiet": {
       if (lm.n) return { k: lm.k, line: t(lm.wakes ? "locator.wakes" : "locator.quiet", lm.n), at, quiet: true };
       const p = lm.p!;
-      const line = p.k === "wake" || p.k === "told" ? promptLine(p) : p.k === "go" ? goWords(p) : "text" in p ? p.text.split("\n")[0]! : "";
+      const line = p.k === "wake" || p.k === "told" ? promptLine(p, A.nameOf(task?.card?.persona)) : p.k === "go" ? goWords(p) : "text" in p ? p.text.split("\n")[0]! : "";
       return { k: lm.k, line, at, quiet: true };
     }
   }

@@ -74,7 +74,7 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
+import { PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -172,12 +172,12 @@ function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
 
 /** The clay partner: the face for its state (or the one given), breathing; the idle face blinks.
  *  Faces cross-fade on a change, standing on the box's bottom edge. */
-export function Avatar({ size, state, still }: { size: number; state?: Face; still?: boolean }) {
+export function Avatar({ size, state, still, who }: { size: number; state?: Face; still?: boolean; /** D546: the owner's name when the face is a partner's object's (an opened task); else the shown partner. */ who?: string }) {
   const p = state ?? A.presence();
   const ref = useRef<HTMLSpanElement>(null);
   useBlink(ref, !still);
   return (
-    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
+    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], who ?? A.S.personaName)}>
       {ART.map((n) =>
         n === "idle" ? (
           <span key={n} class={`idle${n === p ? " on" : ""}`}>
@@ -568,11 +568,13 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const id = taskId || d.taskId;
   const task = id ? A.S.tasks.get(id) : undefined;
   return (
-    <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+    <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-look={task && !inTask ? A.lookOf(task.card?.persona) : undefined}>
       {d.asker && <PeerAsker d={d} />}
       {task && title(task) && !inTask && (
         // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
         <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
+          {/* D546: whose task asks, as its row says it (more than one partner). */}
+          <PartnerMark persona={task.card?.persona} />
           <span>{shortTitle(title(task))}</span>
           <Chev />
         </button>
@@ -2275,11 +2277,6 @@ export function OnHand() {
 /** A face that only shows a state holds still; the partner's own presence breathes. */
 const stillFace = (a: Attention) => a === "dropped" || a === "superseded";
 
-function reportLabel(r: Bodies["report"]) {
-  const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[r.state as string] ?? "task.report";
-  return t(k, A.S.personaName);
-}
-
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
 /** Who does a task and why, as one sentence for Details (D89). */
@@ -2296,7 +2293,7 @@ function whoSentence(task: Task): string {
   if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
   if (w?.kind === "unavailable" && w.from) return t("who.sentence.unavailable", who, harnessName(w.from));
   if (w?.kind === "you") return t("who.sentence.you", who);
-  if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  if (w?.kind === "default") return t("who.sentence.default", who, A.nameOf(task.card?.persona));
   // D372: the kind of work put it on a faster one; or the faster one missed and it carries on here.
   if (w?.kind === "kind" && w.keeps) return t("who.sentence.kind", who, padEnd(A.L, whoName(w.keeps.harness, w.keeps.model)));
   if (w?.kind === "retry" && w.from) return t(w.stalled ? "who.sentence.retry.stalled" : "who.sentence.retry", who, padEnd(A.L, whoName(w.from, w.fromModel)));
@@ -2720,12 +2717,12 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           }
         />
       )}
-      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
+      <main class="scroll task-page" data-look={A.lookOf(task.card?.persona)} ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
           {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the
               page (what it waits for is the wait line's words). */}
           <span class="face">
-            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} />
+            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} />
           </span>
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>

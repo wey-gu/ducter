@@ -2129,6 +2129,25 @@ class AppState {
     return this.partners!.find((p) => p.id === (this.S.persona || this.partnerShown));
   }
 
+  /** D546: the partner that owns an object (a task's card.persona, a Keep's, a group's, a routine's):
+   *  absent or no longer a partner reads as the default. Undefined with one partner. */
+  ownerOf(persona?: string): PartnerInfo | undefined {
+    if (!this.manyPartners()) return undefined;
+    return this.partners!.find((p) => p.id === persona) ?? this.partners!.find((p) => p.id === DEFAULT_PARTNER);
+  }
+
+  /** D546: the owner's clay for an object's art (data-look on its root): undefined with one partner,
+   *  so the art is as drawn; never the shown partner's unless it is the owner. */
+  lookOf(persona?: string): PartnerLook | undefined {
+    return this.ownerOf(persona)?.look;
+  }
+
+  /** D546: the owner's name for an object's words (「小玛交给它的事」); with one partner the one
+   *  partner's own name, whatever it was given. */
+  nameOf(persona?: string): string {
+    return this.ownerOf(persona)?.name ?? (this.S.personaName || this.defaultName());
+  }
+
   /** D513: #partners came before the home said who its partners are. */
   partnersAsked = false;
 

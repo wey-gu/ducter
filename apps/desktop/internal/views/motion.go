@@ -190,14 +190,25 @@ func artRect(r ui.Rect, room float32) ui.Rect {
 // partnerFaceIn is partnerFace with room points of empty box round the art
 // (see aliveFigureIn): its breath never reaches the box's edge.
 func (a *App) partnerFaceIn(c *ui.Context, key string, p theme.Presence, w, room float32) ui.Element {
-	bmp := theme.Face(p, w*2)
-	idle := theme.Face(theme.Idle, w*2)
+	return a.faceOf(c, key, a.shownLook(), a.S.PersonaName, p, w, room)
+}
+
+// ownerFace (D546) is partnerFace for something a partner owns (a task's
+// head, its row): in its owner's clay, and named for it, whoever is shown.
+func (a *App) ownerFace(c *ui.Context, key, persona string, p theme.Presence, w float32) ui.Element {
+	return a.faceOf(c, key, a.ownerLook(persona), a.ownerName(persona), p, w, 0)
+}
+
+// faceOf is the living face in a look, its label naming who.
+func (a *App) faceOf(c *ui.Context, key, look, who string, p theme.Presence, w, room float32) ui.Element {
+	bmp := theme.FaceAs(look, p, w*2)
+	idle := theme.FaceAs(look, theme.Idle, w*2)
 	h := w
 	if idle != nil {
 		iw, ih := idle.Size()
 		h = w * float32(ih) / float32(iw)
 	}
-	label := a.L.T(presenceLabel[p], a.S.PersonaName)
+	label := a.L.T(presenceLabel[p], who)
 	phase := phaseOf(key)
 	box := ui.Box(c.Key("face:"+key)).Size(w+2*room, h+room).Role(ui.RoleImage).Label(label).Shrink(0)
 	box.Draw(func(pt *ui.Painter, r ui.Rect) {
@@ -210,7 +221,7 @@ func (a *App) partnerFaceIn(c *ui.Context, key string, p theme.Presence, w, room
 		at.Y = r.Y + r.H - at.H
 		var lids *blinkArt
 		if p == theme.Idle {
-			lids = faceBlink(w * 2)
+			lids = faceBlinkAs(look, w*2)
 		}
 		clayArt(pt, at, bmp, idleBreathe, phase, lids)
 	})

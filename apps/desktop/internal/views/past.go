@@ -688,7 +688,7 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 			a.pastLine2(c, it, terms)
 			a.pastMeta(c, it)
 		})
-		// D519: its actions keep their room and fade in; the words never rewrap.
+		// D524: its actions keep their room and fade in; the words never rewrap.
 		a.revealSlot(c, "reveal", hover, func() { a.pastActs(c, it) })
 	})
 	// D391: a click shows where it stopped (beside the list, or as a sheet

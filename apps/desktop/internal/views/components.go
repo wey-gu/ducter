@@ -1108,9 +1108,9 @@ func (a *App) decisionAbout(d *store.DecisionState) string {
 	return string(q)
 }
 
-// ---------- the one row hover (D519) ----------
+// ---------- the one row hover (D524) ----------
 
-// rowGround is what a row or card stands on, for its hover (D519): the
+// rowGround is what a row or card stands on, for its hover (D524): the
 // neutral clay card, a neutral card on a tinted ledge (a sheet in 等你), or
 // a card tinted in a state's own surface.
 type rowGround struct {
@@ -1160,7 +1160,7 @@ func (a *App) rowPressFill(g rowGround) ui.Color {
 	return t.Surface.Mix(t.SurfaceSunken, 0.9)
 }
 
-// rowHover is the one row hover (D519), for every row and card a pointer
+// rowHover is the one row hover (D524), for every row and card a pointer
 // can open: the fill cross-fades to rowHoverFill over Hover (140 ms; at
 // once under reduced motion) and nothing else changes: no size, no line
 // break, no position. on adds a reason of the caller's to show it (the
@@ -1189,7 +1189,7 @@ func (a *App) rowHover(c *ui.Context, row ui.Element, g rowGround, on bool) bool
 	return revealed
 }
 
-// cardLift is a free-standing card's hover (Past tasks; D76, D519): it
+// cardLift is a free-standing card's hover (Past tasks; D76, D524): it
 // lifts by its shadow alone (the drop opens, the ledge deepens), never by
 // moving, over Hover; at once under reduced motion. It returns how far.
 func (a *App) cardLift(c *ui.Context, card ui.Element, on bool) float32 {
@@ -1203,7 +1203,7 @@ func (a *App) cardLift(c *ui.Context, card ui.Element, on bool) float32 {
 	return k
 }
 
-// revealSlot holds a row's hover-revealed controls (×, ⋯, Pause; D519).
+// revealSlot holds a row's hover-revealed controls (×, ⋯, Pause; D524).
 // They are always built, so their room is kept and the keyboard reaches
 // them (Tab into the row reveals them, as hover does); they cross-fade in
 // over Hover and never push anything. A row that already shows actions
@@ -1219,4 +1219,13 @@ func (a *App) revealSlot(c *ui.Context, key string, on bool, build func()) ui.El
 	}
 	slot.Opacity(k).Children(build)
 	return slot
+}
+
+// stepNumber is a step's number in a short numbered sequence: a sunken disc
+// with the number (the lend sheet's three steps; D518 a sign-in's two).
+func (a *App) stepNumber(c *ui.Context, n int) {
+	t := a.T
+	ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+		uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+	})
 }

@@ -54,7 +54,7 @@
 
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
-  /* D519: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
+  /* D524: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
      within that tint; never grey. Over --t-hover, easing out; nothing moves. */
   --row-hover: color-mix(in srgb, var(--surface) 45%, var(--surface-sunken));
   --row-hover-needs: color-mix(in srgb, var(--surface) 50%, var(--needs-surface));
@@ -5948,7 +5948,7 @@ button.dev-name {
 .sdot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .dc-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 12px 8px 8px; border-radius: 18px; background: var(--sunken); }
-.coin-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 70px; padding: 4px 0 2px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.coin-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; box-sizing: border-box; min-width: 70px; max-width: 116px; padding: 4px 8px 2px; /* D518: the name never touches the tile's edge; a long one grows it */ border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
 .coin-tile.sel { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); }
 .coin-tile .c { position: relative; display: grid; place-items: center; width: 52px; height: 52px; transition: transform var(--press, 70ms) ease-out; }
 .coin-tile:active .c { transform: translateY(2px); }
@@ -5973,6 +5973,8 @@ button.dev-name {
 .dc-detail .dh small { font-size: var(--sm); color: var(--ink-muted); }
 .dc-detail .ln { font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
 .dc-detail .ln.soft { color: var(--ink-soft); }
+.dc-detail .ln.ok { color: var(--done-ink); font-weight: 700; animation: fade-in 220ms var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .dc-detail .ln.ok { animation: none; } }
 .dc-detail .ln.small { font-size: var(--xs); }
 .dc-detail .switch { margin: 6px 0 0; padding: 0; min-height: 40px; background: none; box-shadow: none; font-size: 0.875rem; font-weight: 700; }
 .dc-missing { display: flex; align-items: center; gap: var(--s3); min-height: 36px; }
@@ -6489,7 +6491,6 @@ button.bcard:active {
   }
   button.bcard:hover {
     box-shadow: 0 6px 0 var(--line), var(--drop);
-    transform: translateY(-2px);
   }
 }
 /* By project: groups at most 960 wide, centered, each a card of one-line rows. */
@@ -8201,11 +8202,7 @@ dl.call-summary dd { margin: 0; }
 }
 @media (hover: hover) {
   .trow:hover {
-    background: color-mix(in srgb, var(--ink) 4%, transparent);
-  }
-  .trow:hover .tacts,
-  .trow:focus-within .tacts {
-    display: flex;
+    background: var(--sunken);
   }
 }
 /* Where the keys are and what is open beside the list (D270): the knob, never a bar at an edge;
@@ -12396,15 +12393,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (hover: hover) {
   .tcompact:hover {
-    transform: translateY(-1px);
     box-shadow: 0 3px 0 var(--line), 0 10px 20px -12px rgb(43 33 24 / 0.28);
-  }
-  .tcompact:hover .tacts,
-  .tcompact:focus-within .tacts {
-    display: flex;
-  }
-  .tcompact:hover .kmain .time {
-    display: none;
   }
 }
 .tcompact.kfocus {
@@ -12668,12 +12657,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (hover: hover) {
   .tcard:hover {
-    transform: translateY(-2px);
     box-shadow: 0 4px 0 var(--line), 0 14px 26px -14px rgb(43 33 24 / 0.32);
-  }
-  .tcard:hover .tacts,
-  .tcard:focus-within .tacts {
-    display: flex;
   }
 }
 .tcard:active {
@@ -13052,7 +13036,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 .pcard.on, .pcard.open {
-  transform: translateY(-2px);
   box-shadow: 0 4px 0 var(--line), 0 10px 22px -10px rgba(43, 33, 24, 0.28);
   z-index: 2;
 }
@@ -16227,13 +16210,19 @@ svg .wave.w2.on {
 .ag-login { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--bg); font-size: var(--sm); line-height: 1.5; }
 .ag-login p { margin: 0; }
 .ag-login .soft { color: var(--ink-muted); }
-.ag-link { font-size: var(--xs); color: var(--accent-ink, var(--accent)); overflow-wrap: anywhere; word-break: break-all; }
+.ag-link { margin: 0; font-size: var(--xs); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* where the link goes, said; 打开链接 opens it */
 .ag-code { display: flex; align-items: center; gap: var(--s3); }
 .ag-code code { font-family: var(--mono); font-size: 1.375rem; font-weight: 700; letter-spacing: 0.08em; color: var(--ink); }
-.ag-paste { display: flex; gap: var(--s2); }
-.ag-paste .dev-input { flex: 1; min-width: 0; min-height: 40px; }
+.ag-paste { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.ag-paste .dev-input { flex: 1 1 160px; min-width: 0; min-height: 40px; } /* D518: on a narrow phone the button goes under, the code stays readable */
 .ag-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .ag-answer { font-size: var(--sm); }
+/* D518: a sign-in from a server as two steps the person can see, and one live line under them. */
+.ag-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.ag-steps > li { display: flex; gap: var(--s2); align-items: flex-start; }
+.ag-step { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--s1); padding-top: 3px; }
+/* The shared step number (StepNumber), the lend sheet's steps' look. */
+.step-n { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--sm); font-weight: 800; }
 .lend-setup { width: 100%; max-width: 420px; align-items: stretch; }
 .lend-setup > .sub, .lend-setup .lend-note { text-align: center; }
 .lend-setup .lend-acts { justify-content: center; margin-top: var(--s2); }
@@ -19388,7 +19377,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 @media (hover: hover) {
   .ocard:hover {
-    transform: translateY(-1px);
     box-shadow: 0 3px 0 var(--line), var(--drop);
   }
   .ocard.stopped:hover,
@@ -19396,15 +19384,7 @@ html[data-text-size="large"] .brand-mark > svg {
     box-shadow: 0 3px 0 var(--needs-ledge), var(--drop);
   }
   .ocard.src-sum:hover {
-    transform: none;
     box-shadow: 0 2px 0 var(--line), var(--drop);
-  }
-  .ocard:hover .tacts,
-  .ocard:focus-within .tacts {
-    display: flex;
-  }
-  .ocard:has(.tacts):hover .obeat {
-    display: none;
   }
 }
 /* The × and ⋯ come in over the right end, where the heartbeat is, with the card's own surface. */
@@ -20808,7 +20788,7 @@ html[data-text-size="large"] .brand-mark > svg {
   .onhand-list:not(.room-rail) .ocard.stopped:hover,
   .onhand-list:not(.room-rail) .ocard.a-failed:hover {
     transform: none;
-    background: color-mix(in srgb, var(--ink) 3%, transparent);
+    background: var(--row-hover);
   }
   .onhand-list:not(.room-rail) .ocard + .ocard:hover {
     box-shadow: inset 0 1px 0 var(--line-soft);
@@ -21317,11 +21297,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .onhand-list.room-full .ocard .fin-acts {
   right: 10px;
-}
-@media (hover: hover) {
-  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
-    display: block;
-  }
 }
 /* The title stays whole in its two lines; what follows it (project, +a −d, its PR and to-do) may take a third. */
 .onhand-list:not(.room-rail) .ocard .o1 {
@@ -22329,7 +22304,7 @@ html[data-text-size="large"] .brand-mark > svg {
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
 
-/* ---------- D519: the one row hover ----------
+/* ---------- D524: the one row hover ----------
    Hover never reflows: a row's size, line breaks and positions stay; what it reveals (×, ⋯, Pause)
    keeps its room or comes in over the time in a fixed slot, and is there for Tab too (opacity
    only, never display or visibility). The fill warms within the row's ground (--row-hover, or
@@ -22397,10 +22372,6 @@ html[data-text-size="large"] .brand-mark > svg {
   background: var(--row-hover-needs);
 }
 @media (hover: hover) {
-  .ocard:has(.tacts):hover .obeat,
-  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
-    display: block;
-  }
   .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):hover .obeat,
   .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):focus-within .obeat {
     opacity: 0;
@@ -22440,9 +22411,16 @@ html[data-text-size="large"] .brand-mark > svg {
     width: 13.5rem;
   }
 }
-/* The rail's rows lie on the paper: what they reveal sits on the paper's hover. */
+/* The rail's rows lie on the paper: what they reveal sits on the paper's hover, faded in. */
 .trow .tacts {
+  display: flex;
+  opacity: 0;
   background: linear-gradient(to right, transparent, var(--sunken) 24px);
+}
+.trow .tacts.on,
+.trow:hover .tacts,
+.trow:focus-within .tacts {
+  opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .ocard,

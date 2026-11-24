@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.41 - 2026-11-24
+
+<!-- whats-new
+zh: Mac 不会再因为服务器重启就要你重新连接
+en: The Mac no longer asks you to reconnect when your home restarts
+-->
+
+**The Mac stays connected through restarts**
+- When your home restarts or can't be reached for a moment, the Mac keeps its connection and
+  reconnects by itself, saying so in one quiet line. After half a minute it says plainly that it
+  can't reach your home and when it tries next, with Connect now.
+- It asks you to connect again only when your home itself says this Mac was disconnected.
+- The connect screen fits small windows, and its code field no longer looks already filled.
+
+## 0.1.40 - 2026-11-24
+
+<!-- whats-new
+zh: 服务器上的登录看得见每一步，登好了马上亮
+en: Signing in on a server shows each step and lights up at once
+-->
+
+**Signing in to an agent on your server**
+- A server home now sees the Claude Code that Ducter itself installed there, so an agent you
+  signed in to shows as signed in.
+- Signing in shows its steps: open the link, paste the code back. While it waits it says what
+  for and how long is left. It checks with the agent before it says you're signed in, and a
+  wrong code, no answer or a time-out each says so with Try again.
+- The agent tiles fit their names.
+
 ## 0.1.39 - 2026-11-24
 
 <!-- whats-new

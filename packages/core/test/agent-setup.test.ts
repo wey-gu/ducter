@@ -205,9 +205,9 @@ test("Codex's sign-in: its link and code to the person, then done and a probe", 
   const r = rig({ nodeThere: true });
   r.s.login("codex");
   expect(r.spawned[0]!.argv).toEqual(["/home/w/.ducter/tools/node/bin/codex", "login", "--device-auth"]);
-  expect(r.s.state("codex").login).toEqual({ state: "starting" });
+  expect(r.s.state("codex").login).toMatchObject({ state: "starting" });
   r.spawned[0]!.login.say("\x1b[1mFollow these steps to sign in with ChatGPT using device code authorization:\x1b[0m\n\n1. Open this link in your browser and sign in to your account\n   \x1b[94mhttps://auth.openai.com/codex/device\x1b[0m\n\n2. Enter this one-time code \x1b[90m(expires in 15 minutes)\x1b[0m\n   \x1b[94mWXYZ-12345\x1b[0m\n");
-  expect(r.s.state("codex").login).toEqual({ state: "waiting", url: "https://auth.openai.com/codex/device", code: "WXYZ-12345" });
+  expect(r.s.state("codex").login).toMatchObject({ state: "waiting", url: "https://auth.openai.com/codex/device", code: "WXYZ-12345" });
   expect(r.s.busy()).toBe(true);
   r.s.login("codex"); // a second tap doesn't start another
   expect(r.spawned.length).toBe(1);
@@ -235,7 +235,7 @@ test("Claude's sign-in: the link, the pasted code to its stdin, a wrong one asks
   r.s.login("claude-code");
   const l = r.spawned[0]!.login;
   l.say("Opening browser to sign in…\nIf the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=x&state=y\nPaste code here if prompted > ");
-  expect(r.s.state("claude-code").login).toEqual({ state: "waiting", url: "https://claude.com/cai/oauth/authorize?code=true&client_id=x&state=y", paste: true });
+  expect(r.s.state("claude-code").login).toMatchObject({ state: "waiting", url: "https://claude.com/cai/oauth/authorize?code=true&client_id=x&state=y", paste: true });
   r.s.code("claude-code", "  abc#def  ");
   expect(l.written).toEqual(["abc#def\n"]);
   expect(r.s.state("claude-code").login?.state).toBe("checking");

@@ -88,7 +88,7 @@ components and tokens; a value not in the scales below needs a token first.
 | touch | 44 tall, always (D311) | anything smaller than 44 that a finger taps keeps its look and gets an invisible box (`::before`) 44 tall, where the space around it allows; a track that scrolls sideways clips it, so its chips grow instead (Past tasks' and Done for you's chips 36 in a 44 track) |
 | text size (D452) | the web client's type is in rem over a 16px root: the numbers above at the default size, all of them times the person's text size (the browser's font size; in the iPhone app `--text-scale`, iOS's body size over 17, from 1 up to 3.12 at the largest accessibility size) | spacing, radii, art and icons stay in px; a control that holds words is `height: max(Npx, N/16 rem)` (the same at the default size and under every rule that overrides it, taller as the text grows), never a bare px height; a list whose rows are one height in code (the locator, the files tree) multiplies its row by the root's size (`text-scale.ts`); words drawn inside a picture (the clay phone miniature, the calendar badge, a glyph in a fixed circle) stay px |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
-| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
+| motion | press 70 ms · a row's hover 140 ms easing out (`Hover`, `--t-hover`; D524) · lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
 **Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
 - A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
@@ -530,6 +530,7 @@ A new control is added to the set (and to this table) before it is used.
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
 | A card's foot that folds what can wait: how it's connected, its addresses, the one 断开 (D398) | `sheetFold` (`devguard.go`) | `Fold` |
 | An optional step as one framed row that opens in place (锁屏时也能借给任务 ›; D398) | `extraStep` (`devguard.go`) | `StepRow` |
+| A step's number in a short numbered sequence, a sunken disc (the lend sheet's three steps; a sign-in's two, D518) | `stepNumber` (`components.go`) | `StepNumber`; the lend sheet's `.lend-steps li::before` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
@@ -549,6 +550,7 @@ A new control is added to the set (and to this table) before it is used.
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
+| The one row hover (D524), every row and card a pointer opens (On hand's rows of every kind, a helper's and a Keep's head, Past tasks' cards, Settings rows, the Devices list, the rail): **never reflows** (its size, line breaks and positions stay; what it reveals keeps its room, or comes in over the time in a fixed slot, by opacity); **the fill warms within its ground** (a neutral card toward `SurfaceSunken` at 55%, in dark toward `SurfaceRaised`; a row on a sheet standing on the needs-you ledge within the needs-you surface; a row on the paper to `Sunken`; never ink over it, never grey); a free-standing card lifts by its shadow alone, never by moving (D76); **revealed controls** are the shared icon buttons at `ControlSM` (×, ⋯, Pause), on the row's line, and Tab reaches them (focus inside the row reveals them as hover does); a row that already shows its actions (看看为什么, 再试一次) puts its ⋯ last in that group, never a second line; 140 ms easing out, no fades under reduced motion | `rowHover`, `rowHoverFill`, `revealSlot`, `cardLift` (`components.go`); `finishedActs`, `finishedMore` (`away.go`); guarded by `rowhover_test.go` (every row hovered at 1000, 1150, 1400: no box moves) | `--row-hover`, `--row-hover-needs`, `--t-hover`; `FinishedActs` with `menuOnly` inside `.oacts`; guarded by `row-hover.test.ts` (row :hover rules change paint only) |
 
 ### One menu (D421)
 

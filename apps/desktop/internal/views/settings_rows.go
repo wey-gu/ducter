@@ -276,7 +276,7 @@ func (a *App) addRow(c *ui.Context, key, title, line string) bool {
 	a.sep(c)
 	b := ui.Row(c.Key("add:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
-	a.rowHover(c, b, groundNeutral(), false) // D519
+	a.rowHover(c, b, groundNeutral(), false) // D524
 	b.Children(func() {
 		a.tileCol(c, func() { a.glyph(c, 18, drawPlus(t.InkSoft)) })
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
@@ -300,7 +300,7 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 	ui.Row(c.Key("orow:"+key)).Gap(t.S3).Padding(t.S2, t.S5, t.S2, t.S4).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		b := ui.Row(c.Key("orow-b:"+key)).Grow(1).Basis(0).MinWidth(0).Gap(t.S3).Padding(t.S2, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title + ", " + line).Expanded(open).Focusable()
-		a.rowHover(c, b, groundNeutral(), false) // D519
+		a.rowHover(c, b, groundNeutral(), false) // D524
 		b.Children(func() {
 			a.tileCol(c, tile)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
@@ -359,7 +359,7 @@ func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line st
 	a.sep(c)
 	b := ui.Row(c.Key("tlink:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(title).Focusable()
-	a.rowHover(c, b, groundNeutral(), false) // D519
+	a.rowHover(c, b, groundNeutral(), false) // D524
 	b.Children(func() {
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {

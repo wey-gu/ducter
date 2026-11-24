@@ -1106,7 +1106,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const full = title(task);
   const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
   const about = named !== full ? full : undefined;
-  // D519: a row that shows its own actions (看看为什么, 再试一次, 到 GitHub 合并) keeps its ⋯ in that same
+  // D524: a row that shows its own actions (看看为什么, 再试一次, 到 GitHub 合并) keeps its ⋯ in that same
   // group, revealed in place on hover or focus; never a second row of controls.
   const acts = !!stuck || stopped || quiet || (failed && !!fin) || prr?.stands === "needs" || !!w?.limit?.handTo;
   const joined = fin && !stacked && acts ? <FinishedActs f={fin} full={room === "full"} menuOnly /> : null;
@@ -1242,7 +1242,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         room !== "phone" && <RowActs task={task} room="card" />
       )}
       </span>
-      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. D519: a row
+      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. D524: a row
           with actions of its own has its ⋯ in that group (joined); else × and ⋯ come in over its time. */}
       {fin && !stacked && !acts && <FinishedActs f={fin} full={room === "full"} />}
     </div>

@@ -767,7 +767,7 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	a.sep(c)
 	b := ui.Row(c.Key("link:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable()
-	a.rowHover(c, b, groundNeutral(), false) // D519
+	a.rowHover(c, b, groundNeutral(), false) // D524
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)

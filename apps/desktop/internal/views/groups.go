@@ -349,7 +349,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 			if fin != nil {
-				// D519: the × in its kept room, faded in; the head never moves.
+				// D524: the × in its kept room, faded in; the head never moves.
 				a.revealSlot(c, "away-at", hover, func() { a.awayX(c, "away", *fin) })
 			}
 		})
@@ -407,7 +407,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 						}
 						uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 						if i := heldIndex(held, r.key); i > 0 {
-							// D519: 往前 in its kept room, faded in on the part's hover.
+							// D524: 往前 in its kept room, faded in on the part's hover.
 							a.revealSlot(c, "up", row.Hovered() || row.FocusWithin(), func() {
 								if a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
 									to := i - 1

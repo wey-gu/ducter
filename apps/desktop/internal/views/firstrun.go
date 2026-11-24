@@ -17,6 +17,10 @@ const StartCommand = "ducter up"
 // answered on this window. It says how to start Ducter, and keeps trying
 // on its own; the conversation replaces it as soon as Ducter is up.
 func (a *App) firstRun(c *ui.Context) {
+	if a.linkRemote() {
+		a.reachingHome(c)
+		return
+	}
 	t := a.T
 	a.bareChrome(c)
 	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {

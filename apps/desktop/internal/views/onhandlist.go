@@ -70,7 +70,7 @@ type onHandState struct {
 	// rowFirst: the row being drawn is its sheet's first (D471).
 	actsCol, rowFirst bool
 	// needsSheet: the sheet being drawn stands on the needs-you ledge, so its
-	// rows' hover warms within that tint (D519).
+	// rows' hover warms within that tint (D524).
 	needsSheet bool
 	// roundsRow: the row being drawn is a task in rounds (D498: its mark is
 	// the drawn repeat between rounds).
@@ -768,7 +768,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		h, padY = 44, t.S1+1 // D457: compact, the rail's rows close up
 	}
 	row := ui.Row(c).Gap(t.S3).Padding(padY, padX).MinHeight(h).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-	// D519: the one row hover, on the page's paper. A rail row reveals
+	// D524: the one row hover, on the page's paper. A rail row reveals
 	// nothing: beside a task it says only its title and its face.
 	if opened || focus {
 		a.knob(row)

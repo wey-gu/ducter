@@ -9,6 +9,27 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Signing in on a server, after D518 (`where.md` "Signing in there")
+
+- [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
+  card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
+  UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
+- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
+  into its own folder while running is spawned by its bare name.
+
+## The link to the home, after D520 (`system.md` Desktop)
+
+- [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
+  and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
+  *Trigger:* the first release with D520 on the author's Mac.
+- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
+  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
+  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
+  the same card.
+- [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
+  6.8 GB peak): its own investigation. *Trigger:* next.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with

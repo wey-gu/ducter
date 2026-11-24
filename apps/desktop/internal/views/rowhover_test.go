@@ -126,7 +126,7 @@ func moved(before, after map[string]ui.Rect) []string {
 
 // hoverRows hovers each row (a link-role element at least rowMin wide)
 // and fails when anything on the page moved, resized, came or went
-// (D519: hover never reflows).
+// (D524: hover never reflows).
 func hoverRows(t *testing.T, tt *ui.Tester, where string, rowMin float32) int {
 	t.Helper()
 	tt.Move(-50, -50)
@@ -159,7 +159,7 @@ func hoverRows(t *testing.T, tt *ui.Tester, where string, rowMin float32) int {
 	return len(rows)
 }
 
-// D519: hovering any row on On hand leaves every box on the page where it
+// D524: hovering any row on On hand leaves every box on the page where it
 // was, at the three Mac widths, in light and dark, zh and en.
 func TestRowHoverNeverReflows(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
@@ -183,7 +183,7 @@ func TestRowHoverNeverReflows(t *testing.T) {
 	}
 }
 
-// D519: the same on the other places with rows: Past tasks' cards, a
+// D524: the same on the other places with rows: Past tasks' cards, a
 // Settings pane's rows, the Devices list, and On hand's rail beside an
 // opened task.
 func TestRowHoverNeverReflowsElsewhere(t *testing.T) {
@@ -252,7 +252,7 @@ func hoverButtons(t *testing.T, tt *ui.Tester, where string, min float32) {
 	tt.Frame()
 }
 
-// D519: the failed row's ⋯ is in its action group, beside 看看为什么 and
+// D524: the failed row's ⋯ is in its action group, beside 看看为什么 and
 // 再试一次, at rest too (dim), never on a line of its own.
 func TestFailedRowMoreJoinsItsActions(t *testing.T) {
 	app := hoverBoard(t, i18n.ZH)

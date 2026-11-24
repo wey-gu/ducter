@@ -57,6 +57,8 @@ export const COPY_KEY_WORDS = {
     done: (to: string) => `已复制到 ${to}`,
     held: "没有复制",
     failed: (to: string) => `没能复制到 ${to}`,
+    sep: "、",
+    and: " 和 ",
   },
   en: {
     title: (env: string, from: string, to: string) => `Copy ${env} from ${from} to ${to}?`,
@@ -66,12 +68,14 @@ export const COPY_KEY_WORDS = {
     done: (to: string) => `Copied to ${to}`,
     held: "Not copied",
     failed: (to: string) => `Couldn't copy to ${to}`,
+    sep: ", ",
+    and: " and ",
   },
 } as const;
 
 /** The computers a card names, joined as a person says them ("hel 和 haswell" / "hel and haswell"). */
 export function computersWords(names: string[], lang: "zh" | "en"): string {
   if (names.length <= 1) return names[0] ?? "";
-  if (lang === "zh") return `${names.slice(0, -1).join("、")} 和 ${names.at(-1)}`;
-  return names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  const w = COPY_KEY_WORDS[lang];
+  return `${names.slice(0, -1).join(w.sep)}${w.and}${names.at(-1)}`;
 }

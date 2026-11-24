@@ -2606,24 +2606,42 @@ a {
 }
 /* D271, D526: the locator, wide only: the session's landmarks drawn small at the transcript's right
    edge, one place per landmark in order, so the card's row is the mark under the pointer. Quiet at
-   rest (the knob and the marks that matter, softly); pointed at, a sunken track and every mark in
+   rest (the knob and only the marks that matter, in full); pointed at, a sunken track and every mark in
    full. Shape says what it is, tone says whose (ui.md "The locator's marks"). */
 :root {
-  --clay-mark: #9c6b45;
-  --done-strong: #2e9a55;
-  --needs-strong: #e06a1f;
+  --mark-clay: #9c6b45;
+  --mark-you: #c85f1a;
+  --mark-ask: #c2581a;
+  --mark-done: #23864a;
+  --mark-failed: #c93a62;
+  --mark-progress: #75654f;
+  --mark-quiet: #75654f;
+  --mark-knob-rim: #907c66;
+  --mark-chosen: #4a3d30;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --clay-mark: #c9a07c;
-    --done-strong: #5fcb82;
-    --needs-strong: #ff9f5e;
+    --mark-clay: #c9a07c;
+    --mark-you: #ff8a3d;
+    --mark-ask: #ff9f5e;
+    --mark-done: #5fcb82;
+    --mark-failed: #ee7593;
+    --mark-progress: #a8957e;
+    --mark-quiet: #a8957e;
+    --mark-knob-rim: #8a7864;
+    --mark-chosen: #dccbb6;
   }
 }
 :root[data-theme="dark"] {
-  --clay-mark: #c9a07c;
-  --done-strong: #5fcb82;
-  --needs-strong: #ff9f5e;
+  --mark-clay: #c9a07c;
+  --mark-you: #ff8a3d;
+  --mark-ask: #ff9f5e;
+  --mark-done: #5fcb82;
+  --mark-failed: #ee7593;
+  --mark-progress: #a8957e;
+  --mark-quiet: #a8957e;
+  --mark-knob-rim: #8a7864;
+  --mark-chosen: #dccbb6;
 }
 .locator {
   position: absolute;
@@ -2670,7 +2688,7 @@ a {
   box-sizing: border-box;
   border-radius: 5px;
   background: var(--surface-raised);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faint) 70%, transparent), 0 1.5px 0 var(--line);
+  box-shadow: inset 0 0 0 1px var(--mark-knob-rim), 0 1.5px 0 var(--line);
   transform: translateY(-7px);
   transition: top 260ms var(--ease), height 260ms var(--ease);
 }
@@ -2683,7 +2701,6 @@ a {
   border-radius: 50%;
   background: var(--tone);
   transform: translate(-50%, -50%);
-  opacity: 0.7;
   transition: opacity var(--t-fast, 140ms) var(--ease);
 }
 .locator:hover .loc-rail .m,
@@ -2713,21 +2730,23 @@ a {
   width: 2.5px;
   height: 2.5px;
 }
-.locator .loc-rail .m.m-faint {
+/* D526: at rest only the marks that matter, in full (a dimmed mark loses its 3:1); the rest fade in
+   while it is pointed at, open or focused. */
+.locator .loc-rail .m.lo {
   opacity: 0;
 }
-.locator:hover .loc-rail .m.m-faint,
-.locator.open .loc-rail .m.m-faint,
-.locator .loc-rail:focus-visible .m.m-faint {
+.locator:hover .loc-rail .m.lo,
+.locator.open .loc-rail .m.lo,
+.locator .loc-rail:focus-visible .m.lo {
   opacity: 1;
 }
-.locator .t-you { --tone: var(--user-bubble); }
-.locator .t-partner { --tone: var(--clay-mark); filter: var(--clay, none); }
-.locator .t-done { --tone: var(--done-strong); }
-.locator .t-failed { --tone: var(--failed-dot); }
-.locator .t-progress { --tone: var(--ink-muted); }
-.locator .t-wait { --tone: var(--needs-strong); }
-.locator .t-faint { --tone: var(--faint); }
+.locator .t-you { --tone: var(--mark-you); }
+.locator .t-partner { --tone: var(--mark-clay); filter: var(--clay, none); }
+.locator .t-done { --tone: var(--mark-done); }
+.locator .t-failed { --tone: var(--mark-failed); }
+.locator .t-progress { --tone: var(--mark-progress); }
+.locator .t-wait { --tone: var(--mark-ask); }
+.locator .t-faint { --tone: var(--mark-quiet); }
 /* The mark chosen in the card wears a ring that glides to it. */
 .locator .loc-rail .loc-chosen {
   position: absolute;
@@ -2735,7 +2754,7 @@ a {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.25px color-mix(in srgb, var(--ink) 55%, transparent);
+  box-shadow: inset 0 0 0 1.25px var(--mark-chosen);
   transform: translate(-50%, -50%);
   transition: top 180ms var(--spring, var(--ease));
   pointer-events: none;

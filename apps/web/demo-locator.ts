@@ -13,15 +13,19 @@ import type { Bodies } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const many = process.env.DEMO_MANY === "1";
+// DEMO_LOOK=sage|sky|plum|apricot: the task is another partner's, so its words wear that partner's clay (D497).
+const look = process.env.DEMO_LOOK;
 const w = (z: string, e: string) => (zh ? z : e);
 const dataDir = process.env.DUCTER_DATA_DIR || join(mkdtempSync(join(tmpdir(), "ducter-demo-locator-")), "data");
 let shift = 0;
 const clock = { now: () => Date.now() + shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const core = startCore({ dataDir, port: Number(process.env.DUCTER_PORT ?? 7518), push: false, persona: { id: "default", name: "Ducter", identity: "" }, ooSource: noOo, clock });
+const core = startCore({ dataDir, port: Number(process.env.DUCTER_PORT ?? 7518), push: false, persona: { id: "default", name: "Ducter", identity: "" }, ooSource: noOo, clock, ...(look ? { partners: true } : {}) });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en" });
 const log = core.log;
+const other = look ? core.partners.add({ name: w("小陶", "Clay"), look: look as never, about: w("代码评审", "code review") }) : undefined;
+const persona = other?.ok ? other.partner.id : undefined;
 const id = "t_rv";
 const stream = `task:${id}`;
 const today = new Date();
@@ -30,7 +34,7 @@ let at = 0;
 const to = (h: number, m: number) => (at = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m).getTime());
 const put = (origin: "task" | "partner" | "user" | "system", kind: string, body: unknown) => {
   shift = at - Date.now();
-  log.append({ stream, origin, kind, body } as never);
+  log.append({ stream, origin, kind, body, ...(persona ? { persona } : {}) } as never);
   at += 20_000;
 };
 const work = (n: number) => {

@@ -1226,9 +1226,11 @@ const RAIL_INSET = 6;
 export const railY = (i: number, n: number, h: number) => (n <= 1 ? h / 2 : RAIL_INSET + ((h - 2 * RAIL_INSET) * i) / (n - 1));
 export const railAt = (y: number, n: number, h: number) => (n <= 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((y - RAIL_INSET) / (h - 2 * RAIL_INSET)) * (n - 1)))));
 export const LOC_MARK_GAP = 12;
+/** D526: the marks a rail at rest shows (the person's words, a task handed over, a failure, an ask that waits). */
+export const LOC_REST_RANK = 5;
 
 /** D526: a mark, drawn. */
-const Mark = ({ m, y }: { m: LocMark; y?: number }) => <i class={`m m-${m.shape} ${m.tone}`} style={y === undefined ? undefined : { top: `${y}px` }} aria-hidden="true" />;
+const Mark = ({ m, y }: { m: LocMark; y?: number }) => <i class={`m m-${m.shape} ${m.tone}${y !== undefined && m.rank < LOC_REST_RANK ? " lo" : ""}`} style={y === undefined ? undefined : { top: `${y}px` }} aria-hidden="true" />;
 
 /** D325: the list's rows are one height, so it draws only those near its view. */
 export const LOC_ROW = 28;

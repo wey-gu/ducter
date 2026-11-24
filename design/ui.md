@@ -593,24 +593,30 @@ order, 12 apart while it has room (at most 360 tall), so the row the pointer cho
 under it. Each landmark has one small drawn mark, the same on the rail and in its row. **Shape says
 what it is, tone says whose**, every colour a token:
 
-| Landmark | Mark | Tone (Mac / web) |
+| Landmark | Mark | Tone (Mac `Locator.*` / web `--mark-*`) |
 |---|---|---|
-| The person's words | a dot, 5 | `UserBubble` / `--user-bubble` (their bubble's orange) |
-| The partner's words | a dot, 5 | the partner's clay: `ClayMark` / `--clay-mark` (the default's sand clay deepened, never the person's orange), another partner's recoloured by its look's hue turn and saturation (`theme.LookTone`; web `filter: var(--clay)` under `data-look`, D497) |
-| A task handed over | a rounded square, 5.5, corners 1.5 | whose hand it came from: the person's orange or the partner's clay |
-| A result | a ring, 6, 1.5 stroke | done `Done.Strong` / `--done-strong`; failed `Failed.Dot`; progress `InkMuted` |
-| An ask | a ring round a dot, 7.5, 1.25 stroke, dot 3 | `NeedsYou.Strong` / `--needs-strong` while the task still waits on it; `InkMuted` once answered |
-| Anything quiet (a wake, a note, a compaction, a switch, a move) | a dot, 2.5 | `Faint` |
+| The person's words | a dot, 5 | `You`: their bubble's orange a step deeper on light (`#C85F1A`; the bubble's `#FF8A3D` is 2.3:1 on white), the bubble's own on dark |
+| The partner's words | a dot, 5 | the partner's clay: `ClayMark` / `--mark-clay` (the default's sand clay deepened, never the person's orange), another partner's recoloured by its look's hue turn and saturation (`theme.LookTone`; web `filter: var(--clay)` under `data-look`, D497) |
+| A task handed over | a rounded square, 5.5, corners 1.5 | whose hand it came from: `You` or the partner's clay |
+| A result | a ring, 6, 1.5 stroke | `Done`, `Failed`, `Progress` |
+| An ask | a ring round a dot, 7.5, 1.25 stroke, dot 3 | `Ask` while the task still waits on it; `Progress` once answered |
+| Anything quiet (a wake, a note, a compaction, a switch, a move) | a dot, 2.5 | `Quiet` |
 
-- **At rest** the rail is quiet: the knob and the marks that matter at 70%, quiet ones hidden.
-  Pointed at, open or focused, a sunken track (`SurfaceSunken`) fades in behind it (`Snappy`, web
-  `--t-fast`) and every mark shows in full.
-- **Where you are** is the places' knob (D264): `SurfaceRaised`, a 1-pt `Faint` hairline at 70% on a 1.5-pt
-  `Line` ledge, 10 wide, over the landmarks in view; its ends glide (`Smooth`, web 260 ms).
+**Contrast:** every mark is a graphic and keeps 3:1 (WCAG 1.4.11) on every ground it is drawn on (the
+page, the card, the sunken track and a chosen row, the knob), in both themes and in every partner's
+clay; so is the knob's hairline and the chosen ring (`theme/locator_contrast_test.go`, which also holds
+the web's `--mark-*` to the same values). A mark is never dimmed below full: one at 70% loses it.
+
+- **At rest** the rail shows only the marks that matter (the person's words, a task handed over, a
+  failure, an ask that waits), in full; the rest are hidden. Pointed at, open or focused, a sunken
+  track (`SurfaceSunken`) fades in behind it (`Snappy`, web `--t-fast`) and every mark shows.
+- **Where you are** is the places' knob (D264): `SurfaceRaised`, a 1-pt `Locator.KnobRim` hairline
+  (3:1 on the page in both themes) on a 1.5-pt `Line` ledge, 10 wide, over the landmarks in view; its
+  ends glide (`Smooth`, web 260 ms).
 - **Crowded:** where two marks would touch (closer than 7) the one that matters more is drawn: an ask
   that waits, a failure, the person's words or a task handed over, the partner's words, a result,
   progress, quiet.
-- **The mark chosen** in the card wears a 12-wide ring in ink at 55% that glides to it (`Snappy`, web
+- **The mark chosen** in the card wears a 12-wide `Locator.Chosen` ring that glides to it (`Snappy`, web
   `--spring`); its row is the sunken clay.
 - **The card** is the one menu's card (D421): `Surface`, a `LineSoft` hairline, `RadiusMD`, `Floating`,
   6 in, 340 wide, at most 420 tall; rows 28 high: the mark in a 12 cell, one line at `SM` 400, the

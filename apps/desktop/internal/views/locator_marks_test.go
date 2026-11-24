@@ -110,10 +110,17 @@ func reviewTask(id string, lang i18n.Lang, many bool, waiting bool) []protocol.L
 }
 
 // openReview opens reviewTask in a window w wide at scale 2.
-func openReview(t *testing.T, w int, lang i18n.Lang, dark, many bool) (*App, *ui.Tester) {
+func openReview(t *testing.T, w int, lang i18n.Lang, dark, many bool, look ...string) (*App, *ui.Tester) {
 	t.Helper()
 	evs := reviewTask("rv1", lang, many, true)
 	app, _ := iaApp(t, lang)
+	// D497: the task is another partner's, so its words wear that partner's clay.
+	if len(look) > 0 {
+		app.S.Partners = []protocol.PartnerInfo{{ID: "default", Name: "Ducter", Look: "sand"}, {ID: "p_" + look[0], Name: look[0], Look: look[0]}}
+		for i := range evs {
+			evs[i].Persona = "p_" + look[0]
+		}
+	}
 	app.Status = client.Connected
 	app.LocaleFixed = true
 	tt := ui.NewTesterWith(app.View, w, 820, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
@@ -208,6 +215,33 @@ func TestLocatorMarkShots(t *testing.T) {
 					save(crop(tt.Image(), pop, 20), name+"-keys-card2x")
 				}
 			}
+		}
+	}
+	// Several partners (D497): the same review in each partner's clay, light and dark.
+	for _, dark := range []bool{false, true} {
+		lk := map[bool]string{false: "light", true: "dark"}[dark]
+		for _, look := range []string{"sand", "sage", "sky", "plum", "apricot"} {
+			app, tt := openReview(t, 1400, i18n.ZH, dark, true, look)
+			scrollTaskTo(app, "rv1", 0.45)
+			info, ok := tt.AccessByRole(ui.RoleNavigation, app.L.T("locator.name"))
+			if !ok {
+				t.Fatal("no locator")
+			}
+			b := info.Bounds
+			tt.Move(b.X+b.W/2, b.Y+b.H/2)
+			for i := 0; i < 5; i++ {
+				tt.Advance(100 * time.Millisecond)
+				tt.Frame()
+			}
+			pop := ui.Rect{X: b.X - 360, Y: b.Y - 40, W: 380 + b.W, H: b.H + 80}
+			if x, ok := tt.AccessByRole(ui.RoleList, app.L.T("locator.name")); ok {
+				pop = x.Bounds
+				bot := max(pop.Y+pop.H, b.Y+b.H)
+				pop.W = b.X + b.W - pop.X
+				pop.Y = min(pop.Y, b.Y)
+				pop.H = bot - pop.Y
+			}
+			save(crop(tt.Image(), pop, 20), "mac-partner-"+look+"-zh-"+lk+"-hover-card2x")
 		}
 	}
 	// A loop of 3,000 events (hundreds of landmarks): the rail at rest and pointed at.

@@ -60,29 +60,29 @@ func (a *App) markOf(lm *Landmark, partner ui.Color, waiting bool) locMark {
 	t := a.T
 	switch lm.K {
 	case "you":
-		return locMark{markDot, t.UserBubble, 5}
+		return locMark{markDot, t.Locator.You, 5}
 	case "partner":
 		return locMark{markDot, partner, 4}
 	case "brief":
 		if lm.By == "you" {
-			return locMark{markSquare, t.UserBubble, 5}
+			return locMark{markSquare, t.Locator.You, 5}
 		}
 		return locMark{markSquare, partner, 5}
 	case "report":
 		switch lm.S {
 		case "ask":
 			if waiting {
-				return locMark{markAsk, t.NeedsYou.Strong, 7}
+				return locMark{markAsk, t.Locator.Ask, 7}
 			}
-			return locMark{markAsk, t.InkMuted, 3}
+			return locMark{markAsk, t.Locator.Progress, 3}
 		case "done":
-			return locMark{markRing, t.Done.Strong, 3}
+			return locMark{markRing, t.Locator.Done, 3}
 		case "failed":
-			return locMark{markRing, t.Failed.Dot, 6}
+			return locMark{markRing, t.Locator.Failed, 6}
 		}
-		return locMark{markRing, t.InkMuted, 2}
+		return locMark{markRing, t.Locator.Progress, 2}
 	}
-	return locMark{markFaint, t.Faint, 0}
+	return locMark{markFaint, t.Locator.Quiet, 0}
 }
 
 // drawMark draws m centred on (x, y), at alpha k (0–1).

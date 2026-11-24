@@ -916,11 +916,13 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			box := ui.Rect{X: cx - 5, Y: r.Y + mid - hgt/2, W: 10, H: hgt}
 			p.Fill(ui.Rect{X: box.X, Y: box.Y + 1.5, W: box.W, H: box.H}, t.Line, 5)
 			p.Fill(box, t.SurfaceRaised, 5)
-			p.Stroke(box, t.Faint.Alpha(0.7), 5, 1)
+			p.Stroke(box, t.Locator.KnobRim, 5, 1)
 		}
 		for _, m := range marks {
-			a := 0.7 + 0.3*k
-			if m.shape == markFaint {
+			// D526: at rest only the marks that matter, in full (a dimmed mark
+			// loses its 3:1); the rest fade in while it is pointed at.
+			a := float32(1)
+			if m.rank < locRestRank {
 				a = k
 			}
 			if a > 0.01 {
@@ -928,7 +930,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			}
 		}
 		if ringY >= 0 {
-			p.Stroke(ui.Rect{X: cx - 6, Y: r.Y + ringY - 6, W: 12, H: 12}, t.Ink.Alpha(0.55*k), 6, 1.25)
+			p.Stroke(ui.Rect{X: cx - 6, Y: r.Y + ringY - 6, W: 12, H: 12}, t.Locator.Chosen.Alpha(k), 6, 1.25)
 		}
 	})
 	// D325: pointing at the rail chooses the landmark nearest the turn
@@ -1111,6 +1113,9 @@ const (
 	locCardW = 340
 	// locMarkGap is the rail's room per landmark, where it has the height.
 	locMarkGap = 12
+	// locRestRank: the marks a rail at rest shows (the person's words, a task
+	// handed over, a failure, an ask that waits).
+	locRestRank = 5
 	locTimeW   = 40
 )
 

@@ -1275,6 +1275,26 @@ func (a *App) duration(d time.Duration) string {
 	return a.L.T("time.hour", int(d.Hours()))
 }
 
+// rhythm is how often, as people say it (D533): 每 45 分钟, 每小时, 每 2 小时,
+// 每天 (never 每 1 小时); every hour, every 2 hours. duration says a span.
+func (a *App) rhythm(d time.Duration) string {
+	m := int(d.Round(time.Minute).Minutes())
+	if m < 1 {
+		m = 1
+	}
+	switch {
+	case m%1440 == 0 && m == 1440:
+		return a.L.T("every.day")
+	case m%1440 == 0:
+		return a.L.T("every.days", m/1440)
+	case m == 60:
+		return a.L.T("every.hour")
+	case m%60 == 0:
+		return a.L.T("every.hours", m/60)
+	}
+	return a.L.T("every.min", m)
+}
+
 func (a *App) ago(ts string) string {
 	t := store.ParseTime(ts)
 	if t.IsZero() {

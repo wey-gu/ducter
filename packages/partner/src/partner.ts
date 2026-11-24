@@ -1858,6 +1858,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const owned = new Map((core.owned?.() ?? []).map((x) => [x.taskId, x.refs.map((r) => (x.said?.[r] ? `${r} (${x.said[r]})` : r))]));
     const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()), owned);
     if (live) deltas.push(live);
+    // D533: what Ducter looks after, each by its id, so a change to one is keep_change on that one.
+    const keepsLine = renderKeeps(core.keeps?.sheets(core.persona.id) ?? []);
+    if (keepsLine) deltas.push(keepsLine);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
     const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET);
     if (helpersLine) deltas.push(helpersLine);
@@ -6316,6 +6319,17 @@ export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: stri
     return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""})`;
   };
   return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. It is shown in ${paneName("peers", lang)}.`;
+}
+/**
+ * D533: what Ducter looks after for the person, every turn while there is any: each Keep by its id and
+ * title, how it wakes, and the task it runs in, so "review 那个以后让 Codex 来做" names one Keep to change
+ * with keep_change (not a rule for all work). Facts only.
+ */
+export function renderKeeps(ks: import("@ducter/protocol").KeepSheet[]): string {
+  if (!ks.length) return "";
+  const how = (k: import("@ducter/protocol").KeepSheet) => (k.run === "perItem" ? "takes work handed to it" : k.everyMs ? `every ${Math.round(k.everyMs / 60_000)} min` : (k.cadence ?? "on the clock"));
+  const one = (k: import("@ducter/protocol").KeepSheet) => `${k.id} "${clipLine(k.title, 60)}" (${how(k)}${k.life === "paused" ? ", paused" : ""}${k.run === "same" && k.taskIds[0] ? `, task ${k.taskIds[0]}` : ""})`;
+  return `[keeps] What you look after for the user: ${ks.slice(0, 8).map(one).join("; ")}. A change to one of these (its rhythm, who does it, where, when it speaks, its end) is keep_change with its id.`;
 }
 const clipLine = (s: string, n: number) => ([...s.replace(/\s+/g, " ").trim()].length > n ? [...s.replace(/\s+/g, " ").trim()].slice(0, n - 1).join("") + "…" : s.replace(/\s+/g, " ").trim());
 

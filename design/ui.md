@@ -115,7 +115,7 @@ it turns white on the card's ledge deepened 45% toward the state's strong tone, 
 38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
 36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
-In a row the primary is last (macOS) and at most one primary shows per group.
+In a row the primary is first, on the left, as the decision cards put **好，发出去** first, then the others (D533: one rule everywhere; it was "last, as macOS"); at most one primary shows per group.
 
 **The in-place ask.** An action on a card that changes something outside Ducter asks where it
 stands, never in a floating layer: a sunken block on the page's ground (`Bg`, radius 12,
@@ -582,7 +582,7 @@ A new control is added to the set (and to this table) before it is used.
 | The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
 | **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, the context ring, After this, Stop), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
-| A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
+| A section's name over its card (等你, 手上的, 每一轮, 怎么做; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |

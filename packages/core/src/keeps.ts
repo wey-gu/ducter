@@ -36,6 +36,8 @@ const READ_MAX = 2000;
 const REPORT_MAX = 1600;
 /** Rounds read by the model at one look, newest first (the rest when the page is looked at again). */
 const ROUNDS_ASKED = 12;
+/** D533: changes by the same hand this close together are one line among the rounds, with their net change. */
+const COALESCE_MS = 10 * 60_000;
 /** A round as read, with its key when it has a report the model reads once (`taskId:seq`, `run:runId`). */
 type Round = KeepRound & { key?: string };
 
@@ -991,14 +993,36 @@ export function createKeeps(o: {
     return [w.rulesHead, fill(w.saidLine, { said: k.said.slice(0, 600) }), k.until ? fill(w.untilLine, { until: k.until }) : "", k.speaks ? fill(w.speaksLine, { speaks: k.speaks }) : "", k.limits ? fill(w.limitsLine, { limits: k.limits }) : ""].filter(Boolean).join("\n");
   }
 
-  /** Its changes, newest first, as lines among its rounds. */
+  /**
+   * Its changes, newest first, as lines among its rounds, never a flood (D533): an undo takes its change
+   * away (the pair cancels), and changes by the same hand within COALESCE_MS are one line with the net
+   * change of each field (a field changed and changed back drops out; a line with nothing left drops out).
+   */
   function editRounds(id: string): KeepRound[] {
-    return log
-      .read({ stream: `keep:${id}`, kinds: ["keep_edit"], limit: 200 })
-      .map((e) => {
-        const b = e.body as Bodies["keep_edit"];
-        return { at: e.ts, woke: "edit" as const, spoke: "silent" as const, state: "done" as const, edit: { by: b.by, edits: b.edits, ...(b.undo ? { undo: true as const } : {}) } };
-      })
+    type Row = { at: string; by: "you" | "partner"; edits: KeepEdit[] };
+    // The changes still standing: an undo takes back the newest one.
+    const standing: Row[] = [];
+    for (const e of log.read({ stream: `keep:${id}`, kinds: ["keep_edit"], limit: 400 })) {
+      const b = e.body as Bodies["keep_edit"];
+      if (b.undo) standing.pop();
+      else standing.push({ at: e.ts, by: b.by, edits: b.edits });
+    }
+    const rows: Row[] = [];
+    for (const r of standing) {
+      const last = rows.at(-1);
+      if (last && last.by === r.by && Date.parse(r.at) - Date.parse(last.at) <= COALESCE_MS) {
+        for (const x of r.edits) {
+          const was = last.edits.find((y) => y.field === x.field);
+          if (!was) last.edits.push({ ...x });
+          else if (x.field !== "said") x.to ? (was.to = x.to) : delete was.to;
+        }
+        last.at = r.at;
+      } else rows.push({ at: r.at, by: r.by, edits: r.edits.map((x) => ({ ...x })) });
+    }
+    return rows
+      .map((r) => ({ ...r, edits: r.edits.filter((x) => x.field === "said" || (x.from ?? "") !== (x.to ?? "")) }))
+      .filter((r) => r.edits.length)
+      .map((r) => ({ at: r.at, woke: "edit" as const, spoke: "silent" as const, state: "done" as const, edit: { by: r.by, edits: r.edits } }))
       .reverse();
   }
 
@@ -1147,7 +1171,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words, cap (a helper's pieces a day), computer and agent (where its rounds run: a [devices] name, an agent, or \"auto\"; \"review 那个以后让 Codex 来做\" is agent here, never rule_save), address (a helper's name in Bridge). The person may change the same on its page. Then one line.",
+    "One Keep's own settings, named by that Keep (its id in [keeps] or keep_list, or its task's id): stop, pause or change one thing Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task, never rule_save. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words, cap (a helper's pieces a day), computer and agent (where its rounds run: a [devices] name, an agent, or \"auto\"; \"review 那个以后让 Codex 来做\" is agent here), address (a helper's name in Bridge). The person may change the same on its page. Then one line.",
     {
       type: "object",
       properties: {

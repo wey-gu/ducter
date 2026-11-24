@@ -21,6 +21,10 @@ import (
 // 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做
 // with 暂停 and 停下.
 
+// keepTwoColMin is the board width under which a Keep's rules go under its
+// body (the board beside the rail in a window just under 1000 wide).
+const keepTwoColMin = 600
+
 // keepState is the Keep whose page is open ("" the list) and the page's own
 // state.
 type keepState struct {
@@ -37,7 +41,8 @@ type keepState struct {
 	round   string
 	// D533: a rule or the person's words being changed in place.
 	edit  keepEdit
-	focus bool // the talk box takes the focus once
+	sideW float32 // D533: the rules column's width this frame
+	focus bool    // the talk box takes the focus once
 }
 
 // openKeep opens a Keep's page in On hand's place and asks the home for it.
@@ -135,7 +140,7 @@ func (a *App) keepFacts(k *protocol.KeepSheet) []keepFact {
 		out = append(out, keepFact{text: a.L.T("keep.asks", k.Asks), needs: true})
 	}
 	if k.EveryMs > 0 {
-		out = append(out, keepFact{text: a.L.T("keep.every", a.duration(time.Duration(k.EveryMs)*time.Millisecond))})
+		out = append(out, keepFact{text: a.L.T("keep.every", a.rhythm(time.Duration(k.EveryMs)*time.Millisecond))})
 	} else if k.Cadence != "" {
 		out = append(out, keepFact{text: k.Cadence})
 	}
@@ -460,14 +465,18 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 		uiText(c.Key("keep-loading"), msg).FontSize(t.MD).TextColor(t.InkMuted).Margin(t.S6, 0)
 		return
 	}
-	wide := w >= 860
-	mainW := w
+	// D533: two columns hold down to the 1000-wide window (the rules card narrows to 256); only
+	// below that the rules go under the body. 1150 is the common laptop window.
+	wide := w >= keepTwoColMin
+	mainW, sideW := w, min(w, 320)
 	if wide {
-		mainW = w - 320 - t.S6
+		sideW = max(256, min(320, w*0.34))
+		mainW = w - sideW - t.S6
 	}
+	a.oh.keep.sideW = sideW
 	body := func() {
 		ui.Column(c.Key("keep-main")).Width(mainW).Shrink(1).MinWidth(0).Gap(4).Children(func() { a.keepMain(c, k, mainW) })
-		ui.Column(c.Key("keep-side")).Width(min(w, 320)).Shrink(0).Gap(4).Children(func() {
+		ui.Column(c.Key("keep-side")).Width(sideW).Shrink(0).Gap(4).Children(func() {
 			a.keepH2(c, "how", a.L.T("keep.how"))
 			a.keepRules(c, k)
 		})
@@ -626,7 +635,7 @@ func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
 		return a.L.T("keep.woke.first")
 	}
 	if k.EveryMs > 0 {
-		return a.L.T("keep.woke.every", a.duration(time.Duration(k.EveryMs)*time.Millisecond))
+		return a.L.T("keep.woke.every", a.rhythm(time.Duration(k.EveryMs)*time.Millisecond))
 	}
 	return a.L.T("keep.woke.time")
 }

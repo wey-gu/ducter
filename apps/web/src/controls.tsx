@@ -9,7 +9,7 @@ import { spoken } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** One clay button family (D76): primary last in a row, at most one per group. chev: a text button
+/** One clay button family (D76): primary first in a row, on the left (D533), at most one per group. chev: a text button
  *  that opens something in place ends in a drawn chevron, turned down while open (never a font's
  *  arrow: iOS draws some of those as an emoji or a missing glyph; D211). */
 export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean; chev?: boolean }) {
@@ -648,7 +648,7 @@ export function TimeCol(p: { at: string; text: string }) {
 /**
  * D533: a rule row changed in place (a Keep's 怎么照看): its name, a quiet 改 / Change at the name's
  * right while it may change, its value lines and a muted one. Open: the control in the slot under
- * the name, then 取消 / Cancel and 保存 / Save (primary, last); Enter saves, Escape cancels. `error`
+ * the name, then 保存 / Save (primary, first, on the left) and 取消 / Cancel; Enter saves, Escape cancels. `error`
  * stands under the control in the failed ink; `busy` says the change is on its way.
  */
 export function EditRow(p: {
@@ -693,8 +693,8 @@ export function EditRow(p: {
             </p>
           )}
           <span class="er-acts">
-            <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
             <Btn kind="primary" size="sm" label={p.busy ? t("keep.edit.saving") : t("keep.edit.save")} disabled={p.busy} onClick={p.onSave} />
+            <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
           </span>
         </>
       )}

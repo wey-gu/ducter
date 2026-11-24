@@ -14,7 +14,7 @@ import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
-import { healthLine, interval } from "./past.tsx";
+import { healthLine, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
 import { Menu, MenuItem, Select } from "./menu.tsx";
 import { SEG_MAX, taskAgents, taskComputers } from "./partner-story.tsx";
@@ -98,7 +98,7 @@ const SPEAKS = ["keep.speaks.news", "keep.speaks.default", "keep.speaks.every"] 
 
 /** A field's value as the page says it (an absent one: what having none means). */
 export function fieldWords(field: KeepField, v?: string): string {
-  if (field === "every") return v ? t("keep.every", interval(Number(v) * 60_000)) : "";
+  if (field === "every") return v ? t("keep.every", rhythm(Number(v) * 60_000)) : "";
   if (field === "agent") return !v || v === "auto" ? t("newtasks.auto") : harnessName(v);
   if (field === "where") return !v || v === "auto" ? t("newtasks.auto") : v;
   if (field === "cap") return v ? t("keep.cap", Number(v)) : "";
@@ -108,21 +108,29 @@ export function fieldWords(field: KeepField, v?: string): string {
   return v ?? "";
 }
 
-/** One change in words: 每 45 分钟一轮 → 每 1 小时一轮. */
-export const editWords = (e: KeepEdit) => (e.field === "said" ? t("keep.said.edit.words") : `${fieldWords(e.field, e.from)} → ${fieldWords(e.field, e.to)}`);
+/** A value inside a sentence (D533): a rhythm as people say it (每 45 分钟一轮, every 45 minutes); a rule's
+ *  words start lower case there, a name (a computer, an agent, an address) as it is. No language branch:
+ *  Chinese has no case. */
+function inSentence(field: KeepField, v?: string): string {
+  if (field === "every") return v ? t("keep.edit.every", rhythm(Number(v) * 60_000)) : "";
+  const w = fieldWords(field, v);
+  if (field === "where" || field === "agent" || field === "address" || field === "title") return w;
+  return /^[A-Z][^A-Z]/.test(w) ? w[0]!.toLowerCase() + w.slice(1) : w;
+}
 
-/** A change as a line among its rounds: who made it, then what changed. */
+/** One change said in words, never an arrow (D533): 你把每 45 分钟一轮改成了每小时一轮 / You changed every 45 minutes to every hour. */
+export function editSentence(by: "you" | "partner", e: KeepEdit): string {
+  const who = by === "you" ? t("keep.edit.you") : A.S.personaName;
+  if (e.field === "said") return t("keep.edit.said", who);
+  const shown = ["speaks", "until", "limits", "where", "agent"].includes(e.field);
+  if ((e.from || shown) && (e.to || shown)) return t("keep.edit.line", who, inSentence(e.field, e.from), inSentence(e.field, e.to));
+  return e.to ? t("keep.edit.set", who, inSentence(e.field, e.to)) : t("keep.edit.cleared", who, inSentence(e.field, e.from));
+}
+
+/** A change as lines among its rounds (core already took undone ones away and folded close ones together). */
 export function editLines(r: KeepRound): string[] {
   const ed = r.edit;
-  if (!ed) return [];
-  const who = ed.by === "you" ? t("keep.edit.you") : A.S.personaName;
-  return ed.edits.map((e) => {
-    if (e.field === "said") return ed.undo ? t("keep.edit.undoSaid", who) : t("keep.edit.said", who);
-    if (ed.undo) return t("keep.edit.undoLine", who, fieldWords(e.field, e.to));
-    const shown = ["speaks", "until", "limits", "where", "agent"].includes(e.field);
-    if ((e.from || shown) && (e.to || shown)) return t("keep.edit.line", who, fieldWords(e.field, e.from), fieldWords(e.field, e.to));
-    return e.to ? t("keep.edit.set", who, fieldWords(e.field, e.to)) : t("keep.edit.cleared", who, fieldWords(e.field, e.from));
-  });
+  return ed ? ed.edits.map((e) => editSentence(ed.by, e)) : [];
 }
 
 /** The rule a field stands under on the page. */
@@ -171,7 +179,7 @@ export function keepFacts(k: KeepSheet): { text: string; tone?: "needs" }[] {
   if (k.run === "perItem" && k.items.length) out.push({ text: k.items.every((x) => x.pr) ? t("keep.holds.pr", k.items.length) : t("keep.holds", k.items.length) });
   else if (k.run === "fresh" && work.length > 1) out.push({ text: t("keep.holds", work.length) });
   if (k.asks) out.push({ text: t("keep.asks", k.asks), tone: "needs" });
-  if (k.everyMs) out.push({ text: t("keep.every", interval(k.everyMs)) });
+  if (k.everyMs) out.push({ text: t("keep.every", rhythm(k.everyMs)) });
   else if (k.cadence) out.push({ text: k.cadence });
   if (k.reviews?.waiting) out.push({ text: t("keep.reviews", k.reviews.waiting) });
   if (k.until && [...k.until].length <= 24) out.push({ text: k.until });
@@ -297,7 +305,7 @@ function wokeWords(r: KeepRound, k: KeepPage): string {
     case "first":
       return t("keep.woke.first");
     default:
-      return k.everyMs ? t("keep.woke.every", interval(k.everyMs)) : t("keep.woke.time");
+      return k.everyMs ? t("keep.woke.every", rhythm(k.everyMs)) : t("keep.woke.time");
   }
 }
 
@@ -318,9 +326,6 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
               {l}
             </span>
           ))}
-        </span>
-        <span class="end">
-          <span class="out">{t("keep.round.edit")}</span>
         </span>
       </div>
     );
@@ -409,7 +414,7 @@ function Items({ k }: { k: KeepPage }) {
 
 function wakeLines(k: KeepPage): string[] {
   return k.wakes.map((w) =>
-    w.kind === "arrives" ? t("keep.wake.arrives") : w.kind === "every" ? t("keep.every", interval(w.everyMs)) : w.kind === "at" ? w.words : w.words ? t("keep.wake.changes", w.words) : t("keep.wake.changes.prs"),
+    w.kind === "arrives" ? t("keep.wake.arrives") : w.kind === "every" ? t("keep.every", rhythm(w.everyMs)) : w.kind === "at" ? w.words : w.words ? t("keep.wake.changes", w.words) : t("keep.wake.changes.prs"),
   );
 }
 
@@ -604,7 +609,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
 function Changed({ done, id }: { done: NonNullable<typeof K.done>; id: string }) {
   return (
     <p class="kp-changed" role="status">
-      <span class="w">{done.undone ? t("keep.edit.undone") : t("keep.edit.done", done.edits.map(editWords).join(t("keep.where.sep")))}</span>
+      <span class="w">{done.undone ? t("keep.edit.undone") : t("keep.edit.done", done.edits.map((e) => editSentence("you", e)).join(t("keep.where.sep")))}</span>
       {!done.undone && done.undo && <Btn kind="text" size="sm" label={t("keep.edit.undo")} onClick={() => sendChange(id, done.undo!, true)} />}
     </p>
   );
@@ -676,11 +681,11 @@ function Said({ k }: { k: KeepPage }) {
         </p>
       )}
       <span class="er-acts">
-        <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={cancel} />
-        {p && rules.length > 0 && <Btn kind="secondary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
-        {p && !p.ok && <Btn kind="primary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
         {p?.ok && <Btn kind="primary" size="sm" label={rules.length ? t("keep.said.edit.go") : t("keep.edit.save")} disabled={w.phase === "saving"} onClick={() => apply(p.change)} />}
+        {p && !p.ok && <Btn kind="primary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
         {!p && <Btn kind="primary" size="sm" label={w.phase === "reading" ? t("keep.edit.saving") : t("keep.edit.save")} disabled={w.phase === "reading" || !w.draft.trim()} onClick={read} />}
+        {p && rules.length > 0 && <Btn kind="secondary" size="sm" label={t("keep.said.edit.only")} disabled={w.phase === "saving"} onClick={() => apply({ said: p.said })} />}
+        <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={cancel} />
       </span>
     </div>
   );

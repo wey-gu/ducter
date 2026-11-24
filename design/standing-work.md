@@ -40,7 +40,8 @@
   rhythm in minutes, a clock (every day or weekdays, a time), the goal in words, when it speaks as three
   choices, a helper's cap a day (1–30, `Helper.daily`, read by the partner's start-without-asking count), where and
   who, the name in Bridge. A change applies at once with **撤销 / Undo** under the card, and stands among the
-  rounds as **你改了：每 45 分钟一轮 → 每 1 小时一轮** (`keep_edit`). **你说的** is editable words: saving them
+  rounds in words, **你把每 45 分钟一轮改成了每小时一轮** (`keep_edit`; an undone change leaves no line, changes
+  within ten minutes are one line with the net change). **你说的** is editable words: saving them
   asks the cheap model once which rules they change, shown as a diff for one Go (**照这样改**), or **只改说的话**.
   One path: the page's `keep_change` frame and the partner's `keep_change` tool are `keeps.change(id, c, { by })`,
   checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every

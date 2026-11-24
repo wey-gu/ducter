@@ -76,9 +76,9 @@ need to decide, or after every round), its limit (for one your agents hand work 
 a day before it asks you), which computer and which AI agent do it, and the name your agents find it
 by. A change takes effect at once, and **Undo** under the card puts it back. **You said** can be
 edited too: when you save your new words, Ducter reads which rules they change and shows them
-(every 45 minutes → every hour) before anything changes; **Change it** applies them, **Only the words**
+(every 45 minutes, struck, beside every hour) before anything changes; **Change it** applies them, **Only the words**
 keeps the rules as they are. Every change, yours or your partner's, is written among its rounds
-("You changed: every 45 minutes → every hour"), and its next round follows it. No change, by hand
+("You changed every 45 minutes to every hour"); undoing a change takes its line away. Its next round follows it. No change, by hand
 or in words, lets it send, pay or delete without asking you.
 
 ## "Remind me …" and what you said you'd do

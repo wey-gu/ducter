@@ -38,7 +38,7 @@ import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
-import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
+import { healthLine, rhythm, RepeatGlyph, reviewLine } from "./past.tsx";
 import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import { cutAtWord } from "@ducter/protocol";
@@ -1087,7 +1087,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
-  if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
+  if (rounds?.everyMs) meta.push(t("og.round.every", rhythm(rounds.everyMs)));
   meta.push(...bgFact(task));
   const pb = placeOf(task);
   const beat = task.acting

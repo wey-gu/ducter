@@ -22248,7 +22248,7 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .er-acts {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: var(--s2);
 }
@@ -22361,11 +22361,12 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 700;
   color: var(--ink-muted);
 }
+/* Old struck, new bold beside it: no arrow (D533). */
 .kp-drow .ch {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 6px;
+  gap: 4px 12px;
 }
 .kp-drow .from {
   color: var(--ink-muted);
@@ -22375,12 +22376,6 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-drow .to {
   color: var(--ink);
   font-weight: 600;
-}
-.kp-drow .to::before {
-  content: "→";
-  margin-right: 6px;
-  color: var(--ink-muted);
-  font-weight: 400;
 }
 /* The last change under the rules card, with its Undo. */
 .kp-changed {

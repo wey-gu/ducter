@@ -95,7 +95,7 @@ func (a *App) keepEditValue(field, v string) string {
 		return a.L.T("keep.said.edit.words")
 	case "every":
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return a.L.T("keep.every", a.duration(time.Duration(n)*time.Minute))
+			return a.L.T("keep.every", a.rhythm(time.Duration(n)*time.Minute))
 		}
 	case "agent":
 		if v == "auto" || v == "" {
@@ -126,41 +126,53 @@ func (a *App) keepEditValue(field, v string) string {
 	return v
 }
 
-// keepEditInline is a field's value inside a sentence, as the page says it
-// (the web's fieldWords: the same words in both languages, no case changed).
-func (a *App) keepEditInline(field, v string) string { return a.keepEditValue(field, v) }
-
-// keepEditPair is one field's change: from → to.
-func (a *App) keepEditPair(e protocol.KeepEdit) string {
-	if e.Field == "said" {
-		return a.keepEditValue("said", "")
+// keepEditInline is a field's value inside a sentence (D533): a rhythm as
+// people say it (每 45 分钟一轮, every 45 minutes); a rule's words start
+// lower case there, a name (a computer, an agent, an address) as it is. Not
+// a language branch: Chinese has no case. The web's inSentence.
+func (a *App) keepEditInline(field, v string) string {
+	if field == "every" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return a.L.T("keep.edit.every", a.rhythm(time.Duration(n)*time.Minute))
+		}
+		return ""
 	}
-	return a.keepEditInline(e.Field, e.From) + " → " + a.keepEditInline(e.Field, e.To)
+	s := a.keepEditValue(field, v)
+	switch field {
+	case "where", "agent", "address", "title":
+		return s
+	}
+	if len(s) > 1 && s[0] >= 'A' && s[0] <= 'Z' && !(s[1] >= 'A' && s[1] <= 'Z') {
+		return strings.ToLower(s[:1]) + s[1:]
+	}
+	return s
 }
 
-// keepEditLines is a change among the rounds, one line per field:
-// 你改了：每 45 分钟一轮 → 每 1 小时一轮.
-func (a *App) keepEditLines(ed *protocol.KeepEditLine) []string {
+// keepEditSentence is one change said in words, never an arrow (D533):
+// 你把每 45 分钟一轮改成了每小时一轮 / You changed every 45 minutes to every hour.
+func (a *App) keepEditSentence(by string, e protocol.KeepEdit) string {
 	who := a.L.T("keep.edit.you")
-	if ed.By != "you" {
+	if by != "you" {
 		who = a.S.PersonaName
 	}
+	shown := e.Field == "speaks" || e.Field == "until" || e.Field == "limits" || e.Field == "where" || e.Field == "agent"
+	switch {
+	case e.Field == "said":
+		return a.L.T("keep.edit.said", who)
+	case (e.From != "" || shown) && (e.To != "" || shown):
+		return a.L.T("keep.edit.line", who, a.keepEditInline(e.Field, e.From), a.keepEditInline(e.Field, e.To))
+	case e.To != "":
+		return a.L.T("keep.edit.set", who, a.keepEditInline(e.Field, e.To))
+	}
+	return a.L.T("keep.edit.cleared", who, a.keepEditInline(e.Field, e.From))
+}
+
+// keepEditLines is a change among the rounds, one sentence per field (core
+// already took undone ones away and folded close ones together).
+func (a *App) keepEditLines(ed *protocol.KeepEditLine) []string {
 	var out []string
 	for _, e := range ed.Edits {
-		switch {
-		case e.Field == "said" && ed.Undo:
-			out = append(out, a.L.T("keep.edit.undoSaid", who))
-		case e.Field == "said":
-			out = append(out, a.L.T("keep.edit.said", who))
-		case ed.Undo:
-			out = append(out, a.L.T("keep.edit.undoLine", who, a.keepEditInline(e.Field, e.To)))
-		case e.From != "" && e.To != "":
-			out = append(out, a.L.T("keep.edit.line", who, a.keepEditInline(e.Field, e.From), a.keepEditInline(e.Field, e.To)))
-		case e.To != "":
-			out = append(out, a.L.T("keep.edit.set", who, a.keepEditInline(e.Field, e.To)))
-		default:
-			out = append(out, a.L.T("keep.edit.cleared", who, a.keepEditInline(e.Field, e.From)))
-		}
+		out = append(out, a.keepEditSentence(ed.By, e))
 	}
 	return out
 }
@@ -246,7 +258,10 @@ func (a *App) keepPickers(k *protocol.KeepPage) (where []string, whereIDs []stri
 // control in place (D533), then 暂停 ▾, 现在看一次 and 停下.
 func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	t := a.T
-	w := float32(320)
+	w := a.oh.keep.sideW
+	if w <= 0 {
+		w = 320
+	}
 	ks := &a.oh.keep
 	e := &ks.edit
 	a.keepCard(c, "rules", w, func() {
@@ -262,7 +277,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					wakes = append(wakes, a.L.T("keep.wake.arrives"))
 				case "every":
 					onlyArrives = false
-					wakes = append(wakes, a.L.T("keep.every", a.duration(time.Duration(x.EveryMs)*time.Millisecond)))
+					wakes = append(wakes, a.L.T("keep.every", a.rhythm(time.Duration(x.EveryMs)*time.Millisecond)))
 				case "at":
 					onlyArrives = false
 					wakes = append(wakes, x.Words)
@@ -537,10 +552,7 @@ func (a *App) keepEditStatus(c *ui.Context, k *protocol.KeepPage, w float32) {
 				return
 			}
 			for i, ed := range f.Edits {
-				s := a.keepEditPair(ed)
-				if i == 0 {
-					s = a.L.T("keep.edit.done", s)
-				}
+				s := a.L.T("keep.edit.done", a.keepEditSentence("you", ed))
 				uiText(c.Key(fmt.Sprint("e", i)), keepWords(autospace(s))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
 			}
 		})
@@ -645,9 +657,9 @@ func (a *App) keepSaid(c *ui.Context, k *protocol.KeepPage, w float32) {
 					x := x
 					ui.Column(c.Key(fmt.Sprint("d", i))).Gap(2).Padding(8, 0, 0, 0).Children(func() {
 						uiText(c.Key("l"), a.keepFieldLabel(x.Field)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-						ui.Row(c.Key("ft")).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
+						// Old struck, new bold beside it: no arrow (D533).
+						ui.Row(c.Key("ft")).Gap(t.S3).Wrap().AlignItems(ui.Baseline).Children(func() {
 							uiText(c.Key("f"), keepWords(autospace(a.keepEditValue(x.Field, x.From)))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45))
-							uiText(c.Key("ar"), "→").FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
 							uiText(c.Key("t"), keepWords(autospace(a.keepEditValue(x.Field, x.To)))).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.45))
 						})
 					})
@@ -732,8 +744,8 @@ func (a *App) keepBreath(c *ui.Context) {
 	ui.Box(c.Key("breath")).Size(8, 8).Radius(4).Background(col).Shrink(0).Margin(0, 4, 0, 2).AccessHidden(true)
 }
 
-// keepEditRound is a change among the rounds: its time, one line per
-// field, and 改了 at the end.
+// keepEditRound is a change among the rounds: its time and one sentence
+// per field (the words say it was a change; no tag at the end).
 func (a *App) keepEditRound(c *ui.Context, r protocol.KeepRound) {
 	t := a.T
 	a.timeCol(c, "t", store.ParseTime(r.At))
@@ -742,5 +754,4 @@ func (a *App) keepEditRound(c *ui.Context, r protocol.KeepRound) {
 			uiText(c.Key(fmt.Sprint("l", j)), keepWords(autospace(l))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 		}
 	})
-	uiText(c.Key("out"), a.L.T("keep.round.edit")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 }

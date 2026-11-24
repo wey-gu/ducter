@@ -78,13 +78,24 @@ describe("D533: a rule changed in place", () => {
     const line = keeps.page(k.keepId)!.rounds.find((x) => x.woke === "edit");
     expect(line).toMatchObject({ edit: { by: "you", edits: [{ field: "every", from: "45", to: "60" }] } });
 
-    // Undo puts it back, and says so as a line of its own.
+    // Undo puts it back and takes its line away: the pair cancels, the rounds never flood.
     const u = await keeps.change(k.keepId, r.undo!, { by: "you", undo: true });
     expect(u.ok).toBe(true);
     expect(core.work.loops.get("t_review")!.everyMs).toBe(45 * 60_000);
-    const lines = keeps.page(k.keepId)!.rounds.filter((x) => x.woke === "edit");
-    expect(lines).toHaveLength(2);
-    expect(lines[0]!.edit).toMatchObject({ undo: true, edits: [{ field: "every", from: "60", to: "45" }] });
+    const edits = () => keeps.page(k.keepId)!.rounds.filter((x) => x.woke === "edit");
+    expect(edits()).toHaveLength(0);
+
+    // Changes within ten minutes are one line with the net change; one changed and changed back drops out.
+    await keeps.change(k.keepId, { everyMinutes: 60 }, { by: "you" });
+    await keeps.change(k.keepId, { everyMinutes: 120 }, { by: "you" });
+    await keeps.change(k.keepId, { speaks: "有新进展就说一句" }, { by: "you" });
+    await keeps.change(k.keepId, { speaks: "" }, { by: "you" });
+    expect(edits()).toHaveLength(1);
+    expect(edits()[0]!.edit).toEqual({ by: "you", edits: [{ field: "every", from: "45", to: "120" }] });
+    // An undo takes back only the newest change of the line.
+    const last = await keeps.change(k.keepId, { everyMinutes: 30 }, { by: "you" });
+    await keeps.change(k.keepId, (last as { undo: object }).undo, { by: "you", undo: true });
+    expect(edits()[0]!.edit).toEqual({ by: "you", edits: [{ field: "every", from: "45", to: "120" }] });
   });
 
   test("the running task is told the rules as they are now, from its next round", async () => {

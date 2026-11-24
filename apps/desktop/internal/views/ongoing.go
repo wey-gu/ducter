@@ -342,7 +342,7 @@ func (a *App) ongoingLine(it *protocol.OngoingItem) []string {
 		if it.Loop {
 			key = "og.round.every"
 		}
-		how = a.hanTight(a.L.T(key, a.duration(time.Duration(it.EveryMs)*time.Millisecond)))
+		how = a.hanTight(a.L.T(key, a.rhythm(time.Duration(it.EveryMs)*time.Millisecond)))
 	}
 	next := ""
 	if at := store.ParseTime(it.NextAt); !at.IsZero() {
@@ -617,7 +617,7 @@ func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 		if it.Loop && it.State != "paused" {
 			m.Submenu(a.L.T("og.rhythm"), func(m *ui.Menu) {
 				for _, n := range ongoingRhythms {
-					label := a.L.T("og.rhythm.m", a.duration(time.Duration(n)*time.Minute))
+					label := a.L.T("og.rhythm.m", a.rhythm(time.Duration(n)*time.Minute))
 					if m.Item(label).ID("m:" + itoa(int64(n))).Radio(it.EveryMs == int64(n)*60_000).Chosen() {
 						a.ongoingRhythmPick(it, n)
 					}

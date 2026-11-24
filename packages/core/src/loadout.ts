@@ -481,7 +481,7 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
   mcp.register(
     "partner",
     "rule_save",
-    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. The user removes rules on the Partner page; never remove one yourself.",
+    "The user's standing rules about all their work: save one for who does which kind of work, for every task of that kind from now on (shown on the Partner page as Your rules); one thing Ducter looks after is changed with keep_change, not here. Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. The user removes rules on the Partner page; never remove one yourself.",
     {
       type: "object",
       properties: {

@@ -895,6 +895,15 @@ function soon(iso: string): string {
   return `${f.day(d)} ${hm}`;
 }
 
+/** D533: a rhythm as people say it: 每 45 分钟, 每小时, 每 2 小时, 每天 (never 每 1 小时); every hour, every 2 hours.
+ *  For how long something took or is late, interval() says the span. */
+export function rhythm(ms: number): string {
+  const m = Math.max(1, Math.round(ms / 60_000));
+  if (m % 1440 === 0) return m === 1440 ? A.L.t("every.day") : A.L.t("every.days", m / 1440);
+  if (m % 60 === 0) return m === 60 ? A.L.t("every.hour") : A.L.t("every.hours", m / 60);
+  return A.L.t("every.min", m);
+}
+
 export function interval(ms: number): string {
   const m = Math.round(ms / 60_000);
   const f = DATES[A.L.lang];
@@ -932,7 +941,7 @@ function stateLine(it: OngoingItem): string[] {
   if (it.state === "running") return [t("og.s.running")];
   if (it.state === "needs_you") return [t("og.s.needs_you")];
   if (it.state === "proposed") return [t("og.s.proposed")];
-  const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t(it.loop ? "og.round.every" : "og.every", interval(it.everyMs)) : "";
+  const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t(it.loop ? "og.round.every" : "og.every", rhythm(it.everyMs)) : "";
   return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean);
 }
 
@@ -1168,7 +1177,7 @@ function OgCard({ it }: { it: OngoingItem }) {
           <MenuHead>{t("og.rhythm")}</MenuHead>
           {RHYTHMS.map((m) => (
             <MenuItem key={m} onClick={() => og(it, { action: "every", minutes: m })}>
-              {t("og.rhythm.m", interval(m * 60_000))}
+              {t("og.rhythm.m", rhythm(m * 60_000))}
               {it.everyMs === m * 60_000 && <span class="og-now" aria-hidden="true" />}
             </MenuItem>
           ))}

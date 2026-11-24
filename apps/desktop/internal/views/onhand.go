@@ -66,7 +66,7 @@ func (a *App) onHand(c *ui.Context) {
 				if keepOpen {
 					avail := w - 2*t.S6
 					if w >= railFrom {
-						avail -= lensColW
+						avail -= keepRailW
 					}
 					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
 					return

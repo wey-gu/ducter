@@ -19,6 +19,7 @@ import { basename, join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import type { Bodies, DocAsk, DocCheck, DocFinding, DocFormat, LogEvent, MediaRef } from "@ducter/protocol";
 import { DOC_LEFT_MAX, docAsk, docFindingForTask, docFindingWords, docFormat, docStem } from "@ducter/protocol";
+import { spawnNow, whichNow } from "@ducter/protocol/src/which.ts";
 
 // ---------- running a tool, bounded ----------
 
@@ -27,7 +28,7 @@ const TOOL_MS = 20_000;
 /** A program on this computer's PATH (or undefined). */
 export function tool(name: string): string | undefined {
   try {
-    return Bun.which(name) ?? undefined;
+    return whichNow(name) ?? undefined;
   } catch {
     return undefined;
   }
@@ -35,7 +36,7 @@ export function tool(name: string): string | undefined {
 
 async function run(cmd: string[], ms = TOOL_MS): Promise<{ ok: boolean; out: string; bytes?: Uint8Array }> {
   try {
-    const p = Bun.spawn(cmd, { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
+    const p = spawnNow(cmd, { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
     const timer = setTimeout(() => p.kill(), ms);
     const buf = new Uint8Array(await new Response(p.stdout).arrayBuffer());
     const code = await p.exited;

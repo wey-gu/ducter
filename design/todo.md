@@ -9,14 +9,33 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
+
+- [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of
+  the author's real titles (zh and en, with and without a to-do number, one repository with a
+  `feat/` convention) through the cheapest model of Claude Code and Codex; check 3 to 6 words that
+  tell the task apart, the convention followed, and how long the start waited. Record the results.
+- [ ] **A GitHub ruleset's branch-name pattern** (`gh api repos/{o}/{r}/rulesets`) as one more source
+  of the repository's convention. Trigger: a repository whose convention lives only in a ruleset.
+- [ ] **A convention-shaped branch (`feat/…`) left by a task dropped before it started.**
+  `archiveWorktree` deletes only `ducter/` branches it made; record on the place that Ducter made
+  the branch, so a `feat/` one goes the same way. Trigger: the first such branch seen.
+
 ## Signing in on a server, after D518 (`where.md` "Signing in there")
 
 - [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
   card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
   UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
-- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
-  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
-  into its own folder while running is spawned by its bare name.
+- [x] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. Done in D523: `spawnNow` /
+  `whichNow` everywhere, guarded by `packages/core/test/spawn-guard.test.ts`.
+- [ ] **D523: the colleague's Antigravity sign-in** on the release with D523, with the five facts in
+  `research/private/223-agy-colleague-questions.md` if it still fails.
+- [ ] **D523: give agents the person's proxy.** A home started by the Mac app has no shell
+  `https_proxy`, and agy (Go) reads only the env, so a computer that needs a proxy for Google can't
+  check or run agy; D523 only says so. *Trigger:* the colleague's answers show a proxy, or any agent
+  fails to reach its service from the Mac app while the terminal works. Capture the login shell's
+  proxy variables with its PATH (`captureLoginPath`) and pass them to every agent.
 
 ## The link to the home, after D520 (`system.md` Desktop)
 

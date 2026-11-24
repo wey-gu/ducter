@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ComputerPerms } from "@ducter/protocol";
+import { spawnNow, whichNow } from "@ducter/protocol/src/which.ts";
 
 export const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 
@@ -12,7 +13,7 @@ export type Exec = (argv: string[], timeoutMs?: number) => Promise<{ code: numbe
 
 export const execOut: Exec = async (argv, timeoutMs = 15_000) => {
   try {
-    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+    const p = spawnNow(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
     const timer = setTimeout(() => p.kill(), timeoutMs);
     const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
     clearTimeout(timer);
@@ -22,7 +23,7 @@ export const execOut: Exec = async (argv, timeoutMs = 15_000) => {
   }
 };
 
-export function cuaBin(env: Record<string, string | undefined> = process.env, which: (c: string) => string | null = (c) => Bun.which(c)): string | undefined {
+export function cuaBin(env: Record<string, string | undefined> = process.env, which: (c: string) => string | null = (c) => whichNow(c, env)): string | undefined {
   return env.DUCTER_CUA_DRIVER || which("cua-driver") || (existsSync(CUA_APP_BIN) ? CUA_APP_BIN : undefined);
 }
 

@@ -20,6 +20,7 @@ import type { UpdateHow, UpdatePhase, UpdateReason } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import { REPO, type Fetch } from "./release.ts";
 import { downloadFile } from "./download.ts";
+import { spawnNow } from "@ducter/protocol/src/which.ts";
 
 export const UNIT = "ducter.service";
 /** How long the helper waits for the restarted Ducter: a first start on a big Log or a cold disk can take a minute. */
@@ -63,7 +64,7 @@ export const realSys: UpdateSys = {
   async run(argv, o = {}) {
     try {
       if (o.signal?.aborted) return { code: -1, out: "stopped", stopped: true };
-      const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: o.env ? { ...process.env, ...o.env } : process.env });
+      const p = spawnNow(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: o.env ? { ...process.env, ...o.env } : process.env });
       let timedOut = false;
       let stopped = false;
       const timer = setTimeout(() => ((timedOut = true), p.kill()), o.timeoutMs ?? 30_000);

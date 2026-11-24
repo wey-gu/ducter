@@ -1,4 +1,4 @@
-// D201: a task's branch and folder are named in its title's own words and script.
+// D201: a title as one readable name in its own script (a folder named before D522, a branch someone named). D522: new tasks get ASCII branches (branch-name.test.ts).
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -73,17 +73,22 @@ test("D201: the folder is the branch's slug in its own script; an NFD twin of a 
   expect(worktreeFor(data, repo, "feature/Ünïcode v1.2")).toBe(join(data, "ducter", "worktrees", "我的仓库", "feature-Ünïcode-v1.2"));
 });
 
-test("D201: a Chinese task gets a Chinese branch and folder that git really makes", async () => {
+test("D201, D522: a Chinese branch named before still makes its folder in git; a clash on it gets -2", async () => {
   const repo = join(dir, "repo");
   Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
   Bun.spawnSync(["git", "-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"]);
   const data = join(dir, "data");
-  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t1", "修复登录页的闪退", data);
-  expect(r.place).toMatchObject({ branch: "ducter/修复登录页的闪退", worktree: join(data, "ducter", "worktrees", "repo", "修复登录页的闪退") });
+  // D522: new tasks get ASCII names (branch-name.test.ts); one named before D522 keeps its words.
+  const old = "ducter/修复登录页的闪退";
+  const r = await planPlace({ kind: "repo", device: "local", repoPath: repo, branch: old }, "t1", "修复登录页的闪退", data);
+  expect(r.place).toMatchObject({ branch: old, worktree: join(data, "ducter", "worktrees", "repo", "修复登录页的闪退") });
   await provisionPlace(r);
   expect(existsSync(r.cwd)).toBe(true);
-  expect((await git(r.cwd, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/修复登录页的闪退");
-  // The same title again: the branch is checked out in the first one's worktree: the next free number (D415).
-  const again = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t2", "修复登录页的闪退", data);
+  expect((await git(r.cwd, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe(old);
+  // The same name again: the branch is checked out in the first one's worktree: the next free number (D415).
+  const again = await planPlace({ kind: "repo", device: "local", repoPath: repo, branch: old }, "t2", "修复登录页的闪退", data);
   expect(again.place).toMatchObject({ branch: "ducter/修复登录页的闪退-2", worktree: join(data, "ducter", "worktrees", "repo", "修复登录页的闪退-2") });
+  // Unnamed: the ASCII fallback, never the title's own script.
+  const none = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t3", "修复登录页的闪退", data);
+  expect(none.place).toMatchObject({ branch: "ducter/task-t3", worktree: join(data, "ducter", "worktrees", "repo", "task-t3") });
 });

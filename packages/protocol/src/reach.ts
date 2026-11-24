@@ -58,6 +58,27 @@ export const CHALLENGE_PATH = "/.well-known/ducter-home";
 /** What the home signs: never a bare nonce, so the key signs nothing else by accident. */
 export const challengeText = (nonce: string) => `ducter-home\n${nonce}`;
 
+/**
+ * D520: whether the home still knows a device's credential, asked when its socket was refused.
+ * A refused upgrade alone proves nothing (a proxy answers 502 while the home restarts), so a
+ * device leaves its pairing only on this answer, signed by the pinned key over its own nonce.
+ * live: the credential works; revoked: the home disconnected this device (`ducter devices`);
+ * unknown: the home has no such credential (another home's, or its devices were reset).
+ */
+export type DeviceStanding = "live" | "revoked" | "unknown";
+export const STANDING_PATH = "/.well-known/ducter-device";
+export interface StandingProof {
+  v: 1;
+  standing: DeviceStanding;
+  /** The device id the offered credential names ("" when it names none). */
+  device: string;
+  key: string;
+  fp: string;
+  sig: string;
+}
+/** What the home signs for a standing: never a bare nonce, and never a challenge's text. */
+export const standingText = (standing: DeviceStanding, device: string, nonce: string) => `ducter-device\n${standing}\n${device}\n${nonce}`;
+
 export const normalizeBase = (url: string): string => url.trim().replace(/\/+$/, "");
 
 /** A way's kind from its address alone (a ts.net name is the tailnet; anything else a domain). */

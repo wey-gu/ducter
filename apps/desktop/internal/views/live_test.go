@@ -84,10 +84,7 @@ func dialWith(t *testing.T, url, token string, lang i18n.Lang) *liveHarness {
 		for {
 			select {
 			case st := <-status:
-				app.Status = st
-				if st == client.Disconnected {
-					app.Failed = true
-				}
+				app.Linked(st, nil)
 			case cursor <- s.Cursor:
 			default:
 				return

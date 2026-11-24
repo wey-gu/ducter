@@ -140,7 +140,7 @@ import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { createChannels, type ChannelDeps, type Channels } from "./channels/index.ts";
 import { homeIdentity, okNonce } from "./home-key.ts";
 import { addWay, bookHas, createReach, removeWay, viaOf, type ReachWatch } from "./reach-book.ts";
-import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
+import { CHALLENGE_PATH, STANDING_PATH } from "@ducter/protocol/src/reach.ts";
 import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { createAgentSetup, installAndWait, realAgentSetupSys } from "./agent-setup.ts";
@@ -2476,6 +2476,18 @@ export function startCore(opts: CoreOptions = {}): Core {
         const n = url.searchParams.get("n");
         if (!okNonce(n)) return new Response("bad nonce", { status: 400 });
         return Response.json(identity.prove(n), { headers: { "cache-control": "no-store" } });
+      }
+      // D520: a device whose socket was refused asks whether its credential still stands here.
+      // Only this signed answer may send it back to pairing; a refused upgrade alone never does
+      // (a proxy says 502 while the home restarts).
+      if (url.pathname === STANDING_PATH) {
+        const n = url.searchParams.get("n");
+        if (!okNonce(n)) return new Response("bad nonce", { status: 400 });
+        const a = req.headers.get("authorization") ?? "";
+        const token = req.headers.get("x-ducter-device") ?? (a.startsWith("Bearer ") ? a.slice(7).trim() : "");
+        if (!token) return new Response("no credential", { status: 400 });
+        const s = devices.standing(token);
+        return Response.json(identity.attest(s.standing, s.device, n), { headers: { "cache-control": "no-store" } });
       }
       // The phone/web client's own files are public (web.ts); everything it talks to is not.
       const page = await webStatic(req);

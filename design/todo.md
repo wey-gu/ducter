@@ -18,6 +18,18 @@ line.
   resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
   into its own folder while running is spawned by its bare name.
 
+## The link to the home, after D520 (`system.md` Desktop)
+
+- [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
+  and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
+  *Trigger:* the first release with D520 on the author's Mac.
+- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
+  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
+  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
+  the same card.
+- [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
+  6.8 GB peak): its own investigation. *Trigger:* next.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with

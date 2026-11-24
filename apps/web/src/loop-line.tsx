@@ -9,7 +9,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { A } from "./app.ts";
 import { K, keepFacts, KeepMark, keepBeatWords, keepOfTask, openKeep } from "./keep.tsx";
-import { interval, RepeatGlyph } from "./past.tsx";
+import { rhythm, RepeatGlyph } from "./past.tsx";
 import { spoken } from "./format.ts";
 import { FactPill } from "./controls.tsx";
 import { soon } from "./onhand.tsx";
@@ -30,7 +30,7 @@ export function loopFacts(task: Task, now = Date.now()): { keep?: string; words:
   }
   const r = task.card?.rounds;
   if (!r) return;
-  const words = [r.everyMs ? t("og.round.every", interval(r.everyMs)) : "", r.paused ? t("keep.beat.paused") : r.nextAt ? t("keep.beat.next", soon(r.nextAt, now)) : t("keep.beat.running")].filter(Boolean);
+  const words = [r.everyMs ? t("og.round.every", rhythm(r.everyMs)) : "", r.paused ? t("keep.beat.paused") : r.nextAt ? t("keep.beat.next", soon(r.nextAt, now)) : t("keep.beat.running")].filter(Boolean);
   return { words };
 }
 

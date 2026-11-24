@@ -58,7 +58,7 @@ func (a *App) loopFactsOf(task *store.Task) (f loopFacts, ok bool) {
 	r := task.Card.Rounds
 	f.rounds = true
 	if r.EveryMs > 0 {
-		f.words = append(f.words, a.L.T("og.round.every", a.duration(time.Duration(r.EveryMs)*time.Millisecond)))
+		f.words = append(f.words, a.L.T("og.round.every", a.rhythm(time.Duration(r.EveryMs)*time.Millisecond)))
 	}
 	switch {
 	case r.Paused:

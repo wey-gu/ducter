@@ -133,8 +133,8 @@ function inSentence(field: KeepField, v?: string): string {
 }
 
 /** One change said in words, never an arrow (D533): 你把每 45 分钟一轮改成了每小时一轮 / You changed every 45 minutes to every hour. */
-export function editSentence(by: "you" | "partner", e: KeepEdit): string {
-  const who = by === "you" ? t("keep.edit.you") : A.S.personaName;
+export function editSentence(by: "you" | "partner", e: KeepEdit, persona?: string): string {
+  const who = by === "you" ? t("keep.edit.you") : A.nameOf(persona);
   if (e.field === "said") return t("keep.edit.said", who);
   const shown = ["speaks", "until", "limits", "where", "agent"].includes(e.field);
   if ((e.from || shown) && (e.to || shown)) return t("keep.edit.line", who, inSentence(e.field, e.from), inSentence(e.field, e.to));
@@ -142,9 +142,9 @@ export function editSentence(by: "you" | "partner", e: KeepEdit): string {
 }
 
 /** A change as lines among its rounds (core already took undone ones away and folded close ones together). */
-export function editLines(r: KeepRound): string[] {
+export function editLines(r: KeepRound, persona?: string): string[] {
   const ed = r.edit;
-  return ed ? ed.edits.map((e) => editSentence(ed.by, e)) : [];
+  return ed ? ed.edits.map((e) => editSentence(ed.by, e, persona)) : [];
 }
 
 /** The rule a field stands under on the page. */
@@ -338,7 +338,7 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
       <div class="kp-rd edit">
         <TimeCol at={r.at} text={colTime(A.L, r.at)} />
         <span class="body">
-          {editLines(r).map((l, i) => (
+          {editLines(r, k.persona).map((l, i) => (
             <span key={i} class="did">
               {l}
             </span>

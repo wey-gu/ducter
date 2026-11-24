@@ -66,7 +66,7 @@ describe("a task in rounds keeps who it is (D544)", () => {
     const { l, task } = await home();
     const f = l.loopFacts(task("t_loose"))!;
     expect(f.keep).toBeUndefined();
-    expect(f.words[0]).toBe("每 1 小时 一轮".replace("1 小时 ", "1 小时")) ;
+    expect(f.words[0]).toBe("每小时一轮"); // D533: a rhythm as people say it, never 每 1 小时
     expect(l.loopFacts(task("t_plain"))).toBeUndefined();
   });
   test("the line takes no tap while the head is in view, and comes in by the enter motion", () => {

@@ -17,6 +17,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -152,8 +153,9 @@ func (a *App) partnerNeeds(p protocol.PartnerInfo) int {
 	return needsOf(a.needsYou(), p.ID)
 }
 
-// SwitchPartner shows another partner's conversation: the window starts
-// over on it with a new hello; the next launch and reconnects keep it.
+// SwitchPartner shows another partner's conversation (D541): the one held
+// (or peeked) is drawn in the next frame, and a hello with its cursor asks
+// only for what is newer; the next launch and reconnects keep it.
 func (a *App) SwitchPartner(id string) {
 	if id == a.shownPartnerID() {
 		return
@@ -167,17 +169,24 @@ func (a *App) SwitchPartner(id string) {
 	if name == "" {
 		return
 	}
-	partners := a.S.Partners
-	a.holdRail() // D517: the list keeps its numbers until the welcome
+	a.holdRail() // D517: no figure hops while the switch settles
+	from := a.shownPartnerID()
 	a.Local.SetPartner(id)
-	a.forgetShown()
-	a.S.Partners, a.S.PersonaName = partners, name
+	a.keepShown(from, id)
+	a.S.PersonaName = name
 	a.Route = RouteConversation
 	persona := id
 	if id == protocol.DefaultPartner {
 		persona = ""
 	}
-	a.send(protocol.Hello{T: "hello", Persona: persona, Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
+	hello := protocol.Hello{T: "hello", Persona: persona, Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop", Gzip: true}
+	if cur := a.S.Cursor; cur > 0 {
+		hello.Cursor = &cur
+	}
+	a.sw.to, a.sw.sameSock = id, a.S.Welcomed && a.Status == client.Connected
+	if a.Send != nil {
+		_ = a.Send(hello) // never the outbox: a hello is the link's own
+	}
 }
 
 // PartnerFor is the persona a hello asks for (main.go's client reads it at

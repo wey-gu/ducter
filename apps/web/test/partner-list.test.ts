@@ -103,10 +103,12 @@ describe("D513: the list of partners", () => {
     expect(fn("PartnerRowItem")).not.toContain("title=");
     expect(fn("PartnersBack")).not.toContain("title=");
   });
-  test("D517: the list stays still on a switch: the chosen pebble glides, the conversation comes in", () => {
+  test("D517, D541: the list stays still on a switch: the chosen pebble glides, the conversation shows in place", () => {
     expect(blocks(".pl-knob")).toMatch(/transform:\s*translateY\(calc\(var\(--at, 0\)/);
     expect(blocks(".pl-knob")).toMatch(/transition:\s*transform 420ms var\(--spring-soft\)/);
-    expect(src("main.tsx")).toContain('class={A.manyPartners() ? "pane conv conv-in" : "pane conv"}');
+    // D541: the pane is never keyed by whose it is (the bar and the composer stay); no entrance.
+    expect(src("main.tsx")).toContain('<section class="pane conv" aria-label={t("nav.conversation")}>');
+    expect(css).not.toContain("conv-in");
     // Each row's number holds while the switch waits for its welcome.
     expect(src("app.ts")).toContain("if (partner && this.railHeld && !this.S.welcomed) return this.railHeld[partner] ?? 0;");
   });
@@ -118,7 +120,6 @@ describe("D513: the list of partners", () => {
   test("D517: every motion of the list is still under Reduce Motion", () => {
     const m = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .pl-knob, .pl-hop { transition: none; }"));
     expect(m).toContain(".pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }");
-    expect(m).toContain(".conv-in { animation: none; }");
   });
   test("tokens only, and every word in both languages without a dot join", () => {
     const tail = css.slice(css.indexOf("D513: 伙伴们 / Your partners, as a messaging app"));

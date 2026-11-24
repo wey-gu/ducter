@@ -149,7 +149,9 @@ func (a *App) conversation(c *ui.Context) {
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	// D254: the list and the pebble over its foot share one pane.
 	a.readBack() // D305: the reply to a message sent by voice, read aloud
-	pane := ui.Column(c.Key("convpane")).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
+	// D541: each partner's list its own element, so the place a held
+	// conversation comes back to is its own (the bar and the composer, outside it, stay).
+	pane := ui.Column(c.Key("convpane:" + a.shownPartnerID())).Grow(1).MinHeight(0).ObserveInput(a.voiceObserve)
 	a.toastsOver(pane) // D527: toasts centre over the conversation, beside the list of partners
 	pane.Children(func() {
 		ui.List(c, &a.list, len(rows), func(i int) {
@@ -197,7 +199,7 @@ func (a *App) conversation(c *ui.Context) {
 				})
 			})
 		}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Children(func() {
-			if len(rows) == 0 && a.S.Welcomed {
+			if len(rows) == 0 && a.S.Welcomed && a.sw.to == "" { // D541: not before a switch is answered
 				a.emptyConversation(c)
 			}
 		})

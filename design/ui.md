@@ -353,6 +353,7 @@ ms, bounce 0.08), across 300 ms (`--t-across`), hero 440 ms (`--t-hero` on `--ea
 | go deeper (conversation → On hand → task) | page in from 28 pt on the push spring, its fade on a quick ease-out (`EnterDur`); the page left recedes 10, opaque under it | a full push from the trailing edge; the page left recedes a third and dims | the pane's page in from 28px; the one left recedes and fades |
 | come back | the reverse | the page left slides off the trailing edge on top | the reverse |
 | the card you opened | On hand's row (held on hover or focus) grows into the task's head (`Match` + `Fly`), and the head goes back into it | the row's `.tmain` and the head share `hero` | the same |
+| one partner to the next (the list of partners, ⌥⌘1–4; D541) | not a move in depth: the conversation is shown in place at once, where it was left (no fade, no rise); the knob glides (D517); the bar's face and name change where they stand; bar and composer stay | the same (from the list, the phone's row goes deeper as D513 has it) | the same |
 | one task to the next (rail, ⌘⇧], j/k; D343) | not a move in depth: nothing travels and no card flies; the task's column cross-fades in place on 140 ms ease-out (`Nav.Switch`), the head's words changing where they stand; bar and rail stay; reduced motion: at once | the page cross-fades in place (`--t-switch` 140 ms, ease-out) | the same |
 | a place beside another | page 14 toward its mark; the knob (its own piece under the marks) slides there | — | the knob goes to Devices or Settings while their sheet is over the board |
 | the bar | held still against its page (a pose turned back); its words cross-fade | named `bar`: stays, cross-fades | — (two bars) |
@@ -448,7 +449,8 @@ ledge), one element gliding from row to row on a spring (420 ms, bounce about 0.
 figure 6% taller; hover is a light sunken ground; no tooltip. A figure hops once (700 ms) when
 something new comes from its partner. D517: 272 wide from 1200 on the Mac and 1360 on the web;
 under that 88 wide, each figure with its name under it (11/700). Reduce Motion: no glide, no
-breath, no blink, no hop.
+breath, no blink, no hop. D541: a pick shows that partner's conversation in place in the next
+frame, held or peeked (no fade, no rise, never blank); the bar and the composer don't move.
 On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
 tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
 **‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no

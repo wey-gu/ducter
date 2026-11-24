@@ -1472,6 +1472,15 @@ type ChannelHistoryReq struct {
 	Limit     int    `json:"limit,omitempty"`
 }
 
+// PartnerPeekReq asks for another partner's newest stretch (D541), answered
+// with a partner_peek frame (Persona, Events, HeadSeq, More): a switch to it
+// draws at once, and its hello's cursor carries on from there.
+type PartnerPeekReq struct {
+	T       string `json:"t"` // "partner_peek"
+	Persona string `json:"persona"`
+	Limit   int    `json:"limit,omitempty"`
+}
+
 // TaskIndexReq asks for a task's session index (D320): all of it, or its
 // turns from FromSeq on (the first seq of the last turn the client holds).
 type TaskIndexReq struct {
@@ -3411,7 +3420,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result", "partner_peek":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "past_steps_result", "past_forked":

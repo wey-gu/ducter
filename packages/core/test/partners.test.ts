@@ -250,6 +250,39 @@ test("each socket shows one partner's conversation; the other's words never reac
   expect(msgs(home.frames, m)).toEqual([["channel", "ship the release"]]);
 });
 
+test("D541: partner_peek gives another partner's newest stretch to the person's client, and a hello with its cursor carries on from there with only what is newer", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, partners: true });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger() {} });
+  expect(core.partners.add({ name: "小家", look: "sage" }).ok).toBe(true);
+  for (let i = 0; i < 80; i++) core.log.append({ stream: "channel:p2", origin: "user", kind: "user_msg", body: { text: `家 ${i}` } as Bodies["user_msg"] });
+  core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "ship the release" } as Bodies["user_msg"] });
+  const home = await client(core); // shows the default's
+  const n = home.frames.length;
+  home.send({ t: "partner_peek", persona: "p2", limit: 50 });
+  const peek = (await home.until((f) => f.t === "partner_peek", n)) as Extract<ServerFrame, { t: "partner_peek" }>;
+  expect(peek.persona).toBe("p2");
+  expect(peek.events).toHaveLength(50);
+  expect(peek.more).toBe(true);
+  expect(peek.events.every((e) => e.stream === "channel")).toBe(true);
+  expect((peek.events.at(-1)!.body as Bodies["user_msg"]).text).toBe("家 79");
+  // Still the default's socket: what the default hears comes, the other's doesn't.
+  const m = home.frames.length;
+  core.log.append({ stream: "channel:p2", origin: "user", kind: "user_msg", body: { text: "家 80" } as Bodies["user_msg"] });
+  core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "and the notes" } as Bodies["user_msg"] });
+  await home.until((f) => f.t === "events" && f.events.some((e) => (e.body as Bodies["user_msg"]).text === "and the notes"), m);
+  expect(msgs(home.frames, m)).toEqual([["channel", "and the notes"]]);
+  // The switch: from the peek's last seq, only what is newer.
+  const k = await home.hi({ persona: "p2", cursor: peek.events.at(-1)!.seq });
+  expect(msgs(home.frames, k)).toEqual([["channel", "家 80"]]);
+  // No such partner: refused.
+  const e = home.frames.length;
+  home.send({ t: "partner_peek", persona: "nobody" });
+  expect(await home.until((f) => f.t === "error", e)).toMatchObject({ t: "error" });
+});
+
 test("partner_add and partner_set over the socket: every socket hears the change; a refusal says why to the asker only", async () => {
   const t = tempDir();
   stops.push(t.cleanup);

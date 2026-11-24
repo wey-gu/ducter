@@ -35,6 +35,9 @@ var LongOutage = 30 * time.Second
 // the connect card shows.
 func (a *App) Linked(st client.Status, err error) {
 	a.Status = st
+	if st != client.Connected {
+		a.sw.sameSock = false // D541: a new socket asks again for what it hears
+	}
 	switch st {
 	case client.Connecting:
 		a.linkTry = a.Now()

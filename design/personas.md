@@ -84,7 +84,7 @@ A family that needs privacy from each other needs separate homes.
   only (On hand and an opened task are the person's, not a partner's).
 - **Alive and still (D517).** The list never moves on a switch (its numbers are held until the new
   welcome): the chosen pebble glides to the row picked on a spring and the chosen figure stands a
-  touch taller; only the conversation comes in. Each figure breathes and blinks in its own clay, out
+  touch taller; the conversation changes in place, at once (D541). Each figure breathes and blinks in its own clay, out
   of step with the others, and hops once when something new comes from it (never the one shown).
   The number is a clay pebble in the needs-you colours on its ledge. Reduce Motion stills it all.
 - **The number is the person's one count's (D517).** A row's number is that partner's part of what
@@ -108,8 +108,16 @@ A family that needs privacy from each other needs separate homes.
   that partner's conversation (web push `#p=<id>/d=<id>`, the Mac's notice by its id).
 - A switch is per device: this Mac can show the home partner while the phone shows the work one.
   It is remembered on the device, survives a reconnect and a relaunch.
-- Underneath: a switch is a new hello with `persona`; the socket then shows that conversation
-  (as its `channel`), and the client starts over on it (no glance of another partner is painted).
+- **Instant, as a messaging app switches chats (D541).** The other partner's conversation is there in
+  the frame the click lands in, where it was left: its place in the list, its draft, its unsent
+  messages. No fade, no rise; the bar's face and name change where they stand; the bar and the
+  composer never move and keep the keyboard. Nothing blank, nothing "connecting", On hand untouched.
+- Underneath (D541): each conversation a window or page has shown stays held; once connected, each
+  other partner's newest 50 events are asked for (`partner_peek`), so one never shown draws at once
+  too. A switch is a new hello with `persona` and the cursor of what is held: the home sends only
+  what is newer, and frames of the conversation left still on the way are dropped until its welcome.
+  What is the person's (On hand, tasks, devices, settings) is never swapped. A partner never shown
+  on a home before D541 waits for its welcome, with nothing of another's painted.
 
 ## Meeting a partner (D497)
 

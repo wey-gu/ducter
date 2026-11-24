@@ -2010,7 +2010,25 @@ function timeGap(prev: Entry | undefined, e: Entry): boolean {
   return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
 }
 
+/** D541: the bar and the composer stay mounted through a partner switch (they never move, and the
+ *  composer keeps the keyboard); only the messages between them are the partner's own, made anew for
+ *  each, landing where the reader was in it. */
 export function Conversation() {
+  return (
+    <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
+      <Top />
+      {/* D381: what is pinned, under the bar. */}
+      <PinStrip />
+      {/* D410: pinned apps, one tap each. */}
+      <PinnedApps />
+      <ConvBody key={A.S.persona || "shown"} />
+      <Composer />
+    </>
+  );
+}
+
+function ConvBody() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
@@ -2031,12 +2049,6 @@ export function Conversation() {
   useTalkFeed(rows);
   return (
     <>
-      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
-      <Top />
-      {/* D381: what is pinned, under the bar. */}
-      <PinStrip />
-      {/* D410: pinned apps, one tap each. */}
-      <PinnedApps />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => (follow.onScroll(e.currentTarget as HTMLDivElement), older.onScroll(e.currentTarget as HTMLDivElement))}>
         <OlderWait />
         <div class="spacer" />
@@ -2083,7 +2095,6 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
-      <Composer />
     </>
   );
 }

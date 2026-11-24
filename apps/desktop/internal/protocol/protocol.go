@@ -1041,6 +1041,9 @@ type TaskCard struct {
 	// Rounds (D498, D427): a task in rounds Ducter keeps; On hand stands it
 	// under 一直在跑 / Ongoing and says its rhythm.
 	Rounds *TaskRounds `json:"rounds,omitempty"`
+	// PRs (D508): the pull requests it made or took over, where each
+	// stands; a finished task whose PR is open is not done.
+	PRs []TaskPR `json:"prs,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.

@@ -14,7 +14,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
-import { canBeOne, cutAtWordEnd, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
+import { canBeOne, cutAtWord, cutAtWordEnd, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { HeldOpen, TaskGroups } from "../task-groups.ts";
@@ -732,7 +732,8 @@ export function createHandover(d: HandoverDeps): Handover {
     return device === "local" ? { kind: "none" } : { kind: "none", device };
   }
   const projectOf = (place: HeldOpen["place"], places: PlaceChoice[]) => (place && place.kind === "repo" ? (places.find((p) => p.place.kind === "repo" && p.place.repoPath === place.repoPath && (p.place.device || "local") === (place.device || "local"))?.name ?? place.repoPath.split("/").pop() ?? "") : "");
-  const titleOf = (t: string) => t.replace(/\s+/g, " ").trim().slice(0, 80);
+  // D508: a to-do's title whole (two lines on a card hold about 200 columns), cut only at a word's end.
+  const titleOf = (t: string) => cutAtWord(t, 200); // newtask.ts TITLE_MAX
   /** D395: each repository's place on that computer, as the shared resolver says it (named: that computer). */
   async function foundOn(items: SourceItemRef[], device: string): Promise<Map<string, HeldOpen["place"]>> {
     const out = new Map<string, HeldOpen["place"]>();

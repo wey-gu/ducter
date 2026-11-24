@@ -250,7 +250,7 @@ func (a *App) outsideLine(task *store.Task) (line string, more int) {
 func (a *App) resultActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
-	if !task.CanIntegrate() {
+	if !task.CanIntegrate() || hasPR(task) { // D508: a PR holds the branch
 		return
 	}
 	base := p.BaseBranch

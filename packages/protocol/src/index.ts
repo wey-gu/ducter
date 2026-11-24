@@ -998,6 +998,10 @@ export interface TaskCard {
   /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
    *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
   rounds?: import("./past.ts").TaskRounds;
+  /** D508: the pull requests it made or took over, where each stands at Ducter's last look (core's
+   *  owned looks, D483, D496). A finished task whose PR is open is not done: On hand stands it under
+   *  that PR's state (pr-state.ts). */
+  prs?: import("./pr-state.ts").TaskPR[];
 }
 
 /**
@@ -3153,7 +3157,11 @@ export interface OwnedSeen {
   head?: string;
   /** The head whose CI ending was told. */
   ciFor?: string;
-  state?: "open" | "closed" | "merged";
+  /** D508: not_ours: a PR a report named whose branch isn't the task's (it isn't watched). */
+  state?: "open" | "closed" | "merged" | "not_ours";
+  /** D508: how Ducter came to watch it when the task didn't declare it: its own done report named it
+   *  (checked against its branch at the first look), or Ducter opened it as the task's draft PR. */
+  from?: "report" | "integrate";
   /** Comment and review ids already told (bounded). */
   ids?: string[];
   /** D496: the failed checks already told for `head` (a failure is news before every check ends). */
@@ -3234,3 +3242,4 @@ export interface LendFrame {
   name?: string;
 }
 export * from "./names.ts";
+export * from "./pr-state.ts";

@@ -38,6 +38,9 @@ import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
 import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
+import { hasPR, PrLine, prRowOf } from "./onhand-pr.tsx";
+import { prOf } from "@ducter/protocol/src/pr-state.ts";
+import { cutAtWord } from "@ducter/protocol";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -139,6 +142,10 @@ function timeOf(task: Task, now = Date.now()): string {
 
 /** A repo task's draft PR or merge from Ducter, in a word. */
 function prWord(task: Task): string {
+  // D508: once Ducter watches its PR, the PR says it: 已合并 when merged; nothing while open (the
+  // row's line says where it is).
+  const own = prOf(task.card?.prs);
+  if (own) return own.state === "merged" ? t("onhand.pr.merged") : "";
   const i = task.card?.integrated;
   if (task.acted?.ok && task.acted.action === "merge") return t("onhand.pr.merged");
   if (task.acted?.ok && task.acted.action === "open_pr") return t("onhand.pr.draft");
@@ -192,9 +199,14 @@ export function boardParts(lanes: Task[][], now = Date.now()) {
   const mending = [...done, ...waiting].filter((x) => !!mendingOf(x));
   const stopped = waiting.filter((x) => stoppedWait(x, now) && !mending.includes(x));
   const failed = done.filter((x) => attention(x) === "failed" && !mending.includes(x));
-  const today = done.filter((x) => doneToday(x, now));
-  const earlier = done.filter((x) => attention(x) !== "failed" && !doneToday(x, now));
-  return { stopped, failed, mending, waiting: waiting.filter((x) => !stopped.includes(x) && !mending.includes(x)), today, earlier };
+  // D508: a finished task whose PR is open is not done: ready to merge stands in 等你 (the merge is
+  // the person's), any other open phase waits in 在等; only merged or closed is done.
+  const pr = (x: Task) => (mending.includes(x) ? undefined : prRowOf(x)?.stands);
+  const ready = done.filter((x) => pr(x) === "needs");
+  const prWait = done.filter((x) => pr(x) === "waiting");
+  const today = done.filter((x) => doneToday(x, now) && !pr(x));
+  const earlier = done.filter((x) => attention(x) !== "failed" && !doneToday(x, now) && !pr(x));
+  return { stopped, ready, failed, mending, waiting: [...waiting.filter((x) => !stopped.includes(x) && !mending.includes(x)), ...prWait], today, earlier };
 }
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
@@ -521,7 +533,7 @@ export function stateCounts(lens: string, now = Date.now()): number[] {
   const stopped = boardGroups(A.S.onHand?.groups, (id) => lanes.findIndex((x) => x.some((t) => t.id === id)), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined)).filter((b) => b.stopped).length;
   return [
     // D467: what stopped (a wait nothing brings back, a task that didn't work out) needs the person too.
-    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0) + parts.stopped.length + parts.failed.length,
+    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0) + parts.stopped.length + parts.ready.length + parts.failed.length,
     l[1]!.length + parts.mending.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     parts.waiting.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
     // D467: 今天做完 counts what it lists: finished today (a done being checked included); a failed
@@ -819,7 +831,11 @@ function useKeys(room: Room) {
 export function finishedOf(task: Task): Finished | undefined {
   if (!finished(task)) return undefined;
   const failed = attention(task) === "failed";
-  return { name: shortTitle(title(task)) || t("task.unknown"), taskIds: [task.id], failedIds: failed ? [task.id] : [], openId: task.id };
+  const p = placeOf(task);
+  const integrated = !!task.card?.integrated || !!(task.acted?.ok && (task.acted.action === "merge" || task.acted.action === "open_pr"));
+  // D508: a repo task with a branch and no PR offers its merge and a draft PR in ⋯.
+  const integrate = !failed && p.kind === "repo" && canIntegrate(task) && !integrated && !task.acting && !hasPR(task) ? { base: p.baseBranch ?? "main" } : undefined;
+  return { name: shortTitle(title(task)) || t("task.unknown"), taskIds: [task.id], failedIds: failed ? [task.id] : [], openId: task.id, ...(integrate ? { integrate } : {}) };
 }
 
 type RowProps = { task: Task; room: Room; state?: boolean; v: string; focus: boolean; sel: boolean; opened: boolean };
@@ -955,8 +971,10 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const pr = prWord(task);
   const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
   const u = A.S.untilOf(task);
+  // D508: a finished task whose PR is open is not done: its row says where the PR is.
+  const prr = room !== "rail" ? prRowOf(task) : undefined;
   const st = statusOf(task.id, a, task.card?.updatedAt);
-  const fresh = st === "new";
+  const fresh = st === "new" && !prr;
   const arrived = a !== "blocked" && A.S.justArrived(task.id);
   if (fresh && !cheered.has(task.id)) cheered.set(task.id, Date.now());
   const cheer = fresh && Date.now() - (cheered.get(task.id) ?? 0) < 1400;
@@ -992,7 +1010,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // row then says when the last one was (a fact; silence means fine while it moves).
   const lastAt = working && !mend ? Math.max(lastStepAt(task) || 0, turnStart(task) || 0) || NaN : NaN;
   const stepQuiet = Number.isFinite(lastAt) && Number.isFinite(lastStepAt(task)) && Date.now() - lastAt >= QUIET_STEP_MS;
-  const k: MarkKind = stopped ? "needs" : failed ? "failed" : rounds && !working ? "rounds" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
+  const k: MarkKind = prr ? (prr.stands === "needs" ? "needs" : "waiting") : stopped ? "needs" : failed ? "failed" : rounds && !working ? "rounds" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
   // D467: a waiting line that only says the title again gives way to what the task last said, else
   // when it looks again, else nothing (the heartbeat says when it is back).
   // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
@@ -1000,7 +1018,12 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
   if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
-  const beat = rounds
+  const pb = placeOf(task);
+  const beat = task.acting
+    ? t(`result.acting.${task.acting}`, pb.kind === "repo" ? (pb.baseBranch ?? "main") : "")
+    : prr
+    ? ago(A.L, at) // D508: when it last moved; where the PR is, is the row's own line
+    : rounds
     ? roundsBeat(task, rounds, working)
     : working
     ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
@@ -1013,11 +1036,15 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
           : at && finished(task)
             ? t("onhand.card.done", soon(at))
             : timeOf(task);
-  const about = spoken(A.L, title(task), harnessName(harnessOf(task)));
+  // D508: the title whole in its two lines, else cut at a word's end; the tooltip says only what the
+  // row doesn't (the whole title, when it was cut), never the title, agent and computer again.
+  const full = title(task);
+  const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
+  const about = named !== full ? full : undefined;
   return (
     <div
       ref={ref}
-      class={`ocard a-${a}${stopped ? " stopped" : ""}${quiet ? " quiet" : ""}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`}
+      class={`ocard a-${a}${prr ? ` pr-${prr.stands}` : ""}${stopped ? " stopped" : ""}${quiet ? " quiet" : ""}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`}
       data-row={task.id}
     >
       <button class="omain" onClick={onClick} title={about}>
@@ -1025,7 +1052,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         <span class="otx">
           <span class="o1">
             <PartnerMark persona={task.card?.persona} />
-            <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
+            <span class="t">{named}</span>
             {!stacked && <Facts class="meta" items={meta} />}
             {!stacked && ch && (ch.adds > 0 || ch.dels > 0) && (
               <span class="stat">
@@ -1037,7 +1064,9 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             {!stacked && finished(task) && <Outcome task={task} />}
             {!stacked && task.card?.source && <SourceChip src={task.card.source} small plain short />}
           </span>
-          {roundFacts.length > 0 ? (
+          {prr ? (
+            <PrLine task={task} said={prr.said} stands={prr.stands} />
+          ) : roundFacts.length > 0 ? (
             <span class={`o2 rounds${rounds?.health ? " late" : ""}`}>
               <Facts class="w" items={roundFacts} />
             </span>
@@ -1090,13 +1119,18 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(task)} onClick={() => runFinished("retry", fin, room === "full")} />
         </span>
+      ) : prr?.stands === "needs" ? (
+        // D508: the one thing a ready PR needs: its merge, on GitHub.
+        <span class="oacts on">
+          <Btn kind="secondary" size="sm" label={t("onhand.prs.merge")} about={full} onClick={() => window.open(prr.pr.url, "_blank", "noopener")} />
+        </span>
       ) : w?.limit?.handTo ? (
         // D471 (D297): a limit used up, with another agent that can take it now: its row offers it.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(w.limit.handTo.harness))} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "handoff")} />
         </span>
       ) : (
-        room !== "phone" && <RowActs task={task} />
+        room !== "phone" && <RowActs task={task} room="card" />
       )}
       </span>
       {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. */}
@@ -1122,18 +1156,12 @@ export function StatusFace({ s, failed, handing, title: label }: { s: Status; fa
 
 /** The one next step a row offers on hover (pointer, wide): merge or a draft PR for finished work
  *  with a branch, Pause for work under way. */
-function RowActs({ task }: { task: Task }) {
+function RowActs({ task, room }: { task: Task; room?: "card" }) {
   const a = attention(task);
   const p = placeOf(task);
-  const integrated = !!task.card?.integrated || !!(task.acted?.ok && (task.acted.action === "merge" || task.acted.action === "open_pr"));
-  if (task.acting) return <span class="tacts on"><span class="busy">{t(`result.acting.${task.acting}`, p.kind === "repo" ? (p.baseBranch ?? "main") : "")}</span></span>;
-  if (finished(task) && canIntegrate(task) && !integrated && p.kind === "repo")
-    return (
-      <span class="tacts">
-        <Btn kind="text" size="sm" label={t("result.merge", p.baseBranch ?? "main")} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
-        <Btn kind="text" size="sm" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
-      </span>
-    );
+  // D508: a merge or a draft PR under way says so where the row's time stands (TaskCard's beat); 合进
+  // {base} and 开草稿 PR are in the row's ⋯ (finishedOf), and never offered once a PR holds the branch.
+  if (task.acting) return room === "card" ? null : <span class="tacts on"><span class="busy">{t(`result.acting.${task.acting}`, p.kind === "repo" ? (p.baseBranch ?? "main") : "")}</span></span>;
   const put = a === "blocked" ? A.S.pendingDecision(task.id) : undefined;
   if (put?.later)
     return (
@@ -1306,6 +1334,7 @@ export function OnHandList({ room }: { room: Room }) {
   // today's; what finished before folds under it. Beside an opened task the rail keeps the lanes.
   const parts = boardParts([[], [], ungrouped(keep(lanes[LANE.waiting]!)), ungrouped(keep(lanes[LANE.done]!))]);
   const stoppedTs = rail ? [] : parts.stopped;
+  const readyTs = rail ? [] : parts.ready; // D508: a PR ready to merge: the merge is the person's
   const failedTs = rail ? [] : parts.failed;
   // D471: every task is one row in its section, said once; the head names none of them.
   const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting.filter((x) => !inRounds(x));
@@ -1336,13 +1365,13 @@ export function OnHandList({ room }: { room: Room }) {
   const doneOpen = !seenFolds || doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
   const gIds = (lane: number) => groupsIn(lane).flatMap((b) => b.rows.flatMap((r) => (r.kind === "task" && b.ids.has(r.taskId) ? [r.taskId] : [])));
-  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...ongoing.map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
-    const lane = stoppedTs.some((x) => x.id === id) || failedTs.some((x) => x.id === id) ? 0 : laneOf(id);
+  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...readyTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...ongoing.map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
+    const lane = stoppedTs.some((x) => x.id === id) || readyTs.some((x) => x.id === id) || failedTs.some((x) => x.id === id) ? 0 : parts.waiting.some((x) => x.id === id) ? LANE.waiting : laneOf(id);
     return show(lane + 1) || inGroup.has(id);
   });
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const openN = A.defaultable().length;
-  const shown = needs.length + stoppedTs.length + failedTs.length + working.length + waiting.length + ongoing.length + done.length + earlier.length + inGroup.size;
+  const shown = needs.length + stoppedTs.length + readyTs.length + failedTs.length + working.length + waiting.length + ongoing.length + done.length + earlier.length + inGroup.size;
   return (
     <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
@@ -1355,8 +1384,8 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + failedTs.length > 0 && show(1) && (
-        <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length + stoppedTs.length + failedTs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
+      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + readyTs.length + failedTs.length > 0 && show(1) && (
+        <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length + stoppedTs.length + readyTs.length + failedTs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
             <Rows tasks={needs} room={room} />
@@ -1376,7 +1405,7 @@ export function OnHandList({ room }: { room: Room }) {
                 return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} cards />;
               })}
               {/* D467: what stopped and what didn't work out, said plainly with the one action. */}
-              <Rows tasks={[...stoppedTs, ...failedTs]} room={room} cards />
+              <Rows tasks={[...stoppedTs, ...readyTs, ...failedTs]} room={room} cards />
             </>
           )}
         </Section>
@@ -1950,7 +1979,7 @@ function Find() {
 export function bulkOf(ids: Iterable<string>) {
   const ts = [...ids].map((id) => A.S.tasks.get(id)).filter((x): x is Task => !!x);
   const integrated = (x: Task) => !!x.card?.integrated || !!(x.acted?.ok && (x.acted.action === "merge" || x.acted.action === "open_pr"));
-  const merge = ts.filter((x) => finished(x) && canIntegrate(x) && !integrated(x) && !x.acting);
+  const merge = ts.filter((x) => finished(x) && canIntegrate(x) && !integrated(x) && !x.acting && !hasPR(x)); // D508
   return {
     all: ts,
     merge,

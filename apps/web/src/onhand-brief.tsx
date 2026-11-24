@@ -8,6 +8,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import { sayable } from "@ducter/protocol/src/say.ts";
+import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
 import { ago, clock } from "./format.ts";
@@ -84,6 +85,9 @@ export function echoes(titleText: string, words: string): boolean {
 /** D467: what a finished task made, as an object: the PR, from its evidence, else a merge or
  *  draft PR made from Ducter, else a PR number its summary names on a repo task. */
 export function outcomeOf(task: Task): { label: string; url?: string } | undefined {
+  // D508: the PR Ducter watches for it first (its card's).
+  const own = prOf(task.card?.prs);
+  if (own) return { label: own.pr.slice(own.pr.lastIndexOf("#")), url: own.url };
   const r = reportOf(task);
   for (const e of [...(r?.evidence ?? []), ...task.evidence]) {
     const m = /\/pull\/(\d+)/.exec(e.ref ?? "");

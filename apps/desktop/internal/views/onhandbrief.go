@@ -100,6 +100,14 @@ var prNumber = regexp.MustCompile(`(?i)(?:PR\s*)?#(\d+)`)
 // number and link), from its report's evidence, its merge or draft PR, or
 // a PR named in its result.
 func outcomeOf(task *store.Task) (label, url string) {
+	// D508: the PR Ducter watches for it first (its card's).
+	if task.Card != nil {
+		if p := store.PROf(task.Card.PRs); p != nil {
+			if i := strings.LastIndex(p.PR, "#"); i >= 0 {
+				return p.PR[i:], p.URL
+			}
+		}
+	}
 	if r := task.Report(); r != nil {
 		for _, e := range r.Evidence {
 			if i := strings.Index(e.Ref, "/pull/"); i > 0 {

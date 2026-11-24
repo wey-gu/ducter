@@ -262,7 +262,7 @@ func (a *App) infoActs(c *ui.Context, task *store.Task, base string) {
 		}
 		merged = merged || f.Action == "merge"
 	}
-	can := finished(task) && task.CanIntegrate() && !merged && task.Acting == ""
+	can := finished(task) && task.CanIntegrate() && !merged && task.Acting == "" && !hasPR(task) // D508
 	if !(can || task.Acting != "" || pr != "" || merged) {
 		return
 	}

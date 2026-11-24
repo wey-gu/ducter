@@ -23,6 +23,7 @@ import type { CoreRegistry } from "./registry.ts";
 import { langOfText } from "./lang.ts";
 import { words } from "@ducter/protocol";
 import { prIdentity } from "@ducter/protocol/src/owned.ts";
+import { prSaid } from "@ducter/protocol/src/pr-state.ts";
 
 /** How often a task's owned PRs are looked at. */
 export const OWNED_EVERY_MS = 5 * 60_000;
@@ -140,16 +141,29 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   const wordsOf = (taskId: string) => words(W, langOfText(tasks.get(taskId)?.title));
 
   let fresh = false;
-  const declare = (taskId: string, refs: string[] | undefined, at: string) => {
+  const declare = (taskId: string, refs: string[] | undefined, at: string, from?: OwnedSeen["from"]) => {
     for (const r of refs ?? []) {
       const pr = prIdentity(r);
       if (!pr) continue;
       const m = owns.get(taskId) ?? new Map<string, OwnedSeen>();
       if (!m.has(pr)) {
-        m.set(pr, { since: at });
+        m.set(pr, { since: at, ...(from ? { from } : {}) });
         fresh = true;
       }
       owns.set(taskId, m);
+    }
+  };
+  // D508: a PR the task didn't declare is still its own when its done report names it (a task that
+  // opened a PR and said so; checked against the task's branch at the first look, since a report
+  // may name a PR it only read) or when Ducter opened it as the task's draft PR (D216).
+  const adopt = (e: LogEvent) => {
+    if (e.kind === "report") {
+      const r = e.body as Bodies["report"];
+      if (r.state !== "done" || tasks.get(r.taskId)?.place.kind !== "repo") return;
+      declare(r.taskId, (r.evidence ?? []).map((x) => x.ref).filter((x) => !!prIdentity(x)), e.ts, "report");
+    } else if (e.kind === "job_status") {
+      const b = e.body as Bodies["job_status"];
+      if (b.taskId && b.act === "open_pr" && b.state === "done" && b.ref) declare(b.taskId, [b.ref], e.ts, "integrate");
     }
   };
   const noteRef = (taskId: string, ref: string | undefined) => {
@@ -161,8 +175,9 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   };
   const ownCommit = (taskId: string, sha: string) => [...(gitRefs.get(taskId) ?? [])].some((r) => sha.toLowerCase().startsWith(r) || r.startsWith(sha.toLowerCase()));
 
-  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["checkpoint", "owned_news"] })) {
-    if (e.kind === "checkpoint") {
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["checkpoint", "owned_news", "report", "job_status"] })) {
+    if (e.kind === "report" || e.kind === "job_status") adopt(e);
+    else if (e.kind === "checkpoint") {
       const b = e.body as Bodies["checkpoint"];
       declare(b.taskId, b.owns, e.ts);
       noteRef(b.taskId, b.gitRef);
@@ -185,7 +200,11 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     const w = wordsOf(taskId);
     const lines: string[] = [];
     const next: OwnedSeen = { ...seen, ids: [...(seen.ids ?? [])] };
-    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, state: .state, merged: .merged, draft: .draft, merge: .mergeable_state, awaiting: [.requested_reviewers[]?.login]}"])) as { head?: string; state?: string; merged?: boolean; draft?: boolean; merge?: string; awaiting?: string[] };
+    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, ref: .head.ref, state: .state, merged: .merged, draft: .draft, merge: .mergeable_state, awaiting: [.requested_reviewers[]?.login]}"])) as { head?: string; ref?: string; state?: string; merged?: boolean; draft?: boolean; merge?: string; awaiting?: string[] };
+    // D508: a PR its report named is its own only when it was made from the task's branch.
+    const place = tasks.get(taskId)?.place;
+    const branch = place?.kind === "repo" ? place.branch : undefined;
+    if (seen.from === "report" && !seen.head && head?.ref && branch && head.ref !== branch) return { lines: [], next: { since: seen.since, from: "report", state: "not_ours" } };
     const since = new Date(Date.parse(seen.since)).toISOString().slice(0, 19) + "Z";
     const told = new Set(next.ids);
     const mark = (id: string) => {
@@ -298,6 +317,14 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     return true;
   };
 
+  const moved = (a: OwnedSeen, b: OwnedSeen) => {
+    if (a.state !== b.state) return true;
+    if (!a.standing || !b.standing) return !!a.standing !== !!b.standing;
+    const x = prSaid({ state: "open", standing: a.standing });
+    const y = prSaid({ state: "open", standing: b.standing });
+    return JSON.stringify(x) !== JSON.stringify(y);
+  };
+
   const inTurn = (taskId: string) => {
     const c = tasks.get(taskId);
     return !!c && c.residency === "hot" && (c.attention === "working" || c.attention === "queued");
@@ -339,6 +366,9 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
           }
           if (!lines.length) {
             m.set(pr, got.next);
+            // D508: where it stands changed with nothing to tell (checks went on, a reviewer was
+            // asked): logged quietly, so On hand says where the PR is now.
+            if (moved(seen, got.next)) log.append({ stream: `task:${taskId}`, origin: "system", kind: "owned_news", body: { taskId, pr, news: [], seen: got.next } });
             continue;
           }
           if (inTurn(taskId)) {
@@ -371,7 +401,16 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
       if (fresh && !stopped) clock.setTimeout(() => void sweep(), FIRST_LOOK_MS);
       return;
     }
+    if (e.kind === "job_status") {
+      fresh = false;
+      adopt(e);
+      if (fresh && !stopped) clock.setTimeout(() => void sweep(), FIRST_LOOK_MS);
+      return;
+    }
     if (e.kind !== "report") return;
+    fresh = false;
+    adopt(e);
+    if (fresh && !stopped) clock.setTimeout(() => void sweep(), FIRST_LOOK_MS);
     // Another task's report whose evidence names an owned PR (its identity, parsed from the ref).
     const r = e.body as Bodies["report"];
     const named = new Set((r.evidence ?? []).map((x) => prIdentity(x.ref)).filter((x): x is string => !!x));

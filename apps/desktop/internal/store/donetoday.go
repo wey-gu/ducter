@@ -11,9 +11,10 @@ import (
 // ("done", or D467 a done whose check or merge is still to come, which
 // every list shows as done; never failed) at a moment on now's day, in
 // now's location. A wait that ended unmet is not a task done: it is
-// 没等到 / Didn't happen, said on its own.
-func IsDoneToday(a protocol.Attention, finished, now time.Time) bool {
-	if (a != protocol.Done && a != protocol.DoneClaimed) || finished.IsZero() {
+// 没等到 / Didn't happen, said on its own. D508: a task whose PR is still
+// open (prOpen) is not done: its work goes on there.
+func IsDoneToday(a protocol.Attention, finished, now time.Time, prOpen bool) bool {
+	if (a != protocol.Done && a != protocol.DoneClaimed) || finished.IsZero() || prOpen {
 		return false
 	}
 	at := finished.In(now.Location())
@@ -42,7 +43,8 @@ func (t *Task) FinishedAt() time.Time {
 func DoneToday(tasks []*Task, now time.Time) int {
 	n := 0
 	for _, t := range tasks {
-		if IsDoneToday(t.Attention(), t.FinishedAt(), now) {
+		pr, _, _ := t.PRGoesOn()
+		if IsDoneToday(t.Attention(), t.FinishedAt(), now, pr != nil) {
 			n++
 		}
 	}

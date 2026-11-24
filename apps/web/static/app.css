@@ -21256,3 +21256,49 @@ html[data-text-size="large"] .brand-mark > svg {
   .top .partner-switch { gap: 6px; }
   .top .partner-pick::before { content: ""; position: absolute; inset: -6px -3px; }
 }
+
+/* ---------- D508: a PR's state on its row; a hover's actions in a slot of their own ---------- */
+/* A finished task whose PR is open says where the PR is: the phase in the state's ink, then its
+   facts, each its own element, wrapping. */
+.ocard .o2.prl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  white-space: normal;
+}
+.ocard .o2.prl .ph {
+  font-weight: 600;
+  color: var(--waiting-ink);
+  white-space: nowrap;
+}
+.ocard .o2.prl.needs .ph {
+  color: var(--needs-ink);
+}
+.ocard .o2.prl .pf {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+/* A row's hover actions (× and ⋯, or Pause) stand in a slot inside the row, so they never cover
+   the time and never run past the sheet's edge. */
+.onhand-list.room-full .ocards:not(:has(.ocol > .on)) .ocard {
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+}
+.onhand-list.room-full .ocards:not(:has(.ocol > .on)) .ocard .ocol {
+  position: static;
+  justify-content: flex-end;
+  padding: 0 10px 0 0;
+  transform: none;
+}
+.onhand-list.room-full .ocard .fin-acts {
+  right: 10px;
+}
+@media (hover: hover) {
+  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
+    display: block;
+  }
+}
+/* The title stays whole in its two lines; what follows it (project, +a −d, its PR and to-do) may take a third. */
+.onhand-list:not(.room-rail) .ocard .o1 {
+  -webkit-line-clamp: 3;
+}

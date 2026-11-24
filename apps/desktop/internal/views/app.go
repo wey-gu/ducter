@@ -632,7 +632,7 @@ func (a *App) View(c *ui.Context) {
 		case a.Route == RouteApps:
 			a.appsView(c)
 		default:
-			a.conversation(c)
+			a.conversationWithPartners(c) // D513: the list of partners at its left, with more than one
 		}
 	}))
 	if a.S.Welcomed {

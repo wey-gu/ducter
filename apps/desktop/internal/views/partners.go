@@ -3,8 +3,8 @@ package views
 // D309: 伙伴们 / Your partners (design/personas.md), the same as the web's
 // (apps/web/src/partners.tsx). With one partner nothing here shows. D497:
 // with more, each partner is the clay figure in its own clay (theme.LookClay),
-// the others sit beside the shown one in the bar as face, name and their
-// own number, and a click on one (or ⌥⌘1–⌥⌘4) shows its conversation. Settings
+// D513: the others are in the list of partners at the conversation's left
+// (partners_list.go), and a click on one (or ⌥⌘1–⌥⌘4) shows its conversation. Settings
 // › 伙伴 lists them, changes a look and adds one (a name, what it looks
 // after and a colour). D486: what each looks after shows under its name, a
 // partner's name and that line change in place, and another partner is
@@ -297,64 +297,6 @@ func (a *App) passedLine(c *ui.Context, key, from string) {
 	})
 }
 
-// partnerSwitch is the other partners beside the shown one in the bar
-// (D497): each its own face in its own clay and its name, never a bare
-// face behind a tooltip; one with its own questions waiting carries their
-// number. Hover says what it looks after. ⌥⌘1–⌥⌘4 switch too.
-func (a *App) partnerSwitch(c *ui.Context) {
-	// D486: the partner this window showed was removed: it shows the default's.
-	if id := a.S.Persona; id != "" && id != protocol.DefaultPartner && a.S.Partners != nil && a.S.Welcomed {
-		found := false
-		for _, p := range a.S.Partners {
-			found = found || p.ID == id
-		}
-		if !found {
-			a.SwitchPartner(protocol.DefaultPartner)
-		}
-	}
-	if !a.manyPartners() {
-		return
-	}
-	t := a.T
-	shown := a.shownPartnerID()
-	ui.Row(c.Key("partner-switch")).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Margin(0, 0, 0, t.S3).Role(ui.RoleGroup).Label(a.L.T("partners.title")).Children(func() {
-		for i, p := range a.S.Partners {
-			if p.ID == shown {
-				continue
-			}
-			needs := a.partnerNeeds(p)
-			label := a.L.T("partners.switch", p.Name)
-			if needs > 0 {
-				label = a.L.T("partners.switch.asks", p.Name, needs)
-			}
-			tip := label + " (⌥⌘" + fmt.Sprint(i+1) + ")"
-			if p.About != "" {
-				tip += "\n" + a.L.T("partners.about.shown", p.About)
-			}
-			id := p.ID
-			b := ui.Row(c.Key("pick:"+p.ID)).Gap(6).AlignItems(ui.Center).Padding(2, t.S2+2, 2, 3).Radius(999).Height(30).
-				Background(t.SurfaceSunken).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Tooltip(tip).Focusable()
-			ink := t.InkSoft
-			if b.Hovered() || b.Pressed() {
-				b.Background(t.SurfaceSunken.Mix(t.Ink, 0.06))
-				ink = t.Ink
-			}
-			b.Children(func() {
-				a.stone(c, "pick-"+p.ID, p.Look, 24)
-				uiText(c, p.Name).FontSize(13).FontWeight(600).TextColor(ink).SingleLine().AccessHidden(true)
-				if needs > 0 {
-					ui.Box(c.Key("n:"+p.ID)).MinWidth(18).Height(18).Padding(0, 5).Radius(9).Background(t.NeedsYou.Surface).AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true).Children(func() {
-						uiText(c, fmt.Sprint(needs)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
-					})
-				}
-			})
-			if b.Clicked() {
-				a.SwitchPartner(id)
-			}
-		}
-	})
-}
-
 // partnerKeys: ⌥⌘1–⌥⌘4 show the first to fourth partner (D497), in the
 // order Settings lists them, the default first.
 func (a *App) partnerKeys(c *ui.Context) {
@@ -454,42 +396,51 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 					}
 					ps.editing = ""
 				}
-				ui.Row(c.Key("partner-row:"+id)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Children(func() {
-					a.stone(c, "row-"+id, p.Look, 40)
-					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
-						if ps.editing == id {
-							ui.TextInput(c.Key("input:partner-name:"+id), &ps.editName).Label(a.L.T("partners.rename")).
-								FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
-							ui.TextInput(c.Key("input:partner-about:"+id), &ps.editAbout).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
-								FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
-						} else {
-							uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
-							if p.About != "" {
-								uiText(c, a.L.T("partners.about.shown", p.About)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+				// D513: three lines, as on the web: who it is, its colours, then
+				// its actions, the last two under its name. One line gave the
+				// buttons the width and squeezed the words on a phone.
+				ui.Column(c.Key("partner-row:"+id)).Gap(t.S2).Padding(t.S3, t.S5).Children(func() {
+					ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
+						a.stone(c, "row-"+id, p.Look, 40)
+						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
+							if ps.editing == id {
+								ui.TextInput(c.Key("input:partner-name:"+id), &ps.editName).Label(a.L.T("partners.rename")).
+									FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
+								ui.TextInput(c.Key("input:partner-about:"+id), &ps.editAbout).Placeholder(a.L.T("partners.about.placeholder")).Label(a.L.T("partners.about")).
+									FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(save)
+							} else {
+								uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
+								if p.About != "" {
+									uiText(c, a.L.T("partners.about.shown", p.About)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+								}
 							}
-						}
-						if p.ID == shown {
-							uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
-						}
+							if p.ID == shown {
+								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
+							}
+						})
+					})
+					ui.Column(c).Padding(0, 0, 0, 52).Children(func() {
 						if l := a.lookPick(c, id, p.Look); l != "" && l != p.Look {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
 						}
 					})
-					if ps.editing == id {
-						if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
-							save()
+					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 52).Children(func() {
+						if ps.editing == id {
+							if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
+								save()
+							}
+							return
 						}
-						return
-					}
-					if a.button(c, a.L.T("partners.change"), btnText, t.ControlSM, t.Surface) {
-						ps.editing, ps.editName, ps.editAbout, ps.removing = id, p.Name, p.About, ""
-					}
-					if id != protocol.DefaultPartner && a.button(c, a.L.T("partners.remove"), btnText, t.ControlSM, t.Surface) {
-						ps.removing, ps.editing = id, ""
-					}
-					if p.ID != shown && a.button(c, a.L.T("partners.switch", p.Name), btnSecondary, t.ControlSM, t.Surface) {
-						a.SwitchPartner(id)
-					}
+						if p.ID != shown && a.button(c, a.L.T("partners.switch", p.Name), btnSecondary, t.ControlSM, t.Surface) {
+							a.SwitchPartner(id)
+						}
+						if a.button(c, a.L.T("partners.change"), btnText, t.ControlSM, t.Surface) {
+							ps.editing, ps.editName, ps.editAbout, ps.removing = id, p.Name, p.About, ""
+						}
+						if id != protocol.DefaultPartner && a.button(c, a.L.T("partners.remove"), btnText, t.ControlSM, t.Surface) {
+							ps.removing, ps.editing = id, ""
+						}
+					})
 				})
 			}
 		}

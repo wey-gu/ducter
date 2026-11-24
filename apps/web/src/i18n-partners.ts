@@ -40,6 +40,11 @@ export const partnersWords: { zh: Record<string, string>; en: Record<string, str
     "partners.added": "%s 来了。",
     "partners.switch": "换到%s",
     "partners.switch.asks": "换到%s，有 %d 个等你",
+    "partners.here": "%s，正在聊",
+    "partners.you": "你：%s",
+    "partners.empty": "还没聊过",
+    "partners.back": "所有伙伴",
+    "partners.back.asks": "所有伙伴，别处有 %d 个等你",
   },
   en: {
     "partners.title": "Your partners",
@@ -80,5 +85,10 @@ export const partnersWords: { zh: Record<string, string>; en: Record<string, str
     "partners.added": "%s is here.",
     "partners.switch": "Switch to %s",
     "partners.switch.asks": "Switch to %s, %d need you",
+    "partners.here": "%s, talking now",
+    "partners.you": "You: %s",
+    "partners.empty": "Nothing said yet",
+    "partners.back": "All your partners",
+    "partners.back.asks": "All your partners, %d need you elsewhere",
   },
 };

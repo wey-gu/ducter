@@ -159,6 +159,40 @@ const msgs = (frames: ServerFrame[], from = 0) =>
     .filter((e) => e.kind === "user_msg")
     .map((e) => [e.stream, (e.body as Bodies["user_msg"]).text]);
 
+test("D513: a partner's last line for the list: the newest words of its own conversation, the person's marked, one line, clipped", () => {
+  const { log, partners } = rig();
+  partners.add({ name: "小家" });
+  expect(partners.last("p2")).toBeUndefined();
+  log.append({ stream: "channel:p2", origin: "user", kind: "user_msg", body: { text: "周六上午带小米去看牙\n帮我约一下" } as Bodies["user_msg"] });
+  expect(partners.last("p2")).toMatchObject({ text: "周六上午带小米去看牙 帮我约一下", you: true });
+  log.append({ stream: "channel:p2", origin: "partner", kind: "decision", body: { decisionId: "d1", question: "约周六 9:30 吗？", reversible: true } as Bodies["decision"] });
+  expect(partners.last("p2")).toEqual({ text: "约周六 9:30 吗？", at: expect.any(String) });
+  log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "x".repeat(200) } as Bodies["ai_msg"] });
+  const d = partners.last("default")!;
+  expect([...d.text].length).toBe(80);
+  expect(d.text.endsWith("…")).toBe(true);
+  // Never another partner's words: each line is its own conversation's.
+  expect(partners.last("p2")!.text).toBe("约周六 9:30 吗？");
+});
+
+test("D513: with more than one partner the partners frame carries each one's last line, and a new message updates it; never with one", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, partners: true });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger() {} });
+  core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "ship the release" } as Bodies["user_msg"] });
+  const one = await client(core);
+  expect((one.frames.find((f) => f.t === "partners") as Extract<ServerFrame, { t: "partners" }>).partners[0]!.last).toBeUndefined();
+  expect(core.partners.add({ name: "小家", look: "sage" }).ok).toBe(true);
+  const home = await client(core);
+  const first = home.frames.find((f) => f.t === "partners") as Extract<ServerFrame, { t: "partners" }>;
+  expect(first.partners.map((p) => p.last?.text)).toEqual(["ship the release", undefined]);
+  const n = home.frames.length;
+  core.log.append({ stream: "channel:p2", origin: "partner", kind: "ai_msg", body: { text: "记下了，周六下午两点提醒你。" } as Bodies["ai_msg"] });
+  await home.until((f) => f.t === "partners" && f.partners[1]?.last?.text === "记下了，周六下午两点提醒你。", n);
+});
+
 test("each socket shows one partner's conversation; the other's words never reach it, and only the default's wake the default partner", async () => {
   const t = tempDir();
   stops.push(t.cleanup);

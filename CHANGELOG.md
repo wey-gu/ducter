@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.35 - 2026-11-24
+
+<!-- whats-new
+zh: 几个伙伴像聊天软件一样排成一列，谁在等你一眼看到
+en: Your partners in one list, like a chat app; see who needs you
+-->
+
+**Your partners, side by side**
+- With more than one partner, they sit in a list: on a computer down the left of the
+  conversation, on the phone one tap back. Each shows its face, how many wait for you and its
+  last line. With one partner nothing changes.
+- On the phone, the partner settings no longer squeeze names into a narrow column.
+
 ## 0.1.34 - 2026-11-24
 
 <!-- whats-new

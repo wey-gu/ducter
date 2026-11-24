@@ -596,7 +596,17 @@ export function createWsHandler(deps: WsDeps) {
     if (of !== (ws.data.partner ?? DEFAULT_PARTNER)) return undefined;
     return e.stream === "channel" ? e : { ...e, stream: "channel" };
   };
-  const partnersFrame = (ws: ServerWebSocket<WsData>): ServerFrame & { t: "partners" } => ({ t: "partners", partners: deps.partners?.list() ?? [], shown: ws.data.partner ?? DEFAULT_PARTNER });
+  // D513: with more than one partner, each carries the last thing said in its conversation, for the
+  // person's list of partners (this socket is the person's; no partner's own turn ever sees it).
+  const partnersList = () => {
+    const ps = deps.partners?.list() ?? [];
+    if (ps.length < 2 || !deps.partners?.last) return ps;
+    return ps.map((p) => {
+      const last = deps.partners!.last(p.id);
+      return last ? { ...p, last } : p;
+    });
+  };
+  const partnersFrame = (ws: ServerWebSocket<WsData>): ServerFrame & { t: "partners" } => ({ t: "partners", partners: partnersList(), shown: ws.data.partner ?? DEFAULT_PARTNER });
   let partnersTimer: ReturnType<typeof setTimeout> | undefined;
   /** Every live socket gets a fresh partners frame (soon, once for a burst). */
   const partnersChanged = () => {
@@ -627,7 +637,8 @@ export function createWsHandler(deps: WsDeps) {
     }
     if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
     // D309: a question opened or answered in any conversation changes the partners' counts.
-    if (deps.partners?.on() && (e.kind === "decision" || e.kind === "decision_resolved") && partnerOfStream(e.stream)) partnersChanged();
+    // D513: with more than one, words said in any conversation change its last line in the list.
+    if (deps.partners?.on() && partnerOfStream(e.stream) && (e.kind === "decision" || e.kind === "decision_resolved" || ((e.kind === "user_msg" || e.kind === "ai_msg" || e.kind === "ack") && deps.partners.list().length > 1))) partnersChanged();
   });
 
   // What the partner is doing while the user waits (D104). Presence, not history: never logged.

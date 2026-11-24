@@ -12,11 +12,11 @@ import { registerWorker } from "./push-client.ts";
 import { deviceFromApp, inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { listenForCodeCopy } from "./conv-copy.ts";
-import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
+import { Avatar, Conversation, OnHand, Places, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
-import { partnerKey } from "./partners.tsx";
+import { PartnerList, partnerKey } from "./partners.tsx";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
@@ -115,6 +115,8 @@ function App() {
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
+          {/* D513: with more than one partner, the list of them at the conversation's left. */}
+          {!split && <PartnerList at="side" />}
           <section class="pane conv" aria-label={t("nav.conversation")}>
             <Conversation />
           </section>
@@ -124,7 +126,8 @@ function App() {
         </div>
       ) : (
         <>
-          {r.name === "conv" && <Conversation />}
+          {/* D513: a phone's list of partners is the level above the conversation. */}
+          {r.name === "conv" && (A.partnersOpen && A.manyPartners() ? <PartnerList at="home" places={<Places onHand />} /> : <Conversation />)}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
           {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}
@@ -313,8 +316,10 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   if (page)
     edgeSwipe(
       page,
-      () => !wideNow() && A.route.name !== "conv" && !A.sheet && !A.viewer && !A.fileView,
+      // D513: in a conversation with more than one partner, the swipe goes up to the list of them.
+      () => !wideNow() && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
       () => {
+        if (A.route.name === "conv") return A.showPartners();
         if (history.length > 1 && location.hash) return history.back();
         history.replaceState(null, "", location.pathname);
         A.applyRoute({ name: "conv" });

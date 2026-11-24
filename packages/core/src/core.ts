@@ -957,6 +957,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D292: the conversation's language, else this computer's (nothing said yet).
     lang: () => talkLang(settings, log) ?? normalizeTag(Intl.DateTimeFormat().resolvedOptions().locale) ?? "en",
     personaName: () => persona.name,
+    // D516: every partner in the one thread of each chat app (the bot is the default's).
+    partners: () => (partners.on() ? partners.list().map((p) => ({ id: p.id, name: p.name })) : []),
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
       return v?.state === "on" && v.hostname ? `https://${v.hostname}/` : undefined;

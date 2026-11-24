@@ -65,6 +65,13 @@ shaped like a key or a token is replaced by **（这里不方便发，在 Ducter
 cut at 1,800 characters with **……后面还有，在 Ducter 里看全文。** Pictures the person sends come in as
 D206 media (uploaded to the home from the attachment file); other files are not read.
 
+**Several partners (D516).** The bridge rides the Mac app's socket, which shows one partner, so
+iMessage speaks for the partner that Mac shows: its iMessage words keep `via` (core's `send` on a
+second partner's socket), the bridge takes them for its turn and answers there; in the partner's own
+Apple ID another partner than the default leads with its name (**小家：… / Home: …**, `Label`), as
+Message yourself always leads with the shown one's. The one-thread rules of `channels.md` §10 (a
+name first, a reply keeps, the thread holds) need the bridge's own connection to the home; owed.
+
 ## Mechanism (decided from evidence)
 
 - **Read** `~/Library/Messages/chat.db` read-only, through the `sqlite3` that ships with macOS

@@ -58,7 +58,9 @@ func startIMessage(app *views.App, win *mygo.Window, c *client.Client) *imessage
 			return ref.ID, err
 		},
 		Name: func() (n string) { onMain(func() { n = app.S.PersonaName }); return },
-		Lang: func() (l string) { onMain(func() { l = string(app.L.Lang) }); return },
+		// D516: iMessage speaks for the partner this Mac shows; another than the default says its name.
+		Label: func() (l string) { onMain(func() { l = app.ChatLabel() }); return },
+		Lang:  func() (l string) { onMain(func() { l = string(app.L.Lang) }); return },
 		Quiet: func() (q *protocol.QuietHours) {
 			onMain(func() {
 				if st := app.S.Settings; st != nil {

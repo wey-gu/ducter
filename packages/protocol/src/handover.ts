@@ -72,8 +72,9 @@ export interface HandWhere {
    * repo    {repo} 在这台上 / {repo} is on this one
    * home    the home (no folder for it anywhere)
    * picked  the person tapped it
+   * default D507: New tasks start names it (你设的默认 / Your default)
    */
-  why: "note" | "rule" | "repo" | "home" | "picked";
+  why: "note" | "rule" | "repo" | "home" | "picked" | "default";
   /** repo: the repository it holds; rule: the rule's words. */
   said?: string;
   /** Whether the set's repository is on this computer (a task there gets its folder). */
@@ -86,7 +87,8 @@ export interface HandWhere {
 export interface HandWho {
   /** A HarnessId; absent: {name} picks per task (the usual rules). */
   harness?: string;
-  why: "rule" | "usual" | "picked";
+  /** D507 default: New tasks start names it (never a pin: the pick still checks it can run there). */
+  why: "rule" | "usual" | "picked" | "default";
   said?: string;
 }
 

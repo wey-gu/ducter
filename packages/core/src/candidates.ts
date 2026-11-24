@@ -103,7 +103,8 @@ export interface CandidateInput {
   place?: Place;
   /** D157: a computer the user named ("在 MacBook 上做"), by name or id. */
   pinDevice?: string;
-  settings: Pick<Settings, "brain" | "taskAccounts">;
+  /** D507: newTasks, the person's New tasks start (where and who, preferred whenever they can do it). */
+  settings: Pick<Settings, "brain" | "taskAccounts" | "newTasks">;
   rules: RuleView[];
   /** Who does it now (the switch sheet marks it), and on which computer. */
   current?: { harness: string; model?: string; device?: string; uses?: "chrome" | "ducter" };
@@ -212,7 +213,10 @@ interface Row extends Candidate {
 }
 
 /** Steps of the ranking, in order; the index into Row.key. */
-const STEP = { ok: 0, now: 1, word: 2, access: 3, keeps: 4, continuity: 5, agent: 6, home: 7 } as const;
+const STEP = { ok: 0, now: 1, word: 2, access: 3, prefer: 4, keeps: 5, continuity: 6, agent: 7, home: 8 } as const;
+
+/** D507: the ruleId a pick's why carries when the person's New tasks start set it. */
+export const NEW_TASKS = "new_tasks";
 
 /** Every (computer, agent, model) row, best first. */
 function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
@@ -246,7 +250,11 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         // limit left (the agent's own rank, D89).
         // D416: an agent that is picked, never chosen, comes after every other one that can take it.
         const agent = tierScore(t, inp.work.kind) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20 - (HARNESSES[h.harness].pickOnly ? 1000 : 0);
-        const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
+        // D507: New tasks start, under the person's word in the moment and their rules, and under
+        // what the task needs (least access): their computer, then their agent.
+        const nt = inp.settings.newTasks;
+        const prefer = (nt?.where && isComputer(c, nt.where) ? 2 : 0) + (nt?.agent && t.harness === nt.agent ? 1 : 0);
+        const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, prefer, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
         const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
         all.push({
           harness: t.harness,
@@ -374,6 +382,9 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
   const other = all.find((r) => !r.blocked && r.comp.id !== c.id);
   if (!other) {
     // Nobody else can. Say what only this computer has.
+    // D507: a repository placed on the computer New tasks start names (its copy there, or cloned there).
+    const nt = inp.settings.newTasks;
+    if (inp.place?.kind === "repo" && nt?.where && isComputer(c, nt.where)) return { ...base, kind: "you", ruleId: NEW_TASKS };
     if (inp.place && (inp.place.kind === "repo" || inp.place.kind === "folder")) return { ...base, kind: "changes_here" };
     if (needs?.app) return { ...base, kind: "only_here", thing: "app", app: needs.app };
     if (needs?.phone) return { ...base, kind: "only_here", thing: "phone" };
@@ -396,6 +407,9 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
       if (top.uses === "chrome") return { ...base, kind: "signed_in", ...(needs?.site ? { site: needs.site } : {}) };
       if (needs?.signedIn) return { ...base, kind: "signed_in", ...(needs.site ? { site: needs.site } : {}) };
       return { ...base, kind: "no_signin" };
+    case STEP.prefer:
+      if (inp.settings.newTasks?.where && isComputer(c, inp.settings.newTasks.where)) return { ...base, kind: "you", ruleId: NEW_TASKS };
+      return { ...base, kind: "agent_here", agent: top.harness };
     case STEP.keeps:
       return { ...base, kind: "always_on", other: other.comp.name };
     case STEP.continuity:
@@ -505,6 +519,13 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
     const visible = !!best.needsSignIn || best.uses !== ideal.uses || (best.uses === "chrome" && ideal.uses !== "chrome");
     if (visible) best = ideal;
   }
+  // D507: New tasks start named an agent: the task says so, and says it when it couldn't be that one there.
+  const agent = inp.settings.newTasks?.agent;
+  if (agent) {
+    if (best.harness === agent) return pick(best, { kind: "rule", ruleId: NEW_TASKS, text: harnessName(agent) });
+    const b = all.find((c) => c.harness === agent && c.comp.id === best!.comp.id)?.blocked ?? "not_installed";
+    return pick(best, { ...movedWhy(agent, b), ruleId: NEW_TASKS, text: harnessName(agent) });
+  }
   // The brain's own account was the natural first choice but only its reserve is left: say it.
   const brain = best.comp.harnesses.find((x) => x.harness === inp.settings.brain.harness);
   if (best.harness !== inp.settings.brain.harness && brain && blockOf(brain, inp.settings) === "reserve") {
@@ -540,7 +561,8 @@ export function smartestFor(inp: CandidateInput & { current: { harness: string; 
  */
 export function kindDefaults(inp: Omit<CandidateInput, "work" | "rules">): KindDefault[] {
   const top = (kind: WorkKind) => {
-    const p = chooseBody({ ...inp, work: { title: "", kind }, rules: [] });
+    // D507: Ducter's own default, without New tasks start (the pane shows that apart).
+    const p = chooseBody({ ...inp, settings: { brain: inp.settings.brain, ...(inp.settings.taskAccounts ? { taskAccounts: inp.settings.taskAccounts } : {}) }, work: { title: "", kind }, rules: [] });
     return p && !("problem" in p) ? { harness: p.harness, ...(p.model ? { model: p.model } : {}) } : undefined;
   };
   const errand = top("errand");

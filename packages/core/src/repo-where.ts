@@ -5,7 +5,8 @@
 //
 // The order (D385's, generalized):
 //   1. a computer the person named in words (or the place's own device when the partner set one);
-//   2. a where-rule (a rule with a computer whose words match the work, D89/D372);
+//   2. a where-rule (a rule with a computer whose words match the work, D89/D372); then (D507)
+//      the computer New tasks start names, when it is awake and has a copy or its git can read it;
 //   3. a computer that has a clone of it: the one that can build first (a Mac, then a worker, then
 //      a bare server home), then the most recently touched copy;
 //   4. no clone anywhere: clone it, on the best computer whose own git can read it (its gh sign-in
@@ -50,6 +51,8 @@ export interface RepoWhereDeps {
   /** What a folder on that computer is (exists, a repo, its origin). */
   folder(device: string, path: string, ms: number): Promise<FolderInfo | "offline">;
   rules?(): RuleView[];
+  /** D507: the computer New tasks start names ("local" or a worker's id), when the person set one. */
+  prefer?(): string | undefined;
   now?(): number;
   keepMs?: number;
   askMs?: number;
@@ -71,8 +74,8 @@ export interface RepoAsk {
 export type RepoWhere =
   | {
       ok: true;
-      /** given: the caller's place checked out; named / rule / found: a clone there; clone: cloned there first. */
-      how: "given" | "named" | "rule" | "found" | "clone";
+      /** given: the caller's place checked out; named / rule / prefer (D507) / found: a clone there; clone: cloned there first. */
+      how: "given" | "named" | "rule" | "prefer" | "found" | "clone";
       place: RepoPlace;
       /** The computer's name, said to the person. */
       computer: string;
@@ -210,6 +213,15 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
           return { ok: false, why: "no_access", message: `${pinned.name} has no copy of ${shortRemote(want)} and its own git sign-in can't read it${copies.length ? `; ${copies.join(", ")} ${copies.length > 1 ? "have" : "has"} a copy` : ""}${only ? `, and the user said to do this work only on ${pinned.name}` : ""}.`, repo, asked: [pinned.name] };
         }
         // A where-rule's computer can't read it: one that has it, if any, is still better than none.
+      }
+      // D507: New tasks start names a computer: its copy there, else a clone there when its own git
+      // can read it. Asleep, away or unable to read it: the copies elsewhere decide, as before.
+      const preferred = pinned ? undefined : byId(d.prefer?.());
+      if (preferred?.online) {
+        const there = best(haveOn(preferred));
+        if (there) return { ok: true, how: "prefer", place: placeAt(preferred, there.h, a.given), computer: preferred.name, repo, ...also(preferred) };
+        const p = await ask(preferred, want, true);
+        if (p !== "offline" && p !== "old" && p.canRead === true) return { ok: true, how: "clone", place: clonePlace(preferred, want, a.given), computer: preferred.name, repo, ...also(preferred) };
       }
       const found = best(have);
       if (found) return { ok: true, how: "found", place: placeAt(found.c, found.h, a.given), computer: found.c.name, repo, ...also(found.c) };

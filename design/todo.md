@@ -9,6 +9,17 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## New tasks start, after D507 (`where.md` §22)
+
+- [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with
+  the MacBook. *Check:* a GitHub to-do handed over with Where hel and Who Codex runs on hel (a clone
+  there first when hel has none) and says **你设的默认**.
+- [ ] **A comprehension pass** on **你设的默认 / Your default** beside **按你的规则 / your rule**.
+- [ ] **"Not this computer"** as its own word ("别放本机"): today the partner sets the one other computer,
+  and asks when there are several. *Trigger:* a person with three computers says it.
+- [ ] **The iPhone and Android views** of the group (they read the web client's; a native pane would
+  need its own). *Trigger:* the phones get a native Settings pane.
+
 ## The same model another way, after D503 (`where.md` §21, research/219)
 
 - [ ] **A second account on the same computer.** A Ducter-owned config folder per extra account

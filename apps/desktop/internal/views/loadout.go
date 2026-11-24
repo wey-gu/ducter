@@ -696,6 +696,10 @@ func (a *App) tasksGroup(c *ui.Context) {
 			if d.Work == "errand" && errandRule {
 				continue
 			}
+			// D507: New tasks start naming an agent speaks for the built-in default.
+			if st := a.S.Settings; st != nil && st.NewTasks != nil && st.NewTasks.Agent != "" {
+				continue
+			}
 			if d.Work == "errand" {
 				a.tileRow(c, "default:errand", a.agentTile(c, d.Harness, false), a.L.T("loadout.default.errand", a.whoName(d.Harness, d.Model)), a.L.T("loadout.default.errand.line", a.padEnd(rest)), nil)
 			} else {
@@ -710,6 +714,133 @@ func (a *App) tasksGroup(c *ui.Context) {
 		a.footRow(c, "tasks", a.L.T("loadout.tasks.override"), nil)
 	})
 	a.saidLine(c, "tasks")
+}
+
+// taskComputers are the computers that run tasks (D507): the home and the
+// computers doing tasks for it, from the devices frame.
+func (a *App) taskComputers() []protocol.DeviceView {
+	var out []protocol.DeviceView
+	for _, d := range a.S.Devices {
+		if d.Kind != "phone" && (d.Home || len(d.Harnesses) > 0) {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// taskAgents are the AI agents signed in where tasks run, each once (the
+// home's alone with one computer).
+func (a *App) taskAgents() []string {
+	comps := a.taskComputers()
+	hs := a.readyAgents()
+	if len(comps) > 1 {
+		hs = nil
+		for _, d := range comps {
+			hs = append(hs, d.Harnesses...)
+		}
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, h := range hs {
+		if h.Installed && h.LoggedIn && !seen[h.Harness] {
+			seen[h.Harness] = true
+			out = append(out, h.Harness)
+		}
+	}
+	return out
+}
+
+// newTasksGroup is 新任务默认 / New tasks start (D507): where every new task
+// starts and who does it, set once, shown only where there is a choice (two
+// computers, two agents). 自动 / Automatic is Ducter's own pick. The partner's
+// new_tasks tool writes the same setting from the person's words.
+func (a *App) newTasksGroup(c *ui.Context) {
+	st := a.S.Settings
+	if st == nil {
+		return
+	}
+	comps := a.taskComputers()
+	agents := a.taskAgents()
+	var nt protocol.NewTasks
+	if st.NewTasks != nil {
+		nt = *st.NewTasks
+	}
+	idOf := func(d protocol.DeviceView) string {
+		if d.Home {
+			return "local"
+		}
+		return d.ID
+	}
+	whereSel, whoSel := 0, 0
+	whereLabels := []string{a.L.T("newtasks.auto")}
+	for i, d := range comps {
+		whereLabels = append(whereLabels, d.Name)
+		if nt.Where != "" && idOf(d) == nt.Where {
+			whereSel = i + 1
+		}
+	}
+	whoLabels := []string{a.L.T("newtasks.auto")}
+	for i, h := range agents {
+		whoLabels = append(whoLabels, harnessName(h))
+		if nt.Agent == h {
+			whoSel = i + 1
+		}
+	}
+	showWhere := len(comps) > 1 || whereSel > 0
+	showWho := len(agents) > 1 || whoSel > 0
+	if !showWhere && !showWho {
+		return
+	}
+	name := a.S.PersonaName
+	set := func(n protocol.NewTasks) {
+		v := n
+		a.S.Settings.NewTasks = &v
+		a.SetSettings(protocol.SettingsPatch{NewTasks: &v})
+	}
+	a.group(c, "newtasks", a.L.T("newtasks.title"), "", func() {
+		if showWhere {
+			line := a.L.T("newtasks.where.auto")
+			if whereSel > 0 {
+				line = a.L.T("newtasks.where.on", comps[whereSel-1].Name)
+			}
+			a.tileRow(c, "newtasks:where", nil, a.L.T("newtasks.where"), line, func() {
+				if i := a.choices(c, "newtasks-where", a.L.T("newtasks.where"), whereLabels, whereSel); i >= 0 && i != whereSel {
+					n := nt
+					n.Where = ""
+					said := a.L.T("said.newtasks.where.auto", name)
+					if i > 0 {
+						n.Where = idOf(comps[i-1])
+						said = a.L.T("said.newtasks.where", comps[i-1].Name)
+					}
+					set(n)
+					a.say("newtasks", said)
+				}
+			})
+		}
+		if showWho {
+			line := a.L.T("newtasks.who.auto")
+			var tile func()
+			if whoSel > 0 {
+				line = a.L.T("newtasks.who.on", harnessName(agents[whoSel-1]))
+				tile = a.agentTile(c, agents[whoSel-1], false)
+			}
+			a.tileRow(c, "newtasks:who", tile, a.L.T("newtasks.who"), line, func() {
+				if i := a.choices(c, "newtasks-who", a.L.T("newtasks.who"), whoLabels, whoSel); i >= 0 && i != whoSel {
+					n := nt
+					n.Agent = ""
+					said := a.L.T("said.newtasks.who.auto", name)
+					if i > 0 {
+						n.Agent = agents[i-1]
+						said = a.L.T("said.newtasks.who", harnessName(agents[i-1]))
+					}
+					set(n)
+					a.say("newtasks", said)
+				}
+			})
+		}
+		a.footRow(c, "newtasks", a.L.T("newtasks.foot"), nil)
+	})
+	a.saidLine(c, "newtasks")
 }
 
 // addGroup is 再添一个 AI agent / Add another AI agent, said once: the
@@ -799,6 +930,13 @@ func (a *App) whoLine(task *store.Task) (who, why string) {
 	w := task.Who()
 	if w == nil {
 		return who, ""
+	}
+	// D507: New tasks start named the agent (or one that couldn't take it here).
+	if w.Why.RuleID == "new_tasks" {
+		if w.Why.Kind == "rule" {
+			return who, a.L.T("who.why.newtasks")
+		}
+		return who, a.L.T("who.why.newtasks.away", harnessName(w.Why.From))
 	}
 	switch w.Why.Kind {
 	case "rule":
@@ -1207,6 +1345,12 @@ func (a *App) whoSentence(task *store.Task) string {
 	w := task.Who()
 	if w == nil {
 		return a.L.T("who.sentence", who)
+	}
+	if w.Why.RuleID == "new_tasks" { // D507
+		if w.Why.Kind == "rule" {
+			return a.L.T("who.sentence.newtasks", who)
+		}
+		return a.L.T("who.sentence.newtasks.away", who, harnessName(w.Why.From))
 	}
 	switch w.Why.Kind {
 	case "rule":

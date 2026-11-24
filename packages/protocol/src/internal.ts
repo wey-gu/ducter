@@ -895,7 +895,7 @@ export interface PhonePort {
 
 /** D395: task_open's pre-flight answer: the place to open in (checked, replaced, or a clone first), or what to tell the model. */
 export type PreflightResult =
-  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string; /** D476: the person's word on where this work runs, kept on the task. */ bound?: import("./index.ts").TaskBound }
+  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "prefer" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string; /** D476: the person's word on where this work runs, kept on the task. */ bound?: import("./index.ts").TaskBound }
   | { ok: false; error: string };
 
 /** D395: where a repository task works, resolved by code from the repository (core/src/repo-where.ts). */

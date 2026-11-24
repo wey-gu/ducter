@@ -649,6 +649,49 @@ export function neverPick<P extends { harness: string; model?: string; why: Body
 }
 
 /**
+ * D507: 新任务默认 / New tasks start, as the person said it in the conversation ("以后默认在 hel 上跑，
+ * 用 Codex"): the same setting Settings › Partner writes (Settings.newTasks). The partner judges the
+ * words; code only checks the names (a computer of this home, an agent that does tasks).
+ */
+export function registerNewTasksTool(mcp: CoreMcpHub, o: { settings: SettingsStore; computers: () => { id: string; name: string; home: boolean; aliases?: string[] }[] }) {
+  const agents = HARNESS_IDS.filter((h) => HARNESSES[h].task);
+  mcp.register(
+    "partner",
+    "new_tasks",
+    'The user\'s default for every new task from now on, said for all work, not a kind ("以后默认在 hel 上跑，用 Codex", "恢复自动"); Settings shows it as New tasks start. where: a [devices] name or "auto"; agent: an AI agent or "auto". Only what they said; the other stays. A kind of work is rule_save. Then one short line.',
+    {
+      type: "object",
+      properties: {
+        where: { type: "string" },
+        agent: { type: "string", enum: [...agents, "auto"] },
+      },
+    },
+    async (a: { where?: unknown; agent?: unknown }) => {
+      const cur = o.settings.get().newTasks ?? {};
+      const next: { where?: string; agent?: HarnessId } = { ...cur };
+      const comps = o.computers();
+      if (typeof a.where === "string" && a.where.trim()) {
+        const w = a.where.trim().toLowerCase();
+        if (w === "auto") delete next.where;
+        else {
+          const c = w === "local" ? comps.find((x) => x.home) : comps.find((x) => x.id.toLowerCase() === w || x.name.toLowerCase() === w || (x.aliases ?? []).some((n) => n.toLowerCase() === w));
+          if (!c) return { ok: false, error: `"${a.where}" is not a computer of this home. Its computers: ${comps.map((x) => x.name).join(", ")}.` };
+          next.where = c.home ? "local" : c.id;
+        }
+      }
+      if (typeof a.agent === "string" && a.agent) {
+        if (a.agent === "auto") delete next.agent;
+        else if (isHarnessId(a.agent) && HARNESSES[a.agent].task) next.agent = a.agent;
+        else return { ok: false, error: `${a.agent} isn't an AI agent that does tasks.` };
+      }
+      o.settings.set({ newTasks: next });
+      const where = next.where ? comps.find((x) => (x.home ? "local" : x.id) === next.where)?.name : undefined;
+      return { ok: true, newTasks: { where: where ?? "auto", agent: next.agent ?? "auto" }, note: "Saved; Settings shows it. Say it back in one short line in their words, nothing more." };
+    },
+  );
+}
+
+/**
  * D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with, as the
  * person said it in the conversation: the setting Settings › Partner writes (Settings.brain), the
  * model matched to its agent's live list on the home. It takes effect from the person's next

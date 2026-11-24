@@ -3,7 +3,7 @@
 // only where there is a choice, the reassurance only then), who does the tasks (one row per signed-in
 // AI agent, how Ducter picks, the override in a task), and one place to add another AI (an agent to
 // sign in, or a pasted key) with what it would give. Coins at the tile size; the tray is on Devices.
-import { FREE_TIERS, type DeviceHarness, type FreeBudget } from "@ducter/protocol";
+import { FREE_TIERS, HARNESSES, isHarnessId, type DeviceHarness, type FreeBudget } from "@ducter/protocol";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -183,7 +183,8 @@ export function TasksSection() {
   const rules = A.rules ?? [];
   // D372: the built-in default per kind of work, in literal words (errands, then the rest).
   // A rule about errands (to an agent, or never one) speaks for them: its default row steps aside.
-  const defaults = A.ruleDefaults.filter((d) => d.work !== "errand" || !rules.some((r) => r.kinds?.includes("errand")));
+  // D507: New tasks start naming an agent speaks for the built-in default (shown in its own group).
+  const defaults = s.newTasks?.agent ? [] : A.ruleDefaults.filter((d) => d.work !== "errand" || !rules.some((r) => r.kinds?.includes("errand")));
   const nameOf = (d: { harness: string; model?: string }) => (d.model ? t("who.name", harnessName(d.harness), modelName(d.model)) : harnessName(d.harness));
   const rest = defaults.find((d) => d.work === "rest");
   const note = ready.length === 1 ? t("loadout.tasks.only", harnessName(ready[0]!.harness)) : t("loadout.tasks.how", name);
@@ -245,6 +246,73 @@ export function TasksSection() {
         )}
       </Group>
       <Said k="tasks" />
+    </section>
+  );
+}
+
+/** D507: the computers that run tasks (the home and the computers doing tasks for it), from the devices frame. */
+function taskComputers() {
+  return (A.devices ?? []).filter((d) => d.kind !== "phone" && (d.home || d.harnesses.length > 0));
+}
+
+/** D507: the AI agents signed in somewhere tasks run, each once (the home's alone with one computer). */
+function taskAgents(): string[] {
+  const comps = taskComputers();
+  const hs = comps.length > 1 ? comps.flatMap((d) => d.harnesses) : readyAgents();
+  return [...new Set(hs.filter((h) => h.installed && h.loggedIn && isHarnessId(h.harness) && HARNESSES[h.harness].task).map((h) => h.harness))];
+}
+
+/**
+ * D507: 新任务默认 / New tasks start: where every new task starts and who does it, set once. Shown
+ * only where there is a choice (two computers, two agents); 自动 / Automatic is Ducter's own pick.
+ * The partner's new_tasks tool writes the same setting from the person's words.
+ */
+export function NewTasksSection() {
+  const s = A.settings;
+  if (!s) return null;
+  const comps = taskComputers();
+  const agents = taskAgents();
+  const nt = s.newTasks ?? {};
+  const name = A.S.personaName;
+  const idOf = (d: { home: boolean; id: string }) => (d.home ? "local" : d.id);
+  const whereOn = comps.find((d) => idOf(d) === nt.where);
+  const showWhere = comps.length > 1 || !!whereOn;
+  const showWho = agents.length > 1 || (!!nt.agent && agents.includes(nt.agent));
+  if (!showWhere && !showWho) return null;
+  const set = (next: { where?: string; agent?: string }) => A.setSettings({ newTasks: { ...(next.where ? { where: next.where } : {}), ...(next.agent ? { agent: next.agent as never } : {}) } });
+  const pickWhere = (v: string) => {
+    if (v === (nt.where ?? "")) return;
+    set({ ...nt, where: v || undefined });
+    const c = comps.find((d) => idOf(d) === v);
+    say("newtasks", c ? t("said.newtasks.where", c.name) : t("said.newtasks.where.auto", name));
+  };
+  const pickWho = (v: string) => {
+    if (v === (nt.agent ?? "")) return;
+    set({ ...nt, agent: v || undefined });
+    say("newtasks", v ? t("said.newtasks.who", harnessName(v)) : t("said.newtasks.who.auto", name));
+  };
+  const whereOpts = [{ v: "", label: t("newtasks.auto") }, ...comps.map((d) => ({ v: idOf(d), label: d.name }))];
+  const whoOpts = [{ v: "", label: t("newtasks.auto") }, ...agents.map((h) => ({ v: h, label: harnessName(h) }))];
+  const title = t("newtasks.title");
+  const control = (label: string, value: string, options: { v: string; label: string }[], onPick: (v: string) => void) =>
+    options.length <= SEG_MAX ? <Seg label={label} value={value} options={options} onPick={onPick} /> : <Select label={label} value={value} options={options} onPick={onPick} />;
+  return (
+    <section class="set">
+      <h3>{title}</h3>
+      <Group label={title}>
+        {showWhere && (
+          <GRow title={t("newtasks.where")} line={whereOn ? t("newtasks.where.on", whereOn.name) : t("newtasks.where.auto")}>
+            {control(t("newtasks.where"), whereOn ? idOf(whereOn) : "", whereOpts, pickWhere)}
+          </GRow>
+        )}
+        {showWho && (
+          <GRow tile={nt.agent ? <AgentTile harness={nt.agent} /> : undefined} title={t("newtasks.who")} line={nt.agent ? t("newtasks.who.on", harnessName(nt.agent)) : t("newtasks.who.auto")}>
+            {control(t("newtasks.who"), nt.agent ?? "", whoOpts, pickWho)}
+          </GRow>
+        )}
+        <GFoot note={t("newtasks.foot")} />
+      </Group>
+      <Said k="newtasks" />
     </section>
   );
 }

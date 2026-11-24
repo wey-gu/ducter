@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.57 - 2026-11-25
+
+<!-- whats-new
+zh: 伙伴只记你亲口说的；记不进时会直说
+en: Your partner remembers only what you said, and says so when it can't
+-->
+
+**Memory you can trust**
+- Your partner remembers only things you said yourself, never what it guessed from a reaction.
+- When Nowledge Mem can't take something you asked it to remember, your partner says plainly that
+  it wasn't saved, and where to fix it.
+- Memory stays green when only an optional agent plugin is missing; that shows as its own line
+  with 接上 / Connect.
+- Connecting Mem for the first time says up front that you need a Nowledge Mem account, with a
+  link to make one.
+
 ## 0.1.56 - 2026-11-25
 
 <!-- whats-new

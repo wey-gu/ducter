@@ -74,14 +74,16 @@ class Port implements HarnessPort {
     this.sessions.push(s);
     return s;
   }
+  // Both agents installed and signed in, as on a CI runner with none of them (the core's own probe never runs).
   async available() {
-    return [];
+    return ["claude-code", "codex"].map((harness) => ({ harness, installed: true, loggedIn: true }));
   }
 }
 
 async function boot(canStop: (spec: SessionSpec) => boolean = (s) => s.harness !== "pi") {
   const t = tempDir();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, platform: "darwin", push: false });
+  // Both agents installed and signed in here (a CI runner has none; the real probe never runs).
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, platform: "darwin", push: false, deviceProbes: { cua: async () => ({ missing: "test" }), native: async () => undefined, harnesses: async () => ["claude-code", "codex"].map((harness) => ({ harness, installed: true, loggedIn: true })), kind: async () => "laptop" } });
   const port = new Port(canStop);
   let n = 0;
   const runner = createRunner(core, { harness: port, newId: () => `bgt${String(++n).padStart(5, "0")}`, parkIdleMs: 0, backgroundSettleMs: 60_000 });

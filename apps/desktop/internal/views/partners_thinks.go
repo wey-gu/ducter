@@ -68,7 +68,7 @@ func (a *App) thinksLine(c *ui.Context, p protocol.PartnerInfo) {
 	if p.ID == protocol.DefaultPartner && a.manyPartners() {
 		def = a.L.T("partners.thinks.default")
 	}
-	ui.Row(c.Key("thinks:"+p.ID)).Gap(t.S2).AlignItems(ui.Start).MinWidth(0).Children(func() {
+	ui.Row(c.Key("thinks:" + p.ID)).Gap(t.S2).AlignItems(ui.Start).MinWidth(0).Children(func() {
 		if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
 			ui.Image(c, bmp).Size(18, 18).Shrink(0).AccessHidden(true)
 		}
@@ -117,7 +117,7 @@ func (a *App) thinksPick(c *ui.Context, p protocol.PartnerInfo) {
 		}
 	}
 	pick := func(key, title string, labels []string, sel int, apply func(i int)) {
-		ui.Column(c.Key("thinks-pick:"+key)).Gap(t.S1).MinWidth(0).Children(func() {
+		ui.Column(c.Key("thinks-pick:" + key)).Gap(t.S1).MinWidth(0).Children(func() {
 			uiText(c, title).FontSize(t.SM).TextColor(t.InkMuted)
 			open := ps.thinksOpen == key
 			if i := a.pickPill(c, "thinks-"+key+":"+p.ID, title, labels, sel, &open); i >= 0 {

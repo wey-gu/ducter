@@ -1791,11 +1791,11 @@ type PartnerAdd struct {
 // PartnerSet renames a partner, changes its look or what it looks after
 // (D309, D486). About is a pointer so "" clears it.
 type PartnerSet struct {
-	T        string  `json:"t"` // "partner_set"
-	ID       string  `json:"id"`
-	Name     string  `json:"name,omitempty"`
-	Look     string  `json:"look,omitempty"`
-	About    *string `json:"about,omitempty"`
+	T     string  `json:"t"` // "partner_set"
+	ID    string  `json:"id"`
+	Name  string  `json:"name,omitempty"`
+	Look  string  `json:"look,omitempty"`
+	About *string `json:"about,omitempty"`
 	// Brain is D536's own 想事情用: a Brain, or SameBrain (JSON null) for
 	// the default partner's again; nil leaves it.
 	Brain    any    `json:"brain,omitempty"`

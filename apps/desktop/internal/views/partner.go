@@ -36,9 +36,9 @@ type partnerState struct {
 	modelOpen bool
 	// D536: the effort list under it is open.
 	effortOpen bool
-	toast     string
-	toastAt   time.Time
-	toastTone noticeTone // set with every toast: an error never wears the done look (D158)
+	toast      string
+	toastAt    time.Time
+	toastTone  noticeTone // set with every toast: an error never wears the done look (D158)
 	// forgetting: the noted lines asked to be forgotten, seq -> title.
 	forgetting map[int64]string
 	// Adding a connection (D96): the form, where it runs, the address and

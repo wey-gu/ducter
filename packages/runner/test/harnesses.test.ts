@@ -22,6 +22,8 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const ducterMcp = { name: "ducter", url: "http://127.0.0.1:7777/mcp", headers: { Authorization: "Bearer dtk.test.sig" } };
+/** D510: Ducter's url as a clean Codex session gets it (its one launch override). */
+const codexUrl = (o: { launchArgs?: string[] }) => /url = "([^"]+)"/.exec(o.launchArgs?.find((a) => a.startsWith("mcp_servers={")) ?? "")?.[1];
 const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}): SessionSpec => ({
   harness,
   cwd: join(dir, "partner"),
@@ -170,15 +172,16 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect((claude.options.env as Record<string, string>).CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS).toBe(String(PARTNER_READ_MAX_TOKENS));
     const codex = adaptSpec(spec("codex", { readOnly: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
     expect(codex.options.launchArgs!.slice(-2)).toEqual(["-c", 'sandbox_mode="read-only"']);
+    expect(codex.options.launchArgs).toContain("features.shell_tool=false"); // D510: no shell either
     // Codex declines MCP calls under its sandbox unless marked read-only: Ducter's MCP is told.
-    expect((codex.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url + "?sandbox=read-only");
+    expect(codexUrl(codex.options)).toBe(ducterMcp.url + "?sandbox=read-only");
     expect((claude.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url);
     // A folder task's workspace-write sandbox declines them too (2026-11-11: report_to_main refused
     // for hours on hel): the URL says so once, even read-only and confined together.
     const folder = adaptSpec(spec("codex", { confineWrites: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
-    expect((folder.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url + "?sandbox=read-only");
+    expect(codexUrl(folder.options)).toBe(ducterMcp.url + "?sandbox=read-only");
     const both = adaptSpec(spec("codex", { confineWrites: true, readOnly: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
-    expect((both.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url + "?sandbox=read-only");
+    expect(codexUrl(both.options)).toBe(ducterMcp.url + "?sandbox=read-only");
     const pi = adaptSpec(spec("pi", { readOnly: true }), { dataDir: dir });
     expect(pi.options.disallowedTools).toEqual(["bash", "edit", "write"]);
     // D177: and an allowlist on its RPC process: pi's reading tools and the session's MCP tools only.

@@ -11,7 +11,7 @@
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
 // Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
 // never reads or writes the user's real Nowledge Mem.
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
@@ -451,6 +451,31 @@ const nextAt = (hm: string) => {
 };
 const worldDev = (sc: Scenario, name: string) => (name === "local" || name === sc.world?.home.name ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
 /**
+ * D510: a look at one of the scenario's `openPrs` (`gh pr view|checks <n|url> [-R repo] [--json …]`,
+ * `gh api repos/<r>/pulls/<n>`), answered as an open, unmerged PR; any other gh call naming it can't
+ * be read here. Undefined for a command about anything else.
+ */
+function openPrAnswer(argv: string[], open: Set<string>): { exitCode: number; stdout: string; stderr: string } | undefined {
+  const line = argv.join(" ");
+  if (argv[0] !== "gh" && !/(^|[\s;&|'"])gh\s/.test(line)) return undefined;
+  const hit = [...open].find((p) => {
+    const [repo, n] = p.split("#");
+    return line.toLowerCase().includes(`${repo}/pull/${n}`) || line.toLowerCase().includes(`repos/${repo}/pulls/${n}`) || (line.toLowerCase().includes(repo!) && new RegExp(`(^|[\\s#/])${n}(\\b|$)`).test(line));
+  });
+  if (!hit) return undefined;
+  const [repo, n] = hit.split("#");
+  const view: Record<string, unknown> = { number: Number(n), url: `https://github.com/${repo}/pull/${n}`, title: "Compaction: merge small segments first", state: "OPEN", closed: false, merged: false, mergedAt: null, isDraft: false, mergeable: "MERGEABLE", mergeStateStatus: "BLOCKED", reviewDecision: "REVIEW_REQUIRED" };
+  const ok = (v: unknown) => ({ exitCode: 0, stdout: JSON.stringify(v), stderr: "" });
+  if (/\bapi\b/.test(line)) return ok({ number: Number(n), state: "open", merged: false, merged_at: null, draft: false, html_url: view.url });
+  if (/\bpr\s+view\b/.test(line)) {
+    const fields = /--json[\s=]+([\w,]+)/.exec(line)?.[1]?.split(",");
+    return fields ? ok(Object.fromEntries(fields.map((f) => [f, view[f] ?? null]))) : { exitCode: 0, stdout: `${view.title} ${repo}#${n}\nOpen • not merged\n`, stderr: "" };
+  }
+  if (/\bpr\s+checks\b/.test(line)) return ok([{ name: "ci", state: "PENDING", bucket: "pending" }]);
+  return { exitCode: 1, stdout: "", stderr: "not in this world" };
+}
+
+/**
  * D496: Ducter's looks at a seeded PR answer from the world's GitHub (the scenario's `owns.gh`),
  * never the real one; a seeded PR without one can't be read (the look tells nothing). Any other
  * command runs as before.
@@ -459,7 +484,10 @@ function ownedExec(sc: Scenario): Exec {
   const prs = new Map<string, OwnsGh | undefined>();
   for (const s of sc.seed ?? []) if ("owns" in s) prs.set(prIdentity(s.owns.pr) ?? s.owns.pr, s.owns.gh);
   const out = (v: unknown) => ({ exitCode: 0, stdout: JSON.stringify(v), stderr: "" });
+  const open = new Set((sc.openPrs ?? []).map((p) => p.toLowerCase()));
   return async (argv, o) => {
+    const fake = open.size ? openPrAnswer(argv, open) : undefined;
+    if (fake) return fake;
     const m = argv[0] === "gh" && argv[1] === "api" ? /^repos\/([^/]+\/[^/]+)\/(pulls|issues|commits)\/([^/?]+)(\/[^?]*)?/.exec(argv[2] ?? "") : null;
     if (!m) return realExec(argv, o);
     const [, repo, kind, id, rest = ""] = m;
@@ -1556,23 +1584,48 @@ Think it through in "reason" first, then decide. Answer with one JSON object and
 
 async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
   const prompt = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
+  // D510: an unreadable answer is asked again once, saying so; what it was is kept for the report.
+  let last = "";
+  let cost = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
+    const ask = attempt === 0 ? prompt : `${prompt}\n\nYour previous answer could not be read as JSON. Answer with exactly one JSON object on one line, nothing before or after it: {"reason": "...", "pass": true|false}`;
     const proc = Bun.spawn(
-      ["claude", "-p", prompt, "--model", JUDGE, "--system-prompt", JUDGE_SYSTEM, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],
+      ["claude", "-p", ask, "--model", JUDGE, "--system-prompt", JUDGE_SYSTEM, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],
       { cwd, stdout: "pipe", stderr: "pipe" },
     );
-    const out = await new Response(proc.stdout).text();
+    const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
     await proc.exited;
+    let result = "";
     try {
-      const j = JSON.parse(out) as { result: string; total_cost_usd?: number };
-      const m = /\{[\s\S]*\}/.exec(j.result);
-      const v = JSON.parse(m![0]) as { pass: boolean; reason: string };
-      return { pass: !!v.pass, reason: String(v.reason ?? ""), cost: j.total_cost_usd ?? 0 };
+      const j = JSON.parse(out) as { result?: string; total_cost_usd?: number; is_error?: boolean };
+      cost += j.total_cost_usd ?? 0;
+      result = String(j.result ?? "");
     } catch {
-      /* retry once */
+      last = (err || out).trim().slice(0, 160);
+      continue;
+    }
+    const v = judgeVerdict(result);
+    if (v) return { ...v, cost };
+    last = result.trim().slice(0, 160);
+  }
+  return { pass: false, reason: `judge output unreadable${last ? ` (${last.replace(/\s+/g, " ")})` : ""}`, cost };
+}
+
+/** The judge's {"reason", "pass"} object: the last one in its answer that parses and has a boolean pass. */
+function judgeVerdict(text: string): { pass: boolean; reason: string } | undefined {
+  const body = text.replace(/```(?:json)?/g, "");
+  // (lastIndexOf from -1 searches from 0 again: each loop stops at the string's start.)
+  for (let end = body.lastIndexOf("}"); end >= 0; end = end > 0 ? body.lastIndexOf("}", end - 1) : -1) {
+    for (let start = body.lastIndexOf("{", end); start >= 0; start = start > 0 ? body.lastIndexOf("{", start - 1) : -1) {
+      try {
+        const v = JSON.parse(body.slice(start, end + 1)) as { pass?: unknown; reason?: unknown };
+        if (typeof v.pass === "boolean") return { pass: v.pass, reason: String(v.reason ?? "") };
+      } catch {
+        /* a wider span next */
+      }
     }
   }
-  return { pass: false, reason: "judge output unreadable", cost: 0 };
+  return undefined;
 }
 
 // ---------- main ----------
@@ -1606,6 +1659,25 @@ function cleanupProjects(before: Set<string>, root: string) {
   return n;
 }
 
+/**
+ * D510: on Codex the partner's sessions write their rollouts under CODEX_HOME. The run gets its own
+ * home inside `root` (deleted with it): the person's config.toml copied (their provider route, and
+ * their servers for the clean setup to keep out, as on a real home) and auth.json linked (Codex
+ * 0.171 writes a refreshed sign-in through the link to the real file: login/src/auth/storage_file.rs
+ * `resolve_auth_file`). Nothing lands in the person's ~/.codex/sessions. `--codex-home <dir>`: a
+ * home the caller made and keeps (to read the rollouts afterwards).
+ */
+function codexScratchHome(root: string): string {
+  const given = arg("codex-home");
+  if (given) return resolve(given);
+  const theirs = process.env.CODEX_HOME || join(HOME, ".codex");
+  const home = join(root, "codex-home");
+  mkdirSync(home, { recursive: true, mode: 0o700 });
+  if (existsSync(join(theirs, "config.toml"))) copyFileSync(join(theirs, "config.toml"), join(home, "config.toml"));
+  if (existsSync(join(theirs, "auth.json"))) symlinkSync(join(theirs, "auth.json"), join(home, "auth.json"));
+  return home;
+}
+
 async function main() {
   let list = scenarios;
   if (ONLY) list = list.filter((s) => ONLY.includes(s.id));
@@ -1615,6 +1687,7 @@ async function main() {
   const projectsDir = join(HOME, ".claude", "projects");
   const before = new Set(existsSync(projectsDir) ? readdirSync(projectsDir) : []);
   const root = realpathSync(mkdtempSync(join(process.env.DUCTER_EVAL_DIR ?? tmpdir(), "ducter-eval-run-")));
+  if (HARNESS === "codex") process.env.CODEX_HOME = codexScratchHome(root);
   const personaTokens = Math.round(buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length / 3.2);
   console.log(`partner eval: ${list.length} scenarios · ${HARNESS} · model ${MODEL || "(harness default)"} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
 

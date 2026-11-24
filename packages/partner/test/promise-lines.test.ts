@@ -169,3 +169,37 @@ test("the same task_open twice in one turn opens one task, with one ack", async 
   expect(said(fc)).toEqual(["ack: I'll make the WAL flush interval configurable and update the README."]);
 });
 
+// D510 (many-asks-places-en on Codex: "On it: Diagnose HawDB main CI failure" after the ack): three
+// different task_open calls at once in one turn. The line before them is the one ack; the other two
+// open their tasks and say nothing of their own, also with no line first (the first gets one from
+// its title) and with no stream events at all (the MCP calls alone).
+for (const shape of ["a line first", "no line", "no stream events"] as const)
+  test(`three parallel task_opens in one turn: one ack, three tasks (${shape})`, async () => {
+    const results: any[] = [];
+    const inputs = [
+      { title: "Diagnose HawDB main CI failure", place: { kind: "repo", repoPath: "~/dev/hawdb" }, brief: "User's words: why is main red" },
+      { title: "Check the Linux runner test", place: { kind: "repo", repoPath: "~/dev/foo" }, brief: "User's words: the runner test" },
+      { title: "Find a dentist near home", place: { kind: "browser", profile: "default" }, needs: { browse: true }, brief: "User's words: a dentist" },
+    ];
+    const { fc, partner, user } = setup(async (_i, s) => {
+      if (shape === "a line first") s.say("On it: three things at once, I'll tell you as each is clear.");
+      if (shape !== "no stream events") {
+        inputs.forEach((_, i) => s.emit({ role: "tool", tool: { name: T }, raw: { kind: "tool_call_started", callId: `c${i}` } }));
+        inputs.forEach((x, i) => s.emit({ role: "tool", tool: { name: T, input: { title: x.title } }, raw: { kind: "tool_call_title", callId: `c${i}` } }));
+      }
+      results.push(...(await Promise.all(inputs.map((x) => fc.callTool("task_open", x)))));
+      s.end();
+    });
+    user("Three things: why is HawDB's main CI red, check the Linux runner test in ~/dev/foo, and find me a dentist near home.");
+    await partner.idle();
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(new Set(results.map((r) => r.taskId)).size).toBe(3);
+    const acks = said(fc).filter((l) => l.startsWith("ack: "));
+    expect(acks).toHaveLength(1);
+    if (shape === "a line first") expect(acks[0]).toBe("ack: On it: three things at once, I'll tell you as each is clear.");
+    expect(said(fc).filter((l) => l.startsWith("ai_msg: "))).toEqual([]);
+    // Each task still has its own job line.
+    const jobs = fc.events.filter((e) => e.kind === "job_status").map((e) => (e.body as { jobId: string }).jobId);
+    expect(new Set(jobs).size).toBe(3);
+  });
+

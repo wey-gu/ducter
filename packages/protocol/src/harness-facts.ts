@@ -97,9 +97,9 @@ export interface HarnessFacts {
   /**
    * D177: how a read-only session (the partner, principle 6) is held to reading on this agent,
    * enforced by the agent rather than asked of the model. `tools`: what the partner can still call
-   * of the agent's own (Ducter's MCP tools always stay).
+   * of the agent's own (Ducter's MCP tools always stay). `args`: launch arguments that hold it (D510).
    */
-  readOnly: Fact<{ how: string; tools: string[] }>;
+  readOnly: Fact<{ how: string; tools: string[]; args?: string[] }>;
   /**
    * D378: how the partner's session runs without the agent's own web tools (search, fetch), so a
    * web page never reaches the one that holds the conversation; a task reads it and reports.
@@ -463,7 +463,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     },
     compactionEvents: { value: { started: true, ended: true }, evidence: { kind: "VERIFIED", how: "OAR 0.95.1 runtimes/codex/projection.js: contextCompaction item -> compaction_started / compaction_ended", date: D, version: "oar 0.95.1" } },
     contextReport: { value: "last.totalTokens (OAR contextUsage); builds without `last` give a cumulative total, unused", evidence: cx("live (design/context.md)") },
-    toolSearch: { value: "MCP tools load directly; no deferral", evidence: { kind: "VERIFIED", how: "core/mcp.ts note", date: D, version: "0.167.0" } },
+    toolSearch: {
+      value: "by model: a model whose catalog entry supports tool search (gpt-6.2-sol on 0.171) gets every MCP server as a deferred namespace behind tool search and code mode's exec; no config switch keeps them direct (features.tool_search is removed), so the clean setup keeps the person's servers out instead (D510)",
+      evidence: { kind: "VERIFIED", how: "codex-rs 0.171.0 core/src/mcp_tool_exposure.rs (exposure = Deferred when the model supports search) and `codex debug prompt-input`: the world state lists 'Deferred tool namespaces'", date: "2026-11-24", version: "0.171.0" },
+    },
     resume: { value: { supported: true, how: "thread resume by id (OAR SessionOptions.resume)" }, evidence: cx("live, runner park/resume") },
     account: {
       value: { homeEnv: "CODEX_HOME", identity: "auth.json tokens.account_id (codex login status names no account; the app-server's account/read gives email and planType)", sessions: "$CODEX_HOME/sessions" },
@@ -483,8 +486,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "INFERRED", why: "no per-session switch for Codex's own shell is known (noTools above); a page could steer a read-only shell into a search query" },
     },
     readOnly: {
-      value: { how: '-c sandbox_mode="read-only" after OAR\'s own override: shell commands still run, read-only and without network', tools: ["shell (read-only sandbox)"] },
-      evidence: { kind: "VERIFIED", how: "app-server config/read shows read-only in the session-flags layer; results/2026-11-10-codex-gpt-6-luna-readonly-smoke.md", date: "2026-11-10", version: "0.167.0" },
+      value: { how: '-c features.shell_tool=false (no exec_command or write_stdin, D510), and -c sandbox_mode="read-only" after OAR\'s own override underneath', tools: [], args: ["-c", "features.shell_tool=false"] },
+      evidence: { kind: "VERIFIED", how: "`codex debug prompt-input -c features.shell_tool=false` lists no exec_command or write_stdin (packages/runner/test/codex-prompt-input.test.ts); codex-rs 0.171.0 core/src/tools/spec_plan.rs add_shell_tools returns early without the feature; the read-only layer: app-server config/read, results/2026-11-10-codex-gpt-6-luna-readonly-smoke.md", date: "2026-11-24", version: "0.171.0" },
     },
     memPlugin: {
       value: { host: "codex-cli", ids: ["nowledge-mem@nowledge-community"], off: "config", contextCost: "unknown" },

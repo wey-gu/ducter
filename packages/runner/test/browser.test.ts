@@ -82,6 +82,11 @@ afterEach(() => {
 const idleProbe: FocusProbe = { front: async () => undefined, ducterBrowsers: async () => [], activate: async () => {} };
 /** The machine's own Claude in Chrome / Codex setup never leaks into these tests (D126). */
 const noNative = () => undefined;
+/** D510: the servers a session gets: OAR's list, or a clean Codex session's one launch override. */
+const serverNames = (o: any): string[] => {
+  const own = ((o.launchArgs ?? []) as string[]).find((a) => a.startsWith("mcp_servers={"));
+  return [...(o.mcpServers ?? []).map((m: any) => m.name), ...(own ? [...own.matchAll(/(?:^mcp_servers=\{ |\}, )"?([\w.-]+)"? = \{/g)].map((m) => m[1]!) : [])];
+};
 
 describe("browser place: session-config wiring", () => {
   test("attaches cua-driver as a stdio MCP sidecar next to Ducter's MCP, with the persona profile", async () => {
@@ -161,7 +166,7 @@ describe("browser place: session-config wiring", () => {
     await expect(runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } })).rejects.toThrow(/turned off/);
     const c = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
     await runner.whenStarted(c.taskId);
-    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
+    expect(serverNames(seen.options)).toEqual(["ducter"]);
     expect(drv.calls.length).toBe(0);
     await runner.dispose();
   });
@@ -446,7 +451,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
     await runner.whenStarted(card.taskId);
     const o = seen.options;
-    expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
+    expect(serverNames(o)).toEqual(["ducter"]);
     expect(o.launchArgs).toEqual(["--chrome"]);
     expect(o.disallowedTools).toEqual(expect.arrayContaining(["Agent", "Workflow"]));
     expect(o.userConfiguration).toBe("exclude");
@@ -463,7 +468,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", harness: "codex", place });
     await runner.whenStarted(card.taskId);
     const args: string[] = seen.options.launchArgs;
-    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
+    expect(serverNames(seen.options)).toEqual(["ducter"]);
     expect(args).toContain("mcp_servers.cua-driver.enabled=false"); // the user's own cua-driver is left out
     expect(args).not.toContain("mcp_servers.node_repl.enabled=false"); // the desktop app's browser service stays
     expect(args).toContain("plugins.github@openai-curated.enabled=false"); // bare id: a quoted one is not matched
@@ -495,7 +500,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     });
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place }); // claude-code here
     await runner.whenStarted(card.taskId);
-    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(seen.options)).toEqual(["ducter", "browser"]);
     await runner.dispose();
   });
 
@@ -514,7 +519,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     });
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
     await runner.whenStarted(card.taskId);
-    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(seen.options)).toEqual(["ducter", "browser"]);
     expect(seen.options.launchArgs).toBeUndefined();
     expect(seen.options.disallowedTools).toContain("Agent");
     await runner.dispose();
@@ -572,7 +577,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     await runner.whenStarted(card.taskId);
     await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done on cua-driver");
     expect(all.length).toBe(2);
-    expect(all[1].mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(all[1])).toEqual(["ducter", "browser"]);
     expect(all[1].launchArgs).toBeUndefined();
     expect(all[1].disallowedTools).toContain("Agent");
     expect(all[1].appendSystemPrompt).toContain("cua-driver");
@@ -704,7 +709,7 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     await new Promise<void>((r) => t.signal.addEventListener("abort", () => r()));
   };
   const expectBrowser = (o: any) => {
-    expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(o)).toEqual(["ducter", "browser"]);
     expect(o.appendSystemPrompt).toContain("## Your browser");
     expect(o.appendSystemPrompt).toContain("Never sign in");
     expect(o.launchArgs).toBeUndefined();
@@ -758,7 +763,7 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", harness: "codex", place });
     await runner.whenStarted(card.taskId);
     const o = all[0];
-    expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(o)).toEqual(["ducter", "browser"]);
     expect(o.launchArgs).toContain("features.apps=false");
     expect(o.launchArgs).not.toContain("features.plugins=false");
     expect(o.launchArgs).not.toContain("features.computer_use=false");
@@ -775,7 +780,7 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", harness: "pi", place });
     await runner.whenStarted(card.taskId);
     expect(loads.at(-1)).toEqual({ clean: true });
-    expect(all[0].mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(serverNames(all[0])).toEqual(["ducter", "browser"]);
     await runner.dispose();
   });
 
@@ -794,7 +799,7 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     core.tasks.setState(card.taskId, "working", "hot");
     expect(await runner.switchBody(card.taskId, "codex")).toEqual({ ok: true });
     const o = all.at(-1);
-    expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]); // Codex has no own tools here: cua-driver
+    expect(serverNames(o)).toEqual(["ducter", "browser"]); // Codex has no own tools here: cua-driver
     expect(o.appendSystemPrompt).not.toContain("Claude in Chrome");
     await runner.dispose();
   });

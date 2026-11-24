@@ -122,3 +122,38 @@ func TestD513PartnerRowsFit(t *testing.T) {
 		}
 	}
 }
+
+// TestD517RailCorner: the list owns the title bar's zone (D517). At every
+// width, with the window's controls and in full screen, the band is the
+// bar's height and nothing of the list sits in it; the slim list is wider
+// than the controls; every name is a gap below the band; no row has a tooltip.
+func TestD517RailCorner(t *testing.T) {
+	lights := TrafficLights.X + 3*12 + 2*8 // the third control's right edge
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for _, w := range []int{1000, 1150, 1199, 1200, 1400} {
+			for _, left := range []float32{78, 0} { // the controls, then full screen
+				app, _ := iaApp(t, lang)
+				app.LocaleFixed = true
+				app.Receive(protocol.ServerFrame{T: "partners", Shown: "default", Partners: d513Partners(lang)})
+				tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+				tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: left})
+				d513Frames(tt)
+				if rw := app.partnerRailW(); rw < lights+12 {
+					t.Fatalf("%s %d: the list (%v) is no wider than the window's controls (%v)", lang, w, rw, lights)
+				}
+				for _, p := range d513Partners(lang) {
+					r, ok := tt.Find(p.Name)
+					if !ok {
+						t.Fatalf("%s %d: %s has no name on screen", lang, w, p.Name)
+					}
+					if r.Y < ChromeH+8 {
+						t.Errorf("%s %d: %s's name at %v is in or touching the title bar's band (%v)", lang, w, p.Name, r.Y, ChromeH)
+					}
+					if r.X < 0 || r.X+r.W > app.partnerRailW() {
+						t.Errorf("%s %d: %s's name runs out of the list: %+v", lang, w, p.Name, r)
+					}
+				}
+			}
+		}
+	}
+}

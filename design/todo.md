@@ -112,6 +112,11 @@ line.
   (inside the iPhone app the swipe is the web's own, `edgeSwipe` with `inApp`) are to be seen in the iOS
   Simulator and on an Android phone (the pills D501 saw there are gone). Trigger: the next iPhone or
   Android release.
+- [ ] **D517's "looked at" across devices:** opening a stopped or failed task clears it from the count
+  on that device only (its seen mark); the home could keep one mark per task for every device (a
+  frame and a Log event). Trigger: the author sees a cleared item still counted on the phone.
+- [ ] **D517 under real hands:** the list's breath, blink and hop at four partners for a day; calm or
+  busy? Trigger: the author's review on the Mac, or a rater calls it busy.
 - [ ] **D513 on a real phone with one hand:** the list's rows sit in the top half; a person with a big
   phone may want them from the bottom (a reversed list, or the add row first). Trigger: the author's
   review on the iPhone, or a rater says the rows are out of reach.

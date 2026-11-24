@@ -72,6 +72,12 @@ export function isNewResult(taskId: string, attention: string, updatedAt: string
   return later(updatedAt, s.since) && later(updatedAt, mark);
 }
 
+/** D517: the person opened the task on this device after it last changed. */
+export function lookedAt(taskId: string, updatedAt: string | undefined): boolean {
+  const mark = cur().seen[taskId];
+  return !!updatedAt && !!mark && !later(updatedAt, mark);
+}
+
 /** The task is open on this device: whatever it says now has been seen. */
 export function markSeen(taskId: string, updatedAt: string | undefined) {
   if (!updatedAt) return;

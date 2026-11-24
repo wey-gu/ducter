@@ -67,23 +67,53 @@ function lastWords(p: PartnerInfo): string {
   return p.about ? t("partners.about.shown", p.about) : t("partners.empty");
 }
 
+/** D517: what each partner last brought, and when its figure last hopped for something new. */
+const hops = new Map<string, { key: string; n: number; at: number }>();
+
+/** D517: a partner's figure hops once when something new comes from it (a new line of its own or a new
+ *  thing waiting): never on the first look, never for the one shown, never while a switch settles. */
+function hopOf(p: PartnerInfo, needs: number, shown: string): number {
+  const key = `${needs}|${p.last && !p.last.you ? p.last.at : ""}`;
+  const was = hops.get(p.id);
+  if (!was) return hops.set(p.id, { key, n: 0, at: 0 }), 0;
+  if (was.key !== key) {
+    was.key = key;
+    if (p.id !== shown && A.S.welcomed && Date.now() - A.partnerSwitchedAt > 2000) (was.n += 1), (was.at = Date.now());
+  }
+  return was.n;
+}
+
+/** D517: a partner's figure in the list, in its own clay: it breathes and blinks out of step with the
+ *  others (app.css .pl-breathe, .shut), hops when something new comes, and carries its number as a
+ *  clay pebble. Still under Reduce Motion. */
+function RailFace({ p, i, size, needs, hop }: { p: PartnerInfo; i: number; size: number; needs: number; hop: number }) {
+  return (
+    <span class="pl-face" data-look={p.look} style={{ "--d": `${-(i * 1.7 + 0.4)}s` } as Record<string, string>}>
+      <span key={hop} class={hop ? "pl-hop on" : "pl-hop"}>
+        <span class="stone pl-breathe" style={{ width: size, height: size }} aria-hidden="true">
+          <img src="app/art/idle.webp" alt="" draggable={false} />
+          <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
+        </span>
+      </span>
+      {needs > 0 && (
+        <span class="pl-n" aria-hidden="true">
+          {needs}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** D513: one partner in the list: its face in its own clay, its name, its last line and the number
- *  of what of its own waits on the person (its questions and its tasks that need them). */
+ *  of what of its own waits on the person. D517: no tooltip (the name is always there to read). */
 function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; shown: string; face: number }) {
   const on = p.id === shown;
   const needs = A.partnerNeeds(p);
   const label = on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
   return (
     <li>
-      <button class={on ? "pl-row on" : "pl-row"} data-look={p.look} aria-current={on ? "true" : undefined} aria-label={label} title={i < 4 ? `${p.name} (⌥⌘${i + 1})` : p.name} onClick={() => A.openPartner(p.id)}>
-        <span class="pl-face">
-          <Stone look={p.look} size={face} />
-          {needs > 0 && (
-            <span class="pl-n" aria-hidden="true">
-              {needs}
-            </span>
-          )}
-        </span>
+      <button class={on ? "pl-row on" : "pl-row"} data-look={p.look} aria-current={on ? "true" : undefined} aria-label={label} onClick={() => A.openPartner(p.id)}>
+        <RailFace p={p} i={i} size={face} needs={needs} hop={hopOf(p, needs, shown)} />
         <span class="pl-words" aria-hidden="true">
           <span class="pl-name">{p.name}</span>
           <span class="pl-last">{lastWords(p)}</span>
@@ -100,8 +130,11 @@ function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; show
 export function PartnerList({ at, places }: { at: "side" | "home"; places?: preact.ComponentChildren }) {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
+  const at_ = Math.max(0, A.partners!.findIndex((p) => p.id === shown));
   const rows = (
-    <ul class="pl-rows">
+    <ul class="pl-rows" style={{ "--at": at_ } as Record<string, number>}>
+      {/* D517: the chosen pebble glides to the row picked, on a spring; the rows never move. */}
+      <li class="pl-knob" aria-hidden="true" />
       {A.partners!.map((p, i) => (
         <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : 40} />
       ))}
@@ -143,7 +176,7 @@ export function PartnersBack() {
   const elsewhere = A.partners!.filter((p) => p.id !== shown).reduce((n, p) => n + A.partnerNeeds(p), 0);
   const label = elsewhere ? t("partners.back.asks", elsewhere) : t("partners.back");
   return (
-    <button class="partners-back" aria-label={label} title={label} onClick={() => A.showPartners()}>
+    <button class="partners-back" aria-label={label} onClick={() => A.showPartners()}>
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
         <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
       </svg>

@@ -75,7 +75,8 @@ func (a *App) splitOf(b store.Board) boardSplit {
 			s.working = append(s.working, x) // D473, D471: Ducter is mending it: at work, not yours yet
 			continue
 		}
-		if a.stoppedWait(x) {
+		// D517: a stop the person has looked at waits with the rest (its card keeps 接着做).
+		if a.stoppedWait(x) && !a.looked(x) {
 			s.stopped = append(s.stopped, x)
 		} else {
 			s.waiting = append(s.waiting, x)
@@ -86,8 +87,19 @@ func (a *App) splitOf(b store.Board) boardSplit {
 		switch {
 		case mending:
 			s.working = append(s.working, x)
+		// D517: a failure or a PR ready to merge the person has looked at
+		// leaves 等你: the failure stands with what finished on its day, the PR
+		// with what waits (each card keeps its action).
+		case x.Attention() == protocol.Failed && a.looked(x):
+			if onDay(x.FinishedAt(), a.Now()) {
+				s.today = append(s.today, x)
+			} else {
+				s.earlier = append(s.earlier, x)
+			}
 		case x.Attention() == protocol.Failed:
 			s.failed = append(s.failed, x)
+		case prStandsAt(x) == "needs" && a.looked(x):
+			s.waiting = append(s.waiting, x)
 		case prStandsAt(x) == "needs":
 			s.ready = append(s.ready, x)
 		case prStandsAt(x) == "waiting":

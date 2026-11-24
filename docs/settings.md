@@ -172,8 +172,8 @@ counts for all of them.
 - **Talk to one.** Each partner is the same little clay figure in its own colour. Once you have
   more than one, **Your partners** lists them the way a messaging app lists its chats: each with
   its figure, its name, the last thing said, and a number when something of theirs waits on you.
-  On a computer the list sits at the left of the conversation (a narrower window keeps just the
-  figures and numbers); click one, or press ⌥⌘1 to ⌥⌘4, or find it with ⌘K. On a phone, tap **‹**
+  On a computer the list sits at the left of the conversation (a narrower window keeps each
+  figure with its name under it); click one, or press ⌥⌘1 to ⌥⌘4, or find it with ⌘K. On a phone, tap **‹**
   at the top left of the conversation (or swipe in from the left edge) to see them all; the number
   beside **‹** is what waits on you with the others. Tap one to talk to it.
   A notification about another partner's question opens that partner. Each device remembers which

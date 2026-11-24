@@ -31,10 +31,14 @@ type KeepRound struct {
 	At       string `json:"at"`
 	Woke     string `json:"woke"`
 	WokeWhat string `json:"wokeWhat,omitempty"`
-	Did      string `json:"did,omitempty"`
-	Spoke    string `json:"spoke"`
-	State    string `json:"state"`
-	TaskID   string `json:"taskId,omitempty"`
+	// Did is what happened, in one line to the person (the model's reading
+	// of the report, D519); absent until read. Report is the task's own
+	// words to Ducter, shown only behind 看细节.
+	Did    string `json:"did,omitempty"`
+	Report string `json:"report,omitempty"`
+	Spoke  string `json:"spoke"`
+	State  string `json:"state"`
+	TaskID string `json:"taskId,omitempty"`
 }
 
 // KeepLine is a Keep's last change in one sentence.
@@ -69,6 +73,7 @@ type KeepSheet struct {
 	Running     bool            `json:"running,omitempty"`
 	Health      *OngoingHealth  `json:"health,omitempty"`
 	Line        *KeepLine       `json:"line,omitempty"`
+	Lines       int             `json:"lines,omitempty"` // D519: rounds with their line yet (the page is asked again when it grows)
 	Reviews     *ReviewStanding `json:"reviews,omitempty"`
 	Week        int             `json:"week"`
 	PausedUntil string          `json:"pausedUntil,omitempty"`

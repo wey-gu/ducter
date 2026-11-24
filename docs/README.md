@@ -31,6 +31,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 
 - **[On hand](on-hand.md):** every task at a glance, what each one is doing now, finding one
   fast, and acting on several at once.
+- **[@ and / when you write](at-and-slash.md):** point at a task, a file, a partner or a PR with
+  @, and use Ducter's actions, your skills or an agent's own commands with /.
 - **[Past tasks and ongoing work](past-tasks.md):** find any task you had before by a few words,
   a file or a day, get back a file or table Ducter made for you, name and star the ones you come back to, carry on with one, start a new task
   that knows what it found, and pause or resume what runs on its own.

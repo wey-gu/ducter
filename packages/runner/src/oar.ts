@@ -934,6 +934,26 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       }
     },
 
+    // D534: the agent's own commands or skills in a task's folder, as its composer's / list shows
+    // them (OAR's inventories: Claude Code's initialize.commands, Codex's skills/list, pi's
+    // get_commands; all token-free). Read with the same env as a task's session.
+    async inventory(harness, kind, cwd) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return undefined;
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const read = (rt as unknown as Record<string, ((i: unknown, o: unknown) => Promise<{ kind: string; items?: { name: string; description?: string; source?: string; userInvocable?: boolean }[] }>) | undefined> | undefined)?.[kind];
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const inst = await rt?.installation?.({ env });
+        if (!read || !inst || inst.kind !== "available") return undefined;
+        const r = await read(inst, { env, cwd, timeoutMs: 20_000 });
+        if (r.kind !== "ok" || !r.items) return undefined;
+        return r.items.map((i) => ({ name: i.name, ...(i.description ? { description: i.description } : {}), ...(i.source ? { source: i.source } : {}), ...(i.userInvocable === false ? { userInvocable: false } : {}) }));
+      } catch {
+        return undefined;
+      }
+    },
+
     // D416: the agent's own sign-out (Antigravity: ACP `logout` on a fresh `agy acp`, then `agy
     // models` decides). Never deletes a credential file itself.
     async logout(harness) {
@@ -1062,7 +1082,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { 
     // D288: the window the harness read it against (Claude Code's modelUsage.contextWindow, Codex's modelContextWindow).
     const contextWindow = contextTokens !== undefined && ctx?.contextWindow && ctx.contextWindow > 0 ? ctx.contextWindow : undefined;
     return { ...(t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : {}), ...(contextTokens !== undefined ? { contextTokens } : {}), ...(contextWindow ? { contextWindow } : {}) };
-  });
+  }, { canStop: typeof s.stopTask === "function" });
   // One buffered queue feeding one async iterator; subscription starts at open (cursor 0).
   const buf: HarnessEvent[] = [];
   let wake: (() => void) | undefined;
@@ -1143,6 +1163,17 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { 
     async interrupt() {
       await s.abort();
     },
+    // D521: one background job stopped by the agent's own stop (Claude Code's TaskStop, a Codex
+    // subagent's turn interrupted, DeepSeek Harness's job kill). Accepted is only the agent's
+    // acknowledgement: its end comes as the job's own task_ended.
+    ...(typeof s.stopTask === "function"
+      ? {
+          async stopBackground(id: string) {
+            const r = (await s.stopTask!(id)) as { kind?: string; reason?: string };
+            if (r?.kind === "rejected") throw new Error(r.reason || "the agent refused to stop it");
+          },
+        }
+      : {}),
     // D282: the runtime's own manual compaction (Codex; Claude Code takes `/compact` as typed).
     ...(typeof s.compact === "function"
       ? {

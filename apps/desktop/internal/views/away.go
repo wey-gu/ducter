@@ -171,32 +171,37 @@ func (a *App) runFinished(c *ui.Context, k string, f finishedCard) {
 	}
 }
 
-// awayX is the quiet × that removes a finished card; it reports a click.
+// awayX is the quiet × that removes a finished card: the shared icon
+// button (a text button's square at ControlSM; D529), the same as its ⋯.
 func (a *App) awayX(c *ui.Context, key string, f finishedCard) {
 	t := a.T
 	label := a.L.T("away.remove.about", f.name)
-	b := ui.Box(c.Key(key)).Size(24, 24).Radius(8).Label(label).Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
-	fg := t.InkMuted
-	if b.Hovered() {
-		b.Background(t.Sunken)
-		fg = t.Ink
-	}
+	b := ui.Box(c.Key(key)).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).Tooltip(label).
+		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawCross(fg))
 	if b.Clicked() {
 		a.PutAway(c, f)
 	}
 }
 
-// finishedActs is a finished row's × and ⋯ (on hover).
+// finishedActs is a finished row's × and ⋯, in its revealSlot (D529).
 func (a *App) finishedActs(c *ui.Context, f finishedCard) {
-	t := a.T
 	ui.Row(c.Key("fin")).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
 		a.awayX(c, "x", f)
-		label := a.L.T("away.more", f.name)
-		b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
-			Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
-		fg := a.buttonLook(c, b, btnText, t.ControlSM, t.SurfaceRaised)
-		b.Draw(drawMore(fg))
-		a.menuButton(c, b, func(m *ui.Menu) { a.finishedItems(c, m, f, true) })
+		a.finishedMore(c, f)
 	})
+}
+
+// finishedMore is a finished row's ⋯ alone: on a row that already shows its
+// actions (看看为什么, 再试一次) it joins that group, and its menu holds the
+// remove the × would (D529).
+func (a *App) finishedMore(c *ui.Context, f finishedCard) {
+	t := a.T
+	label := a.L.T("away.more", f.name)
+	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
+		Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
+	b.Draw(drawMore(fg))
+	a.menuButton(c, b, func(m *ui.Menu) { a.finishedItems(c, m, f, true) })
 }

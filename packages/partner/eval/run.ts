@@ -41,6 +41,7 @@ import type { ClonesAnswer } from "../../protocol/src/clones.ts";
 import type { FolderInfo } from "../../protocol/src/folder-info.ts";
 import { remoteKey } from "../../protocol/src/clones.ts";
 import { HARNESS_FACTS } from "../../protocol/src/harness-facts.ts";
+import type { HeldRef } from "../../protocol/src/mentions.ts";
 import { schemaProblems } from "../../protocol/src/tool-schema.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
@@ -742,10 +743,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D376: other computers (the [devices] line), and task_switch's move to one recorded, not made.
   if (sc.computers) {
     const others = sc.computers;
-    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false, os: c.os ?? "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })) }));
+    // D538: a computer's memory as it measured it ([total GB, free GB]).
+    const res = (m: [number, number] | undefined) => (m ? { at: "2026-11-24T08:00:00.000Z", memTotal: m[0] * 2 ** 30, memFree: m[1] * 2 ** 30, cores: m[0] >= 32 ? 16 : 4 } : undefined);
+    const memOf = (m: [number, number] | undefined) => (m ? { mem: { total: m[0] * 2 ** 30, free: m[1] * 2 ** 30 } } : {});
+    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false, os: c.os ?? "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })), ...(c.mem ? { resources: res(c.mem) } : {}) }));
+    if (sc.homeMem) {
+      const was = core.homeDevice?.bind(core);
+      (core as { homeDevice?: unknown }).homeDevice = () => ({ ...(was?.() ?? { name: "" }), resources: res(sc.homeMem) });
+    }
     const comps: Computer[] = [
-      { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" } },
-      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: c.online === false ? ("unreachable" as const) : ("awake" as const), alwaysOn: false, mac: (c.os ?? "macOS") === "macOS", harnesses: [], web: { on: true, where: c.web } })),
+      { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" }, ...memOf(sc.homeMem) },
+      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: c.online === false ? ("unreachable" as const) : ("awake" as const), alwaysOn: false, mac: (c.os ?? "macOS") === "macOS", harnesses: [], web: { on: true, where: c.web }, ...memOf(c.mem) })),
     ];
     core.loadout.computers = async () => comps;
     core.loadout.switchTask = async (taskId, harness, _m, _r, device) => {
@@ -1183,6 +1191,7 @@ function describeStep(st: Step): string {
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st && st.app === "ask") return `the user tapped a button in their own app (the first one listed in [apps]), and the app asked the partner through ducter.ask: ${st.user}`;
   if ("user" in st && st.app === "about") return `user types in the sheet of their app (the first one listed in [apps]), about it: ${st.user}`;
+  if ("user" in st && st.refs?.length) return `user says: ${st.user} (picked in the composer: ${st.refs.map((r) => ("task" in r ? `@ the task "${r.task}"` : "skill" in r ? `/ their skill ${r.skill}` : `/ Ducter's action ${r.action}`)).join(", ")})`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
@@ -1227,7 +1236,18 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     const first = st.app ? [...core.apps.list("default")].sort((a, b) => a.made.localeCompare(b.made))[0] : undefined;
     const app = first ? { app: { id: first.id, name: first.name, ...(st.app === "ask" ? { ask: `e${Date.now().toString(36)}` } : {}) } } : {};
     if (first && st.app === "ask") core.apps.asked(first.id, app.app!.ask!);
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app });
+    // D534: what they picked with @ or /, resolved as the home's mentions.ts does.
+    const refs = (st.refs ?? []).map((r): HeldRef => {
+      if ("task" in r) {
+        const id = tid(r.task);
+        const c = core.tasks.get(id);
+        const report = c?.lastReport?.summary;
+        return { kind: "task", id, label: r.label, ...(c ? { state: c.attention === "needs_you" ? "waiting for the person" : c.attention } : {}), about: [`Its title: ${c?.title ?? r.label}.`, ...(report ? [`Its latest report: ${report}`] : [])].join("\n") };
+      }
+      if ("skill" in r) return { kind: "skill", id: r.skill, label: r.skill, ...(r.about ? { about: r.about } : {}) };
+      return { kind: "action", id: r.action, label: r.label };
+    });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}) });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {

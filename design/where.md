@@ -112,11 +112,14 @@ asked of the user: every fact comes from a computer's hello or its ability state
 
 1. **Hard filters**: the needs in §4.1; the agent's existing filters (installed, signed in,
    Use it for tasks, the partner's reserve). A failed filter keeps the row, greyed, with why.
+1b. **The person's 少放 / avoid rule** for this work (D538, §24): an avoided computer takes it only
+   when no other can; a computer named in the moment passes it.
 2. **Can it start now?** A computer that is asleep or can't be reached keeps its rows, marked
-   **waits**, ranked under every row that can start now.
+   **waits**, ranked under every row that can start now. D538: for heavy work (`needs.heavy`), a
+   computer without **room** (3 GB free, its heavy tasks under its share) waits the same way.
 3. **The person's word**: your pin, then the most specific rule (a rule may name a computer:
-   "要登录的网页都用我 Mac 上的 Chrome"), then Ducter's default. As principle 14; a pin of an agent
-   that lives on one computer pins that computer too.
+   "要登录的网页都用我 Mac 上的 Chrome"; D538: a 多放 / prefer computer rule), then Ducter's default.
+   As principle 14; a pin of an agent that lives on one computer pins that computer too.
 4. **Least access that does the job**: among rows that meet the needs, Ducter's own browser
    over the user's Chrome; a computer with only the site's sign-in over one with all of them.
 5. **New tasks start** (D510, §22): the computer the person set as the default, then their default
@@ -130,7 +133,7 @@ asked of the user: every fact comes from a computer's hello or its ability state
 
 The pick is the top row. Its **one reason** is the highest step above that set it apart from the
 best row on another computer, in plain words (§8): **一直醒着，合上 MacBook 也不停** · **要用你登录着的淘宝**
-· **只有 MacBook 有 Keynote** · **MacBook 睡着了，hel 醒着** · **改动在 MacBook 上** · **Claude Code 只在 MacBook 上，是你选的**.
+· **只有 MacBook 有 Keynote** · **MacBook 睡着了，hel 醒着** · **改动在 MacBook 上** · **Claude Code 只在 MacBook 上，是你选的** · **hel 内存不够** (D538).
 When only one computer exists the reason is the agent's, exactly as today.
 
 The partner may override the ranking with a reason, as today (principle 14).
@@ -556,8 +559,12 @@ start, and D385's hand-over of several (the sheet's Where default, and the place
 2. a where-rule (a rule with a computer whose words match the work);
 2b. (D510) the computer **新任务默认 / New tasks start** names, when it is awake: its own copy, else a
    clone there when its own git can read it; otherwise the next step decides, as before;
+2c. (D538, §24) a 多放 / prefer computer rule's computer for this work (it has room when the work is
+   heavy); a 少放 / avoid rule's computer, and for heavy work a computer without room, is passed over
+   in the steps below while another can take it;
 3. with no computer named, a computer that has a clone: the one that builds first (a Mac 2, a
-   worker 1, a server home 0), then the most recently touched copy; where it went is said back to
+   worker 1, a server home 0), then the most recently touched copy; for heavy work whose only copies
+   are where there is no room, a fresh clone where there is (D538); where it went is said back to
    the partner as a fact (the tool result's `where`, D477), so its words match what happened;
 4. no clone anywhere: clone it on the best computer whose own git can read it (`git ls-remote`, its
    own gh sign-in or credentials, no prompt) into that computer's Ducter folder
@@ -809,3 +816,50 @@ default computer is asked first (its copy, or a clone there when its git can rea
 hel 上做 / Your default: on hel**, the agent's **你设的默认 / your default**, and when the default agent
 can't run where the task must go, **你设的默认是 Codex，它在这儿用不了**. The hand-over sheet (D385) says
 **你设的默认 / Your default** under Where and Who.
+
+## 24. Which computer gets which work: what it measured, what you said (D538)
+
+**Who.** The author, 2026-11-24, with two servers: hel (the home, 7.6 GB, no swap) and haswell
+(64 GB). That morning one task's tsc×3, Playwright and Vite on hel stopped the home (D524). He wanted
+to say once 「haswell 内存大，验证、跑测试的活多放它」 and asked whether that is the partner's
+identity memory. The consumer with a second computer never thinks about memory; the fresh user only
+ever sees the line on a task.
+
+**Two kinds of knowledge, kept apart.**
+- **Measured, never asked.** Each computer measures itself every 15 s (`protocol/src/resources.ts`):
+  memory and what is free now, cores and load, the disk Ducter's folder is on, a graphics card it can
+  name, the kernel's out-of-memory stops in the service's own cgroup (Linux), and whether it sleeps
+  (`alwaysOn`). A worker sends its look on its heartbeat (the ping) and in its hello; the home looks at
+  itself. `DeviceView.resources`, the partner's `[devices]` line (`memory 7.6 GB (1.0 GB free now, no
+  room for heavy work), 4 cores, 2 out-of-memory stops in the last day`).
+- **Said by the person: a computer rule.** `RuleView.where` (harness ""): prefer (多放) or avoid (少放)
+  one computer for heavy work, web work, or all work (kinds or words may narrow it). Household
+  knowledge every partner shares, in the person's words; never a persona's identity (system.md,
+  "Identity and Mem boundary").
+
+**Heavy is the partner's judgment; room is code's.** At task_open the partner says `needs.heavy` from
+the words and the repository (builds, test suites, type checks, a browser or Playwright, a dev
+server, an eval). Code reads that and measures: **room** is 3 GB free and the computer's heavy tasks
+under its share (one per 8 GB, at least one). A computer whose memory isn't known has room.
+
+**Placement** (the ranking §4.3, the repository resolver §18): what the task needs first; then the
+person's 少放 rule; then can it start now (room, for heavy work); then the person's word (a pin, an
+agent rule's computer, a 多放 rule's computer); then Ducter's own heuristics. A heavy task whose
+computer has no room waits (**在等 hel 腾出内存 / Waiting for room on hel**), looked at again every
+15 s, and starts by itself when there is room. When the partner itself names a computer that the
+person's 少放 rule excludes, or that has no room while another does, pre-flight gives it the facts and
+it places the work again; a computer the person named holds.
+
+**Said.** The reason on a task: **为什么在 haswell 上：hel 内存不够。** or **按你的规则「验证的活多放
+haswell」**. The switch sheet's row: **等它腾出内存再做 / Waits until it has room**.
+
+**关于这台 / About this computer** on every computer's card (Mac `views/aboutcomputer.go`, web
+`about-computer.tsx`, the facts from `protocol/src/about-computer.ts`): a fold, its summary **64 GB
+内存，空着 41 GB**; **它自己量的 / Measured here**, one plain line per fact; **你说过 / You said**, each
+rule in their words with the rule in literal words under it, **改 / Change** and **移除 / Remove**;
+**加一条 / Add one**: **多放这台 / 少放这台** and **重活 / 上网的活 / 所有活**, then **记下 / Keep**. With
+no rule: **想让哪类活多放或少放这台，跟我说一声，或者在这里加一条。**
+
+**Nowledge Mem, optional.** While Mem is on, each computer rule is mirrored to Mem as the person's
+preference (label `computer-placement`), so their other agents know it; Mem's labelled memories this
+home didn't write are offered to the partner once each (memory.md, "Computer rules in Mem").

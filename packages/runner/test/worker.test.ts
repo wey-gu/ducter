@@ -492,3 +492,48 @@ test("D539: a task on a worker gets the key kept there in its session's environm
   expect(JSON.stringify(core.events)).toContain("••••••");
   await runner.dispose();
 });
+
+test("D521: a task on a worker stops one background job through its agent there; a session that can't stop one offers none", async () => {
+  type Ev = import("@ducter/protocol/src/internal.ts").HarnessEvent;
+  const stopped: string[] = [];
+  let push!: (e: Ev) => void;
+  const mk = (canStop: boolean) => {
+    const buf: Ev[] = [];
+    let wake: (() => void) | undefined;
+    let done = false;
+    push = (e) => (buf.push(e), wake?.());
+    return {
+      id: "w-s1",
+      canSteer: true,
+      busy: () => false,
+      send: async () => {},
+      interrupt: async () => {},
+      close: async () => ((done = true), wake?.()),
+      ...(canStop ? { stopBackground: async (id: string) => void stopped.push(id) } : {}),
+      events: () => ({
+        async *[Symbol.asyncIterator]() {
+          for (;;) {
+            while (!buf.length && !done) await new Promise<void>((r) => (wake = r));
+            const v = buf.shift();
+            if (!v) return;
+            yield v;
+          }
+        },
+      }),
+    };
+  };
+  for (const canStop of [true, false]) {
+    const w = fakeWorker(async () => {}, { options: [] }, { harness: { start: async () => mk(canStop) as any, available: async () => [] } });
+    core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };
+    const id = canStop ? "tsk00051" : "tsk00052";
+    const runner = createRunner(core, { newId: () => id });
+    const card = await runner.openTask({ persona: "p1", title: "Bench", brief: "b", place: { kind: "none", device: "vps-2" } });
+    await runner.whenStarted(card.taskId);
+    push({ role: "system", text: "running in the background: bench", raw: { kind: "background", background: { id: "b1", act: "started", type: "shell", what: "bench", ...(canStop ? { stop: true } : {}) } } });
+    await waitFor(() => core.events.some((e) => e.kind === "task_event" && (e.body as any).raw?.background?.id === "b1" && (e.body as any).taskId === id), "logged");
+    const r = await runner.stopBackground!(card.taskId, "b1");
+    expect(r.ok).toBe(canStop);
+    expect(stopped).toEqual(["b1"]);
+    await runner.dispose();
+  }
+});

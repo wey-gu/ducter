@@ -353,11 +353,10 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 	if width > 0 {
 		row.Width(width)
 	}
-	switch {
-	case sel:
+	if sel {
 		row.Background(t.Surface).InsetShadow(0, 0, 0, 2, t.Ink)
-	case row.Hovered():
-		row.Background(t.Sunken)
+	} else {
+		a.rowHover(c, row, groundPage(), false) // D529
 	}
 	row.Children(func() {
 		clay()

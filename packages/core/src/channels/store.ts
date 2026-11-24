@@ -22,7 +22,7 @@ export interface ChannelRec {
   token: string;
   /** Slack: the app-level token (xapp-) Socket Mode opens with. */
   appToken?: string;
-  bot?: { id: string; name: string; handle?: string; team?: string };
+  bot?: { id: string; name: string; handle?: string; team?: string; teamId?: string; appId?: string };
   linked?: LinkedAccount;
   /** Telegram: the next update to read (confirmed only after it was handled). */
   offset?: number;

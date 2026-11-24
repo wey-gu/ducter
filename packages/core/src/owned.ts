@@ -200,7 +200,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     const w = wordsOf(taskId);
     const lines: string[] = [];
     const next: OwnedSeen = { ...seen, ids: [...(seen.ids ?? [])] };
-    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, ref: .head.ref, state: .state, merged: .merged, draft: .draft, merge: .mergeable_state, awaiting: [.requested_reviewers[]?.login]}"])) as { head?: string; ref?: string; state?: string; merged?: boolean; draft?: boolean; merge?: string; awaiting?: string[] };
+    const head = (await call(taskId, ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{head: .head.sha, ref: .head.ref, title: .title, state: .state, merged: .merged, draft: .draft, merge: .mergeable_state, awaiting: [.requested_reviewers[]?.login]}"])) as { head?: string; ref?: string; title?: string; state?: string; merged?: boolean; draft?: boolean; merge?: string; awaiting?: string[] };
     // D508: a PR its report named is its own only when it was made from the task's branch.
     const place = tasks.get(taskId)?.place;
     const branch = place?.kind === "repo" ? place.branch : undefined;
@@ -271,6 +271,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
     const approvedBy = [...decisive.values()].filter((x) => x.state === "APPROVED").map((x) => one(x.by, 40));
     next.standing = {
       at: new Date(clock.now()).toISOString(),
+      ...(head?.title ? { title: one(head.title, 200) } : seen.standing?.title ? { title: seen.standing.title } : {}),
       ...(sha ? { head: sha } : {}),
       ...(head?.draft ? { draft: true } : {}),
       ...(changes.length ? { changes: changes.map((x) => ({ id: String(x.id), by: one(x.by, 40), at: one(x.at, 25), ...(x.on ? { on: String(x.on) } : {}), text: one(x.text) })) } : {}),

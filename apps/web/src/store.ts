@@ -72,6 +72,8 @@ export interface Send {
   clientId?: string;
   /** D268: sent while it works: steered into its next step, or queued until it is done. */
   mode?: "steer" | "queue";
+  /** D534: what its words refer to with @ (sent with it; a resend sends them again). */
+  refs?: import("@ducter/protocol").Ref[];
   delivered?: Delivery;
   failed?: string;
   seq?: number;
@@ -1031,13 +1033,13 @@ export class Store {
   /** What to send again after a welcome, in order: messages to the partner not yet echoed, then
    *  direct task messages not yet acked. Core dedupes both by clientId, so a copy it already has
    *  is echoed (or acked) again, never appended twice. */
-  resends(pending: { clientId: string; text: string; media?: string[]; reply?: import("@ducter/protocol").ReplyWant }[]): ClientFrame[] {
+  resends(pending: { clientId: string; text: string; media?: string[]; reply?: import("@ducter/protocol").ReplyWant; refs?: import("@ducter/protocol").Ref[] }[]): ClientFrame[] {
     const echoed = new Set<string>();
     for (const e of this.channel) if (e.user?.clientId) echoed.add(e.user.clientId);
-    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}), ...(p.reply ? { reply: p.reply } : {}) }));
+    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}), ...(p.reply ? { reply: p.reply } : {}), ...(p.refs?.length ? { refs: p.refs } : {}) }));
     for (const t of this.tasks.values())
       for (const sd of t.sends)
-        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}), ...(sd.mode ? { mode: sd.mode } : {}) });
+        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}), ...(sd.mode ? { mode: sd.mode } : {}), ...(sd.refs?.length ? { refs: sd.refs } : {}) });
     return out;
   }
 

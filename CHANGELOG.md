@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.1.46 - 2026-11-24
+
+<!-- whats-new
+zh: 输入 @ 指一个任务，/ 用一个动作；说一次哪台电脑放什么活
+en: Type @ to point at a task, / to do something; tell Ducter once where work goes
+-->
+
+**@ and / in the composer**
+- Type @ to point at a task, a file, something Ducter looks after, a partner, or a PR. Your
+  partner gets the real thing: its state, its latest report and what it changed.
+- Type / to start a task, look after something, set a reminder or use one of your skills. In a
+  task, / lists that agent's own commands.
+
+**Which computer gets which work**
+- Each computer's card has 关于这台 / About this computer: what it measured of itself (memory,
+  free memory, cores, disk) and what you told Ducter about it.
+- Say once "haswell has lots of memory, put verification there" and every partner places work
+  that way. Heavy work never starts on a computer without the memory for it; it waits and says
+  why.
+
+## 0.1.45 - 2026-11-24
+
+<!-- whats-new
+zh: 看守中的事有了自己的页；Slack 换上伙伴的名字和头像
+en: Looking-after work gets its own page; Slack shows your partner's face
+-->
+
+**Looking after**
+- Each piece of work Ducter looks after opens to its own page: its goal, its rounds, what it
+  holds and what it asks you, with the one composer to talk to it.
+
+**In the background**
+- An opened task shows what it left running in the background in a quiet tray: each item's
+  state and time, and a failure in plain words.
+
+**Smoother lists and marks**
+- Pointing at a row tints it without moving anything around it.
+- The marks beside a long conversation are drawn from the theme, readable in light and dark.
+
+**Back online by itself**
+- The web and phone clients reconnect on their own after your home restarts, instead of asking
+  you to pair again.
+
+**Slack**
+- The setup follows Slack's pages as they are today, step by step. 获得口令 / Get a code links
+  you, with a button that opens the chat with your partner in Slack.
+- Each partner speaks in Slack with its own name and face. Mention it in a channel and it
+  answers in the thread, for you only.
+- After upgrading, paste the new app config into your Slack app's App Manifest page and
+  reinstall the app once; Settings reminds you.
+
 ## 0.1.44 - 2026-11-24
 
 <!-- whats-new

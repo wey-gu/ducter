@@ -118,6 +118,8 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		if dv.Tidied != nil && dv.Tidied.Count > 0 {
 			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)
 		}
+		// D538: what this computer measured of itself, and the person's rules about it.
+		a.aboutComputer(c, dv)
 		// D539: the keys Ducter keeps on this computer for its tasks here (names only), folded.
 		if dv.Kind != "phone" {
 			a.keptKeysFold(c, dv)

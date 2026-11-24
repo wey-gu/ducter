@@ -508,7 +508,7 @@ func (a *App) doneToday(b store.Board) int {
 func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 	t := a.T
 	if len(p.atts) == 0 {
-		a.userReplyBubble(c, p.text, true, nil, p.reply, "")
+		a.userReplyBubble(c, p.text, true, nil, p.reply, "", p.refs...)
 		return
 	}
 	join := a.takeJoin()
@@ -516,7 +516,7 @@ func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 		a.messageMedia(c, "p"+p.clientID, nil, p.atts, true, "conv")
 		if p.text != "" || p.reply != nil {
 			a.join = join
-			a.userReplyBubble(c, p.text, true, nil, p.reply, "")
+			a.userReplyBubble(c, p.text, true, nil, p.reply, "", p.refs...)
 		}
 		if anyFailed(p.atts) {
 			ui.Row(c.Key("pfail:" + p.clientID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -537,7 +537,7 @@ func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	a.userReplyBubble(c, text, pending, nil, nil, "")
 }
 
-func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *protocol.ReplyRef, still *replyTo, clientID string) {
+func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *protocol.ReplyRef, still *replyTo, clientID string, refs ...protocol.Ref) {
 	t := a.T
 	join := a.takeJoin()
 	rt := a.takeReply()
@@ -552,6 +552,17 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 		tr := r[1]
 		if join {
 			tr = t.BubbleJoin
+		}
+		// D534: words with references: the chips stand where their names were typed.
+		if ref == nil && still == nil && len(refs) > 0 {
+			b := ui.Column(c.Key("refs")).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).TransformOrigin(1, 0.5)
+			b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
+			if pending {
+				b.Opacity(0.7)
+			}
+			b.Children(func() { a.wordsWithRefs(c, "w", text, refs, t.OnUserBubble, t.Bubble) })
+			a.replyMenu(c, b, rt, text)
+			return
 		}
 		if ref == nil && still == nil {
 			b := uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
@@ -614,7 +625,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 					if strings.TrimSpace(e.User.Text) != "" || e.User.Reply != nil {
 						a.join = join
 						a.rp.noPebble = true
-						a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
+						a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID, heldRefs(e.User.Refs)...)
 						a.rp.noPebble = false
 					}
 				})
@@ -634,7 +645,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		if e.User.Passed != nil {
 			a.passedLine(c, itoa(e.FirstSeq), e.User.Passed.From)
 		}
-		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
+		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID, heldRefs(e.User.Refs)...)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
@@ -987,58 +998,51 @@ func (a *App) composer(c *ui.Context) {
 	// so the mic held under it stays the same element as the strip comes.
 	ui.Column(c.Key("voice-above")).Children(func() { a.voiceAbove(c) })
 	ui.Row(c.Key("composer-row")).ObserveInput(a.voiceObserve).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
-		box := ui.Column(c.Key("composer-box")).Grow(1).MaxWidth(convWidth).Padding(t.S2, t.S2, t.S2, t.S3).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
-		over := a.takeDrops(box, "conv") // D206: pictures dropped on the composer
-		box.Children(func() {
-			if over {
-				a.dropHint(c)
-			}
-			a.composerReply(c) // D236: what this replies to, pressed into the card
-			a.picTray(c, "conv")
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				a.addPicturesButton(c, "conv")
-				ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
-				if r := a.rp.replying; r != nil {
-					label = a.replyLabel(r.from)
-					ph = label + "…"
-				}
-				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(ph).
-					Label(label).AutoFocus().
-					Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-					OnTextKey(func(k ui.TextKey) bool {
-						if a.pictureKeys("conv", k) {
-							return true
-						}
-						if k.Key == ui.KeyEscape && k.Mods == 0 && a.vox.phase == "listen" {
-							a.voiceDrop() // D305: Esc drops what is being heard
-							return true
-						}
-						if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
-							return true // D236: Esc puts the reply away
-						}
-						a.speakStop() // D305: typing stops a reply being read
-						if k.Key == ui.KeyEnter && k.Mods == 0 {
-							if text := k.Text(); a.SendMessage(text) {
-								a.voiceSent(text)
-								k.SetText("")
-							}
-							return true
-						}
-						return false // Shift+Enter breaks the line
-					})
-				if a.focusComposer {
-					ta.Focus()
-					a.focusComposer = false
-				}
-				a.micButton(c) // D305: hold to talk
-				if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-					if text := a.draft; a.SendMessage(text) {
-						a.voiceSent(text)
-						a.draft = ""
+		ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
+		if r := a.rp.replying; r != nil {
+			label = a.replyLabel(r.from)
+			ph = label + "…"
+		}
+		var over bool
+		ui.Row(c).Grow(1).MaxWidth(convWidth).Children(func() {
+			a.composerBox(c, composerOpts{
+				key: "composer", draft: &a.draft, placeholder: ph, label: label, autoFocus: true, focus: a.focusComposer,
+				mentions: &mentionPlace{},                                          // D534
+				box:      func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
+				before: func() {
+					if over {
+						a.dropHint(c)
 					}
-				}
+					a.composerReply(c) // D236: what this replies to, pressed into the card
+					a.picTray(c, "conv")
+				},
+				lead:  func() { a.addPicturesButton(c, "conv") },
+				tools: func() { a.micButton(c) }, // D305: hold to talk
+				keys: func(k ui.TextKey) bool {
+					if a.pictureKeys("conv", k) {
+						return true
+					}
+					if k.Key == ui.KeyEscape && k.Mods == 0 && a.vox.phase == "listen" {
+						a.voiceDrop() // D305: Esc drops what is being heard
+						return true
+					}
+					if k.Key == ui.KeyEscape && k.Mods == 0 && a.CancelReply() {
+						return true // D236: Esc puts the reply away
+					}
+					a.speakStop() // D305: typing stops a reply being read
+					return false
+				},
+				// Pictures alone may go.
+				canSend: ptrBool(strings.TrimSpace(a.draft) != "" || len(a.med().trays["conv"]) > 0),
+				onSend: func(text string) bool {
+					if !a.SendMessage(text) {
+						return false
+					}
+					a.voiceSent(text)
+					return true
+				},
 			})
+			a.focusComposer = false
 		})
 	})
 }

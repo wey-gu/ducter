@@ -57,12 +57,30 @@ func prAct(task *store.Task) string {
 
 // prWords is a PR's phase in the person's words.
 func (a *App) prWords(task *store.Task, s store.PRSaid) string {
-	sep := a.L.T("onhand.prs.sep")
+	base := ""
+	if task != nil {
+		base = task.Place().BaseBranch
+	}
+	return a.prPhaseWords(s, base)
+}
+
+// prPhaseWords is a PR's phase in words, every name filled: who asked for
+// changes, the base it conflicts with; without one, the words without it
+// (D519: a babysitter's row read 「%s 要求修改」).
+func (a *App) prPhaseWords(s store.PRSaid, base string) string {
 	switch s.Phase {
 	case store.PRChanges:
-		return a.L.T("onhand.prs.changes", strings.Join(s.By, sep))
+		var by []string
+		for _, b := range s.By {
+			if strings.TrimSpace(b) != "" {
+				by = append(by, b)
+			}
+		}
+		if len(by) == 0 {
+			return a.L.T("onhand.prs.changes.anon")
+		}
+		return a.L.T("onhand.prs.changes", strings.Join(by, a.L.T("onhand.prs.sep")))
 	case store.PRConflict:
-		base := task.Place().BaseBranch
 		if base == "" {
 			base = "main"
 		}

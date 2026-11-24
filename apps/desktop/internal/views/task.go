@@ -492,6 +492,10 @@ func (a *App) reportLabel(r *protocol.Report) string {
 func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D493: what sits over the task's composer shares its measure and edges.
+	// D521: its agent's background work first, furthest from the words.
+	if task.Card != nil && task.Card.Background != nil && len(task.Card.Background.Jobs) > 0 {
+		a.aboveComposerAt(c, readMeasure, func() { a.bgTray(c, task) })
+	}
 	if a.held != nil && a.held.taskID == task.ID {
 		a.aboveComposerAt(c, readMeasure, func() { a.heldLine(c) })
 	}
@@ -526,54 +530,55 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S4, t.S5).Children(func() {
 		ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S1).Children(func() {
 			a.heldChips(c, task, working, steers)
-			box := ui.Column(c.Key("taskcomposer-box")).Padding(t.S2, t.S2, t.S2, t.S3).
-				Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
-			over := a.takeDrops(box, tray) // D206
-			box.Children(func() {
-				if over {
-					a.dropHint(c)
-				}
-				a.picTray(c, tray)
-				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					a.addPicturesButton(c, tray)
-					ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(place).
-						Label(a.L.T("composer.task")).
-						Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
-						OnTextKey(func(k ui.TextKey) bool {
-							if a.pictureKeys(tray, k) {
-								return true
+			var over bool
+			ui.Row(c).Children(func() {
+				a.composerBox(c, composerOpts{
+					key: "taskcomposer:" + task.ID, draft: &draft, placeholder: place, label: a.L.T("composer.task"), lines: 6, focus: a.focusComposer,
+					mentions: &mentionPlace{where: task.ID, task: true},              // D534
+					box:      func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
+					before: func() {
+						if over {
+							a.dropHint(c)
+						}
+						a.picTray(c, tray)
+					},
+					lead: func() { a.addPicturesButton(c, tray) },
+					tools: func() {
+						a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
+						if working && steers && strings.TrimSpace(draft) != "" {
+							if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
+								draft = ""
 							}
-							if k.Key == ui.KeyEnter && (k.Mods == 0 || k.Mods == ui.Alt) {
-								if a.SendToTaskMode(task.ID, k.Text(), mode(k.Mods == ui.Alt)) {
-									k.SetText("")
-									// D207: the key runs after this frame's draft was
-									// stored; empty the stored one too, or the next
-									// frame puts the sent words back.
-									a.taskDrafts[task.ID] = ""
-								}
-								return true
+						}
+						if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
+							a.TaskAction(task.ID, "interrupt")
+						}
+					},
+					keys: func(k ui.TextKey) bool {
+						if a.pictureKeys(tray, k) {
+							return true
+						}
+						if k.Key == ui.KeyEnter && k.Mods == ui.Alt {
+							if a.SendToTaskMode(task.ID, k.Text(), mode(true)) {
+								k.SetText("")
+								a.taskDrafts[task.ID] = ""
 							}
+							return true
+						}
+						return false
+					},
+					canSend: ptrBool(strings.TrimSpace(draft) != "" || len(a.med().trays[tray]) > 0),
+					onSend: func(text string) bool {
+						if !a.SendToTaskMode(task.ID, text, mode(false)) {
 							return false
-						})
-					if a.focusComposer {
-						ta.Focus()
-						a.focusComposer = false
-					}
-					a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
-					if working && steers && strings.TrimSpace(draft) != "" {
-						if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
-							draft = ""
 						}
-					}
-					if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
-						a.TaskAction(task.ID, "interrupt")
-					}
-					if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
-						if a.SendToTaskMode(task.ID, draft, mode(false)) {
-							draft = ""
-						}
-					}
+						// D207: the key runs after this frame's draft was stored; empty the
+						// stored one too, or the next frame puts the sent words back.
+						a.taskDrafts[task.ID] = ""
+						return true
+					},
 				})
+				a.focusComposer = false
 			})
 			// D354: the model and effort under the box, always in sight while it
 			// can be switched; while it works, the steer hints after them.
@@ -636,6 +641,16 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			a.messageMedia(c, key, media, nil, true, "task:"+a.TaskID)
 		}
 		if text == "" {
+			goto note
+		}
+		if said, refs := splitRefs(text); len(refs) > 0 {
+			// D534: the person's words with their @ chips; what Ducter put after them for the agent is never shown.
+			r := t.BubbleRadius
+			b := ui.Column(c.Key("refs")).Background(t.UserBubble).Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80)
+			if waiting {
+				b.Opacity(0.7)
+			}
+			b.Children(func() { a.wordsWithRefs(c, "w", said, refs, t.OnUserBubble, taskProse) })
 			goto note
 		}
 		{

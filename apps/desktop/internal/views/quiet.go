@@ -45,12 +45,27 @@ func (a *App) quietButton(c *ui.Context, key, label, about string, strong bool, 
 		if hover {
 			col = t.Ink
 		}
+		if chevron < 0 { // D519: back, the chevron before the words
+			a.glyph(c, 12, drawBackChevron(col))
+		}
 		uiText(c, label).FontSize(t.SM).FontWeight(w).TextColor(col).SingleLine().AccessHidden(about != "")
-		if chevron != 0 {
+		if chevron > 0 {
 			a.glyph(c, 12, drawChevron(col, chevron > 1))
 		}
 	})
 	return b.Clicked()
+}
+
+// drawBackChevron is a small ‹: a way back.
+func drawBackChevron(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx+1.5, cy-3.5)
+		m.LineTo(cx-2, cy)
+		m.LineTo(cx+1.5, cy+3.5)
+		p.StrokePath(&m, 1.8, col)
+	}
 }
 
 // drawChevron is a small › (down when open).

@@ -67,6 +67,13 @@ export function day(L: Strings, iso: string | undefined, now = Date.now()): stri
   return w.date(d, d.getFullYear() !== n.getFullYear());
 }
 
+/** D519: a moment in a list's time column: today its clock ("14:28"), else its day alone (昨天, 周一,
+ *  "11 月 22 日" / "Nov 22"): one short line that never wraps. The Mac's i18n.ColTime says the same. */
+export function colTime(L: Strings, iso: string | undefined, now = Date.now()): string {
+  if (!iso) return "";
+  return dayDiff(new Date(iso), new Date(now)) === 0 ? clock(iso) : day(L, iso, now);
+}
+
 /** D304: a calendar day always as a date, never "yesterday": "11 月 10 日" / "Nov 10" (the year only when not this one). YYYY-MM-DD is a local day. */
 export function calDay(L: Strings, ymd: string | undefined, now = Date.now()): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd ?? "");

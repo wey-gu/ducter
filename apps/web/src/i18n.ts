@@ -28,6 +28,7 @@ import { fileWords } from "./i18n-fileview.ts";
 import { calendarWords } from "./i18n-calendar.ts";
 import { updateAllWords } from "./i18n-updateall.ts";
 import { convWords } from "./i18n-conv.ts";
+import { mentionWords } from "./i18n-mentions.ts";
 import { transcriptWords } from "./i18n-transcript.ts";
 import { memoryWords } from "./i18n-memory.ts";
 import { contextWords } from "./i18n-context.ts";
@@ -36,8 +37,10 @@ import { firstWords } from "./i18n-first.ts";
 import { settingsHome, settingsMore } from "./i18n-settings.ts";
 import { delightWords } from "./i18n-delight.ts";
 import { d475Words } from "./i18n-d475.ts";
+import { linkWords } from "./i18n-link.ts";
 import { d484Words } from "./i18n-d484.ts";
 import { keepWords } from "./i18n-keep.ts";
+import { bgWords } from "./i18n-bg.ts";
 import { outwardWords } from "./i18n-outward.ts";
 import { partnersWords } from "./i18n-partners.ts";
 import { lendWords } from "./i18n-lend.ts";
@@ -124,6 +127,7 @@ const zh: Record<string, string> = {
   "newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。",
   "newtask.err.offline": "那台设备现在连不上。",
   "newtask.err.failed": "没能开始：%s",
+  "newtask.err.failed.bare": "没能开始",
   "newtask.err.unknown": "没能开始，再试一次？",
   "nav.onhand": "手头的事",
   // D262: the shell's way to the other places.
@@ -146,7 +150,6 @@ const zh: Record<string, string> = {
   "header.held.soon": "过一会儿接着回你",
   "header.summary.none": "手头没事，随时说",
   "conn.connecting": "正在连接…",
-  "conn.offline": "连不上 Ducter，正在重试",
   "composer.placeholder": "跟 %s 说点什么…",
   "composer.task": "直接跟它说…",
   "composer.send": "发送",
@@ -518,6 +521,10 @@ const zh: Record<string, string> = {
   "step.background.end.bare": "后台的事做完了",
   "step.background.stop": "后台的事停下了：%[1]s",
   "step.background.stop.bare": "后台的事停下了",
+  "step.background.fail": "后台的事出错了：%[1]s",
+  "step.background.fail.bare": "后台的事出错了",
+  "step.background.lost": "后台的事不知道结果：%[1]s",
+  "step.background.lost.bare": "后台的事不知道结果",
   "step.label.other": "使用",
   "step.label.error": "出错",
   "note.stalled": "它停下了，没交回结果",
@@ -742,7 +749,6 @@ const zh: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "连接",
   "connect.busy": "正在连接…",
-  "connect.revoked": "这台手机已经和你的 Ducter 断开了。再连一次就能回来。",
   "connect.err.code": "这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。",
   "connect.err.locked": "试错太多次了。等 10 分钟再试，或者换一个新码。",
   "connect.err.unreachable": "连不上 %s。地址对吗？用 SSH 隧道的话，隧道还开着吗？",
@@ -1143,6 +1149,7 @@ const en: Record<string, string> = {
   "newtask.err.ducter_data": "That is where Ducter keeps its own data, so no task works there. Pick another folder, or No folder.",
   "newtask.err.offline": "That device can't be reached right now.",
   "newtask.err.failed": "It didn't start: %s",
+  "newtask.err.failed.bare": "It didn't start",
   "newtask.err.unknown": "It didn't start. Try again?",
   "nav.onhand": "On hand",
   // D262: the shell's way to the other places.
@@ -1165,7 +1172,6 @@ const en: Record<string, string> = {
   "header.held.soon": "Answers again soon",
   "header.summary.none": "Nothing on hand. Say anything.",
   "conn.connecting": "Connecting…",
-  "conn.offline": "Can't reach Ducter, retrying",
   "composer.placeholder": "Say something to %s…",
   "composer.task": "Message it directly…",
   "composer.send": "Send",
@@ -1532,6 +1538,10 @@ const en: Record<string, string> = {
   "step.background.end.bare": "Finished in the background",
   "step.background.stop": "Stopped in the background: %[1]s",
   "step.background.stop.bare": "Stopped in the background",
+  "step.background.fail": "Failed in the background: %[1]s",
+  "step.background.fail.bare": "Failed in the background",
+  "step.background.lost": "Result unknown in the background: %[1]s",
+  "step.background.lost.bare": "Result unknown in the background",
   "step.label.other": "Used",
   "step.label.error": "Error",
   "note.stalled": "It stopped without reporting back",
@@ -1752,7 +1762,6 @@ const en: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "Connect",
   "connect.busy": "Connecting…",
-  "connect.revoked": "This phone was disconnected from your Ducter. Connect it again to come back.",
   "connect.err.code": "That code is wrong or has expired. Run ducter pair on that computer again.",
   "connect.err.locked": "Too many wrong codes. Wait 10 minutes, or get a new code.",
   "connect.err.unreachable": "Can't reach %s. Is the address right? If you use an SSH tunnel, is it still open?",
@@ -2670,6 +2679,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.reason.only_chrome": "只有 %s 有你的 Chrome",
     "where.reason.only_web": "只有 %s 能上网",
     "where.reason.awake": "%[1]s 睡着了，%[2]s 醒着",
+    "where.reason.room": "%s 内存不够",
     "where.reason.changes": "要用的文件在 %s 上",
     "where.reason.agent_here": "%[1]s 只在 %[2]s 上",
     "where.reason.no_signin": "用不着你的登录，%s 自己的浏览器就够了",
@@ -2692,6 +2702,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.ask.default": "不回的话就等它醒，什么都不会丢",
     "where.ask.waited": "等 %s 醒了再做",
     "where.waiting": "%s 睡着了",
+    "where.waiting.room": "在等 %s 腾出内存",
     "switch.computer.awake": "醒着",
     "switch.computer.asleep": "睡着了",
     "switch.computer.away": "连不上",
@@ -2704,6 +2715,7 @@ const where: Record<Lang, Record<string, string>> = {
     "switch.cant.folder": "文件夹在另一台电脑上，转不过去",
     "switch.waits": "等它醒了再做",
     "switch.waits.away": "等它连上再做",
+    "switch.waits.room": "等它腾出内存再做",
     "switch.move.explain": "从最近保存的进度接着做；分支会先推上去。",
     "switch.move.plain": "从最近保存的进度接着做。",
     "switch.move.widens": "会用你的 Chrome，你登录着的网站它都能用。",
@@ -2753,6 +2765,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.reason.only_chrome": "Only %s has your Chrome",
     "where.reason.only_web": "Only %s can browse",
     "where.reason.awake": "%[1]s is asleep; %[2]s is awake",
+    "where.reason.room": "%s is short on memory",
     "where.reason.changes": "The files are on %s",
     "where.reason.agent_here": "%[1]s is only on %[2]s",
     "where.reason.no_signin": "No sign-in needed; %s's own browser will do",
@@ -2775,6 +2788,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.ask.default": "If you don't answer, it waits. Nothing is lost",
     "where.ask.waited": "Waits for %s",
     "where.waiting": "%s is asleep",
+    "where.waiting.room": "Waiting for room on %s",
     "switch.computer.awake": "Awake",
     "switch.computer.asleep": "Asleep",
     "switch.computer.away": "Can't reach",
@@ -2787,6 +2801,7 @@ const where: Record<Lang, Record<string, string>> = {
     "switch.cant.folder": "The folder is on another computer; it can't move",
     "switch.waits": "Waits until it wakes",
     "switch.waits.away": "Waits until it's back",
+    "switch.waits.room": "Waits until it has room",
     "switch.move.explain": "Continues from its last saved progress; the branch is pushed first.",
     "switch.move.plain": "Continues from its last saved progress.",
     "switch.move.widens": "It will use your Chrome, with every site you're signed in to.",
@@ -2834,6 +2849,43 @@ const devcard: Record<Lang, Record<string, string>> = {
     "worker.g": "这里的任务用这台电脑上登录的 AI 和代码，看不到你和 %s 的对话。",
     "home.g": "你和 %s 的对话都存在这台电脑上。",
     "card.tidied": "整理过 %d 个用完的工作副本，腾出 %s",
+    // D538: 关于这台 / About this computer.
+    "about.title": "关于这台",
+    "about.sum": "%s 内存，空着 %s",
+    "about.measured": "它自己量的",
+    "about.mem": "内存 %s，现在空着 %s",
+    "about.heavy": "构建、测试这类重活，一次能放 %d 个",
+    "about.heavy.none": "现在放不下重活：空着的内存不到 3 GB",
+    "about.cores": "%d 核",
+    "about.cores.calm": "%d 核，现在不忙",
+    "about.cores.some": "%d 核，现在有点忙",
+    "about.cores.busy": "%d 核，现在很忙",
+    "about.disk": "硬盘还剩 %s",
+    "about.gpu": "显卡 %s",
+    "about.oom": "过去一天内存不够，停掉过 %d 个程序",
+    "about.on": "一直开着，不会睡",
+    "about.sleeps": "合上就睡",
+    "about.said": "你说过",
+    "about.none": "想让哪类活多放或少放这台，跟我说一声，或者在这里加一条。",
+    "about.add": "加一条",
+    "about.way": "多放还是少放",
+    "about.more": "多放这台",
+    "about.less": "少放这台",
+    "about.which": "哪类活",
+    "about.w.heavy": "重活",
+    "about.w.web": "上网的活",
+    "about.w.all": "所有活",
+    "about.rule.more": "这台多放%s",
+    "about.rule.less": "这台少放%s",
+    "about.rule.w.heavy": "构建、测试这类重活",
+    "about.rule.w.web": "上网的活",
+    "about.rule.w.all": "活",
+    "about.inmem": "也记在 Nowledge Mem 里，你别的 AI 也知道",
+    "about.keep": "记下",
+    "about.cancel": "算了",
+    "about.edit": "改",
+    "about.remove": "移除",
+    "about.removed": "不再按「%s」放了",
     "list.state.lent": "借出去了",
     "list.state.lendable": "能借给任务",
     "list.state.ready": "待命",
@@ -2991,6 +3043,43 @@ const devcard: Record<Lang, Record<string, string>> = {
     "worker.g": "Tasks here use the AI and code on this computer. They never see your conversations with %s.",
     "home.g": "Your conversations with %s are kept on this computer.",
     "card.tidied": "Tidied %d finished working copies, %s freed",
+    // D538: 关于这台 / About this computer.
+    "about.title": "About this computer",
+    "about.sum": "%s, %s free",
+    "about.measured": "Measured here",
+    "about.mem": "Memory %s, %s free now",
+    "about.heavy": "Room for %d heavy jobs at once (builds, tests)",
+    "about.heavy.none": "No room for heavy work now: under 3 GB free",
+    "about.cores": "%d cores",
+    "about.cores.calm": "%d cores, not busy now",
+    "about.cores.some": "%d cores, a little busy now",
+    "about.cores.busy": "%d cores, busy now",
+    "about.disk": "%s of disk free",
+    "about.gpu": "Graphics: %s",
+    "about.oom": "Ran out of memory %d times in the last day",
+    "about.on": "Always on, never sleeps",
+    "about.sleeps": "Sleeps when closed",
+    "about.said": "You said",
+    "about.none": "Tell me which work to put here more or less, or add it here.",
+    "about.add": "Add one",
+    "about.way": "More or less",
+    "about.more": "More here",
+    "about.less": "Less here",
+    "about.which": "Which work",
+    "about.w.heavy": "Heavy",
+    "about.w.web": "Web",
+    "about.w.all": "All",
+    "about.rule.more": "More %s here",
+    "about.rule.less": "Less %s here",
+    "about.rule.w.heavy": "heavy work (builds, tests)",
+    "about.rule.w.web": "web work",
+    "about.rule.w.all": "work",
+    "about.inmem": "Also in Nowledge Mem, so your other AIs know",
+    "about.keep": "Keep",
+    "about.cancel": "Cancel",
+    "about.edit": "Change",
+    "about.remove": "Remove",
+    "about.removed": "No longer placing by “%s”",
     "list.state.lent": "Lent now",
     "list.state.lendable": "Can be lent",
     "list.state.ready": "Ready",
@@ -3505,7 +3594,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 
 import { autofill } from "./i18n-autofill.ts";
 import { errandWords } from "./i18n-errand.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh, ...d484Words.zh, ...keepWords.zh, ...outwardWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en, ...d484Words.en, ...keepWords.en, ...outwardWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh, ...d484Words.zh, ...keepWords.zh, ...bgWords.zh, ...outwardWords.zh, ...mentionWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en, ...d484Words.en, ...keepWords.en, ...bgWords.en, ...outwardWords.en, ...mentionWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);
@@ -3518,6 +3607,9 @@ Object.assign(TABLES.en, groupWords.en);
 // D426: several things in one message, under it (i18n-asks.ts).
 Object.assign(TABLES.zh, asksWords.zh);
 Object.assign(TABLES.en, asksWords.en);
+// D532: the link to the home (i18n-link.ts), the Mac's words (D520).
+Object.assign(TABLES.zh, linkWords.zh);
+Object.assign(TABLES.en, linkWords.en);
 Object.assign(TABLES.zh, firstMeetWords.zh);
 Object.assign(TABLES.en, firstMeetWords.en);
 // D385: handing several over (i18n-handover.ts).
@@ -3593,6 +3685,29 @@ export function guardEmptyArgs(fn: ((key: string, arg: number) => void) | undefi
   onEmptyArg = fn;
 }
 
+/** Tests (test/guard.ts): hears copy drawn with a placeholder left unfilled (a raw %s on screen; D519). */
+let onMissingArg: ((key: string, verbs: number, args: number) => void) | undefined;
+export function guardMissingArgs(fn: ((key: string, verbs: number, args: number) => void) | undefined) {
+  onMissingArg = fn;
+}
+
+/** How many arguments a format prints: %s/%d in order, or the highest %[n]s (%% none). */
+const verbsSeen = new Map<string, number>();
+export function verbsOf(fmt: string): number {
+  const known = verbsSeen.get(fmt);
+  if (known !== undefined) return known;
+  if (!fmt.includes("%")) return 0;
+  let i = 0;
+  let most = 0;
+  fmt.replace(/%(?:\[(\d+)\])?([sd%])/g, (_m, pos: string | undefined, verb: string) => {
+    if (verb === "%") return "";
+    most = Math.max(most, pos ? Number(pos) : ++i);
+    return "";
+  });
+  verbsSeen.set(fmt, most);
+  return most;
+}
+
 /** Which of n arguments a format prints (%s in order, %[2]s by position; %% none). */
 export function usedArgs(fmt: string, n: number): boolean[] {
   const used = new Array<boolean>(n).fill(false);
@@ -3630,6 +3745,11 @@ export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
     let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
     if (handheld === "ipad") v = onIpad(v);
     else if (handheld === "computer") v = onComputer(v);
+    if (onMissingArg) {
+      // D519: a placeholder printed with no argument for it (「%s 要求修改」 reached a person).
+      const want = verbsOf(v);
+      if (want > args.length) onMissingArg(key, want, args.length);
+    }
     if (!args.length) return v;
     if (onEmptyArg) {
       const used = usedArgs(v, args.length);

@@ -36,6 +36,7 @@ var zhLoop = Table{
 	"locator.moved":       "换到另一台电脑上接着做",
 	"locator.interrupted": "中断了",
 	"locator.media":       "发了图片或文件",
+	"locator.ask":         "问了你",
 	"turn.go":             "你点了「%s」",
 	"group.more":          "还有 %d 步",
 }
@@ -68,6 +69,7 @@ var enLoop = Table{
 	"locator.moved":       "Moved to another computer",
 	"locator.interrupted": "Interrupted",
 	"locator.media":       "Sent pictures or files",
+	"locator.ask":         "Asked you",
 	"turn.go":             "You chose “%s”",
 	"group.more":          "%d more steps",
 }

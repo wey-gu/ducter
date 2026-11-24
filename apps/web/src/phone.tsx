@@ -7,6 +7,7 @@ import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
+import { ComposerBox } from "./composer.tsx";
 import { Btn, Chev, DangerButton, Facts, Seg, Switch } from "./controls.tsx";
 import { shownDeviceName, spoken } from "./format.ts";
 import type { DecisionState } from "./store.ts";
@@ -153,10 +154,9 @@ function GoCard({ d }: { d: DecisionState }) {
             </span>
           </div>
           {A.replyOpen.has(d.decisionId) && (
-            <form class="call-reply" onSubmit={(e) => (e.preventDefault(), draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId)))}>
-              <input type="text" value={draft} placeholder={t("call.reply.change")} aria-label={t("call.reply.change")} onInput={(e) => (A.replyDraft.set(d.decisionId, (e.target as HTMLInputElement).value), A.changed())} />
-              <Btn kind="accent" size="sm" label={t("composer.send")} disabled={!draft.trim()} onClick={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))} />
-            </form>
+            <div class="call-reply">
+              <ComposerBox value={draft} onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())} onSend={() => (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))} label={t("call.reply.change")} placeholder={t("call.reply.change")} />
+            </div>
           )}
         </>
       ) : (
@@ -193,10 +193,9 @@ function QuestionCard({ d }: { d: DecisionState }) {
               (d.call!.choices ?? []).map((ch) => <Btn key={ch} kind="secondary" label={ch} about={d.question} onClick={() => send(ch)} />)
             )}
           </div>
-          <form class="call-reply" onSubmit={(e) => (e.preventDefault(), draft.trim() && send(draft.trim()))}>
-            <input type="text" value={draft} placeholder={t("call.reply.say")} aria-label={t("call.reply.say")} onInput={(e) => (A.replyDraft.set(d.decisionId, (e.target as HTMLInputElement).value), A.changed())} />
-            <Btn kind="accent" size="sm" label={t("composer.send")} disabled={!draft.trim()} onClick={() => draft.trim() && send(draft.trim())} />
-          </form>
+          <div class="call-reply">
+            <ComposerBox value={draft} onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())} onSend={() => send(draft.trim())} label={t("call.reply.say")} placeholder={t("call.reply.say")} />
+          </div>
           <div class="small sub">{t("call.waiting.line")}</div>
         </>
       ) : (

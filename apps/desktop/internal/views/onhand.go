@@ -66,7 +66,7 @@ func (a *App) onHand(c *ui.Context) {
 				if keepOpen {
 					avail := w - 2*t.S6
 					if w >= railFrom {
-						avail -= lensColW
+						avail -= keepRailW
 					}
 					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
 					return
@@ -212,6 +212,10 @@ func (a *App) waitReason(task *store.Task) string {
 	// D157: waiting for a computer that said it was going to sleep.
 	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
 		return a.L.T("where.waiting", d)
+	}
+	// D538: heavy work waiting for room on its computer.
+	if d, ok := strings.CutPrefix(r, "device:room:"); ok {
+		return a.L.T("where.waiting.room", d)
 	}
 	if r == "browser:native_missing" { // D207
 		return a.L.T("wait.native_missing")

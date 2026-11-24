@@ -69,6 +69,9 @@ type onHandState struct {
 	// actsCol: the sheet being drawn keeps a column for its rows' actions;
 	// rowFirst: the row being drawn is its sheet's first (D471).
 	actsCol, rowFirst bool
+	// needsSheet: the sheet being drawn stands on the needs-you ledge, so its
+	// rows' hover warms within that tint (D529).
+	needsSheet bool
 	// roundsRow: the row being drawn is a task in rounds (D498: its mark is
 	// the drawn repeat between rounds).
 	roundsRow bool
@@ -765,13 +768,13 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		h, padY = 44, t.S1+1 // D457: compact, the rail's rows close up
 	}
 	row := ui.Row(c).Gap(t.S3).Padding(padY, padX).MinHeight(h).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-	hover := row.Hovered()
-	switch {
-	case opened, focus:
+	// D529: the one row hover, on the page's paper. A rail row reveals
+	// nothing: beside a task it says only its title and its face.
+	if opened || focus {
 		a.knob(row)
 		row.AccessSelected(true)
-	case hover:
-		row.Background(t.Ink.Alpha(0.04))
+	} else {
+		a.rowHover(c, row, groundPage(), false)
 	}
 	row.Children(func() {
 		if att == protocol.Blocked && !rail { // D315: beside a task the row says only its title and its face, never a second sign
@@ -792,17 +795,6 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if quiet {
 					a.statusFace(c, task, st)
 					return
-				}
-				if !rail && hover {
-					// D454: a finished row offers × and ⋯ beside its one next step.
-					drew := a.rowActs(c, task, true)
-					if f := finishedOf(task); f != nil {
-						a.finishedActs(c, *f)
-						drew = true
-					}
-					if drew {
-						return
-					}
 				}
 				if ch := taskChanges(task); ch != nil {
 					ui.Row(c.Key("stat")).Gap(t.S1 + 2).Shrink(0).Children(func() {

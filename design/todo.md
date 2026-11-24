@@ -21,6 +21,22 @@ line.
 - [ ] **A rotated key, everywhere it was copied.** The list knows where each copy is; a rotate
   offers to copy the new value to each. Trigger: the person rotates a key that was copied.
 
+## Whose it is, after D546 (`personas.md` "Whose it is, never who is shown")
+
+- [ ] **只看{name}的 / Only {name}'s, a chip on On hand** that narrows the one board to one
+  partner's things. Not built: with at most four partners the owner's mark on every row says whose,
+  and the bar's count already opens the shown partner's own. Trigger: a real board of the author's
+  past about 20 rows a day where he scrolls past other partners' work to find one partner's.
+- [ ] **Past tasks across partners.** Core lists the shown partner's own (`past.ts` query by
+  persona), so its rows need no mark. If Past ever lists every partner's, `PastItem` gets a
+  `persona` and each row its owner's mark. Trigger: the author looks in Past for a task another
+  partner opened.
+- [ ] **A wait that ended unmet** (`missed`) carries no persona; its row is drawn in the shown
+  partner's clay. Trigger: a task-less missed wait of another partner shows on the author's board.
+- [ ] **Two marks on a rail row** (the owner's small mark before the title and the state face, both
+  in the owner's clay) were so before D546. If the lead finds it doubled, keep only the state face
+  there. Trigger: the lead's review of `.shots/owner-marks/`.
+
 ## A partner switch, after D541 (`personas.md` "Switching")
 
 - [ ] **The switch on the author's own home.** Trigger: the first release with D541. On the Mac app

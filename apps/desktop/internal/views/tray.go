@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -83,20 +84,29 @@ func (a *App) NeedsYouPartner() string {
 	return ""
 }
 
-// needsWho is the partner a needs-you notification names (D309): the
-// shown one, unless only another partner has something of its own waiting.
+// needsWho is the partner a needs-you notification names (D309, D546):
+// whose the waiting things are. One owner (a task of Ducter's while 小玛 is
+// shown, or another partner's own question): that one; things of more than
+// one: the shown partner, whose window the notice opens.
 func (a *App) needsWho() string {
-	if !a.manyPartners() || len(a.partnerDecisions()) > 0 || len(a.S.Board().Lanes[store.LaneNeedsYou]) > 0 {
+	if !a.manyPartners() {
 		return a.personaName()
 	}
-	for _, p := range a.trayPartners() {
-		for _, q := range a.S.Partners {
-			if q.ID == p.ID {
-				return q.Name
-			}
+	who := ""
+	for _, it := range a.needsYou() {
+		p := it.partner
+		if p == "" {
+			p = protocol.DefaultPartner
 		}
+		if who != "" && who != p {
+			return a.personaName()
+		}
+		who = p
 	}
-	return a.personaName()
+	if who == "" {
+		return a.personaName()
+	}
+	return a.ownerName(who)
 }
 
 // TrayState is how the whole stands: needs you over working over quiet.

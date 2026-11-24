@@ -61,7 +61,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
   const decisionBody = new Map<string, NonNullable<TaskCard["pendingDecision"]>>();
-  const waiters = new Map<string, Bodies["waiter"]>(); // armed only
+  const waiters = new Map<string, Bodies["waiter"] & { persona?: string }>(); // armed only
   const routineNames = new Map<string, string>();
   const runOf = new Map<string, { routineId: string; name: string }>(); // a routine's run task
   // D216: each task's latest step, kept live; a card not looked up since boot reads its stream once.
@@ -299,7 +299,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       }
       case "waiter": {
         const b = e.body as Bodies["waiter"];
-        if (b.state === "armed") waiters.set(b.waiterId, b);
+        // D546: whose wait it is (On hand lists every partner's): the partner that set it.
+        if (b.state === "armed") waiters.set(b.waiterId, e.persona && e.persona !== "default" ? { ...b, persona: e.persona } : b);
         else waiters.delete(b.waiterId);
         break;
       }

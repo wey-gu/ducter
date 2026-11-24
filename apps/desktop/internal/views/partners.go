@@ -106,6 +106,55 @@ func (a *App) needsAcross(b store.Board) int {
 	return len(a.needsYouIn(b, true))
 }
 
+// D546: whose an object is (a task, a Keep, a group, a routine, a wait) is
+// its owner's, never the shown partner's: its clay and its name come from
+// the persona it carries ("" or one gone: the default's). With one partner
+// the clay is the art as drawn and the name the default's own.
+
+// ownerLook is the clay an owned object's figure is in: "" with one partner.
+func (a *App) ownerLook(persona string) string {
+	if !a.manyPartners() {
+		return ""
+	}
+	if p := a.partnerByID(persona); p != nil {
+		return p.Look
+	}
+	if p := a.partnerByID(protocol.DefaultPartner); p != nil {
+		return p.Look
+	}
+	return ""
+}
+
+// ownerName is the name an owned object says for its partner.
+func (a *App) ownerName(persona string) string {
+	if a.manyPartners() {
+		if p := a.partnerByID(persona); p != nil {
+			return p.Name
+		}
+	}
+	return firstNonEmpty(a.defaultName(), "Ducter")
+}
+
+// taskLook and taskName are a task's owner's clay and name.
+func (a *App) taskLook(t *store.Task) string { return a.ownerLook(a.taskPartner(t)) }
+func (a *App) taskName(t *store.Task) string { return a.ownerName(a.taskPartner(t)) }
+
+// waitPartner is whose a wait is: its task's, else the partner that set it.
+func (a *App) waitPartner(w *protocol.Waiter) string {
+	if w == nil {
+		return protocol.DefaultPartner
+	}
+	if w.TaskID != "" {
+		if t := a.S.Task(w.TaskID); t != nil {
+			return a.taskPartner(t)
+		}
+	}
+	if w.Persona != "" {
+		return w.Persona
+	}
+	return protocol.DefaultPartner
+}
+
 // taskPartner is whose a task is: its card's partner, else the default's.
 func (a *App) taskPartner(t *store.Task) string {
 	if t != nil && t.Card != nil && a.partnerByID(t.Card.Persona) != nil {

@@ -617,7 +617,8 @@ export function createWork(o: WorkOptions): Work {
       return {
         ...on,
         // A routine's own watch is shown on its routine card, not as a wait.
-        waiters: on.waiters.filter((w) => !w.routineId).map((w) => views.get(w.waiterId) ?? w),
+        // D546: the live view keeps whose wait it is (the registry knows the partner that set it).
+        waiters: on.waiters.filter((w) => !w.routineId).map((w) => { const v = views.get(w.waiterId); return v ? (w.persona ? { ...v, persona: w.persona } : v) : w; }),
         routines: routines.views(),
         missed: waiters.missed(),
       };

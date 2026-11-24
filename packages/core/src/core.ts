@@ -919,7 +919,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const keepsDecorate = (o: OnHand): OnHand => {
     const ks = keepsRef;
     if (!ks) return o;
-    const sheets = ks.sheets(persona.id);
+    // D546: every partner's Keeps (D24: one On hand), each sheet carrying its own persona.
+    const others = partners.on() ? partners.list().map((p) => p.id).filter((id) => isOther(id)) : [];
+    const sheets = [persona.id, ...others].flatMap((id) => ks.sheets(id));
     if (!sheets.length) return o;
     const of = new Map<string, { id: string; name: string }>();
     for (const s of sheets) for (const t of s.taskIds) of.set(t, { id: s.id, name: s.title });

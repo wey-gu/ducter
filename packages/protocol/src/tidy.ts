@@ -13,7 +13,10 @@
 //   - pr_open        a PR the task owns (D483, D508) is still open
 //   - pinned         the person starred the task (D285) or said to keep its working copy
 //   - shared         another task that is kept works in the same folder
-//   - uncommitted    files changed or untracked in it
+//   - mid_operation  git is busy in it: a rebase, merge, cherry-pick or bisect halfway, or its index locked
+//   - other_branch   it is on another branch than the task's now
+//   - uncommitted    files changed or untracked in it, files marked so status hides their changes,
+//                    or a repository inside an ignored folder (a removal deletes ignored files)
 //   - unpushed       commits that are in no remote branch and not in its base
 //   - cant_tell      git couldn't say (an older worker, a broken repo): kept, never guessed
 //   - away           its computer isn't connected now
@@ -31,7 +34,7 @@ import { words, fill, type LangTag } from "./lang.ts";
 export const TIDY_FINISHED_MS = 3 * 24 * 3600_000;
 export const TIDY_DROPPED_MS = 7 * 24 * 3600_000;
 
-export type TidyKeep = "not_ours" | "live" | "waiting" | "looking_after" | "pr_open" | "pinned" | "shared" | "uncommitted" | "unpushed" | "cant_tell" | "away" | "recent";
+export type TidyKeep = "not_ours" | "live" | "waiting" | "looking_after" | "pr_open" | "pinned" | "shared" | "mid_operation" | "other_branch" | "uncommitted" | "unpushed" | "cant_tell" | "away" | "recent";
 /** What the home knows holds a task's copy beyond its own state (core's tidyHold). */
 export type TidyHold = Extract<TidyKeep, "waiting" | "looking_after" | "pr_open" | "pinned">;
 export type TidyWhy = "merged" | "finished" | "dropped";
@@ -45,6 +48,10 @@ export interface CopyFacts {
   dirty: number;
   /** Commits on its branch in no remote branch and not in its base; null: git couldn't tell. */
   unpushed: number | null;
+  /** A rebase, merge, cherry-pick, revert or bisect is halfway, or the index is locked. */
+  busy?: boolean;
+  /** HEAD is on this branch, not the task's. */
+  otherBranch?: string;
   /** Its size on disk (bytes), for the line that says what was freed. */
   bytes?: number;
 }
@@ -86,6 +93,8 @@ export function copyVerdict(c: CopyFacts | undefined): TidyVerdict | undefined {
   if (!c) return { tidy: false, keep: "cant_tell" };
   if (!c.ours) return { tidy: false, keep: "not_ours" };
   if (!c.exists) return undefined; // nothing there: only its record goes
+  if (c.busy) return { tidy: false, keep: "mid_operation" };
+  if (c.otherBranch) return { tidy: false, keep: "other_branch" };
   if (c.dirty > 0) return { tidy: false, keep: "uncommitted" };
   if (c.unpushed === null) return { tidy: false, keep: "cant_tell" };
   if (c.unpushed > 0) return { tidy: false, keep: "unpushed" };
@@ -118,6 +127,8 @@ const W = {
       pr_open: "PR 还开着",
       pinned: "你标了星或说过留着",
       shared: "另一个任务也在用",
+      mid_operation: "有做到一半的 git 操作",
+      other_branch: "它换到了别的分支",
       uncommitted: "有没提交的改动",
       unpushed: "有没推送的提交",
       cant_tell: "读不出它的状态，先留着",
@@ -141,6 +152,8 @@ const W = {
       pr_open: "Its PR is still open",
       pinned: "You starred it or asked to keep it",
       shared: "Another task uses it",
+      mid_operation: "A git operation is halfway there",
+      other_branch: "It's on another branch now",
       uncommitted: "Has uncommitted changes",
       unpushed: "Has commits not pushed",
       cant_tell: "Couldn't read it, so it stays",

@@ -2,7 +2,7 @@
 // checkout (local, reversible with git) and open a draft PR (push + gh: an outside effect).
 // Never forces anything; every refusal says what to do in plain words.
 import { existsSync, readdirSync, rmdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { BranchChanges, CopyFacts, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { worktreesRootOf } from "@ducter/protocol/src/ducter-folder.ts";
@@ -204,6 +204,11 @@ export async function archiveWorktree(place: Place, dataDir: string, o: { unstar
     const n = status.out.split("\n").filter(Boolean).length;
     return { ok: false, removed: false, message: `Kept the worktree ${wt}: it has ${n} uncommitted or untracked file${n === 1 ? "" : "s"}. ${p.branch} stays.` };
   }
+  // D514: what git status doesn't show but a removal would lose, and a copy git is busy in.
+  const g = await copyGuards(wt, p.branch!);
+  if (g.busy) return { ok: false, removed: false, message: `Kept the worktree ${wt}: ${g.busy}.` };
+  if (g.otherBranch) return { ok: false, removed: false, message: `Kept the worktree ${wt}: it is on ${g.otherBranch} now, not ${p.branch}.` };
+  if (g.hidden) return { ok: false, removed: false, message: `Kept the worktree ${wt}: ${g.hidden} file${g.hidden === 1 ? " is" : "s are"} marked so git status doesn't show changes to ${g.hidden === 1 ? "it" : "them"}, or a repository sits in an ignored folder.` };
   // D514: commits that are nowhere else (no remote has them, its base doesn't hold them) keep it:
   // the branch would still hold them, but the copy is where the person would look for them.
   const ahead = await unpushedCommits(wt, p.branch!, p.baseBranch);
@@ -284,8 +289,41 @@ export async function copyFacts(place: Place, dataDir: string): Promise<CopyFact
   if (!existsSync(wt)) return { ours: true, exists: false, dirty: 0, unpushed: 0 };
   const status = await git(wt, ["status", "--porcelain"]);
   if (!status.ok) return { ours: true, exists: true, dirty: 0, unpushed: null };
-  const dirty = status.out.split("\n").filter(Boolean).length;
+  const g = await copyGuards(wt, p.branch!);
+  const dirty = status.out.split("\n").filter(Boolean).length + g.hidden;
   const unpushed = await unpushedCommits(wt, p.branch!, p.baseBranch);
   const bytes = await sizeOnDisk(wt);
-  return { ours: true, exists: true, dirty, unpushed, ...(bytes !== undefined ? { bytes } : {}) };
+  return { ours: true, exists: true, dirty, unpushed, ...(g.busy ? { busy: true } : {}), ...(g.otherBranch ? { otherBranch: g.otherBranch } : {}), ...(bytes !== undefined ? { bytes } : {}) };
+}
+
+/**
+ * D514: what `git status` doesn't say but `git worktree remove` would lose, and a copy git is busy
+ * in. busy: a rebase, merge, cherry-pick, revert or bisect halfway (its progress and any autostash
+ * live only there), or the index locked. otherBranch: HEAD is on another branch than the task's (its
+ * Continue would come back on the task's). hidden: files marked assume-unchanged or skip-worktree
+ * (status never reports their changes; a sparse checkout's own marks don't count), and
+ * repositories inside ignored folders (removal deletes ignored files without asking).
+ */
+export async function copyGuards(wt: string, branch: string): Promise<{ busy?: string; otherBranch?: string; hidden: number }> {
+  const paths = await git(wt, ["rev-parse", "--git-path", "rebase-merge", "--git-path", "rebase-apply", "--git-path", "MERGE_HEAD", "--git-path", "MERGE_AUTOSTASH", "--git-path", "CHERRY_PICK_HEAD", "--git-path", "REVERT_HEAD", "--git-path", "BISECT_LOG", "--git-path", "index.lock"]);
+  if (!paths.ok) return { busy: "git couldn't read it", hidden: 0 };
+  const states = paths.out.split("\n").filter(Boolean).map((s) => resolve(wt, s));
+  const lock = states.pop();
+  if (states.some((s) => existsSync(s))) return { busy: "a rebase, merge or bisect is halfway there", hidden: 0 };
+  if (lock && existsSync(lock)) return { busy: "its git index is locked", hidden: 0 };
+  const head = await git(wt, ["symbolic-ref", "--quiet", "HEAD"]);
+  const on = head.ok ? head.out.replace(/^refs\/heads\//, "") : "";
+  const otherBranch = on && on !== branch ? on : undefined;
+  const sparse = (await git(wt, ["config", "--bool", "core.sparseCheckout"])).out === "true";
+  const flagged = await git(wt, ["ls-files", "-v"]);
+  // Lowercase tags are assume-unchanged; "S" is skip-worktree.
+  let hidden = flagged.ok ? flagged.out.split("\n").filter((l) => /^[a-z] /.test(l) || (!sparse && /^S /.test(l))).length : 0;
+  const ignored = await git(wt, ["status", "--porcelain", "--ignored=matching"]);
+  if (ignored.ok)
+    for (const l of ignored.out.split("\n")) {
+      if (!l.startsWith("!! ")) continue;
+      const rel = l.slice(3).replace(/^"|"$/g, "");
+      if (rel.endsWith("/") && existsSync(join(wt, rel, ".git"))) hidden++;
+    }
+  return { ...(otherBranch ? { otherBranch } : {}), hidden };
 }

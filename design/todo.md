@@ -1266,6 +1266,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       8.8 GB against 1.6 GB of worktrees (a live round task's 4.6 GB, a done one's 3.0 GB of a
       clone and a toolchain). They can hold what the task made for the person (D383), so a rule
       needs Made for you's guarantee first. Trigger: a computer low on disk, or the next look at hel.
+- [ ] **Ignored files a fresh copy needs back** (an `.env` the agent wrote): `git worktree remove`
+      deletes ignored files, and Continue's fresh copy lacks them. Trigger: a continued task that
+      had to make one again.
 - [ ] **Keep the working copy on the Past card's menu** (today a star, or `ducter worktrees keep`).
       Trigger: someone who keeps a copy but doesn't want the star.
 - [ ] **A disk budget per computer** (product-model "Archive and disk"): tidy oldest first sooner

@@ -34,14 +34,17 @@ copy, and is what `ducter worktrees` says:
 | **pinned** | the person starred the task (D285), or said to keep its copy (`ducter worktrees keep`) | the marks |
 | **shared** | another task that stays works in the same folder | the runner |
 | **not_ours** | the path is not under a worktrees folder Ducter made (`worktreesRootOf`): the person's own folders, anyone else's | the computer |
-| **uncommitted** | files changed or untracked | `git status --porcelain` there |
+| **mid_operation** | git is busy in it: a rebase, merge, cherry-pick, revert or bisect halfway (its progress and any autostash live only there), or its index locked | `git rev-parse --git-path …` there |
+| **other_branch** | HEAD is on another branch than the task's (Continue would come back on the task's) | `git symbolic-ref HEAD` there |
+| **uncommitted** | files changed or untracked; files marked assume-unchanged or skip-worktree outside a sparse checkout (status never shows their changes); a repository inside an ignored folder (a removal deletes ignored files) | `git status --porcelain`, `git ls-files -v`, `git status --ignored=matching` there |
 | **unpushed** | commits on its HEAD or branch that no remote branch and not its base holds | `git rev-list --count HEAD <branch> --not --remotes <base> origin/<base>` there |
 | **cant_tell** | git couldn't say, or an older worker doesn't know `copyFacts` | the computer |
 | **away** | its computer isn't connected now | the worker link |
 | **recent** | inside its window (below) | the card's last change |
 
 The copy's facts are read twice: once for the plan, and again on the computer that holds it, by
-`archiveWorktree`, right before anything goes. A worktree with commits nowhere else is kept
+`archiveWorktree`, right before anything goes. Reading a copy takes time, so the task is read
+again after it: a message, a turn or a wait that came meanwhile cancels the removal. A worktree with commits nowhere else is kept
 although `git worktree remove` would leave the branch: the copy is where the person would look.
 
 ## When: the windows, from the Log
@@ -98,4 +101,6 @@ went keeps it archived, so its next words add the copy back the same way.
 ## Not here (todo)
 
 Scratch folders of tasks with no place (`<data>/scratch/<id>`, 8.8 GB on hel against 1.6 GB of
-worktrees), a toggle for keep on the Past card, and a disk budget per computer: `todo.md`.
+worktrees), a toggle for keep on the Past card, a disk budget per computer, and ignored files a
+fresh copy needs back (an `.env` the agent made goes with the copy): `todo.md`. The size said is
+`du -sk`, so dependencies hardlinked to a package store count though removing them frees little.

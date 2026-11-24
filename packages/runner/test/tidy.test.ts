@@ -71,7 +71,7 @@ async function boot(o: { now: () => Date; ids?: string[] }) {
   });
   core.setPartner({ onTrigger: () => {} });
   registerTaskTools(core, {});
-  const ids = o.ids ?? ["t1", "t2", "t3"];
+  const ids = o.ids ?? ["t1", "t2", "t4"];
   const runner = createRunner(core, { harness: idlePort(), newId: () => ids.shift()!, archiveSweepMs: 0, parkIdleMs: 0, now: o.now });
   core.setRunner(runner);
   stops.push(() => runner.dispose(), () => core.stop());
@@ -269,6 +269,52 @@ test("unpushedCommits: counts what no remote and no base holds; a folder gone le
   const list = (await git(repo, ["worktree", "list", "--porcelain"])).out;
   expect(list).not.toContain(wt);
   expect(list).toContain(stale);
+});
+
+test("what git status doesn't say: a rebase halfway, another branch, hidden changes, a repository in an ignored folder", async () => {
+  const repo = repoWithOrigin();
+  const data = join(dir, "data");
+  const mk = (name: string) => {
+    const wt = join(data, "worktrees", "repo", name);
+    sh(repo, "worktree", "add", "-q", wt, "-b", `ducter/${name}`, "main");
+    return { wt, p: { kind: "repo", device: "local", repoPath: repo, worktree: wt, branch: `ducter/${name}`, baseBranch: "main" } as Place };
+  };
+  // A rebase stopped on a conflict.
+  const r = mk("rebasing");
+  writeFileSync(join(r.wt, "a.txt"), "theirs\n");
+  sh(r.wt, "commit", "-qam", "theirs");
+  sh(r.wt, "push", "-q", "origin", "ducter/rebasing");
+  sh(repo, "checkout", "-q", "-b", "side", "main");
+  writeFileSync(join(repo, "a.txt"), "ours\n");
+  sh(repo, "commit", "-qam", "ours");
+  sh(repo, "checkout", "-q", "main");
+  sh(r.wt, "rebase", "side");
+  expect(await copyFacts(r.p, data)).toMatchObject({ busy: true });
+  expect(await archiveWorktree(r.p, data)).toMatchObject({ removed: false }); // its conflict shows as a change too
+  // Switched to another branch.
+  const o = mk("switched");
+  sh(o.wt, "switch", "-q", "-c", "elsewhere");
+  expect(await copyFacts(o.p, data)).toMatchObject({ otherBranch: "elsewhere" });
+  expect(await archiveWorktree(o.p, data)).toMatchObject({ removed: false, message: expect.stringContaining("elsewhere") });
+  // A change git status hides (assume-unchanged).
+  const h = mk("hidden");
+  writeFileSync(join(h.wt, "a.txt"), "edited, hidden\n");
+  sh(h.wt, "update-index", "--assume-unchanged", "a.txt");
+  expect((await git(h.wt, ["status", "--porcelain"])).out).toBe("");
+  expect(await copyFacts(h.p, data)).toMatchObject({ dirty: 1 });
+  expect(await archiveWorktree(h.p, data)).toMatchObject({ removed: false });
+  expect(existsSync(join(h.wt, "a.txt"))).toBe(true);
+  // A repository inside an ignored folder.
+  const i = mk("nested");
+  writeFileSync(join(i.wt, ".gitignore"), "vendor/\n");
+  sh(i.wt, "add", ".gitignore");
+  sh(i.wt, "commit", "-qm", "ignore vendor");
+  sh(i.wt, "push", "-q", "origin", "ducter/nested");
+  Bun.spawnSync(["git", "init", "-q", join(i.wt, "vendor", "lib")]);
+  Bun.spawnSync(["git", "init", "-q", join(i.wt, "vendor")]);
+  expect(await copyFacts(i.p, data)).toMatchObject({ dirty: 1 });
+  expect(await archiveWorktree(i.p, data)).toMatchObject({ removed: false });
+  expect(existsSync(join(i.wt, "vendor", ".git"))).toBe(true);
 });
 
 test("on a worker: the facts and the removal run there over the worker protocol; an older worker that can't say keeps its copies", async () => {

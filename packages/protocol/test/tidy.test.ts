@@ -35,6 +35,8 @@ test("the copy: not Ducter's, uncommitted files, commits nowhere else, git can't
   expect(tidyVerdict(finished(), { ...clean, dirty: 17 }, NOW)).toEqual({ tidy: false, keep: "uncommitted" });
   expect(tidyVerdict(finished(), { ...clean, unpushed: 2 }, NOW)).toEqual({ tidy: false, keep: "unpushed" });
   expect(tidyVerdict(finished(), { ...clean, unpushed: null }, NOW)).toEqual({ tidy: false, keep: "cant_tell" });
+  expect(tidyVerdict(finished(), { ...clean, busy: true }, NOW)).toEqual({ tidy: false, keep: "mid_operation" });
+  expect(tidyVerdict(finished(), { ...clean, otherBranch: "elsewhere" }, NOW)).toEqual({ tidy: false, keep: "other_branch" });
   expect(tidyVerdict(finished(), undefined, NOW)).toEqual({ tidy: false, keep: "cant_tell" });
   // Not Ducter's is said before anything git says.
   expect(copyVerdict({ ours: false, exists: true, dirty: 3, unpushed: 1 })).toEqual({ tidy: false, keep: "not_ours" });

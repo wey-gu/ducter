@@ -1500,6 +1500,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           continue;
         }
       }
+      // Reading the copy took time: anything that happened to the task meanwhile (a message, a
+      // new turn, a wait) cancels the removal; the next sweep looks again.
+      const now2 = core.tasks.get(t.id);
+      if (!now2 || now2.updatedAt !== card.updatedAt || !taskVerdict(tidyFacts(t, now2), now().getTime(), windows).tidy) continue;
       clearTimeout(t.parkTimer);
       const s = t.session;
       t.session = undefined;
@@ -1579,7 +1583,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         if (facts && facts.ours && !facts.exists && card.residency === "archived") continue; // gone with its archive (before D514)
         const c = copyVerdict(facts);
         // The copy's own facts (not Ducter's, changed files, commits nowhere else) are said whatever the task's side says.
-        if (c && !c.tidy && (verdict.tidy || ["not_ours", "uncommitted", "unpushed"].includes(c.keep))) verdict = c;
+        if (c && !c.tidy && (verdict.tidy || ["not_ours", "mid_operation", "other_branch", "uncommitted", "unpushed"].includes(c.keep))) verdict = c;
         if (verdict.tidy && keptPaths.has(copyKey(card.place))) verdict = { tidy: false, keep: "shared" };
       }
       rows.push({ ...base, ...(facts?.bytes !== undefined ? { bytes: facts.bytes } : {}), verdict });

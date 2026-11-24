@@ -7,7 +7,18 @@ order: 2.5
 # On hand
 
 **On hand** (手头的事) lists everything your partner is doing for you. Open it from the button
-in the conversation's header, or press ⌘2.
+in the conversation's header, or press ⌘2. It always opens on the whole list.
+
+## Getting to what needs you
+
+Wherever you see how many things need you, tap the number: "2 need you" under your partner's name,
+the small number on a partner's face, or the line **2 waiting on you ›** just above where you type
+(shown while what waits is out of sight). It takes you straight to the first one: a question your
+partner asked scrolls into view in the conversation; anything else opens On hand with that task
+picked out and briefly lit up. Tap again for the next one; after the last, it starts over.
+
+The way back is always at the top: **Conversation / On hand / …** on a Mac or a wide screen, **‹**
+on a phone. Esc goes back one step.
 
 ## What you see
 
@@ -222,7 +233,8 @@ merge) is under **Needs you** instead, with its name, and the card only says how
 Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
 (each pull request with its own title and checks), every round (newest first, each in one plain line
 of what happened; **Details** shows what the task reported; the quiet ones fold into one line),
-and **How it runs**. Type what to change in the box under the rounds ("make it every hour", "tell me
+and **How it runs**. To go back to the whole list, tap **On hand** at the top (or press Esc); when
+you leave On hand and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.
 

@@ -4,9 +4,9 @@ package i18n
 // client's (apps/web/src/i18n-onhand.ts).
 
 var zhDoor = Table{
-	"door.line":       "有 %d 件等你定",
-	"door.line.about": "一件件带你去看",
-	"door.pebble":     "%s 有 %d 件等你，一件件带你去看",
+	"door.line":       "有 %d 个等你定",
+	"door.line.about": "一个一个带你去看",
+	"door.pebble":     "%s 有 %d 个等你，一个一个带你去看",
 }
 
 var enDoor = Table{

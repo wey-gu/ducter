@@ -11,6 +11,7 @@ import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
 import { still } from "./nav.ts";
+import { wideNow } from "./fold.ts";
 import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
@@ -2423,9 +2424,12 @@ export function openDoor(partner = ""): boolean {
   door.last = it.key;
   if (K.open) closeKeepHere();
   if (it.decisionId && A.S.channel.some((e) => e.decision?.decisionId === it.decisionId)) {
-    A.flash = it.decisionId;
-    if (A.route.name !== "conv") A.go({ name: "conv" });
+    // Wide, the conversation stands beside On hand: it is found there without leaving the pane.
+    const convShown = A.route.name === "conv" || (wideNow() && !A.route.full);
+    if (!convShown) A.go({ name: "conv" });
     else A.changed();
+    // Found in the conversation itself, never its copy in On hand's 等你 beside it.
+    findIn(() => `main[role="log"] #d-${CSS.escape(it.decisionId!)}`);
     return true;
   }
   L.filter = 0;
@@ -2443,8 +2447,20 @@ export function openDoor(partner = ""): boolean {
   }
   if (A.route.name !== "onhand") A.go({ name: "onhand", ...(A.route.name === "task" && A.route.full ? { full: true } : {}) });
   else A.changed();
-  findOnHand(it);
+  findIn(() => `.onhand-list:not(.room-rail) :is(${itemSelector(it)})`);
   return true;
+}
+
+/** D535: scrolls an element to the middle of its own list, and only that list: scrollIntoView also
+ *  moves every scrolling ancestor, the page itself included, which slid the two panes off the window. */
+export function centerIn(el: HTMLElement) {
+  let sc = el.parentElement;
+  while (sc && !(sc.scrollHeight > sc.clientHeight && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+  if (!sc) return;
+  const r = el.getBoundingClientRect();
+  const box = sc.getBoundingClientRect();
+  const top = sc.scrollTop + (r.top - box.top) - Math.max(0, (box.height - r.height) / 2);
+  sc.scrollTo({ top: Math.max(0, top), behavior: still() ? "auto" : "smooth" });
 }
 
 /** D535: closes a Keep's page without a render of its own (the door's move renders once). */
@@ -2466,12 +2482,12 @@ function itemSelector(it: NeedItem): string {
 /** D535: once On hand has drawn it (a few frames at most, through a page's move), the item is
  *  scrolled to the middle of its list and its tint deepens once (app.css .door-found); at once and
  *  colour only under reduced motion. */
-function findOnHand(it: NeedItem, tries = 24) {
+function findIn(sel: () => string, tries = 24) {
   if (typeof document !== "object" || typeof requestAnimationFrame !== "function") return;
   requestAnimationFrame(() => {
-    const el = document.querySelector<HTMLElement>(`.onhand-list:not(.room-rail) :is(${itemSelector(it)})`);
-    if (!el) return tries > 0 ? findOnHand(it, tries - 1) : undefined;
-    el.scrollIntoView({ block: "center", behavior: still() ? "auto" : "smooth" });
+    const el = document.querySelector<HTMLElement>(sel());
+    if (!el) return tries > 0 ? findIn(sel, tries - 1) : undefined;
+    centerIn(el);
     el.classList.remove("door-found");
     void el.offsetWidth; // a second find on the same element plays again
     el.classList.add("door-found");

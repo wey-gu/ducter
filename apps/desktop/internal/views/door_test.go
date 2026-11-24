@@ -148,6 +148,49 @@ func TestD535NextDoor(t *testing.T) {
 	}
 }
 
+// D535: the author's 0.1.43 On hand showed a card 「通用设置」 with 「Macbook
+// Pro M3」 under it in 在做 all day, opening nothing: a hand-over's group
+// whose every task had left the board (the task, "Improve general setting
+// page", removed), kept in 在做 with only its name and its computer. A group
+// with nothing on the board and nothing held is not listed; one with parts
+// still held in line stands and says so.
+func TestD535NoCardThatOpensNothing(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, _ := pastApp(t, lang)
+		now := "2026-11-24T02:10:00Z"
+		hand := func() *protocol.GroupHandView {
+			return &protocol.GroupHandView{Shape: "one", Where: &protocol.HandDevice{Device: "dev_m3", Name: "Macbook Pro M3"}, Harness: "codex"}
+		}
+		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{
+			Tasks: []protocol.TaskCard{{TaskID: "t_run", Title: "整理本周 mem 的发布说明", Attention: protocol.Working, OpenedAt: now, UpdatedAt: now}},
+			Groups: []protocol.TaskGroup{
+				// Its one task is gone from the board.
+				{ID: "g_stale", Name: "通用设置", By: "user", Persona: "default", CreatedAt: now, Hand: hand(),
+					Members: []protocol.GroupMember{{TaskID: "t_gone", Title: "Improve general setting page"}}},
+				// Parts still held in line on that computer: it stands, and says so.
+				{ID: "g_held", Name: "整理 hawdb 的 issue", By: "user", Persona: "default", CreatedAt: now, Hand: hand(),
+					Members: []protocol.GroupMember{{Key: "k1", Title: "给 #120 写复现", Device: "dev_m3"}, {Key: "k2", Title: "关掉重复的 #98", Device: "dev_m3"}}},
+			},
+		}})
+		var ids []string
+		for _, g := range app.boardGroups(app.S.Board()) {
+			ids = append(ids, g.g.ID)
+		}
+		if strings.Join(ids, ",") != "g_held" {
+			t.Fatalf("%s: groups on the board %v; want only g_held", lang, ids)
+		}
+		app.Route = RouteOnHand
+		tt := ui.NewTesterWith(app.View, 1150, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		if tt.HasText("通用设置") {
+			t.Fatalf("%s: the card that opens nothing is listed: %q", lang, tt.Texts())
+		}
+		if !tt.HasText("整理 hawdb 的 issue") || !tt.HasText("给 #120 写复现") {
+			t.Fatalf("%s: the hand-over with held parts is gone: %q", lang, tt.Texts())
+		}
+	}
+}
+
 // d535Keeps is a board with the author's review loop as a Keep and one task
 // that asks.
 func d535Keeps(t *testing.T, lang i18n.Lang) *App {

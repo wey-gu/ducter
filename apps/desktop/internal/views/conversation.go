@@ -218,7 +218,7 @@ func (a *App) conversation(c *ui.Context) {
 			a.cliOfferLine(c)
 		}
 		a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
-		a.doorLine(c, rows)             // D535: 有 n 件等你定 ›, while what waits is out of view
+		a.doorLine(c, rows)             // D535: 有 n 个等你定 ›, while what waits is out of view
 		a.composer(c)
 	})
 	a.readWhenSeen(c)

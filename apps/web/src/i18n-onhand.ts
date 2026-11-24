@@ -5,9 +5,9 @@ export const onhandWords: { zh: Record<string, string>; en: Record<string, strin
   zh: {
     "onhand.find.placeholder": "搜索…",
     // D535: every needs-you count is a door (apps/desktop/internal/i18n/door.go).
-    "door.line": "有 %d 件等你定",
-    "door.line.about": "一件件带你去看",
-    "door.pebble": "%s 有 %d 件等你，一件件带你去看",
+    "door.line": "有 %d 个等你定",
+    "door.line.about": "一个一个带你去看",
+    "door.pebble": "%s 有 %d 个等你，一个一个带你去看",
     "onhand.find.none": "没有匹配的结果。",
     "onhand.pr.draft": "草稿 PR",
     "onhand.pr.merged": "已合并",

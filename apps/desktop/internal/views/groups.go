@@ -136,7 +136,12 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 			if (hv.Plan != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held")) || hv.Review == "ready" {
 				bg.lane = 0
 			} else if len(bg.ids) == 0 {
-				if hv.Review == "sent" {
+				// D535: nothing of it is on the board. With parts still held in
+				// line it stands in 在做 and says so; with none (every task it
+				// started is off the board: removed, or finished days ago) it is
+				// a card with only its name and its computer that opens nothing
+				// (the author's 「通用设置 / Macbook Pro M3」, all day): not listed.
+				if hv.Review == "sent" || len(bg.rows) == 0 {
 					continue
 				}
 				bg.lane = 1

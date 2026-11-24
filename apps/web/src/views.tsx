@@ -87,7 +87,7 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, FullTop } from "./board.tsx";
-import { barDoorPartner, doorItems, L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
+import { barDoorPartner, centerIn, doorItems, L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
 import { dateOf, PastSheet } from "./past.tsx";
 import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
@@ -555,7 +555,7 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -1050,7 +1050,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -2068,7 +2068,7 @@ export function Conversation() {
   );
 }
 
-/** D535: 「有 n 件等你定 ›」, pinned over the composer while something the conversation's count
+/** D535: 「有 n 个等你定 ›」, pinned over the composer while something the conversation's count
  *  counts is out of view (a task's item always is: it lives in On hand; the partner's own question
  *  while its card is scrolled away). A tap is the count's door. */
 function DoorLine({ scroller }: { scroller: preact.RefObject<HTMLElement> }) {

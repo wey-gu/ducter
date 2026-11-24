@@ -990,6 +990,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    - Routines appear as one card each, with the next firing time.
 3. **An opened task** (conductor depth; D74, D90). One centered column on the reading measure
    (D268: 640 pt on the Mac, 40 em on the web, head, transcript, changes and composer alike), read top to bottom; the window's header is the breadcrumb and the title only.
+   D535: the breadcrumb is the one way back at every level (a Keep's page: 对话 / 手头的事 / {the Keep}), Esc
+   goes up one level, every needs-you count opens its next item; the table is `on-hand.md` "Navigation".
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
       (D152): the state in its ink, the task's one clock once finished ("用了 18 分钟 / took 18
       min"; while it works the clock ticks on the working line, D268), the agent and the model (no coin, D213), where

@@ -238,7 +238,7 @@ func (a *App) doorOutOfView(items []needItem, rows []row) bool {
 }
 
 // doorLine is the quiet line pinned over the composer while something waits
-// on the person and is out of view: 「有 n 件等你定 ›」, a tap the door.
+// on the person and is out of view: 「有 n 个等你定 ›」, a tap the door.
 func (a *App) doorLine(c *ui.Context, rows []row) {
 	if !a.S.Welcomed {
 		return

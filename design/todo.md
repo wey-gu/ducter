@@ -3280,3 +3280,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
 - **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).
+
+## Every count a door (D535, `on-hand.md` "Navigation")
+
+- [ ] **The menu bar's count and the Dock badge as doors** to the first item (today they bring the window
+  in front where it was). Trigger: the author reaches for the Dock badge and lands somewhere else.
+- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 等你 while On hand
+  is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
+- [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
+  conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.

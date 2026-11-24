@@ -121,6 +121,7 @@ func indexAdd(ix *protocol.SessionIndex, ev *protocol.LogEvent) bool {
 	case *protocol.Report:
 		ix.LastReport = ev.Seq
 		mark("report")
+		t.Marks[len(t.Marks)-1].S = protocol.ReportMarkState(b.State)
 		// D325: its first line, for the locator's list.
 		for _, l := range strings.Split(b.Summary, "\n") {
 			if l = strings.TrimSpace(l); l != "" {

@@ -31,6 +31,8 @@ export interface PlaceOps {
   archive(place: Place, o?: { unstarted?: boolean }): Promise<ActionResult & { removed: boolean; bytes?: number; gone?: boolean }>;
   /** D514: what the computer that holds the copy says of it (integrate.ts copyFacts); undefined: it can't tell (an older worker). */
   copyFacts(place: Place): Promise<CopyFacts | undefined>;
+  /** D522: what the repository says about naming branches (branch-name.ts branchRules), read where it is; undefined: nothing, or an older worker. */
+  branchRules?(place: Place): Promise<string | undefined>;
   /** D142: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
   folder: FolderOps;
   /** D157: push the task branch before the task moves to another computer (E3). */
@@ -84,7 +86,7 @@ export const DEVICE_BACK =
   "The machine you run on lost its connection to Ducter for a while and is back. Check where the work stands, then continue the task. Report via report_to_main when done, blocked, or needing a decision.";
 
 /** A HarnessSession whose process runs on a worker. Events arrive as WorkerSessionFrames. */
-function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string; canSteer: boolean }): HarnessSession {
+function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string; canSteer: boolean; canStop?: boolean }): HarnessSession {
   let id = init.sessionId ?? "";
   let busy = false;
   const queue: HarnessEvent[] = [];
@@ -127,6 +129,8 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
       await call("send", { text, mode, ...(pics ? { images: pics } : {}), ...(docs ? { files: docs } : {}), ...(inputId ? { inputId } : {}) });
     },
     interrupt: () => call("interrupt", {}),
+    // D521: a worker from D521 on says its session can stop one background job.
+    ...(init.canStop ? { stopBackground: (id: string) => call("stopBackground", { id }) } : {}),
     async close() {
       off();
       await link.call("close", { key }, 10_000).catch(() => {});
@@ -199,7 +203,7 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
         const key = randomBytes(8).toString("hex");
         // The worker answers start before it sends the session's first frame, on one ordered
         // socket; the answer resolves in a microtask, so the listener is in place in time.
-        const r = await guard(link.call<{ sessionId?: string; canSteer: boolean }>("start", { key, spec }, 5 * 60_000));
+        const r = await guard(link.call<{ sessionId?: string; canSteer: boolean; canStop?: boolean }>("start", { key, spec }, 5 * 60_000));
         return remoteSession(link, key, r);
       },
       available: async () => [],
@@ -213,6 +217,8 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
     // An older worker doesn't know "archive": its worktree stays, as before.
     // D514: an older worker doesn't know "copyFacts": can't tell, so its copies stay.
     copyFacts: (place) => link.call<CopyFacts | undefined>("copyFacts", { place }, 60_000).catch(() => undefined),
+    // D522: an older worker doesn't know "branchRules": the branch is named without the repository's convention.
+    branchRules: (place) => link.call<string | undefined>("branchRules", { place }, 10_000).then((r) => (typeof r === "string" && r ? r : undefined), () => undefined),
     archive: (place, o) => link.call<ActionResult & { removed: boolean; bytes?: number; gone?: boolean }>("archive", { place, ...(o?.unstarted ? { unstarted: true } : {}) }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
     // D206: an older worker doesn't know "shown": the report goes on without that file.
     shown: (a) =>

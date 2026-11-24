@@ -283,7 +283,7 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 		}
 		switch l.State {
 		case "failed", "expired":
-			if k := loginTrouble(l); k == "ag.login.not_seen" {
+			if k := loginTrouble(l); k == "ag.login.not_seen" || k == "ag.login.unreachable" {
 				line(a.L.T(k, name), t.Failed.Ink)
 			} else {
 				line(a.L.T(k), t.Failed.Ink)
@@ -369,6 +369,9 @@ func loginTrouble(l *protocol.AgentLoginState) string {
 	switch l.Reason {
 	case "device_off", "wrong_code", "not_seen", "no_answer":
 		return "ag.login." + l.Reason
+	case "offline":
+		// D523: its sign-in ended well but its own check got no answer from its service.
+		return "ag.login.unreachable"
 	}
 	return "ag.login.failed"
 }

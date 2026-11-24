@@ -254,7 +254,7 @@ func (a *App) pastView(c *ui.Context) {
 	// the card chosen (the first one until another is).
 	split := ps.tab == "" && a.pastWide(c)
 	ui.Row(c.Key("past-split")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-		ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
+		a.toastsOver(ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).MinWidth(0)).Children(func() {
 			ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 				ui.Column(c.Key("past-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 					a.pastTabs(c)
@@ -661,16 +661,8 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 	focus := ps.focus == it.TaskID
 	card := ui.Row(c).Gap(t.S3+2).Padding(t.S3+2, t.S4, t.S3+2, t.S3+2).Radius(t.RadiusLG - 4).AlignItems(ui.Center).
 		Background(t.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(it.Title).Focusable()
-	hover := card.Hovered() || focus || ps.marking == it.TaskID
-	lift := float32(0)
-	if hover {
-		lift = 1
-	}
-	k := lift
-	if !c.Preferences().ReduceMotion {
-		k = card.AnimateTo("lift", lift, t.Snappy)
-		card.Translate(0, -2*k)
-	}
+	hover := card.Hovered() || card.FocusWithin() || focus || ps.marking == it.TaskID
+	k := a.cardLift(c, card, hover)
 	// A card rests on its clay ledge; lifted, the ledge shows deeper and a
 	// soft drop opens under it.
 	card.Shadow(0, 2+5*k, 6+12*k, -2, t.Ink.Alpha(0.04+0.06*k)).Shadow(0, 2+2*k, 0, 0, t.Line)
@@ -696,9 +688,8 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 			a.pastLine2(c, it, terms)
 			a.pastMeta(c, it)
 		})
-		if hover {
-			a.pastActs(c, it)
-		}
+		// D529: its actions keep their room and fade in; the words never rewrap.
+		a.revealSlot(c, "reveal", hover, func() { a.pastActs(c, it) })
 	})
 	// D391: a click shows where it stopped (beside the list, or as a sheet
 	// when narrow); a double click opens it, as Enter does.

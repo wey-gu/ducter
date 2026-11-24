@@ -45,6 +45,11 @@ export interface ChannelView {
    * person's last words there, while its few messages last). Absent: it hasn't heard from them yet.
    */
   openUntil?: string;
+  /**
+   * D531, Slack: the app was made before chat:write.customize, so each partner can't show its own
+   * name and face there; Settings offers the new manifest and says to reinstall.
+   */
+  reinstall?: boolean;
 }
 
 export type ChannelClientFrame =
@@ -53,7 +58,8 @@ export type ChannelClientFrame =
   // Paste the token(s) once: Telegram's from BotFather; Slack's bot token (xoxb-) and app-level token (xapp-).
   // WeChat (D301): no token; it puts up a QR (a channels frame with scan), or answers WeChat's number (verifyCode).
   | { t: "channel_connect"; kind: ChannelKind; token?: string; botToken?: string; appToken?: string; verifyCode?: string }
-  // A one-time code (10 minutes, one use): Telegram as a t.me deep link, Slack as words to DM.
+  // A one-time code (10 minutes, one use): Telegram as a t.me deep link, Slack as words to DM
+  // (D531: with a link that opens the app's messages in Slack).
   | { t: "channel_code"; kind: ChannelKind }
   // 解除连接 / Unlink: the linked account is forgotten; the bot stays.
   | { t: "channel_unlink"; kind: ChannelKind }

@@ -73,6 +73,20 @@ export function cutAtWord(text: string, max: number): string {
 }
 
 /**
+ * D519: words drawn on more than one line never leave one Han character alone on the last
+ * (「…东京的机 / 票」): the last two, before any "…", are joined with U+2060 so they wrap together.
+ * The Mac's noOrphan does the same.
+ */
+export function noOrphan(s: string): string {
+  const rs = [...s.replaceAll("⁠", "")];
+  let end = rs.length;
+  if (rs[end - 1] === "…") end--;
+  const han = /\p{Script=Han}/u;
+  if (end < 2 || !han.test(rs[end - 1]!) || !han.test(rs[end - 2]!)) return s;
+  return rs.slice(0, end - 1).join("") + "⁠" + rs.slice(end - 1).join("");
+}
+
+/**
  * D496: a name cut for length ends where a word ends, never inside one ("…-tests-intermittentl"
  * became "…-tests"): when the cut falls between two letters of a spaced script, it goes back to
  * the last `-` (or `.`, `_`), if that keeps more than half. Han, kana and Hangul are a word each.

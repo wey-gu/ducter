@@ -113,7 +113,7 @@ export interface Loops {
   get(taskId: string): TaskLoopBody | undefined;
   /** Loops on or paused. */
   all(): TaskLoopBody[];
-  /** D511: every loop ever kept, ended ones too (each is a Keep, the ended ones under 照看过的). */
+  /** D511: every loop ever kept, ended ones too (each is a Keep, the ended ones under 已结束). */
   ever(): TaskLoopBody[];
   health(taskId: string): OngoingHealth | undefined;
   /** The rhythm the person set ("改成每小时"); the task's own timers follow it. */

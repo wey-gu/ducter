@@ -60,6 +60,7 @@ func (a *App) task(c *ui.Context) {
 		// motion.
 		still := c.Preferences().ReduceMotion
 		stage := ui.Box(c.Key("taskstage")).Grow(1).MinWidth(0).MinHeight(0)
+		a.toastsOver(stage) // D527: between On hand's rail and the workbench
 		if !still {
 			stage.ChildExit(ui.Motion{})
 		}
@@ -491,6 +492,10 @@ func (a *App) reportLabel(r *protocol.Report) string {
 func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D493: what sits over the task's composer shares its measure and edges.
+	// D521: its agent's background work first, furthest from the words.
+	if task.Card != nil && task.Card.Background != nil && len(task.Card.Background.Jobs) > 0 {
+		a.aboveComposerAt(c, readMeasure, func() { a.bgTray(c, task) })
+	}
 	if a.held != nil && a.held.taskID == task.ID {
 		a.aboveComposerAt(c, readMeasure, func() { a.heldLine(c) })
 	}

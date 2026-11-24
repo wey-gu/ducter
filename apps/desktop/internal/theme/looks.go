@@ -33,6 +33,20 @@ var LookClay = map[string]ClayTint{
 	"apricot": {-28, 1},
 }
 
+// LookTone is c in a look's clay (D526): the same hue turn and saturation
+// the look gives the art, so a partner's small mark is the colour of its
+// figure. The default's sand leaves c as it is.
+func LookTone(c ui.Color, look string) ui.Color {
+	if plain(look) {
+		return c
+	}
+	m := clayMatrix(LookClay[look])
+	r, g, b := float64(c.R), float64(c.G), float64(c.B)
+	ch := func(v float64) uint8 { return uint8(math.Max(0, math.Min(255, v)) + 0.5) }
+	out := ui.RGB(ch(m[0]*r+m[1]*g+m[2]*b), ch(m[3]*r+m[4]*g+m[5]*b), ch(m[6]*r+m[7]*g+m[8]*b))
+	return out.Alpha(float32(c.A) / 255)
+}
+
 // artLook is the look of the partner the window shows: Face, FaceClosed,
 // Art and ArtClosed draw the figure in it.
 var artLook atomic.Value

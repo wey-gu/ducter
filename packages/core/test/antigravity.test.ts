@@ -287,9 +287,11 @@ test("install on a too-old copy: its own `agy update`, read back; still old says
 });
 
 test("sign-in: `agy acp --login`, the Google link carried to the person, the pasted code to its input; no browser opens on a server", async () => {
-  const r = rig({ onPath: "/usr/local/bin/agy" });
+  const r = rig({ onPath: "/usr/local/bin/agy", versions: { "/usr/local/bin/agy": "1.5.13" } });
   try {
     r.s.login("antigravity");
+    // D523: the copy that answers its --version is the one signed in (pickAgy), so it starts once that is known.
+    for (let i = 0; i < 100 && !r.spawned.length; i++) await Bun.sleep(2);
     const sp = r.spawned[0]!;
     expect(sp.argv).toEqual(["/usr/local/bin/agy", "acp", "--login"]);
     // On Linux a do-nothing xdg-open goes first on its PATH (agy ignores BROWSER).
@@ -311,11 +313,14 @@ test("sign-in: `agy acp --login`, the Google link carried to the person, the pas
   expect(parseLogin("antigravity", "x https://example.com/a then https://accounts.google.com/o/oauth2/auth?a=1.").url).toBe("https://accounts.google.com/o/oauth2/auth?a=1");
 });
 
-test("sign-in on a Mac: agy opens the browser there itself; nothing put on its PATH", () => {
-  const r = rig({ onPath: "/Users/w/.local/bin/agy", platform: "darwin" });
+test("D523 sign-in on a Mac: agy's own `open` is a no-op too (it opened a browser on whichever Mac ran it)", async () => {
+  const r = rig({ onPath: "/Users/w/.local/bin/agy", platform: "darwin", versions: { "/Users/w/.local/bin/agy": "1.5.13" } });
   try {
     r.s.login("antigravity");
-    expect(r.spawned[0]!.env.PATH).toBe("/usr/bin");
+    for (let i = 0; i < 100 && !r.spawned.length; i++) await Bun.sleep(2);
+    const first = r.spawned[0]!.env.PATH!.split(":")[0]!;
+    expect(first).toBe(join(r.dataDir, "tools", "no-browser"));
+    expect(readFileSync(join(first, "open"), "utf8")).toBe("#!/bin/sh\nexit 0\n");
   } finally {
     r.done();
   }

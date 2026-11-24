@@ -36,8 +36,10 @@ import { firstWords } from "./i18n-first.ts";
 import { settingsHome, settingsMore } from "./i18n-settings.ts";
 import { delightWords } from "./i18n-delight.ts";
 import { d475Words } from "./i18n-d475.ts";
+import { linkWords } from "./i18n-link.ts";
 import { d484Words } from "./i18n-d484.ts";
 import { keepWords } from "./i18n-keep.ts";
+import { bgWords } from "./i18n-bg.ts";
 import { outwardWords } from "./i18n-outward.ts";
 import { partnersWords } from "./i18n-partners.ts";
 import { lendWords } from "./i18n-lend.ts";
@@ -124,6 +126,7 @@ const zh: Record<string, string> = {
   "newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。",
   "newtask.err.offline": "那台设备现在连不上。",
   "newtask.err.failed": "没能开始：%s",
+  "newtask.err.failed.bare": "没能开始",
   "newtask.err.unknown": "没能开始，再试一次？",
   "nav.onhand": "手头的事",
   // D262: the shell's way to the other places.
@@ -146,7 +149,6 @@ const zh: Record<string, string> = {
   "header.held.soon": "过一会儿接着回你",
   "header.summary.none": "手头没事，随时说",
   "conn.connecting": "正在连接…",
-  "conn.offline": "连不上 Ducter，正在重试",
   "composer.placeholder": "跟 %s 说点什么…",
   "composer.task": "直接跟它说…",
   "composer.send": "发送",
@@ -518,6 +520,10 @@ const zh: Record<string, string> = {
   "step.background.end.bare": "后台的事做完了",
   "step.background.stop": "后台的事停下了：%[1]s",
   "step.background.stop.bare": "后台的事停下了",
+  "step.background.fail": "后台的事出错了：%[1]s",
+  "step.background.fail.bare": "后台的事出错了",
+  "step.background.lost": "后台的事不知道结果：%[1]s",
+  "step.background.lost.bare": "后台的事不知道结果",
   "step.label.other": "使用",
   "step.label.error": "出错",
   "note.stalled": "它停下了，没交回结果",
@@ -742,7 +748,6 @@ const zh: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "连接",
   "connect.busy": "正在连接…",
-  "connect.revoked": "这台手机已经和你的 Ducter 断开了。再连一次就能回来。",
   "connect.err.code": "这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。",
   "connect.err.locked": "试错太多次了。等 10 分钟再试，或者换一个新码。",
   "connect.err.unreachable": "连不上 %s。地址对吗？用 SSH 隧道的话，隧道还开着吗？",
@@ -1143,6 +1148,7 @@ const en: Record<string, string> = {
   "newtask.err.ducter_data": "That is where Ducter keeps its own data, so no task works there. Pick another folder, or No folder.",
   "newtask.err.offline": "That device can't be reached right now.",
   "newtask.err.failed": "It didn't start: %s",
+  "newtask.err.failed.bare": "It didn't start",
   "newtask.err.unknown": "It didn't start. Try again?",
   "nav.onhand": "On hand",
   // D262: the shell's way to the other places.
@@ -1165,7 +1171,6 @@ const en: Record<string, string> = {
   "header.held.soon": "Answers again soon",
   "header.summary.none": "Nothing on hand. Say anything.",
   "conn.connecting": "Connecting…",
-  "conn.offline": "Can't reach Ducter, retrying",
   "composer.placeholder": "Say something to %s…",
   "composer.task": "Message it directly…",
   "composer.send": "Send",
@@ -1532,6 +1537,10 @@ const en: Record<string, string> = {
   "step.background.end.bare": "Finished in the background",
   "step.background.stop": "Stopped in the background: %[1]s",
   "step.background.stop.bare": "Stopped in the background",
+  "step.background.fail": "Failed in the background: %[1]s",
+  "step.background.fail.bare": "Failed in the background",
+  "step.background.lost": "Result unknown in the background: %[1]s",
+  "step.background.lost.bare": "Result unknown in the background",
   "step.label.other": "Used",
   "step.label.error": "Error",
   "note.stalled": "It stopped without reporting back",
@@ -1752,7 +1761,6 @@ const en: Record<string, string> = {
   "connect.code.placeholder": "K7QM-4XPA",
   "connect.go": "Connect",
   "connect.busy": "Connecting…",
-  "connect.revoked": "This phone was disconnected from your Ducter. Connect it again to come back.",
   "connect.err.code": "That code is wrong or has expired. Run ducter pair on that computer again.",
   "connect.err.locked": "Too many wrong codes. Wait 10 minutes, or get a new code.",
   "connect.err.unreachable": "Can't reach %s. Is the address right? If you use an SSH tunnel, is it still open?",
@@ -3505,7 +3513,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 
 import { autofill } from "./i18n-autofill.ts";
 import { errandWords } from "./i18n-errand.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh, ...d484Words.zh, ...keepWords.zh, ...outwardWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en, ...d484Words.en, ...keepWords.en, ...outwardWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh, ...d484Words.zh, ...keepWords.zh, ...bgWords.zh, ...outwardWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en, ...d484Words.en, ...keepWords.en, ...bgWords.en, ...outwardWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);
@@ -3518,6 +3526,9 @@ Object.assign(TABLES.en, groupWords.en);
 // D426: several things in one message, under it (i18n-asks.ts).
 Object.assign(TABLES.zh, asksWords.zh);
 Object.assign(TABLES.en, asksWords.en);
+// D532: the link to the home (i18n-link.ts), the Mac's words (D520).
+Object.assign(TABLES.zh, linkWords.zh);
+Object.assign(TABLES.en, linkWords.en);
 Object.assign(TABLES.zh, firstMeetWords.zh);
 Object.assign(TABLES.en, firstMeetWords.en);
 // D385: handing several over (i18n-handover.ts).
@@ -3593,6 +3604,29 @@ export function guardEmptyArgs(fn: ((key: string, arg: number) => void) | undefi
   onEmptyArg = fn;
 }
 
+/** Tests (test/guard.ts): hears copy drawn with a placeholder left unfilled (a raw %s on screen; D519). */
+let onMissingArg: ((key: string, verbs: number, args: number) => void) | undefined;
+export function guardMissingArgs(fn: ((key: string, verbs: number, args: number) => void) | undefined) {
+  onMissingArg = fn;
+}
+
+/** How many arguments a format prints: %s/%d in order, or the highest %[n]s (%% none). */
+const verbsSeen = new Map<string, number>();
+export function verbsOf(fmt: string): number {
+  const known = verbsSeen.get(fmt);
+  if (known !== undefined) return known;
+  if (!fmt.includes("%")) return 0;
+  let i = 0;
+  let most = 0;
+  fmt.replace(/%(?:\[(\d+)\])?([sd%])/g, (_m, pos: string | undefined, verb: string) => {
+    if (verb === "%") return "";
+    most = Math.max(most, pos ? Number(pos) : ++i);
+    return "";
+  });
+  verbsSeen.set(fmt, most);
+  return most;
+}
+
 /** Which of n arguments a format prints (%s in order, %[2]s by position; %% none). */
 export function usedArgs(fmt: string, n: number): boolean[] {
   const used = new Array<boolean>(n).fill(false);
@@ -3630,6 +3664,11 @@ export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
     let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
     if (handheld === "ipad") v = onIpad(v);
     else if (handheld === "computer") v = onComputer(v);
+    if (onMissingArg) {
+      // D519: a placeholder printed with no argument for it (「%s 要求修改」 reached a person).
+      const want = verbsOf(v);
+      if (want > args.length) onMissingArg(key, want, args.length);
+    }
     if (!args.length) return v;
     if (onEmptyArg) {
       const used = usedArgs(v, args.length);

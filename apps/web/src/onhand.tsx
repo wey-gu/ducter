@@ -10,7 +10,7 @@ import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
-import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -754,6 +754,13 @@ export function whereMeta(task: Task): string[] {
   return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
+/** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
+export function bgFact(task: Task): string[] {
+  const a = attention(task);
+  const n = bgRunning(task.card?.background);
+  return n > 0 && !finished(task) && a !== "dropped" && a !== "superseded" ? [t("bg.onhand", n)] : [];
+}
+
 /** D507: the tasks the board draws under their helper right now (so their rows don't name it again). */
 let NESTED = new Set<string>();
 
@@ -926,7 +933,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const wide = room !== "phone";
   // D261: where, quietly: its project when the board shows all of them, its computer with two or
   // more. Who does it and its branch are in the task.
-  const meta = room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : [];
+  const meta = [...(room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : []), ...bgFact(task)];
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
@@ -1081,6 +1088,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
   if (rounds?.everyMs) meta.push(t("og.round.every", interval(rounds.everyMs)));
+  meta.push(...bgFact(task));
   const pb = placeOf(task);
   const beat = task.acting
     ? t(`result.acting.${task.acting}`, pb.kind === "repo" ? (pb.baseBranch ?? "main") : "")
@@ -1106,6 +1114,10 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const full = title(task);
   const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
   const about = named !== full ? full : undefined;
+  // D529: a row that shows its own actions (看看为什么, 再试一次, 到 GitHub 合并) keeps its ⋯ in that same
+  // group, revealed in place on hover or focus; never a second row of controls.
+  const acts = !!stuck || stopped || quiet || (failed && !!fin) || prr?.stands === "needs" || !!w?.limit?.handTo;
+  const joined = fin && !stacked && acts ? <FinishedActs f={fin} full={room === "full"} menuOnly /> : null;
   return (
     <div
       ref={ref}
@@ -1205,6 +1217,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       {stuck ? (
         <span class="oacts on">
           <StuckActs n={stuck} onRetry={fin ? () => runFinished("retry", fin, room === "full") : undefined} />
+          {joined}
         </span>
       ) : stopped || quiet ? (
         <span class="oacts on">
@@ -1214,27 +1227,32 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
           )}
           <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
+          {joined}
         </span>
       ) : failed && fin ? (
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(task)} onClick={() => runFinished("retry", fin, room === "full")} />
+          {joined}
         </span>
       ) : prr?.stands === "needs" ? (
         // D508: the one thing a ready PR needs: its merge, on GitHub.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("onhand.prs.merge")} about={full} onClick={() => window.open(prr.pr.url, "_blank", "noopener")} />
+          {joined}
         </span>
       ) : w?.limit?.handTo ? (
         // D471 (D297): a limit used up, with another agent that can take it now: its row offers it.
         <span class="oacts on">
           <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(w.limit.handTo.harness))} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "handoff")} />
+          {joined}
         </span>
       ) : (
         room !== "phone" && <RowActs task={task} room="card" />
       )}
       </span>
-      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. */}
-      {fin && !stacked && <FinishedActs f={fin} full={room === "full"} />}
+      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. D529: a row
+          with actions of its own has its ⋯ in that group (joined); else × and ⋯ come in over its time. */}
+      {fin && !stacked && !acts && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });
@@ -1308,7 +1326,7 @@ function ver(task: Task): string {
   const c = task.card;
   const l = latestOf(task);
   const w = A.S.waiterFor(task.id);
-  return [attention(task), l?.seq, c?.updatedAt, c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
+  return [attention(task), l?.seq, c?.updatedAt, bgRunning(c?.background), c?.changes?.adds, c?.changes?.dels, c?.integrated?.act, task.acting, task.acted?.action, w?.lastLookAt, w?.nextLookAt, L.showProj, quietWait(task), A.S.justArrived(task.id), timeOf(task), A.L.lang, A.convLang, task.open?.title, isNewResult(task.id, attention(task), c?.updatedAt), handover(task.id, statusOf(task.id, attention(task), c?.updatedAt))].join("|");
 }
 
 type Fold = { shut: boolean; onToggle: () => void; mark: Status; counts: string };
@@ -1509,7 +1527,7 @@ export function OnHandList({ room }: { room: Room }) {
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for
   // the person stands at the head of 等你; the rest under 你的帮手 after the waits. Find and the rail
   // beside an opened task show the tasks as rows, each with its helper's name.
-  // D511: 在照看的 / Looking after takes the place of 你的帮手 and 一直在跑的 when the home sends Keeps:
+  // D511: 看守中 / Looking after takes the place of 你的帮手 and 一直在跑的 when the home sends Keeps:
   // each Keep one sheet; a task it owns stands under it (a Keep in rounds is its task), never in 在做
   // or 在等; one that waits for the person stays in 等你 once, its row naming the Keep.
   const keepsOn = A.S.onHand?.keeps;
@@ -1638,7 +1656,7 @@ export function OnHandList({ room }: { room: Room }) {
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
-      {/* D511: 在照看的 / Looking after: what Ducter keeps on for the person, each its own sheet, after the waits. */}
+      {/* D511: 看守中 / Looking after: what Ducter keeps on for the person, each its own sheet, after the waits. */}
       {ks.length > 0 && show(2) && (
         <Section name={t("keep.section")}>
           {ks.map((k) => (

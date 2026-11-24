@@ -99,6 +99,8 @@ struct Root: View {
         .onChange(of: state.base) { _, _ in home.clear() }
         // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
         .onChange(of: scene) { _, p in if p == .active, shell.phase == .ready { Task { await home.check() } } }
+        // D532: the page redials its home at once (a web view's visibilitychange doesn't always come).
+        .onChange(of: scene) { _, p in if p == .active { shell.resumed() } }
         // D293: the best of the home's ways that proves it is the home: on coming to the front, when
         // the way in use can't be reached, and every 30 s while open (leaving only after two misses).
         .onChange(of: scene) { _, p in if p == .active { Task { await state.lookForBetterWay(up: true) } } }

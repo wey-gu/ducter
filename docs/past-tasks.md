@@ -9,12 +9,12 @@ order: 2.6
 A task you finished doesn't disappear. On hand shows what is going on now; everything you had
 before stays in **做过的事 / Past tasks**, ready to find and pick up again; what it made for you is
 in **给你做的 / Made for you**. Next to them,
-**在照看的 / Looking after** keeps what runs on its own: things you asked for every day or every week,
+**看守中 / Looking after** keeps what runs on its own: things you asked for every day or every week,
 and tasks that keep looking for something.
 
 ## Opening it
 
-- At the end of On hand, tap **做过的事 ›** (or **在照看的 n 个 ›**).
+- At the end of On hand, tap **做过的事 ›** (or **看守中 n 个 ›**).
 - In On hand's search, when nothing there matches, tap **在做过的事里找「…」** to look for the
   same words in every earlier task.
 - In the Mac app: **做过的事… / Past Tasks…** in the menu, or ⌘Y.
@@ -164,7 +164,7 @@ your yes on that computer), but are not listed in Past tasks yet.
 
 ## Looking after: pause, resume, run now
 
-Each card in **在照看的 / Looking after** says when it runs next and shows its recent runs as small
+Each card in **看守中 / Looking after** says when it runs next and shows its recent runs as small
 pebbles: green for done, red for didn't work, yellow for "looked, nothing yet", an outline for
 skipped. Tap a pebble to open that run.
 

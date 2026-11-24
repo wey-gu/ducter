@@ -220,7 +220,7 @@ func (a *App) devicesView(c *ui.Context) {
 	// cut off.
 	_, winH := c.Size()
 	stageH := max(float32(480), winH-ChromeH-150)
-	root := ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0)
+	root := a.toastsOver(ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0))
 	root.Children(func() {
 		ui.Column(c).Gap(t.S4).Padding(t.S5, side, t.S6, side).Children(func() {
 			a.devicesHeader(c, dev)
@@ -353,11 +353,10 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 	if width > 0 {
 		row.Width(width)
 	}
-	switch {
-	case sel:
+	if sel {
 		row.Background(t.Surface).InsetShadow(0, 0, 0, 2, t.Ink)
-	case row.Hovered():
-		row.Background(t.Sunken)
+	} else {
+		a.rowHover(c, row, groundPage(), false) // D529
 	}
 	row.Children(func() {
 		clay()

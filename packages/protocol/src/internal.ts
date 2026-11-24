@@ -167,6 +167,8 @@ export interface CoreApi {
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
   places?: PlacesPort;
+  /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
+  branchAsk?(prompt: string): Promise<string>;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
   /**
@@ -208,6 +210,8 @@ export interface CoreApi {
    * is a task's plain question, not the floor, and that a kept permission covers the step there).
    */
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
+  zone?(): string;
   /** D499: the kept permissions covering a task's own steps (for its brief and the partner's report line). */
   goesFor?(taskId: string): import("./standing.ts").StandingView[];
   /** D499: the task an open ask is from, its title and its repo's owner (for keeping a go for one task). */
@@ -757,6 +761,8 @@ export interface HarnessSession {
   events(): AsyncIterable<HarnessEvent>;
   /** D282: the agent's own manual compaction, where the runtime has one (Codex through OAR). */
   compact?(): Promise<void>;
+  /** D521: stop one background job by its id (OAR's stopTask), where the runtime has it; rejects with its reason. Absent: nothing here can stop one. */
+  stopBackground?(id: string): Promise<void>;
   /** D293: a session on a worker: its worker dropped and holds it (away), or came back with it (back). */
   onLink?(fn: (state: "away" | "back") => void): void;
 }
@@ -808,7 +814,7 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string; /** D522: the to-do's number(s) its branch starts with (`11028`, `11028-11029`) */ todo?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
@@ -821,6 +827,8 @@ export interface Runner {
   // Throws when that id is no longer held (it already went).
   held?(taskId: string, id: string, op: "edit" | "drop" | "now", text?: string): Promise<{ delivered?: Delivery }>;
   interrupt(taskId: string): Promise<void>;
+  // Optional (D521): stop one of the task's background jobs (TaskCard.background) through its agent's own stop.
+  stopBackground?(taskId: string, jobId: string): Promise<{ ok: boolean; message?: string }>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
   /** D395: a task that couldn't start starts in this place instead (its brief and agent stay). */

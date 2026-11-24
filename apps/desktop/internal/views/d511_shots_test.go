@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D511: 在照看的 / Looking after on On hand, and each Keep's own page
+// D511: 看守中 / Looking after on On hand, and each Keep's own page
 // (apps/web/demo-d511.ts), at 1400 and 1000. A live run only:
 //
 //	DUCTER_PORT=7511 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-d511.ts

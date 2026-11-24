@@ -3,6 +3,8 @@
 // alias for the address). It dials OUT (no inbound port here), says which harnesses it has, and stays
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
 // them on this disk with this machine's harnesses (design/system.md "Workers").
+import { startMemoryWatch } from "@ducter/core/src/memory-watch.ts";
+import { refreshOnStart } from "@ducter/core/src/unit-refresh.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { arch, platform } from "node:os";
 import { thisComputer } from "@ducter/core/src/this-computer.ts";
@@ -14,7 +16,7 @@ import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
-import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses, signedInNow } from "@ducter/core/src/harness-probe.ts";
 import { agentSignature, captureLoginPath, saveLoginPath, widenAgentPath } from "@ducter/core/src/agent-path.ts";
 import { createAgentSetup, realAgentSetupSys, type AgentSetup } from "@ducter/core/src/agent-setup.ts";
 import { createWorkerMem, realWorkerMemSys } from "@ducter/core/src/worker-mem.ts";
@@ -91,7 +93,7 @@ async function probeHarnesses(_t: T, dataDir: string, setup?: AgentSetup) {
   const found = await probeLocalHarnesses({
     exec: async (argv, ms) => {
       const r = await host.run(argv, ms);
-      return { code: r.code, out: r.stdout };
+      return { code: r.code, out: r.stdout, ...(r.stderr ? { err: r.stderr } : {}) };
     },
     which: (c) => host.which(c),
     dataDir,
@@ -234,8 +236,8 @@ export async function cmdWorker(o: {
     signedIn: async (h) => {
       widenAgentPath({ dataDir: o.dataDir });
       const host = realHost();
-      const found = await probeLocalHarnesses({ exec: async (argv, ms) => ((r) => ({ code: r.code, out: r.stdout }))(await host.run(argv, ms)), which: (c) => host.which(c), dataDir: o.dataDir, only: [h] });
-      return found[0]?.loggedIn ?? false;
+      // D523: both streams (agy may say "Please sign in" on either), and agy's "can't tell".
+      return signedInNow(h, { exec: async (argv, ms) => ((r) => ({ code: r.code, out: r.stdout, ...(r.stderr ? { err: r.stderr } : {}) }))(await host.run(argv, ms)), which: (c) => host.which(c), dataDir: o.dataDir });
     },
   });
   // D366: Nowledge Mem on this computer for tasks: where it stands (Mem's own doctor), putting its
@@ -295,6 +297,9 @@ export async function cmdWorker(o: {
   const dataDir = o.dataDir;
   updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how, agentsInstalling: () => agentUpdater.installing() });
   await agentUpdater.leftovers().catch(() => {});
+  // D524: a worker runs tasks too: its children go before it when memory runs out, and an older unit gets today's settings.
+  startMemoryWatch({ dataDir });
+  refreshOnStart(dataDir);
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the

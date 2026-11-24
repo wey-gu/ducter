@@ -252,7 +252,7 @@ func (a *App) settingsView(c *ui.Context) {
 	w, _ := c.Size()
 	ui.Row(c.Key("settings-body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		a.settingsRail(c, tab)
-		ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0).Children(func() {
+		a.toastsOver(ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0)).Children(func() {
 			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
 				// D289: 24 between sections, 8 within one (D273's rhythm).
 				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S5)
@@ -767,12 +767,7 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	a.sep(c)
 	b := ui.Row(c.Key("link:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable()
-	switch {
-	case b.Pressed():
-		b.Background(t.Ink.Alpha(0.06))
-	case b.Hovered():
-		b.Background(t.Ink.Alpha(0.03))
-	}
+	a.rowHover(c, b, groundNeutral(), false) // D529
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)

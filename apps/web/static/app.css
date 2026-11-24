@@ -56,6 +56,12 @@
 
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
+  /* D529: the one row hover: a neutral row warms toward the sunken clay, a row on a needs-you sheet
+     within that tint; never grey. Over --t-hover, easing out; nothing moves. */
+  --row-hover: color-mix(in srgb, var(--surface) 45%, var(--surface-sunken));
+  --row-hover-needs: color-mix(in srgb, var(--surface) 50%, var(--needs-surface));
+  --row-press: color-mix(in srgb, var(--surface) 10%, var(--surface-sunken));
+  --t-hover: 140ms;
   --needs-ink: #8a3a0c;
   --needs-ledge: #f0c29e;
   --working-dot: #4ba8f0;
@@ -235,6 +241,8 @@
     --highlight: #5a4512;
     --highlight-ink: #ffe9a8;
     --needs-surface: #3d2414;
+    --row-hover: color-mix(in srgb, var(--surface) 10%, var(--surface-raised));
+    --row-hover-needs: color-mix(in srgb, var(--surface) 55%, var(--needs-surface));
     --needs-ink: #ffc39b;
     --needs-ledge: #24150b;
     --working-surface: #15283a;
@@ -320,6 +328,8 @@
   --highlight: #5a4512;
   --highlight-ink: #ffe9a8;
   --needs-surface: #3d2414;
+  --row-hover: color-mix(in srgb, var(--surface) 10%, var(--surface-raised));
+  --row-hover-needs: color-mix(in srgb, var(--surface) 55%, var(--needs-surface));
   --needs-ink: #ffc39b;
   --needs-ledge: #24150b;
   --working-surface: #15283a;
@@ -1781,6 +1791,13 @@ a {
 .composer.is-sending textarea {
   color: var(--ink-muted);
 }
+/* D519: no leading control (pictures): the words keep the inset it would have given them. */
+.composer.bare {
+  padding-left: 24px;
+}
+.composer.is-sending textarea::selection {
+  background: transparent;
+}
 
 /* ---------- empty conversation ---------- */
 .hello {
@@ -2625,10 +2642,48 @@ a {
   padding: 6px 0 4px 22px;
   font-size: 0.8125rem;
 }
-/* D271: the locator, wide only: one bar per turn at the transcript's right edge. */
+/* D271, D526: the locator, wide only: the session's landmarks drawn small at the transcript's right
+   edge, one place per landmark in order, so the card's row is the mark under the pointer. Quiet at
+   rest (the knob and only the marks that matter, in full); pointed at, a sunken track and every mark in
+   full. Shape says what it is, tone says whose (ui.md "The locator's marks"). */
+:root {
+  --mark-clay: #9c6b45;
+  --mark-you: #c85f1a;
+  --mark-ask: #c2581a;
+  --mark-done: #23864a;
+  --mark-failed: #c93a62;
+  --mark-progress: #75654f;
+  --mark-quiet: #75654f;
+  --mark-knob-rim: #907c66;
+  --mark-chosen: #4a3d30;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mark-clay: #c9a07c;
+    --mark-you: #ff8a3d;
+    --mark-ask: #ff9f5e;
+    --mark-done: #5fcb82;
+    --mark-failed: #ee7593;
+    --mark-progress: #a8957e;
+    --mark-quiet: #a8957e;
+    --mark-knob-rim: #8a7864;
+    --mark-chosen: #dccbb6;
+  }
+}
+:root[data-theme="dark"] {
+  --mark-clay: #c9a07c;
+  --mark-you: #ff8a3d;
+  --mark-ask: #ff9f5e;
+  --mark-done: #5fcb82;
+  --mark-failed: #ee7593;
+  --mark-progress: #a8957e;
+  --mark-quiet: #a8957e;
+  --mark-knob-rim: #8a7864;
+  --mark-chosen: #dccbb6;
+}
 .locator {
   position: absolute;
-  right: 14px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 3;
@@ -2637,52 +2692,129 @@ a {
   align-items: flex-end;
   gap: 0;
 }
-.locator .rail {
+.locator .loc-rail {
   position: relative;
   width: 14px;
   cursor: pointer;
-  outline-offset: 4px;
+  outline-offset: 6px;
+  border-radius: 7px;
 }
-.locator .rail i {
+/* The track: a sunken capsule, only while pointed at, open or focused. */
+.locator .loc-rail::before {
+  content: "";
   position: absolute;
-  right: 3px;
-  width: 8px;
-  height: 1.5px;
-  margin-top: -0.75px;
-  border-radius: 1px;
-  background: var(--faint);
-  opacity: 0.6;
+  left: 1px;
+  right: 1px;
+  top: -4px;
+  bottom: -4px;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  opacity: 0;
+  transition: opacity var(--t-fast, 140ms) var(--ease);
 }
-/* D315: where you are reads as one light, calm thing: a soft clay lens over the ticks in view, a
-   hairline of accent at its edge, the ticks in it only warmed, never darkened or widened, so a
-   dense run of turns never stacks into dark bars. */
-.locator .rail i.here {
-  background: color-mix(in srgb, var(--accent) 65%, var(--faint));
+.locator:hover .loc-rail::before,
+.locator.open .loc-rail::before,
+.locator .loc-rail:focus-visible::before {
   opacity: 1;
 }
-/* D284: a quiet turn (a wake, Ducter's note, a Go relayed) is a short tick. */
-.locator .rail i.quiet {
-  right: 5px;
-  width: 4px;
-  opacity: 0.4;
-}
-.locator .rail i.quiet.here {
-  opacity: 0.6;
-}
-.locator .rail .thumb {
+/* Where you are: the places' knob (D264), the raised card on a clay ledge, over the landmarks in view. */
+.locator .loc-rail .thumb {
   position: absolute;
-  right: 0;
-  width: 14px;
-  min-height: 2px;
-  margin-top: -6px;
-  padding-bottom: 12px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  left: 2px;
+  width: 10px;
+  min-height: 14px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--mark-knob-rim), 0 1.5px 0 var(--line);
+  transform: translateY(-7px);
   transition: top 260ms var(--ease), height 260ms var(--ease);
 }
+/* A mark: centred on its place; its shape is its class, its tone --tone. */
+.locator .m {
+  position: absolute;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tone);
+  transform: translate(-50%, -50%);
+  transition: opacity var(--t-fast, 140ms) var(--ease);
+}
+.locator:hover .loc-rail .m,
+.locator.open .loc-rail .m,
+.locator .loc-rail:focus-visible .m,
+.locator .loc-row .m {
+  opacity: 1;
+}
+.locator .m.m-sq {
+  width: 5.5px;
+  height: 5.5px;
+  border-radius: 1.5px;
+}
+.locator .m.m-ring {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+}
+.locator .m.m-ask {
+  width: 7.5px;
+  height: 7.5px;
+  background: radial-gradient(circle, var(--tone) 0 1.5px, transparent 1.75px);
+  box-shadow: inset 0 0 0 1.25px var(--tone);
+}
+.locator .m.m-faint {
+  width: 2.5px;
+  height: 2.5px;
+}
+/* D526: at rest only the marks that matter, in full (a dimmed mark loses its 3:1); the rest fade in
+   while it is pointed at, open or focused. */
+.locator .loc-rail .m.lo {
+  opacity: 0;
+}
+.locator:hover .loc-rail .m.lo,
+.locator.open .loc-rail .m.lo,
+.locator .loc-rail:focus-visible .m.lo {
+  opacity: 1;
+}
+.locator .t-you { --tone: var(--mark-you); }
+.locator .t-partner { --tone: var(--mark-clay); filter: var(--clay, none); }
+.locator .t-done { --tone: var(--mark-done); }
+.locator .t-failed { --tone: var(--mark-failed); }
+.locator .t-progress { --tone: var(--mark-progress); }
+.locator .t-wait { --tone: var(--mark-ask); }
+.locator .t-faint { --tone: var(--mark-quiet); }
+/* The mark chosen in the card wears a ring that glides to it. */
+.locator .loc-rail .loc-chosen {
+  position: absolute;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.25px var(--mark-chosen);
+  transform: translate(-50%, -50%);
+  transition: top 180ms var(--spring, var(--ease));
+  pointer-events: none;
+}
 .locator .loc-list {
-  /* D284: the card rises out of the rail (its bottom right), scale and fade, and goes back into it. */
+  /* D284: the card rises out of the rail (its bottom right), scale and fade, and goes back into it.
+     D325: out of the rail's flow, so the rail never moves under the pointer as the card opens.
+     D526: the one menu's card (D421). */
+  position: absolute;
+  right: 22px;
+  bottom: 0;
+  margin: 0;
+  padding: 6px;
+  width: 340px;
+  box-sizing: border-box;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--floating);
   transform-origin: 100% 100%;
   opacity: 0;
   transform: translateX(6px) scale(0.94);
@@ -2695,21 +2827,81 @@ a {
   transform: none;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 160ms var(--ease), transform 200ms var(--ease), visibility 0s;
+  transition: opacity 160ms var(--ease), transform 220ms var(--ease), visibility 0s;
+}
+.locator .loc-list:focus {
+  outline: none;
+}
+/* D325: the list draws only the rows near its view: each one the same height, placed by its index. */
+.locator .loc-rows {
+  position: relative;
+}
+/* D526: a row is the rail's mark, one plain line and its time in a right column; one weight for
+   every row: the rows in view in ink, the quiet ones muted. */
+.locator .loc-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: var(--r-xs, 6px);
+  font-size: var(--sm);
+  font-weight: 400;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+}
+.locator .loc-row.here {
+  color: var(--ink);
 }
 .locator .loc-row.quiet {
-  min-height: 22px;
-  font-size: 0.75rem;
   color: var(--ink-muted);
 }
-.locator .loc-row.quiet i {
-  width: 7px;
-  height: 1px;
-  border-radius: 0;
-  opacity: 0.6;
+.locator .loc-row.sel {
+  background: var(--surface-sunken);
 }
-.locator .loc-row.quiet.here {
-  font-weight: 400;
+.locator .loc-list:focus-visible .loc-row.sel {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.locator .loc-row .mk {
+  position: relative;
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+.locator .loc-row .mk .m {
+  top: 50%;
+}
+.locator .loc-row .w {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.locator .loc-row .at {
+  flex: none;
+  min-width: 40px;
+  padding-inline-start: 8px;
+  text-align: right;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .locator .loc-rail .thumb,
+  .locator .loc-rail .loc-chosen,
+  .locator .loc-list,
+  .locator.open .loc-list {
+    transition: opacity 120ms linear, visibility 0s;
+    transform: none;
+  }
+  .locator .loc-rail .loc-chosen {
+    transform: translate(-50%, -50%);
+  }
 }
 /* D284: the turn the locator went to wears a soft clay tint that fades. */
 .turns .turn.flash {
@@ -2746,117 +2938,6 @@ a {
 }
 .tx.go-chip time {
   font-size: 0.6875rem;
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-@media (prefers-reduced-motion: reduce) {
-  .locator .rail .thumb,
-  .locator .loc-list,
-  .locator.open .loc-list {
-    transition: opacity 120ms linear, visibility 0s;
-    transform: none;
-  }
-}
-.locator .loc-list {
-  /* D325: out of the rail's flow, so the rail never moves under the pointer as the card opens. */
-  position: absolute;
-  right: 20px;
-  bottom: 0;
-  list-style: none;
-  margin: 0;
-  padding: 6px;
-  width: 320px;
-  box-sizing: border-box;
-  max-height: 420px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--floating);
-}
-/* D325: the list draws only the rows near its view: each one 28 high, placed by its index. */
-.locator .loc-rows {
-  position: relative;
-}
-.locator .loc-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 8px;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: var(--ink-soft);
-  text-align: left;
-  cursor: pointer;
-}
-.locator .loc-row.sel {
-  background: var(--sunken);
-}
-.locator .loc-list:focus-visible .loc-row.sel {
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-.locator .loc-list:focus {
-  outline: none;
-}
-/* D325: a report is a small ring; a mark of the session (a compaction, a switch) a hairline like a quiet run. */
-.locator .loc-row.k-report i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--faint);
-  margin: 0 -2px;
-}
-.locator .loc-row.k-report.here i {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ink);
-}
-.locator .loc-row.k-report:not(.here) {
-  font-weight: 400;
-}
-.locator .loc-row i {
-  flex: none;
-  width: 3px;
-  height: 12px;
-  border-radius: 2px;
-  background: var(--faint);
-}
-.locator .loc-row.here {
-  color: var(--ink);
-  font-weight: 600;
-}
-.locator .loc-row.here i {
-  background: var(--ink);
-  opacity: 0.75;
-}
-.locator .loc-list span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* D291: the brief's quiet label and each entry's time are their own elements. */
-.locator .loc-list .tag {
-  flex: none;
-  font-style: normal;
-  font-size: var(--xxs, 11px);
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--sunken);
-  color: var(--ink-muted);
-}
-.locator .loc-list .at {
-  flex: none;
-  margin-inline-start: auto;
-  padding-inline-start: 8px;
-  font-size: 0.6875rem;
-  font-weight: 400;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2900,6 +2981,16 @@ a {
 }
 .step .sum:first-of-type {
   flex-shrink: 0.35;
+}
+/* D521: words with no subject beside them (a background job's end, its Error tag after) take the
+   whole shrink: with only a 0.35 share, flexbox removes only 35% of the overflow and the words and
+   their tag ran past a phone's edge. */
+.step:not(:has(> code)) > .sum:first-of-type {
+  flex-shrink: 1;
+}
+/* D521: a background failure says it in its words (后台的事出错了), in the error ink, no separate tag. */
+.turns .step.bad.bg .sum {
+  color: var(--failed-ink);
 }
 .step .sum.code {
   flex: 0 1 auto;
@@ -6502,7 +6593,6 @@ button.bcard:active {
   }
   button.bcard:hover {
     box-shadow: 0 6px 0 var(--line), var(--drop);
-    transform: translateY(-2px);
   }
 }
 /* By project: groups at most 960 wide, centered, each a card of one-line rows. */
@@ -6593,7 +6683,8 @@ button.bcard:active {
    ask on the same measure. */
 .full > .task-page,
 .full > .ask-dock,
-.full > .composer-wrap {
+.full > .composer-wrap,
+.full > .bg-dock {
   padding-left: max(24px, calc((100% - 720px) / 2));
   padding-right: max(24px, calc((100% - 720px) / 2));
 }
@@ -8214,11 +8305,7 @@ dl.call-summary dd { margin: 0; }
 }
 @media (hover: hover) {
   .trow:hover {
-    background: color-mix(in srgb, var(--ink) 4%, transparent);
-  }
-  .trow:hover .tacts,
-  .trow:focus-within .tacts {
-    display: flex;
+    background: var(--sunken);
   }
 }
 /* Where the keys are and what is open beside the list (D270): the knob, never a bar at an edge;
@@ -8305,7 +8392,8 @@ dl.call-summary dd { margin: 0; }
 .full.book .beside-rail > .task-page,
 .full.book .beside-rail > .ask-dock,
 .full.book .beside-rail > .composer-wrap,
-.full.book .beside-rail > .task-foot {
+.full.book .beside-rail > .task-foot,
+.full.book .beside-rail > .bg-dock {
   padding-left: 16px;
   padding-right: calc(var(--safe-right) + 16px);
 }
@@ -8354,7 +8442,8 @@ dl.call-summary dd { margin: 0; }
 .beside-rail > .task-page,
 .beside-rail > .ask-dock,
 .beside-rail > .composer-wrap,
-.beside-rail > .task-foot {
+.beside-rail > .task-foot,
+.beside-rail > .bg-dock {
   padding-left: max(24px, calc((100% - 720px) / 2));
   padding-right: max(24px, calc((100% - 720px) / 2));
 }
@@ -11941,6 +12030,10 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .chat-aside .chat-chip + .btn.text {
   margin-inline-start: 0;
 }
+/* D531: two quiet links side by side (Open Slack, Download its face): only the first sits on the column's edge. */
+.chat-aside .btn.text + .btn.text {
+  margin-inline-start: 0;
+}
 .chat-chip {
   display: inline-block;
   padding: 3px var(--s2);
@@ -12409,15 +12502,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (hover: hover) {
   .tcompact:hover {
-    transform: translateY(-1px);
     box-shadow: 0 3px 0 var(--line), 0 10px 20px -12px rgb(43 33 24 / 0.28);
-  }
-  .tcompact:hover .tacts,
-  .tcompact:focus-within .tacts {
-    display: flex;
-  }
-  .tcompact:hover .kmain .time {
-    display: none;
   }
 }
 .tcompact.kfocus {
@@ -12681,12 +12766,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 @media (hover: hover) {
   .tcard:hover {
-    transform: translateY(-2px);
     box-shadow: 0 4px 0 var(--line), 0 14px 26px -14px rgb(43 33 24 / 0.32);
-  }
-  .tcard:hover .tacts,
-  .tcard:focus-within .tacts {
-    display: flex;
   }
 }
 .tcard:active {
@@ -13065,7 +13145,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 .pcard.on, .pcard.open {
-  transform: translateY(-2px);
   box-shadow: 0 4px 0 var(--line), 0 10px 22px -10px rgba(43, 33, 24, 0.28);
   z-index: 2;
 }
@@ -19393,7 +19472,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 @media (hover: hover) {
   .ocard:hover {
-    transform: translateY(-1px);
     box-shadow: 0 3px 0 var(--line), var(--drop);
   }
   .ocard.stopped:hover,
@@ -19401,15 +19479,7 @@ html[data-text-size="large"] .brand-mark > svg {
     box-shadow: 0 3px 0 var(--needs-ledge), var(--drop);
   }
   .ocard.src-sum:hover {
-    transform: none;
     box-shadow: 0 2px 0 var(--line), var(--drop);
-  }
-  .ocard:hover .tacts,
-  .ocard:focus-within .tacts {
-    display: flex;
-  }
-  .ocard:has(.tacts):hover .obeat {
-    display: none;
   }
 }
 /* The × and ⋯ come in over the right end, where the heartbeat is, with the card's own surface. */
@@ -20813,7 +20883,7 @@ html[data-text-size="large"] .brand-mark > svg {
   .onhand-list:not(.room-rail) .ocard.stopped:hover,
   .onhand-list:not(.room-rail) .ocard.a-failed:hover {
     transform: none;
-    background: color-mix(in srgb, var(--ink) 3%, transparent);
+    background: var(--row-hover);
   }
   .onhand-list:not(.room-rail) .ocard + .ocard:hover {
     box-shadow: inset 0 1px 0 var(--line-soft);
@@ -21322,11 +21392,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .onhand-list.room-full .ocard .fin-acts {
   right: 10px;
-}
-@media (hover: hover) {
-  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
-    display: block;
-  }
 }
 /* The title stays whole in its two lines; what follows it (project, +a −d, its PR and to-do) may take a third. */
 .onhand-list:not(.room-rail) .ocard .o1 {
@@ -22577,3 +22642,373 @@ html[data-text-size="large"] .brand-mark > svg {
   .top:has(.partners-back) .who-face { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
+/* D521: the shared TrayRow and IconBtn (controls.tsx): one dense quiet row of a tray, a drawn glyph as a button. */
+.tray-row {
+  min-width: 0;
+}
+.tray-line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.tray-main {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: max(36px, 2.25rem);
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+button.tray-main {
+  cursor: pointer;
+}
+button.tray-main:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+button.tray-main:active {
+  transition-duration: var(--t-press);
+  background: var(--line-soft);
+}
+button.tray-main:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.tray-mark {
+  flex: none;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+}
+.tray-words {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.tray-row.head .tray-words {
+  font-weight: 700;
+}
+.tray-side {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.tray-time {
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+.tray-state {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.tray-chev {
+  flex: none;
+  color: var(--ink-muted);
+}
+.tray-act {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: 36px;
+}
+.tray-row.done .tray-mark {
+  color: var(--done-ink);
+}
+.tray-row.ended .tray-words,
+.tray-row.ended .tray-mark,
+.tray-row.fold .tray-words {
+  color: var(--ink-muted);
+}
+.tray-row.st-failed .tray-state {
+  color: var(--failed-ink);
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-press) var(--ease);
+}
+.icon-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.icon-btn.danger:hover {
+  color: var(--failed-ink);
+}
+.icon-btn:active {
+  transform: translateY(1px);
+}
+.icon-btn:disabled {
+  color: var(--faint);
+  background: none;
+  cursor: default;
+}
+/* D521: 后台 / In the background, over the opened task's composer: one quiet tray of TrayRows, on
+   the composer's measure (its dock takes the composer's padding wherever the composer has one). */
+.bg-dock {
+  padding: 0 var(--s4) var(--s2);
+  min-width: 0;
+}
+.bg-tray > .tray-row.head {
+  padding-inline: var(--s1);
+}
+.bg-tray {
+  margin: 0;
+  padding: var(--s1) 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: var(--sm);
+  min-width: 0;
+  animation: bg-in 220ms var(--ease) both;
+}
+@keyframes bg-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+.bg-rows {
+  margin-top: var(--s1);
+  padding: var(--s1) var(--s1) 0;
+  border-top: 1px solid var(--line-soft);
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  animation: bg-in 220ms var(--ease) both;
+}
+.bg-rows > .tray-row {
+  animation: bg-in 220ms var(--ease) both;
+}
+.bg-tail {
+  margin: 0 var(--s3) var(--s2) calc(var(--s3) + 16px + var(--s2));
+  min-width: 0;
+}
+.bg-tail-head {
+  display: block;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.bg-tail pre {
+  margin: var(--s1) 0 0;
+  max-height: 8.5em;
+  overflow: auto;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bg-tail-none {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+@media (max-width: 699px) {
+  .bg-dock {
+    padding: 0 var(--s3) var(--s2);
+  }
+  .tray-main {
+    min-height: max(44px, 2.75rem);
+  }
+  .tray-act,
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-tray,
+  .bg-rows,
+  .bg-rows > .tray-row {
+    animation: none;
+  }
+  .icon-btn:active {
+    transform: none;
+  }
+}
+
+/* ---------- D529: the one row hover ----------
+   Hover never reflows: a row's size, line breaks and positions stay; what it reveals (×, ⋯, Pause)
+   keeps its room or comes in over the time in a fixed slot, and is there for Tab too (opacity
+   only, never display or visibility). The fill warms within the row's ground (--row-hover, or
+   --row-hover-needs on a sheet standing on the needs-you ledge), never grey. A free-standing card
+   lifts by its shadow alone, never by moving (D76). Over --t-hover; reduced motion: no fades. */
+.ocard,
+.trow,
+.onhand-list:not(.room-rail) .ocard {
+  transition: background-color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease);
+}
+.ocard .tacts,
+.ocard .fin-acts,
+.trow .tacts,
+.ocard .ocol > .tacts,
+.ocard .obeat {
+  transition: opacity var(--t-hover) var(--ease);
+}
+@media (hover: hover) {
+  .ocard:hover,
+  .ocard.src-sum:hover,
+  .tcard:hover,
+  .tcompact:hover,
+  button.bcard:hover,
+  .pcard.on,
+  .pcard.open {
+    transform: none;
+  }
+  .onhand-list:not(.room-rail) .ocard:hover,
+  .onhand-list:not(.room-rail) .ocard:has(:focus-visible),
+  .onhand-list:not(.room-rail) .ocard.stopped:hover,
+  .onhand-list:not(.room-rail) .ocard.a-failed:hover {
+    background: var(--row-hover);
+  }
+  .onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard:hover,
+  .onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard:has(:focus-visible),
+  .onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard:hover,
+  .onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard:has(:focus-visible) {
+    background: var(--row-hover-needs);
+  }
+  .trow:hover {
+    background: var(--sunken);
+  }
+}
+/* Revealed in place: always laid out, faded in. */
+.ocard .tacts,
+.onhand-list:not(.room-rail) .ocard .ocol > .tacts {
+  display: flex;
+  opacity: 0;
+}
+.ocard .tacts.on,
+.ocard:hover .tacts,
+.ocard:focus-within .tacts,
+.onhand-list:not(.room-rail) .ocard .ocol > .tacts.on,
+.onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts,
+.onhand-list:not(.room-rail) .ocard:focus-within .ocol > .tacts {
+  opacity: 1;
+}
+/* Over the time where the sheet keeps no action column: the time fades as they come, on the row's
+   own fill (no white patch on a warm hover). */
+.onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard .ocol > .tacts {
+  padding-left: 16px;
+  background: var(--row-hover);
+}
+.onhand-list:not(.room-rail) .ocards.hsheet.needs:not(:has(.ocol > .on)) .ocard .ocol > .tacts {
+  background: var(--row-hover-needs);
+}
+@media (hover: hover) {
+  .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):hover .obeat,
+  .onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard:has(.tacts:not(:empty)):focus-within .obeat {
+    opacity: 0;
+  }
+}
+/* Beside the conversation a row stacks: its Pause comes in over its right end, never under it. */
+.onhand-list.room-side .ocard .ocol > .tacts:not(.on) {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  padding: 0 0 0 16px;
+  background: var(--row-hover);
+  transform: translateY(-50%);
+}
+/* × and ⋯ over the time take the row's hover fill. */
+.onhand-list:not(.room-rail) .ocard .fin-acts {
+  background: var(--row-hover);
+}
+.onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) > .ocard .fin-acts,
+.onhand-list:not(.room-rail) .ocards.hsheet.needs .ocard .fin-acts {
+  background: var(--row-hover-needs);
+}
+/* A row that shows its own actions: its ⋯ is the last of that group, in its room, faded in. */
+.ocard .oacts .fin-acts,
+.onhand-list:not(.room-rail) .ocard .oacts .fin-acts {
+  position: static;
+  padding: 0;
+  margin-left: 2px;
+  background: none;
+  transform: none;
+}
+.onhand-list:not(.room-rail) .ocards:has(.ocol > .on) .ocard .ocol {
+  width: 15rem;
+}
+@media (max-width: 1099px) {
+  .onhand-list.room-full .ocards:has(.ocol > .on) .ocard .ocol {
+    width: 13.5rem;
+  }
+}
+/* The rail's rows lie on the paper: what they reveal sits on the paper's hover, faded in. */
+.trow .tacts {
+  display: flex;
+  opacity: 0;
+  background: linear-gradient(to right, transparent, var(--sunken) 24px);
+}
+.trow .tacts.on,
+.trow:hover .tacts,
+.trow:focus-within .tacts {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocard,
+  .trow,
+  .ocard .tacts,
+  .ocard .fin-acts,
+  .trow .tacts,
+  .ocard .obeat {
+    transition: none;
+  }
+}
+
+/* D532: a system notice (controls.tsx Notice; ui.md "Notices"): a slim strip just above the
+   composer, the Mac's notice: radius 16, a sunken tint, a drawn glyph at its start, 13/12px words,
+   small buttons at its end. Enters as every notice does (220 ms, a 6px rise and a fade). */
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  align-items: center;
+  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  margin-bottom: 10px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-sunken) 55%, var(--bg));
+  color: var(--ink);
+  animation: notice-in 220ms var(--ease);
+}
+.notice.done { background: var(--done-surface); }
+.notice.alert { background: var(--failed-surface); }
+.notice-g { flex: none; align-self: flex-start; margin-top: 2px; }
+.notice-w { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--sm); line-height: 1.45; }
+.notice-w b { font-weight: 700; color: var(--ink); }
+.notice-w span { color: var(--ink-soft); }
+.notice-w small { font-size: var(--xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.notice-a { flex: none; display: flex; gap: var(--s1); align-items: center; margin-left: auto; }
+@keyframes notice-in { from { transform: translateY(6px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .notice { animation: none; }
+}
+/* D532: the pair screen keeps a reading measure on a wide window (the Mac's card is 560). */
+.pairing { width: 100%; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
+.pairing .set-back { align-self: flex-start; }

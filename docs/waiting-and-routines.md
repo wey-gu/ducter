@@ -36,7 +36,10 @@ closes with a tick and the task carries on. To see how a wait checks, click the 
 of the task, which says what it waits for and when it is back.
 
 A task that looks again every so often stays quiet when a look finds nothing new: you hear from
-it only when something new needs you, and then it also says what is still waiting. Anything it
+it only when something new needs you, and then it also says what is still waiting. When someone
+new asks for your review, you get one short line ("A new review request: website#551 …"), once
+for that pull request, even if the review itself has nothing to ask you; times it gives are in
+your own time zone. Anything it
 would send to other people, like a review on a colleague's pull request, it writes first and
 asks you once for the whole round ("3 PR reviews are written. Post them to GitHub?"); you can
 read each one before you say Go, and nothing is posted before you do. If you'd rather it didn't

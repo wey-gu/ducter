@@ -110,7 +110,7 @@ func TestLocatorCard(t *testing.T) {
 		t.Errorf("the brief isn't listed at the top: %q", texts(tt))
 	}
 	// Only rows near the list's view are drawn: the last landmark's words aren't.
-	if last := app.landmarkWords(&lms[len(lms)-1], app.Now()); strings.Contains(texts(tt), autospace(last.line)+" ") && len(lms) > 40 {
+	if last := app.landmarkWords(task, &lms[len(lms)-1], app.Now()); strings.Contains(texts(tt), autospace(last.line)+" ") && len(lms) > 40 {
 		t.Errorf("the whole list is drawn")
 	}
 	// The pointer at the rail's middle: the landmark nearest the middle turn, the list on it.

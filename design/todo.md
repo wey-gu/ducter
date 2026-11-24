@@ -3292,3 +3292,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
 - **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).
+
+## The review loop posts what it reviewed (D540)
+
+- [ ] **A loop Keep's `until` reaches its rounds.** `keep_change until` on a loop writes the Keep but not the
+  loop's own `until` (loops.ts), so its rounds never hear a goal set after it started. Not synced in
+  D540 because hel's Keep `kp_8907c58d86` holds a one-off steer in `until` (2026-11-24 09:47 UTC): synced,
+  its rounds would read 「本轮优先直接评审 …#551…」 as the condition that ends the loop. *Trigger:* hel's
+  goal cleared (the partner's `keep_change until ""`), then sync both ways with a test.
+- [ ] **An approval when the review finds nothing.** D540 posts a comment-only review with its conclusion;
+  GitHub's Approve (or Prow's `/lgtm`) stays the person's. *Trigger:* the author asks the loop to approve.
+- [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
+  change gets a review on GitHub. *Trigger:* hel on the release with D540.

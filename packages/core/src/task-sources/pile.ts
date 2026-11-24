@@ -114,6 +114,10 @@ type RoundState = ReviewStanding & { decisionId?: string; n?: number; prs?: Roun
 
 /** D407: one pull request as the review task's last round saw it (the board's row). */
 type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string; mention?: boolean };
+/** D540: what a review sends: its body (when it has one) and its notes. */
+const reviewText = (x: { body?: string; notes: PreReadNote[] }) => JSON.stringify({ ...(x.body ? { body: x.body } : {}), notes: x.notes });
+/** D540: a draft with anything to post: notes, or a body alone (a review that found nothing to change). */
+const hasReview = (x: { body?: string; notes: PreReadNote[] }) => x.notes.length > 0 || !!x.body;
 
 /** D528: the formal review requests of a round (not the PRs that only mention the person). */
 const formalOf = (prs: RoundPr[] | undefined): string[] => (prs ?? []).filter((p) => !p.mention).map((p) => p.ref);
@@ -362,10 +366,10 @@ export function parseRead(text: string): { gist?: string; notes: PreReadNote[] }
 }
 
 /** D394: a review task's round as it reported it: refs checked, notes clipped as a pre-read's are. */
-export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: PreReadNote[] })[] } | { ok: false; error: string } {
+export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: PreReadNote[]; body?: string })[] } | { ok: false; error: string } {
   const j = (raw ?? {}) as { prs?: unknown };
   if (!Array.isArray(j.prs)) return { ok: false, error: "review_report needs prs: every pull request waiting on the person this round." };
-  const prs: (RoundPr & { notes: PreReadNote[] })[] = [];
+  const prs: (RoundPr & { notes: PreReadNote[]; body?: string })[] = [];
   const seen = new Set<string>();
   for (const x of j.prs.slice(0, 60) as Record<string, unknown>[]) {
     const ref = typeof x?.ref === "string" ? x.ref.trim() : "";
@@ -377,8 +381,10 @@ export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: P
     const gist = typeof x.gist === "string" && x.gist.trim() ? x.gist.trim().slice(0, 160) : undefined;
     const title = typeof x.title === "string" && x.title.trim() ? x.title.trim().replace(/\s+/g, " ").slice(0, 200) : undefined;
     const ci = x.ci === "passing" || x.ci === "failing" || x.ci === "pending" || x.ci === "none" ? x.ci : undefined;
+    // D540: the review's own words, kept as written (a review with nothing to change is only this).
+    const body = typeof x.body === "string" && x.body.trim() ? x.body.trim().slice(0, 2000) : undefined;
     // D407: a PR that only mentions the person (didn't ask for their review), shown so on the board.
-    prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes });
+    prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes, ...(body ? { body } : {}) });
   }
   return { ok: true, prs };
 }
@@ -840,12 +846,12 @@ export function createPile(d: PileDeps): Pile {
     if (!d.standing) return [];
     const went: { ref: string; link?: string; standing: string }[] = [];
     for (const x of Object.values(st.reads)) {
-      if (x.byTask !== taskId || x.state !== "drafted" || !x.notes.length) continue;
+      if (x.byTask !== taskId || x.state !== "drafted" || !hasReview(x)) continue;
       // D495: every draft the round made where the permission holds, a mention too: the routine
       // reviews what the person asked it to, and code never narrows what they said.
       const s = d.standing.allows(x.ref);
       if (!s) continue;
-      const w = await d.write(prItem(x), "review", { by: "rule", taskId, standing: s.id, said: s.text, text: JSON.stringify({ notes: x.notes }) });
+      const w = await d.write(prItem(x), "review", { by: "rule", taskId, standing: s.id, said: s.text, text: reviewText(x) });
       if (!w.ok) continue; // it stays drafted: the card asks for it
       x.state = "sent";
       went.push({ ref: x.ref, link: w.link ?? x.url ?? `https://github.com/${x.ref.replace("#", "/pull/")}`, standing: s.id });
@@ -1089,7 +1095,7 @@ export function createPile(d: PileDeps): Pile {
       const at = new Date(d.now()).toISOString();
       const drafted: string[] = [];
       for (const pr of r.prs) {
-        if (!pr.changed || !pr.notes.length) continue;
+        if (!pr.changed || !hasReview(pr)) continue;
         const had = st.reads[pr.ref];
         // Already posted at this head: nothing new to ask.
         if (had && had.state === "sent" && pr.head && had.head === pr.head) continue;
@@ -1105,6 +1111,7 @@ export function createPile(d: PileDeps): Pile {
           suggestions: pr.notes.filter((n) => n.kind === "suggestion").length,
           state: "drafted",
           notes: pr.notes,
+          ...(pr.body ? { body: pr.body } : {}),
           ...(pr.gist ? { gist: pr.gist } : {}),
           byTask: taskId,
           ...(pr.head ? { head: pr.head } : {}),
@@ -1142,7 +1149,7 @@ export function createPile(d: PileDeps): Pile {
         was,
         told: told.slice(-200),
         // D407: the rows the board shows, as this round saw them (a title it didn't give: the last one known).
-        prs: r.prs.map(({ notes: _n, ...p }) => {
+        prs: r.prs.map(({ notes: _n, body: _b, ...p }) => {
           const title = p.title ?? st.reads[p.ref]?.title ?? prev?.prs?.find((x) => x.ref === p.ref)?.title ?? st.items.find((x) => x.ref === p.ref)?.title;
           return { ...p, ...(title ? { title } : {}) };
         }),
@@ -1195,8 +1202,8 @@ export function createPile(d: PileDeps): Pile {
       let failed = 0;
       for (const { item } of src.items ?? []) {
         const read = st.reads[item.ref];
-        if (!read || read.state !== "drafted" || !read.notes.length) continue;
-        const w = await d.write(item, "review", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}), text: JSON.stringify({ notes: read.notes }) });
+        if (!read || read.state !== "drafted" || !hasReview(read)) continue;
+        const w = await d.write(item, "review", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}), text: reviewText(read) });
         if (w.ok) (read.state = "sent"), done++;
         else failed++;
       }

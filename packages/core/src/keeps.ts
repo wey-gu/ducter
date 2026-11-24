@@ -50,6 +50,9 @@ const W = {
     stopped: "「{title}」停下了。",
     untilLine: "一直做到：{until}。哪一轮看到它成立了，就在报告的第一句说出来，并写明凭什么。",
     speaksLine: "什么时候出声：{speaks}。其余时候不出声，没有变化就不用说。",
+    // D540: the person's one-off ask for this round, first in its wake (or told now, mid-round).
+    nextRound: "这一轮先做对方刚交代的：「{ask}」。做完它，再照常做这一轮。",
+    nextNow: "对方刚交代，这一轮先做：「{ask}」。做完它，再接着做这一轮。",
   },
   en: {
     arrives: "Takes work as it comes",
@@ -62,14 +65,21 @@ const W = {
     stopped: "“{title}” is stopped.",
     untilLine: "Keep at it until: {until}. When a round sees that it holds, say so in the report's first line, with what shows it.",
     speaksLine: "When to speak: {speaks}. Otherwise stay silent; nothing new needs no word.",
+    nextRound: 'First this round, what the person just asked: "{ask}". Do it, then the round as usual.',
+    nextNow: 'The person just asked for this round, first: "{ask}". Do it, then carry on with the round.',
   },
 };
+
+/** D540: the line a round's wake carries for the person's one-off ask (work.ts adds it after the round's lines). */
+export const nextRoundLine = (ask: string, l: LangTag) => fill(words(W, l).nextRound, { ask });
 
 export type Keeps = KeepsApi & {
   setEndAsk(a: KeepEndAsk | undefined): void;
   setRoundAsk(a: KeepRoundAsk | undefined): void;
   /** The partner's view of its newest round (keep_list): its line to the person, else its report's first line. */
   lastRound(id: string): string | undefined;
+  /** D540: the one-off ask kept for this task's next round, taken (it is gone once a round has it). */
+  takeNext(taskId: string): string | undefined;
 };
 
 /** D519: the cheap model's reading of one round: what happened, in one short line to the person in
@@ -160,6 +170,8 @@ export function createKeeps(o: {
   zone?: () => string | undefined;
   clock?: Clock;
   onChange?: () => void;
+  /** D540: tell a task in rounds something now, while its round is under way (the runner's send). */
+  tell?: (taskId: string, text: string) => Promise<boolean>;
 }): Keeps {
   const { log, tasks } = o;
   const clock = o.clock ?? realClock;
@@ -718,7 +730,20 @@ export function createKeeps(o: {
       ...(c.at ? { wakes: cur.wakes.map((w) => (w.kind === "at" ? { kind: "at" as const, words: o.routines.get((f as { routineId: string }).routineId)?.triggerWords ?? w.words } : w)) } : {}),
       ...(c.everyMinutes !== undefined ? { wakes: cur.wakes.map((w) => (w.kind === "every" ? { kind: "every" as const, everyMs: Math.round(c.everyMinutes!) * 60_000 } : w)) } : {}),
     };
+    // D540: a one-off ask for its next round (a task in rounds): kept on the Keep for that round's
+    // wake, or told now when a round is under way; never written into its goal.
+    if (c.next !== undefined && f.kind !== "loop") return { ok: false, error: f.kind === "routine" ? "Each of its runs starts from its brief; a one-off ask for one run isn't kept here: say it in its brief (or start a task for it)." : "It takes work as it comes; it has no rounds to ask." };
+    const ask = c.next?.trim().slice(0, 600);
+    if (c.next !== undefined) patch.next = ask ? { text: ask, at: iso(clock.now()) } : undefined;
     if (Object.keys(patch).length) put({ ...cur, ...patch });
+    if (ask && f.kind === "loop" && o.tell) {
+      const card = tasks.get(f.taskId);
+      // Mid-round (at work, not resting on its timer): it hears it now; resting, its next wake carries it.
+      if (card && AT_WORK.has(card.attention)) {
+        const told = await o.tell(f.taskId, fill(words(W, lang()).nextNow, { ask })).catch(() => false);
+        if (told) put({ ...byId.get(id)!, next: undefined });
+      }
+    }
     // What the rounds are told follows the person's words (a helper's brief, a routine's brief carries until and speaks).
     if ((c.until !== undefined || c.speaks !== undefined) && f.kind === "helper") {
       const h = o.helpers?.()?.get(f.helperId);
@@ -820,6 +845,14 @@ export function createKeeps(o: {
       const r = k && roundsOf(k).find((x) => (x.did || x.report) && x.state !== "running");
       return r ? (r.did ?? firstLine(r.report)) : undefined;
     },
+    takeNext(taskId) {
+      const k = [...byId.values()].find((x) => x.from.kind === "loop" && x.from.taskId === taskId && x.next);
+      if (!k?.next) return undefined;
+      const ask = k.next.text;
+      put({ ...k, next: undefined });
+      o.onChange?.();
+      return ask;
+    },
     stop: () => (clearInterval(timer), (roundAsk = undefined), (roundQueue = []), (stopped = true)),
   };
 }
@@ -855,6 +888,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
           ...(s.items.length ? { holds: s.items.length } : {}),
           ...(s.asks ? { waitingForYou: s.asks } : {}),
           ...(k.until ? { until: k.until } : {}),
+          ...(k.next ? { nextRound: k.next.text } : {}),
           ...(k.speaks ? { speaks: k.speaks } : {}),
           ...(s.health ? { health: s.health.state, ...(s.health.fix ? { fix: s.health.fix } : {}) } : { health: "on time" }),
         };
@@ -863,7 +897,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words. Then one line.",
+    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until (when it ends for good) / speaks / title in their words. One round's ask (\"这轮先审 #551\"): next_round, with look_now to start now; never until. Then one line.",
     {
       type: "object",
       properties: {
@@ -871,13 +905,14 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
         action: { type: "string", enum: ["pause", "resume", "look_now", "every", "stop"] },
         minutes: { type: "number" },
         until_iso: { type: "string", description: "pause: until when" },
-        until: { type: "string", description: "its goal, their words" },
+        until: { type: "string", description: "when it ends for good, their words" },
+        next_round: { type: "string", description: "one round's ask, their words" },
         speaks: { type: "string", description: "when it speaks, their words" },
         title: { type: "string" },
       },
       required: ["id"],
     },
-    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; speaks?: string; title?: string }) => {
+    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; speaks?: string; title?: string }) => {
       const k = find(String(a.id ?? ""));
       if (!k) return { ok: false, error: `nothing called ${a.id} is looked after; see keep_list` };
       const action = String(a.action ?? "");
@@ -887,12 +922,15 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
         ...(act ? { act } : {}),
         ...(action === "every" ? { everyMinutes: Number(a.minutes) } : {}),
         ...(typeof a.until === "string" ? { until: a.until } : {}),
+        ...(typeof a.next_round === "string" ? { next: a.next_round } : {}),
         ...(typeof a.speaks === "string" ? { speaks: a.speaks } : {}),
         ...(typeof a.title === "string" ? { title: a.title } : {}),
       });
       if (!r.ok) return { ok: false, error: r.error };
       const s = keeps.sheets(persona()).find((x) => x.id === k.keepId);
-      return { ok: true, life: r.keep.life, ...(s?.nextAt ? { nextAt: s.nextAt } : {}), say: keeps.say(k.keepId) };
+      // D540: where the one-off ask went: its round under way has it now, or its next round's wake carries it first.
+      const next = typeof a.next_round === "string" && a.next_round.trim() ? { nextRound: r.keep.next ? "kept: the next round's wake carries it first" : "told: the round under way has it now" } : {};
+      return { ok: true, life: r.keep.life, ...(s?.nextAt ? { nextAt: s.nextAt } : {}), ...next, say: keeps.say(k.keepId) };
     },
   );
 }

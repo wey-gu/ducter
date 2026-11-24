@@ -2909,6 +2909,21 @@ export const scenarios: Scenario[] = [
     rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
   },
   {
+    // D540: hel 2026-11-24 09:47 UTC: the partner wrote this into the loop's goal (until), which no round reads.
+    id: "loop-this-round-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "请 review 的 loop 直接 review https://github.com/nowledge-co/nowledge-labs-website/pull/551 吧" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change", args: { next_round: /551/ } }], notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user asks the review loop to review one PR now. The partner hands that one round its ask (keep_change next_round naming #551, ideally with look_now so it starts now) and says so in one short Chinese line. A message to the loop's task as well reaches the same task and is fine. Writing it as the loop's goal (until), opening a new task, or asking back is wrong.",
+  },
+  {
     id: "loop-status-en",
     category: "routines",
     lang: "en",

@@ -21,6 +21,10 @@
 - **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
   now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
 - **What waits for the person** is in 等你 once, naming the Keep; the sheet says the count.
+- **One round's ask (D540).** "让 review 的 loop 这轮先审 #551" is the partner's `keep_change`
+  `next_round` (with `look_now` to start now), kept on the Keep as `next` in the person's words: the
+  next round's wake carries it first and it is gone; a round under way hears it at once. It is never
+  written into `until`, which is when the Keep ends for good.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The

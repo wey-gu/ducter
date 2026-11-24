@@ -171,6 +171,31 @@ Design notes:
   colors, fonts, radii, shadows, or motion.
 - **Personas:** attention aggregates per person; conversations stay separate and isolated.
 
+## The UI bar (every change a person can see)
+
+Ducter's look is one strong, consistent style: clay, warm, game-like smooth, full of
+情绪价值. Iterating fast has let screens ship that were not up to it: an ad-hoc send button, a
+rail running under the traffic lights, a system tooltip, a sidebar that blinks out on a switch.
+Speed never excuses that. Every change a person can see clears this bar before it merges:
+
+1. **Load `.claude/skills/ducter-ui/SKILL.md` before touching a view.** It holds the reading
+   list, the checklist and the review protocol below in full.
+2. **Read the sources first:** `design/ui.md` (tokens, scales, Depth, Buttons, Shared controls
+   D161, One menu D421, motion D290, Art direction D53) and the approved style artifacts. Copy
+   an existing screen's patterns, never invent a new look for one view.
+3. **Only shared controls.** A button, field, composer, chip, row, menu, tooltip or chevron
+   comes from the D161 set (Mac `views/components.go` and friends, web `controls.tsx`). A
+   missing one is added to the set and to ui.md's table first. The guards are deny-by-default.
+4. **Walk the checklist** in the skill on every surface you touch: window chrome and edges,
+   alignment and rhythm, every state, motion, both themes, both languages at real lengths,
+   every width from 320 to 1400, keyboard and reduced motion.
+5. **Self-critique, then show.** Shots go to `.shots/<topic>/`: before and after, 2x crops of
+   corners and edges, the states and the transitions as frames. Critique them yourself with the
+   design skills (`impeccable` critique and polish, `kill-ai-slop`, `design-review`;
+   `ios-design-review` for the phone) and fix what they find before you report.
+6. **The lead reviews every shot before a merge** and rejects anything below the bar, however
+   small. "CI is green" is never "done" for a visible change.
+
 ## Engineering discipline
 
 - **Git holds source, not evidence (D75).** Commit a binary only if an app loads it or a build

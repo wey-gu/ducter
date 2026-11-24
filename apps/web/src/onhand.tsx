@@ -9,6 +9,7 @@ import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
 import { callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
@@ -234,7 +235,7 @@ export function mendWords(b: Pick<Bodies["mend"], "cls" | "how" | "name">): stri
 }
 
 /** A time of day, with its day only when it isn't today. */
-function soon(iso: string, now = Date.now()): string {
+export function soon(iso: string, now = Date.now()): string {
   return day(A.L, iso, now) === day(A.L, new Date(now).toISOString(), now) ? clock(iso) : when(A.L, iso, now);
 }
 
@@ -693,7 +694,8 @@ export function whereMeta(task: Task): string[] {
   const k = lensOf(task);
   // D507: a helper's task anywhere but under its helper (beside an opened task, in Find, done after
   // its PR merged) says whose it is.
-  const helper = task.card?.helper && !NESTED.has(task.id) ? task.card.helper.name : "";
+  // D511: so does a Keep's task anywhere but under its Keep (a question in 等你, Find, the rail).
+  const helper = NESTED.has(task.id) ? "" : (task.card?.keep?.name ?? task.card?.helper?.name ?? "");
   return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
@@ -1429,6 +1431,8 @@ export function OnHandList({ room }: { room: Room }) {
     const t = setTimeout(() => setEntering(false), 700);
     return () => clearTimeout(t);
   }, []);
+  // D511: a Keep's page takes the board's place (the rail beside an opened task keeps the list).
+  if (K.open && room !== "rail") return <KeepPageView room={room} />;
   const groups = lensGroups();
   const lens = currentLens(groups);
   L.showProj = lensOn(groups) && !lens;
@@ -1449,8 +1453,15 @@ export function OnHandList({ room }: { room: Room }) {
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for
   // the person stands at the head of 等你; the rest under 你的帮手 after the waits. Find and the rail
   // beside an opened task show the tasks as rows, each with its helper's name.
-  const hws = rail || q || (lens && lens !== OTHER) ? [] : (A.S.onHand?.helpers ?? []);
-  const kept = new Set(hws.flatMap((h) => h.items.map((x) => x.taskId)));
+  // D511: 在照看的 / Looking after takes the place of 你的帮手 and 一直在跑的 when the home sends Keeps:
+  // each Keep one sheet; a task it owns stands under it (a Keep in rounds is its task), never in 在做
+  // or 在等; one that waits for the person stays in 等你 once, its row naming the Keep.
+  const keepsOn = A.S.onHand?.keeps;
+  const ks = rail || q || (lens && lens !== OTHER) ? [] : (keepsOn ?? []);
+  const waitsForYou = (x: Task) => ["needs_you", "failed"].includes(attention(x)) || stoppedWait(x) || prRowOf(x)?.stands === "needs";
+  const byKeep = ks.flatMap((k) => k.taskIds).filter((id) => !A.S.tasks.has(id) || !waitsForYou(A.S.tasks.get(id)!));
+  const hws = keepsOn || rail || q || (lens && lens !== OTHER) ? [] : (A.S.onHand?.helpers ?? []);
+  const kept = new Set([...hws.flatMap((h) => h.items.map((x) => x.taskId)), ...byKeep]);
   NESTED = kept;
   const helperYou = (h: HelperWork) => helperGlance(h) === "you" || h.items.some((x) => A.S.tasks.has(x.taskId) && stoppedWait(A.S.tasks.get(x.taskId)!));
   const hsYou = hws.filter(helperYou);
@@ -1462,7 +1473,7 @@ export function OnHandList({ room }: { room: Room }) {
   const needs = ungrouped(keep(lanes[LANE.needs]!));
   // D498 (D427): a task in rounds, at work on a round or resting till the next, stands under
   // 一直在跑的 (its rhythm), never under 在做 or 在等; one that asks or stopped stays in 等你.
-  const inRounds = (x: Task) => !rail && !!x.card?.rounds && ["working", "queued", "blocked"].includes(attention(x)) && !stoppedWait(x);
+  const inRounds = (x: Task) => !keepsOn && !rail && !!x.card?.rounds && ["working", "queued", "blocked"].includes(attention(x)) && !stoppedWait(x);
   const workingAll = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id) && !kept.has(x.id)))];
   const working = workingAll.filter((x) => !inRounds(x));
   // D467: a wait nothing brings back and a task that didn't work out stand in 等你; 今天做完 is
@@ -1570,6 +1581,14 @@ export function OnHandList({ room }: { room: Room }) {
           {quietFolds && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
           {quiet.length > 0 && !quietFolds && !rail && fresh.length + looseWs.length > 0 && <p class="sub-h">{t("onhand.wait.quiet.head")}</p>}
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
+        </Section>
+      )}
+      {/* D511: 在照看的 / Looking after: what Ducter keeps on for the person, each its own sheet, after the waits. */}
+      {ks.length > 0 && show(2) && (
+        <Section name={t("keep.section")}>
+          {ks.map((k) => (
+            <KeepSheetCard key={k.id} k={k} stacked={room === "phone" || room === "side"} />
+          ))}
         </Section>
       )}
       {/* D507: the person's helpers, each its own sheet with the work it keeps, after the waits. */}

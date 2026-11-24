@@ -302,7 +302,7 @@ test("the person's rhythm: 改成每小时 moves the waiting round, and the task
   await waitFor(b, "swj3zc4w");
   turnEnd(b, "swj3zc4w");
   await flush();
-  const r = await b.core.mcp.call({ role: "partner" } as never, "routine_change", { id: "swj3zc4w", action: "every", minutes: 60 });
+  const r = await b.core.mcp.call({ role: "partner" } as never, "keep_change", { id: "swj3zc4w", action: "every", minutes: 60 });
   expect(r).toMatchObject({ ok: true });
   expect(armed(b, "swj3zc4w").map((w) => w.at)).toEqual([new Date(START + 60 * MIN).toISOString()]);
   b.clock.advance(60 * MIN);
@@ -353,23 +353,23 @@ test("an end condition the person gave: the round that says it holds ends it", a
   expect(b.core.tasks.get("ci")!.attention).toMatch(/^done/);
 });
 
-test("routine_list: a task in rounds with its rhythm, next, last line and where; pause and resume", async () => {
+test("keep_list: a task in rounds with its rhythm, next, last line and where; pause and resume", async () => {
   const b = boot();
   open(b);
   await waitFor(b, "swj3zc4w");
   b.clock.advance(45 * MIN);
   await flush();
   await round(b, "swj3zc4w", { state: "progress" });
-  const l = (await b.core.mcp.call({ role: "partner" } as never, "routine_list", {})) as { id: string; kind: string; say: string; health: unknown; lastRound?: string }[];
+  const l = (await b.core.mcp.call({ role: "partner" } as never, "keep_list", {})) as { from: string; kind: string; say: string; health: unknown; lastRound?: string }[];
   // D429: its ready line in the person's language: the rhythm, the next round, on time.
-  expect(l[0]).toMatchObject({ id: "swj3zc4w", kind: "task in rounds", health: "on time", lastRound: "队列现有 9 个 PR。" });
+  expect(l[0]).toMatchObject({ from: "swj3zc4w", kind: "task in rounds", health: "on time", lastRound: "队列现有 9 个 PR。" });
   expect(l[0]!.say).toMatch(/^「review nowledge-co」在跑，每 45 分钟一轮，下一轮 \d\d:\d\d，按时。$/);
-  expect((await b.core.mcp.call({ role: "partner" } as never, "routine_change", { id: "swj3zc4w", action: "pause" })) as { ok: boolean }).toMatchObject({ ok: true });
+  expect((await b.core.mcp.call({ role: "partner" } as never, "keep_change", { id: "swj3zc4w", action: "pause" })) as { ok: boolean }).toMatchObject({ ok: true });
   b.clock.advance(3 * 60 * MIN);
   await flush();
   expect(b.woke).toHaveLength(1);
   expect(og(b)?.state).toBe("paused");
-  await b.core.mcp.call({ role: "partner" } as never, "routine_change", { id: "swj3zc4w", action: "resume" });
+  await b.core.mcp.call({ role: "partner" } as never, "keep_change", { id: "swj3zc4w", action: "resume" });
   b.clock.advance(SETTLE_MS + 2 * MIN);
   await flush();
   expect(b.woke).toHaveLength(2); // the paused round, once
@@ -426,10 +426,10 @@ test("D429: asleep on a worker: the late line names it, offers the awake home, a
   expect(card.question).toContain("Ada's MacBook Pro 睡着了或连不上。Mac mini 醒着");
   expect(card.goLabel).toBe("换到醒着的电脑上跑");
   expect(card.loop).toMatchObject({ taskId: "fare", move: "local" });
-  // The routine_list line says it too.
-  const l = (await b.core.mcp.call({ role: "partner" } as never, "routine_list", {})) as { id: string; say: string; fix?: string }[];
-  expect(l.find((x) => x.id === "fare")).toMatchObject({ fix: "move" });
-  expect(l.find((x) => x.id === "fare")!.say).toContain("Ada's MacBook Pro 睡着了，醒了马上补一轮；Mac mini 醒着，可以换到它上面跑");
+  // The keep_list line says it too.
+  const l = (await b.core.mcp.call({ role: "partner" } as never, "keep_list", {})) as { from: string; say: string; fix?: string }[];
+  expect(l.find((x) => x.from === "fare")).toMatchObject({ fix: "move" });
+  expect(l.find((x) => x.from === "fare")!.say).toContain("Ada's MacBook Pro 睡着了，醒了马上补一轮；Mac mini 醒着，可以换到它上面跑");
   // The person's tap: moved there, and a round runs now (on the home, awake).
   asleep = false;
   const before = b.woke.length;

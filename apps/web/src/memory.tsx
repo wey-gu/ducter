@@ -23,6 +23,7 @@ import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthL
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
+import { openKeep } from "./keep.tsx";
 import { Avatar, Check } from "./views.tsx";
 import { title } from "./store.ts";
 
@@ -1074,7 +1075,13 @@ export function PeersHelpers() {
                 </span>
               )}
             </span>
-            <Btn kind="text" size="sm" label={t(h.state === "stopped" ? "peers.helper.resume" : "peers.helper.stop")} about={h.name} onClick={() => A.stopHelper(h.id, h.state === "stopped")} />
+            {/* D511: a helper is a Keep with an address: its home is the Keep's page; this row only links to it. */}
+            {((k) =>
+              k ? (
+                <Btn kind="text" size="sm" label={t("keep.card.open")} about={h.name} onClick={() => ((A.sheet = null), openKeep(k.id))} />
+              ) : (
+                <Btn kind="text" size="sm" label={t(h.state === "stopped" ? "peers.helper.resume" : "peers.helper.stop")} about={h.name} onClick={() => A.stopHelper(h.id, h.state === "stopped")} />
+              ))((A.S.onHand?.keeps ?? []).find((k) => k.address?.name === h.name))}
           </div>
         ))}
         <GFoot note={t("peers.helpers.foot")} />

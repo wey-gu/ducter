@@ -319,7 +319,7 @@ your partner, in plain words, with when it last came at the right:
   back into the task. Otherwise it says **Their Nowledge Mem plugin can't pass messages yet**: that
   is for Nowledge Mem to add, nothing for you to fix.
 
-**Your helpers** shows each helper you made. A helper is a name of yours in Nowledge Mem that your
+**Your helpers** lists each helper's address, with **Open** to its page under **On hand › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull
 request, and it watches the checks and the reviews, fixes and pushes what it may, and tells the agent
 that sent it when the work can merge. Ask your partner for one in a sentence ("make a helper my agents

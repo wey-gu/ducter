@@ -195,7 +195,7 @@ func TestOngoingCountOnHand(t *testing.T) {
 	app.Route = RouteOnHand
 	tt := ui.NewTesterWith(app.View, 1280, 820, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("一直在跑的 3 个"); err != nil {
+	if err := tt.Click("在照看的 3 个"); err != nil {
 		t.Fatalf("On hand's line: %v (%q)", err, tt.Texts())
 	}
 	if app.Route != RoutePast || app.past.tab != "ongoing" {

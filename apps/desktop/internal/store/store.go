@@ -426,6 +426,10 @@ type Store struct {
 	Past PastState
 	// Did is 替你做过的 / Done for you (D300, did.go).
 	Did DidState
+	// KeepPages (D511) are the Keeps' pages this window read (keep_result),
+	// by id; KeepsVersion counts their changes.
+	KeepPages    map[string]*protocol.KeepPage
+	KeepsVersion int
 
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
@@ -990,6 +994,16 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "past_result", "past_marked", "ongoing_result", "outside_adopted", "outside_hidden":
 		s.applyPast(f) // D285 (past.go)
+	case "keep_result":
+		if s.KeepPages == nil {
+			s.KeepPages = map[string]*protocol.KeepPage{}
+		}
+		if f.Keep != nil {
+			s.KeepPages[f.ID] = f.Keep
+		} else {
+			delete(s.KeepPages, f.ID)
+		}
+		s.KeepsVersion++
 	case "made_result":
 		s.applyMade(f) // D383 (past.go)
 	case "past_steps_result", "past_forked":

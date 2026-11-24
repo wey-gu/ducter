@@ -15,6 +15,7 @@ import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
 import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList, Peek, stateCounts } from "./onhand.tsx";
 import type { Task } from "./store.ts";
+import { K, KeepRail } from "./keep.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -151,16 +152,18 @@ export function Board() {
           </div>
         ) : (
           <div class="board-wrap">
-          <LensColumn />
-          <div class="board-col">
+          {K.open ? <KeepRail /> : <LensColumn />}
+          <div class={`board-col${K.open ? " keep" : ""}`}>
             {/* D467 round 4: no 接下来 line over the board: the brief's 接下来 says what comes back next. */}
             <OnHandList room="full" />
-            <RoutineShelf />
+            {!K.open && !A.S.onHand?.keeps && <RoutineShelf />}
           </div>
           {/* D467: the peek, the conductor's "sit in": the focused task live, from 1280. */}
-          <div class="peek-col">
-            <Peek />
-          </div>
+          {!K.open && (
+            <div class="peek-col">
+              <Peek />
+            </div>
+          )}
           </div>
         )}
       </main>

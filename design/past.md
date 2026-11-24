@@ -108,6 +108,8 @@ field's words are shared with the first tab. `made.md`.
 
 ## 一直在跑的 / Ongoing
 
+> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 照看 / Looking after (a Keep), with its own page; see `standing-work.md`. The tab and the link read **在照看的 / Looking after**; the list below is its mechanism's view. Ended Keeps under **照看过的 / Looked after before** are owed (`todo.md`).
+
 > D494: a helper (`bridge.md` "Helpers") is not listed here yet: it starts on mail, not time, and lives in
 > Settings › Agent 通信; each piece of work it takes is a task, and one that repeats is a task in rounds
 > here as any other. Listing helpers here too is in `todo.md`.

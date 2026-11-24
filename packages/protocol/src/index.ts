@@ -25,6 +25,7 @@ export * from "./later.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
+export * from "./keeps.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
 export * from "./reply.ts";
@@ -353,7 +354,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string } };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string } };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -366,7 +367,7 @@ export interface Bodies {
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
   // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
   // this line in place of their folded quiet line, so it is said once.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[] };
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -674,6 +675,8 @@ export interface Bodies {
   // the rhythm: a round's done or failure, a restart or a lost wait never ends it; only the person
   // (or the end condition they gave) does. One snapshot per change; the latest wins.
   task_loop: TaskLoopBody;
+  // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
+  keep: import("./keeps.ts").KeepBody;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -1022,6 +1025,8 @@ export interface TaskCard {
    *  stands anywhere but under the helper (beside an opened task, in Find, done after its PR merged)
    *  still says whose it is. Which of its tasks it keeps is OnHand.helpers' items. */
   helper?: { id: string; name: string };
+  /** D511: the Keep (照看) this task is a round or an item of, so a row anywhere says whose it is. */
+  keep?: { id: string; name: string };
 }
 
 /**
@@ -1105,6 +1110,10 @@ export interface OnHand {
   /** D507 (D494): the person's helpers that are on, each with the work it keeps (HelperWork, the one
    *  home-side model of a helper's state): On hand gives each its own sheet with its work under it. */
   helpers?: import("./helpers.ts").HelperWork[];
+  /** D511: 在照看的 / Looking after: every Keep on or paused (and one ended today), each its own sheet.
+   *  It takes the place of `helpers` and the cards' `rounds` for a client that reads it (an older
+   *  client still reads those, kept for it). */
+  keeps?: import("./keeps.ts").KeepSheet[];
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -1364,7 +1373,7 @@ export type ClientFrame =
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string } // app (D405): typed in that app's sheet
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.

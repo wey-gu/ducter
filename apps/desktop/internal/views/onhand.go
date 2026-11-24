@@ -40,10 +40,18 @@ func (a *App) onHand(c *ui.Context) {
 	if w <= 0 {
 		w = 1280
 	}
-	column := !empty && lensOn(groups) && w >= railFrom
+	// D511: a Keep's page takes the board's place, the other Keeps beside it.
+	keepOpen := a.oh.keep.open != ""
+	if keepOpen {
+		empty = false
+	}
+	column := !empty && !keepOpen && lensOn(groups) && w >= railFrom
 	ui.Row(c.Key("onhand-body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		if column {
 			a.projectColumn(c, b, groups, lens)
+		}
+		if keepOpen && w >= railFrom {
+			a.keepRail(c)
 		}
 		ui.Scroll(c.Key("board")).Grow(1).MinWidth(0).Children(func() {
 			ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
@@ -53,6 +61,14 @@ func (a *App) onHand(c *ui.Context) {
 						uiText(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 					})
 					ui.Column(c.Key("past")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() { a.pastEndLine(c) }) // D285
+					return
+				}
+				if keepOpen {
+					avail := w - 2*t.S6
+					if w >= railFrom {
+						avail -= lensColW
+					}
+					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
 					return
 				}
 				lb := lensBoard(b, lens)
@@ -85,7 +101,9 @@ func (a *App) onHand(c *ui.Context) {
 						if a.oh.filter == 0 {
 							switch lens {
 							case "":
-								a.routineShelf(c, false)
+								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 在照看的
+									a.routineShelf(c, false)
+								}
 							case lensOther:
 								a.routineShelf(c, true)
 							default:

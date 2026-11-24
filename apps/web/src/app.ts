@@ -881,6 +881,7 @@ class AppState {
     if ((f.t === "made_result" || f.t === "past_result") && f.id?.startsWith("k")) return void this.palette?.frame(f);
     if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
+    if (f.t === "keep_result") return this.onKeepFrame?.(f);
     // D391: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
     if (f.t === "past_steps_result" || f.t === "past_forked") return onStepsFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
@@ -1105,6 +1106,9 @@ class AppState {
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
   /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
   openPast?: (q?: string, tab?: "past" | "made" | "ongoing") => void;
+  /** D511: set by keep.tsx (a Keep's page and its frames). */
+  openKeep?: (id: string) => void;
+  onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
   onPastWelcome?: () => void;
 
   command(c: string) {
@@ -2819,6 +2823,13 @@ class AppState {
       return this.changed();
     }
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
+    // D511: #keep=<id> opens that Keep's page in On hand's place (a push, a shot).
+    const keep = /^#keep=(.+)$/.exec(hash);
+    if (keep) {
+      const full = keep[1]!.endsWith("/full");
+      this.applyRoute({ name: "onhand", ...(full ? { full: true } : {}) });
+      return this.openKeep?.(decodeURIComponent(keep[1]!.replace(/\/full$/, "")));
+    }
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     // D391: links straight to Past tasks (with words) and to 找什么都行 / Find anything.
     const past = /^#past(?:=(.*))?$/.exec(hash);

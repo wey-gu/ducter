@@ -162,6 +162,8 @@ type AIMsg struct {
 	// App (D405): the app this message made or changed; AppAnswer: it answers an app's ask.
 	App       *AppCard   `json:"app,omitempty"`
 	AppAnswer *AppAnswer `json:"appAnswer,omitempty"`
+	// Keep (D511): the Keep this turn made: its receipt card under the words.
+	Keep *KeepCard `json:"keep,omitempty"`
 	// Shelf (D410): the person asked where their apps are: a card that
 	// opens 小应用 / Apps goes under these words.
 	Shelf bool `json:"shelf,omitempty"`
@@ -1047,6 +1049,8 @@ type TaskCard struct {
 	// Helper (D507, D494): the helper whose work this is, so a row standing
 	// anywhere but under its helper still says whose it is.
 	Helper *TaskHelper `json:"helper,omitempty"`
+	// Keep (D511): the Keep this task is a round or an item of.
+	Keep *TaskKeep `json:"keep,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.
@@ -1172,6 +1176,9 @@ type OnHand struct {
 	// Helpers (D507, D494) are the person's helpers that are on, each with
 	// the work it keeps: the home's one model of a helper's state.
 	Helpers []HelperWork `json:"helpers,omitempty"`
+	// Keeps (D511): 在照看的 / Looking after, each Keep on or paused its own
+	// sheet. Present: it takes the place of Helpers and the cards' Rounds.
+	Keeps []KeepSheet `json:"keeps,omitempty"`
 }
 
 // TaskHelper (D507) names the helper a task's work came to.
@@ -2839,10 +2846,12 @@ type ClientFrame struct {
 // ServerFrame is any server -> client frame. Fields of all variants share
 // one struct; T tells which are set.
 type ServerFrame struct {
-	T           string `json:"t"` // welcome | events | on_hand | task_history | sent | error
-	Persona     string `json:"persona,omitempty"`
-	PersonaName string `json:"personaName,omitempty"`
-	Machine     string `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	T string `json:"t"` // welcome | events | on_hand | task_history | sent | error
+	// Keep (D511): keep_result's page (ID is the Keep's); absent: no such Keep.
+	Keep        *KeepPage `json:"keep,omitempty"`
+	Persona     string    `json:"persona,omitempty"`
+	PersonaName string    `json:"personaName,omitempty"`
+	Machine     string    `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
 	// a socket silent for 45 s may be closed and dialled again.
 	Ping bool `json:"ping,omitempty"`
@@ -3347,7 +3356,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "past_steps_result", "past_forked":

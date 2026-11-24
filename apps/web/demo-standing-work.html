@@ -1,0 +1,429 @@
+<!doctype html>
+<!--
+  D511 prototype: 照看 / Looking after, one place for work Ducter keeps on for the person
+  (design/standing-work.md, research/221). Designed, not built: a static page, no core, no
+  production code. Data is the author's real setup (hel's PR babysitter in D507's busy shape:
+  #11030, #10932 /test, #10847; the 45-minute nowledge-co review loop, D498) and one consumer
+  flight watch. Open it from apps/web with query parameters:
+    view=onhand | page | made    lang=zh | en    theme=light | dark
+    keep=babysitter | review | flight (page and made)    mark=lantern | track | literal
+  Shots: .shots/standing-work/ (D75: never in git).
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>照看 · prototype</title>
+<link rel="stylesheet" href="static/app.css">
+<style>
+  body { min-height: 100%; }
+  .sw { max-width: 1400px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  .sw-top { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line-soft); }
+  .sw-top .who { font-family: var(--head); font-weight: 800; font-size: var(--lg); margin-right: auto; }
+  .sw-tabs { display: flex; gap: 4px; background: var(--sunken); border-radius: var(--pill); padding: 4px; }
+  .sw-tabs span { padding: 6px 14px; border-radius: var(--pill); font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
+  .sw-tabs span.on { background: var(--surface); color: var(--ink); box-shadow: var(--knob); }
+  .sw-body { flex: 1; display: grid; grid-template-columns: 220px minmax(0, 760px); justify-content: center; gap: 40px; padding: 28px 24px 64px; }
+  .sw-body.page { grid-template-columns: 280px minmax(0, 1fr); max-width: 1400px; }
+  .sw-col .lbl { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); letter-spacing: 0.04em; margin: 0 0 8px 10px; }
+  .sw-proj { display: flex; flex-direction: column; gap: 2px; }
+  .sw-proj div { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--md); color: var(--ink-soft); }
+  .sw-proj div.on { background: var(--surface); color: var(--ink); box-shadow: var(--knob); font-weight: 600; }
+  .sw-proj b { font-weight: 600; color: var(--ink-muted); font-size: var(--sm); }
+  .sw-proj b.need { color: var(--needs-ink); }
+  .sw-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .sw-head img { width: 72px; height: 72px; object-fit: contain; }
+  .sw-head .line { font-family: var(--head); font-weight: 700; font-size: 22px; line-height: 1.3; }
+  .sw-sec { margin: 26px 0 8px 4px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); letter-spacing: 0.04em; }
+  .sw-sheet { background: var(--surface); border-radius: 16px; box-shadow: var(--base); overflow: hidden; }
+  .sw-sheet.need { box-shadow: 0 4px 0 var(--needs-ledge); }
+  .sw-sheet + .sw-sheet { margin-top: 12px; }
+  .sw-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 16px; min-height: 60px; }
+  .sw-row + .sw-row { border-top: 1px solid var(--line-soft); }
+  .sw-row .t { font-size: var(--md); font-weight: 600; line-height: 1.4; }
+  .sw-row .l { font-size: var(--sm); color: var(--ink-soft); margin-top: 2px; line-height: 1.5; }
+  .sw-row .r { font-size: var(--sm); color: var(--ink-muted); white-space: nowrap; padding-top: 2px; text-align: right; }
+  .sw-row .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .sw-facts { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; font-size: var(--sm); color: var(--ink-muted); }
+  .sw-facts .need { color: var(--needs-ink); font-weight: 600; }
+  .sw-facts .wait { color: var(--waiting-ink); }
+  .sw-where { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: var(--xs); color: var(--ink-muted); }
+  .sw-glyph { width: 32px; height: 32px; border-radius: 50%; background: var(--sunken); display: grid; place-items: center; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.08); margin-top: 2px; }
+  .sw-glyph i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .sw-glyph.flag svg { width: 16px; height: 16px; }
+  /* A kept thing on On hand: its head row, then what it holds, set in under its mark. */
+  .sw-keep { cursor: pointer; }
+  .sw-keep:hover { background: var(--surface-raised); }
+  .sw-keep .t { font-size: var(--md); font-weight: 700; }
+  .sw-held { padding: 0 16px 10px 68px; }
+  .sw-held .h { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: var(--sm); }
+  .sw-held .h .n { color: var(--ink-soft); }
+  .sw-held .h .n b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+  .sw-held .h .s { color: var(--ink-muted); white-space: nowrap; }
+  .sw-held .h .s.need { color: var(--needs-ink); font-weight: 600; }
+  .sw-held .h .s.ok { color: var(--done-ink); }
+  .sw-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; transform: translateY(-1px); }
+  .sw-more { font-size: var(--sm); color: var(--ink-muted); padding: 16px 4px; }
+  /* The mark */
+  .sw-mark { width: 40px; height: 40px; display: grid; place-items: center; }
+  .sw-mark svg { width: 40px; height: 40px; overflow: visible; }
+  .sw-mark.big, .sw-mark.big svg { width: 64px; height: 64px; }
+  .lantern-glow { transform-origin: 20px 23px; }
+  .beat .lantern-glow { animation: sw-beat 900ms var(--ease) 1; }
+  @keyframes sw-beat { 0% { transform: scale(1); opacity: 1; } 40% { transform: scale(1.35); opacity: 1; } 100% { transform: scale(1); opacity: 0.9; } }
+  .lit-up .lantern-glow { animation: sw-lit 1600ms var(--ease) 1 both; }
+  @keyframes sw-lit { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .beat .lantern-glow, .lit-up .lantern-glow { animation: none; } }
+  /* The opened page */
+  .sw-rail .k { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border-radius: var(--r-md); align-items: center; }
+  .sw-rail .k.on { background: var(--surface); box-shadow: var(--knob); }
+  .sw-rail .k .t { font-size: var(--sm); font-weight: 600; line-height: 1.35; }
+  .sw-rail .k .l { font-size: var(--xs); color: var(--ink-muted); }
+  .sw-rail .k .l.need { color: var(--needs-ink); font-weight: 600; }
+  .sw-back { font-size: var(--sm); color: var(--ink-muted); margin: 0 0 14px 4px; font-weight: 600; }
+  .sw-page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; max-width: 1060px; }
+  .sw-ph { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 8px; }
+  .sw-ph .kick { font-size: var(--sm); color: var(--ink-muted); font-weight: 600; }
+  .sw-ph h1 { font-family: var(--head); font-weight: 800; font-size: var(--t28); line-height: 1.2; margin: 2px 0 8px; letter-spacing: -0.01em; }
+  :lang(zh) .sw-ph h1 { letter-spacing: 0; }
+  .sw-life { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+  .sw-chip { font-size: var(--sm); padding: 3px 10px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-soft); white-space: nowrap; }
+  .sw-chip.on { background: var(--done-surface); color: var(--done-ink); font-weight: 700; }
+  .sw-chip.need { background: var(--needs-surface); color: var(--needs-ink); font-weight: 700; }
+  .sw-said { margin: 14px 0 0; padding: 12px 14px; background: var(--sunken); border-radius: var(--r-md); font-size: var(--sm); color: var(--ink-soft); line-height: 1.6; }
+  .sw-said b { display: block; font-size: var(--xs); color: var(--ink-muted); font-weight: 700; margin-bottom: 2px; }
+  .sw-h2 { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); letter-spacing: 0.04em; margin: 26px 0 8px 4px; }
+  .sw-ask { padding: 16px; }
+  .sw-ask .q { font-family: var(--head); font-weight: 700; font-size: var(--md); line-height: 1.5; }
+  .sw-ask .acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .sw-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; align-items: start; }
+  .sw-item + .sw-item { border-top: 1px solid var(--line-soft); }
+  .sw-item .t { font-size: var(--md); font-weight: 600; line-height: 1.4; }
+  .sw-item .t b { font-weight: 700; margin-right: 6px; }
+  .sw-item .st { font-size: var(--sm); margin-top: 2px; }
+  .sw-item .st.need { color: var(--needs-ink); font-weight: 600; }
+  .sw-item .st.ok { color: var(--done-ink); font-weight: 600; }
+  .sw-item .st.work { color: var(--working-ink); }
+  .sw-checks { display: flex; gap: 3px; margin-top: 8px; }
+  .sw-checks i { width: 10px; height: 10px; border-radius: 3px; background: var(--done-dot); display: block; }
+  .sw-checks i.f { background: var(--failed-dot); }
+  .sw-checks i.p { background: var(--waiting-dot); }
+  .sw-rounds .rd { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; padding: 11px 16px; font-size: var(--sm); align-items: baseline; }
+  .sw-rounds .rd + .rd { border-top: 1px solid var(--line-soft); }
+  .sw-rounds .rd .tm { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .sw-rounds .rd .why { font-size: var(--xs); color: var(--ink-muted); display: block; }
+  .sw-rounds .rd .did { color: var(--ink); line-height: 1.5; }
+  .sw-rounds .rd .out { font-size: var(--xs); color: var(--ink-muted); white-space: nowrap; }
+  .sw-rounds .rd .out.need { color: var(--needs-ink); font-weight: 700; }
+  .sw-rounds .rd .out.told { color: var(--ink-soft); font-weight: 700; }
+  .sw-rounds .quiet { padding: 11px 16px; border-top: 1px solid var(--line-soft); font-size: var(--sm); color: var(--ink-muted); display: flex; align-items: center; gap: 8px; }
+  .sw-rounds .quiet .pips { display: flex; gap: 3px; }
+  .sw-rounds .quiet .pips i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); display: block; }
+  .sw-side > .sw-h2:first-child { margin-top: 4px; }
+  .sw-rules { padding: 6px 16px 16px; }
+  .sw-rules .ru { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .sw-rules .ru:last-of-type { border-bottom: 0; }
+  .sw-rules .ru .k { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+  .sw-rules .ru .v { font-size: var(--sm); color: var(--ink); margin-top: 3px; line-height: 1.5; }
+  .sw-rules .ru .v + .v { margin-top: 2px; }
+  .sw-rules .ru .v.m { color: var(--ink-muted); }
+  .sw-rules .acts { display: flex; gap: 8px; padding-top: 14px; }
+  .sw-rules .acts .btn { flex: 1; }
+  .btn.stop { color: var(--failed-ink); }
+  .sw-talk { margin-top: 22px; display: flex; gap: 10px; align-items: center; background: var(--surface); border-radius: var(--r-xl); padding: 10px 10px 10px 18px; box-shadow: var(--base); }
+  .sw-talk span { flex: 1; color: var(--ink-muted); font-size: var(--md); }
+  .sw-fares { display: flex; align-items: flex-end; gap: 8px; height: 92px; padding: 8px 16px 0; }
+  .sw-fares .f { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; font-size: var(--xs); color: var(--ink-muted); }
+  .sw-fares .f i { width: 100%; max-width: 34px; border-radius: 6px 6px 2px 2px; background: var(--line-2); display: block; }
+  .sw-fares .f.now i { background: var(--accent); }
+  .sw-fares .f.now { color: var(--ink); font-weight: 700; }
+  .sw-goal { position: relative; margin: 0 16px; border-top: 1.5px dashed var(--done-ink); opacity: 0.7; }
+  .sw-goal span { position: absolute; right: 0; top: -18px; font-size: var(--xs); color: var(--done-ink); font-weight: 700; }
+  .sw-days { display: flex; gap: 8px; padding: 6px 16px 14px; }
+  .sw-days span { flex: 1; text-align: center; font-size: var(--xs); color: var(--ink-muted); }
+  /* The first moment: the conversation */
+  .sw-conv { max-width: 720px; margin: 0 auto; padding: 28px 24px 64px; width: 100%; }
+  .sw-day { text-align: center; font-size: var(--xs); color: var(--ink-muted); margin: 0 0 18px; }
+  .sw-me { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+  .sw-me div { background: var(--user-bubble); color: var(--on-user-bubble); border-radius: var(--bubble); padding: 10px 16px; max-width: 80%; font-size: var(--body); line-height: var(--lh-voice); }
+  .sw-it { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+  .sw-it img { width: 36px; height: 36px; object-fit: contain; }
+  .sw-it div { background: var(--partner-bubble); color: var(--on-partner-bubble); border-radius: var(--bubble-partner); padding: 10px 16px; max-width: 80%; font-size: var(--body); line-height: var(--lh-voice); box-shadow: var(--base); }
+  .sw-card { margin: 6px 0 0 46px; max-width: 520px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 16px; }
+  .sw-card .hd { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; }
+  .sw-card .hd .kick { font-size: var(--xs); color: var(--ink-muted); font-weight: 700; }
+  .sw-card .hd .t { font-family: var(--head); font-weight: 800; font-size: var(--lg); line-height: 1.3; }
+  .sw-card .ls { margin-top: 12px; display: grid; gap: 6px; }
+  .sw-card .ls div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; font-size: var(--sm); }
+  .sw-card .ls div span:first-child { color: var(--ink-muted); }
+  .sw-card .first { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--done-surface); color: var(--done-ink); font-size: var(--sm); font-weight: 600; }
+  .sw-card .acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .sw-note { margin: 10px 0 0 46px; max-width: 520px; font-size: var(--sm); color: var(--ink-muted); line-height: 1.6; display: flex; gap: 8px; }
+  .sw-note img { width: 22px; height: 22px; object-fit: contain; flex: none; }
+  /* Phone and the narrow web */
+  @media (max-width: 760px) {
+    .sw-top { padding: 10px 16px; }
+    .sw-top .who { display: none; }
+    .sw-tabs { flex: 1; justify-content: space-between; }
+    .sw-tabs span { padding: 6px 10px; }
+    .sw-body, .sw-body.page { display: block; padding: 18px 16px 48px; }
+    .sw-col.projects, .sw-rail { display: none; }
+    .sw-lens { display: flex; gap: 6px; overflow: hidden; margin-bottom: 14px; }
+    .sw-lens span { font-size: var(--sm); padding: 5px 12px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-soft); white-space: nowrap; }
+    .sw-lens span.on { background: var(--surface); color: var(--ink); box-shadow: var(--knob); font-weight: 600; }
+    .sw-head img { width: 56px; height: 56px; }
+    .sw-head .line { font-size: 20px; }
+    .sw-row { grid-template-columns: 36px minmax(0, 1fr); padding: 12px 14px; }
+    .sw-row .r { grid-column: 2; text-align: left; padding-top: 0; }
+    .sw-held { padding: 0 14px 8px 62px; }
+    .sw-held .h { grid-template-columns: 18px minmax(0, 1fr); }
+    .sw-held .h .s { grid-column: 2; white-space: normal; }
+    .sw-page { display: block; }
+    .sw-ph { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; }
+    .sw-mark.big, .sw-mark.big svg { width: 52px; height: 52px; }
+    .sw-ph h1 { font-size: var(--t20); }
+    .sw-item { grid-template-columns: 32px minmax(0, 1fr); padding: 12px 14px; }
+    .sw-item .r { grid-column: 2; }
+    .sw-side { margin-top: 8px; }
+    .sw-rounds .rd { grid-template-columns: 52px minmax(0, 1fr); }
+    .sw-rounds .rd .out { grid-column: 2; }
+    .sw-conv { padding: 18px 16px 48px; }
+    .sw-card, .sw-note { margin-left: 0; }
+    .sw-card .ls div { grid-template-columns: 76px minmax(0, 1fr); }
+  }
+  @media (min-width: 761px) { .sw-lens { display: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const lang = q.get("lang") === "en" ? "en" : "zh";
+const theme = q.get("theme") === "dark" ? "dark" : "light";
+const view = q.get("view") || "onhand";
+const keepId = q.get("keep") || (view === "made" ? "flight" : "babysitter");
+const markKind = q.get("mark") || "lantern";
+document.documentElement.lang = lang === "zh" ? "zh" : "en";
+document.documentElement.dataset.theme = theme;
+const w = (zh, en) => (lang === "zh" ? zh : en);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const art = (n) => `static/art/${n}.webp`;
+document.title = w("在照看的", "Looking after") + " · prototype";
+
+// ---- The mark: a clay lantern (research/221's leader), or the runners-up for comparison ----
+// States: on (lit), beat (a round just did something), paused (dim), done (out, with a tick), stopped (out).
+function mark(state, big) {
+  const cls = `sw-mark${big ? " big" : ""}${state === "beat" ? " beat" : ""}${state === "litup" ? " lit-up" : ""}`;
+  const lit = state === "on" || state === "beat" || state === "litup";
+  const glowOp = lit ? 1 : state === "paused" ? 0.32 : 0;
+  if (markKind === "track") {
+    const flag = state !== "open";
+    return `<span class="${cls}"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="22" rx="16" ry="11" fill="var(--sunken)" stroke="var(--line-2)" stroke-width="3"/><ellipse cx="20" cy="22" rx="9" ry="4.5" fill="var(--surface)"/>${flag ? '<path d="M31 10v8" stroke="var(--ink-muted)" stroke-width="1.5"/><path d="M31 10l6 2-6 2z" fill="var(--done-dot)"/>' : ""}<circle cx="${state === "paused" ? 37 : 9}" cy="${state === "paused" ? 32 : 18}" r="4" fill="${lit ? "var(--accent)" : "var(--faint)"}" stroke="var(--press-accent)" stroke-width="1"/></svg></span>`;
+  }
+  if (markKind === "literal") {
+    return `<span class="${cls}"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="var(--sunken)"/><path d="M27 15a8.5 8.5 0 1 0 1.6 7" fill="none" stroke="${lit ? "var(--ink-soft)" : "var(--faint)"}" stroke-width="2.4" stroke-linecap="round"/><path d="M28.6 10.5v5.2h-5.2" fill="none" stroke="${lit ? "var(--ink-soft)" : "var(--faint)"}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  }
+  const done = state === "done";
+  const out = done || state === "stopped";
+  return `<span class="${cls}"><svg viewBox="0 0 40 40" aria-hidden="true">
+    <defs><radialGradient id="g${state}${big ? "b" : ""}" cx="50%" cy="55%" r="55%"><stop offset="0" stop-color="#fff3c4"/><stop offset="0.45" stop-color="var(--waiting-dot)"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>
+    <path d="M15 7.5a5 5 0 0 1 10 0" fill="none" stroke="var(--ink-muted)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12.5 12h15l-2-4h-11z" fill="var(--ink-soft)"/>
+    <rect x="11" y="12" width="18" height="21" rx="5" fill="${out ? "var(--sunken)" : "#fff1d6"}" stroke="var(--ink-soft)" stroke-width="2"/>
+    <circle class="lantern-glow" cx="20" cy="23" r="9" fill="url(#g${state}${big ? "b" : ""})" opacity="${glowOp}"/>
+    <path d="M17.5 25.5c0-3 2.5-4 2.5-7 1.6 2 2.5 3.6 2.5 6a2.5 2.5 0 0 1-5 1z" fill="${out ? "var(--faint)" : "var(--accent)"}" opacity="${out ? 0.5 : glowOp || 0.35}"/>
+    <path d="M10 33h20" stroke="var(--ink-soft)" stroke-width="3" stroke-linecap="round"/>
+    ${done ? '<circle cx="31" cy="31" r="7" fill="var(--done-dot)" stroke="var(--surface)" stroke-width="2"/><path d="M27.8 31.2l2.2 2.1 4-4.3" fill="none" stroke="var(--done-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' : ""}
+  </svg></span>`;
+}
+const flag = `<span class="sw-glyph flag"><svg viewBox="0 0 16 16"><path d="M4 2v12" stroke="var(--needs-ink)" stroke-width="1.6" stroke-linecap="round"/><path d="M4.5 2.5h8l-2 3 2 3h-8z" fill="var(--needs-dot)"/></svg></span>`;
+const dotGlyph = (c) => `<span class="sw-glyph"><i style="background:var(${c})"></i></span>`;
+
+// ---- The data: the author's real setup, as the home would hand it to the clients ----
+const NAME = "Ducter";
+const keeps = {
+  babysitter: {
+    state: "beat",
+    title: "Nowledge Mem PR Babysitter",
+    you: w("做一个 Codex 的 loop agent，叫 Nowledge Mem PR babysitter，放在 Nowledge Bridge 里：我的 agent 把 PR 交给它，它修 CI 和评审意见，一直跟到能合并，再通过 Bridge 回话。", "Make a Codex loop agent called Nowledge Mem PR babysitter, in Nowledge Bridge: my agents hand it PRs, it fixes CI and review comments until each can merge, then answers over Bridge."),
+    facts: [[w("手上 3 个 PR", "3 PRs on hand")], [w("1 个在等你", "1 waiting for you"), "need"]],
+    right: w("有活就接", "Takes work as it comes"),
+    line: null,
+    since: w("11 月 24 日 08:47 起", "Since Nov 24, 08:47"),
+    week: w("这周接了 3 个", "3 taken this week"),
+    held: [
+      { g: "--working-dot", n: "#11030", t: w("自定义 provider 切到 Embedding 时只留一个模型", "One clean model when a custom provider switches to Embedding"), s: w("在修：lint 挂在一个没用的 import 上", "Fixing: lint failed on an unused import"), c: "work", checks: [11, 1, 2] },
+      { g: "flag", n: "#10932", t: w("Settings 里 Space 切换后列表不刷新", "The list doesn't refresh after switching Space in Settings"), s: w("在等你：要不要评论 /test 重跑", "Waiting for you: comment /test to run it again?"), c: "need", checks: [12, 2, 0] },
+      { g: "--done-dot", n: "#10847", t: "graph_error_response_tests intermittently #8826", s: w("能合并了，等人合并", "Can merge; waiting for a merge"), c: "ok", checks: [14, 0, 0], extra: w("hawkingrei 批准了", "Approved by hawkingrei") },
+    ],
+    ask: { q: w("#10932 的 e2e-linux 是 runner 断线挂的，和改动无关。要我在 PR 上评论 /test 重跑一遍吗？", "e2e-linux on #10932 failed on a lost runner, not the change. Shall I comment /test on the PR to run it again?"), go: w("评论 /test", "Comment /test"), hold: w("先不", "Not now") },
+    rounds: [
+      ["10:10", w("#11030 的 CI 变了", "CI changed on #11030"), w("lint 挂在一个没用的 import 上；删掉，测试过了，推了上去。", "Lint failed on an unused import; removed it, the tests pass, pushed."), w("没出声", "Silent"), ""],
+      ["09:34", w("Codex 交过来一个 PR", "Codex handed over a PR"), w("接下 #11030，在 hel 上用 Codex 开始跟。", "Took #11030; following it on hel with Codex."), w("没出声", "Silent"), ""],
+      ["09:31", w("#10932 的 CI 变了", "CI changed on #10932"), w("e2e-linux 挂了，日志是 runner 断线；评论 /test 会发到别人能看到的地方。", "e2e-linux failed; the log says the runner was lost. Commenting /test is seen by others."), w("问了你", "Asked you"), "need"],
+      ["07:12", w("#10847 有了新评审", "A new review on #10847"), w("hawkingrei 批准了，14 项检查都过了。没有替你合并。", "hawkingrei approved; all 14 checks pass. It didn't merge."), w("说了一句", "Told you"), "told"],
+    ],
+    quiet: w("昨天起又看过 18 次，都没有变化", "Looked 18 more times since yesterday; nothing changed"),
+    rules: [
+      [w("什么时候醒", "When it wakes"), [w("你的 agent 把 PR 交给它时", "When your agents hand it a PR"), w("它手上的 PR 的 CI 或评审有变化时", "When CI or a review changes on a PR it holds")]],
+      [w("做到什么时候", "Until"), [w("每个 PR 跟到能合并为止", "Each PR until it can merge"), w("从不替你合并", "It never merges for you")]],
+      [w("什么时候出声", "When it speaks"), [w("要你定的时候问你", "Asks when it needs you"), w("能合并了说一句", "One line when a PR can merge"), [w("其余时候不出声", "Otherwise silent"), "m"]]],
+      [w("上限", "Limits"), [w("每天最多接 10 个，再多先问你", "Up to 10 a day; asks past that")]],
+      [w("在哪儿做，谁来做", "Where and who"), [w("hel 上，Codex", "On hel, with Codex")]],
+      [w("别的 agent 怎么找到它", "How your agents find it"), [w("在 Nowledge Mem 里叫「Nowledge Mem PR Babysitter」", "In Nowledge Mem as “Nowledge Mem PR Babysitter”"), [w("连上了", "Connected"), "m"]]],
+    ],
+    talk: w("想改什么，直接说：「ducter 仓库的 PR 也接」", "Say what to change: “take ducter PRs too”"),
+  },
+  review: {
+    state: "on",
+    title: w("持续评审 nowledge-co，并处理 100gle 分给你的待办", "Keep reviewing nowledge-co and work through the to-dos 100gle assigns you"),
+    you: w("每 45 分钟看一次 nowledge-co 里等我评审的 PR，写好评审；100gle 分给我的待办也一并处理。一直跑下去。", "Every 45 minutes, look at the nowledge-co PRs waiting for my review and write the reviews; handle the to-dos 100gle assigns me too. Keep going."),
+    facts: [[w("每 45 分钟一轮", "A round every 45 min")], [w("9 个请求在等你", "9 requests wait on you")], [w("2 份评审还没发", "2 reviews not posted"), "need"]],
+    right: w("下一轮 10:52", "Next round 10:52"),
+    line: w("上一轮 10:07：2 个有新提交已复审，7 个没变", "Last round 10:07: 2 had new commits and were reviewed again, 7 unchanged"),
+    since: w("11 月 17 日起", "Since Nov 17"),
+    week: w("这周 212 轮", "212 rounds this week"),
+    held: [
+      { g: "--working-dot", n: "#10852", t: "Thread search: keep the cursor when a filter changes", s: w("有新提交，已复审，草稿没发", "New commits; reviewed again; draft not posted"), c: "need", checks: [13, 0, 1] },
+      { g: "--working-dot", n: "#10849", t: "Desktop: scope the tray menu to the open space", s: w("有新提交，已复审，草稿没发", "New commits; reviewed again; draft not posted"), c: "need", checks: [14, 0, 0] },
+      { g: "--done-dot", n: "ducter-site#212", t: "Docs: the install page says which Bun it needs", s: w("没变，评审已发", "Unchanged; review posted"), c: "", checks: [6, 0, 0] },
+    ],
+    ask: { q: w("2 份评审写好了，发到 GitHub？", "2 PR reviews are written. Post them to GitHub?"), go: w("发出去", "Post them"), hold: w("看草稿", "Read drafts") },
+    rounds: [
+      ["10:07", w("到点了（每 45 分钟）", "Its time (every 45 min)"), w("9 个请求：#10852 和 #10849 有新提交，复审了；草稿写好了。", "9 requests: #10852 and #10849 had new commits and were reviewed again; drafts written."), w("问了你", "Asked you"), "need"],
+      ["09:22", w("到点了（每 45 分钟）", "Its time (every 45 min)"), w("100gle 分来 #9131；看过，标了要先修的两处。", "100gle assigned #9131; read it and marked the two places to fix first."), w("说了一句", "Told you"), "told"],
+    ],
+    quiet: w("今天又跑了 11 轮，都没有变化", "11 more rounds today; nothing changed"),
+    rules: [
+      [w("什么时候醒", "When it wakes"), [w("每 45 分钟", "Every 45 minutes"), w("100gle 分给你新待办时", "When 100gle assigns you a new to-do")]],
+      [w("做到什么时候", "Until"), [w("一直，直到你停下", "Always, until you stop it")]],
+      [w("什么时候出声", "When it speaks"), [w("评审写好了问你发不发", "Asks before posting reviews"), [w("没变化不出声", "Silent when nothing changed"), "m"]]],
+      [w("上限", "Limits"), [w("每轮最多 30 分钟", "Up to 30 minutes a round")]],
+      [w("在哪儿做，谁来做", "Where and who"), [w("hel 上，Codex", "On hel, with Codex")]],
+    ],
+    talk: w("想改什么，直接说：「改成每小时一轮」", "Say what to change: “make it every hour”"),
+  },
+  flight: {
+    state: "on",
+    title: w("12 月 20 日上海飞东京的机票", "Shanghai to Tokyo fare, Dec 20"),
+    you: w("每天早上帮我看一下 12 月 20 号上海飞东京的机票，降到 2000 以下告诉我，订了就不用看了。", "Check the Shanghai to Tokyo fare for Dec 20 every morning; tell me if it drops below 2000, and stop once I've booked."),
+    facts: [[w("每天早上 8:00", "Every morning at 8:00")], [w("降到 ¥2,000 以下告诉你", "Tells you below ¥2,000")]],
+    right: w("明早 8:00", "Tomorrow 8:00"),
+    line: w("今早 ¥2,340，比昨天低 ¥120", "¥2,340 this morning, ¥120 below yesterday"),
+    since: w("11 月 18 日起", "Since Nov 18"),
+    week: w("看过 7 次", "Checked 7 times"),
+    held: [],
+    fares: [["11/18", 2480], ["11/19", 2480], ["11/20", 2410], ["11/21", 2390], ["11/22", 2460], ["11/23", 2460], [w("今天", "Today"), 2340]],
+    rounds: [
+      ["08:00", w("到点了（每天早上）", "Its time (every morning)"), w("最低直飞 ¥2,340，比昨天低 ¥120；还没到 ¥2,000。", "Lowest nonstop ¥2,340, ¥120 below yesterday; not yet under ¥2,000."), w("没出声", "Silent"), ""],
+      [w("昨天", "Yesterday"), w("到点了（每天早上）", "Its time (every morning)"), w("¥2,460，和前一天一样。", "¥2,460, the same as the day before."), w("没出声", "Silent"), ""],
+    ],
+    quiet: w("更早 5 次，都没到 ¥2,000", "5 earlier checks; none under ¥2,000"),
+    rules: [
+      [w("什么时候醒", "When it wakes"), [w("每天早上 8:00（上海时间）", "Every morning at 8:00 (Shanghai time)")]],
+      [w("做到什么时候", "Until"), [w("你订了这一天的票", "You've booked a ticket for that day"), [w("看到订票确认邮件，它就停下", "It stops when it sees the booking email"), "m"]]],
+      [w("什么时候出声", "When it speaks"), [w("降到 ¥2,000 以下马上告诉你", "At once when it drops below ¥2,000"), [w("其余时候不出声", "Otherwise silent"), "m"]]],
+      [w("在哪儿做，谁来做", "Where and who"), [w("Mac mini 上", "On the Mac mini")]],
+    ],
+    talk: w("想改什么，直接说：「1900 以下再告诉我」", "Say what to change: “only below 1900”"),
+  },
+};
+const order = ["babysitter", "review", "flight"];
+
+function bar(on) {
+  const tabs = [["conv", w("对话", "Conversation")], ["onhand", w("手头的事", "On hand")], ["past", w("做过的事", "Past tasks")]];
+  return `<div class="sw-top"><span class="who">${NAME}</span><div class="sw-tabs">${tabs.map(([k, t]) => `<span class="${k === on ? "on" : ""}">${t}</span>`).join("")}</div></div>`;
+}
+function facts(list) {
+  return `<div class="sw-facts">${list.map(([t, c]) => `<span class="${c || ""}">${esc(t)}</span>`).join("")}</div>`;
+}
+function keepRow(id) {
+  const k = keeps[id];
+  const held = k.held.length && id === "babysitter"
+    ? `<div class="sw-held">${k.held.map((h) => `<div class="h"><span>${h.g === "flag" ? `<span class="sw-dot" style="background:var(--needs-dot)"></span>` : `<span class="sw-dot" style="background:var(${h.g})"></span>`}</span><span class="n"><b>${h.n}</b>${esc(h.t)}</span><span class="s ${h.c}">${esc(h.c === "need" ? w("在等你", "Waiting for you") : h.c === "ok" ? w("可以合了", "Can merge") : w("在修", "Fixing"))}</span></div>`).join("")}</div>`
+    : "";
+  return `<div class="sw-sheet${id === "babysitter" ? "" : ""}"><div class="sw-row sw-keep">${mark(k.state)}<div><div class="t">${esc(k.title)}</div>${facts(k.facts)}${k.line ? `<div class="l">${esc(k.line)}</div>` : ""}</div><div class="r">${esc(k.right)}</div></div>${held}</div>`;
+}
+
+function onhand() {
+  const projects = [[w("全部", "All"), "7", true, true], ["mem", "4", false, true], ["nowledge-co", "1", false, true], ["dotfiles", "1"], [w("生活", "Life"), "1"]];
+  const lens = `<div class="sw-lens">${projects.map(([n, , on]) => `<span class="${on ? "on" : ""}">${esc(n)}</span>`).join("")}</div>`;
+  return `${bar("onhand")}<div class="sw-body"><div class="sw-col projects"><div class="lbl">${w("项目", "Projects")}</div><div class="sw-proj">${projects.map(([n, c, on, need]) => `<div class="${on ? "on" : ""}"><span>${esc(n)}</span><b class="${need ? "need" : ""}">${c}</b></div>`).join("")}</div></div>
+  <div>${lens}
+    <div class="sw-head"><img src="${art("needsyou")}" alt=""><div class="line">${w("有 2 个要你定。", "2 things need you.")}</div></div>
+    <div class="sw-sec">${w("等你", "Needs you")}</div>
+    <div class="sw-sheet need">
+      <div class="sw-row">${flag}<div><div class="t">${esc(keeps.babysitter.ask.q)}</div><div class="sw-where"><span>Nowledge Mem PR Babysitter</span><span>#10932</span></div><div class="acts"><button class="btn sm primary">${esc(keeps.babysitter.ask.go)}</button><button class="btn sm secondary">${esc(keeps.babysitter.ask.hold)}</button></div></div><div class="r">09:31</div></div>
+      <div class="sw-row">${flag}<div><div class="t">${esc(keeps.review.ask.q)}</div><div class="sw-where"><span>${esc(w("持续评审 nowledge-co", "Keep reviewing nowledge-co"))}</span><span>#10852</span><span>#10849</span></div><div class="acts"><button class="btn sm primary">${esc(keeps.review.ask.go)}</button><button class="btn sm secondary">${esc(keeps.review.ask.hold)}</button></div></div><div class="r">10:07</div></div>
+    </div>
+    <div class="sw-sec">${w("在做", "Working")}</div>
+    <div class="sw-sheet"><div class="sw-row">${dotGlyph("--working-dot")}<div><div class="t">${w("把 Macbook Pro M3 的通用设置导出来", "Export the general settings from the Macbook Pro M3")}</div><div class="l">${w("读完了 41 项全局设置，在挑出键盘和触控板的那几项写进 defaults.sh。", "Read 41 global settings; picking out the keyboard and trackpad ones for defaults.sh.")}</div></div><div class="r">${w("在做 14 分钟", "14 min")}</div></div></div>
+    <div class="sw-sec">${w("在照看的", "Looking after")}</div>
+    ${order.map(keepRow).join("")}
+    <div class="sw-sec">${w("今天做完", "Done today")}</div>
+    <div class="sw-sheet"><div class="sw-row">${dotGlyph("--done-dot")}<div><div class="t">${w("整理本周 mem 的发布说明", "Write this week's mem release notes")}</div><div class="l">${w("按新功能、修复和文档分了三段；草稿 PR #10855。", "In three parts: features, fixes and docs. Draft PR #10855.")}</div></div><div class="r">08:31</div></div></div>
+    <div class="sw-more">${w("做过的事 ›", "Past tasks ›")}</div>
+  </div></div>`;
+}
+
+function rail(on) {
+  return `<div class="sw-rail"><div class="sw-back">‹ ${w("手头的事", "On hand")}</div><div class="lbl" style="font-size:var(--xs);font-weight:700;color:var(--ink-muted);margin:0 0 8px 12px">${w("在照看的", "Looking after")}</div>${order.map((id) => { const k = keeps[id]; const need = k.facts.find((f) => f[1] === "need"); return `<div class="k${id === on ? " on" : ""}">${mark(k.state)}<div><div class="t">${esc(k.title)}</div><div class="l${need ? " need" : ""}">${esc(need ? need[0] : k.right)}</div></div></div>`; }).join("")}</div>`;
+}
+
+function page() {
+  const k = keeps[keepId];
+  const needs = k.facts.find((f) => f[1] === "need");
+  const life = `<div class="sw-life"><span class="sw-chip on">${w("在照看", "On")}</span>${needs ? `<span class="sw-chip need">${esc(needs[0])}</span>` : ""}<span class="sw-chip">${esc(k.since)}</span><span class="sw-chip">${esc(k.week)}</span></div>`;
+  const ask = k.ask ? `<div class="sw-h2">${w("在等你", "Waiting for you")}</div><div class="sw-sheet need sw-ask"><div class="q">${esc(k.ask.q)}</div><div class="acts"><button class="btn sm primary">${esc(k.ask.go)}</button><button class="btn sm secondary">${esc(k.ask.hold)}</button></div></div>` : "";
+  const held = k.held.length ? `<div class="sw-h2">${w("手上的", "What it holds")}</div><div class="sw-sheet">${k.held.map((h) => { const [p, f, pe] = h.checks; return `<div class="sw-item">${h.g === "flag" ? flag : dotGlyph(h.g)}<div><div class="t"><b>${h.n}</b>${esc(h.t)}</div><div class="st ${h.c}">${esc(h.s)}</div><div class="sw-checks" title="CI">${"<i></i>".repeat(p)}${'<i class="f"></i>'.repeat(f)}${'<i class="p"></i>'.repeat(pe)}</div>${h.extra ? `<div class="sw-where"><span>${esc(h.extra)}</span></div>` : ""}</div><div class="r" style="font-size:var(--sm);color:var(--ink-muted)">${w("打开 PR", "Open PR")} ›</div></div>`; }).join("")}</div>` : "";
+  const fares = k.fares ? (() => {
+    // One point a morning, the goal as a dashed line: the fare's way toward it is the one picture this watch needs.
+    const W = 640, H = 150, x0 = 40, x1 = W - 40, lo = 1900, hi = 2560;
+    const x = (i) => x0 + (i * (x1 - x0)) / (k.fares.length - 1);
+    const y = (v) => 24 + ((hi - v) / (hi - lo)) * (H - 54);
+    const pts = k.fares.map(([, v], i) => `${x(i)},${y(v)}`).join(" ");
+    const last = k.fares.length - 1;
+    return `<div class="sw-h2">${w("每天早上的最低价", "The lowest fare each morning")}</div><div class="sw-sheet"><svg viewBox="0 0 ${W} ${H + 8}" style="width:100%;display:block" role="img" aria-label="${esc(w("最低价从 ¥2,480 降到 ¥2,340，目标 ¥2,000", "Lowest fare from ¥2,480 down to ¥2,340; the goal is ¥2,000"))}">
+      <line x1="${x0 - 16}" x2="${x1 + 16}" y1="${y(2000)}" y2="${y(2000)}" stroke="var(--done-dot)" stroke-width="1.5" stroke-dasharray="5 5"/>
+      <text x="${x0 - 16}" y="${y(2000) - 7}" font-size="12" font-weight="700" fill="var(--done-ink)">${esc(w("¥2,000 以下告诉你", "Below ¥2,000: tells you"))}</text>
+      <polyline points="${pts}" fill="none" stroke="var(--ink-muted)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${k.fares.map(([d, v], i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === last ? 6 : 3.5}" fill="${i === last ? "var(--accent)" : "var(--surface)"}" stroke="${i === last ? "var(--press-accent)" : "var(--ink-muted)"}" stroke-width="2"/><text x="${x(i)}" y="${y(v) - 12}" text-anchor="middle" font-size="12" font-weight="${i === last ? 700 : 500}" fill="${i === last ? "var(--ink)" : "var(--ink-muted)"}">${v.toLocaleString("en")}</text><text x="${x(i)}" y="${H + 2}" text-anchor="middle" font-size="12" fill="var(--ink-muted)">${esc(d)}</text>`).join("")}
+    </svg></div>`;
+  })() : "";
+  const rounds = `<div class="sw-h2">${w("每一轮", "Rounds")}</div><div class="sw-sheet sw-rounds">${k.rounds.map(([t, why, did, out, c]) => `<div class="rd"><span class="tm">${esc(t)}</span><span><span class="why">${esc(why)}</span><span class="did">${esc(did)}</span></span><span class="out ${c}">${esc(out)}</span></div>`).join("")}<div class="quiet"><span class="pips">${"<i></i>".repeat(6)}</span><span>${esc(k.quiet)}</span></div></div>`;
+  const rules = `<div class="sw-h2">${w("怎么照看", "How it runs")}</div><div class="sw-sheet sw-rules">${k.rules.map(([key, vs]) => `<div class="ru"><div class="k">${esc(key)}</div>${vs.map((v) => Array.isArray(v) ? `<div class="v ${v[1]}">${esc(v[0])}</div>` : `<div class="v">${esc(v)}</div>`).join("")}</div>`).join("")}<div class="acts"><button class="btn sm secondary">${w("暂停", "Pause")} ▾</button><button class="btn sm secondary stop">${w("停下", "Stop")}</button></div></div>`;
+  return `${bar("onhand")}<div class="sw-body page">${rail(keepId)}<div><div class="sw-back sw-lens" style="display:none"></div>
+    <div class="sw-page"><div>
+      <div class="sw-ph">${mark(k.state, true)}<div><div class="kick">${w(`${NAME} 在照看`, `${NAME} is looking after`)}</div><h1>${esc(k.title)}</h1>${life}</div></div>
+      <div class="sw-said"><b>${w("你说的", "You said")}</b>${esc(k.you)}</div>
+      ${ask}${fares}${held}${rounds}
+      <div class="sw-talk"><span>${esc(k.talk)}</span><button class="btn sm accent">${w("说", "Say")}</button></div>
+    </div><div class="sw-side">${rules}</div></div></div></div>`;
+}
+
+function made() {
+  const flight = keepId === "flight";
+  const k = keeps[keepId];
+  const me = flight ? k.you : w("做一个 Codex 的 loop agent，叫 Nowledge Mem PR babysitter，放在 Nowledge Bridge 里：我的 agent 把 PR 交给它，它修 CI 和评审意见，一直跟到能合并，再通过 Bridge 回话。", "Make a Codex loop agent called Nowledge Mem PR babysitter, in Nowledge Bridge: my agents hand it PRs, it fixes CI and review comments until each can merge, then answers over Bridge.");
+  const say = flight
+    ? w("好，我来照看：每天早上 8 点看一次，降到 ¥2,000 以下马上告诉你；你订了我就停。刚看了第一次，最低直飞 ¥2,340。", "Done, I'll look after it: a look every morning at 8, a word as soon as it's under ¥2,000, and I stop once you book. First look just now: the lowest nonstop is ¥2,340.")
+    : w("好，我来照看。你的 agent 在 Nowledge Mem 里按「Nowledge Mem PR Babysitter」找到它，把 PR 交过来；每个 PR 我用 Codex 跟到能合并，不替你合并，答复从这个名字发回去。", "Done, I'll look after it. Your agents find “Nowledge Mem PR Babysitter” in Nowledge Mem and hand it PRs; I follow each on Codex until it can merge, never merge it myself, and answer from that name.");
+  const ls = flight
+    ? [[w("什么时候", "When"), w("每天早上 8:00（上海时间）", "Every morning at 8:00 (Shanghai time)")], [w("出声", "Speaks"), w("降到 ¥2,000 以下才说", "Only when it's under ¥2,000")], [w("到什么时候", "Until"), w("你订了这一天的票", "You've booked for that day")], [w("在哪儿", "Where"), w("Mac mini 上", "On the Mac mini")]]
+    : [[w("什么时候", "When"), w("有 PR 交过来，或它手上的 PR 有变化", "A PR handed over, or a change on one it holds")], [w("出声", "Speaks"), w("要你定才问；能合并说一句", "Asks only when needed; one line when one can merge")], [w("到什么时候", "Until"), w("每个 PR 能合并为止", "Each PR until it can merge")], [w("在哪儿", "Where"), w("hel 上，Codex", "On hel, with Codex")]];
+  const first = flight ? w("第一次：现在 ¥2,340，还没到 ¥2,000", "First look: ¥2,340 now, not yet under ¥2,000") : w("Nowledge Mem 里登记好了，你的 agent 现在就能找到它", "Listed in Nowledge Mem; your agents can find it now");
+  return `${bar("conv")}<div class="sw-conv"><div class="sw-day">${w("今天 08:47", "Today 08:47")}</div>
+    <div class="sw-me"><div>${esc(me)}</div></div>
+    <div class="sw-it"><img src="${art("idle")}" alt=""><div>${esc(say)}</div></div>
+    <div class="sw-card"><div class="hd">${mark("litup", true)}<div><div class="kick">${w("在照看", "Looking after")}</div><div class="t">${esc(k.title)}</div></div></div>
+      <div class="ls">${ls.map(([a, b]) => `<div><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join("")}</div>
+      <div class="first">${esc(first)}</div>
+      <div class="acts"><button class="btn sm secondary">${w("打开", "Open")}</button><button class="btn sm secondary">${w("改一下", "Change")}</button><button class="btn sm secondary">${w("撤销", "Undo")}</button></div></div>
+    <div class="sw-note"><img src="${art("idle")}" alt=""><span>${w("它在手头的事的「在照看的」里，一直亮着灯。平时不出声，有变化才说一句，要你定的时候才问你。", "It's in On hand under Looking after, its light on. It stays quiet, says a line when something changes, and asks only when it needs you.")}</span></div>
+  </div>`;
+}
+
+document.getElementById("app").innerHTML = `<div class="sw">${view === "page" ? page() : view === "made" ? made() : onhand()}</div>`;
+</script>
+</body>
+</html>

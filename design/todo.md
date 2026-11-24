@@ -20,6 +20,18 @@ line.
 - [ ] **The iPhone and Android views** of the group (they read the web client's; a native pane would
   need its own). *Trigger:* the phones get a native Settings pane.
 
+## Looking after, after D511 (`standing-work.md`, research/221)
+
+- [x] **The author reviews D511**: accepted (the model, the name, the flows); the mark stays a flat placeholder.
+- [x] **Build phases 1–3** (`standing-work.md` §11): the Keep and the migration, On hand and the page (web and Mac), `keep_make` / `keep_list` / `keep_change` with a haiku eval. Built 2026-11-24.
+- [ ] **Phase 4: goals and news as recorded judgments.** A round's report records `goal: met` with its evidence and `news` (the model's), code stops the Keep and says once; a round's `told` is then recorded, not only read from a routine's `reports`. World puzzles: the PR that merges, the booking email, a fare at the line. *Trigger:* next.
+- [ ] **The lantern and the track as clay art**, rated with images and the author before the mark is decided (prompt in `standing-work.md` §8); the beat and the lighting up as motion on the Mac. *Trigger:* phase 4 built.
+- [ ] **照看过的 / Looked after before** in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
+- [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
+- [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
+- [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
+- [ ] **Live on hel** (phase 6): the babysitter and the review loop migrated, a week read for silent-round rates and asks. *Trigger:* the release with D511.
+
 ## The same model another way, after D503 (`where.md` §21, research/219)
 
 - [ ] **A second account on the same computer.** A Ducter-owned config folder per extra account

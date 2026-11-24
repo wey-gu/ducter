@@ -193,7 +193,7 @@ export interface WsDeps {
   partners?: Partners;
   /** D486: removes another partner (core's: its session ends too); absent: partners.remove alone. */
   removePartner?: (id: string) => { ok: true } | { ok: false; error: import("./partners.ts").PartnerError };
-  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; /** D511 */ keeps?: import("./keeps.ts").Keeps; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
   /**
@@ -923,7 +923,10 @@ export function createWsHandler(deps: WsDeps) {
         // D405: typed in an app's sheet: about that app.
         const about = typeof f.app === "string" ? deps.apps?.get(f.app) : undefined;
         const app = about && about.persona === appsPersona() ? { app: { id: about.id, name: about.name } } : {};
-        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app });
+        // D511: typed on a Keep's page: about that Keep (the partner changes it with keep_change).
+        const kp = typeof f.keep === "string" ? deps.past?.keeps?.get(f.keep) : undefined;
+        const keep = kp ? { keep: { id: kp.keepId, title: kp.title } } : {};
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app, ...keep });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "partners": {
@@ -2235,6 +2238,28 @@ export function createWsHandler(deps: WsDeps) {
         const o = deps.past?.ongoing;
         if (!o) throw new Error("ongoing work is not available");
         send(ws, { t: "ongoing_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), items: o.list(deps.past!.persona()) });
+        return;
+      }
+      case "keep": {
+        // D511: one Keep's page.
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const id = String(f.id ?? "").slice(0, 64);
+        const page = k.page(id);
+        send(ws, { t: "keep_result", id, ...(page ? { keep: page } : {}) });
+        return;
+      }
+      case "keep_action": {
+        const k = deps.past?.keeps;
+        if (!k) throw new Error("looking after is not available");
+        const { t: _t, id, ...a } = f;
+        const kid = String(id ?? "").slice(0, 64);
+        const act = a.action === "pause" ? { action: "pause" as const, ...(typeof a.until === "string" ? { until: a.until } : {}) } : a.action === "resume" || a.action === "look_now" || a.action === "stop" ? { action: a.action } : undefined;
+        const r = act ? await k.act(kid, act).catch((err: Error) => ({ ok: false, message: err.message })) : { ok: false, message: "unknown action" };
+        send(ws, { t: "action_result", taskId: kid, action: String(a.action ?? ""), ok: r.ok, ...(r.message ? { message: r.message } : {}) });
+        const page = k.page(kid);
+        send(ws, { t: "keep_result", id: kid, ...(page ? { keep: page } : {}) });
+        ongoingChanged();
         return;
       }
       case "ongoing_action": {

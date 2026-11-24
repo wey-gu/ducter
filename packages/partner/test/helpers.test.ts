@@ -70,15 +70,15 @@ describe("D494: a helper", () => {
     const r: any[] = [];
     const { fc, fr, partner, helpers, main, hb, links, user, report } = setup(async (input, s, n) => {
       inputs.push(input);
-      if (n === 0) r.push(await fc.callTool("helper", { do: "make", name: "Nowledge Mem PR babysitter", about: "PRs on nowledge-co/mem my agents hand over", brief: "Watch the PR's CI and reviews; fix and push to its own branch; never merge; ask me before replying to a reviewer." }));
+      // D511: keep_make with an address makes it (packages/core keeps.ts); here the home's own make.
+      if (n === 0) r.push(helpers.make({ name: "Nowledge Mem PR babysitter", about: "PRs on nowledge-co/mem my agents hand over", brief: "Watch the PR's CI and reviews; fix and push to its own branch; never merge; ask me before replying to a reviewer." }));
       if (n === 1) r.push(await fc.callTool("task_open", { title: "Babysit mem#10932", brief: "nowledge-co/mem#10932: get it mergeable." }));
       s.end();
     });
     user("帮我启动一个 codex 的 loop agent，名字就叫 Nowledge Mem PR babysitter");
     await partner.idle();
     await settle();
-    expect(r[0]).toMatchObject({ ok: true, made: { name: "Nowledge Mem PR babysitter" } });
-    expect(r[0].next).toContain("设置 › Agent 通信"); // the pane by its real name, in the person's language
+    expect(r[0]).toMatchObject({ ok: true, helper: { name: "Nowledge Mem PR babysitter" } });
     expect(links).toEqual(["ducter-helper-nowledge-mem-pr-babysitter"]);
     expect(helpers.listening()).toEqual([{ id: "nowledge-mem-pr-babysitter", name: "Nowledge Mem PR babysitter", context: "ducter-helper-nowledge-mem-pr-babysitter-on-hel" }]);
     hb.deliver(PR);

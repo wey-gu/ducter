@@ -302,7 +302,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
   expect(bad.isError).toBe(true);
 
   const partner = await mcpClient(core, "partner");
-  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["brain_switch", "did_list", "keep_going", "log_read", "log_search", "move_before_closing", "new_tasks", "notice_rule", "noticed", "partner", "routine_change", "routine_list", "routine_propose", "rule_list", "rule_save", "task_read", "task_switch", "wait_cancel", "wait_for"]); // task_switch: D352; brain_switch: D390; partner: D486; new_tasks: D510
+  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["brain_switch", "did_list", "keep_change", "keep_going", "keep_list", "log_read", "log_search", "move_before_closing", "new_tasks", "notice_rule", "noticed", "partner", "routine_propose", "rule_list", "rule_save", "task_read", "task_switch", "wait_cancel", "wait_for"]); // task_switch: D352; brain_switch: D390; partner: D486; new_tasks: D510
   const found: any = await partner.callTool({ name: "log_search", arguments: { query: "race in setup" } });
   expect(JSON.parse(found.content[0].text)[0].kind).toBe("report");
   const card: any = await partner.callTool({ name: "task_read", arguments: { taskId: "t1" } });

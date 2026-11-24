@@ -92,7 +92,7 @@ also just ask: "make these into a board".
 For pull request reviews it's the **Review board**: every pull request waiting on you, its CI, what
 the review found, and whether the draft is waiting for your Go or already posted. **Read draft** opens
 the draft itself; nothing goes to GitHub until you say Go. You'll also find it from **Past tasks ›
-Ongoing**, on the review's card (**Open “Review board”**).
+Looking after**, on the review's card (**Open “Review board”**).
 
 ## What an app can't do
 

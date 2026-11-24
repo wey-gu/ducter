@@ -346,6 +346,8 @@ export interface PastDeps {
   /** A worker's name by its device id ("local" / absent: the home, no name). */
   computerName?: (device: string) => string | undefined;
   now?: () => number;
+  /** D511: a task a Keep ran one of its rounds in: left out of the list (its Keep's page holds it); words still find it. */
+  round?: (taskId: string) => boolean;
 }
 
 export interface Past {
@@ -523,7 +525,7 @@ export function createPast(d: PastDeps): Past {
       const terms = queryTerms(tw ? tw.rest : raw);
       const since = Math.max(tw?.since ?? -Infinity, q.since ? Date.parse(q.since) : -Infinity);
       const before = Math.min(tw?.before ?? Infinity, q.before ? Date.parse(q.before) : Infinity);
-      const all = d.tasks.list().filter((c) => (c.persona === persona || !persona) && !neverStarted(c));
+      const all = d.tasks.list().filter((c) => (c.persona === persona || !persona) && !neverStarted(c) && (raw !== "" || !d.round?.(c.taskId)));
       const facets: PastFacets = { projects: [], harnesses: [], tags: d.marks.tags(persona) };
       const pn = new Map<string, number>();
       const hn = new Map<string, number>();

@@ -45,6 +45,17 @@ func (a *App) peersHelpers(c *ui.Context) {
 						})
 					}
 				}, func() {
+					// D511: a helper is a Keep with an address; its home is the Keep's page.
+					if a.S.OnHand != nil {
+						for _, k := range a.S.OnHand.Keeps {
+							if k.Address != nil && k.Address.Name == h.Name {
+								if a.buttonFor(c, a.L.T("keep.card.open"), h.Name, btnText, t.ControlSM, t.Surface) {
+									a.openKeep(k.ID)
+								}
+								return
+							}
+						}
+					}
 					label, kind := a.L.T("peers.helper.stop"), "helper_stop"
 					if h.State == "stopped" {
 						label, kind = a.L.T("peers.helper.resume"), "helper_resume"

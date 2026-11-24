@@ -3,7 +3,7 @@
 // Never forces anything; every refusal says what to do in plain words.
 import { existsSync, readdirSync, rmdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { BranchChanges, Place } from "@ducter/protocol";
+import type { BranchChanges, CopyFacts, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { worktreesRootOf } from "@ducter/protocol/src/ducter-folder.ts";
 import { git } from "./places.ts";
@@ -186,19 +186,30 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
  * before; at any depth, D198's <repo>/<slug> too) is removed, never with --force: uncommitted or
  * untracked files keep it, and the message says so. ok with removed false: nothing to remove.
  */
-export async function archiveWorktree(place: Place, dataDir: string, o: { unstarted?: boolean } = {}): Promise<ActionResult & { removed: boolean }> {
+export async function archiveWorktree(place: Place, dataDir: string, o: { unstarted?: boolean } = {}): Promise<ActionResult & { removed: boolean; bytes?: number; gone?: boolean }> {
   const p = repoOf(place);
   if (!p) return { ok: true, removed: false, message: "No worktree to remove." };
   const wt = resolve(p.worktree!);
   const root = worktreesRootOf(wt, dataDir);
   if (!root) return { ok: true, removed: false, message: `Kept ${wt}: Ducter didn't make that worktree.` };
-  if (!existsSync(wt)) return { ok: true, removed: false, message: "The worktree was already gone." };
+  if (!existsSync(wt)) {
+    // D514: the folder went by other hands; only its own record in the repository goes (never a
+    // repository-wide prune: the person's other worktree records are theirs, D415).
+    const cleared = await dropRecord(p.repoPath, wt);
+    return { ok: true, removed: false, ...(cleared ? { gone: true } : {}), message: cleared ? "The worktree was already gone; its record is cleared." : "The worktree was already gone." };
+  }
   const status = await git(wt, ["status", "--porcelain"]);
   if (!status.ok) return { ok: false, removed: false, message: `Kept the worktree ${wt}: git couldn't read it (${status.err.split("\n")[0]}).` };
   if (status.out) {
     const n = status.out.split("\n").filter(Boolean).length;
-    return { ok: false, removed: false, message: `Kept the worktree ${wt}: it has ${n} uncommitted or untracked file${n === 1 ? "" : "s"}. ${p.branch} is merged and stays.` };
+    return { ok: false, removed: false, message: `Kept the worktree ${wt}: it has ${n} uncommitted or untracked file${n === 1 ? "" : "s"}. ${p.branch} stays.` };
   }
+  // D514: commits that are nowhere else (no remote has them, its base doesn't hold them) keep it:
+  // the branch would still hold them, but the copy is where the person would look for them.
+  const ahead = await unpushedCommits(wt, p.branch!, p.baseBranch);
+  if (ahead === null) return { ok: false, removed: false, message: `Kept the worktree ${wt}: git couldn't say whether its commits are pushed.` };
+  if (ahead > 0) return { ok: false, removed: false, message: `Kept the worktree ${wt}: it has ${ahead} commit${ahead === 1 ? "" : "s"} not pushed anywhere and not in ${p.baseBranch ?? "its base"}. ${p.branch} stays.` };
+  const bytes = await sizeOnDisk(wt);
   const removed = await git(p.repoPath, ["worktree", "remove", wt]);
   if (!removed.ok) return { ok: false, removed: false, message: `Kept the worktree ${wt}: ${removed.err.split("\n")[0]}` };
   // D198: <worktrees>/<repo>/<slug>: the repo's folder goes once it holds nothing.
@@ -212,7 +223,69 @@ export async function archiveWorktree(place: Place, dataDir: string, o: { unstar
   // commit of its own; `-d` refuses anything else).
   if (o.unstarted && p.branch?.startsWith("ducter/") && p.baseBranch) {
     const [tip, base] = await Promise.all([git(p.repoPath, ["rev-parse", `refs/heads/${p.branch}`]), git(p.repoPath, ["rev-parse", `refs/heads/${p.baseBranch}`])]);
-    if (tip.ok && base.ok && tip.out === base.out && (await git(p.repoPath, ["branch", "-d", p.branch])).ok) return { ok: true, removed: true, message: `Removed the worktree and ${p.branch}.` };
+    if (tip.ok && base.ok && tip.out === base.out && (await git(p.repoPath, ["branch", "-d", p.branch])).ok) return { ok: true, removed: true, bytes, message: `Removed the worktree and ${p.branch}.` };
   }
-  return { ok: true, removed: true, message: `Removed the worktree; ${p.branch} stays.` };
+  return { ok: true, removed: true, bytes, message: `Removed the worktree; ${p.branch} stays.` };
+}
+
+/**
+ * D514: commits in the copy (its HEAD and its branch) that are in no remote-tracking branch and
+ * not in its base (local or origin's). null: git couldn't tell (then the copy stays).
+ */
+export async function unpushedCommits(wt: string, branch: string, base?: string): Promise<number | null> {
+  const has = async (ref: string) => (await git(wt, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`])).ok;
+  const tips = ["HEAD", ...((await has(`refs/heads/${branch}`)) ? [`refs/heads/${branch}`] : [])];
+  const bases: string[] = [];
+  if (base && !asOption(base)) for (const b of [`refs/heads/${base}`, `refs/remotes/origin/${base}`]) if (await has(b)) bases.push(b);
+  const r = await git(wt, ["rev-list", "--count", ...tips, "--not", "--remotes", ...bases]);
+  if (!r.ok) return null;
+  const n = Number(r.out.trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A folder's size on disk in bytes (`du -sk`), undefined when it can't be read. */
+export async function sizeOnDisk(path: string): Promise<number | undefined> {
+  try {
+    const p = Bun.spawn(["du", "-sk", path], { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
+    const out = await new Response(p.stdout).text();
+    await p.exited;
+    const k = Number(out.trim().split(/\s+/)[0]);
+    return Number.isFinite(k) ? k * 1024 : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Is `wt` one of the repository's own worktree records? */
+async function recorded(repoPath: string, wt: string): Promise<boolean> {
+  const list = await git(repoPath, ["worktree", "list", "--porcelain"]);
+  if (!list.ok) return false;
+  return list.out.split("\n").some((l) => l.startsWith("worktree ") && resolve(l.slice(9)) === wt);
+}
+
+/** D514: the record of one of Ducter's worktrees whose folder is gone, and only that one. */
+async function dropRecord(repoPath: string, wt: string): Promise<boolean> {
+  if (!existsSync(repoPath) || !(await recorded(repoPath, wt))) return false;
+  if ((await git(repoPath, ["worktree", "remove", wt])).ok) return true;
+  // git checks a copy is clean before it removes it, which a missing folder can't answer; with
+  // nothing on disk there is nothing to lose, so the record alone goes.
+  return !existsSync(wt) && (await git(repoPath, ["worktree", "remove", "--force", wt])).ok;
+}
+
+/**
+ * D514: what the computer that holds a copy says of it, right before a tidy decides: Ducter's or
+ * not, there or not, files changed, commits nowhere else, its size. Read-only.
+ */
+export async function copyFacts(place: Place, dataDir: string): Promise<CopyFacts | undefined> {
+  const p = repoOf(place);
+  if (!p) return undefined;
+  const wt = resolve(p.worktree!);
+  if (!worktreesRootOf(wt, dataDir)) return { ours: false, exists: existsSync(wt), dirty: 0, unpushed: 0 };
+  if (!existsSync(wt)) return { ours: true, exists: false, dirty: 0, unpushed: 0 };
+  const status = await git(wt, ["status", "--porcelain"]);
+  if (!status.ok) return { ours: true, exists: true, dirty: 0, unpushed: null };
+  const dirty = status.out.split("\n").filter(Boolean).length;
+  const unpushed = await unpushedCommits(wt, p.branch!, p.baseBranch);
+  const bytes = await sizeOnDisk(wt);
+  return { ours: true, exists: true, dirty, unpushed, ...(bytes !== undefined ? { bytes } : {}) };
 }

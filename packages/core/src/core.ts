@@ -25,6 +25,7 @@ import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
+import { createTidied, holdOf } from "./tidied.ts";
 import { createRedo } from "./redo.ts";
 import { createOutside } from "./outside.ts";
 import { createMade, type Made } from "./made.ts";
@@ -379,6 +380,8 @@ export interface Core extends CoreApi {
   made: Made;
   /** D391: 做过的事 / Past tasks for the partner (task_find), and 从这一步重来 / Redo from here (task_fork). */
   past: import("./past.ts").Past;
+  /** D285: the person's marks on tasks (a star, a name; D514: keep the working copy). */
+  marks: import("./past.ts").Marks;
   redo: import("./redo.ts").Redo;
   /** What each repo task changed so far (D128). */
   changes: Changes;
@@ -1605,6 +1608,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
+  // D514: what holds a task's working copy beyond its own state, for the runner's tidy.
+  api.tidyHold = (taskId) =>
+    holdOf(taskId, {
+      waiting: (id) => work.waiters.views().some((w) => w.taskId === id && w.state === "armed"),
+      keepLife: (id) => ((k) => (k ? keeps.get(k.id)?.life : undefined))(keeps.ofTask(id)),
+      openPrs: (id) => work.owned.of(id),
+      mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
+    });
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
   registerKeepTools(mcp, keeps, () => persona.id);
@@ -2039,7 +2050,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   workers.onChange(() => reachRef?.refresh());
   // D347: 加一台做事的电脑 / Add a computer for tasks: a code, the line to paste, and when it arrives.
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D514: the working copies tidied on each computer, for its card's quiet line.
+  const tidiedCount = createTidied(log, () => devicesView?.changed());
+  devicesView = createDevicesView({ tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -2544,6 +2557,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     outside,
     made,
     past,
+    marks,
     redo,
     changes,
     updates,

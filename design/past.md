@@ -227,8 +227,10 @@ talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens
 
 - **The agent's session is gone** (an old Claude Code session pruned, another computer): Continue
   still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line).
-- **The worktree was removed** (merged, or idle past the archive horizon): it is added back from
-  the kept branch; a branch deleted since makes Continue fail with the runner's words.
+- **The worktree was removed** (merged, or tidied past its window, D514 `tidy.md`): the preview
+  says **工作副本已整理，接着做会重新拉一份**; Continue adds it back from the kept branch, or from
+  `origin/<branch>` when the local one was deleted since; a branch gone from both makes Continue
+  fail with the runner's words.
 - **From the conversation** (D373): the partner continues a task the talk was on, or one the
   person names ("接着昨天那个 compaction 的活"), the same way as Continue: `task_send` to it; the
   task's line moves under the newest ask. New only for separate work, after a merge, or when

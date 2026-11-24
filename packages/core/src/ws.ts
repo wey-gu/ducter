@@ -1827,6 +1827,18 @@ export function createWsHandler(deps: WsDeps) {
           .catch((err: Error) => send(ws, { t: "proactive_cross_result", error: err.message.slice(0, 200) }));
         return;
       }
+      case "worktrees_plan": {
+        // D514: read-only; answered on this socket only.
+        const r = deps.runner();
+        if (!r?.tidyPlan) {
+          send(ws, { t: "worktrees_plan_result", error: "not available" });
+          return;
+        }
+        r.tidyPlan()
+          .then((plan) => send(ws, { t: "worktrees_plan_result", plan }))
+          .catch((err: Error) => send(ws, { t: "worktrees_plan_result", error: err.message.slice(0, 200) }));
+        return;
+      }
       case "repairs_week": {
         // D473: read-only, from the Log; answered on this socket only.
         if (!deps.repairs) throw new Error("not available");

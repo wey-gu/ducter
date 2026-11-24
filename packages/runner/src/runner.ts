@@ -4,14 +4,15 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFi
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
-import { cwdOf, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
+import { cwdOf, expandHome, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
+import { TIDY_DROPPED_MS, TIDY_FINISHED_MS, copyVerdict, taskVerdict, type CopyFacts, type TaskTidyFacts, type TidyPlan, type TidyRow, type TidyVerdict, type TidyWhy, type TidyWindows } from "@ducter/protocol/src/tidy.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
+import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { readShown, shownCode } from "./shown.ts";
 import { limitHit, mergeLimits, type FailedOutcome } from "./limit-hit.ts";
 import { wbHost, WbFail } from "./workbench.ts";
@@ -52,10 +53,12 @@ export interface RunnerOptions {
   parkIdleMs?: number;
   /**
    * The archive horizon: a finished task idle this long is archived (focus-window-states,
-   * default 14 days; env DUCTER_ARCHIVE_IDLE_MS). 0 = never. Checked at start and every
+   * default 3 days, D514; env DUCTER_ARCHIVE_IDLE_MS). 0 = never. Checked at start and every
    * archiveSweepMs (default 1 h).
    */
   archiveIdleMs?: number;
+  /** D514: how long a dropped task keeps its working copy for Undo (default 7 days; env DUCTER_DROP_UNDO_MS). */
+  dropUndoMs?: number;
   archiveSweepMs?: number;
   /**
    * D266: after a turn ended without a report while background work ran, how long the last
@@ -90,6 +93,8 @@ export interface RunnerExt extends Runner {
   checkEvidence(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[]>;
   /** Archives finished tasks idle past the archive horizon now; returns their ids (the timer runs it too). */
   sweepArchive(): Promise<string[]>;
+  /** D514: what the tidy would do with every copy now; changes nothing. */
+  tidyPlan(): Promise<TidyPlan>;
   /** D142: a non-git folder task's changes against the copy kept before it wrote. */
   folderChanges(taskId: string, opts?: { files?: boolean }): Promise<FolderChanges | undefined>;
   /** D142: the task reported done or failed: its 7 days start, and what it changed (for the report). */
@@ -379,7 +384,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
   const freshRounds = opts.freshRounds ?? process.env.DUCTER_FRESH_ROUNDS !== "0";
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
-  const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
+  // D514: a finished task's copy goes after 3 idle days, a dropped one's after Undo's 7 (protocol tidy.ts).
+  const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? TIDY_FINISHED_MS);
+  const windows: TidyWindows = { finishedMs: archiveIdleMs, droppedMs: opts.dropUndoMs ?? Number(process.env.DUCTER_DROP_UNDO_MS ?? TIDY_DROPPED_MS) };
   const bgSettleMs = opts.backgroundSettleMs ?? 60_000;
   const bgCeilingMs = opts.backgroundCeilingMs ?? Number(process.env.DUCTER_BACKGROUND_CEILING_MS || 12 * 3600_000);
   // D142: copies of non-git folders, kept 7 days after their task finished. Swept hourly.
@@ -413,6 +420,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
     changes: (place) => branchChanges(place),
     archive: (place, o) => archiveWorktree(place, core.dataDir, o),
+    copyFacts: (place) => copyFacts(place, core.dataDir),
     folder: localFolderOps(folders),
     shown: async (a) => readShown(a, { dataDir: core.dataDir }),
     wb: (a) => bench.op(a),
@@ -1446,7 +1454,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     } catch (err) {
       a = { ok: false, removed: false, message: `Kept the worktree: ${preview(err instanceof Error ? err.message : String(err), 300)}` };
     }
-    if (a.removed || !a.ok) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: a.removed ? "removed" : "kept" } });
+    if (a.removed || (a as { gone?: boolean }).gone) tidied(t, place, a, "merged");
+    else if (!a.ok) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: "kept" } });
     // Archived either way: merged work is finished; a kept worktree only holds its leftovers.
     setState(t, "done", "archived");
   }
@@ -1461,20 +1470,44 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   async function sweepArchive(): Promise<string[]> {
     if (!(archiveIdleMs > 0)) return [];
     const archived: string[] = [];
+    const ms = now().getTime();
+    const keptPaths = keptCopyPaths(ms);
     for (const t of tasks.values()) {
       const card = core.tasks.get(t.id);
-      if (!card || t.dropped || isBusy(t) || bgLive(t) > 0 || !["parked", "warm"].includes(card.residency)) continue;
-      if (!["done", "done_claimed", "failed"].includes(card.attention)) continue;
-      if (now().getTime() - Date.parse(card.updatedAt) < archiveIdleMs) continue;
+      if (!card || !["parked", "warm"].includes(card.residency)) continue;
+      // D514: the keep-rules (protocol tidy.ts): the task's side here, the copy's on its computer.
+      const v = taskVerdict(tidyFacts(t, card), ms, windows);
+      if (!v.tidy) continue;
       if (t.archiveKeptAt === card.updatedAt) continue; // kept last time and untouched since
       if (t.ops.device && !t.ops.device.online()) continue;
+      // Another task that stays works in the same folder (a move, a redo on the same copy): it stays.
+      if (keptPaths.has(copyKey(card.place))) continue;
+      // The copy's facts where it is (a worker from before D514 can't say: its copies stay).
+      if (card.place.kind === "repo" && card.place.worktree) {
+        const facts = await t.ops.copyFacts(card.place).catch(() => undefined);
+        const c = copyVerdict(facts);
+        if (c && !c.tidy) {
+          // Past its horizon all the same: its idle session closes (it resumes by id), the copy stays.
+          if (card.residency !== "parked") {
+            clearTimeout(t.parkTimer);
+            const s = t.session;
+            t.session = undefined;
+            t.running = false;
+            await s?.close().catch(() => {});
+            setState(t, card.attention, "parked");
+          }
+          t.archiveKeptAt = core.tasks.get(t.id)?.updatedAt ?? card.updatedAt;
+          continue;
+        }
+      }
       clearTimeout(t.parkTimer);
       const s = t.session;
       t.session = undefined;
       t.running = false;
       await s?.close().catch(() => {});
-      let a: ActionResult & { removed: boolean };
+      let a: ActionResult & { removed: boolean; bytes?: number; gone?: boolean };
       try {
+        // Checked again where the copy is, right before it goes: uncommitted files, commits nowhere else.
         a = await t.ops.archive(card.place);
       } catch {
         if (card.residency !== "parked") setState(t, card.attention, "parked");
@@ -1485,11 +1518,85 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         t.archiveKeptAt = core.tasks.get(t.id)?.updatedAt ?? card.updatedAt;
         continue;
       }
-      if (a.removed) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: "removed", horizon: true } });
+      if (a.removed || a.gone) tidied(t, card.place, a, v.why);
       setState(t, card.attention, "archived");
       archived.push(t.id);
     }
     return archived;
+  }
+
+  /** D514: the task's side of the keep-rules, from the runner and the home. */
+  function tidyFacts(t: TaskRt, card: TaskCard): TaskTidyFacts {
+    const hold = core.tidyHold?.(t.id);
+    return { attention: card.attention, residency: card.residency, idleSince: card.updatedAt, busy: isBusy(t) || bgLive(t) > 0, ...(hold ? { hold } : {}) };
+  }
+
+  /** D514: a copy's identity: its computer and its folder ("" for a place with none). */
+  const copyKey = (p: Place) => (p.kind === "repo" && p.worktree ? `${p.device || "local"}|${resolve(expandHome(p.worktree))}` : "");
+
+  /** D514: the folders a task that stays works in: never removed for another task. */
+  function keptCopyPaths(ms: number): Set<string> {
+    const kept = new Set<string>();
+    for (const t of tasks.values()) {
+      const card = core.tasks.get(t.id);
+      if (card?.place.kind !== "repo" || !card.place.worktree || card.residency === "archived") continue;
+      if (!taskVerdict(tidyFacts(t, card), ms, windows).tidy) kept.add(copyKey(card.place));
+    }
+    return kept;
+  }
+
+  /** D514: one removal, on the Log (Past tasks, the computer's card, `ducter worktrees`) and in the task. */
+  function tidied(t: TaskRt, place: Place, a: { message: string; bytes?: number; gone?: boolean; removed: boolean }, why: TidyWhy) {
+    if (place.kind !== "repo" || !place.worktree) return;
+    const device = place.device && place.device !== "local" && t.ops.device ? place.device : "local";
+    logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: a.removed ? "removed" : "gone", tidy: why } });
+    core.log.append({
+      persona: t.persona,
+      stream: stream(t.id),
+      origin: "system",
+      kind: "copy_tidied",
+      body: { taskId: t.id, device, path: place.worktree, ...(place.branch ? { branch: place.branch } : {}), bytes: a.bytes ?? 0, why, ...(a.gone ? { gone: true } : {}) },
+    });
+  }
+
+  /** D514: `ducter worktrees`: every copy Ducter made for a task here, what goes when and what stays and why. Read-only. */
+  async function tidyPlan(): Promise<TidyPlan> {
+    const ms = now().getTime();
+    const keptPaths = keptCopyPaths(ms);
+    const rows: TidyRow[] = [];
+    for (const t of tasks.values()) {
+      const card = core.tasks.get(t.id);
+      if (!card || card.place.kind !== "repo" || !card.place.worktree) continue;
+      if (card.residency === "archived" && core.log.read({ stream: stream(t.id), kinds: ["copy_tidied"], limit: 1 }).length) continue; // already tidied
+      const device = card.place.device && card.place.device !== "local" && t.ops.device ? card.place.device : "local";
+      const computer = device === "local" ? core.homeDevice?.()?.name : t.ops.device?.name;
+      const base = { taskId: t.id, title: card.title, device, ...(computer ? { computer } : {}), path: card.place.worktree, ...(card.place.branch ? { branch: card.place.branch } : {}) };
+      let verdict: TidyVerdict = taskVerdict(tidyFacts(t, card), ms, windows);
+      let facts: CopyFacts | undefined;
+      if (t.ops.device && !t.ops.device.online()) verdict = verdict.tidy ? { tidy: false, keep: "away" } : verdict;
+      else {
+        facts = await t.ops.copyFacts(card.place).catch(() => undefined);
+        if (facts && facts.ours && !facts.exists && card.residency === "archived") continue; // gone with its archive (before D514)
+        const c = copyVerdict(facts);
+        // The copy's own facts (not Ducter's, changed files, commits nowhere else) are said whatever the task's side says.
+        if (c && !c.tidy && (verdict.tidy || ["not_ours", "uncommitted", "unpushed"].includes(c.keep))) verdict = c;
+        if (verdict.tidy && keptPaths.has(copyKey(card.place))) verdict = { tidy: false, keep: "shared" };
+      }
+      rows.push({ ...base, ...(facts?.bytes !== undefined ? { bytes: facts.bytes } : {}), verdict });
+    }
+    return { rows, tidied: tidiedSoFar() };
+  }
+
+  /** D514: what was tidied on each computer so far, from the Log. */
+  function tidiedSoFar(): Record<string, { count: number; bytes: number }> {
+    const out: Record<string, { count: number; bytes: number }> = {};
+    for (const e of core.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["copy_tidied"] })) {
+      const b = e.body as Bodies["copy_tidied"];
+      const s = (out[b.device] ??= { count: 0, bytes: 0 });
+      s.count++;
+      s.bytes += b.bytes || 0;
+    }
+    return out;
   }
 
   function get(taskId: string): TaskRt {
@@ -2246,6 +2353,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     harness,
 
     sweepArchive,
+    tidyPlan,
 
     // D206: report_to_main `show`: each file read where the task runs (only from its own folders)
     // and copied into the home's media; a file that can't be shown is a line back to the task.
@@ -2338,7 +2446,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         let seed: string;
         try {
           // Archived after a merge: its worktree was removed; add it back from the kept branch.
-          if (archived) await t.ops.provision({ place: core.tasks.get(taskId)?.place ?? t.card.place, cwd: t.spec.cwd });
+          if (archived) await t.ops.provision({ place: core.tasks.get(taskId)?.place ?? t.card.place, cwd: t.spec.cwd, again: true });
           seed = await resumeOrSeed(t);
         } catch (err) {
           setState(t, currentAttention(t), "parked");
@@ -2674,7 +2782,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         await runner.reopen(taskId);
         return { ok: true, message: "Back, and carrying on." };
       }
-      setState(t, before, "parked");
+      // D514: its copy was tidied after Undo's window: it stays archived, so the next words add it back from the branch.
+      setState(t, before, t.residency === "archived" ? "archived" : "parked");
       return { ok: true, message: "Back where it was." };
     },
 

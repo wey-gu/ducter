@@ -232,6 +232,10 @@ func (a *App) pastWhereBody(c *ui.Context, it *protocol.PastItem) {
 			uiText(c, keepWords(autospace(lw))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).MaxLines(4).MinWidth(0)
 		})
 	}
+	// D514: its working copy was tidied away; Continue makes a fresh one from its branch.
+	if it.Tidied {
+		uiText(c.Key("tidied"), a.L.T("past.tidied")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MinWidth(0)
+	}
 	a.pastWhereSection(c, "steps", a.L.T("past.steps"), func() {
 		if steps == nil {
 			uiText(c, a.L.T("past.steps.wait")).FontSize(t.SM).TextColor(t.InkMuted)

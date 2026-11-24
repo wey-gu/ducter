@@ -855,7 +855,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **The agent's own fork for the same agent** (`--fork-session` with a message, `thread/fork`, pi's `fork`) instead of the condensed start, when the agent is the same. Trigger: a redo whose condensed start missed something the session knew.
 - [ ] **Compare two tasks' branches side by side** (two redos of one step). Trigger: the person asks which of two tries is better.
 - [ ] **CI checks on Past cards and in Where it stopped** (needs a PR watcher, D216's todo). Trigger: the same.
-- [ ] **What a cleanup would remove** (worktrees past the archive horizon, listed before they go). Trigger: a person who asks where a worktree went.
+- [x] **What a cleanup would remove** (worktrees past the archive horizon, listed before they go). Built as D514's `ducter worktrees` (`tidy.md`).
 - [ ] **Find on a phone with a hardware keyboard** (⌘K on the iPad's web shell). Trigger: the iPad app.
 - [ ] **Live with weeks of the author's real tasks** (ranking of task_find against his words). Trigger: the next live walk on the home.
 
@@ -1248,9 +1248,24 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Greetings sometimes give two examples (eval `first_words` 3/4).
 - [ ] Re-verify live that a task never phrases Hold as "no" (brief changed, not re-run).
 - [ ] Parked Claude Code sessions take ~10 s to resume; nothing prewarms tasks.
-- [ ] **Archive horizon for dropped and failed-to-start tasks.** The sweep archives only `done`,
-      `done?` and `failed` tasks idle 14 days; a dropped task keeps its worktree for Undo.
-      Trigger: worktrees of dropped tasks pile up on disk.
+- [x] **Archive horizon for dropped and failed-to-start tasks.** Built as D514 (`tidy.md`): a
+      dropped task's copy goes after Undo's 7 days, a finished or failed one's after 3.
+
+## Tidying working copies (D514, `tidy.md`)
+
+- [ ] **Scratch folders of tasks with no place** (`<data>/scratch/<id>`): never tidied; on hel
+      8.8 GB against 1.6 GB of worktrees (a live round task's 4.6 GB, a done one's 3.0 GB of a
+      clone and a toolchain). They can hold what the task made for the person (D383), so a rule
+      needs Made for you's guarantee first. Trigger: a computer low on disk, or the next look at hel.
+- [ ] **Keep the working copy on the Past card's menu** (today a star, or `ducter worktrees keep`).
+      Trigger: someone who keeps a copy but doesn't want the star.
+- [ ] **A disk budget per computer** (product-model "Archive and disk"): tidy oldest first sooner
+      when room runs low, and say so. Trigger: C6 Low disk is designed.
+- [ ] **Live on hel and the Mac worker:** the first sweeps after the release, read with
+      `ducter worktrees` before and after; a copy no task of the home names (one on the Mac
+      worker, `细审-nowledge-mem-长文案-让措辞更自然`) stays and is listed nowhere. Trigger: the release.
+- [ ] **Copies no task names** (a failed first start's folder, another home's): listed by
+      `ducter worktrees` as not this home's, never removed. Trigger: a second one found.
 - [ ] **A resume rejected after it started** (the harness accepts the id, then its stream
       errors) still parks the task; only a refusal at start falls back to a new session.
 - [ ] Tasks can write outside their place (one used `/tmp/flk`); no sandbox on the Mac.

@@ -41,6 +41,7 @@ var zhWhere = Table{
 	"where.ask.default":             "不回的话就等它醒，什么都不会丢",
 	"where.ask.waited":              "等 %s 醒了再做",
 	"where.waiting":                 "%s 睡着了",
+	"where.reason.newtasks":         "你设的默认，在 %s 上做",
 
 	"switch.computer.awake":  "醒着",
 	"switch.computer.asleep": "睡着了",
@@ -115,6 +116,7 @@ var enWhere = Table{
 	"where.ask.default":             "If you don't answer, it waits. Nothing is lost",
 	"where.ask.waited":              "Waits for %s",
 	"where.waiting":                 "%s is asleep",
+	"where.reason.newtasks":         "Your default: on %s",
 
 	"switch.computer.awake":  "Awake",
 	"switch.computer.asleep": "Asleep",

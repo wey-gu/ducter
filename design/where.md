@@ -119,7 +119,9 @@ asked of the user: every fact comes from a computer's hello or its ability state
    that lives on one computer pins that computer too.
 4. **Least access that does the job**: among rows that meet the needs, Ducter's own browser
    over the user's Chrome; a computer with only the site's sign-in over one with all of them.
-5. **Keeps going**: for long or ongoing work, a computer that doesn't sleep.
+5. **New tasks start** (D510, §22): the computer the person set as the default, then their default
+   agent. Under what the task needs, so a default never sends signed-in work away from their Chrome.
+5b. **Keeps going**: for long or ongoing work, a computer that doesn't sleep.
 6. **Continuity**: where the task's worktree, session or the user's uncommitted work is; where
    the repo already is over one that must clone it.
 7. **The agent's own rank**, as today (rule, tier, plan before pay-per-use, the limit when
@@ -531,6 +533,8 @@ start, and D385's hand-over of several (the sheet's Where default, and the place
    place's own device when the partner set one; when that computer can't read the repository the
    facts go back to the partner (which computers have a copy), never a quiet move elsewhere (D477);
 2. a where-rule (a rule with a computer whose words match the work);
+2b. (D510) the computer **新任务默认 / New tasks start** names, when it is awake: its own copy, else a
+   clone there when its own git can read it; otherwise the next step decides, as before;
 3. with no computer named, a computer that has a clone: the one that builds first (a Mac 2, a
    worker 1, a server home 0), then the most recently touched copy; where it went is said back to
    the partner as a fact (the tool result's `where`, D477), so its words match what happened;
@@ -760,3 +764,26 @@ never again for that site.
   hel as the other choice; a sign-in in a worker's Ducter browser still relays keys through the
   home; a standing "never my Chrome" said to the partner (a partner-tool change); the live run
   (`ducter check run worker-browser`).
+## 23. New tasks start where and with whom you said (D510)
+
+**Who.** The author, 2026-11-24: the partner told him about a newly assigned GitHub issue, he tapped
+交给 Ducter, and it ran on his MacBook on Claude Code. **Why (VERIFIED in code):** a GitHub to-do names
+its repository, so §18 places it; with no computer named and no where-rule, the computer with a clone
+that builds first wins (a Mac before a worker before a server home). The agent was the ranking's top
+row there (no rule; the smartest first; Claude Code first among equals). Nothing let him say "start
+everything on hel, with Codex" once.
+
+**The setting.** `Settings.newTasks`: where (a computer that runs tasks) and agent, each **自动 /
+Automatic** by default. Two doors, one store: Settings › Partner's group **新任务默认 / New tasks start**
+(rows **在哪儿做 / Where** and **谁来做 / Who does it**, only where there is a choice), and the
+partner's `new_tasks` tool from the person's words ("以后默认在 hel 上跑，用 Codex", "恢复自动").
+
+**Its weight.** A preference, never a hard filter: the person's word for one task, a rule for a kind of
+work, and what a task needs (the person's Chrome, a Mac app, a folder's only copy) come first; a
+default computer asleep or away never holds a task (one that is awake takes it). For a repository the
+default computer is asked first (its copy, or a clone there when its git can read it, §18 step 2b).
+
+**Said.** The meta line is as before (**在 hel 上**, **Codex**); the reason on hover is **你设的默认，在
+hel 上做 / Your default: on hel**, the agent's **你设的默认 / your default**, and when the default agent
+can't run where the task must go, **你设的默认是 Codex，它在这儿用不了**. The hand-over sheet (D385) says
+**你设的默认 / Your default** under Where and Who.

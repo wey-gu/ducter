@@ -82,7 +82,7 @@ import { CheckoutBody, StepBody } from "./errand.tsx";
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { DensityRow, HandoffSettings, PaperRow, RecordsSettings, savedDensity } from "./settings-more.tsx";
-import { AddSection, brainHeld, heldAt, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
+import { AddSection, brainHeld, heldAt, NewTasksSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
@@ -2209,6 +2209,8 @@ function whoSentence(task: Task): string {
   const who = whoName(harnessOf(task), m);
   if (!who) return "";
   const w = whoOf(task)?.why;
+  // D510: New tasks start named the agent (or named one that couldn't take it here).
+  if (w?.ruleId === "new_tasks") return w.kind === "rule" ? t("who.sentence.newtasks", who) : t("who.sentence.newtasks.away", who, harnessName(w.from ?? ""));
   if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
   if (w?.kind === "said" && w.text) return t("who.sentence.said", who, w.text);
   if ((w?.kind === "limit" || w?.kind === "unavailable") && w.ruleId) return t("who.sentence.limit.rule", who, harnessName(w.from ?? ""));
@@ -2238,6 +2240,7 @@ function whoLine(task: Task): [string[], string] {
   const who = [harnessName(harnessOf(task)), m && modelName(m), e && effortWord(A.L, e)].filter((x): x is string => !!x);
   const w = whoOf(task)?.why;
   if (!w) return [who, ""];
+  if (w.ruleId === "new_tasks") return [who, w.kind === "rule" ? t("who.why.newtasks") : t("who.why.newtasks.away", harnessName(w.from ?? ""))];
   if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];
   if (w.kind === "said" && w.text) return [who, t("who.why.said", w.text)];
   if (w.kind === "limit" || w.kind === "unavailable") {
@@ -3472,6 +3475,7 @@ function SettingsSheet() {
               {/* D322: one story: what it thinks with, who does the tasks, adding another AI (a key too), then the hand-off (D297). */}
               <ThinksSection />
               <TasksSection />
+              <NewTasksSection />
               <AddSection />
               <HandoffSettings />
               <TalkSettings />

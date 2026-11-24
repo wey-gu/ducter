@@ -811,9 +811,9 @@ function What() {
 function WhereWho() {
   const how = HS.how!;
   const where = (HS.device && how.wheres.find((w) => w.device === HS.device)) || how.where;
-  const whereWhy = HS.device ? t("ho.where.picked") : how.where.why === "note" ? t("ho.where.note", how.where.said ?? how.where.name) : how.where.why === "rule" ? t("ho.where.rule") : how.where.why === "repo" ? t("ho.where.repo", how.where.said ?? "") : t("ho.where.home");
+  const whereWhy = HS.device ? t("ho.where.picked") : how.where.why === "note" ? t("ho.where.note", how.where.said ?? how.where.name) : how.where.why === "rule" ? t("ho.where.rule") : how.where.why === "default" ? t("ho.where.default") : how.where.why === "repo" ? t("ho.where.repo", how.where.said ?? "") : t("ho.where.home");
   const who = HS.harness ?? how.who.harness;
-  const whoWhy = HS.harness ? t("ho.who.picked") : how.who.why === "rule" ? t("ho.who.rule") : "";
+  const whoWhy = HS.harness ? t("ho.who.picked") : how.who.why === "rule" ? t("ho.who.rule") : how.who.why === "default" ? t("ho.who.default") : "";
   const open = HS.picking;
   const pick = (k: "where" | "who") => ((HS.picking = open === k ? undefined : k), A.changed());
   return (

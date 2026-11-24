@@ -1823,6 +1823,16 @@ type Settings struct {
 	// ChromeSites (D505 rev.): sites whose sign-ins go straight to the person's
 	// own Chrome on their Mac (换过去 on a site's first card).
 	ChromeSites []string `json:"chromeSites,omitempty"`
+	// NewTasks (D510) is 新任务默认 / New tasks start: where ("local" or a
+	// worker's id) and which agent every new task starts with; nil: Ducter picks.
+	NewTasks *NewTasks `json:"newTasks,omitempty"`
+}
+
+// NewTasks is the person's default for new tasks (D510); an empty field is
+// Ducter's own pick.
+type NewTasks struct {
+	Where string `json:"where,omitempty"`
+	Agent string `json:"agent,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -1846,6 +1856,9 @@ type SettingsPatch struct {
 	// ChromeSites (D505 rev.) keeps only these sites (移除 / Remove); never adds.
 	// A pointer so that an empty list is sent.
 	ChromeSites *[]string `json:"chromeSites,omitempty"`
+	// NewTasks replaces New tasks start whole (D510); a pointer to an empty
+	// value clears it.
+	NewTasks *NewTasks `json:"newTasks,omitempty"`
 }
 
 // Peers is the partner's link with the person's own agents (D332, one

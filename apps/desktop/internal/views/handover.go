@@ -1073,6 +1073,8 @@ func (a *App) handHowCol(c *ui.Context) {
 			why = a.L.T("hand.where.note", firstNonEmpty(where.Said, where.Name))
 		case "rule":
 			why = a.L.T("hand.where.rule")
+		case "default": // D510
+			why = a.L.T("hand.where.default")
 		case "repo":
 			if where.Said != "" {
 				why = a.L.T("hand.where.repo", where.Said)
@@ -1098,6 +1100,9 @@ func (a *App) handHowCol(c *ui.Context) {
 		if harness != "" {
 			who = harnessName(harness)
 			whyWho = a.L.T("hand.who.rule")
+			if how.Who.Why == "default" { // D510
+				whyWho = a.L.T("hand.who.default")
+			}
 			if h.harness != "" {
 				whyWho = a.L.T("hand.who.picked")
 			}

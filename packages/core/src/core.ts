@@ -81,7 +81,7 @@ import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
 import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
-import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
+import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, registerNewTasksTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { createMender } from "./mend.ts";
 import { hostAlias } from "./bound.ts";
@@ -1388,7 +1388,11 @@ export function startCore(opts: CoreOptions = {}): Core {
       return computers.folderInfo(dev, path, ms).catch(() => "offline" as const);
     },
     rules: () => rules.list(),
+    // D510: New tasks start's computer, preferred for a repository whenever it can have the code.
+    prefer: () => settings.get().newTasks?.where,
   });
+  // D510: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
+  registerNewTasksTool(mcp, { settings, computers: whereComputers });
   // D476: the home in the partner's [devices] line: its name, the names the person calls it, its agents.
   api.homeDevice = () => {
     const home = whereComputers()[0]!;
@@ -2222,6 +2226,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
       rules: () => rules.list(),
+      newTasks: () => settings.get().newTasks,
       // D395: the one resolver task_open uses, so the sheet's Where and the tasks it opens agree with it.
       repoWhere: (a) => repoWhere.resolve(a) as Promise<import("./task-sources/handover.ts").RepoWhereAnswer>,
       addRule: (r) => void rules.add(r),

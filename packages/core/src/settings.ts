@@ -4,7 +4,7 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemCheckAnswer, MemItem, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import type { Bodies, MemCheckAnswer, MemItem, MemView, NewTasks, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { FIRST_MEETS, isFirstMeet, DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
@@ -55,11 +55,21 @@ interface SettingsFile {
   met?: string[];
   /** D505 (rev.): sites whose sign-ins go straight to the person's own Chrome on their Mac. */
   chromeSites?: string[];
+  /** D510: 新任务默认 / New tasks start (where: "local" or a worker's id; agent: a harness id). */
+  newTasks?: NewTasks;
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
 const agentList = (v: unknown): string[] | undefined =>
   Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string").map((x) => x.trim().replace(/\s+/g, " ").slice(0, 80)).filter(Boolean))].slice(0, 50) : undefined;
+
+/** D510: a New tasks start value as kept: a computer id (one line, ≤ 64) and a harness that runs tasks. */
+export function cleanNewTasks(v: unknown): NewTasks {
+  const o = (v && typeof v === "object" ? v : {}) as { where?: unknown; agent?: unknown };
+  const where = typeof o.where === "string" ? o.where.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64) : "";
+  const agent = typeof o.agent === "string" && isHarnessId(o.agent) && HARNESSES[o.agent].task ? o.agent : undefined;
+  return { ...(where ? { where } : {}), ...(agent ? { agent } : {}) };
+}
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -177,6 +187,7 @@ export function openSettings(opts: {
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
       ...(data.limitHandoff ? { limitHandoff: true } : {}),
+      ...((nt) => (nt.where || nt.agent ? { newTasks: nt } : {}))(cleanNewTasks(data.newTasks)),
       // D451: always sent (a client reads its absence as a home too old to keep it).
       met: FIRST_MEETS.filter((m) => data.met?.includes(m)),
       // D250: never chosen is the default (proactive with a morning note), said as such.
@@ -377,6 +388,15 @@ export function openSettings(opts: {
         (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.limitHandoff === "boolean" && (data.limitHandoff === true) !== patch.limitHandoff) (data.limitHandoff = patch.limitHandoff), did.push("limitHandoff");
+      // D510: New tasks start: the whole object as sent ({} clears it); junk fields are dropped.
+      if (patch.newTasks && typeof patch.newTasks === "object") {
+        const next = cleanNewTasks(patch.newTasks);
+        if (JSON.stringify(next) !== JSON.stringify(cleanNewTasks(data.newTasks ?? {}))) {
+          if (next.where || next.agent) data.newTasks = next;
+          else delete data.newTasks;
+          did.push("newTasks");
+        }
+      }
       // D451: names are added, never removed by a patch; an empty list starts them all over.
       if (Array.isArray(patch.met)) {
         const had = data.met ?? [];

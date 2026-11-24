@@ -64,6 +64,8 @@ export function whereReason(w: WhereWhy | undefined): string {
     case "moved":
       return t("where.reason.moved", w.other ?? "", dev);
     case "you":
+      // D510: New tasks start named this computer.
+      if (w.ruleId === "new_tasks") return t("where.reason.newtasks", dev);
       return w.text ? t("where.reason.rule", w.text) : t("where.reason.you", dev);
     case "home":
       return t("where.reason.home", dev);

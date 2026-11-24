@@ -2895,6 +2895,21 @@ export interface Settings {
    * out (Settings › 上网 / Web, 移除 / Remove), and a site taken out asks again next time. Absent: none.
    */
   chromeSites?: string[];
+  /** D510: 新任务默认 / New tasks start: where and who every new task starts with unless its words, a rule or what it needs say otherwise. Absent (or a field absent): Ducter picks. */
+  newTasks?: NewTasks;
+}
+
+/**
+ * D510: the person's standing default for new tasks, set in Settings › Partner or by saying it
+ * (the partner's new_tasks tool). where: a computer that runs tasks ("local" for the home, else a
+ * worker's device id), preferred whenever it can do the task and can be reached; agent: an AI
+ * agent preferred whenever it is signed in where the task runs. A pin in the moment, a rule for a
+ * kind of work, and what the task needs (the person's Chrome, a Mac app, the only copy of a folder)
+ * come first. A patch replaces the whole object; {} clears it.
+ */
+export interface NewTasks {
+  where?: string;
+  agent?: HarnessId;
 }
 
 /**

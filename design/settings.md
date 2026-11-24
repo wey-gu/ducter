@@ -470,6 +470,21 @@ Every pane but Memory, Agent messaging and On hand rendered against `demo-settin
 - **Two actions never say the same thing.** A linked chat app's account row says **换个账号 / Use another
   account**, not 解除连接 / Unlink above 断开 Telegram.
 
+## New tasks start (D510)
+
+**Who:** H with a server and a laptop who wants work off the lid; C with one favourite agent. F with one
+computer and one agent never sees it. **Where:** Settings › Partner, its own group **新任务默认 / New tasks
+start** right under 做事的 (who does the tasks), because it is the answer to "and which one by default?".
+Two rows, each a segmented choice (a pop-up past three on the web): **在哪儿做 / Where**
+(**自动 / Automatic**, then each computer that runs tasks by name; phones never) and **谁来做 / Who does
+it** (**自动**, then the signed-in agents; the chosen one's coin on the row). A row shows only when it
+has a choice. Each line says what the choice does in one or two clauses (**能做的都在 hel 上做。它连不上，
+或者要用别处才有的（你的 Chrome、某个 App），就换一台。**); the foot says it can be said in the conversation
+too. The said line after a tap: **新任务默认在 hel 上做 / New tasks now start on hel**, **新任务默认交给 Codex**,
+back to automatic **新任务在哪儿做，又由 {name} 来挑**. While an agent is set, 做事的's built-in rows (errands,
+code and the rest) step aside: the default speaks for them. Shots: `.shots/d510-new-tasks/` (Mac 1280,
+web 1400 and 390, zh, light and dark). `design/where.md` §23 has the mechanics.
+
 ## Not done
 
 - D459's leftovers: the phone's sign-in still answers with a boxed notice at the top (`partnerToast`), not

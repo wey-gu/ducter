@@ -2880,6 +2880,12 @@ a {
 .step .sum:first-of-type {
   flex-shrink: 0.35;
 }
+/* D521: words with no subject beside them (a background job's end, its Error tag after) take the
+   whole shrink: with only a 0.35 share, flexbox removes only 35% of the overflow and the words and
+   their tag ran past a phone's edge. */
+.step:not(:has(> code)) > .sum:first-of-type {
+  flex-shrink: 1;
+}
 .step .sum.code {
   flex: 0 1 auto;
 }

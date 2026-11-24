@@ -287,6 +287,11 @@ export const cases = [
       [3600, "task_event", "task", { role: "system", text: "failed in the background", raw: { background: { act: "failed", type: "agent" } } }],
       [3601, "task_event", "task", { role: "system", text: "finished in the background: Run the WAL bench for an hour", raw: { background: { act: "ended", type: "shell", what: "Run the WAL bench for an hour" } } }],
       [3602, "task_event", "task", { role: "tool", tool: { name: "Read", input: { file_path: "/w/bench.log" }, output: "p99 4.1ms", ok: true } }],
+      // D521: the tray says every start and every end that went well; the transcript keeps only a
+      // failure (a non-zero exit), a stop, and one never heard of again (its ceiling).
+      [3603, "task_event", "task", { role: "system", text: "finished in the background: make test", raw: { background: { id: "e9", act: "ended", type: "shell", what: "make test", exitCode: 2 } } }],
+      [3604, "task_event", "task", { role: "system", text: "stopped in the background: bun run dev", raw: { background: { id: "e7", act: "stopped", type: "shell", what: "bun run dev" } } }],
+      [3605, "task_event", "task", { role: "system", from: "runner", text: "background work quiet for 12 h (tail -f server.log); no longer keeping the session open for it", raw: { backgroundCeiling: true, bgId: "e5", bgWhat: "tail -f server.log" } }],
     ]),
   },
   // D271: a review loop woken by its own wait, resting on the next one (its turn has ended).

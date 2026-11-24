@@ -1015,7 +1015,10 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 			switch {
 			case b.Role == "system":
 				// D266: the harness's own background work, started and ended, as a step of the stretch.
-				if st, failed, ok := backgroundStep(b.Raw); ok {
+				if st, failed, quiet, ok := backgroundStep(b.Raw); ok {
+					if quiet {
+						continue // D521: the tray says it
+					}
 					st.Target = redact.Text(st.Target)
 					outcome := "ok"
 					if failed {

@@ -149,6 +149,12 @@ above the composer. Code: `packages/protocol/src/background.ts` (the fold, the t
   have it (OAR's `stopTask` capability); **a Codex background terminal has none in OAR 0.124** (it is a tool call, not a
   task), so its row offers no Stop rather than a fake one (`todo.md`). The agent hears it: its
   end reaches it as a stopped job, and D515's wake says the person stopped it from Ducter.
+- **The transcript says less (D266's lines):** with the tray in view, a job's start draws nothing
+  in the transcript and an end that simply went well draws nothing; only an end that mattered is
+  one quiet line among the steps: a failure (a non-zero exit, said in the error ink), a stop, or
+  **后台的事不知道结果：{x} / Result unknown in the background: {x}** for one the runner stopped
+  hearing of (its ceiling). Before, a busy task listed every job twice (started, then finished),
+  repeating the tray and running past a phone's edge.
 - **On hand:** a running task's row carries one quiet fact, **后台 {n} 个在跑 / {n} running in the
   background**, among its facts (D291).
 

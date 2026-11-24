@@ -446,13 +446,22 @@ function saysOf(o: Record<string, unknown>): string {
  * `raw.background`: `act` started · ended · stopped · failed, `what` its own description):
  * act start · end · stop, the target what it is; `failed` = it ended in a failure.
  */
-export function backgroundStep(raw: unknown): { step: Step; failed: boolean } | undefined {
-  const b = obj(obj(raw).background);
+export function backgroundStep(raw: unknown): { step: Step; failed: boolean; quiet?: true } | undefined {
+  const r = obj(raw);
+  // D521: a job the runner stopped hearing of (its 12-hour ceiling): its result is unknown.
+  if (r.backgroundCeiling === true) {
+    const what = str(r.bgWhat).trim();
+    return { step: { kind: "background", act: "lost", ...(what ? { target: what } : {}) }, failed: false };
+  }
+  const b = obj(r.background);
   const act = str(b.act);
   if (!["started", "ended", "stopped", "failed"].includes(act)) return undefined;
   const what = str(b.what).trim();
+  const failed = act === "failed" || (act === "ended" && typeof b.exitCode === "number" && b.exitCode !== 0);
   const step: Step = { kind: "background", act: act === "started" ? "start" : act === "stopped" ? "stop" : "end", ...(what ? { target: what } : {}) };
-  return { step, failed: act === "failed" };
+  // D521: the opened task's tray shows every job and its time; the transcript draws nothing for a
+  // start and nothing for an end that simply went well. Only a failure or a stop is a line.
+  return { step, failed, ...(act === "started" || (act === "ended" && !failed) ? { quiet: true as const } : {}) };
 }
 
 /** What one tool call was, as a step. `harness` is the task's (claude-code, codex, pi, deepseek-harness). */

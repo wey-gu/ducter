@@ -636,6 +636,7 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
           // D266: the harness's own background work, started and ended, as a step of the stretch.
           const bg = backgroundStep(b.raw);
           if (bg) {
+            if (bg.quiet) break; // D521: the tray says it
             if (bg.step.target) bg.step.target = redact(bg.step.target);
             addRow(ev.seq, { seq: ev.seq, step: bg.step, n: 1, outcome: bg.failed ? "error" : "ok" });
             break;

@@ -533,7 +533,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     for (const [id, b] of t.bg)
       if (bgCeilingMs > 0 && at - b.seen >= bgCeilingMs) {
         t.bg.delete(id);
-        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true, bgId: id } });
+        logEvent(t, { role: "system", from: "runner", text: `background work quiet for ${Math.round(bgCeilingMs / 3600_000)} h${b.what ? ` (${b.what})` : ""}; no longer keeping the session open for it`, raw: { backgroundCeiling: true, bgId: id, ...(b.what ? { bgWhat: b.what } : {}) } });
       }
     return t.bg.size;
   }

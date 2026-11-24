@@ -12,6 +12,13 @@ const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url),
 const h = (harness: string, o: Partial<DeviceHarness> = {}): DeviceHarness => ({ harness, installed: false, loggedIn: false, canBePartner: false, ...o });
 
 describe("a row's look", () => {
+  test("D549: an agent that won't run as root where Ducter runs as root: its own look, signed in or not, with its why in both languages", () => {
+    expect(agentRowLook(h("claude-code", { installed: true, loggedIn: true, trouble: { kind: "root" } }))).toBe("cant");
+    expect(agentRowLook(h("claude-code", { installed: true, trouble: { kind: "root" } }))).toBe("cant");
+    for (const f of ["i18n-agentsetup.ts"]) for (const k of ["ag.trouble.root", "ag.trouble.root.why"]) expect(src(f).split(`"${k}":`).length).toBe(3);
+    expect(src("agent-setup.tsx")).toContain('t("ag.trouble.root.why", name)');
+  });
+
   test("installing, then not signed in, then its sign-in, then ready", () => {
     expect(agentRowLook(h("codex", { installable: true }))).toBe("install");
     expect(agentRowLook(h("codex", { installable: true, setup: { phase: "queued" } }))).toBe("queued");

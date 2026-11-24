@@ -152,6 +152,14 @@ interface TaskRt {
   /** The spec without any browser parts: who does it, the brief, the place's cwd. */
   base: SessionSpec;
   session?: HarnessSession;
+  /**
+   * D549: the agent's own words when its process ended before it did anything (no turn, no
+   * words, no tool): what the card says ("Claude Code exited as it started: … root …"), never
+   * the TypeError a send to the gone session would throw.
+   */
+  exitedEarly?: string;
+  /** D549: its first start (open, restart) is under way: an early exit is that start's failure. */
+  launching?: boolean;
   sessionId?: string;
   loggedSessionId?: string;
   /** Moved to another agent (D89) and no session there yet: the harness it came from. */
@@ -766,8 +774,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const docs = filesFor(media);
     if (docs.note) sent = `${sent}\n\n${docs.note}`;
     try {
-      await t.session!.send(sent, mode, pics.images.length ? pics.images : undefined, docs.files.length ? docs.files : undefined, inputId);
-    } catch (err) {
+      // D549: its process may have ended between the start and this send (Claude Code as root exits
+      // at once): the agent's own reason, never a TypeError on the gone session.
+      const s = t.session;
+      if (!s) throw new Error(t.exitedEarly ?? `${harnessName(t.spec.harness)} stopped before it took the message`);
+      await s.send(sent, mode, pics.images.length ? pics.images : undefined, docs.files.length ? docs.files : undefined, inputId);
+    } catch (err0) {
+      // A send the exiting process refused ("prompt rejected: runtime exited") says the exit's own words when known.
+      const err = t.exitedEarly && /runtime exited|stopped before it took/.test(String(err0)) ? new Error(t.exitedEarly) : err0;
       if (mode === "turn") t.running = false;
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
       throw err;
@@ -879,6 +893,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (refs.length) spec = { ...spec, keyRefs: refs };
     const session = await t.ops.harness.start(refs.length && !t.ops.device && core.keyCopy ? core.keyCopy.withKeys(spec) : spec);
     t.session = session;
+    t.exitedEarly = undefined;
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
@@ -1100,10 +1115,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   async function pump(t: TaskRt, session: HarnessSession) {
     let offline = false;
+    // D549: whether this process did anything at all, and how it ended (the normalizer's exit line).
+    let lived = false;
+    let exit: string | undefined;
     try {
       for await (const ev of session.events()) {
         if (t.retired === session) break; // replaced on purpose (a browser driver switch)
         noteSessionId(t, session);
+        const k = (ev.raw as { kind?: string } | undefined)?.kind;
+        if (k === "exited") exit = ev.text;
+        else if (ev.turnEnd || ev.tool || (ev.role === "assistant" && ev.text)) lived = true;
         handleEvent(t, ev);
         if (ev.turnEnd) await onTurnEnd(t, ev);
       }
@@ -1111,6 +1132,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (isOffline(err)) offline = true;
       else logEvent(t, { role: "system", text: `event stream error: ${preview(String(err), 500)}` });
     }
+    // D549: it ended with an error before doing anything: its own last words are why it couldn't start.
+    const early = !lived && !offline && t.session === session && exit && /\(code [1-9]\d*\)/.test(exit) ? earlyExitWords(t.spec.harness, exit) : undefined;
+    if (early) t.exitedEarly = early;
     // D266: its background work went with its process.
     if (!t.session || t.session === session) {
       t.bg?.clear();
@@ -1124,8 +1148,32 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.session = undefined;
       t.running = false;
       if (offline && !t.dropped) deviceLost(t, wasRunning);
+      // D549: a start that the agent ended at once (its first turn sent, nothing back) is a start that
+      // failed, with the agent's words: never a task left 在做 and parked with nothing to show. While
+      // the start itself is still under way, its own catch says it (the send reads exitedEarly).
+      else if (early && !t.dropped && !t.launching && !turnedBefore(t)) await startFailed(t, new Error(early));
       else if (!t.dropped) setState(t, currentAttention(t), "parked");
     }
+  }
+
+  /**
+   * D549: an agent that ended before it did anything, in words: "Claude Code exited as it started:
+   * --dangerously-skip-permissions cannot be used with root/sudo privileges for security reasons".
+   * The last line of its stderr, as OAR passes it in the exit's reason; else the exit itself.
+   */
+  /** D549: any turn of this task ever ended (its Log): an early exit then is a resume that failed, not a start. */
+  function turnedBefore(t: TaskRt): boolean {
+    return core.log.read({ stream: stream(t.id), kinds: ["task_event"], limit: 5000 }).some((e) => ((e.body as Bodies["task_event"]).raw as { kind?: string } | undefined)?.kind === "turn_ended");
+  }
+
+  function earlyExitWords(h: string, exit: string): string {
+    const tail = exit.split(/stderr \(tail\):\n/)[1] ?? "";
+    const said = tail
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .at(-1);
+    return `${harnessName(h)} exited as it started: ${preview(said ?? exit.replace(/^harness exited\s*/, "").trim(), 300) || "no reason given"}`;
   }
 
   // ---------- workers: a task's machine drops and comes back (focus-window-states invariant 1) ----------
@@ -2117,7 +2165,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const cant = (await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined)) ?? fallback();
     // D415/D472: the agent's own words, one line; for what is truly unknown, a few lines behind 看看为什么.
     const lines = reason.split("\n").map((l) => l.replace(/^(Error: )+/, "").trim()).filter((l) => l && !/^at\s|^\s*at\s/.test(l));
-    if (["agent", "not_installed", "signed_out", "old", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
+    if (["agent", "not_installed", "signed_out", "old", "refuses_root", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
     if (problem.why === "other" && !cant.more && lines.length > 1) cant.more = lines.slice(0, 6).join("\n").slice(0, 600);
     if (!cant.harness) cant.harness = t.base.harness;
     if (!cant.device) cant.device = device;
@@ -2133,6 +2181,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   async function launch(t: TaskRt, c: StartCtx, resolved: ResolvedPlace): Promise<void> {
     const id = t.id;
     let briefed = !c.later;
+    t.launching = true;
+    try {
+      await launchBody();
+    } finally {
+      t.launching = false;
+    }
+    // D549: the agent took the first turn and then ended at once with an error, after the send
+    // returned: the same start failure, with its words (Claude Code as root, in a container).
+    if (t.exitedEarly && !t.session && !t.dropped && currentAttention(t) !== "failed" && !turnedBefore(t)) await startFailed(t, new Error(t.exitedEarly));
+    return;
+    async function launchBody() {
     try {
       await t.ops.provision(resolved);
       await t.sidecar?.ready();
@@ -2181,6 +2240,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D472: opened early (D120) and failed before its brief came: the brief is still kept, so
       // 再试一次 or 选一个文件夹 starts it with its brief, never with its title alone.
       if (!briefed) void keepBrief(t, c);
+    }
     }
   }
 

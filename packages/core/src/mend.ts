@@ -17,7 +17,7 @@
 // record), and one quiet line in the task's steps. A rethink wakes the partner (core.ts
 // triggersPartner). When the partner opens the same work again after a rethink, the task that
 // couldn't start is set aside as superseded, so On hand never keeps a failure that was mended.
-import type { Bodies, CantStart, LogEvent, MendBody, MendHow, MendTry, TaskCard } from "@ducter/protocol";
+import { SAME_CAUSE_WHYS, type Bodies, type CantStart, type LogEvent, type MendBody, type MendHow, type MendTry, type TaskCard } from "@ducter/protocol";
 import type { LogStore, PlacesPort, Runner } from "@ducter/protocol/src/internal.ts";
 import { allowedBy, type Bound } from "./bound.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -120,6 +120,17 @@ export function createMender(o: {
       .read({ stream: taskStream(taskId), kinds: ["task_event", "job_status"], limit: 50 })
       .some((e) => e.ts >= since(PERSON_MS) && ((e.kind === "task_event" && (e.body as Bodies["task_event"]).role === "user" && ((e.body as Bodies["task_event"]).from ?? "user") === "user") || (e.kind === "job_status" && e.origin === "user")));
 
+  /** D549: this task and the ones it carries on (task_open's recorded `replaces`), newest first, at most 8. */
+  const chainOf = (taskId: string): string[] => {
+    const out: string[] = [];
+    for (let id: string | undefined = taskId; id && !out.includes(id) && out.length < 8; ) {
+      out.push(id);
+      const open = o.log.read({ stream: taskStream(id), kinds: ["task_open"], fromSeq: 0, limit: 5 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      id = open?.replaces;
+    }
+    return out;
+  };
+
   /** Opened more than a day ago (a restart failing an old task again): left to its card. */
   const stale = (taskId: string) => {
     const first = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], fromSeq: 0, limit: 1 })[0];
@@ -131,14 +142,18 @@ export function createMender(o: {
     if (line) o.log.append({ stream: taskStream(taskId), origin: "system", kind: "task_event", body: { taskId, role: "system", from: "ducter", raw: { mend: { how: line.how, ...(line.name ? { name: line.name } : {}) } } } });
   };
 
-  const rethink = (taskId: string, cls: MendBody["cls"], why: string | undefined, tried: MendTry[], extra: { budget?: boolean } = {}) => {
-    const before = mends(taskId, DAY_MS).filter((m) => m.rung === "rethink");
+  const rethink = (taskId: string, cls: MendBody["cls"], why: string | undefined, tried: MendTry[], extra: { budget?: boolean; same?: boolean } = {}) => {
+    // D549: the rethinks of this work, across the tasks that replace one another (hel: four tasks).
+    const before = chainOf(taskId).flatMap((id) => mends(id, DAY_MS)).filter((m) => m.rung === "rethink");
     if (before.length >= RETHINK_PER_TASK) return; // asked already: the card and the partner's line stand
     const attempt = mends(taskId, DAY_MS).length + 1;
-    append(taskId, { cls, rung: "rethink", attempt, tried, ...(why ? { why } : {}), state: "ok", ...(before.length ? { again: true } : {}), ...(extra.budget ? { budget: true } : {}) }, { how: cls === "stall" ? "stall" : "rethink" });
+    append(taskId, { cls, rung: "rethink", attempt, tried, ...(why ? { why } : {}), state: "ok", ...(before.length ? { again: true } : {}), ...(extra.budget ? { budget: true } : {}), ...(extra.same ? { same: true } : {}) }, { how: cls === "stall" ? "stall" : "rethink" });
   };
 
   const startFailed = (taskId: string, cant: CantStart) => {
+    // D549: a cause that is a fact of that computer (its agent refuses root, isn't there, isn't
+    // signed in): no retry of the same start, straight to the partner, which hears it won't change.
+    if (SAME_CAUSE_WHYS.has(cant.why)) return rethink(taskId, "start", cant.why, triedOn(taskId), { same: true });
     const tried = triedOn(taskId);
     const next = nextStartRung(cant, tried, homeTriesLastHour(), o.places()?.boundOf?.(taskId));
     if ("rethink" in next) return rethink(taskId, "start", cant.why, tried, next.budget ? { budget: true } : {});

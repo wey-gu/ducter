@@ -28,7 +28,7 @@ func (a *App) cantLine(k *protocol.CantStart) string {
 			return a.L.T("cant.other_bare")
 		}
 		return a.L.T("cant.other", k.Computer, k.What)
-	case "agent", "not_installed", "signed_out", "old":
+	case "agent", "not_installed", "signed_out", "old", "refuses_root":
 		what := k.What
 		if what == "" {
 			what = harnessName(k.Harness)
@@ -111,7 +111,8 @@ func (a *App) cantFixes(k *protocol.CantStart) []cantFix {
 			add("clone_here", a.L.T("cant.clone_to", k.Computer), "")
 		}
 	}
-	if len(out) == 0 || !place {
+	// D549: never for an agent that refuses root there: the same start fails the same way.
+	if (len(out) == 0 || !place) && k.Why != "refuses_root" {
 		add("reopen", a.L.T("task.action.retry"), "")
 	}
 	for i := range out {
@@ -135,7 +136,7 @@ func (a *App) cantHint(k *protocol.CantStart) string {
 		return a.L.T("cant.place.hint", k.What, k.Computer)
 	case placeWhy(k.Why) && k.PickHere:
 		return a.L.T("cant.pick.hint", k.Computer)
-	case k.Why == "not_installed" || k.Why == "signed_out" || k.Why == "old":
+	case k.Why == "not_installed" || k.Why == "signed_out" || k.Why == "old" || k.Why == "refuses_root":
 		return a.L.T("cant." + k.Why + ".hint")
 	case (k.Why == "other" || k.Why == "away") && k.Elsewhere == nil:
 		return a.L.T("cant.retry.hint")

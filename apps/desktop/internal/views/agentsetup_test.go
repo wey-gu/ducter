@@ -40,6 +40,9 @@ func TestAgentRowLook(t *testing.T) {
 		{protocol.DeviceHarness{Installed: true, Login: &protocol.AgentLoginState{State: "waiting"}}, "login"},
 		{protocol.DeviceHarness{Installed: true, LoggedIn: true, Login: &protocol.AgentLoginState{State: "done"}}, "ready"}, // D518: 登录好了 on a ready row
 		{protocol.DeviceHarness{Installed: true, LoggedIn: true}, "ready"},
+		// D549: signed in or not, it won't run as root where Ducter runs as root.
+		{protocol.DeviceHarness{Installed: true, LoggedIn: true, Trouble: &protocol.AgentTrouble{Kind: "root"}}, "cant"},
+		{protocol.DeviceHarness{Installed: true, Trouble: &protocol.AgentTrouble{Kind: "root"}}, "cant"},
 		{protocol.DeviceHarness{}, "missing"},
 	}
 	for _, c := range cases {

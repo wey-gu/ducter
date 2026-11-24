@@ -24,7 +24,7 @@ out yet), which rungs apply, and who acts at each.
 
 | Class | Failures | Idempotent? | Rungs |
 |---|---|---|---|
-| **Start** (never ran) | no folder; no copy of the repository; a clone that failed; git busy (a lock); the computer away or the wrong one; its agent missing or signed out (D363); its limit out (D297) | Yes: nothing ran, nothing went out | retry, repair, rethink, ask. **Built** (limit: D297's own) |
+| **Start** (never ran) | no folder; no copy of the repository; a clone that failed; git busy (a lock); the computer away or the wrong one; its agent missing or signed out (D363), or refusing to run as root, or exiting the moment it starts (D549); its limit out (D297) | Yes: nothing ran, nothing went out | retry, repair, rethink, ask; a cause that holds there goes straight to rethink (D549). **Built** (limit: D297's own) |
 | **Mid-run** (it ran) | the agent's process gone (crash, restart); a stuck loop (a long round is never judged stuck from the time alone: D481 hands its facts to the partner, `cls: "round"`, never shown as mending or counted as a failure); context overflow (compaction failed); tool errors; a phone or computer that went away (D293's grace); a network blip; the limit mid-turn (D297) | **No**: it may have sent, posted or paid; never resend a turn blindly | resume from the session or checkpoint (built: recovery, principle 13); hand over (D297, D446); the stall rule's nudge then **rethink** (built, D473); ask |
 | **Finish** | claims done but isn't (D450's checks, `done?`'s ref check) | n/a | the task sent back by the partner (built); asked when it needs judgment |
 | **Partner** | its turn stuck; its harness session gone; the prompt cache expired; a tool call failing; a Bridge or connector error; update all failing; a bad turn (D462's promise-only line) | Its outgoing messages: yes by D106's outbox; its turns: re-run only before anything went out | the turn watchdog (10 min, interrupt); a gone session rebuilt from the Log (principle 1); D435's hold and re-run; D402's back-off and stop for a watched account; D462's settling line. **Counting** is D473's (below) |
@@ -69,9 +69,19 @@ Cheapest first; each rung is one `mend` event on the task's stream, logged befor
    way can work: one short line in their language, the one real fix as the choice. No error
    text, no list of what failed.
 
+**A cause that holds is never tried again by the same agent there (D549).** Some start failures
+are facts of that computer, not luck: its agent refuses to run as root, isn't installed, isn't
+signed in, or Ducter there is too old (`SAME_CAUSE_WHYS`). Those skip retry and repair and go
+to the partner at once, marked `same`. The hand-over says the same agent there will fail the same
+way, so the partner opens the work on another agent there or another computer the person allows.
+task_open with `replaces` on that same agent and computer is refused, with the cause. A start
+the agent ends at once is one of these failures with the agent's own words: hel's Claude Code as
+root (research/225) read as a TypeError before, and was reopened on Claude Code three times.
+
 **Budgets and loop guards** (code, `mend.ts`): two automatic tries per task a day, never the same
 one twice; six on the whole home an hour, past which a failure goes straight to the partner
-(`budget`); two hand-overs per task a day, then the card and the partner's one question stand;
+(`budget`); two hand-overs a day for the work, counted across the tasks that replace one another
+(`replaces`, D549), then the card and the partner's one question stand;
 nothing at all while the person is on that task (they wrote to it or tapped a fix in the last 10
 minutes); nothing for a task opened more than a day ago (a restart failing an old task again is left to its card). An errand D372 retries on the smartest is left to D372.
 

@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DSH_KEY_ENV, HARNESS_IDS, type AccountUsage, type HarnessId } from "@ducter/protocol";
+import { DSH_KEY_ENV, HARNESS_IDS, harnessName, type AccountUsage, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, liveModels, modelForWindow, parseCodexCatalog, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
@@ -496,9 +496,21 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
 };
 const loaded = new Map<string, Runtime>();
 
+/**
+ * D549: why this agent won't run here, when it refuses root and this process is root (harness-facts
+ * `root`). Ducter never sets an agent's undocumented override (Claude Code's IS_SANDBOX).
+ */
+export function rootRefusal(h: string, uid: number | undefined): string | undefined {
+  const f = (HARNESS_FACTS as Record<string, (typeof HARNESS_FACTS)[HarnessId] | undefined>)[h]?.root?.value;
+  if (uid !== 0 || f?.as !== "refuses") return undefined;
+  return `${harnessName(h)} refuses to run as root, and Ducter runs as root on this computer: ${f.said ?? "its own check"}`;
+}
+
 export interface OarPortOptions {
   /** Test seam: supply runtimes (e.g. @botiverse/oar/testing scriptedRuntime). */
   loadRuntime?: RuntimeLoader;
+  /** D549, test seam: the user id this process runs as (default process.getuid; 0 is root). */
+  uid?: () => number | undefined;
   /** Env overlay for every session/probe (e.g. captured login-shell env), filtered per harness like the rest (D102). Never logged. */
   env?: Record<string, string | null>;
   /** Bound retained records per session (OAR retainedBytes). */
@@ -846,6 +858,10 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
   const liveWindows = new Map<string, number>();
   return {
     async start(spec) {
+      // D549: an agent that refuses to run as root (Claude Code with approvals off) isn't started
+      // as root at all: its own words, at once, instead of a process that exits under a first turn.
+      const refusal = rootRefusal(spec.harness, (opts.uid ?? (() => process.getuid?.()))());
+      if (refusal) throw new Error(refusal);
       const rt = await load(spec.harness, piVariant(spec));
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });

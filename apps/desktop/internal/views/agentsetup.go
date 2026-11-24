@@ -35,6 +35,9 @@ func agentRowLook(h protocol.DeviceHarness) string {
 		return "login"
 	case h.Setup != nil && h.Setup.Phase == "queued":
 		return "queued"
+	case h.Installed && h.Trouble != nil && h.Trouble.Kind == "root":
+		// D549: it won't run as root, and Ducter runs as root there: why, no button.
+		return "cant"
 	case h.Installed && h.LoggedIn:
 		// D518: done is the agent's own check saying signed in: ready at once (登录好了 its word).
 		return "ready"
@@ -157,6 +160,8 @@ func (a *App) agentWord(dv *protocol.DeviceView, h protocol.DeviceHarness, look 
 			reason = h.Setup.Reason
 		}
 		return a.L.T("ag.failed."+reason, a.deviceNameIn(dv))
+	case "cant":
+		return a.L.T("ag.trouble.root")
 	}
 	if w, _ := a.agentTrouble(h); w != "" {
 		return w
@@ -225,6 +230,10 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		})
 		if look == "failed" && h.Setup != nil && h.Setup.Detail != "" {
 			uiText(c, h.Setup.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		// D549: why it won't run there, and what fixes it.
+		if look == "cant" {
+			uiText(c, a.L.T("ag.trouble.root.why", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		// D371: its command line is big; say so before the tap.
 		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {

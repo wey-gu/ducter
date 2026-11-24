@@ -259,8 +259,9 @@ export const HARNESS_KEYS: Readonly<Record<HarnessId, readonly string[]>> = {
 };
 
 /** A device's view of one harness, completed from the table: may it be the partner, how is it paid. */
-export function deviceHarness<T extends { harness: string; installed: boolean; loggedIn: boolean; billing?: "plan" | "usage" }>(h: T): T & { canBePartner: boolean; billing?: "plan" | "usage" } {
+export function deviceHarness<T extends { harness: string; installed: boolean; loggedIn: boolean; billing?: "plan" | "usage"; trouble?: { kind: string } }>(h: T): T & { canBePartner: boolean; billing?: "plan" | "usage" } {
   const info = isHarnessId(h.harness) ? HARNESSES[h.harness] : undefined;
   const billing = h.billing ?? (h.loggedIn ? info?.billing : undefined);
-  return { ...h, canBePartner: !!info?.partner && h.installed && h.loggedIn, ...(billing ? { billing } : {}) };
+  // D549: an agent that refuses to run as root here can't carry the partner here either.
+  return { ...h, canBePartner: !!info?.partner && h.installed && h.loggedIn && h.trouble?.kind !== "root", ...(billing ? { billing } : {}) };
 }

@@ -209,6 +209,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
     : look === "installing" ? (h.setup?.pct ? `${t("ag.installing")} ${h.setup.pct}%` : t("ag.installing"))
     : look === "queued" ? t("ag.queued")
     : look === "failed" ? t(`ag.failed.${h.setup?.reason ?? "failed"}`, dv.name)
+    : look === "cant" ? t("ag.trouble.root")
     : tr ? t(tr.word, ...tr.args)
     : t("ag.missing");
   const installLabel = tr?.button === "update" ? t("ag.update") : tr?.button === "reinstall" ? t("ag.reinstall") : t("ag.install");
@@ -236,6 +237,8 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
         ) : null}
       </div>
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
+      {/* D549: why it won't run there, and what fixes it, in plain words; no button pretends otherwise. */}
+      {look === "cant" && <div class="ag-detail">{t("ag.trouble.root.why", name)}</div>}
       {/* D371: its command line is big; say so before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
       {/* D416: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}

@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import pkg from "../package.json" with { type: "json" };
 import { parseArgs, type Args } from "./args.ts";
 import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./desktop.ts";
-import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
+import { ROOT_FIX, ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
 import { cleanName, readPersonaFile, removeOldHints, writePersonaFile } from "./firstrun.ts";
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
 import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, notReached, type TalkCtx } from "./talk.ts";
@@ -546,6 +546,8 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
   if (pub) rows.splice(1, 0, [t("pair.address"), pub]);
   console.log("\n" + box(t("headless.ready", { name, device: thisComputer() }), rows, style) + "\n");
   if (!isLoopback(bind)) console.log("  " + t("headless.public", { host: `${bind}:${port}` }));
+  // D549: started as root: said once, plainly, with the way to an ordinary user (journald keeps it).
+  if (process.getuid?.() === 0) console.log("  " + t("headless.root", { fix: ROOT_FIX }));
   console.log("  " + t("headless.next") + "\n");
 }
 

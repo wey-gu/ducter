@@ -132,7 +132,7 @@ export interface DevicesView {
   refresh(): void;
   /** This machine's AI agents as last probed (undefined before the first probe); a stale
    *  result starts a fresh probe in the background. */
-  harnessesNow(): { harness: string; loggedIn: boolean; installed?: boolean; version?: string }[] | undefined;
+  harnessesNow(): { harness: string; loggedIn: boolean; installed?: boolean; version?: string; trouble?: { kind: string } }[] | undefined;
   stop(): void;
 }
 
@@ -465,6 +465,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
                 ...(h.installable && !h.installed ? { installable: true } : {}),
                 ...(h.setup ? { setup: h.setup } : {}),
                 ...(h.login ? { login: h.login } : {}),
+                // D549: it won't run as root, and Ducter runs as root there.
+                ...(h.trouble ? { trouble: h.trouble } : {}),
               }),
             ),
           ),

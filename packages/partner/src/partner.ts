@@ -53,7 +53,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
 import { roomFor } from "../../protocol/src/resources.ts";
 import type { DeviceResources } from "../../protocol/src/index.ts";
@@ -2576,6 +2576,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D479: the task whose work this opens again, as the partner recorded it: it must be one.
       const replaces = typeof raw.replaces === "string" && raw.replaces.trim() ? raw.replaces.trim() : undefined;
       if (replaces && !core.tasks.get(replaces)) return { ok: false, error: `Not opened: there is no task ${replaces}. replaces takes a task id from [tasks] or task_find.` };
+      // D549: the work opened again on the very agent and computer whose start failed for a cause that
+      // holds there (refuses root, not installed, not signed in, too old): it would fail the same way.
+      const wasCant = replaces ? core.tasks.get(replaces)?.cant : undefined;
+      if (wasCant && SAME_CAUSE_WHYS.has(wasCant.why) && args.harness && args.harness === wasCant.harness && sameComputerAs(wasCant, (raw.place as { device?: string } | undefined)?.device))
+        return { ok: false, error: `Not opened: ${harnessName(args.harness)} couldn't start on ${wasCant.computer || "that computer"} for a reason that doesn't change by trying again (${wasCant.why.replace(/_/g, " ")}). Open it on another agent signed in there ([devices]), or on another computer the user allows; only if none can, ask the user once, in one short line, with the one real fix.` };
       // D479, D478: what became of the task it replaces (core retires it from the recorded replaces, by id): a fact.
       const replacedFact = () => {
         if (!replaces) return {};
@@ -6235,7 +6240,18 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
   ].join("\n");
 }
 
-type DeviceAgents = { id: string; installed?: boolean; loggedIn: boolean; version?: string }[];
+/**
+ * D549: a task opened again names the computer its predecessor couldn't start on: no device given
+ * (it stays where it was), that computer's id ("local" the home), or its name as the partner writes it.
+ */
+export function sameComputerAs(cant: { device?: string; computer: string }, device: string | undefined): boolean {
+  if (!device) return true;
+  const d = device.trim().toLowerCase();
+  return d === (cant.device ?? "local").toLowerCase() || (!!cant.computer && d === cant.computer.trim().toLowerCase());
+}
+
+/** D549: trouble: why an agent that is there can't take a task there ("root": it refuses root, and Ducter runs as root). */
+type DeviceAgents = { id: string; installed?: boolean; loggedIn: boolean; version?: string; trouble?: { kind: string } }[];
 /** D478: an agent's usage limit on one computer, as core knows it (agentLimits). */
 export type AgentLimitFact = { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] };
 /** D478: a reset time in the person's own clock, with the day when it isn't today ("23:00", "Tue 09:00"). */
@@ -6256,9 +6272,12 @@ const limitWords = (l: AgentLimitFact | undefined, now: Date) => {
 /** D476, D477: signed in, and installed but not signed in, so "isn't set up there" is never said of an agent that is. */
 const agentsWords = (hs: DeviceAgents | undefined, none: string, limits?: AgentLimitFact[], dev?: string, now = new Date()) => {
   const lim = (id: string) => limitWords(limits?.find((l) => l.device === dev && l.harness === id), now);
-  const ai = (hs ?? []).filter((h) => h.loggedIn).map((h) => `${h.id}${lim(h.id)}`).slice(0, 6);
-  const idle = (hs ?? []).filter((h) => !h.loggedIn && h.installed).map((h) => h.id).slice(0, 6);
-  return `${ai.length ? `, signed in: ${ai.join(", ")}` : none}${idle.length ? `, installed but not signed in: ${idle.join(", ")}` : ""}`;
+  // D549: one that refuses root where Ducter runs as root is neither: it can't take a task there at all.
+  const cant = (hs ?? []).filter((h) => h.trouble?.kind === "root").map((h) => h.id).slice(0, 6);
+  const ok = (hs ?? []).filter((h) => h.trouble?.kind !== "root");
+  const ai = ok.filter((h) => h.loggedIn).map((h) => `${h.id}${lim(h.id)}`).slice(0, 6);
+  const idle = ok.filter((h) => !h.loggedIn && h.installed).map((h) => h.id).slice(0, 6);
+  return `${ai.length ? `, signed in: ${ai.join(", ")}` : none}${idle.length ? `, installed but not signed in: ${idle.join(", ")}` : ""}${cant.length ? `, can't run here (Ducter runs as root on this computer and it refuses root): ${cant.join(", ")}` : ""}`;
 };
 /** D477: the code on one computer, compact ("code: nowledge-mem (nowledge-co/mem), wey-gu/ducter"); none known: says so. */
 const CODE_MAX = 6;

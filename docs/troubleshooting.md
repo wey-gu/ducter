@@ -49,7 +49,11 @@ have the folder the task was to work in. **Clone it onto {computer}** puts the c
 folder on that computer and starts there; **Choose a folder on {computer}** lets you pick one that is
 already on it, and the task starts in it. **{agent} isn't installed** or **isn't signed in** on that
 computer: the button installs it or signs it in there; then tap **Try again**. **Ducter on {computer}
-is too old**: update it there, then **Try again**. **Another git kept the repository busy**: something
+is too old**: update it there, then **Try again**. **{agent} won't run as root on {computer}**:
+Ducter runs as `root` there, and Claude Code refuses that. Another agent takes the work, and the
+fix is to install Ducter there as an ordinary user ([Signed in as root](install.md#signed-in-as-root)).
+When an agent stops the moment it starts, the page shows its own words, such as Claude Code's
+`--dangerously-skip-permissions cannot be used with root/sudo privileges`. **Another git kept the repository busy**: something
 (an editor, another git program) had the repository locked the whole time. Ducter already waited and
 tried again; **Clear it and try again** removes only the lock file git left, and only while no git is
 running. When nobody knows yet, the page names the agent and the computer with the first line of
@@ -96,8 +100,8 @@ every command, for example `ducter status --port 7790`.
 
 `~/.local/bin` isn't on your `PATH` in this terminal yet. The installer added it to your shell's
 profile, so a new Terminal window has it; in this one, run
-`export PATH="$HOME/.local/bin:$PATH"`, or use `~/.local/bin/ducter`. (As `root` on a server
-the installer also links `/usr/local/bin/ducter`, which every shell finds.)
+`export PATH="$HOME/.local/bin:$PATH"`, or use `~/.local/bin/ducter`. (Installed from a `root`
+login? Ducter belongs to the ordinary user it made: `sudo -iu ducter` first.)
 
 ### Ducter is resting and nothing happens
 

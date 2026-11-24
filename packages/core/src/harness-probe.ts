@@ -48,6 +48,8 @@ export interface HarnessProbeEnv {
   piBundled?: () => string | undefined;
   /** D416: a link that is there but points at nothing (default: the file system's). */
   dangling?: (p: string) => boolean;
+  /** D549: the user id Ducter runs as here (default process.getuid; 0 is root). */
+  uid?: () => number | undefined;
   /** D416: where a Mac's apps are (default /Applications and ~/Applications). */
   apps?: string[];
 }
@@ -338,6 +340,10 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     ["deepseek-harness", dsh],
     ["antigravity", agy],
   ];
+  // D549 (research/225): an agent that refuses to run as root, on a computer where Ducter runs as
+  // root, is there and may be signed in, but can't take a task here: said as trouble "root".
+  const root = (o.uid ?? (() => process.getuid?.()))() === 0;
+  const refusesRoot = (h: RawHarness): RawHarness => (root && h.installed && (HARNESS_FACTS as Record<string, { root?: { value: { as: string } } }>)[h.harness]?.root?.value.as === "refuses" ? { ...h, trouble: { kind: "root" } } : h);
   // D156: an installed copy that answers --version says which version it is and how it updates.
   const withVersion = async (h: RawHarness): Promise<RawHarness> => {
     if (!h.installed) return h;
@@ -351,6 +357,7 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
         run()
           .catch((): RawHarness => ({ harness, installed: false, loggedIn: false }))
           .then(withVersion)
+          .then(refusesRoot)
           .then((h) => deviceHarness(h)),
       ),
   );

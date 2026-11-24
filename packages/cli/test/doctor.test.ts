@@ -283,6 +283,20 @@ describe("doctor on a Linux server", () => {
     expect(byId(r, "devices").detail).toBe("1 connected");
   });
 
+  // D549 (hel, 2026-11-24): Ducter as root. It works, but Claude Code won't take a task there.
+  test("as root: a Runs as row says so with the way off root, and Claude Code reads won't run as root", async () => {
+    const signedIn = { "claude auth status": { code: 0, stdout: JSON.stringify({ loggedIn: true, authMethod: "claude.ai" }) } };
+    const root = await runDoctor(Object.assign(server({ devices: 1, out: signedIn }, svc("active", "yes")), { uid: () => 0 }), en, opts);
+    expect(byId(root, "user")).toMatchObject({ status: "warn", required: false, fix: "https://ducter.ai/docs/install#signed-in-as-root" });
+    expect(byId(root, "user").detail).toContain("Claude Code won't run here");
+    expect(byId(root, "claude")).toMatchObject({ status: "warn", detail: "installed, but it won't run as root (Ducter runs as root here)" });
+    const zhRoot = await runDoctor(Object.assign(server({ devices: 1, out: signedIn }, svc("active", "yes")), { uid: () => 0 }), translator("zh"), opts);
+    expect(byId(zhRoot, "user").label).toBe("运行身份");
+    const w = await runDoctor(Object.assign(server({ devices: 1, out: signedIn }, svc("active", "yes")), { uid: () => 1000 }), en, opts);
+    expect(byId(w, "user").status).toBe("ok");
+    expect(byId(w, "claude").status).toBe("ok");
+  });
+
   test("service on without linger is a warning with the sudo line", async () => {
     const r = await runDoctor(server({}, svc("active", "no")), en, opts);
     expect(byId(r, "service")).toMatchObject({ status: "warn", fix: `sudo loginctl enable-linger ${user}` });

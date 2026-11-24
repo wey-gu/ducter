@@ -3426,3 +3426,24 @@ Codex first, once OAR is near 1.0. See `research/17`.
   *Trigger:* the author says approvals may go without asking too.
 - [ ] **D540 live on hel:** the next steered round carries the ask in its wake, and a PR with nothing to
   change gets a review on GitHub. *Trigger:* hel on the release with D540.
+
+## Ducter as an ordinary user (D549, research/225)
+
+- [ ] **Shots of the two new rows**, before the merge: Claude Code's **Won't run as root** row on a
+  computer's card (Mac 1000 and 1400; web 1400, 390, 320; zh and en; light and dark) and the
+  **Couldn't start: … won't run as root** card with its hint and no 再试一次. *Trigger:* now, the
+  lead's review.
+- [ ] **hel as an ordinary user.** The author moves hel to the user `w` by hand. Afterwards a Claude
+  Code task starts there, `ducter doctor` says `Runs as: w`, and the phone, the Mac and the workers
+  reconnect. *Trigger:* the author's move.
+- [ ] **DeepSeek Harness as root, live.** Its `root` fact is INFERRED (no root check in OAR's runtime).
+  *Trigger:* a DSH build that installs in a throwaway container.
+- [ ] **An older root home's own way off root.** Today the docs say: install again as an ordinary
+  user, sign the agents in again, connect the devices. A guided move (D504's plan, a same-computer
+  case: data, tools, the agents' sign-ins, the unit, the task places under /root) waits for a second
+  root home besides hel. *Trigger:* someone else's home is found running as root.
+- [ ] **The same-cause guard for a pinned agent with no `replaces`.** task_open refuses the same
+  agent on the same computer only when `replaces` names the failed task; a fresh task_open pinning
+  Claude Code on a root home is stopped by the chooser (`refuses_root`), but a cause the probe can't
+  see (an agent that exits at once for another reason) isn't. *Trigger:* a second loop like hel's
+  with a cause the probe doesn't know.

@@ -99,6 +99,9 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 		}
 		return a.L.T("where.reason.always_on.0")
 	case "signed_in":
+		if w.Site != "" && w.Always {
+			return a.L.T("where.reason.signed_in.always", w.Site) // D505 (rev.)
+		}
 		if w.Site != "" {
 			return a.L.T("where.reason.signed_in", w.Site)
 		}

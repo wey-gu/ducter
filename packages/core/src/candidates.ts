@@ -407,6 +407,42 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
   return { ...base, kind: c.home ? "home" : "always_on", ...(c.home ? {} : { other: other.comp.name }) };
 }
 
+/** The site a host belongs to, as Signed-in sites keep it (www. off, lower case). */
+const siteKey = (s: string) => s.replace(/^www\./, "").toLowerCase();
+const signedInto = (c: Computer, site: string) => (c.sites ?? []).some((s) => s === site || site.endsWith("." + s));
+
+/**
+ * D505: a task's browser needs the person signed in to a site, on a computer the person doesn't
+ * sit at (a server home: no Chrome of theirs, and typing a password there would hand it to the
+ * server). Where the step goes instead, if anywhere: another computer that is awake and browses
+ * with the person's sessions already there. Least access first (where.md §4.3 step 4): Ducter's own
+ * browser there already signed in to the site, then the person's own Chrome. Buying or booking
+ * (D436) never goes to their Chrome: the stop and the pay gate are code only in Ducter's browser.
+ * `asleep`: no awake computer can, and one that could is asleep (said, never waited on silently).
+ * Undefined: nothing to carry it to; the sign-in card stays where the task is (D151).
+ */
+export function signInRoute(o: { computers: Computer[]; here: string | undefined; site: string; buy?: boolean }): { to: Computer; uses: "chrome" | "ducter" } | { asleep: Computer } | undefined {
+  const here = o.computers.find((c) => isComputer(c, o.here));
+  // A Mac is where the person sits: signing in there stays on that Mac (today's card).
+  if (!here || here.mac) return undefined;
+  const site = siteKey(o.site);
+  if (!site || signedInto(here, site)) return undefined;
+  const can = (c: Computer): "chrome" | "ducter" | undefined => {
+    if (c.id === here.id || !c.web?.on) return undefined;
+    if (signedInto(c, site)) return "ducter";
+    if (!o.buy && c.mac && c.web.where === "chrome") return "chrome";
+    return undefined;
+  };
+  const rows = o.computers
+    .map((c) => ({ c, uses: can(c) }))
+    .filter((r): r is { c: Computer; uses: "chrome" | "ducter" } => !!r.uses)
+    .sort((a, b) => (a.uses === b.uses ? 0 : a.uses === "ducter" ? -1 : 1));
+  const awake = rows.find((r) => r.c.state === "awake");
+  if (awake) return { to: awake.c, uses: awake.uses };
+  const asleep = rows.find((r) => r.c.state === "asleep");
+  return asleep ? { asleep: asleep.c } : undefined;
+}
+
 /** A pick: who, on which computer, and why. */
 export interface BodyPick {
   harness: string;

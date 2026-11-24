@@ -5866,6 +5866,12 @@ button.dev-name {
 .dev-site { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
 .dev-site-what { flex: 1; min-width: 0; }
 .dev-site-name { font-size: var(--sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* D505 (rev.): Straight to your Chrome: one line per site on the note's own left edge, a quiet Remove at the right. */
+.chrome-sites { display: flex; flex-direction: column; }
+.chrome-site { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 40px; }
+.chrome-site + .chrome-site { border-top: 1px solid var(--line-soft); }
+.chrome-site .dev-site-name { flex: 1; min-width: 0; }
+.chrome-site .danger-text { margin-right: -8px; }
 
 /* ---------- D161: the device card as a character sheet (design/prototypes/device-card.html) ---------- */
 .plist { display: flex; flex-direction: column; padding: 6px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }

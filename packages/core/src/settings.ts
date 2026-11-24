@@ -53,6 +53,8 @@ interface SettingsFile {
   localAgents?: boolean;
   /** D451: the first-time lines already met, on any device. */
   met?: string[];
+  /** D505 (rev.): sites whose sign-ins go straight to the person's own Chrome on their Mac. */
+  chromeSites?: string[];
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
@@ -116,6 +118,8 @@ export interface SettingsStore extends SettingsApi {
   defaultAfterMs(): number;
   /** The user (or DUCTER_PARTNER_HARNESS) chose what the partner thinks with; else it's the default. */
   brainChosen(): boolean;
+  /** D505 (rev.): 换过去 / Move it there on a site's first sign-in card: its sign-ins go straight to the person's Chrome from now on. */
+  rememberChrome(site: string): void;
 }
 
 export function openSettings(opts: {
@@ -179,6 +183,8 @@ export function openSettings(opts: {
       ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
       // D332: one switch; a stored "team" (D170) reads as on. D334: 答应 per sender.
       peers: { reach: (data.peers?.reach as string) === "off" ? "off" : "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [], ...(data.peers?.allowed?.length ? { allowed: data.peers.allowed } : {}) },
+      // D505 (rev.): only when there is one (Settings › 上网 lists them, each with 移除 / Remove).
+      ...(data.chromeSites?.length ? { chromeSites: data.chromeSites } : {}),
     };
   };
   /** D170: a change to who may reach the partner, from a client or from the partner itself. */
@@ -313,6 +319,14 @@ export function openSettings(opts: {
       changed();
     },
     defaultAfterMs: () => get().defaultAfterMin * 60_000,
+    rememberChrome(site) {
+      const s = site.trim().toLowerCase().slice(0, 200);
+      const had = data.chromeSites ?? [];
+      if (!s || had.includes(s)) return;
+      data.chromeSites = [...had, s].slice(-200);
+      save();
+      changed();
+    },
     localAgents: () => data.localAgents !== false,
     setLocalAgents(on) {
       if ((data.localAgents !== false) === on) return;
@@ -370,6 +384,17 @@ export function openSettings(opts: {
         if (next.length !== had.length) (data.met = next), did.push("met");
       }
       if (setPeers(patch.peers as Partial<PeersSettings> | undefined)) did.push("peers");
+      // D505 (rev.): a patch only takes sites out (移除 / Remove); only the card's Go adds one.
+      if (Array.isArray(patch.chromeSites)) {
+        const had = data.chromeSites ?? [];
+        const keep = new Set(patch.chromeSites.filter((x): x is string => typeof x === "string").map((x) => x.trim().toLowerCase()));
+        const next = had.filter((x) => keep.has(x));
+        if (next.length !== had.length) {
+          if (next.length) data.chromeSites = next;
+          else delete data.chromeSites;
+          did.push("chromeSites");
+        }
+      }
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");
       }

@@ -1132,8 +1132,8 @@ func (a *App) abilitySpec(c *ui.Context, card string, dv *protocol.DeviceView, a
 		if id == protocol.AbilityWeb && ab.Where == protocol.WhereDucter {
 			sp.info = func() {
 				a.infoText(c, a.L.T(about))
-				a.tryRow(c, dv) // D154: 试一下
-				a.sitesList(c)  // D151: the sites signed in to
+				a.tryRow(c, dv)    // D154: 试一下
+				a.sitesList(c, dv) // D151: the sites signed in to
 			}
 		}
 	case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:

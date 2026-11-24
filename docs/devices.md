@@ -185,7 +185,15 @@ When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*
 card has a chip **Helps Ducter with tasks**, and **Settings › Where it runs** has the same switch: **Let this
 Mac help Ducter with tasks**. Turn it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
 Code and others), its repos and its browsers: *"run it on my Mac"* now works, and so do errands
-that need the sites you're signed in to in your Chrome. It keeps running in the background,
+that need the sites you're signed in to in your Chrome. If a task on hel comes to a page that
+wants you signed in, and your Mac is awake and signed in there already, Ducter asks once for that
+site: **Continue on {your Mac}, in your Chrome where you're signed in?** Tap **Move it there** and
+the task carries on in your Mac's Chrome; its line says **Continued on {your Mac}**, and from then
+on that site goes straight to your Chrome without asking. **I'll sign in here** signs in on hel as
+before. The sites you said yes to are listed under **Signed-in sites** as **Straight to your
+Chrome**; **Remove** one and Ducter asks again next time. Your sign-ins stay on your Mac: hel only gets back what the pages say. Buying still stops
+at the checkout for your own tap, and if your Mac is asleep, hel asks you to sign in as before.
+It keeps running in the background,
 starts when you log in, and starts again if it stops. It only does tasks: it never sees your
 conversation. Turn it off and it stops, and hel forgets it. If tasks are still running on it,
 Ducter asks first, and **After they finish** is the default. From then on, every task says which

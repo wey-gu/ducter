@@ -416,7 +416,9 @@ type App struct {
 	// until it goes away.
 	PuttingIn     bool
 	installedSaid bool
-	Quit          func()
+	// toastAt is where this frame's place said its toasts go (D527, toasts.go).
+	toastAt toastPlace
+	Quit    func()
 	// ReportProblem collects diagnostics to attach (Help › Report a
 	// problem…); nil opens a new issue instead.
 	ReportProblem func()
@@ -610,6 +612,7 @@ func (a *App) View(c *ui.Context) {
 	a.shortcuts(c)
 	a.titleTick(c)
 	a.sayInstalled(c)
+	a.toastAt = toastPlace{} // the place says again where its toasts go
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
 		case a.PuttingIn:
@@ -657,6 +660,7 @@ func (a *App) View(c *ui.Context) {
 	}
 	a.viewer(c)     // D206: a picture, over everything
 	a.fileViewer(c) // D239: a file a task showed
+	a.toastSlot(c)  // D527: every toast, in the one slot over the place's own content
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On

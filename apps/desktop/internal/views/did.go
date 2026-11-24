@@ -167,7 +167,7 @@ func (a *App) didView(c *ui.Context) {
 	}, nil)
 	res := a.S.Did.Result
 	var field ui.Element
-	ui.Scroll(c.Key("did-scroll")).Grow(1).MinHeight(0).Children(func() {
+	a.toastsOver(ui.Scroll(c.Key("did-scroll")).Grow(1).MinHeight(0)).Children(func() {
 		ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 			ui.Column(c.Key("did-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 				uiText(c.Key("did-h"), a.L.T("did.title")).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).

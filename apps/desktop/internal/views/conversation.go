@@ -1007,8 +1007,8 @@ func (a *App) composer(c *ui.Context) {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Children(func() {
 			a.composerBox(c, composerOpts{
 				key: "composer", draft: &a.draft, placeholder: ph, label: label, autoFocus: true, focus: a.focusComposer,
-				mentions: &mentionPlace{}, // D534
-				box: func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
+				mentions: &mentionPlace{},                                          // D534
+				box:      func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
 				before: func() {
 					if over {
 						a.dropHint(c)

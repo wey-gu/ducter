@@ -530,8 +530,8 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 			ui.Row(c).Children(func() {
 				a.composerBox(c, composerOpts{
 					key: "taskcomposer:" + task.ID, draft: &draft, placeholder: place, label: a.L.T("composer.task"), lines: 6, focus: a.focusComposer,
-					mentions: &mentionPlace{where: task.ID, task: true}, // D534
-					box: func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
+					mentions: &mentionPlace{where: task.ID, task: true},              // D534
+					box:      func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
 					before: func() {
 						if over {
 							a.dropHint(c)

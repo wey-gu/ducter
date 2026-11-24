@@ -688,7 +688,7 @@ func (a *App) mentionPop(c *ui.Context, key string, mp *mentionPlace, box ui.Ele
 		}
 		n := -1
 		for si, s := range secs {
-			ui.Column(c.Key("mp-sec:"+s.key)).Children(func() {
+			ui.Column(c.Key("mp-sec:" + s.key)).Children(func() {
 				if si > 0 {
 					ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 4, 0)
 				}
@@ -706,9 +706,19 @@ func (a *App) mentionPop(c *ui.Context, key string, mp *mentionPlace, box ui.Ele
 		}
 		ui.Box(c.Key("mp-keys-rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 0, 0)
 		ui.Row(c.Key("mp-keys")).Gap(t.S3).Padding(8, 10, 4, 10).AccessHidden(true).Children(func() {
-			for _, kk := range [][2]string{{"↑ ↓", "mention.keys.walk"}, {"↩", "mention.keys.pick"}, {"esc", "mention.keys.close"}} {
-				ui.Row(c.Key("k:"+kk[1])).Gap(4).AlignItems(ui.Center).Children(func() {
-					uiText(c, kk[0]).Font(t.Mono).FontSize(11).TextColor(t.InkSoft).Padding(0, 4).Radius(5).Background(t.Sunken).SingleLine()
+			// Each key's cap drawn (never a symbol iOS or macOS draws as an emoji).
+			keyCap := func(key, mark string) {
+				ui.Box(c.Key("cap:"+key)).Size(18, 16).Radius(5).Background(t.Sunken).Draw(drawKeyCap(mark, t.InkSoft))
+			}
+			for _, kk := range [][2]string{{"up down", "mention.keys.walk"}, {"return", "mention.keys.pick"}, {"esc", "mention.keys.close"}} {
+				ui.Row(c.Key("k:" + kk[1])).Gap(4).AlignItems(ui.Center).Children(func() {
+					if kk[0] == "esc" {
+						uiText(c, "esc").Font(t.Mono).FontSize(11).TextColor(t.InkSoft).Padding(0, 4).Radius(5).Background(t.Sunken).SingleLine()
+					} else {
+						for _, m := range strings.Fields(kk[0]) {
+							keyCap(kk[1]+m, m)
+						}
+					}
 					uiText(c, a.L.T(kk[1])).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			}
@@ -858,7 +868,9 @@ func drawKind(kind string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
 				path.LineTo(x(pts[i]), y(pts[i+1]))
 			}
 		}
-		circle := func(cx, cy, rr float32) { p.Stroke(ui.Rect{X: x(cx - rr), Y: y(cy - rr), W: 2 * rr * s, H: 2 * rr * s}, col, rr*s, w) }
+		circle := func(cx, cy, rr float32) {
+			p.Stroke(ui.Rect{X: x(cx - rr), Y: y(cy - rr), W: 2 * rr * s, H: 2 * rr * s}, col, rr*s, w)
+		}
 		rect := func(x0, y0, ww, hh, rad float32) {
 			p.Stroke(ui.Rect{X: x(x0), Y: y(y0), W: ww * s, H: hh * s}, col, rad*s, w)
 		}
@@ -943,4 +955,34 @@ func (a *App) closePops() bool {
 		}
 	}
 	return closed
+}
+
+// drawKeyCap is a key's mark on its cap: up, down, return.
+func drawKeyCap(mark string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var path ui.Path
+		switch mark {
+		case "up":
+			path.MoveTo(cx, cy+3.5)
+			path.LineTo(cx, cy-3.5)
+			path.MoveTo(cx-2.5, cy-1)
+			path.LineTo(cx, cy-3.5)
+			path.LineTo(cx+2.5, cy-1)
+		case "down":
+			path.MoveTo(cx, cy-3.5)
+			path.LineTo(cx, cy+3.5)
+			path.MoveTo(cx-2.5, cy+1)
+			path.LineTo(cx, cy+3.5)
+			path.LineTo(cx+2.5, cy+1)
+		default:
+			path.MoveTo(cx+3, cy-3.5)
+			path.LineTo(cx+3, cy+0.5)
+			path.LineTo(cx-3, cy+0.5)
+			path.MoveTo(cx-1, cy-1.5)
+			path.LineTo(cx-3, cy+0.5)
+			path.LineTo(cx-1, cy+2.5)
+		}
+		p.StrokePath(&path, 1.3, col)
+	}
 }

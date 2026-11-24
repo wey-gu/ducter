@@ -287,12 +287,18 @@ function MentionPop(p: { pop: Pop; sections: PopSection[]; waiting: boolean; sel
       {!p.sheet && !empty && (
         <div class="mp-keys" aria-hidden="true">
           <span class="mp-k">
-            <kbd>↑</kbd>
-            <kbd>↓</kbd>
+            <kbd>
+              <KeyMark k="up" />
+            </kbd>
+            <kbd>
+              <KeyMark k="down" />
+            </kbd>
             <span>{t("mention.keys.walk")}</span>
           </span>
           <span class="mp-k">
-            <kbd>↩</kbd>
+            <kbd>
+              <KeyMark k="return" />
+            </kbd>
             <span>{t("mention.keys.pick")}</span>
           </span>
           <span class="mp-k">
@@ -302,6 +308,16 @@ function MentionPop(p: { pop: Pop; sections: PopSection[]; waiting: boolean; sel
         </div>
       )}
     </div>
+  );
+}
+
+/** A key's drawn mark on its cap (never a symbol iOS draws as an emoji). */
+function KeyMark({ k }: { k: "up" | "down" | "return" }) {
+  const d = k === "up" ? "M5 8.5V2.5M2.5 5L5 2.5 7.5 5" : k === "down" ? "M5 1.5v6M2.5 5L5 7.5 7.5 5" : "M8 2v3.2a1 1 0 01-1 1H2.5M4.5 4.2L2.5 6.2l2 2";
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d={d} fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
   );
 }
 

@@ -18,7 +18,7 @@ Type **@** and a list opens above what you're writing:
 - **Partners**: your other partners.
 - **PRs and issues**: the ones your tasks opened or started from.
 
-Use ↑ and ↓ to choose, Return or Tab to pick, Esc to close, or just click. What you picked shows
+Use the up and down arrow keys to choose, Return or Tab to pick, Esc to close, or just click. What you picked shows
 in your words, and Ducter gets the real thing with them: the task's latest result, the PR's state.
 
 - **To your partner**, "@that task check it in Safari too" goes to that task, even if you were

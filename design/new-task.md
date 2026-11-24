@@ -99,7 +99,7 @@ found or cloned) picks the agent. For No folder it moves the computer, as D157.
 
 **The Ducter folder (D204).** Each computer has one visible folder of Ducter's own, `~/ducter`
 (like Conductor's `~/conductor`): `projects/<repo>` for the projects Ducter cloned there,
-`worktrees/<repo>/<branch slug>` for new tasks' working copies (tasks from before keep theirs in
+`worktrees/<repo>/<branch slug>` for new tasks' working copies (the slug ASCII, D522; tasks from before keep theirs in
 `~/.ducter/worktrees`). Which folder: `$DUCTER_FOLDER` when set; a Ducter with a data folder of its
 own keeps it in `<dataDir>/ducter`; else the first of `~/ducter`, `~/ducter-work`, `~/ducter-work-2` …
 that carries Ducter's marker `.ducter-folder`, or else the first that is missing or holds nothing but

@@ -273,10 +273,21 @@ export const CLAUDE_COMPACT_BUFFER = 13_000;
  *    linux_arm64 (linux_<arch>_musl on musl);
  *  - app: the desktop app (the IDE), which carries no `agy` of its own: an app alone is "the app,
  *    not its command line"; appLinks: the links an older app put there (dangling after an update);
- *  - token: where agy keeps its Google sign-in when there is no keyring (presence only, never read).
+ *  - token: where agy keeps its Google sign-in when there is no keyring (presence only, never read);
+ *    a Mac keeps it in the login Keychain, a Linux with a D-Bus session in its Secret Service, a
+ *    Linux without one (a server) in this file (agy 1.5.16's own notes, research/223);
+ *  - signInFloor (D523): the oldest agy Ducter signs in as it is; an older one is updated with its
+ *    own `agy update` first. 1.5.9 fixed "Authentication required" in `agy acp` after a sign-in
+ *    when settings.json names an auth method with no credential (Gemini CLI's gemini-api-key), and
+ *    a Mac sign-in whose Keychain write failed (its sign-in kept nowhere, the dialog again hourly);
+ *  - launchers (D523): what agy runs to open a browser by itself, found on PATH (VERIFIED 1.5.16 on
+ *    macOS: `open`; OAR: `xdg-open` on Linux). A sign-in carried to the person puts a do-nothing
+ *    one first, so no browser pops up on a computer they may not be at.
  */
 export const ANTIGRAVITY = {
   minVersion: "1.5.0",
+  signInFloor: "1.5.9",
+  launchers: { darwin: "open", linux: "xdg-open" } as Record<string, string>,
   bin: [".local", "bin", "agy"],
   manifest: "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/{platform}.json",
   installPage: "https://antigravity.google/docs/cli",

@@ -462,13 +462,15 @@ test("D415: as one task: titled by its own to-dos (the first, and how many more)
   expect(r.ok).toBe(true);
   expect(b.opened[0]!.title).toBe("Automatic distillation: the error says nothing… 等 1 个");
   expect(b.opened[0]!.title).not.toContain("通用设置");
-  expect(b.opened[0]!.place).toMatchObject({ kind: "repo", branch: "ducter/398-412-automatic-distillation-the-error" });
+  // D522: the numbers go with it; the runner's slug writer puts ASCII words after them.
+  expect(b.opened[0]!).toMatchObject({ todo: "398-412", place: { kind: "repo" } });
+  expect((b.opened[0]!.place as { branch?: string }).branch).toBeUndefined();
   const g = b.core.taskGroups.get(r.groupId!)!;
   expect(g.name).toBe("通用设置");
   expect(g.hand!.subject).toBe("通用设置");
   // One to-do: its own title and its own number on the branch.
   await b.ho.hand({ refs: ["acme/mem#377"] });
-  expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", place: { branch: "ducter/377-distillation-gets-slow-on-very" } /* D496: never inside a word */ });
+  expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", todo: "377" });
 });
 
 const NOTE = "确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了";

@@ -71,6 +71,8 @@ test("a sign-in's steps, its trouble and its time left, in both languages", () =
   expect(loginTrouble({ state: "failed", reason: "not_seen" })).toBe("ag.login.not_seen");
   expect(loginTrouble({ state: "failed", reason: "no_answer" })).toBe("ag.login.no_answer");
   expect(loginTrouble({ state: "failed", reason: "wrong_code" })).toBe("ag.login.wrong_code");
+  // D523: its sign-in ended well, its own check got no answer from its service.
+  expect(loginTrouble({ state: "failed", reason: "offline" })).toBe("ag.login.unreachable");
   expect(loginTrouble({ state: "failed" })).toBe("ag.login.failed");
   expect(minutesLeft(15 * 60_000, 0)).toBe(15);
   expect(minutesLeft(61_000, 0)).toBe(2);

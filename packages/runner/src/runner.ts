@@ -10,6 +10,7 @@ import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuard
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
+import { branchRules, nameBranch } from "./branch-name.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join, resolve } from "node:path";
@@ -425,6 +426,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     changes: (place) => branchChanges(place),
     archive: (place, o) => archiveWorktree(place, core.dataDir, o),
     copyFacts: (place) => copyFacts(place, core.dataDir),
+    branchRules: async (place) => (place.kind === "repo" ? branchRules(expandHome(place.repoPath)) : undefined),
     folder: localFolderOps(folders),
     shown: async (a) => readShown(a, { dataDir: core.dataDir }),
     wb: (a) => bench.op(a),
@@ -1899,8 +1901,26 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /** Opens a task; `brief` still being written (a promise) starts the session before it arrives (D120). */
+  /**
+   * D522: a new repository task's branch, named once before its place is planned: the cheap
+   * model's ASCII words from the title (and the repository's own branch convention, read where it
+   * is), else the fallback. A place that already has a branch or a worktree keeps it (a task from
+   * before, a move, a continue). Recorded on the task with its place.
+   */
+  async function nameFor(place: Place | undefined, ops: PlaceOps, taskId: string, title: string, todo?: string): Promise<{ branch: string; how: "model" | "fallback"; why?: string } | undefined> {
+    if (place?.kind !== "repo" || place.branch || place.worktree) return undefined;
+    const rules = ops.device && !ops.device.online() ? undefined : await ops.branchRules?.(place).catch(() => undefined);
+    const ask = core.branchAsk ? (prompt: string) => core.branchAsk!(prompt) : undefined;
+    const n = await nameBranch({ title, taskId, ...(todo ? { number: todo } : {}), ...(rules ? { rules } : {}), ...(ask ? { ask } : {}) });
+    if (n.how === "fallback" && ask) console.warn(`[runner] ${taskId}: branch ${n.branch} (fallback: ${n.why})`);
+    return n;
+  }
+  const withBranch = (place: Place | undefined, branch: string | undefined): Place | undefined => (branch && place?.kind === "repo" && !place.branch && !place.worktree ? { ...place, branch } : place);
+
   async function open(input: Parameters<Runner["openTask"]>[0], briefIn: string | Promise<string>, mediaIn?: Promise<MediaRef[]>): Promise<TaskCard> {
     const id = newId();
+    // D522: the branch's words are written while who does it is chosen (a repo stays where it is).
+    const naming = nameFor(input.place, opsFor(input.place), id, input.title.trim() || "Untitled task", input.todo);
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
@@ -1933,6 +1953,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
     if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
     const title = input.title.trim() || "Untitled task";
+    const named = await naming;
+    input = { ...input, place: withBranch(input.place, named?.branch) };
     // Where it runs: this machine, or a worker. D157: a worker that is asleep or can't be reached
     // right now doesn't refuse the task: it waits for it there and starts when it's back.
     const ops = opsFor(input.place);
@@ -1980,6 +2002,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.spec = withBrowser(t.base, sidecar, partnerName);
     if (input.language) t.lang = input.language;
     tasks.set(id, t);
+    if (named) logEvent(t, { role: "system", from: "runner", raw: { branchNamed: { branch: named.branch, how: named.how, ...(named.why ? { why: named.why } : {}) } } });
     if (effortDropped) {
       console.warn(`[runner] ${id}: ${effortDropped}`);
       logEvent(t, { role: "system", from: "runner", text: effortDropped, raw: { effortDropped: input.effort } });
@@ -2154,6 +2177,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (ops.device && !ops.device.online()) return { ok: false, message: `${ops.device.name} can't be reached right now.` };
     const opened = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
     if (!opened) return { ok: false, message: "This task's brief isn't in the Log." };
+    // D522: a start again keeps the name it had (never planned twice into two names), else names it now.
+    const had = opened.place?.kind === "repo" ? opened.place.branch : undefined;
+    place = withBranch(place, had ?? (await nameFor(place, ops, taskId, t.card.title))?.branch) ?? place;
     let resolved: ResolvedPlace;
     try {
       resolved = await ops.plan(place, taskId, t.card.title);

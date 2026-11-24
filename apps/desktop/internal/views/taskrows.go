@@ -270,9 +270,9 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 	label := spoken(a.L, p.verb, p.file, p.code, p.words)
 	ui.Column(c).MinWidth(0).Children(func() {
 		clicked := a.stepLine(c, label, expandable, open, func(ui.Element) {
+			// The live step draws its kind's mark like the rest: the spinner is the
+			// live line's under the steps, the one thing that moves (D530).
 			switch {
-			case live:
-				ui.Box(c).Size(16, 16).Shrink(0).Center().Children(func() { ui.Spinner(c).Size(11, 11) })
 			case bad:
 				a.glyph(c, 16, drawCrossSmall(t.Failed.Ink))
 			case r.Step == nil:
@@ -339,7 +339,17 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 		}
 		if bad && !open {
 			// The failure in words, one quiet line under the verb; the raw text when opened.
-			if w := a.failWords(r); w != "" {
+			switch w := a.failWords(r); {
+			case w == "":
+			case r.Code == 0:
+				// The tool's own words, as it said them (in its language): set as
+				// what it printed, mono on the step chips' tint, never as our prose.
+				ui.Row(c.Key("failraw")).Padding(0, 0, t.S1, 24).MinWidth(0).Children(func() {
+					ui.Box(c).Padding(2, 6).Radius(t.RadiusXS).Background(chipGround(t)).MinWidth(0).Shrink(1).Children(func() {
+						uiText(c, w).Font(t.Mono).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(2).MinWidth(0).Tooltip(w).Selectable()
+					})
+				})
+			default:
 				uiText(c, autospace(w)).FontSize(stepSize).LineHeight(leadingFor(w, 1.5)).TextColor(t.InkSoft).MaxLines(2).MinWidth(0).
 					Padding(0, 0, t.S1, 24).Tooltip(r.Hint).Selectable()
 			}

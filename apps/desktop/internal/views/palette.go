@@ -680,8 +680,14 @@ func (a *App) keycap(c *ui.Context, key, keys string) {
 	// "\x1e" and "\x1f" stand for the up and down arrow keys: drawn too.
 	mods, up := strings.CutSuffix(mods, "\x1e")
 	mods, down := strings.CutSuffix(mods, "\x1f")
+	// "⌥" is drawn too (D530: keys drawn, never typed glyphs).
+	opt := strings.Contains(mods, "⌥")
+	mods = strings.ReplaceAll(mods, "⌥", "")
 	ui.Row(c.Key("kc:"+key)).Gap(1).Padding(1, t.S1+2).Radius(5).AlignItems(ui.Center).
 		Background(t.SurfaceSunken).InsetShadow(0, -1, 0, 0, t.Line).Shrink(0).AccessHidden(true).Children(func() {
+		if opt {
+			a.glyph(c.Key("o"), 12, drawOption(t.InkMuted))
+		}
 		if mods != "" {
 			uiText(c.Key("m"), mods).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine()
 		}
@@ -695,6 +701,32 @@ func (a *App) keycap(c *ui.Context, key, keys string) {
 			a.glyph(c.Key("d"), 10, drawCaret(t.InkMuted))
 		}
 	})
+}
+
+// keyHint is a key drawn in its cap and what it does, in the small muted
+// type: the working composer's 「↩ 插一句」 and 「⌥↩ 等它做完再说」 (D530).
+func (a *App) keyHint(c *ui.Context, key, keys, words string) {
+	t := a.T
+	ui.Row(c.Key("kh:" + key)).Gap(t.S1 + 2).AlignItems(ui.Center).Shrink(0).Label(words).Children(func() {
+		a.keycap(c, key, keys)
+		uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+	})
+}
+
+// drawOption is the Option key's mark (a bar, its drop to the right, and the
+// short bar beside it), drawn.
+func drawOption(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-4.5, cy-3)
+		m.LineTo(cx-1.5, cy-3)
+		m.LineTo(cx+1.8, cy+3)
+		m.LineTo(cx+4.5, cy+3)
+		m.MoveTo(cx+1.2, cy-3)
+		m.LineTo(cx+4.5, cy-3)
+		p.StrokePath(&m, 1.3, col)
+	}
 }
 
 // drawReturn is the Return key's bent arrow, drawn.

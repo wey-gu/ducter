@@ -171,10 +171,40 @@ func chipText(s string, max int) string {
 		line = strings.TrimRight(string(cs[:i]), " ")
 		cut = true
 	}
+	if b, ok := wholeQuotes(line); !ok {
+		line, cut = b, true
+	}
 	if cut {
 		return line + "…"
 	}
 	return line
+}
+
+// wholeQuotes keeps a chip's quotes whole (D530: never 「"cat」): a quote
+// opened and not closed, by a cut or a command that came cut, takes the chip
+// back to before it; when that would leave almost nothing, the quote alone
+// goes. ok: nothing was open.
+func wholeQuotes(line string) (string, bool) {
+	cs := []rune(line)
+	open, at := rune(0), -1
+	for i := 0; i < len(cs); i++ {
+		ch := cs[i]
+		switch {
+		case ch == '\\' && open != '\'':
+			i++
+		case open != 0 && ch == open:
+			open, at = 0, -1
+		case open == 0 && (ch == '"' || ch == '\'') && (i == 0 || strings.ContainsRune(" \t=(", cs[i-1])):
+			open, at = ch, i
+		}
+	}
+	if open == 0 {
+		return line, true
+	}
+	if b := strings.TrimRight(string(cs[:at]), " "); len([]rune(b)) >= 8 {
+		return b, false
+	}
+	return strings.TrimSpace(string(cs[:at]) + string(cs[at+1:])), false
 }
 
 // chipFileKind is the kind a file chip draws: code, text, picture, data, file.

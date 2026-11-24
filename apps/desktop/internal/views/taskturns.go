@@ -526,39 +526,83 @@ func (a *App) liveWords(blocks []Block) string {
 // ---------- the working line (D268) ----------
 
 // workingLine is the transcript's foot while a turn is under way (D530): a
-// hairline, then one row: On hand's working pulse, the state in its own
-// words, and the turn's clock at the right in tabular figures, in the meta
-// line's 12. A retry says itself here instead. The live step's own row
-// above carries the spinner; this says only that it works, and how long.
+// hairline, then one muted line in the step rows' rhythm: the shared spinner
+// (the one thing on the page that moves while it works) and what it is doing
+// now in plain words with the turn's clock, 「正在跑命令，41 秒」 / "Running a
+// command, 41s"; 「还在做」 / "Still working" when its latest is words. A
+// retry says itself here instead. Never the link's blue, never a bare state.
 func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks []Block) {
 	t := a.T
-	words := a.stateLabel(task.Attention())
+	words := a.footWords(blocks)
 	if n := len(blocks); n > 0 {
-		// D271: only what the state proves: a retry, else that it works.
+		// D271: only what the state proves: a retry, else what it is on.
 		if last := &blocks[n-1]; last.K == "note" && last.Say == "retry" {
 			words = a.noteLine(last)
 		}
 	}
-	clockText := ""
 	if len(turns) > 0 {
 		if at := store.ParseTime(a.tsOf(task, turns[len(turns)-1].Seq)); !at.IsZero() {
 			c.After(time.Second)
-			clockText = a.shortDur(a.Now().Sub(at))
+			words = a.L.T("foot.live", words, a.shortDur(a.Now().Sub(at)))
 		}
 	}
 	ui.Column(c.Key("working")).Gap(t.S1).MinWidth(0).Children(func() {
 		ui.Box(c).Height(1).Background(t.LineSoft)
-		ui.Row(c).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(spoken(a.L, words, clockText)).Children(func() {
-			ui.Box(c).Size(16, 16).Shrink(0).Center().AccessHidden(true).Children(func() {
-				ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), a.aliveResting(c)))
-			})
-			uiText(c, words).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
-			ui.Spacer(c)
-			if clockText != "" {
-				uiText(c, clockText).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).AccessHidden(true)
-			}
+		ui.Row(c).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(words).Children(func() {
+			ui.Box(c).Size(16, 16).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
+			uiText(c, words).FontSize(stepSize).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 		})
 	})
+}
+
+// footWords is what the agent is doing now, said plainly for the live line:
+// its latest step's kind in the present, never its command or a tool's name
+// (the step's own row says those); 「还在做」 when its latest is words.
+func (a *App) footWords(blocks []Block) string {
+	still := a.L.T("foot.still")
+	if len(blocks) == 0 {
+		return still
+	}
+	b := &blocks[len(blocks)-1]
+	if b.K != "steps" || len(b.Lines) == 0 {
+		return still
+	}
+	l := &b.Lines[len(b.Lines)-1]
+	var r *StepRow
+	switch {
+	case l.K == "group" && len(l.Rows) > 0:
+		r = &l.Rows[len(l.Rows)-1]
+	case l.K == "group":
+		if len(l.Tally) > 0 {
+			return a.footKind(l.Tally[0].Kind, "", "")
+		}
+		return still
+	default:
+		r = l.Row
+	}
+	if r == nil {
+		return still
+	}
+	if r.Step == nil {
+		return a.L.T("foot.thought")
+	}
+	return a.footKind(r.Step.Kind, r.Step.Act, r.Step.Via)
+}
+
+func (a *App) footKind(kind, act, via string) string {
+	switch {
+	case kind == "other" && via != "":
+		return a.L.T("foot.used", serviceName(via))
+	case kind == "searched" && act == "web", kind == "web":
+		return a.L.T("foot.web")
+	case kind == "delegated":
+		return a.L.T("foot.sub")
+	}
+	switch kind {
+	case "ran", "read", "edited", "searched", "browsed", "computer", "waited":
+		return a.L.T("foot." + kind)
+	}
+	return a.L.T("foot.still")
 }
 
 // shimmerText is words at 45% with a brighter band sweeping across them,

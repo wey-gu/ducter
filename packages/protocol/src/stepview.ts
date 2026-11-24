@@ -106,7 +106,28 @@ export function chipText(s: string, max = 72): string {
     line = cs.slice(0, i > max * 0.6 ? i : max).join("").trimEnd();
     cut = true;
   }
+  const whole = wholeQuotes(line);
+  if (whole !== line) [line, cut] = [whole, true];
   return cut ? `${line}…` : line;
+}
+
+/** A chip's quotes kept whole (D530: never `"cat`): a quote opened and not closed, by a cut or a
+ *  command that came cut, takes the chip back to before it; when that would leave almost nothing,
+ *  the quote alone goes. The Mac's wholeQuotes. */
+export function wholeQuotes(line: string): string {
+  const cs = [...line];
+  let open = "";
+  let at = -1;
+  for (let i = 0; i < cs.length; i++) {
+    const ch = cs[i]!;
+    if (ch === "\\" && open !== "'") i++;
+    else if (open && ch === open) [open, at] = ["", -1];
+    else if (!open && (ch === '"' || ch === "'") && (i === 0 || " \t=(".includes(cs[i - 1]!))) [open, at] = [ch, i];
+  }
+  if (!open) return line;
+  const before = cs.slice(0, at).join("").trimEnd();
+  if ([...before].length >= 8) return before;
+  return (cs.slice(0, at).join("") + cs.slice(at + 1).join("")).trim();
 }
 
 /** A file's name and the kind its chip draws (D530): code, text, picture, data, or a plain file. */

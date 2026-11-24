@@ -50,6 +50,7 @@ type composerOpts struct {
 	tools       func() // in the row, after the words (the mic, the context ring, Stop)
 	keys        func(k ui.TextKey) bool
 	onSend      func(text string) bool // true: sent (the words are emptied)
+	sendMenu    func(m *ui.Menu)       // the send's alternates, on right-click (D530: 等它做完再说)
 	box         func(box ui.Element)   // the card, before its children (drops)
 }
 
@@ -139,7 +140,7 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			if label == "" {
 				label = a.L.T("composer.send")
 			}
-			if a.sendButton(c, label, size, state) && send(*o.draft) {
+			if a.sendButton(c, label, size, state, o.sendMenu) && send(*o.draft) {
 				*o.draft = ""
 			}
 		})
@@ -150,13 +151,18 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 // sendButton is the composer's send: the round accent button with the drawn
 // arrow. empty: resting at 45%, not pressable; sending: pressed into its
 // ledge and still, until the home has the words. It reports a click when ready.
-func (a *App) sendButton(c *ui.Context, label string, size float32, state sendState) bool {
+// menu, when given, holds the send's alternates (the one clay menu, D421) on
+// a right-click or Control-click while there is something to send.
+func (a *App) sendButton(c *ui.Context, label string, size float32, state sendState, menu ...func(m *ui.Menu)) bool {
 	t := a.T
 	b := ui.Box(c.Key("send:"+label)).Size(size, size).Radius(a.buttonRadius(size)).Label(label).
 		Role(ui.RoleButton).Shrink(0)
 	switch state {
 	case sendReady:
 		b.Cursor(ui.CursorPointer).Focusable()
+		if len(menu) > 0 && menu[0] != nil {
+			a.contextMenu(c, b, menu[0])
+		}
 		fg := a.buttonLook(c, b, btnAccent, size, t.Surface)
 		b.Draw(drawSend(fg))
 		return b.Clicked()

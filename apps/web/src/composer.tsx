@@ -6,8 +6,10 @@
 // ready (raised on its ledge), sending (pressed in until the home has the words). The look comes from
 // tokens only (app.css `.composer`, `.send`); apps/web/test/composer.test.ts fails on any other copy.
 import type { ComponentChildren, JSX } from "preact";
-import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { KeyHint } from "./controls.tsx";
+import { Menu, MenuItem } from "./menu.tsx";
 import { scaledRow } from "./text-scale.ts";
 
 const coarse = () => matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
@@ -59,13 +61,52 @@ export function AutoText(p: { value: string; onInput: (v: string) => void; place
   );
 }
 
+/** One of the send's alternates (D530): its words and whether its key takes ⌥. */
+export type SendAlt = { words: string; opt?: boolean; onPick: () => void };
+
 /** The composer's send: the round accent button with the drawn arrow. empty: resting and not
- *  pressable; sending: pressed into its ledge until the home has the words. */
-export function SendButton({ state, label, onSend }: { state: "empty" | "ready" | "sending"; label?: string; onSend: () => void }) {
+ *  pressable; sending: pressed into its ledge until the home has the words. alts: its alternates in
+ *  the one clay menu (D421), on a right-click or a long press while there is something to send. */
+export function SendButton({ state, label, onSend, alts }: { state: "empty" | "ready" | "sending"; label?: string; onSend: () => void; alts?: SendAlt[] }) {
+  const [menu, setMenu] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const held = useRef<{ timer?: ReturnType<typeof setTimeout>; opened?: boolean }>({});
+  const can = state === "ready" && !!alts?.length;
   return (
-    <button type="button" class={`btn accent icon send${state === "sending" ? " sending" : ""}`} aria-label={label ?? A.L.t("composer.send")} aria-busy={state === "sending" || undefined} disabled={state !== "ready"} onClick={() => state === "ready" && onSend()}>
-      <Arrow />
-    </button>
+    <span class="send-anchor">
+      <button
+        ref={btn}
+        type="button"
+        class={`btn accent icon send${state === "sending" ? " sending" : ""}`}
+        aria-label={label ?? A.L.t("composer.send")}
+        aria-busy={state === "sending" || undefined}
+        aria-haspopup={can ? "menu" : undefined}
+        aria-expanded={can ? menu : undefined}
+        disabled={state !== "ready"}
+        onClick={() => {
+          if (held.current.opened) return void (held.current.opened = false);
+          if (state === "ready") onSend();
+        }}
+        onContextMenu={(e) => can && (e.preventDefault(), setMenu(true))}
+        onPointerDown={(e) => {
+          if (!can || e.pointerType === "mouse") return;
+          held.current.timer = setTimeout(() => ((held.current.opened = true), setMenu(true)), 450);
+        }}
+        onPointerUp={() => clearTimeout(held.current.timer)}
+        onPointerLeave={() => clearTimeout(held.current.timer)}
+      >
+        <Arrow />
+      </button>
+      {menu && can && (
+        <Menu class="pmenu send-menu" anchor={btn} focusFirst onClose={() => setMenu(false)}>
+          {alts!.map((x) => (
+            <MenuItem key={x.words} onClick={() => (setMenu(false), x.onPick())}>
+              <KeyHint opt={x.opt} words={x.words} />
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
+    </span>
   );
 }
 
@@ -89,6 +130,8 @@ export function ComposerBox(p: {
   before?: ComponentChildren;
   tools?: ComponentChildren;
   sendLabel?: string;
+  /** D530: the send's alternates (the working task's 插一句 / 等它做完再说). */
+  sendAlts?: SendAlt[];
   autoFocus?: boolean;
   class?: string;
   onKeyDownCapture?: JSX.KeyboardEventHandler<HTMLDivElement>;
@@ -101,7 +144,7 @@ export function ComposerBox(p: {
       {p.before}
       <AutoText id={p.id} value={p.value} onInput={p.onInput} onEnter={() => state === "ready" && p.onSend()} label={p.label} placeholder={p.placeholder} autoFocus={p.autoFocus} disabled={p.sending} />
       {p.tools}
-      <SendButton state={state} label={p.sendLabel} onSend={p.onSend} />
+      <SendButton state={state} label={p.sendLabel} onSend={p.onSend} {...(p.sendAlts ? { alts: p.sendAlts } : {})} />
     </div>
   );
 }

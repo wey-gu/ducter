@@ -66,6 +66,14 @@ const think = (id: string, sAgo: number, ...thinking: string[]) => (at(sAgo), ev
   cmd(160, "gh pr view 1398 --json title,mergedAt", "", '{"title":"Memory: close on Esc"}');
   cmd(150, "bun test apps/desktop/src/memory", "Run the memory view's tests", "error: Cannot find module '@mem/ui-kit' from MemoryDetail.test.tsx", false);
   tool(id, 140, "invoke_subagent", { Description: w("在桌面版里重现 Esc 丢改动", "Reproduce the Esc data loss in the desktop app"), Prompt: "..." }, true, "");
+  if (process.env.DEMO_LIVE) {
+    // D530's live line and working composer: a command that came cut (no closing quote) and failed
+    // in the tool's own English, a context reading, and a command under way.
+    cmd(60, `bash -lc "cat apps/desktop/src/memory/MemoryDetail.test.tsx | sed -n '1,80p'`, "", "cat: apps/desktop/src/memory/MemoryDetail.test.tsx: No such file or directory", false);
+    at(50);
+    ev(id, { role: "system", text: "", raw: { kind: "context", contextTokens: 61000, contextWindow: 272000 } } as never);
+    cmd(41, "bun test apps/desktop/src/memory", "", "");
+  }
   if (process.env.DEMO_BG) {
     // D521's tray over the composer, beside the steps: two still running, two done.
     const bg = (sAgo: number, background: Record<string, unknown>) => (at(sAgo), ev(id, { role: "system", text: `${background.act} in the background`, raw: { background } } as never));

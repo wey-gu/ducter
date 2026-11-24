@@ -459,7 +459,7 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
   const at = live && task ? tsOf(task, r.seq) : NaN;
   const inner = (
     <>
-      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
+      {bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
       <span class="verb" title={p.tip || p.verb}>
         {p.verb}
       </span>
@@ -498,7 +498,7 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
       ) : (
         <div class={cls}>{inner}</div>
       )}
-      {hint && !open && <div class={`failline${hanClass(hint)}`}>{hint}</div>}
+      {hint && !open && (r.code ? <div class={`failline${hanClass(hint)}`}>{hint}</div> : <div class="failline raw" title={hint}><code>{hint}</code></div>)}
       {open && !st && (
         <div class="thought-text">
           {(r.thought ?? "")
@@ -1178,9 +1178,10 @@ function WaitLine({ task, w }: { task: Task; w: WaiterView }) {
   );
 }
 
-/** The transcript's foot while a turn is under way (D530): a hairline, then On hand's working pulse,
- *  the state in its own words and the turn's clock at the right, in the meta line's 12; a retry
- *  takes its words while it is the latest thing. The live step's row above carries the spinner. */
+/** The transcript's foot while a turn is under way (D530): a hairline, then one muted line in the
+ *  step rows' rhythm: the shared spinner (the one thing on the page that moves while it works) and
+ *  what it is doing now in plain words with the turn's clock, 「正在跑命令，41 秒」; 「还在做」 when its
+ *  latest is words; a retry takes its words while it is the latest thing. Never the link's blue. */
 function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; turns: Turn[] }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -1188,27 +1189,39 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
     return () => clearInterval(h);
   }, []);
   const last = blocks.at(-1);
-  const words = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : t(`state.${attention(task)}`);
+  const doing = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : footWords(blocks);
   const tu = turns.at(-1);
   const start = tu ? tsOf(task, tu.seq) : NaN;
-  const clockText = Number.isFinite(start) ? dur(Date.now() - start) : "";
+  const words = Number.isFinite(start) ? t("foot.live", doing, dur(Date.now() - start)) : doing;
   return (
-    <div class="work-foot" role="status" aria-label={[words, clockText].filter(Boolean).join(" ")}>
-      <span class="pulse" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </span>
+    <div class="work-foot" role="status" aria-label={words}>
+      <span class="spin sm" aria-hidden="true" />
       <span class="state" aria-hidden="true">
         {words}
       </span>
-      {clockText && (
-        <span class="clock" aria-hidden="true">
-          {clockText}
-        </span>
-      )}
     </div>
   );
+}
+
+/** What the agent is doing now, said plainly for the live line (D530): its latest step's kind in
+ *  the present, never its command or a tool's name (the step's own row says those). The Mac's
+ *  footWords. */
+export function footWords(blocks: Block[]): string {
+  const b = blocks.at(-1);
+  if (b?.k !== "steps") return t("foot.still");
+  const l = b.lines.at(-1);
+  if (!l) return t("foot.still");
+  if (l.k === "group" && !l.rows.length) return footKind(l.tally[0]?.kind ?? "");
+  const r = l.k === "group" ? l.rows.at(-1)! : l.row;
+  if (!r.step) return t("foot.thought");
+  return footKind(r.step.kind, r.step.act, r.step.via);
+}
+
+function footKind(kind: string, act?: string, via?: string): string {
+  if (kind === "other" && via) return t("foot.used", serviceName(via));
+  if ((kind === "searched" && act === "web") || kind === "web") return t("foot.web");
+  if (kind === "delegated") return t("foot.sub");
+  return ["ran", "read", "edited", "searched", "browsed", "computer", "waited"].includes(kind) ? t(`foot.${kind}`) : t("foot.still");
 }
 
 /** When a turn's prompt came, as a clock ("21:59"), or "". */

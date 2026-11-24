@@ -735,7 +735,7 @@ export function WorkHead(p: { words: string; failed: number; live: boolean; open
   const failed = p.failed > 0 ? t("work.failed", p.failed) : "";
   return (
     <button type="button" class={`work-head${p.open ? " open" : ""}`} aria-expanded={p.open} aria-label={spoken(A.L, p.words, failed)} onClick={p.onClick}>
-      {p.live ? <span class="spin sm" aria-hidden="true" /> : <StackMark />}
+      {p.live && !p.open ? <span class="spin sm" aria-hidden="true" /> : <StackMark />}
       <span class="words">{p.words}</span>
       {failed && (
         <span class="failed" title={failed} aria-hidden="true">
@@ -800,6 +800,26 @@ export function FileChip(p: { name: string; tail: string; picture?: boolean; cls
   ) : (
     <span class={cls} title={p.tail}>
       {inner}
+    </span>
+  );
+}
+
+/** D530: a key drawn in its cap and what it does, in the small muted type: the working composer's
+ *  「↩ 插一句」 and 「⌥↩ 等它做完再说」. Keys are drawn, never typed glyphs. The Mac's keyHint. */
+export function KeyHint(p: { opt?: boolean; words: string }) {
+  return (
+    <span class="key-hint">
+      <kbd aria-hidden="true">
+        {p.opt && (
+          <svg width="11" height="11" viewBox="0 0 12 12">
+            <path d="M1.5 3h3l3.3 6h2.7M7.2 3h3.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        )}
+        <svg width="11" height="11" viewBox="0 0 12 12">
+          <path d="M10 2.5v4H3M5 4.5 3 6.5l2 2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </kbd>
+      {p.words}
     </span>
   );
 }

@@ -163,7 +163,9 @@ export function keyCombo(v: unknown): string {
 
 // ---------- shell commands ----------
 
-/** `/bin/zsh -lc "…"` → the command inside (once or twice nested). */
+/** `/bin/zsh -lc "…"` → the command inside (once or twice nested): the quoted script up to its
+ *  closing quote (a redirect after it is the wrapper's), or to the end when the command came cut
+ *  before it closed, so a step never shows half a quote. */
 export function unwrapShell(cmd: string): string {
   let s = cmd.trim();
   for (let i = 0; i < 2; i++) {
@@ -171,8 +173,19 @@ export function unwrapShell(cmd: string): string {
     if (!m) break;
     let rest = s.slice(m[0].length).trim();
     const q = rest.charAt(0);
-    if ((q === '"' || q === "'") && rest.endsWith(q) && rest.length >= 2) {
-      rest = rest.slice(1, -1);
+    if (q === '"' || q === "'") {
+      let end = rest.length;
+      for (let j = 1; j < rest.length; j++) {
+        if (q === '"' && rest[j] === "\\") {
+          j++;
+          continue;
+        }
+        if (rest[j] === q) {
+          end = j;
+          break;
+        }
+      }
+      rest = rest.slice(1, end);
       if (q === '"') rest = rest.replace(/\\(["\\$`])/g, "$1");
     }
     s = rest.trim();

@@ -11,6 +11,10 @@
     {"in": "", "want": {"act": "use", "object": ""}}
   ],
   "chipText": [
+    {"in": "cat apps/desktop/src/memory/MemoryDetail.test.tsx | sed -n '1,80p", "want": "cat apps/desktop/src/memory/MemoryDetail.test.tsx | sed -n…"},
+    {"in": "\"cat apps/desktop/src/memory/MemoryDetail.test.tsx", "want": "cat apps/desktop/src/memory/MemoryDetail.test.tsx…"},
+    {"in": "git commit -m \"compaction test: wait for the flush signal\"", "want": "git commit -m \"compaction test: wait for the flush signal\""},
+    {"in": "echo don't stop", "want": "echo don't stop"},
     {"in": "gh auth status", "want": "gh auth status"},
     {"in": "cd /tmp/sitechk && python3 - <<'EOF'\nprint(1)\nEOF", "want": "cd /tmp/sitechk && python3 - <<'EOF'…"},
     {"in": "git log --oneline\n--stat", "want": "git log --oneline…"},

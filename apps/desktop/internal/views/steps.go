@@ -273,7 +273,10 @@ func keyCombo(v any) string {
 var shellWrapRe = regexp.MustCompile(`^(?:/usr/bin/env\s+)?(?:/(?:usr/)?bin/)?(?:ba|z)?sh\s+-l?c\s+`)
 var unescapeRe = regexp.MustCompile(`\\(["\\$` + "`" + `])`)
 
-// unwrapShell is the command inside `/bin/zsh -lc "…"`.
+// unwrapShell is the command inside `/bin/zsh -lc "…"`: the quoted script
+// up to its closing quote (what follows it, a redirect, is the wrapper's),
+// or to the end when the command came cut before it closed, so a step never
+// shows half a quote (「运行 "cat」).
 func unwrapShell(cmd string) string {
 	s := strings.TrimSpace(cmd)
 	for i := 0; i < 2; i++ {
@@ -282,9 +285,20 @@ func unwrapShell(cmd string) string {
 			break
 		}
 		rest := strings.TrimSpace(s[loc[1]:])
-		if len(rest) >= 2 && (rest[0] == '"' || rest[0] == '\'') && rest[len(rest)-1] == rest[0] {
+		if len(rest) >= 1 && (rest[0] == '"' || rest[0] == '\'') {
 			q := rest[0]
-			rest = rest[1 : len(rest)-1]
+			end := len(rest)
+			for j := 1; j < len(rest); j++ {
+				if q == '"' && rest[j] == '\\' {
+					j++
+					continue
+				}
+				if rest[j] == q {
+					end = j
+					break
+				}
+			}
+			rest = rest[1:end]
 			if q == '"' {
 				rest = unescapeRe.ReplaceAllString(rest, "$1")
 			}

@@ -11181,6 +11181,29 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   line-height: 1.6;
   color: var(--ink-soft);
 }
+/* D530: the tool's own words, as it said them (in its language): set as what it printed, mono on the
+   step chips' tint, two lines at most, never as our prose. */
+.turns .failline.raw {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+  background: none;
+}
+.turns .failline.raw code {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--chip-ground);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
 .turns .step .took {
   flex: none;
   display: inline-flex;
@@ -11494,8 +11517,14 @@ button.chip-file {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+/* D530: the live line's spinner sits in the 16 mark column the step rows use. */
+.work-foot > .spin.sm {
+  flex: none;
+  margin: 0 2.5px;
 }
 .work-foot .clock {
   flex: none;
@@ -11541,6 +11570,27 @@ button.chip-file {
 }
 .composer-hint .k {
   color: var(--faint);
+}
+/* D530: a key drawn in its cap and what it does (KeyHint). */
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.key-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  color: var(--ink-muted);
+  font: inherit;
 }
 /* D325: what the person held for after this turn, over the composer: small dashed chips in order,
    each its words on one line (tap to edit), 现在就说 and a quiet ×. */
@@ -13427,6 +13477,9 @@ button.chip-file {
   animation: rise 140ms var(--ease);
 }
 .pmenu { display: flex; flex-direction: column; min-width: 220px; padding: 6px; }
+/* D530: the send's alternates, pinned over the send (menu.tsx pin), its keys drawn. */
+.pmenu.send-menu { z-index: 80; min-width: 200px; }
+.pmenu.send-menu .key-hint { flex: 1; flex-direction: row-reverse; justify-content: space-between; font-size: var(--sm); color: var(--ink); gap: 16px; }
 .pmenu button {
   padding: 9px 12px;
   border: 0;
@@ -13570,7 +13623,9 @@ button.chip-file {
 /* D288 · 上下文 / Context: a quiet ring by the task's composer (ink-muted, butter once it is close,
    never red: compaction is ordinary), and the card it opens (the 工作副本 popover's shape). */
 .ctx-anchor { position: relative; display: inline-flex; flex: none; align-self: center; }
-.ctx-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; color: var(--ink-muted); transition: background var(--t-fast) var(--ease); }
+.ctx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; padding: 0 var(--s2); border-radius: var(--r-xs); color: var(--ink-muted); font-size: var(--xs); white-space: nowrap; transition: background var(--t-fast) var(--ease); }
+.ctx-btn .pct { font-variant-numeric: tabular-nums; }
+.composer-hint .ctx-anchor { margin-left: auto; }
 .ctx-btn.on { background: var(--surface-sunken); }
 @media (hover: hover), (any-hover: hover) { .ctx-btn:hover { background: var(--surface-sunken); } }
 .ctx-ring { display: block; }

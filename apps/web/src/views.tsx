@@ -38,7 +38,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton, Notice } from "./controls.tsx";
+import { DangerButton, KeyHint, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -102,7 +102,7 @@ import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
-import { ContextButton } from "./context-meter.tsx";
+import { ContextButton, hasMeter, meterOf } from "./context-meter.tsx";
 import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
@@ -1779,9 +1779,11 @@ function Composer({ taskId }: { taskId?: string }) {
     }
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
-  // D268, D325: while the task works, Return steers it (it reads it at its next step); ⌥↩ or After
-  // this holds it for after this turn; an agent that can't steer holds it either way and says so.
-  // Stop (its pause) sits beside Send. Held words are chips over the composer.
+  // D268, D325, D530: while the task works, Return steers it (it reads it at its next step); ⌥↩, or
+  // the send's own menu (right-click, a long press on a phone), holds it for after this turn; an
+  // agent that can't steer holds it either way and says so. Stop (its pause) sits beside Send, one
+  // family of clay buttons. Held words are chips over the composer.
+  const [focused, setFocused] = useState(false);
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const busy = !!task && attention(task) === "working";
   const canSend = !!value.trim() || !!pics.length;
@@ -1789,7 +1791,7 @@ function Composer({ taskId }: { taskId?: string }) {
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
   const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
-    <div class="composer-wrap" ref={wrap}>
+    <div class="composer-wrap" ref={wrap} onFocusIn={() => setFocused(true)} onFocusOut={(e) => !wrap.current?.contains(e.relatedTarget as Node) && setFocused(false)}>
       <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
@@ -1819,15 +1821,9 @@ function Composer({ taskId }: { taskId?: string }) {
             <AddPictures where={where} />
           </>
         }
+        {...(busy && steers ? { sendAlts: [{ words: t("send.steer"), onPick: () => submit() }, { words: t("send.after"), opt: true, onPick: () => submit(true) }] } : {})}
         tools={
           <>
-            {/* D288: the context meter, a quiet ring by the task's composer. */}
-            {task && <ContextButton task={task} />}
-            {busy && canSend && steers && (
-              <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
-                {t("composer.after")}
-              </button>
-            )}
             {busy && (
               <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1839,12 +1835,21 @@ function Composer({ taskId }: { taskId?: string }) {
           </>
         }
       />
-      {/* D354: the model and effort, always in sight while it can be switched; while it works, the steer hints after them. */}
-      {(busy || (task && tunable(task))) && (
-        <div class={`composer-hint${task && composerTune(task) ? " tuned" : ""}`}>
-          {task && <ComposerTune task={task} />}
-          {busy && (steers ? <span>{coarse() ? t("composer.steer.short") : t("composer.steer.hint")}</span> : <span>{t("composer.nosteer.hint", harnessName(agent))}</span>)}
-          {busy && steers && !coarse() && <span class="k">{t("composer.queue.hint")}</span>}
+      {/* D354, D530: one row under the box: the model and effort, always in sight while it can be
+          switched; while it works and the words have the focus, the two keys drawn with their short
+          words (a keyboard only); the context ring (D288) at the far end, where it never reads as
+          something loading. */}
+      {task && (busy || tunable(task) || hasMeter(meterOf(task))) && (
+        <div class={`composer-hint${composerTune(task) ? " tuned" : ""}`}>
+          <ComposerTune task={task} />
+          {busy && !steers && <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
+          {busy && steers && focused && !coarse() && (
+            <>
+              <KeyHint words={t("send.steer")} />
+              <KeyHint opt words={t("send.after")} />
+            </>
+          )}
+          <ContextButton task={task} />
         </div>
       )}
     </div>

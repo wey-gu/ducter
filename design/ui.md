@@ -575,7 +575,8 @@ A new control is added to the set (and to this table) before it is used.
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
-| A turn's work folded under one quiet line: the stack (the shared spinner while it works), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
+| A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |
+| A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
 | One step of an opened task: 28 tall, a 16 drawn mark, a plain verb in 13 medium, its object, its facts at the right edge, a chevron when it opens; hover a soft tint that pads into its own negative margin, so nothing moves (D530) | `stepLine` (`shared.go`) | `.sline > .step` in `transcript.tsx` |
 | A step's object in mono 12 on the inline code tint (`Sunken`; one step up, `Surface`, in the dark: `chipGround`, web `--chip-ground`), 20 tall, radius 8, one line cut with an ellipsis, its whole on hover; never pressable (D530) | `stepChip` (`shared.go`) | `CodeChip` (`.chip-code`) |
 | A file a step read or edited: a 12 page (or picture) mark and its name in mono 12 on the inline code tint, its tail on hover; it opens the file in Ducter's viewer (D356) when the path is known; under 480 wide a run of reads shows its first file and counts the rest (D530) | `fileChip` (`shared.go`) | `FileChip` (`.chip-file`) |
@@ -585,7 +586,7 @@ A new control is added to the set (and to this table) before it is used.
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
 | The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
-| **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, the context ring, After this, Stop), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
+| **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, Stop; D530: the context meter and the keys sit in the row under it, After this turn is the send's alternate in its menu), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
 | A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
@@ -1086,8 +1087,9 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       on the failed surface in the failed ink, context plain, "@@ path" headers bold muted, ⋯
       between hunks. A finished turn folds its work under **做了 3 分 12 秒 › / Worked for 3m 12s
       ›** (13 muted over a hairline), keeping its last words; the live one never folds. While it
-      works, the transcript ends on the working line: what it is on at 13 with a light sweeping
-      across it, the turn's clock right-aligned in tabular figures. A queued message is a dashed
+      works, the transcript ends on the live line (D530): the shared spinner, the one thing on
+      the page that moves (the live step's row draws its kind's mark; the work's head spins only
+      folded), and what it is doing now with the turn's clock in 13 muted ink, 「正在跑命令，41 秒」. A queued message is a dashed
       outline, no fill, muted words, **排队中 / Queued**. Every turn is drawn (D271: the Mac
       builds only the turns near the view; the web skips settled turns off screen).
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
@@ -1101,9 +1103,11 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does, on the same 640 measure (D268); a pending ask sits over it (D152). While it
-   works, a square **暂停 / Pause** button sits beside Send, ⌥↩ or **做完再说 / After this** queues
-   the words, and under the box **它会在下一步读到 / It reads this at its next step** with **⌥↩
-   做完再说** faint at the right. Over it, **the foot** says only the moment (D268): Esc once,
+   works, a square **暂停 / Pause** button sits beside Send (one family with it: the secondary and
+   the accent clay), ⌥↩ or the send's menu (right-click; a long press on a phone) holds the words
+   for **等它做完再说 / After this turn**, and in the row under the box, after the model chip and
+   only while the words have the focus, the keys drawn in their caps: **↩ 插一句** and **⌥↩
+   等它做完再说**; the context meter, its ring and **上下文 22%**, at the row's far end (D530). Over it, **the foot** says only the moment (D268): Esc once,
    **再按一次 Esc 就暂停** with **继续** and **暂停**; over to you, **等你回复** in the needs ink and
    the hint muted. Where it is at is the working line at the transcript's end. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the

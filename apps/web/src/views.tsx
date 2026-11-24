@@ -5,7 +5,7 @@ import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
-import { AutoText, ComposerBox } from "./composer.tsx";
+import { AutoText, ComposerBox, WordsWithRefs } from "./composer.tsx";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -24,7 +24,7 @@ import { AliveLine } from "./alive.tsx";
 import { aliveFace, aliveMotion, aliveSub, aliveWords } from "@ducter/protocol/src/alive.ts";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { FirstMeetLine } from "./first-meet.tsx";
-import { HARNESSES, isHarnessId, ownAgentSelf, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
+import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
@@ -1290,14 +1290,15 @@ function picsAspect(media: MediaRef[]): JSX.CSSProperties | undefined {
 }
 
 /** D236: the user's words, with the imprint of what they reply to pressed into the top of the bubble. */
-export function UserWords({ text, reply, cls, rk, seq, peb }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number; peb?: string }) {
+export function UserWords({ text, reply, cls, rk, seq, peb, refs }: { text: string; reply?: Bodies["user_msg"]["reply"]; cls: string; rk?: string; seq?: number; peb?: string; refs?: Bodies["user_msg"]["refs"] }) {
   // D256: under pictures (peb), the words carry the whole message's pebble, on its last line.
   const k = rk ?? peb;
-  if (!reply) return <div class={cls} dir="auto" data-reply={rk} data-seq={seq}>{text}<HoverReply k={k} /></div>;
+  // D534: what the words refer to with @ or /, drawn as chips where their names stand.
+  if (!reply) return <div class={cls} dir="auto" data-reply={rk} data-seq={seq}><WordsWithRefs text={text} refs={refs} /><HoverReply k={k} /></div>;
   return (
     <div class={`${cls} has-reply`} data-reply={rk} data-seq={seq}>
       <SentImprint r={reply} />
-      {text && <span class="words" dir="auto">{text}</span>}
+      {text && <span class="words" dir="auto"><WordsWithRefs text={text} refs={refs} /></span>}
       <HoverReply k={k} />
     </div>
   );
@@ -1383,7 +1384,7 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
             {APP_GLYPH(14)}
             <span>{t("app.about", a.name)}</span>
           </button>
-          <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
+          <UserWords text={e.user.text} reply={e.user.reply} refs={e.user.refs} cls="user" peb={rk} />
         </div>
       );
     }
@@ -1392,15 +1393,15 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
       return (
         <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
           <PassedFrom from={e.user.passed.from} />
-          <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
+          <UserWords text={e.user.text} reply={e.user.reply} refs={e.user.refs} cls="user" peb={rk} />
         </div>
       );
     // D206: the pictures stand above the words, on their own, as in a messaging app.
-    if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
+    if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} refs={e.user.refs} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (
       <div class={`user-m${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq} style={picsAspect(e.user.media)}>
         <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
-        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} /> : <HoverReply k={rk} copy={false} />}
+        {e.user.text || e.user.reply ? <UserWords text={e.user.text} reply={e.user.reply} refs={e.user.refs} cls="user" peb={rk} /> : <HoverReply k={rk} copy={false} />}
       </div>
     );
   }
@@ -1764,6 +1765,7 @@ function Composer({ taskId }: { taskId?: string }) {
       <Tray where={where} />
       <ComposerBox
         id={taskId ? "composer-task" : "composer"}
+        mentions={{ where, task: !!taskId }}
         class={!taskId && A.replying ? "has-reply" : ""}
         value={value}
         onInput={set}
@@ -1870,7 +1872,7 @@ export function HeldChips({ task, busy, steers, agent }: { task: import("./store
           <div key={h.id} class="hq" role="listitem">
             <button type="button" class="hq-words" title={t("held.edit")} dir="auto" onClick={() => setEditing({ id: h.id, text: h.text })}>
               {h.media?.length ? <span class="hq-pics">{h.media.length}</span> : null}
-              <span class="w">{h.text}</span>
+              <span class="w">{splitRefs(h.text).text}</span>
             </button>
             {(steers || !busy) && (
               <button type="button" class="btn text sm hq-now" onClick={() => A.heldOp(task.id, h.id, "now")}>
@@ -2021,7 +2023,7 @@ export function Conversation() {
           p.pics?.length ? (
             <div key={p.clientId} class={`user-m pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
               <MediaBlock pics={p.pics} side="user" ctx={{ kind: "conv" }} />
-              {p.text && <div class="user">{p.text}</div>}
+              {p.text && <div class="user"><WordsWithRefs text={p.text} refs={p.refs} /></div>}
               {/* Words are never lost (D206): they wait here with the picture until it goes. */}
               {p.failed && (
                 <div class="unsent" role="alert">
@@ -2033,7 +2035,7 @@ export function Conversation() {
           ) : (
             <div key={p.clientId} class={`user pending${p.reply ? " has-reply" : ""}${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
               {p.reply && <Imprint from={p.reply.from} quote={p.reply.part ?? p.reply.quote} pics={p.reply.pics} part={!!p.reply.part} still />}
-              {p.reply ? <span class="words">{p.text}</span> : p.text}
+              {p.reply ? <span class="words"><WordsWithRefs text={p.text} refs={p.refs} /></span> : <WordsWithRefs text={p.text} refs={p.refs} />}
             </div>
           ),
         )}

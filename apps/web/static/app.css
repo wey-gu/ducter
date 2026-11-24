@@ -22345,3 +22345,191 @@ html[data-text-size="large"] .brand-mark > svg {
   .top:has(.partners-back) .who-face { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
+
+/* ---------- D534: @ and / in the composers (composer.tsx MentionPop, RefChip; design/mentions.md) ----------
+   The words sit over a backdrop that marks each picked reference on the chip's tint (the textarea
+   keeps its own caret, IME and undo). The popover stands above the caret on the clay menu's card;
+   on a phone or a narrow window it is a sheet docked over the composer, rows a thumb can take. */
+.composer { position: relative; }
+.composer .words { flex: 1; min-width: 0; position: relative; display: flex; }
+.composer .words textarea { position: relative; width: 100%; }
+.words-marks {
+  position: absolute;
+  inset: 0;
+  padding: 10px 0;
+  overflow: hidden;
+  font-size: var(--body);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+}
+.words-marks mark {
+  color: transparent;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.mention-pop {
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + var(--s2));
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--floating), 0 0 0 1px var(--line);
+  animation: mp-in 180ms var(--ease) both;
+}
+@keyframes mp-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.mention-pop.sheet {
+  left: 0;
+  right: 0;
+  width: auto;
+  padding: 0 6px 6px;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md);
+}
+.mp-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 6px 4px 10px;
+  background: var(--surface);
+}
+.mp-grab {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.mp-title { flex: 1; font-size: var(--sm); font-weight: 700; color: var(--ink); }
+.mp-sec { display: flex; flex-direction: column; }
+.mp-sec + .mp-sec { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line-soft); }
+.mp-head { padding: 6px 10px 3px; font-size: var(--xs); font-weight: 600; color: var(--ink-muted); }
+.mp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.mp-row.on { background: var(--sunken); }
+.mp-row:active { background: var(--line-soft); }
+.mention-pop.sheet .mp-row { min-height: 48px; }
+.mp-g { flex: none; display: inline-flex; width: 16px; height: 16px; color: var(--ink-soft); }
+.mp-g.a-working, .mp-g.a-queued { color: var(--working-ink); }
+.mp-g.a-needs_you, .mp-g.a-blocked { color: var(--needs-ink); }
+.mp-g.a-done, .mp-g.a-merged { color: var(--done-ink); }
+.mp-g.a-failed, .mp-g.a-closed { color: var(--failed-ink); }
+.mp-name {
+  flex: none;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sm);
+  font-weight: 650;
+}
+.mp-name.mp-cmd { font-family: var(--mono); font-size: var(--xs); font-weight: 600; }
+.mp-sub {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.mp-wait, .mp-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.mp-breath {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  animation: mp-breath 1.6s var(--ease) infinite;
+}
+@keyframes mp-breath {
+  0%, 100% { transform: scale(0.86); opacity: 0.7; }
+  50% { transform: scale(1); opacity: 1; }
+}
+.mp-keys {
+  position: sticky;
+  bottom: -6px;
+  background: var(--surface);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  padding: 8px 10px 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.mp-k { display: inline-flex; align-items: center; gap: 4px; }
+.mp-k kbd {
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+/* A reference in a sent message: inline on the bubble, its glyph and its name. */
+.ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0 1px;
+  padding: 0 7px 0 5px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  vertical-align: baseline;
+}
+.ref-chip svg { flex: none; opacity: 0.8; }
+.ref-chip .ref-w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.ref-chip { cursor: pointer; transition: background var(--t-fast) var(--ease); }
+button.ref-chip:hover { background: color-mix(in srgb, currentColor 22%, transparent); }
+button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .mention-pop { animation: none; }
+  .mp-breath { animation: none; }
+}

@@ -106,12 +106,17 @@ const BOARD_ROWS = {
 };
 const REVIEW_TASK = { key: "rev", title: "看 nowledge-co 里请我 review 的 PR", ack: "好，每 45 分钟去看一轮，审好的先给你过目再发。", state: "working" as const, harness: "codex" };
 
+/** D534: one thing the user picked with @ or / (the label is what the words hold after @ or /). */
+export type EvalRef = { task: string; label: string } | { skill: string; about?: string } | { action: "keep" | "remind"; label: string };
+
 export type Step =
   // images (D206): pictures sent with the words, as repo-relative paths (the app's own art: no fixture binaries).
   // replyTo (D236): the user replies to the earlier message that has these words.
   // app (D405, with scenario.apps): "ask" = the first seeded app asked this (ducter.ask, on the user's tap);
   // "about" = the user typed it in that app's sheet.
-  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about" }
+  // refs (D534): what the user picked with @ or / in the composer: a seeded task by key, or one of
+  // their skills or Ducter's actions by name (the home resolves them as mentions.ts does).
+  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[] }
   // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
   | { users: UserSay[] }
   // told (D340): what the user typed straight into that task's own box before this report, oldest first.

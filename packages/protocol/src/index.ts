@@ -4,6 +4,7 @@
 
 export * from "./harnesses.ts";
 export * from "./fuzzy.ts";
+export * from "./mentions.ts";
 import type { FirstMeet } from "./first-meet.ts";
 export * from "./api-keys.ts";
 export * from "./key-routes.ts";
@@ -355,7 +356,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string } };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -1381,7 +1382,7 @@ export type ClientFrame =
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string; /** D534: what the words refer to with @ or / (mentions.ts). */ refs?: import("./mentions.ts").Ref[] } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.
@@ -1401,7 +1402,13 @@ export type ClientFrame =
   // one's decision event and its resolution, so every surface agrees with the home.
   | { t: "asks_get"; ids: string[] }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
-  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
+  | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue"; /** D534: what the words refer to with @ (mentions.ts). */ refs?: import("./mentions.ts").Ref[] }
+  // D534: the @ list for what is typed after @: tasks (on hand and earlier), Keeps, partners, PRs
+  // and issues Ducter knows, and (taskId) files in that task's place. Answered by mention_list.
+  | { t: "mention_find"; id: string; q: string; taskId?: string }
+  // D534: the / list: Ducter's actions and the person's skills (no taskId), or that task's agent's
+  // own commands and skills and Ducter's task actions. Answered by slash_list.
+  | { t: "slash_find"; id: string; taskId?: string }
   // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said
   // now (now: steered in while it works, else the next turn). The card's next on_hand answers it;
   // an id no longer held (it already went) gets an error frame "task_held: …".
@@ -1916,6 +1923,8 @@ export type ServerFrame =
   | { t: "channel_history"; events: LogEvent[]; beforeSeq: number; more: boolean }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
+  | { t: "mention_list"; id: string; items: import("./mentions.ts").MentionItem[] } // D534
+  | { t: "slash_list"; id: string; taskId?: string; entries: import("./mentions.ts").SlashEntry[]; /** the task's agent, for the section's name */ harness?: string } // D534
   | { t: "sent"; taskId: string; delivered: Delivery; clientId?: string } // ack for task_send (D325: its clientId; "queued" = held, TaskCard.held)
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).

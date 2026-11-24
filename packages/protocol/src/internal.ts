@@ -772,6 +772,18 @@ export interface HarnessPort {
   accountUsage?(harness: string): Promise<{ usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }>;
   /** D416: the agent's own sign-out (OAR runtime logout: Antigravity's ACP logout), confirmed by its own status. Never throws. */
   logout?(harness: string): Promise<{ ok: boolean; detail?: string }>;
+  /** D534: the agent's own slash commands or skills in that folder (OAR's inventories, token-free),
+   *  or undefined when it can't say (no catalog, not installed, signed out). Never throws. */
+  inventory?(harness: string, kind: "commands" | "skills", cwd: string): Promise<NativeEntry[] | undefined>;
+}
+
+/** D534: one command or skill an agent lists (OAR CommandEntry / SkillEntry). */
+export interface NativeEntry {
+  name: string;
+  description?: string;
+  source?: string;
+  /** false: the agent says a person can't run it by name. */
+  userInvocable?: boolean;
 }
 
 /** D202: one model as an AI agent lists it (OAR listModels), the disabled ones left out. */
@@ -866,6 +878,12 @@ export interface Runner {
   // reads the Log); exclude: ports never offered (Ducter's own). A write or a revert is the
   // user's own change: the task hears of it with its next turn.
   workbench?(taskId: string, req: import("./workbench.ts").WbRequest, o?: { said?: number[]; exclude?: number[]; simSaid?: boolean }): Promise<import("./workbench.ts").WbAnswer>;
+  // Optional (D534): the task's agent's own commands and skills in its place (HarnessPort.inventory
+  // with the task's folder), for the / list in its composer. Undefined when it can't say.
+  native?(taskId: string): Promise<{ harness: string; commands?: NativeEntry[]; skills?: NativeEntry[] } | undefined>;
+  // Optional (D534): an agent's own skills or commands in a folder on the home (the person's own,
+  // for the partner's / list), through the runner's harness port.
+  inventory?(harness: string, kind: "commands" | "skills", cwd: string): Promise<NativeEntry[] | undefined>;
   // Optional (D214): where a task's page is reached from the home: "here" (this machine's
   // loopback), or a fetch that carries the request to its worker. undefined: no such task.
   pageRoute?(taskId: string): { here: true } | { here: false; fetch(a: { port: number; method: string; path: string; headers: [string, string][]; body?: string }): Promise<{ status: number; headers: [string, string][]; body: string }> } | undefined;

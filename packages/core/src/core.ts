@@ -1,6 +1,7 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
 import { createWbFrames } from "./workbench.ts";
+import { createMentions } from "./mentions.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
 import { createFreeBudget } from "./free-budget.ts";
@@ -1682,6 +1683,32 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
+  // D534: @ and / in the composers: plain lookups over what the home already holds.
+  const mentions = createMentions({
+    persona: () => persona.id,
+    tasks: () => tasks.list(),
+    task: (id) => tasks.get(id),
+    past: (q, limit) => past.query(persona.id, { q, limit }).items,
+    pastItem: (id) => past.item(id),
+    pastReport: (id) => past.report(id),
+    keeps: () => (keepsRef?.all() ?? []).map((k) => ({ id: k.keepId, title: k.title, life: k.life, persona: k.persona })),
+    keep: (id) => {
+      const k = keepsRef?.get(id);
+      return k ? { id: k.keepId, title: k.title, life: k.life, say: keepsRef?.say(id) } : undefined;
+    },
+    partners: () => (partners.on() ? partners.list() : []),
+    files: async (taskId, q) => {
+      const a = await workbench.handle(taskId, { op: "find", q });
+      return a.ok && a.answer.op === "find" ? a.answer.paths : [];
+    },
+    changes: async (taskId) => {
+      const a = await workbench.handle(taskId, { op: "changes" });
+      return a.ok && a.answer.op === "changes" ? a.answer.files.map((f) => ({ path: f.path, ...(f.adds != null ? { adds: f.adds } : {}), ...(f.dels != null ? { dels: f.dels } : {}) })) : undefined;
+    },
+    native: async (taskId) => runner?.native?.(taskId),
+    // The person's own skills as their tasks see them: Claude Code's, else Codex's, on the home.
+    skills: async () => (await runner?.inventory?.("claude-code", "skills", homedir())) ?? (await runner?.inventory?.("codex", "skills", homedir())),
+  });
   const ws = createWsHandler({
     home: {
       fp: identity.fp,
@@ -1699,7 +1726,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;

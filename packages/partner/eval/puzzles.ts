@@ -791,4 +791,37 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person asks for a weekly report drafted every Monday at 9. Drafting only reads and drafts, so Ducter looks after it from now on: pass if the partner makes it at once with keep_make (at: every week, Monday, 09:00) and replies in one short English line that it will look after it (Done, I'll look after it: …). Fail if it opens a task now, puts up a card needing Go, asks a question back, or describes how it schedules things.",
   },
+  // ---------- D534: @ and / in the composer ----------
+  // @task: the words are about the task they picked, even when the conversation was just on another one.
+  {
+    id: "wp-at-task-followup-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: MAC,
+    world: MAC_HOME,
+    seed: [
+      { user: "修一下 foo 登录页的重定向循环" },
+      { task: { key: "login", title: "修复 foo 登录页的重定向循环", repo: "/Users/weyl/dev/foo", ack: "好，我来修 foo 登录页的重定向循环。", state: "done", words: "修一下 foo 登录页的重定向循环", report: { state: "done", summary: "修好了：登录后的 next 参数没校验，回跳到 /login 自己。加了白名单和 3 个测试，Chrome 下全过。", questions: [], evidence: [] } } },
+      { user: "再给 foo 的写入路径做个压测" },
+      { task: { key: "bench", title: "压测 foo 的写入路径", repo: "/Users/weyl/dev/foo", ack: "好，开始压测 foo 的写入路径。", state: "working", words: "再给 foo 的写入路径做个压测" } },
+      { user: "压测跑到哪了" },
+      { ai: "还在跑，第二轮了，预计十分钟出结果。" },
+    ],
+    steps: [{ user: "@修复 foo 登录页的重定向循环 Safari 下也验证一遍，补个测试", refs: [{ task: "login", label: "修复 foo 登录页的重定向循环" }] }],
+    expect: { opens: 0, sendTo: "login", noSendTo: "bench", noAsk: true, msgs: [0, 1], maxChars: 100 },
+    rubric:
+      "The person picked the finished login-redirect task with @ in the composer and asks to verify it in Safari too and add a test; the conversation was just on the running bench task. Pass if the partner carries on the login task (task_send to it: verify in Safari, add a test) and says nothing or one short Chinese line that it is on it. Fail if it sends this to the bench task, opens a new task for it, asks which task they mean, or claims Safari already passes.",
+  },
+  // /skill: their own skill, picked with /, runs in a task whose brief uses it by name.
+  {
+    id: "wp-slash-skill-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: MAC,
+    world: MAC_HOME,
+    steps: [{ user: "/kill-ai-slop the landing page of wey-gu/foo, here on this Mac", refs: [{ skill: "kill-ai-slop", about: "Find and remove AI slop (the generic, machine-default visual and copy tics of vibe-coded products) from a web project." }] }],
+    expect: { opens: 1, noAsk: true, ackFirst: true, briefRequire: [/kill-ai-slop/], outcome: { repo: "wey-gu/foo" } },
+    rubric:
+      "The person picked their own skill kill-ai-slop with / in the composer and asks to run it on the landing page of wey-gu/foo on this Mac. Pass if one task starts in foo whose brief says to use the /kill-ai-slop skill on the landing page, with one short English ack and no question. Fail if it asks anything, does the clean-up itself in words, explains what the skill is, or opens a task that never names the skill.",
+  },
 ];

@@ -39,6 +39,7 @@ import type { ClonesAnswer } from "../../protocol/src/clones.ts";
 import type { FolderInfo } from "../../protocol/src/folder-info.ts";
 import { remoteKey } from "../../protocol/src/clones.ts";
 import { HARNESS_FACTS } from "../../protocol/src/harness-facts.ts";
+import type { HeldRef } from "../../protocol/src/mentions.ts";
 import { schemaProblems } from "../../protocol/src/tool-schema.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
@@ -1161,6 +1162,7 @@ function describeStep(st: Step): string {
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st && st.app === "ask") return `the user tapped a button in their own app (the first one listed in [apps]), and the app asked the partner through ducter.ask: ${st.user}`;
   if ("user" in st && st.app === "about") return `user types in the sheet of their app (the first one listed in [apps]), about it: ${st.user}`;
+  if ("user" in st && st.refs?.length) return `user says: ${st.user} (picked in the composer: ${st.refs.map((r) => ("task" in r ? `@ the task "${r.task}"` : "skill" in r ? `/ their skill ${r.skill}` : `/ Ducter's action ${r.action}`)).join(", ")})`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
@@ -1205,7 +1207,18 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     const first = st.app ? [...core.apps.list("default")].sort((a, b) => a.made.localeCompare(b.made))[0] : undefined;
     const app = first ? { app: { id: first.id, name: first.name, ...(st.app === "ask" ? { ask: `e${Date.now().toString(36)}` } : {}) } } : {};
     if (first && st.app === "ask") core.apps.asked(first.id, app.app!.ask!);
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app });
+    // D534: what they picked with @ or /, resolved as the home's mentions.ts does.
+    const refs = (st.refs ?? []).map((r): HeldRef => {
+      if ("task" in r) {
+        const id = tid(r.task);
+        const c = core.tasks.get(id);
+        const report = c?.lastReport?.summary;
+        return { kind: "task", id, label: r.label, ...(c ? { state: c.attention === "needs_you" ? "waiting for the person" : c.attention } : {}), about: [`Its title: ${c?.title ?? r.label}.`, ...(report ? [`Its latest report: ${report}`] : [])].join("\n") };
+      }
+      if ("skill" in r) return { kind: "skill", id: r.skill, label: r.skill, ...(r.about ? { about: r.about } : {}) };
+      return { kind: "action", id: r.action, label: r.label };
+    });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}) });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {

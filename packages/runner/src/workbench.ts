@@ -23,6 +23,7 @@ import {
   type WbPort,
   type WbRequest,
 } from "@ducter/protocol/src/workbench.ts";
+import { rank } from "@ducter/protocol/src/mentions.ts";
 import { git } from "./places.ts";
 import { createSims, holdsApp, type Sims } from "./sim.ts";
 
@@ -118,6 +119,44 @@ function list(ctx: WbCtx, path: string): WbAnswer {
   }
   entries.sort((a, b) => (a.kind === "d") !== (b.kind === "d") ? (a.kind === "d" ? -1 : 1) : a.name.localeCompare(b.name, "en", { numeric: true, sensitivity: "base" }));
   return { op: "files", path: rel, entries: entries.slice(0, WB_LIST_CAP), more: Math.max(0, entries.length - WB_LIST_CAP) };
+}
+
+/** At most this many files are read for the @ list, and this many are answered. */
+const FIND_SCAN = 20_000;
+const FIND_ROWS = 8;
+
+/**
+ * D534: files in the working copy whose path matches q, best first: a repo's tracked and untracked
+ * files (what git sees, so build output and ignored files never come up), else a folder's, walked
+ * breadth first to FIND_SCAN entries. Paths only; nothing is read.
+ */
+export async function findFiles(ctx: WbCtx, q: string): Promise<WbAnswer> {
+  const root = rootOf(ctx);
+  let paths: string[] = [];
+  const tracked = await git(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
+  if (tracked.ok) paths = tracked.out.split("\0").filter(Boolean).slice(0, FIND_SCAN);
+  else {
+    const queue = [""];
+    while (queue.length && paths.length < FIND_SCAN) {
+      const dir = queue.shift()!;
+      let all: import("node:fs").Dirent[] = [];
+      try {
+        all = readdirSync(join(root, dir), { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const d of all) {
+        if (WB_HIDDEN.has(d.name) || d.name === "node_modules" || d.name.startsWith(".")) continue;
+        const rel = dir ? `${dir}/${d.name}` : d.name;
+        if (d.isDirectory()) queue.push(rel);
+        else if (d.isFile()) paths.push(rel);
+      }
+    }
+  }
+  const base = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+  // The name first (a file is called by its name), then the whole path.
+  const hits = rank(paths, q, base, (p) => p).slice(0, FIND_ROWS);
+  return { op: "find", q, paths: hits };
 }
 
 /** Not text: a NUL in the first 8 KB, or bytes that aren't UTF-8. */
@@ -481,6 +520,8 @@ export async function wbOp(
   switch (req?.op) {
     case "files":
       return list(ctx, req.path ?? "");
+    case "find":
+      return findFiles(ctx, String(req.q ?? ""));
     case "read":
       return read(ctx, req.path);
     case "write":

@@ -12,7 +12,8 @@ import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
 import { inTurn, lastSeq, latestVoice, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
 import { builtTurns, indexOf, lowerBound, slotsOf, type SessionIndex, type Slot, type TurnCache } from "@ducter/protocol/src/session.ts";
 import { landmarkNear, landmarksIn, landmarksOf, type Landmark } from "@ducter/protocol/src/landmarks.ts";
-import { tokensShort } from "@ducter/protocol";
+import { splitRefs, tokensShort } from "@ducter/protocol";
+import { WordsWithRefs } from "./composer.tsx";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
@@ -743,13 +744,19 @@ export function steerReceipt(task: Task, seq: number): "wait" | "read" | undefin
 }
 
 /** Your words to the task, with how they went in (D207, D268, D325). */
+function YouWords({ text }: { text: string }) {
+  const s = splitRefs(text);
+  return <WordsWithRefs text={s.text} refs={s.refs} />;
+}
+
 function YouBubble({ task, b }: { task: Task; b: Extract<Block, { k: "you" }> }) {
   const r = steerReceipt(task, b.seq);
   return (
     <>
       <div class="tx you" dir="auto">
         {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
-        {b.text}
+        {/* D534: the person's words with their @ chips; what Ducter put after them for the agent is never shown. */}
+        <YouWords text={b.text} />
       </div>
       {r && (
         <div class={`rcpt ${r}`} role="status">

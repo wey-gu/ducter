@@ -2876,6 +2876,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return answer;
     },
 
+    // D534: the task's agent's own commands and skills in its place, for the / list. A worker's
+    // task is read through its own port when that port can (else nothing is offered but the fixed).
+    async native(taskId) {
+      const t = tasks.get(taskId);
+      const card = core.tasks.get(taskId);
+      const h = t?.base.harness ?? card?.harness;
+      if (!h) return undefined;
+      const facts = HARNESS_FACTS[h as HarnessId]?.nativeCommands.value;
+      const port = t?.ops.harness ?? harness;
+      const place = card?.place ?? t?.card.place;
+      const cwd = t?.spec.cwd ?? (place && !t?.ops.device ? cwdOf(place, taskId, core.dataDir) : undefined);
+      if (!facts || !port?.inventory || !cwd) return { harness: h };
+      const read = (k: "commands" | "skills") => (facts.discover.includes(k) ? Promise.race([port.inventory!(h, k, cwd), Bun.sleep(20_000).then(() => undefined)]) : Promise.resolve(undefined));
+      const [commands, skills] = await Promise.all([read("commands"), read("skills")]);
+      return { harness: h, ...(commands ? { commands } : {}), ...(skills ? { skills } : {}) };
+    },
+
+    inventory: async (h, kind, cwd) => (harness.inventory ? await harness.inventory(h, kind, cwd) : undefined),
+
     pageRoute(taskId) {
       const t = tasks.get(taskId);
       const place = core.tasks.get(taskId)?.place ?? t?.card.place;

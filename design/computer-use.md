@@ -59,7 +59,10 @@ Ducter's own, on Ducter's MCP, listed only for a task with `needs.app` whose Mac
 
 Why Ducter's own tools, not cua-driver's MCP or the harness's own computer use (D130 stays for
 browsing): the gate has to hold in code before an action runs. A native computer use can only be
-watched after the fact (research/38 B2's typing into an open 2FA page).
+watched after the fact (research/38 B2's typing into an open 2FA page). One route per task
+(D515): a Codex task, which keeps its own Computer Use (`cua_repl`) everywhere else, is told in
+an app task to use these tools for every app and never `cua_repl`. A person's own cua-driver MCP
+in their Claude Code or Codex setup stays, as their own tool.
 
 Where they run: on the home, always. For a task on the home they call cua-driver's CLI
 (`cua-driver call <tool> <json>`); for a task on a worker the home sends one `computer_call` over

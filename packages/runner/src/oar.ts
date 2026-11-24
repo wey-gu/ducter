@@ -200,7 +200,7 @@ export function codexCleanArgs(config: CodexConfig | undefined, keep: string[] =
   const native = ["computer_use", "browser_use"];
   // D206: a task keeps Codex's image generation (画一张… / Draw…: the picture comes back in its
   // report); the partner never draws itself, it opens a task for that.
-  const off = ["hooks", "codex_hooks", "plugin_hooks", "plugins", "apps", "memories", "js_repl", "goals", "multi_agent", "image_generation", ...native].filter(
+  const off = ["hooks", "codex_hooks", "plugin_hooks", "plugins", "apps", "memories", "js_repl", "goals", "multi_agent", "multi_agent_v2", "image_generation", ...native].filter(
     (f) => !(o.nativeTools && (f === "plugins" || f === "plugin_hooks" || f === "image_generation" || native.includes(f))),
   );
   // Plugin ids that a dotted -c path can name (an id with a dot can't be addressed bare).
@@ -292,6 +292,23 @@ export function codexOwnServers(servers: McpServer[]): { args: string[]; env: Re
     return `${key(m.name)} = { ${fields.join(", ")} }`;
   });
   return { args: tables.length ? ["-c", `mcp_servers={ ${tables.join(", ")} }`] : [], env };
+}
+
+/**
+ * D515: `-c` overrides that let a sandboxed Codex task call the person's own MCP servers as an
+ * unsandboxed one does: `mcp_servers.<name>.default_tools_approval_mode="approve"` for each server
+ * their config.toml names (only those: a dotted key for a server Codex doesn't know would make a
+ * new, broken entry), unless that server sets an approval of its own (theirs is kept). VERIFIED
+ * on codex-cli 0.172.0 (research/222 §3): declined under workspace-write, answered with this.
+ */
+export function codexApproveTheirServers(config: CodexConfig | undefined): string[] {
+  const key = (n: string) => (/^[A-Za-z0-9_-]+$/.test(n) ? n : JSON.stringify(n));
+  return Object.entries(config?.mcp_servers ?? {})
+    .filter(([, v]) => {
+      const m = (v ?? {}) as { enabled?: unknown; default_tools_approval_mode?: unknown; tools?: Record<string, { approval_mode?: unknown } | undefined> };
+      return m.enabled !== false && m.default_tools_approval_mode === undefined && !Object.values(m.tools ?? {}).some((t) => t?.approval_mode !== undefined);
+    })
+    .flatMap(([n]) => ["-c", `mcp_servers.${key(n)}.default_tools_approval_mode="approve"`]);
 }
 
 /** `-c` overrides that turn these servers off (a name Codex can't take bare is quoted, as codexCleanArgs does). */
@@ -644,6 +661,12 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // `codex sandbox` refused a write in the home folder). Network stays on.
       if (spec.confineWrites) {
         launchArgs = [...(launchArgs ?? []), "-c", `sandbox_mode="workspace-write"`, "-c", "sandbox_workspace_write.network_access=true"];
+        // D515 (research/222): and the person's own servers keep working there. Under the sandbox
+        // with approvals off, Codex 0.172 declines every MCP call not marked read-only ("requires
+        // approval, but approval policy is never"), so a folder task lost the person's Mem, docs and
+        // app servers; OAR's default (no sandbox) runs them. Each server their config.toml names
+        // gets its tools approved for this session, unless they set an approval of their own.
+        if (!clean && spec.userConfiguration !== "exclude") launchArgs = [...launchArgs, ...codexApproveTheirServers(readCodexConfig(ctx.env ?? {}))];
         // Under any sandbox Codex declines an MCP call not marked read-only (2026-11-11: a folder
         // task on hel had report_to_main declined for hours, "approval policy is never"); the URL
         // tells Ducter's MCP the session is sandboxed, and it marks its tools (core/src/mcp.ts).

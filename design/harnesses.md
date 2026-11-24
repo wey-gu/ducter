@@ -76,6 +76,24 @@
   drops `exec_command` and `write_stdin`. VERIFIED with `codex debug prompt-input`
   (`packages/runner/test/codex-prompt-input.test.ts`) and the eval's rollouts.
 
+## Background work, per agent (D515, research/222)
+
+`background` in harness-facts: what runs beside a turn, and whether the agent takes a turn of
+its own when it ends (`ownTurn`). The runner wakes a task with what ended (`backgroundEnded`)
+unless the agent's own turn comes first.
+
+| Agent | Beside its turn | Its own turn after | Evidence |
+|---|---|---|---|
+| Claude Code | Bash run_in_background, Monitor, a background Agent: OAR tasks | yes | VERIFIED live 2.1.331 (haiku, OAR 0.124) |
+| Codex | a command past its yield, a background terminal: an open tool call past `turn_ended`, its `tool_call_ended` when it exits; subagent threads: OAR tasks | no | VERIFIED live 0.172.0 (gpt-6-luna, scratch `CODEX_HOME`) |
+| pi | none of its own | unknown | `pi --help` |
+| DeepSeek Harness | jobs and subagents: OAR tasks | unknown | DOCUMENTED, OAR 0.124 source |
+| Antigravity | not reported by OAR | unknown | DOCUMENTED, OAR 0.124 source |
+
+A Codex folder task runs under `workspace-write` (D142), where Codex 0.172 refuses every MCP call
+not marked read-only ("approval policy is never"); the person's servers in `config.toml` get
+`default_tools_approval_mode="approve"` for that session (VERIFIED live, research/222 §3).
+
 ## pi 1.4.0–1.5.1 and DeepSeek Harness 0.2.2-rc.1 (D177, research/50)
 
 pi has no per-session window or compaction flag (`pi --help`); its compaction lives in

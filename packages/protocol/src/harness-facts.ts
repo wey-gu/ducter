@@ -77,6 +77,13 @@ export interface HarnessFacts {
   account?: Fact<{ homeEnv: string; identity: string; sessions: string }>;
   /** Its own browser / computer use (research/38). */
   browser: Fact<string>;
+  /**
+   * D515 (research/222): the agent's own work beside its turn (background shells, subagents) and
+   * whether it starts a turn of its own when that ends. ownTurn "yes": its own turn takes the
+   * result, Ducter waits for it; "no": Ducter wakes the task at once with what ended; "unknown":
+   * Ducter waits the settle time, then wakes it.
+   */
+  background: Fact<{ ownTurn: "yes" | "no" | "unknown"; how: string }>;
   /** D156: where it's installed from and how each copy updates (research/42). */
   channels: Fact<AgentChannels>;
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
@@ -352,6 +359,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
     },
+    background: {
+      value: {
+        ownTurn: "yes",
+        how: "Bash run_in_background, Monitor and a background Agent are tasks (OAR task_started/task_ended, local_bash · local_agent · mcp_task); the process stays up between turns and a task's end starts a turn of its own (no input id) that reads its result",
+      },
+      evidence: { kind: "VERIFIED", how: "research/222 §2: OAR 0.124 claude runtime, haiku, a background `sleep 20; echo …`: task_started background at 8 s, turn_ended at 9 s, task_ended at 28 s, then turn_active with no input id and the model's own words on the result", date: "2026-11-24", version: "2.1.331" },
+    },
     noTools: {
       value: { args: ["--tools", ""] },
       evidence: {
@@ -476,6 +490,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
+    background: {
+      value: {
+        ownTurn: "no",
+        how: "a command past its yield runs on as a background terminal: its tool call stays open past turn_ended and ends (tool_call_ended, with its output) when the command exits, with no turn of its own; subagent threads are tasks (subAgentActivity)",
+      },
+      evidence: { kind: "VERIFIED", how: "research/222 §2: OAR 0.124 codex runtime, gpt-6-luna, a scratch CODEX_HOME, `sleep 25; echo …` with a 1 s yield: turn_ended at 13.8 s, tool_call_ended (exit 0, the output) at 36.1 s, no turn after it", date: "2026-11-24", version: "0.172.0" },
+    },
     noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "no per-session switch for Codex's own shell and patch tools is known; the judge's clean setup turns off plugins, apps and MCP, and named MCP tools are denied" } },
     noWeb: {
       value: { how: '-c web_search="disabled" (its hosted web_search tool; the read-only sandbox already keeps the shell off the network)', deny: [], args: ["-c", 'web_search="disabled"'], rows: [] },
@@ -540,6 +561,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "MCP through Ducter's extension; loaded directly", evidence: { kind: "INFERRED", why: "no deferral in pi" } },
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
+    background: { value: { ownTurn: "unknown", how: "none of its own (read, bash, edit, write); an extension may add one" }, evidence: pi("`pi --help` (research/38): no background or subagent tool") },
     noTools: { value: { args: ["--no-tools"] }, evidence: { kind: "DOCUMENTED", source: "`pi --help` 1.5.1: --no-tools disables all tools by default (built-in and extension)" } },
     noWeb: { value: { how: "nothing to drop: its read-only allowlist (read, grep, find, ls) has no web tool", deny: [], args: [], rows: [] }, evidence: PI_LIVE },
     webLook: { value: { supported: false, how: "not offered: pi has no web tool of its own", args: [], rows: [] }, evidence: pi("`pi --help` (research/38): read, bash, edit, write; extensions only") },
@@ -598,6 +620,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "stdio MCP through Ducter's bridge; loaded up front, named mcp__<server>__<tool>", evidence: DSH_LIVE("research/50 §2: the session's tool list") },
     resume: { value: { supported: true, how: "OAR SessionOptions.resume, sessions kept under DSH_HOME/sessions" }, evidence: DSH_LIVE("research/50 §2: resumed by id with its history") },
     browser: { value: "none (web_search / web_fetch over DeepSeek's API; no browser)", evidence: DSH_LIVE("the acp profile's tool-web row") },
+    background: {
+      value: { ownTurn: "unknown", how: "jobs (tool-jobs: a bash or pwsh run in the background, job/registered → job/settled) and subagents (subagent/start → subagent/end) are tasks; whether a job's end starts a turn is not known" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/dsh/{jobs,projection}.js (read 2026-11-24, research/222 §2); not run (no dsh on this Mac)" },
+    },
     noTools: {
       value: { args: [] },
       evidence: DSH_LIVE("research/50 §2: no launch arguments (OAR owns them); a one-shot's Ducter-owned home drops every tool row in its profile layer (DSH_PROFILE.readOnlyOff + noToolsOff), and the session's tool list was empty"),
@@ -653,6 +679,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: AGY("session creation and resume: a native session/list entry with the same saved cwd is required"),
     },
     browser: { value: "none Ducter uses (its tools are agy's own: run_command, read_file, edit_file, web search)", evidence: AGY("shared activity mappings") },
+    background: { value: { ownTurn: "unknown", how: "OAR maps no task events for agy; a background command or subagent of its own is not seen" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/antigravity (read 2026-11-24, research/222 §2): no task_started" } },
     noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR refuses disallowedTools and has no allowlist for agy: it is never a one-shot (partner false)" } },
     noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: AGY("disallowed tools: refused before launch") },
     webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: AGY("disallowed tools and userConfiguration exclude refused") },

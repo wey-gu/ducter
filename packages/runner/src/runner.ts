@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { docAsk, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
+import { ADOPTED, APPS_HEADING, outsideOver, NUDGE, backgroundEnded, type BackgroundEnd, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
@@ -195,6 +195,8 @@ interface TaskRt {
   bg?: Map<string, { what?: string; seen: number }>;
   /** D266: a turn ended without a report while background work ran: the nudge waits for it. */
   bgOwed?: boolean;
+  /** D515: background jobs that ended since the last turn, what the wake turn says. */
+  bgDone?: BackgroundEnd[];
   bgSettle?: ReturnType<typeof setTimeout>;
   /** D266: merged while background work ran: archived once it ends. */
   archiveWhenQuiet?: Place;
@@ -284,7 +286,7 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
     if (h === "codex" || h === "deepseek-harness") spec.userConfiguration = "exclude";
     if (h === "pi") spec.isolateUserConfig = true;
   }
-  if (h === "codex" && sc?.driver !== "native" && sc?.driver !== "ducter") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);
+  if (h === "codex" && sc?.driver !== "native" && sc?.driver !== "ducter") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName, !!base.appendSystemPrompt?.includes(APPS_HEADING));
   return spec;
 }
 
@@ -354,6 +356,8 @@ const WHERE_WORDS = {
 };
 
 const FINISHED: Attention[] = ["done_claimed", "done", "failed", "dropped"];
+/** D515: how long an agent that takes no turn of its own after background work ends is left before the wake (its events settle). */
+const BG_WAKE_NOW_MS = 1500;
 
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
   progress: "working",
@@ -526,12 +530,18 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   /** D266: one background report from the harness (normalize.ts): counted, logged as a step. */
   function onBackground(t: TaskRt, ev: HarnessEvent) {
-    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string } }).background;
+    const b = (ev.raw as { background?: { id?: string; act?: string; what?: string; type?: string } & Omit<BackgroundEnd, "act" | "what"> }).background;
     if (!b?.id) return;
     const wasLive = bgLive(t);
     if (b.act === "started") (t.bg ??= new Map()).set(b.id, { ...(b.what ? { what: b.what } : {}), seen: now().getTime() });
-    else t.bg?.delete(b.id);
-    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.what ? { what: b.what } : {}) } } });
+    else if (t.bg?.delete(b.id)) {
+      // D515: what ended, for the wake turn (its output's tail, the harness's summary or output file).
+      const end: BackgroundEnd = { act: b.act === "failed" ? "failed" : b.act === "stopped" ? "stopped" : "ended", ...(b.what ? { what: b.what } : {}) };
+      if (typeof b.exitCode === "number") end.exitCode = b.exitCode;
+      for (const k of ["output", "summary", "outputFile"] as const) if (typeof b[k] === "string" && b[k]) end[k] = b[k];
+      (t.bgDone ??= []).push(end);
+    }
+    logEvent(t, { role: "system", text: preview(ev.text ?? "", 500), raw: { background: { act: b.act, ...(b.type ? { type: b.type } : {}), ...(b.what ? { what: b.what } : {}), ...(typeof b.exitCode === "number" ? { exitCode: b.exitCode } : {}) } } });
     const live = bgLive(t);
     if (live > 0 || wasLive === 0 || t.dropped || isBusy(t)) return;
     // The last one ended between turns: the session may idle and park again.
@@ -541,22 +551,33 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       void archiveAfterMerge(t, place);
       return;
     }
+    // D515: a finished task that owes nothing isn't woken for a job it left running.
+    const wake = t.bgOwed || !FINISHED.includes(currentAttention(t));
     if (t.session) {
       setState(t, currentAttention(t), "warm");
-      if (!t.bgOwed) armPark(t); // owed: the nudge's turn (or its own) parks it after
+      if (!wake) armPark(t); // a wake's turn (or the harness's own) parks it after
     }
-    // Claude Code starts a turn of its own when a background task ends; that turn's end decides.
-    // Without one in bgSettleMs, the report it owes is asked for as after any silent turn.
-    if (t.bgOwed) {
-      clearTimeout(t.bgSettle);
-      t.bgSettle = setTimeout(() => {
+    if (!wake) {
+      t.bgDone = undefined;
+      return;
+    }
+    // Claude Code starts a turn of its own when a background task ends; that turn's end decides
+    // (a turn's end clears this timer). An agent that takes none (Codex's background terminals,
+    // harness-facts `background.ownTurn`) is woken with what ended, at once; one not known to, after
+    // bgSettleMs. The wake's own turn then decides as any turn's does (D515, research/222).
+    const own = HARNESS_FACTS[t.spec.harness as HarnessId]?.background.value.ownTurn ?? "unknown";
+    clearTimeout(t.bgSettle);
+    t.bgSettle = setTimeout(
+      () => {
         t.bgSettle = undefined;
-        if (!t.bgOwed || t.dropped || isBusy(t) || bgLive(t) > 0 || !t.session) return;
+        if (t.dropped || isBusy(t) || bgLive(t) > 0 || !t.session) return;
         t.bgOwed = false;
-        armPark(t);
-        void missedReport(t);
-      }, bgSettleMs);
-    }
+        const ends = t.bgDone ?? [];
+        t.bgDone = undefined;
+        void sendTurn(t, backgroundEnded(ends), "runner").catch((err) => logEvent(t, { role: "system", text: `background wake failed: ${preview(String(err), 500)}` }));
+      },
+      own === "no" ? Math.min(bgSettleMs, BG_WAKE_NOW_MS) : bgSettleMs,
+    );
   }
 
   /** D394: the long session is let go (kept on disk, its id in the Log); the next turn seeds a new one. */
@@ -1324,6 +1345,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.bgOwed = false;
     clearTimeout(t.bgSettle);
     t.bgSettle = undefined;
+    // D515: jobs that ended during this turn. An agent that takes its own turn for them has had its
+    // word; any other hears of them before its next input (the nudge, the person's words).
+    if (t.bgDone?.length) {
+      if ((HARNESS_FACTS[t.spec.harness as HarnessId]?.background.value.ownTurn ?? "unknown") !== "yes") t.prefix.push(backgroundEnded(t.bgDone));
+      t.bgDone = undefined;
+    }
     // D325: the turn is over and the person held words for after it: they are the next turn
     // (not after a Stop, a failure or a limit: held, the person says them now or changes them).
     if (!busy && !t.dropped && t.held.length && (outcome ?? "completed") === "completed" && !compactTurn && !compactsNow) {

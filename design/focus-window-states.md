@@ -68,12 +68,16 @@ miss, so a repeating round that found nothing new stays silent instead of being 
 nudge, a compaction, a restart's re-run of a cut-off turn) moves the next round, never adds one.
 
 **Background work (D266).** A harness can leave work running past its turn: Claude Code's
-background shells, Monitor and background subagents, Codex's subagents. C counts them from
+background shells, Monitor and background subagents, Codex's subagents and background
+terminals, DeepSeek Harness's jobs and subagents. C counts them from
 the harness's own task events (OAR `task_started` / `task_ended` at the root, ambient upkeep
 left out; a task still running when its turn ended counts, flagged or not). While any runs:
 a turn that ends without a report is neither nudged nor a miss, and the window stays `working`
-and `hot`; when the last one ends between turns, C waits `backgroundSettleMs` (60 s) for the
-harness's own turn (Claude Code takes one when a background task ends) before the one nudge.
+and `hot`; when the last one ends between turns and the task isn't finished, C wakes it with
+what ended, how, and its output's tail (D515). An agent that takes a turn of its own for it
+(Claude Code, VERIFIED) is left to that turn; one that takes none (Codex) is woken at once; one
+not known to, after `backgroundSettleMs` (60 s). Harness-facts `background.ownTurn` says which.
+A Codex background terminal is a tool call still open when its turn completed (D515).
 Each start and end is a step of the opened task. A background task the harness has said
 nothing of for 12 h (`DUCTER_BACKGROUND_CEILING_MS`) stops counting, said once in the task.
 

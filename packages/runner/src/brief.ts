@@ -221,10 +221,13 @@ Ducter receives for you: answers, and anything sent to the work you were given, 
 `;
 }
 
+/** D515: the apps section's heading, which tells withBrowser the task has Ducter's app tools. */
+export const APPS_HEADING = "## The user's apps (用电脑 / Use the computer)";
+
 /** D235: Model-visible: how a task uses the user's own Mac apps (snapshot-tested). */
 export function appsBrief(partnerName: string): string {
   return `
-## The user's apps (用电脑 / Use the computer)
+${APPS_HEADING}
 
 The work is in an app on the user's own Mac, the one this task runs on. When the user has added 用电脑 / Use the computer there, the \`ducter\` MCP server has tools for their apps; they act in the background (the user's mouse and screen stay theirs, a second cursor shows where you act):
 
@@ -370,6 +373,34 @@ export function userEditsNote(edits: { path: string; how: "edited" | "reverted" 
 
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";
+
+/** D515: one background job that ended between turns, as the wake says it. */
+export interface BackgroundEnd {
+  what?: string;
+  act: "ended" | "failed" | "stopped";
+  exitCode?: number;
+  output?: string;
+  summary?: string;
+  outputFile?: string;
+}
+
+/**
+ * D515 (research/222): the turn Ducter sends when background work the task started has ended and
+ * its agent takes no turn of its own for it (Codex's background terminals; Claude Code takes its
+ * own). Model-visible (snapshot-tested): what ended, how, and its output's tail, as Claude Code's own
+ * task notification brings them.
+ */
+export function backgroundEnded(ends: BackgroundEnd[]): string {
+  const word = { ended: "finished", failed: "failed", stopped: "was stopped" } as const;
+  const one = (e: BackgroundEnd) => {
+    const head = `- ${e.what ? `\`${e.what.split("\n")[0]!.slice(0, 200)}\`` : "A background job"} ${word[e.act]}${e.exitCode !== undefined ? ` (exit code ${e.exitCode})` : ""}.`;
+    const said = [e.summary, e.outputFile ? `Its output is in ${e.outputFile}.` : ""].filter(Boolean).join(" ");
+    const out = e.output?.trim() ? `\n  Its output ends:\n${e.output.trimEnd().split("\n").map((l) => `  > ${l}`).join("\n")}` : "";
+    return `${head}${said ? ` ${said}` : ""}${out}`;
+  };
+  const list = ends.length ? ends.map(one).join("\n") : "- A background job finished.";
+  return `Background work you started in this task has ended:\n${list}\n\nCarry on from its result. Report via report_to_main when done, blocked, or needing a decision.`;
+}
 
 /**
  * First turn of a task handed to another AI agent (D89, 换到 X 接着做 / Continue on X): the new

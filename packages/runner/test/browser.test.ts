@@ -476,7 +476,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     expect(args).toContain("features.apps=false");
     for (const kept of ["plugins", "plugin_hooks", "computer_use", "browser_use"]) expect(args).not.toContain(`features.${kept}=false`);
     // D240: a subagent would drive the browser without the brief; Ducter owns when a turn ends.
-    for (const off of ["multi_agent", "goals"]) expect(args).toContain(`features.${off}=false`);
+    for (const off of ["multi_agent", "multi_agent_v2", "goals"]) expect(args).toContain(`features.${off}=false`);
     expect(seen.options.appendSystemPrompt).toContain("--new-window");
     expect(args.slice(-4)).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]); // the small window (D135)
     await runner.dispose();

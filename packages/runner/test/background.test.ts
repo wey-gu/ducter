@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTask } from "@botiverse/oar/testing";
 import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { createOarHarnessPort, createRunner, NUDGE, registerTaskTools } from "../src/index.ts";
+import { backgroundEnded, createOarHarnessPort, createRunner, NUDGE, registerTaskTools } from "../src/index.ts";
 import { Normalizer } from "../src/normalize.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -75,8 +75,69 @@ describe("normalize (D266)", () => {
   });
 });
 
+describe("normalize: a tool call that outlives its turn (D515, research/222)", () => {
+  const bg = (out: { raw?: unknown }[]) => out.map((e) => (e.raw as { background?: unknown } | undefined)?.background).filter(Boolean);
+  test("a Codex background terminal: open at a completed turn's end, said by its command; its late end carries the exit code and the output's tail", () => {
+    const n = new Normalizer(() => undefined);
+    n.push({ kind: "tool_call_started", callId: "exec-1", tool: "commandExecution", input: "/bin/zsh -lc 'cargo bench --bench wal; echo done'" });
+    // An MCP call still open is never a terminal; a call that ended inside the turn isn't either.
+    n.push({ kind: "tool_call_started", callId: "mcp-1", tool: "mcpToolCall", server: "ducter", toolName: "wait_for" });
+    n.push({ kind: "tool_call_started", callId: "exec-0", tool: "commandExecution", input: "ls" });
+    n.push({ kind: "tool_call_ended", callId: "exec-0", result: "ok", exitCode: 0, content: [{ type: "text", text: "a" }] });
+    const end = n.push({ kind: "turn_ended", outcome: { kind: "completed" } });
+    expect(bg(end)).toEqual([{ id: "exec-1", act: "started", type: "shell", what: "cargo bench --bench wal; echo done" }]);
+    expect(end.at(-1)).toMatchObject({ turnEnd: true });
+    expect(n.backgroundLive()).toBe(1);
+    // The next turn's end doesn't say it again.
+    expect(bg(n.push({ kind: "turn_ended", outcome: { kind: "completed" } }))).toEqual([]);
+    const long = "x".repeat(3000) + "\nwal/append p99 4.1ms";
+    const out = n.push({ kind: "tool_call_ended", callId: "exec-1", result: "ok", exitCode: 0, content: [{ type: "text", text: long }] });
+    expect(out[0]).toMatchObject({ role: "tool", tool: { name: "commandExecution", ok: true } });
+    const b = bg(out)[0] as { act: string; exitCode: number; output: string };
+    expect(b).toMatchObject({ id: "exec-1", act: "ended", exitCode: 0, what: "cargo bench --bench wal; echo done" });
+    expect(b.output.length).toBe(1500);
+    expect(b.output.endsWith("wal/append p99 4.1ms")).toBe(true);
+    expect(n.backgroundLive()).toBe(0);
+  });
+  test("a failed exit is a failed end; an aborted turn's open call is never counted", () => {
+    const n = new Normalizer(() => undefined);
+    n.push({ kind: "tool_call_started", callId: "e1", tool: "commandExecution", input: "make test" });
+    n.push({ kind: "turn_ended", outcome: { kind: "completed" } });
+    expect(bg(n.push({ kind: "tool_call_ended", callId: "e1", result: "error", exitCode: 2, content: [{ type: "text", text: "FAIL" }] }))).toEqual([{ id: "e1", act: "failed", type: "shell", what: "make test", exitCode: 2, output: "FAIL" }]);
+    n.push({ kind: "tool_call_started", callId: "e2", tool: "commandExecution", input: "sleep 100" });
+    expect(bg(n.push({ kind: "turn_ended", outcome: { kind: "aborted" } }))).toEqual([]);
+    expect(bg(n.push({ kind: "turn_ended", outcome: { kind: "completed" } }))).toEqual([]);
+    expect(n.backgroundLive()).toBe(0);
+  });
+  test("a Claude Code task's end keeps what the harness said of it (summary, output file)", () => {
+    const n = new Normalizer(() => undefined);
+    n.push({ kind: "task_started", taskId: "b1", taskType: "shell", description: "bench", background: true });
+    expect(bg(n.push({ kind: "task_ended", taskId: "b1", status: "completed", summary: "Background command completed", outputFile: "/tmp/b1.output" }))).toEqual([
+      { id: "b1", act: "ended", type: "shell", what: "bench", summary: "Background command completed", outputFile: "/tmp/b1.output" },
+    ]);
+  });
+});
+
+describe("the wake (D515)", () => {
+  test("says each job that ended, how, and its output's tail", () => {
+    expect(backgroundEnded([{ what: "cargo bench", act: "ended", exitCode: 0, output: "p99 4.1ms\nok" }, { what: "make test", act: "failed", exitCode: 2 }, { act: "ended", outputFile: "/tmp/x.output" }])).toBe(
+      [
+        "Background work you started in this task has ended:",
+        "- `cargo bench` finished (exit code 0).",
+        "  Its output ends:",
+        "  > p99 4.1ms",
+        "  > ok",
+        "- `make test` failed (exit code 2).",
+        "- A background job finished. Its output is in /tmp/x.output.",
+        "",
+        "Carry on from its result. Report via report_to_main when done, blocked, or needing a decision.",
+      ].join("\n"),
+    );
+  });
+});
+
 describe("runner (D266)", () => {
-  test("a turn that ends with background work running: no nudge, still working, never parked; the nudge goes once it ends with no turn of its own", async () => {
+  test("a turn that ends with background work running: no nudge, still working, never parked; the wake goes once it ends with no turn of its own", async () => {
     const fake = new FakePort();
     const runner = createRunner(core, { harness: fake, newId: nextId, parkIdleMs: 30, backgroundSettleMs: 40 });
     const card = await runner.openTask({ persona: "p1", title: "Soak the bench", brief: "b" });
@@ -91,10 +152,12 @@ describe("runner (D266)", () => {
     expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     // Logged as a step the transcript shows.
     expect(taskEvents(card.taskId).find((e) => (e.raw as any)?.background)).toMatchObject({ role: "system", raw: { background: { act: "started", type: "shell", what: "Run the WAL bench" } } });
-    // It ends and the harness takes no turn of its own: the report is asked for after the settle.
+    // It ends and the harness takes no turn of its own: after the settle, D515's wake says what ended.
     s.emit(bgEv("b1", "ended", "Run the WAL bench"));
-    await waitFor(() => s.sent.some((x) => x.text === NUDGE), "nudge after the background work ended");
-    expect(s.sent.filter((x) => x.text === NUDGE)).toHaveLength(1);
+    await waitFor(() => s.sent.some((x) => x.text.startsWith("Background work you started")), "wake after the background work ended");
+    expect(s.sent.filter((x) => x.text.startsWith("Background work you started"))).toHaveLength(1);
+    expect(s.sent.at(-1)!.text).toContain("`Run the WAL bench` finished.");
+    expect(s.sent.map((x) => x.text)).not.toContain(NUDGE);
     expect(currentStall(card.taskId)).toBe(false);
     await runner.dispose();
   });
@@ -155,6 +218,58 @@ describe("runner (D266)", () => {
     await runner.dispose();
   });
 
+  test("D515: a Codex task's background terminal keeps it open; its end wakes the task at once with the result", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId, parkIdleMs: 30, backgroundSettleMs: 60_000 });
+    const card = await runner.openTask({ persona: "p1", title: "Bench", brief: "b", harness: "codex" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.emit(bgEv("exec-1", "started", "cargo bench"));
+    s.emit(turnEnd);
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "hot", "hot");
+    await Bun.sleep(80);
+    expect(s.closed).toBe(false);
+    expect(s.sent.map((x) => x.text)).not.toContain(NUDGE);
+    s.emit({ role: "system", text: "failed in the background: cargo bench", raw: { kind: "background", background: { id: "exec-1", act: "failed", type: "shell", what: "cargo bench", exitCode: 101, output: "error[E0425]: cannot find value" } } });
+    // Codex takes no turn of its own (harness-facts background.ownTurn "no"): no 60 s settle.
+    await waitFor(() => s.sent.some((x) => x.text.startsWith("Background work you started")), "wake", 4000);
+    const wake = s.sent.find((x) => x.text.startsWith("Background work you started"))!.text;
+    expect(wake).toContain("`cargo bench` failed (exit code 101).");
+    expect(wake).toContain("> error[E0425]: cannot find value");
+    expect(taskEvents(card.taskId).find((e) => (e.raw as any)?.background?.act === "failed")).toMatchObject({ raw: { background: { exitCode: 101 } } });
+    await runner.dispose();
+  });
+
+  test("D515: a finished task isn't woken for a job it left running; a job that ends during a turn is said before the next input", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId, parkIdleMs: 0, backgroundSettleMs: 30 });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", harness: "codex" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await core.call("report_to_main", { state: "done", summary: "ok", evidence: [{ kind: "log", label: "l", ref: "r" }] }, card.taskId);
+    s.emit(bgEv("exec-1", "started", "tail -f log"));
+    s.emit(turnEnd);
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "hot", "hot");
+    s.emit(bgEv("exec-1", "ended", "tail -f log"));
+    await Bun.sleep(1800);
+    expect(s.sent.some((x) => x.text.startsWith("Background work you started"))).toBe(false);
+
+    const card2 = await runner.openTask({ persona: "p1", title: "t2", brief: "b", harness: "codex" });
+    await runner.whenStarted(card2.taskId);
+    const s2 = fake.sessions[1]!;
+    s2.emit(bgEv("exec-9", "started", "make"));
+    s2.emit(turnEnd);
+    await waitFor(() => core.tasks.get(card2.taskId)?.residency === "hot", "hot 2");
+    // A turn runs; the job ends inside it; the turn ends with no report.
+    s2.isBusy = true;
+    s2.emit(bgEv("exec-9", "ended", "make"));
+    await Bun.sleep(20);
+    s2.isBusy = false;
+    s2.emit(turnEnd);
+    await waitFor(() => s2.sent.some((x) => x.text.includes("`make` finished.") && x.text.includes(NUDGE)), "said with the nudge");
+    await runner.dispose();
+  });
+
   test("end to end through OAR's scripted runtime: a background task started in a turn holds the nudge until it ends", async () => {
     const inputs: string[] = [];
     let task: ScriptedTask | undefined;
@@ -177,7 +292,7 @@ describe("runner (D266)", () => {
     expect(inputs).toEqual([expect.stringContaining("Start the task")]);
     expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     task!.end("completed");
-    await waitFor(() => inputs.includes(NUDGE), "nudge after the end");
+    await waitFor(() => inputs.some((i) => i.startsWith("Background work you started")), "wake after the end");
     const acts = taskEvents(card.taskId).map((e) => (e.raw as any)?.background?.act).filter(Boolean);
     expect(acts).toEqual(["started", "ended"]);
     await runner.dispose();
@@ -198,8 +313,9 @@ class FakeSession implements HarnessSession {
   private wake?: () => void;
   private done = false;
   constructor(readonly id: string) {}
+  isBusy = false;
   busy() {
-    return false;
+    return this.isBusy;
   }
   async send(text: string, mode: "turn" | "steer" | "queue" = "turn") {
     if (this.closed) throw new Error("forbidden: send after close");

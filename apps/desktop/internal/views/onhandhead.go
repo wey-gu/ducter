@@ -434,7 +434,8 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		})
 		// D471: the time on one edge of the sheet; what to do on one column.
 		whenW, actsW := float32(112), float32(216)
-		if w < 700 {
+		// D507: a row set in under its helper keeps its sheet's columns.
+		if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) {
 			whenW, actsW = 92, 184
 		}
 		overlay := hover && !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)

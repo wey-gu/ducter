@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/mock"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
@@ -74,15 +75,19 @@ func TestConnectToRemoteDucter(t *testing.T) {
 func TestRevokedDeviceSeesConnectCard(t *testing.T) {
 	h := dial(t, "ws://127.0.0.1:1/ws", i18n.EN)
 	h.app.Pair = func(string, string) error { return nil }
-	h.app.Unauthorized = true
+	h.app.URL = "wss://hel.example.com/ws"
+	h.app.Linked(client.Disconnected, &client.GoneError{Reason: "revoked"}) // D520: the home's signed word
 	h.tt.Frame()
-	for _, want := range []string{"Connect to your Ducter", "This Mac was disconnected from your Ducter. Connect it again to come back."} {
+	for _, want := range []string{"Connect to your Ducter", "Your Ducter on hel.example.com disconnected this Mac. Connect it again to come back."} {
 		if !h.tt.HasText(want) {
 			t.Errorf("lacks %q: %q", want, h.tt.Texts())
 		}
 	}
 	if h.tt.HasText("Back") {
 		t.Error("a revoked device has nowhere to go back to")
+	}
+	if h.app.conn.address != "https://hel.example.com" {
+		t.Errorf("the address isn't kept: %q", h.app.conn.address)
 	}
 	h.shot("connect-revoked")
 }

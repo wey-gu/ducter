@@ -207,7 +207,7 @@ func (a *App) conversation(c *ui.Context) {
 	a.firstResultLine(c)
 	// One card at a time under the conversation: Ducter can't run in the
 	// background, else a gentle ask, else the Terminal offer.
-	if !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
+	if !a.linkLostNotice(c) && !a.backgroundLine(c) && !a.keyNoticeAboveComposer(c) && !a.askLine(c) {
 		a.cliOfferLine(c)
 	}
 	a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
@@ -292,6 +292,7 @@ func (a *App) header(c *ui.Context) {
 	if a.Status == client.Connecting && a.S.Persona == "" {
 		c.After(connectQuiet) // the quiet first second ends on its own
 	}
+	a.linkTick(c)
 	a.placeBar(c, "conversation", RouteConversation, func() {
 		// D270: two things, each its own way in. The face and the name open
 		// the partner's own page (Settings › 伙伴; the visible way is the
@@ -370,7 +371,7 @@ func (a *App) WaitingCount() int {
 // counts (not connecting, not offline), and the strip's filter (1–4) when it
 // names one thing only, else 0 (the whole of On hand).
 func (a *App) summaryFilter(b store.Board) (filter int, ok bool) {
-	if a.Status == client.Connecting && a.S.Persona == "" || a.Status == client.Disconnected {
+	if a.Status == client.Connecting && a.S.Persona == "" || a.Status == client.Disconnected || a.link() != linkUp {
 		return 0, false
 	}
 	n := [4]int{
@@ -395,6 +396,11 @@ func (a *App) summaryFilter(b store.Board) (filter int, ok bool) {
 const connectQuiet = time.Second
 
 func (a *App) summary(b store.Board) string {
+	// D520: a lost link is said quietly first (正在重新连上 hel…), plainly
+	// after LongOutage; never by flicking to the counts between tries.
+	if words := a.linkWords(); words != "" {
+		return words
+	}
 	switch a.Status {
 	case client.Connecting:
 		if a.S.Persona == "" {
@@ -410,7 +416,7 @@ func (a *App) summary(b store.Board) string {
 			return a.L.T("conn.connecting")
 		}
 	case client.Disconnected:
-		return a.L.T("conn.offline")
+		return a.L.T("conn.offline", a.linkHome())
 	}
 	if parts := a.countParts(b); len(parts) > 0 {
 		return spoken(a.L, parts...)

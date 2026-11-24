@@ -418,18 +418,23 @@ func main() {
 				})
 			},
 			OnStatus: func(st client.Status, err error) {
-				win.Update(func() {
-					app.Status = st
-					if st == client.Disconnected {
-						app.Failed = true
+				if err != nil && st == client.Disconnected && !errors.Is(err, context.Canceled) {
+					log.Printf("ducter: lost the home: %v", err) // D520: what the app saw, for the next look
+				}
+				win.Update(func() { app.Linked(st, err) })
+			},
+			// D520: the connect card only on the home's own signed word,
+			// checked against the key pinned at pairing.
+			Gone: func(ctx context.Context, url, token string) (string, bool) {
+				var pinned string
+				if p, err := remote.Path(); err == nil {
+					if s, _ := remote.Load(p); s != nil {
+						pinned = s.FP
 					}
-					if err != nil {
-						app.StatusErr = err.Error()
-					}
-					if errors.Is(err, client.ErrUnauthorized) {
-						app.Unauthorized = true
-					}
-				})
+				}
+				st := remote.AskStanding(ctx, nil, url, token, pinned)
+				log.Printf("ducter: the home refused the socket; it says this Mac is %q", st)
+				return string(st), st.Gone()
 			},
 		})
 		app.Send = c.Send
@@ -489,6 +494,17 @@ func main() {
 		// again at once when it wakes.
 		mygo.Power.OnSuspend(c.Sleep)
 		mygo.Power.OnResume(c.Wake)
+		// D520: back online, a socket from before is dead whatever it says:
+		// dial again at once. The window coming to the front tries at once too
+		// while there is no connection.
+		wasOnline := true
+		mygo.Network.OnChanged(func(s mygo.NetworkStatus) {
+			if s.Online && !wasOnline {
+				c.Redial()
+			}
+			wasOnline = s.Online
+		})
+		win.OnFocus(c.Nudge)
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

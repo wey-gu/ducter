@@ -107,6 +107,15 @@ Check that the address is right. If you use an SSH tunnel, make sure it's still 
 `ducter service status`. An address ending in `.ts.net` (Tailscale) opens only on a device with
 the Tailscale app on, in the same Tailscale network.
 
+### The Mac app says "Reconnecting to …" or "Can't reach your Ducter on …"
+
+Your Mac is still connected to your Ducter; it just can't reach it right now. This happens when
+the server restarts or updates, when the Mac wakes from sleep, or when the network changes. The
+app keeps trying by itself and carries on where it left off, so there's nothing to do. If it lasts,
+check that the server is on and online (`ducter service status` on it), then tap **Try now**. You
+never need to connect the Mac again for this: the Mac app asks to be connected again only when
+your Ducter itself says this Mac was disconnected.
+
 ### `ducter tailscale` stops
 
 It says why and what to run next. Usually one of these:
@@ -142,6 +151,10 @@ The card shows which step stopped, and why:
 
 The device was removed with `ducter devices disconnect`. Connect it again with a new code from
 `ducter pair`.
+
+On a Mac the same moment reads "Your Ducter on *your server* disconnected this Mac", or "doesn't know
+this Mac anymore" when the server's list of devices was reset. The address is already filled in;
+run `ducter pair` on the server and type the new code.
 
 ### No notifications on iPhone
 

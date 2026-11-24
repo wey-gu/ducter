@@ -70,6 +70,8 @@ describe("places", () => {
     const repo = await makeRepo();
     const seen: { options?: any } = {};
     const port = createOarHarnessPort({ loadRuntime: async () => trippedRuntime(async () => {}, seen) });
+    // D522: the branch's words are the cheap model's (a fake here); the folder is the same slug.
+    core.branchAsk = async () => '{"slug":"fix-the-flaky-test"}';
     const runner = createRunner(core, { harness: port, newId: nextId });
     const card = await runner.openTask({ persona: "p1", title: "Fix the flaky test!", brief: "b", place: { kind: "repo", device: "mac", repoPath: repo } });
     await runner.whenStarted(card.taskId);
@@ -1096,6 +1098,7 @@ describe("ack and go (D120): a replaced early open leaves nothing behind (resear
   test("its worktree and branch go, so the task opened instead gets the plain branch name", async () => {
     const repo = await makeRepo();
     const fake = new FakePort();
+    core.branchAsk = async () => '{"slug":"fix-the-test"}'; // D522: the cheap model's words, faked
     const runner = createRunner(core, { harness: fake, newId: nextId });
     let drop!: (e: Error) => void;
     const first = await runner.openTaskEarly!({ persona: "p1", title: "Fix the test", place: { kind: "repo", repoPath: repo } }, new Promise<string>((_, r) => (drop = r)));

@@ -175,8 +175,11 @@ func (a *App) floatLineNow(c *ui.Context) floatLine {
 			return floatLine{kind: "reply", words: clipQuote(words, floatReplyChars), look: a.floatReplyLook(e)}
 		}
 	}
+	if w := a.linkWords(); w != "" { // D520: quiet first, plain after a while
+		return floatLine{kind: "say", words: w}
+	}
 	if a.Status == client.Disconnected {
-		return floatLine{kind: "say", words: a.L.T("conn.offline")}
+		return floatLine{kind: "say", words: a.L.T("conn.offline", a.linkHome())}
 	}
 	if !a.S.Welcomed {
 		return floatLine{kind: "say"}

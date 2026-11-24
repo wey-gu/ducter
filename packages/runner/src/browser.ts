@@ -44,6 +44,7 @@ import { profileName, profileRoot } from "@ducter/protocol/src/browser-profile.t
 import { CLAUDE_CHROME_NOT_CONNECTED, claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import { applyBrowserIdentity, closeBrowserGracefully } from "./cdp.ts";
 import { createFocusGuard, macFocusProbe, type FocusGuard, type FocusProbe } from "./focus-guard.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export { closeBrowserGracefully } from "./cdp.ts";
 
@@ -438,7 +439,7 @@ const probed = new Map<string, CuaDriverInfo>();
 export async function detectCuaDriver(opts: BrowserOptions = {}): Promise<CuaDriverInfo | { missing: string }> {
   const env = opts.env ?? process.env;
   const exec = opts.exec ?? defaultExec;
-  const which = opts.which ?? ((c: string) => Bun.which(c));
+  const which = opts.which ?? ((c: string) => whichNow(c));
   const bin = env.DUCTER_CUA_DRIVER || which("cua-driver") || (existsSync(DEFAULT_APP_BIN) ? DEFAULT_APP_BIN : "");
   if (!bin) return { missing: "cua-driver is not installed (https://github.com/trycua/cua, cua-driver-rs)" };
   const hit = probed.get(bin);

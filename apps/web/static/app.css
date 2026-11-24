@@ -21315,3 +21315,98 @@ html[data-text-size="large"] .brand-mark > svg {
   .top .partner-switch { gap: 6px; }
   .top .partner-pick::before { content: ""; position: absolute; inset: -6px -3px; }
 }
+
+/* ---------- D508: a PR's state on its row; a hover's actions in a slot of their own ---------- */
+/* A finished task whose PR is open says where the PR is: the phase in the state's ink, then its
+   facts, each its own element, wrapping. */
+.ocard .o2.prl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  white-space: normal;
+}
+.ocard .o2.prl .ph {
+  font-weight: 600;
+  color: var(--waiting-ink);
+  white-space: nowrap;
+}
+.ocard .o2.prl.needs .ph {
+  color: var(--needs-ink);
+}
+.ocard .o2.prl .pf {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+/* A row's hover actions (× and ⋯, or Pause) stand in a slot inside the row, so they never cover
+   the time and never run past the sheet's edge. */
+.onhand-list.room-full .ocards:not(:has(.ocol > .on)) .ocard {
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+}
+.onhand-list.room-full .ocards:not(:has(.ocol > .on)) .ocard .ocol {
+  position: static;
+  justify-content: flex-end;
+  padding: 0 10px 0 0;
+  transform: none;
+}
+.onhand-list.room-full .ocard .fin-acts {
+  right: 10px;
+}
+@media (hover: hover) {
+  .onhand-list.room-full .ocard:has(.tacts):hover .obeat {
+    display: block;
+  }
+}
+/* The title stays whole in its two lines; what follows it (project, +a −d, its PR and to-do) may take a third. */
+.onhand-list:not(.room-rail) .ocard .o1 {
+  -webkit-line-clamp: 3;
+}
+/* D508: a row with a PR groups its facts by what they describe: the source (its to-do and where) on
+   one line, the PR (its chip, its diff, where it stands) on the next, in one sentence's order and
+   packed from the start, never pushed apart to the row's far edge. */
+.ocard .osrc,
+.ocard .oprg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  white-space: normal;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.ocard .osrc .meta,
+.ocard .oprg .m {
+  color: var(--ink-muted);
+}
+.ocard .oprg .stat {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+}
+.ocard .oprg .stat .add {
+  color: var(--done-ink);
+  font-style: normal;
+}
+.ocard .oprg .stat .del {
+  color: var(--failed-ink);
+  font-style: normal;
+}
+.ocard .oprg .pr {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.ocard .oprg .ph {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--waiting-ink);
+  white-space: nowrap;
+}
+.ocard .oprg .ph.needs {
+  color: var(--needs-ink);
+}
+.ocard .oprg .pf {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}

@@ -73,7 +73,7 @@ type onHandState struct {
 	roundsRow bool
 	// D507: the row being drawn is under its helper (it doesn't name it
 	// again), and a finished one whose PR waits for a merge (it says so).
-	inHelper, readyRow bool
+	inHelper bool
 	// walked is the focus the keys last moved to (D471: the peek follows it,
 	// never a focus kept from a task opened before).
 	walked  string
@@ -403,6 +403,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	sp := a.splitOf(b)
 	needs := withoutGroups(keep(sp.needs), hidden)
 	stopped := withoutGroups(keep(sp.stopped), hidden)
+	ready := withoutGroups(keep(sp.ready), hidden)
 	failed := withoutGroups(keep(sp.failed), hidden)
 	working := withoutGroups(keep(sp.working), hidden)
 	waiting := withoutGroups(keep(sp.waiting), hidden)
@@ -436,7 +437,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		f = 0
 	}
 	show := func(i int) bool { return f == 0 || f == i }
-	if q != "" && len(needs)+len(stopped)+len(failed)+len(working)+len(waiting)+len(ongoing)+len(today)+len(earlier)+len(inGroup) == 0 {
+	if q != "" && len(needs)+len(stopped)+len(ready)+len(failed)+len(working)+len(waiting)+len(ongoing)+len(today)+len(earlier)+len(inGroup) == 0 {
 		a.oh.order = a.oh.order[:0]
 		uiText(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		a.pastFindLink(c, q) // D285
@@ -449,7 +450,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		for _, s := range []struct {
 			key, name string
 			ts        []*store.Task
-		}{{"needs", "lane.needs_you", concat(needs, stopped, failed)}, {"working", "lane.working", working}, {"waiting", "lane.waiting", waiting}, {"done", "lane.done", concat(today, earlier)}} {
+		}{{"needs", "lane.needs_you", concat(needs, stopped, ready, failed)}, {"working", "lane.working", working}, {"waiting", "lane.waiting", waiting}, {"done", "lane.done", concat(today, earlier)}} {
 			for _, x := range s.ts {
 				a.oh.order = append(a.oh.order, x.ID)
 			}
@@ -517,7 +518,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		}
 	}
-	add(show(1), helperIDs(hsYou), needs, stopped, failed)
+	add(show(1), helperIDs(hsYou), needs, stopped, ready, failed)
 	add(show(2), working)
 	add(show(3), fresh, inGroups)
 	add(show(3) && quietOpen, quiet)
@@ -535,8 +536,8 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	// What needs you comes first and takes no room when there is none (the
 	// board's head says so in one calm sentence).
-	if len(needs)+len(stopped)+len(failed)+len(pds)+len(others)+nGroups(0)+len(hsYou) > 0 && show(1) {
-		n := count(sp.needs, needs) + count(sp.stopped, stopped) + count(sp.failed, failed) + len(pds) + len(others)
+	if len(needs)+len(stopped)+len(ready)+len(failed)+len(pds)+len(others)+nGroups(0)+len(hsYou) > 0 && show(1) {
+		n := count(sp.needs, needs) + count(sp.stopped, stopped) + count(sp.ready, ready) + count(sp.failed, failed) + len(pds) + len(others)
 		a.listSection(c, "needs", a.L.T("lane.needs_you"), n, func() {
 			for _, h := range hsYou {
 				a.helperSheet(c, h)
@@ -556,7 +557,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 					plain = append(plain, task)
 				}
 			}
-			a.taskCards(c.Key("needs"), concat(plain, stopped, failed))
+			a.taskCards(c.Key("needs"), concat(plain, stopped, ready, failed))
 		})
 	}
 	if len(working)+nGroups(1) > 0 && show(2) {
@@ -906,29 +907,12 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 func (a *App) rowActs(c *ui.Context, task *store.Task, hover bool) bool {
 	t := a.T
 	att := task.Attention()
-	p := task.Place()
 	if task.Acting != "" {
-		uiText(c.Key("busy"), a.L.TFamily("result.acting."+task.Acting, p.BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+		// D508: a merge or draft PR under way says so where the row's time stands.
 		return true
 	}
-	finished := att == protocol.Done || att == protocol.DoneClaimed || att == protocol.Failed
-	if finished && task.CanIntegrate() && integrated(task) == "" && p.Kind == "repo" {
-		base := p.BaseBranch
-		if base == "" {
-			base = "main"
-		}
-		ui.Row(c.Key("acts")).Gap(t.S1).Shrink(0).Children(func() {
-			if a.button(c, a.L.T("result.merge", base), btnText, t.ControlSM, t.SurfaceRaised) {
-				task.Acting = "merge"
-				a.TaskAction(task.ID, "merge")
-			}
-			if a.button(c, a.L.T("result.pr"), btnText, t.ControlSM, t.SurfaceRaised) {
-				task.Acting = "open_pr"
-				a.TaskAction(task.ID, "open_pr")
-			}
-		})
-		return true
-	}
+	// D508: 合进 {base} and 开草稿 PR are in the row's ⋯ (finishedItems), and
+	// never offered once a PR holds the branch.
 	if att == protocol.Working {
 		ui.Row(c.Key("acts")).Shrink(0).Children(func() {
 			if a.button(c, a.L.T("task.action.pause"), btnText, t.ControlSM, t.SurfaceRaised) {

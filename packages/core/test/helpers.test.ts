@@ -6,7 +6,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createBridgeLink, nmemCall } from "../src/bridge-link.ts";
-import { createHelpers, helperItems, helperSaidWords, type HelperPr } from "../src/helpers.ts";
+import { createHelpers, helperItems, helperSaidWords } from "../src/helpers.ts";
 import type { TaskCard } from "@ducter/protocol";
 import { tempDir } from "./helpers.ts";
 
@@ -98,16 +98,18 @@ describe("D507: the partner's word when the address stands, and what a helper ke
     const cards: Record<string, TaskCard> = {
       a: card("a", "working"),
       b: card("b", "needs_you", { pendingDecision: { question: "Comment /test on #10932?" } as TaskCard["pendingDecision"] }),
-      c: card("c", "done"),
-      d: card("d", "done"),
+      // D508: where each PR stands is the card's (one model): c's is signed off and green, g's waits for a review.
+      c: card("c", "done", { prs: [{ pr: "nowledge-co/mem#10847", url: "", state: "open", at: "2026-11-24T08:00:00Z", standing: { at: "2026-11-24T08:00:00Z", approvedBy: ["hawkingrei"], merge: "clean" } }] }),
+      d: card("d", "done", { prs: [{ pr: "nowledge-co/mem#10850", url: "", state: "merged", at: "2026-11-24T08:00:00Z" }] }),
+      g: card("g", "done", { prs: [{ pr: "nowledge-co/mem#10851", url: "", state: "open", at: "2026-11-24T08:00:00Z", standing: { at: "2026-11-24T08:00:00Z", awaiting: ["hawkingrei"] } }] }),
       e: card("e", "dropped"),
       f: card("f", "working"),
     };
-    const prs: Record<string, HelperPr[]> = { c: [{ pr: "nowledge-co/mem#10847", state: "open", merge: "clean" }], d: [{ pr: "nowledge-co/mem#10850", state: "merged" }] };
-    const index = new Map([["a", "h"], ["b", "h"], ["c", "h"], ["d", "h"], ["e", "h"], ["f", "other"]]);
-    const got = helperItems("h", { tasksOf: () => index, card: (t) => cards[t], prs: (t) => prs[t] ?? [] });
-    expect(got.map((x) => [x.taskId, x.at])).toEqual([["b", "you"], ["a", "work"], ["c", "ready"]]);
+    const index = new Map([["a", "h"], ["b", "h"], ["c", "h"], ["d", "h"], ["e", "h"], ["f", "other"], ["g", "h"]]);
+    const got = helperItems("h", { tasksOf: () => index, card: (t) => cards[t] });
+    expect(got.map((x) => [x.taskId, x.at])).toEqual([["b", "you"], ["c", "ready"], ["a", "work"], ["g", "work"]]);
     expect(got[0]!.yours).toBe("Comment /test on #10932?");
-    expect(got[2]).toMatchObject({ pr: "nowledge-co/mem#10847", merge: "clean" });
+    expect(got[1]).toMatchObject({ pr: "nowledge-co/mem#10847", said: { phase: "ready", by: ["hawkingrei"] } });
+    expect(got[3]).toMatchObject({ pr: "nowledge-co/mem#10851", said: { phase: "review", by: ["hawkingrei"] } });
   });
 });

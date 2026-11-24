@@ -13,21 +13,14 @@ import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { paneName } from "@ducter/protocol/src/settings-panes.ts";
 import { cleanBrief, cleanHelperName, cleanLine, HELPER_ABOUT_MAX, HELPERS_MAX, helperCard, helperIdentity, type Helper, type HelperItem, type HelperView } from "@ducter/protocol/src/helpers.ts";
 import type { TaskCard } from "@ducter/protocol";
-
-/** D507: a task's PRs as owned.ts last saw them (owned.prs). */
-export interface HelperPr {
-  pr: string;
-  state?: "open" | "closed" | "merged";
-  merge?: string;
-  stands?: string;
-}
+import { prGoesOn, prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
 
 /**
  * D507: what one helper keeps now, the one model of its state (protocol HelperItem). A helper keeps a
  * task until it ends, and a finished one while the PR it owns is still open: a merge or a close lets
  * it go (to 今天做完 with the helper's name, then Past tasks). A task dropped lets it go at once.
  */
-export function helperItems(id: string, d: { tasksOf: () => Iterable<[string, string]>; card: (taskId: string) => TaskCard | undefined; prs: (taskId: string) => HelperPr[] }): HelperItem[] {
+export function helperItems(id: string, d: { tasksOf: () => Iterable<[string, string]>; card: (taskId: string) => TaskCard | undefined }): HelperItem[] {
   const out: HelperItem[] = [];
   for (const [taskId, h] of d.tasksOf()) {
     if (h !== id) continue;
@@ -35,24 +28,27 @@ export function helperItems(id: string, d: { tasksOf: () => Iterable<[string, st
     if (!c) continue;
     const a = c.attention;
     if (a === "dropped" || a === "superseded") continue;
-    const open = d.prs(taskId).filter((p) => !p.state || p.state === "open");
+    // D508: one model of where a PR stands (the card's PRs, pr-state.ts): a finished task stays while
+    // its PR goes on; ready to merge waits for the person; merged or closed lets it go.
+    const goes = prGoesOn(c.prs);
     const ended = a === "done" || a === "done_claimed" || a === "failed";
-    if (ended && !open.length) continue;
-    const pr = open[0] ?? d.prs(taskId)[0];
-    const at: HelperItem["at"] = a === "needs_you" || a === "failed" ? "you" : ended ? "ready" : "work";
+    if (ended && !goes) continue;
+    const p = goes?.pr ?? prOf(c.prs);
+    const said = p ? (goes?.said ?? prSaid(p)) : undefined;
+    const at: HelperItem["at"] = a === "needs_you" || a === "failed" ? "you" : ended && goes?.stands === "needs" ? "ready" : "work";
     const yours = at === "you" ? (c.pendingDecision?.question ?? c.reason) : undefined;
     out.push({
       taskId,
       title: c.title,
       at,
       ...(yours ? { yours } : {}),
-      ...(pr ? { pr: pr.pr } : {}),
-      ...(pr?.merge ? { merge: pr.merge } : {}),
-      ...(pr?.stands ? { stands: pr.stands } : {}),
+      ...(p ? { pr: p.pr } : {}),
+      ...(said ? { said } : {}),
     });
   }
-  // What waits for the person first, then what is under way, then what waits to be merged.
-  const rank = { you: 0, work: 1, ready: 2 } as const;
+  // What waits for the person first (a question, then a PR ready to merge), then what is under way.
+  // D508: a PR ready to merge waits for the person too, so it comes right after their questions.
+  const rank = { you: 0, ready: 1, work: 2 } as const;
   return out.sort((x, y) => rank[x.at] - rank[y.at]);
 }
 

@@ -245,7 +245,7 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 	}
 	a.proofLine(c, task, evs, true)
 	merged := task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge"
-	if task.CanIntegrate() && task.Acting == "" && !merged && !noRemote(task) {
+	if task.CanIntegrate() && task.Acting == "" && !merged && !noRemote(task) && !hasPR(task) { // D508: a PR holds the branch
 		if a.quietLink(c, "pr:"+task.ID, a.L.T("result.pr"), spoken(a.L, a.L.T("result.pr"), task.Title())) {
 			task.Acting = "open_pr"
 			a.TaskAction(task.ID, "open_pr")

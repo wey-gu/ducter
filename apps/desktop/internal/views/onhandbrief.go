@@ -100,6 +100,14 @@ var prNumber = regexp.MustCompile(`(?i)(?:PR\s*)?#(\d+)`)
 // number and link), from its report's evidence, its merge or draft PR, or
 // a PR named in its result.
 func outcomeOf(task *store.Task) (label, url string) {
+	// D508: the PR Ducter watches for it first (its card's).
+	if task.Card != nil {
+		if p := store.PROf(task.Card.PRs); p != nil {
+			if i := strings.LastIndex(p.PR, "#"); i >= 0 {
+				return p.PR[i:], p.URL
+			}
+		}
+	}
 	if r := task.Report(); r != nil {
 		for _, e := range r.Evidence {
 			if i := strings.Index(e.Ref, "/pull/"); i > 0 {
@@ -262,7 +270,12 @@ func (a *App) peek(c *ui.Context) {
 			ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD + 1).FontWeight(700).TextColor(t.Ink).MaxLines(3).Tooltip(task.Title())
 				ui.Row(c.Key("meta")).Gap(t.S2).Wrap().Children(func() {
-					a.beat(c, task, att, false)
+					// D508: under its open PR the peek says where the PR is, never 做完.
+					if pr, said, st := prRow(task); pr != nil {
+						a.prLine(c, task, said, st)
+					} else {
+						a.beat(c, task, att, false)
+					}
 					for _, m := range a.whereMeta(task) {
 						uiText(c.Key("m:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 					}

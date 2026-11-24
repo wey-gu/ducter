@@ -835,7 +835,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onHandChanged();
   });
   /** D507: what each helper keeps now (the one model: On hand's sheet reads it, a helper's app will too). */
-  const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t), prs: (t) => work.owned.prs(t) });
+  const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t) });
   const helperHolds = (taskId: string): boolean => {
     const id = helperIndex.tasks.get(taskId);
     return !!id && helperItemsOf(id).some((x) => x.taskId === taskId);
@@ -2192,7 +2192,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D395: the one resolver task_open uses: the computer with its code (or a clone first).
       const where = item.kind === "github" && item.where ? await repoWhere.resolve({ remote: item.where, texts: [item.title] }).catch(() => undefined) : undefined;
       const place = where?.ok ? where.place : item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
-      const r = await newTask.open({ words: item.title, ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
+      // D508: the to-do's whole title, and the person's language (never the issue's).
+      const r = await newTask.open({ words: item.title, title: item.title, language: langNow(), ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
       if (!r.ok) return { ok: false, error: r.message ?? r.reason };
       return "card" in r ? { ok: true, taskId: r.card.taskId } : { ok: false, error: "it became a routine" };
     },

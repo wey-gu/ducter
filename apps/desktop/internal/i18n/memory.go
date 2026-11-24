@@ -229,7 +229,6 @@ var zhMemory = Table{
 	// D507: a helper on 手头的事 / On hand.
 	"helper.idle":             "还没有活交过来",
 	"helper.you":              "%d 个在等你",
-	"helper.ready":            "能合并了，等人合并",
 	"helper.see":              "在设置里看 %s",
 	"peers.st.both":           "能把事交给我，也收得到我的回话",
 	"peers.st.oneway":         "能把事交给我，我的回话它还收不到",
@@ -537,7 +536,6 @@ var enMemory = Table{
 	"peers.helper.resume":     "Take work again",
 	"helper.idle":             "Nothing handed over yet",
 	"helper.you":              "%d waiting for you",
-	"helper.ready":            "Can merge; waiting for a merge",
 	"helper.see":              "See %s in Settings",
 	"peers.st.both":           "Hands me work and hears my answers",
 	"peers.st.oneway":         "Hands me work; my answers can't reach it yet",

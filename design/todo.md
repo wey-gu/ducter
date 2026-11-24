@@ -49,6 +49,15 @@ line.
   composer and a sheet, overscroll. The Simulator can't be touched from the shell. *Trigger:* a driver that
   can tap the Simulator, or a real iPhone in hand.
 
+## On hand, after D508 (`on-hand.md` "Under its PR")
+
+- **A live check on hel**: a GitHub-issue task's PR walks checks, review, ready and merged on the
+  board, and a review task's evidence never adopts a PR. Trigger: the next release.
+- **A PR a task made but neither declared nor named** stays unknown (the task reads as done).
+  Trigger: a report of one.
+- **The opened task's head says the PR's phase too** (today only its PR chip). Trigger: the
+  author's review.
+
 ## On hand, after D498 (`on-hand.md`, research/216)
 
 - [ ] **Human raters for the pebble** (the LLM proxies are done): the author first, then a consumer

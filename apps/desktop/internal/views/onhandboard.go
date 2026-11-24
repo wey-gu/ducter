@@ -386,7 +386,7 @@ func (a *App) stateCounts(b store.Board, lens string) [4]int {
 			failed++
 		}
 	}
-	n := [4]int{len(sp.needs) + len(sp.stopped) + failed, len(sp.working), len(sp.waiting), len(sp.today)}
+	n := [4]int{len(sp.needs) + len(sp.stopped) + len(sp.ready) + failed, len(sp.working), len(sp.waiting), len(sp.today)}
 	n[0] += a.stoppedGroups(b) // D360: a stopped line waits for the person's word
 	if loose(lens) {
 		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too

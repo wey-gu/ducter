@@ -8,6 +8,7 @@ package i18n
 var zhDeviceCard = Table{
 	"worker.g":                     "这里的任务用这台电脑上登录的 AI 和代码，看不到你和 %s 的对话。",
 	"home.g":                       "你和 %s 的对话都存在这台电脑上。",
+	"card.tidied":                  "整理过 %d 个用完的工作副本，腾出 %s",
 	"list.state.lent":              "借出去了",
 	"list.state.lendable":          "能借给任务",
 	"list.state.ready":             "待命",
@@ -129,6 +130,7 @@ var zhDeviceCard = Table{
 var enDeviceCard = Table{
 	"worker.g":                     "Tasks here use the AI and code on this computer. They never see your conversations with %s.",
 	"home.g":                       "Your conversations with %s are kept on this computer.",
+	"card.tidied":                  "Tidied %d finished working copies, %s freed",
 	"list.state.lent":              "Lent now",
 	"list.state.lendable":          "Can be lent",
 	"list.state.ready":             "Ready",

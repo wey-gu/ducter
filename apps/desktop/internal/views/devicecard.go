@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,6 +110,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		// D398, D420: what a computer for tasks uses and never sees; on the home, where the conversation is kept.
 		a.workerGuard(c, dv)
 		a.ducterLine(c, dv)
+		// D514: what Ducter tidied away here, one quiet line; nothing before the first.
+		if dv.Tidied != nil && dv.Tidied.Count > 0 {
+			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)
+		}
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.
 		if dv.Home {
@@ -282,6 +287,24 @@ func (a *App) statusLine(c *ui.Context, line string, ink ui.Color, strong bool) 
 		w = 700
 	}
 	uiText(c, line).FontSize(t.MD).FontWeight(w).TextColor(ink).TextAlign(ui.Center).LineHeight(1.5).Margin(2, 0, t.S4, 0)
+}
+
+// tidySize is bytes as people read them, as protocol tidy.ts says them: 3.4 GB, 540 MB.
+func tidySize(n float64) string {
+	if n < 1024 {
+		return strconv.FormatFloat(n, 'f', 0, 64) + " B"
+	}
+	units := []string{"KB", "MB", "GB", "TB"}
+	v := n / 1024
+	i := 0
+	for v >= 1024 && i < len(units)-1 {
+		v /= 1024
+		i++
+	}
+	if v < 10 {
+		return strconv.FormatFloat(v, 'f', 1, 64) + " " + units[i]
+	}
+	return strconv.FormatFloat(math.Round(v), 'f', 0, 64) + " " + units[i]
 }
 
 // ---------- what it carries: the coins ----------

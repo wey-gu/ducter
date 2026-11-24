@@ -78,6 +78,8 @@ export interface ResolvedPlace {
   clone?: { address: string; dataDir: string };
   /** D415: 清掉旧的再试 / Clear it and try again: a lock git left is removed when no git is running. */
   clearLock?: boolean;
+  /** D514: added back after its copy was tidied: a branch deleted here since but still on origin comes from there. */
+  again?: boolean;
 }
 
 /**
@@ -295,7 +297,9 @@ export async function provisionPlace(r: ResolvedPlace): Promise<void> {
     let last = "";
     for (let attempt = 0; attempt < LOCK_TRIES; attempt++) {
       const branchExists = p.branch ? (await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok : false;
-      const args = branchExists ? ["worktree", "add", r.cwd, p.branch!] : ["worktree", "add", r.cwd, "-b", p.branch!, p.baseBranch ?? "HEAD"];
+      // D514: a tidied task's branch, gone here but pushed: its work is on origin, never a fresh branch off the base.
+      const pushed = !branchExists && r.again && p.branch ? (await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/remotes/origin/${p.branch}`])).ok : false;
+      const args = branchExists ? ["worktree", "add", r.cwd, p.branch!] : ["worktree", "add", r.cwd, "-b", p.branch!, pushed ? `origin/${p.branch}` : (p.baseBranch ?? "HEAD")];
       const res = await git(p.repoPath, args);
       // The branch is on disk now (or the add failed for good): git says from here whether it is taken.
       plannedBranches.delete(`${p.repoPath}|${p.branch}`);

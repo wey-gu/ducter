@@ -92,7 +92,7 @@ nothing of for 12 h (`DUCTER_BACKGROUND_CEILING_MS`) stops counting, said once i
 | `warm` | `hot` | C | input arrives: steer, queue, answer, follow-up |
 | `warm` | `parked` | C | idle ≥ max(cache TTL, 15 min) and no background work inside the window (D266: counted from the harness's task events; the park timer re-arms while any runs). Kill the process; keep the session ref and environment |
 | `parked` | `hot` | C | input arrives. Resume by session ref. If the harness rejects the resume, start a new session in the *same* window from brief + checkpoint |
-| `parked` | `archived` | C | attention is terminal, after a grace period; or the window is `done` and idle ≥ the archive horizon (default 14 days). Reclaim the environment: remove the worktree directory, keep the branch, the transcript, and the Log. Blobs age out (1) |
+| `parked` | `archived` | C | attention is terminal, after a grace period; or the window is `done` and idle ≥ the archive horizon (D514: 3 days; a dropped one 7). Reclaim the environment: remove the worktree directory, keep the branch, the transcript, and the Log. Blobs age out (1) |
 | `archived` | `provisioning` | C | a follow-up arrives. Rebuild the environment from the branch, then resume from brief + checkpoint |
 | any | `offline` | C | the machine heartbeat is lost |
 | `offline` | (previous) | C | the machine is back. Reconcile with the harness's own state |
@@ -103,9 +103,11 @@ C may wake a sleeping machine when input arrives for a parked window on it.
 there yet), start a new session in the same task: the brief stays in its system prompt, every
 checkpoint and then the waking message are its first turn, and a system line says so
 (`raw.fresh: "resume_rejected"`). The archive horizon is a sweep at start and hourly: a
-`done`, `done?` or `failed` task idle 14 days (`DUCTER_ARCHIVE_IDLE_MS`) is archived; a
-worktree with leftovers is kept and the task stays parked, never force-removed. Dropped tasks
-keep their worktree for Undo and are not swept yet (`todo.md`). Neither the horizon nor the
+`done`, `done?`, `failed` or superseded task idle 3 days (`DUCTER_ARCHIVE_IDLE_MS`), or a
+dropped one after Undo's 7 (`DUCTER_DROP_UNDO_MS`), is archived and its working copy tidied
+(D514, `tidy.md`): a copy that matters (uncommitted files, commits nowhere else, a wait, a Keep,
+an open PR, the person's star or keep, another task in it) is kept and the task stays parked,
+never force-removed. Neither the horizon nor the
 archive after a merge closes a session with background work running (D266): the merge's archive
 says so in the task and happens when the last one ends (or at the next park).
 

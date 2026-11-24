@@ -1,7 +1,7 @@
 // D486: the partner's own word on the person's partners. One tool, three verbs:
 //
 // - make: the person asked for another partner ("再给我做一个管家里事的伙伴"): made at once, with a
-//   name and what it looks after in their words. It shows beside the name; a tap talks to it.
+//   name and what it looks after in their words. It shows in the list of partners (D513); a tap talks to it.
 // - pass: the person's words meant for another partner (they named it, or asked to tell it) go into
 //   that partner's own conversation as theirs, marked passed on by this one. It answers there; the
 //   person sees the dot on its stone. Nothing else of this conversation goes along (D24, D309).
@@ -50,7 +50,7 @@ export function registerPartnerTool(mcp: CoreMcpHub, deps: { log: LogStore; part
           const why = { empty: "it needs a name", long: `a name is at most ${PARTNER_NAME_MAX} characters`, taken: `the name is taken (partners now: ${names()})`, full: `the user already has ${PARTNERS_MAX} partners, the most a home has`, unknown: "it couldn't be made" }[r.error];
           return { ok: false, error: `Not made: ${why}.` };
         }
-        return { ok: true, made: { name: r.partner.name, ...(r.partner.about ? { about: r.partner.about } : {}) }, next: `${r.partner.name} is made. Its stone is beside your name now; the user taps it to talk to it, and it keeps its own conversation and memory. Tell them that in one short line. Pass nothing to it unless they ask.` };
+        return { ok: true, made: { name: r.partner.name, ...(r.partner.about ? { about: r.partner.about } : {}) }, next: `${r.partner.name} is made. It is in the user's list of partners now (on a computer, left of this conversation; on a phone, one tap back with ‹); a tap on it talks to it, and it keeps its own conversation and memory. Tell them that in one short line. Pass nothing to it unless they ask.` };
       }
       const target = partners.byName(String(a.to ?? ""));
       if (!target) return { ok: false, error: `No partner called "${String(a.to ?? "")}". The user's partners: ${names()}.` };

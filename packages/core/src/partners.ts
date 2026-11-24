@@ -11,7 +11,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent, PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
-import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isLook, nextLook, partnerNameProblem, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isLook, nextLook, partnerNameProblem, lastLine, type PartnerInfo, type PartnerLast, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
 export const PARTNERS_FILE = "partners.json";
 
@@ -54,6 +54,8 @@ export interface Partners {
   nameOf(persona: string | undefined): string;
   /** D312: every partner's own open questions (On hand lists another partner's). */
   questions(): PartnerAsk[];
+  /** D513: the last thing said in a partner's conversation, for the person's list of partners. */
+  last(id: string): PartnerLast | undefined;
   /** Called after every change (ws sends every socket a fresh partners frame). */
   onChange(fn: () => void): () => void;
 }
@@ -193,6 +195,14 @@ export function openPartners(opts: {
     nameOf(persona) {
       if (!persona || persona === DEFAULT_PARTNER) return opts.persona.name;
       return file.others.find((p) => p.id === persona)?.name ?? opts.persona.name;
+    },
+    last(id) {
+      // The newest words of its conversation: the person's, its replies, its acks, its questions.
+      const [e] = opts.log.read({ stream: channelOf(id), kinds: ["user_msg", "ai_msg", "ack", "decision"], limit: 1 });
+      if (!e) return undefined;
+      const b = e.body as { text?: unknown; question?: unknown };
+      const text = lastLine(e.kind === "decision" ? b.question : b.text);
+      return text ? { text, at: e.ts, ...(e.kind === "user_msg" ? { you: true } : {}) } : undefined;
     },
     questions: () => (on && file.others.length ? [DEFAULT_PARTNER, ...file.others.map((p) => p.id)].flatMap(questions) : []),
     onChange(fn) {

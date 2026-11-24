@@ -327,6 +327,18 @@ if (process.env.DEMO_PARTNERS === "1") {
   // D497: DEMO_PARTNER_NEW=1: a third partner the person made but never talked to (its empty
   // conversation is its first meeting: who it is, what it looks after, its own starters).
   if (process.env.DEMO_PARTNER_NEW === "1") core.partners.add({ name: zh ? "多比" : "Dobby", look: "sky", about: zh ? "读书、跑步和周末的安排" : "reading, running and weekend plans" });
+  // D513: DEMO_PARTNER_FOUR=1: a fourth partner the person talks to about money, with its own
+  // question waiting (the list's numbers add up to the person's one count).
+  if (process.env.DEMO_PARTNER_FOUR === "1") {
+    const money = core.partners.add({ name: zh ? "小新" : "Sunny", look: "plum", about: zh ? "账单、报销和保险" : "bills, expenses and insurance" });
+    if (money.ok) {
+      const s = `channel:${money.partner.id}`;
+      const m = log.append({ stream: s, origin: "user", kind: "user_msg", body: { text: zh ? "这个月的报销帮我整理一下，发票都在邮箱里" : "Sort out this month's expenses, the receipts are all in my mail" } });
+      log.append({ stream: s, origin: "partner", kind: "ai_msg", body: { text: zh ? "找到 7 张发票，合计 2,318 元。打车那张抬头写错了，要重开吗？" : "I found 7 receipts, 2,318 in all. The taxi one has the wrong company name on it.", replyTo: m.seq } });
+      log.append({ stream: s, origin: "partner", kind: "decision", body: { decisionId: "d_money_taxi", question: zh ? "让司机重开那张打车发票吗？" : "Ask for the taxi receipt to be reissued?", goLabel: zh ? "去重开" : "Reissue it", defaultOption: "hold", reversible: true } });
+      await tick();
+    }
+  }
 }
 
 // After the seed, a scripted partner answers new messages the way a real one paces itself, so

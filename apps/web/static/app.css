@@ -13976,76 +13976,40 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   pointer-events: none;
   filter: var(--clay, none);
 }
-.top .partner-switch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 10px;
-  flex: none;
-  min-width: 0;
-}
-.top .partner-pick {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 2px 10px 2px 4px;
-  border-radius: 999px;
-  background: var(--surface-sunken, var(--sunken));
-  color: var(--ink-soft);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.top .partner-pick .partner-name { overflow: hidden; text-overflow: ellipsis; max-width: 8em; }
-.top .partner-pick .partner-n {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  box-sizing: border-box;
-  border-radius: 9px;
-  background: var(--needs-surface);
-  color: var(--needs-ink);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-@media (hover: hover) {
-  .top .partner-pick:hover { color: var(--ink); background: color-mix(in srgb, var(--surface-sunken, var(--sunken)) 92%, var(--ink)); }
-}
-.top .partner-pick:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-/* A phone's bar: the face and the number; the name is its label. */
-@media (max-width: 600px) {
-  .top .who-words { flex: 1 1 auto; min-width: 5.5em; }
-  .top .who:has(.partner-switch) .sum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* One fact, whole, never a cut one: the first (what needs you comes first); the rest is in its label. */
-  .top .who:has(.partner-switch) .sum .facts { flex-wrap: nowrap; }
-  .top .who:has(.partner-switch) .sum .facts > span:not(:first-child) { display: none; }
-  /* Nothing to count: with the others beside it, a phone says nothing rather than a cut sentence. */
-  .top .who:has(.partner-switch) .sum.none { display: none; }
-  .top .partner-switch { margin-left: 2px; gap: 2px; }
-  .top .partner-pick { width: 32px; height: 32px; padding: 0; justify-content: center; background: none; }
-  .top .partner-pick .partner-name { display: none; }
-  .top .partner-pick .partner-n { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 0.625rem; box-shadow: 0 0 0 2px var(--bg); }
-}
+/* D513: a partner's row in Settings is three lines, never one: who it is (the figure, its name, what
+   it looks after), its colours, then its actions, the last two under its name. On one line the
+   buttons took the width and the words were squeezed to one character a line on a phone. */
 .partners-set .partner-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.partners-set .partner-top {
+  display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 .partners-set .partner-words {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1 1 auto;
   min-width: 0;
 }
+.partners-set .partner-row > .look-pick,
+.partners-set .partner-acts {
+  margin-inline-start: 52px;
+}
+.partners-set .partner-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.partners-set .partner-acts:empty { display: none; }
 .look-pick {
   display: flex;
   flex-wrap: wrap;
@@ -21307,14 +21271,6 @@ html[data-text-size="large"] .brand-mark > svg {
    other list in Settings (D500 noted it); a pressed row's ground covers it. */
 .plist > .li-row + .li-row { position: relative; }
 .plist > .li-row + .li-row::before { content: ""; position: absolute; top: 0; inset-inline: 56px 10px; border-top: 1px solid var(--line); pointer-events: none; }
-.plist > .li-row:active::before, .plist > .li-row:active + .li-row::before { opacity: 0; }
-/* D501: seen in the iOS Simulator: on a phone the bar's other partners are 32 x 32 faces 2 apart. Each
-   takes a finger's 44 tall (D311's invisible box), and the gap grows to 6 so each face's box reaches 3
-   into it and never into its neighbour's; the faces look the same. */
-@media (max-width: 600px) {
-  .top .partner-switch { gap: 6px; }
-  .top .partner-pick::before { content: ""; position: absolute; inset: -6px -3px; }
-}
 
 /* ---------- D508: a PR's state on its row; a hover's actions in a slot of their own ---------- */
 /* A finished task whose PR is open says where the PR is: the phase in the state's ink, then its
@@ -21411,6 +21367,143 @@ html[data-text-size="large"] .brand-mark > svg {
   white-space: nowrap;
 }
 
+/* ---------- D513: 伙伴们 / Your partners, as a messaging app lists its chats ---------- */
+/* With more than one partner. Wide, a column at the conversation's left: each row the partner's
+   figure in its own clay, its name, the last thing said and, on the figure's shoulder, the number of
+   what of its own waits on the person; the one shown sits on the surface. From 1000 to 1359 the
+   column keeps the figures and numbers only (the name is the row's label). On a phone the same rows
+   are the level above the conversation, and the conversation's bar has ‹ with what waits elsewhere. */
+.pane.partners {
+  flex: 0 0 272px;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pane.partners > .top { min-height: 64px; box-sizing: border-box; }
+.pl-rows {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  border-radius: var(--r-md);
+  background: none;
+  color: inherit;
+  text-align: start;
+  transition: background-color 0.15s var(--ease);
+}
+@media (hover: hover) {
+  .pl-row:hover { background: var(--surface-sunken); }
+}
+.pl-row:active { background: var(--surface-sunken); }
+.pl-row.on,
+.pl-row.on:hover {
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.pl-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pl-face {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+.pl-n {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.pl-face > .pl-n {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.pl-row.on .pl-face > .pl-n { box-shadow: 0 0 0 2px var(--surface); }
+.pl-words {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pl-name {
+  font-size: var(--md);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pl-last {
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A window from 1000 to 1359: the figures and their numbers, the conversation keeps its width. */
+@media (min-width: 1000px) and (max-width: 1359px) {
+  .pane.partners { flex-basis: 80px; }
+  .pane.partners > .top .level { visibility: hidden; }
+  .pane.partners .pl-rows { padding-inline: 8px; }
+  .pane.partners .pl-row { justify-content: center; padding: 8px 0; }
+  .pane.partners .pl-words { display: none; }
+}
+/* A phone: the list is the level above the conversation, rows a thumb's height. */
+.partners-home {
+  padding-top: 4px;
+}
+.partners-home .pl-rows { padding-inline: 8px; gap: 4px; }
+.partners-home .pl-row { min-height: 76px; gap: 14px; }
+.partners-home .pl-name { font-size: var(--lg); }
+.partners-home .pl-last { font-size: var(--md); }
+.partners-home .pl-add { margin: 12px 16px 0; }
+.top .partners-back {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  min-width: 32px;
+  margin-inline-start: -8px;
+  margin-inline-end: -6px;
+  padding: 0 4px;
+  background: none;
+  color: var(--ink-soft);
+}
+.top .partners-back:active { color: var(--ink); }
+/* A phone's bar with ‹: the counts line keeps one fact, whole (the first: what needs you comes first; the
+   rest is in its label), so the bar stays one line tall beside the places. */
+@media (max-width: 600px) {
+  .top:has(.partners-back) .who-words { flex: 1 1 auto; min-width: 4.5em; }
+  .top:has(.partners-back) .sum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top:has(.partners-back) .sum .facts { flex-wrap: nowrap; }
+  .top:has(.partners-back) .sum .facts > span:not(:first-child) { display: none; }
+}
 /* ---------- D511: 照看 / Looking after: a Keep's sheet on On hand, its page, its receipt card ---------- */
 /* Tokens only (design/ui.md); the mark is keep.tsx's KeepMark, a flat placeholder until the clay art. */
 .kp-mark {

@@ -3,7 +3,9 @@
 // face, no switch. D497: with more, each partner is the same clay figure in its own clay (its look,
 // LOOK_CLAY), the conversation's own figure in the shown one's; the others sit beside it in the bar,
 // each its face and its name, with the number of what of its own waits on the person, and a tap
-// (or ⌥⌘1–⌥⌘4, or Find anything) shows its conversation. Settings › 伙伴 lists them, renames them, changes a look and
+// (or ⌥⌘1–⌥⌘4, or Find anything) shows its conversation. D513: the pills gave way to a list, as a
+// messaging app has (PartnerList): a column at the conversation's left when wide, the level above
+// the conversation on a phone. Settings › 伙伴 lists them, renames them, changes a look and
 // adds one (a name, what it looks after and a colour). D486: what each looks after shows under its
 // name and is changed with it; another partner is removed in two taps (its conversation stays).
 // A partner can also be made, renamed or handed the person's words from the conversation.
@@ -58,34 +60,99 @@ export function OtherAsk({ a }: { a: PartnerAsk }) {
   );
 }
 
-/** D497: the other partners beside the shown one in the conversation bar: each its face in its own
- *  clay and its name (never a bare face behind a tooltip), with the number of what of its own waits
- *  on the person; hover says what it looks after. A tap shows that one's conversation. */
-export function PartnerSwitch() {
+/** D513: what a partner's row says under its name: the last thing said in its conversation (the
+ *  person's own words marked as theirs), else what it looks after, else that nothing was said. */
+function lastWords(p: PartnerInfo): string {
+  if (p.last) return p.last.you ? t("partners.you", p.last.text) : p.last.text;
+  return p.about ? t("partners.about.shown", p.about) : t("partners.empty");
+}
+
+/** D513: one partner in the list: its face in its own clay, its name, its last line and the number
+ *  of what of its own waits on the person (its questions and its tasks that need them). */
+function PartnerRowItem({ p, i, shown, face }: { p: PartnerInfo; i: number; shown: string; face: number }) {
+  const on = p.id === shown;
+  const needs = A.partnerNeeds(p);
+  const label = on ? t("partners.here", p.name) : needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
+  return (
+    <li>
+      <button class={on ? "pl-row on" : "pl-row"} data-look={p.look} aria-current={on ? "true" : undefined} aria-label={label} title={i < 4 ? `${p.name} (⌥⌘${i + 1})` : p.name} onClick={() => A.openPartner(p.id)}>
+        <span class="pl-face">
+          <Stone look={p.look} size={face} />
+          {needs > 0 && (
+            <span class="pl-n" aria-hidden="true">
+              {needs}
+            </span>
+          )}
+        </span>
+        <span class="pl-words" aria-hidden="true">
+          <span class="pl-name">{p.name}</span>
+          <span class="pl-last">{lastWords(p)}</span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** D513: 伙伴们 / Your partners as a messaging app lists its chats, once there is more than one.
+ *  Wide (`side`), a column at the conversation's left: each row its face, name, last line and
+ *  number; a narrower window keeps the faces and numbers (app.css). On a phone (`home`), the
+ *  level above the conversation: the list, a tap in, back with ‹ or the edge swipe. */
+export function PartnerList({ at, places }: { at: "side" | "home"; places?: preact.ComponentChildren }) {
   if (!A.manyPartners()) return null;
   const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
+  const rows = (
+    <ul class="pl-rows">
+      {A.partners!.map((p, i) => (
+        <PartnerRowItem key={p.id} p={p} i={i} shown={shown} face={at === "home" ? 52 : 40} />
+      ))}
+    </ul>
+  );
+  if (at === "side")
+    return (
+      <nav class="pane partners" aria-label={t("partners.title")}>
+        <header class="top">
+          <h1 class="level">{t("partners.title")}</h1>
+        </header>
+        {rows}
+      </nav>
+    );
   return (
-    <span class="partner-switch" role="group" aria-label={t("partners.title")}>
-      {A.partners!.map((p, i) => {
-        if (p.id === shown) return null;
-        const needs = A.partnerNeeds(p);
-        const label = needs ? t("partners.switch.asks", p.name, needs) : t("partners.switch", p.name);
-        const tip = `${label} (⌥⌘${i + 1})${p.about ? `\n${t("partners.about.shown", p.about)}` : ""}`;
-        return (
-          <button key={p.id} class="partner-pick" data-look={p.look} aria-label={label} title={tip} onClick={() => A.switchPartner(p.id)}>
-            <Stone look={p.look} size={24} />
-            <span class="partner-name" aria-hidden="true">
-              {p.name}
-            </span>
-            {needs > 0 && (
-              <span class="partner-n" aria-hidden="true">
-                {needs}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </span>
+    <>
+      <header class="top">
+        <h1 class="level">{t("partners.title")}</h1>
+        <span style={{ flex: 1 }} />
+        {places}
+      </header>
+      <main class="scroll partners-home" aria-label={t("partners.title")}>
+        {rows}
+        {A.partners!.length < 4 && (
+          <div class="set-card pl-add">
+            <AddRow label={t("partners.add")} help={t("partners.add.help")} onClick={() => A.openSettings("partner")} />
+          </div>
+        )}
+      </main>
+    </>
+  );
+}
+
+/** D513: a phone's way up to the list from a conversation: ‹ with the number of what waits on the
+ *  person in the other partners (a messaging app's back button with its unread count). */
+export function PartnersBack() {
+  if (!A.manyPartners()) return null;
+  const shown = A.shownPartner()?.id ?? DEFAULT_PARTNER;
+  const elsewhere = A.partners!.filter((p) => p.id !== shown).reduce((n, p) => n + A.partnerNeeds(p), 0);
+  const label = elsewhere ? t("partners.back.asks", elsewhere) : t("partners.back");
+  return (
+    <button class="partners-back" aria-label={label} title={label} onClick={() => A.showPartners()}>
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      {elsewhere > 0 && (
+        <span class="pl-n" aria-hidden="true">
+          {elsewhere}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -141,45 +208,56 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
     if (e.key === "Enter" && !e.isComposing) save();
     if (e.key === "Escape") e.stopPropagation(), setEditing(false);
   };
+  // D513: a row is three lines, never one: who (the figure, the name, what it looks after), its
+  // colours, then its actions. On one line the buttons took the width and the words were squeezed
+  // to a strip one character wide on a phone.
   if (removing)
     return (
       <div class="set-row partner-row partner-removing" role="group" aria-label={t("partners.remove.ask", p.name)}>
-        <Stone look={p.look} size={40} />
-        <span class="grow partner-words">
-          <b>{t("partners.remove.ask", p.name)}</b>
-          <small>{t("partners.remove.what", A.defaultName())}</small>
+        <span class="partner-top">
+          <Stone look={p.look} size={40} />
+          <span class="grow partner-words">
+            <b>{t("partners.remove.ask", p.name)}</b>
+            <small>{t("partners.remove.what", A.defaultName())}</small>
+          </span>
         </span>
-        <Btn kind="text" size="sm" label={t("partners.remove.keep")} onClick={() => setRemoving(false)} />
-        <Btn kind="secondary" size="sm" label={t("partners.remove.go")} about={p.name} onClick={() => (setRemoving(false), A.removePartner(p.id))} />
+        <span class="partner-acts">
+          <Btn kind="text" size="sm" label={t("partners.remove.keep")} onClick={() => setRemoving(false)} />
+          <Btn kind="secondary" size="sm" label={t("partners.remove.go")} about={p.name} onClick={() => (setRemoving(false), A.removePartner(p.id))} />
+        </span>
       </div>
     );
   return (
     <div class="set-row partner-row">
-      <Stone look={p.look} size={40} />
-      <span class="grow partner-words">
+      <span class="partner-top">
+        <Stone look={p.look} size={40} />
+        <span class="grow partner-words">
+          {editing ? (
+            <>
+              <input class="name-input" value={draft} maxLength={PARTNER_NAME_MAX} aria-label={t("partners.rename")} autoFocus onInput={(e) => setDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
+              <input class="name-input about-input" value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} aria-label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={(e) => setAboutDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
+            </>
+          ) : (
+            <>
+              <b>{p.name}</b>
+              {p.about ? <small class="partner-about">{t("partners.about.shown", p.about)}</small> : null}
+            </>
+          )}
+          {shown ? <small>{t("partners.talking")}</small> : null}
+        </span>
+      </span>
+      <LookPick value={p.look} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+      <span class="partner-acts">
         {editing ? (
-          <>
-            <input class="name-input" value={draft} maxLength={PARTNER_NAME_MAX} aria-label={t("partners.rename")} autoFocus onInput={(e) => setDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
-            <input class="name-input about-input" value={aboutDraft} maxLength={PARTNER_ABOUT_MAX} aria-label={t("partners.about")} placeholder={t("partners.about.placeholder")} onInput={(e) => setAboutDraft((e.target as HTMLInputElement).value)} onKeyDown={keys} />
-          </>
+          <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />
         ) : (
           <>
-            <b>{p.name}</b>
-            {p.about ? <small class="partner-about">{t("partners.about.shown", p.about)}</small> : null}
+            {!shown && <Btn kind="secondary" size="sm" label={t("partners.switch", p.name)} onClick={() => A.openPartner(p.id)} />}
+            <Btn kind="text" size="sm" label={t("partners.change")} about={p.name} onClick={() => (setDraft(p.name), setAboutDraft(p.about ?? ""), setEditing(true))} />
+            {p.id !== DEFAULT_PARTNER && <Btn kind="text" size="sm" label={t("partners.remove")} about={p.name} onClick={() => setRemoving(true)} />}
           </>
         )}
-        {shown ? <small>{t("partners.talking")}</small> : null}
-        <LookPick value={p.look} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
       </span>
-      {editing ? (
-        <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />
-      ) : (
-        <>
-          <Btn kind="text" size="sm" label={t("partners.change")} about={p.name} onClick={() => (setDraft(p.name), setAboutDraft(p.about ?? ""), setEditing(true))} />
-          {p.id !== DEFAULT_PARTNER && <Btn kind="text" size="sm" label={t("partners.remove")} about={p.name} onClick={() => setRemoving(true)} />}
-          {!shown && <Btn kind="secondary" size="sm" label={t("partners.switch", p.name)} onClick={() => A.switchPartner(p.id)} />}
-        </>
-      )}
     </div>
   );
 }

@@ -132,6 +132,7 @@ func TestFloatSaysOneLine(t *testing.T) {
 	}
 }
 
+// D535: the count is a door: Ducter's window in front on the next item that waits.
 func TestFloatCountOpensOnHand(t *testing.T) {
 	app, rec, _ := floatApp(t, i18n.ZH, "working")
 	app.Route = RouteConversation
@@ -140,8 +141,8 @@ func TestFloatCountOpensOnHand(t *testing.T) {
 		t.Fatalf("no count to tap: %v; %q", err, tt.Texts())
 	}
 	tt.Frame()
-	if app.Route != RouteOnHand || app.oh.filter != 1 || rec.mainers != 1 {
-		t.Errorf("the count opened route %v filter %d (main shown %d)", app.Route, app.oh.filter, rec.mainers)
+	if (app.Route != RouteOnHand && app.Route != RouteConversation) || app.door.last == "" || app.oh.filter != 0 || rec.mainers != 1 {
+		t.Errorf("the count opened route %v, item %q, filter %d (main shown %d)", app.Route, app.door.last, app.oh.filter, rec.mainers)
 	}
 }
 

@@ -4,6 +4,10 @@
 export const onhandWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     "onhand.find.placeholder": "搜索…",
+    // D535: every needs-you count is a door (apps/desktop/internal/i18n/door.go).
+    "door.line": "有 %d 件等你定",
+    "door.line.about": "一件件带你去看",
+    "door.pebble": "%s 有 %d 件等你，一件件带你去看",
     "onhand.find.none": "没有匹配的结果。",
     "onhand.pr.draft": "草稿 PR",
     "onhand.pr.merged": "已合并",
@@ -153,6 +157,10 @@ export const onhandWords: { zh: Record<string, string>; en: Record<string, strin
   },
   en: {
     "onhand.find.placeholder": "Find a task…",
+    // D535: every needs-you count is a door (apps/desktop/internal/i18n/door.go).
+    "door.line": "%d waiting on you",
+    "door.line.about": "one at a time",
+    "door.pebble": "%s: %d waiting on you, one at a time",
     "onhand.find.none": "Nothing matches.",
     "onhand.pr.draft": "Draft PR",
     "onhand.pr.merged": "Merged",

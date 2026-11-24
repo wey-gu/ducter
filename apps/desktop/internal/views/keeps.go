@@ -378,11 +378,8 @@ const keepRailCols = 38
 func (a *App) keepRail(c *ui.Context) {
 	t := a.T
 	ui.Column(c.Key("keep-rail")).Width(keepRailW).Shrink(0).Gap(2).Padding(t.S5, t.S3, t.S5, t.S5).Children(func() {
-		ui.Row(c.Key("back")).Padding(0, 4).Children(func() {
-			if a.quietButton(c, "keep-back", a.L.T("keep.back"), "", true, -1) {
-				a.closeKeep()
-			}
-		})
+		// D535: the way back is the header's breadcrumb (对话 / 手头的事 / the
+		// Keep), never a link here: the column is one list under its head.
 		a.secHead(c, "rail", a.L.T("keep.section"))
 		if a.S.OnHand == nil {
 			return
@@ -469,12 +466,8 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 		})
 	}
 	if !wide {
-		ui.Column(c.Key("keep-page")).Width(w).Gap(4).Children(func() {
-			if a.quietButton(c, "keep-back", a.L.T("keep.back"), "", true, -1) {
-				a.closeKeep()
-			}
-			body()
-		})
+		// D535: narrow, the way back is the header's breadcrumb too.
+		ui.Column(c.Key("keep-page")).Width(w).Gap(4).Children(body)
 		return
 	}
 	ui.Row(c.Key("keep-page")).Width(w).Gap(t.S6).AlignItems(ui.Start).Children(body)

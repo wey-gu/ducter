@@ -279,6 +279,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	if !a.oh.rowFirst {
 		card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 	}
+	a.doorRow(c, card, "t:"+task.ID) // D535: found by a needs-you count's door
 	hover := card.Hovered()
 	still := c.Preferences().ReduceMotion
 	if hover {

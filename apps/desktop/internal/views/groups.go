@@ -301,6 +301,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	// D467: the board's one card shape: radius 16, the clay ledge, its state mark at the head.
 	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(12, 16, 12, 14).Radius(16).Background(t.Surface).
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Role(ui.RoleGroup).Label(g.Name)
+	a.doorCard(c, card, "g:"+g.ID) // D535
 	// D454: a group none of whose parts is at work can leave On hand.
 	fin := finishedGroup(bg)
 	a.contextMenu(c, card, func(m *ui.Menu) {

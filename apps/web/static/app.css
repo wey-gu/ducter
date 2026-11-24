@@ -23982,3 +23982,58 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 .task-page > .watch {
   margin-inline: auto;
 }
+
+/* ---------- D548: a narrow phone's bar is one line ---------- */
+/* Up to 560 wide: the other partners (a compact stack, when there are others), the shown partner's
+   name over its one count line (D535's door), then one button for the places (PlacesMenu). No large
+   face here: the conversation and the composer already say who. Every target 44 tall. */
+.places-menu { position: relative; flex: none; display: inline-flex; }
+.places-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-end: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  transition: background var(--t-hover) var(--ease), color var(--t-hover) var(--ease);
+}
+.places-btn:active,
+.places-btn.open { background: var(--sunken); color: var(--ink); }
+@media (hover: hover) {
+  .places-btn:hover { background: var(--sunken); color: var(--ink); }
+}
+.places-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.places-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+@media (max-width: 560px) {
+  .top { gap: 8px; }
+  .top .who { gap: 8px; }
+  .top .who-words { flex: 1 1 auto; min-width: 0; }
+  .top .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* One count line, never two: the door alone when something waits, else the first fact. */
+  .top .who .sum-row { flex-wrap: nowrap; }
+  .top .who .sum-row > .sum { display: none; }
+  .top .who .sum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top .who .sum .facts { flex-wrap: nowrap; }
+  .top .who .sum .facts > span:not(:first-child) { display: none; }
+  /* The others: their figures alone (two at most), the number on the stack; the stack says who is
+     there, its label says where it goes. */
+  .top .partners-back { min-width: 44px; margin-inline-start: -6px; margin-inline-end: 0; padding: 0 4px; }
+  .top .partners-back .pb-chev { display: none; }
+  .top .partners-back .pb-face:nth-child(n + 3) { display: none; }
+  .top .partners-back .pb-faces:has(> .pl-n) { margin-inline-end: 12px; }
+}

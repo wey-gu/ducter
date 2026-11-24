@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { spoken } from "./format.ts";
+import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -73,6 +74,35 @@ export function PlaceSeg(p: { segs: { key: string; label: string; about: string;
         </button>
       ))}
     </nav>
+  );
+}
+
+/** D548: the places on a narrow phone: one button (44, a drawn grid of nine dots) that opens the one
+ *  clay menu (D421) with each place, its mark and its name, the place shown checked; a quiet accent
+ *  dot on the button while an update waits (its row first in the menu). The wider bars keep
+ *  PlaceSeg. */
+export function PlacesMenu(p: { segs: { key: string; label: string; glyph: ComponentChildren; on: boolean; go: () => void }[]; dot?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const at = useRef<HTMLSpanElement>(null);
+  const label = A.L.t("nav.places");
+  return (
+    <span class="places-menu" ref={at}>
+      <button type="button" class={`places-btn${open ? " open" : ""}`} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          {[4, 9, 14].flatMap((y) => [4, 9, 14].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" fill="currentColor" />))}
+        </svg>
+        {p.dot && <span class="places-dot" aria-hidden="true" />}
+      </button>
+      {open && (
+        <Menu class="pmenu places-list" label={label} anchor={at} focusFirst onClose={() => setOpen(false)}>
+          {p.segs.map((s) => (
+            <MenuItem key={s.key} glyph={s.glyph} checked={s.on || undefined} onClick={() => (setOpen(false), !s.on && s.go())}>
+              {s.label}
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
+    </span>
   );
 }
 

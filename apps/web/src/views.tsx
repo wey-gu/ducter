@@ -104,6 +104,7 @@ import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune } from "./composer-tune.tsx";
+import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
@@ -2693,6 +2694,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           }
         />
       )}
+      {/* D544: a task in rounds keeps who it is while its transcript is read. */}
+      <LoopLine task={task} scroller={scroller} />
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
           {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the

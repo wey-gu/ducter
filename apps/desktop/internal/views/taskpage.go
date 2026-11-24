@@ -302,6 +302,7 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 			a.windowAt(task, m, first, last)
 		}
 		a.locator(c, task, turns, ls)
+		a.loopLine(c, task, ls) // D544: a task in rounds keeps who it is while it is read
 		if opensAtEnd(att) && n > 2 && !ls.AtEnd() {
 			a.jumpToLatest(c, ls)
 		}

@@ -10,7 +10,10 @@ var zhTaskview = Table{
 	"tv.next": "下一个任务",
 	"tv.pos":  "第 %d 个，共 %d 个",
 	// D542: the opened task's state Tag, in D525's register.
-	"task.tag.needs_you":  "等你",
+	"task.tag.needs_you": "等你",
+	// D544: the line that keeps a task in rounds who it is while its transcript is read.
+	"loop.round":          "第 %d 轮",
+	"loop.top":            "回到开头",
 	"task.tag.working":    "进行中",
 	"task.tag.queued":     "还没开始",
 	"task.tag.blocked":    "等待中",
@@ -50,6 +53,8 @@ var enTaskview = Table{
 	"tv.next":             "Next task",
 	"tv.pos":              "%d of %d",
 	"task.tag.needs_you":  "Needs you",
+	"loop.round":          "Round %d",
+	"loop.top":            "Back to the top",
 	"task.tag.working":    "Working",
 	"task.tag.queued":     "Not started yet",
 	"task.tag.blocked":    "Waiting",

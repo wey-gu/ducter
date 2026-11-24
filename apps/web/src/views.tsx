@@ -38,12 +38,12 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton, KeyHint, Notice } from "./controls.tsx";
+import { DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
-import { callEnded } from "@ducter/protocol";
+import { callEnded, cutAtWord } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { LaterAway, LaterBack, LaterButton, LaterTimes } from "./later.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
@@ -83,7 +83,7 @@ import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
-import { DensityRow, HandoffSettings, PaperRow, RecordsSettings, savedDensity } from "./settings-more.tsx";
+import { DensityRow, HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, brainHeld, heldAt, NewTasksSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
@@ -102,9 +102,9 @@ import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
-import { ContextButton, hasMeter, meterOf } from "./context-meter.tsx";
-import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
-import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
+import { ContextButton } from "./context-meter.tsx";
+import { ComposerTune } from "./composer-tune.tsx";
+import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -1800,15 +1800,15 @@ function Composer({ taskId }: { taskId?: string }) {
   // the send's own menu (right-click, a long press on a phone), holds it for after this turn; an
   // agent that can't steer holds it either way and says so. Stop (its pause) sits beside Send, one
   // family of clay buttons. Held words are chips over the composer.
-  const [focused, setFocused] = useState(false);
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const busy = !!task && attention(task) === "working";
   const canSend = !!value.trim() || !!pics.length;
   const agent = task ? harnessOf(task) : "";
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
-  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
+  // D542: an agent that can't steer says so in the words' place on every screen (no row under the box for it).
+  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy ? t("composer.task") : !steers ? t("composer.nosteer.place", harnessName(agent)) : coarse() ? t("composer.task") : t("composer.steer.place");
   return (
-    <div class="composer-wrap" ref={wrap} onFocusIn={() => setFocused(true)} onFocusOut={(e) => !wrap.current?.contains(e.relatedTarget as Node) && setFocused(false)}>
+    <div class="composer-wrap" ref={wrap}>
       <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
@@ -1842,6 +1842,10 @@ function Composer({ taskId }: { taskId?: string }) {
         {...(busy && steers ? { sendAlts: [{ words: t("send.steer"), onPick: () => submit() }, { words: t("send.after"), opt: true, onPick: () => submit(true) }] } : {})}
         tools={
           <>
+            {/* D542: the model and effort, and the context ring (D288), in the composer's own row,
+                before Stop and Send: no second row under the box. */}
+            {task && <ComposerTune task={task} />}
+            {task && <ContextButton task={task} />}
             {busy && (
               <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1853,23 +1857,8 @@ function Composer({ taskId }: { taskId?: string }) {
           </>
         }
       />
-      {/* D354, D530: one row under the box: the model and effort, always in sight while it can be
-          switched; while it works and the words have the focus, the two keys drawn with their short
-          words (a keyboard only); the context ring (D288) at the far end, where it never reads as
-          something loading. */}
-      {task && (busy || tunable(task) || hasMeter(meterOf(task))) && (
-        <div class={`composer-hint${composerTune(task) ? " tuned" : ""}`}>
-          <ComposerTune task={task} />
-          {busy && !steers && <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
-          {busy && steers && focused && !coarse() && (
-            <>
-              <KeyHint words={t("send.steer")} />
-              <KeyHint opt words={t("send.after")} />
-            </>
-          )}
-          <ContextButton task={task} />
-        </div>
-      )}
+      {/* D542: no row under the box, at rest or on focus (one that came with the focus moved the
+          box under the finger): Return's two ways are in the words' place and the send's own menu. */}
     </div>
   );
 }
@@ -2704,14 +2693,14 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
+          {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the
+              page (what it waits for is the wait line's words). */}
           <span class="face">
-            {/* D457: compact, the face at 40 beside the title. */}
-            <Avatar size={savedDensity() === "compact" ? 40 : 96} state={faceOf(a)} still={stillFace(a)} />
-            {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
+            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} />
           </span>
           <div class="head-words">
-            <TaskMeta task={task} stateLabel={stateWord} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
-            <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
+            <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
+            <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}

@@ -200,15 +200,14 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 		when = a.taskClock(c, task)
 	}
 	// One quiet line (D152): where it stands and its one clock, then who does it and where.
-	ui.Column(c.Key("meta")).Gap(2).Children(func() {
-		// D291: the state word in its ink, and apart, its clock in muted figures.
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			uiText(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
-			if when != "" {
-				uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
-			}
-			a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
-		})
+	// D542: one wrapping line, as the web's: the state's Tag, its clock, the
+	// to-do, who does it (once), where, and 换谁来做.
+	ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Wrap().MinWidth(0).Children(func() {
+		a.tag(c, "state", state, stateTone(att)) // D542: the shared Tag, in its state's ink
+		if when != "" {
+			uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
+		}
+		a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
 		a.taskWho(c, task)
 	})
 }
@@ -321,6 +320,26 @@ const (
 // taskFaceW is the width of an opened task's state face: about the height
 // of the meta line and a headline of two lines, so they read as one block.
 const taskFaceW = 96
+
+// stateTone is an attention state's Tag tint, in its state's ink (D542).
+func stateTone(att protocol.Attention) tagTone {
+	switch att {
+	case protocol.NeedsYou:
+		return tagNeeds
+	case protocol.Working, protocol.Queued:
+		return tagWorking
+	case protocol.Blocked:
+		return tagWaiting
+	case protocol.Failed:
+		return tagFailed
+	case protocol.Done, protocol.DoneClaimed:
+		return tagOn
+	}
+	return tagPlain
+}
+
+// taskMarkW is the partner's mark inline before an opened task's title (D542).
+const taskMarkW = 28
 
 // taskPresence is the face an opened task shows: done, needs you (also
 // for one that didn't work: it frowns and holds up its flag), working,
@@ -546,6 +565,10 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 					},
 					lead: func() { a.addPicturesButton(c, tray) },
 					tools: func() {
+						// D542: the model and effort, and the context ring (D288), in
+						// the composer's own row before Stop and Send: no row under it.
+						a.composerTune(c, task)
+						a.contextRing(c, task)
 						if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
 							a.TaskAction(task.ID, "interrupt")
 						}
@@ -587,31 +610,11 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 				})
 				a.focusComposer = false
 			})
-			// D354, D530: one row under the box, on the box's inner edges: the
-			// model and effort, always in sight while it can be switched; while
-			// it works and the words have the focus, the two keys drawn with
-			// their short words; the context ring (D288) at the far end, under
-			// Send, where it never reads as something loading.
-			focused := box.FocusWithin()
-			hasRing := hasMeter(meterOfTask(task))
-			if working || canSwitch(task) || hasRing {
-				start := t.S4
-				if _, m, _, ok := a.liveTune(task, task.Place().Device); ok && m != nil && canSwitch(task) {
-					start = t.S2 // the chips' own padding lines their words up with the box's
-				}
-				ui.Row(c.Key("composer-foot")).Gap(t.S3).MinHeight(t.ControlSM).Padding(0, t.S2, 0, start).AlignItems(ui.Center).Children(func() {
-					a.composerTune(c, task)
-					switch {
-					case working && !steers:
-						uiText(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
-					case working && focused:
-						a.keyHint(c, "steer", "\r", a.L.T("send.steer"))
-						a.keyHint(c, "after", "⌥\r", a.L.T("send.after"))
-					}
-					ui.Spacer(c)
-					a.contextRing(c, task)
-				})
-			}
+			// D542: no row under the box, at rest or on focus (a row that came
+			// with the focus moved the box under the pointer): Return's two ways
+			// are in the words' place and the send's own menu; an agent that
+			// can't steer says so in the words' place and over its held words.
+			_ = box
 		})
 	})
 	a.taskDrafts[task.ID] = draft

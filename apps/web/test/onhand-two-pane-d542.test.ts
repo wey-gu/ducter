@@ -167,3 +167,37 @@ describe("a faded action takes no tap (D542)", () => {
     expect(rules().some((r) => /\.ocard:has\(:focus-visible\) \.tacts/.test(r.sel) && /pointer-events:\s*auto/.test(r.body))).toBe(true);
   });
 });
+
+describe("the opened task's head and composer (D542)", () => {
+  const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+  test("who does it is said once: the agent; the model only when the composer's chip doesn't show it; never the branch", async () => {
+    const { task } = await home();
+    const tr = await import("../src/transcript.tsx");
+    const t = task("t_prefs");
+    (t.card as { model?: string }).model = "gpt-6-luna";
+    expect(tr.headFacts(t, true)).toEqual(["Codex", "mem"]);
+    expect(tr.headFacts(t, false)[0]).toBe("Codex");
+    expect(tr.headFacts(t, false).length).toBeGreaterThan(2);
+    for (const chip of [true, false]) expect(tr.headFacts(t, chip)).not.toContain("ducter/t_prefs");
+  });
+  test("the state is the shared Tag in its state's tint", async () => {
+    const tr = await import("../src/transcript.tsx");
+    expect(["needs_you", "working", "queued", "blocked", "failed", "done", "dropped"].map(tr.stateTone)).toEqual(["needs", "working", "working", "waiting", "failed", "on", ""]);
+    for (const tone of ["working", "waiting", "failed"]) expect(css).toMatch(new RegExp(`\\.tag\\.${tone} \\{[^}]*var\\(--${tone}-surface\\)[^}]*var\\(--${tone}-ink\\)`));
+  });
+  test("the head is the mark at the title's size, never the 96 face; the chip lives in the composer's row", () => {
+    const views = readFileSync(join(import.meta.dir, "../src/views.tsx"), "utf8");
+    const at = views.indexOf('<div class="task-head"');
+    const head = views.slice(at, views.indexOf("{headline &&", at));
+    expect(head).toContain("<Avatar size={28}");
+    expect(head).not.toMatch(/size=\{[^}]*96/);
+    expect(css).toMatch(/\.task-head,\n:root\[data-density="compact"\] \.task-head \{\n  grid-template-columns: 28px/);
+    const from = views.indexOf("function Composer(");
+    const comp = views.slice(from, views.indexOf("\n}\n", from));
+    const tools = comp.slice(comp.indexOf("tools={"), comp.indexOf("/>\n", comp.indexOf("tools={")));
+    expect(tools).toContain("<ComposerTune task={task} />");
+    expect(tools).toContain("<ContextButton task={task} />");
+    // No row under the box, at rest or on focus.
+    expect(comp).not.toContain("composer-hint");
+  });
+});

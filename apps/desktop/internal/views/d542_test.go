@@ -80,3 +80,29 @@ func TestRailKeepRowOpensTheKeep(t *testing.T) {
 		t.Errorf("the rail row opened route %v task %q keep %q, want the Keep's page", app.Route, app.TaskID, app.oh.keep.open)
 	}
 }
+
+// D542: the opened task's head says who does it once (the agent; the model
+// only when the composer's chip doesn't show it) and never the branch (the
+// bar's own button); the state is the shared Tag in its state's tint.
+func TestTaskHeadSaysEachOnce(t *testing.T) {
+	app := railApp(t, i18n.EN)
+	task := app.S.Task("t_keys")
+	facts := app.headFacts(task)
+	for _, f := range facts {
+		if f == task.Place().Branch {
+			t.Errorf("the head says the branch the bar shows: %v", facts)
+		}
+	}
+	if len(facts) == 0 || facts[0] != harnessName(task.Harness()) {
+		t.Errorf("the head starts with who does it: %v", facts)
+	}
+	want := map[protocol.Attention]tagTone{protocol.NeedsYou: tagNeeds, protocol.Working: tagWorking, protocol.Blocked: tagWaiting, protocol.Failed: tagFailed, protocol.Done: tagOn, protocol.Dropped: tagPlain}
+	for att, tone := range want {
+		if stateTone(att) != tone {
+			t.Errorf("%s: tone %v, want %v", att, stateTone(att), tone)
+		}
+	}
+	if taskMarkW > 32 {
+		t.Errorf("the head's mark is %v, at most 32", taskMarkW)
+	}
+}

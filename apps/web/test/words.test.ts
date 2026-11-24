@@ -102,6 +102,7 @@ describe("the web client's words", () => {
       ["i18n-voice.ts", "voiceWords", "voice.go"],
       ["i18n-partners.ts", "partnersWords", "partners.go"],
       ["i18n-d475.ts", "d475Words", "settings_d475.go"],
+      ["i18n-mentions.ts", "mentionWords", "mentions.go"],
     ];
     /** A Go file's zh… and en… tables, parsed as the Mac reads them. */
     const goTables = (mac: string) => {

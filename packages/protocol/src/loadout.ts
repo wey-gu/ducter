@@ -42,11 +42,29 @@ export interface RuleView {
   /** D157: the computer this kind of work runs on ("要登录的网页都在 MacBook 上做"), by name. */
   device?: string;
   /**
+   * D538: a placement rule (harness "", device its computer): prefer or avoid that computer for work
+   * of a shape the partner judges at task_open: heavy (needs.heavy), web (browse, signedIn, buy), or
+   * with neither any work (narrowed by kinds or match when given). Household knowledge every partner
+   * shares, never one persona's identity.
+   */
+  where?: PlaceRule;
+  /**
    * D165: a rule about what it tells the person, not who does a task (harness "", match []).
    * mute: 这类不用告诉我 (a kind, from one sender when given). wake: this kind may come through at
    * night ("航班改了，夜里也叫我"), said by the person, never proposed.
    */
   notice?: { kind: string; sender?: string; wake?: boolean };
+}
+
+/** D538: what a placement rule says: prefer (多放) or avoid (少放) its computer, and for which work. */
+export interface PlaceRule {
+  avoid?: true;
+  /** For heavy work only (the partner's needs.heavy). */
+  heavy?: true;
+  /** For web work only (needs.browse, signedIn, buy, or a browser place). */
+  web?: true;
+  /** D538: the Nowledge Mem memory it is mirrored to, while Mem is on (its id). */
+  mem?: string;
 }
 
 /**
@@ -74,6 +92,12 @@ export interface TaskNeeds {
   phone?: boolean | "mine" | "ducter";
   /** D436: it buys or books something: Ducter's own browser, and it stops at the checkout for the person's own tap. */
   buy?: boolean;
+  /**
+   * D538: heavy on the computer's memory and cores (a build, a test suite, type checks, a browser or
+   * Playwright, a dev server, an eval), as the partner judges it from the words and the repository.
+   * It goes to a computer with room, and waits for room rather than start where there is none.
+   */
+  heavy?: boolean;
 }
 
 /** D251: which phone a task's work needs: undefined when it needs none; "any" for the legacy true. */
@@ -94,11 +118,12 @@ export function whichPhone(needs: { phone?: boolean | "mine" | "ducter" } | unde
  *  - no_signin: it needs no sign-ins, so Ducter's own browser there does it (least access);
  *  - moved: the first pick (other) couldn't be reached before it started;
  *  - you: the user named this computer (or a rule did: ruleId, text);
+ *  - room (D538): heavy work, and the other computer (other) hasn't the memory free for it now;
  *  - home: nothing set them apart; Ducter lives here (one hop fewer).
  */
 export interface WhereWhy {
   device: string;
-  kind: "always_on" | "signed_in" | "only_here" | "awake" | "changes_here" | "agent_here" | "no_signin" | "moved" | "you" | "home";
+  kind: "always_on" | "signed_in" | "only_here" | "awake" | "changes_here" | "agent_here" | "no_signin" | "moved" | "you" | "room" | "home";
   other?: string;
   site?: string;
   thing?: "chrome" | "browser" | "app" | "agent" | "phone";
@@ -196,8 +221,11 @@ export interface Candidate {
   /** D157: the computer it runs on (absent with one computer): its id and name. */
   device?: string;
   deviceName?: string;
-  /** D157: that computer is asleep or can't be reached: it would wait (ranked under every row that can start now). */
-  waits?: "asleep" | "unreachable";
+  /**
+   * D157: that computer is asleep or can't be reached: it would wait (ranked under every row that can
+   * start now). D538: room: heavy work, and it hasn't the memory free for it now (it waits for room).
+   */
+  waits?: "asleep" | "unreachable" | "room";
   /** D157: what it would use there when the task browses: the user's Chrome, or Ducter's own browser
    *  (needsSignIn: the user would sign in there first). */
   uses?: "chrome" | "ducter";

@@ -587,6 +587,7 @@ A new control is added to the set (and to this table) before it is used.
 | A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
+| The @ and / list over a composer (D534): sections with drawn glyphs, ↑↓ Enter Tab Esc, hover and click without taking the focus, above the caret and never past the window, a sheet with 48-tall rows on a phone or under 560; and a reference in a sent message, its glyph and name on the bubble's own ink at 13% | `mentionPop`, `refChip`, `drawKind` (`mentions.go`) | `MentionPop`, `RefChip`, `KindGlyph` (`composer.tsx`) |
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
 
 **Deny by default (D519).** The guards cover every view file, never a list: Mac

@@ -17,7 +17,7 @@
 // D476: the person's word on where the work runs (only there, never there) holds in every step:
 // a computer they excluded is never asked, picked, offered or cloned on.
 import { basename } from "node:path";
-import { harnessName, type CantStart, type Place, type RuleView, type TaskCard } from "@ducter/protocol";
+import { harnessName, type CantStart, type Place, type RuleView, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import type { FolderInfo } from "@ducter/protocol/src/folder-info.ts";
 import { remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
 import { originOf, type RepoHint } from "@ducter/protocol/src/repos.ts";
@@ -26,7 +26,7 @@ import { allowedBy, boundFrom, boundWords, isBound, mergeBound, movableTo, type 
 
 /** owner/name for words ("github.com/nowledge-co/mem" → "nowledge-co/mem"). */
 const shortRemote = (r: string) => remoteKey(r).replace(/^github\.com\//, "") || r;
-import { ruleFor } from "./rules.ts";
+import { placeRulesFor, ruleFor } from "./rules.ts";
 
 export type RepoPlace = Extract<Place, { kind: "repo" }>;
 
@@ -53,6 +53,11 @@ export interface RepoWhereDeps {
   rules?(): RuleView[];
   /** D510: the computer New tasks start names ("local" or a worker's id), when the person set one. */
   prefer?(): string | undefined;
+  /**
+   * D538: the computers ("local" or a worker's id) that are awake but haven't the room for heavy work
+   * now (memory free under what it needs, or their heavy tasks at their share). Only asked for heavy work.
+   */
+  noRoom?(): Promise<string[]>;
   now?(): number;
   keepMs?: number;
   askMs?: number;
@@ -69,6 +74,8 @@ export interface RepoAsk {
   texts?: string[];
   /** D476: the person's word on where it runs: an excluded computer is never asked or picked; "only" is the named one. */
   bound?: Bound;
+  /** D538: what the work needs (heavy work goes where there is room; the person's placement rules by its shape). */
+  needs?: TaskNeeds;
 }
 
 export type RepoWhere =
@@ -76,6 +83,8 @@ export type RepoWhere =
       ok: true;
       /** given: the caller's place checked out; named / rule / prefer (D510) / found: a clone there; clone: cloned there first. */
       how: "given" | "named" | "rule" | "prefer" | "found" | "clone";
+      /** D538: why it is on this computer when the person's placement rule or room decided it. */
+      placed?: { rule?: { id: string; text: string }; roomless?: string[] };
       place: RepoPlace;
       /** The computer's name, said to the person. */
       computer: string;
@@ -183,7 +192,16 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
       // 2. A where-rule: a rule with a computer whose words match this work.
       const rule = !named && a.texts?.length && d.rules ? ruleFor(d.rules().filter((r) => !!r.device), { title: a.texts[0] ?? "", brief: a.texts.slice(1).join("\n") }) : undefined;
       const ruled = rule?.device ? byId(rule.device) : undefined;
-      const pinned = named ?? ruled;
+      // D538: the person's placement rules for this work's shape (多放, 少放), and heavy work's room.
+      const heavy = !!a.needs?.heavy;
+      const places = d.rules ? placeRulesFor(d.rules(), { title: a.texts?.[0] ?? "", brief: (a.texts ?? []).slice(1).join("\n") }, a.needs) : [];
+      const avoided = new Set(places.filter((r) => r.where?.avoid).map((r) => byId(r.device)?.id).filter((x): x is string => !!x));
+      const roomless = heavy && d.noRoom ? new Set(await d.noRoom().catch(() => [] as string[])) : new Set<string>();
+      const fits = (c: WhereComputer) => !avoided.has(c.id) && !roomless.has(c.id);
+      const placeRule = named || ruled ? undefined : places.find((r) => !r.where?.avoid && byId(r.device) && fits(byId(r.device)!));
+      const placedBy = placeRule ? byId(placeRule.device) : undefined;
+      const said = (c: WhereComputer) => (placeRule && placedBy?.id === c.id ? { placed: { rule: { id: placeRule.id, text: placeRule.text } } } : roomless.size && !roomless.has(c.id) ? { placed: { roomless: comps.filter((x) => roomless.has(x.id)).map((x) => x.name) } } : {});
+      const pinned = named ?? ruled ?? placedBy;
       // The given place, when it is that repository on that computer, stays (its branch, its base).
       if (given) {
         const c = byId(given.device) ?? comps.find((x) => x.home)!;
@@ -202,10 +220,10 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
       };
       if (pinned) {
         const there = best(haveOn(pinned));
-        if (there) return { ok: true, how: named ? "named" : "rule", place: placeAt(pinned, there.h, a.given), computer: pinned.name, repo, ...also(pinned) };
+        if (there) return { ok: true, how: named ? "named" : "rule", place: placeAt(pinned, there.h, a.given), computer: pinned.name, repo, ...also(pinned), ...said(pinned) };
         if (!pinned.online) return { ok: false, why: "away", message: `${pinned.name} is away right now.`, repo, asked, on: pinned.name };
         const p = await ask(pinned, want, true);
-        if (p !== "offline" && p !== "old" && p.canRead !== false) return { ok: true, how: "clone", place: clonePlace(pinned, want, a.given), computer: pinned.name, repo, ...also(pinned) };
+        if (p !== "offline" && p !== "old" && p.canRead !== false) return { ok: true, how: "clone", place: clonePlace(pinned, want, a.given), computer: pinned.name, repo, ...also(pinned), ...said(pinned) };
         // D477: a computer named (by the person's recorded word, or the partner's place.device) can't
         // read it: never a quiet move to another computer's copy (hel, 2026-11-22). The facts go back.
         if (named) {
@@ -216,17 +234,29 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
       }
       // D510: New tasks start names a computer: its copy there, else a clone there when its own git
       // can read it. Asleep, away or unable to read it: the copies elsewhere decide, as before.
-      const preferred = pinned ? undefined : byId(d.prefer?.());
+      // D538: a default computer without room for heavy work (or one the person said 少放 for it) doesn't hold it.
+      const preferred = pinned ? undefined : ((p) => (p && fits(p) ? p : undefined))(byId(d.prefer?.()));
       if (preferred?.online) {
         const there = best(haveOn(preferred));
         if (there) return { ok: true, how: "prefer", place: placeAt(preferred, there.h, a.given), computer: preferred.name, repo, ...also(preferred) };
         const p = await ask(preferred, want, true);
         if (p !== "offline" && p !== "old" && p.canRead === true) return { ok: true, how: "clone", place: clonePlace(preferred, want, a.given), computer: preferred.name, repo, ...also(preferred) };
       }
-      const found = best(have);
-      if (found) return { ok: true, how: "found", place: placeAt(found.c, found.h, a.given), computer: found.c.name, repo, ...also(found.c) };
+      // D538: a copy on a computer that fits (not 少放, room for heavy work) first; for heavy work with
+      // copies only where there is no room, a fresh clone where there is, when its git can read it.
+      const found = best(have.filter((x) => fits(x.c))) ?? (avoided.size ? best(have.filter((x) => !avoided.has(x.c.id))) : undefined);
+      if (found && fits(found.c)) return { ok: true, how: "found", place: placeAt(found.c, found.h, a.given), computer: found.c.name, repo, ...also(found.c), ...said(found.c) };
+      if (heavy && roomless.size && have.length) {
+        const roomy = comps.filter((c) => c.online && fits(c)).sort((x, y) => y.build - x.build || (x.home ? 1 : 0) - (y.home ? 1 : 0));
+        for (const c of roomy) {
+          const p = await ask(c, want, true);
+          if (p !== "offline" && p !== "old" && p.canRead === true) return { ok: true, how: "clone", place: clonePlace(c, want, a.given), computer: c.name, repo, ...also(c), ...said(c) };
+        }
+      }
+      const any = found ?? best(have);
+      if (any) return { ok: true, how: "found", place: placeAt(any.c, any.h, a.given), computer: any.c.name, repo, ...also(any.c) };
       // 4. No clone anywhere: clone it where git can read it (the best builder first).
-      const online = comps.filter((c) => c.online).sort((x, y) => y.build - x.build || (x.home ? 1 : 0) - (y.home ? 1 : 0));
+      const online = comps.filter((c) => c.online).sort((x, y) => Number(fits(y)) - Number(fits(x)) || y.build - x.build || (x.home ? 1 : 0) - (y.home ? 1 : 0));
       const probes = await Promise.all(online.map(async (c) => ({ c, a: await ask(c, want, true) })));
       const can = probes.find((p) => p.a !== "offline" && p.a !== "old" && p.a.canRead === true) ?? probes.find((p) => p.a !== "offline" && p.a !== "old" && p.a.canRead === undefined);
       if (can) return { ok: true, how: "clone", place: clonePlace(can.c, want, a.given), computer: can.c.name, repo };
@@ -304,7 +334,14 @@ export interface PlacesDeps {
   folder?(device: string, path: string, ms: number): Promise<FolderInfo | "offline">;
   /** D476, D477: the person's word on where, as recorded on the task (its task_open's bound), when it has one. */
   boundKept?(taskId: string): Bound | undefined;
+  /** D538: the person's rules (their placement rules: 多放 / 少放 a computer for some work). */
+  rules?(): RuleView[];
+  /** D538: the awake computers without room for heavy work now (ids, "local" the home), with their free memory. */
+  noRoom?(): Promise<{ id: string; free?: number }[]>;
 }
+
+/** D538: bytes as a person reads them ("1.0 GB"). */
+const gb = (n: number | undefined) => (n === undefined ? "" : `${(n / 2 ** 30).toFixed(1)} GB`);
 
 const lang2 = (l: string | undefined): "zh" | "en" => (l && l.toLowerCase().startsWith("zh") ? "zh" : "en");
 
@@ -397,12 +434,28 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
           };
         }
       }
+      // D538: the computer the partner chose by itself (never one the person named) goes against the
+      // person's 少放 rule for this work, or has no room for heavy work while another does: the facts
+      // go back to the partner, which places it again (code guards the person's word and the memory;
+      // the judgment of where stays the partner's).
+      const personSaid = b?.only ?? b?.named;
+      if (pc && (!personSaid || idOf(pc) !== personSaid) && (d.rules || d.noRoom)) {
+        const places = d.rules ? placeRulesFor(d.rules(), { title: a.texts[0] ?? "", brief: a.texts.slice(1).join("\n") }, a.needs, place) : [];
+        const avoid = places.find((r) => r.where?.avoid && findComputer(r.device)?.id === pc.id);
+        const short = a.needs?.heavy && d.noRoom ? await d.noRoom().catch(() => []) : [];
+        const shortHere = short.find((x) => x.id === idOf(pc));
+        const others = d.computers().filter((c) => c.online && c.id !== pc.id && allowedBy(b, idOf(c)) && !short.some((x) => x.id === idOf(c)) && !places.some((r) => r.where?.avoid && findComputer(r.device)?.id === c.id));
+        if ((avoid || shortHere) && others.length) {
+          const why = avoid ? `the user's own placement rule says "${avoid.text}"` : `${pc.name} has ${gb(shortHere!.free) || "too little memory"} free now, and this heavy work needs about 3 GB (on a computer with no room it would wait)`;
+          return { ok: false, error: `Not opened: ${why}. ${others.map((c) => c.name).join(", ")} can take it. Open it again with place.device one of those${place.kind === "repo" ? " (its code is found or cloned there)" : ""}; only if the user's words name ${pc.name} for this, put that in where and it ${avoid ? "runs there" : "waits there for room"}. Say nothing about this.` };
+        }
+      }
       if (!onRepo) return kept({ ok: true, place });
       // D477: the computer is the person's recorded word, else the one the partner chose by name in
       // place.device ("local" is the schema's old default token, not a choice).
       const namedId = b?.only ?? b?.named;
       const named = namedId ? findComputer(namedId) : pdev && pdev.toLowerCase() !== "local" ? pc : undefined;
-      const r = await d.where.resolve({ ...(remote ? { remote } : {}), ...(named ? { named: named.id } : {}), given: place, texts: a.texts, ...(b ? { bound: b } : {}) });
+      const r = await d.where.resolve({ ...(remote ? { remote } : {}), ...(named ? { named: named.id } : {}), given: place, texts: a.texts, ...(b ? { bound: b } : {}), ...(a.needs ? { needs: a.needs } : {}) });
       // D477: no copy anywhere and nothing says where: making a new copy somewhere is a choice, and
       // it is the partner's (the person's words, the agents in [devices]), never the best-builder rule.
       const online = d.computers().filter((c) => c.online);

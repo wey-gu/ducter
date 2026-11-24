@@ -510,7 +510,7 @@ func (a *App) doneToday(b store.Board) int {
 func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 	t := a.T
 	if len(p.atts) == 0 {
-		a.userReplyBubble(c, p.text, true, nil, p.reply, "")
+		a.userReplyBubble(c, p.text, true, nil, p.reply, "", p.refs...)
 		return
 	}
 	join := a.takeJoin()
@@ -518,7 +518,7 @@ func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 		a.messageMedia(c, "p"+p.clientID, nil, p.atts, true, "conv")
 		if p.text != "" || p.reply != nil {
 			a.join = join
-			a.userReplyBubble(c, p.text, true, nil, p.reply, "")
+			a.userReplyBubble(c, p.text, true, nil, p.reply, "", p.refs...)
 		}
 		if anyFailed(p.atts) {
 			ui.Row(c.Key("pfail:" + p.clientID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -539,7 +539,7 @@ func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	a.userReplyBubble(c, text, pending, nil, nil, "")
 }
 
-func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *protocol.ReplyRef, still *replyTo, clientID string) {
+func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *protocol.ReplyRef, still *replyTo, clientID string, refs ...protocol.Ref) {
 	t := a.T
 	join := a.takeJoin()
 	rt := a.takeReply()
@@ -554,6 +554,17 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 		tr := r[1]
 		if join {
 			tr = t.BubbleJoin
+		}
+		// D534: words with references: the chips stand where their names were typed.
+		if ref == nil && still == nil && len(refs) > 0 {
+			b := ui.Column(c.Key("refs")).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).TransformOrigin(1, 0.5)
+			b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
+			if pending {
+				b.Opacity(0.7)
+			}
+			b.Children(func() { a.wordsWithRefs(c, "w", text, refs, t.OnUserBubble, t.Bubble) })
+			a.replyMenu(c, b, rt, text)
+			return
 		}
 		if ref == nil && still == nil {
 			b := uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
@@ -616,7 +627,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 					if strings.TrimSpace(e.User.Text) != "" || e.User.Reply != nil {
 						a.join = join
 						a.rp.noPebble = true
-						a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
+						a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID, heldRefs(e.User.Refs)...)
 						a.rp.noPebble = false
 					}
 				})
@@ -636,7 +647,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		if e.User.Passed != nil {
 			a.passedLine(c, itoa(e.FirstSeq), e.User.Passed.From)
 		}
-		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
+		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID, heldRefs(e.User.Refs)...)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
@@ -998,7 +1009,8 @@ func (a *App) composer(c *ui.Context) {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Children(func() {
 			a.composerBox(c, composerOpts{
 				key: "composer", draft: &a.draft, placeholder: ph, label: label, autoFocus: true, focus: a.focusComposer,
-				box: func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
+				mentions: &mentionPlace{},                                          // D534
+				box:      func(box ui.Element) { over = a.takeDrops(box, "conv") }, // D206: pictures dropped on the composer
 				before: func() {
 					if over {
 						a.dropHint(c)

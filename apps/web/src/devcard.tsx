@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, Fold, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
+import { AboutComputer } from "./about-computer.tsx";
 import { ago, behind, harnessName, memWords, phaseLine as phaseWords, spoken } from "./format.ts";
 import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, lendWord, listWord, statusLine, versionFacts, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
@@ -257,6 +258,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <DucterLine dv={dv} />
       {/* D514: what Ducter tidied away here, one quiet line; nothing before the first. */}
       {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{A.L.t("card.tidied", dv.tidied.count, tidySize(dv.tidied.bytes))}</div>}
+      {/* D538: what this computer measured of itself, and the person's rules about it. */}
+      {dv.kind !== "phone" && <AboutComputer dv={dv} />}
       {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
       {dv.home && <Ways home={dv.name} />}
       {!dv.home && (

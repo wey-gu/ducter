@@ -25,6 +25,10 @@ import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
 /** D157: a task waits for a computer that said it was going to sleep: 在等 · MacBook 睡着了. */
 export const asleepReason = (device: string) => `device:asleep:${device}`;
+/** D538: heavy work waits for room on that computer (its memory free, its heavy tasks under its share). */
+export const roomReason = (device: string) => `device:room:${device}`;
+/** D538: how often a task waiting for room looks again. */
+export const ROOM_LOOK_MS = 15_000;
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
@@ -34,6 +38,8 @@ export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
   /** D394: a task's own round runs in a fresh session once the last one compacted (default on). */
   freshRounds?: boolean;
+  /** D538: how often a task waiting for room looks again (tests). */
+  roomLookMs?: number;
   defaultHarness?: HarnessId;
   defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
   gh?: string; // GitHub CLI binary (tests)
@@ -244,6 +250,8 @@ interface TaskRt {
   lang?: LangTag; // the language the user reads its reports in (D292: any tag)
   /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
   waiting?: StartCtx;
+  /** D538: it waits for room on its computer: the look that starts it when there is. */
+  roomTimer?: ReturnType<typeof setInterval>;
   /** D157: the user moved it to another computer; its next session starts with movedOver. */
   movedFrom?: { from: string; to: string; repo: boolean; /** D505: Ducter moved it for the person's sign-in there. */ signIn?: { site: string; uses: "chrome" | "ducter"; always?: boolean } };
   /** D299: carried on from a session the person ran outside Ducter, by another agent: its first session starts with outsideOver. */
@@ -1966,13 +1974,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // right now doesn't refuse the task: it waits for it there and starts when it's back.
     const ops = opsFor(input.place);
     const away = ops.device && !ops.device.online() ? ops.device : undefined;
+    // D538: heavy work where there is no room now: it waits there, planned when it starts.
+    const roomy = !away && pick?.waits === "room" && !!core.bodies?.room;
     const project = input.project ?? "";
     const persona = input.persona || core.persona.id;
     const partnerName = partnerNameOf(persona);
     let resolved: ResolvedPlace = { place: input.place ?? { kind: "none" }, cwd: "" };
     let sidecar: BrowserSidecar | undefined;
     let sidecarInput: SidecarInput | undefined;
-    if (!away) {
+    if (!away && !roomy) {
       resolved = await ops.plan(input.place, id, title);
       // A worker plans its own place; it can't turn it into something this machine then runs
       // (a browser place's browser is the worker's own, D157).
@@ -2023,6 +2033,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       waitThere(t, start);
       // The best computer sleeps and another could do it now, visibly differently: one line, wait by default.
       if (pick?.waits && pick.now) askWhere(t, pick, you);
+      return core.tasks.get(id) ?? card;
+    }
+    if (roomy) {
+      // D538: 在等 hel 腾出内存 / Waiting for room on hel. It starts the moment there is (hel, 2026-11-24:
+      // one task's tsc×3, Playwright and Vite at once on 7.6 GB with no swap stopped the home).
+      const name = ops.device?.name ?? pick?.why.where?.device ?? core.homeDevice?.()?.name ?? "this computer";
+      core.tasks.setState(id, "blocked", "provisioning", roomReason(name));
+      logEvent(t, { role: "system", from: "runner", text: `waiting for room on ${name}: heavy work starts there when it has the memory free`, raw: { device: pick?.deviceId ?? "local", name, waits: "room" } });
+      waitRoom(t, start, pick?.deviceId ?? "local");
       return core.tasks.get(id) ?? card;
     }
     core.tasks.setState(id, "queued", "provisioning");
@@ -2228,6 +2247,28 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     });
   }
 
+  /** D538: a heavy task waits for room on its computer; each look asks core, and the first yes starts it. */
+  function waitRoom(t: TaskRt, c: StartCtx, device: string) {
+    t.waiting = c;
+    clearInterval(t.roomTimer);
+    let looking = false;
+    t.roomTimer = setInterval(() => {
+      if (t.dropped || t.session || !t.waiting) return void clearInterval(t.roomTimer);
+      if (looking) return;
+      looking = true;
+      void core.bodies!.room!(device)
+        .then((ok) => {
+          if (!ok || t.dropped || !t.waiting) return;
+          clearInterval(t.roomTimer);
+          t.roomTimer = undefined;
+          return beginThere(t);
+        })
+        .catch(() => {})
+        .finally(() => (looking = false));
+    }, opts.roomLookMs ?? ROOM_LOOK_MS);
+    (t.roomTimer as { unref?: () => void }).unref?.();
+  }
+
   /** D157: the computer a waiting task waits for is here (or the user moved it): plan and start. */
   async function beginThere(t: TaskRt) {
     const c = t.waiting;
@@ -2266,7 +2307,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    * free) waits for the computer; Go does it now on the other one. The task hears nothing of it.
    */
   function askWhere(t: TaskRt, pick: NonNullable<Awaited<ReturnType<NonNullable<CoreApi["bodies"]>["choose"]>>> & { harness: string }, you: boolean) {
-    if (!("now" in pick) || !pick.now || !pick.waits) return;
+    // D538: a wait for room asks nothing: it starts by itself, and the person can move it.
+    if (!("now" in pick) || !pick.now || !pick.waits || pick.waits === "room") return;
     const now = pick.now;
     const w = words(WHERE_WORDS, t.lang);
     const dev = pick.why.where?.device ?? pick.device ?? "";
@@ -2929,6 +2971,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
       return answer;
     },
+
+    // D534: the task's agent's own commands and skills in its place, for the / list. A worker's
+    // task is read through its own port when that port can (else nothing is offered but the fixed).
+    async native(taskId) {
+      const t = tasks.get(taskId);
+      const card = core.tasks.get(taskId);
+      const h = t?.base.harness ?? card?.harness;
+      if (!h) return undefined;
+      const facts = HARNESS_FACTS[h as HarnessId]?.nativeCommands.value;
+      const port = t?.ops.harness ?? harness;
+      const place = card?.place ?? t?.card.place;
+      const cwd = t?.spec.cwd ?? (place && !t?.ops.device ? cwdOf(place, taskId, core.dataDir) : undefined);
+      if (!facts || !port?.inventory || !cwd) return { harness: h };
+      const read = (k: "commands" | "skills") => (facts.discover.includes(k) ? Promise.race([port.inventory!(h, k, cwd), Bun.sleep(20_000).then(() => undefined)]) : Promise.resolve(undefined));
+      const [commands, skills] = await Promise.all([read("commands"), read("skills")]);
+      return { harness: h, ...(commands ? { commands } : {}), ...(skills ? { skills } : {}) };
+    },
+
+    inventory: async (h, kind, cwd) => (harness.inventory ? await harness.inventory(h, kind, cwd) : undefined),
 
     pageRoute(taskId) {
       const t = tasks.get(taskId);

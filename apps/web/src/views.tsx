@@ -33,12 +33,12 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton, Notice } from "./controls.tsx";
+import { DangerButton, KeyHint, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -89,20 +89,20 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, FullTop } from "./board.tsx";
-import { L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
+import { barDoorPartner, centerIn, doorItems, L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
 import { dateOf, PastSheet } from "./past.tsx";
 import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
-import { KeepReceipt } from "./keep.tsx";
+import { closeKeep, K, KeepReceipt } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
-import { ContextButton } from "./context-meter.tsx";
+import { ContextButton, hasMeter, meterOf } from "./context-meter.tsx";
 import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
@@ -559,7 +559,7 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -1054,7 +1054,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   const flash = A.flash === d.decisionId;
   useEffect(() => {
     if (flash) {
-      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (ref.current) centerIn(ref.current); // D535: its own list only, never the page
       A.flash = undefined;
     }
   }, [flash]);
@@ -1643,7 +1643,7 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   );
 }
 
-function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean }) {
+function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
   // D176: side by side, the conversation's own header carries the face and the places, and On hand
   // is already in view: its pane's header names it instead of going back to a conversation that is
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
@@ -1663,14 +1663,16 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
   if (back || level)
     return (
       <header class="top">
-        {wide && level ? (
+        {wide && level && !up ? (
           <h1 class="level">{level}</h1>
         ) : (
           // Side by side, an opened task goes back to On hand: the conversation never left.
           // D262: the crumb is the place it goes back to, in one word, as on the Mac (‹ 对话).
-          <button class="back" aria-label={wide ? t("nav.onhand") : back} onClick={() => (wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
+          // D535: inside On hand (a Keep's page) it goes up one level, beside the conversation and
+          // on a phone alike, as an opened task's does: ‹ 手头的事.
+          <button class="back" aria-label={up ? up.label : wide ? t("nav.onhand") : back} onClick={() => (up ? up.go() : wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
             <Back />
-            {wide ? t("nav.onhand") : t("nav.conversation")}
+            {up ? up.label : wide ? t("nav.onhand") : t("nav.conversation")}
           </button>
         )}
         <span style={{ flex: 1 }} />
@@ -1716,8 +1718,22 @@ function Counts() {
         {s.words || " "}
       </div>
     );
+  // D535: 「n 个等你」 is a door of its own (the next item that waits); the rest opens On hand.
+  const rest = (s.parts ?? []).filter((p) => p !== s.needs);
+  const toOnHand = () => ((OnHandState.filter = s.needs ? 0 : s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }));
+  if (s.needs)
+    return (
+      <span class="sum-row" role="status">
+        <CountDoor words={s.needs} about={t("door.line.about")} onClick={() => A.openDoor?.(barDoorPartner())} />
+        {rest.length > 0 && (
+          <button class="sum" title={t("nav.onhand")} aria-label={spoken(A.L, ...rest)} onClick={toOnHand}>
+            <Facts items={rest} />
+          </button>
+        )}
+      </span>
+    );
   return (
-    <button class={s.parts?.length ? "sum" : "sum none"} role="status" title={t("nav.onhand")} aria-label={s.words} onClick={() => ((OnHandState.filter = s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }))}>
+    <button class={s.parts?.length ? "sum" : "sum none"} role="status" title={t("nav.onhand")} aria-label={s.words} onClick={toOnHand}>
       {s.parts?.length ? <Facts items={s.parts} /> : s.words}
     </button>
   );
@@ -1790,9 +1806,11 @@ function Composer({ taskId }: { taskId?: string }) {
     }
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
-  // D268, D325: while the task works, Return steers it (it reads it at its next step); ⌥↩ or After
-  // this holds it for after this turn; an agent that can't steer holds it either way and says so.
-  // Stop (its pause) sits beside Send. Held words are chips over the composer.
+  // D268, D325, D530: while the task works, Return steers it (it reads it at its next step); ⌥↩, or
+  // the send's own menu (right-click, a long press on a phone), holds it for after this turn; an
+  // agent that can't steer holds it either way and says so. Stop (its pause) sits beside Send, one
+  // family of clay buttons. Held words are chips over the composer.
+  const [focused, setFocused] = useState(false);
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const busy = !!task && attention(task) === "working";
   const canSend = !!value.trim() || !!pics.length;
@@ -1800,7 +1818,7 @@ function Composer({ taskId }: { taskId?: string }) {
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
   const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
-    <div class="composer-wrap" ref={wrap}>
+    <div class="composer-wrap" ref={wrap} onFocusIn={() => setFocused(true)} onFocusOut={(e) => !wrap.current?.contains(e.relatedTarget as Node) && setFocused(false)}>
       <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
@@ -1831,15 +1849,9 @@ function Composer({ taskId }: { taskId?: string }) {
             <AddPictures where={where} />
           </>
         }
+        {...(busy && steers ? { sendAlts: [{ words: t("send.steer"), onPick: () => submit() }, { words: t("send.after"), opt: true, onPick: () => submit(true) }] } : {})}
         tools={
           <>
-            {/* D288: the context meter, a quiet ring by the task's composer. */}
-            {task && <ContextButton task={task} />}
-            {busy && canSend && steers && (
-              <button type="button" class="btn text sm after" title={t("composer.queue.hint")} onClick={() => submit(true)}>
-                {t("composer.after")}
-              </button>
-            )}
             {busy && (
               <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1851,12 +1863,21 @@ function Composer({ taskId }: { taskId?: string }) {
           </>
         }
       />
-      {/* D354: the model and effort, always in sight while it can be switched; while it works, the steer hints after them. */}
-      {(busy || (task && tunable(task))) && (
-        <div class={`composer-hint${task && composerTune(task) ? " tuned" : ""}`}>
-          {task && <ComposerTune task={task} />}
-          {busy && (steers ? <span>{coarse() ? t("composer.steer.short") : t("composer.steer.hint")}</span> : <span>{t("composer.nosteer.hint", harnessName(agent))}</span>)}
-          {busy && steers && !coarse() && <span class="k">{t("composer.queue.hint")}</span>}
+      {/* D354, D530: one row under the box: the model and effort, always in sight while it can be
+          switched; while it works and the words have the focus, the two keys drawn with their short
+          words (a keyboard only); the context ring (D288) at the far end, where it never reads as
+          something loading. */}
+      {task && (busy || tunable(task) || hasMeter(meterOf(task))) && (
+        <div class={`composer-hint${composerTune(task) ? " tuned" : ""}`}>
+          <ComposerTune task={task} />
+          {busy && !steers && <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
+          {busy && steers && focused && !coarse() && (
+            <>
+              <KeyHint words={t("send.steer")} />
+              <KeyHint opt words={t("send.after")} />
+            </>
+          )}
+          <ContextButton task={task} />
         </div>
       )}
     </div>
@@ -2095,8 +2116,38 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
+      <DoorLine scroller={scroller} />
       <Composer />
     </>
+  );
+}
+
+/** D535: 「有 n 个等你定 ›」, pinned over the composer while something the conversation's count
+ *  counts is out of view (a task's item always is: it lives in On hand; the partner's own question
+ *  while its card is scrolled away). A tap is the count's door. */
+function DoorLine({ scroller }: { scroller: preact.RefObject<HTMLElement> }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const f = () => tick((n) => n + 1);
+    el.addEventListener("scroll", f, { passive: true });
+    return () => el.removeEventListener("scroll", f);
+  }, [scroller.current]);
+  if (!A.S.welcomed) return null;
+  const p = barDoorPartner();
+  const items = doorItems(p);
+  if (!items.length) return null;
+  const box = scroller.current?.getBoundingClientRect();
+  const inView = (id: string) => {
+    const r = box && scroller.current?.querySelector(`#d-${CSS.escape(id)}`)?.getBoundingClientRect();
+    return !!r && !!box && r.bottom > box.top && r.top < box.bottom;
+  };
+  if (items.every((i) => i.decisionId && inView(i.decisionId))) return null;
+  return (
+    <div class="door-line">
+      <NeedsDoor words={t("door.line", items.length)} about={t("door.line.about")} onClick={() => A.openDoor?.(p)} />
+    </div>
   );
 }
 
@@ -2194,9 +2245,9 @@ export function OnHand() {
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
-      <Top back={t("nav.back")} plus level={t("onhand.title")} />
+      <Top back={t("nav.back")} plus={!K.open} level={t("onhand.title")} up={K.open ? { label: t("onhand.title"), go: closeKeep } : undefined} />
       <main class="scroll" style={{ gap: 16 }}>
-        {!wide && <h1 class="page-title">{t("onhand.title")}</h1>}
+        {!wide && !K.open && <h1 class="page-title">{t("onhand.title")}</h1>}
         {nothing ? (
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (

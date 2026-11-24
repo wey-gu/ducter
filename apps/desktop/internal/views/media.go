@@ -379,6 +379,25 @@ func (a *App) pickInto(tray string) {
 	a.later(func() { paths, _ = a.Media.PickFiles(a.L.T("media.add")) }, func() { a.AddPictureFiles(tray, paths) })
 }
 
+// pasteFiles is a composer's paste (issue #68: ⌘V arrives as the Edit
+// menu's paste: command, never as a key): files copied in Finder go to the
+// tray as themselves, and a picture goes there when the pasteboard holds no
+// words (a screenshot, Copy in Preview); words paste as words. It says
+// whether it took the paste.
+func (a *App) pasteFiles(tray, text string) bool {
+	if tray == "" || a.Media == nil {
+		return false
+	}
+	if files := a.Media.PastedFiles(); len(files) > 0 {
+		a.AddPictureFiles(tray, files)
+		return true
+	}
+	if text != "" {
+		return false
+	}
+	return a.pasteInto(tray)
+}
+
 // pictureKeys is ⌘V in a composer: a picture on the pasteboard goes to the
 // tray instead of its name into the words.
 func (a *App) pictureKeys(tray string, k ui.TextKey) bool {

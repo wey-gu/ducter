@@ -243,6 +243,79 @@ func (a *App) countPebble(c *ui.Context, key string, n int, ground ui.Color) ui.
 	})
 }
 
+// needsDoor is a needs-you count as a door (D535, ui.md "Shared controls"):
+// its words in the needs-you ink on a small clay pill of the needs-you
+// surface, the drawn chevron after them; it sinks into its ledge as it is
+// pressed and shows the keyboard's ring. A tap opens the next item.
+func (a *App) needsDoor(c *ui.Context, key, words, about string) bool {
+	t := a.T
+	b := ui.Row(c.Key("door:"+key)).Gap(t.S1).AlignItems(ui.Center).Height(t.ChipSM+6).Padding(0, t.S2, 0, t.S3).
+		Radius(t.Pill).Background(t.NeedsYou.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(spoken(a.L, words, about)).Focusable().Shrink(0)
+	ledge := float32(2)
+	switch {
+	case b.Pressed():
+		ledge = 0
+		if !c.Preferences().ReduceMotion {
+			b.Translate(0, 2)
+		}
+		b.Background(t.NeedsYou.Surface.Mix(t.NeedsYou.Dot, 0.24))
+	case b.Hovered():
+		b.Background(t.NeedsYou.Surface.Mix(t.NeedsYou.Dot, 0.14))
+	}
+	if ledge > 0 {
+		b.Shadow(0, ledge, 0, 0, t.NeedsYou.Ledge)
+	}
+	if b.FocusVisible() {
+		b.Border(2, t.Accent)
+	}
+	b.Children(func() {
+		uiText(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine().AccessHidden(true)
+		a.glyph(c, 12, drawChevron(t.NeedsYou.Ink, false))
+	})
+	return b.Clicked()
+}
+
+// pebbleDoor is countPebble as a door (D535): the same pebble with a
+// pointer's room round it (4 on each side); under the pointer it lifts a
+// point off its ledge, pressed it sinks. The caller places the element and
+// reads the bool (pressed). The pebble stays out of the accessibility tree:
+// its row says the count and opens the same door from the keyboard.
+func (a *App) pebbleDoor(c *ui.Context, key string, n int, ground ui.Color) (ui.Element, bool) {
+	hit := ui.Box(c.Key("pdoor:" + key)).Padding(4).Cursor(ui.CursorPointer).AccessHidden(true)
+	y := float32(0)
+	switch {
+	case hit.Pressed():
+		y = 1
+	case hit.Hovered():
+		y = -1
+	}
+	hit.Children(func() {
+		p := a.countPebble(c, key, n, ground)
+		if !c.Preferences().ReduceMotion {
+			p.Translate(0, p.AnimateTo("lift", y, a.T.Snappy))
+		}
+	})
+	return hit, hit.Clicked()
+}
+
+// countDoor is 「n 个等你」 in the conversation's bar: the count's own words
+// in the needs-you ink, a text button of the bar (the crumbs' tint under
+// the pointer), the door to the next item; it says whether it was pressed.
+func (a *App) countDoor(c *ui.Context, words string, tint ui.Color) bool {
+	t := a.T
+	l := uiText(c.Key("who-needs"), words).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine().
+		Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(spoken(a.L, words, a.L.T("door.line.about"))).Focusable()
+	if l.Hovered() || l.Pressed() {
+		l.Background(tint)
+	}
+	if l.FocusVisible() {
+		l.Border(2, t.Accent)
+	}
+	return l.Clicked()
+}
+
 // lift raises an element a little while hovered: the chip → card motion.
 func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 	if c.Preferences().ReduceMotion {
@@ -1219,4 +1292,26 @@ func (a *App) stepNumber(c *ui.Context, n int) {
 	ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
 		uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 	})
+}
+
+// lineField is the shared one-line field (D536; the web's Field): the
+// control height, as wide as its column allows up to 420, a hairline that
+// becomes the one accent ring while typing in it. strong: a name, bolder.
+func (a *App) lineField(c *ui.Context, key, label string, v *string, placeholder string, strong bool, submit func()) ui.Element {
+	t := a.T
+	in := ui.TextInput(c.Key("input:"+key), v).Placeholder(placeholder).Label(label).
+		FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).
+		Width(420).MaxWidthPercent(100)
+	if strong {
+		in.FontWeight(700)
+	}
+	if in.Focused() {
+		in.Border(2, t.Accent)
+	} else {
+		in.Border(1, t.Line2)
+	}
+	if submit != nil {
+		in.OnSubmit(submit)
+	}
+	return in
 }

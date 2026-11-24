@@ -35,7 +35,7 @@ var olderViews = map[string]int{
 	"held.go": 2, "isles.go": 4, "keymap.go": 1, "lend.go": 2, "made.go": 2, "media.go": 5, "memory_pane.go": 1, "newtaskfind.go": 2,
 	"ongoing.go": 4, "onhandboard.go": 3, "onhandrail.go": 1, "palette.go": 1, "partners.go": 3, "partners_list.go": 1, "past.go": 9,
 	"past_where.go": 2, "pastoutside.go": 1, "peers_d470.go": 1, "pile.go": 1, "pins.go": 2, "reply.go": 2, "rich.go": 1,
-	"settings_home.go": 2, "showall.go": 1, "subjects.go": 1, "task.go": 2, "taskinfo.go": 2, "taskpage.go": 3, "taskturns.go": 4,
+	"settings_home.go": 2, "showall.go": 1, "subjects.go": 1, "task.go": 2, "taskinfo.go": 2, "taskpage.go": 3, "taskturns.go": 2,
 	"todos.go": 1, "todos_onhand.go": 1, "voice.go": 2, "workbench.go": 4,
 }
 

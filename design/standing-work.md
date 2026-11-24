@@ -35,6 +35,10 @@
   and recorded (`keep_round`); the report stays behind 看细节. Every wake is a round (the timer is written on the
   channel; a wake with no report is a silent round). The time column (`TimeCol`) is today's clock or the day alone;
   the rail gives each title two lines cut at a word's end, rows of one height, the open one the knob.
+- **D535, the way in and out.** The page lives only while On hand is shown (leaving On hand closes it; a deep
+  link opens it straight); the way back is the header's breadcrumb **对话 / 手头的事 / {the Keep}** (‹ 手头的事
+  beside the conversation and on a phone), never a link in the page or its rail, which is one list under the
+  shared section head. `on-hand.md` "Navigation".
 - **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address
   (a helper, `run: perItem`); a first look now is the model's call (a fare has a value today, a weekly
   report doesn't). Rounds that would act outward unasked still go through `routine_propose`'s Go.

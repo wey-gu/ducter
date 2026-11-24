@@ -97,6 +97,8 @@ export function escUp(e: KeyboardEvent) {
   if (A.route.name === "task" && escPause(A.route.id)) return void e.preventDefault();
   const el = document.activeElement;
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
+  // D535: a drill-in inside On hand (a Keep's page) goes up to the overview first.
+  if (A.route.name === "onhand" && A.upInPlace?.()) return void e.preventDefault();
   const up = upFrom(A.route);
   if (up) A.go(up);
 }

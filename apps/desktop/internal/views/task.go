@@ -504,10 +504,11 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	}
 	draft := a.taskDrafts[task.ID]
 	tray := "task:" + task.ID
-	// D268, D325: while it works, Return steers it (read at its next step);
-	// ⌥↩ or 做完再说 / After this holds it for after this turn; an agent that
-	// can't steer holds it either way and says so. Stop sits by Send. Held
-	// words are chips over the composer.
+	// D268, D325, D530: while it works, Return steers it (read at its next
+	// step); ⌥↩, or the send's own menu (right-click), holds it for after
+	// this turn; an agent that can't steer holds it either way and says so.
+	// Stop sits by Send, one family of clay buttons. Held words are chips over
+	// the composer.
 	working := task.Attention() == protocol.Working
 	agent := task.Harness()
 	steers := protocol.HarnessSteers(agent)
@@ -531,10 +532,12 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 		ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Gap(t.S1).Children(func() {
 			a.heldChips(c, task, working, steers)
 			var over bool
+			var box ui.Element
 			ui.Row(c).Children(func() {
-				a.composerBox(c, composerOpts{
+				box = a.composerBox(c, composerOpts{
 					key: "taskcomposer:" + task.ID, draft: &draft, placeholder: place, label: a.L.T("composer.task"), lines: 6, focus: a.focusComposer,
 					mentions: &mentionPlace{where: task.ID, task: true},              // D534
+					tray:     tray,                                                   // #68
 					box:      func(box ui.Element) { over = a.takeDrops(box, tray) }, // D206
 					before: func() {
 						if over {
@@ -544,12 +547,6 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 					},
 					lead: func() { a.addPicturesButton(c, tray) },
 					tools: func() {
-						a.contextRing(c, task) // D288: the context meter, a quiet ring by the composer
-						if working && steers && strings.TrimSpace(draft) != "" {
-							if a.button(c, a.L.T("composer.after"), btnText, t.ControlSM, t.Surface) && a.SendToTaskMode(task.ID, draft, "queue") {
-								draft = ""
-							}
-						}
 						if working && a.iconButton(c, a.L.T("task.action.pause"), t.ControlLG, btnSecondary, drawStop) {
 							a.TaskAction(task.ID, "interrupt")
 						}
@@ -568,6 +565,17 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						return false
 					},
 					canSend: ptrBool(strings.TrimSpace(draft) != "" || len(a.med().trays[tray]) > 0),
+					sendMenu: func(m *ui.Menu) {
+						if !working || !steers {
+							return
+						}
+						if m.Item(a.L.T("send.steer")).Shortcut(0, ui.KeyEnter).Chosen() && a.SendToTaskMode(task.ID, draft, "steer") {
+							draft, a.taskDrafts[task.ID] = "", ""
+						}
+						if m.Item(a.L.T("send.after")).Shortcut(ui.Alt, ui.KeyEnter).Chosen() && a.SendToTaskMode(task.ID, draft, "queue") {
+							draft, a.taskDrafts[task.ID] = "", ""
+						}
+					},
 					onSend: func(text string) bool {
 						if !a.SendToTaskMode(task.ID, text, mode(false)) {
 							return false
@@ -580,25 +588,29 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 				})
 				a.focusComposer = false
 			})
-			// D354: the model and effort under the box, always in sight while it
-			// can be switched; while it works, the steer hints after them.
-			if working || canSwitch(task) {
+			// D354, D530: one row under the box, on the box's inner edges: the
+			// model and effort, always in sight while it can be switched; while
+			// it works and the words have the focus, the two keys drawn with
+			// their short words; the context ring (D288) at the far end, under
+			// Send, where it never reads as something loading.
+			focused := box.FocusWithin()
+			hasRing := hasMeter(meterOfTask(task))
+			if working || canSwitch(task) || hasRing {
 				start := t.S4
 				if _, m, _, ok := a.liveTune(task, task.Place().Device); ok && m != nil && canSwitch(task) {
-					start = t.S2 // the chips' own padding lines their words up with the hints'
+					start = t.S2 // the chips' own padding lines their words up with the box's
 				}
-				ui.Row(c.Key("composer-foot")).Gap(t.S2).Padding(0, t.S4, 0, start).AlignItems(ui.Center).Children(func() {
+				ui.Row(c.Key("composer-foot")).Gap(t.S3).MinHeight(t.ControlSM).Padding(0, t.S2, 0, start).AlignItems(ui.Center).Children(func() {
 					a.composerTune(c, task)
-					if !working {
-						return
-					}
-					if !steers {
+					switch {
+					case working && !steers:
 						uiText(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
-						return
+					case working && focused:
+						a.keyHint(c, "steer", "\r", a.L.T("send.steer"))
+						a.keyHint(c, "after", "⌥\r", a.L.T("send.after"))
 					}
-					uiText(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 					ui.Spacer(c)
-					uiText(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)
+					a.contextRing(c, task)
 				})
 			}
 		})

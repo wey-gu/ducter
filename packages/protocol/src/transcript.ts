@@ -10,7 +10,7 @@ import type { Bodies, CantStart, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { briefShown } from "./brief-shown.ts";
-import { backgroundStep, splitTool, stepOf, type Step } from "./steps.ts";
+import { backgroundStep, splitTool, stepOf, stepPath, type Step } from "./steps.ts";
 import { harnessName } from "./harnesses.ts";
 import { editDiff } from "./editdiff.ts";
 
@@ -27,6 +27,8 @@ export interface StepRow {
   outcome: Outcome;
   /** The command as it ran (shell steps), keys hidden: what opens on a tap, in mono. */
   command?: string;
+  /** D530: the whole path a file tool read or edited, keys hidden: what its file chip opens. */
+  path?: string;
   /** What it printed, keys hidden, at most 40 lines. */
   output?: string;
   /** D320: what it printed was cut at OUTPUT_MAX characters: its whole length (Show all opens it). */
@@ -288,7 +290,7 @@ const clipLines = (s: string, n: number) => s.split("\n").slice(0, n).join("\n")
 function shellCommand(input: unknown): string {
   if (typeof input === "string") return input;
   const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  for (const k of ["command", "cmd", "script", "code"]) {
+  for (const k of ["command", "cmd", "script", "code", "CommandLine"]) {
     const v = o[k];
     if (typeof v === "string" && v.trim()) return v.trim();
     if (Array.isArray(v) && v.every((x) => typeof x === "string")) return (v as string[]).join(" ");
@@ -629,8 +631,9 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
           const fail = outcome === "error" ? failOf(full) : undefined;
           const hint = fail ? { ...(fail.hint ? { hint: redact(fail.hint) } : {}), ...(fail.code ? { code: fail.code } : {}) } : {};
           const d = st.kind === "edited" && st.act !== "mkdir" ? editDiff(b.tool.input) : undefined;
+          const path = st.kind === "read" || st.kind === "edited" ? redact(stepPath(b.tool)) : "";
           const diff = d ? { diff: d.lines.map((l) => redact(l)), ...(d.more ? { diffMore: d.more } : {}), ...(d.added ? { added: d.added } : {}), ...(d.removed ? { removed: d.removed } : {}) } : {};
-          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(output ? { output } : {}), ...(output && outputFull ? { outputFull } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
+          addRow(ev.seq, { seq: ev.seq, step: st, n: 1, outcome, ...(command ? { command } : {}), ...(path ? { path } : {}), ...(output ? { output } : {}), ...(output && outputFull ? { outputFull } : {}), ...hint, ...diff, ...(st.kind === "delegated" ? took : {}) });
           break;
         }
         const text = (b.text ?? "").trim();

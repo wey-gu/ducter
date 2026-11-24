@@ -77,6 +77,18 @@ line.
   is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
   bubble. *Trigger:* the author says the bubble reads wrong.
 
+## Each partner thinks with its own, after D536 (`personas.md` "What each thinks with")
+
+- [ ] **The author's review** of the line under each name, 改一下's three pop-ups and the default card's
+  new title, on hel with four partners. *Check:* 小玛 on Claude Code Opus answers on it from its next
+  message, its digest runs there, and 「小玛用 Opus」 said to Ducter sets 小玛's, not Ducter's.
+- [ ] **A live run** with two partner sessions on two agents, one of them hitting its limit: the other
+  partner keeps answering on its own, the held one's next agent answers meanwhile.
+- [ ] **A task default per partner** (its tasks on its own agent too). *Trigger:* a person asks for it
+  ("小玛的活都用 Claude Code"); today a rule for a kind of work or New tasks start covers it.
+- [ ] **A partner's own agent signed out** says so on its row and falls back (today the row shows the
+  setting and its turns fail until D435 holds the agent). *Trigger:* the first report of a partner on a signed-out agent.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with
@@ -3299,6 +3311,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
+- [ ] **D530's step rows take the shared row hover (D529).** D529 has landed, but its paper fill
+  (`groundPage()`, web `--sunken`) is the step chips' own ground in the light, so a hovered row would
+  swallow its chips; today the rows keep D530's soft tint into their own margin. Either the chips step
+  up on a hovered row or the paper's hover gets a second fill. *Trigger:* the next pass on the opened
+  task, or the author asks for one hover everywhere.
+- [ ] **D530: agy's `invoke_subagent` input keys** are inferred (`Description`, then `Prompt`); check
+  them on a live agy run and add the recorded shape to `steps.json`. *Trigger:* the next agy task.
+- [ ] **On hand's latest line says a subagent as "做了 1 样别的事"** (D268's tally has no subagent
+  kind). *Trigger:* the next On hand pass.
 
 ## A task's heavy child and the server's memory (D524)
 
@@ -3335,3 +3356,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
   like D157's asleep ask; today a pinned heavy task just waits. *Trigger:* the author waits on one.
 - [ ] **A computer's look on a phone app and the iPhone:** `DeviceView.resources` is on the frame;
   the native apps don't show 关于这台 yet. *Trigger:* the next phone pass.
+
+## Every count a door (D535, `on-hand.md` "Navigation")
+
+- [ ] **The menu bar's count and the Dock badge as doors** to the first item (today they bring the window
+  in front where it was). Trigger: the author reaches for the Dock badge and lands somewhere else.
+- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 等你 while On hand
+  is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
+- [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
+  conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.

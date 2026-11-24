@@ -1183,7 +1183,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     });
   const loadout = createLoadout({ log, tasks, settings, rules, said, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer(),
     // D503: the partner's own account, as last read, is kept for the partner when another way to the same model exists.
-    reserve: () => { const h = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness; const usage = accountUsage.peek(h)?.usage; return { harness: h, ...(usage ? { usage } : {}) }; },
+    // D536: and every agent another partner thinks with of its own.
+    reserve: () => {
+      const hs = new Set<string>([effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness]);
+      for (const p of partners.list()) if (p.brain) hs.add(p.brain.harness);
+      return [...hs].map((h) => { const usage = accountUsage.peek(h)?.usage; return { harness: h, ...(usage ? { usage } : {}) }; });
+    },
     limitsNow: () => agentLimits.now(),
   });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
@@ -1192,7 +1197,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
   registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
   // D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with.
-  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow() });
+  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow(), partners });
   // D372: an errand on a fast tier that fails or stalls carries on on the smartest, once.
   kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
   log.subscribe((e) => kindRetryRef?.onEvent(e));
@@ -1387,6 +1392,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         mem: () => otherMem(id),
         activity: { set: (a) => ws.setActivity(a, id) },
         setTaskMemory: (p) => (p ? taskMemOf.set(id, p) : taskMemOf.delete(id)),
+        // D536: what it thinks with, when the person gave it its own.
+        brain: () => partners.get(id)?.brain,
       });
       views.set(id, v);
     }

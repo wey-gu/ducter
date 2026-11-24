@@ -175,8 +175,9 @@ class ShareActivity : Activity() {
         val row = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL }
         cancel.apply { setText(R.string.share_cancel); Pebble.quiet(this); setOnClickListener { finishQuiet() } }
         send.apply { Pebble.primary(this); setOnClickListener { go() } }
-        row.addView(cancel, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
-        row.addView(send, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1.6f).apply { marginStart = dp(c, 10) })
+        // The primary first, on the left (ui.md "Buttons", D533); Cancel after it.
+        row.addView(send, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1.6f))
+        row.addView(cancel, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { marginStart = dp(c, 10) })
         sheet.addView(row, lp(16))
 
         // A phone's width on a foldable or a tablet (D176): at most 600 wide, at the foot.

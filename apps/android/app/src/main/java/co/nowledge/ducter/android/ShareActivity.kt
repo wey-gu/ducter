@@ -151,13 +151,6 @@ class ShareActivity : Activity() {
         if (plan.overCount) body.addView(muted(getString(R.string.share_over)), lp(8))
         if (plan.tooBig.isNotEmpty()) body.addView(muted(getString(R.string.share_too_big)), lp(8))
 
-        // To whom, when there is more than one partner (D513).
-        pickRow.orientation = LinearLayout.VERTICAL
-        pickRow.addView(TextView(c).apply { setText(R.string.share_to); Pebble.text(this, 13f, 700, R.color.ink_muted) })
-        pick.orientation = LinearLayout.HORIZONTAL
-        pickRow.addView(HorizontalScrollView(c).apply { isHorizontalScrollBarEnabled = false; addView(pick) }, lp(6))
-        body.addView(pickRow, lp(16))
-
         note.apply {
             Pebble.field(this)
             gravity = Gravity.TOP or Gravity.START
@@ -169,6 +162,13 @@ class ShareActivity : Activity() {
             isSingleLine = false
         }
         body.addView(note, lp(16))
+
+        // To whom, when there is more than one partner (D513): after the note, as on the iPhone.
+        pickRow.orientation = LinearLayout.VERTICAL
+        pickRow.addView(TextView(c).apply { setText(R.string.share_to); Pebble.text(this, 13f, 700, R.color.ink_muted) })
+        pick.orientation = LinearLayout.HORIZONTAL
+        pickRow.addView(HorizontalScrollView(c).apply { isHorizontalScrollBarEnabled = false; addView(pick) }, lp(6))
+        body.addView(pickRow, lp(16))
         line.apply { Pebble.text(this, 13f, 400, R.color.ink_muted); visibility = View.GONE; setLineSpacing(dp(c, 3).toFloat(), 1f) }
         body.addView(line, lp(10))
 
@@ -313,21 +313,43 @@ class ShareActivity : Activity() {
         pickRow.visibility = if (partners.size > 1 && sender.paired && !plan.empty) View.VISIBLE else View.GONE
         for ((k, p) in partners.withIndex()) {
             val on = p.id == chosen
-            pick.addView(TextView(this).apply {
-                text = p.name
-                Pebble.text(this, 15f, 700, if (on) R.color.on_accent else R.color.ink)
-                gravity = Gravity.CENTER
-                minHeight = dp(context, 44)
-                setPadding(dp(context, 16), 0, dp(context, 16), 0)
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(context, 22).toFloat()
+            // A clay chip, never a pill (D69, D73): the partner in its own clay, its name; the chosen one
+            // in the accent on its ledge.
+            val chip = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                minimumHeight = dp(context, 44)
+                setPadding(dp(context, 8), 0, dp(context, 14), 0)
+                val fill = GradientDrawable().apply {
+                    cornerRadius = dp(context, Pebble.RADIUS_SMALL).toFloat()
                     setColor(Pebble.color(context, if (on) R.color.accent else R.color.surface))
                     if (!on) setStroke(dp(context, 1), Pebble.color(context, R.color.line))
                 }
+                val ledge = GradientDrawable().apply {
+                    cornerRadius = dp(context, Pebble.RADIUS_SMALL).toFloat()
+                    setColor(Pebble.color(context, if (on) R.color.press_accent else R.color.press_quiet))
+                }
+                background = android.graphics.drawable.LayerDrawable(arrayOf(ledge, fill)).apply {
+                    setLayerInset(0, 0, dp(context, 3), 0, 0)
+                    setLayerInset(1, 0, 0, 0, dp(context, 3))
+                }
+                addView(ImageView(context).apply {
+                    setImageResource(R.drawable.idle)
+                    adjustViewBounds = true
+                    colorFilter = clay(p.look)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(dp(context, 24), dp(context, 24)))
+                addView(TextView(context).apply {
+                    text = p.name
+                    Pebble.text(this, 15f, if (on) 700 else 500, if (on) R.color.on_accent else R.color.ink)
+                    maxLines = 1
+                }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(context, 6); bottomMargin = dp(context, 3) })
                 isSelected = on
-                contentDescription = getString(R.string.share_title, p.name)
+                isClickable = true
+                contentDescription = p.name
                 setOnClickListener { chosen = p.id; setPartners(partners) }
-            }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { if (k > 0) marginStart = dp(this@ShareActivity, 8) })
+            }
+            pick.addView(chip, LinearLayout.LayoutParams(WRAP_CONTENT, dp(this, 47)).apply { if (k > 0) marginStart = dp(this@ShareActivity, 8) })
         }
         val who = partners.first { it.id == chosen }
         title.text = getString(R.string.share_title, who.name)

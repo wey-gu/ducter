@@ -93,7 +93,7 @@
             android:theme="@style/Theme.Ducter.Share"
             android:excludeFromRecents="true"
             android:taskAffinity=""
-            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:windowSoftInputMode="adjustResize|stateVisible"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|density|fontScale|layoutDirection">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

@@ -303,6 +303,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			card.Scale(sc, sc).Cache()
 		}
 	}
+	// D508: a row with a PR groups its facts by what they describe (prGroup).
+	_, outcomeURL := outcomeOf(task)
+	grouped := a.oh.room != "rail" && (pr != nil || (finishedAtt(att) && outcomeURL != ""))
 	// D471: the time on one edge of the sheet; what to do on one column; D508:
 	// a hover's own actions in a slot of their own, so they never cover the
 	// time or run past the sheet's edge.
@@ -346,6 +349,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				if tip != "" {
 					title.Tooltip(tip)
 				}
+				if grouped {
+					return // D508: the source and the PR stand on lines of their own, below
+				}
 				if s := taskTodo(task); s != nil {
 					ui.Box(c.Key("todo")).Shrink(0).Children(func() { a.todoChip(c, "card:"+task.ID, s.SourceItemRef) }) // D341
 				}
@@ -380,6 +386,29 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					a.outcomeChip(c, "chip", task) // D467: what it made, to open
 				}
 			})
+			if grouped {
+				// D508: grouped by what the facts describe: the source (its to-do and
+				// where), then the PR (its chip, its diff, where it stands), each its own
+				// element in one sentence's order; with no to-do, where and the PR share a line.
+				meta := a.whereMeta(task)
+				where := func() {
+					for _, m := range meta {
+						uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
+					}
+				}
+				if s := taskTodo(task); s != nil {
+					ui.Row(c.Key("src")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+						ui.Box(c.Key("todo")).Shrink(0).Children(func() { a.todoChip(c, "card:"+task.ID, s.SourceItemRef) })
+						where()
+					})
+					ui.Row(c.Key("prg")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() { a.prGroup(c, task, pr, prSaid, prStands) })
+				} else {
+					ui.Row(c.Key("prg")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+						where()
+						a.prGroup(c, task, pr, prSaid, prStands)
+					})
+				}
+			}
 			// The living line: what it is on now, in its own words.
 			ink := t.InkSoft
 			switch {
@@ -406,7 +435,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				words += "  " + s.code
 			}
 			if pr != nil {
-				a.prLine(c, task, prSaid, prStands) // D508: where its PR is, in plain words
+				// D508: where its PR is stands in the PR's own group above.
 			} else if rounds != nil && !working {
 				// D498: between rounds, the last round's facts, each its own element (D291).
 				ink := t.InkSoft

@@ -1044,6 +1044,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             : timeOf(task);
   // D508: the title whole in its two lines, else cut at a word's end; the tooltip says only what the
   // row doesn't (the whole title, when it was cut), never the title, agent and computer again.
+  // D508: a row with a PR (open, or merged) groups its source and its PR's facts on lines of their own.
+  const grouped = room !== "rail" && (!!prr || (finished(task) && !!outcomeOf(task)?.url));
   const full = title(task);
   const named = cutAtWord(shortTitle(full) || t("task.unknown"), stacked ? 72 : 110);
   const about = named !== full ? full : undefined;
@@ -1059,20 +1061,55 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
           <span class="o1">
             <PartnerMark persona={task.card?.persona} />
             <span class="t">{named}</span>
-            {!stacked && <Facts class="meta" items={meta} />}
-            {!stacked && ch && (ch.adds > 0 || ch.dels > 0) && (
+            {!stacked && !grouped && <Facts class="meta" items={meta} />}
+            {!stacked && !grouped && ch && (ch.adds > 0 || ch.dels > 0) && (
               <span class="stat">
                 {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
                 {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
               </span>
             )}
-            {!stacked && pr && <span class="pr">{pr}</span>}
-            {!stacked && finished(task) && <Outcome task={task} />}
-            {!stacked && task.card?.source && <SourceChip src={task.card.source} small plain short />}
+            {!stacked && !grouped && pr && <span class="pr">{pr}</span>}
+            {!stacked && !grouped && finished(task) && <Outcome task={task} />}
+            {!stacked && !grouped && task.card?.source && <SourceChip src={task.card.source} small plain short />}
           </span>
-          {prr ? (
-            <PrLine task={task} said={prr.said} stands={prr.stands} />
-          ) : roundFacts.length > 0 ? (
+          {/* D508: a row with a PR groups its facts by what they describe: the source (its to-do and
+              where), then the PR (its chip, its diff, where it stands) in one sentence's order; with no
+              to-do (or on a phone, where a row shows none), where and the PR share a line. */}
+          {grouped && !stacked && task.card?.source && (
+            <span class="osrc">
+              <SourceChip src={task.card.source} small plain short />
+              <Facts class="meta" items={meta} />
+            </span>
+          )}
+          {grouped && (
+            <span class="oprg">
+              {(stacked || !task.card?.source) && meta.map((m) => (
+                <span key={m} class="m">
+                  {m}
+                </span>
+              ))}
+              <Outcome task={task} small={stacked} />
+              {ch && (ch.adds > 0 || ch.dels > 0) && (
+                <span class="stat">
+                  {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
+                  {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
+                </span>
+              )}
+              {prr ? (
+                <>
+                  <span class={`ph ${prr.stands}`}>{prWords(task, prr.said)}</span>
+                  {prFacts(prr.said).map((f) => (
+                    <span key={f} class="pf">
+                      {f}
+                    </span>
+                  ))}
+                </>
+              ) : (
+                pr && <span class="pr">{pr}</span>
+              )}
+            </span>
+          )}
+          {prr ? null : roundFacts.length > 0 ? (
             <span class={`o2 rounds${rounds?.health ? " late" : ""}`}>
               <Facts class="w" items={roundFacts} />
             </span>
@@ -1091,14 +1128,14 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
           {u && !finished(task) && <Goal u={u} />}
           {/* D471 round 2: on a phone, where it is and when, quietly, on a line of their own under the
               words (never a chip past the edge, never a time jammed under one). */}
-          {stacked && (meta.length > 0 || !!beat || (finished(task) && !!outcomeOf(task))) && (
+          {stacked && (grouped ? !!beat : meta.length > 0 || !!beat || (finished(task) && !!outcomeOf(task))) && (
             <span class="ometa">
-              {meta.map((m) => (
+              {!grouped && meta.map((m) => (
                 <span key={m} class="m">
                   {m}
                 </span>
               ))}
-              {finished(task) && <Outcome task={task} small />}
+              {!grouped && finished(task) && <Outcome task={task} small />}
               {beat && <span class={`ow${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
             </span>
           )}

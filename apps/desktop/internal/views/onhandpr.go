@@ -100,6 +100,42 @@ func (a *App) prFacts(s store.PRSaid) []string {
 	return out
 }
 
+// prGroup is what a row says of its PR, in one sentence's order (D508): its
+// chip, its diff, then where it stands (the phase, its facts) or 已合并;
+// each its own element, never spread to the row's far edge.
+func (a *App) prGroup(c *ui.Context, task *store.Task, pr *protocol.TaskPR, s store.PRSaid, stands string) {
+	t := a.T
+	a.outcomeChip(c, "chip", task)
+	if ch := taskChanges(task); ch != nil {
+		ui.Row(c.Key("stat")).Gap(t.S1 + 2).Shrink(0).Children(func() {
+			if ch.Adds > 0 {
+				uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+			}
+			if ch.Dels > 0 {
+				uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+			}
+		})
+	}
+	if pr == nil {
+		if act := prAct(task); act != "" {
+			key := "onhand.pr.draft"
+			if act == "merge" {
+				key = "onhand.pr.merged"
+			}
+			uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		}
+		return
+	}
+	ink := t.Waiting.Ink
+	if stands == "needs" {
+		ink = t.NeedsYou.Ink
+	}
+	uiText(c.Key("ph"), a.prWords(task, s)).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+	for i, f := range a.prFacts(s) {
+		uiText(c.Key(fmt.Sprint("pf", i)), f).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+	}
+}
+
 // prLine is a PR row's one quiet line: the phase in the state's ink, then
 // its facts in the muted ink, each its own element, wrapping.
 func (a *App) prLine(c *ui.Context, task *store.Task, s store.PRSaid, stands string) {

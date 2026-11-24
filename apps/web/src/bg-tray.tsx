@@ -70,8 +70,10 @@ export function BgTray({ taskId, bg }: { taskId: string; bg: TaskBackground | un
   if (!bg || !bg.jobs.length) return null;
   const running = bg.jobs.filter((j) => j.state === "running");
   const done = bg.jobs.filter((j) => j.state !== "running").reverse(); // newest first
-  const open = (pref ?? (phone ? "shut" : "open")) === "open";
+  // Only finished ones: the head is their fold, folded until opened (what ended needs no room while nothing runs).
+  const open = running.length ? (pref ?? (phone ? "shut" : "open")) === "open" : doneOpen;
   const flip = () => {
+    if (!running.length) return setDoneOpen(!doneOpen);
     const v = open ? "shut" : "open";
     try {
       localStorage.setItem(KEY, v);
@@ -80,63 +82,63 @@ export function BgTray({ taskId, bg }: { taskId: string; bg: TaskBackground | un
   };
   const since = running.length ? Math.min(...running.map((j) => Date.parse(j.at))) : NaN;
   const head = running.length ? t("bg.head", running.length) : t("bg.head.done", bg.done);
-  // Only finished ones: the head is their fold.
-  const doneShown = running.length ? doneOpen : open;
   return (
-    <section class={`bg-tray${open ? " open" : ""}`} aria-label={head}>
-      <TrayRow head words={head} mark={!running.length ? <Mark k="check" /> : undefined} tone={!running.length ? "done" : undefined} side={Number.isFinite(since) ? <span class="tray-time">{bgSpan(now - since)}</span> : undefined} open={open} onClick={flip} />
-      {open && (
-        <div class="bg-rows" role="list">
-          {running.map((j) => {
-            const stopping = A.bgStopping.has(`${taskId}|${j.id}`);
-            const title = titleOf(j);
-            return (
-              <TrayRow
-                key={j.id}
-                mark={<Mark k={MARK[j.kind]} />}
-                markAbout={t(`bg.kind.${j.kind}`)}
-                words={title}
-                side={stopping ? <span class="tray-state">{t("bg.stopping")}</span> : <span class="tray-time">{bgSpan(now - Date.parse(j.at))}</span>}
-                act={
-                  j.stop ? (
-                    <IconBtn label={t("bg.stop")} about={title} danger disabled={stopping} onClick={() => A.stopBackground(taskId, j.id)}>
-                      <Mark k="stop" />
-                    </IconBtn>
-                  ) : null
-                }
-              />
-            );
-          })}
-          {running.length > 0 && bg.done > 0 && <TrayRow mark={<Mark k="check" />} tone="done fold" words={t("bg.done", bg.done)} open={doneOpen} onClick={() => setDoneOpen(!doneOpen)} act={null} />}
-          {doneShown &&
-            done.map((j) => {
-              const ran = j.endedAt ? Date.parse(j.endedAt) - Date.parse(j.at) : NaN;
+    <div class="bg-dock">
+      <section class={`bg-tray${open ? " open" : ""}`} aria-label={head}>
+        <TrayRow head words={head} mark={!running.length ? <Mark k="check" /> : undefined} tone={!running.length ? "done" : undefined} side={Number.isFinite(since) ? <span class="tray-time">{bgSpan(now - since)}</span> : undefined} open={open} onClick={flip} />
+        {open && (
+          <div class="bg-rows" role="list">
+            {running.map((j) => {
+              const stopping = A.bgStopping.has(`${taskId}|${j.id}`);
+              const title = titleOf(j);
               return (
                 <TrayRow
                   key={j.id}
-                  tone={`ended st-${j.state}`}
                   mark={<Mark k={MARK[j.kind]} />}
                   markAbout={t(`bg.kind.${j.kind}`)}
-                  words={titleOf(j)}
-                  side={
-                    <>
-                      {j.state !== "done" && <span class="tray-state">{bgState(j)}</span>}
-                      {Number.isFinite(ran) && <span class="tray-time">{bgSpan(ran)}</span>}
-                    </>
+                  words={title}
+                  side={stopping ? <span class="tray-state">{t("bg.stopping")}</span> : <span class="tray-time">{bgSpan(now - Date.parse(j.at))}</span>}
+                  act={
+                    j.stop ? (
+                      <IconBtn label={t("bg.stop")} about={title} danger disabled={stopping} onClick={() => A.stopBackground(taskId, j.id)}>
+                        <Mark k="stop" />
+                      </IconBtn>
+                    ) : null
                   }
-                  open={tail === j.id}
-                  onClick={() => setTail(tail === j.id ? undefined : j.id)}
-                  act={null}
-                >
-                  <div class="bg-tail">
-                    <span class="bg-tail-head">{t("bg.tail")}</span>
-                    {j.tail ? <pre>{j.tail}</pre> : <span class="bg-tail-none">{t("bg.tail.none")}</span>}
-                  </div>
-                </TrayRow>
+                />
               );
             })}
-        </div>
-      )}
-    </section>
+            {running.length > 0 && bg.done > 0 && <TrayRow mark={<Mark k="check" />} tone="done fold" words={t("bg.done", bg.done)} open={doneOpen} onClick={() => setDoneOpen(!doneOpen)} act={null} />}
+            {doneOpen &&
+              done.map((j) => {
+                const ran = j.endedAt ? Date.parse(j.endedAt) - Date.parse(j.at) : NaN;
+                return (
+                  <TrayRow
+                    key={j.id}
+                    tone={`ended st-${j.state}`}
+                    mark={<Mark k={MARK[j.kind]} />}
+                    markAbout={t(`bg.kind.${j.kind}`)}
+                    words={titleOf(j)}
+                    side={
+                      <>
+                        {j.state !== "done" && <span class="tray-state">{bgState(j)}</span>}
+                        {Number.isFinite(ran) && <span class="tray-time">{bgSpan(ran)}</span>}
+                      </>
+                    }
+                    open={tail === j.id}
+                    onClick={() => setTail(tail === j.id ? undefined : j.id)}
+                    act={null}
+                  >
+                    <div class="bg-tail">
+                      <span class="bg-tail-head">{t("bg.tail")}</span>
+                      {j.tail ? <pre>{j.tail}</pre> : <span class="bg-tail-none">{t("bg.tail.none")}</span>}
+                    </div>
+                  </TrayRow>
+                );
+              })}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

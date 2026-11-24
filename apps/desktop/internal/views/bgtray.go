@@ -150,7 +150,7 @@ func (a *App) bgTray(c *ui.Context, task *store.Task) {
 	if len(running) == 0 {
 		open = doneOpen
 	}
-	tray := ui.Column(c.Key("bgtray:"+task.ID)).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).
+	tray := ui.Column(c.Key("bgtray:"+task.ID)).Padding(t.S1, 0).Radius(t.RadiusMD).Background(t.SurfaceSunken).
 		Border(1, t.LineSoft).MinWidth(0).Label(head)
 	a.enter(c, tray)
 	tray.Children(func() {
@@ -161,7 +161,9 @@ func (a *App) bgTray(c *ui.Context, task *store.Task) {
 		if len(running) == 0 {
 			hl.mark, hl.markInk = drawCheck, t.Done.Ink
 		}
-		if a.trayRow(c, hl) {
+		var headPressed bool
+		ui.Column(c.Key("bghead")).Padding(0, t.S1).MinWidth(0).Children(func() { headPressed = a.trayRow(c, hl) })
+		if headPressed {
 			if len(running) == 0 {
 				if a.open == nil {
 					a.open = map[string]bool{}
@@ -174,7 +176,7 @@ func (a *App) bgTray(c *ui.Context, task *store.Task) {
 		if refused, ok := a.bgRefused[task.ID]; ok {
 			if now.Sub(refused) < 6*time.Second {
 				c.After(time.Second)
-				ui.Row(c.Key("bgrefused")).Padding(0, t.S3).MinHeight(t.ChipSM).AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
+				ui.Row(c.Key("bgrefused")).Padding(0, t.S3+t.S1).MinHeight(t.ChipSM).AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
 					uiText(c, a.L.T("bg.stop.failed")).FontSize(t.XS).TextColor(t.Failed.Ink).SingleLine().MinWidth(0).Shrink(1)
 				})
 			} else {
@@ -185,7 +187,7 @@ func (a *App) bgTray(c *ui.Context, task *store.Task) {
 			return
 		}
 		ui.Box(c.Key("bgrule")).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
-		ui.Scroll(c.Key("bgrows")).MaxHeight(320).MinWidth(0).Children(func() {
+		ui.Scroll(c.Key("bgrows")).MaxHeight(320).Padding(0, t.S1).MinWidth(0).Children(func() {
 			for _, j := range running {
 				j := j
 				title := a.bgTitle(j)

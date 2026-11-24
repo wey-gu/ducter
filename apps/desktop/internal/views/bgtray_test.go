@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -247,6 +248,54 @@ func TestD518Shots(t *testing.T) {
 			t.Fatal(err)
 		}
 		f.Close()
+	}
+	// 2x crops of the tray's top and bottom edges, light and dark.
+	for _, mode := range []string{"light", "dark"} {
+		app, tt, _ := d518Task(t, i18n.ZH, 1400, 6, 22)
+		app.Local.SetAppearance(mode)
+		tt.SetScale(2)
+		for i := 0; i < 6; i++ {
+			tt.Advance(200 * time.Millisecond)
+			tt.Frame()
+		}
+		tt.Frame()
+		r, _ := tt.Find(app.L.T("bg.head", 6))
+		img := tt.Image()
+		for i, y := range []float32{r.Y - 24, r.Y + 300} {
+			x0, y0 := int((r.X-40)*2), int(y*2)
+			sub := img.SubImage(image.Rect(x0, y0, x0+int(760*2), y0+int(130*2)))
+			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-1400-run6-%s-zh-crop%d.png", mode, i)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			png.Encode(f, sub)
+			f.Close()
+		}
+		app.Local.SetAppearance("system")
+	}
+	// The tray entering (D290's rise and fade), five frames 50 ms apart.
+	{
+		app, sent := iaApp(t, i18n.ZH)
+		_ = sent
+		app.Status = client.Connected
+		app.LocaleFixed = true
+		tt := ui.NewTesterWith(app.View, 1400, 900, ui.TesterOptions{})
+		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+		at := func(ago time.Duration) string { return time.Now().Add(-ago).UTC().Format(time.RFC3339Nano) }
+		card := protocol.TaskCard{TaskID: "e1", Persona: "default", Title: "跑一遍 LoCoMo 评测，按题记账", Harness: "claude-code", Attention: protocol.Working, Residency: "hot", OpenedAt: at(90 * time.Minute), UpdatedAt: at(time.Minute)}
+		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{card}}})
+		app.OpenTask("e1")
+		for i := 0; i < 6; i++ {
+			tt.Frame()
+			tt.Advance(200 * time.Millisecond)
+		}
+		card.Background = d518Jobs(i18n.ZH, 2, 22)
+		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{card}}})
+		for i := 0; i < 5; i++ {
+			tt.Frame()
+			write(tt, fmt.Sprintf("mac-1400-enter-f%d", i))
+			tt.Advance(50 * time.Millisecond)
+		}
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, w := range []int{1400, 1000} {

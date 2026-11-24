@@ -985,6 +985,11 @@ Built against a fake iLink and CDN only.
 - [ ] **agy on web work**: never routed there (`no_web`), since OAR refuses `exclude` for agy (draft §3). Trigger: an OAR release that supports it.
 - [ ] **A live background check in the probe**: `scripts/probe-harnesses.ts --live` runs research/222's two cheap runs (Claude Code haiku, Codex luna, scratch homes) and fails when `background.ownTurn` no longer holds. Trigger: the next Claude Code or Codex upgrade past the verified range.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
+- [ ] **Stop for a Codex background terminal** (D518): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
+- [ ] **Antigravity's and pi's background work in the tray** (D518): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
+- [ ] **The tray live** (D518): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D518.
+- [ ] **The background list on request** (D518's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
+- [ ] **iOS Simulator pass on the tray** (D518): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
 
 ## iMessage through the Mac app (D277, `design/imessage.md`)
 

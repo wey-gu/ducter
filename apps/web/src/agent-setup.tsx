@@ -3,9 +3,10 @@
 // Claude's link and the code to paste back, pi's line for that computer's terminal). The device
 // card and the lend sheet use the same row.
 import type { DeviceHarness, DeviceView } from "@ducter/protocol";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, LinkBtn, StepNumber } from "./controls.tsx";
+import { AliveLine } from "./alive.tsx";
 import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -32,7 +33,7 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   if (!l) return null;
   const again = <Btn kind="secondary" size="sm" label={t("ag.retry")} about={harnessName(h.harness)} onClick={() => A.agentSetup(dv.id, "login", { harness: h.harness })} />;
   if (l.state === "terminal") return <div class="ag-login"><p>{t("ag.login.pi", dv.name)}</p></div>;
-  if (l.state === "starting") return <div class="ag-login"><p class="soft">{t("ag.login.starting")}</p></div>;
+  if (l.state === "starting") return <div class="ag-login"><LiveLine harness={h.harness} text={t("ag.login.starting")} checking /></div>;
   if (l.state === "done") return <div class="ag-login"><p class="ok">{t("ag.login.done")}</p></div>;
   // D416: its own sign-out, running or refused.
   if (l.state === "signing_out") return <div class="ag-login"><p class="soft">{t("ag.signout.running")}</p></div>;
@@ -46,38 +47,114 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   if (l.state === "failed" || l.state === "expired")
     return (
       <div class="ag-login">
-        <p class="warn">{t(l.state === "expired" ? "ag.login.expired" : l.reason === "device_off" ? "ag.login.device_off" : l.reason === "wrong_code" ? "ag.login.wrong_code" : "ag.login.failed")}</p>
+        <p class="warn" role="alert">{t(loginTrouble(l), harnessName(h.harness))}</p>
         {again}
       </div>
     );
   if (l.key) return <KeyLogin dv={dv} h={h} code={code} setCode={setCode} />;
+  // D518: two steps the person can see (open the link; the code, pasted back or entered there),
+  // then one live line that moves while it waits and says when it stops by itself.
+  const s = loginSteps(h.harness);
+  const checking = l.state === "checking";
+  const send = () => {
+    if (!code.trim() || checking) return;
+    A.agentSetup(dv.id, "code", { harness: h.harness, code });
+  };
   return (
     <div class="ag-login">
-      <p>{t(h.harness === "codex" ? "ag.login.codex" : h.harness === "antigravity" ? "ag.login.agy" : "ag.login.claude")}</p>
-      {l.reason === "wrong_code" && <p class="warn">{t("ag.login.wrong_code")}</p>}
-      {l.url && (
-        <a class="ag-link" href={l.url} target="_blank" rel="noopener noreferrer">
-          {shortUrl(l.url)}
-        </a>
-      )}
-      {l.code && (
-        <div class="ag-code">
-          <code>{l.code}</code>
-          <Btn kind="secondary" size="sm" label={t("ag.login.copy")} onClick={() => copy(l.code!)} />
-        </div>
-      )}
-      {l.paste && l.state === "waiting" && (
-        <div class="ag-paste">
-          <input class="dev-input" value={code} placeholder={t("ag.login.paste")} aria-label={t("ag.login.paste")} onInput={(e) => setCode((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && code.trim() && A.agentSetup(dv.id, "code", { harness: h.harness, code })} />
-          <Btn kind="primary" size="sm" label={t("ag.login.send")} disabled={!code.trim()} onClick={() => A.agentSetup(dv.id, "code", { harness: h.harness, code })} />
-        </div>
-      )}
-      {l.state === "checking" && <p class="soft">{t("ag.login.checking")}</p>}
+      <ol class="ag-steps">
+        <li>
+          <StepNumber n={1} />
+          <div class="ag-step">
+            <p>{t(s.open)}</p>
+            {l.url && <p class="ag-link">{shortUrl(l.url)}</p>}
+            {l.url && (
+              <div class="ag-acts">
+                <LinkBtn kind="secondary" size="sm" href={l.url} label={t("ag.login.open")} />
+              </div>
+            )}
+          </div>
+        </li>
+        <li>
+          <StepNumber n={2} />
+          <div class="ag-step">
+            <p>{t(s.code)}</p>
+            {l.code && (
+              <div class="ag-code">
+                <code>{l.code}</code>
+                <Btn kind="secondary" size="sm" label={t("ag.login.copy")} onClick={() => copy(l.code!)} />
+              </div>
+            )}
+            {l.paste && !checking && (
+              <form
+                class="ag-paste"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send();
+                }}
+              >
+                <input class="dev-input" value={code} disabled={checking} placeholder={t("ag.login.paste")} aria-label={t("ag.login.paste")} autocomplete="off" spellcheck={false} onInput={(e) => setCode((e.target as HTMLInputElement).value)} />
+                <Btn kind="primary" size="sm" label={t("ag.login.send")} about={harnessName(h.harness)} disabled={!code.trim() || checking} onClick={send} />
+              </form>
+            )}
+            {l.reason === "wrong_code" && !checking && (
+              <p class="warn" role="alert">
+                {t("ag.login.wrong_code")}
+              </p>
+            )}
+          </div>
+        </li>
+      </ol>
+      <LiveLine harness={h.harness} text={checking ? t("ag.login.confirming", harnessName(h.harness)) : t(l.paste ? "ag.login.wait.paste" : "ag.login.wait.self")} checking={checking} left={checking ? undefined : l.until} />
       <div class="ag-acts">
-        {l.url && <Btn kind="secondary" size="sm" label={t("ag.login.open")} onClick={() => window.open(l.url, "_blank", "noopener")} />}
-        <Btn kind="text" size="sm" label={t("ag.login.cancel")} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
+        <Btn kind="text" size="sm" label={t("ag.login.cancel")} about={harnessName(h.harness)} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
       </div>
     </div>
+  );
+}
+
+/** D518: which words a failed or stopped sign-in says. */
+export function loginTrouble(l: { state: string; reason?: string }): string {
+  if (l.state === "expired") return "ag.login.expired";
+  if (l.reason === "device_off" || l.reason === "wrong_code" || l.reason === "not_seen" || l.reason === "no_answer") return `ag.login.${l.reason}`;
+  // D523: its sign-in ended well but its own check got no answer from its service (agy's needs Google).
+  if (l.reason === "offline") return "ag.login.unreachable";
+  return "ag.login.failed";
+}
+
+/** D518: each agent's two steps, in its own words. */
+export function loginSteps(harness: string): { open: string; code: string } {
+  const k = harness === "codex" ? "codex" : harness === "antigravity" ? "agy" : "claude";
+  return { open: `ag.login.${k}.1`, code: `ag.login.${k}.2` };
+}
+
+/** D518: minutes left until `until`, rounded up, never below 1. */
+export function minutesLeft(until: number, now: number): number {
+  return Math.max(1, Math.ceil((until - now) / 60_000));
+}
+
+/**
+ * D518: the sign-in's live line, the shared alive line every wait uses: the agent's coin as its
+ * figure (glancing while it waits for the person, turning it over while Ducter checks), what it
+ * waits for in words, and how long it still waits under them.
+ */
+function LiveLine({ harness, text, checking, left }: { harness: string; text: string; checking?: boolean; left?: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!left) return;
+    const id = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [left]);
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    <AliveLine
+      class="ag-live"
+      size={24}
+      motion={still ? "still" : checking ? "think" : "glance"}
+      words={text}
+      sub={left ? t("ag.login.left", minutesLeft(left, Date.now())) : undefined}
+      figure={<Coin harness={harness} size={24} />}
+    />
   );
 }
 
@@ -124,8 +201,10 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
   const awake = dv.state === "awake";
   // D416: partly there (too old, broken, only the app): said as what it is, its button as what it does.
   const tr = look === "install" || look === "missing" ? troubleWords(h) : undefined;
+  const turning = look === "installing"; // a sign-in moves in its own alive line below (D518)
   const word =
-    look === "ready" ? t("ag.ready")
+    look === "ready" ? t(h.login?.state === "done" ? "ag.login.done" : "ag.ready")
+    : look === "login" && (h.login?.state === "waiting" || h.login?.state === "starting" || h.login?.state === "checking") ? t("ag.signing_in")
     : look === "signin" || look === "login" ? t("ag.signed_out")
     : look === "installing" ? (h.setup?.pct ? `${t("ag.installing")} ${h.setup.pct}%` : t("ag.installing"))
     : look === "queued" ? t("ag.queued")
@@ -136,9 +215,9 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
   return (
     <div class={`ag-row ${look}`}>
       <div class="ag-head">
-        <span class={`ag-coin${look === "installing" ? " busy" : ""}`}>
+        <span class={`ag-coin${turning ? " busy" : ""}`}>
           <Coin harness={h.harness} size={36} off={look !== "ready"} />
-          {look === "installing" && <i class="cring" aria-hidden="true" />}
+          {turning && <i class="cring" aria-hidden="true" />}
         </span>
         <span class="ag-t">
           <b>{name}</b>

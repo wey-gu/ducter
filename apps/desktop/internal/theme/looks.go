@@ -33,7 +33,7 @@ var LookClay = map[string]ClayTint{
 	"apricot": {-28, 1},
 }
 
-// LookTone is c in a look's clay (D524): the same hue turn and saturation
+// LookTone is c in a look's clay (D526): the same hue turn and saturation
 // the look gives the art, so a partner's small mark is the colour of its
 // figure. The default's sand leaves c as it is.
 func LookTone(c ui.Color, look string) ui.Color {

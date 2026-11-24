@@ -170,7 +170,8 @@ commenting**. If you've said comments on your issues don't need asking ("comment
 issues without asking"), it just posts and says so. Either way it shows in Done for you.
 
 Each task is named after its own to-do (several in one task: the first, "and 1 more"), and its branch
-after the issue numbers, so two hand-overs never collide.
+starts with the issue numbers, then a few English words for the work (such as
+`ducter/11028-embedding-one-model`), so two hand-overs never collide.
 
 **Hand these {n} to {name}** makes one group on On hand that carries them all. You can also say it in
 the conversation: "pull out everything about memory distill so we can look" shows the set there, ticked

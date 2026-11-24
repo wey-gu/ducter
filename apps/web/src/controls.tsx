@@ -376,6 +376,15 @@ export function Fold({ title, summary, children }: { title: string; summary?: st
   );
 }
 
+/** A step's number in a short numbered sequence: a sunken disc (the lend sheet's three steps' look; D518 a sign-in's two). */
+export function StepNumber({ n }: { n: number }) {
+  return (
+    <span class="step-n" aria-hidden="true">
+      {n}
+    </span>
+  );
+}
+
 /** D398: an optional step as one framed row (its mark, its title, a muted line, a chevron); open, the step is under it. */
 export function StepRow({ mark, title, sub, open, onClick }: { mark: ComponentChildren; title: string; sub?: string; open: boolean; onClick: () => void }) {
   return (

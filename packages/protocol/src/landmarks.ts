@@ -30,9 +30,9 @@ export interface Landmark {
   /** When: the item's time, or a run's first and last. */
   at: string;
   endAt?: string;
-  /** D524: a brief the person wrote themselves (else the partner handed it over). */
+  /** D526: a brief the person wrote themselves (else the partner handed it over). */
   by?: "you";
-  /** D524: how a report stood (absent: progress): its mark's shape and tone on the rail. */
+  /** D526: how a report stood (absent: progress): its mark's shape and tone on the rail. */
   s?: ReportMarkState;
 }
 

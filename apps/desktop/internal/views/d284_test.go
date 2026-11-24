@@ -82,7 +82,7 @@ func TestLocatorGlides(t *testing.T) {
 		if !hoverLocator(app, tt) {
 			t.Fatal("no locator")
 		}
-		// D524: the brief's row says the task's title, as the header does: click the row itself.
+		// D526: the brief's row says the task's title, as the header does: click the row itself.
 		e := entries[0]
 		row, ok := tt.AccessByRole(ui.RoleButton, spoken(app.L, e.tag, autospace(e.line), e.at))
 		if !ok {

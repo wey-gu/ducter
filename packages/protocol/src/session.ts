@@ -21,14 +21,14 @@ export interface IndexMark {
   at?: string;
   /** D325: a report's first line, cut at MARK_MAX, its keys hidden (the locator's list reads it). */
   w?: string;
-  /** D524: how a report stood, when not progress: done, failed, or an ask (needs input, blocked). */
+  /** D526: how a report stood, when not progress: done, failed, or an ask (needs input, blocked). */
   s?: ReportMarkState;
 }
 
-/** D524: a report's state as the locator marks it: a result, a failure, an ask that waits for you. */
+/** D526: a report's state as the locator marks it: a result, a failure, an ask that waits for you. */
 export type ReportMarkState = "done" | "failed" | "ask";
 
-/** D524: a report's state as its mark says it (progress says nothing). */
+/** D526: a report's state as its mark says it (progress says nothing). */
 export function reportMarkState(state: string | undefined): ReportMarkState | undefined {
   if (state === "done" || state === "failed") return state;
   if (state === "needs_input" || state === "blocked") return "ask";

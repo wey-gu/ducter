@@ -521,8 +521,46 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
 **Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
 machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)
 and 连接码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
-Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
-with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
+Keychain is a later upgrade. `DUCTER_URL` + `DUCTER_TOKEN` still override.
+
+**The link to the home (D520).** A paired Mac shows the connect card again only on the home's
+own, signed word that its credential is gone; every other loss keeps the saved connection and the
+window as it was.
+- *Who and when:* someone whose home is a server (the author's hel behind Caddy). The home
+  restarts for an update or after the OOM killer several times a day, the Mac sleeps and changes
+  networks. Before D520 a 502 from the proxy while the home restarted read as "revoked" and the
+  connect card stayed until the app was quit (2026-11-24 07:30:20 UTC: two `/ws` 502s from
+  Caddy during an OOM restart; the device was never revoked).
+- *The standing:* when the socket upgrade is refused off this machine (any non-101; Go's
+  websocket can't read the status), the app asks `GET /.well-known/ducter-device?n=<nonce>` with
+  its bearer token. The home, before its gate, answers `{standing, device, key, fp, sig}`:
+  `live`, `revoked` (the right secret of a device disconnected there) or `unknown` (no such
+  device, or not its secret: nothing about a device is told without its secret), signed with
+  the home key over `ducter-device\n<standing>\n<device>\n<nonce>`. Only `revoked` or `unknown`
+  signed by the key pinned at pairing (D293) sends the app to the card; a proxy, a DNS or TLS
+  failure, another key, or nothing pinned all mean "keep trying". A home off this machine
+  dialled with no credential at all still goes to the card (there is nothing to keep).
+- *Retrying:* 250 ms doubling to 5 s, to 15 s after a minute down, each wait ±20% so a home's
+  devices don't dial on one beat; after a signed gone, once a minute. At once on wake (D293),
+  when the network comes back (a socket from before is dropped), and when the window comes to
+  the front while down.
+- *What shows:* lost for under 30 s, only the header's line **正在重新连上 {home}… /
+  Reconnecting to {home}…** (never the counts flicking back between tries). From 30 s, the line
+  **连不上 {home}，正在重试 / Can't reach {home}, retrying** and one notice above the composer:
+  **连不上 {home} 上的 Ducter / Can't reach your Ducter on {home}**, "{home} 开着吗？网络通吗？…",
+  when it tries next, **立即连接 / Try now** and a quiet **再连一次 / Connect it again** (the
+  card with **返回 / Back**, for a home whose key changed). A launch before the home answered
+  shows the same words in a card (**正在连上 {home} 上的 Ducter / Reaching your Ducter on
+  {home}**), never `ducter up`. Signed gone: the card says so in those words (**{home} 上的
+  Ducter 已经断开了这台 Mac / Your Ducter on {home} disconnected this Mac**, or for unknown
+  **…认不出这台 Mac 了 / …doesn't know this Mac anymore**) with the address already filled in and
+  no Back; a welcome clears it. The code's placeholder reads **例如 K7QM-4XPA / e.g.
+  K7QM-4XPA** in the reading face, so it never passes for a code already typed.
+- *Where:* `packages/core/src/auth.ts` (`standing`), `core.ts` (`STANDING_PATH`),
+  `protocol/src/reach.ts`; the Mac's `internal/remote/standing.go`, `internal/client`
+  (`Gone`, `GoneError`, `ErrRefused`, `Redial`, `Nudge`) and `views/link.go` (`App.Linked`, the
+  one place that decides). The web client, iPhone and Android still treat an HTTP 401 from their
+  own origin as revoked (`todo.md`).
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's
@@ -1089,8 +1127,13 @@ redesign later:
   copy (D142) is never kept for such a folder, and Undo never puts its files back. A new task's worktree is
   `<Ducter folder>/worktrees/<repo name>/<branch slug>` (D204: the visible `~/ducter` of that
   computer, `protocol/src/ducter-folder.ts`), `-2`, `-3` when taken (D198; taken compared NFC).
-  The slug keeps letters, marks and digits of any script, NFC, ≤ 40 characters cut by grapheme,
-  and is the branch's too, `ducter/<slug>` (D201); a task from before keeps its stored
+  The slug is the branch's part after `ducter/`. D522: a new task's branch is ASCII,
+  `ducter/<number>-<slug>` or `ducter/<slug>`, the slug 3 to 6 lowercase English words (≤ 40
+  characters, whole words) written once by the cheapest model of the partner's agent from the title
+  and the repository's own branch convention (`runner/src/branch-name.ts`, the worker op
+  `branchRules`), else `ducter/<number>` or `ducter/task-<id>`; code checks only the charset, the
+  length and uniqueness. A branch someone else named keeps its words in the folder (letters, marks
+  and digits of any script, NFC, D201); a task from before keeps its stored branch and
   `<dataDir>/worktrees/<repo>/<slug>` or `<dataDir>/worktrees/<taskId>`. Archive removes only
   worktrees under `<dataDir>/worktrees` or under the `worktrees/` of a folder carrying Ducter's
   marker `.ducter-folder`, and a repo's folder there once it is empty. The Ducter folder's

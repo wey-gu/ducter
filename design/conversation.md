@@ -445,7 +445,7 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
     moment, with a light tap; a conversation pebble turns to the drawn check alone in the done ink
     (D495: no word on a pebble; **已拷贝** is its label); a menu that closed says **已拷贝** in the
     toast; a copy that failed says so, with Select text.
-- **Finding a place in an opened task (D524).** An opened task's conversation has the locator at its
+- **Finding a place in an opened task (D526).** An opened task's conversation has the locator at its
   right edge on a wide window: the list of what happened drawn small, one mark per landmark (the
   person's words a dot in their orange, the partner's a dot in its clay, a task handed over a
   square, a result a ring, an ask that waits a ring round a dot in the needs-you orange), quiet at

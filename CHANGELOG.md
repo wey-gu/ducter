@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.1.42 - 2026-11-24
+
+<!-- whats-new
+zh: 新分支用英文短名；Antigravity 登录更稳
+en: New branches get short English names; Antigravity signs in reliably
+-->
+
+**Branch names your tools can read**
+- A new task's branch and folder get a short English name, with its issue number when it has
+  one (`ducter/11028-embedding-one-model`), following your repository's own branch rules when it
+  states them. Existing branches keep their names.
+
+**Antigravity signs in**
+- Signing in uses the same Antigravity the card checks, so a desktop app's launcher on the PATH
+  no longer gets in the way. An older Antigravity updates itself first, a wrong code says so, and
+  when it can't reach Google to confirm it says that instead of "not signed in".
+
+## 0.1.41 - 2026-11-24
+
+<!-- whats-new
+zh: Mac 不会再因为服务器重启就要你重新连接
+en: The Mac no longer asks you to reconnect when your home restarts
+-->
+
+**The Mac stays connected through restarts**
+- When your home restarts or can't be reached for a moment, the Mac keeps its connection and
+  reconnects by itself, saying so in one quiet line. After half a minute it says plainly that it
+  can't reach your home and when it tries next, with Connect now.
+- It asks you to connect again only when your home itself says this Mac was disconnected.
+- The connect screen fits small windows, and its code field no longer looks already filled.
+
+## 0.1.40 - 2026-11-24
+
+<!-- whats-new
+zh: 服务器上的登录看得见每一步，登好了马上亮
+en: Signing in on a server shows each step and lights up at once
+-->
+
+**Signing in to an agent on your server**
+- A server home now sees the Claude Code that Ducter itself installed there, so an agent you
+  signed in to shows as signed in.
+- Signing in shows its steps: open the link, paste the code back. While it waits it says what
+  for and how long is left. It checks with the agent before it says you're signed in, and a
+  wrong code, no answer or a time-out each says so with Try again.
+- The agent tiles fit their names.
+
 ## 0.1.39 - 2026-11-24
 
 <!-- whats-new

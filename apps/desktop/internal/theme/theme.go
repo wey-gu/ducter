@@ -89,7 +89,7 @@ type Tokens struct {
 	// sky, plum, apricot); LookRim their hairline. The web's --look-*.
 	Looks   map[string]ui.Color
 	LookRim ui.Color
-	// ClayMark is a partner's clay as a small drawn mark (D524, the
+	// ClayMark is a partner's clay as a small drawn mark (D526, the
 	// locator): the default's sand clay deepened so it never reads as the
 	// person's orange; another partner's is it recoloured (LookTone). The
 	// web's --clay-mark.

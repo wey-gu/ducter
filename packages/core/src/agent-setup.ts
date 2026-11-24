@@ -40,9 +40,10 @@ import { ANTIGRAVITY, HARNESS_FACTS, agyPlatform } from "@ducter/protocol/src/ha
 import { DSH_KEY_ENV, HARNESSES, isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys, writeKey } from "@ducter/protocol/src/keys.ts";
 import { toolEnv } from "@ducter/protocol/src/tool-env.ts";
+import { spawnNow } from "@ducter/protocol/src/which.ts";
 import { toolsNodeBin } from "./agent-path.ts";
 import { checkDeepSeekKey } from "./api-key.ts";
-import { agyPaths, agyVersion, compareVersions } from "./harness-probe.ts";
+import { agyPaths, agyVersion, compareVersions, pickAgy } from "./harness-probe.ts";
 
 /** Node.js Ducter puts in its tools folder for the agents' npm packages (an LTS line every agent supports). */
 export const NODE_RELEASE = {
@@ -67,7 +68,9 @@ export function agentPin(h: HarnessId): { pkg: string; version: string } | undef
   return pkg && (INSTALLABLE as readonly string[]).includes(h) ? { pkg, version: HARNESS_FACTS[h].verified.to } : undefined;
 }
 
-type Login = { view: AgentLoginState; proc?: LoginProc; timer?: unknown; out: string; mark?: number };
+type Login = { view: AgentLoginState; proc?: LoginProc; timer?: unknown; check?: unknown; out: string; mark?: number };
+/** D518: how long a pasted code may go unanswered before the sign-in says so and offers again. */
+export const LOGIN_CHECK_MS = 90_000;
 /** D371: how often a DeepSeek Harness sign-in made elsewhere (its app, a key saved by hand) is looked for. */
 export const DSH_LOOK_MS = 3000;
 
@@ -166,6 +169,17 @@ export function createAgentSetup(o: {
   probe: () => Promise<void>;
   /** The state changed: send the rows up now. */
   changed: () => void;
+  /**
+   * D518: is this agent signed in here now, by its own check run fresh (`claude auth status`, never
+   * a cached reading)? A sign-in that ended well says 登录好了 only once this says yes. Absent
+   * (older callers, tests of the rest): the sign-in's own exit is taken at its word.
+   */
+  signedIn?: (h: string) => Promise<boolean | "unknown">;
+  /** D523: a line for this computer's log at each step of a sign-in (default console.log). */
+  note?: (line: string) => void;
+  /** Tests: how long a sign-in waits (LOGIN_WAIT_MS), how long a pasted code may go unanswered (LOGIN_CHECK_MS). */
+  waitMs?: number;
+  checkMs?: number;
   now?: () => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (t: unknown) => void;
@@ -361,9 +375,12 @@ export function createAgentSetup(o: {
     }
   };
 
+  const waitMs = o.waitMs ?? LOGIN_WAIT_MS;
+  const checkMs = o.checkMs ?? LOGIN_CHECK_MS;
   const endLogin = (h: string, view: AgentLoginState) => {
     const l = logins.get(h);
     if (l?.timer) clearTimer(l.timer);
+    if (l?.check) clearTimer(l.check);
     if (view.state === "done") {
       logins.set(h, { view, out: "", timer: setTimer(() => (logins.get(h)?.view === view ? (logins.delete(h), o.changed()) : undefined), LOGIN_DONE_SHOWN_MS) });
     } else logins.set(h, { view, out: "" });
@@ -425,21 +442,145 @@ export function createAgentSetup(o: {
 
   /**
    * D416: agy's sign-in environment. agy ignores BROWSER and starts the platform's launcher
-   * itself; on Linux it finds `xdg-open` on PATH, so a folder holding one that does nothing goes
-   * first (OAR's login-browser.ts does the same): the link is opened wherever the person is.
+   * itself, found on PATH (`xdg-open` on Linux; D523, VERIFIED on agy 1.5.16: `open` on a Mac), so
+   * a folder holding one that does nothing goes first (OAR's login-browser.ts does the same): the
+   * link is opened wherever the person is, never in a browser on a computer they may not be at.
    */
   const agyLoginEnv = (): Record<string, string> => {
     const env = sys.env("agy");
-    if (sys.platform !== "linux") return env;
+    const launcher = ANTIGRAVITY.launchers[sys.platform];
+    if (!launcher) return env;
     const dir = join(tools, "no-browser");
     try {
       mkdirSync(dir, { recursive: true });
-      writeFile(join(dir, "xdg-open"), new TextEncoder().encode("#!/bin/sh\nexit 0\n"));
-      (sys.chmod ?? ((p: string) => chmodSync(p, 0o755)))(join(dir, "xdg-open"));
+      writeFile(join(dir, launcher), new TextEncoder().encode("#!/bin/sh\nexit 0\n"));
+      (sys.chmod ?? ((p: string) => chmodSync(p, 0o755)))(join(dir, launcher));
     } catch {
       return env;
     }
     return { ...env, PATH: [dir, env.PATH ?? ""].filter(Boolean).join(":") };
+  };
+
+  /** D523: one line per sign-in step in this computer's log (never its link, never a pasted code). */
+  const note = (h: string, line: string) => (o.note ?? ((l: string) => console.log(l)))(`[sign-in] ${h}: ${line}`);
+
+  /** One agent's own sign-in, run and carried to the person (D363, D518). `prepared`: agy's entry while it was readied. */
+  const runLogin = (h: string, cmdline: string[], env: Record<string, string>, prepared?: Login) => {
+    let proc: LoginProc;
+    try {
+      proc = sys.spawn(cmdline, env);
+    } catch (e) {
+      note(h, `can't start ${cmdline[0]}: ${String((e as Error)?.message ?? e).slice(0, 160)}`);
+      logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
+      return o.changed();
+    }
+    note(h, `started ${cmdline.join(" ")}`);
+    // D518: the person sees when it stops by itself.
+    const until = prepared?.view.until ?? now() + waitMs;
+    const entry: Login = { view: { state: "starting", until }, proc, out: "", timer: undefined as unknown, mark: 0 };
+    if (prepared?.timer) clearTimer(prepared.timer);
+    logins.set(h, entry);
+    entry.timer = setTimer(() => {
+      if (logins.get(h) !== entry) return;
+      proc.kill();
+      endLogin(h, { state: "expired" });
+      o.changed();
+    }, waitMs);
+    proc.onOutput((text) => {
+      if (logins.get(h) !== entry) return;
+      entry.out = (entry.out + text).slice(-20_000);
+      const got = parseLogin(h, entry.out);
+      // Claude answers a wrong paste and keeps waiting for another (2.1.322: "Invalid code.").
+      if (entry.view.state === "checking" && entry.mark !== undefined && entry.mark >= 0 && /invalid|expired|error/i.test(entry.out.slice(entry.mark).replace(ANSI, ""))) {
+        if (entry.check) clearTimer(entry.check);
+        entry.check = undefined;
+        entry.view = { ...entry.view, state: "waiting", reason: "wrong_code" };
+        return o.changed();
+      }
+      if (got.url && entry.view.state === "starting" && (h !== "codex" || got.code)) {
+        note(h, "its link is out; waiting for the person");
+        entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}), until };
+        o.changed();
+      }
+    });
+    void proc.exited.then(async (code) => {
+      if (logins.get(h) !== entry) return;
+      const out = entry.out;
+      if (code === 0) {
+        // D518: its sign-in says it ended well; the agent's own check, run fresh, decides.
+        // (hel, 2026-11-24: claude wrote its sign-in, the card read a stale "signed out" and
+        // said 登录好了 beside 未登录.)
+        if (o.signedIn) {
+          if (entry.check) clearTimer(entry.check);
+          entry.check = undefined;
+          entry.mark = -1;
+          entry.view = { state: "checking", until };
+          o.changed();
+          const ok = await o.signedIn(h).catch(() => false as const);
+          if (logins.get(h) !== entry) return;
+          note(h, `ended 0; its own check says ${ok === true ? "signed in" : ok === "unknown" ? "it can't tell (no answer from its service)" : "signed out"}`);
+          if (ok !== true) {
+            // D523: "can't tell" is not "signed out": agy's check needs Google, and a computer
+            // that can't reach it (no network, a proxy the service isn't given) says so.
+            endLogin(h, { state: "failed", reason: ok === "unknown" ? "offline" : "not_seen" });
+            return o.changed();
+          }
+        }
+        endLogin(h, { state: "done" });
+        await o.probe().catch(() => {});
+      } else {
+        note(h, `ended ${code}: ${lastLine(out.replace(ANSI, "")) ?? "(nothing printed)"}`);
+        endLogin(h, {
+          state: "failed",
+          reason: /device[ -]?code.*(not enabled|disabled)|enable device code/i.test(out) ? "device_off" : (entry.view.state === "checking" || entry.view.reason === "wrong_code") && /invalid|wrong|expired|error/i.test(out) ? "wrong_code" : "failed",
+        });
+      }
+      o.changed();
+    });
+    o.changed();
+  };
+
+  /**
+   * D523: Antigravity's sign-in on the copy OAR runs (pickAgy: never an editor's launcher link
+   * ahead of it on PATH), updated first with its own `agy update` when it is older than the
+   * sign-in floor, with --gemini-dir when GEMINI_HOME is set (agy itself ignores it; OAR's
+   * sessions pass it), and its own browser launch made a no-op on a Mac too.
+   */
+  const agyLogin = async () => {
+    const h = "antigravity";
+    const home = sys.home ?? homedir();
+    const until = now() + waitMs;
+    const prep: Login = { view: { state: "starting", until }, out: "" };
+    logins.set(h, prep);
+    o.changed();
+    const env = agyLoginEnv();
+    const exec = async (argv: string[], ms?: number) => {
+      const r = await sys.run(argv, { env, timeoutMs: ms ?? 30_000 });
+      return { code: r.code, out: r.out };
+    };
+    const look = () => pickAgy({ exec, which: sys.which, env: { ...process.env, ...env }, home, exists });
+    let pick = await look();
+    if (logins.get(h) !== prep) return;
+    if (!pick.bin) {
+      note(h, `can't start: ${pick.trouble?.kind === "too_old" ? `agy ${pick.old} at ${pick.oldBin} is below ${pick.trouble.need}` : "no agy that answers its --version"} (looked at ${agyPaths({ which: sys.which, env: { ...process.env, ...env }, home, exists }).join(", ") || "nothing"})`);
+      logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
+      return o.changed();
+    }
+    if ((compareVersions(pick.version!, ANTIGRAVITY.signInFloor) ?? -1) < 0) {
+      note(h, `agy ${pick.version} at ${pick.bin} is older than ${ANTIGRAVITY.signInFloor}; running its own update first`);
+      const r = await sys.run([pick.bin, "update"], { env, timeoutMs: 10 * 60_000 });
+      if (logins.get(h) !== prep) return;
+      pick = await look();
+      if (logins.get(h) !== prep) return;
+      if (!pick.bin) {
+        note(h, `its update ended ${r.code}: ${lastLine(r.out) ?? ""}`);
+        logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
+        return o.changed();
+      }
+      note(h, `now agy ${pick.version}`);
+    }
+    const state = env.GEMINI_HOME;
+    runLogin(h, [pick.bin, "acp", "--login", ...(state ? ["--gemini-dir", state] : [])], env, prep);
   };
 
   const api: AgentSetup = {
@@ -454,61 +595,21 @@ export function createAgentSetup(o: {
     },
     login(h) {
       const prev = logins.get(h);
-      if (prev?.proc && (prev.view.state === "starting" || prev.view.state === "waiting" || prev.view.state === "checking")) return;
+      if (prev && (prev.view.state === "starting" || prev.view.state === "waiting" || prev.view.state === "checking")) return;
       if (h === "pi") {
         logins.set(h, { view: { state: "terminal", command: "pi" }, out: "" });
         return o.changed();
       }
       if (h === "deepseek-harness") return dshLogin();
-      const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : h === "antigravity" ? ["agy", "acp", "--login"] : undefined;
-      const bin = h === "antigravity" ? (agyPaths({ which: sys.which, env: process.env, home: sys.home ?? homedir(), exists })[0] ?? null) : argv ? sys.which(argv[0]!) : null;
+      if (h === "antigravity") return void agyLogin();
+      const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
+      const bin = argv ? sys.which(argv[0]!) : null;
       if (!argv || !bin) {
+        note(h, `can't start: ${argv ? `${argv[0]} not found on PATH` : "no sign-in Ducter can carry"}`);
         logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
         return o.changed();
       }
-      let proc: LoginProc;
-      try {
-        proc = sys.spawn([bin, ...argv.slice(1)], h === "antigravity" ? agyLoginEnv() : sys.env(argv[0]!));
-      } catch {
-        logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
-        return o.changed();
-      }
-      const entry = { view: { state: "starting" } as AgentLoginState, proc, out: "", timer: undefined as unknown, mark: 0 };
-      logins.set(h, entry);
-      entry.timer = setTimer(() => {
-        if (logins.get(h) !== entry) return;
-        proc.kill();
-        endLogin(h, { state: "expired" });
-        o.changed();
-      }, LOGIN_WAIT_MS);
-      proc.onOutput((text) => {
-        if (logins.get(h) !== entry) return;
-        entry.out = (entry.out + text).slice(-20_000);
-        const got = parseLogin(h, entry.out);
-        // Claude answers a wrong paste and keeps waiting for another (2.1.322: "Invalid code.").
-        if (entry.view.state === "checking" && /invalid|expired|error/i.test(entry.out.slice(entry.mark).replace(ANSI, ""))) {
-          entry.view = { ...entry.view, state: "waiting", reason: "wrong_code" };
-          return o.changed();
-        }
-        if (got.url && entry.view.state === "starting" && (h !== "codex" || got.code)) {
-          entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}) };
-          o.changed();
-        }
-      });
-      void proc.exited.then(async (code) => {
-        if (logins.get(h) !== entry) return;
-        const out = entry.out;
-        if (code === 0) {
-          endLogin(h, { state: "done" });
-          await o.probe().catch(() => {});
-        } else
-          endLogin(h, {
-            state: "failed",
-            reason: /device[ -]?code.*(not enabled|disabled)|enable device code/i.test(out) ? "device_off" : entry.view.state === "checking" && /invalid|wrong|expired|error/i.test(out) ? "wrong_code" : "failed",
-          });
-        o.changed();
-      });
-      o.changed();
+      runLogin(h, [bin, ...argv.slice(1)], sys.env(argv[0]!));
     },
     logout(h) {
       const prev = logins.get(h);
@@ -542,12 +643,21 @@ export function createAgentSetup(o: {
       l.proc.write(c + "\n");
       const { reason: _, ...rest } = l.view;
       l.view = { ...rest, state: "checking" };
+      // D518: a code that gets no answer says so, never a box that waits on forever.
+      if (l.check) clearTimer(l.check);
+      l.check = setTimer(() => {
+        if (logins.get(h) !== l || l.view.state !== "checking" || l.mark === -1) return;
+        l.proc?.kill();
+        endLogin(h, { state: "failed", reason: "no_answer" });
+        o.changed();
+      }, checkMs);
       o.changed();
     },
     cancel(h) {
       const l = logins.get(h);
       l?.proc?.kill();
       if (l?.timer) clearTimer(l.timer);
+      if (l?.check) clearTimer(l.check);
       logins.delete(h);
       o.changed();
     },
@@ -566,7 +676,10 @@ export function createAgentSetup(o: {
         // D416: a sign-out under way, or one that didn't take, shows on a row that still reads signed in.
         const signOut = s.login?.state === "signing_out" || s.login?.reason === "signout_failed";
         const login = s.login && (signOut || !(r.loggedIn && s.login.state !== "done")) ? s.login : undefined;
-        return { ...r, ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
+        // D518: done is the agent's own fresh check saying signed in: the row, its coin and every
+        // island read signed in at once, whatever an older probe of the card still holds.
+        const signedNow = login?.state === "done" && r.installed;
+        return { ...r, ...(signedNow ? { loggedIn: true } : {}), ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
       });
     },
     busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking" || l.view.state === "signing_out"),
@@ -574,6 +687,7 @@ export function createAgentSetup(o: {
       for (const l of logins.values()) {
         l.proc?.kill();
         if (l.timer) clearTimer(l.timer);
+        if (l.check) clearTimer(l.check);
       }
       logins.clear();
       queue.length = 0;
@@ -582,6 +696,14 @@ export function createAgentSetup(o: {
   return api;
 }
 
+/**
+ * D523: what decides where an agent keeps its sign-in, kept as the person's session has it: agy on
+ * Linux keeps it in the Secret Service when there is a D-Bus session bus and in a file when there
+ * isn't (agy 1.5.16's notes), and the card's check and every task run with the bus, so a sign-in
+ * run without it wrote where nothing then looked. (The worker's sign-in already ran with these.)
+ */
+const SIGN_IN_SESSION = ["DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY"] as const;
+
 /** The real seams: fetch, Bun.spawn with pipes. */
 export function realAgentSetupSys(o: { platform: string; arch: string; which: (c: string) => string | null; env?: (cmd: string) => Record<string, string> }): AgentSetupSys {
   return {
@@ -589,7 +711,7 @@ export function realAgentSetupSys(o: { platform: string; arch: string; which: (c
     arch: o.arch,
     which: o.which,
     // The basics and the agents' own homes, never Ducter's keys (tool-env.ts).
-    env: o.env ?? (() => toolEnv({ extra: ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "PI_CODING_AGENT_DIR", "NVM_DIR", "NPM_CONFIG_PREFIX", "GEMINI_HOME", "OAR_ANTIGRAVITY_BIN"] })),
+    env: o.env ?? (() => toolEnv({ extra: ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "PI_CODING_AGENT_DIR", "NVM_DIR", "NPM_CONFIG_PREFIX", "GEMINI_HOME", "OAR_ANTIGRAVITY_BIN", ...SIGN_IN_SESSION] })),
     async download(url, onProgress) {
       const r = await fetch(url, { signal: AbortSignal.timeout(30 * 60_000) });
       if (!r.ok || !r.body) throw new Error(`${url}: HTTP ${r.status}`);
@@ -610,7 +732,7 @@ export function realAgentSetupSys(o: { platform: string; arch: string; which: (c
     },
     async run(argv, { env, timeoutMs }) {
       try {
-        const p = Bun.spawn(argv, { env, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+        const p = spawnNow(argv, { env, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
         const timer = setTimeout(() => p.kill(), timeoutMs);
         const [a, b] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
         const code = await p.exited;
@@ -621,7 +743,7 @@ export function realAgentSetupSys(o: { platform: string; arch: string; which: (c
       }
     },
     spawn(argv, env) {
-      const p = Bun.spawn(argv, { env, stdout: "pipe", stderr: "pipe", stdin: "pipe" });
+      const p = spawnNow(argv, { env, stdout: "pipe", stderr: "pipe", stdin: "pipe" });
       const fns: ((t: string) => void)[] = [];
       const pump = async (s: ReadableStream<Uint8Array>) => {
         const dec = new TextDecoder();

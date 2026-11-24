@@ -1,6 +1,6 @@
 package views
 
-// D524: the locator's marks. One small drawn mark per landmark, the same on
+// D526: the locator's marks. One small drawn mark per landmark, the same on
 // the rail and in its card, so the rail reads at a glance and the card's row
 // is the mark under the pointer:
 //

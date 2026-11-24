@@ -15,6 +15,7 @@ import { join } from "node:path";
 import type { Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import { newPairing, unitPath } from "./remote.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export const MARK_BEGIN = "# ducter: begin";
 export const MARK_END = "# ducter: end";
@@ -380,7 +381,7 @@ const lastLine = (s: string) => s.trim().split("\n").pop() ?? "";
 // ---------- the real machine ----------
 
 export function realDomainSys(): DomainSys {
-  const which = (c: string) => Bun.which(c);
+  const which = (c: string) => whichNow(c);
   const run: DomainSys["run"] = async (cmd, o = {}) => {
     try {
       const p = Bun.spawn(cmd, { stdin: o.input !== undefined ? new TextEncoder().encode(o.input) : "ignore", stdout: "pipe", stderr: "pipe" });

@@ -7,8 +7,8 @@ import { startCore, type Core } from "../src/core.ts";
 import { homeIdentity } from "../src/home-key.ts";
 import { addWay, createReach, readWays, removeKind, removeWay, setPrimary, viaOf } from "../src/reach-book.ts";
 import { createLiveness, createWorkers, CLOSE_SILENT } from "../src/workers.ts";
-import { checkProof } from "@ducter/protocol/src/reach-verify.ts";
-import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
+import { checkProof, checkStanding } from "@ducter/protocol/src/reach-verify.ts";
+import { CHALLENGE_PATH, STANDING_PATH } from "@ducter/protocol/src/reach.ts";
 import { tempDir } from "./helpers.ts";
 
 let stops: (() => Promise<void> | void)[] = [];
@@ -239,4 +239,36 @@ test("the home over a real socket: it proves itself before the gate, says its fi
   expect(v.reach.clients.find((c) => c.name === "iPhone")?.via).toEqual({ kind: "domain", sealed: true });
   expect(v.reach.ways).toEqual([{ kind: "domain", url: "https://hel.example.com", primary: true, state: "up" }]);
   expect(v.reach.home?.fp).toBe(proof.fp);
+});
+
+test("D520: the home's signed word on a device: live, revoked or unknown, over the device's own nonce; nothing about a device without its secret", async () => {
+  const core = boot();
+  const base = `http://127.0.0.1:${core.port}`;
+  const remote = { "x-forwarded-for": "203.0.113.9", host: "hel.example.com" };
+  const fp = (await (await fetch(`${base}${CHALLENGE_PATH}?n=abcdefghijklmnopqrstuv`, { headers: remote })).json()).fp;
+  const code = core.devices.createCode().code;
+  const paired: any = await (await fetch(`${base}/pair`, { method: "POST", headers: { ...remote, "content-type": "application/json" }, body: JSON.stringify({ code, name: "MacBook", platform: "darwin" }) })).json();
+  const nonce = "n0nce-n0nce-n0nce-n0nce";
+  const ask = async (token: string, n = nonce) => {
+    const r = await fetch(`${base}${STANDING_PATH}?n=${n}`, { headers: { ...remote, authorization: `Bearer ${token}` } });
+    return { status: r.status, body: r.status === 200 ? await r.json() : undefined };
+  };
+  const live = await ask(paired.token);
+  expect(live.status).toBe(200);
+  expect(checkStanding(live.body, nonce, fp)).toBe("live");
+  expect(live.body.device).toBe(paired.deviceId);
+  // Another nonce, or another home's key: the same answer proves nothing.
+  expect(checkStanding(live.body, "another-nonce-another", fp)).toBeUndefined();
+  expect(checkStanding(live.body, nonce, "AAAAAAAAAAAAAAAAAAAAAA")).toBeUndefined();
+  // The standing, never the socket's refusal, says which.
+  const id = /^dvc\.([0-9a-f]{10})\./.exec(paired.token)![1];
+  const wrong = `dvc.${id}.${"x".repeat(43)}`;
+  expect(checkStanding((await ask(wrong)).body, nonce, fp)).toBe("unknown");
+  expect(checkStanding((await ask(`dvc.0123456789.${"y".repeat(43)}`)).body, nonce, fp)).toBe("unknown");
+  core.devices.revoke(paired.deviceId);
+  expect(checkStanding((await ask(paired.token)).body, nonce, fp)).toBe("revoked");
+  // The wrong secret of the revoked device: still unknown (a revoke is told only to its holder).
+  expect(checkStanding((await ask(wrong)).body, nonce, fp)).toBe("unknown");
+  expect((await ask(paired.token, "short")).status).toBe(400);
+  expect((await fetch(`${base}${STANDING_PATH}?n=${nonce}`, { headers: remote })).status).toBe(400);
 });

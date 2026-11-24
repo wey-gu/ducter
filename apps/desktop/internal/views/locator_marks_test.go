@@ -1,6 +1,6 @@
 package views
 
-// The locator's marks (D524): its fixture, a PR review task the partner
+// The locator's marks (D526): its fixture, a PR review task the partner
 // handed over, as the author's own (#11105), with three landmarks or twelve,
 // and its shots: the rail at rest and pointed at, the card with 3 and 12,
 // light and dark, zh and en, at 1150 and 1400, 2x crops.

@@ -495,6 +495,27 @@ version it verified; no sudo), and finds the person's own copies: the worker's P
 the login shell's PATH and the usual per-user folders, and it looks again within seconds of a
 change (a fingerprint every 5 s, a real probe when it moves, and when a card opens).
 
+**Signing in there (D518).** The sign-in in a row is two numbered steps in the agent's own words
+(open the link; the code pasted back with **确认登录 / Confirm**, or Codex's code entered on the
+page) and one alive line with the agent's coin that says what it waits for and how long it still
+waits (**等你在页面上登录… · 还剩 15 分钟**). When the agent's sign-in ends well Ducter asks the agent
+itself (`claude auth status`, fresh, never the card's cached probe): **正在和 Claude Code 确认…**, then
+**登录好了** and the row, its coin and the island read signed in at once, or **{agent} 说登录完了，但它
+自己查还是未登录。** with 再试一次. A wrong code asks again; a pasted code with no answer stops after
+90 s, a sign-in left waiting after 15 minutes, each saying so with 再试一次. Every probe of a home runs
+with the PATH as it is now, so an agent Ducter put in its tools folder while running is seen (hel,
+2026-11-24: it never was, and read 未登录 although claude was signed in).
+
+**Antigravity's sign-in (D523, research/223).** It runs on the agy the card trusts: the first copy
+whose own `--version` is a release at or above OAR's floor, never the desktop app's old editor link
+that may come first on the shell's PATH. A copy older than 1.5.9 runs its own `agy update` first.
+agy opens no browser by itself on either a Mac or Linux (a do-nothing `open` / `xdg-open` goes first
+on its PATH); the link is opened wherever the person is. The sign-in keeps the desktop session's bus
+(`DBUS_SESSION_BUS_ADDRESS`), so agy keeps its sign-in where the card and every task look, and
+passes `--gemini-dir` when `GEMINI_HOME` is set. Its confirm is `agy models`: signed in, signed out
+(not_seen), or no answer from Google, which ends **{agent} 登录完了，但它连不上自己的服务来确认，多半是网络或代理。看看那台电脑的网络，再试一次。** with 再试一次, never a bare 未登录.
+Each step leaves one `[sign-in] <agent>: …` line in that computer's log (never the link or a code).
+
 **DeepSeek Harness (D371, research/140).** Found inside its Mac app too (the `dsh` it carries, never
 on PATH; such a copy **随 DeepSeek Harness app 更新** and Ducter never updates it), and the home looks
 every 5 s like a worker, its fingerprint including DeepSeek Harness's own credential file. Signed in
@@ -634,8 +655,9 @@ runs at a time (a second tap while it starts is the same start; each client hold
 and an early open that failed before its brief keeps the brief for the start again.
 
 **A worktree is made so it can't collide (D415).** Its branch names its to-do: `ducter/<issue
-number>-<the issue's own words>` (several: their numbers, then the first one's words), never a
-group's subject. A branch already there is used again only when it carries nothing (no commit past
+number>-<slug>` (several: their numbers first), never a group's subject; the slug is ASCII words
+the cheapest model wrote from the title (D522, `ducter/11028-embedding-one-model`), and the number
+alone when no model answers. A branch already there is used again only when it carries nothing (no commit past
 its base, checked out nowhere: what a start that failed left); one with work on it, or checked out,
 gets the next free `-2`, `-3` (the folder the same). A `git worktree add` that meets another git's
 lock is tried again (four times, waits growing); a lock older than ten minutes with no git running

@@ -26,7 +26,7 @@ type Landmark struct {
 	Wakes bool                  `json:"wakes,omitempty"`
 	At    string                `json:"at"`
 	EndAt string                `json:"endAt,omitempty"`
-	// D524: a brief the person wrote themselves; how a report stood.
+	// D526: a brief the person wrote themselves; how a report stood.
 	By string `json:"by,omitempty"`
 	S  string `json:"s,omitempty"`
 }

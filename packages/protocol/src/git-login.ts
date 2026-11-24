@@ -23,6 +23,7 @@ export const GIT_LOGIN_TIMEOUT_MS = 16 * 60_000;
 export const GIT_LOGIN_CODE_MS = 45_000;
 
 import type { GitLoginState, GitLoginWhy } from "./index.ts";
+import { spawnNow } from "./which.ts";
 export type { GhInstallPlan, GitLoginState, GitLoginWhere, GitLoginWhy } from "./index.ts";
 export { TOKEN_NEW_URL } from "./index.ts";
 
@@ -36,7 +37,7 @@ export type GhRun = (
 export const realGhRun: GhRun = async (args, o) => {
   let p: ReturnType<typeof Bun.spawn>;
   try {
-    p = Bun.spawn(["gh", ...args], { env: o.env, stdin: o.stdin !== undefined ? "pipe" : "ignore", stdout: "pipe", stderr: "pipe" });
+    p = spawnNow(["gh", ...args], { env: o.env, stdin: o.stdin !== undefined ? "pipe" : "ignore", stdout: "pipe", stderr: "pipe" });
   } catch {
     return { code: 127, out: "", err: "", missing: true };
   }

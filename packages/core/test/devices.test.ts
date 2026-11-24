@@ -506,3 +506,31 @@ test("D228: an address of the person's own shows From outside on, and the switch
   const r = await c.until<Extract<ServerFrame, { t: "ability_result" }>>((x) => x.t === "ability_result");
   expect(r).toMatchObject({ ok: false, reason: "own_address" });
 });
+
+// D518 (hel): a look again while a probe is still running (it may have read before the sign-in
+// landed) probes again after it; the stale reading is never kept for the next minute.
+test("a refresh during a probe probes again: the card sees a sign-in that landed meanwhile", async () => {
+  let signed = false;
+  let calls = 0;
+  let slow = false;
+  const core = boot({
+    harnesses: async () => {
+      calls++;
+      const now = signed;
+      await Bun.sleep(slow ? 150 : 5); // a slow probe that read before the sign-in landed
+      return [{ harness: "claude-code", installed: true, loggedIn: now }];
+    },
+  });
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  await c.until((f) => f.t === "devices");
+  slow = true;
+  c.send({ t: "agent_setup", device: "local", action: "look" }); // a probe starts, slow
+  await Bun.sleep(30);
+  slow = false;
+  signed = true; // claude writes its sign-in while that probe still runs
+  const at = c.frames.length;
+  c.send({ t: "agent_setup", device: "local", action: "look" }); // the fingerprint's look
+  const f = await c.until<Devices>((x) => x.t === "devices" && !!x.devices[0]?.harnesses.find((h) => h.harness === "claude-code")?.loggedIn, at);
+  expect(f.devices[0]!.harnesses.find((h) => h.harness === "claude-code")!.loggedIn).toBe(true);
+});

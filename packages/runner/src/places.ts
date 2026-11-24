@@ -1,6 +1,7 @@
 // Environment port (system.md): resolve a task's Place into a working directory.
 //   repo   -> git worktree at <Ducter folder>/worktrees/<repo>/<slug> on branch ducter/<slug>
-//             (D204, the visible ~/ducter: protocol/src/ducter-folder.ts; D198's naming). Tasks
+//             (D204, the visible ~/ducter: protocol/src/ducter-folder.ts; D198's naming; D522:
+//             the slug is ASCII, written by the model, branch-name.ts). Tasks
 //             from before keep their stored path (<dataDir>/worktrees/<repo>/<slug> or <taskId>)
 //   folder -> the folder as given
 //   none   -> scratch dir <dataDir>/scratch/<taskId>
@@ -13,6 +14,7 @@ import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
 import { ducterDataRefusal, ducterFolder, isDucterData, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, cloneTarget } from "@ducter/protocol/src/clone.ts";
 import { cutAtWordEnd } from "@ducter/protocol/src/names.ts";
+import { fallbackBranch } from "./branch-name.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -50,9 +52,9 @@ export function nameSegment(s: string, opts: { path?: boolean; lowerAscii?: bool
 
 
 /**
- * A new task's branch is `ducter/<slugify(title)>`, and its folder that slug too (D198). D201:
- * the title's own words in their own script, ASCII letters lowercased, at most 40 characters;
- * `task` only when the title has no letter or digit at all (emoji or punctuation only).
+ * D201: a title as one readable name in its own script, ASCII letters lowercased, at most 40
+ * characters; `task` only when the title has no letter or digit at all. D522: no longer a new
+ * task's branch (that is ASCII, branch-name.ts); a branch named before it keeps these words.
  */
 export function slugify(title: string, max = 40): string {
   return nameSegment(title, { lowerAscii: true, max }) || "task";
@@ -175,9 +177,11 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         baseBranch = head.ok && head.out !== "HEAD" ? head.out : undefined;
       }
       // D415: a name already there is used again only when it carries nothing (a start that failed).
-      const want = p.branch ?? `ducter/${slugify(title)}`;
+      // D522: the runner names a new task's branch first (the model's ASCII words, branch-name.ts);
+      // one that reaches here unnamed gets the ASCII fallback, never the title's own script.
+      const want = p.branch ?? fallbackBranch(taskId);
       const branch = existsSync(repoPath) ? await freeBranch(repoPath, want, baseBranch) : want;
-      void taskId;
+      void title;
       const folder = ducterFolder({ dataDir }).path;
       const worktree = worktreeFor(dataDir, repoPath, branch, folder);
       return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree, folder, ...(p.clone && !existsSync(repoPath) ? { clone: { address: p.clone, dataDir } } : {}) };

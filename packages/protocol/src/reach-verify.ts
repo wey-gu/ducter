@@ -3,7 +3,7 @@
 // when the key's fingerprint is the one the device pinned at pairing. node:crypto (Bun): the CLI,
 // workers and core; the native apps have their own (Go crypto/ed25519, CryptoKit, Android JCA).
 import { createHash, createPublicKey, randomBytes, verify } from "node:crypto";
-import { CHALLENGE_PATH, challengeText, normalizeBase, type HomeProof } from "./reach.ts";
+import { CHALLENGE_PATH, challengeText, normalizeBase, standingText, type DeviceStanding, type HomeProof, type StandingProof } from "./reach.ts";
 
 const b64u = (b: Buffer | Uint8Array) => Buffer.from(b).toString("base64url");
 
@@ -21,6 +21,21 @@ export function checkProof(proof: unknown, nonce: string, pinnedFp: string): boo
     return verify(null, Buffer.from(challengeText(nonce)), pub, Buffer.from(p.sig, "base64url"));
   } catch {
     return false;
+  }
+}
+
+/** D520: the standing a proof says, when it is the pinned home's signature over this nonce; else undefined. */
+export function checkStanding(proof: unknown, nonce: string, pinnedFp: string): DeviceStanding | undefined {
+  const p = proof as Partial<StandingProof> | undefined;
+  if (!p || typeof p.key !== "string" || typeof p.sig !== "string" || typeof p.device !== "string") return;
+  if (p.standing !== "live" && p.standing !== "revoked" && p.standing !== "unknown") return;
+  try {
+    const raw = Buffer.from(p.key, "base64url");
+    if (raw.length !== 32 || fingerprint(raw) !== pinnedFp) return;
+    const pub = createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: p.key }, format: "jwk" });
+    return verify(null, Buffer.from(standingText(p.standing, p.device, nonce)), pub, Buffer.from(p.sig, "base64url")) ? p.standing : undefined;
+  } catch {
+    return;
   }
 }
 

@@ -1,4 +1,4 @@
-// D524: the locator's marks, as a demo core both clients read: the author's own PR review (#11105),
+// D526: the locator's marks, as a demo core both clients read: the author's own PR review (#11105),
 // handed over by the partner at 15:09, with three landmarks (DEMO_MANY unset: the brief, the result,
 // the person's reply) or the whole afternoon (DEMO_MANY=1: an ask that still waits, notes, the
 // partner's words, more results). Never this machine's gh or accounts.

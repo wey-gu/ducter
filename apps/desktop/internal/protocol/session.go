@@ -32,11 +32,11 @@ type IndexMark struct {
 	// D325: when it happened; a report's first line (cut, keys hidden).
 	At string `json:"at,omitempty"`
 	W  string `json:"w,omitempty"`
-	// D524: how a report stood, when not progress: done, failed, ask.
+	// D526: how a report stood, when not progress: done, failed, ask.
 	S string `json:"s,omitempty"`
 }
 
-// ReportMarkState is a report's state as the locator marks it (D524):
+// ReportMarkState is a report's state as the locator marks it (D526):
 // done, failed, or ask (needs input, blocked); progress says nothing.
 func ReportMarkState(state string) string {
 	switch state {

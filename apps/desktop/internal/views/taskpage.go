@@ -852,7 +852,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 	}
 	first, last := ls.Visible()
 	const railW = 14
-	// D524: the rail is the card's list drawn small: one place per landmark,
+	// D526: the rail is the card's list drawn small: one place per landmark,
 	// in order, so the row the pointer chooses is the mark under it.
 	lms := a.locatorLandmarks(task)
 	if len(lms) == 0 {
@@ -886,7 +886,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 	bot := rail.AnimateTo("thumbBot", yOf(max(hereHi-1, hereLo)), ui.Smooth)
 	lp := &a.tpage.loc
 	marks := a.railMarks(task, lms, h, yOf)
-	// D524: quiet at rest (the knob and the marks that matter, softly), the
+	// D526: quiet at rest (the knob and the marks that matter, softly), the
 	// track and every mark in full while it is pointed at or open; the mark
 	// chosen in the card wears a ring that glides to it (Snappy).
 	reveal := float32(0)
@@ -981,7 +981,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 			}
 			const rowH = 28
 			listH := min(float32(len(lms))*rowH, 420)
-			// D524: the one menu's card (D421): its surface, hairline, corners and floating shadow.
+			// D526: the one menu's card (D421): its surface, hairline, corners and floating shadow.
 			pop := ui.Column(c.Key("locpop")).AttachTo(rail, ui.AnchorBottomLeft, ui.AnchorBottomRight).Margin(0, t.S2, 0, 0)
 			a.menuPanel(pop)
 			pop.Width(locCardW).Role(ui.RoleList).Label(name).TransformOrigin(1, 1).Transition(tr).Focusable().FocusRing(false)
@@ -1062,7 +1062,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 						row.Background(t.SurfaceSunken)
 					}
 					row.Children(func() {
-						// D524: the rail's own mark, one weight for every row, the
+						// D526: the rail's own mark, one weight for every row, the
 						// rows in view in ink, the quiet ones muted, the time apart.
 						m := a.markOf(lm, partner, i == ask)
 						ui.Box(c.Key("mark")).Size(12, 12).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
@@ -1106,7 +1106,7 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 }
 
 // locCardW is the locator card's width; locTimeW its time column's least
-// width, so times line up at the card's right edge (D524).
+// width, so times line up at the card's right edge (D526).
 const (
 	locCardW = 340
 	// locMarkGap is the rail's room per landmark, where it has the height.
@@ -1120,7 +1120,7 @@ type railMark struct {
 	y float32
 }
 
-// railMarks are the rail's marks (D524): one per landmark, in order; where two would touch (closer than a mark's room) the one that
+// railMarks are the rail's marks (D526): one per landmark, in order; where two would touch (closer than a mark's room) the one that
 // matters more is drawn, so a rail of thousands never smears. Made once per
 // landmark list, height and waiting ask.
 func (a *App) railMarks(task *store.Task, lms []Landmark, h float32, yOf func(int) float32) []railMark {
@@ -1176,7 +1176,7 @@ type locState struct {
 	// lms are the landmarks of the memo they were made for.
 	memo *taskMemo
 	lms  []Landmark
-	// rail is the rail's marks, made for railKey from railLms (D524).
+	// rail is the rail's marks, made for railKey from railLms (D526).
 	rail    []railMark
 	railKey railKey
 	railLms *taskMemo
@@ -1238,7 +1238,7 @@ func (a *App) landmarkWords(task *store.Task, lm *Landmark, now time.Time) landm
 	w := landmarkWords{at: i18n.Span(a.L.Lang, lm.At, lm.EndAt, now)}
 	switch lm.K {
 	case "brief":
-		// D524: the task handed over says what the task is (its title, the
+		// D526: the task handed over says what the task is (its title, the
 		// partner's plain sentence), never the brief's words to the agent;
 		// what it is goes to the spoken label only.
 		w.line, w.tag = task.Title(), a.L.T("locator.brief")

@@ -1146,7 +1146,7 @@ function atOf(task: Task, seq: number): string {
 export type LocRow = { k: Landmark["k"]; line: string; tag?: string; at: string; quiet: boolean };
 
 /** D325: a landmark in words (the list draws only the rows near its view, so only those are said).
- *  D524: with its task, the task handed over says what the task is (its title, the partner's plain
+ *  D526: with its task, the task handed over says what the task is (its title, the partner's plain
  *  sentence), never the brief's words to the agent; its kind is said in the spoken label only. */
 export function locatorRow(lm: Landmark, now = Date.now(), task?: Task): LocRow {
   const at = lm.endAt ? span(A.L, lm.at, lm.endAt, now) : stamp(A.L, lm.at, now);
@@ -1177,7 +1177,7 @@ export const taskLandmarks = (task: Task): Landmark[] => {
   return l;
 };
 
-/** D524: a landmark's mark, the same on the rail and in its card: its shape (dot: someone said it;
+/** D526: a landmark's mark, the same on the rail and in its card: its shape (dot: someone said it;
  *  sq: a task handed over; ring: a result; ask: an ask, waiting or answered; faint: anything quiet),
  *  its tone class (whose, or how it stood), and its rank where two meet on a crowded rail. */
 export type LocMark = { shape: "dot" | "sq" | "ring" | "ask" | "faint"; tone: string; rank: number };
@@ -1198,14 +1198,14 @@ export function markOf(lm: Landmark, waiting: boolean): LocMark {
   return { shape: "faint", tone: "t-faint", rank: 0 };
 }
 
-/** D524: the newest ask, while the task still waits on the person (else -1). */
+/** D526: the newest ask, while the task still waits on the person (else -1). */
 export function lastAsk(lms: Landmark[], waiting: boolean): number {
   if (!waiting) return -1;
   for (let i = lms.length - 1; i >= 0; i--) if (lms[i]!.k === "report") return lms[i]!.s === "ask" ? i : -1;
   return -1;
 }
 
-/** D524: the rail's marks, one per landmark in order (`y` in px from the rail's top); where two would
+/** D526: the rail's marks, one per landmark in order (`y` in px from the rail's top); where two would
  *  touch the one that matters more is drawn, so a rail of thousands never smears. */
 export function railMarks(lms: Landmark[], h: number, ask: number, room = 7): (LocMark & { i: number; y: number })[] {
   const out: (LocMark & { i: number; y: number })[] = [];
@@ -1221,13 +1221,13 @@ export function railMarks(lms: Landmark[], h: number, ask: number, room = 7): (L
   return out;
 }
 
-/** D524: the rail is the card's list drawn small: landmark `i` of `n` on a rail `h` tall. */
+/** D526: the rail is the card's list drawn small: landmark `i` of `n` on a rail `h` tall. */
 const RAIL_INSET = 6;
 export const railY = (i: number, n: number, h: number) => (n <= 1 ? h / 2 : RAIL_INSET + ((h - 2 * RAIL_INSET) * i) / (n - 1));
 export const railAt = (y: number, n: number, h: number) => (n <= 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((y - RAIL_INSET) / (h - 2 * RAIL_INSET)) * (n - 1)))));
 export const LOC_MARK_GAP = 12;
 
-/** D524: a mark, drawn. */
+/** D526: a mark, drawn. */
 const Mark = ({ m, y }: { m: LocMark; y?: number }) => <i class={`m m-${m.shape} ${m.tone}`} style={y === undefined ? undefined : { top: `${y}px` }} aria-hidden="true" />;
 
 /** D325: the list's rows are one height, so it draws only those near its view. */
@@ -1413,7 +1413,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     else goToTurn(task.id, seq);
     close();
   };
-  // D524: one place per landmark, in order: the row the pointer chooses is the mark under it.
+  // D526: one place per landmark, in order: the row the pointer chooses is the mark under it.
   const h = Math.min(Math.max(lms.length * LOC_MARK_GAP, 64), 360);
   const waiting = attention(task) === "needs_you";
   const ask = lastAsk(lms, waiting);

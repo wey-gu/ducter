@@ -11,6 +11,7 @@
 //   4. one headless start that answers CDP, then installed.json records it.
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 type Env = Record<string, string | undefined>;
 export type Exec = (argv: string[], opts?: { timeoutMs?: number; env?: Record<string, string> }) => Promise<{ code: number; out: string }>;
@@ -68,7 +69,7 @@ export function findChrome(dataDir: string, o: FindOptions = {}): { path: string
   const mine = readInstalled(dataDir);
   if (mine) return { path: mine.path, version: mine.version, source: "ducter" };
   if ((o.platform ?? process.platform) !== "linux") return undefined;
-  const which = o.which ?? ((c: string) => Bun.which(c));
+  const which = o.which ?? ((c: string) => whichNow(c));
   for (const name of ["google-chrome-stable", "google-chrome", "chromium", "chromium-browser"]) {
     const p = which(name);
     if (p && !p.startsWith("/snap/")) return { path: p, source: "system" };

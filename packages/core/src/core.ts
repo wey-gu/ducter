@@ -118,7 +118,7 @@ import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } fro
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
 import { createUpdateAll, type UpdateAll } from "./update-all.ts";
-import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
+import { bundledPiVersion, detectAgent, probeHarnesses, signedInNow } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
 import { checkMemPluginUpdates, inspectMemBridge, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
@@ -295,7 +295,7 @@ export interface CoreOptions {
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D363 test seams: putting agents on the home (default: the real network and npm, never in tests). */
   /** D363 test seams; D518: signedIn (the agent's own check), waitMs and checkMs (how long a sign-in and a pasted code wait). */
-  agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys; signedIn?: (h: string) => Promise<boolean>; waitMs?: number; checkMs?: number };
+  agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys; signedIn?: (h: string) => Promise<boolean | "unknown">; waitMs?: number; checkMs?: number };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
@@ -313,6 +313,8 @@ export interface CoreOptions {
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
   keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk };
+  /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
+  branchAsk?: (prompt: string) => Promise<string>;
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; cross?: import("./proactive/cross.ts").CrossAsk; monthTokens?: number; zone?: string };
@@ -1293,7 +1295,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1924,7 +1926,7 @@ export function startCore(opts: CoreOptions = {}): Core {
             : {
                 signedIn: async (h: string) => {
                   widenAgentPath({ dataDir });
-                  return (await probeHarnesses({ ...agentProbe, only: [h] }))[0]?.loggedIn ?? false;
+                  return signedInNow(h, agentProbe);
                 },
               }),
           ...(opts.agentSetup?.waitMs ? { waitMs: opts.agentSetup.waitMs } : {}),
@@ -2280,7 +2282,9 @@ export function startCore(opts: CoreOptions = {}): Core {
       const where = item.kind === "github" && item.where ? await repoWhere.resolve({ remote: item.where, texts: [item.title] }).catch(() => undefined) : undefined;
       const place = where?.ok ? where.place : item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
       // D508: the to-do's whole title, and the person's language (never the issue's).
-      const r = await newTask.open({ words: item.title, title: item.title, language: langNow(), ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
+      // D522: its number starts the branch (`ducter/11028-<slug>`).
+      const todo = item.kind === "github" && /^#\d+$/.test(item.label) ? item.label.slice(1) : undefined;
+      const r = await newTask.open({ words: item.title, title: item.title, language: langNow(), ...(place ? { place } : {}), ...(todo ? { todo } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
       if (!r.ok) return { ok: false, error: r.message ?? r.reason };
       return "card" in r ? { ok: true, taskId: r.card.taskId } : { ok: false, error: "it became a routine" };
     },
@@ -2618,6 +2622,12 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
+      // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.
+      if (!opts.branchAsk && process.env.NODE_ENV !== "test") {
+        const ask = createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "branch-name", timeoutMs: 20_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
+        api.branchAsk = async (prompt: string) => (await ask(prompt)).text;
+      }
       // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
       // D226: the harness it really thinks with (D150's fallback included), never the unset default:
       // a Codex-only home once triaged every mail on a Claude Code that wasn't there, and said nothing.

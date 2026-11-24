@@ -13,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { join } from "node:path";
+import { whichNow } from "./which.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -170,7 +171,7 @@ export async function claudeInChromeConnected(o: ClaudeChromeOptions = {}): Prom
   if (cachedConnected && now() - cachedConnected.at < CONNECTED_TTL_MS) return cachedConnected.ok;
   let ok = (o.sockets ?? claudeBridgeSockets)().length > 0;
   if (!ok) {
-    const bin = (o.which ?? ((c: string) => Bun.which(c)))("claude");
+    const bin = (o.which ?? ((c: string) => whichNow(c)))("claude");
     if (bin) {
       // Only what a login needs: the user's home (their claude.ai sign-in), PATH and temp.
       const keep = ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "CLAUDE_CONFIG_DIR"];

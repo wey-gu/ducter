@@ -117,6 +117,8 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
 export function loginTrouble(l: { state: string; reason?: string }): string {
   if (l.state === "expired") return "ag.login.expired";
   if (l.reason === "device_off" || l.reason === "wrong_code" || l.reason === "not_seen" || l.reason === "no_answer") return `ag.login.${l.reason}`;
+  // D523: its sign-in ended well but its own check got no answer from its service (agy's needs Google).
+  if (l.reason === "offline") return "ag.login.unreachable";
   return "ag.login.failed";
 }
 

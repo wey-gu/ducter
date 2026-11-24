@@ -21,6 +21,7 @@ import { qrRows } from "./devices.ts";
 import { discover, importedToken, pollDevice, refresh as refreshToken, revoke as revokeToken, stale, startDevice, type DeviceStart, type OAuthServer, type OAuthToken } from "./mcp-oauth.ts";
 import { actingPersona } from "./acting.ts";
 import { channelOf } from "@ducter/protocol/src/partners.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
 export const CONNECTION_TOKENS_FILE = "connection-tokens.json";
@@ -277,7 +278,7 @@ export interface OoSource {
 export function ooSource(opts: { env?: Record<string, string | undefined>; dir?: string; which?: (bin: string) => string | null; cli?: OoCli } = {}): OoSource {
   const env = opts.env ?? process.env;
   const dir = opts.dir ?? ooConfigDir(env);
-  const which = opts.which ?? ((b: string) => (b === "oo" ? findOo() : Bun.which(b)));
+  const which = opts.which ?? ((b: string) => (b === "oo" ? findOo() : whichNow(b)));
   const bin = which("oo");
   const cli = opts.cli ?? (bin ? ooCli({ exec: ooExec(bin, ooEnv(env, bin)) }) : undefined);
   // What oo said last (oo auth status, oo connector apps); undefined until the first probe.

@@ -1146,8 +1146,8 @@ CLI, read from help and the binary only).
   **接上 Nowledge Mem 就能找到{name}**. pi and Antigravity: **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
   `bridge` skill; Mem's to add; D448: one signed in on a computer of Ducter's reads **{name}开的 {tool} 任务能传话，你自己开的还不行**,
   below). No `bridge contacts` call per view (31 to 40 s each).
-- **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **正在送**, **还在确认送到没有**,
-  **没能确认送到**, **没送出去** in place of the time.
+- **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **发送中**, **确认送达中**,
+  **未能确认送达**, **发送失败** in place of the time (D525).
 - **An away home.** `bridge connections list --include-activity` when the help offers it; Mem's `last_seen_at_ms`
   as `others[].seenAt`, read only when the list says `activity_available` (D461, VERIFIED read-only: the flag is on
   the list, `schema_version: 2`; the time is per connection and null until Mem has seen it, research/200); over a day quiet: **Ducter 的消息还在 hel 上收** / **hel 上次在线是 3 天前，消息会在

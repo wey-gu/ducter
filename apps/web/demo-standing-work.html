@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  D511 prototype: 照看 / Looking after, one place for work Ducter keeps on for the person
+  D511 prototype: 看守中 / Looking after, one place for work Ducter keeps on for the person
   (design/standing-work.md, research/221). Designed, not built: a static page, no core, no
   production code. Data is the author's real setup (hel's PR babysitter in D507's busy shape:
   #11030, #10932 /test, #10847; the 45-minute nowledge-co review loop, D498) and one consumer
@@ -13,7 +13,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>照看 · prototype</title>
+<title>看守中 · prototype</title>
 <link rel="stylesheet" href="static/app.css">
 <style>
   body { min-height: 100%; }
@@ -208,7 +208,7 @@ document.documentElement.dataset.theme = theme;
 const w = (zh, en) => (lang === "zh" ? zh : en);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const art = (n) => `static/art/${n}.webp`;
-document.title = w("在照看的", "Looking after") + " · prototype";
+document.title = w("看守中", "Looking after") + " · prototype";
 
 // ---- The mark: a clay lantern (research/221's leader), or the runners-up for comparison ----
 // States: on (lit), beat (a round just did something), paused (dim), done (out, with a tick), stopped (out).
@@ -254,7 +254,7 @@ const keeps = {
     held: [
       { g: "--working-dot", n: "#11030", t: w("自定义 provider 切到 Embedding 时只留一个模型", "One clean model when a custom provider switches to Embedding"), s: w("在修：lint 挂在一个没用的 import 上", "Fixing: lint failed on an unused import"), c: "work", checks: [11, 1, 2] },
       { g: "flag", n: "#10932", t: w("Settings 里 Space 切换后列表不刷新", "The list doesn't refresh after switching Space in Settings"), s: w("在等你：要不要评论 /test 重跑", "Waiting for you: comment /test to run it again?"), c: "need", checks: [12, 2, 0] },
-      { g: "--done-dot", n: "#10847", t: "graph_error_response_tests intermittently #8826", s: w("能合并了，等人合并", "Can merge; waiting for a merge"), c: "ok", checks: [14, 0, 0], extra: w("hawkingrei 批准了", "Approved by hawkingrei") },
+      { g: "--done-dot", n: "#10847", t: "graph_error_response_tests intermittently #8826", s: w("可合并，等人合并", "Can merge; waiting for a merge"), c: "ok", checks: [14, 0, 0], extra: w("hawkingrei 批准了", "Approved by hawkingrei") },
     ],
     ask: { q: w("#10932 的 e2e-linux 是 runner 断线挂的，和改动无关。要我在 PR 上评论 /test 重跑一遍吗？", "e2e-linux on #10932 failed on a lost runner, not the change. Shall I comment /test on the PR to run it again?"), go: w("评论 /test", "Comment /test"), hold: w("先不", "Not now") },
     rounds: [
@@ -358,7 +358,7 @@ function onhand() {
     </div>
     <div class="sw-sec">${w("在做", "Working")}</div>
     <div class="sw-sheet"><div class="sw-row">${dotGlyph("--working-dot")}<div><div class="t">${w("把 Macbook Pro M3 的通用设置导出来", "Export the general settings from the Macbook Pro M3")}</div><div class="l">${w("读完了 41 项全局设置，在挑出键盘和触控板的那几项写进 defaults.sh。", "Read 41 global settings; picking out the keyboard and trackpad ones for defaults.sh.")}</div></div><div class="r">${w("在做 14 分钟", "14 min")}</div></div></div>
-    <div class="sw-sec">${w("在照看的", "Looking after")}</div>
+    <div class="sw-sec">${w("看守中", "Looking after")}</div>
     ${order.map(keepRow).join("")}
     <div class="sw-sec">${w("今天做完", "Done today")}</div>
     <div class="sw-sheet"><div class="sw-row">${dotGlyph("--done-dot")}<div><div class="t">${w("整理本周 mem 的发布说明", "Write this week's mem release notes")}</div><div class="l">${w("按新功能、修复和文档分了三段；草稿 PR #10855。", "In three parts: features, fixes and docs. Draft PR #10855.")}</div></div><div class="r">08:31</div></div></div>
@@ -367,13 +367,13 @@ function onhand() {
 }
 
 function rail(on) {
-  return `<div class="sw-rail"><div class="sw-back">‹ ${w("手头的事", "On hand")}</div><div class="lbl" style="font-size:var(--xs);font-weight:700;color:var(--ink-muted);margin:0 0 8px 12px">${w("在照看的", "Looking after")}</div>${order.map((id) => { const k = keeps[id]; const need = k.facts.find((f) => f[1] === "need"); return `<div class="k${id === on ? " on" : ""}">${mark(k.state)}<div><div class="t">${esc(k.title)}</div><div class="l${need ? " need" : ""}">${esc(need ? need[0] : k.right)}</div></div></div>`; }).join("")}</div>`;
+  return `<div class="sw-rail"><div class="sw-back">‹ ${w("手头的事", "On hand")}</div><div class="lbl" style="font-size:var(--xs);font-weight:700;color:var(--ink-muted);margin:0 0 8px 12px">${w("看守中", "Looking after")}</div>${order.map((id) => { const k = keeps[id]; const need = k.facts.find((f) => f[1] === "need"); return `<div class="k${id === on ? " on" : ""}">${mark(k.state)}<div><div class="t">${esc(k.title)}</div><div class="l${need ? " need" : ""}">${esc(need ? need[0] : k.right)}</div></div></div>`; }).join("")}</div>`;
 }
 
 function page() {
   const k = keeps[keepId];
   const needs = k.facts.find((f) => f[1] === "need");
-  const life = `<div class="sw-life"><span class="sw-chip on">${w("在照看", "On")}</span>${needs ? `<span class="sw-chip need">${esc(needs[0])}</span>` : ""}<span class="sw-chip">${esc(k.since)}</span><span class="sw-chip">${esc(k.week)}</span></div>`;
+  const life = `<div class="sw-life"><span class="sw-chip on">${w("看守中", "On")}</span>${needs ? `<span class="sw-chip need">${esc(needs[0])}</span>` : ""}<span class="sw-chip">${esc(k.since)}</span><span class="sw-chip">${esc(k.week)}</span></div>`;
   const ask = k.ask ? `<div class="sw-h2">${w("在等你", "Waiting for you")}</div><div class="sw-sheet need sw-ask"><div class="q">${esc(k.ask.q)}</div><div class="acts"><button class="btn sm primary">${esc(k.ask.go)}</button><button class="btn sm secondary">${esc(k.ask.hold)}</button></div></div>` : "";
   const held = k.held.length ? `<div class="sw-h2">${w("手上的", "What it holds")}</div><div class="sw-sheet">${k.held.map((h) => { const [p, f, pe] = h.checks; return `<div class="sw-item">${h.g === "flag" ? flag : dotGlyph(h.g)}<div><div class="t"><b>${h.n}</b>${esc(h.t)}</div><div class="st ${h.c}">${esc(h.s)}</div><div class="sw-checks" title="CI">${"<i></i>".repeat(p)}${'<i class="f"></i>'.repeat(f)}${'<i class="p"></i>'.repeat(pe)}</div>${h.extra ? `<div class="sw-where"><span>${esc(h.extra)}</span></div>` : ""}</div><div class="r" style="font-size:var(--sm);color:var(--ink-muted)">${w("打开 PR", "Open PR")} ›</div></div>`; }).join("")}</div>` : "";
   const fares = k.fares ? (() => {
@@ -391,10 +391,10 @@ function page() {
     </svg></div>`;
   })() : "";
   const rounds = `<div class="sw-h2">${w("每一轮", "Rounds")}</div><div class="sw-sheet sw-rounds">${k.rounds.map(([t, why, did, out, c]) => `<div class="rd"><span class="tm">${esc(t)}</span><span><span class="why">${esc(why)}</span><span class="did">${esc(did)}</span></span><span class="out ${c}">${esc(out)}</span></div>`).join("")}<div class="quiet"><span class="pips">${"<i></i>".repeat(6)}</span><span>${esc(k.quiet)}</span></div></div>`;
-  const rules = `<div class="sw-h2">${w("怎么照看", "How it runs")}</div><div class="sw-sheet sw-rules">${k.rules.map(([key, vs]) => `<div class="ru"><div class="k">${esc(key)}</div>${vs.map((v) => Array.isArray(v) ? `<div class="v ${v[1]}">${esc(v[0])}</div>` : `<div class="v">${esc(v)}</div>`).join("")}</div>`).join("")}<div class="acts"><button class="btn sm secondary">${w("暂停", "Pause")} ▾</button><button class="btn sm secondary stop">${w("停下", "Stop")}</button></div></div>`;
+  const rules = `<div class="sw-h2">${w("怎么运行", "How it runs")}</div><div class="sw-sheet sw-rules">${k.rules.map(([key, vs]) => `<div class="ru"><div class="k">${esc(key)}</div>${vs.map((v) => Array.isArray(v) ? `<div class="v ${v[1]}">${esc(v[0])}</div>` : `<div class="v">${esc(v)}</div>`).join("")}</div>`).join("")}<div class="acts"><button class="btn sm secondary">${w("暂停", "Pause")} ▾</button><button class="btn sm secondary stop">${w("停下", "Stop")}</button></div></div>`;
   return `${bar("onhand")}<div class="sw-body page">${rail(keepId)}<div><div class="sw-back sw-lens" style="display:none"></div>
     <div class="sw-page"><div>
-      <div class="sw-ph">${mark(k.state, true)}<div><div class="kick">${w(`${NAME} 在照看`, `${NAME} is looking after`)}</div><h1>${esc(k.title)}</h1>${life}</div></div>
+      <div class="sw-ph">${mark(k.state, true)}<div><div class="kick">${w(`${NAME} 看守中`, `${NAME} is looking after`)}</div><h1>${esc(k.title)}</h1>${life}</div></div>
       <div class="sw-said"><b>${w("你说的", "You said")}</b>${esc(k.you)}</div>
       ${ask}${fares}${held}${rounds}
       <div class="sw-talk"><span>${esc(k.talk)}</span><button class="btn sm accent">${w("说", "Say")}</button></div>
@@ -415,11 +415,11 @@ function made() {
   return `${bar("conv")}<div class="sw-conv"><div class="sw-day">${w("今天 08:47", "Today 08:47")}</div>
     <div class="sw-me"><div>${esc(me)}</div></div>
     <div class="sw-it"><img src="${art("idle")}" alt=""><div>${esc(say)}</div></div>
-    <div class="sw-card"><div class="hd">${mark("litup", true)}<div><div class="kick">${w("在照看", "Looking after")}</div><div class="t">${esc(k.title)}</div></div></div>
+    <div class="sw-card"><div class="hd">${mark("litup", true)}<div><div class="kick">${w("看守中", "Looking after")}</div><div class="t">${esc(k.title)}</div></div></div>
       <div class="ls">${ls.map(([a, b]) => `<div><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join("")}</div>
       <div class="first">${esc(first)}</div>
       <div class="acts"><button class="btn sm secondary">${w("打开", "Open")}</button><button class="btn sm secondary">${w("改一下", "Change")}</button><button class="btn sm secondary">${w("撤销", "Undo")}</button></div></div>
-    <div class="sw-note"><img src="${art("idle")}" alt=""><span>${w("它在手头的事的「在照看的」里，一直亮着灯。平时不出声，有变化才说一句，要你定的时候才问你。", "It's in On hand under Looking after, its light on. It stays quiet, says a line when something changes, and asks only when it needs you.")}</span></div>
+    <div class="sw-note"><img src="${art("idle")}" alt=""><span>${w("它在手头的事的「看守中」里，一直亮着灯。平时不出声，有变化才说一句，要你定的时候才问你。", "It's in On hand under Looking after, its light on. It stays quiet, says a line when something changes, and asks only when it needs you.")}</span></div>
   </div>`;
 }
 

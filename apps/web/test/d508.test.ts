@@ -63,13 +63,13 @@ describe("a finished task stands under its PR (D508)", () => {
     const task = (prs: unknown[]) => ({ id: "x", card: card("x", prs), events: [], evidence: [] }) as any;
     const said = (s: unknown) => p.prRowOf(task([pr(1, "open", s)]))!;
     const r = said({ at, awaiting: ["hawkingrei"], checks: { total: 10, passed: 9, failed: [], pending: ["tide"] } });
-    expect(p.prWords(task([]), r.said)).toBe("在等评审");
-    expect(p.prFacts(r.said)).toEqual(["等 hawkingrei 看", "CI 过了 9/10"]);
+    expect(p.prWords(task([]), r.said)).toBe("评审中");
+    expect(p.prFacts(r.said)).toEqual(["等 hawkingrei 评审", "CI 通过 9/10"]);
     const c = said({ at, changes: [{ id: "1", by: "hawkingrei", at, text: "add a test" }] });
     expect(p.prWords(task([]), c.said)).toBe("hawkingrei 要求修改");
     const ready = said({ at, approvedBy: ["hawkingrei"], checks: { total: 4, passed: 4, failed: [], pending: [] }, merge: "clean" });
     expect(ready.stands).toBe("needs");
-    expect(p.prWords(task([]), ready.said)).toBe("可以合了");
+    expect(p.prWords(task([]), ready.said)).toBe("可合并");
     expect(p.prFacts(ready.said)).toEqual(["hawkingrei 通过了评审"]);
     // Never a " · " join: each fact its own element.
     for (const f of p.prFacts(r.said)) expect(f).not.toContain(" · ");

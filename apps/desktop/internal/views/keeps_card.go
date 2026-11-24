@@ -11,7 +11,7 @@ import (
 var keepUndone = map[string]bool{}
 
 // keepReceipt is the receipt under the partner's words when a Keep was made
-// (D511's first-made moment, as the web's KeepReceipt): its lantern, 在照看
+// (D511's first-made moment, as the web's KeepReceipt): its lantern, 看守中
 // and its title, its lines each its own row, the first round's result, and
 // 打开, 改一下 and 撤销, each its own button.
 func (a *App) keepReceipt(c *ui.Context, key string, card *protocol.KeepCard) {

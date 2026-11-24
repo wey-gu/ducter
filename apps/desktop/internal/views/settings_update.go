@@ -193,9 +193,14 @@ func (a *App) UpdateFailed() {
 // person's own click: the password, the check and the calm screen.
 const restartOwn = 2 * time.Minute
 
-// sayInstalled says once, quietly, which version the last swap put in.
+// sayInstalled says once, quietly, which version the last swap put in: as
+// a toast, once a place is on screen (D527), so its few seconds aren't
+// spent under the title or the connecting screen.
 func (a *App) sayInstalled(c *ui.Context) {
 	if a.installedSaid || a.Updates == nil {
+		return
+	}
+	if !a.S.Welcomed || a.PuttingIn || a.title.on || a.Unauthorized || a.conn.open {
 		return
 	}
 	a.installedSaid = true

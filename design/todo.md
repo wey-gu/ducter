@@ -48,6 +48,17 @@ line.
   the same card.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
+## Toasts, after D527 (`ui.md` "Toasts: one slot")
+
+- [ ] **The author's review** of the slot from `.shots/whats-new-notice/`, and live on the Mac at
+  about 1150 after the next update.
+- [ ] **The web's toasts** centre on the window on a wide screen (`.toasts` is fixed, bottom
+  `safe + 84px`): centre them over the conversation's column and above its composer as the Mac
+  does, with the same leave motion. *Trigger:* the web client's next pass on wide windows.
+- [ ] **The update line in the conversation (D344)** still arrives as the partner's own message
+  ("更新到 0.1.35 了：…。看看都改了什么"), under a 新消息 divider like real news. Decide whether it
+  is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
+  bubble. *Trigger:* the author says the bubble reads wrong.
 
 ## New tasks start, after D510 (`where.md` §23)
 
@@ -66,7 +77,7 @@ line.
 - [x] **Build phases 1–3** (`standing-work.md` §11): the Keep and the migration, On hand and the page (web and Mac), `keep_make` / `keep_list` / `keep_change` with a haiku eval. Built 2026-11-24.
 - [ ] **Phase 4: goals and news as recorded judgments.** A round's report records `goal: met` with its evidence and `news` (the model's), code stops the Keep and says once; a round's `told` is then recorded, not only read from a routine's `reports`. World puzzles: the PR that merges, the booking email, a fare at the line. *Trigger:* next.
 - [ ] **The lantern and the track as clay art**, rated with images and the author before the mark is decided (prompt in `standing-work.md` §8); the beat and the lighting up as motion on the Mac. *Trigger:* phase 4 built.
-- [ ] **照看过的 / Looked after before** in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
+- [ ] **已结束 / Ended** Keeps in Past tasks (ended Keeps with every round; `keeps.ended()` is there, the clients don't show it yet), and ⌘K finding a Keep by its title or an item's number. *Trigger:* the first Keep a person stopped and asked about.
 - [ ] **A watch as a Keep from one sentence** (`wakes: changes` made by `keep_make`: a page or a price looked at by a check, D245) and **pause for a helper that holds mail** instead of closing its address. *Trigger:* a person asks for a watch that a morning look doesn't fit.
 - [ ] **The 30-day offer** (它这一个月都没找到要你看的，还留着吗？) for a Keep with no goal and no news. *Trigger:* phase 4.
 - [ ] **D427's loop end read by a regex** (`untilIn` in `core/src/loops.ts`, and `repeatsIn` / `saysStop` beside it) owes the same treatment as D511's Keep end: the cheap model reads it once from the person's words and the answer is recorded, never a phrase match (principle 21, the author's standing rule). *Trigger:* the next change to loops.ts.
@@ -3065,6 +3076,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D407: a routine fills an app (`apps.md`)
 
+- [ ] **D528 on hel**: the review loop's next rounds after release: a request that comes mid-round in that round's board and said once; no 之前的记录接不上了 at a round's start; times in the author's zone in reports and `wait_for` reasons. Trigger: D528 released and hel upgraded.
 - [ ] **Run the review board on hel**: the author's routine's next rounds with `title` and `ci` in its review_report, the offer after three, the board on his phone and Mac. Trigger: this branch merged and released.
 - [ ] **CI read by Ducter, not said by the task** (the board's CI pill is the task's word at the head it looked at; a check run that turns red between rounds shows next round). Trigger: a board showing green while GitHub shows red.
 - [ ] **Other routines' boards made from a template** like the review board (a price watch, a benchmark) instead of the partner writing each one. Trigger: three boards of the same kind made by the partner.
@@ -3262,3 +3274,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
+
+## A task's heavy child and the server's memory (D524)
+
+- **A memory scope per task.** Run each task's harness in its own `systemd-run --user --scope` (or cgroup) with a share of `MemoryMax`, so one task's builds can't starve another's. Needs a wrapper around OAR's spawn per harness. *Trigger:* two tasks on one server starving each other in `memory-watch.json`, or a kill that took a harness rather than its child.
+- **Tell the task why its command died.** When the watch records a kill, a one-line runner note to the task whose child it was ("the server ran out of memory; run heavy checks one at a time"), instead of the harness guessing from exit 137. *Trigger:* a task that re-runs the same parallel checks after a kill (hel 2026-11-24 did, three times, before D524).

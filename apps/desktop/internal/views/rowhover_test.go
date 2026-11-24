@@ -5,6 +5,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -88,11 +89,16 @@ func frameOf(tt *ui.Tester) map[string]ui.Rect {
 			continue
 		}
 		if r, ok := tt.Find(s); ok {
-			out["text:"+s] = r
+			// A live clock ("在做 35 分钟" → 36) ticking during the walk is not
+			// hover moving anything: a text is known by its words, its numbers
+			// aside (its box is still compared).
+			out["text:"+digits.ReplaceAllString(s, "#")] = r
 		}
 	}
 	return out
 }
+
+var digits = regexp.MustCompile(`[0-9]+`)
 
 func sameFrame(a, b ui.Rect) bool {
 	d := func(x, y float32) bool { return x-y < 0.5 && y-x < 0.5 }

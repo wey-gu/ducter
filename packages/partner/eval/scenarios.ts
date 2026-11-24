@@ -1892,6 +1892,18 @@ export const scenarios: Scenario[] = [
     rubric:
       "The user asks the partner to remember something, but Nowledge Mem isn't signed in on the home, so nothing could be kept (memory_add said so). Pass if the partner says in one or two short, plain Chinese sentences that it couldn't keep this one this time, that Nowledge Mem isn't signed in (naming Nowledge Mem or 记忆 is right here), and that Settings › 记忆 is where to fix it. Fail on a plain 「好」 as if it was kept, on a promise to remember, on error codes or commands, or on opening a task.",
   },
+  {
+    // D554: a reaction is not a preference; only what the person says about themselves is kept.
+    id: "mem-no-infer-reaction-zh",
+    category: "memory",
+    lang: "zh",
+    memories: MEM_BACKGROUND,
+    seed: [{ user: "周末想出去放松一下，有什么去处？" }, { ai: "可以去莫干山住两晚：人少，有温泉，开车两个多小时。" }],
+    steps: [{ user: "哈哈这个好" }],
+    expect: { opens: 0, noRemember: true, msgs: [0, 1], maxChars: 80, forbid: [NO_MEM_TALK] },
+    rubric:
+      "The user only reacts warmly to one suggestion. Pass if the partner saves nothing to memory (no preference like 喜欢温泉 or 喜欢莫干山 inferred from the reaction) and answers with at most one short, natural Chinese line (or nothing), without opening a task or talking about memory.",
+  },
   // D304: when a recall changed the answer, one quiet source line under it (the partner marks the
   // memory's ref; code checks it against what the search returned); none when it didn't.
   {

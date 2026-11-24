@@ -3881,7 +3881,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           saved: false,
           note:
             r.reason === "not_configured"
-              ? `Nothing was saved (${r.message}). If the user asked you to remember this, say once, in one short plain line of your reply, that you couldn't keep it this time because Nowledge Mem isn't signed in on the home (or memory is off), and that Settings › Memory is where to fix it. Nothing else: don't promise to remember it or to keep it anywhere else. If they didn't ask, say nothing about memory.`
+              ? `NOT SAVED: nothing was kept, here or anywhere, and nothing will be kept later by itself (${r.message}). If the user asked you to remember this, your whole reply is one plain line that you couldn't keep it this time because Nowledge Mem isn't signed in on the home (or memory is off), and that Settings › Memory is where to fix it, e.g. "这条这次没记住：Nowledge Mem 没登录，去 设置 › 记忆 登录一下就好。". Never words that say or suggest it is kept (记下了, 记住了, 先记在这儿, 之后再记, noted, got it, I'll remember). If they didn't ask, say nothing about memory.`
               : `${UNAVAILABLE} Nothing was saved.`,
         };
       const noted = { title, ...(r.id ? { memoryId: r.id } : {}), ...(r.replaced ? { replaced: r.replaced } : {}), ...(r.waiting ? { waiting: r.waiting } : {}) };

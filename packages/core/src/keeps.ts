@@ -1147,7 +1147,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words, cap (a helper's pieces a day), computer and agent (where its rounds run: a [devices] name, an agent, or \"auto\"), address (a helper's name in Bridge). The person may change the same on its page. Then one line.",
+    "Stop, pause or change something Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task. id: from keep_list, or its task's id. action stop (\"别跑了\", \"别看了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until / speaks / title in their words, cap (a helper's pieces a day), computer and agent (where its rounds run: a [devices] name, an agent, or \"auto\"; \"review 那个以后让 Codex 来做\" is agent here, never rule_save), address (a helper's name in Bridge). The person may change the same on its page. Then one line.",
     {
       type: "object",
       properties: {

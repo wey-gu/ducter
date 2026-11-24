@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.40 - 2026-11-24
+
+<!-- whats-new
+zh: 服务器上的登录看得见每一步，登好了马上亮
+en: Signing in on a server shows each step and lights up at once
+-->
+
+**Signing in to an agent on your server**
+- A server home now sees the Claude Code that Ducter itself installed there, so an agent you
+  signed in to shows as signed in.
+- Signing in shows its steps: open the link, paste the code back. While it waits it says what
+  for and how long is left. It checks with the agent before it says you're signed in, and a
+  wrong code, no answer or a time-out each says so with Try again.
+- The agent tiles fit their names.
+
 ## 0.1.39 - 2026-11-24
 
 <!-- whats-new

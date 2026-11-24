@@ -2314,10 +2314,13 @@ export interface AgentSetupState {
  *  - starting: started, its link not out yet;
  *  - waiting: the link (and Codex's code) to open on any device; `paste`: Claude's page gives a
  *    code to paste back here;
- *  - checking: the pasted code went in;
- *  - done: signed in (the row turns ready with the probe that follows);
+ *  - checking: the pasted code went in, or (D518) its sign-in ended and Ducter is asking the agent
+ *    itself whether it is signed in now;
+ *  - done: (D518) the agent's own check says signed in; the row reads ready at once;
  *  - failed / expired: one line and 再试一次; reason device_off: Codex's device sign-in is off in
- *    the ChatGPT account (turn it on there first);
+ *    the ChatGPT account (turn it on there first); D518 not_seen: its sign-in ended but the agent's
+ *    own check still says signed out; no_answer: a pasted code got no answer in time;
+ *  - `until` (D518): when a waiting sign-in stops by itself (ms since the epoch);
  *  - terminal: this agent has no sign-in Ducter can carry (pi): `command` is what to run there.
  */
 export interface AgentLoginState {
@@ -2335,8 +2338,9 @@ export interface AgentLoginState {
   app?: string;
   /** wrong_key: DeepSeek didn't take the key; no_balance: it did, with nothing left; offline: DeepSeek couldn't be reached from there. */
   /** D416: signout_failed: its own sign-out ran and it still reads signed in. */
-  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed" | "signout_failed";
+  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed" | "signout_failed" | "not_seen" | "no_answer";
   command?: string;
+  until?: number;
 }
 
 // ---------- Nowledge Mem in the user's own agents (D169, design/memory.md "Mem and tasks") ----------

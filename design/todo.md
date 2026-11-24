@@ -9,6 +9,15 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Signing in on a server, after D518 (`where.md` "Signing in there")
+
+- [ ] **The author signs Claude Code in once on hel from the Mac app** on the release with D518: the
+  card should read signed in on the first look (claude there is signed in since 2026-11-24 06:41
+  UTC), and a fresh sign-in should go 等你在页面上登录… → 正在和 Claude Code 确认… → 登录好了.
+- [ ] **The other bare-name spawns** (`computer/driver.ts`, `phone-own/audio.ts`, `doc-check.ts`) take a
+  resolved path or the live env, as the device probe now does. *Trigger:* any tool Ducter installs
+  into its own folder while running is spawned by its bare name.
+
 ## New tasks start, after D510 (`where.md` §23)
 
 - [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with

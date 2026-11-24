@@ -530,6 +530,7 @@ A new control is added to the set (and to this table) before it is used.
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
 | A card's foot that folds what can wait: how it's connected, its addresses, the one 断开 (D398) | `sheetFold` (`devguard.go`) | `Fold` |
 | An optional step as one framed row that opens in place (锁屏时也能借给任务 ›; D398) | `extraStep` (`devguard.go`) | `StepRow` |
+| A step's number in a short numbered sequence, a sunken disc (the lend sheet's three steps; a sign-in's two, D518) | `stepNumber` (`components.go`) | `StepNumber`; the lend sheet's `.lend-steps li::before` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |

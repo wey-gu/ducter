@@ -293,7 +293,8 @@ export interface CoreOptions {
   updateAll?: { tickMs?: number; nightEveryMs?: number; tz?: string };
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D363 test seams: putting agents on the home (default: the real network and npm, never in tests). */
-  agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys };
+  /** D363 test seams; D518: signedIn (the agent's own check), waitMs and checkMs (how long a sign-in and a pasted code wait). */
+  agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys; signedIn?: (h: string) => Promise<boolean>; waitMs?: number; checkMs?: number };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
@@ -1909,6 +1910,20 @@ export function startCore(opts: CoreOptions = {}): Core {
             devicesView?.changed();
           },
           changed: () => devicesView?.changed(),
+          // D518: a sign-in is done when the agent's own check, run now, says so (never the card's
+          // cached probe). Given a sys (tests, demos), only the check they give: never a real agent.
+          ...(opts.agentSetup?.sys
+            ? opts.agentSetup.signedIn
+              ? { signedIn: opts.agentSetup.signedIn }
+              : {}
+            : {
+                signedIn: async (h: string) => {
+                  widenAgentPath({ dataDir });
+                  return (await probeHarnesses({ ...agentProbe, only: [h] }))[0]?.loggedIn ?? false;
+                },
+              }),
+          ...(opts.agentSetup?.waitMs ? { waitMs: opts.agentSetup.waitMs } : {}),
+          ...(opts.agentSetup?.checkMs ? { checkMs: opts.agentSetup.checkMs } : {}),
         })
       : undefined;
   // D440: a pasted key whose agent can't run here yet: pi goes into the home's own tools folder (no Terminal).

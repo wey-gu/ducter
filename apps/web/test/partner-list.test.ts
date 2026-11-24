@@ -78,8 +78,24 @@ describe("D513: the list of partners", () => {
     expect(main).toMatch(/A\.partnersOpen && A\.manyPartners\(\) \? <PartnerList at="home"/);
     // The phone's edge swipe from a conversation goes up to the list.
     expect(main).toContain("if (A.route.name === \"conv\") return A.showPartners();");
-    expect(src("views.tsx")).toContain("{!wide && <PartnersBack />}");
+    expect(src("views.tsx")).toContain("{((!wide && phoneBar) || fold) && <PartnersBack />}");
     expect(src("app.ts")).toContain('hash === "#partners"');
+  });
+  test("D541: a way to the others at every width: the slim list from 700, the others' faces in a phone's and a fold's bar", () => {
+    const main = src("main.tsx");
+    // 700–999 (an iPad upright, a foldable open): the slim list beside the one column.
+    expect(main).toContain('<PartnerList at="side" slim />');
+    expect(main).toContain("A.manyPartners() && !phone ? (");
+    expect(css).toContain(".pane.partners.slim { flex-basis: 88px; }");
+    expect(css).toContain("#app:has(> .panes.mid)");
+    // A fold: the list opens over the conversation's pane, from the bar.
+    expect(main).toContain('split && A.partnersOpen && A.manyPartners() ? <PartnerList at="home" />');
+    // The bar's way up is never a bare ‹: the others' own figures, with what waits in them.
+    const back = fn("PartnersBack");
+    expect(back).toContain('<Chev back cls="pb-chev" />');
+    expect(back).toContain('class="pb-face stone" data-look={p.look}');
+    expect(back).toContain("<CountPebble n={elsewhere} />");
+    expect(back).not.toContain("<svg");
   });
   test("with one partner nothing shows: no list, no ‹", () => {
     expect(fn("PartnerList")).toMatch(/if \(!A\.manyPartners\(\)\) return null;/);
@@ -103,10 +119,12 @@ describe("D513: the list of partners", () => {
     expect(fn("PartnerRowItem")).not.toContain("title=");
     expect(fn("PartnersBack")).not.toContain("title=");
   });
-  test("D517: the list stays still on a switch: the chosen pebble glides, the conversation comes in", () => {
+  test("D517, D541: the list stays still on a switch: the chosen pebble glides, the conversation shows in place", () => {
     expect(blocks(".pl-knob")).toMatch(/transform:\s*translateY\(calc\(var\(--at, 0\)/);
     expect(blocks(".pl-knob")).toMatch(/transition:\s*transform 420ms var\(--spring-soft\)/);
-    expect(src("main.tsx")).toContain('class={A.manyPartners() ? "pane conv conv-in" : "pane conv"}');
+    // D541: the pane is never keyed by whose it is (the bar and the composer stay); no entrance.
+    expect(src("main.tsx")).toContain('<section class="pane conv" aria-label={t("nav.conversation")}>');
+    expect(css).not.toContain("conv-in");
     // Each row's number holds while the switch waits for its welcome.
     expect(src("app.ts")).toContain("if (partner && this.railHeld && !this.S.welcomed) return this.railHeld[partner] ?? 0;");
   });
@@ -118,7 +136,6 @@ describe("D513: the list of partners", () => {
   test("D517: every motion of the list is still under Reduce Motion", () => {
     const m = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .pl-knob, .pl-hop { transition: none; }"));
     expect(m).toContain(".pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }");
-    expect(m).toContain(".conv-in { animation: none; }");
   });
   test("tokens only, and every word in both languages without a dot join", () => {
     const tail = css.slice(css.indexOf("D513: 伙伴们 / Your partners, as a messaging app"));

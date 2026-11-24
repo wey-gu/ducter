@@ -6,7 +6,8 @@
 chat with one partner. With more than one partner the person sees them listed as a messaging app
 lists its chats (a column at the conversation's left on a computer, the level above it on a phone,
 `personas.md` "Switching"); each conversation stays its partner's own (D24), and its bar speaks for
-that partner only. With one partner there is no list and nothing about partners shows.
+that partner only. Switching is instant (D541): each partner's conversation is held with its place
+and draft, and comes back in the next frame. With one partner there is no list and nothing about partners shows.
 
 ## Turn protocol (principle 6)
 

@@ -77,7 +77,7 @@ const PrMark = () => (
 import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
-import { useWide } from "./wide.ts";
+import { useSplit, useWide } from "./wide.ts";
 import { AutofillSettings, CopyKeyBody, copyKeyTitle, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { CheckoutBody, StepBody } from "./errand.tsx";
 
@@ -1649,6 +1649,9 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
+  const phoneBar = usePhone();
+  const fold = useSplit();
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1691,11 +1694,11 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
-      {!wide && <PartnersBack />}
+      {((!wide && phoneBar) || fold) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={44} />
+          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
         </button>
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
@@ -2043,7 +2046,25 @@ function timeGap(prev: Entry | undefined, e: Entry): boolean {
   return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
 }
 
+/** D541: the bar and the composer stay mounted through a partner switch (they never move, and the
+ *  composer keeps the keyboard); only the messages between them are the partner's own, made anew for
+ *  each, landing where the reader was in it. */
 export function Conversation() {
+  return (
+    <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
+      <Top />
+      {/* D381: what is pinned, under the bar. */}
+      <PinStrip />
+      {/* D410: pinned apps, one tap each. */}
+      <PinnedApps />
+      <ConvBody key={A.S.persona || "shown"} />
+      <Composer />
+    </>
+  );
+}
+
+function ConvBody() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
@@ -2064,12 +2085,6 @@ export function Conversation() {
   useTalkFeed(rows);
   return (
     <>
-      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
-      <Top />
-      {/* D381: what is pinned, under the bar. */}
-      <PinStrip />
-      {/* D410: pinned apps, one tap each. */}
-      <PinnedApps />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => (follow.onScroll(e.currentTarget as HTMLDivElement), older.onScroll(e.currentTarget as HTMLDivElement))}>
         <OlderWait />
         <div class="spacer" />
@@ -2116,8 +2131,8 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
+      {/* D535's door reads this conversation's list; the composer stays outside, in Conversation (D541). */}
       <DoorLine scroller={scroller} />
-      <Composer />
     </>
   );
 }

@@ -2461,6 +2461,16 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "channel_history", events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), beforeSeq: before, more });
         return;
       }
+      case "partner_peek": {
+        // D541: another partner's newest stretch, for the person's own client to draw a switch at once.
+        const id = String(f.persona ?? "");
+        if (id !== DEFAULT_PARTNER && !deps.partners?.has(id)) throw new Error("no such partner");
+        const stream = channelOf(id === DEFAULT_PARTNER ? undefined : id);
+        const head = log.head();
+        const { events, more } = channelPage(log, stream, head + 1, Math.max(1, Math.min(Math.floor(Number(f.limit)) || 50, 200)));
+        send(ws, { t: "partner_peek", persona: id, events: events.map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })), headSeq: head, more });
+        return;
+      }
       case "task_history": {
         // D284: a page of the task's stream, newest first by its index (stream, seq): the newest
         // window when the task opens, then older pages before beforeSeq. `more`: older ones remain.

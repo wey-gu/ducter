@@ -151,19 +151,13 @@ func (a *App) conversationWithPartners(c *ui.Context) {
 	}
 	ui.Row(c.Key("conv-with-partners")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		a.partnerRail(c)
-		whose := "switching"
-		if a.S.Welcomed {
-			whose = a.shownPartnerID()
-		}
-		col := ui.Column(c.Key("conv-beside:" + whose)).Grow(1).MinWidth(0).MinHeight(0)
-		a.convEnter(c, col)
+		// D541: one column for every partner: the bar and the composer stay
+		// exactly where they are, and the conversation held for the partner
+		// picked is drawn in the next frame, in place (no fade, no rise).
+		col := ui.Column(c.Key("conv-beside")).Grow(1).MinWidth(0).MinHeight(0)
 		col.Children(func() { a.conversation(c) })
 	})
 }
-
-// convEnter plays a partner's conversation coming in with the D290 enter
-// (a fade and the 6-point rise, EnterDur), at once under Reduce Motion.
-func (a *App) convEnter(c *ui.Context, e ui.Element) { a.routeEnter(c, e) }
 
 // partnerRail draws the column: room for the traffic lights on top (it is
 // the window's left edge), its title when wide, then a row per partner on

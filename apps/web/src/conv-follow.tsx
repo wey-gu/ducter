@@ -10,21 +10,12 @@ import { A } from "./app.ts";
 import { AT_END, countWords, dividerAt, gapOf, landing, newSince, type Row, showWayBack, stillFollowing } from "./follow.ts";
 import { haptic } from "./native.ts";
 import type { Entry } from "./store.ts";
+// Where the reader is, kept while the conversation is off the screen (a task opened on a phone;
+// D541: another partner shown): one per partner.
+import { place } from "./conv-place.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/** Kept across the conversation leaving the screen (a task opened on a phone) and coming back. */
-const place = {
-  kept: false,
-  top: 0,
-  following: true,
-  mark: 0,
-  /** The row the New messages divider stands before, frozen when the conversation opens. */
-  divider: undefined as number | undefined,
-  opened: false,
-  hiddenMark: undefined as number | undefined,
-};
 
 const rowsOf = (rows: readonly Entry[]): Row[] => rows.map((e) => ({ seq: e.firstSeq, mine: !!e.user }));
 
@@ -50,6 +41,7 @@ export function useFollow(scroller: { current: HTMLDivElement | null }, rows: re
   // The person's newest message and what is still going: older pages (D509) bring older ones of
   // theirs, which is never a send.
   const mine = { seq: lite.reduce((m, r) => (r.mine ? r.seq : m), 0), pending };
+  const opened = useRef(place).current;
   const st = useRef({ following: place.kept ? place.following : true, mark: place.kept ? place.mark : last, lastTop: 0, landed: false, last, mine, far: false, glideUntil: 0 });
   const s = st.current;
 
@@ -169,10 +161,10 @@ export function useFollow(scroller: { current: HTMLDivElement | null }, rows: re
     () => () => {
       const el = scroller.current;
       A.convAway = false;
-      place.kept = true;
-      place.following = st.current.following;
-      place.mark = st.current.mark;
-      place.top = el?.scrollTop ?? 0;
+      opened.kept = true;
+      opened.following = st.current.following;
+      opened.mark = st.current.mark;
+      opened.top = el?.scrollTop ?? 0;
     },
     [],
   );

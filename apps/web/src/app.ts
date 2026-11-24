@@ -30,6 +30,7 @@ import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
+import { switchPlace } from "./conv-place.ts";
 import { DEFAULT_PARTNER, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import { spokenPeers } from "./mem-view.ts";
 
@@ -64,6 +65,8 @@ export interface Replying {
 }
 export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? { findId: r.findId } : {}), ...(r.ask !== undefined ? { ask: r.ask } : r.part ? { part: r.part } : {}) });
 
+/** D541: how many of another partner's newest events a peek asks for. */
+const PEEK_SIZE = 50;
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
 /** D284: an opened task's newest window, each older page after it, and how far the background pages. */
@@ -762,6 +765,8 @@ class AppState {
   /** Forgets everything this page holds (a Log that started over, a device revoked). */
   private startOver() {
     this.S = new Store();
+    this.convs.clear(); // D541: what was held came from a Log that is no more
+    this.switchTo = undefined;
     this.kept.clear();
     this.fromGlance = false;
     forgetGlance();
@@ -770,6 +775,18 @@ class AppState {
   receive(f: ServerFrame) {
     // D405: the apps list, an opened app, its keys and the answers to its asks.
     if (onAppsFrame(f)) return;
+    if (f.t === "partner_peek") return void this.tookPeek(f);
+    // D541: until a switch's welcome, what comes of the conversation it left is not this one's.
+    const switched = f.t === "welcome" && !!this.switchTo;
+    if (this.switchTo) {
+      if (f.t === "welcome") this.switchTo = undefined;
+      else if (f.t === "activity" || f.t === "first_screen" || f.t === "channel_history") return;
+      else if (f.t === "events") {
+        const evs = f.events.filter((e) => e.stream !== "channel");
+        if (!evs.length) return;
+        f = { ...f, events: evs };
+      }
+    }
     // A cursor replay as long as the home sends at once: the glance is too old to catch up from.
     // Start from the home's own fresh replay instead (it ends with on_hand, like any replay).
     if (f.t === "events" && this.fromGlance && f.events.length >= REPLAY_MAX) {
@@ -961,7 +978,13 @@ class AppState {
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
-    if (f.t === "welcome") {
+    if (f.t === "welcome" && switched) {
+      // D541: a switch on a socket that stayed up: what it asked for it still hears; only this
+      // partner's unsent messages go (the home drops a repeat).
+      this.pins = [];
+      for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
+    } else if (f.t === "welcome") {
+      this.peeked.clear(); // D541: a new socket asks again
       // D532: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
       if (f.fp) pinFp(f.fp);
       heard(this.linkMemo);
@@ -1011,6 +1034,7 @@ class AppState {
       // restarted home may read again (or no longer).
       if (this.proactiveDay) this.askDay();
     }
+    if (f.t === "welcome") this.peekOthers();
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
     // D481: questions this page and the home disagree about: the home's own events for them.
@@ -2118,6 +2142,7 @@ class AppState {
     }
     const shown = f.partners.find((p) => p.id === f.shown);
     if (shown && shown.name !== this.S.personaName) this.S.personaName = shown.name;
+    this.peekOthers();
     this.changed();
   }
 
@@ -2150,26 +2175,70 @@ class AppState {
     go();
   }
 
-  /** D309: shows another partner's conversation: this page starts over on it (a new hello). */
+  /** D541: each partner's conversation this page has shown (or peeked), held aside with its draft,
+   *  its unsent messages and its reply, by partner. */
+  private convs = new Map<string, { S: Store; kept: Map<number, LogEvent>; pending: AppState["pending"]; draft: string; replying?: Replying }>();
+  /** D541: the partner a switch's hello went for, until its welcome: frames of the conversation it
+   *  left that were already on their way are dropped. */
+  private switchTo?: string;
+  /** D541: the partners whose newest stretch this socket asked for. */
+  private peeked = new Set<string>();
+
+  /** D309, D541: shows another partner's conversation at once: the one held (or peeked) is drawn in
+   *  this frame, and the hello carries its cursor, so the home sends only what is newer. */
   switchPartner(id: string) {
     if (id === (this.S.persona || this.partnerShown) || !this.partners?.some((p) => p.id === id)) return;
     this.partnersOpen = false;
+    // D517: a partner never shown and not peeked waits for its welcome: the rows keep their numbers.
     if (this.S.welcomed) this.railHeld = Object.fromEntries(this.partners.map((p) => [p.id, this.needsCount(p.id)]));
     this.partnerSwitchedAt = Date.now();
+    const from = this.S.persona || this.partnerShown;
     savePartner((this.partnerShown = id));
-    this.startOver();
-    this.pending = [];
-    this.actSent.clear();
-    this.inDoubt = undefined;
-    this.historyAsked.clear();
-    this.livingAway.clear();
-    this.draft = "";
-    this.replying = undefined;
+    this.convs.set(from, { S: this.S, kept: this.kept, pending: this.pending, draft: this.draft, replying: this.replying });
+    const next = this.convs.get(id);
+    this.convs.delete(id);
+    const S = next?.S ?? new Store();
+    // The person's own (On hand and its tasks, waits) stays as it is, live: never a partner's.
+    S.onHand = this.S.onHand;
+    S.awayNow = this.S.awayNow;
+    S.tasks = this.S.tasks;
+    S.waiters = this.S.waiters;
+    S.missed = this.S.missed;
+    S.arrived = this.S.arrived;
+    S.persona = id;
+    S.personaName = this.partners.find((p) => p.id === id)!.name;
+    this.S = S;
+    this.kept = next?.kept ?? new Map();
+    this.pending = next?.pending ?? [];
+    this.draft = next?.draft ?? "";
+    this.replying = next?.replying;
+    switchPlace(from, id);
     this.route = { name: "conv" };
     this.sheet = null;
-    this.S.personaName = this.partners.find((p) => p.id === id)!.name;
+    this.switchTo = id;
     this.conn?.rehello();
     this.changed();
+  }
+
+  /** D541: once a socket is up, the newest stretch of each other partner this page holds nothing of. */
+  private peekOthers() {
+    if (!this.manyPartners() || !this.S.welcomed || this.switchTo) return;
+    const shown = this.S.persona || this.partnerShown;
+    for (const p of this.partners!) {
+      if (p.id === shown || this.convs.has(p.id) || this.peeked.has(p.id)) continue;
+      this.peeked.add(p.id);
+      this.send({ t: "partner_peek", persona: p.id, limit: PEEK_SIZE });
+    }
+  }
+
+  /** D541: a peek's conversation, held for a switch (unless it is shown or held already). */
+  private tookPeek(f: Extract<ServerFrame, { t: "partner_peek" }>) {
+    if (f.persona === (this.S.persona || this.partnerShown) || this.convs.has(f.persona)) return;
+    const S = new Store();
+    S.apply({ t: "welcome", persona: f.persona, personaName: this.partners?.find((p) => p.id === f.persona)?.name ?? "", headSeq: f.headSeq } as ServerFrame);
+    S.apply({ t: "events", events: f.events });
+    if (!f.more) S.older.done = true;
+    this.convs.set(f.persona, { S, kept: new Map(f.events.map((e) => [e.seq, e])), pending: [], draft: "" });
   }
 
   /** D309: 再加一个伙伴 / Add a partner; D486: with what it looks after. */

@@ -21,6 +21,23 @@ line.
 - [ ] **A rotated key, everywhere it was copied.** The list knows where each copy is; a rotate
   offers to copy the new value to each. Trigger: the person rotates a key that was copied.
 
+## A partner switch, after D541 (`personas.md` "Switching")
+
+- [ ] **The switch on the author's own home.** Trigger: the first release with D541. On the Mac app
+  against hel over the internet, four partners: a switch to each (seen and never seen) shows its
+  conversation at once, with no blank frame; time it with `TestD541Live` pointed at hel's address
+  through the app's own token, never by reading hel's data.
+- [ ] **The iPhone, iPad and Android apps** load the same web client: check a switch on a phone (the
+  list's row goes deeper, D513) shows the peeked conversation with no blank page. Trigger: the
+  first release with D541.
+- [ ] **A held conversation answered elsewhere** (a question answered on the phone while another
+  partner was shown) shows its old card for one round trip. If the author notices, mark held
+  questions from the partners frame's counts before the delta lands. Trigger: the author sees it.
+- [ ] **The first frame of a never-shown partner on the Mac** lays out its peeked rows for the first
+  time (the tester's software raster took 60 to 300 ms for it on a loaded machine, against 40 to
+  90 for a held one). Trigger: the switch feels heavy on a real Mac; then lay out the peek's rows
+  off screen once it lands.
+
 ## ASCII branch names, after D522 (`system.md` places, `branch-name.ts`)
 
 - [ ] **The writer's words on a real model.** Trigger: the first release with D522. Run a dozen of

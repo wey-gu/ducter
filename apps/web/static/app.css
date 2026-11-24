@@ -21796,12 +21796,6 @@ html[data-text-size="large"] .brand-mark > svg {
 @media (prefers-reduced-motion: reduce) {
   .pl-knob, .pl-hop { transition: none; }
   .pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }
-  .conv-in { animation: none; }
-}
-/* D517: a partner's conversation comes in when picked; the list beside it stays still. */
-.conv-in { animation: conv-in 220ms var(--ease) both; }
-@keyframes conv-in {
-  from { opacity: 0; transform: translateY(6px); }
 }
 .pl-words {
   flex: 1 1 auto;
@@ -21837,6 +21831,24 @@ html[data-text-size="large"] .brand-mark > svg {
   .pane.partners .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
   .pane.partners .pl-last { display: none; }
 }
+/* D541: the same slim list from 700 to 999 (an iPad upright, a foldable open): a rail flush with the
+   window's left edge as from 1000, its rule running the window's height; the conversation beside it
+   keeps its measure (720) centred in what is left. */
+.pane.partners.slim { flex-basis: 88px; }
+.pane.partners.slim > .top .level { visibility: hidden; }
+.pane.partners.slim .pl-rows { --row: 74px; padding-inline: 6px; }
+.pane.partners.slim .pl-knob { left: 6px; right: 6px; }
+.pane.partners.slim .pl-row { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 4px; }
+.pane.partners.slim .pl-words { flex: none; align-items: center; max-width: 100%; }
+.pane.partners.slim .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
+.pane.partners.slim .pl-last { display: none; }
+#app:has(> .panes.mid) {
+  width: auto;
+  margin: 0;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+.panes.mid .pane.conv { flex: 1 1 0; }
 /* A phone: the list is the level above the conversation, rows a thumb's height. */
 .partners-home {
   padding-top: 4px;
@@ -21861,6 +21873,39 @@ html[data-text-size="large"] .brand-mark > svg {
   color: var(--ink-soft);
 }
 .top .partners-back:active { color: var(--ink); }
+/* D541: the other partners' figures, a small stack in their own clays (the nearest on top), the
+   number of what waits in them on the stack's shoulder: who is behind ‹, never a bare "back". */
+.pb-faces {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+/* Each figure a 24-pt disc on a 2-pt ring of the page, the next 30% under it (7 pt), the nearest on
+   top; the number sits outside the stack, on its top right shoulder, never over a face. */
+.pb-face {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sunken);
+  box-shadow: 0 0 0 2px var(--bg);
+  overflow: hidden;
+  align-items: center;
+}
+.pb-face + .pb-face { margin-inline-start: -7px; }
+.pb-face:nth-child(1) { z-index: 3; }
+.pb-face:nth-child(2) { z-index: 2; }
+.pb-face:nth-child(3) { z-index: 1; }
+.pb-face img { width: 22px; margin-top: 3px; }
+.top .partners-back .pb-chev { width: 16px; height: 16px; margin-inline-end: 2px; }
+.top .partners-back .pb-chev path { stroke-width: 2.2; }
+.pb-faces:has(> .pl-n) { margin-inline-end: 15px; }
+.pb-faces > .pl-n {
+  position: absolute;
+  top: -9px;
+  inset-inline-end: -19px;
+  z-index: 4;
+}
+.top .partners-back:has(.pb-faces) { margin-inline-end: 4px; }
 /* A phone's bar with ‹: the counts line keeps one fact, whole (the first: what needs you comes first; the
    rest is in its label), so the bar stays one line tall beside the places. */
 @media (max-width: 600px) {
@@ -22630,6 +22675,8 @@ html[data-text-size="large"] .brand-mark > svg {
    it: there the bar drops the face (‹ and the name say who), the name and its first count keep room. */
 @media (max-width: 360px) {
   .top:has(.partners-back) .who-face { display: none; }
+  /* D541: the narrowest phones keep one of the others' figures (the stack's top), with the number. */
+  .top .partners-back .pb-face:nth-child(n + 2) { display: none; }
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
 /* D521: the shared TrayRow and IconBtn (controls.tsx): one dense quiet row of a tray, a drawn glyph as a button. */

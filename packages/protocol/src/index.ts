@@ -1456,6 +1456,10 @@ export type ClientFrame =
   // oldest seq the client holds), at most `limit` (default 300, at most 2,000). Answered with a
   // channel_history frame.
   | { t: "channel_history"; beforeSeq: number; limit?: number }
+  // D541: the newest stretch of another partner's conversation (at most `limit`, default 50, at
+  // most 200), so a switch to it draws at once. The person's own clients only; the socket keeps
+  // showing its partner. Answered with a partner_peek frame.
+  | { t: "partner_peek"; persona: string; limit?: number }
   // D320: the task's session index (one small row per turn): all of it, or its turns from fromSeq on
   // (the first seq of the last turn the client holds). Answered with a task_index frame.
   | { t: "task_index"; taskId: string; fromSeq?: number }
@@ -1944,6 +1948,9 @@ export type ServerFrame =
   // D509: an older page of the conversation, oldest first, beforeSeq echoed; events superseded by a
   // newer one (a living message revised) are left out. more: older events remain.
   | { t: "channel_history"; events: LogEvent[]; beforeSeq: number; more: boolean }
+  // D541: another partner's newest stretch (as "channel" events, oldest first); headSeq the Log's
+  // head when read, more: older events remain. A hello with persona and its cursor carries on from it.
+  | { t: "partner_peek"; persona: string; events: LogEvent[]; headSeq: number; more: boolean }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
   | { t: "mention_list"; id: string; items: import("./mentions.ts").MentionItem[] } // D534

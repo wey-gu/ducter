@@ -318,7 +318,7 @@ line.
   Trigger: the first person who says it.
 - [ ] **D505 (rev.) live:** the first sign-in card on hel for a site the MacBook's Chrome has, read on the
   phone and the Mac (the question, 好，换过去, 我在这里登录, 不回的话，我先放着，等你回。); Go, then the
-  move line's 「taobao.com 以后都直接用你的 Chrome」; the second task at that site moving with no
+  move line's 「你说过 taobao.com 都直接用你的 Chrome」; the second task at that site moving with no
   card; 移除 in 上网 / Web and the card again. Check: `ducter check run worker-browser`. Trigger: the
   next release on hel.
 - [ ] **D505 (rev.) in a chat app:** the card is answered only in Ducter (open); if people ask to answer it

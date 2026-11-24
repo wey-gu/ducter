@@ -745,8 +745,8 @@ never again for that site.
   that has it; a move that fails.
 - **What they see.** The task's move line **换到 {computer} 接着做 / Continued on
   {computer}**, its meta **在 {computer} 上 · 用你的 Chrome**, and on a tap **要用你登录着的 {site} /
-  Needs your signed-in {site}**, or for a remembered site **{site} 以后都直接用你的 Chrome / {site}
-  goes straight to your Chrome from now on**. The partner gets a hidden note and answers "why is it on the
+  Needs your signed-in {site}**, or for a remembered site **你说过 {site} 都直接用你的 Chrome / You said
+  {site} goes straight to your Chrome**. The partner gets a hidden note and answers "why is it on the
   MacBook?" only when asked.
 - **The sign-ins stay where they are.** In their Chrome by construction (the agent runs on that
   Mac; reports, page text and evidence come back). In a worker's Ducter browser the worker's relay

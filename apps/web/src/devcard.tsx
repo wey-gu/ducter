@@ -745,7 +745,7 @@ function Sites({ dv }: { dv: DeviceView }) {
         </div>
       )}
       <div class="dev-sub">{t("sites.title")}</div>
-      {!sites.length && <div class="small">{t("sites.none")}</div>}
+      {!sites.length && <div class="small">{chromeMac(dv) ? t("sites.none.mac", chromeMac(dv)) : t("sites.none")}</div>}
       {sites.map((s) => (
         <div class="dev-site" key={s.site}>
           <div class="dev-site-what">
@@ -772,6 +772,12 @@ function Sites({ dv }: { dv: DeviceView }) {
   );
 }
 
+/** D505 (rev.): another computer, a Mac whose 上网 is the person's own Chrome, that a sign-in here can go to (its name), or "". */
+function chromeMac(dv: DeviceView): string {
+  const mac = A.devices?.find((d) => d.id !== dv.id && (d.platform ?? "").startsWith("darwin") && d.abilities.some((a) => a.id === "web" && a.state === "on" && a.where === "chrome"));
+  return mac?.name ?? "";
+}
+
 /** D505 (rev.): the sites whose sign-ins go straight to the person's own Chrome (换过去 on a site's first card), each with 移除 / Remove. */
 function ChromeSites() {
   const list = A.settings?.chromeSites ?? [];
@@ -779,15 +785,15 @@ function ChromeSites() {
   return (
     <>
       <div class="dev-sub">{t("sites.chrome.title")}</div>
-      <div class="small sub">{t("sites.chrome.about")}</div>
-      {list.map((site) => (
-        <div class="dev-site" key={site}>
-          <div class="dev-site-what">
-            <div class="dev-site-name">{site}</div>
+      <div class="small">{t("sites.chrome.about")}</div>
+      <div class="chrome-sites">
+        {list.map((site) => (
+          <div class="chrome-site" key={site}>
+            <span class="dev-site-name">{site}</span>
+            <DangerButton quiet label={t("sites.chrome.remove")} about={site} onClick={() => A.setSettings({ chromeSites: list.filter((x) => x !== site) })} />
           </div>
-          <Btn kind="text" size="sm" label={t("sites.chrome.remove")} about={site} onClick={() => A.setSettings({ chromeSites: list.filter((x) => x !== site) })} />
-        </div>
-      ))}
+        ))}
+      </div>
     </>
   );
 }

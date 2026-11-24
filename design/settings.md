@@ -654,9 +654,9 @@ there on a site's first sign-in card, or wondering why a task went to their Mac 
 *Felt:* they want to see what they agreed to and take it back in one tap. Under **已登录的网站 /
 Signed-in sites** in the home's 上网 / Web, and only when there is one: **直接用你的 Chrome /
 Straight to your Chrome**, one line (**这些网站要登录时，任务直接换到你 Mac 上已登录的 Chrome 接着做，不再先问。**),
-then one row per site with **移除 / Remove**. Removed, the next sign-in there asks again. No
+then one compact line per site on the head's left edge with a quiet **移除 / Remove** (as Your rules'). With a Mac whose Chrome can take a sign-in, Signed-in sites' empty line says the ask that comes first (**还没有。任务要登录哪个网站，会先问你：换到 {computer} 上你已登录的 Chrome 接着做，还是在这里登录。**). Removed, the next sign-in there asks again. No
 switch, no empty state: the list is made only by the card's Go (`where.md` §22). Built on web and
-the Mac; shots in `.shots/d505-ask-once/`.
+the Mac; shots in `.shots/d505-ask-once/v2/`.
 
 ## Not done
 

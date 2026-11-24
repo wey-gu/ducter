@@ -1,9 +1,9 @@
 {
-  "file": "2026-11-24-haiku-d511-keep-2.md",
+  "file": "2026-11-24-haiku-d536-partner-brain.md",
   "date": "2026-11-24",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "222/287",
+  "pass": "225/289",
   "persona": "e447198ef856d478",
-  "tools": "f723cdee7d463e55"
+  "tools": "bf9873268338dbc7"
 }

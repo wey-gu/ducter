@@ -220,7 +220,7 @@ func (a *App) devicesView(c *ui.Context) {
 	// cut off.
 	_, winH := c.Size()
 	stageH := max(float32(480), winH-ChromeH-150)
-	root := ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0)
+	root := a.toastsOver(ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0))
 	root.Children(func() {
 		ui.Column(c).Gap(t.S4).Padding(t.S5, side, t.S6, side).Children(func() {
 			a.devicesHeader(c, dev)

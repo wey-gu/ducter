@@ -374,7 +374,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	for id := range inGroup {
 		hidden[id] = true
 	}
-	// D511: 在照看的 / Looking after takes the place of 你的帮手 and 一直在跑的
+	// D511: 看守中 / Looking after takes the place of 你的帮手 and 一直在跑的
 	// when the home sends Keeps: a task a Keep owns stands under it, never in
 	// 在做 or 在等; one that waits for the person stays in 等你, naming it.
 	keepsOn := a.S.OnHand != nil && a.S.OnHand.Keeps != nil

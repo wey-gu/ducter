@@ -254,7 +254,7 @@ func (a *App) pastView(c *ui.Context) {
 	// the card chosen (the first one until another is).
 	split := ps.tab == "" && a.pastWide(c)
 	ui.Row(c.Key("past-split")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-		ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
+		a.toastsOver(ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).MinWidth(0)).Children(func() {
 			ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 				ui.Column(c.Key("past-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 					a.pastTabs(c)

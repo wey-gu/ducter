@@ -1,4 +1,4 @@
-// D523: the page's link to its home, by D520's rule. A paired page (a browser, or the iPhone,
+// D532: the page's link to its home, by D520's rule. A paired page (a browser, or the iPhone,
 // iPad and Android apps that show it) leaves its pairing only on the home's own signed word that
 // this device is revoked or unknown. A refused socket, a 401 or 502 from a proxy while the home
 // restarts, a sleep or a network change keeps the device token and the screen: a quiet line

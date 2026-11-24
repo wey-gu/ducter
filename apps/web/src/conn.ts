@@ -11,7 +11,7 @@ export interface DeviceRecord {
   name: string;
   personaName?: string;
   pairedAt: string;
-  /** D523: the home's key fingerprint, pinned at pairing (or at the first welcome after it): only an
+  /** D532: the home's key fingerprint, pinned at pairing (or at the first welcome after it): only an
    *  answer signed by this key can end the pairing. */
   fp?: string;
 }
@@ -40,7 +40,7 @@ export const storage = {
 };
 
 /**
- * D523: a device paired before its record kept the home's key learns it from the first welcome on
+ * D532: a device paired before its record kept the home's key learns it from the first welcome on
  * an authenticated socket (only the home that issued this token says welcome to it). Never
  * replaced: a home whose key changed is the one case no signature reaches (再连一次).
  */
@@ -150,7 +150,7 @@ export type ConnStatus = "connecting" | "connected" | "offline";
 
 const KEEP = new Set(["decide", "task_action"]);
 const MSG = new Set(["send", "task_send"]);
-/** D523 (the Mac's D520): quick at first, at most 5 s apart, 15 s once down for a minute; ±20%
+/** D532 (the Mac's D520): quick at first, at most 5 s apart, 15 s once down for a minute; ±20%
  *  jitter, so devices behind one proxy don't all knock at once when their home comes back. */
 const BACKOFF = [500, 1000, 2000, 4000, 5000];
 const BACKOFF_LONG = 15_000;
@@ -181,7 +181,7 @@ export class Connection {
   private dueAt = 0;
   /** Called with each frame written to a welcomed socket (the app tracks actions in flight). */
   onWritten?: (f: ClientFrame) => void;
-  /** D523: a socket closed before its welcome (refused, or the home not up): the app may ask the
+  /** D532: a socket closed before its welcome (refused, or the home not up): the app may ask the
    *  home whether this device still stands there. A refusal alone never ends a pairing. */
   onRefused?: () => void;
   /** When the next try is due (0: none waiting), and since when the link has been down. */
@@ -226,7 +226,7 @@ export class Connection {
     if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.retryNow();
   };
 
-  /** D523: the network came back: a socket from before it went may be dead while it looks open. */
+  /** D532: the network came back: a socket from before it went may be dead while it looks open. */
   private online = () => {
     if (this.stopped) return;
     if (this.ws?.readyState === WebSocket.OPEN && Date.now() - this.heardAt > 5_000) return void this.ws.close();

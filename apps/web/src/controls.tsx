@@ -621,7 +621,7 @@ export function OptionRow(p: { at: boolean; class?: string; onClick: () => void;
 }
 
 /**
- * D523: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
+ * D532: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
  * just above the composer, a sunken tint (done, alert: their own surfaces), a drawn glyph at its
  * start, 13/12px words, small buttons at its end.
  */

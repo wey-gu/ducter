@@ -1,4 +1,4 @@
-// D523: the page's link to its home, the Mac's words for it (apps/desktop/internal/i18n/link.go,
+// D532: the page's link to its home, the Mac's words for it (apps/desktop/internal/i18n/link.go,
 // D520): a loss said quietly first, plainly after a while, and the connect screen only when the
 // home itself said this device is disconnected. Glossary: design/product-model.md "the link to the
 // home". "This Mac" is "this phone" here (the pairing screen's own word), "this computer" on the

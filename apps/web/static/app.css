@@ -22327,7 +22327,7 @@ html[data-text-size="large"] .brand-mark > svg {
   .top:has(.partners-back) .who-words { min-width: 0; }
 }
 
-/* D523: a system notice (controls.tsx Notice; ui.md "Notices"): a slim strip just above the
+/* D532: a system notice (controls.tsx Notice; ui.md "Notices"): a slim strip just above the
    composer, the Mac's notice: radius 16, a sunken tint, a drawn glyph at its start, 13/12px words,
    small buttons at its end. Enters as every notice does (220 ms, a 6px rise and a fade). */
 .notice {
@@ -22354,6 +22354,6 @@ html[data-text-size="large"] .brand-mark > svg {
 @media (prefers-reduced-motion: reduce) {
   .notice { animation: none; }
 }
-/* D523: the pair screen keeps a reading measure on a wide window (the Mac's card is 560). */
+/* D532: the pair screen keeps a reading measure on a wide window (the Mac's card is 560). */
 .pairing { width: 100%; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
 .pairing .set-back { align-self: flex-start; }

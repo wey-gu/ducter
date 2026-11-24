@@ -1754,7 +1754,7 @@ function Counts() {
 }
 
 /**
- * D523: the link lost for a while, said plainly above the composer (the Mac's linkLostNotice): what
+ * D532: the link lost for a while, said plainly above the composer (the Mac's linkLostNotice): what
  * is wrong, where to look, when it tries next, Try now; for a home elsewhere a quiet 再连一次 too.
  * The token and everything on screen stay; only the home's own word ends the pairing.
  */

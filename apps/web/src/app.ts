@@ -641,7 +641,7 @@ class AppState {
         this.changed();
       },
     );
-    // D523: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
+    // D532: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
     this.conn.onRefused = () => (this.linkTick(), this.changed(), this.onLinkRefused?.());
     this.conn.onWritten = (f) => {
       if (f.t === "task_action" && (f.action === "merge" || f.action === "open_pr")) this.actSent.set(f.taskId, f.action);
@@ -830,7 +830,7 @@ class AppState {
       learnModelLabels(devices.flatMap((d) => d.harnesses)); // D355: a model in its agent's own words
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
-      // D523: the home's name, for the link's words on a later open while it can't be reached.
+      // D532: the home's name, for the link's words on a later open while it can't be reached.
       if (home?.name && this.linkMemo.get().home !== home.name) this.linkMemo.set({ ...this.linkMemo.get(), home: home.name });
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
@@ -946,7 +946,7 @@ class AppState {
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
     if (f.t === "welcome") {
-      // D523: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
+      // D532: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
       if (f.fp) pinFp(f.fp);
       heard(this.linkMemo);
       this.onLinkHeard?.();
@@ -3580,7 +3580,7 @@ class AppState {
     return "idle";
   }
 
-  // ---------- the link to the home (D523, the web's D520) ----------
+  // ---------- the link to the home (D532, the web's D520) ----------
 
   /** What this device remembers of its home's answers (link.ts). */
   linkMemo = memoStore(typeof localStorage === "undefined" ? undefined : localStorage);
@@ -3637,7 +3637,7 @@ class AppState {
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
   summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number } {
     const L = this.L;
-    // D523: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
+    // D532: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
     const ls = this.link();
     if (ls === "back") return { words: L.t("conn.reconnecting", this.linkHome()), link: false, filter: 0 };
     if (ls === "lost") return { words: L.t("conn.offline", this.linkHome()), link: false, filter: 0 };

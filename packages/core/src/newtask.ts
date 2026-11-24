@@ -326,6 +326,8 @@ export interface NewTaskInput {
   /** D391: 从这一步重来 / Redo from here: the step of `from` it redoes, and the commit its code starts from. */
   fromStep?: number;
   fromCommit?: string;
+  /** D522: the to-do's number(s) its branch starts with. */
+  todo?: string;
   /** D508: a to-do from the person's own apps: its own title is the task's (whole; a source's title is
    *  a name, not the person's sentence), and the person's language is the one it reports in (the
    *  issue's words are not the person's: an English issue told the task English). */
@@ -484,6 +486,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       ...(input.media?.length ? { media: input.media } : {}),
       ...(input.from && input.brief ? { from: input.from } : {}),
       ...(input.from && input.brief && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}),
+      ...(input.todo ? { todo: input.todo } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

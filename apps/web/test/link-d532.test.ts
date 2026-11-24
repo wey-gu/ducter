@@ -1,4 +1,4 @@
-// D523: the web client (and the iPhone, iPad and Android apps that show it) leaves its pairing only
+// D532: the web client (and the iPhone, iPad and Android apps that show it) leaves its pairing only
 // on the home's own signed word, as the Mac does (D520). The page's real Connection and link watch
 // run against a fake home (the real device store and the real home key) behind a fake proxy that
 // can say 502, say 401, forge a revoke, or pass. Only the true revoke may end the pairing.

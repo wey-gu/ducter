@@ -3515,7 +3515,7 @@ Object.assign(TABLES.en, groupWords.en);
 // D426: several things in one message, under it (i18n-asks.ts).
 Object.assign(TABLES.zh, asksWords.zh);
 Object.assign(TABLES.en, asksWords.en);
-// D523: the link to the home (i18n-link.ts), the Mac's words (D520).
+// D532: the link to the home (i18n-link.ts), the Mac's words (D520).
 Object.assign(TABLES.zh, linkWords.zh);
 Object.assign(TABLES.en, linkWords.en);
 Object.assign(TABLES.zh, firstMeetWords.zh);

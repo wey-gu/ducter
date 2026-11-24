@@ -16,6 +16,7 @@ import { homedir, tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import type { OoApp } from "@ducter/protocol";
 import { LinkError, type Link, type Linker, type LinkTool } from "./connections.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 // ---------- read or write, from the action's name ----------
 
@@ -89,7 +90,7 @@ export function ooExec(bin: string, env: Record<string, string>): OoExec {
 }
 
 /** Finds oo: on PATH, else where its installer puts it (an app's PATH often lacks ~/.local/bin). */
-export function findOo(which: (b: string) => string | null = (b) => Bun.which(b)): string | null {
+export function findOo(which: (b: string) => string | null = (b) => whichNow(b)): string | null {
   const local = join(homedir(), ".local", "bin", "oo");
   return which("oo") ?? (existsSync(local) ? local : null);
 }

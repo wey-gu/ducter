@@ -147,7 +147,7 @@ function App() {
   );
 }
 
-// ---------- D523: the link to the home, by D520's rule ----------
+// ---------- D532: the link to the home, by D520's rule ----------
 
 /** The home's name for the pair screen's line: its own name, else this address. */
 const goneHome = () => A.homeName || A.linkMemo.get().home || base.host;
@@ -210,7 +210,7 @@ function Pairing({ initial, onPaired, onBack }: { initial: PairView; onPaired: (
           : v.error
             ? t("connect.err.code")
             : "";
-  // D523: the home's own word that this device was disconnected leads the screen, in its words; a
+  // D532: the home's own word that this device was disconnected leads the screen, in its words; a
   // wrong code stays under the field it is about.
   const gone = v.error === "revoked" || v.error === "unknown";
   return (
@@ -308,7 +308,7 @@ async function opening(pairing?: PairView) {
     run(me, had, device, glance);
     void api.call<Me>("api/me").then(async (r) => {
       if (r.status === 401) {
-        // D523: a paired device asks the home; a 401 alone (a proxy while the home restarts) keeps
+        // D532: a paired device asks the home; a 401 alone (a proxy while the home restarts) keeps
         // the token and the screen. This machine's own page with no token has nothing to keep.
         if (had) return void refused(true);
         A.conn?.stop();
@@ -341,7 +341,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.onPhoneFrame = phoneFrame; // D217
   A.onHandsetFrame = handsetFrame; // D238
   A.onHandsetWelcome = () => void handsetHello();
-  // D523: a refused socket, Try now and a welcome reach the link's judge; 再连一次 opens the pair
+  // D532: a refused socket, Try now and a welcome reach the link's judge; 再连一次 opens the pair
   // screen over the app (Back returns to it; the token stays until a new pairing replaces it).
   watch.reset();
   A.onLinkRefused = () => void socketRefused();

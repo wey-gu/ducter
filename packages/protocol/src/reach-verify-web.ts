@@ -1,4 +1,4 @@
-// D523: reach-verify.ts for a page (the web client, and the iPhone, iPad and Android apps that show
+// D532: reach-verify.ts for a page (the web client, and the iPhone, iPad and Android apps that show
 // it): the same checks over WebCrypto instead of node:crypto, so a page can tell the home's signed
 // word on its device from anything a proxy, a portal or a stale cache says. The texts signed and
 // the fingerprint are reach.ts's; the answers match reach-verify.ts's for every input.

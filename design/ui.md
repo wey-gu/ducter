@@ -538,7 +538,7 @@ A new control is added to the set (and to this table) before it is used.
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |
-| A system notice above the composer (the app speaking: a long outage of the link to the home, D523; see "Notices") | `notice`, `aboveComposer` (`components.go`) | `Notice` |
+| A system notice above the composer (the app speaking: a long outage of the link to the home, D532; see "Notices") | `notice`, `aboveComposer` (`components.go`) | `Notice` |
 | A group's add row: a drawn ＋ in the tile column, title, one line (D273) | `addRow` (`settings_rows.go`) | `AddRow` |
 | A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
 | A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |

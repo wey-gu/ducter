@@ -12,12 +12,15 @@ import { readKeys } from "@ducter/protocol/src/keys.ts";
 import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { childEnvironment } from "@ducter/runner/src/child-env.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
+import { spawnNow } from "@ducter/protocol/src/which.ts";
 
 export const MIN_BUN = "1.3.0";
 
 export interface RunResult {
   code: number;
   stdout: string;
+  /** D523: stderr on its own (stdout falls back to it when stdout is empty). */
+  stderr?: string;
 }
 
 export interface Host {
@@ -416,12 +419,12 @@ export function realHost(): Host {
     },
     async run(cmd, timeoutMs = 5_000) {
       try {
-        const proc = Bun.spawn(cmd, { env: probeEnv(cmd), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+        const proc = spawnNow(cmd, { env: probeEnv(cmd), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
         const timer = setTimeout(() => proc.kill(), timeoutMs);
         const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
         const code = await proc.exited;
         clearTimeout(timer);
-        return { code: proc.signalCode ? -1 : code, stdout: stdout || stderr };
+        return { code: proc.signalCode ? -1 : code, stdout: stdout || stderr, stderr };
       } catch {
         return { code: -1, stdout: "" };
       }

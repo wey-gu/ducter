@@ -163,7 +163,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         web.evaluateJavaScript("window.ducterCommand && window.ducterCommand(\(jsString(name)))")
     }
 
-    /// D523: back to the front: the page redials its home now instead of waiting out its backoff.
+    /// D532: back to the front: the page redials its home now instead of waiting out its backoff.
     func resumed() {
         guard phase == .ready else { return }
         web.evaluateJavaScript("dispatchEvent(new Event('ducterresume'))")

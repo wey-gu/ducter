@@ -48,6 +48,8 @@ afterAll(async () => {
   const { A } = await import("../src/app.ts");
   const { Store } = await import("../src/store.ts");
   (A as unknown as { convs: Map<string, unknown> }).convs = new Map();
+  // A switch left waiting for its welcome would swallow the next file's welcome (D547: clone-folder ran after it).
+  (A as unknown as { switchTo?: string }).switchTo = undefined;
   A.partners = undefined;
   A.partnerShown = "default";
   A.S = new Store();

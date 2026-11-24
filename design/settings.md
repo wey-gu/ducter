@@ -697,6 +697,27 @@ then one compact line per site on the head's left edge with a quiet **移除 / R
 switch, no empty state: the list is made only by the card's Go (`where.md` §22). Built on web and
 the Mac; shots in `.shots/d505-ask-once/v2/`.
 
+## Overview on a phone (D547)
+
+*Who:* any of the three, Settings opened from the phone with a thumb, mostly to see whether
+something needs them. *Felt before:* lost: the wide brief squeezed into one column (the fixes 36
+buttons under their sentences, the lines 23-tall links), then seven computers as seven 150-tall
+cards (a later D469 rule had overridden the phone's two columns), the list far below. *After:* one
+column, read in one glance, every row a target for a thumb. Under 600 wide, on the web:
+
+1. **The partner and its lead on one line** (the face at 48, the lead in the display face, 18).
+2. **What needs you**, only when something does: one card on the needs tint, each sentence with its
+   fix as a full 44 button at its right (it drops under the sentence when they don't fit).
+3. **The labelled lines** (运行在, 想事情用, 能看的, 记得, 也能找我) as the Settings list's own rows: the
+   label small over what is true, a chevron, the whole row opening its page; 也能找我's agents a row of
+   their own after the chat apps.
+4. **你的电脑和手机** and **你的账号在哪儿** as rows of the list under its heads: the clay at 40, the
+   name, what it is to the partner, what it does now, the home's **对话和记忆在这儿**; a place's
+   accounts as their marks under its line.
+5. The partner's last word, then the list.
+
+The wide Overview (600 and up, and the Mac) is unchanged. Shots: `.shots/composer-polish/{before,after}/overview-*`.
+
 ## Not done
 
 - D475's own: Chat apps' quiet

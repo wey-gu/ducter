@@ -3447,3 +3447,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
   Claude Code on a root home is stopped by the chooser (`refuses_root`), but a cause the probe can't
   see (an agent that exits at once for another reason) isn't. *Trigger:* a second loop like hel's
   with a cause the probe doesn't know.
+
+- [ ] **D547 on a real phone:** the composer standing on iOS Safari's keyboard (checked only with an
+  emulated visual viewport; the Simulator's Safari never loaded the demo) and the Android app's;
+  Overview on the iPhone app at its real text size. *Trigger:* the next build on the author's phone.

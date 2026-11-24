@@ -1844,7 +1844,9 @@ function Composer({ taskId }: { taskId?: string }) {
   const agent = task ? harnessOf(task) : "";
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
   // D542: an agent that can't steer says so in the words' place on every screen (no row under the box for it).
-  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy ? t("composer.task") : !steers ? t("composer.nosteer.place", harnessName(agent)) : coarse() ? t("composer.task") : t("composer.steer.place");
+  // D547: longest first; the box shows the longest that fits its width, never a cut one.
+  const name = A.S.personaName;
+  const place: string[] = !taskId ? (A.replying ? [`${replyLabel(A.replying.from)}…`] : [t("composer.placeholder", name), t("composer.placeholder.short", name), t("composer.placeholder.bare")]) : !busy ? [t("composer.task")] : !steers ? [t("composer.nosteer.place", harnessName(agent)), t("composer.nosteer.place.short")] : coarse() ? [t("composer.task")] : [t("composer.steer.place"), t("composer.steer.place.short")];
   return (
     <div class="composer-wrap" ref={wrap}>
       <LinkLost />
@@ -1855,10 +1857,10 @@ function Composer({ taskId }: { taskId?: string }) {
       {/* D442: 放手说 / Talk hands-free, over the composer (a sheet on a phone). */}
       {!taskId && <TalkPanel />}
       {task && <HeldChips task={task} busy={busy} steers={steers} agent={agent} />}
-      <Tray where={where} />
       <ComposerBox
         id={taskId ? "composer-task" : "composer"}
         mentions={{ where, task: !!taskId }}
+        tiered={!!taskId}
         class={!taskId && A.replying ? "has-reply" : ""}
         value={value}
         onInput={set}
@@ -1866,6 +1868,7 @@ function Composer({ taskId }: { taskId?: string }) {
         canSend={canSend}
         label={label}
         placeholder={place}
+        top={<Tray where={where} />}
         onKeyDownCapture={(ev) => {
           if (busy && ev.key === "Enter" && ev.altKey && !ev.isComposing) ev.preventDefault(), ev.stopPropagation(), submit(true);
         }}

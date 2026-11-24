@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.49 - 2026-11-24
+
+<!-- whats-new
+zh: 评审循环会真的把评审发出去；看守中的任务一眼看出下一轮
+en: The review loop really posts its reviews; a looked-after task shows its next round
+-->
+
+**The review loop posts its reviews**
+- With your standing word to post reviews, each round posts them itself, including a short
+  comment-only review for a PR with nothing blocking. It never leaves a draft in a report.
+- "This round, review #551 first" reaches the next round and is cleared after it.
+- Anything outside what you allowed becomes a card in Needs you at once, not a line that waits
+  45 minutes.
+
+**A looked-after task, while you read**
+- Scrolled down a long round task, a slim line keeps 看守中, what waits on you, the next round's
+  time and the round number. Tap it to open the Keep.
+- Rounds where nothing changed fold into one quiet line you can open.
+- On a narrow pane the header shows the way back instead of a clipped path.
+
 ## 0.1.48 - 2026-11-24
 
 <!-- whats-new

@@ -460,7 +460,7 @@ function Row({ r, live, task }: { r: StepRow; live?: boolean; task?: Task }) {
   const at = live && task ? tsOf(task, r.seq) : NaN;
   const inner = (
     <>
-      {bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
+      {live ? <span class="spin sm" aria-hidden="true" /> : bad ? GLYPHS.error!() : !st ? GLYPHS.thought!() : (GLYPHS[stepMarkOf(st)] ?? GLYPHS.other)!()}
       <span class="verb" title={p.tip || p.verb}>
         {p.verb}
       </span>
@@ -887,10 +887,18 @@ export function workWords(w: Work): string {
   return s + (w.messages === 1 ? t("work.msgs.one") : w.messages > 1 ? t("work.msgs", w.messages) : "");
 }
 
+/** The live turns folded by the person (task:turn), which the live line reads (D530). */
+const liveShut = new Set<string>();
+
 /** A turn's answer (D530): its work (everything before its last words; all of it while it works)
  *  under one quiet head, folded once the turn is done and open while it works; its last words after. */
 function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean }) {
-  const [toggled, setToggled] = useState(false);
+  const [done, setDone] = useState(false);
+  // The live turn's fold is shared with the live line (D530: it shows only while folded).
+  const key = `${task.id}:${turn.seq}`;
+  const toggled = live ? liveShut.has(key) : done;
+  const [, bump] = useState(0);
+  const setToggled = (v: boolean) => (live ? (v ? liveShut.add(key) : liveShut.delete(key), bump((n) => n + 1), A.changed()) : setDone(v));
   const body = turn.body;
   let lastVoice = -1;
   for (let i = body.length - 1; i >= 0; i--)
@@ -1196,12 +1204,20 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
     return () => clearInterval(h);
   }, []);
   const last = blocks.at(-1);
-  const doing = last?.k === "note" && last.say === "retry" ? t("note.retry", last.name ?? "") : footWords(blocks);
+  const [doing, seq] = footWords(blocks);
   const tu = turns.at(-1);
-  const start = tu ? tsOf(task, tu.seq) : NaN;
-  const words = Number.isFinite(start) ? t("foot.live", doing, dur(Date.now() - start)) : doing;
+  const folded = !!tu && tu.body.some((b) => b.k === "steps") && liveShut.has(`${task.id}:${tu.seq}`);
+  const retry = last?.k === "note" && last.say === "retry";
+  // One indicator for the moment (D530): unfolded, the live step's row carries the spinner and its
+  // clock, and there is no line; folded, the step and that step's time; with no step under way,
+  // the turn's total, labeled.
+  if (!retry && seq && !folded) return null;
+  const since = (ms: number) => (Number.isFinite(ms) ? dur(Date.now() - ms) : "");
+  const stepTime = seq ? since(tsOf(task, seq)) : "";
+  const turnTime = tu ? since(tsOf(task, tu.seq)) : "";
+  const words = retry ? t("note.retry", (last as { name?: string }).name ?? "") : seq ? (stepTime ? t("foot.live", doing, stepTime) : doing) : turnTime ? t("foot.live", doing, t("foot.turn", turnTime)) : doing;
   return (
-    <div class="work-foot" role="status" aria-label={words}>
+    <div class={`work-foot${seq ? " folded" : ""}`} role="status" aria-label={words}>
       <span class="spin sm" aria-hidden="true" />
       <span class="state" aria-hidden="true">
         {words}
@@ -1213,15 +1229,15 @@ function WorkingLine({ task, blocks, turns }: { task: Task; blocks: Block[]; tur
 /** What the agent is doing now, said plainly for the live line (D530): its latest step's kind in
  *  the present, never its command or a tool's name (the step's own row says those). The Mac's
  *  footWords. */
-export function footWords(blocks: Block[]): string {
+export function footWords(blocks: Block[]): [string, number] {
   const b = blocks.at(-1);
-  if (b?.k !== "steps") return t("foot.still");
+  if (b?.k !== "steps" || !b.live) return [t("foot.still"), 0];
   const l = b.lines.at(-1);
-  if (!l) return t("foot.still");
-  if (l.k === "group" && !l.rows.length) return footKind(l.tally[0]?.kind ?? "");
+  if (!l) return [t("foot.still"), 0];
+  if (l.k === "group" && !l.rows.length) return [footKind(l.tally[0]?.kind ?? ""), l.seq];
   const r = l.k === "group" ? l.rows.at(-1)! : l.row;
-  if (!r.step) return t("foot.thought");
-  return footKind(r.step.kind, r.step.act, r.step.via);
+  if (!r.step) return [t("foot.thought"), r.seq];
+  return [footKind(r.step.kind, r.step.act, r.step.via), r.seq];
 }
 
 function footKind(kind: string, act?: string, via?: string): string {

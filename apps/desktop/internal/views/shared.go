@@ -330,7 +330,7 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 // ---------- D530: the opened task's steps ----------
 
 // workHead is a turn's work under one quiet line (D530): the drawn stack
-// (the shared spinner while it works folded), "12 步，3 条消息" in 13 secondary
+// (never a spinner: the live step's row or the live line carries it), "12 步，3 条消息" in 13 secondary
 // ink, a small × in the failed ink with how many failed, the chevron, and a
 // hairline on to the column's edge. Hovered, the words darken and nothing
 // moves. It answers a click. The web's WorkHead.
@@ -348,12 +348,9 @@ func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open 
 		if hover {
 			ink = t.InkSoft
 		}
-		if live && !open {
-			// Folded while it works, the head is what moves; open, the live line does.
-			ui.Box(c).Size(16, 16).Shrink(0).Center().Children(func() { ui.Spinner(c).Size(11, 11) })
-		} else {
-			a.glyph(c, 16, drawStack(ink))
-		}
+		// D530: the head never spins (live or not): open, the live step's row
+		// does; folded, the live line under it does.
+		a.glyph(c, 16, drawStack(ink))
 		uiText(c, words).FontSize(stepSize).FontWeight(500).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 		if failed > 0 {
 			ui.Row(c.Key("failed")).Gap(2).AlignItems(ui.Center).Shrink(0).Tooltip(a.L.T("work.failed", failed)).Children(func() {

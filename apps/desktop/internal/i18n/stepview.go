@@ -54,6 +54,7 @@ var zhStepview = Table{
 	"foot.thought":  "正在想",
 	"foot.used":     "正在用 %s",
 	"foot.still":    "还在做",
+	"foot.turn":     "这一轮 %s",
 	// The working composer: Return steers, ⌥Return waits for the turn.
 	"send.steer": "插一句",
 	"send.after": "等它做完再说",
@@ -108,6 +109,7 @@ var enStepview = Table{
 	"foot.thought":       "Thinking",
 	"foot.used":          "Using %s",
 	"foot.still":         "Still working",
+	"foot.turn":          "this turn %s",
 	"send.steer":         "Tell it now",
 	"send.after":         "After this turn",
 }

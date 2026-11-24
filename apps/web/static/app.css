@@ -11485,6 +11485,9 @@ button.chip-file {
 }
 /* D530: the transcript's foot while it works: a hairline, On hand's working pulse, the state in its
    own words and the turn's clock at the right, in the meta line's 12. */
+.work-foot.folded {
+  border-top: 0;
+}
 .work-foot {
   display: flex;
   align-items: center;

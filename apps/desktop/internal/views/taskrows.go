@@ -270,9 +270,11 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 	label := spoken(a.L, p.verb, p.file, p.code, p.words)
 	ui.Column(c).MinWidth(0).Children(func() {
 		clicked := a.stepLine(c, label, expandable, open, func(ui.Element) {
-			// The live step draws its kind's mark like the rest: the spinner is the
-			// live line's under the steps, the one thing that moves (D530).
+			// The live step's row carries the spinner and its own clock; the
+			// live line under the steps shows only while the work is folded (D530).
 			switch {
+			case live:
+				ui.Box(c).Size(16, 16).Shrink(0).Center().Children(func() { ui.Spinner(c).Size(11, 11) })
 			case bad:
 				a.glyph(c, 16, drawCrossSmall(t.Failed.Ink))
 			case r.Step == nil:

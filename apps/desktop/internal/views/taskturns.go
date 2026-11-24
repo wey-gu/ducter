@@ -525,29 +525,53 @@ func (a *App) liveWords(blocks []Block) string {
 
 // ---------- the working line (D268) ----------
 
-// workingLine is the transcript's foot while a turn is under way (D530): a
-// hairline, then one muted line in the step rows' rhythm: the shared spinner
-// (the one thing on the page that moves while it works) and what it is doing
-// now in plain words with the turn's clock, 「正在跑命令，41 秒」 / "Running a
-// command, 41s"; 「还在做」 / "Still working" when its latest is words. A
-// retry says itself here instead. Never the link's blue, never a bare state.
+// workingLine is the transcript's foot while a turn is under way (D530): one
+// indicator for the moment, never two. While the live step's row is in view
+// (the work unfolded) that row carries the spinner and its clock, and there
+// is no line here. Folded, a hairline and one muted line with the shared
+// spinner: the current step in plain words and that step's time, 「正在跑命令，
+// 42 秒」; with no step under way, 「还在做，这一轮 5 分 1 秒」 (the turn's total
+// only labeled). A retry says itself here instead.
 func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks []Block) {
 	t := a.T
-	words := a.footWords(blocks)
+	doing, seq := a.footWords(blocks)
+	folded := false
+	var turnAt time.Time
+	if len(turns) > 0 {
+		tu := &turns[len(turns)-1]
+		folded = workEnd(tu, true) > 0 && a.open[fmt.Sprintf("turn:%s:%d", task.ID, tu.Seq)+":shut"]
+		turnAt = store.ParseTime(a.tsOf(task, tu.Seq))
+	}
+	retry := ""
 	if n := len(blocks); n > 0 {
 		// D271: only what the state proves: a retry, else what it is on.
 		if last := &blocks[n-1]; last.K == "note" && last.Say == "retry" {
-			words = a.noteLine(last)
+			retry = a.noteLine(last)
 		}
 	}
-	if len(turns) > 0 {
-		if at := store.ParseTime(a.tsOf(task, turns[len(turns)-1].Seq)); !at.IsZero() {
+	words := ""
+	switch {
+	case retry != "":
+		words = retry
+	case seq > 0 && !folded:
+		return // the live step's row says it, with its spinner and its clock
+	case seq > 0:
+		words = doing
+		if at := store.ParseTime(a.tsOf(task, seq)); !at.IsZero() {
 			c.After(time.Second)
-			words = a.L.T("foot.live", words, a.shortDur(a.Now().Sub(at)))
+			words = a.L.T("foot.live", doing, a.shortDur(a.Now().Sub(at)))
+		}
+	default:
+		words = doing
+		if !turnAt.IsZero() {
+			c.After(time.Second)
+			words = a.L.T("foot.live", doing, a.L.T("foot.turn", a.shortDur(a.Now().Sub(turnAt))))
 		}
 	}
 	ui.Column(c.Key("working")).Gap(t.S1).MinWidth(0).Children(func() {
-		ui.Box(c).Height(1).Background(t.LineSoft)
+		if seq == 0 {
+			ui.Box(c).Height(1).Background(t.LineSoft) // folded, the head's own rule is the one line
+		}
 		ui.Row(c).Gap(t.S2).MinHeight(stepRowH).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(words).Children(func() {
 			ui.Box(c).Size(16, 16).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
 			uiText(c, words).FontSize(stepSize).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
@@ -555,17 +579,18 @@ func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks 
 	})
 }
 
-// footWords is what the agent is doing now, said plainly for the live line:
-// its latest step's kind in the present, never its command or a tool's name
-// (the step's own row says those); 「还在做」 when its latest is words.
-func (a *App) footWords(blocks []Block) string {
+// footWords is what the agent is doing now, said plainly for the live line,
+// and the live step's seq (0: none under way): its latest step's kind in the
+// present, never its command or a tool's name (the step's own row says
+// those); 「还在做」 when its latest is words.
+func (a *App) footWords(blocks []Block) (string, int64) {
 	still := a.L.T("foot.still")
 	if len(blocks) == 0 {
-		return still
+		return still, 0
 	}
 	b := &blocks[len(blocks)-1]
-	if b.K != "steps" || len(b.Lines) == 0 {
-		return still
+	if b.K != "steps" || len(b.Lines) == 0 || !b.Live {
+		return still, 0
 	}
 	l := &b.Lines[len(b.Lines)-1]
 	var r *StepRow
@@ -574,19 +599,19 @@ func (a *App) footWords(blocks []Block) string {
 		r = &l.Rows[len(l.Rows)-1]
 	case l.K == "group":
 		if len(l.Tally) > 0 {
-			return a.footKind(l.Tally[0].Kind, "", "")
+			return a.footKind(l.Tally[0].Kind, "", ""), l.Seq
 		}
-		return still
+		return still, 0
 	default:
 		r = l.Row
 	}
 	if r == nil {
-		return still
+		return still, 0
 	}
 	if r.Step == nil {
-		return a.L.T("foot.thought")
+		return a.L.T("foot.thought"), r.Seq
 	}
-	return a.footKind(r.Step.Kind, r.Step.Act, r.Step.Via)
+	return a.footKind(r.Step.Kind, r.Step.Act, r.Step.Via), r.Seq
 }
 
 func (a *App) footKind(kind, act, via string) string {

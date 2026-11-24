@@ -120,15 +120,35 @@ func TestD530LiveShots(t *testing.T) {
 						break
 					}
 				}
-				// The live line (before: the bare state word; after: what it is doing).
+				// Unfolded: the live step's row (its spinner and its clock) and nothing under it.
+				if r, ok := tt.Find(app.L.T("now.ran")); ok {
+					crop2x(base+"-liverow-crop2x", r, -40, -120, 720, 210)
+				}
+				// Folded: the head alone, and the live line says the step with the step's time.
+				for _, x := range tt.Texts() {
+					if strings.Contains(x, f.w("步", "steps")) {
+						_ = tt.Click(x)
+						break
+					}
+				}
+				tt.Frame()
+				tt.Frame()
+				write(base+"-folded", tt.Image())
 				for _, x := range tt.Texts() {
 					if strings.HasPrefix(x, app.L.T("foot.ran")) || x == app.stateLabel(protocol.Working) {
-						if r, ok := tt.Find(x); ok && r.Y > 400 {
+						if r, ok := tt.Find(x); ok && r.Y > 300 {
 							crop2x(base+"-liveline-crop2x", r, -40, -150, 720, 210)
 							break
 						}
 					}
 				}
+				for _, x := range tt.Texts() {
+					if strings.Contains(x, f.w("步", "steps")) {
+						_ = tt.Click(x)
+						break
+					}
+				}
+				tt.Frame()
 				// Running → done: the turn ends, the state follows, frames 0, 120, 300 ms after.
 				if w == 1150 {
 					app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{

@@ -731,11 +731,11 @@ const StackMark = () => (
 /** D530: a turn's work under one quiet line: the drawn stack (the shared spinner while it works),
  *  "12 步，3 条消息", a small × in the failed ink with how many failed, the chevron, and a hairline on
  *  to the column's edge. The Mac's workHead. */
-export function WorkHead(p: { words: string; failed: number; live: boolean; open: boolean; onClick: () => void }) {
+export function WorkHead(p: { words: string; failed: number; live?: boolean; open: boolean; onClick: () => void }) {
   const failed = p.failed > 0 ? t("work.failed", p.failed) : "";
   return (
     <button type="button" class={`work-head${p.open ? " open" : ""}`} aria-expanded={p.open} aria-label={spoken(A.L, p.words, failed)} onClick={p.onClick}>
-      {p.live && !p.open ? <span class="spin sm" aria-hidden="true" /> : <StackMark />}
+      <StackMark />
       <span class="words">{p.words}</span>
       {failed && (
         <span class="failed" title={failed} aria-hidden="true">

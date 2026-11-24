@@ -1088,9 +1088,11 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       on the failed surface in the failed ink, context plain, "@@ path" headers bold muted, ⋯
       between hunks. A finished turn folds its work under **做了 3 分 12 秒 › / Worked for 3m 12s
       ›** (13 muted over a hairline), keeping its last words; the live one never folds. While it
-      works, the transcript ends on the live line (D530): the shared spinner, the one thing on
-      the page that moves (the live step's row draws its kind's mark; the work's head spins only
-      folded), and what it is doing now with the turn's clock in 13 muted ink, 「正在跑命令，41 秒」. A queued message is a dashed
+      works, one indicator says the moment (D530): with the work unfolded, the live step's own
+      row carries the shared spinner and its clock, and nothing is drawn under it; folded, a
+      live line under the head says the step with that step's time in 13 muted ink, 「正在跑命令，
+      42 秒」; with no step under way, 「还在做，这一轮 5 分 1 秒」 (the turn's total only labeled).
+      The work's head never spins. A queued message is a dashed
       outline, no fill, muted words, **排队中 / Queued**. Every turn is drawn (D271: the Mac
       builds only the turns near the view; the web skips settled turns off screen).
    6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff

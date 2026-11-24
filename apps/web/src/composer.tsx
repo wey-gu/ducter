@@ -582,7 +582,7 @@ export function ComposerBox(p: {
   };
 
   return (
-    <div ref={boxRef} class={`composer${p.before ? "" : " bare"}${p.tiered ? " tiered" : ""}${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
+    <div ref={boxRef} class={`composer${p.before ? "" : " bare"}${p.tiered ? " tiered" : ""}${p.value.trim() ? " has-words" : ""}${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
       {open && pop && (
         <MentionPop
           pop={pop}

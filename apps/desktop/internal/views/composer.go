@@ -168,7 +168,7 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 			}
 			if o.end != nil {
 				o.end()
-				ui.Box(c).Size(t.S1, 1).Shrink(0) // Stop kept S3 from Send (the row's gap and this)
+				ui.Box(c).Size(t.S1, 1).Shrink(0) // Stop kept apart from Send (the row's gaps and this: 20)
 			}
 			if a.sendButton(c, label, size, state, o.sendMenu) && send(*o.draft) {
 				*o.draft = ""
@@ -230,7 +230,7 @@ func (a *App) sendButton(c *ui.Context, label string, size float32, state sendSt
 		b.Draw(drawSend(t.OnAccent.Alpha(0.55))) // the arrow waits, muted
 	default:
 		// D547: empty, sunken and flat with a muted arrow: plainly not pressable, never a faded accent.
-		b.Background(t.Sunken).Border(1, t.LineSoft)
+		b.Background(t.Sunken).Border(1, t.Line)
 		b.Draw(drawSend(t.InkMuted.Alpha(0.6)))
 	}
 	return false

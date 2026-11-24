@@ -23897,7 +23897,19 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   align-self: flex-end;
 }
 .composer .stop + .send-anchor {
-  margin-left: 8px;
+  margin-left: 16px;
+}
+/* A narrow card with words in it: the mic steps aside for the words (it is for an empty box), so
+   a line holds a sentence at 320; it is back the moment the box is empty. */
+@container composer (max-width: 420px) {
+  .composer.has-words .mic:not(.hearing) {
+    display: none;
+  }
+}
+/* Scrolling inside at its cap, the words fade into the card's edges instead of being cut. */
+.composer textarea[style*="overflow-y: auto"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
 }
 .composer .send {
   -webkit-touch-callout: none;
@@ -23911,7 +23923,7 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   --fill: var(--sunken);
   --fill-top: var(--sunken);
   --on: var(--ink-muted);
-  box-shadow: inset 0 0 0 1px var(--line-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
   cursor: default;
 }
 .composer .send.is-empty svg {
@@ -23986,7 +23998,7 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
    the words take their own line, the whole measure, and the buttons the line under them, Stop and
    Send at the right edge; the same shape from a phone to a wide window, as on the Mac.
    Under 420 the model chip keeps its name short; under 340 the chip is its level alone (its card
-   names the model) and the meter its ring alone. */
+   names the model); the meter keeps its figure, so its ring never reads as a spinner (D530). */
 .composer.tiered .words {
   flex: 1 0 100%;
   order: -1;
@@ -23997,7 +24009,7 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   margin-left: auto;
 }
 .composer.tiered .stop + .send-anchor {
-  margin-left: 8px;
+  margin-left: 16px;
 }
 @container composer (max-width: 420px) {
   .composer .ctune-chip .m {
@@ -24005,8 +24017,7 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   }
 }
 @container composer (max-width: 340px) {
-  .composer .ctune-chip .m,
-  .composer .ctx-btn .pct {
+  .composer .ctune-chip .m {
     display: none;
   }
 }
@@ -24071,11 +24082,12 @@ html.kb #app {
 .set-brief.phone .sb-need .sb-words {
   flex: 1 1 10em;
   min-width: 0;
-  font-weight: 600;
+  font-weight: 500;
   text-wrap: pretty;
 }
 .set-brief.phone .sb-need .btn {
   flex: none;
+  min-width: 88px;
 }
 .set-brief.phone .sb-row {
   min-height: 60px;

@@ -312,8 +312,8 @@ func (a *App) micButton(c *ui.Context) {
 		kind = btnAccent
 	}
 	fg := a.buttonLook(c, b, kind, size, t.Surface)
-	if a.vox.phase == "off" {
-		fg = t.InkMuted
+	if a.vox.phase == "off" || !listening {
+		fg = t.InkMuted // D547: quiet at rest, as attach
 	}
 	b.Draw(drawMic(fg))
 	b.HandleInput(func(ev ui.InputEvent) bool {

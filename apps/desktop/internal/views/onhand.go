@@ -101,7 +101,7 @@ func (a *App) onHand(c *ui.Context) {
 						if a.oh.filter == 0 {
 							switch lens {
 							case "":
-								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 在照看的
+								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 看守中
 									a.routineShelf(c, false)
 								}
 							case lensOther:

@@ -37,6 +37,7 @@ type chatsState struct {
 	bad        map[string]string // the last connect's refusal: token | network
 	code       map[string]protocol.ServerFrame
 	copied     bool
+	reCopied   bool   // D527: the reinstall row's Copy
 	manifest   bool   // the manifest's View is open
 	forgetting string // D289: the app whose Disconnect asks in place
 	// was is each app's state as last drawn, so becoming linked is answered once (D404).
@@ -358,6 +359,11 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			a.chatConnect(c, v.Kind, manifest)
 			a.chatFoot(c, "connect:"+v.Kind, a.L.T(who), func() { a.chatConnectButton(c, v.Kind) })
 			return
+		}
+		if v.Reinstall {
+			a.chatReinstall(c, manifest)
+		}
+		switch {
 		case v.State == "unlinked":
 			a.chatLink(c, v)
 		case v.State == "linked":
@@ -365,7 +371,11 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			if v.Linked != nil {
 				person = v.Linked.Name
 			}
-			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), a.L.T("chats.linked.goes", name), func() {
+			goes := a.L.T("chats.linked.goes", name)
+			if v.Kind == "slack" {
+				goes = a.L.T("chats.sl.linked.goes") // D527: @-mentions in a channel too
+			}
+			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), goes, func() {
 				if a.buttonFor(c, a.L.T("chats.unlink"), name, btnText, t.ControlSM, t.Surface) {
 					a.send(protocol.ChannelOpReq{T: "channel_unlink", Kind: v.Kind})
 				}
@@ -437,16 +447,24 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 				}
 			})
 			a.chatStep(c, 2, a.L.T("chats.sl.step2"), func() {
-				if a.quietLink(c, "slack-apps", a.L.T("chats.sl.open"), a.L.T("chats.sl.open")) {
-					a.openLink(slackAppsURL)
-				}
+				ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+					if a.quietLink(c, "slack-apps", a.L.T("chats.sl.open"), a.L.T("chats.sl.open")) {
+						a.openLink(slackAppsURL)
+					}
+					// D527: the partner's face, to upload as the app's icon (optional).
+					if a.quietLink(c, "slack-face", a.L.T("chats.sl.face"), a.L.T("chats.sl.face")) {
+						a.openLink(a.slackFaceURL())
+					}
+				})
+				a.note(c, a.L.T("chats.sl.step2.face"))
 			})
-			a.chatStep(c, 3, a.L.T("chats.sl.step3"), nil)
+			// D527: Slack's order today: install (OAuth & Permissions) gives the bot token, then the app-level token.
+			a.chatStep(c, 3, a.L.T("chats.sl.step3"), func() {
+				a.chatField(c, "chat-sl-bot", a.L.T("chats.sl.bot"), &tok, "xoxb-…")
+				a.note(c, a.L.T("chats.sl.step3.skip"))
+			})
 			a.chatStep(c, 4, a.L.T("chats.sl.step4"), func() {
 				a.chatField(c, "chat-sl-app", a.L.T("chats.sl.app"), &app, "xapp-…")
-			})
-			a.chatStep(c, 5, a.L.T("chats.sl.step5"), func() {
-				a.chatField(c, "chat-sl-bot", a.L.T("chats.sl.bot"), &tok, "xoxb-…")
 			})
 		}
 		s.token[kind], s.app[kind] = tok, app
@@ -525,14 +543,47 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 					}
 					uiText(c, a.L.T("chats.sl.code", bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
 					uiText(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).LetterSpacing(1).Selectable()
+					a.note(c, a.L.T("chats.sl.find", bot)) // D527: where the app's messages are
 				}
 				uiText(c, a.L.T("chats.code.ttl")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
-			if v.Kind == "telegram" && code.Link != "" {
-				if a.buttonFor(c, a.L.T("chats.tg.open"), name, btnPrimary, t.ControlMD, t.Surface) {
+			if code.Link != "" {
+				open := a.L.T("chats.tg.open")
+				if v.Kind == "slack" {
+					open = a.L.T("chats.sl.open.dm") // D527: Slack's app_redirect to the app's messages
+				}
+				if a.buttonFor(c, open, name, btnPrimary, t.ControlMD, t.Surface) {
 					a.openLink(code.Link)
 				}
 			}
 		})
+	})
+}
+
+// slackFaceURL is the default partner's face as a PNG (D527), the same one
+// Slack shows on each of its messages, to upload as the app's icon.
+func (a *App) slackFaceURL() string {
+	look := "sand"
+	for _, p := range a.S.Partners {
+		if p.ID == protocol.DefaultPartner && p.Look != "" {
+			look = p.Look
+		}
+	}
+	return "https://ducter.ai/faces/" + look + ".png"
+}
+
+// chatReinstall is D527's one plain line for a Slack app made before the
+// current manifest: what to do, and the new manifest one press away.
+func (a *App) chatReinstall(c *ui.Context, manifest string) {
+	t := a.T
+	a.chatRow(c, "reinstall:slack", a.L.T("chats.sl.re.title"), a.L.T("chats.sl.re.how"), func() {
+		label := a.L.T("chats.sl.copy")
+		if a.chats.reCopied {
+			label = a.L.T("chats.sl.copied")
+		}
+		if a.buttonFor(c, label, "Slack", btnSecondary, t.ControlSM, t.Surface) {
+			c.WriteClipboard(manifest)
+			a.chats.reCopied = true
+		}
 	})
 }

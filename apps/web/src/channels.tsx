@@ -78,6 +78,8 @@ A.onChannelFrame = (f) => {
 const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : "Telegram");
 const BOTFATHER = "https://t.me/BotFather";
 const SLACK_APPS = "https://api.slack.com/apps?new_app=1";
+/** D527: the partner's face, as Slack shows it per message; the same PNG to upload as the app's icon. */
+const faceOf = () => `https://ducter.ai/faces/${A.partners?.find((p) => p.id === "default")?.look ?? "sand"}.png`;
 
 export function ChatAppsSettings() {
   useEffect(() => {
@@ -227,9 +229,10 @@ function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
         <Connect kind={v.kind} manifest={manifest} who={who} />
       ) : (
         <>
+          {v.reinstall && <Reinstall manifest={manifest} />}
           {v.state === "unlinked" && <Link v={v} />}
           {v.state === "linked" && (
-            <Row title={t("chats.linked.who", v.linked?.name ?? "")} line={t("chats.linked.goes", name)}>
+            <Row title={t("chats.linked.who", v.linked?.name ?? "")} line={v.kind === "slack" ? t("chats.sl.linked.goes") : t("chats.linked.goes", name)}>
               <Btn kind="text" size="sm" label={t("chats.unlink")} about={name} onClick={() => A.send({ t: "channel_unlink", kind: v.kind })} />
             </Row>
           )}
@@ -294,14 +297,16 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
             <Step n={2} text={t("chats.sl.step2")}>
               <span class="chat-aside">
                 <LinkBtn kind="text" size="sm" href={SLACK_APPS} label={t("chats.sl.open")} />
+                <LinkBtn kind="text" size="sm" href={faceOf()} label={t("chats.sl.face")} />
               </span>
+              <small class="chat-have">{t("chats.sl.step2.face")}</small>
             </Step>
-            <Step n={3} text={t("chats.sl.step3")} />
+            <Step n={3} text={t("chats.sl.step3")}>
+              <Field id="ch-slack-a" label={t("chats.sl.bot")} placeholder="xoxb-…" value={token} onInput={setToken} wrong={bad === "token"} />
+              <small class="chat-have">{t("chats.sl.step3.skip")}</small>
+            </Step>
             <Step n={4} text={t("chats.sl.step4")}>
               <Field id="ch-slack-b" label={t("chats.sl.app")} placeholder="xapp-…" value={app} onInput={setApp} wrong={bad === "token"} />
-            </Step>
-            <Step n={5} text={t("chats.sl.step5")}>
-              <Field id="ch-slack-a" label={t("chats.sl.bot")} placeholder="xoxb-…" value={token} onInput={setToken} wrong={bad === "token"} />
             </Step>
           </>
         )}
@@ -336,12 +341,23 @@ function Link({ v }: { v: ChannelView }) {
           <>
             <p>{t("chats.sl.code", v.bot?.name || A.S.personaName)}</p>
             <b class="chats-code">{c.code}</b>
+            <small>{t("chats.sl.find", v.bot?.name || A.S.personaName)}</small>
           </>
         )}
         <small>{t("chats.code.ttl")}</small>
       </span>
-      {v.kind === "telegram" && c.link && <LinkBtn kind="primary" href={c.link} label={t("chats.tg.open")} />}
+      {c.link && <LinkBtn kind="primary" href={c.link} label={t(v.kind === "telegram" ? "chats.tg.open" : "chats.sl.open.dm")} />}
     </div>
+  );
+}
+
+/** D527: an app made before the current manifest: one plain line, the new manifest one press away. */
+function Reinstall({ manifest }: { manifest: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Row title={t("chats.sl.re.title")} line={t("chats.sl.re.how")}>
+      <Btn kind="secondary" size="sm" label={t(copied ? "chats.sl.copied" : "chats.sl.copy")} about="Slack" onClick={() => void navigator.clipboard?.writeText(manifest).then(() => setCopied(true))} />
+    </Row>
   );
 }
 

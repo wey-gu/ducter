@@ -27,6 +27,11 @@ export interface ChannelCaps {
    */
   replyWindowMs?: number;
   windowSends?: number;
+  /**
+   * D527: each message may carry its own sender name and picture (Slack's username and icon_url
+   * with chat:write.customize), so each partner speaks under its own name and face there.
+   */
+  as?: boolean;
 }
 
 export type OutButton = { label: string; data: string; style?: "primary" | "danger" } | { label: string; url: string };
@@ -38,6 +43,8 @@ export interface OutPart {
   /** The service's id of a message this part answers (shown as a reply there). */
   replyTo?: string;
   silent?: boolean;
+  /** D527: the partner this part is from, its name and its face's public address (caps.as). */
+  as?: { name: string; icon: string };
 }
 
 export interface InFile {
@@ -54,6 +61,11 @@ export interface InMessage {
   from: { id: string; name: string };
   /** A one-to-one chat with the bot (groups and channels are never the person's window). */
   direct: boolean;
+  /**
+   * D527, Slack: the bot was @-mentioned in a shared channel it was added to. Only the linked
+   * person's mention is taken; its answer goes in a thread under it, never in the DM.
+   */
+  mention?: boolean;
   text: string;
   /** The service's id of the message this one replies to. */
   replyTo?: string;
@@ -76,6 +88,13 @@ export interface BotInfo {
   name: string;
   handle?: string;
   team?: string;
+  /** D527, Slack: the workspace's id and the app's id, for the link that opens the app's messages. */
+  teamId?: string;
+  appId?: string;
+  /** D527, Slack: false when the app lacks chat:write.customize (made before it; reinstall to add it). */
+  customize?: boolean;
+  /** D527, Slack: the app lacks a scope the current manifest has (made before it): Settings asks for a reinstall. */
+  reinstall?: boolean;
 }
 
 export type Trouble = "token" | "blocked" | "conflict" | "network";
@@ -85,6 +104,8 @@ export interface ChannelEvents {
   tap(t: InTap): Promise<void>;
   /** The adapter can't go on (a refused token, another reader), or is back (undefined). */
   trouble(t: Trouble | undefined): void;
+  /** D527: what the adapter knows of the bot changed (Slack: it can't post as each partner). */
+  changed?(): void;
 }
 
 export interface Channel {

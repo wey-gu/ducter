@@ -980,6 +980,8 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 
 ### Several partners in chat apps (D516, `channels.md` §10)
 
+- [ ] **D527 live on a real Slack** (trigger: the author's next Slack check on hel): the manifest imported as is, `app_redirect` landing on the Messages tab, `icon_url` from ducter.ai shown per message, a reinstall clearing the update line, a channel @-mention answered in its thread; and whether Slack answers `missing_scope` or drops a username quietly without `chat:write.customize`.
+- [ ] **Faces per partner from the home itself** (trigger: a home without internet to ducter.ai, or a partner's own look beyond the five): serve the PNG from the home when it has an https address (D228), else keep the site's.
 - [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
 - [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
 - [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.

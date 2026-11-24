@@ -27,7 +27,7 @@ export async function waitFor<T>(fn: () => T | undefined | false | null, ms = 40
   }
 }
 
-export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[] } = {}) {
+export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[]; /** D527: each partner's look (Slack's per-message face). */ looks?: Record<string, string>; slackScopes?: string[] } = {}) {
   const t = tempDir();
   const clock = new FakeClock(Date.parse("2026-11-16T04:00:00Z")); // 12:00 in Shanghai
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
@@ -35,7 +35,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
   const decisions = createDecisions({ log, tasks, clock });
   const media = createMediaStore(t.dir);
   const tg = fakeTelegram();
-  const sl = fakeSlack();
+  const sl = fakeSlack(o.slackScopes ? { scopes: o.slackScopes } : {});
   const wx = fakeWechat();
   const sleeps: number[] = [];
   let quiet: Quiet | null = o.quiet ?? null;
@@ -52,6 +52,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
       lang: () => o.lang ?? (o.zh === false ? "en" : "zh"),
       personaName: () => "Ducter",
       ...(o.partners ? { partners: () => o.partners! } : {}),
+      ...(o.looks ? { face: (id: string) => ({ name: o.partners?.find((p) => p.id === id)?.name ?? "Ducter", look: o.looks![id] ?? "sand" }) } : {}),
       ...(o.openUrl ? { openUrl: () => o.openUrl } : {}),
       sleep: async (ms) => void sleeps.push(ms),
       gapMs: 0,

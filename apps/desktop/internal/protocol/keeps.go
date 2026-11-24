@@ -41,6 +41,8 @@ type KeepRound struct {
 	Spoke  string `json:"spoke"`
 	State  string `json:"state"`
 	TaskID string `json:"taskId,omitempty"`
+	// Changed (D550): a review_report in the round marked a PR changed.
+	Changed bool `json:"changed,omitempty"`
 	// Edit (D533): Woke "edit" is not a wake but a change the person or the
 	// partner made, said as a line among the rounds.
 	Edit *KeepEditLine `json:"edit,omitempty"`

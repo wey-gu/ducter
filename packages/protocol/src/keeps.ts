@@ -109,6 +109,9 @@ export interface KeepRound {
   spoke: "silent" | "told" | "asked";
   state: "running" | "done" | "failed" | "skipped";
   taskId?: string;
+  /** D550: the round changed something by its own structured word (a review_report marking a PR
+   *  changed); never read from its words. */
+  changed?: true;
   /** D533: a change to the Keep, as a line among its rounds (你改了：每 45 分钟 → 每小时). */
   edit?: KeepEditLine;
 }
@@ -236,25 +239,44 @@ export function keepBeat(k: Pick<KeepSheet, "life" | "nextAt" | "running" | "wak
   return k.wakes.some((w) => w.kind === "arrives") ? "arrives" : "none";
 }
 
-/** Silent rounds folded: the rounds as drawn, newest first; a run of silent rounds after the first
- *  `keep` shown becomes one fold with its count (又看过 {n} 次，都没有变化). */
-export function foldRounds(rounds: KeepRound[], keep = 4): ({ round: KeepRound } | { fold: number; since: string })[] {
-  const out: ({ round: KeepRound } | { fold: number; since: string })[] = [];
-  let shown = 0;
-  for (const r of rounds) {
-    // D533: a change the person or the partner made is never folded away with the quiet rounds.
-    const quiet = r.spoke === "silent" && r.state !== "running" && r.state !== "failed" && r.woke !== "edit";
-    const last = out.at(-1);
-    if (quiet && shown >= keep) {
-      if (last && "fold" in last) {
-        last.fold++;
-        last.since = r.at;
-      } else out.push({ fold: 1, since: r.at });
-      continue;
-    }
+/**
+ * D550: a quiet round, from its structured outcome only, never its words (principle 21; the rule
+ * D544 folds an opened round task by): its rhythm or its clock woke it (not a watched change, work
+ * handed to it, the person's Look now or its first look), it ended done (not running, failed or
+ * skipped), it said nothing (not told, not asked) and changed nothing (no review_report marked a
+ * PR changed). A change to the Keep (D533) is never quiet.
+ */
+export function quietRound(r: KeepRound): boolean {
+  return r.woke === "time" && r.spoke === "silent" && r.state === "done" && !r.changed && !r.edit;
+}
+
+/** D550: a run of quiet rounds as one row: its rounds (newest first), the newest's and the oldest's time. */
+export interface RoundFold {
+  fold: KeepRound[];
+  from: string;
+  to: string;
+}
+
+/**
+ * D550: the rounds as drawn, newest first: every run of two or more consecutive quiet rounds,
+ * anywhere in the list, is one fold (又看过 {n} 次，都没有变化，{from} 到 {to}), opened in place. The
+ * newest round is never folded; a lone quiet round stands as itself.
+ */
+export function foldRounds(rounds: KeepRound[]): ({ round: KeepRound } | RoundFold)[] {
+  const out: ({ round: KeepRound } | RoundFold)[] = [];
+  const newest = rounds.findIndex((r) => r.woke !== "edit");
+  let run: KeepRound[] = [];
+  const close = () => {
+    if (run.length >= 2) out.push({ fold: run, from: run.at(-1)!.at, to: run[0]!.at });
+    else for (const r of run) out.push({ round: r });
+    run = [];
+  };
+  rounds.forEach((r, i) => {
+    if (i !== newest && quietRound(r)) return void run.push(r);
+    close();
     out.push({ round: r });
-    shown++;
-  }
+  });
+  close();
   return out;
 }
 

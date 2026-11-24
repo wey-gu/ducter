@@ -9,7 +9,7 @@ import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepChan
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol } from "./controls.tsx";
+import { Btn, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
@@ -368,25 +368,47 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
   );
 }
 
-function Rounds({ k }: { k: KeepPage }) {
+/** D550: a quiet run's span, each end its clock, with its day when not today (the end's only when
+ *  the day changed): 20:55 到 22:25, 昨天 16:39 到 21:09, 昨天 23:24 到 0:54. */
+function spanWords(from: string, to: string): [string, string] {
+  const today = new Date().toDateString();
+  const at = (iso: string) => (new Date(iso).toDateString() === today ? clock(iso) : `${colTime(A.L, iso)} ${clock(iso)}`);
+  return [at(from), new Date(from).toDateString() === new Date(to).toDateString() ? clock(to) : at(to)];
+}
+
+/** D550: every run of quiet rounds is one row, the shared work head (D530) the opened task folds
+ *  them with; a click opens it in place, its rounds under it. */
+export function Rounds({ k }: { k: KeepPage }) {
   const [open, setOpen] = useState("");
+  const [runs, setRuns] = useState<Set<string>>(new Set());
   if (!k.rounds.length) return <p class="kp-empty">{t("keep.rounds.none")}</p>;
+  const round = (r: KeepRound) => {
+    const id = `${r.at}|${r.taskId ?? ""}|${r.woke}`;
+    return <Round key={id} r={r} k={k} open={open === id} onToggle={() => setOpen(open === id ? "" : id)} />;
+  };
   return (
     <div class="kp-card kp-rounds">
-      {foldRounds(k.rounds).map((x, i) => {
-        if ("fold" in x)
-          return (
-            <div key={`f${i}`} class="kp-quiet">
-              <span class="pips" aria-hidden="true">
-                {Array.from({ length: Math.min(6, x.fold) }, (_, j) => (
-                  <i key={j} />
-                ))}
-              </span>
-              <span>{t("keep.rounds.fold", x.fold)}</span>
-            </div>
-          );
-        const id = `${x.round.at}|${x.round.taskId ?? ""}|${x.round.woke}`;
-        return <Round key={id} r={x.round} k={k} open={open === id} onToggle={() => setOpen(open === id ? "" : id)} />;
+      {foldRounds(k.rounds).map((x) => {
+        if (!("fold" in x)) return round(x.round);
+        const id = `q${x.to}`;
+        const shown = runs.has(id);
+        const [from, to] = spanWords(x.from, x.to);
+        return [
+          <div key={id} class={`kp-quiet${shown ? " open" : ""}`}>
+            <WorkHead
+              words={t("loop.quiet", x.fold.length, from, to)}
+              failed={0}
+              open={shown}
+              onClick={() => {
+                const next = new Set(runs);
+                if (shown) next.delete(id);
+                else next.add(id);
+                setRuns(next);
+              }}
+            />
+          </div>,
+          ...(shown ? x.fold.map(round) : []),
+        ];
       })}
     </div>
   );

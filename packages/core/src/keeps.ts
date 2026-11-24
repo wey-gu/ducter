@@ -455,6 +455,8 @@ export function createKeeps(o: {
     let asked = false;
     let progress: string | undefined;
     let progressSeq = 0;
+    // D550: a review_report in this round marked a PR changed (the structured outcome D544 folds by).
+    let changed = false;
     let n = 0;
     const mine = (e: LogEvent) => {
       const b = e.body as { taskId?: string };
@@ -463,14 +465,20 @@ export function createKeeps(o: {
     // A task's questions and its wakes stand on the channel (decisions.ts, waiters.ts); its reports on its own stream.
     const shared = log.read({ stream: "channel", kinds: ["decision", "waiter"], limit: 8000 }).filter(mine);
     const own = log.read({ stream: `task:${taskId}`, kinds: ["waiter", "report", "decision"], limit: READ_MAX });
+    // D550: the task's review_reports that marked a PR changed (a review loop's; others have none).
+    const changes = log.read({ stream: `task:${taskId}`, kinds: ["task_event"], limit: READ_MAX }).filter((e) => {
+      const tool = (e.body as Bodies["task_event"]).tool;
+      const prs = tool && /(^|__)review_report$/.test(tool.name) ? (tool.input as { prs?: { changed?: unknown }[] } | undefined)?.prs : undefined;
+      return Array.isArray(prs) && prs.some((x) => x?.changed === true);
+    });
     const seen = new Set<number>();
     const silent = () => {
       if (!wake) return;
       // A loop's rounds report progress (loops.ts tells them to): the last one is the round's words.
-      out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(progress ? { report: progress.slice(0, REPORT_MAX), key: `${taskId}:${progressSeq}` } : {}), spoke: asked ? "asked" : "silent", state: "done", taskId });
+      out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(progress ? { report: progress.slice(0, REPORT_MAX), key: `${taskId}:${progressSeq}` } : {}), spoke: asked ? "asked" : "silent", state: "done", ...(changed ? { changed: true as const } : {}), taskId });
       n++;
     };
-    for (const e of [...own, ...shared].sort((a, b) => a.seq - b.seq)) {
+    for (const e of [...own, ...shared, ...changes].sort((a, b) => a.seq - b.seq)) {
       if (seen.has(e.seq)) continue;
       seen.add(e.seq);
       if (e.kind === "waiter") {
@@ -480,7 +488,9 @@ export function createKeeps(o: {
         wake = { at: e.ts, woke: kindOf(w) === "timer" ? "time" : "change", ...(w.reason ? { what: firstLine(w.reason) } : {}) };
         asked = false;
         progress = undefined;
+        changed = false;
       } else if (e.kind === "decision") asked = true;
+      else if (e.kind === "task_event") changed = true;
       else {
         const r = e.body as Bodies["report"];
         if (r.state === "progress") {
@@ -490,10 +500,11 @@ export function createKeeps(o: {
         const woke: KeepRound["woke"] = wake?.woke ?? (n === 0 && opts.first !== false ? "first" : opts.change ? "change" : "time");
         const what = wake?.what ?? (woke === "change" ? opts.change : undefined);
         const report = r.summary?.trim();
-        out.push({ at: wake?.at ?? e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...(report ? { report: report.slice(0, REPORT_MAX), key: `${taskId}:${e.seq}` } : {}), spoke: asked || r.state === "needs_input" ? "asked" : "silent", state: r.state === "failed" ? "failed" : "done", taskId });
+        out.push({ at: wake?.at ?? e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...(report ? { report: report.slice(0, REPORT_MAX), key: `${taskId}:${e.seq}` } : {}), spoke: asked || r.state === "needs_input" ? "asked" : "silent", state: r.state === "failed" ? "failed" : "done", ...(changed ? { changed: true as const } : {}), taskId });
         wake = undefined;
         asked = false;
         progress = undefined;
+        changed = false;
         n++;
       }
     }

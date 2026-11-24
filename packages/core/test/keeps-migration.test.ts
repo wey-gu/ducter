@@ -330,3 +330,30 @@ describe("D519: a Keep's page says what happened, to the person", () => {
     expect(reads.filter((r) => /请 Ducter|一轮|没有新的请求/.test(r))).toHaveLength(4);
   });
 });
+
+describe("D550: a round's structured outcome, for the page's quiet folds", () => {
+  test("a round whose review_report marked a PR changed says so; one whose review_report changed nothing does not", async () => {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    seedOld(t.dir);
+    const core = boot(t.dir);
+    stops.push(() => core.stop());
+    const keeps = core.keeps!;
+    const id = keeps.all().find((k) => k.from.kind === "loop" && k.from.taskId === "t_review")!.keepId;
+    const fire = (n: number) => core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_d550_${n}`, taskId: "t_review", wakes: "task", reason: "持续评审", state: "fired", at: new Date().toISOString() } as Bodies["waiter"] });
+    const review = (changed: boolean) =>
+      core.log.append({ stream: "task:t_review", origin: "task", kind: "task_event", body: { taskId: "t_review", role: "tool", tool: { name: "mcp__ducter__review_report", input: { prs: [{ ref: "nowledge-co/mem#10849", changed }, { ref: "nowledge-co/mem#11024", changed: false }] } } } as never });
+    const done = (summary: string) => core.log.append({ stream: "task:t_review", origin: "task", kind: "report", body: { taskId: "t_review", state: "done", summary, questions: [], evidence: [] } });
+    fire(1);
+    review(false);
+    done("没有新的请求，9 个都没变。");
+    fire(2);
+    review(true);
+    done("没有新的请求，9 个都没变。"); // the same words: only the structured word tells them apart
+    fire(3);
+    review(false);
+    // Newest first: the round under way (its wake, no report yet), the one that changed, the quiet one.
+    const rounds = keeps.page(id)!.rounds;
+    expect(rounds.slice(0, 3).map((r) => !!r.changed)).toEqual([false, true, false]);
+  });
+});

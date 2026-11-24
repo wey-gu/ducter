@@ -186,7 +186,7 @@ The other states are crisp: 已暂停, 已完成, 已停止, 已结束.
 | the page's parts | **你说的 · 等你 · 手上的 · 每一轮 · 怎么做** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
 | its rules | **什么时候醒 · 做到什么时候 · 什么时候出声 · 上限 · 在哪儿做，谁来做 · 别的 agent 怎么找到它** | **When it wakes · Until · When it speaks · Limits · Where and who · How your agents find it** |
 | a round's outcome | **没出声 / 说了一句 / 问了你**; one under way **进行中** | **Silent / Told you / Asked you**; **Running** |
-| silent rounds folded | **又看过 {n} 次，都没有变化** | **Looked {n} more times; nothing changed** |
+| quiet rounds folded (D550) | **又看过 {n} 次，都没有变化，{from} 到 {to}** | **Looked {n} more times; nothing changed, {from} to {to}** |
 | the wake line on a row | **有活就接 · 下一轮 {time} · 明早 {time} · 本轮进行中** | **Takes work as it comes · Next round {time} · Tomorrow {time} · A round is running** |
 | gestures | **暂停 ▾ · 恢复 · 现在看一次 · 停下** | **Pause ▾ · Resume · Look now · Stop** |
 | change by talking | **想改什么，直接说：「…」** | **Say what to change: “…”** |
@@ -241,8 +241,13 @@ the side column after the rounds.
 6. **每一轮 / Rounds**: newest first; each round its time in the time column (today the clock, else the day alone),
    what woke it (**#11030 的 CI 变了**, **Codex 交过来一个 PR**, **到点了（每 45 分钟）**), what happened in one line
    to the person (D519: the cheap model's reading of the report, recorded once; never the report's words to Ducter),
-   and **没出声 / 说了一句 / 问了你**; **看细节 / Details** shows the report as written and the way to its task. Silent
-   rounds fold into one line with small pips (**又看过 18 次，都没有变化**). Every wake is a round, reported or not.
+   and **没出声 / 说了一句 / 问了你**; **看细节 / Details** shows the report as written and the way to its task. D550:
+   every run of two or more quiet rounds, anywhere in the list, is one row, the work head the opened task folds them
+   with (D544): **又看过 3 次，都没有变化，20:55 到 22:25**; a click opens its rounds in place under it. Quiet is the
+   round's structured outcome only (protocol `quietRound`, the Mac's `keepRoundQuiet`): its rhythm woke it, it ended
+   done, said nothing and changed nothing (no `review_report` marked a PR changed: the round's `changed`). The newest
+   round, one under way, a lone quiet round and any round that spoke, asked, changed, failed or is a change (D533)
+   stand as they are. Every wake is a round, reported or not.
 7. **Change by talking**: the conversation's composer under the rounds (D519), its placeholder an example from this Keep
    (**想改什么，直接说：「ducter 仓库的 PR 也接」**). What is typed goes to the partner with the Keep attached; the
    partner changes it with one tool (`keep_change`) and says the change in one line. While the home takes the words

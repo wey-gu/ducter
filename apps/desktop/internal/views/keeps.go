@@ -39,6 +39,7 @@ type keepState struct {
 	sentAt  time.Time
 	told    string
 	round   string
+	quiet   map[string]bool // D550: the quiet runs opened by a click
 	// D533: a rule or the person's words being changed in place.
 	edit  keepEdit
 	sideW float32 // D533: the rules column's width this frame
@@ -656,14 +657,14 @@ func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
 	return a.L.T("keep.woke.time")
 }
 
-// keepRounds are its rounds, newest first; silent ones after the first four
-// fold into one line with small pips. D519: each round is its time in the
-// column, what woke it, what happened in one line to the person (the
+// keepRounds are its rounds, newest first. D519: each round is its time in
+// the column, what woke it, what happened in one line to the person (the
 // model's, once it read the report), how it ended, and 看细节 with the
-// report as the task wrote it to Ducter and the way to its task.
+// report as the task wrote it to Ducter and the way to its task. D550: every
+// run of quiet rounds is one row, the work head (D530) the opened task folds
+// them with; a click opens it in place, its rounds under it.
 func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
-	shown, fold := 0, 0
 	first := true
 	line := func(key string) ui.Element {
 		r := ui.Row(c.Key(key)).Width(w).Gap(12).Padding(11, 10, 11, 16).AlignItems(ui.Start)
@@ -674,21 +675,11 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 		return r
 	}
 	ks := &a.oh.keep
-	for i, r := range k.Rounds {
-		// D533: a change the person or the partner made is never folded away.
-		quiet := r.Spoke == "silent" && r.State != "running" && r.State != "failed" && r.Woke != "edit"
+	draw := func(i int, r protocol.KeepRound) {
 		if r.Woke == "edit" && r.Edit != nil {
-			r := r
-			shown++
 			line(fmt.Sprint("rd", i)).Children(func() { a.keepEditRound(c, r) })
-			continue
+			return
 		}
-		if quiet && shown >= 4 {
-			fold++
-			continue
-		}
-		shown++
-		r := r
 		at := store.ParseTime(r.At)
 		id := r.At + "|" + r.TaskID
 		open := ks.round == id
@@ -749,15 +740,34 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 			})
 		})
 	}
-	if fold > 0 {
-		line("fold").AlignItems(ui.Center).Children(func() {
-			ui.Row(c.Key("pips")).Gap(3).AccessHidden(true).Children(func() {
-				for j := 0; j < fold && j < 6; j++ {
-					ui.Box(c.Key(fmt.Sprint("p", j))).Size(6, 6).Radius(3).Background(t.Line2)
+	for _, f := range foldKeepRounds(k.Rounds) {
+		if f.round != nil {
+			draw(f.idx, *f.round)
+			continue
+		}
+		id := "q" + f.to
+		open := ks.quiet[id]
+		from, to := keepSpan(a.L.Lang, f.from, f.to, a.Now())
+		row := ui.Row(c.Key(id)).Width(w).MinHeight(44).Padding(0, 10, 0, 16).AlignItems(ui.Center)
+		if !first {
+			row.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
+		}
+		first = false
+		row.Children(func() {
+			ui.Column(c.Key("h")).Grow(1).MinWidth(0).Children(func() {
+				if a.workHead(c, id, a.L.T("loop.quiet", len(f.fold), from, to), 0, false, open) {
+					if ks.quiet == nil {
+						ks.quiet = map[string]bool{}
+					}
+					ks.quiet[id] = !open
 				}
 			})
-			uiText(c.Key("t"), a.L.T("keep.rounds.fold", fold)).FontSize(t.SM).TextColor(t.InkMuted)
 		})
+		if open {
+			for j, q := range f.fold {
+				draw(f.idxs[j], q)
+			}
+		}
 	}
 }
 

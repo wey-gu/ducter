@@ -136,9 +136,12 @@ report("t_review", { state: "done", summary: w("第一轮：9 个请求在等你
 // D519: as hel wrote it. The timer fires on the channel (waiters.ts); a round reports to Ducter in its
 // own words, often with instructions to Ducter; since the day before yesterday its rounds have
 // mostly said nothing at all, while the timer kept firing every 45 minutes.
-const round = async (ago: number, text?: string, asks?: boolean) => {
+// D550: each round sends its review_report (the structured word D544 and the page fold by); a round
+// that saw new commits marks that PR changed.
+const round = async (ago: number, text?: string, asks?: boolean, changed = false) => {
   await at(-ago);
   log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_rv_${ago}`, taskId: "t_review", wakes: "task", reason: REVIEW, state: "fired", at: iso(-ago) } });
+  tool("t_review", "mcp__ducter__review_report", { prs: [{ ref: "nowledge-co/mem#10849", changed }, { ref: "nowledge-co/mem#11024", changed: false }] });
   if (asks) log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: `d_rv_${ago}`, taskId: "t_review", question: w("2 份评审写好了，发到 GitHub?", "2 reviews are drafted. Post them to GitHub?"), goLabel: w("发出去", "Post them"), defaultOption: "hold", reversible: false } });
   if (text) report("t_review", { state: "done", summary: text, evidence: [] });
 };
@@ -149,10 +152,12 @@ const GRANT = w(
 );
 for (let i = 0; i < 12; i++) await round(25 * HOUR - i * 45 * MIN, NOTHING);
 await round(16 * HOUR, GRANT);
-await round(15 * HOUR, w("#10849 有新提交，复审了；其余 8 个没变。等 #11024 的 CI。", "#10849 has new commits; reviewed again. The other 8 unchanged. Waiting on #11024's CI."));
-// Today: the timer every 45 minutes; most rounds said nothing to Ducter (no report at all).
-for (let ago = 9 * HOUR + 12 * MIN; ago > 50 * MIN; ago -= 45 * MIN) await round(ago);
-await round(37 * MIN, w("2 个有新提交已复审，7 个没变；2 份评审草稿等你看。", "2 with new commits reviewed again, 7 unchanged; 2 review drafts for you to see."), true);
+const NEW = w("#10849 有新提交，复审了；其余 8 个没变。等 #11024 的 CI。", "#10849 has new commits; reviewed again. The other 8 unchanged. Waiting on #11024's CI.");
+await round(15 * HOUR, NEW, false, true);
+// Today: the timer every 45 minutes; most rounds said nothing to Ducter (no report at all), one
+// mid-morning saw new commits.
+for (let ago = 9 * HOUR + 12 * MIN; ago > 50 * MIN; ago -= 45 * MIN) await round(ago, ago === 3 * HOUR + 57 * MIN ? NEW : undefined, false, ago === 3 * HOUR + 57 * MIN);
+await round(37 * MIN, w("2 个有新提交已复审，7 个没变；2 份评审草稿等你看。", "2 with new commits reviewed again, 7 unchanged; 2 review drafts for you to see."), true, true);
 // The PR its rounds keep open (100gle's to-do it took on), as the home last read it.
 log.append({ stream: "task:t_review", origin: "system", kind: "owned_news", body: { taskId: "t_review", pr: "nowledge-co/mem#11024", news: [], seen: { since: iso(-20 * HOUR), head: "e41b7c2", state: "open", standing: { at: iso(-20 * MIN), title: w("发布流程：macOS 构建在 CI 里签名", "release: sign the macOS build in CI"), head: "e41b7c2", awaiting: ["100gle"], checks: { total: 14, passed: 14, failed: [], pending: [] }, merge: "blocked" } } } });
 seed.tasks.setState("t_review", "needs_you", "parked");

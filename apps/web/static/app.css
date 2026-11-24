@@ -11375,7 +11375,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 /* D530: a turn's work under one quiet head: the stack (a spinner while it works), "12 步，3 条消息"
    in 13 medium muted ink, a small × with how many failed, the chevron, a hairline on to the edge.
    Folded once the turn is done, open while it works. Hover darkens the words; nothing moves. */
-.turns .work-head {
+:is(.turns, .kp-quiet) .work-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11387,17 +11387,17 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   text-align: left;
   font-variant-numeric: tabular-nums;
 }
-.turns .work-head .g {
+:is(.turns, .kp-quiet) .work-head .g {
   flex: none;
 }
-.turns .work-head .words {
+:is(.turns, .kp-quiet) .work-head .words {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.turns .work-head .failed {
+:is(.turns, .kp-quiet) .work-head .failed {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -11406,18 +11406,18 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   font-weight: 600;
   color: var(--failed-ink);
 }
-.turns .work-head .chev-g {
+:is(.turns, .kp-quiet) .work-head .chev-g {
   flex: none;
   color: var(--faint);
 }
-.turns .work-head .rule {
+:is(.turns, .kp-quiet) .work-head .rule {
   flex: 1 1 16px;
   min-width: 16px;
   height: 1px;
   background: var(--line-soft);
 }
 @media (hover: hover), (any-hover: hover) {
-  .turns .work-head:hover {
+  :is(.turns, .kp-quiet) .work-head:hover {
     color: var(--ink-soft);
   }
 }
@@ -22439,24 +22439,24 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-rd .out.failed {
   color: var(--failed-ink);
 }
+/* D550: a run of quiet rounds is one row: the work head the opened task folds them with (D530),
+   44 tall, on the rounds' left edge; opened, its rounds stand under it as rows of their own. */
 .kp-quiet {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 16px;
-  font-size: var(--sm);
-  color: var(--ink-muted);
+  padding: 0 16px;
 }
-.kp-quiet .pips {
-  display: flex;
-  gap: 3px;
+.kp-quiet .work-head {
+  min-height: 44px;
 }
-.kp-quiet .pips i {
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--line-2);
+/* A phone's width: the count and the span wrap, never cut. */
+.kp-quiet .work-head .words {
+  padding: 10px 0;
+  white-space: normal;
+  text-wrap: pretty;
+  line-height: 1.45;
+}
+.kp-quiet + .kp-quiet {
+  border-top: 1px solid var(--line-soft);
 }
 /* D519: the talk box is the conversation's composer (`.composer`), set under the rounds. */
 .kp-talk {

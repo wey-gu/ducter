@@ -70,7 +70,7 @@ for (const when of ["before", "after"] as const) {
     const s = lastState();
     expect(s.attention).toBe("failed");
     expect(s.cant).toMatchObject({ why: "refuses_root", harness: "claude-code" });
-    expect(s.cant?.detail).toBe(`Claude Code exited as it started: ${SAID}`);
+    expect(s.cant?.detail).toBe(SAID);
     expect(texts().join("\n")).not.toContain("TypeError");
     expect(texts().join("\n")).not.toContain("t.session");
   });
@@ -89,7 +89,7 @@ test("on a root home Claude Code isn't started at all: its refusal at once, befo
   const card = await runner.openTask({ persona: "p1", title: "Update the Mem plugin", brief: "b", place: { kind: "none" }, harness: "claude-code" });
   await runner.whenStarted(card.taskId).catch(() => {});
   const s = lastState();
-  expect(s).toMatchObject({ attention: "failed", cant: { why: "refuses_root", harness: "claude-code" } });
+  expect(s).toMatchObject({ attention: "failed", cant: { why: "refuses_root", harness: "claude-code", detail: SAID } });
   expect(loaded).toBe(0);
   // Codex, pi, DeepSeek Harness and Antigravity run as root (harness-facts root, research/225).
   for (const h of ["codex", "pi", "deepseek-harness", "antigravity"]) expect(rootRefusal(h, 0)).toBeUndefined();

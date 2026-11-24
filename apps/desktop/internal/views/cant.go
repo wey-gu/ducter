@@ -52,7 +52,7 @@ func (a *App) cantClause(k *protocol.CantStart) string {
 
 // cantFix is one fix: what it does and its label; the first is primary.
 type cantFix struct {
-	act    string // start_at | clone_here | clear_lock | reopen | pick | install | login | update | why
+	act    string // start_at | clone_here | clear_lock | reopen | pick | install | login | update | switch | why
 	label  string
 	kind   btnKind
 	device string
@@ -105,6 +105,9 @@ func (a *App) cantFixes(k *protocol.CantStart) []cantFix {
 		}
 		if k.Why == "old" {
 			add("update", a.L.T("cant.update", k.Computer), "")
+		}
+		if k.Why == "refuses_root" {
+			add("switch", a.L.T("who.switch"), "")
 		}
 		on()
 		if k.CloneHere {
@@ -160,6 +163,12 @@ func (a *App) doCantFix(id string, k *protocol.CantStart, f cantFix) {
 		a.OpenDevices()
 	case "update":
 		a.OpenDevices()
+	case "switch":
+		// D549: another agent, picked in 换谁来做 (the one that refused stays greyed with why).
+		if a.lo.switchFor != id {
+			a.openSwitch(id)
+		}
+		a.OpenTask(id)
 	case "why":
 		if a.cantOpen == nil {
 			a.cantOpen = map[string]bool{}

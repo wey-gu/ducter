@@ -106,7 +106,7 @@ import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
-import { CantStartView } from "./cant.tsx";
+import { CantStartView, cantClause } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
@@ -1013,7 +1013,10 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   if (wait > 0) return <Presence kind="result" />;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
-  const said = sayable(it.text, A.readerLang(task));
+  // D549: a task that couldn't start says why without the card's own lead (没能开始：), which
+  // "{title}没做成：" already says: never two leads in one sentence.
+  const cant = it.kind === "failed" && task ? cantOf(task) : undefined;
+  const said = cant ? cantClause(cant) : sayable(it.text, A.readerLang(task));
   const kind = it.kind === "failed" ? "living.failed" : "living.done";
   const text = said ? (it.title ? t(kind, it.title, said) : said) : t(`${kind}.short`, it.title || t("living.it"));
   return (

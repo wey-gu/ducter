@@ -29,7 +29,7 @@ export function cantClause(c: CantStart): string {
   return i > 0 ? l.slice(i + 1).trim() : l;
 }
 
-export type CantAct = "start_at" | "clone_here" | "clear_lock" | "reopen" | "pick" | "install" | "login" | "update" | "why";
+export type CantAct = "start_at" | "clone_here" | "clear_lock" | "reopen" | "pick" | "install" | "login" | "update" | "switch" | "why";
 export interface CantFix {
   act: CantAct;
   label: string;
@@ -56,6 +56,8 @@ export function cantFixes(c: CantStart): CantFix[] {
     if (c.why === "not_installed" && c.device) out.push({ act: "install", label: t("cant.install", agent, c.computer) });
     if (c.why === "signed_out" && c.device) out.push({ act: "login", label: t("cant.login", agent, c.computer) });
     if (c.why === "old") out.push({ act: "update", label: t("cant.update", c.computer) });
+    // D549: another agent, picked in 换谁来做 (the one that refused stays greyed with why).
+    if (c.why === "refuses_root") out.push({ act: "switch", label: t("who.switch") });
     if (on) out.push(on);
     if (c.cloneHere) out.push({ act: "clone_here", label: t("cant.clone_to", c.computer) });
   }
@@ -87,6 +89,10 @@ export function doCantFix(taskId: string, c: CantStart, f: CantFix, toggle?: () 
       return A.cantSetup(c.device, f.act, c.harness ?? "");
     case "update":
       return A.openSettings("devices");
+    case "switch":
+      // The switch list lives on the opened task: from On hand's brief, the task opens with it.
+      if (A.switchFor !== taskId) A.openSwitch(taskId);
+      return A.openTaskPage(taskId);
     case "why":
       return toggle?.();
     default:

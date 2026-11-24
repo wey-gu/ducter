@@ -2165,7 +2165,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const cant = (await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined)) ?? fallback();
     // D415/D472: the agent's own words, one line; for what is truly unknown, a few lines behind 看看为什么.
     const lines = reason.split("\n").map((l) => l.replace(/^(Error: )+/, "").trim()).filter((l) => l && !/^at\s|^\s*at\s/.test(l));
-    if (["agent", "not_installed", "signed_out", "old", "refuses_root", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
+    // D549: the agent's own line alone (its stderr), never Ducter's English lead before it.
+    if (["agent", "not_installed", "signed_out", "old", "refuses_root", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].replace(/^.{1,40}? (?:exited as it started|refuses to run as root, and Ducter runs as root on this computer): /, "").slice(0, 160);
     if (problem.why === "other" && !cant.more && lines.length > 1) cant.more = lines.slice(0, 6).join("\n").slice(0, 600);
     if (!cant.harness) cant.harness = t.base.harness;
     if (!cant.device) cant.device = device;

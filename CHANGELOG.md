@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.37 - 2026-11-24
+
+<!-- whats-new
+zh: 用完的工作副本自己整理，接着做时再拉一份
+en: Finished work copies tidy themselves; continuing brings one back
+-->
+
+**Work copies tidy themselves**
+- A task's copy of your repository is tidied a few days after the task is done, a week after
+  it is dropped, and at once after Ducter merges it. Anything that might still matter stays:
+  unsaved or unpushed changes, a task still going or waiting, an open PR, a starred task.
+- Your computer's card says what was tidied and how much space came back. Continue on a tidied
+  task and a fresh copy comes back by itself.
+- `ducter worktrees --plan` lists what would go without touching anything.
+
 ## 0.1.36 - 2026-11-24
 
 <!-- whats-new

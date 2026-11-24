@@ -137,7 +137,8 @@ func (a *App) keptKeysFold(c *ui.Context, dv *protocol.DeviceView) {
 	if f != nil && f.OK && len(f.SavedKeys) > 0 {
 		summary = a.L.T("kept.count", len(f.SavedKeys))
 	}
-	if at, ok := keptKeysAsked[device]; !ok || a.Now().Sub(at) > time.Minute {
+	// Asked only once the fold is open (a card shown asks nothing of its computer).
+	if at, ok := keptKeysAsked[device]; a.devState().card.sheet.fold == "kept:"+device && (!ok || a.Now().Sub(at) > time.Minute) {
 		keptKeysAsked[device] = a.Now()
 		a.send(protocol.KeptKeysReq{T: "kept_keys", Device: device})
 	}

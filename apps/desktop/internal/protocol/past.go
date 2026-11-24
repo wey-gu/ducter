@@ -70,6 +70,8 @@ type PastItem struct {
 	LastWords string `json:"lastWords,omitempty"`
 	Asking    string `json:"asking,omitempty"`
 	Steps     int    `json:"steps,omitempty"`
+	// Tidied: its working copy was tidied away (D514); Continue makes a fresh one.
+	Tidied bool `json:"tidied,omitempty"`
 }
 
 // PastStep is one step of a task (D391): its brief (N 1), then each later

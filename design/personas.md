@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486, D497, D513. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497, D513, D516. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -39,7 +39,7 @@ one's conversation.
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
 | Settings | notifications, quiet hours, look and sound, devices | its name, look, what it looks after (D486); later its own talk and memory switches |
-| Chat apps (Telegram, Slack, iMessage) | | the default partner only, for now |
+| Chat apps (Telegram, Slack, WeChat, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one they are talking with); its words there lead with its name |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
 **Privacy between partners.** A partner sees only its own conversation and its own memories. No
@@ -272,8 +272,9 @@ Built:
   write that belongs to another partner to its conversation: by the task it is about (its card's
   persona), by a question, wait, call, routine or note first seen in that partner's conversation,
   or because core is handling that partner's tool call (`actAs`). An answer lands beside its
-  question; triggers wake the partner they belong to. Proactive notes, the first words, chat apps,
-  Bridge and the home's own questions stay the default's.
+  question; triggers wake the partner they belong to. Proactive notes, the first words, Bridge and
+  the home's own questions stay the default's. Chat apps carry every partner in one thread (D516,
+  below).
 - **Tasks and routines carry their partner** from creation (a New task or a routine made in its
   conversation too); a routine's runs are its tasks; a task's brief names its partner, its
   `memory_search` is its partner's, and it runs as its partner's Mem identity.
@@ -283,6 +284,18 @@ Built:
   folder; until then it neither recalls nor saves.
 - **On hand** shows whose (above).
 
+## In chat apps (D516)
+
+One thread per chat app carries every partner (`channels.md` §10). The bot, WeChat's ClawBot and
+the partner's own Apple ID are the default's; another partner's words there lead with its name,
+**小家：… / Home: …**. The person's words go to the partner whose message they reply to, else the one
+named at their start (**小家，…**), else the one they are talking with there now (15 minutes),
+else the default; the first time another partner speaks in a chat app, one line says how to talk
+to it there. Every partner's asks and results reach the person's one place, with whose they are;
+the needs-you count stays the person's. iMessage, for now, speaks for the partner the Mac shows,
+with its name when it isn't the default. Why one thread and not a bot per partner: WeChat and
+iMessage have one identity, and a bot per partner on Telegram is an upgrade for the few (owed).
+
 ## What's left
 
 1. **Bridge per partner.** Bridge stays the default's connection. D494: a standing address other agents
@@ -290,7 +303,9 @@ Built:
    conversation keeps that partner (its tasks are its), its mail still read by the one home.
 2. **Forgetting and correcting** a second partner's memories from Settings (today the default's).
 3. **Per-partner settings.** How it talks, memory on or off, which accounts it may use.
-4. **Chat apps per partner.** A Telegram bot or Slack app bound to a chosen partner.
+4. **A bot of its own per partner** (D516 (7)): a Telegram bot or Slack app bound to a chosen
+   partner, its own contact in the chat app's list; and iMessage on its own connection, so it
+   follows the one-thread rules instead of the partner the Mac shows.
 5. **The CLI** talks to the default partner only.
 6. **iPhone and Android shells** show the web client, so they inherit it; not checked on a device.
 7. **Human raters** for D497's recoloured figure (the LLM proxies are done, research/215); the

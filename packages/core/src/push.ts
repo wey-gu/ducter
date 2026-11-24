@@ -654,7 +654,8 @@ export function createPusher(opts: {
         return;
       }
       case "user_msg":
-        if (e.stream === "channel") lastVia = (e.body as Bodies["user_msg"]).via; // D309: the default's conversation is the one a chat app carries
+        // D516: any partner's conversation may be carried by a chat app; words passed on are no place.
+        if (partnerOfStream(e.stream) !== undefined && !(e.body as Bodies["user_msg"]).passed) lastVia = (e.body as Bodies["user_msg"]).via;
         return;
       case "decision_resolved": {
         const r = e.body as Bodies["decision_resolved"];

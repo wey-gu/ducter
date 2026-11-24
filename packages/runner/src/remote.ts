@@ -6,7 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
 import type { ShownAsk, ShownFile } from "./shown.ts";
-import type { BranchChanges, FolderChanges, Place } from "@ducter/protocol";
+import type { BranchChanges, CopyFacts, FolderChanges, Place } from "@ducter/protocol";
 import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { ActionResult } from "./integrate.ts";
@@ -28,7 +28,9 @@ export interface PlaceOps {
   changes(place: Place): Promise<BranchChanges | undefined>;
   /** After a merge: remove the clean worktree Ducter made, keep the branch (integrate.ts).
    *  unstarted: a task dropped before it was briefed; its branch goes too while it holds nothing. */
-  archive(place: Place, o?: { unstarted?: boolean }): Promise<ActionResult & { removed: boolean }>;
+  archive(place: Place, o?: { unstarted?: boolean }): Promise<ActionResult & { removed: boolean; bytes?: number; gone?: boolean }>;
+  /** D514: what the computer that holds the copy says of it (integrate.ts copyFacts); undefined: it can't tell (an older worker). */
+  copyFacts(place: Place): Promise<CopyFacts | undefined>;
   /** D142: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
   folder: FolderOps;
   /** D157: push the task branch before the task moves to another computer (E3). */
@@ -209,7 +211,9 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
     // An older worker doesn't know "changes": unknown, never an error in a report.
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
     // An older worker doesn't know "archive": its worktree stays, as before.
-    archive: (place, o) => link.call<ActionResult & { removed: boolean }>("archive", { place, ...(o?.unstarted ? { unstarted: true } : {}) }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
+    // D514: an older worker doesn't know "copyFacts": can't tell, so its copies stay.
+    copyFacts: (place) => link.call<CopyFacts | undefined>("copyFacts", { place }, 60_000).catch(() => undefined),
+    archive: (place, o) => link.call<ActionResult & { removed: boolean; bytes?: number; gone?: boolean }>("archive", { place, ...(o?.unstarted ? { unstarted: true } : {}) }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
     // D206: an older worker doesn't know "shown": the report goes on without that file.
     shown: (a) =>
       guard(link.call<{ name: string; data: string }>("shown", a, 60_000)).then((r) => ({ name: String(r?.name ?? ""), bytes: new Uint8Array(Buffer.from(String(r?.data ?? ""), "base64")) })),

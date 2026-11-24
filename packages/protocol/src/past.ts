@@ -17,6 +17,8 @@ export interface PastMark {
   /** Their own name for it; shown wherever the task's title is. */
   name?: string;
   starred?: boolean;
+  /** D514: keep this task's working copy whatever its age (the tidy never removes it). */
+  keepCopy?: boolean;
   /** At most PAST_TAGS_MAX, each at most 24 characters, lowercased for Latin. */
   tags?: string[];
   glyph?: PastGlyph;
@@ -32,6 +34,7 @@ export const PAST_NAME_LEN = 80;
 export interface PastMarkPatch {
   name?: string | null;
   starred?: boolean;
+  keepCopy?: boolean;
   tags?: string[];
   glyph?: PastGlyph | null;
   tint?: PastTint | null;
@@ -78,6 +81,8 @@ export interface PastItem {
   asking?: string;
   /** D391: how many steps it has (its brief, then each later message to it). */
   steps?: number;
+  /** D514: its working copy was tidied away (工作副本已整理，接着做会重新拉一份); Continue makes a fresh one. */
+  tidied?: boolean;
 }
 
 // ---------- D391: steps, and redoing a task from one ----------

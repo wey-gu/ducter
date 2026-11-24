@@ -626,8 +626,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - A live run with two real partner sessions on one home (make by talking, pass, remove). Trigger: the
   author's next session on a real home.
-- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; a chat app
-  bound to a partner; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
+- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
   these on a home with several partners.
 - The stone's comprehension test with naive raters, then a clay character per partner. Trigger: the
   author reviews D486.
@@ -869,7 +868,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **The agent's own fork for the same agent** (`--fork-session` with a message, `thread/fork`, pi's `fork`) instead of the condensed start, when the agent is the same. Trigger: a redo whose condensed start missed something the session knew.
 - [ ] **Compare two tasks' branches side by side** (two redos of one step). Trigger: the person asks which of two tries is better.
 - [ ] **CI checks on Past cards and in Where it stopped** (needs a PR watcher, D216's todo). Trigger: the same.
-- [ ] **What a cleanup would remove** (worktrees past the archive horizon, listed before they go). Trigger: a person who asks where a worktree went.
+- [x] **What a cleanup would remove** (worktrees past the archive horizon, listed before they go). Built as D514's `ducter worktrees` (`tidy.md`).
 - [ ] **Find on a phone with a hardware keyboard** (⌘K on the iPad's web shell). Trigger: the iPad app.
 - [ ] **Live with weeks of the author's real tasks** (ranking of task_find against his words). Trigger: the next live walk on the home.
 
@@ -958,6 +957,13 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 - [ ] **Outgoing text never carries a saved value** (an Autofill detail that isn't key-shaped): refuse and have the partner reword, as one project does in code (research/88 §7.4). Key-shaped text is already hidden on the way out, as for clients (D152). Trigger: before a public release of chat apps.
 - [ ] **Telegram Mini App for the full card** (only for homes with an https address). Trigger: a card people keep opening in Ducter from Telegram.
 
+### Several partners in chat apps (D516, `channels.md` §10)
+
+- [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
+- [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
+- [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
+- [ ] **WeChat quoted replies** keep the partner only if iLink's `ref_msg` names a message the hub sent; check live, and map its id if needed. Trigger: the WeChat live run.
+
 ### WeChat through ClawBot (D301, `channels.md` §9, research/105)
 
 Built against a fake iLink and CDN only.
@@ -966,6 +972,8 @@ Built against a fake iLink and CDN only.
 - [ ] **WeChat's own terms page** 《微信ClawBot功能使用条款》 read in full (research/105 could not open it): whether it says anything about clients other than OpenClaw. Trigger: the same; stop and ask the author if it forbids them.
 - [ ] **The order of the groups for a person in China** (WeChat first when the conversation is Chinese?). Trigger: the author's review of D301.
 - [ ] **The 来自微信 / via WeChat mark** with the other chat apps' marks. Trigger: D276's mark.
+- [ ] **WeChat's hosts held to Tencent's** (D516 (8)): refuse a QR address, a `redirect_host`, a `baseurl` or an upload URL outside `weixin.qq.com` / `wechat.com` (https, 443), as one reference does (`research/private/im-reference-2026-11-24.md`). Trigger: before calling WeChat more than a preview.
+- [ ] **WeChat's text limit, live** (D516 (8)): one reference says iLink cuts texts over 1,800 characters; Ducter splits at 4,000 (`WECHAT_MAX_TEXT`). Trigger: the live run above.
 - [ ] **WeCom's long-connection bot** as a second window for people who live in WeCom (research/105 §3). Trigger: a person asks.
 
 ## A harness's own background work (D266)
@@ -1271,9 +1279,27 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Greetings sometimes give two examples (eval `first_words` 3/4).
 - [ ] Re-verify live that a task never phrases Hold as "no" (brief changed, not re-run).
 - [ ] Parked Claude Code sessions take ~10 s to resume; nothing prewarms tasks.
-- [ ] **Archive horizon for dropped and failed-to-start tasks.** The sweep archives only `done`,
-      `done?` and `failed` tasks idle 14 days; a dropped task keeps its worktree for Undo.
-      Trigger: worktrees of dropped tasks pile up on disk.
+- [x] **Archive horizon for dropped and failed-to-start tasks.** Built as D514 (`tidy.md`): a
+      dropped task's copy goes after Undo's 7 days, a finished or failed one's after 3.
+
+## Tidying working copies (D514, `tidy.md`)
+
+- [ ] **Scratch folders of tasks with no place** (`<data>/scratch/<id>`): never tidied; on hel
+      8.8 GB against 1.6 GB of worktrees (a live round task's 4.6 GB, a done one's 3.0 GB of a
+      clone and a toolchain). They can hold what the task made for the person (D383), so a rule
+      needs Made for you's guarantee first. Trigger: a computer low on disk, or the next look at hel.
+- [ ] **Ignored files a fresh copy needs back** (an `.env` the agent wrote): `git worktree remove`
+      deletes ignored files, and Continue's fresh copy lacks them. Trigger: a continued task that
+      had to make one again.
+- [ ] **Keep the working copy on the Past card's menu** (today a star, or `ducter worktrees keep`).
+      Trigger: someone who keeps a copy but doesn't want the star.
+- [ ] **A disk budget per computer** (product-model "Archive and disk"): tidy oldest first sooner
+      when room runs low, and say so. Trigger: C6 Low disk is designed.
+- [ ] **Live on hel and the Mac worker:** the first sweeps after the release, read with
+      `ducter worktrees` before and after; a copy no task of the home names (one on the Mac
+      worker, `细审-nowledge-mem-长文案-让措辞更自然`) stays and is listed nowhere. Trigger: the release.
+- [ ] **Copies no task names** (a failed first start's folder, another home's): listed by
+      `ducter worktrees` as not this home's, never removed. Trigger: a second one found.
 - [ ] **A resume rejected after it started** (the harness accepts the id, then its stream
       errors) still parks the task; only a refusal at start falls back to a new session.
 - [ ] Tasks can write outside their place (one used `/tmp/flk`); no sandbox on the Mac.

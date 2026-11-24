@@ -90,6 +90,10 @@ export function createMarks(opts: { dataDir: string; now?: () => number }): Mark
         if (patch.starred) m.starred = true;
         else delete m.starred;
       }
+      if (patch.keepCopy !== undefined) {
+        if (patch.keepCopy) m.keepCopy = true;
+        else delete m.keepCopy;
+      }
       if (patch.tags !== undefined) {
         const tags: string[] = [];
         for (const t of Array.isArray(patch.tags) ? patch.tags : []) {
@@ -107,7 +111,7 @@ export function createMarks(opts: { dataDir: string; now?: () => number }): Mark
         if (patch.tint && (PAST_TINTS as readonly string[]).includes(patch.tint)) m.tint = patch.tint;
         else delete m.tint;
       }
-      const empty = !m.name && !m.starred && !m.tags && !m.glyph && !m.tint;
+      const empty = !m.name && !m.starred && !m.keepCopy && !m.tags && !m.glyph && !m.tint;
       all[persona] ??= {};
       if (empty) delete all[persona]![taskId];
       else all[persona]![taskId] = m;
@@ -251,6 +255,8 @@ interface Doc {
   /** D391: its steps, the brief first (seq order). */
   steps: { seq: number; at: string; who: "you" | "partner"; text: string; came?: string }[];
   opened?: boolean;
+  /** D514: Ducter tidied its working copy away (true while it stays archived). */
+  tidied?: boolean;
   /** D391: the agent's last words, one line. */
   last?: string;
 }
@@ -386,6 +392,8 @@ export function createPast(d: PastDeps): Past {
         doc.opened = true;
         doc.steps.unshift({ seq: e.seq, at: e.ts, who: b.origin === "you" ? "you" : "partner", text: b.brief });
       }
+    } else if (e.kind === "copy_tidied") {
+      docOf((e.body as Bodies["copy_tidied"]).taskId).tidied = true;
     } else if (e.kind === "report") {
       const b = e.body as Bodies["report"];
       if (b.summary) docOf(b.taskId).reports.push(b.summary);
@@ -418,9 +426,9 @@ export function createPast(d: PastDeps): Past {
   const build = () => {
     if (built) return;
     built = true;
-    for (const e of d.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_open", "report", "checkpoint", "task_event"] })) apply(e);
+    for (const e of d.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_open", "report", "checkpoint", "task_event", "copy_tidied"] })) apply(e);
     d.log.subscribe((e) => {
-      if (e.kind === "task_open" || e.kind === "report" || e.kind === "checkpoint" || e.kind === "task_event") apply(e);
+      if (e.kind === "task_open" || e.kind === "report" || e.kind === "checkpoint" || e.kind === "task_event" || e.kind === "copy_tidied") apply(e);
     });
   };
 
@@ -456,6 +464,8 @@ export function createPast(d: PastDeps): Past {
       ...(doc?.last && doc.last !== outcome ? { lastWords: doc.last } : {}),
       ...(c.pendingDecision?.question && (c.attention === "needs_you" || c.attention === "blocked") ? { asking: firstLine(c.pendingDecision.question, 240) } : {}),
       ...(doc?.steps.length ? { steps: doc.steps.length } : {}),
+      // D514: tidied, and not brought back since (Continue provisions it again: no longer archived).
+      ...(doc?.tidied && c.residency === "archived" ? { tidied: true } : {}),
     };
   };
   /** D391: the computer a task ran on, by name; "" for the home. */

@@ -89,6 +89,10 @@ The code works for 10 minutes, once. **New code** makes another.
 - **Someone else** who texts your partner's Apple ID gets no answer, and nothing they send is kept.
   Settings tells you, at most once a day, that someone tried. Group chats are never read.
 
+**With more than one partner**, iMessage talks with the partner that Mac's Ducter app shows. If
+it shows another partner than your first, its messages start with its name (**小家：…**). Naming a
+partner at the start, as in Telegram or WeChat, is coming soon for iMessage.
+
 If another Mac already carries iMessage for your Ducter, Settings on this Mac (and on the web)
 says **On, at** that Mac, and there's nothing to connect here.
 

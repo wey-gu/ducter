@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key" | "proactive" | "repairs" | "move";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key" | "proactive" | "repairs" | "move" | "worktrees";
 
 export interface Args {
   command: Command;
@@ -47,9 +47,9 @@ export interface Args {
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout" | "err.badCount"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere", "git", "reach", "key", "proactive", "repairs", "move"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere", "git", "reach", "key", "proactive", "repairs", "move", "worktrees"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere", "git", "reach", "key", "proactive"]);
+const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere", "git", "reach", "key", "proactive", "worktrees"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",

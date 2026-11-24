@@ -1,7 +1,7 @@
 # Chat apps: Telegram, Slack and WeChat as more windows on the one conversation
 
 > Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
-> D276, D301 (WeChat, §9) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> D276, D301 (WeChat, §9), D516 (several partners, §10) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
 > (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
 > only.** No real Telegram bot or Slack workspace was used; see "What is not verified".
@@ -200,3 +200,50 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
 - **Not verified:** a real scan (the `qrcode_img_content` a real QR carries, the redirect host),
   the 24 h / 10-message limits as WeChat really enforces them, `ret` codes beyond -14 and -2, the
   CDN's real answers, whether WeChat accepts a client that says it is Ducter. See `todo.md`.
+
+## 10. Several partners in one thread (D516)
+
+**Built 2026-11-24, checked against the fakes only** (`packages/core/test/channels-partners.test.ts`).
+
+- **Who, and the moment.** The heavy developer with Ducter, 小家, 多比 and 小新 who lives in
+  Telegram on the phone; the consumer in China who made 小家 for home and lives in WeChat; the fresh
+  user with one partner, for whom nothing here exists. Before: only the default answered in a chat
+  app, and another partner's results and asks arrived there under the default's name. After: any
+  partner is one name away in the contact the person already has, and every message says whose.
+- **One thread, the default's contact.** A chat app keeps one bot (Telegram, Slack), one ClawBot
+  (WeChat) or one Apple ID (iMessage), and it is the default partner's. Another partner's words lead
+  with its name: **小家：… / Home: …** (`as` in the hub's words); the default's carry none.
+- **Who the person's words are for** (`inbound`, in order):
+  1. a reply to a partner's message (Telegram's reply, a Slack thread under it): that partner;
+  2. a partner's name at the start, exact (case folded), after an optional `@`, then a space,
+     punctuation or nothing (**小家，…**, **@多比 …**, **Ducter, …**); 「小家里的灯」 is no address;
+     the longest name wins;
+  3. the partner the person is talking with in that thread now (`withOf`): the one they last
+     addressed, or the one that last spoke into a quiet thread; it holds `TURN_MS` (15 minutes),
+     and a partner speaking never takes the thread from another the person is talking with;
+  4. the default.
+  The words are logged as typed, in that partner's conversation (`channelOf`), with their `via`,
+  so D276's rules (§3) send its answers back. A forwarded message never addresses anyone. An
+  address is structure, like an @; the meaning stays the model's (a partner that gets words meant
+  for another passes them on, D486).
+- **How it starts.** The first time another partner speaks in a chat app, its message ends with
+  **想直接跟{name}说，开头写「{name}，」就行。/ To talk to {name} directly, start with “{name},”.**,
+  once per partner and chat app (`channels.json` `hinted`).
+- **Everything reaches the one place.** Every partner's acks, answers, late results, asks and
+  notes follow §3 (whose it is is the event's conversation, `partnerOfStream`); cards keep §4's
+  policy with the name in front, and the end-state edit keeps it. A tap or a typed 好 answers
+  that partner's question. Words passed on (D486) during a chat app's turn are answered in that
+  chat app by the partner they went to, and the thread is then with it.
+- **Counts.** None in a chat app; the needs-you count stays the person's (D497, D513). Push skips
+  what a chat app carried, per item, for every partner; it reads the person's place from every
+  partner's conversation (never from passed words).
+- **iMessage** (D277) rides the Mac app's socket, which shows one partner: it speaks for the
+  partner that Mac shows. That partner's iMessage words keep `via` (`ws.ts`), so the bridge answers
+  them; in the partner's own Apple ID another partner than the default leads with its name
+  (`Options.Label`, `App.ChatLabel`); Message yourself already leads with the shown partner's name.
+  The rules above for iMessage need the bridge's own connection to the home; owed (`todo.md`).
+- **Not built (owed):** a bot of its own per partner on Telegram and Slack (its own contact in
+  the chat app's list); WeChat's QR, redirect and upload hosts held to Tencent's; a live check of
+  iLink's text limit (one reference says it cuts at 1,800; Ducter splits at 4,000).
+- **Not verified:** any of it on a real Telegram bot, Slack workspace or WeChat; whether naive
+  people find the name address without the one line.

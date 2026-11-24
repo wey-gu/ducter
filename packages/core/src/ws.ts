@@ -917,7 +917,8 @@ export function createWsHandler(deps: WsDeps) {
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
         // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
         if (ws.data.partner && deps.partners?.has(ws.data.partner)) {
-          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), stream: channelOf(ws.data.partner) });
+          // D516: iMessage on a Mac showing it: the bridge marks the turn by its via and answers there.
+          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), stream: channelOf(ws.data.partner) });
           return;
         }
         // D405: typed in an app's sheet: about that app.
@@ -1836,6 +1837,18 @@ export function createWsHandler(deps: WsDeps) {
           .cross("asked")
           .then((run) => send(ws, { t: "proactive_cross_result", run }))
           .catch((err: Error) => send(ws, { t: "proactive_cross_result", error: err.message.slice(0, 200) }));
+        return;
+      }
+      case "worktrees_plan": {
+        // D514: read-only; answered on this socket only.
+        const r = deps.runner();
+        if (!r?.tidyPlan) {
+          send(ws, { t: "worktrees_plan_result", error: "not available" });
+          return;
+        }
+        r.tidyPlan()
+          .then((plan) => send(ws, { t: "worktrees_plan_result", plan }))
+          .catch((err: Error) => send(ws, { t: "worktrees_plan_result", error: err.message.slice(0, 200) }));
         return;
       }
       case "repairs_week": {

@@ -51,6 +51,8 @@ export interface DevicesOptions {
   memCarried?: () => boolean;
   /** D377: looking at the person's agents' records is on (Settings, 读它们留下的记录): a worker's records row shows. */
   recordsOn?: () => boolean;
+  /** D514: the working copies tidied on a computer so far ("local" the home). */
+  tidied?: (device: string) => { count: number; bytes: number } | undefined;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -395,6 +397,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       harnesses: agentsView("local", (o.agentSetup?.()?.decorate(me.harnesses) ?? me.harnesses).map((h) => deviceHarness(h))),
       abilities: [webAbility(me.cua, me.native), (await o.computer?.ability().catch(() => undefined)) ?? later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
+      ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.("local")),
     };
     const up = o.updates?.();
     const homeUpdate = o.self ? up?.view("local", o.self.version, o.self.how) : undefined;
@@ -456,6 +459,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ...(hello?.mem && o.memOn?.() ? { mem: { ...hello.mem, ...(o.memCarried?.() ? { carried: true as const } : {}) } } : {}),
           // D377: the person's own agents' records there: only while looking is on, only with records there or a yes.
           ...(hello?.records && o.recordsOn?.() && (hello.records.state === "on" || hello.records.agents?.length) ? { records: hello.records } : {}),
+          ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.(d.id)),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];

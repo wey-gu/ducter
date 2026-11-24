@@ -379,8 +379,8 @@ test("merge keeps a worktree with leftovers and says so on the task", async () =
   await runner.dispose();
 });
 
-// focus-window-states parked -> archived: the archive horizon (default 14 days).
-test("archive horizon: a finished task idle 14 days is archived (clean worktree removed, branch kept); leftovers keep it parked", async () => {
+// focus-window-states parked -> archived: the archive horizon (D514: 3 days for a finished task).
+test("archive horizon: a finished task idle past its window is archived (clean worktree removed, branch kept); leftovers keep it parked", async () => {
   const repo = join(dir, "repo");
   Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
   sh(repo, "config", "user.name", "t");

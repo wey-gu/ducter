@@ -93,3 +93,23 @@ test("D323: every Chat apps page hears which Mac carries iMessage, and that it s
   const gone = (await web.until((f) => f.t === "channels" && f !== first && !f.imessage)) as Channels;
   expect(gone.imessage).toBeUndefined();
 });
+
+test("D516: a Mac showing another partner keeps via imessage on that partner's words, so its bridge answers there", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, partners: true });
+  core.setPartner({ onTrigger: () => {} });
+  stops.push(() => core.stop());
+  expect(core.partners.add({ name: "小家" }).ok).toBe(true);
+  const frames: ServerFrame[] = [];
+  const ws = new WebSocket(core.url);
+  ws.onmessage = (m) => frames.push(JSON.parse(String(m.data)));
+  await new Promise<void>((res, rej) => ((ws.onopen = () => res()), (ws.onerror = rej)));
+  stops.push(() => ws.close());
+  ws.send(JSON.stringify({ t: "hello", client: "desktop", persona: "p2" }));
+  for (let i = 0; i < 200 && !frames.some((f) => f.t === "welcome"); i++) await Bun.sleep(10);
+  ws.send(JSON.stringify({ t: "send", text: "周六的牙医约了吗", clientId: "imessage:g2", via: "imessage" }));
+  for (let i = 0; i < 200 && !frames.some(echoOf("imessage:g2")); i++) await Bun.sleep(10);
+  const mine = core.log.read({ stream: "channel:p2", kinds: ["user_msg"] }).map((e) => e.body as Bodies["user_msg"]);
+  expect(mine.map((b) => [b.text, b.via])).toEqual([["周六的牙医约了吗", "imessage"]]);
+});

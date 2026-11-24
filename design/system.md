@@ -1137,8 +1137,13 @@ redesign later:
   copy (D142) is never kept for such a folder, and Undo never puts its files back. A new task's worktree is
   `<Ducter folder>/worktrees/<repo name>/<branch slug>` (D204: the visible `~/ducter` of that
   computer, `protocol/src/ducter-folder.ts`), `-2`, `-3` when taken (D198; taken compared NFC).
-  The slug keeps letters, marks and digits of any script, NFC, ≤ 40 characters cut by grapheme,
-  and is the branch's too, `ducter/<slug>` (D201); a task from before keeps its stored
+  The slug is the branch's part after `ducter/`. D522: a new task's branch is ASCII,
+  `ducter/<number>-<slug>` or `ducter/<slug>`, the slug 3 to 6 lowercase English words (≤ 40
+  characters, whole words) written once by the cheapest model of the partner's agent from the title
+  and the repository's own branch convention (`runner/src/branch-name.ts`, the worker op
+  `branchRules`), else `ducter/<number>` or `ducter/task-<id>`; code checks only the charset, the
+  length and uniqueness. A branch someone else named keeps its words in the folder (letters, marks
+  and digits of any script, NFC, D201); a task from before keeps its stored branch and
   `<dataDir>/worktrees/<repo>/<slug>` or `<dataDir>/worktrees/<taskId>`. Archive removes only
   worktrees under `<dataDir>/worktrees` or under the `worktrees/` of a folder carrying Ducter's
   marker `.ducter-folder`, and a repo's folder there once it is empty. The Ducter folder's

@@ -27,6 +27,7 @@ import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, re
 import { join } from "node:path";
 import type { Anywhere, AnywhereReason, AnywhereSetup, AnywhereStepCmd, AnywhereStepId, AnywhereStepResult, LangTag } from "@ducter/protocol";
 import { fill, langName, words } from "@ducter/protocol";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 /** The cloudflared Ducter downloads when the computer has none: pinned, each file's SHA-256 checked. */
 export const CLOUDFLARED = {
@@ -868,7 +869,7 @@ export function realTunnelSys(o: { dataDir: string; env?: Record<string, string 
   const platform = o.platform ?? process.platform;
   const arch = o.arch ?? process.arch;
   const ownBin = join(o.dataDir, "bin", `cloudflared-${CLOUDFLARED.version}`);
-  const underSystemd = () => platform === "linux" && !!env.INVOCATION_ID && !!Bun.which("systemd-run") && !!Bun.which("systemctl");
+  const underSystemd = () => platform === "linux" && !!env.INVOCATION_ID && !!whichNow("systemd-run") && !!whichNow("systemctl");
   const exec = async (argv: string[], extra: Record<string, string> = {}) => {
     const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", env: { ...(env as Record<string, string>), ...extra } });
     const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
@@ -885,7 +886,7 @@ export function realTunnelSys(o: { dataDir: string; env?: Record<string, string 
     async ensure(onGetting) {
       if (env.DUCTER_CLOUDFLARED) return existsSync(env.DUCTER_CLOUDFLARED) ? { bin: env.DUCTER_CLOUDFLARED } : { error: "failed", detail: `${env.DUCTER_CLOUDFLARED} is missing` };
       if (existsSync(ownBin)) return { bin: ownBin };
-      const onPath = Bun.which("cloudflared");
+      const onPath = whichNow("cloudflared");
       if (onPath) return { bin: onPath };
       const asset = CLOUDFLARED.assets[`${platform}-${arch}`];
       if (!asset) return { error: "unsupported", detail: `${platform}-${arch}` };

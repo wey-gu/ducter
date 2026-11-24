@@ -33,7 +33,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -62,7 +62,7 @@ import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
 import { PhoneMore, ShareButton, taskPr } from "./task-sheet.tsx";
-import { usePhone } from "./wide.ts";
+import { NARROW, usePhone, useRoomy } from "./wide.ts";
 import { prNumber } from "./task-words.ts";
 
 /** A pull request's drawn mark (D484): two branches meeting, never a font glyph. */
@@ -1618,6 +1618,23 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
+  // D548: a narrow phone has one button for the places (the bar's middle keeps its one line).
+  const narrow = useRoomy(NARROW);
+  if (narrow) {
+    const update = n > 0 || running ? [{ key: "update", label: running ? t("nav.updating") : n > 1 ? t("nav.update.n", n) : t("nav.update"), glyph: <UpdatePebble />, on: false, go: () => A.openSettings("devices") }] : [];
+    return (
+      <PlacesMenu
+        dot={update.length > 0}
+        segs={[
+          ...update,
+          ...(onHand || here === "onhand" ? [{ key: "onhand", label: t("nav.onhand"), glyph: <OnHandMark />, on: here === "onhand", go: () => A.go({ name: "onhand" }) }] : []),
+          { key: "apps", label: t("apps.place"), glyph: <AppsMark />, on: here === "apps", go: () => openShelf() },
+          { key: "devices", label: t("nav.devices"), glyph: <DevicesMark />, on: here === "devices", go: () => A.openSettings("devices") },
+          { key: "settings", label: t("nav.settings"), glyph: <Gear />, on: here === "settings", go: () => A.openSettings() },
+        ]}
+      />
+    );
+  }
   return (
     <>
       {(n > 0 || running) && (
@@ -1652,6 +1669,8 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
   // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
   const phoneBar = usePhone();
   const fold = useSplit();
+  // D548: up to 560 wide the bar is one line: the others, the name over its one count, the places.
+  const narrow = useRoomy(NARROW);
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1698,10 +1717,14 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
       {!phoneBar && !fold && <RailToggle />}
       {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
       <div class="who">
-        {/* D497: with more than one partner, the figure is in its partner's own clay. */}
-        <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
-        </button>
+        {/* D497: with more than one partner, the figure is in its partner's own clay. D548: on a narrow
+            phone with others beside, none (their stack holds the left; the composer says who); with one
+            partner a small one (24) before its name. */}
+        {!(narrow && A.manyPartners()) && (
+          <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
+            <Avatar size={narrow ? 24 : phoneBar && A.manyPartners() ? 34 : 44} />
+          </button>
+        )}
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
             {A.S.personaName}

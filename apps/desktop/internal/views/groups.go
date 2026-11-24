@@ -325,7 +325,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 			a.PutAway(c, *fin)
 		}
 	})
-	hover := card.Hovered()
+	hover := card.Hovered() || card.FocusWithin()
 	card.Children(func() {
 		ui.Row(c.Key("head")).Gap(14).AlignItems(ui.Center).MinHeight(32).Children(func() {
 			if a.oh.groupRename == g.ID {
@@ -349,11 +349,8 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 			if fin != nil {
-				if hover {
-					a.awayX(c, "away", *fin)
-				} else {
-					ui.Box(c.Key("away")).Size(24, 24).Shrink(0).AccessHidden(true) // the ×'s place, so the head never moves
-				}
+				// D529: the × in its kept room, faded in; the head never moves.
+				a.revealSlot(c, "away-at", hover, func() { a.awayX(c, "away", *fin) })
 			}
 		})
 		var held []groupRow
@@ -409,9 +406,14 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 							words = a.L.T("group.held.on", a.computerName(r.device))
 						}
 						uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-						if i := heldIndex(held, r.key); i > 0 && row.Hovered() && a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
-							to := i - 1
-							send(protocol.TaskGroupFrame{Op: "move", Member: r.key, To: &to})
+						if i := heldIndex(held, r.key); i > 0 {
+							// D529: 往前 in its kept room, faded in on the part's hover.
+							a.revealSlot(c, "up", row.Hovered() || row.FocusWithin(), func() {
+								if a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
+									to := i - 1
+									send(protocol.TaskGroupFrame{Op: "move", Member: r.key, To: &to})
+								}
+							})
 						}
 					case k == "needs":
 						uiText(c, a.L.T("lane.needs_you")).FontSize(t.XS).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()

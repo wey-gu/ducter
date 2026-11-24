@@ -23,7 +23,7 @@ Words are the glossary's (`product-model.md`).
 ## @: refer to something
 
 Typing `@` (at the start, after a space, or straight after CJK text; never inside an address)
-opens the list above the caret. Sections, each with its drawn glyph:
+opens the list above the caret. Sections, each with its drawn glyph (one ink for all):
 
 | Section | What | Where from |
 |---|---|---|
@@ -79,7 +79,7 @@ through OAR's inventories and cached five minutes per task:
 | Agent | Offered | Not offered, and why |
 |---|---|---|
 | Claude Code | everything its catalog lists, with descriptions | pickers and screens of its terminal (`/config`, `/color`, `/agents`, `/mcp`…) |
-| Codex | `/compact` (OAR's), `/model`, `/effort`, its skills as `$name` | its TUI commands (`/review`, `/diff`, `/init`…): the app-server takes none |
+| Codex | `/compact` (OAR's), `/model`, `/effort`, its skills as `$name` | none missing: its TUI's own commands (`/review`, `/diff`, `/status`…) are covered by Ducter's own surfaces (the workbench's changes, the review flow, the task's card) |
 | pi | its prompt templates, `/skill:name`, `/compact` | — |
 | DeepSeek Harness | `/compact`, `/model`, `/effort` | its skills: no verified way to run one by name |
 | Antigravity | `/model`, `/effort` | `/compact`: OAR says it is unverified |
@@ -91,8 +91,10 @@ through OAR's inventories and cached five minutes per task:
 closes and stays closed until the trigger changes, typing filters; the mouse hovers and clicks
 without taking the focus from the words. It stands above the caret on the clay menu's card
 (`--floating`, a hairline), at most 340 high and never past the window (it goes below where there
-is no room above). On a phone or under 560 wide it is a sheet docked over the composer with a grab
-line, its name and 收起 / Close, rows 48 tall. While the home answers it breathes and says so
+is no room above); its keys' footer always stands inside it while the rows scroll. Every glyph is
+in one ink: the list finds things, On hand says how they stand. On a phone or under 560 wide it is a
+sheet docked over the composer with only a grabber and 收起 / Close over the first group's name (S4
+at most between them; the group names say what it holds), rows 48 tall. While the home answers it breathes and says so
 (在找… / 在读 Claude Code 的命令…); nothing found says the words typed.
 
 ## What it is not

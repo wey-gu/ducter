@@ -535,7 +535,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         skillForm: "${name}",
         fixed: ["compact", "model", "effort"],
         hidden: [],
-        how: "the app-server takes no slash commands (they are its TUI's: /review, /diff, /init, /status… never reach it through OAR); a bare /compact is OAR's manual compaction (thread/compact/start, D288); its skills (skills/list) are written $name in the words, which its model reads beside its skill listing",
+        how: "its TUI's own slash commands (/review, /diff, /status…) are covered by Ducter's own surfaces (the workbench's changes, the review flow, the card), so none is needed through OAR; a bare /compact is OAR's manual compaction (thread/compact/start, D288); its skills (skills/list) are written $name in the words, which its model reads beside its skill listing",
       },
       evidence: { kind: "VERIFIED", how: "research/224: OAR 0.124 codexSkills listed the scratch project's .agents/skills and its system skills, token-free; commands unsupported (transport_unavailable); $name taken as a skill: DOCUMENTED (Codex skills docs), not run (no model call under the scratch home)", date: "2026-11-24", version: "0.172.0" },
     },

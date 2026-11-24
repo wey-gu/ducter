@@ -1095,6 +1095,119 @@ func (a *App) decisionAbout(d *store.DecisionState) string {
 	return string(q)
 }
 
+// ---------- the one row hover (D529) ----------
+
+// rowGround is what a row or card stands on, for its hover (D529): the
+// neutral clay card, a neutral card on a tinted ledge (a sheet in 等你), or
+// a card tinted in a state's own surface.
+type rowGround struct {
+	tint *theme.StateColors // nil: neutral
+	own  bool               // the row's own fill is the tint's surface
+	page bool               // a row lying flat on the page's paper, no card under it
+}
+
+func groundNeutral() rowGround                    { return rowGround{} }
+func groundPage() rowGround                       { return rowGround{page: true} }
+func groundLedge(s *theme.StateColors) rowGround  { return rowGround{tint: s} }
+func groundTinted(s *theme.StateColors) rowGround { return rowGround{tint: s, own: true} }
+
+// rowHoverFill is the fill a hovered row takes on its ground: a neutral
+// card warms toward SurfaceSunken (light) or lifts toward SurfaceRaised
+// (dark, where sunken is the darker); a card on a tinted ledge warms within
+// that tint; a tinted card deepens a little within its own. Never grey.
+func (a *App) rowHoverFill(g rowGround) (rest, hover ui.Color) {
+	t := a.T
+	switch {
+	case g.page:
+		return t.Bg, t.Sunken // the paper warms to its sunken tint
+	case g.tint != nil && g.own:
+		return g.tint.Surface, g.tint.Surface.Mix(g.tint.Ledge, 0.28)
+	case g.tint != nil && t.Dark:
+		return t.Surface, t.Surface.Mix(g.tint.Surface, 0.45)
+	case g.tint != nil:
+		return t.Surface, t.Surface.Mix(g.tint.Surface, 0.5)
+	case t.Dark:
+		return t.Surface, t.Surface.Mix(t.SurfaceRaised, 0.9)
+	}
+	return t.Surface, t.Surface.Mix(t.SurfaceSunken, 0.55)
+}
+
+// rowPressFill is a pressed row's fill: a step deeper within the same
+// ground (sunk, in dark too).
+func (a *App) rowPressFill(g rowGround) ui.Color {
+	t := a.T
+	switch {
+	case g.page:
+		return t.Sunken.Mix(t.SurfaceSunken, 0.6)
+	case g.tint != nil && g.own:
+		return g.tint.Surface.Mix(g.tint.Ledge, 0.5)
+	case g.tint != nil:
+		return t.Surface.Mix(g.tint.Surface, 0.8)
+	}
+	return t.Surface.Mix(t.SurfaceSunken, 0.9)
+}
+
+// rowHover is the one row hover (D529), for every row and card a pointer
+// can open: the fill cross-fades to rowHoverFill over Hover (140 ms; at
+// once under reduced motion) and nothing else changes: no size, no line
+// break, no position. on adds a reason of the caller's to show it (the
+// keys on it, its menu open). It says whether the row is revealed (pointed
+// at, the keyboard focus inside it, or on), for revealSlot.
+func (a *App) rowHover(c *ui.Context, row ui.Element, g rowGround, on bool) bool {
+	revealed := on || row.Hovered() || row.FocusWithin()
+	rest, hover := a.rowHoverFill(g)
+	k := float32(0)
+	if revealed {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = row.AnimateTo("hover", k, a.T.Hover)
+	}
+	switch {
+	case row.Pressed():
+		row.Background(a.rowPressFill(g))
+	case k >= 0.999:
+		row.Background(hover)
+	case k > 0.001:
+		row.Background(rest.Mix(hover, k))
+	case g.own:
+		row.Background(rest)
+	}
+	return revealed
+}
+
+// cardLift is a free-standing card's hover (Past tasks; D76, D529): it
+// lifts by its shadow alone (the drop opens, the ledge deepens), never by
+// moving, over Hover; at once under reduced motion. It returns how far.
+func (a *App) cardLift(c *ui.Context, card ui.Element, on bool) float32 {
+	k := float32(0)
+	if on {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = card.AnimateTo("lift", k, a.T.Hover)
+	}
+	return k
+}
+
+// revealSlot holds a row's hover-revealed controls (×, ⋯, Pause; D529).
+// They are always built, so their room is kept and the keyboard reaches
+// them (Tab into the row reveals them, as hover does); they cross-fade in
+// over Hover and never push anything. A row that already shows actions
+// puts its slot in that same action group.
+func (a *App) revealSlot(c *ui.Context, key string, on bool, build func()) ui.Element {
+	slot := ui.Row(c.Key(key)).Gap(2).AlignItems(ui.Center).Shrink(0)
+	k := float32(0)
+	if on {
+		k = 1
+	}
+	if !c.Preferences().ReduceMotion {
+		k = slot.AnimateTo("reveal", k, a.T.Hover)
+	}
+	slot.Opacity(k).Children(build)
+	return slot
+}
+
 // stepNumber is a step's number in a short numbered sequence: a sunken disc
 // with the number (the lend sheet's three steps; D518 a sign-in's two).
 func (a *App) stepNumber(c *ui.Context, n int) {

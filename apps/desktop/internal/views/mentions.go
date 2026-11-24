@@ -656,7 +656,7 @@ func (a *App) mentionPop(c *ui.Context, key string, mp *mentionPlace, box ui.Ele
 	if p.kind == '/' {
 		label = a.L.T("slash.label")
 	}
-	panel := ui.Scroll(c.Key(key+"-pop")).AttachTo(box, ui.AnchorTopStart, ui.AnchorBottomStart).AttachEdgeMargin(12).Margin(0, 0, t.S2, 0).
+	panel := ui.Column(c.Key(key+"-pop")).AttachTo(box, ui.AnchorTopStart, ui.AnchorBottomStart).AttachEdgeMargin(12).Margin(0, 0, t.S2, 0).
 		Width(w).MaxHeight(maxH).Padding(6).Radius(t.RadiusMD).Background(t.Surface).Border(1, t.Line).
 		Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(50).Role(ui.RoleListBox).Label(label)
 	panel.Children(func() {
@@ -687,25 +687,27 @@ func (a *App) mentionPop(c *ui.Context, key string, mp *mentionPlace, box ui.Ele
 			return
 		}
 		n := -1
-		for si, s := range secs {
-			ui.Column(c.Key("mp-sec:" + s.key)).Children(func() {
-				if si > 0 {
-					ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 4, 0)
-				}
-				uiText(c.Key("mp-head"), a.sectionName(s.key, harness)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(6, 10, 3, 10).Role(ui.RoleHeading)
-				for _, r := range s.rows {
-					n++
-					i := n
-					if a.popRowView(c, fmt.Sprintf("mp-row:%d", i), r, i == p.sel, func() { p.sel = i }) {
-						if out, ok := a.pickRow(p, mp, r, *draft); ok {
-							*draft = out
+		ui.Scroll(c.Key("mp-list")).Grow(1).Shrink(1).MinHeight(0).Children(func() {
+			for si, s := range secs {
+				ui.Column(c.Key("mp-sec:" + s.key)).Children(func() {
+					if si > 0 {
+						ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 4, 0)
+					}
+					uiText(c.Key("mp-head"), a.sectionName(s.key, harness)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(6, 10, 3, 10).Role(ui.RoleHeading)
+					for _, r := range s.rows {
+						n++
+						i := n
+						if a.popRowView(c, fmt.Sprintf("mp-row:%d", i), r, i == p.sel, func() { p.sel = i }) {
+							if out, ok := a.pickRow(p, mp, r, *draft); ok {
+								*draft = out
+							}
 						}
 					}
-				}
-			})
-		}
-		ui.Box(c.Key("mp-keys-rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 0, 0)
-		ui.Row(c.Key("mp-keys")).Gap(t.S3).Padding(8, 10, 4, 10).AccessHidden(true).Children(func() {
+				})
+			}
+		})
+		ui.Box(c.Key("mp-keys-rule")).Height(1).Background(t.LineSoft).Margin(4, 0, 0, 0).Shrink(0)
+		ui.Row(c.Key("mp-keys")).Gap(t.S3).Padding(8, 10, 4, 10).AccessHidden(true).Shrink(0).Children(func() {
 			// Each key's cap drawn (never a symbol iOS or macOS draws as an emoji).
 			keyCap := func(key, mark string) {
 				ui.Box(c.Key("cap:"+key)).Size(18, 16).Radius(5).Background(t.Sunken).Draw(drawKeyCap(mark, t.InkSoft))
@@ -733,16 +735,6 @@ func (a *App) popRowView(c *ui.Context, key string, r popRow, on bool, hover fun
 	glyph, name, sub, ink, code := "", "", "", t.InkSoft, false
 	if r.item != nil {
 		glyph, name, sub = r.item.Kind, r.item.Label, r.item.Sub
-		switch r.item.Attention {
-		case "working", "queued":
-			ink = t.Working.Ink
-		case "needs_you", "blocked":
-			ink = t.NeedsYou.Ink
-		case "done", "merged":
-			ink = t.Done.Ink
-		case "failed", "closed":
-			ink = t.Failed.Ink
-		}
 	} else {
 		e := r.entry
 		sub = a.slashAbout(*e)

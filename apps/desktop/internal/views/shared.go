@@ -326,3 +326,94 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 	})
 	return n > 0 && fold.Clicked()
 }
+
+// trayLine is one dense row of a quiet tray (D521, the opened task's 后台 /
+// In the background): a drawn mark (markAbout names it), its words on one
+// line cut with an ellipsis, its facts at the right edge (a state word, a
+// time in mono), a chevron when it opens (open non-nil), and an action slot
+// apart at its far right (act; reserve keeps the slot empty so the columns
+// line up). head: the tray's own head row (stronger words).
+type trayLine struct {
+	key, words, markAbout string
+	mark                  func(ui.Color) func(*ui.Painter, ui.Rect)
+	markInk               ui.Color
+	head                  bool
+	state, time           string
+	stateInk              ui.Color
+	open                  *bool
+	act                   func()
+	reserve               bool
+}
+
+// trayRow draws one trayLine; it says whether the row was pressed (only a
+// row that opens is pressable). The web's TrayRow.
+func (a *App) trayRow(c *ui.Context, r trayLine) bool {
+	t := a.T
+	clicked := false
+	ui.Row(c.Key("tray:" + r.key)).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		main := ui.Row(c.Key("trm")).Gap(t.S2).AlignItems(ui.Center).Grow(1).Shrink(1).MinWidth(0).
+			MinHeight(t.ControlSM).Padding(0, t.S3).Radius(t.RadiusSM)
+		hover := false
+		if r.open != nil {
+			name := r.words
+			if *r.open {
+				name = spoken(a.L, r.words, a.L.T("bg.hide"))
+			} else {
+				name = spoken(a.L, r.words, a.L.T("bg.show"))
+			}
+			main.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable()
+			hover = main.Hovered()
+			if main.Pressed() {
+				main.Background(t.LineSoft)
+			} else if hover {
+				main.Background(t.Surface)
+			}
+			clicked = main.Clicked()
+		}
+		main.Children(func() {
+			if r.mark != nil {
+				ink := t.InkMuted
+				if r.markInk != (ui.Color{}) {
+					ink = r.markInk
+				}
+				g := ui.Box(c).Size(16, 16).Draw(r.mark(ink)).Shrink(0)
+				if r.markAbout != "" {
+					g.Label(r.markAbout).Tooltip(r.markAbout)
+				}
+			}
+			ink, w := t.InkSoft, 500
+			if r.head {
+				w = 700
+			}
+			if hover {
+				ink = t.Ink
+			}
+			uiText(c, r.words).FontSize(t.SM).FontWeight(w).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).Grow(1).Tooltip(r.words)
+			if r.state != "" {
+				si := t.InkMuted
+				if r.stateInk != (ui.Color{}) {
+					si = r.stateInk
+				}
+				uiText(c, r.state).FontSize(t.XS).TextColor(si).SingleLine().Shrink(0)
+			}
+			if r.time != "" {
+				uiText(c, r.time).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+			}
+			if r.open != nil {
+				ci := t.InkMuted
+				if hover {
+					ci = t.Ink
+				}
+				a.glyph(c, 12, drawChevron(ci, *r.open))
+			}
+		})
+		if r.act != nil || r.reserve {
+			ui.Row(c.Key("tra")).Width(t.ControlSM).Height(t.ControlSM).Justify(ui.Center).AlignItems(ui.Center).Shrink(0).Children(func() {
+				if r.act != nil {
+					r.act()
+				}
+			})
+		}
+	})
+	return clicked
+}

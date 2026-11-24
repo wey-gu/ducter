@@ -516,7 +516,7 @@ func (a *App) takeReview() {
 		if f.OK {
 			r.open = false
 		} else {
-			r.said = firstNonEmpty(f.Error, a.L.T("newtask.err.failed"))
+			r.said = firstNonEmpty(f.Error, a.L.T("newtask.err.failed.bare"))
 		}
 	}
 }

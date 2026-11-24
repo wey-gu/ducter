@@ -5,7 +5,7 @@ package i18n
 
 var zhMentions = Table{
 	"mention.label":           "提到",
-	"slash.label":             "可以用的",
+	"slash.label":             "/ 能做的",
 	"mention.close":           "收起",
 	"mention.looking":         "在找…",
 	"mention.hint":            "打几个字，找任务、文件、伙伴或 PR",
@@ -55,7 +55,7 @@ var zhMentions = Table{
 
 var enMentions = Table{
 	"mention.label":           "Mention",
-	"slash.label":             "What you can use",
+	"slash.label":             "What / can do",
 	"mention.close":           "Close",
 	"mention.looking":         "Looking…",
 	"mention.hint":            "Type a few letters to find a task, file, partner or PR",

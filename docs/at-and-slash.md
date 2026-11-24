@@ -47,7 +47,8 @@ Type **/** for what you can use.
   and on Claude Code everything it offers, your own commands and skills too. They reach the agent
   exactly as you type them.
 
-Only commands that really reach the agent are listed. Codex's own screen commands (like `/review`
-or `/diff`) work only in its own window, so they aren't offered; its skills are, written `$name`.
+Only commands that really reach the agent are listed. On Codex, its skills are, written `$name`;
+for what its own screen commands do (like `/review` or `/diff`), use the task's workbench and review
+in Ducter.
 
 On a phone the lists open as a sheet over where you write.

@@ -644,3 +644,78 @@ export function TimeCol(p: { at: string; text: string }) {
     </time>
   );
 }
+
+/** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
+ *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
+ *  pointer (danger: the failed ink). The Mac's `iconButton`. */
+export function IconBtn(p: { label: string; about?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
+  return (
+    <button type="button" class={`icon-btn${p.danger ? " danger" : ""}`} title={p.label} aria-label={p.about ? spoken(A.L, p.label, p.about) : p.label} disabled={p.disabled} onClick={p.onClick}>
+      {p.children}
+    </button>
+  );
+}
+
+/**
+ * D521: one dense row of a quiet tray (the opened task's 后台 / In the background): a drawn mark,
+ * its words cut with an ellipsis (the whole in the tooltip), its facts at the right edge in mono
+ * (a time, a state), an optional chevron when it opens (open: what it holds, under it), and an
+ * optional action apart at its far right (an IconBtn). head: the tray's own head row (stronger
+ * words). The Mac's `trayRow`.
+ */
+export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words: string; head?: boolean; tone?: string; side?: ComponentChildren; open?: boolean; onClick?: () => void; act?: ComponentChildren; children?: ComponentChildren }) {
+  const inner = (
+    <>
+      {p.mark && (
+        <span class="tray-mark" role={p.markAbout ? "img" : undefined} aria-label={p.markAbout} title={p.markAbout}>
+          {p.mark}
+        </span>
+      )}
+      <span class="tray-words" title={p.words}>
+        {p.words}
+      </span>
+      {p.side && <span class="tray-side">{p.side}</span>}
+      {p.onClick && p.open !== undefined && <Chev open={p.open} cls="tray-chev" />}
+    </>
+  );
+  return (
+    <div class={`tray-row${p.head ? " head" : ""}${p.tone ? ` ${p.tone}` : ""}${p.act !== undefined ? " has-act" : ""}`}>
+      <div class="tray-line">
+        {p.onClick ? (
+          <button type="button" class="tray-main" aria-expanded={p.open} onClick={p.onClick}>
+            {inner}
+          </button>
+        ) : (
+          <span class="tray-main">{inner}</span>
+        )}
+        {p.act !== undefined && <span class="tray-act">{p.act}</span>}
+      </div>
+      {p.open && p.children}
+    </div>
+  );
+}
+
+/**
+ * D532: a system notice, the app speaking (design/ui.md "Notices"; the Mac's `notice`): a slim strip
+ * just above the composer, a sunken tint (done, alert: their own surfaces), a drawn glyph at its
+ * start, 13/12px words, small buttons at its end.
+ */
+export function Notice(p: { tone?: "info" | "done" | "alert"; glyph?: "pebble"; title?: string; body?: string; sub?: string; actions?: ComponentChildren; class?: string }) {
+  return (
+    <div class={`notice ${p.tone ?? "info"}${p.class ? ` ${p.class}` : ""}`} role={p.tone === "alert" ? "alert" : "status"}>
+      {p.glyph === "pebble" && (
+        <svg class="notice-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          <ellipse cx="9" cy="11" rx="7" ry="5.4" fill="var(--ink-muted)" opacity="0.45" />
+          <ellipse cx="9" cy="9.6" rx="7" ry="5.4" fill="var(--ink-muted)" />
+          <ellipse cx="7.2" cy="7.6" rx="2.6" ry="1.3" fill="var(--surface)" opacity="0.35" />
+        </svg>
+      )}
+      <div class="notice-w">
+        {p.title && <b>{p.title}</b>}
+        {p.body && <span>{p.body}</span>}
+        {p.sub && <small>{p.sub}</small>}
+      </div>
+      {p.actions && <div class="notice-a">{p.actions}</div>}
+    </div>
+  );
+}

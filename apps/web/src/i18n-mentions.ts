@@ -3,7 +3,7 @@
 export const mentionWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     "mention.label": "提到",
-    "slash.label": "可以用的",
+    "slash.label": "/ 能做的",
     "mention.close": "收起",
     "mention.looking": "在找…",
     "mention.hint": "打几个字，找任务、文件、伙伴或 PR",
@@ -52,7 +52,7 @@ export const mentionWords: { zh: Record<string, string>; en: Record<string, stri
   },
   en: {
     "mention.label": "Mention",
-    "slash.label": "What you can use",
+    "slash.label": "What / can do",
     "mention.close": "Close",
     "mention.looking": "Looking…",
     "mention.hint": "Type a few letters to find a task, file, partner or PR",

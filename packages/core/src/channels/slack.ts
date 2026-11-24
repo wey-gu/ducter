@@ -15,13 +15,29 @@ export const SLACK_MAX_TEXT = 39_000;
 export const SLACK_SECTION_MAX = 3_000;
 export const SLACK_BUTTON_MAX = 75;
 
+/**
+ * D531: each partner's face, as a picture Slack can fetch (icon_url must be a public address; a
+ * home is often on localhost or a private network). One PNG per look on the site.
+ */
+export const FACE_BASE = "https://ducter.ai/faces";
+export const faceUrl = (look: string) => `${FACE_BASE}/${/^[a-z]+$/.test(look) ? look : "sand"}.png`;
+/** D531: the scope that lets a message carry its own name and picture. */
+export const SLACK_CUSTOMIZE = "chat:write.customize";
+/** D531: what the current manifest adds to an older app; one missing means a reinstall. */
+export const SLACK_NEWER_SCOPES = [SLACK_CUSTOMIZE, "app_mentions:read"];
+/** D531: opens the app's messages in Slack (the desktop app when there is one, else the browser). */
+export const slackAppLink = (appId: string, teamId?: string) => `https://slack.com/app_redirect?app=${encodeURIComponent(appId)}${teamId ? `&team=${encodeURIComponent(teamId)}` : ""}`;
+
 export const isSlackBotToken = (t: string) => /^xoxb-[A-Za-z0-9-]{20,}$/.test(t.trim());
 export const isSlackAppToken = (t: string) => /^xapp-[A-Za-z0-9-]{20,}$/.test(t.trim());
 
 /**
  * The app the person creates at api.slack.com › Create New App › From a manifest: a bot user that
  * is the partner, the DM tab, Socket Mode, interactivity for buttons, and only the scopes a DM
- * with the partner needs (no channel reads, no user scopes).
+ * with the partner needs (no channel reads, no user scopes). D531: chat:write.customize, so each
+ * message carries its partner's own name and face; Socket Mode on and token rotation off, so the
+ * person never has to touch either (rotation can't be turned off once on). app_mention with
+ * app_mentions:read, so the person can @ the partner in a channel it was added to.
  */
 export function slackManifest(name: string): string {
   const n = name.trim().slice(0, 35) || "Ducter";
@@ -32,9 +48,9 @@ export function slackManifest(name: string): string {
         app_home: { home_tab_enabled: false, messages_tab_enabled: true, messages_tab_read_only_enabled: false },
         bot_user: { display_name: n, always_online: true },
       },
-      oauth_config: { scopes: { bot: ["chat:write", "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"] } },
+      oauth_config: { scopes: { bot: ["app_mentions:read", "chat:write", SLACK_CUSTOMIZE, "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"] } },
       settings: {
-        event_subscriptions: { bot_events: ["message.im"] },
+        event_subscriptions: { bot_events: ["app_mention", "message.im"] },
         interactivity: { is_enabled: true },
         org_deploy_enabled: false,
         socket_mode_enabled: true,
@@ -81,6 +97,8 @@ export function createSlack(o: SlackOpts): Channel {
   let sock: WebSocket | undefined;
   let me: BotInfo | undefined;
   const names = new Map<string, string>();
+  let scopes: string | null = null;
+  let events: ChannelEvents | undefined;
 
   const call = async <T extends Record<string, unknown>>(method: string, body: Record<string, unknown>, token = bot): Promise<T> => {
     let res: Response;
@@ -101,8 +119,18 @@ export function createSlack(o: SlackOpts): Channel {
     } catch {
       throw new ChannelError("network", `Slack answered ${res.status} (${method})`);
     }
+    // D531: Slack lists the bot token's scopes on every answer: a reinstall that added
+    // chat:write.customize is seen on the next call, and the partners' faces come back by themselves.
+    const listed = token === bot ? res.headers.get("x-oauth-scopes") : null;
+    if (listed !== null) {
+      scopes = listed;
+      if (me && fresh(me, listed)) events?.changed?.();
+    }
     if (j.ok) return j;
     const e = String(j.error ?? "error");
+    // D531: an app made before chat:write.customize: its own name and face can't be set; the hub
+    // posts plainly and Settings asks once for a reinstall (never a refused token).
+    if (e === "missing_scope" && String((j as { needed?: string }).needed ?? "").includes(SLACK_CUSTOMIZE)) throw new NoCustomize();
     if (e === "ratelimited") throw new RetryAfter(1000);
     if (/^(invalid_auth|not_authed|account_inactive|token_revoked|token_expired|missing_scope|not_allowed_token_type)$/.test(e)) throw new ChannelError("token", `Slack refused the token: ${e} (${method})`);
     if (/^(cannot_dm_bot|user_disabled|channel_not_found|is_archived)$/.test(e)) throw new ChannelError("blocked", `Slack: ${e} (${method})`);
@@ -148,17 +176,28 @@ export function createSlack(o: SlackOpts): Channel {
       .replace(/&gt;/g, ">")
       .replace(/&amp;/g, "&");
 
+  /** D531: what came in and why it was dropped, at info level, so a silent bot can be diagnosed (never the words). */
+  const note = (what: string) => console.info(`[slack] ${what}`);
   const onEvent = async (ev: SlackEvent, on: ChannelEvents) => {
-    if (ev.type !== "message" || ev.bot_id || (ev.subtype && ev.subtype !== "file_share" && ev.subtype !== "thread_broadcast")) return;
-    if (!ev.user || !ev.channel || !ev.ts || ev.user === me?.id) return;
+    const mention = ev.type === "app_mention";
+    const where = mention ? "a mention" : `a message (${ev.channel_type ?? "?"})`;
+    if (ev.type !== "message" && !mention) return note(`ignored: event ${ev.type}`);
+    if (ev.bot_id) return note(`ignored: ${where} from a bot`);
+    if (ev.subtype && ev.subtype !== "file_share" && ev.subtype !== "thread_broadcast") return note(`ignored: ${where} of subtype ${ev.subtype}`);
+    if (!ev.user || !ev.channel || !ev.ts || ev.user === me?.id) return note(`ignored: ${where} with no sender, or its own`);
+    // A mention in the DM also comes as message.im: the DM's own copy is the one taken.
+    if (mention && ev.channel.startsWith("D")) return note("ignored: a mention in a DM (taken as the DM message)");
+    note(`received: ${where}`);
     const base: Omit<InMessage, "id" | "text"> = {
       chat: ev.channel,
       from: { id: ev.user, name: names.get(ev.user) ?? ev.user },
-      direct: ev.channel_type === "im",
+      direct: !mention && ev.channel_type === "im",
+      ...(mention ? { mention: true } : {}),
       ...(ev.thread_ts && ev.thread_ts !== ev.ts ? { replyTo: ev.thread_ts } : {}),
     };
     // The person's own words first, then each message they shared from someone else, as outside data.
-    const own = plain(ev.text ?? "");
+    // A mention's own @ of the bot is no part of what they said.
+    const own = mention ? plain((ev.text ?? "").replace(new RegExp(`<@${me?.id ?? "\\w+"}(\\|[^>]*)?>`, "g"), "")).trim() : plain(ev.text ?? "");
     const files = (ev.files ?? []).map(fileOf);
     if (own.trim() || files.length) await on.message({ ...base, id: ev.ts, text: own, ...(files.length ? { files } : {}) });
     let n = 0;
@@ -239,15 +278,20 @@ export function createSlack(o: SlackOpts): Channel {
 
   return {
     kind: "slack",
-    caps: { buttons: true, edit: true, typing: false, files: true, maxText: SLACK_MAX_TEXT, maxDownload: 50 * 1024 * 1024, maxUpload: 50 * 1024 * 1024, silent: false },
+    caps: { buttons: true, edit: true, typing: false, files: true, as: true, maxText: SLACK_MAX_TEXT, maxDownload: 50 * 1024 * 1024, maxUpload: 50 * 1024 * 1024, silent: false },
     async start(on) {
-      const r = await call<{ user_id: string; user?: string; team?: string }>("auth.test", {});
+      events = on;
+      const r = await call<{ user_id: string; user?: string; team?: string; team_id?: string; bot_id?: string }>("auth.test", {});
       // The app token is checked by opening the socket once (a refusal throws here, in words).
       await call("apps.connections.open", {}, app).catch((err) => {
         if (err instanceof ChannelError && err.trouble === "token") throw new ChannelError("token", "Slack refused the app-level token");
         throw err;
       });
-      me = { id: r.user_id, name: r.user ?? "Ducter", ...(r.team ? { team: r.team } : {}) };
+      // D531: the app's id, for the link that opens its messages (best effort: users:read covers it).
+      const appId = r.bot_id ? await call<{ bot?: { app_id?: string } }>("bots.info", { bot: r.bot_id }).then((b) => b.bot?.app_id, () => undefined) : undefined;
+      // Slack lists a token's scopes on every answer; absent (an older proxy), assume it can and learn on the first post.
+      me = { id: r.user_id, name: r.user ?? "Ducter", ...(r.team ? { team: r.team } : {}), ...(r.team_id ? { teamId: r.team_id } : {}), ...(appId ? { appId } : {}) };
+      if (scopes !== null) fresh(me, scopes);
       running = true;
       void connect(on);
       return me;
@@ -258,8 +302,18 @@ export function createSlack(o: SlackOpts): Channel {
     },
     async send(chat, p) {
       const text = textOf(p);
-      const r = await call<{ ts: string }>("chat.postMessage", { channel: chat, text, ...(blocks(p, text) ? { blocks: blocks(p, text) } : {}), ...(p.replyTo ? { thread_ts: p.replyTo } : {}), unfurl_links: false, unfurl_media: false });
-      return r.ts;
+      const body = { channel: chat, text, ...(blocks(p, text) ? { blocks: blocks(p, text) } : {}), ...(p.replyTo ? { thread_ts: p.replyTo } : {}), unfurl_links: false, unfurl_media: false };
+      // D531: each partner under its own name and face, when the app may.
+      if (p.as && me?.customize !== false) {
+        try {
+          return (await call<{ ts: string }>("chat.postMessage", { ...body, username: p.as.name.slice(0, 80), icon_url: p.as.icon })).ts;
+        } catch (err) {
+          if (!(err instanceof NoCustomize)) throw err;
+          if (me) (me.customize = false), (me.reinstall = true);
+          events?.changed?.();
+        }
+      }
+      return (await call<{ ts: string }>("chat.postMessage", body)).ts;
     },
     async edit(chat, id, p) {
       const text = textOf(p);
@@ -281,4 +335,22 @@ export function createSlack(o: SlackOpts): Channel {
       return up.file_id;
     },
   };
+}
+
+/** D531: what the bot token's listed scopes say it can do; true when that changed. */
+function fresh(me: BotInfo, listed: string): boolean {
+  const has = new Set(listed.split(",").map((x) => x.trim()));
+  const before = `${me.customize}|${me.reinstall}`;
+  if (has.has(SLACK_CUSTOMIZE)) delete me.customize;
+  else me.customize = false;
+  if (SLACK_NEWER_SCOPES.some((x) => !has.has(x))) me.reinstall = true;
+  else delete me.reinstall;
+  return `${me.customize}|${me.reinstall}` !== before;
+}
+
+/** D531: Slack refused a name and face for lack of chat:write.customize. */
+class NoCustomize extends Error {
+  constructor() {
+    super("Slack: missing chat:write.customize");
+  }
 }

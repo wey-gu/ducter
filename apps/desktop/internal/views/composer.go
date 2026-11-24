@@ -43,7 +43,7 @@ type composerOpts struct {
 	sending     bool
 	canSend     *bool // overrides "has words" (pictures alone may go)
 	autoFocus   bool
-	focus       bool
+	focus       bool // take the focus this frame (the caller clears its flag)
 	sendLabel   string
 	before      func() // inside the card, above the words (a reply pressed in, pictures)
 	lead        func() // in the row, before the words (add pictures)
@@ -58,7 +58,13 @@ type composerOpts struct {
 // composerBox draws the one composer and returns its card.
 func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 	t := a.T
-	box := ui.Column(c.Key(o.key+"-box")).Grow(1).Padding(t.S2, t.S2, t.S2, t.S3).
+	// Without a leading control (pictures) the words keep clear of the round edge: the inset a
+	// leading control would have given them (D519: 「想改什么…」 sat on the edge).
+	left := t.S3
+	if o.lead == nil {
+		left = t.S5
+	}
+	box := ui.Column(c.Key(o.key+"-box")).Grow(1).Padding(t.S2, t.S2, t.S2, left).
 		Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	if o.box != nil {
 		o.box(box)

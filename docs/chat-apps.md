@@ -23,25 +23,55 @@ Slack app. It never writes as you, and nobody else can talk to it.
 2. In Telegram, open **BotFather** (**Open BotFather** takes you there) and send it `/newbot`.
 3. Give your bot a name (your partner's name is a good one).
 4. BotFather answers with a key. Paste it into **The bot's key** and press **Connect**.
-5. Press **Link my account**, then **Open in Telegram**, and press **Start** there. You can
+5. Press **Get a code**, then **Open in Telegram**, and press **Start** there. You can
    also send the bot `/start` and the code Settings shows.
 
 Your partner says **Linked. Talk to me here any time.** That's it.
 
 ## Connect Slack
 
-Slack needs an app of your own in your workspace. Ducter gives you everything to paste:
+Slack needs an app of your own in your workspace. Ducter gives you everything to paste, and the
+steps below use the names Slack shows:
 
-1. Open **Settings › Chat apps** and press **Set up** on **Slack**. It walks you through five steps.
+1. Open **Settings › Chat apps** and press **Set up** on **Slack**. It walks you through four steps.
 2. Press **Copy the app manifest** (**View** shows what's in it).
-3. **Open Slack** takes you to [api.slack.com/apps](https://api.slack.com/apps): create a new
-   app **From a manifest**, pick your workspace, and paste it in.
-4. Choose **Install to Workspace**. If your workspace asks an admin to approve apps, it waits
-   for them.
-5. In the app's **Basic Information**, make an **App-Level Token** with `connections:write` and
-   paste it into its field. In **OAuth & Permissions**, copy the **Bot User OAuth Token** (it
-   starts with `xoxb-`) and paste it into the next one. Press **Connect**.
-6. Press **Link my account**, then send the code to your partner in a Slack direct message.
+3. **Open Slack** takes you to [api.slack.com/apps](https://api.slack.com/apps). Choose **Create New
+   App**, then **From a manifest**, pick your workspace, paste the manifest in, and choose **Create**.
+   - Want your partner's face in Slack's list too? **Download its face** in Settings, then on the
+     page Slack opens next (**Basic Information**), upload it as the **App icon** under **Display
+     Information**, at the bottom.
+4. Open **OAuth & Permissions** on the left and choose **Install to** *your workspace*, then
+   **Allow**. Copy the **Bot User OAuth Token** that appears (it starts with `xoxb-`) and paste it
+   into its field.
+   - That page also offers Token Rotation and PKCE. Leave both alone: Ducter doesn't need them, and
+     Slack can't turn them off once they're on.
+   - If your workspace needs an admin to approve apps, the button asks them instead, and you wait
+     for their yes.
+5. Go back to **Basic Information**. Under **App-Level Tokens**, choose **Generate Token and Scopes**,
+   give it any name, choose **Add Scope** and pick `connections:write`, then **Generate**. Copy the
+   token (it starts with `xapp-`), paste it into its field, and press **Connect**.
+6. Press **Get a code**, then **Open in Slack**: it opens your messages with your partner. Send it
+   the code. Can't find it? Search for your partner's name at the top of Slack, or pick it under
+   **Apps** in the sidebar, then choose **Messages**.
+
+Your partner says **Linked. Talk to me here any time.** In Slack each of your partners writes
+under its own name and face.
+
+### In a channel
+
+Add your partner to a channel: type `/invite @` and its name there, or mention it and let Slack add it. Then
+**@ it there** and it answers you in a thread under your message, so the channel stays quiet.
+Everyone in that channel can read the thread. It only answers you: if a teammate mentions it,
+it doesn't reply, and Settings tells you once that someone tried. Questions that need your
+decision, files and later results still come to your direct messages.
+
+### Your Slack app needs an update
+
+If you set Slack up before your partner could use its own face or answer in channels, Settings
+says **Your Slack app needs an update**. Press **Copy the app manifest**, open your app at
+[api.slack.com/apps](https://api.slack.com/apps), go to **App Manifest**, replace everything there
+with what you copied, choose **Save Changes**, then **Reinstall** when Slack asks. Your partner
+keeps working in the meantime, just without its face.
 
 ## Connect WeChat
 
@@ -130,7 +160,7 @@ The first time another partner writes to you in a chat app, it says how to talk 
 
 - **Telegram keeps a copy of your chats** on its servers.
 - **In a work Slack, the workspace's admins may be able to see what's said** in your direct
-  messages with the app.
+  messages with the app, and **everyone in a channel can read** what you and your partner say there.
 - Your bot's key stays on your own computer, in a file only your account can read. It is never
   shown again.
 

@@ -1,5 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
+import { createBackgroundIndex } from "./background.ts";
 import { createWbFrames } from "./workbench.ts";
 import { createMentions } from "./mentions.ts";
 import { effectiveBrain } from "./brain.ts";
@@ -898,10 +899,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       return rounds || turnAt ? { ...c, ...(rounds ? { rounds } : {}), ...(turnAt ? { turnAt } : {}) } : c;
     }),
   });
+  // D521: each task's background work, from its Log (its agent's background shells, subagents, watches, jobs).
+  const backgroundIndex = createBackgroundIndex(log);
+  log.subscribe((e) => {
+    if (backgroundIndex.onEvent(e)) onHandChanged();
+  });
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))))))));
+    const on = backgroundIndex.decorate(keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
@@ -970,6 +976,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     personaName: () => persona.name,
     // D516: every partner in the one thread of each chat app (the bot is the default's).
     partners: () => (partners.on() ? partners.list().map((p) => ({ id: p.id, name: p.name })) : []),
+    // D531: each partner's own name and face where the chat app shows a sender per message (Slack).
+    face: (id) => {
+      const p = partners.get(id) ?? partners.get(DEFAULT_PARTNER);
+      return p ? { name: p.name, look: p.look } : undefined;
+    },
     openUrl: opts.channels?.openUrl ?? (() => {
       const v = anywhereRef?.view();
       return v?.state === "on" && v.hostname ? `https://${v.hostname}/` : undefined;
@@ -2664,7 +2675,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
-      if (!opts.keeps?.roundAsk)
+      // Not in tests (a fake agent would take it for a task's session): they pass a fake.
+      if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
         keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
       // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.

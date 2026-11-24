@@ -207,7 +207,6 @@ function PopRowView(p: { row: PopRow; id: string; on: boolean; onHover: () => vo
   const glyph = r.kind === "ref" ? r.item.kind : r.entry.group === "native" ? "native" : r.entry.group === "skills" ? "skills" : r.entry.name;
   const name = r.kind === "ref" ? r.item.label : r.entry.group === "native" || (r.entry.group === "skills" && r.entry.insert) ? (r.entry.insert ?? `/${r.entry.name}`).trim() : r.entry.group === "skills" ? `/${r.entry.name}` : slashWord(r.entry);
   const sub = r.kind === "ref" ? r.item.sub : slashAbout(r.entry);
-  const tone = r.kind === "ref" && r.item.attention ? ` a-${r.item.attention}` : "";
   return (
     <button
       type="button"
@@ -220,7 +219,7 @@ function PopRowView(p: { row: PopRow; id: string; on: boolean; onHover: () => vo
       onPointerMove={p.onHover}
       onClick={p.onPick}
     >
-      <span class={`mp-g${tone}`}>
+      <span class="mp-g">
         <KindGlyph kind={glyph as RefKind} />
       </span>
       <span class={`mp-name${r.kind === "slash" && (r.entry.group === "native" || r.entry.group === "skills") ? " mp-cmd" : ""}`} dir="auto">
@@ -256,7 +255,6 @@ function MentionPop(p: { pop: Pop; sections: PopSection[]; waiting: boolean; sel
       {p.sheet && (
         <div class="mp-top">
           <span class="mp-grab" aria-hidden="true" />
-          <span class="mp-title">{t(p.pop.kind === "@" ? "mention.label" : "slash.label")}</span>
           <button type="button" class="btn text sm mp-close" onPointerDown={(e) => e.preventDefault()} onClick={p.onClose}>
             {t("mention.close")}
           </button>
@@ -492,7 +490,7 @@ export function ComposerBox(p: {
   };
 
   return (
-    <div ref={boxRef} class={`composer${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
+    <div ref={boxRef} class={`composer${p.before ? "" : " bare"}${p.sending ? " is-sending" : ""}${open ? " has-pop" : ""}${p.class ? ` ${p.class}` : ""}`} onKeyDownCapture={p.onKeyDownCapture} onKeyDown={p.onKeyDown}>
       {open && pop && (
         <MentionPop
           pop={pop}

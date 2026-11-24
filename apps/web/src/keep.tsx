@@ -5,7 +5,7 @@
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
 // 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
-import { cutAtWord, foldRounds, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
+import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BackRow, Btn, SectionHead, Tag, TimeCol } from "./controls.tsx";
@@ -286,7 +286,7 @@ function Items({ k }: { k: KeepPage }) {
             <span class="body">
               <span class="t">
                 {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
-                <span>{x.title}</span>
+                <span>{noOrphan(x.title)}</span>
               </span>
               <span class={`st ${w.tone}`}>{w.text}</span>
               {checks && checks.total > 0 && (
@@ -425,7 +425,7 @@ export function KeepRail() {
           <button key={k.id} class={`k${k.id === K.open ? " on" : ""}`} onClick={() => openKeep(k.id)} aria-current={k.id === K.open ? "page" : undefined} title={k.title}>
             <KeepMark life={k.life} size={32} />
             <span class="kp-rtx">
-              <span class="t">{cutAtWord(k.title, RAIL_COLS)}</span>
+              <span class="t">{noOrphan(cutAtWord(k.title, RAIL_COLS))}</span>
               <span class={facts.length ? "l needs" : "l"}>{facts[0]?.text ?? keepBeatWords(k)}</span>
             </span>
           </button>
@@ -468,7 +468,7 @@ export function KeepPageView({ room }: { room: string }) {
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />
           <div>
             <p class="kick">{t("keep.kicker", A.S.personaName)}</p>
-            <h1>{k.title}</h1>
+            <h1>{noOrphan(k.title)}</h1>
             <p class="kp-life">
               {chips.map((c) => (
                 <Tag key={c.text} text={c.text} tone={c.tone} />

@@ -25,7 +25,7 @@ research ran it (research/92 §4, research/108 B2).
 | Agent | Command catalog through OAR | Skills through OAR | A typed `/name` reaches it as |
 |---|---|---|---|
 | Claude Code 2.1.331 | **VERIFIED** `ok`, 50 items: the project's skill and command, and its built-ins with descriptions (`compact`, `clear`, `context`, `model`, `effort`, `code-review`, `simplify`, `init`, `security-review`, `deep-research`, …) | **VERIFIED** `ok`, 15 | the command, run headless (**VERIFIED** research/92 §4: a command, a skill, `/review`, `/compact`, `/context`, `/cost`, `/clear`, `/model`) |
-| Codex 0.172.0 | **VERIFIED** `unsupported` (`transport_unavailable`): the app-server has no command catalog | **VERIFIED** `ok`, 7: the repo skill and Codex's system skills (`imagegen`, `openai-docs`, `skill-creator`, …) | text only: its slash commands are the TUI's and never reach it (**DOCUMENTED** research/92 §4); a bare `/compact` is OAR's manual compaction (D288, **VERIFIED** research/108); a skill named `$name` in the words reaches its model beside its skill listing (**INFERRED**: Codex's docs name `$name` as the explicit mention; through the app-server only the text arrives) |
+| Codex 0.172.0 | **VERIFIED** `unsupported` (`transport_unavailable`): the app-server has no command catalog | **VERIFIED** `ok`, 7: the repo skill and Codex's system skills (`imagegen`, `openai-docs`, `skill-creator`, …) | text only: its slash commands are the TUI's and never reach it (**DOCUMENTED** research/92 §4), and none is needed: Ducter's own surfaces do their jobs (the workbench's changes, the review flow, the card); a bare `/compact` is OAR's manual compaction (D288, **VERIFIED** research/108); a skill named `$name` in the words reaches its model beside its skill listing (**INFERRED**: Codex's docs name `$name` as the explicit mention; through the app-server only the text arrives) |
 | pi (OAR's pi, subprocess RPC) | **VERIFIED** `ok`: the project's prompt template (source `prompt`) | **VERIFIED** `ok`: the project's skill and the person's skills | its RPC `prompt` expands `/template` and `/skill:name` as its interactive mode does (**DOCUMENTED** pi `docs/rpc.md`); `/compact` is OAR's `compact()` |
 | DeepSeek Harness | `unsupported` (`transport_unavailable`) | `installation_unsupported` here (not installed on this Mac) | `/compact` through OAR's manual compaction (declared `supported`); no verified way to run a skill by name |
 | Antigravity 1.5.16 | `unsupported` (`transport_unavailable`) | `unavailable` (`not_authenticated` in the scratch home) | OAR declares its `/compact` unverified (`manualCompaction: unsupported`); nothing else |
@@ -34,7 +34,7 @@ Ducter's own `/model` and `/effort` are run by Ducter on every agent (D282), so 
 
 ## 3. Gaps in OAR (drafts, not sent)
 
-1. Codex: no command catalog and no structured skill input; a `{type:"skill", name, path}`
+1. Codex: no structured skill input; a `{type:"skill", name, path}`
    input item from `deliver` would make `$name` exact instead of a hint to the model.
 2. DeepSeek Harness and Antigravity: no command catalog; Antigravity's `/compact` has no
    verified completion contract.
@@ -49,7 +49,9 @@ Ducter's own `/model` and `/effort` are run by Ducter on every agent (D282), so 
   pickers and screens that need its terminal).
 - A task's `/` list is read at runtime in the task's own folder, so a project's commands and
   skills come up there and nowhere else.
-- Nothing that can't reach the agent is listed: Codex's TUI commands, Antigravity's `/compact`,
+- Codex's TUI commands (`/review`, `/diff`, `/status`…) are not a gap: Ducter's own surfaces do
+  their jobs (the workbench's changes, the review flow, the task's card; the author, 2026-11-24).
+- Nothing that can't reach the agent is listed: Antigravity's `/compact`,
   DeepSeek Harness's skills. The live checks owed are in `design/todo.md`.
 
 **Summary.** Claude Code: everything typed goes as typed, and OAR lists it (VERIFIED). Codex: only

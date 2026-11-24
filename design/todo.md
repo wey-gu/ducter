@@ -621,8 +621,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - A live run with two real partner sessions on one home (make by talking, pass, remove). Trigger: the
   author's next session on a real home.
-- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; a chat app
-  bound to a partner; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
+- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
   these on a home with several partners.
 - The stone's comprehension test with naive raters, then a clay character per partner. Trigger: the
   author reviews D486.
@@ -953,6 +952,13 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 - [ ] **Outgoing text never carries a saved value** (an Autofill detail that isn't key-shaped): refuse and have the partner reword, as one project does in code (research/88 §7.4). Key-shaped text is already hidden on the way out, as for clients (D152). Trigger: before a public release of chat apps.
 - [ ] **Telegram Mini App for the full card** (only for homes with an https address). Trigger: a card people keep opening in Ducter from Telegram.
 
+### Several partners in chat apps (D516, `channels.md` §10)
+
+- [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
+- [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
+- [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
+- [ ] **WeChat quoted replies** keep the partner only if iLink's `ref_msg` names a message the hub sent; check live, and map its id if needed. Trigger: the WeChat live run.
+
 ### WeChat through ClawBot (D301, `channels.md` §9, research/105)
 
 Built against a fake iLink and CDN only.
@@ -961,6 +967,8 @@ Built against a fake iLink and CDN only.
 - [ ] **WeChat's own terms page** 《微信ClawBot功能使用条款》 read in full (research/105 could not open it): whether it says anything about clients other than OpenClaw. Trigger: the same; stop and ask the author if it forbids them.
 - [ ] **The order of the groups for a person in China** (WeChat first when the conversation is Chinese?). Trigger: the author's review of D301.
 - [ ] **The 来自微信 / via WeChat mark** with the other chat apps' marks. Trigger: D276's mark.
+- [ ] **WeChat's hosts held to Tencent's** (D516 (8)): refuse a QR address, a `redirect_host`, a `baseurl` or an upload URL outside `weixin.qq.com` / `wechat.com` (https, 443), as one reference does (`research/private/im-reference-2026-11-24.md`). Trigger: before calling WeChat more than a preview.
+- [ ] **WeChat's text limit, live** (D516 (8)): one reference says iLink cuts texts over 1,800 characters; Ducter splits at 4,000 (`WECHAT_MAX_TEXT`). Trigger: the live run above.
 - [ ] **WeCom's long-connection bot** as a second window for people who live in WeCom (research/105 §3). Trigger: a person asks.
 
 ## A harness's own background work (D266)

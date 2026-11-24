@@ -74,6 +74,15 @@ func (a *App) shownPartner() *protocol.PartnerInfo {
 	return nil
 }
 
+// ChatLabel (D516) is the name the shown partner leads with in a chat app
+// the Mac carries (iMessage): "" for the default, or with one partner.
+func (a *App) ChatLabel() string {
+	if p := a.shownPartner(); p != nil && p.ID != protocol.DefaultPartner {
+		return p.Name
+	}
+	return ""
+}
+
 // defaultName is the default partner's name (the one Settings › 伙伴
 // renames), whoever is shown.
 func (a *App) defaultName() string {

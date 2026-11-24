@@ -113,6 +113,7 @@ type rig struct {
 	quiet   *protocol.QuietHours
 	path    string
 	seq     int64
+	label   string // D516: the shown partner's name when it isn't the default
 }
 
 const person = "+8613800000000"
@@ -143,6 +144,7 @@ func (r *rig) open() {
 		Report:     func(s protocol.ChannelStatus) { r.reports = append(r.reports, s.State) },
 		Upload:     func(path, mime string) (string, error) { return "m-" + filepath.Base(path), nil },
 		Name:       func() string { return "小鸭" },
+		Label:      func() string { return r.label },
 		Lang:       func() string { return "zh" },
 		Quiet:      func() *protocol.QuietHours { return r.quiet },
 		Foreground: func() bool { return r.fore },
@@ -550,5 +552,23 @@ func TestWordsWaitWhileTheHomeIsAway(t *testing.T) {
 	r.step()
 	if len(r.relays) != 2 || r.relays[0].text != "第一句" || r.relays[1].text != "第二句" {
 		t.Fatalf("after: %+v", r.relays)
+	}
+}
+
+// D516: on a Mac showing another partner, its words in the partner's own
+// Apple ID lead with its name; the default's never do.
+func TestAnotherPartnerSpeaksWithItsName(t *testing.T) {
+	r := newRig(t)
+	r.link(t, ModePartner)
+	row := r.text(person, "周六的牙医约了吗")
+	r.step()
+	r.label = "小家"
+	turn := r.event(protocol.KindUserMsg, protocol.UserMsg{Text: "周六的牙医约了吗", ClientID: "imessage:" + row.GUID, Via: "imessage"}, 0)
+	r.event(protocol.KindAIMsg, protocol.AIMsg{Text: "约好了，周六十点。", ReplyTo: turn}, 0)
+	if got := r.sender.texts(); len(got) != 1 || got[0] != "小家：约好了，周六十点。" {
+		t.Fatalf("labelled: %q", got)
+	}
+	if len(r.relays) != 1 {
+		t.Errorf("its own words came back as the person's: %+v", r.relays)
 	}
 }

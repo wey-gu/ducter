@@ -175,6 +175,8 @@ describe("复制密钥 / Copy a key", () => {
     expect(d.taskId).toBe("t2");
     expect(d.copyKey).toMatchObject({ from: { device: "w1" }, to: [{ device: "w2", name: "haswell" }], taskIds: ["t2"] });
     expect(core.tasks.get("t2")?.attention).toBe("needs_you");
+    // D481: open at the home, so no client closes it as answered elsewhere.
+    expect(core.decisions.openIds()).toContain(d.decisionId);
     // A message to the task never answers it.
     core.decisions.answeredByMessage("t2", "好了吗", "user");
     expect(core.decisions.isPending(d.decisionId)).toBe(true);

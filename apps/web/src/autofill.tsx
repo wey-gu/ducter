@@ -624,9 +624,9 @@ export function CopyKeyBody({ d, compact }: { d: DecisionState; compact?: boolea
             {compact && <span class="grow" />}
           </div>
         </>
-      ) : (
+      ) : (!d.resolved && !d.pending) || d.resolved?.by === "ended" ? null : (
         <div class={compact ? "said" : "resolved"} role="status">
-          {copying ? t("copykey.copying") : d.resolved?.option === "go" || d.pending === "go" ? t("copykey.done", computersSaid(run?.to.length ? run.to : k.to.map((x) => x.name))) : t("copykey.held")}
+          {copying ? t("copykey.copying") : d.resolved?.option === "go" || d.pending === "go" ? t("copykey.done", computersSaid(run?.to.length ? run.to : k.to.map((x) => x.name))) : d.resolved?.option === "hold" || d.pending === "hold" ? t("copykey.held") : ""}
         </div>
       )}
     </>

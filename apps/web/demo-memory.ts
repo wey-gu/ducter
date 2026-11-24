@@ -128,12 +128,14 @@ core.setRunner(
         // D552: the runner takes its time (a session starting), then the task updates it and ends.
         openTask: async (i: Parameters<typeof stub.openTask>[0]) => {
           await new Promise((r) => setTimeout(r, 1500));
-          const card = await stub.openTask(i);
+          const taskId = "t_memupdate";
+          core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", body: { taskId, title: i.title, project: "", place: { kind: "none" }, harness: i.harness ?? "claude-code", brief: i.brief } } as never);
+          core.tasks.setState(taskId, "working", "hot");
           setTimeout(() => {
             ccVersion = "0.7.38";
-            core.log.append({ stream: `task:${card.taskId}`, origin: "system", kind: "task_state", body: { taskId: card.taskId, attention: "done_claimed", residency: "hot" } });
+            core.tasks.setState(taskId, "done_claimed", "hot");
           }, Number(process.env.DEMO_DONE_MS ?? 8000));
-          return card;
+          return { taskId } as Awaited<ReturnType<typeof stub.openTask>>;
         },
       } as typeof stub)
     : stub,

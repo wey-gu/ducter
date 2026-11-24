@@ -19,7 +19,7 @@
 - **How it starts.** Settings › **聊天软件 / Chat apps** › Telegram: three steps (open BotFather and
   send `/newbot`, name the bot, paste its key). Slack: four, in Slack's own order and words (copy the
   app manifest, create the app from it, install it from OAuth & Permissions and paste the bot token
-  shown there, make the app-level token and paste it), then **拿一个码 / Get a code** and send it from
+  shown there, make the app-level token and paste it), then **获得口令 / Get a code** and send it from
   **在 Slack 里打开 / Open in Slack** (D531). Nothing to
   learn first; the group says what goes there and who else can see it (D283).
 
@@ -112,7 +112,7 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
   step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
-  with **拿一个码 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
+  with **获得口令 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
   里打开 / Open in Slack** and the code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
   {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
   管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
@@ -268,7 +268,7 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
   with one line: token rotation and PKCE are not needed and are one-way in Slack, so leave them; 4
   Basic Information › App-Level Tokens › **Generate Token and Scopes**, a name, Add Scope
   `connections:write`, Generate, paste. The manifest sets Socket Mode on and token rotation off.
-- **The code.** **拿一个码 / Get a code**; then **在 Slack 里打开和 {name} 的私信，把这串码发给它：** with
+- **The code.** **获得口令 / Get a code**; then **在 Slack 里打开和 {name} 的私信，把这个口令发给它：** with
   **在 Slack 里打开 / Open in Slack** (`app_redirect`, the app id from `bots.info`, the workspace id
   from `auth.test`) and how to find it by hand (search its name, or the sidebar's Apps, then
   Messages).

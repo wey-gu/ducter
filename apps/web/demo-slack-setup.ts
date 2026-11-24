@@ -2,7 +2,7 @@
 // Real core and real web client; Slack is a stub adapter (nothing leaves the machine, no workspace).
 //   DUCTER_PORT=7981 DUCTER_DATA_DIR=$(mktemp -d) DEMO_SLACK=off bun apps/web/demo-slack-setup.ts
 // then open http://127.0.0.1:7981/app#settings=chats.
-// DEMO_SLACK: off (the steps, after 设置 / Set up), unlinked (拿一个码 / Get a code, then the code with
+// DEMO_SLACK: off (the steps, after 设置 / Set up), unlinked (获得口令 / Get a code, then the code with
 // 在 Slack 里打开 / Open in Slack), linked, reinstall (an app made before the current manifest).
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";

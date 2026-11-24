@@ -1176,7 +1176,7 @@ type OnHand struct {
 	// Helpers (D507, D494) are the person's helpers that are on, each with
 	// the work it keeps: the home's one model of a helper's state.
 	Helpers []HelperWork `json:"helpers,omitempty"`
-	// Keeps (D511): 在照看的 / Looking after, each Keep on or paused its own
+	// Keeps (D511): 看守中 / Looking after, each Keep on or paused its own
 	// sheet. Present: it takes the place of Helpers and the cards' Rounds.
 	Keeps []KeepSheet `json:"keeps,omitempty"`
 }

@@ -106,7 +106,7 @@ export interface KeepRound {
   taskId?: string;
 }
 
-/** A Keep on On hand: one sheet under 在照看的 / Looking after (the home's one model of its state). */
+/** A Keep on On hand: one sheet under 看守中 / Looking after (the home's one model of its state). */
 export interface KeepSheet {
   id: string;
   title: string;
@@ -257,9 +257,9 @@ export interface KeepsApi {
   ofTask(taskId: string): { id: string; name: string } | undefined;
   /** A task a Keep ran one of its rounds in (a routine's run): its page holds it, not On hand's lanes or Past's list. */
   isRound(taskId: string): boolean;
-  /** On hand's 在照看的: this partner's Keeps on or paused. */
+  /** On hand's 看守中: this partner's Keeps on or paused. */
   sheets(persona: string): KeepSheet[];
-  /** Ended ones, newest first (照看过的 / Looked after before). */
+  /** Ended ones, newest first (已结束 / Ended). */
   ended(persona: string): KeepSheet[];
   page(id: string): KeepPage | undefined;
   act(id: string, a: KeepAction): Promise<{ ok: boolean; message?: string }>;

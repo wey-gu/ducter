@@ -867,7 +867,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       ...(on.length ? { helpers: on } : {}),
     };
   };
-  // D511: 在照看的 / Looking after: each Keep its own sheet, and every task it owns names it.
+  // D511: 看守中 / Looking after: each Keep its own sheet, and every task it owns names it.
   const keepsDecorate = (o: OnHand): OnHand => {
     const ks = keepsRef;
     if (!ks) return o;

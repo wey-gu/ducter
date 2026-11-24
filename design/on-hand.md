@@ -160,7 +160,7 @@ A new result pops once the first time it is drawn (D313). A group (D360) is the 
 name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
 line); D498: a part at work has the board's pebble and its living line.
 
-> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 照看 / Looking after (a Keep), with its own page; see `standing-work.md`. On hand's **在照看的 / Looking after** takes the place of the two sections below when the home sends `OnHand.keeps` (every home from 0.1.34): each Keep one sheet, its tasks under it, what waits for the person in 等你 once with the Keep's name, a tap opening its page. What follows is kept for an older home's clients.
+> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 看守中 / Looking after (a Keep), with its own page; see `standing-work.md`. On hand's **看守中 / Looking after** takes the place of the two sections below when the home sends `OnHand.keeps` (every home from 0.1.34): each Keep one sheet, its tasks under it, what waits for the person in 等你 once with the Keep's name, a tap opening its page. What follows is kept for an older home's clients.
 
 **一直在跑的 / Ongoing (D498, D427).** A task in rounds (the home's `rounds` on its card), at work on a
 round or resting till the next, is a row here, never under 在做 or 在等; one that asks or stopped stays
@@ -181,7 +181,7 @@ reads at a glance (**还没有活交过来 / Nothing handed over yet** with **�
 个** on the time edge; each its own element. A tap opens its row in Settings › Agent 通信. **Under it**, set in
 by the mark's width (38 wide, 36 stacked; Mac 46) on the same sheet, the work it keeps, each the board's own row
 (what waits for the person first): a task until it ends, and a finished one while its PR is open, its line
-D508's (where the PR stands, "Under its PR" above: **在等评审**, **可以合了** with **到 GitHub 合并**, never 做完;
+D508's (where the PR stands, "Under its PR" above: **评审中**, **可合并** with **到 GitHub 合并**, never 做完;
 a PR ready to merge waits for the person, so the sheet stands in 等你); a merge or a close lets it go to 今天做完 with the helper's
 name among its where-facts (as anywhere else it stands: beside an opened task, in Find, under a project lens).
 **Where:** like a group (D360), at the head of 等你 when something on it waits for the person (the sheet on the

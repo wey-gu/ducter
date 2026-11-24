@@ -252,7 +252,7 @@ func (a *App) settingsView(c *ui.Context) {
 	w, _ := c.Size()
 	ui.Row(c.Key("settings-body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		a.settingsRail(c, tab)
-		ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0).Children(func() {
+		a.toastsOver(ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0)).Children(func() {
 			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
 				// D289: 24 between sections, 8 within one (D273's rhythm).
 				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S5)

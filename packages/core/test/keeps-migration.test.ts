@@ -141,7 +141,7 @@ describe("D511: the migration on start", () => {
     expect(asked.length).toBe(askedFirst);
   });
 
-  test("On hand: each Keep on or paused is a sheet under 在照看的, and its tasks name it", async () => {
+  test("On hand: each Keep on or paused is a sheet under 看守中, and its tasks name it", async () => {
     const t = tempDir();
     stops.push(t.cleanup);
     seedOld(t.dir);

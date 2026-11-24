@@ -45,7 +45,13 @@ func (a *App) chrome(c *ui.Context, key string, left, right func()) {
 	l, r := chromeInset(c)
 	// D513: the list of partners at the window's left holds the traffic lights.
 	if key == "conversation" && a.partnerRailShown() {
-		l = 24
+		// D545: a thin list is narrower than the window's controls: the bar's
+		// words start clear of them.
+		if a.railThin() {
+			l = max(24, l-railThinW)
+		} else {
+			l = 24
+		}
 	}
 	bar := ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
 		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow()

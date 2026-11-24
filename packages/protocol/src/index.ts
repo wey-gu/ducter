@@ -15,6 +15,8 @@ import type { KeyResult } from "./api-keys.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
+export * from "./key-copy.ts";
+import type { CopyKeyAsk } from "./key-copy.ts";
 import type { FillAsk, KeyAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
 export * from "./media.ts";
@@ -216,6 +218,8 @@ export interface Question {
   phone?: PhoneAsk;
   /** D233: a task asks the person for a key (set by Ducter's ask_for_key, never by report_to_main). */
   key?: KeyAsk;
+  /** D539: copy a key the person has on another computer to this task's (set by ask_for_key only). */
+  copyKey?: CopyKeyAsk;
   /** D235: one action in the person's apps that commits (go), or their own turn (user); set by the app tools only. */
   computer?: ComputerAsk;
   /** D238: may this task use the person's own phone now (set by the home's handset code only). */
@@ -407,6 +411,7 @@ export interface Bodies {
     checkout?: CheckoutAsk; // D436: 去付款 / Go to checkout: the person pays in the live view; Go = 付好了 / I've paid, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
     key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
+    copyKey?: CopyKeyAsk; // D539: 复制密钥 / Copy a key from one of the person's computers to others, for Ducter's tasks there; only the person's own Go copies; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     computer?: ComputerAsk; // D235: one action in the person's apps that commits (Go does it once), or their own turn (Go = 好了 / Done)
     handset?: HandsetAsk; // D238: may this task use the person's own phone now (Go starts it there, with its indicator); no default
@@ -470,6 +475,9 @@ export interface Bodies {
   // D499 by "said": a task's ask answered Go by Ducter for the person, under what they said (a kept
   // 不用问我的, or their words about this task): `said` their words, `action` the step it covered,
   // `standing` the permission's id. Shown 按你说过的，没再问你 / Went ahead, as you said.
+  // D539: a key copied between the person's computers on their Go (names only, never a value), or
+  // one removed from a computer in Settings (removed: that computer's name, by "user").
+  key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
@@ -1448,6 +1456,10 @@ export type ClientFrame =
   // oldest seq the client holds), at most `limit` (default 300, at most 2,000). Answered with a
   // channel_history frame.
   | { t: "channel_history"; beforeSeq: number; limit?: number }
+  // D541: the newest stretch of another partner's conversation (at most `limit`, default 50, at
+  // most 200), so a switch to it draws at once. The person's own clients only; the socket keeps
+  // showing its partner. Answered with a partner_peek frame.
+  | { t: "partner_peek"; persona: string; limit?: number }
   // D320: the task's session index (one small row per turn): all of it, or its turns from fromSeq on
   // (the first seq of the last turn the client holds). Answered with a task_index frame.
   | { t: "task_index"; taskId: string; fromSeq?: number }
@@ -1772,7 +1784,10 @@ export type ClientFrame =
   | { t: "saved_remove"; id: string }
   | { t: "saved_forget_site"; id: string; site: string }
   // D233: 让任务向我要密钥 / Let tasks ask me for keys (on by default); answered with a saved frame.
-  | { t: "saved_ask_keys"; on: boolean };
+  | { t: "saved_ask_keys"; on: boolean }
+  // D539: Ducter 存着的密钥 / Keys Ducter keeps on one computer (names only): answered with kept_keys.
+  | { t: "kept_keys"; device: string }
+  | { t: "kept_key_remove"; device: string; env: string };
 
 /** D151: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =
@@ -1919,6 +1934,8 @@ export interface AgentModels {
 export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "past" | "no_condition" | "ducter_data" | "failed";
 
 export type ServerFrame =
+  // D539: the keys Ducter keeps on that computer (names, where from, when; never a value).
+  | ({ t: "kept_keys"; device: string; removed?: string } & import("./key-copy.ts").KeptKeysAnswer)
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
   // the same hash is on that machine, so the place paths it sees are its own.
   | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string; /** D293: the home answers {t:"ping"} with {t:"pong"}, so a client may close a socket silent for 45 s. */ ping?: true; /** D293: the home's key fingerprint. */ fp?: string }
@@ -1931,6 +1948,9 @@ export type ServerFrame =
   // D509: an older page of the conversation, oldest first, beforeSeq echoed; events superseded by a
   // newer one (a living message revised) are left out. more: older events remain.
   | { t: "channel_history"; events: LogEvent[]; beforeSeq: number; more: boolean }
+  // D541: another partner's newest stretch (as "channel" events, oldest first); headSeq the Log's
+  // head when read, more: older events remain. A hello with persona and its cursor carries on from it.
+  | { t: "partner_peek"; persona: string; events: LogEvent[]; headSeq: number; more: boolean }
   // D320: the task's session index; fromSeq echoed: its turns from there on replace the client's.
   | { t: "task_index"; taskId: string; index: import("./session.ts").SessionIndex; fromSeq?: number }
   | { t: "mention_list"; id: string; items: import("./mentions.ts").MentionItem[] } // D534

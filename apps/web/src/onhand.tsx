@@ -4,12 +4,13 @@
 // waits for, its question, its result), and on a repo task its branch, +/−, and a draft PR or a
 // merge. Density grows with use: the find field from ten tasks, by project from two projects,
 // keys and selection only where a keyboard and a pointer are.
+import { copyKeyTitle } from "./autofill.tsx";
 import { cantClause } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
+import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
 import { still } from "./nav.ts";
 import { wideNow } from "./fold.ts";
 import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
@@ -95,7 +96,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   const r = reportOf(task);
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    const q = d?.question || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words.
+    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
@@ -187,6 +189,13 @@ export function stoppedWait(task: Task, now = Date.now()): boolean {
   const at = lastChange(task);
   return Number.isFinite(at) && now - at >= STOPPED_AFTER;
 }
+/** D539: a group's part as its row reads it: a wait that stopped with nothing to bring it back is
+ *  the person's (等你), never 在等, the same as the task's own row (stoppedWait). */
+function memberAttention(id: string) {
+  const t = A.S.tasks.get(id);
+  if (!t) return undefined;
+  return stoppedWait(t) ? "needs_you" : attention(t);
+}
 /** D467: finished on today's local date, done (or done and being checked): 今天做完 lists these. */
 export function doneToday(task: Task, now = Date.now()): boolean {
   const a = attention(task);
@@ -252,7 +261,7 @@ export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
   const parts = boardParts(l, now);
   const out: NeedItem[] = [];
   const inLine = new Set<string>();
-  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))) {
+  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => memberAttention(id))) {
     if (!g.stopped) continue;
     for (const id of g.ids) inLine.add(id);
     const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
@@ -946,8 +955,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
-    L.focus = task.id;
-    A.go({ name: "task", id: task.id, full: room === "full" || room === "rail" });
+    openRow(task.id, room);
   };
   return (
     <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
@@ -988,6 +996,16 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     </div>
   );
 });
+
+/** D542: what a row's tap opens. In the rail a Keep's own work (its rounds' task) is the Keep: its
+ *  row opens the Keep's page, never the round's task; any other row opens its task, at the whole
+ *  screen from the board and the rail, at its conversation (the workbench is the task's own). */
+export function openRow(taskId: string, room: Room) {
+  const kept = room === "rail" ? keepOfTask(taskId) : undefined;
+  if (kept) return openKeep(kept);
+  L.focus = taskId;
+  A.go({ name: "task", id: taskId, full: room === "full" || room === "rail" });
+}
 
 /** D287: results already celebrated this session, so a done card's little moment plays once. */
 const cheered = new Map<string, number>();
@@ -1527,7 +1545,7 @@ export function OnHandList({ room }: { room: Room }) {
   // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
   // D517: a group with a part that waits for the person stands in 等你, where the head counts it.
   const laneOf = groupLaneOf(lanes);
-  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
+  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => memberAttention(id))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
   // D507: each helper that is on is its own sheet, its work under it until it lets go (the task ended
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for

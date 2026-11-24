@@ -162,7 +162,7 @@ func (a *App) TrayDecisions(max int) []TrayDecision {
 		if d.Where != nil { // D157: the where ask in the user's words
 			td.GoLabel = a.goLabel(d)
 		}
-		if d.Key != nil || (d.Pay != nil && d.Pay.NeedsCvc) {
+		if d.Key != nil || d.CopyKey != nil || (d.Pay != nil && d.Pay.NeedsCvc) {
 			td.InWindow = true
 		}
 		if t := a.S.Task(d.TaskID); t != nil {

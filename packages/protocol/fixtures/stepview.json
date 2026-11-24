@@ -1,0 +1,72 @@
+{
+  "toolAct": [
+    {"in": "get pull request", "want": {"act": "read", "object": "pull request"}},
+    {"in": "listIssues", "want": {"act": "list", "object": "issues"}},
+    {"in": "search_code", "want": {"act": "search", "object": "code"}},
+    {"in": "create issue", "want": {"act": "create", "object": "issue"}},
+    {"in": "send message", "want": {"act": "send", "object": "message"}},
+    {"in": "delete branch", "want": {"act": "delete", "object": "branch"}},
+    {"in": "browser snapshot", "want": {"act": "use", "object": "browser snapshot"}},
+    {"in": "search", "want": {"act": "search", "object": ""}},
+    {"in": "", "want": {"act": "use", "object": ""}}
+  ],
+  "chipText": [
+    {"in": "gh auth status", "want": "gh auth status"},
+    {"in": "cd /tmp/sitechk && python3 - <<'EOF'\nprint(1)\nEOF", "want": "cd /tmp/sitechk && python3 - <<'EOF'…"},
+    {"in": "git log --oneline\n--stat", "want": "git log --oneline…"},
+    {"in": "for i in $(seq 50); do cargo test -p hawdb-storage compaction -q || break; done && echo finished all fifty runs", "want": "for i in $(seq 50); do cargo test -p hawdb-storage compaction -q ||…"}
+  ],
+  "fileKind": [
+    {"in": "src/cart.ts", "want": "code"},
+    {"in": "docs/README.md", "want": "text"},
+    {"in": "brand/lockup-all.png", "want": "picture"},
+    {"in": "package.json", "want": "data"},
+    {"in": "Makefile", "want": "file"}
+  ],
+  "itemsOf": [
+    {
+      "name": "three reads in a row are one row; a failure and the reads around it stay apart",
+      "lines": [
+        {"k": "row", "row": {"seq": 1, "step": {"kind": "ran", "target": "cargo test"}, "n": 1, "outcome": "error"}},
+        {"k": "group", "seq": 2, "n": 4, "tally": [], "rows": [
+          {"seq": 2, "step": {"kind": "read", "target": "tests/compaction.rs"}, "n": 1, "outcome": "ok", "path": "/h/crates/storage/tests/compaction.rs"},
+          {"seq": 3, "step": {"kind": "read", "target": "src/flush.rs"}, "n": 1, "outcome": "ok"},
+          {"seq": 4, "step": {"kind": "read", "target": "src/memtable.rs"}, "n": 1, "outcome": "ok"},
+          {"seq": 5, "step": {"kind": "searched", "target": "sleep"}, "n": 1, "outcome": "ok"}
+        ]},
+        {"k": "row", "row": {"seq": 6, "step": {"kind": "read", "target": "src/lib.rs"}, "n": 1, "outcome": "ok"}},
+        {"k": "row", "row": {"seq": 7, "step": {"kind": "read", "act": "list", "target": "crates"}, "n": 1, "outcome": "ok"}}
+      ],
+      "want": [
+        {"k": "row", "row": {"seq": 1, "step": {"kind": "ran", "target": "cargo test"}, "n": 1, "outcome": "error"}},
+        {"k": "files", "seq": 2, "rows": [
+          {"seq": 2, "step": {"kind": "read", "target": "tests/compaction.rs"}, "n": 1, "outcome": "ok", "path": "/h/crates/storage/tests/compaction.rs"},
+          {"seq": 3, "step": {"kind": "read", "target": "src/flush.rs"}, "n": 1, "outcome": "ok"},
+          {"seq": 4, "step": {"kind": "read", "target": "src/memtable.rs"}, "n": 1, "outcome": "ok"}
+        ]},
+        {"k": "row", "row": {"seq": 5, "step": {"kind": "searched", "target": "sleep"}, "n": 1, "outcome": "ok"}},
+        {"k": "row", "row": {"seq": 6, "step": {"kind": "read", "target": "src/lib.rs"}, "n": 1, "outcome": "ok"}},
+        {"k": "row", "row": {"seq": 7, "step": {"kind": "read", "act": "list", "target": "crates"}, "n": 1, "outcome": "ok"}}
+      ]
+    }
+  ],
+  "workOf": [
+    {
+      "name": "steps counted by how many times, thinking is no step, a failure counted, words along the way",
+      "blocks": [
+        {"k": "voice", "seq": 1, "text": "Running it first."},
+        {"k": "steps", "seq": 2, "lines": [
+          {"k": "row", "row": {"seq": 2, "thought": "Plan", "n": 1, "outcome": "ok"}},
+          {"k": "row", "row": {"seq": 3, "step": {"kind": "ran", "target": "cargo test"}, "n": 1, "outcome": "error"}},
+          {"k": "group", "seq": 4, "n": 4, "tally": [], "rows": [
+            {"seq": 4, "step": {"kind": "read", "target": "a.rs"}, "n": 3, "outcome": "ok"},
+            {"seq": 5, "step": {"kind": "searched", "target": "x"}, "n": 1, "outcome": "ok"}
+          ]}
+        ]},
+        {"k": "voice", "seq": 6, "text": "Found it."},
+        {"k": "saved", "seq": 7}
+      ],
+      "want": {"steps": 5, "messages": 2, "failed": 1}
+    }
+  ]
+}

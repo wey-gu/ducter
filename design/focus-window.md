@@ -294,9 +294,24 @@ What the window writes is what the user reads when they open the task, in one co
   command beside them, else a verb and a short summary, the same kinds on every harness:
   `packages/protocol/src/steps.ts`; a connected service's tool keeps its service as `via`),
   thinking as its headings with how long it took, a probe that found nothing in neutral
-  words. D268: every run of steps between two things said is one line (`linesOf`: a group
-  with its tally, edits and commands first, then the rest by count); a failure, a subagent
-  (with how long it took) and thinking stand alone; output that says nothing ("Action
+  words. D524 (`packages/protocol/src/stepview.ts`, its Go port
+  `views/stepview.go`; the rows in `views/taskrows.go` and `transcript.tsx`): a turn's work
+  (everything before its last words; all of it while it works) sits under one quiet head,
+  **12 步，3 条消息 / 12 steps, 3 messages** with a small × and how many failed (`workOf`), the
+  shared spinner while it works; it is folded once the turn is done and open while it works (a
+  click folds or opens it). Inside, the agent's words at their own size and one 28-tall row per
+  step: a drawn mark by kind (shell, read, edit, search, web, subagent, a service's plug,
+  thinking), a plain verb in 13 medium, and its object: a command or pattern in a mono chip cut
+  at a word's end, its heredoc left out (`chipText`), a file as a file chip that opens it in
+  Ducter's viewer (D356; the row carries the tool's whole `path`), a query, a subagent's task or
+  a thought's first line in muted words. A connected service's tool is said by the service and
+  what it did (`toolAct`: `get_pull_request` is **GitHub：读取** `pull request`); Ducter's own
+  tools stay hidden however a harness names them (agy's `mcp_ducter_log_read`, D124). Two or more
+  file reads in a row are one row, **读了 3 个文件** with their chips (`itemsOf`). A stretch past
+  8 rows shows its last 8 under **前面还有 n 步**, which opens the rest in place. A verb never
+  stands alone (**读了一个文件 / Read a file** when the tool named none). The live step is its own
+  row in the present tense (**在跑**, **子 agent 在做**) with the spinner and its own clock; D268's
+  summary lines (`linesOf`, the tally) now only feed On hand's latest line; output that says nothing ("Action
   completed.") is dropped; the harness's plan (TodoWrite, update_plan) is one `plan` block
   holding its latest items; a compaction and an interruption are notes drawn as dividers, a
   retry a note kept only while it is the latest thing. An edit carries its diff, read from
@@ -356,8 +371,9 @@ What the window writes is what the user reads when they open the task, in one co
   a hairline in the user's language. A wake's text leaves out what the check saw when it is a
   bare number;
 - **the end line** (D271) says only what the state proves: `inTurn` (something happened since
-  the last `turn_ended`) and a working card is a turn under way (what it is on, the turn's
-  clock); no turn and an armed wait of its own is **等 {what} · {time} 回来** (D279), how it checks
+  the last `turn_ended`) and a working card is a turn under way: D524's foot, a hairline then On
+  hand's working pulse, the state's word (**在做 / Working**, or the retry) and the turn's clock at
+  the right, in the meta line's 12 (never a floating coloured word); no turn and an armed wait of its own is **等 {what} · {time} 回来** (D279), how it checks
   opened under it; otherwise nothing. Since D279 a progress report after `wait_for` leaves the
   card on Waiting (core's `rests`); the wake puts it back on Working;
 - **a long session** (D320; 10,000–100,000 events) is read through its **session index** and a
@@ -385,3 +401,5 @@ What the window writes is what the user reads when they open the task, in one co
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);
 - the diff of the worktree is a list of files; a diff shows only when the user opens a file.
+- **where it works** is the header's branch and place control and 看细节 / Details; the
+  transcript never prints the working copy's raw path (D524, was D198's path over the changes).

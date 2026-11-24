@@ -32,6 +32,8 @@ var sharedControls = map[string]bool{
 	"tileLinkRow": true,
 	// D398: a card's foot that folds what can wait, and an optional step as a row
 	"sheetFold": true, "extraStep": true,
+	// D524: the opened task's steps: the work's head, a step's row, its object chip and its file chip
+	"workHead": true, "stepLine": true, "stepChip": true, "fileChip": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

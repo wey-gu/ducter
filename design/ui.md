@@ -545,6 +545,10 @@ A new control is added to the set (and to this table) before it is used.
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
+| A turn's work folded under one quiet line: the stack (the shared spinner while it works), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D524) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
+| One step of an opened task: 28 tall, a 16 drawn mark, a plain verb in 13 medium, its object, its facts at the right edge, a chevron when it opens; hover a soft tint that pads into its own negative margin, so nothing moves (D524) | `stepLine` (`shared.go`) | `.sline > .step` in `transcript.tsx` |
+| A step's object in mono 12 on the inline code tint (`Sunken`), 20 tall, radius 8, one line cut with an ellipsis, its whole on hover; never pressable (D524) | `stepChip` (`shared.go`) | `CodeChip` (`.chip-code`) |
+| A file a step read or edited: a 12 page (or picture) mark and its name in mono 12 on the inline code tint, its tail on hover; it opens the file in Ducter's viewer (D356) when the path is known (D524) | `fileChip` (`shared.go`) | `FileChip` (`.chip-file`) |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |

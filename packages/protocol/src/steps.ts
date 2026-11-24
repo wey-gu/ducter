@@ -41,12 +41,15 @@ const DUCTER_TOOLS = ["report_to_main", "checkpoint", "log_search", "log_read"];
 const BOOKKEEPING = ["TodoWrite", "TodoRead", "update_plan", "todo_write", "todowrite", "ExitPlanMode"];
 
 const SHELL = ["Bash", "bash", "PowerShell", "shell", "exec_command", "commandExecution", "run_shell_command", "run_terminal_command", "local_shell", "run_command"];
-const READ = ["Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory"];
-const EDIT = ["Edit", "Write", "MultiEdit", "NotebookEdit", "edit", "write", "apply_patch", "fileChange", "search_replace", "str_replace_editor", "write_file", "edit_file", "create_file", "delete"];
-const SEARCH = ["Grep", "Glob", "grep", "glob", "find", "grep_search", "codebase_search", "semSearch", "file_search"];
-const WEB_SEARCH = ["WebSearch", "webSearch", "web_search"];
-const FETCH = ["WebFetch", "webFetch", "fetch", "web_fetch"];
-const DELEGATE = ["Agent", "Task", "subagent", "collabAgentToolCall", "spawn_agent"];
+// D524: Antigravity's own (view_file, list_dir, find_by_name, write_to_file, replace_file_content,
+// search_web, read_url_content, invoke_subagent; its inputs in PascalCase: Path, AbsolutePath,
+// CommandLine) beside agy's read_file, edit_file and run_command (OAR 0.124's recorded names).
+const READ = ["Read", "read", "read_file", "NotebookRead", "view", "view_image", "ls", "LS", "list_directory", "view_file", "list_dir"];
+const EDIT = ["Edit", "Write", "MultiEdit", "NotebookEdit", "edit", "write", "apply_patch", "fileChange", "search_replace", "str_replace_editor", "write_file", "edit_file", "create_file", "delete", "write_to_file", "replace_file_content", "multi_replace_file_content"];
+const SEARCH = ["Grep", "Glob", "grep", "glob", "find", "grep_search", "codebase_search", "semSearch", "file_search", "find_by_name"];
+const WEB_SEARCH = ["WebSearch", "webSearch", "web_search", "search_web"];
+const FETCH = ["WebFetch", "webFetch", "fetch", "web_fetch", "read_url_content"];
+const DELEGATE = ["Agent", "Task", "subagent", "collabAgentToolCall", "spawn_agent", "invoke_subagent"];
 const WAIT = ["sleep", "wait"];
 /** A desktop driver's tools (cua-driver and alike): what a person would do at the computer. */
 const COMPUTER_TOOLS = [
@@ -55,27 +58,40 @@ const COMPUTER_TOOLS = [
   "scroll", "computer", "bring_to_front", "set_window_frame", "verify_state",
 ];
 
-/** mcp__server__tool → [server, tool]; anything else → ["", name]. */
+/** mcp__server__tool → [server, tool]; Antigravity's mcp_server_tool (D524) the same; anything else → ["", name]. */
 export function splitTool(name: string): [string, string] {
   if (name.startsWith("mcp__")) {
     const i = name.lastIndexOf("__");
     if (i > 4) return [name.slice(5, i), name.slice(i + 2)];
   }
+  const agy = /^mcp_([A-Za-z0-9-]+)_(.+)$/.exec(name);
+  if (agy) return [agy[1]!, agy[2]!];
   return ["", name];
 }
 
-/** Ducter's own tools: never a step of the work (D124). */
+/** Ducter's own tools, however a harness names them (mcp__ducter__x, agy's mcp_ducter_x, ducter.x): never a step of the work (D124, D524). */
 export function isDucterTool(name: string): boolean {
-  return /^mcp__ducter[\w-]*__/.test(name) || DUCTER_TOOLS.includes(name);
+  return /^mcp__ducter[\w-]*__/.test(name) || /^mcp_ducter[\w-]*_/.test(name) || /^ducter[\w-]*\./.test(name) || DUCTER_TOOLS.includes(name);
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
+/** The first of the keys with words in it; the same key in another case (agy's Path, CommandLine) counts after them (D524). */
 function firstStr(o: Record<string, unknown>, keys: string[]): string {
-  for (const k of keys) {
-    const v = o[k];
+  const got = (v: unknown): string => {
     if (typeof v === "string" && v.trim()) return v.trim();
     if (Array.isArray(v) && typeof v.at(-1) === "string" && (v.at(-1) as string).trim()) return (v.at(-1) as string).trim();
+    return "";
+  };
+  for (const k of keys) {
+    const v = got(o[k]);
+    if (v) return v;
+  }
+  const lower = new Map<string, unknown>();
+  for (const [k, v] of Object.entries(o)) if (!lower.has(k.toLowerCase())) lower.set(k.toLowerCase(), v);
+  for (const k of keys) {
+    const v = got(lower.get(k.toLowerCase()));
+    if (v) return v;
   }
   return "";
 }
@@ -424,7 +440,7 @@ function patchPaths(patch: string): string[] {
 function editPaths(input: unknown): string[] {
   if (typeof input === "string") return patchPaths(input);
   const o = obj(input);
-  const one = firstStr(o, ["file_path", "path", "notebook_path", "filePath", "file", "target_file"]);
+  const one = firstStr(o, ["file_path", "path", "notebook_path", "filePath", "file", "target_file", "TargetFile", "AbsolutePath"]);
   if (one) return [one];
   const changes = o.changes;
   if (Array.isArray(changes)) return changes.map((c) => str(obj(c).path)).filter(Boolean);
@@ -437,7 +453,7 @@ function editPaths(input: unknown): string[] {
 
 /** The agent's own short words for a shell step, when its harness carries them (D152). */
 function saysOf(o: Record<string, unknown>): string {
-  const d = firstStr(o, ["description", "justification"]).split("\n")[0]!.trim().replace(/[.。]$/, "");
+  const d = firstStr(o, ["description", "justification", "toolSummary"]).split("\n")[0]!.trim().replace(/[.。]$/, "");
   return d.length >= 3 && [...d].length <= 80 ? d : "";
 }
 
@@ -453,6 +469,21 @@ export function backgroundStep(raw: unknown): { step: Step; failed: boolean } | 
   const what = str(b.what).trim();
   const step: Step = { kind: "background", act: act === "started" ? "start" : act === "stopped" ? "stop" : "end", ...(what ? { target: what } : {}) };
   return { step, failed: act === "failed" };
+}
+
+const READ_KEYS = ["file_path", "path", "notebook_path", "filePath", "file", "target_file", "AbsolutePath", "dir", "directory", "DirectoryPath"];
+const LIST = ["ls", "LS", "list_directory", "list_dir"];
+
+/**
+ * D524: the whole path a file tool named (a read's, an edit's first), so the step's file chip opens
+ * that file; "" for anything else (a folder listed, a shell's `cat x`, which names it from where it ran).
+ */
+export function stepPath(t: ToolLike): string {
+  if (isDucterTool(t.name)) return "";
+  const [, tool] = splitTool(t.name);
+  if (READ.includes(tool) && !LIST.includes(tool)) return typeof t.input === "string" ? t.input.trim() : firstStr(obj(t.input), READ_KEYS);
+  if (EDIT.includes(tool)) return editPaths(t.input)[0] ?? "";
+  return "";
 }
 
 /** What one tool call was, as a step. `harness` is the task's (claude-code, codex, pi, deepseek-harness). */
@@ -476,8 +507,8 @@ export function stepOf(harness: string, t: ToolLike): Step {
     return says ? { ...st, says } : st;
   }
   if (READ.includes(tool)) {
-    const p = typeof input === "string" ? input : firstStr(o, ["file_path", "path", "notebook_path", "filePath", "file", "target_file", "dir", "directory"]);
-    const list = tool === "ls" || tool === "LS" || tool === "list_directory";
+    const p = typeof input === "string" ? input : firstStr(o, READ_KEYS);
+    const list = LIST.includes(tool);
     return { kind: "read", ...(list ? { act: "list" } : {}), ...(p ? { target: pathTail(p) } : {}) };
   }
   if (EDIT.includes(tool)) {
@@ -497,7 +528,7 @@ export function stepOf(harness: string, t: ToolLike): Step {
     return { kind: "searched", ...(q ? { target: q } : {}) };
   }
   if (DELEGATE.includes(tool)) {
-    const d = firstStr(o, ["description", "prompt", "task"]);
+    const d = firstStr(o, ["description", "task_description", "prompt", "task"]);
     return { kind: "delegated", ...(d ? { target: d.split("\n")[0]! } : {}) };
   }
   if (WAIT.includes(tool)) {

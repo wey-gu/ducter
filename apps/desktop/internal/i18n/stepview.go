@@ -1,0 +1,90 @@
+package i18n
+
+// D524: the opened task's steps, redrawn: a turn's work under one quiet
+// head, one row per step (a plain verb, its object in a chip), a service's
+// tool by the service and what it did, the live row in the present tense.
+// The same keys and words as the web (apps/web/src/i18n-stepview.ts).
+var zhStepview = Table{
+	"work.steps":         "%d 步",
+	"work.steps.one":     "1 步",
+	"work.msgs":          "，%d 条消息",
+	"work.msgs.one":      "，1 条消息",
+	"work.thought":       "想了一下",
+	"work.failed":        "%d 步出错",
+	"steps.earlier":      "前面还有 %d 步",
+	"step.read.files":    "读了 %d 个文件",
+	"step.files.more":    "还有 %d 个",
+	"step.label.web":     "上网搜",
+	"step.label.list":    "列出",
+	"step.label.sub":     "交给子 agent",
+	"step.read.bare":     "读了一个文件",
+	"step.ran.bare":      "运行了一条命令",
+	"step.edited.bare":   "改了一个文件",
+	"step.searched.bare": "搜了一下",
+	"step.edited.others": "还有 %d 个",
+	"use.say":            "%s：%s",
+	"use.act.read":       "读取",
+	"use.act.list":       "列出",
+	"use.act.search":     "搜索",
+	"use.act.create":     "新建",
+	"use.act.update":     "修改",
+	"use.act.delete":     "删除",
+	"use.act.send":       "发送",
+	"use.act.run":        "运行",
+	"use.act.use":        "使用",
+	"now.ran":            "在跑",
+	"now.read":           "在读",
+	"now.edited":         "在改",
+	"now.searched":       "在搜",
+	"now.web":            "在网上搜",
+	"now.sub":            "子 agent 在做",
+	"now.thought":        "在想",
+	"file.open":          "打开 %s",
+}
+
+var enStepview = Table{
+	"work.steps":         "%d steps",
+	"work.steps.one":     "1 step",
+	"work.msgs":          ", %d messages",
+	"work.msgs.one":      ", 1 message",
+	"work.thought":       "Thought briefly",
+	"work.failed":        "%d failed",
+	"steps.earlier":      "%d earlier steps",
+	"step.read.files":    "Read %d files",
+	"step.files.more":    "%d more",
+	"step.label.web":     "Searched the web",
+	"step.label.list":    "Listed",
+	"step.label.sub":     "Subagent",
+	"step.read.bare":     "Read a file",
+	"step.ran.bare":      "Ran a command",
+	"step.edited.bare":   "Edited a file",
+	"step.searched.bare": "Searched",
+	"step.edited.others": "%d more",
+	"use.say":            "%s: %s",
+	"use.act.read":       "read",
+	"use.act.list":       "list",
+	"use.act.search":     "search",
+	"use.act.create":     "create",
+	"use.act.update":     "update",
+	"use.act.delete":     "delete",
+	"use.act.send":       "send",
+	"use.act.run":        "run",
+	"use.act.use":        "use",
+	"now.ran":            "Running",
+	"now.read":           "Reading",
+	"now.edited":         "Editing",
+	"now.searched":       "Searching",
+	"now.web":            "Searching the web",
+	"now.sub":            "Subagent working",
+	"now.thought":        "Thinking",
+	"file.open":          "Open %s",
+}
+
+func init() {
+	for k, v := range zhStepview {
+		zh[k] = v
+	}
+	for k, v := range enStepview {
+		en[k] = v
+	}
+}

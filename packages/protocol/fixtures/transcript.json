@@ -620,6 +620,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/root/.codex/config.toml",
           "output": "Success. Updated 1 file",
           "diff": [
            "+[mcp_servers.nowledge-mem]",
@@ -1378,7 +1379,8 @@
            "target": "src/cart.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/someone/dev/tinycart/src/cart.ts"
          },
          {
           "seq": 103,
@@ -1430,6 +1432,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "src/cart.ts",
           "diff": [
            "-a + b",
            "+round(a + b)"
@@ -2544,7 +2547,8 @@
            "target": "src/glance.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
          },
          {
           "seq": 104,
@@ -2553,7 +2557,8 @@
            "target": "src/app.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts"
          },
          {
           "seq": 105,
@@ -2625,6 +2630,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
           "output": "The file has been updated.",
           "diff": [
            "   connect() {",
@@ -2690,6 +2696,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
           "output": "The file has been updated.",
           "diff": [
            "   draft = \"\";",
@@ -2706,6 +2713,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
           "output": "The file has been updated.",
           "diff": [
            " export function paintGlance(app: App, g: Glance) {",
@@ -2781,7 +2789,8 @@
            "target": "src/glance.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
          },
          {
           "seq": 118,
@@ -2800,6 +2809,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
           "output": "The file has been updated.",
           "diff": [
            "-  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
@@ -2817,6 +2827,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/test/glance-asks.test.ts",
           "output": "File created successfully",
           "diff": [
            "+import { expect, test } from \"bun:test\";",
@@ -3410,7 +3421,8 @@
            "target": "src/glance.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
          },
          {
           "seq": 104,
@@ -3419,7 +3431,8 @@
            "target": "src/app.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts"
          },
          {
           "seq": 105,
@@ -3491,6 +3504,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
           "output": "The file has been updated.",
           "diff": [
            "   connect() {",
@@ -3556,6 +3570,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/app.ts",
           "output": "The file has been updated.",
           "diff": [
            "   draft = \"\";",
@@ -3572,6 +3587,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
           "output": "The file has been updated.",
           "diff": [
            " export function paintGlance(app: App, g: Glance) {",
@@ -3637,7 +3653,8 @@
            "target": "src/glance.ts"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts"
          },
          {
           "seq": 118,
@@ -3656,6 +3673,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/src/glance.ts",
           "output": "The file has been updated.",
           "diff": [
            "-  const keep = { events: s.events.slice(-400), onHand: s.onHand };",
@@ -3673,6 +3691,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/ducter/apps/web/test/glance-asks.test.ts",
           "output": "File created successfully",
           "diff": [
            "+import { expect, test } from \"bun:test\";",
@@ -4781,7 +4800,8 @@
            "target": "src/options.rs"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/hawdb/crates/storage/src/options.rs"
          },
          {
           "seq": 129,
@@ -4791,6 +4811,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/Users/weyl/dev/hawdb/crates/storage/src/options.rs",
           "output": "The file has been updated.",
           "diff": [
            "-    max_background_jobs: 2,",
@@ -4872,7 +4893,8 @@
            "target": "src/scheduler.rs"
           },
           "n": 1,
-          "outcome": "ok"
+          "outcome": "ok",
+          "path": "/Users/weyl/dev/hawdb/crates/storage/src/scheduler.rs"
          },
          {
           "seq": 136,
@@ -5142,6 +5164,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "a/config.toml",
           "output": "Success. Updated 2 files",
           "diff": [
            "@@ a/config.toml",
@@ -5162,6 +5185,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/w/src/a.ts",
           "diff": [
            "-let a = 1;",
            "+const a = 1;",
@@ -5181,6 +5205,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/w/.env.example",
           "diff": [
            "+PORT=8080",
            "+TOKEN=ghp_••••••"
@@ -5195,6 +5220,7 @@
           },
           "n": 1,
           "outcome": "ok",
+          "path": "/w/README.md",
           "diff": [
            " # App",
            "-Runs on 80.",
@@ -5222,6 +5248,7 @@
          },
          "n": 1,
          "outcome": "error",
+         "path": "/w/x.ts",
          "output": "String to replace not found in file.",
          "hint": "String to replace not found in file.",
          "diff": [
@@ -5520,6 +5547,7 @@
          },
          "n": 1,
          "outcome": "ok",
+         "path": "/w/bench.log",
          "output": "p99 4.1ms"
         }
        }

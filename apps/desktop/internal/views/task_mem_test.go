@@ -84,17 +84,14 @@ func TestOpenedTaskMem(t *testing.T) {
 	}
 }
 
-// D268: a finished turn folds its work under how long it took, keeping its
-// last words; opened, each run of steps is one line ("搜了 3 次，看了 1 个文
-// 件，还做了 1 样别的") that opens on a click; the probes in it say "not
-// there" in plain words, never 出错; a real failure is its own line with
-// its words under it.
+// D524: a finished turn folds its work under one head ("n 步，m 条消息");
+// opened, each step is its own row; the probes in it say "not there" in
+// plain words, never 出错; a real failure says its words under it.
 func TestOpenedTaskMemStretches(t *testing.T) {
 	want := map[i18n.Lang][]string{
-		i18n.ZH: {"没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
-		i18n.EN: {"No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
+		i18n.ZH: {"没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事", "codex plugin add nowledge-mem"},
+		i18n.EN: {"No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked", "codex plugin add nowledge-mem"},
 	}
-	fold := map[i18n.Lang]string{i18n.ZH: "搜了 3 次，看了 1 个文件，还做了 1 样别的", i18n.EN: "Searched 3 times, read a file, and 1 other thing"}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt := memTask(t, lang, "done")
 		all := texts(tt)
@@ -102,34 +99,25 @@ func TestOpenedTaskMemStretches(t *testing.T) {
 		if strings.Contains(all, folded) || strings.Contains(all, "error: unknown command") {
 			t.Errorf("%s: the finished turn isn't folded: %q", lang, all)
 		}
+		head := map[i18n.Lang]string{i18n.ZH: " 步", i18n.EN: " steps"}[lang]
+		if !strings.Contains(all, head) {
+			t.Errorf("%s: no work head: %q", lang, all)
+		}
 		for _, tu := range turnsOf(app.blocks(app.S.Task("mem1"))) {
 			app.open[fmt.Sprintf("turn:mem1:%d", tu.Seq)] = true
 		}
-		tt.Frame()
-		tt.Frame()
-		all = texts(tt)
-		if strings.Contains(all, folded) {
-			t.Errorf("%s: the run isn't one line", lang)
-		}
-		// The plugin step that really failed is its own line, in the agent's words, with its error.
-		for _, w := range []string{"Install the Mem plugin into Codex", "error: unknown command 'plugin' for 'codex'"} {
-			if !strings.Contains(all, w) {
-				t.Errorf("%s: no %q: %q", lang, w, all)
-			}
-		}
-		if err := tt.Click(fold[lang]); err != nil {
-			t.Fatal(err)
-		}
 		tt.Advance(time.Second)
 		tt.Frame()
+		tt.Frame()
 		all = texts(tt)
-		for _, w := range want[lang] {
+		want := append(want[lang], "error: unknown command 'plugin' for 'codex'")
+		for _, w := range want {
 			if !strings.Contains(all, w) {
 				t.Errorf("%s: no %q once opened: %q", lang, w, all)
 			}
 		}
 		// Only the plugin step says 出错; no probe does.
-		if n := strings.Count(all, map[i18n.Lang]string{i18n.ZH: "出错", i18n.EN: "Error"}[lang]); n != 1 {
+		if n := count(tt, map[i18n.Lang]string{i18n.ZH: "出错", i18n.EN: "Error"}[lang]); n != 1 {
 			t.Errorf("%s: %d error marks, want 1 (the plugin step only)", lang, n)
 		}
 		shotTo(t, tt, "task-mem-done-open-desktop-"+string(lang))

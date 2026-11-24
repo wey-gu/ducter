@@ -94,7 +94,7 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "fill.resolved.hold": "你没同意",
     // D233: 密钥 / Keys a task asks you for.
     "af.keys": "密钥",
-    "af.keys.ask": "让任务向我要密钥",
+    "af.keys.ask": "让任务向你要密钥",
     "af.keys.ask.help": "任务要密钥时，在对话里问你要。",
     "af.key.add": "添加密钥",
     "af.key.why": "任务的命令要用的密钥，比如部署密钥。只在要用的那条命令里用，不进对话，也不进记录。",
@@ -241,7 +241,7 @@ export const autofill: Record<"zh" | "en", Record<string, string>> = {
     "fill.resolved.hold": "Not used",
     // D233: 密钥 / Keys a task asks you for.
     "af.keys": "Keys",
-    "af.keys.ask": "Let tasks ask me for keys",
+    "af.keys.ask": "Let tasks ask you for keys",
     "af.keys.ask.help": "When a task needs a key, it asks you in the conversation.",
     "af.key.add": "Add a key",
     "af.key.why": "A key a task's commands use, like a deploy key. It goes only into the command that needs it, never into the conversation or the history.",

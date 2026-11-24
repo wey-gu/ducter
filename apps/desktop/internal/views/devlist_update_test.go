@@ -27,7 +27,7 @@ func TestDeviceListUpdate(t *testing.T) {
 				h.settle(300 * time.Millisecond)
 				h.shotAs("devices-list-" + string(lang) + "-" + size.name)
 				// The first of each is the home's row in the list.
-				row, ok := h.tt.Find(spoken(L, "vps-1", L.T("list.state.home", "Ducter"), L.T("devices.update_word")))
+				row, ok := h.tt.Find(spoken(L, "vps-1", L.T("list.state.home"), L.T("devices.update_word")))
 				name, okName := h.tt.Find("vps-1")
 				up, okUp := h.tt.Find(L.T("devices.update_word"))
 				if !ok || !okName || !okUp {

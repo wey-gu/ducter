@@ -110,8 +110,8 @@ describe("Settings' brief (D469)", () => {
 
   test("the computers say what each is to the partner", async () => {
     const { A, h } = await setup("en");
-    expect(h.placeRole({ id: "local", home: true, state: "awake", kind: "server", harnesses: [] } as any)).toBe("Ducter runs here");
-    expect(h.placeRole({ id: "m", home: false, state: "awake", kind: "laptop", harnesses: [agent("codex")] } as any)).toBe("Does tasks for Ducter");
+    expect(h.placeRole({ id: "local", home: true, state: "awake", kind: "server", harnesses: [] } as any)).toBe("I run here");
+    expect(h.placeRole({ id: "m", home: false, state: "awake", kind: "laptop", harnesses: [agent("codex")] } as any)).toBe("Does tasks for me");
     expect(h.placeRole({ id: "m", home: false, state: "unreachable", kind: "laptop", harnesses: [] } as any)).toBe("Out of reach now");
     void A;
   });
@@ -197,7 +197,7 @@ describe("Settings' Overview, round 2 (D469)", () => {
     } as any;
     const ps = h.mapPlaces();
     expect(ps.map((p) => p.name)).toEqual(["Hetzner Server", "haswell", "iPhone", "Pixel Fold"]);
-    expect(ps.map((p) => p.role)).toEqual(["Ducter 在这台上运行", "帮 Ducter 做事", "随时找 Ducter", "借给任务用"]);
+    expect(ps.map((p) => p.role)).toEqual(["我在这台上运行", "帮我做事", "随时找我", "借给任务用"]);
     expect(ps.map((p) => p.now)).toEqual(["", "睡着了", "现在连着", "2 小时前来过"]);
     A.connections = [oomol(), { id: "t", name: "Tuwa", source: "mcp", state: "ok", phone: { provider: "Tuwa" } }] as any;
     const ac = h.accountPlaces();

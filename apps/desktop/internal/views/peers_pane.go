@@ -194,7 +194,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			} else if ph := memPhase(true, a.S.Mem, b); ph == "install" || ph == "installing" || ph == "sign_in" || ph == "signing_in" {
 				a.memSteps(c, ph, b)
 			}
-			a.footRow(c, "peers-mem", a.L.T("peers.mem.then", name), nil)
+			a.footRow(c, "peers-mem", a.L.T("peers.mem.then"), nil)
 		})
 	case "joining":
 		a.group(c, "peers-joining", "", "", func() {
@@ -412,7 +412,7 @@ func (a *App) peersInvite(c *ui.Context) {
 	// empty tile column and a hairline over it).
 	t := a.T
 	ui.Row(c.Key("peers-invite")).Gap(t.S3).Padding(t.S2, t.S5).MinHeight(44).AlignItems(ui.Center).Children(func() {
-		uiText(c, a.L.T("peers.invite", a.personaName())).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, a.L.T("peers.invite")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if a.quietButton(c, "peers-invite", a.L.T("peers.invite.go"), "", false, 1) {
 			a.peersAsked = true
 			a.openTab(TabPeers)

@@ -123,7 +123,7 @@ func (a *App) todosPanel(c *ui.Context) {
 	a.todosInit()
 	a.panelHead(c, TabTodos, a.L.T("todos.lede", a.personaName()))
 	// Who owns what, one small line on the lede's edge, close under it.
-	a.ledeNote(c, "todos-own", a.L.T("todos.own", a.personaName()))
+	a.ledeNote(c, "todos-own", a.L.T("todos.own"))
 	v := a.S.Sources
 	if v == nil {
 		a.paneWait(c, "todos", a.L.T("todos.pick.loading"))

@@ -370,7 +370,7 @@ export function TodoSourcesSettings() {
   return (
     <>
       {/* D365: who owns what, close under the lede, as on the Mac. */}
-      <p class="small todo-own">{t("todos.own", A.S.personaName)}</p>
+      <p class="small todo-own">{t("todos.own")}</p>
       {f.sources.map((v) => (
         <SourceCard key={v.id} v={v} />
       ))}

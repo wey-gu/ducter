@@ -550,8 +550,9 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
         </GRow>
       ) : (
         <GRow title={t("call.voice.title")} line={t("call.voice.none")}>
-          <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
+          {/* D551: the primary first (D533, D543), then the quiet "done recording". */}
           <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
+          <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
         </GRow>
       )}
       {A.voiceAnswer && (

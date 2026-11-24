@@ -347,7 +347,7 @@ func (a *App) tokenStatus(h protocol.DeviceHarness) string {
 		return a.L.T("loadout.signed_out")
 	case h.Allowance != nil:
 		if h.Harness == a.brain().Harness && h.Allowance.Left <= protocol.PartnerReserve {
-			return a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
+			return a.L.T("loadout.left.reserve", pct(h.Allowance.Left))
 		}
 		return a.L.T("loadout.left", pct(h.Allowance.Left))
 	}
@@ -432,7 +432,7 @@ func (a *App) limitWords(h *protocol.DeviceHarness, brain bool) string {
 	}
 	al := h.Allowance
 	if brain && al.Left <= protocol.PartnerReserve {
-		return a.L.T("loadout.left.reserve", pct(al.Left), a.S.PersonaName)
+		return a.L.T("loadout.left.reserve", pct(al.Left))
 	}
 	if at := store.ParseTime(al.ResetsAt); !at.IsZero() {
 		return a.L.T("loadout.left.back", pct(al.Left), a.when(at))
@@ -488,7 +488,7 @@ func (a *App) thinksGroup(c *ui.Context) {
 		lines = append(lines, a.L.T("loadout.brain.key"))
 	} else if l := a.limitWords(h, true); l != "" && (held == nil || !held.Waits) {
 		if h.Allowance.Left > protocol.PartnerReserve {
-			l = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
+			l = a.L.T("loadout.left.kept", pct(h.Allowance.Left))
 		}
 		lines = append(lines, l)
 	}
@@ -633,13 +633,12 @@ func (a *App) setBrain(b protocol.Brain) {
 // with how it stands, how Ducter chooses in one sentence, the person's
 // rules, and that a task can switch on its own.
 func (a *App) tasksGroup(c *ui.Context) {
-	name := a.S.PersonaName
 	ready := a.readyAgents()
 	title := a.L.T("loadout.tasks.title")
 	if len(ready) == 0 {
 		return // 想事情用 already says nothing can; adding one is the next group
 	}
-	note := a.L.T("loadout.tasks.how", name)
+	note := a.L.T("loadout.tasks.how")
 	if len(ready) == 1 {
 		note = a.L.T("loadout.tasks.only", harnessName(ready[0].Harness))
 	}
@@ -744,7 +743,7 @@ func (a *App) tasksGroup(c *ui.Context) {
 				a.tileRow(c, "default:rest", a.agentTile(c, d.Harness, false), a.L.T("loadout.default.rest", a.whoName(d.Harness, d.Model)), a.L.T("loadout.default.rest.line"), nil)
 			}
 		}
-		if a.addRow(c, "rule", a.L.T("loadout.rule.add", name), a.L.T("loadout.rule.add.line")) {
+		if a.addRow(c, "rule", a.L.T("loadout.rule.add"), a.L.T("loadout.rule.add.line")) {
 			a.Route = RouteConversation
 			a.draft = a.L.T("loadout.rule.prefill")
 			a.focusComposer = true
@@ -842,7 +841,7 @@ func (a *App) newTasksGroup(c *ui.Context) {
 				line = a.L.T("newtasks.where.on", comps[whereSel-1].Name)
 			}
 			a.tileRow(c, "newtasks:where", nil, a.L.T("newtasks.where"), line, func() {
-				if i := a.choices(c, "newtasks-where", a.L.T("newtasks.where"), whereLabels, whereSel); i >= 0 && i != whereSel {
+				if i := a.fewOrPill(c, "newtasks-where", a.L.T("newtasks.where"), whereLabels, whereSel); i >= 0 && i != whereSel {
 					n := nt
 					n.Where = ""
 					said := a.L.T("said.newtasks.where.auto", name)
@@ -863,7 +862,7 @@ func (a *App) newTasksGroup(c *ui.Context) {
 				tile = a.agentTile(c, agents[whoSel-1], false)
 			}
 			a.tileRow(c, "newtasks:who", tile, a.L.T("newtasks.who"), line, func() {
-				if i := a.choices(c, "newtasks-who", a.L.T("newtasks.who"), whoLabels, whoSel); i >= 0 && i != whoSel {
+				if i := a.fewOrPill(c, "newtasks-who", a.L.T("newtasks.who"), whoLabels, whoSel); i >= 0 && i != whoSel {
 					n := nt
 					n.Agent = ""
 					said := a.L.T("said.newtasks.who.auto", name)
@@ -887,18 +886,17 @@ func (a *App) newTasksGroup(c *ui.Context) {
 func (a *App) addGroup(c *ui.Context) {
 	t := a.T
 	k := &a.kp
-	name := a.S.PersonaName
 	hs := a.trayHarnesses()
 	if len(hs) == 0 && a.S.Settings == nil {
 		return
 	}
-	note, title := a.L.T("loadout.add.more", name), a.L.T("loadout.add.title")
+	note, title := a.L.T("loadout.add.more"), a.L.T("loadout.add.title")
 	switch len(a.readyAgents()) {
 	case 0:
 		// Nothing to add "another" to yet: the first one is just "an AI agent".
-		note, title = a.L.T("loadout.add.none", name), a.L.T("loadout.add.title.first")
+		note, title = a.L.T("loadout.add.none"), a.L.T("loadout.add.title.first")
 	case 1:
-		note = a.L.T("loadout.add.one", name)
+		note = a.L.T("loadout.add.one")
 	}
 	a.group(c, "add", title, note, func() {
 		for _, h := range hs {
@@ -1424,4 +1422,14 @@ func (a *App) whoSentence(task *store.Task) string {
 		}
 	}
 	return a.L.T("who.sentence", who)
+}
+
+// fewOrPill is a choice as a row's control (D432, D445): up to three side by side as a segmented
+// track, more as one pill opening its list, as the web's Select past three (D510, D551). Five
+// agents in a track had squeezed the row's words to a character a line at 1150.
+func (a *App) fewOrPill(c *ui.Context, key, title string, labels []string, sel int) int {
+	if len(labels) <= 3 {
+		return a.choices(c, key, title, labels, sel)
+	}
+	return a.pickPill(c, key, title, labels, sel, false)
 }

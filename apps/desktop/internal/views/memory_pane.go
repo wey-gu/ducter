@@ -745,7 +745,6 @@ func (a *App) memClosed(c *ui.Context, b *protocol.BridgeView) {
 // one group of steps, the local app's way as its note.
 func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 	t := a.T
-	name := a.personaName()
 	home := a.memHome()
 	// D469: the pane's head says it in the partner's voice (say.memory.first); no second hero.
 	line := map[string]string{
@@ -763,11 +762,11 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 					a.openLink(memSite)
 				}
 			})
-			a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
+			a.footRow(c, "mem-local", a.L.T("mem.setup.local"), nil)
 			return
 		}
 		a.memSteps(c, phase, b)
-		a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
+		a.footRow(c, "mem-local", a.L.T("mem.setup.local"), nil)
 	})
 }
 

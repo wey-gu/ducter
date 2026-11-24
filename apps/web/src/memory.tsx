@@ -654,7 +654,7 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
         ) : (
           <MemSteps phase={phase} b={b} />
         )}
-        <GFoot note={t("mem.setup.local", name)} />
+        <GFoot note={t("mem.setup.local")} />
       </Group>
     </>
   );
@@ -1360,7 +1360,7 @@ export function PeersPage() {
         <Group class="mem-g" label="Nowledge Mem">
           <GHead tile={<MemTile faded />} name="Nowledge Mem" line={t("peers.mem.what")} />
           {upd?.kind === "needed" || upd?.kind === "updating" ? <MemUpdateRow u={upd} b={b} /> : (mem === "install" || mem === "installing" || mem === "sign_in" || mem === "signing_in") && <MemSteps phase={mem} b={b} />}
-          <GFoot note={t("peers.mem.then", name)} />
+          <GFoot note={t("peers.mem.then")} />
         </Group>
       )}
       {phase === "joining" && (
@@ -1459,7 +1459,7 @@ export function PeersInvite() {
   return (
     <section class="set">
       <div class="set-invite">
-        <small class="grow">{t("peers.invite", name)}</small>
+        <small class="grow">{t("peers.invite")}</small>
         <Btn kind="text" size="sm" chev label={t("peers.invite.go")} onClick={() => ((A.peersAsked = true), (A.sheet = { kind: "settings", page: "peers" }), A.changed())} />
       </div>
     </section>

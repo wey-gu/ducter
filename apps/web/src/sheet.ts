@@ -31,7 +31,7 @@ export function listWord(L: Words, dv: DeviceView, o: { persona: string; running
   if (ph === "downloading" || ph === "verifying" || ph === "waiting" || ph === "restarting") return { text: L.t("list.state.updating"), tone: "" };
   if (dv.state === "asleep") return { text: L.t("list.state.asleep"), tone: "asleep" };
   if (dv.state === "unreachable") return { text: L.t("list.state.away"), tone: "away" };
-  if (dv.home) return { text: L.t("list.state.home", o.persona), tone: "" };
+  if (dv.home) return { text: L.t("list.state.home"), tone: "" };
   if (dv.kind === "phone") return { text: L.t("list.state.now"), tone: "" };
   if (o.running > 0) return { text: o.running === 1 ? L.t("list.state.tasks.one") : L.t("list.state.tasks", o.running), tone: "working" };
   // D398: idle, the one thing worth knowing is that it is free; its role is the card's line.

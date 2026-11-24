@@ -587,8 +587,17 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       the fake's guesses.
 - [ ] **`inbox --watch` per helper** (today a helper's inbox is read at each check, one more 45–52 s identity
       read). Trigger: a helper whose work waits a check's period in the author's use.
-- [ ] **Helpers on Ongoing** (一直在跑的): one row per helper with its work on hand, beside routines. Trigger: the
-      author asks where it is, or has two helpers.
+- [x] **Helpers on On hand** (D507): built as its own sheet, its work under it until the merge (not a row in
+      一直在跑的).
+- [ ] **A helper's app** (D507 (4), D405/D407): the babysitter's (or a reviewer's) board written by the home from
+      `HelperWork`, as `review-board.ts` writes `board`. Trigger: the author asks for one, or a helper holds 5+.
+- [ ] **The helper's drawn mark** (D507 (5), research/220): the tray as clay art, rendered beside the letter and
+      the dock, rated with images and people (the author first); replaces the letter only if it wins there.
+      Trigger: the next art pass.
+- [ ] **A helper's task's question answered in its sheet** (D507): today its row, the card in the opened task.
+      Trigger: the author answers one from On hand.
+- [ ] **The haiku eval for the `helper` tool's new answer** (D507: ready and refused are said by the home).
+      Trigger: the next partner eval run.
 - [ ] **Mem's side** (`research/private/bridge-helpers-ask-2026-11-23.md`, a draft, not sent): a field that tells a
       native session's connection from a home's (Ducter reads its own label meanwhile), and whether a session
       connection can take identity mail. Trigger: the author sends it.

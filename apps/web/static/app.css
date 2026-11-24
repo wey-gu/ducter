@@ -21213,6 +21213,19 @@ html[data-text-size="large"] .brand-mark > svg {
 .helper-row .helper-state.refused { color: var(--ink-soft); }
 .helper-row .helper-counts { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
 .helper-row .helper-counts small { margin-top: 2px; }
+/* D506: a helper on On hand, its own sheet: the head (its letter on the sunken pebble, its name, how it
+   reads at a glance) and under it, set in by the mark's width, the work it keeps. The needs-you ledge
+   when something on it waits for the person; no fill, no stripe, the words say it. */
+.onhand-list:not(.room-rail) .ocards.hsheet.needs { box-shadow: 0 2px 0 var(--needs-ledge), var(--drop); }
+.onhand-list:not(.room-rail) .hsheet .omark.k-helper { color: var(--ink-soft); font-size: var(--xs); font-weight: 700; line-height: 1; }
+.hsheet .hhead .o1 .t { font-weight: 700; }
+.hsheet .hhead .o2 { display: flex; flex-wrap: wrap; column-gap: var(--s3); }
+.hsheet .hhead .o2 .more { color: var(--ink-muted); font-weight: 400; }
+.hsheet .hhead .habout { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.onhand-list:not(.room-rail) .hsheet > .ocard:not(.hhead) { margin-left: 38px; }
+.onhand-list.room-phone .hsheet > .ocard:not(.hhead),
+.onhand-list.room-side .hsheet > .ocard:not(.hhead) { margin-left: 36px; }
+.onhand-list:not(.room-rail) .hsheet > .ocard + .ocard { box-shadow: inset 0 1px 0 var(--line-soft); }
 
 /* D500: every Settings pane by one hand. The Overview's section heads sit on the text edge in the soft
    ink like every group's head (they were 8px in and muted); the home card's face and its words stand on

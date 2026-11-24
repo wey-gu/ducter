@@ -42,6 +42,8 @@ export interface Owned {
   all(): { taskId: string; refs: string[]; said?: Record<string, string> }[];
   /** D496: where each of a task's open PRs stands at the last look, in its words ("" when nothing is known). */
   standing(taskId: string): string;
+  /** D507: each of a task's PRs as last seen, merged and closed ones too (a helper keeps a finished task while one is open). */
+  prs(taskId: string): { pr: string; state?: "open" | "closed" | "merged"; merge?: string; stands?: string }[];
   /** One look at every owned PR now (tests; the timer otherwise). */
   sweep(): Promise<void>;
   stop(): void;
@@ -409,6 +411,11 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
         .filter(Boolean)
         .join("\n\n"),
     of: (taskId) => [...(owns.get(taskId)?.entries() ?? [])].filter(([, s]) => !s.state || s.state === "open").map(([pr]) => pr),
+    prs: (taskId) =>
+      [...(owns.get(taskId)?.entries() ?? [])].map(([pr, s]) => {
+        const stands = s.standing && (!s.state || s.state === "open") ? saidOf(s.standing, s.ids) : "";
+        return { pr, ...(s.state ? { state: s.state } : {}), ...(s.standing?.merge ? { merge: s.standing.merge } : {}), ...(stands ? { stands } : {}) };
+      }),
     all: () =>
       [...owns]
         .map(([taskId, m]) => {

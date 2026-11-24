@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.36 - 2026-11-24
+
+<!-- whats-new
+zh: 任务里的 Codex 后台命令和你的 MCP 都能用全了
+en: Codex tasks keep their background commands and your MCP tools
+-->
+
+**Every agent at full strength**
+- A Codex task's long-running command keeps running past the end of a turn, and when it ends
+  the task hears how it went and carries on. Agents that don't wake by themselves after
+  background work are told when it finishes.
+- Codex tasks in your folders can use the MCP servers you set up for Codex.
+- A Codex task in your Mac apps uses one way to drive the computer, not two.
+
 ## 0.1.35 - 2026-11-24
 
 <!-- whats-new

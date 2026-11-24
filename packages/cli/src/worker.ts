@@ -309,11 +309,13 @@ export async function cmdWorker(o: {
   // D524: a worker runs tasks too: its children go before it when memory runs out, and an older unit gets today's settings.
   startMemoryWatch({ dataDir });
   refreshOnStart(dataDir);
+  // D539: the keys Ducter keeps on this computer for its tasks here (copied with the person's Go).
+  const keptKeys = runnerMod.createKeyShelf({ dataDir });
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, keys: keptKeys, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {

@@ -231,13 +231,17 @@ func (a *App) secHead(c *ui.Context, key, name string) {
 	})
 }
 
-// tagTone is a tag's tint: plain (sunken), on (done) or needs (needs you).
+// tagTone is a tag's tint: plain (sunken), on (done) or needs (needs you);
+// D542: the other states' own (working, waiting, failed) for a task's state.
 type tagTone int
 
 const (
 	tagPlain tagTone = iota
 	tagOn
 	tagNeeds
+	tagWorking
+	tagWaiting
+	tagFailed
 )
 
 // tag is a small state word on its own tint (照看中, 1 件在等你, 11 月 22 日起).
@@ -249,6 +253,12 @@ func (a *App) tag(c *ui.Context, key, text string, tone tagTone) {
 		bg, ink, w = t.Done.Surface, t.Done.Ink, 700
 	case tagNeeds:
 		bg, ink, w = t.NeedsYou.Surface, t.NeedsYou.Ink, 700
+	case tagWorking:
+		bg, ink, w = t.Working.Surface, t.Working.Ink, 700
+	case tagWaiting:
+		bg, ink, w = t.Waiting.Surface, t.Waiting.Ink, 700
+	case tagFailed:
+		bg, ink, w = t.Failed.Surface, t.Failed.Ink, 700
 	}
 	uiText(c.Key("tag:"+key), text).FontSize(t.SM).FontWeight(w).TextColor(ink).Padding(3, 10).Radius(999).Background(bg).SingleLine().Shrink(0)
 }

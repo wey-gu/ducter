@@ -16,7 +16,10 @@ const localAgents = (await import("./demo-outside.ts")).outsideAgents(zh, proces
 // D295: a pretend Nowledge Mem (DEMO_MEM: cloud, local, ready, signin, install, none); never the machine's own.
 const mem = demoMem();
 const memOn = mem === "cloud" || mem === "local" || mem === "ready";
+// D539: DEMO_KEYCOPY=1: the copy cards and the keys this computer keeps (a scratch shelf).
+const keyShelf = process.env.DEMO_KEYCOPY === "1" ? (await import("./demo-keycopy.ts")).demoShelf(process.env.DUCTER_DATA_DIR ?? "/tmp/ducter-demo") : undefined;
 const core = startCore({
+  ...(keyShelf ? { keyCopy: { shelf: keyShelf } } : {}),
   localAgents,
   ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "", ...(memOn ? { mem: { agentId: "ducter", owned: true } } : {}) },
@@ -346,6 +349,7 @@ if (process.env.DEMO_PARTNERS === "1") {
 // 0.4 s, a task being set up at 1.5 s, the ack at 2.3 s, then the turn ends.
 core.setPartner({
   onTrigger(e) {
+    if (process.env.DEMO_KEYCOPY === "1") return; // D539: the seed writes every word of its case
     if (e.kind !== "user_msg") return;
     const at = () => new Date().toISOString();
     const since = at();
@@ -374,6 +378,8 @@ if (process.env.DEMO_PARTNERS === "1")
       }, Number(process.env.DEMO_REPLY_MS ?? 1800));
     },
   }));
+
+if (keyShelf) await (await import("./demo-keycopy.ts")).seedKeyCopy(core, keyShelf, zh);
 
 console.log(`[demo] Ducter demo is up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
 process.on("SIGINT", async () => {

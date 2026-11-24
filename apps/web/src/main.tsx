@@ -17,7 +17,7 @@ import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { PartnerList, partnerKey } from "./partners.tsx";
-import { escUp, useFill, useSplit, useWide } from "./wide.ts";
+import { escUp, phoneNow, useFill, usePhone, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
 import { nthKey, walkKey } from "./onhand.tsx";
@@ -72,6 +72,8 @@ function App() {
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
   const wide = useWide();
+  // D541: under 700 the list of partners is the level above the conversation; from 700 it stands beside.
+  const phone = usePhone();
   // D182: on a foldable the panes split at the fold, left and right (a book) or top and bottom
   // (tabletop); app.css places them from --fold-a and --fold-gap.
   const split = useSplit();
@@ -118,11 +120,13 @@ function App() {
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
-          {/* D513: with more than one partner, the list of them at the conversation's left. */}
-          {!split && <PartnerList at="side" />}
-          {/* D517: picking a partner brings its conversation in (keyed by whose it is); the list stays still. */}
-          <section key={A.manyPartners() ? `conv:${A.S.persona || "switching"}` : "conv"} class={A.manyPartners() ? "pane conv conv-in" : "pane conv"} aria-label={t("nav.conversation")}>
-            <Conversation />
+          {/* D513: with more than one partner, the list of them at the conversation's left; D541: on a
+              fold the conversation's bar holds the others' faces instead, and the list opens over it. */}
+          {!split && A.railMode !== "hidden" && <PartnerList at="side" thin={A.railMode === "thin"} />}
+          {/* D541: picking a partner shows its conversation in place, in this frame (held, or peeked);
+              the list, the bar and the composer stay still. */}
+          <section class="pane conv" aria-label={t("nav.conversation")}>
+            {split && A.partnersOpen && A.manyPartners() ? <PartnerList at="home" /> : <Conversation />}
           </section>
           <section class="pane side" aria-label={r.name === "task" ? undefined : t("nav.onhand")}>
             {r.name === "task" ? <TaskView key={r.id} id={r.id} /> : <OnHand />}
@@ -131,7 +135,21 @@ function App() {
       ) : (
         <>
           {/* D513: a phone's list of partners is the level above the conversation. */}
-          {r.name === "conv" && (A.partnersOpen && A.manyPartners() ? <PartnerList at="home" places={<Places onHand />} /> : <Conversation />)}
+          {r.name === "conv" &&
+            (A.partnersOpen && A.manyPartners() ? (
+              <PartnerList at="home" places={<Places onHand />} />
+            ) : A.manyPartners() && !phone && A.railMode !== "hidden" ? (
+              // D541: between a phone and two panes (700–999: an iPad upright, a foldable open), the
+              // slim list of faces and numbers at the conversation's left, as from 1000.
+              <div class="panes mid">
+                <PartnerList at="side" slim thin={A.railMode === "thin"} />
+                <section class="pane conv" aria-label={t("nav.conversation")}>
+                  <Conversation />
+                </section>
+              </div>
+            ) : (
+              <Conversation />
+            ))}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
           {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}
@@ -397,9 +415,10 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
     edgeSwipe(
       page,
       // D513: in a conversation with more than one partner, the swipe goes up to the list of them.
-      () => !wideNow() && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
+      // D545: and on any width, with the list hidden, it brings the list back.
+      () => (!wideNow() || (A.route.name === "conv" && A.manyPartners() && A.railMode === "hidden")) && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
       () => {
-        if (A.route.name === "conv") return A.showPartners();
+        if (A.route.name === "conv") return A.railMode === "hidden" && !phoneNow() ? A.setRail("") : A.showPartners();
         if (history.length > 1 && location.hash) return history.back();
         history.replaceState(null, "", location.pathname);
         A.applyRoute({ name: "conv" });

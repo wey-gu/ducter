@@ -180,7 +180,10 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   one before and after. **⌃1** to **⌃9** open the first to ninth task on hand. **⌘/** lists every
   key. **⌘⇧D** makes an open task **Compact** (your partner's picture small beside the title,
   more of the work on screen) and back. If you open the **Workbench** and the window is too narrow for all three, the
-  Workbench takes the list's place until you close it.
+  Workbench takes the list's place until you close it. The Workbench belongs to the task you
+  opened it in: the next task you open starts at its conversation, with the list back beside it.
+- In the list beside a task, something under **Looking after** that runs in rounds opens its own page, with
+  the others under Looking after at its left. On a touch screen, a tap anywhere on a row opens it.
 - In the list beside a task, a row says only its title and a small picture of your partner while
   something is going on: raising a flag when it needs you, reading while it works, smiling with
   its phone when it has a **New result** you haven't opened yet. Open the task and the picture

@@ -374,13 +374,32 @@ func (a *App) taskWhoParts(task *store.Task) []string {
 	return nonEmpty(parts...)
 }
 
+// headFacts is who does it, said once (D542): the agent; its model and
+// effort only when the composer's chip doesn't already show them. Where: the
+// project; the branch is the bar's own button, never said twice.
+func (a *App) headFacts(task *store.Task) []string {
+	who := a.taskWhoParts(task)
+	if _, m, _, ok := a.liveTune(task, task.Place().Device); ok && m != nil && canSwitch(task) && len(who) > 0 {
+		who = who[:1]
+	}
+	p := task.Place()
+	var where []string
+	for _, x := range a.whereLine(p) {
+		if p.Kind == "repo" && x == p.Branch {
+			continue
+		}
+		where = append(where, x)
+	}
+	return append(who, where...)
+}
+
 // taskWho is the meta line's second half: who does it (the agent and the
 // model in words; no coin at this size, D213), where, and Switch who does
 // it as a small action. D291: each fact its own small element, spaced by
 // the gap, never joined by "·".
 func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	t := a.T
-	facts := append(a.taskWhoParts(task), a.whereLine(task.Place())...)
+	facts := a.headFacts(task)
 	if on, _ := a.taskWhere(task); len(facts) == 0 && on == "" {
 		return
 	}

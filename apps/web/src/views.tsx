@@ -38,12 +38,12 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton, KeyHint, Notice } from "./controls.tsx";
+import { DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
-import { callEnded } from "@ducter/protocol";
+import { callEnded, cutAtWord } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { LaterAway, LaterBack, LaterButton, LaterTimes } from "./later.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
@@ -74,16 +74,16 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
+import { PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
-import { useWide } from "./wide.ts";
-import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
+import { useSplit, useWide } from "./wide.ts";
+import { AutofillSettings, CopyKeyBody, copyKeyTitle, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
-import { DensityRow, HandoffSettings, PaperRow, RecordsSettings, savedDensity } from "./settings-more.tsx";
+import { DensityRow, HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, brainHeld, heldAt, NewTasksSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
@@ -102,9 +102,9 @@ import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
-import { ContextButton, hasMeter, meterOf } from "./context-meter.tsx";
-import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
-import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
+import { ContextButton } from "./context-meter.tsx";
+import { ComposerTune } from "./composer-tune.tsx";
+import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -261,6 +261,8 @@ const Back = () => (
 // A finished task reads "Done": done_claimed means Ducter couldn't check its evidence and the
 // partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
 export const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
+/** D542: the opened task's state Tag, in D525's native register (进行中, 等待中, 已完成, 没完成). */
+export const tagLabel = (a: Attention) => t(`task.tag.${a === "done_claimed" ? "done" : a}`);
 
 
 
@@ -497,6 +499,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.fill) return <FillBody d={d} />;
   // D233: a task asks for a key: the field is on the card itself, never a reply.
   if (d.key) return <KeyBody d={d} />;
+  // D539: copy a key from another of the person's computers: what, from, to; Copy or Not now.
+  if (d.copyKey) return <CopyKeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
   // D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
   if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
@@ -1134,6 +1138,14 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
         {(buttons || !open) && <KeyBody d={d} compact />}
       </div>
     );
+  // D539: 复制密钥 / Copy a key, receipt-like: the facts and the two buttons on the card itself.
+  if (d.copyKey)
+    return (
+      <div ref={ref} class={`partner askq pay key copykey${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble" dir="auto">{copyKeyTitle(d)}</div>
+        {(buttons || !open) && <CopyKeyBody d={d} compact />}
+      </div>
+    );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
@@ -1639,6 +1651,9 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
+  const phoneBar = usePhone();
+  const fold = useSplit();
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1681,11 +1696,13 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
-      {!wide && <PartnersBack />}
+      {/* D545: beside the list (not a phone, not a fold), its toggle: narrower, hidden, back. */}
+      {!phoneBar && !fold && <RailToggle />}
+      {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>
-          <Avatar size={44} />
+          <Avatar size={phoneBar && A.manyPartners() ? 34 : 44} />
         </button>
         <span class="who-words">
           <button class="name" onClick={() => A.openSettings("partner")} aria-label={t("nav.partner.about", A.S.personaName)} title={t("nav.partner.about", A.S.personaName)}>
@@ -1800,15 +1817,15 @@ function Composer({ taskId }: { taskId?: string }) {
   // the send's own menu (right-click, a long press on a phone), holds it for after this turn; an
   // agent that can't steer holds it either way and says so. Stop (its pause) sits beside Send, one
   // family of clay buttons. Held words are chips over the composer.
-  const [focused, setFocused] = useState(false);
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const busy = !!task && attention(task) === "working";
   const canSend = !!value.trim() || !!pics.length;
   const agent = task ? harnessOf(task) : "";
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
-  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
+  // D542: an agent that can't steer says so in the words' place on every screen (no row under the box for it).
+  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy ? t("composer.task") : !steers ? t("composer.nosteer.place", harnessName(agent)) : coarse() ? t("composer.task") : t("composer.steer.place");
   return (
-    <div class="composer-wrap" ref={wrap} onFocusIn={() => setFocused(true)} onFocusOut={(e) => !wrap.current?.contains(e.relatedTarget as Node) && setFocused(false)}>
+    <div class="composer-wrap" ref={wrap}>
       <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
@@ -1842,6 +1859,10 @@ function Composer({ taskId }: { taskId?: string }) {
         {...(busy && steers ? { sendAlts: [{ words: t("send.steer"), onPick: () => submit() }, { words: t("send.after"), opt: true, onPick: () => submit(true) }] } : {})}
         tools={
           <>
+            {/* D542: the model and effort, and the context ring (D288), in the composer's own row,
+                before Stop and Send: no second row under the box. */}
+            {task && <ComposerTune task={task} />}
+            {task && <ContextButton task={task} />}
             {busy && (
               <button type="button" class="btn secondary icon stop" aria-label={t("task.action.pause")} title={`${t("task.action.pause")} (Esc Esc)`} onClick={() => A.taskAction(taskId!, "interrupt")}>
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1853,23 +1874,8 @@ function Composer({ taskId }: { taskId?: string }) {
           </>
         }
       />
-      {/* D354, D530: one row under the box: the model and effort, always in sight while it can be
-          switched; while it works and the words have the focus, the two keys drawn with their short
-          words (a keyboard only); the context ring (D288) at the far end, where it never reads as
-          something loading. */}
-      {task && (busy || tunable(task) || hasMeter(meterOf(task))) && (
-        <div class={`composer-hint${composerTune(task) ? " tuned" : ""}`}>
-          <ComposerTune task={task} />
-          {busy && !steers && <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
-          {busy && steers && focused && !coarse() && (
-            <>
-              <KeyHint words={t("send.steer")} />
-              <KeyHint opt words={t("send.after")} />
-            </>
-          )}
-          <ContextButton task={task} />
-        </div>
-      )}
+      {/* D542: no row under the box, at rest or on focus (one that came with the focus moved the
+          box under the finger): Return's two ways are in the words' place and the send's own menu. */}
     </div>
   );
 }
@@ -2033,7 +2039,25 @@ function timeGap(prev: Entry | undefined, e: Entry): boolean {
   return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
 }
 
+/** D541: the bar and the composer stay mounted through a partner switch (they never move, and the
+ *  composer keeps the keyboard); only the messages between them are the partner's own, made anew for
+ *  each, landing where the reader was in it. */
 export function Conversation() {
+  return (
+    <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
+      <Top />
+      {/* D381: what is pinned, under the bar. */}
+      <PinStrip />
+      {/* D410: pinned apps, one tap each. */}
+      <PinnedApps />
+      <ConvBody key={A.S.persona || "shown"} />
+      <Composer />
+    </>
+  );
+}
+
+function ConvBody() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
@@ -2054,12 +2078,6 @@ export function Conversation() {
   useTalkFeed(rows);
   return (
     <>
-      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
-      <Top />
-      {/* D381: what is pinned, under the bar. */}
-      <PinStrip />
-      {/* D410: pinned apps, one tap each. */}
-      <PinnedApps />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => (follow.onScroll(e.currentTarget as HTMLDivElement), older.onScroll(e.currentTarget as HTMLDivElement))}>
         <OlderWait />
         <div class="spacer" />
@@ -2116,8 +2134,8 @@ export function Conversation() {
       <ReplyMenu menu={menu} />
       <SelectText />
       {wide && <PartReply scroller={scroller} />}
+      {/* D535's door reads this conversation's list; the composer stays outside, in Conversation (D541). */}
       <DoorLine scroller={scroller} />
-      <Composer />
     </>
   );
 }
@@ -2669,7 +2687,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   // wait ran out): say so, never a mystery (D152).
   const yourTurn = a === "needs_you" && !d;
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
-  const stateWord = yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || stateLabel(a);
+  const stateWord = yourTurn ? t("task.your.turn") : (a === "blocked" && backWords(A.S.waiterFor(id))) || tagLabel(a);
   // D484: where it stands in one sentence, as Share sends it: what it waits for, else its state.
   const stateSentence = a === "blocked" ? storyOf(task).words || stateWord : stateWord;
   // D484: its pull request, one tap from the head while it is not finished (a finished one's
@@ -2714,14 +2732,14 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
+          {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the
+              page (what it waits for is the wait line's words). */}
           <span class="face">
-            {/* D457: compact, the face at 40 beside the title. */}
-            <Avatar size={savedDensity() === "compact" ? 40 : 96} state={faceOf(a)} still={stillFace(a)} />
-            {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
+            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} />
           </span>
           <div class="head-words">
-            <TaskMeta task={task} stateLabel={stateWord} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
-            <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
+            <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
+            <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}

@@ -169,6 +169,7 @@ ${b.goes?.length ? goesBrief(b.goes) : ""}
 
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
+- "blocked" is a wait something else ends by itself (CI, another computer, a usage limit). When only the user can unblock you (a step in their hands, a choice), it is "needs_input" with one question, so they get a card. A key or token a command or config needs: call \`ask_for_key\` (Ducter brings it from another of their computers, or asks them on a card); never tell them to set or paste it themselves.
 ${languageLine(b.language)}
 ${timeLine(b.zone)}
 - \`summary\` is written for the user, not for you: they read it as it is, often on their phone. Open with the result in one plain sentence anyone could follow (what is now true for them), then at most a few short lines on what stands. Write ordinary sentences with ordinary spacing: a number keeps its unit and its spaces ("16 checks, 15 passed", "16 项检查，15 项通过"), never glued into notes like "16checks15success". Leave out your own bookkeeping (round numbers, counters, ledger or note file names, ids, hashes) unless the user needs one to act; it goes in \`evidence\` or your checkpoint. At most 600 characters; shorter is better.

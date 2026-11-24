@@ -94,8 +94,12 @@ export interface KeepRound {
   woke: "time" | "arrival" | "change" | "now" | "first";
   /** What woke it, in words where there are some (#11030's CI; Codex). */
   wokeWhat?: string;
-  /** What it did, in one line (the round's report). */
+  /** What happened, in one line to the person in their language: the cheap model's reading of the
+   *  round's report, judged once and recorded (principle 21); absent until it has, never the raw
+   *  report. A helper's arrival says the piece of work it took. */
   did?: string;
+  /** The task's report as it wrote it (to Ducter), shown only behind 看细节 / Details. */
+  report?: string;
   /** silent; told: its result went to the person; asked: it waits for the person's answer. */
   spoke: "silent" | "told" | "asked";
   state: "running" | "done" | "failed" | "skipped";
@@ -132,6 +136,8 @@ export interface KeepSheet {
   health?: OngoingHealth;
   /** Its last change in one sentence: the latest round that did something. */
   line?: { at: string; text: string };
+  /** How many of its rounds have their line yet: a client asks for the page again when it grows. */
+  lines?: number;
   /** D394: a review loop's standing after its last round. */
   reviews?: ReviewStanding;
   /** Rounds (or pieces of work taken) in the last 7 days. */

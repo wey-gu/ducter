@@ -998,6 +998,10 @@ export interface TaskCard {
   /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
    *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
   rounds?: import("./past.ts").TaskRounds;
+  /** D507 (D494): the helper whose work this is (its claim went out naming this task), so a row that
+   *  stands anywhere but under the helper (beside an opened task, in Find, done after its PR merged)
+   *  still says whose it is. Which of its tasks it keeps is OnHand.helpers' items. */
+  helper?: { id: string; name: string };
 }
 
 /**
@@ -1078,6 +1082,9 @@ export interface OnHand {
    * Offers and put-off questions count as open.
    */
   openAsks?: { ids: string[]; asOf: number };
+  /** D507 (D494): the person's helpers that are on, each with the work it keeps (HelperWork, the one
+   *  home-side model of a helper's state): On hand gives each its own sheet with its work under it. */
+  helpers?: import("./helpers.ts").HelperWork[];
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */

@@ -1041,6 +1041,9 @@ type TaskCard struct {
 	// Rounds (D498, D427): a task in rounds Ducter keeps; On hand stands it
 	// under 一直在跑 / Ongoing and says its rhythm.
 	Rounds *TaskRounds `json:"rounds,omitempty"`
+	// Helper (D507, D494): the helper whose work this is, so a row standing
+	// anywhere but under its helper still says whose it is.
+	Helper *TaskHelper `json:"helper,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.
@@ -1163,6 +1166,34 @@ type OnHand struct {
 	// OpenAsks (D481) are every question still open at the home, as of
 	// Log seq AsOf: the one source of truth for "open" on every window.
 	OpenAsks *OpenAsks `json:"openAsks,omitempty"`
+	// Helpers (D507, D494) are the person's helpers that are on, each with
+	// the work it keeps: the home's one model of a helper's state.
+	Helpers []HelperWork `json:"helpers,omitempty"`
+}
+
+// TaskHelper (D507) names the helper a task's work came to.
+type TaskHelper struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// HelperWork (D507) is a helper that is on with the work it keeps.
+type HelperWork struct {
+	HelperView
+	Items []HelperItem `json:"items"`
+}
+
+// HelperItem (D507) is one piece of work a helper keeps: At is "work" (on
+// it), "you" (waits for the person) or "ready" (finished, its PR open and
+// waiting for a merge).
+type HelperItem struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
+	At     string `json:"at"`
+	Yours  string `json:"yours,omitempty"`
+	PR     string `json:"pr,omitempty"`
+	Merge  string `json:"merge,omitempty"`
+	Stands string `json:"stands,omitempty"`
 }
 
 // OpenAsks (D481): the questions open at the home, as of AsOf.

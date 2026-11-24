@@ -378,6 +378,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			if att == protocol.Blocked && !stopped && !mending {
 				sw = a.waitCardWords(task, sw) // D467: never the title again
 			}
+			if a.oh.readyRow {
+				sw = a.L.T("helper.ready") // D507: finished, its PR waits for a merge
+			}
 			words := keepWords(autospace(sw))
 			if s.code != "" {
 				words += "  " + s.code
@@ -517,6 +520,10 @@ func (a *App) whereMeta(task *store.Task) []string {
 	p := task.Place()
 	if a.manyComputers() && p.Kind != "none" && p.Device != "" && p.Device != a.oh.usual {
 		meta = append(meta, a.computerName(p.Device))
+	}
+	// D507: a helper's task anywhere but under its helper says whose it is.
+	if task.Card != nil && task.Card.Helper != nil && !a.oh.inHelper {
+		meta = append(meta, task.Card.Helper.Name)
 	}
 	return meta
 }

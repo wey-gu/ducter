@@ -9,11 +9,73 @@
 // which task, and what a task may do, is the partner's judgment from the person's words (principle 21).
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanBrief, cleanHelperName, cleanLine, HELPER_ABOUT_MAX, HELPERS_MAX, helperCard, helperIdentity, type Helper, type HelperView } from "@ducter/protocol/src/helpers.ts";
+import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
+import { paneName } from "@ducter/protocol/src/settings-panes.ts";
+import { cleanBrief, cleanHelperName, cleanLine, HELPER_ABOUT_MAX, HELPERS_MAX, helperCard, helperIdentity, type Helper, type HelperItem, type HelperView } from "@ducter/protocol/src/helpers.ts";
+import type { TaskCard } from "@ducter/protocol";
+
+/** D507: a task's PRs as owned.ts last saw them (owned.prs). */
+export interface HelperPr {
+  pr: string;
+  state?: "open" | "closed" | "merged";
+  merge?: string;
+  stands?: string;
+}
+
+/**
+ * D507: what one helper keeps now, the one model of its state (protocol HelperItem). A helper keeps a
+ * task until it ends, and a finished one while the PR it owns is still open: a merge or a close lets
+ * it go (to 今天做完 with the helper's name, then Past tasks). A task dropped lets it go at once.
+ */
+export function helperItems(id: string, d: { tasksOf: () => Iterable<[string, string]>; card: (taskId: string) => TaskCard | undefined; prs: (taskId: string) => HelperPr[] }): HelperItem[] {
+  const out: HelperItem[] = [];
+  for (const [taskId, h] of d.tasksOf()) {
+    if (h !== id) continue;
+    const c = d.card(taskId);
+    if (!c) continue;
+    const a = c.attention;
+    if (a === "dropped" || a === "superseded") continue;
+    const open = d.prs(taskId).filter((p) => !p.state || p.state === "open");
+    const ended = a === "done" || a === "done_claimed" || a === "failed";
+    if (ended && !open.length) continue;
+    const pr = open[0] ?? d.prs(taskId)[0];
+    const at: HelperItem["at"] = a === "needs_you" || a === "failed" ? "you" : ended ? "ready" : "work";
+    const yours = at === "you" ? (c.pendingDecision?.question ?? c.reason) : undefined;
+    out.push({
+      taskId,
+      title: c.title,
+      at,
+      ...(yours ? { yours } : {}),
+      ...(pr ? { pr: pr.pr } : {}),
+      ...(pr?.merge ? { merge: pr.merge } : {}),
+      ...(pr?.stands ? { stands: pr.stands } : {}),
+    });
+  }
+  // What waits for the person first, then what is under way, then what waits to be merged.
+  const rank = { you: 0, work: 1, ready: 2 } as const;
+  return out.sort((x, y) => rank[x.at] - rank[y.at]);
+}
 
 export const HELPERS_FILE = "helpers.json";
 /** How soon a helper whose address is still waiting on Mem is tried again. */
 export const HELPER_RETRY_MS = 10 * 60_000;
+
+/** D507: the partner's one line when a helper's address became ready or Mem refused it (D292: a table per language). */
+const SAID = {
+  en: {
+    ready: "{name} is ready: your agents find it in Nowledge Mem by this name and hand it work. Each piece they hand it shows up in On hand, under its name.",
+    refused: "Nowledge Mem didn't take the name “{name}”, so your agents can't find it yet. Tell me another name and I'll make it again; this one can be stopped in {pane}.",
+  },
+  zh: {
+    ready: "{name} 好了：你的 agent 在 Nowledge Mem 里按这个名字找到它，就能把活交给它。交给它的每件活都会出现在手头的事里，挂在它名下。",
+    refused: "Nowledge Mem 没让登记「{name}」这个名字，你的 agent 现在还找不到它。换个名字跟我说一声，我重新开一个；这个可以在 {pane} 里停下。",
+  },
+};
+
+/** D507: the line the partner says once when a helper's address is ready, or Mem refused its name. */
+export function helperSaidWords(lang: LangTag, h: { name: string }, how: "ready" | "refused"): string {
+  return fill(words(SAID, lang)[how], { name: h.name, pane: paneName("peers", lang) });
+}
 
 export interface HelperLink {
   connectAs(agentId: string, name: string, card: string): Promise<{ ok: true; context: string; connectionId: string; spaceId: string } | { ok: false; why: "waiting" | "refused"; detail: string }>;
@@ -38,7 +100,15 @@ export interface Helpers {
   onChange(fn: () => void): () => void;
 }
 
-export function createHelpers(o: { dataDir: string; link: () => HelperLink | undefined; partnerName: () => string; home: () => string; now?: () => number }): Helpers {
+export function createHelpers(o: {
+  dataDir: string;
+  link: () => HelperLink | undefined;
+  partnerName: () => string;
+  home: () => string;
+  now?: () => number;
+  /** D507: the partner's one line when an address it said was being made became ready, or Mem refused it (once each). */
+  say?: (h: Helper, how: "ready" | "refused") => void;
+}): Helpers {
   const path = join(o.dataDir, HELPERS_FILE);
   const now = o.now ?? Date.now;
   const listeners = new Set<() => void>();
@@ -83,11 +153,17 @@ export function createHelpers(o: { dataDir: string; link: () => HelperLink | und
     if (r.ok) {
       // Stopped meanwhile: the connection just made is ended again at once.
       if (cur.state === "stopped") return void (await link.revokeConnection(r.connectionId).catch(() => false));
-      update(h.id, (x) => {
+      const h1 = update(h.id, (x) => {
         const { detail: _d, ...rest } = x;
-        return { ...rest, link: { context: r.context, connectionId: r.connectionId, spaceId: r.spaceId }, mem: "ready" };
+        return { ...rest, link: { context: r.context, connectionId: r.connectionId, spaceId: r.spaceId }, mem: "ready", said: "ready" };
       });
-    } else update(h.id, (x) => ({ ...x, mem: r.why, detail: r.detail }));
+      // D507: the partner said the address was being made; now it is: said once, in the conversation.
+      if (h1 && cur.said !== "ready") o.say?.(h1, "ready");
+    } else {
+      const h1 = update(h.id, (x) => ({ ...x, mem: r.why, detail: r.detail, ...(r.why === "refused" ? { said: "refused" as const } : {}) }));
+      // A wait comes back by itself (Settings says so); a refusal needs the person: said once, with what to do.
+      if (h1 && r.why === "refused" && cur.said !== "refused") o.say?.(h1, "refused");
+    }
   }
 
   const api: Helpers = {

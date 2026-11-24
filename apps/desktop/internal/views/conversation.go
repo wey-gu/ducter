@@ -158,9 +158,14 @@ func (a *App) conversation(c *ui.Context) {
 			}
 			// A time line before the first message and wherever 15 minutes
 			// passed, as a messaging app has (D104); the away divider is one.
-			when := e != nil && a.timeLineBefore(prev, e)
+			// D509: the row on top while older messages may still come keeps that look (its
+			// time line, its gap) once they land above it, so the reader's line never moves.
+			head := e != nil && a.olderHead(i, e)
+			when := e != nil && (head || a.timeLineBefore(prev, e))
 			top, join := float32(0), false
 			switch {
+			case head:
+				top = t.S3
 			case i == 0:
 			case userTurn(i) != userTurn(i-1):
 				top = t.S4
@@ -196,7 +201,9 @@ func (a *App) conversation(c *ui.Context) {
 		})
 		a.landOpening(rows)
 		a.wayBack(c, rows)
+		a.olderWait(c) // D509: a page of older messages on its way
 	})
+	a.moreOlder(len(rows)) // D509: near the top, the page before
 	a.firstResultLine(c)
 	// One card at a time under the conversation: Ducter can't run in the
 	// background, else a gentle ask, else the Terminal offer.

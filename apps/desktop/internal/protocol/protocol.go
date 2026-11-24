@@ -1395,6 +1395,14 @@ type TaskHistoryReq struct {
 	Limit    int    `json:"limit,omitempty"`
 }
 
+// ChannelHistoryReq asks for the page of the conversation before BeforeSeq
+// (D509), answered with a channel_history frame (Events, BeforeSeq, More).
+type ChannelHistoryReq struct {
+	T         string `json:"t"` // "channel_history"
+	BeforeSeq int64  `json:"beforeSeq"`
+	Limit     int    `json:"limit,omitempty"`
+}
+
 // TaskIndexReq asks for a task's session index (D320): all of it, or its
 // turns from FromSeq on (the first seq of the last turn the client holds).
 type TaskIndexReq struct {
@@ -3283,7 +3291,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// TestEveryServerFrameDecodes reads that union, so a new one can't be
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
-	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
+	case "welcome", "events", "channel_history", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",

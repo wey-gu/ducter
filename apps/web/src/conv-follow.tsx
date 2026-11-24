@@ -47,7 +47,9 @@ export function useFollow(scroller: { current: HTMLDivElement | null }, rows: re
   const [, redraw] = useState(0);
   const lite = rowsOf(rows);
   const last = lite.at(-1)?.seq ?? 0;
-  const mine = lite.filter((r) => r.mine).length + pending;
+  // The person's newest message and what is still going: older pages (D509) bring older ones of
+  // theirs, which is never a send.
+  const mine = { seq: lite.reduce((m, r) => (r.mine ? r.seq : m), 0), pending };
   const st = useRef({ following: place.kept ? place.following : true, mark: place.kept ? place.mark : last, lastTop: 0, landed: false, last, mine, far: false, glideUntil: 0 });
   const s = st.current;
 
@@ -57,7 +59,7 @@ export function useFollow(scroller: { current: HTMLDivElement | null }, rows: re
     place.divider = dividerAt(lite, A.S.readUpTo);
   }
   // Sending (here or on another device) goes to the end, and the divider has done its work.
-  if (s.landed && mine > s.mine) {
+  if (s.landed && (mine.seq > s.mine.seq || mine.pending > s.mine.pending)) {
     s.following = true;
     place.divider = undefined;
   }
@@ -239,4 +241,59 @@ export function NewDivider() {
       <span>{t("conv.divider")}</span>
     </div>
   );
+}
+
+/** D509: how near the top (in screens) the next older page is asked, so it lands before the reader gets there. */
+const OLDER_NEAR = 1.5;
+
+/** The first row in view, by its seq, and how far its top is below the scroller's top. */
+function anchorOf(el: HTMLElement): { seq: number; at: number } | undefined {
+  const top = el.getBoundingClientRect().top;
+  for (const r of Array.from(el.querySelectorAll<HTMLElement>("[data-seq]"))) {
+    const b = r.getBoundingClientRect();
+    if (b.bottom > top) return { seq: Number(r.dataset.seq), at: b.top - top };
+  }
+  return undefined;
+}
+
+/**
+ * D509: older messages page in as the reader nears the top: the page before the oldest event held,
+ * one at a time, again while they are still near it. A page lands above the reader, who stays on
+ * the same line (WebKit has no scroll anchoring, and the scroller turns it off everywhere): the
+ * row that was first in view is put back where it was.
+ */
+export function useOlder(scroller: { current: HTMLDivElement | null }, rows: readonly Entry[]) {
+  const st = useRef({ first: 0, anchor: undefined as { seq: number; at: number } | undefined });
+  const first = rows[0]?.firstSeq ?? 0;
+  const near = (el: HTMLElement) => el.scrollTop < el.clientHeight * OLDER_NEAR;
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const s = st.current;
+    // At the end, the end stays (useFollow); up, the line read stays.
+    if (s.first && first && first < s.first && s.anchor && A.convAway) {
+      const r = el.querySelector<HTMLElement>(`[data-seq="${s.anchor.seq}"]`);
+      if (r) el.scrollTop += r.getBoundingClientRect().top - el.getBoundingClientRect().top - s.anchor.at;
+    }
+    s.first = first;
+    s.anchor = near(el) ? anchorOf(el) : undefined;
+  });
+  // A short conversation, or a page with nothing to show (waits, receipts): the next one at once.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el && rows.length && near(el)) A.moreOlder();
+  });
+  return {
+    onScroll(el: HTMLElement) {
+      if (!near(el)) return void (st.current.anchor = undefined);
+      st.current.anchor = anchorOf(el);
+      A.moreOlder();
+    },
+  };
+}
+
+/** D509: while an older page is on its way, one quiet line over the top of the conversation; it
+ *  takes no room, so nothing moves when it comes or goes, and a quick page never shows it. */
+export function OlderWait() {
+  return <div class="older-wait">{A.S.older.asked ? <span role="status">{t("conv.older")}</span> : null}</div>;
 }

@@ -1215,6 +1215,7 @@ func (a *App) wordsField(c *ui.Context) {
 		ta := ui.TextArea(c.Key(fmt.Sprintf("nt-words:%d", nt.seq)), &nt.words).Lines(4, 10).MinHeight(0).
 			Placeholder(a.L.T("newtask.placeholder")).Label(a.L.T("newtask.what")).
 			Background(t.Bg).Border(1, t.LineSoft).Radius(t.RadiusMD).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.5)).
+			OnPaste(func(text string) bool { return a.pasteFiles("nt", text) }).
 			OnTextKey(func(k ui.TextKey) bool {
 				if a.pictureKeys("nt", k) {
 					return true

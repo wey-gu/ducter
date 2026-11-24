@@ -65,8 +65,13 @@ type benchTask struct {
 }
 
 type benchState struct {
+	// D542: the workbench is one task's: open for the task it was opened
+	// on (for), at that task's own page (tabs), never carried into the
+	// next task opened (a row in the rail, ⌘[ ⌘], a Keep's task).
 	open  bool
+	owner string
 	tab   string
+	tabs  map[string]string
 	seq   int
 	tasks map[string]*benchTask
 	wait  map[string]func(f protocol.ServerFrame)
@@ -159,7 +164,17 @@ func (a *App) watchesBrowser(task *store.Task) bool {
 }
 
 func (a *App) benchShown(task *store.Task) bool {
-	return a.bench.open && a.benchOpenable(task)
+	return task != nil && a.bench.open && a.bench.owner == task.ID && a.benchOpenable(task)
+}
+
+// benchShow opens the workbench for this task at a page ("" its own last,
+// else its first).
+func (a *App) benchShow(task *store.Task, tab string) {
+	if tab == "" {
+		tab = a.bench.tabs[task.ID]
+	}
+	a.bench.open, a.bench.owner, a.bench.tab = true, task.ID, tab
+	a.benchLoad(task)
 }
 
 // ToggleBench shows or hides the workbench of the task that is open (⌥⌘B).
@@ -167,12 +182,12 @@ func (a *App) ToggleBench() {
 	if a.Route != RouteTask {
 		return
 	}
-	a.bench.open = !a.bench.open
-	if a.bench.open {
-		if task := a.S.Task(a.TaskID); task != nil {
-			a.benchLoad(task)
-		}
+	task := a.S.Task(a.TaskID)
+	if task == nil || a.benchShown(task) {
+		a.bench.open = false
+		return
 	}
+	a.benchShow(task, "")
 }
 
 // benchLoad reads what the page shown needs, and the pages it serves.
@@ -301,6 +316,10 @@ func (a *App) workbench(c *ui.Context, task *store.Task, width float32) {
 		if !contains(tabs, a.bench.tab) {
 			a.bench.tab = tabs[0]
 		}
+		if a.bench.tabs == nil {
+			a.bench.tabs = map[string]string{}
+		}
+		a.bench.tabs[task.ID] = a.bench.tab
 	}
 	a.bench.colW = width
 	b := a.benchOf(task.ID)

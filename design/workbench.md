@@ -35,9 +35,11 @@ with while an agent works, hidden until asked for.
 - **Its edge (D244)** paints nothing at rest: the workbench's deeper ground (`bg-deep`) is the edge. Hovered, a 4 × 40 grip in `line-2`; dragged or focused, `ink-muted`. The arrows move it with a keyboard.
 - **Nothing to show (D244):** when the workbench is open and its pages go (the preview stopped, the browser or the phone was put down), it does not close by itself or go blank: it shows a launcher, **这里会出现什么 / What shows up here**, the pages it can hold as clay tiles with their drawn marks and when each appears (**它在文件夹里做事时 / When it works in a folder**, **它开了网页时 / When it serves a page**, **它用 Ducter 的浏览器时 / When it uses Ducter's browser**, **它用手机或模拟器时 / When it uses a phone or simulator**, **它做出图片、文件或链接时 / When it makes pictures, files or links**). A page that has something is raised and opens; the rest are dashed outlines.
 - **Open or closed, and the page shown**, are this device's own (localStorage), never synced: a
-  workbench open on the Mac doesn't open on the phone. On a phone it is open for the task it was
-  opened on, never over the next task opened (D484); a task that couldn't start has no Changes or
-  Files (its folder may not exist).
+  workbench open on the Mac doesn't open on the phone. **It is one task's (D542)**: at every width,
+  on the web and the Mac, it is open for the task it was opened on, at that task's own page, never
+  beside or over the next task opened (a row in the rail, ⌘[ ⌘], j/k), which opens at its
+  conversation with the rail beside it. A task that couldn't start has no Changes or Files (its
+  folder may not exist).
 
 ## Pages (each only when it has something)
 

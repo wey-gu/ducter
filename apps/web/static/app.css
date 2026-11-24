@@ -22934,19 +22934,28 @@ button.tray-main:focus-visible,
     background: var(--sunken);
   }
 }
-/* Revealed in place: always laid out, faded in. */
+/* Revealed in place: always laid out, faded in. D542: a faded action takes no tap (a touch screen
+   has no hover to show it first: a tap on a row's end opens the row, never pauses it unseen); it is
+   shown by a pointer's hover, or by the keyboard's focus, never by a tap's focus. */
 .ocard .tacts,
 .onhand-list:not(.room-rail) .ocard .ocol > .tacts {
   display: flex;
   opacity: 0;
+  pointer-events: none;
 }
 .ocard .tacts.on,
-.ocard:hover .tacts,
-.ocard:focus-within .tacts,
+.ocard:has(:focus-visible) .tacts,
 .onhand-list:not(.room-rail) .ocard .ocol > .tacts.on,
-.onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts,
-.onhand-list:not(.room-rail) .ocard:focus-within .ocol > .tacts {
+.onhand-list:not(.room-rail) .ocard:has(:focus-visible) .ocol > .tacts {
   opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: hover), (any-hover: hover) {
+  .ocard:hover .tacts,
+  .onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 /* Over the time where the sheet keeps no action column: the time fades as they come, on the row's
    own fill (no white patch on a warm hover). */
@@ -23001,12 +23010,19 @@ button.tray-main:focus-visible,
 .trow .tacts {
   display: flex;
   opacity: 0;
+  pointer-events: none;
   background: linear-gradient(to right, transparent, var(--sunken) 24px);
 }
 .trow .tacts.on,
-.trow:hover .tacts,
-.trow:focus-within .tacts {
+.trow:has(:focus-visible) .tacts {
   opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: hover), (any-hover: hover) {
+  .trow:hover .tacts {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .ocard,
@@ -23397,4 +23413,162 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 }
 .pl-face > .pl-n:active {
   transform: translateY(1px);
+}
+
+/* D542: the opened task's head, one compact block at every width: the partner's mark at the
+   title's size inline before the title (never a 96 poster beside the page), then one wrapping line
+   of the state in its Tag, who does it (once), where, and 换谁来做 as the shared quiet link. The
+   content under it keeps the page's own left edge. */
+.task-page,
+:root[data-density="compact"] .task-page {
+  --head-gap: var(--s3);
+  --head-in: 0px;
+}
+.task-head,
+:root[data-density="compact"] .task-head {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px var(--s3);
+  align-items: center;
+}
+.task-head .head-words,
+:root[data-density="compact"] .task-head .head-words {
+  display: contents;
+}
+.task-head .face,
+:root[data-density="compact"] .task-head .face {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: start;
+  margin-top: 1px;
+}
+.task-head h1,
+:root[data-density="compact"] .task-head h1 {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  font-size: var(--t20);
+  line-height: 1.3;
+}
+.task-head .head-words > :not(h1),
+:root[data-density="compact"] .task-head .head-words > :not(h1),
+.task-head .where-why {
+  grid-column: 1 / -1;
+}
+.task-head .standing {
+  display: flex;
+  order: 0;
+  row-gap: 4px;
+}
+.task-head .standing > .st-line,
+.task-head .standing > .st-facts {
+  display: contents;
+}
+.task-head .standing .tag {
+  font-size: var(--xs);
+  padding: 2px 9px;
+}
+.task-head .standing .st-switch {
+  min-height: 0;
+  padding: 0;
+  font-size: var(--sm);
+}
+.task-head .headline,
+:root[data-density="compact"] .task-head .headline {
+  margin-top: 4px;
+  font-size: var(--t20);
+  letter-spacing: -0.2px;
+  line-height: 1.3;
+}
+:lang(zh) .task-head .headline {
+  line-height: 1.45;
+}
+/* The state Tag's own tints (controls.tsx Tag; ui.md Shared controls). */
+.tag.working {
+  background: var(--working-surface);
+  color: var(--working-ink);
+  font-weight: 700;
+}
+.tag.waiting {
+  background: var(--waiting-surface);
+  color: var(--waiting-ink);
+  font-weight: 700;
+}
+.tag.failed {
+  background: var(--failed-surface);
+  color: var(--failed-ink);
+  font-weight: 700;
+}
+/* D542: the model chip and the context ring in the composer's own row, before Stop and Send; in
+   a narrow pane the chip keeps the model's name short and the level as its bars, the ring its
+   figure. A change's line floats over the chip for a moment, never a row of its own. */
+.composer-wrap {
+  container: composer / inline-size;
+}
+.composer .ctune,
+.composer .ctx-anchor {
+  flex: none;
+  align-self: center;
+  position: relative;
+}
+.composer .ctune {
+  flex-wrap: nowrap;
+  min-width: 0;
+  flex-shrink: 1;
+}
+.composer .ctune-chip {
+  max-width: 220px;
+}
+.composer .ctune-said {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  padding: 4px 10px;
+  border-radius: var(--pill);
+  background: var(--surface);
+  box-shadow: var(--floating);
+  white-space: nowrap;
+}
+.composer-hint {
+  justify-content: flex-start;
+  gap: var(--s3);
+  padding: 0 18px 4px;
+}
+@container composer (max-width: 560px) {
+  .composer .ctune-chip .m {
+    max-width: 7.5em;
+  }
+  .composer .ctune-chip .e > span {
+    display: none;
+  }
+  .composer .ctx-btn > span:not(.pct) {
+    display: none;
+  }
+  .composer {
+    gap: 6px;
+  }
+}
+.task-head .standing .st-switch svg {
+  color: inherit;
+}
+/* D542: the head on the reading column's own edges (the turns' 37.5rem, centred), one left edge down the page. */
+.task-page > .task-head {
+  width: 100%;
+  max-width: 37.5rem;
+  margin-inline: auto;
+}
+/* D542: a bar too narrow to say the branch whole shows its mark alone (never "d…"); the name is the
+   button's label and its popover's. */
+.top {
+  container: bar / inline-size;
+}
+@container bar (max-width: 820px) {
+  .info-btn {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  .info-btn .info-label,
+  .info-btn .chev-g {
+    display: none;
+  }
 }

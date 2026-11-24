@@ -328,8 +328,8 @@ What the window writes is what the user reads when they open the task, in one co
   Sending…** or **没送到 / Didn't get through**, and for a steer what the agent did with it.
   **Idle**, Return sends it as the next turn. **While it works**, Return steers (`task_send`
   `mode: "steer"`; the placeholder **插一句，它做到下一步就会看到… / Add something; it sees it at
-  its next step…**; with the words focused, two keys drawn under the box, **↩ 插一句 / Tell it now**
-  and **⌥↩ 等它做完再说 / After this turn**, D530): the runner
+  its next step…**; the send's menu holds **插一句 / Tell it now** (↩) and **等它做完再说 / After this
+  turn** (⌥↩); D542: no row of keys under the box, at rest or on focus): the runner
   writes it into the running turn and keeps it as unread until the agent's own echo of it comes
   (OAR's `user_message`, mapped to `user_echo` by the normalizer; matched by the UUID the runner
   passed as OAR's `inputId` where the agent echoes it, else by its words, and every steer before

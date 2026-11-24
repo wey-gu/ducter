@@ -10,7 +10,7 @@ import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { KeepPageView, KeepSheetCard, K } from "./keep.tsx";
+import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
 import { still } from "./nav.ts";
 import { wideNow } from "./fold.ts";
 import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
@@ -955,8 +955,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
-    L.focus = task.id;
-    A.go({ name: "task", id: task.id, full: room === "full" || room === "rail" });
+    openRow(task.id, room);
   };
   return (
     <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id}>
@@ -997,6 +996,16 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
     </div>
   );
 });
+
+/** D542: what a row's tap opens. In the rail a Keep's own work (its rounds' task) is the Keep: its
+ *  row opens the Keep's page, never the round's task; any other row opens its task, at the whole
+ *  screen from the board and the rail, at its conversation (the workbench is the task's own). */
+export function openRow(taskId: string, room: Room) {
+  const kept = room === "rail" ? keepOfTask(taskId) : undefined;
+  if (kept) return openKeep(kept);
+  L.focus = taskId;
+  A.go({ name: "task", id: taskId, full: room === "full" || room === "rail" });
+}
 
 /** D287: results already celebrated this session, so a done card's little moment plays once. */
 const cheered = new Map<string, number>();

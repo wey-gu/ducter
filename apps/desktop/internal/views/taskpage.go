@@ -320,56 +320,10 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 // headline or the outcome, a pending ask), then its wait's groove and a
 // keep-going loop.
 func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
-	t := a.T
-	if a.compact() {
-		a.taskHeadCompact(c, task, m)
-		return
-	}
-	ui.Column(c.Key("headcol")).Gap(t.S6).MinWidth(0).Children(func() {
-		// D290: the head is where the card you opened grows to (Hero).
-		head := ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
-		a.tpage.headAt = head.Bounds() // where it was drawn, for the switch's check (D343)
-		head.Children(func() {
-			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
-				a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
-				// What it waits for, a thought bubble by its head (D112): up
-				// on the face's top corner, clear of its eyes and of the
-				// words, its tail toward the head.
-				if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
-					ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - waitBadgeW + 12).Top(-8).Children(func() {
-						a.waitBadge(c, waitGlyph(w.Check, w.Event))
-					})
-				}
-			})
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
-				ui.Column(c).Gap(t.S2).Children(func() {
-					a.taskStanding(c, task)
-					if finished(task) {
-						a.outcome(c, task)
-					} else {
-						a.taskHeadline(c, task)
-					}
-				})
-				// An answered ask is one line here; a pending one sits over
-				// the composer, where the answer is typed (D152).
-				if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
-					a.decisionAnswered(c, d)
-				}
-				a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
-				// D238: the person's own phone it is using, and 停下 / Stop: a calm row here (D339).
-				if !finished(task) {
-					a.handsetTaskLine(c, task)
-				}
-			})
-		})
-		// D426: the things of a many-things message this task does, each with its mark.
-		a.taskAsks(c, task.ID)
-		a.watchCard(c, task, m)
-		a.tryStrip(c, task)
-		if len(m.blocks) == 0 && len(task.Sends) == 0 {
-			uiText(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-		}
-	})
+	// D542: one compact head at every width and density: the partner's mark
+	// at the title's size inline before it, then the state's Tag, who does it
+	// (once) and where on one line (the web's .task-head).
+	a.taskHeadCompact(c, task, m)
 }
 
 // taskTail is what comes after the turns: what the user sent that the Log
@@ -1286,8 +1240,8 @@ func (a *App) landmarkWords(task *store.Task, lm *Landmark, now time.Time) landm
 // the state and who does it under the title; the rest as in taskHead.
 func (a *App) taskHeadCompact(c *ui.Context, task *store.Task, m *taskMemo) {
 	t := a.T
-	const face = 40
-	ui.Column(c.Key("headcol")).Gap(t.S4).MinWidth(0).Children(func() {
+	const face = taskMarkW
+	ui.Column(c.Key("headcol")).Gap(t.S2).MinWidth(0).Children(func() {
 		head := ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
 		a.tpage.headAt = head.Bounds()
 		head.Children(func() {
@@ -1304,15 +1258,18 @@ func (a *App) taskHeadCompact(c *ui.Context, task *store.Task, m *taskMemo) {
 						}
 					})
 				})
-				a.taskStanding(c, task)
-				if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
-					a.decisionAnswered(c, d)
-				}
-				a.switchSheet(c, task)
-				if !finished(task) {
-					a.handsetTaskLine(c, task)
-				}
 			})
+		})
+		// D542: the line under the title on the page's own left edge, as the web's.
+		ui.Column(c.Key("headmeta")).Gap(t.S2).MinWidth(0).Children(func() {
+			a.taskStanding(c, task)
+			if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
+				a.decisionAnswered(c, d)
+			}
+			a.switchSheet(c, task)
+			if !finished(task) {
+				a.handsetTaskLine(c, task)
+			}
 		})
 		a.taskAsks(c, task.ID)
 		a.watchCard(c, task, m)

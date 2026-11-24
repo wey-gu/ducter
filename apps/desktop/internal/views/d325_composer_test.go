@@ -83,9 +83,11 @@ func TestD325Composer(t *testing.T) {
 		app.focusComposer = true
 		tt.Frame()
 		tt.Frame()
-		for _, w := range []string{L.T("send.steer"), L.T("send.after")} {
-			if !slices.Contains(tt.Texts(), w) {
-				t.Errorf("%s: focused, no %q in %q", lang, w, tt.Texts())
+		// D542: nor with the focus: a row that came with it moved the box under the pointer; the
+		// two ways are in the words' place and the send's own menu.
+		for _, w := range []string{L.T("send.steer")} { // send.after's words are also the held head's in English
+			if slices.Contains(tt.Texts(), w) {
+				t.Errorf("%s: focused, a row of keys under the box: %q", lang, tt.Texts())
 			}
 		}
 		task := app.S.Task("k1")
@@ -126,7 +128,8 @@ func TestD325NoSteer(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		_, tt, _ := d325Task(t, lang, "pi", true)
-		for _, w := range []string{L.T("composer.nosteer.hint", "pi"), L.T("held.head.nosteer", "pi")} {
+		// D542: said over its held words and in the words' place, never in a row under the box.
+		for _, w := range []string{L.T("held.head.nosteer", "pi")} {
 			if !tt.HasText(w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 			}

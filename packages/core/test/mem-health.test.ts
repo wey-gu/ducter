@@ -199,7 +199,7 @@ describe("D375 装上: Mem's own command first, the task as the fallback", () =>
     expect(s.connects).toHaveLength(0);
     s.done();
   });
-  test("a second tap while it runs is refused as running; two agents go one after the other", async () => {
+  test("a second tap while it runs is the same one (D552: ok, nothing new starts); two agents go one after the other", async () => {
     let release!: () => void;
     let inFlight = 0;
     let most = 0;
@@ -214,7 +214,7 @@ describe("D375 装上: Mem's own command first, the task as the fallback", () =>
     });
     await s.mp.check();
     await s.mp.install("local", "claude-code");
-    expect(await s.mp.install("local", "claude-code")).toEqual({ ok: false, reason: "running" });
+    expect(await s.mp.install("local", "claude-code")).toEqual({ ok: true });
     await s.mp.install("local", "codex");
     await until(() => s.connects.length === 1);
     release();

@@ -1311,6 +1311,15 @@ a {
 .btn:disabled {
   opacity: 0.5;
 }
+/* D552: a button at work (更新中…) keeps its clay and says so with the shared spinner; no tap. */
+.btn.busy:disabled {
+  opacity: 1;
+  cursor: default;
+  color: var(--ink-soft);
+}
+.btn.busy .spin {
+  margin: 0;
+}
 .btns {
   display: flex;
   flex-wrap: wrap;

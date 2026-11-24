@@ -1881,6 +1881,17 @@ export const scenarios: Scenario[] = [
     rubric:
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
   },
+  {
+    // D552: asked to remember while Mem isn't signed in: the save is lost, so the person hears it once.
+    id: "mem-remember-signed-out-zh",
+    category: "memory",
+    lang: "zh",
+    memoryDown: true,
+    steps: [{ user: "记住，周报每周五下午发给产品组。" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, require: [/没(能)?记住|记不住|没记下|没能记|这次.{0,6}记/] },
+    rubric:
+      "The user asks the partner to remember something, but Nowledge Mem isn't signed in on the home, so nothing could be kept (memory_add said so). Pass if the partner says in one or two short, plain Chinese sentences that it couldn't keep this one this time, that Nowledge Mem isn't signed in (naming Nowledge Mem or 记忆 is right here), and that Settings › 记忆 is where to fix it. Fail on a plain 「好」 as if it was kept, on a promise to remember, on error codes or commands, or on opening a task.",
+  },
   // D304: when a recall changed the answer, one quiet source line under it (the partner marks the
   // memory's ref; code checks it against what the search returned); none when it didn't.
   {

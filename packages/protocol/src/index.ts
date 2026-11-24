@@ -2408,10 +2408,12 @@ export interface MemPluginView {
   versions?: string[];
   /** A setup task for it is open right now (its id). */
   taskId?: string;
-  /** D375: Mem's own `nmem connect --tool` is putting it in right now (no task). */
+  /** D375: Mem's own `nmem connect --tool` is putting it in right now (no task); D552: or its setup task is being opened. */
   busy?: true;
   /** D375: just put in by Mem's own command: the agent uses it once restarted. */
   fresh?: true;
+  /** D552: a setup task just updated it (installed, at `version`): said until the next check. */
+  updated?: true;
   checkedAt?: string; // ISO
 }
 

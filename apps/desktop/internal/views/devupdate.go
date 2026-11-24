@@ -94,6 +94,10 @@ func (a *App) drainDeviceResults() {
 		}
 	case "mem_plugin_result":
 		d.card.memAsk = ""
+		// D552: a no ends this window's busy at once; a yes keeps it until the devices frame carries the task.
+		if !res.OK {
+			delete(a.memSent, res.Device+":"+res.Harness)
+		}
 		if res.OK {
 			d.card.mem = nil
 		} else {

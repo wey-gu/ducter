@@ -159,8 +159,9 @@ test("装上 opens one task there with that agent and Mem's own guide; the check
   expect(s.opened[0]).toMatchObject({ harness: "codex", place: { kind: "none", device: "w1" }, origin: "you", language: "zh", title: "为 mini 上的 Codex 安装 Nowledge Mem" });
   expect(s.opened[0].brief).toContain("https://mem.nowledge.co/SKILL.md");
   expect(s.opened[0].brief).toContain('nmem --json plugins inspect --host codex-cli');
-  // Twice: refused while the first is open; the card says a task is on it.
-  expect(await s.mp.install("w1", "codex")).toEqual({ ok: false, reason: "running" });
+  // Twice (D552): the same task while the first is open, never a second one; the card says a task is on it.
+  expect(await s.mp.install("w1", "codex")).toEqual({ ok: true, taskId: "tsk1" });
+  expect(s.opened).toHaveLength(1);
   await s.mp.check("w1");
   expect(s.mp.view("w1", agents("codex"))[0]!.mem?.taskId).toBe("tsk1");
   s.calls.length = 0;
@@ -347,4 +348,90 @@ test("over the socket: the devices frame carries the Mem line; 装上 opens the 
     ws.close();
     await core.stop();
   }
+});
+
+// D552: hel, 2026-11-24: one 更新 on Claude Code's Mem plugin, and four tasks in 30 s.
+test("D552: taps while the update task is still being opened get that same task; the line is busy from the tap", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const log = fakeLog();
+  const opened: any[] = [];
+  const mp = createMemPlugins({
+    dataDir: dir,
+    log: log as any,
+    tasks: { get: () => undefined, list: () => [] } as any,
+    persona: { id: "p" },
+    // The runner takes its time (a worker's session starting): every tap lands before it answers.
+    runner: () => ({ openTask: async (i: any) => (opened.push(i), await gate, { taskId: `tsk${opened.length}` } as TaskCard) }) as any,
+    on: () => true,
+    lang: () => "zh",
+    inspectLocal: async () => fx("mac-2026-11-10.json"),
+    inspectWorker: async () => undefined,
+    devices: async () => [{ id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code") }],
+    checkUpdates: async () => ({ "claude-code": "0.7.38" }),
+    everyMs: 0,
+  });
+  await mp.check();
+  const taps = [mp.install("local", "claude-code"), mp.install("local", "claude-code"), mp.install("local", "claude-code"), mp.install("local", "claude-code")];
+  await new Promise((r) => setTimeout(r, 5));
+  // Busy from the first tap, before any task id: the button reads 更新中 everywhere.
+  expect(mp.view("local", agents("claude-code"))[0]!.mem).toMatchObject({ state: "update", busy: true });
+  release();
+  const got = await Promise.all(taps);
+  expect(opened).toHaveLength(1);
+  expect(got).toEqual([0, 1, 2, 3].map(() => ({ ok: true, taskId: "tsk1" })));
+  const m = mp.view("local", agents("claude-code"))[0]!.mem!;
+  expect(m.taskId).toBe("tsk1");
+  expect(m.busy).toBeUndefined();
+  // Later taps while it is open: still the one task.
+  expect(await mp.install("local", "claude-code")).toEqual({ ok: true, taskId: "tsk1" });
+  expect(opened).toHaveLength(1);
+  mp.stop();
+});
+
+test("D552: the work a failed update task hands on stays the update; when it lands, the line says the version it reached", async () => {
+  let version = "0.7.34";
+  const log = fakeLog();
+  const opened: any[] = [];
+  const inspect = () => {
+    const m = fx("mac-2026-11-10.json");
+    return { ...m, "claude-code": { ...m["claude-code"]!, version } };
+  };
+  const mp = createMemPlugins({
+    dataDir: dir,
+    log: log as any,
+    tasks: { get: () => undefined, list: () => [] } as any,
+    persona: { id: "p" },
+    runner: () => ({ openTask: async (i: any) => (opened.push(i), { taskId: `tsk${opened.length}` } as TaskCard) }) as any,
+    on: () => true,
+    lang: () => "zh",
+    inspectLocal: async () => inspect(),
+    inspectWorker: async () => undefined,
+    devices: async () => [{ id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code", "codex") }],
+    checkUpdates: async () => ({ "claude-code": "0.7.38" }),
+    everyMs: 0,
+  });
+  await mp.check();
+  expect(await mp.install("local", "claude-code")).toEqual({ ok: true, taskId: "tsk1" });
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  // Claude Code couldn't start there (D549): the task fails, and the mend opens the work again on Codex.
+  log.append({ stream: "task:tsk1", origin: "system", kind: "task_state", body: { taskId: "tsk1", attention: "failed", residency: "hot" } });
+  await tick();
+  log.append({ stream: "task:tsk9", origin: "partner", kind: "task_open", body: { taskId: "tsk9", title: "为 hel 上的 Claude Code 更新 Nowledge Mem", brief: "…", harness: "codex", replaces: "tsk1" } });
+  await tick();
+  // Still the one update: no Update button to tap again, the line on the work that goes on.
+  expect(mp.view("local", agents("claude-code"))[0]!.mem).toMatchObject({ state: "update", taskId: "tsk9" });
+  expect(await mp.install("local", "claude-code")).toEqual({ ok: true, taskId: "tsk9" });
+  expect(opened).toHaveLength(1);
+  // Codex updates it: the check runs when that task ends, the notice clears, and the line says so.
+  version = "0.7.38";
+  log.append({ stream: "task:tsk9", origin: "system", kind: "task_state", body: { taskId: "tsk9", attention: "done_claimed", residency: "hot" } });
+  await tick();
+  const m = mp.view("local", agents("claude-code"))[0]!.mem!;
+  expect(m).toMatchObject({ state: "installed", version: "0.7.38", updated: true });
+  expect(m.taskId).toBeUndefined();
+  // Until the next check.
+  await mp.check();
+  expect(mp.view("local", agents("claude-code"))[0]!.mem!.updated).toBeUndefined();
+  mp.stop();
 });

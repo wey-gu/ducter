@@ -1,6 +1,8 @@
 package views
 
 import (
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -19,58 +21,110 @@ func init() {
 		if h.Mem == nil || !h.Installed {
 			return ""
 		}
-		line, _ := a.memPluginWords(h.Mem, h.Harness)
+		line, _, _ := a.memPluginWords(h.Mem, h.Harness)
 		return line
 	})
 	coinActions = append(coinActions, (*App).memPluginAction)
 }
 
-// memPluginWords is the line and its action's words for one agent ("" when none).
-func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, action string) {
+// memPluginWords is the line, its action's words and, while it is under
+// way, its busy button's words for one agent ("" when none).
+func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, action, busy string) {
 	if m == nil {
-		return "", ""
+		return "", "", ""
 	}
-	// D466: an open task says what it is doing: updating, keeping one, else installing.
-	if m.TaskID != "" {
+	// D466: an open task says what it is doing: updating (D552: to which
+	// version), keeping one, else installing. D552: from the tap on (Busy),
+	// and its button stays where it was, saying so (更新中…), never gone.
+	if m.TaskID != "" || m.Busy {
 		switch {
 		case m.State == "update":
-			return a.L.T("memp.setting.update"), ""
+			if m.Available != "" {
+				return a.L.T("memp.setting.update.to", m.Available), "", a.L.T("memp.btn.updating")
+			}
+			return a.L.T("memp.setting.update"), "", a.L.T("memp.btn.updating")
 		case m.State == "review" && m.Why == "multiple":
-			return a.L.T("memp.setting.tidy"), ""
+			return a.L.T("memp.setting.tidy"), "", a.L.T("memp.btn.tidying")
+		case m.State == "review":
+			return a.L.T("memp.setting"), "", a.L.T("memp.btn.reviewing")
 		}
-		return a.L.T("memp.setting"), ""
+		// D375: Mem's own command putting it in now, where Mem has one for this agent.
+		if m.TaskID == "" && memConnectTools[harness] {
+			return a.L.T("memp.busy"), "", a.L.T("memp.btn.installing")
+		}
+		return a.L.T("memp.setting"), "", a.L.T("memp.btn.installing")
 	}
-	// D375: Mem's own command putting it in now; just put in (restart the agent to use it).
-	if m.Busy {
-		return a.L.T("memp.busy"), ""
+	// D552: an update that took, until the next check.
+	if m.Updated && m.Version != "" {
+		return a.L.T("memp.updated", m.Version, harnessName(harness)), "", ""
 	}
 	if m.Fresh && m.State != "absent" {
-		return a.L.T("memp.fresh", harnessName(harness)), ""
+		return a.L.T("memp.fresh", harnessName(harness)), "", ""
 	}
 	switch m.State {
 	case "installed":
 		if m.Version != "" {
-			return a.L.T("memp.installed", m.Version), ""
+			return a.L.T("memp.installed", m.Version), "", ""
 		}
-		return a.L.T("memp.installed.bare"), ""
+		return a.L.T("memp.installed.bare"), "", ""
 	case "absent":
-		return a.L.T("memp.absent"), a.L.T("memp.btn.install")
+		return a.L.T("memp.absent"), a.L.T("memp.btn.install"), ""
 	case "update":
 		// D466: from the version there to the one out, when both are known.
 		if m.Version != "" && m.Available != "" {
-			return a.L.T("memp.update.to", m.Version, m.Available), a.L.T("memp.btn.update")
+			return a.L.T("memp.update.to", m.Version, m.Available), a.L.T("memp.btn.update"), ""
 		}
-		return a.L.T("memp.update"), a.L.T("memp.btn.update")
+		return a.L.T("memp.update"), a.L.T("memp.btn.update"), ""
 	case "review":
 		if m.Why == "multiple" {
 			if len(m.Versions) == 2 {
-				return a.L.T("memp.review.two", m.Versions[0], m.Versions[1]), a.L.T("memp.btn.tidy")
+				return a.L.T("memp.review.two", m.Versions[0], m.Versions[1]), a.L.T("memp.btn.tidy"), ""
 			}
-			return a.L.T("memp.review.multiple"), a.L.T("memp.btn.tidy")
+			return a.L.T("memp.review.multiple"), a.L.T("memp.btn.tidy"), ""
 		}
-		return a.L.T("memp.review.unclear"), a.L.T("memp.btn.review")
+		return a.L.T("memp.review.unclear"), a.L.T("memp.btn.review"), ""
 	}
-	return "", ""
+	return "", "", ""
+}
+
+// memSendingFor is how long this window's own tap reads busy without the
+// home's word (D552; the frame with its task comes in a second or two).
+const memSendingFor = 15 * time.Second
+
+// memLine is an agent's Mem line as this window knows it (D552): from the
+// tap until the home answers, busy, so a second tap has nothing to press.
+func (a *App) memLine(dv *protocol.DeviceView, h protocol.DeviceHarness) *protocol.MemPluginView {
+	m := h.Mem
+	key := dv.ID + ":" + h.Harness
+	if m == nil {
+		return m
+	}
+	// The home's own word (its task, its busy, or the line moved on) ends this window's.
+	if m.TaskID != "" || m.Busy || m.Updated || m.Fresh || m.State == "installed" {
+		delete(a.memSent, key)
+		return m
+	}
+	if at, ok := a.memSent[key]; ok && time.Since(at) < memSendingFor {
+		c := *m
+		c.Busy = true
+		return &c
+	}
+	return m
+}
+
+// installMem asks the home to install or update Nowledge Mem in that agent
+// there (D169), once: a tap while this window's last ask is in flight does
+// nothing (D552).
+func (a *App) installMem(device, harness string) {
+	key := device + ":" + harness
+	if at, ok := a.memSent[key]; ok && time.Since(at) < memSendingFor {
+		return
+	}
+	if a.memSent == nil {
+		a.memSent = map[string]time.Time{}
+	}
+	a.memSent[key] = time.Now()
+	a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: device, Harness: harness})
 }
 
 // memAskWords is the in-place ask before a tap does anything (D466): its
@@ -111,7 +165,7 @@ func (a *App) memAskBlock(c *ui.Context, dv *protocol.DeviceView, h protocol.Dev
 		a.note(c, means)
 		ui.Row(c).Gap(t.S2).Children(func() {
 			if a.buttonFor(c, ok, about, btnSecondary, t.ControlSM, t.Bg) {
-				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: dv.ID, Harness: h.Harness})
+				a.installMem(dv.ID, h.Harness)
 				d.card.memAsk = ""
 			}
 			if a.buttonFor(c, a.L.T("memp.cancel"), about, btnText, t.ControlSM, t.Bg) {
@@ -136,7 +190,8 @@ func memPluginRowsFor(devices []protocol.DeviceView) []memPluginRow {
 				if m == nil || !h.Installed {
 					continue
 				}
-				if m.State == "update" || (m.State == "review" && m.Why == "multiple") {
+				// D552: and one that just updated, so its row says the version it reached.
+				if m.State == "update" || (m.State == "review" && m.Why == "multiple") || m.Updated {
 					out = append(out, memPluginRow{dv: dv, h: h})
 				}
 			}
@@ -159,13 +214,15 @@ func (a *App) memPluginRows(c *ui.Context) {
 		dv, h := r.dv, r.h
 		key := dv.ID + ":" + h.Harness
 		agent := harnessName(h.Harness)
-		line, action := a.memPluginWords(h.Mem, h.Harness)
+		line, action, busy := a.memPluginWords(a.memLine(dv, h), h.Harness)
 		can := action != "" && h.LoggedIn && dv.State == protocol.DeviceAwake
 		asking := can && d.card.memAsk == key
 		var control func()
-		if can && !asking {
+		if busy != "" {
+			control = func() { a.busyButton(c, busy, spoken(a.L, agent, a.deviceNameIn(dv), "Nowledge Mem"), t.ControlSM, t.Surface) }
+		} else if can && !asking {
 			control = func() {
-				if a.buttonFor(c, action, spoken(a.L, agent, "Nowledge Mem"), btnSecondary, t.ControlSM, t.Surface) {
+				if a.buttonFor(c, action, spoken(a.L, agent, a.deviceNameIn(dv), "Nowledge Mem"), btnSecondary, t.ControlSM, t.Surface) {
 					d.card.memAsk, d.card.mem = key, nil
 				}
 			}
@@ -187,15 +244,19 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 	if h.Mem == nil || !h.Installed || !h.LoggedIn {
 		return
 	}
-	_, action := a.memPluginWords(h.Mem, h.Harness)
-	if action == "" || dv.State != protocol.DeviceAwake {
-		return
-	}
+	_, action, busy := a.memPluginWords(a.memLine(dv, h), h.Harness)
 	t := a.T
 	d := a.devState()
 	key := dv.ID + ":" + h.Harness
 	agent := harnessName(h.Harness)
 	about := spoken(a.L, agent, "Nowledge Mem")
+	if busy != "" {
+		ui.Row(c.Key("memp:" + key)).Children(func() { a.busyButton(c, busy, about, t.ControlSM, t.Surface) })
+		return
+	}
+	if action == "" || dv.State != protocol.DeviceAwake {
+		return
+	}
 	if d.card.memAsk != key {
 		ui.Row(c.Key("memp:" + key)).Children(func() {
 			if a.buttonFor(c, action, about, btnSecondary, t.ControlSM, t.Surface) {

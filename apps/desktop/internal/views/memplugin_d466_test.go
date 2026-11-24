@@ -25,15 +25,15 @@ func TestMemPluginWordsD466(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, _ := iaApp(t, lang)
 		L := app.L
-		line, act := app.memPluginWords(&protocol.MemPluginView{State: "update", Version: "0.7.34", Available: "0.7.37"}, "claude-code")
+		line, act, _ := app.memPluginWords(&protocol.MemPluginView{State: "update", Version: "0.7.34", Available: "0.7.37"}, "claude-code")
 		if line != L.T("memp.update.to", "0.7.34", "0.7.37") || act != L.T("memp.btn.update") {
 			t.Fatalf("%s update: %q %q", lang, line, act)
 		}
-		line, act = app.memPluginWords(&protocol.MemPluginView{State: "review", Why: "multiple", Versions: []string{"0.1.10", "0.1.53"}}, "codex")
+		line, act, _ = app.memPluginWords(&protocol.MemPluginView{State: "review", Why: "multiple", Versions: []string{"0.1.10", "0.1.53"}}, "codex")
 		if line != L.T("memp.review.two", "0.1.10", "0.1.53") || act != L.T("memp.btn.tidy") {
 			t.Fatalf("%s two: %q %q", lang, line, act)
 		}
-		if line, _ = app.memPluginWords(&protocol.MemPluginView{State: "update", TaskID: "t1"}, "codex"); line != L.T("memp.setting.update") {
+		if line, _, _ = app.memPluginWords(&protocol.MemPluginView{State: "update", TaskID: "t1"}, "codex"); line != L.T("memp.setting.update") {
 			t.Fatalf("%s updating: %q", lang, line)
 		}
 		ask, means, ok := app.memAskWords(&protocol.MemPluginView{State: "update", Available: "0.7.37"}, "Claude Code", "hel", false)
@@ -126,7 +126,7 @@ func TestMemPluginPaneD466(t *testing.T) {
 		}
 		shot("rows")
 		// 更新 asks in place first, naming where it goes; only then is anything sent.
-		if err := tt.Click(spoken(L, L.T("memp.btn.update"), spoken(L, "Claude Code", "Nowledge Mem"))); err != nil {
+		if err := tt.Click(spoken(L, L.T("memp.btn.update"), spoken(L, "Claude Code", where, "Nowledge Mem"))); err != nil {
 			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
 		}
 		frames()
@@ -153,7 +153,7 @@ func TestMemPluginPaneD466(t *testing.T) {
 			t.Fatalf("%s: 更新 sent nothing", lang)
 		}
 		// 理成一份 asks in place too.
-		if err := tt.Click(spoken(L, L.T("memp.btn.tidy"), spoken(L, "Codex", "Nowledge Mem"))); err != nil {
+		if err := tt.Click(spoken(L, L.T("memp.btn.tidy"), spoken(L, "Codex", where, "Nowledge Mem"))); err != nil {
 			t.Fatalf("%s: %v", lang, err)
 		}
 		frames()

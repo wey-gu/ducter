@@ -757,17 +757,20 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 	}[phase]
 	a.group(c, "mem-setup", "", "", func() {
 		a.headRow(c, "mem-setup", a.memTile(c, true), "Nowledge Mem", line, sideMuted, nil)
-		if phase == "missing" {
-			a.tileRow(c, "mem-what", nil, a.L.T("mem.app.learn"), a.L.T("mem.app.what"), func() {
-				if a.button(c, a.L.T("mem.app.open"), btnSecondary, t.ControlSM, t.Surface) {
-					a.openLink(memSite)
-				}
-			})
-			a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
-			return
+		// D552: what Nowledge Mem is, before any step, in every phase.
+		a.tileRow(c, "mem-what", nil, a.L.T("mem.app.learn"), a.L.T("mem.app.what"), func() {
+			if a.button(c, a.L.T("mem.app.open"), btnSecondary, t.ControlSM, t.Surface) {
+				a.openLink(memSite)
+			}
+		})
+		if phase != "missing" {
+			a.memSteps(c, phase, b)
 		}
-		a.memSteps(c, phase, b)
-		a.footRow(c, "mem-local", a.L.T("mem.setup.local", name), nil)
+		where := home
+		if where == "" {
+			where = a.L.T("mem.setup.local.here")
+		}
+		a.footRow(c, "mem-local", a.L.T("mem.setup.local", name, where), nil)
 	})
 }
 

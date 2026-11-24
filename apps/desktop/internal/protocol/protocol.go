@@ -2507,8 +2507,11 @@ type MemPluginView struct {
 	CheckedAt string `json:"checkedAt,omitempty"`
 	// D375: Busy: Mem's own `nmem connect --tool` is putting it in now;
 	// Fresh: just put in by it (the agent uses it once restarted).
-	Busy  bool `json:"busy,omitempty"`
-	Fresh bool `json:"fresh,omitempty"`
+	// D552: Busy also while its setup task is being opened; Updated: a
+	// setup task just updated it (installed, at Version), until the next check.
+	Busy    bool `json:"busy,omitempty"`
+	Fresh   bool `json:"fresh,omitempty"`
+	Updated bool `json:"updated,omitempty"`
 	// D466: Available: update, the newer version Mem's own `plugins check`
 	// offers (from Version to it); Versions: review "multiple", each copy's
 	// version, oldest first.

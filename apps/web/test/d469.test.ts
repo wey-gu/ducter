@@ -185,6 +185,28 @@ describe("Settings' Overview, round 2 (D469)", () => {
     expect(away.go).toBe("去更新");
   });
 
+  test("D552: two computers' notices say which; a tap reads 更新中 at once, sends once; it clears when the check says updated", async () => {
+    const { A, h } = await setup();
+    const upd = { state: "update", version: "0.7.34", available: "0.7.38" };
+    A.devices = [home([agent("claude-code", { mem: upd })]), { id: "w1", name: "haswell", kind: "server", home: false, state: "awake", harnesses: [agent("claude-code", { mem: upd })], abilities: [] }] as any;
+    A.updateAll = undefined as any;
+    const sent: any[] = [];
+    A.send = (f: any) => void sent.push(f);
+    const texts = h.setNeeds().filter((n) => n.key.startsWith("memp:")).map((n) => n.text);
+    expect(texts).toEqual(["Hetzner Server 上 Claude Code 里的 Nowledge Mem 有新版本。", "haswell 上 Claude Code 里的 Nowledge Mem 有新版本。"]);
+    // Four taps in a row: one frame, and the fix is the busy button from the first.
+    for (let i = 0; i < 4; i++) A.installMem("w1", "claude-code");
+    expect(sent.filter((f) => f.t === "mem_plugin_install")).toHaveLength(1);
+    const busy = h.setNeeds().find((n) => n.key === "memp:w1:claude-code")!;
+    expect(busy).toMatchObject({ go: "更新中…", busy: true });
+    A.memSent.delete("w1:claude-code");
+    // Updated: the notice goes; the row on Settings › 记忆 says the version it reached.
+    A.devices = [home([agent("claude-code", { mem: { state: "installed", version: "0.7.38", updated: true } })])] as any;
+    expect(h.setNeeds().filter((n) => n.key.startsWith("memp:"))).toEqual([]);
+    const { memPluginRows } = await import("../src/mem-plugin.tsx");
+    expect(memPluginRows(A.devices).map(({ h }) => h.mem?.version)).toEqual(["0.7.38"]);
+  });
+
   test("the whole world: computers with what they do now, the handhelds, the accounts at their place", async () => {
     const { A, h } = await setup();
     A.devices = [home([agent("codex")]), { id: "w1", name: "haswell", kind: "server", home: false, state: "asleep", harnesses: [agent("codex")], abilities: [] }] as any;

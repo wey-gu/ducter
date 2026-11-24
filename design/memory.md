@@ -607,6 +607,15 @@ on every computer, without owning it (D17):
   guide is for installing *and* updating; an older copy goes only by the agent's own plugin
   commands, never by deleting files, else the task stops and reports each copy. Never by itself,
   never in 全部更新 / Update all (that runs at night by itself; this edits the agent's own setup).
+- **One tap is one task (D552).** Per agent per computer one setup at a time, held at the source:
+  a tap while one is opening or open gets that same task. From the tap the line reads busy
+  (**正在更新到 0.7.38…**) and the button **更新中…** (the shared busy button). Work the setup task
+  hands on (`task_open` `replaces`: the mend after a start failure, D549) stays the setup, and the
+  check runs when it ends. Then the line says **已更新到 0.7.38，重开 {agent} 就用上了** until the
+  next check, and the Overview's notice is gone. Notices on more than one computer name theirs.
+- **Mem down (D552).** Memory on and Mem signed out or out of reach is a need on Settings'
+  Overview, not only the Memory head. A save Mem refused because it isn't signed in is said once
+  by the partner when the person asked to keep it; one that only waits (Mem down) stays unsaid.
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
   own settings, so it waits for the tap). Once the check sees it in, however it got there, an

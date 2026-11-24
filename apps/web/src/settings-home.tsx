@@ -12,8 +12,8 @@ import { BrandMark, BrandTile, brandOf } from "./brand.tsx";
 import { linkedChats } from "./channels.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
-import { ago, harnessName, memWords, modelName } from "./format.ts";
-import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
+import { ago, harnessName, memWords, modelName, shownDeviceName } from "./format.ts";
+import { MemAsk, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook, peersOneWay, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
@@ -29,6 +29,8 @@ export type SetNeed = {
   go: string;
   page: Exclude<SettingsPage, "">;
   about?: string;
+  /** D552: its fix is under way (更新中…): the button says so and takes no tap. */
+  busy?: boolean;
   /** D469 round 2: a fix that can happen right here, the same one the page's button does. */
   fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string } | { kind: "mailbox"; device: string; harness: string };
 };
@@ -48,14 +50,23 @@ export function setNeeds(): SetNeed[] {
   const out: SetNeed[] = [];
   if (A.settings && noBrain()) out.push({ key: "brain", text: t("need.brain"), go: t("need.go.signin"), page: "partner" });
   for (const c of sources()) if (down(c)) out.push({ key: `src:${c.id}`, text: t("need.source", c.name), go: t("need.go.look"), page: "accounts" });
+  // D552: Mem itself down or signed out, while memory is on: said here too, never only in the pane's head
+  // (the Overview read 「我都记在 Nowledge Mem 里」 over a Mem that kept nothing).
+  const issue = A.settings?.memory ? A.mem?.health?.issue : undefined;
+  if (issue === "signed_out") out.push({ key: "memhealth", text: t("need.mem.signed_out"), go: t("need.go.signin"), page: "memory" });
+  if (issue === "unreachable") out.push({ key: "memhealth", text: t("need.mem.unreachable", A.bridge?.home || homeName() || "Ducter"), go: t("need.go.look"), page: "memory" });
   const asks = A.mem?.check?.asks.length ?? 0;
   if (asks > 0 && A.settings?.memory) out.push({ key: "memask", text: asks > 1 ? t("need.memask", asks) : t("need.memask.one"), go: t("need.go.look"), page: "memory" });
-  for (const { dv, h } of memPluginRows(A.devices)) {
-    if (h.mem?.state !== "update") continue;
+  // D552: one per agent per computer, each saying which computer when there is more than one, so two
+  // never read the same; one being updated stays, its fix the busy button, until the check clears it.
+  const memp = memPluginRows(A.devices).filter(({ h }) => h.mem?.state === "update");
+  const several = new Set(memp.map(({ dv }) => dv.id)).size > 1;
+  for (const { dv, h } of memp) {
     // The pane's own action and its ask in place, where the pane would offer them (signed in, awake).
-    const action = memWords(A.L, h.mem, harnessName(h.harness)).action;
-    const here = !!action && h.loggedIn && dv.state === "awake";
-    out.push({ key: `memp:${dv.id}:${h.harness}`, text: t("need.memplug", harnessName(h.harness)), go: here ? action! : t("need.go.update"), page: "memory", ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
+    const w = memWords(A.L, memLine(dv, h), harnessName(h.harness), h.harness);
+    const here = (!!w.action || !!w.busy) && h.loggedIn && dv.state === "awake";
+    const text = several ? t("need.memplug.on", harnessName(h.harness), shownDeviceName(dv.name)) : t("need.memplug", harnessName(h.harness));
+    out.push({ key: `memp:${dv.id}:${h.harness}`, text, go: here ? (w.busy ?? w.action!) : t("need.go.update"), page: "memory", ...(here && w.busy ? { busy: true } : {}), ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
   }
   // D470: one of the person's agents reaches the partner, but the answers can't get back: its mailbox's one task, here.
   for (const r of peersOneWay()) out.push({ key: `peers:${r.harness}`, text: t("need.peers.oneway", r.tool), go: t("peers.fix.hear"), page: "peers", about: r.tool, fix: { kind: "mailbox", device: r.device!, harness: r.harness } });
@@ -138,6 +149,8 @@ export function paneSay(page: SettingsPage): string {
       return homeName() ? t("say.run.remote", homeName()) : "";
     case "memory": {
       if (!A.settings) return "";
+      // D552: Mem down or signed out is said by its need alone, never 「我都记在 Nowledge Mem 里」.
+      if (needsOf("memory").some((n) => n.key === "memhealth")) return "";
       const ph = memPhase(!!A.settings.memory, A.mem, A.bridge);
       return ph === "on" ? t("say.memory.on") : ph === "off" ? t("say.memory.off") : ph === "closed" ? t("say.memory.closed") : t("say.memory.first");
     }
@@ -362,7 +375,7 @@ function NeedLine({ n, go, phone }: { n: SetNeed; go: (p: SettingsPage) => void;
   return (
     <span class={`sb-need${asking ? " asking" : ""}`}>
       <span class="sb-words">{n.text}</span>
-      {!asking && <Btn kind="secondary" {...(phone ? {} : { size: "sm" as const })} label={n.go} about={n.text} onClick={press} />}
+      {!asking && <Btn kind="secondary" {...(phone ? {} : { size: "sm" as const })} label={n.go} about={n.text} busy={n.busy} onClick={press} />}
       {asking && f?.kind === "memp" && (
         <span class="sb-ask">
           <MemAsk dv={f.dv} h={f.h} onDone={() => setAsking(false)} />

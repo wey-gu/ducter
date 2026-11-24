@@ -21,6 +21,13 @@
 // last good answer stands, and nothing is said about the failure. 更新 / Update (and 理成一份 / Keep
 // one for several copies) open the same kind of task as 装上, its brief saying which: Mem's guide is
 // how to update too. Never a card, never Update all, never by itself.
+//
+// D552: one task per agent per computer, whatever the taps. A second 更新 / Update (a double tap, a
+// second window, the Overview's fix beside the pane's) while one is opening or open answers with that
+// same task, never another; the line reads busy from the tap (正在更新到 0.7.38…). The work a setup
+// task hands on (the mend's task_open `replaces`, D479/D549) stays that setup, so the check runs when
+// the work really ends, and the notices clear then. An update that took says so on its line
+// (已更新到 0.7.38) until the next check.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
@@ -98,13 +105,15 @@ interface Saved {
   known: Record<string, string[]>;
   /** device:harness pairs Ducter already offered (once, ever). */
   offered: string[];
-  /** Open setup tasks: taskId -> device, harness. */
-  setups: Record<string, { device: string; harness: string }>;
+  /** Open setup tasks: taskId -> device, harness (D552: and the version it was asked to leave). */
+  setups: Record<string, { device: string; harness: string; from?: string }>;
   /** D466: Mem's newest version per agent (`plugins check`), and when it was asked; absent until the first answer. */
   catalog?: { at: number; versions: Record<string, string> };
 }
 
 const DAY = 24 * 60 * 60 * 1000;
+/** D552: how long a setup task that ended still owns the work it hands on (the mend opens it again within minutes). */
+const ENDED_MS = 30 * 60 * 1000;
 
 /**
  * D466: what the task is for. install: absent; update: a newer version is out (from, to);
@@ -201,6 +210,13 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   const direct = new Set<string>();
   const fresh = new Set<string>();
   const triedDirect = new Set<string>();
+  // D552: device:harness pairs whose setup task is being opened now (before the runner answers), with
+  // that answer, so a second tap in the meantime gets the same task; a setup task that ended, kept a
+  // while so the work it hands on (task_open replaces) is still this setup; ones that just updated
+  // (the version they reached, said until the next check).
+  const opening = new Map<string, Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>>();
+  const ended = new Map<string, { device: string; harness: string; from?: string; at: number }>();
+  const updated = new Map<string, string>();
   // One Mem command at a time per computer: two would write Mem's config side by side.
   const queue = new Map<string, Promise<unknown>>();
   const inTurn = <T>(id: string, fn: () => Promise<T>): Promise<T> => {
@@ -218,7 +234,10 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     const got = await (home ? d.inspectLocal() : d.inspectWorker(id)).catch(() => undefined);
     if (!got) return;
     seen.set(id, got);
-    if (!keepFresh) for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
+    if (!keepFresh) {
+      for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
+      for (const k of [...updated.keys()]) if (k.startsWith(`${id}:`)) updated.delete(k);
+    }
     settleOffers(id, got);
     await offers(id, got);
     changed();
@@ -321,14 +340,31 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
 
   const setupOf = (device: string, harness: string) => Object.entries(saved.setups).find(([, s]) => s.device === device && s.harness === harness)?.[0];
 
-  async function install(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
+  /**
+   * D552: one at a time per agent per computer, at the source. A tap while that pair's setup is being
+   * opened, or is open, answers with the same task (ok, never "running" and never a second task).
+   */
+  function install(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
+    const id = device === "local" || !names.has(device) ? device : names.get(device)!;
+    const key = `${id}:${harness}${what ? `:${what}` : ""}`;
+    const busy = opening.get(key);
+    if (busy) return busy;
+    const p = installNow(device, harness, what, space).finally(() => opening.delete(key));
+    opening.set(key, p);
+    changed();
+    return p;
+  }
+
+  async function installNow(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
     if (!d.on()) return { ok: false, reason: "off" };
     const host = MEM_HOSTS[harness];
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
     if (!host || !dev) return { ok: false, reason: "unknown" };
     if (!dev.awake) return { ok: false, reason: "offline" };
     const key = `${dev.id}:${harness}`;
-    if (setupOf(dev.id, harness) || direct.has(key)) return { ok: false, reason: "running" };
+    const open = setupOf(dev.id, harness);
+    if (open) return { ok: true, taskId: open };
+    if (direct.has(key)) return { ok: true };
     // D470: its mailbox, through the agent's own plugin: always the task (Mem has no one command for it here).
     if (what === "mailbox") return openSetup(dev, harness, host, undefined, { kind: "mailbox", ...(space ? { space } : {}) });
     // D375: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
@@ -388,7 +424,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
         language: lang,
         origin: "you",
       });
-      saved.setups[card.taskId] = { device: dev.id, harness };
+      saved.setups[card.taskId] = { device: dev.id, harness, ...(what.kind === "update" && what.from ? { from: what.from } : {}) };
       save();
       changed();
       return { ok: true, taskId: card.taskId };
@@ -423,6 +459,18 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       if (ask) void install(ask.device, ask.harness);
       return;
     }
+    if (e.kind === "task_open") {
+      // D552: the work a setup task hands on (the mend, or the partner, opening it again elsewhere) is
+      // the same setup: its line stays busy, and the check runs when that one ends.
+      const o = e.body as Bodies["task_open"];
+      const from = o.replaces ? (saved.setups[o.replaces] ?? ended.get(o.replaces)) : undefined;
+      if (!o.replaces || !from || saved.setups[o.taskId]) return;
+      ended.delete(o.replaces);
+      saved.setups[o.taskId] = { device: from.device, harness: from.harness, ...(from.from ? { from: from.from } : {}) };
+      delete saved.setups[o.replaces];
+      save();
+      return changed();
+    }
     if (e.kind !== "task_state") return;
     const b = e.body as Bodies["task_state"];
     const s = saved.setups[b.taskId];
@@ -430,9 +478,19 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (b.attention !== "blocked") {
       delete saved.setups[b.taskId];
       save();
+      const t = now();
+      for (const [k, v] of ended) if (t - v.at > ENDED_MS) ended.delete(k);
+      ended.set(b.taskId, { ...s, at: t });
     }
     changed();
-    void check(s.device);
+    void check(s.device).then(() => {
+      // D552: an update that took: its line says the version it reached until the next check.
+      const m = lineOf(s.device, s.harness);
+      if (s.from && m?.state === "installed" && m.version && m.version !== s.from) {
+        updated.set(`${s.device}:${s.harness}`, m.version);
+        changed();
+      }
+    });
   });
 
   const every = d.everyMs ?? DAY;
@@ -457,7 +515,10 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
         if (!m || !h.installed) return h;
         const task = setupOf(deviceId, h.harness);
         const key = `${deviceId}:${h.harness}`;
-        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(direct.has(key) ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}) } };
+        // D552: busy from the tap: Mem's own command running, or the setup task still being opened.
+        const busy = direct.has(key) || (!task && opening.has(key));
+        const done = updated.get(key);
+        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(busy ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}), ...(done && !task && !busy ? { updated: true as const } : {}) } };
       });
     },
     check,

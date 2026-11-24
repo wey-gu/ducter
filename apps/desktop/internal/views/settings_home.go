@@ -45,6 +45,16 @@ func (a *App) setNeeds() []setNeed {
 			out = append(out, setNeed{key: "src:" + cv.ID, text: a.L.T("need.source", cv.Name), goLabel: a.L.T("need.go.look"), tab: TabAccounts})
 		}
 	}
+	// D552: Mem itself down or signed out, while memory is on: said here too,
+	// never only in the pane's head.
+	if m := a.S.Mem; m != nil && m.Health != nil && a.S.Settings != nil && a.S.Settings.Memory {
+		switch m.Health.Issue {
+		case "signed_out":
+			out = append(out, setNeed{key: "memhealth", text: a.L.T("need.mem.signed_out"), goLabel: a.L.T("need.go.signin"), tab: TabMemory})
+		case "unreachable":
+			out = append(out, setNeed{key: "memhealth", text: a.L.T("need.mem.unreachable", a.memHome()), goLabel: a.L.T("need.go.look"), tab: TabMemory})
+		}
+	}
 	if m := a.S.Mem; m != nil && m.Check != nil && len(m.Check.Asks) > 0 && a.S.Settings != nil && a.S.Settings.Memory {
 		s := a.L.T("need.memask.one")
 		if n := len(m.Check.Asks); n > 1 {
@@ -52,10 +62,23 @@ func (a *App) setNeeds() []setNeed {
 		}
 		out = append(out, setNeed{key: "memask", text: s, goLabel: a.L.T("need.go.look"), tab: TabMemory})
 	}
+	// D552: one per agent per computer, each saying which computer when there
+	// is more than one, so two never read the same; one being updated stays,
+	// its fix the busy button, until the check after the task clears it.
+	var memp []memPluginRow
+	comps := map[string]bool{}
 	for _, r := range memPluginRowsFor(a.S.Devices) {
 		if r.h.Mem != nil && r.h.Mem.State == "update" {
-			out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: a.L.T("need.memplug", harnessName(r.h.Harness)), goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
+			memp = append(memp, r)
+			comps[r.dv.ID] = true
 		}
+	}
+	for _, r := range memp {
+		text := a.L.T("need.memplug", harnessName(r.h.Harness))
+		if len(comps) > 1 {
+			text = a.L.T("need.memplug.on", harnessName(r.h.Harness), a.deviceNameIn(r.dv))
+		}
+		out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: text, goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
 	}
 	for _, r := range a.peersOneWay() {
 		out = append(out, setNeed{key: "peers:" + r.Harness, text: a.L.T("need.peers.oneway", r.Tool), goLabel: a.L.T("peers.fix.hear"), tab: TabPeers, boxDevice: r.Device, boxHarness: r.Harness})
@@ -130,6 +153,12 @@ func (a *App) paneSay(tab, lede string) string {
 	case TabMemory:
 		if a.S.Settings == nil {
 			return lede
+		}
+		// D552: Mem down or signed out is said by its need alone.
+		for _, n := range a.setNeeds() {
+			if n.key == "memhealth" {
+				return ""
+			}
 		}
 		switch memPhase(a.S.Settings.Memory, a.S.Mem, a.S.Bridge) {
 		case "on":
@@ -321,8 +350,12 @@ func (a *App) needFix(c *ui.Context, n setNeed) {
 		}
 		return
 	case n.dv != nil:
-		_, action := a.memPluginWords(n.h.Mem, n.h.Harness)
+		_, action, busy := a.memPluginWords(a.memLine(n.dv, n.h), n.h.Harness)
 		key := n.dv.ID + ":" + n.h.Harness
+		if busy != "" && n.h.LoggedIn && n.dv.State == protocol.DeviceAwake {
+			a.busyButton(c, busy, n.text, t.ControlSM, t.Bg)
+			return
+		}
 		if action != "" && n.h.LoggedIn && n.dv.State == protocol.DeviceAwake {
 			if a.devState().card.memAsk != key && a.buttonFor(c, action, n.text, btnSecondary, t.ControlSM, t.Bg) {
 				a.devState().card.memAsk = key

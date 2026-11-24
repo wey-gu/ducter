@@ -1,6 +1,6 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
 import type { AgentModels, DeviceHarness, DeviceUpdate, MemPluginView, ModelChoice } from "@ducter/protocol";
-import { undomainedName } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, undomainedName } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 import { words } from "@ducter/protocol/src/lang.ts";
@@ -266,11 +266,18 @@ export function phaseLine(L: Strings, u: DeviceUpdate): string {
 }
 
 /** D169: an agent's Nowledge Mem line and its action's words, from Mem's own check (never "working"). */
-export function memWords(L: Strings, m: MemPluginView, agent = ""): { line: string; action?: string } {
-  // D466: an open task says what it is doing: updating, keeping one, else installing.
-  if (m.taskId) return { line: L.t(m.state === "update" ? "memp.setting.update" : m.state === "review" && m.why === "multiple" ? "memp.setting.tidy" : "memp.setting") };
-  // D375: Mem's own command putting it in now; just put in (the agent uses it once restarted).
-  if (m.busy) return { line: L.t("memp.busy") };
+export function memWords(L: Strings, m: MemPluginView, agent = "", harness = ""): { line: string; action?: string; busy?: string } {
+  // D466: an open task says what it is doing: updating (to which version), keeping one, else installing.
+  // D552: from the tap on (busy), and its button stays where it was, saying so (更新中…), never gone.
+  if (m.taskId || m.busy) {
+    if (m.state === "update") return { line: m.available ? L.t("memp.setting.update.to", m.available) : L.t("memp.setting.update"), busy: L.t("memp.btn.updating") };
+    if (m.state === "review" && m.why === "multiple") return { line: L.t("memp.setting.tidy"), busy: L.t("memp.btn.tidying") };
+    if (m.state === "review") return { line: L.t("memp.setting"), busy: L.t("memp.btn.reviewing") };
+    // D375: Mem's own command putting it in now, where Mem has one for this agent.
+    return { line: L.t(!m.taskId && MEM_CONNECT_TOOLS[harness] ? "memp.busy" : "memp.setting"), busy: L.t("memp.btn.installing") };
+  }
+  // D552: an update that took, until the next check.
+  if (m.updated && m.version) return { line: L.t("memp.updated", m.version, agent) };
   if (m.fresh && m.state !== "absent") return { line: L.t("memp.fresh", agent) };
   switch (m.state) {
     case "installed":

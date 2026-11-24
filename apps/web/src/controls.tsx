@@ -13,16 +13,20 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 /** One clay button family (D76): primary first in a row, on the left (D533), at most one per group. chev: a text button
  *  that opens something in place ends in a drawn chevron, turned down while open (never a font's
  *  arrow: iOS draws some of those as an emoji or a missing glyph; D211). */
-export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean; chev?: boolean }) {
+export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean; chev?: boolean; busy?: boolean }) {
+  // D552: busy, the button's own working state (更新中…): its clay stays, the shared spinner before
+  // its words, and it takes no tap until what it started answers.
   return (
     <button
-      class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
+      class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.busy ? " busy" : ""}${p.class ? ` ${p.class}` : ""}`}
       onClick={p.onClick}
       title={p.kind === "primary" ? p.label : undefined}
       aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined}
-      disabled={p.disabled}
+      disabled={p.disabled || p.busy}
+      aria-busy={p.busy || undefined}
       aria-expanded={p.expanded}
     >
+      {p.busy && <span class="spin sm" aria-hidden="true" />}
       <span class="lbl">{p.label}</span>
       {p.chev && <Chev cls="btn-chev" />}
     </button>

@@ -13,6 +13,20 @@ import { GBlock, GRow, Tile } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
+/**
+ * D552: the line as this window knows it: from the tap until the home answers, busy (the button reads
+ * 更新中… at once, so a second tap has nothing to press).
+ */
+export function memLine(dv: DeviceView, h: DeviceHarness) {
+  const m = h.mem!;
+  // The home's own word (its task, its busy, or the line moved on) ends this window's.
+  if (m.taskId || m.busy || m.updated || m.fresh || m.state === "installed") {
+    A.memSent.delete(`${dv.id}:${h.harness}`);
+    return m;
+  }
+  return A.memSending(dv.id, h.harness) ? { ...m, busy: true as const } : m;
+}
+
 /** The ask in place: one bold question, what changes and where, then its button and Cancel. */
 export function MemAsk({ dv, h, onDone }: { dv: DeviceView; h: DeviceHarness; onDone: () => void }) {
   const agent = harnessName(h.harness);
@@ -40,9 +54,15 @@ const answerFor = (dv: DeviceView, h: DeviceHarness) => (A.memAnswer?.device ===
 export function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const [asking, setAsking] = useState(false);
   if (!h.mem || !h.installed || !h.loggedIn) return null;
-  const w = memWords(A.L, h.mem);
-  if (!w.action || dv.state !== "awake") return null;
+  const w = memWords(A.L, memLine(dv, h), harnessName(h.harness), h.harness);
   const about = spoken(A.L, harnessName(h.harness), "Nowledge Mem");
+  if (w.busy)
+    return (
+      <div class="btns">
+        <Btn kind="secondary" size="sm" label={w.busy} about={about} busy onClick={() => {}} />
+      </div>
+    );
+  if (!w.action || dv.state !== "awake") return null;
   const answer = answerFor(dv, h);
   return (
     <>
@@ -66,7 +86,8 @@ export function memPluginRows(devices: DeviceView[] | undefined): { dv: DeviceVi
     for (const h of dv.harnesses ?? []) {
       const m = h.mem;
       if (!m || !h.installed) continue;
-      if (m.state === "update" || (m.state === "review" && m.why === "multiple")) out.push({ dv, h });
+      // D552: and one that just updated, so its row says the version it reached before it goes.
+      if (m.state === "update" || (m.state === "review" && m.why === "multiple") || m.updated) out.push({ dv, h });
     }
   return out;
 }
@@ -75,13 +96,13 @@ export function memPluginRows(devices: DeviceView[] | undefined): { dv: DeviceVi
 function MemPluginRow({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const [asking, setAsking] = useState(false);
   const agent = harnessName(h.harness);
-  const w = memWords(A.L, h.mem!, agent);
+  const w = memWords(A.L, memLine(dv, h), agent, h.harness);
   const can = !!w.action && h.loggedIn && dv.state === "awake";
   const answer = answerFor(dv, h);
   return (
     <>
       <GRow tile={<Tile><Coin harness={h.harness} size={36} /></Tile>} title={t("memp.row", agent, shownDeviceName(dv.name))} line={w.line}>
-        {can && !asking && <Btn kind="secondary" size="sm" label={w.action!} about={spoken(A.L, agent, "Nowledge Mem")} onClick={() => setAsking(true)} />}
+        {w.busy ? <Btn kind="secondary" size="sm" label={w.busy} about={spoken(A.L, agent, "Nowledge Mem")} busy onClick={() => {}} /> : can && !asking && <Btn kind="secondary" size="sm" label={w.action!} about={spoken(A.L, agent, "Nowledge Mem")} onClick={() => setAsking(true)} />}
       </GRow>
       {can && asking && (
         <GBlock>

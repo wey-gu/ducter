@@ -647,14 +647,12 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
       {/* D469: the page's head says it in the partner's voice (say.memory.first); no second hero. */}
       <Group class="mem-g" label="Nowledge Mem">
         <GHead tile={<MemTile faded />} name="Nowledge Mem" line={line} />
-        {phase === "missing" ? (
-          <GRow title={t("mem.app.learn")} line={t("mem.app.what")}>
-            <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
-          </GRow>
-        ) : (
-          <MemSteps phase={phase} b={b} />
-        )}
-        <GFoot note={t("mem.setup.local", name)} />
+        {/* D552: what Nowledge Mem is, before any step, in every phase (a fresh user meets the steps cold). */}
+        <GRow title={t("mem.app.learn")} line={t("mem.app.what")}>
+          <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
+        </GRow>
+        {phase !== "missing" && <MemSteps phase={phase} b={b} />}
+        <GFoot note={t("mem.setup.local", name, home || t("mem.setup.local.here"))} />
       </Group>
     </>
   );

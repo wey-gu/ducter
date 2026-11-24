@@ -3873,7 +3873,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         },
       });
       noteMemState(r);
-      if (!r.ok) return { ok: false, saved: false, note: `${UNAVAILABLE} Nothing was saved.` };
+      // D552: a save that can't wait in the outbox (Mem not signed in, or memory off) is lost. When the
+      // person asked for it, a 「好」 with nothing kept breaks trust: they hear it once, plainly.
+      if (!r.ok)
+        return {
+          ok: false,
+          saved: false,
+          note:
+            r.reason === "not_configured"
+              ? `Nothing was saved (${r.message}). If the user asked you to remember this, say once, in one short plain line of your reply, that you couldn't keep it this time because Nowledge Mem isn't signed in on the home (or memory is off), and that Settings › Memory is where to fix it. Nothing else: don't promise to remember it or to keep it anywhere else. If they didn't ask, say nothing about memory.`
+              : `${UNAVAILABLE} Nothing was saved.`,
+        };
       const noted = { title, ...(r.id ? { memoryId: r.id } : {}), ...(r.replaced ? { replaced: r.replaced } : {}), ...(r.waiting ? { waiting: r.waiting } : {}) };
       if (t) t.noted.push(noted);
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });

@@ -16,7 +16,7 @@ import (
 // lists them. A new control is added there and here, never inline.
 var sharedControls = map[string]bool{
 	// the button family (components.go, quiet.go)
-	"buttonFor": true, "iconButton": true, "navButton": true, "quietButton": true, "quietLink": true,
+	"buttonFor": true, "busyButton": true, "iconButton": true, "navButton": true, "quietButton": true, "quietLink": true,
 	// switches, choices and rows (shared.go, partner.go, settings.go)
 	"switchControl": true, "choices": true, "selectRow": true, "disclosureRow": true, "linkRow": true,
 	"dangerText": true, "moreButton": true, "candRow": true, "railTab": true, "sideLink": true,

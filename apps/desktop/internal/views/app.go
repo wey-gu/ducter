@@ -76,6 +76,8 @@ type App struct {
 	Send func(frame any) error
 	// meets is which thing carries each first-time line here (D451).
 	meets firstMeets
+	// memSent is the Mem installs and updates this window asked for, and when (D552: "device:harness").
+	memSent map[string]time.Time
 	// mailboxOpening is the agents' mailboxes this window asked to open (D470: "device:harness").
 	mailboxOpening map[string]bool
 	// mailboxChoosing is the in-place choice open under one agent's row (D480), or nil.

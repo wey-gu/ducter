@@ -134,13 +134,13 @@ func TestMemHealthHead(t *testing.T) {
 
 func TestMemPluginBusyFresh(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
-	if line, act := app.memPluginWords(&protocol.MemPluginView{State: "absent", Busy: true}, "codex"); line != "正在用 Nowledge Mem 自己的命令安装…" || act != "" {
+	if line, act, _ := app.memPluginWords(&protocol.MemPluginView{State: "absent", Busy: true}, "codex"); line != "正在用 Nowledge Mem 自己的命令安装…" || act != "" {
 		t.Fatalf("busy: %q %q", line, act)
 	}
-	if line, _ := app.memPluginWords(&protocol.MemPluginView{State: "installed", Version: "0.7.36", Fresh: true}, "codex"); line != "Nowledge Mem 装好了，重开 Codex 才用得上" {
+	if line, _, _ := app.memPluginWords(&protocol.MemPluginView{State: "installed", Version: "0.7.36", Fresh: true}, "codex"); line != "Nowledge Mem 装好了，重开 Codex 才用得上" {
 		t.Fatalf("fresh: %q", line)
 	}
-	if line, _ := app.memPluginWords(&protocol.MemPluginView{State: "installed", Version: "0.7.36"}, "codex"); line != app.L.T("memp.installed", "0.7.36") {
+	if line, _, _ := app.memPluginWords(&protocol.MemPluginView{State: "installed", Version: "0.7.36"}, "codex"); line != app.L.T("memp.installed", "0.7.36") {
 		t.Fatalf("plain: %q", line)
 	}
 }

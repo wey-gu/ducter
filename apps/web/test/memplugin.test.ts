@@ -10,7 +10,7 @@ test("the line per state, in zh and en, never claiming more than the check knows
   expect(memWords({ state: "installed", version: "0.7.34" })).toEqual({ line: "装着 Nowledge Mem 0.7.34" });
   expect(memWords({ state: "absent" })).toEqual({ line: "Nowledge Mem 没装", action: "安装" });
   expect(memWords({ state: "review", why: "multiple" })).toEqual({ line: "Nowledge Mem 装了不止一份，需要检查", action: "理成一份" });
-  expect(memWords({ state: "absent", taskId: "t1" })).toEqual({ line: "正在安装 Nowledge Mem…" });
+  expect(memWords({ state: "absent", taskId: "t1" })).toEqual({ line: "正在安装 Nowledge Mem…", busy: "安装中…" });
   L = strings("en");
   expect(memWords({ state: "update" })).toEqual({ line: "Nowledge Mem has an update", action: "Update" });
   expect(memWords({ state: "review", why: "unclear" }).line).toBe("Can't tell if Nowledge Mem is set up; worth a look");
@@ -21,8 +21,14 @@ test("D466: a newer version out from to, two copies by their versions, a task's 
   let L = strings("zh");
   expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37" })).toEqual({ line: "Nowledge Mem 0.7.34，有新的 0.7.37 了", action: "更新" });
   expect(words(L, { state: "review", why: "multiple", versions: ["0.1.10", "0.1.53"] })).toEqual({ line: "Nowledge Mem 装了两份：0.1.10 和 0.1.53", action: "理成一份" });
-  expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37", taskId: "t1" })).toEqual({ line: "正在更新 Nowledge Mem…" });
-  expect(words(L, { state: "review", why: "multiple", taskId: "t1" })).toEqual({ line: "正在把 Nowledge Mem 理成一份…" });
+  // D552: a task on it, or the tap still on its way (busy): the line says to which version, the button 更新中….
+  expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37", taskId: "t1" })).toEqual({ line: "正在更新到 0.7.37…", busy: "更新中…" });
+  expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37", busy: true })).toEqual({ line: "正在更新到 0.7.37…", busy: "更新中…" });
+  expect(words(L, { state: "update", taskId: "t1" })).toEqual({ line: "正在更新 Nowledge Mem…", busy: "更新中…" });
+  expect(words(L, { state: "review", why: "multiple", taskId: "t1" })).toEqual({ line: "正在把 Nowledge Mem 理成一份…", busy: "整理中…" });
+  // D552: an update that took says the version it reached, with no button.
+  expect(words(L, { state: "installed", version: "0.7.38", updated: true }, "Claude Code")).toEqual({ line: "已更新到 0.7.38，重开 Claude Code 就用上了" });
+  expect(words(strings("en"), { state: "installed", version: "0.7.38", updated: true }, "Claude Code")).toEqual({ line: "Updated to 0.7.38; start Claude Code again to use it" });
   L = strings("en");
   expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37" })).toEqual({ line: "Nowledge Mem 0.7.34; 0.7.37 is out", action: "Update" });
   expect(words(L, { state: "review", why: "multiple", versions: ["0.1.10", "0.1.53"] })).toEqual({ line: "Nowledge Mem is in twice: 0.1.10 and 0.1.53", action: "Keep one" });

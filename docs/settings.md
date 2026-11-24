@@ -49,8 +49,9 @@ Settings opens with your partner telling you, in a few lines, how things stand: 
 thinks with, which accounts it reads (and that anything sent or paid asks you first), what it
 remembers, and where else you can reach it (your chat apps, and your own agents that can reach it,
 such as **Your Codex, Claude Code**). Click a line to open its tab. When something needs you
-(a source of accounts that can't be reached, something Nowledge Mem would like you to confirm, a
-newer Nowledge Mem for one of your AI agents, one of your agents that can reach your partner but
+(a source of accounts that can't be reached, Nowledge Mem signed out or out of reach, something
+Nowledge Mem would like you to confirm, a newer Nowledge Mem for one of your AI agents (with the
+computer's name when you have more than one), one of your agents that can reach your partner but
 can't get its answers back, updates ready), your partner raises its little flag,
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
@@ -256,7 +257,9 @@ What your partner remembers about you has its own section, **Memory**.
   is worth a tap: **Claude Code on Mac mini**, "Nowledge Mem 0.7.34; 0.7.37 is out", with **Update**;
   or "Nowledge Mem is in twice: 0.1.10 and 0.1.53", with **Keep one**. Each asks first what it will
   do and where, then a task on that computer follows Nowledge Mem's own guide, changing only that
-  agent's own settings. Start the agent again afterwards. Nothing happens until you tap, and when
+  agent's own settings. From the tap until it is done the button reads **Updating…** and the line
+  **Updating to 0.7.38…**, so a second tap starts nothing more; afterwards the line says
+  **Updated to 0.7.38; start Claude Code again to use it**. Nothing happens until you tap, and when
   every agent is up to date there is no row at all. The agent's own detail in **Your devices**
   says the same.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your

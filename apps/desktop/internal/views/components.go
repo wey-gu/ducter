@@ -428,6 +428,41 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 	return b.Clicked()
 }
 
+// busyButton is a secondary button at work (D552: 更新中… while the
+// update it started runs): the same clay standing on its ledge, the shared
+// spinner before its words in the soft ink, no hover, no press, no click.
+// The web's Btn with busy.
+func (a *App) busyButton(c *ui.Context, label, about string, height float32, onSurface ui.Color) {
+	t := a.T
+	name := spoken(a.L, label, about)
+	h := a.controlHeight(height)
+	size, padX := t.MD, t.S5-4
+	if h == t.ControlSM {
+		size, padX = t.SM, t.S3+2
+	}
+	p := t.PressSecondary
+	p.Offset = 3
+	bg := t.Bg
+	if st, ok := a.onTint(onSurface); ok {
+		bg, p.Color, p.Rim = t.Surface, st.Ledge.Mix(st.Strong, 0.45), ui.Transparent
+	}
+	b := ui.Row(c.Key("busy:"+name)).Height(h).Padding(0, padX).Gap(t.S2).Radius(a.buttonRadius(h)).
+		Justify(ui.Center).AlignItems(ui.Center).Role(ui.RoleButton).Label(name).Shrink(0).Background(bg)
+	b.InsetShadow(0, 1.5, 0, 0, p.Hi)
+	if p.Rim.A > 0 {
+		b.InsetShadow(0, 0, 0, 1, p.Rim)
+	}
+	b.Shadow(0, t.Drop.Y, t.Drop.Blur, -4, t.Drop.Color)
+	b.Shadow(0, p.Offset, 0, 0, p.Color)
+	if p.Seam.A > 0 {
+		b.Shadow(0, 1, 0, 0, p.Seam)
+	}
+	b.Children(func() {
+		ui.Box(c).Size(12, 12).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
+		uiText(c, label).FontSize(size).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+	})
+}
+
 // onTint reports whether a surface is a tinted card's (needs you, done,
 // didn't work), where a secondary button turns white on the card's ledge.
 func (a *App) onTint(s ui.Color) (theme.StateColors, bool) {

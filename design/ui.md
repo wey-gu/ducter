@@ -550,6 +550,7 @@ A new control is added to the set (and to this table) before it is used.
 | Control | Mac (`apps/desktop/internal/views`) | Phone (`apps/web/src/controls.tsx`) |
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
+| A secondary button at work (更新中… / Updating… while what it started runs; D552): its clay on its ledge, the shared spinner before its words in the soft ink, no hover, no press, no tap | `busyButton` (`components.go`) | `Btn` with `busy` |
 | A bar button: a place's own action, the way to another place, Update (D262) | `navButton` (`components.go`), `placeNav`, `newTaskButton` (`chrome.go`) | `NavBtn` |
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228; as a quiet text link with its chevron, 打开 BotFather, D283) | `button` then `openLink` (`abilities.go`); `quietLink` then `openLink` | `LinkBtn` (kind `text` for the quiet link) |

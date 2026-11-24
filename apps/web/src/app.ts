@@ -109,6 +109,8 @@ export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? 
 
 /** D541: how many of another partner's newest events a peek asks for. */
 const PEEK_SIZE = 50;
+/** D552: how long a Mem install or update this window asked for reads busy without the home's word (the frame with its task comes in a second or two). */
+const MEM_SENDING_MS = 15_000;
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;
 /** D284: an opened task's newest window, each older page after it, and how far the background pages. */
@@ -933,7 +935,8 @@ class AppState {
       this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend };
       return void this.changed();
     }
-    if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
+    // D552: a no ends the busy at once; a yes keeps it a moment, until the devices frame carries the task.
+    if (f.t === "mem_plugin_result") return void (f.ok || this.memSent.delete(`${f.device}:${f.harness}`), (this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
     if (f.t === "mem_setup_result") return void ((this.memSetupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "records_allow_result") return void ((this.recordsAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
@@ -2656,9 +2659,19 @@ class AppState {
   }
   /** D169, D375: Mem's own command (else one task on that device) puts Nowledge Mem into that agent. */
   installMem(device: string, harness: string) {
+    // D552: one tap is one ask: the button reads busy from here until the home's line does.
+    if (this.memSending(device, harness)) return;
     this.memAnswer = undefined;
+    this.memSent.set(`${device}:${harness}`, Date.now());
+    setTimeout(() => this.changed(), MEM_SENDING_MS + 50);
     this.send({ t: "mem_plugin_install", device, harness });
     this.changed();
+  }
+  /** D552: the Mem installs and updates this window asked for, and when (until the home answers). */
+  memSent = new Map<string, number>();
+  memSending(device: string, harness: string): boolean {
+    const at = this.memSent.get(`${device}:${harness}`);
+    return at !== undefined && Date.now() - at < MEM_SENDING_MS;
   }
   /**
    * D470, D480, D489: 让它收到回话 / Let it hear back: one task on that device opens the agent's Nowledge Mem

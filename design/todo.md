@@ -29,6 +29,17 @@ line.
   the same card.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
+## Toasts, after D523 (`ui.md` "Toasts: one slot")
+
+- [ ] **The author's review** of the slot from `.shots/whats-new-notice/`, and live on the Mac at
+  about 1150 after the next update.
+- [ ] **The web's toasts** centre on the window on a wide screen (`.toasts` is fixed, bottom
+  `safe + 84px`): centre them over the conversation's column and above its composer as the Mac
+  does, with the same leave motion. *Trigger:* the web client's next pass on wide windows.
+- [ ] **The update line in the conversation (D344)** still arrives as the partner's own message
+  ("更新到 0.1.35 了：…。看看都改了什么"), under a 新消息 divider like real news. Decide whether it
+  is Ducter's own line (a quiet line in the conversation's system style) rather than the partner's
+  bubble. *Trigger:* the author says the bubble reads wrong.
 
 ## New tasks start, after D510 (`where.md` §23)
 

@@ -353,7 +353,8 @@ export function createKeeps(o: {
       ...(og?.nextAt && og.state !== "running" ? { nextAt: og.nextAt } : {}),
       ...(og?.state === "running" ? { running: true } : {}),
       ...(og?.health ? { health: og.health } : {}),
-      ...(said?.did ? { line: { at: said.at, text: said.did } } : {}),
+      // Its last change: the newest round that did something, or the mechanism's own last line when newer (a round's progress).
+      ...((l) => (l ? { line: l } : {}))(og?.last?.line && (!said || og.last.at >= said.at) ? { at: og.last.at, text: og.last.line } : said?.did ? { at: said.at, text: said.did } : undefined),
       ...(og?.reviews ? { reviews: og.reviews } : {}),
       week,
       ...(k.pausedUntil || og?.pausedUntil ? { pausedUntil: k.pausedUntil ?? og?.pausedUntil } : {}),
@@ -563,4 +564,77 @@ export function createKeeps(o: {
     say: sayOf,
     stop: () => clearInterval(timer),
   };
+}
+
+/** The mechanism's own id a Keep runs on (a task's, a routine's, a helper's): the partner may name a Keep by it. */
+const fromId = (k: KeepBody) => (k.from.kind === "loop" ? k.from.taskId : k.from.kind === "routine" ? k.from.routineId : k.from.helperId);
+const kindWord = { same: "task in rounds", fresh: "routine", perItem: "helper" } as const;
+
+/**
+ * D511: the partner's two words over what Ducter looks after (keep_make is the partner's own, with its
+ * receipt card): "我的循环任务都怎么样了" (keep_list), and "把 review 改成每小时" / "先停一下" /
+ * "降到 1800 再告诉我" / "别看了" (keep_change). They replace routine_list and routine_change (D427).
+ */
+export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts").McpHub, keeps: Keeps, persona: () => string) {
+  const find = (id: string) => keeps.get(id) ?? keeps.all().find((k) => fromId(k) === id);
+  mcp.register(
+    "partner",
+    "keep_list",
+    "What Ducter looks after for the user (照看): reviews every 45 min, routines, watches, helpers other agents hand work to. Each has say: its ready line in the user's language; reply with that line word for word. For \"这个循环怎么样了\" / \"我在照看的都怎么样\".",
+    { type: "object", properties: {} },
+    async () =>
+      keeps.sheets(persona()).map((s) => {
+        const k = keeps.get(s.id)!;
+        return {
+          id: s.id,
+          from: fromId(k),
+          kind: kindWord[s.run],
+          title: s.title,
+          say: keeps.say(s.id),
+          life: s.life,
+          ...(s.nextAt ? { nextAt: s.nextAt } : {}),
+          ...(s.line ? { lastRound: s.line.text } : {}),
+          ...(s.items.length ? { holds: s.items.length } : {}),
+          ...(s.asks ? { waitingForYou: s.asks } : {}),
+          ...(k.until ? { until: k.until } : {}),
+          ...(k.speaks ? { speaks: k.speaks } : {}),
+          ...(s.health ? { health: s.health.state, ...(s.health.fix ? { fix: s.health.fix } : {}) } : { health: "on time" }),
+        };
+      }),
+  );
+  mcp.register(
+    "partner",
+    "keep_change",
+    "Change one the user looks after, on their word (id from keep_list): action pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60), stop (\"别看了\", only on their word); or set until / speaks / title in their words. Then one line.",
+    {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        action: { type: "string", enum: ["pause", "resume", "look_now", "every", "stop"] },
+        minutes: { type: "number" },
+        until_iso: { type: "string", description: "pause: until when" },
+        until: { type: "string", description: "its goal, their words" },
+        speaks: { type: "string", description: "when it speaks, their words" },
+        title: { type: "string" },
+      },
+      required: ["id"],
+    },
+    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; speaks?: string; title?: string }) => {
+      const k = find(String(a.id ?? ""));
+      if (!k) return { ok: false, error: `nothing called ${a.id} is looked after; see keep_list` };
+      const action = String(a.action ?? "");
+      const act: KeepAction | undefined = action === "pause" ? { action: "pause", ...(a.until_iso ? { until: String(a.until_iso) } : {}) } : action === "resume" || action === "look_now" || action === "stop" ? { action } : undefined;
+      if (action && action !== "every" && !act) return { ok: false, error: "action is one of pause, resume, look_now, every, stop" };
+      const r = await keeps.change(k.keepId, {
+        ...(act ? { act } : {}),
+        ...(action === "every" ? { everyMinutes: Number(a.minutes) } : {}),
+        ...(typeof a.until === "string" ? { until: a.until } : {}),
+        ...(typeof a.speaks === "string" ? { speaks: a.speaks } : {}),
+        ...(typeof a.title === "string" ? { title: a.title } : {}),
+      });
+      if (!r.ok) return { ok: false, error: r.error };
+      const s = keeps.sheets(persona()).find((x) => x.id === k.keepId);
+      return { ok: true, life: r.keep.life, ...(s?.nextAt ? { nextAt: s.nextAt } : {}), say: keeps.say(k.keepId) };
+    },
+  );
 }

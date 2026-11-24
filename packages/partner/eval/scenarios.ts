@@ -2868,8 +2868,8 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "这个循环怎么样了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "routine_list" }], notCalled: ["task_open", "task_send", "routine_change"], forbid: [/routine_list|taskId|wait_for/] },
-    rubric: "The user asks how their review loop is doing. The partner looks (routine_list) and answers in one or two short Chinese sentences from what it shows: it is running every 45 minutes, when the next round is, and that it is on time. It doesn't open a task, message the task, change anything, or name tools or internals.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"], forbid: [/keep_list|taskId|wait_for/] },
+    rubric: "The user asks how their review loop is doing. The partner looks (keep_list) and answers in one or two short Chinese sentences from what it shows: it is running every 45 minutes, when the next round is, and that it is on time. It doesn't open a task, message the task, change anything, or name tools or internals.",
   },
   {
     id: "loop-every-hour-zh",
@@ -2882,8 +2882,8 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "把 review 改成每小时" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "routine_change", args: { action: "every", minutes: 60 } }], notCalled: ["task_open", "routine_propose"], noAsk: true },
-    rubric: "The user changes the review loop's rhythm to every hour. The partner changes it (routine_change every 60) and says so in one short Chinese line (from the next round on, every hour; the next time is fine). No new task, no routine proposal card, no question back.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "every", minutes: 60 } }], notCalled: ["task_open", "routine_propose", "keep_make"], noAsk: true },
+    rubric: "The user changes the review loop's rhythm to every hour. The partner changes it (keep_change every 60) and says so in one short Chinese line (from the next round on, every hour; the next time is fine). No new task, no routine proposal card, no question back.",
   },
   {
     id: "loop-stop-zh",
@@ -2896,8 +2896,8 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "review 那个别跑了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "routine_change", args: { action: "end" } }], notCalled: ["task_open"], noAsk: true },
-    rubric: "The user tells the partner to stop the review loop. The partner ends it (routine_change end) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"], noAsk: true },
+    rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
   },
   {
     id: "loop-status-en",
@@ -2910,8 +2910,8 @@ export const scenarios: Scenario[] = [
       { ai: "OK, a round every 45 minutes." },
     ],
     steps: [{ user: "Is my review loop still running?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "routine_list" }], notCalled: ["task_open", "task_send", "routine_change"] },
-    rubric: "The user asks whether their review loop is still running. The partner looks (routine_list) and says in one or two short English sentences that it is, every 45 minutes, when the next round is, and that it is on time. No task, no change, no internals.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"] },
+    rubric: "The user asks whether their review loop is still running. The partner looks (keep_list) and says in one or two short English sentences that it is, every 45 minutes, when the next round is, and that it is on time. No task, no change, no internals.",
   },
   // ---------- D405: 小应用 / Apps: made from one sentence, changed by talking, an app's ask answered ----------
   {

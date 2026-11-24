@@ -63,7 +63,7 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
 import { bridgeFor, bridgeKeyFor, createNmemBridge, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { HELPER_DAILY, HELPER_ABOUT_MAX, HELPER_NAME_MAX, HELPERS_MAX, type Helper } from "../../protocol/src/helpers.ts";
+import { HELPER_DAILY, type Helper } from "../../protocol/src/helpers.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
@@ -80,6 +80,7 @@ import { parseRich, RICH_LIMITS, wordsOnly, type RichUi } from "../../protocol/s
 import { MADE_KINDS, type MadeItem, type MadeKind, type MadeQuery } from "../../protocol/src/made.ts";
 import { PINS_MAX, type PinView } from "../../protocol/src/pins.ts";
 import { APP_ICONS, appLint, type AppCard, type AppIcon, type AppMeta } from "../../protocol/src/apps.ts";
+import type { KeepCard } from "../../protocol/src/keeps.ts";
 import type { PastForkInput, PastItem, PastQuery, PastStep } from "../../protocol/src/past.ts";
 
 /** D391: the parts of core's Past tasks and Redo the partner's task_find and task_fork use. */
@@ -231,6 +232,7 @@ interface TurnState {
   madeMedia?: MediaRef[]; // D383: files and pictures made_find show put under this turn's next message
   madeUi?: RichUi[]; // D383: a table, chart or list made_find show draws again under the next message
   appCard?: AppCard; // D405: the app this turn made or changed: its card goes under the next message
+  keepCard?: KeepCard; // D511: the Keep this turn made: its receipt card goes under the next message
   appShelf?: true; // D410: the person asked where their apps are: the shelf's card goes under the next message
   appAnswered?: boolean; // D405: this turn's words already answered the app that asked
   carried?: Carried; // this turn redoes one a restart cut off
@@ -374,14 +376,15 @@ export function activityStep(tool: string): ActivityStep | undefined {
     case "ask":
     case "keep_going":
     case "routine_propose":
-    case "routine_change":
+    case "keep_make": // D511
+    case "keep_change":
     case "wait_cancel":
       return "planning";
     case "wait_for": // D112: it takes a first look before it arms
       return "looking";
     case "web_look": // D380: and it stays, after the turn, until the answer is said
       return "web";
-    case "routine_list":
+    case "keep_list": // D511
     case "did_list": // D300
       return "recalling";
     case "ToolSearch":
@@ -1135,6 +1138,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D405: the app made or changed this turn: its card under the words about it, once.
       body.app = turn.appCard;
       turn.appCard = undefined;
+    }
+    if (!decisionId && turn?.keepCard) {
+      // D511: the Keep made this turn: its receipt under the words that say so, once.
+      body.keep = turn.keepCard;
+      turn.keepCard = undefined;
     }
     if (!decisionId && turn?.appShelf) {
       // D410: 小应用 / Apps, one tap from the words that say where they are.
@@ -2078,6 +2086,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       // D405: an app made with no words after it still shows its card; an ask left unanswered frees the app.
       if (turn.appCard) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "", app: turn.appCard, ...(turn.replyTo !== undefined ? { replyTo: turn.replyTo } : {}) } }), (turn.appCard = undefined);
+      // D511: a Keep made with no words after it still shows its receipt.
+      if (turn.keepCard) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "", keep: turn.keepCard, ...(turn.replyTo !== undefined ? { replyTo: turn.replyTo } : {}) } }), (turn.keepCard = undefined);
       if (!turn.appAnswered)
         for (const e of turn.triggers) {
           const app = e.kind === "user_msg" ? (e.body as Bodies["user_msg"]).app : undefined;
@@ -2852,6 +2862,55 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // by edits or a new file, and puts values into its storage when asked. An app's own ask (a
   // user_msg with app.ask) may fill it, never rewrite it: only the person's words change an app.
   if (core.apps) registerAppTool(core.apps);
+  // D511: 照看 / Looking after. "每周一早上 9 点给我周报", "盯着 12 月 20 日的机票，降到 2000 告诉我，我订了就不用看了",
+  // "开个帮手，我的 agent 把 PR 交给它盯到能合并": one Keep, on at once (its rounds only read and draft),
+  // its receipt card under the partner's one line. The model reads the words into the Keep's fields;
+  // code guards the invariants (one wake, a time that parses, at most six addresses).
+  if (core.keeps) registerKeepMake(core.keeps);
+  function registerKeepMake(keeps: NonNullable<CoreApi["keeps"]>) {
+    tools.register(
+      "partner",
+      "keep_make",
+      "Ducter looks after something from now on, as the user asked once: a time (\"每天早上 8 点看一次票价\", \"每周一 9 点给我周报\") or an address their other agents hand work to (a babysitter, a \"loop agent\" in Bridge). On at once: its rounds only read and draft, anything outward still waits for their Go. title (short, their language; an address's name), said (their words, verbatim), brief (what each round does, self-contained), at or address, until (the goal that ends it, their words), speaks (when it says something, their words). Then one short line, 好，我来照看：… / Done, I'll look after it: …; its card shows the rest.",
+      {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          said: { type: "string" },
+          brief: { type: "string" },
+          at: {
+            type: "object",
+            description: "when it wakes, on the user's clock",
+            properties: { every: { type: "string", enum: ["day", "weekday", "week", "month", "hours", "once"] }, time: { type: "string", description: "09:00" }, days: { type: "array", items: { type: "number" }, description: "week: 0 = Sunday" }, dayOfMonth: { type: "number" }, hours: { type: "number" }, date: { type: "string", description: "once: 2026-12-01" } },
+            required: ["every", "time"],
+          },
+          address: { type: "boolean", description: "their other agents hand it work through Bridge" },
+          until: { type: "string" },
+          speaks: { type: "string" },
+        },
+        required: ["title", "said", "brief"],
+      },
+      async (a: { title?: unknown; said?: unknown; brief?: unknown; at?: { every?: string; time?: string; days?: number[]; dayOfMonth?: number; hours?: number; date?: string }; address?: unknown; until?: unknown; speaks?: unknown }) => {
+        const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+        const at = a.at && typeof a.at === "object" ? a.at : undefined;
+        if (!at && a.address !== true) return { ok: false, error: "Give at (when it wakes) or address: true (their agents hand it work)." };
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        const r = await keeps.make({
+          title: str(a.title),
+          said: str(a.said),
+          brief: str(a.brief),
+          wake: at ? { at: { kind: "time", every: (at.every ?? "day") as "day", time: String(at.time ?? ""), zone: "personal", tz, ...(Array.isArray(at.days) ? { days: at.days.map(Number) } : {}), ...(at.dayOfMonth !== undefined ? { dayOfMonth: Number(at.dayOfMonth) } : {}), ...(at.hours !== undefined ? { hours: Number(at.hours) } : {}), ...(at.date ? { date: String(at.date) } : {}) } } : { address: true },
+          ...(str(a.until) ? { until: str(a.until) } : {}),
+          ...(str(a.speaks) ? { speaks: str(a.speaks) } : {}),
+          persona: core.persona.id,
+        });
+        if (!r.ok) return { ok: false, error: r.error };
+        if (turn) turn.keepCard = r.card;
+        const address = r.keep.from.kind === "helper" ? ` Its address in Nowledge Mem is being made under "${r.keep.title}"; Ducter says one line when it is ready. Nothing polls: Ducter wakes each piece of work when it arrives.` : "";
+        return { ok: true, id: r.keep.keepId, note: `True now: Ducter looks after it from now on, and its card (when it wakes, when it speaks, until when; Open, Change, Undo) stands under your words.${address} Say one short line in their language, 好，我来照看：… / Done, I'll look after it: …, and nothing the card already shows.` };
+      },
+    );
+  }
   function registerAppTool(apps: NonNullable<CoreApi["apps"]>) {
     // D407: the person's Go on Ducter's offer to keep a routine's rounds on a board is their own word too.
     const own = (t: TurnState) =>
@@ -5448,43 +5507,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         core.tasks.setState(card.taskId, "needs_you", card.residency);
         const unheard = !via && c.unheard ? " Its answer may not reach you: the user's partner doesn't read where that agent is." : "";
         return { ok: true, waiting: "the user's OK", note: `The user sees a card naming ${whoForTask(c)} and your words; it goes only if they say go, and you'll hear if it doesn't. Don't send it again.${unheard} Its answer arrives here as a new message. Carry on with what doesn't need it, or end your turn to wait (no report needed).` };
-      },
-    );
-    // D494: 帮手 / Helpers: the person's named addresses in Bridge that their other agents hand one kind
-    // of work to. The model judges what the person asked for; code guards the count, the unique name,
-    // and that stopping ends the address.
-    bridgeTool(
-      "helper",
-      `The user's helpers: a name in Nowledge Bridge their other agents hand one kind of work to ("a PR babysitter my agents pass PRs to"), so the work never waits on a session that has to listen or wake itself. Ducter's home receives the helper's mail and wakes the work. do=make when they ask for a standing agent, a "loop agent" or a named mailbox other agents give work to: name (theirs, at most ${HELPER_NAME_MAX} characters), about (what it takes, their words, at most ${HELPER_ABOUT_MAX}), brief (what each piece of work is told: the user's words on what it may do by itself and what it must ask about, when it is done; say that it never merges unless they said so); at most ${HELPERS_MAX}. Make it instead of opening a task that loops or polls. do=stop / do=resume / do=set (about, brief), by name, on their word. After it, one short line: its name in Nowledge Mem, and that their agents hand work to it there.`,
-      {
-        type: "object",
-        properties: {
-          do: { type: "string", enum: ["make", "stop", "resume", "set"] },
-          name: { type: "string", description: "make: its name; stop, resume, set: which one" },
-          about: { type: "string", description: "make, set: what it takes, the user's words" },
-          brief: { type: "string", description: "make, set: what each piece of work is told" },
-        },
-        required: ["do", "name"],
-      },
-      async (args: { do?: unknown; name?: unknown; about?: unknown; brief?: unknown }) => {
-        const hs = core.helpers;
-        if (!hs) return { ok: false, error: "Helpers aren't available on this home." };
-        const name = typeof args?.name === "string" ? args.name : "";
-        const names = () => hs.list().map((h) => h.name).join(", ") || "none";
-        if (args?.do === "make") {
-          const r = hs.make({ name, about: typeof args.about === "string" ? args.about : "", brief: typeof args.brief === "string" ? args.brief : "", persona: core.persona.id });
-          if (!r.ok) return { ok: false, error: { empty: "It needs a name.", taken: `That name is taken (helpers now: ${names()}).`, full: `The user already has ${HELPERS_MAX} helpers.` }[r.error] };
-          return { ok: true, made: { name: r.helper.name }, next: `True now: its address in Nowledge Mem is being made under that name, and ${paneName("peers", userLang() ?? NO_WORDS_YET)} shows it. Ducter's home receives its mail and starts the work the moment it arrives: nothing polls, no timer, no loop, no mailbox for the user to open. Each piece of work is a task you open, woken by its own waits on CI and reviews; the answer goes back from the helper's address when it is done. Ducter says one line in this conversation when the address is ready (or if Mem refuses the name), and On hand shows the helper with its work under it from now on. Say in one or two short lines its name and that their agents hand it work there; if they asked how it wakes, that Ducter wakes it.` };
-        }
-        const h = hs.byName(name);
-        if (!h) return { ok: false, error: `No helper called "${name}" (helpers: ${names()}).` };
-        if (args?.do === "stop") return (await hs.stop(h.id)) ? { ok: true, stopped: h.name, note: "Its address is closed; work it has on hand keeps going. One short line." } : { ok: false, error: "Not stopped." };
-        if (args?.do === "resume") return hs.resume(h.id) ? { ok: true, resumed: h.name } : { ok: false, error: "Not resumed." };
-        if (args?.do === "set") {
-          const n = hs.set(h.id, { ...(typeof args.about === "string" ? { about: args.about } : {}), ...(typeof args.brief === "string" ? { brief: args.brief } : {}) });
-          return n ? { ok: true, now: { name: n.name, about: n.about } } : { ok: false, error: "Not changed." };
-        }
-        return { ok: false, error: "do is make, stop, resume or set." };
       },
     );
     bridgeTool(

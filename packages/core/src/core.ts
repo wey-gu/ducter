@@ -33,7 +33,7 @@ import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
 import { recentFolders } from "./first-words.ts";
-import { createOngoing, registerOngoingTools } from "./ongoing.ts";
+import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
@@ -65,7 +65,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { createKeeps, type Keeps } from "./keeps.ts";
+import { createKeeps, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
@@ -1576,7 +1576,6 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
-  registerOngoingTools(mcp, ongoing, () => persona.id, { lang: () => langNow(), zone: () => opts.work?.defaultZone, now: () => clock.now() }); // D429: its ready lines in the person's language
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
   // migration: their own records stay as they are), and whatever becomes one later is kept at once.
   const keeps = (keepsRef = createKeeps({
@@ -1604,6 +1603,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
+  // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
+  registerKeepTools(mcp, keeps, () => persona.id);
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps

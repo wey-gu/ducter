@@ -177,8 +177,7 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 			})
 			if r.Clicked() {
 				a.infoOpen = false
-				a.bench.open, a.bench.tab = true, "changes"
-				a.benchLoad(task)
+				a.benchShow(task, "changes")
 			}
 		})
 	})

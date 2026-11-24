@@ -168,7 +168,7 @@ func TestRailShots(t *testing.T) {
 			app := railApp(t, lang)
 			app.OpenTask("t_keys")
 			app.Route = s.route
-			app.bench.open = s.bench
+			app.bench.open, app.bench.owner = s.bench, "t_keys"
 			b := app.benchOf("t_keys")
 			b.asked = true
 			b.changes = &protocol.WbAnswer{Op: "changes", Kind: "branch", Base: "main", Files: []protocol.WbChange{
@@ -194,7 +194,7 @@ func TestRailShots(t *testing.T) {
 		writeShot(t, tt, "onhand-rail-mac-folded-"+string(lang)+"")
 		app.Local.SetLens("")
 		app.OpenTask("t_hotel")
-		app.bench.open = true
+		app.bench.open, app.bench.owner = true, "t_hotel"
 		app.bench.had = "t_hotel"
 		tt = ui.NewTesterWith(app.View, 1700, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})

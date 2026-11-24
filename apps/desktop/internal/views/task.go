@@ -39,7 +39,7 @@ func (a *App) task(c *ui.Context) {
 	if w <= 0 {
 		w = 1280
 	}
-	rail, bench := panes(w, a.bench.open && a.benchOpenable(task))
+	rail, bench := panes(w, a.benchShown(task))
 	// D271: the task's own column, for the locator (wide only).
 	a.tpage.colW = w
 	if rail {
@@ -146,8 +146,7 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	// D238: the person's own phone is said in the task's head (handsetTaskLine), never here (D339).
 	// D217: it is using Ducter's phone: watch it, in the workbench's Phone page (D220).
 	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnText, t.ControlSM, t.Chrome) {
-		a.bench.open, a.bench.tab = true, "phone"
-		a.benchLoad(task)
+		a.benchShow(task, "phone")
 	}
 	a.moreMenu(c, task)
 }

@@ -22874,19 +22874,28 @@ button.tray-main:focus-visible,
     background: var(--sunken);
   }
 }
-/* Revealed in place: always laid out, faded in. */
+/* Revealed in place: always laid out, faded in. D542: a faded action takes no tap (a touch screen
+   has no hover to show it first: a tap on a row's end opens the row, never pauses it unseen); it is
+   shown by a pointer's hover, or by the keyboard's focus, never by a tap's focus. */
 .ocard .tacts,
 .onhand-list:not(.room-rail) .ocard .ocol > .tacts {
   display: flex;
   opacity: 0;
+  pointer-events: none;
 }
 .ocard .tacts.on,
-.ocard:hover .tacts,
-.ocard:focus-within .tacts,
+.ocard:has(:focus-visible) .tacts,
 .onhand-list:not(.room-rail) .ocard .ocol > .tacts.on,
-.onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts,
-.onhand-list:not(.room-rail) .ocard:focus-within .ocol > .tacts {
+.onhand-list:not(.room-rail) .ocard:has(:focus-visible) .ocol > .tacts {
   opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: hover), (any-hover: hover) {
+  .ocard:hover .tacts,
+  .onhand-list:not(.room-rail) .ocard:hover .ocol > .tacts {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 /* Over the time where the sheet keeps no action column: the time fades as they come, on the row's
    own fill (no white patch on a warm hover). */
@@ -22941,12 +22950,19 @@ button.tray-main:focus-visible,
 .trow .tacts {
   display: flex;
   opacity: 0;
+  pointer-events: none;
   background: linear-gradient(to right, transparent, var(--sunken) 24px);
 }
 .trow .tacts.on,
-.trow:hover .tacts,
-.trow:focus-within .tacts {
+.trow:has(:focus-visible) .tacts {
   opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: hover), (any-hover: hover) {
+  .trow:hover .tacts {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .ocard,

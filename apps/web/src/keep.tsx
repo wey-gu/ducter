@@ -25,15 +25,28 @@ const RAIL_COLS = 38;
 /** The Keep whose page is open (absent: On hand's list), the pages read, and the page's own state (talk: the words being typed, the clientId in flight, the Keep last told). */
 export const K = { open: "", pages: new Map<string, KeepPage>(), pause: false, stop: false, undone: new Set<string>(), sig: "", askedAt: 0, talk: { text: "", sending: "", at: 0, sent: "" } };
 
-/** Opens a Keep's page in the board's place, and asks the home for it. */
+/** Whether the route stands at the whole screen now (a Keep's page and its tasks keep it, D542). */
+const fullNow = () => A.route.name !== "conv" && !!A.route.full;
+
+/** Opens a Keep's page in the board's place, and asks the home for it. D542: from a task at the
+ *  whole screen (its rail) it stays at the whole screen. */
 export function openKeep(id: string) {
   K.open = id;
   K.pause = K.stop = false;
   K.talk = { text: "", sending: "", at: 0, sent: "" };
   A.send({ t: "keep", id });
-  if (A.route.name !== "onhand") A.go({ name: "onhand" });
+  if (A.route.name !== "onhand") A.go(fullNow() ? { name: "onhand", full: true } : { name: "onhand" });
   else A.changed();
 }
+
+/** D542: the Keep whose own work a task is (a Keep in rounds: its rounds' task), so a row of it
+ *  opens the Keep's page, never the round's task; a Keep's item (one PR it babysits) is its own task. */
+export function keepOfTask(taskId: string): string | undefined {
+  return (A.S.onHand?.keeps ?? []).find((k) => k.run !== "perItem" && k.taskIds.includes(taskId))?.id;
+}
+
+/** D542: a task opened from a Keep's page stays at the width the page stood at. */
+const goTask = (id: string) => A.go({ name: "task", id, full: fullNow() });
 
 export function closeKeep() {
   K.open = "";
@@ -161,7 +174,7 @@ export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }
           {shown.map((x) => {
             const w = itemWords(x);
             return (
-              <button key={x.pr ?? x.taskId} class="kp-h" onClick={() => A.go({ name: "task", id: x.taskId })} title={x.title}>
+              <button key={x.pr ?? x.taskId} class="kp-h" onClick={() => goTask(x.taskId)} title={x.title}>
                 <i class={`kp-dot ${x.at}`} aria-hidden="true" />
                 <span class="n">
                   {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
@@ -236,7 +249,7 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
         {open && (
           <span class="kp-detail">
             {r.report && <span class="rep">{r.report}</span>}
-            {r.taskId && <Btn kind="text" size="sm" chev label={t("keep.item.task")} onClick={() => A.go({ name: "task", id: r.taskId! })} />}
+            {r.taskId && <Btn kind="text" size="sm" chev label={t("keep.item.task")} onClick={() => goTask(r.taskId!)} />}
           </span>
         )}
       </span>
@@ -300,7 +313,7 @@ function Items({ k }: { k: KeepPage }) {
             </span>
             <span class="acts">
               {x.pr && <Btn kind="text" size="sm" label={t("keep.item.pr")} onClick={() => window.open(`https://github.com/${x.pr!.replace("#", "/pull/")}`, "_blank", "noopener")} />}
-              <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => A.go({ name: "task", id: x.taskId })} />
+              <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => goTask(x.taskId)} />
             </span>
           </div>
         );

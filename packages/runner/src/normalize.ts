@@ -41,10 +41,31 @@ interface HarnessTask {
   ambient: boolean;
   shown: boolean;
   ended: boolean;
+  /** D515: a tool call still running when its turn completed (a Codex background terminal), by its call id. */
+  call?: boolean;
 }
+
+/** D515: how much of a background job's own output its end carries to the task (the tail: where results are). */
+export const BG_OUTPUT_TAIL = 1500;
 
 /** A background act as the runner logs it (raw.background), and blocksOf reads it. */
 export type BackgroundAct = "started" | "ended" | "stopped" | "failed";
+
+/** D515: what a background job's end says beyond its words: its exit code, its output's tail, the harness's summary, the file its output went to. */
+export type BackgroundSaid = { exitCode?: number; output?: string; summary?: string; outputFile?: string };
+
+/** The last `max` characters of a text, marked when cut. */
+function tail(s: string, max: number): string {
+  return s.length <= max ? s : `…${s.slice(s.length - max + 1)}`;
+}
+
+/** D515: a background terminal said by its command, without the shell wrapper Codex runs it in (`/bin/zsh -lc '…'`). */
+function commandWords(input: string | undefined): string | undefined {
+  const s = (input ?? "").trim();
+  if (!s) return undefined;
+  const m = /^\S*\/(?:ba|z)?sh\s+-l?c\s+(['"])([\s\S]*)\1$/.exec(s);
+  return m ? m[2] : s;
+}
 
 /** What a background task is said as: its own description; a Codex subagent's last path part. */
 function taskWords(d: string | undefined): string | undefined {
@@ -56,6 +77,8 @@ function taskWords(d: string | undefined): string | undefined {
 
 interface PendingTool {
   name: string;
+  mcp?: boolean; // an MCP server's tool (never a background terminal)
+  stale?: boolean; // open when a turn was aborted or failed: never counted as background work
   input?: string;
   partial?: string; // streamed input so far (until a title is found)
   titled?: boolean;
@@ -214,7 +237,7 @@ export class Normalizer {
         // One name form on every harness: an MCP tool is mcp__<server>__<tool> (claude's own
         // form; codex and pi report the server and tool apart, D85).
         const name = ev.server && ev.toolName ? `mcp__${ev.server}__${ev.toolName}` : ev.tool;
-        this.tools.set(ev.callId, { name, input: ev.input });
+        this.tools.set(ev.callId, { name, input: ev.input, ...(ev.server ? { mcp: true } : {}) });
         // Early signal (no output yet): lets the partner turn its held line into an ack as
         // soon as the model starts a task_open call, not after it finishes writing the brief.
         // The runner does not log these (the ended event carries the full call).
@@ -236,6 +259,13 @@ export class Normalizer {
           tool: { name: t.name, input: previewInput(t.input), output: preview(output), ok: ev.result ? ev.result === "ok" : undefined },
           raw: { kind: ev.kind, callId: ev.callId, exitCode: ev.exitCode },
         });
+        // D515: a call that outlived its turn (a Codex background terminal) ended: its end, with its output's tail.
+        const task = this.tasks.get(ev.callId);
+        if (task?.call && !task.ended) {
+          task.ended = true;
+          const failed = ev.result ? ev.result !== "ok" : typeof ev.exitCode === "number" && ev.exitCode !== 0;
+          out.push(this.bgEvent(ev.callId, task, failed ? "failed" : "ended", { ...(typeof ev.exitCode === "number" ? { exitCode: ev.exitCode } : {}), ...(output ? { output: tail(output, BG_OUTPUT_TAIL) } : {}) }));
+        }
         break;
       }
       case "task_started": {
@@ -255,13 +285,28 @@ export class Normalizer {
         const task = this.tasks.get(id);
         if (!task || task.ended) break;
         task.ended = true;
-        if (task.shown) out.push(this.bgEvent(id, task, ev.status === "failed" ? "failed" : ev.status === "stopped" ? "stopped" : "ended"));
+        // D515: what the harness says of its end (Claude Code's summary and output file, DSH's detail).
+        const said = { ...(typeof ev.summary === "string" && ev.summary.trim() ? { summary: tail(ev.summary.trim(), 500) } : {}), ...(typeof ev.outputFile === "string" && ev.outputFile ? { outputFile: ev.outputFile } : {}) };
+        if (task.shown) out.push(this.bgEvent(id, task, ev.status === "failed" ? "failed" : ev.status === "stopped" ? "stopped" : "ended", said));
         break;
       }
       case "turn_ended": {
         // A task still running when the turn that started it ended runs in the background, flagged or not.
         for (const [id, task] of this.tasks) if (!task.ended && !task.shown) this.show(id, task, out);
         const o = ev.outcome ?? {};
+        // D515 (research/222): a tool call still running when its turn completed goes on beside the
+        // session: Codex 0.172 keeps a command past its yield as a background terminal and says its
+        // end (tool_call_ended, its output) after the turn, with no turn of its own. Counted and shown
+        // as background work, so the session isn't parked under it and its result reaches the task.
+        if (o.kind === "completed")
+          for (const [callId, t] of this.tools)
+            if (!t.mcp && !t.stale && !this.tasks.has(callId)) {
+              const task: HarnessTask = { type: "shell", description: commandWords(t.input), background: true, ambient: false, shown: false, ended: false, call: true };
+              this.tasks.set(callId, task);
+              this.show(callId, task, out);
+            }
+        // An aborted or failed turn's open calls are not counted (no end may ever come for them).
+        if (o.kind !== "completed") for (const t of this.tools.values()) t.stale = true;
         const text = o.kind === "completed" ? "turn completed" : o.kind === "aborted" ? "turn aborted" : `turn failed (${o.failure ?? "unknown"}): ${o.reason ?? ""}`;
         // D297: a usage limit's reset, when the agent named it (OAR's quota resetsAt), and its own words.
         // D449: or the provider's own words on a free tier's cap (pi on a free key), whatever OAR called it; kept long enough to hold its X-RateLimit-* headers.
@@ -327,10 +372,10 @@ export class Normalizer {
     out.push(this.bgEvent(id, task, "started"));
   }
 
-  private bgEvent(id: string, task: HarnessTask, act: BackgroundAct): HarnessEvent {
+  private bgEvent(id: string, task: HarnessTask, act: BackgroundAct, said: BackgroundSaid = {}): HarnessEvent {
     const what = taskWords(task.description);
     const text = { started: "running in the background", ended: "finished in the background", stopped: "stopped in the background", failed: "failed in the background" }[act];
-    return { role: "system", text: what ? `${text}: ${what}` : text, raw: { kind: "background", background: { id, act, type: task.type, ...(what ? { what } : {}) } } };
+    return { role: "system", text: what ? `${text}: ${what}` : text, raw: { kind: "background", background: { id, act, type: task.type, ...(what ? { what } : {}), ...said } } };
   }
 
   /** Flush buffered text (e.g. on stream end). */

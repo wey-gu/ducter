@@ -76,6 +76,15 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   Ducter's in-place switch on every agent; Codex's bare `/compact` is OAR's manual compaction. Codex: an ordinary task keeps the person's
   `multi_agent`; its subagents inherit the brief (`developerInstructions`, codex 0.167.2 source)
   unless an agent role of the person's replaces it.
+- **Every agent at full strength** (D515, research/222): a task keeps the agent's own background
+  work, subagents, browser and computer use, and the person's own plugins, skills, MCP servers,
+  hooks and memory. What it leaves out each has a Ducter equivalent or a safety reason (D241,
+  D282). Background work keeps the session open, and its end reaches the agent: Claude Code's own
+  turn reads it; Codex (whose background terminals take no turn) and an agent not known to take
+  one are woken with what ended and its output's tail (`background.ownTurn` in harness-facts). A
+  Codex folder task's sandbox keeps the person's MCP servers working
+  (`default_tools_approval_mode="approve"` for each server their `config.toml` names). A Codex
+  task in the person's Mac apps has one route for them, Ducter's app tools (D235).
 
 - **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
   applies (Claude Code); if that is unset, the harness's own default applies.
@@ -88,7 +97,7 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 | | Claude Code | Codex | pi | DeepSeek Harness |
 |---|---|---|---|---|
 | Partner | yes | yes | yes (D177; passed the eval on `deepseek/deepseek-flash`) | yes (D177; passed the eval on `deepseek-official/deepseek-flash`) |
-| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: Ducter's own servers as one `mcp_servers={…}` table first, then each user MCP server `enabled=false` by name (D512: never OAR's thread `mcp_servers`, which replaced those entries and brought the person's servers back), `features.{hooks,apps,memories,goals,multi_agent,…}=false`, `notify=[]` (tasks too keep goals and subagents off, D240); partner also drops plugins, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process; a task gets its project's own AGENTS.md / CLAUDE.md back, appended after its brief (D241: from its folder up to the repository's top, never pi's global one; pi has no flag for that) | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; a task's (memory off, a browser place, D241) is its folder's, `<dataDir>/harness/deepseek-harness-{memory-off,browser}/<hash of its folder>`; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off; the key comes from the env, `keys.env`, or else the person's own DSH credential file, passed as `DEEPSEEK_API_KEY` (the key, never the file) |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: Ducter's own servers as one `mcp_servers={…}` table first, then each user MCP server `enabled=false` by name (D512: never OAR's thread `mcp_servers`, which replaced those entries and brought the person's servers back), `features.{hooks,apps,memories,goals,multi_agent,multi_agent_v2,…}=false`, `notify=[]` (tasks too keep goals and subagents off, D240); partner also drops plugins, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process; a task gets its project's own AGENTS.md / CLAUDE.md back, appended after its brief (D241: from its folder up to the repository's top, never pi's global one; pi has no flag for that) | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; a task's (memory off, a browser place, D241) is its folder's, `<dataDir>/harness/deepseek-harness-{memory-off,browser}/<hash of its folder>`; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off; the key comes from the env, `keys.env`, or else the person's own DSH credential file, passed as `DEEPSEEK_API_KEY` (the key, never the file) |
 | Partner prompt | system prompt | `baseInstructions` | system prompt | the system prompt's whole opener: the profile layer's `system-prompt` row, `includeHarnessIdentity: false` + `personaPrefix` (D177; a prompt with `{{` falls back to `$DSH_HOME/AGENTS.md`, which DSH sends as "workspace instructions" in a user message) |
 | Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
 | Ducter's MCP | HTTP + bearer | HTTP + bearer (clean setup: a launch `-c`, the bearer in the session's env through `env_http_headers`, D512) | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |

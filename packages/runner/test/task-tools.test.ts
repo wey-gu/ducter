@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { adaptSpec, DISALLOWED, dshCredentialKey, piProjectContext } from "../src/oar.ts";
+import { adaptSpec, codexApproveTheirServers, DISALLOWED, dshCredentialKey, piProjectContext } from "../src/oar.ts";
+import { appsBrief } from "../src/brief.ts";
 import { withBrowser } from "../src/runner.ts";
 import { BROWSER_DENIED_BUILTINS } from "../src/browser.ts";
 
@@ -67,6 +68,44 @@ describe("Codex: an ordinary task keeps the person's multi_agent", () => {
     expect((plain.launchArgs ?? []).join(" ")).not.toContain("multi_agent");
     const browsing = adaptSpec(withBrowser(task("codex"), sidecar(), "Ducter"), { dataDir: dir, env: { CODEX_HOME: dir } }).options;
     expect(browsing.launchArgs).toContain("features.multi_agent=false");
+    // D515: and the second generation of Codex subagents too (0.172 lists multi_agent_v2).
+    expect(browsing.launchArgs).toContain("features.multi_agent_v2=false");
+  });
+});
+
+describe("D515: a Codex folder task keeps the person's own MCP servers", () => {
+  const config = [
+    `[mcp_servers.context7]\ncommand = "npx"\n`,
+    `[mcp_servers."nowledge-mem"]\nurl = "http://127.0.0.1:14242/mcp"\n`,
+    `[mcp_servers.off]\ncommand = "x"\nenabled = false\n`,
+    `[mcp_servers.careful]\ncommand = "y"\ndefault_tools_approval_mode = "prompt"\n`,
+    `[mcp_servers.pertool]\ncommand = "z"\n[mcp_servers.pertool.tools.delete_all]\napproval_mode = "prompt"\n`,
+  ].join("\n");
+  test("each server their config.toml names is approved for the session, unless off or approved their own way", () => {
+    writeFileSync(join(dir, "config.toml"), config);
+    const args = codexApproveTheirServers(Bun.TOML.parse(config) as any);
+    expect(args).toEqual(["-c", `mcp_servers.context7.default_tools_approval_mode="approve"`, "-c", `mcp_servers.nowledge-mem.default_tools_approval_mode="approve"`]);
+    const folder = adaptSpec(task("codex", { confineWrites: true }), { dataDir: dir, env: { CODEX_HOME: dir } }).options;
+    const line = folder.launchArgs!.join(" ");
+    expect(line).toContain(`sandbox_mode="workspace-write"`);
+    expect(line).toContain(`mcp_servers.context7.default_tools_approval_mode="approve"`);
+    // Ducter's own server is told it is sandboxed (its tools are marked read-only), as before.
+    expect((folder.mcpServers![0] as { url: string }).url).toContain("sandbox=read-only");
+    // A task outside a folder runs unsandboxed: nothing to approve.
+    expect(adaptSpec(task("codex"), { dataDir: dir, env: { CODEX_HOME: dir } }).options.launchArgs?.join(" ") ?? "").not.toContain("default_tools_approval_mode");
+    // No config: nothing.
+    expect(codexApproveTheirServers(undefined)).toEqual([]);
+  });
+});
+
+describe("D515: a Codex task in the user's apps has one route for them", () => {
+  test("with Ducter's app tools, Codex's own Computer Use is told to leave the apps to them; without, its usual rules", () => {
+    const apps = withBrowser(task("codex", { appendSystemPrompt: "Task brief." + appsBrief("Ducter") }), undefined, "Ducter").appendSystemPrompt!;
+    expect(apps).toContain("use those for every app, never `cua_repl`");
+    expect(apps).not.toContain("open -na \"Google Chrome\"");
+    const plain = withBrowser(task("codex"), undefined, "Ducter").appendSystemPrompt!;
+    expect(plain).toContain("open -na \"Google Chrome\"");
+    expect(plain).not.toContain("never `cua_repl`");
   });
 });
 

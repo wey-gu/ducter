@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -39,5 +40,32 @@ func TestKeepRoundsNotInDoneToday(t *testing.T) {
 	}
 	if !tt.HasText("看守中") || !tt.HasText("改签确认") {
 		t.Errorf("On hand lost its own rows: %q", tt.Texts())
+	}
+}
+
+// D519: no Han character alone on a wrapped line (「…东京的机 / 票」), and
+// a PR's phase always reads whole (「%s 要求修改」 on a babysitter's row).
+func TestKeepWordsWhole(t *testing.T) {
+	for in, want := range map[string]string{
+		"12 月 20 日上海飞东京的机票":           "12 月 20 日上海飞东京的机⁠票",
+		"分给你的待…":                      "分给你的⁠待…",
+		"Shanghai to Tokyo on Dec 20": "Shanghai to Tokyo on Dec 20",
+		"持续评审 nowledge-co…":           "持续评审 nowledge-co…",
+	} {
+		if got := noOrphan(in); got != want {
+			t.Errorf("noOrphan(%q) = %q, want %q", in, got, want)
+		}
+	}
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, _ := pastApp(t, lang)
+		for _, by := range [][]string{nil, {""}, {" "}} {
+			w := app.prPhaseWords(protocol.PRSaid{Phase: "changes", By: by}, "")
+			if strings.Contains(w, "%") || w != app.L.T("onhand.prs.changes.anon") {
+				t.Errorf("%s: changes with no reviewer reads %q", lang, w)
+			}
+		}
+		if w := app.prPhaseWords(protocol.PRSaid{Phase: "changes", By: []string{"100gle"}}, ""); !strings.Contains(w, "100gle") {
+			t.Errorf("%s: the reviewer left out: %q", lang, w)
+		}
 	}
 }

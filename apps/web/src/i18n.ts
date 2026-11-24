@@ -124,6 +124,7 @@ const zh: Record<string, string> = {
   "newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。",
   "newtask.err.offline": "那台设备现在连不上。",
   "newtask.err.failed": "没能开始：%s",
+  "newtask.err.failed.bare": "没能开始",
   "newtask.err.unknown": "没能开始，再试一次？",
   "nav.onhand": "手头的事",
   // D262: the shell's way to the other places.
@@ -1143,6 +1144,7 @@ const en: Record<string, string> = {
   "newtask.err.ducter_data": "That is where Ducter keeps its own data, so no task works there. Pick another folder, or No folder.",
   "newtask.err.offline": "That device can't be reached right now.",
   "newtask.err.failed": "It didn't start: %s",
+  "newtask.err.failed.bare": "It didn't start",
   "newtask.err.unknown": "It didn't start. Try again?",
   "nav.onhand": "On hand",
   // D262: the shell's way to the other places.
@@ -3593,6 +3595,29 @@ export function guardEmptyArgs(fn: ((key: string, arg: number) => void) | undefi
   onEmptyArg = fn;
 }
 
+/** Tests (test/guard.ts): hears copy drawn with a placeholder left unfilled (a raw %s on screen; D519). */
+let onMissingArg: ((key: string, verbs: number, args: number) => void) | undefined;
+export function guardMissingArgs(fn: ((key: string, verbs: number, args: number) => void) | undefined) {
+  onMissingArg = fn;
+}
+
+/** How many arguments a format prints: %s/%d in order, or the highest %[n]s (%% none). */
+const verbsSeen = new Map<string, number>();
+export function verbsOf(fmt: string): number {
+  const known = verbsSeen.get(fmt);
+  if (known !== undefined) return known;
+  if (!fmt.includes("%")) return 0;
+  let i = 0;
+  let most = 0;
+  fmt.replace(/%(?:\[(\d+)\])?([sd%])/g, (_m, pos: string | undefined, verb: string) => {
+    if (verb === "%") return "";
+    most = Math.max(most, pos ? Number(pos) : ++i);
+    return "";
+  });
+  verbsSeen.set(fmt, most);
+  return most;
+}
+
 /** Which of n arguments a format prints (%s in order, %[2]s by position; %% none). */
 export function usedArgs(fmt: string, n: number): boolean[] {
   const used = new Array<boolean>(n).fill(false);
@@ -3630,6 +3655,11 @@ export function strings(locale: Lang, handheld: Handheld = "phone"): Strings {
     let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
     if (handheld === "ipad") v = onIpad(v);
     else if (handheld === "computer") v = onComputer(v);
+    if (onMissingArg) {
+      // D519: a placeholder printed with no argument for it (「%s 要求修改」 reached a person).
+      const want = verbsOf(v);
+      if (want > args.length) onMissingArg(key, want, args.length);
+    }
     if (!args.length) return v;
     if (onEmptyArg) {
       const used = usedArgs(v, args.length);

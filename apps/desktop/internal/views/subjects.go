@@ -71,7 +71,7 @@ func (a *App) takeSubject() {
 	delete(a.S.SourceItems, h.subjCid)
 	h.subjCid, h.subjSending = "", false
 	if !r.OK {
-		h.said = firstNonEmpty(r.Error, a.L.T("newtask.err.failed"))
+		h.said = firstNonEmpty(r.Error, a.L.T("newtask.err.failed.bare"))
 		return
 	}
 	name := firstNonEmpty(r.Name, h.subject, h.makeName)

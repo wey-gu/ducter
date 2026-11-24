@@ -220,7 +220,8 @@ The tasks at work on it are listed under it; one that needs you (a question, a p
 merge) is under **Needs you** instead, with its name, and the card only says how many wait.
 
 Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
-(each pull request with its checks), every round (newest first; the quiet ones fold into one line),
+(each pull request with its own title and checks), every round (newest first, each in one plain line
+of what happened; **Details** shows what the task reported; the quiet ones fold into one line),
 and **How it runs**. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.

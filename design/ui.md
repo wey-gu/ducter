@@ -577,6 +577,19 @@ A new control is added to the set (and to this table) before it is used.
 | A toast: one sentence that goes by itself, with an optional action (D527) | `toastSlot`, `toastCard` (`toasts.go`), said through `c.Toast` / `c.AddToast` / `a.toast` | `Toasts` (`views.tsx`), said through `A.toast` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
+| **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, the context ring, After this, Stop), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
+| A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
+| A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
+| A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
+| A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
+
+**Deny by default (D519).** The guards cover every view file, never a list: Mac
+`TestSharedControlsEverywhere` walks every `.go` file in `views` but the files that define the set
+(`components.go`, `quiet.go`, `shared.go`, `menu.go`, `composer.go`, each with its reason), and web
+`apps/web/test/controls.test.ts` walks every `src/*.tsx` but `controls.tsx`, `composer.tsx` and
+`menu.tsx`. Views that drew raw controls before the rule stand on a ceiling list that may only
+shrink (`todo.md`). The composer has its own check on both: no send, arrow or words-and-send pair
+outside `composer.go` / `composer.tsx`.
 
 ### One menu (D421)
 

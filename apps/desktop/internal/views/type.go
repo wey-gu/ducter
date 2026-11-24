@@ -148,12 +148,19 @@ func tokenLen(rs []rune, i int) int {
 // letter (D408; the Mac walk of 0.0.99). The autospace gap, a real space,
 // stays: it reads as the space it is.
 func uiText(c *ui.Context, s string) ui.Element {
+	if onDrawn != nil {
+		onDrawn(s)
+	}
 	e := ui.Text(c, s)
 	if strings.ContainsRune(s, wordJoiner) {
 		e.Label(unjoin(s))
 	}
 	return e
 }
+
+// onDrawn, when set (tests), hears every text drawn (D519: no template is
+// ever drawn with its placeholders unfilled).
+var onDrawn func(s string)
 
 // unjoin is s without the word joiners line breaking put in.
 func unjoin(s string) string { return strings.ReplaceAll(s, string(wordJoiner), "") }

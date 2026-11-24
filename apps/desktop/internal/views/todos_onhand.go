@@ -111,7 +111,7 @@ func (a *App) takeFold() {
 		}
 		delete(f.handing, ref)
 		if !r.OK {
-			why := a.L.T("newtask.err.failed")
+			why := a.L.T("newtask.err.failed.bare")
 			switch r.Reason {
 			case "no_agent", "offline", "not_repo", "ducter_data":
 				why = a.L.T("newtask.err." + r.Reason)

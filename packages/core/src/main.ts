@@ -197,6 +197,12 @@ export async function main(mods: BootModules = {}) {
 
   let partner: Partner | undefined;
   const partnerMod = mods.partner ?? (await loadModule("@ducter/partner", "../../partner/src/index.ts", "createPartner"));
+  // D538: the person's computer rules, mirrored to Mem as their own preferences while Mem is on (the
+  // default partner's identity names who wrote them); Mem's labelled memories come back as hints.
+  if (partnerMod?.createNmemClient && process.env.DUCTER_MEMORY !== "off") {
+    const nmem = partnerMod.createNmemClient({ identity: () => core.persona.mem });
+    core.setPlacementMem?.({ add: (m: any) => nmem.add(m), ...(nmem.archive ? { archive: (id: string) => nmem.archive(id) } : {}), ...(nmem.labeled ? { labeled: (l: string, n: number) => nmem.labeled(l, n) } : {}) });
+  }
   if (partnerMod) {
     try {
       partner = await partnerMod.createPartner(core, runner, { ready: identityOrTimeout });

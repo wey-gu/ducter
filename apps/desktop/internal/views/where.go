@@ -119,6 +119,9 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 		}
 	case "awake":
 		return a.L.T("where.reason.awake", w.Other, dev)
+	case "room":
+		// D538: heavy work, and the other computer hasn't the memory free for it now.
+		return a.L.T("where.reason.room", w.Other)
 	case "changes_here":
 		return a.L.T("where.reason.changes", dev)
 	case "agent_here":

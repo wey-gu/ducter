@@ -23,6 +23,7 @@ var defineFiles = map[string]string{
 	"menu.go":       "defines the one clay menu (D421)",
 	"composer.go":   "defines the one composer and its send, the section head, the tag, the time column and a menu's opener (D519)",
 	"edit.go":       "defines a rule row edited in place, the one-line field and the number field (D533)",
+	"mentions.go":   "defines the composer's @ and / list and the reference chip (D534)",
 }
 
 // olderViews drew controls by hand before the rule. Each count is a ceiling

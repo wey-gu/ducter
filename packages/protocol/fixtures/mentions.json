@@ -1,0 +1,51 @@
+{
+  "_": "D534: @ and / in the composers. packages/protocol/test/mentions.test.ts and apps/desktop/internal/mentions/mentions_test.go pass the same cases. Offsets are in characters (no character here is outside the BMP, so UTF-16 and runes agree).",
+  "mentionAt": [
+    { "text": "@", "caret": 1, "start": 0, "q": "" },
+    { "text": "看看 @修复", "caret": 6, "start": 3, "q": "修复" },
+    { "text": "看看@修复登录", "caret": 7, "start": 2, "q": "修复登录" },
+    { "text": "ping @fix the login", "caret": 19, "start": 5, "q": "fix the login" },
+    { "text": "mail me at wey@example.com", "caret": 26, "start": null },
+    { "text": "@a b c d", "caret": 8, "start": null },
+    { "text": "@fix\nmore", "caret": 9, "start": null },
+    { "text": "no at here", "caret": 10, "start": null }
+  ],
+  "slashAt": [
+    { "text": "/", "caret": 1, "task": true, "start": 0, "q": "" },
+    { "text": "/comp", "caret": 5, "task": true, "start": 0, "q": "comp" },
+    { "text": "  /comp", "caret": 7, "task": true, "start": 2, "q": "comp" },
+    { "text": "please /comp", "caret": 12, "task": true, "start": null },
+    { "text": "please /comp", "caret": 12, "task": false, "start": 7, "q": "comp" },
+    { "text": "/compact now", "caret": 12, "task": true, "start": null },
+    { "text": "a/b", "caret": 3, "task": false, "start": null }
+  ],
+  "placeToken": [
+    { "text": "看看 @修复", "start": 3, "caret": 6, "token": "@修复 foo 登录页", "want": "看看 @修复 foo 登录页 ", "wantCaret": 15 },
+    { "text": "/comp later", "start": 0, "caret": 5, "token": "/compact", "want": "/compact later", "wantCaret": 9 }
+  ],
+  "labelOf": [
+    { "name": "修复 foo 登录页的重定向循环", "want": "修复 foo 登录页的重定向循环" },
+    { "name": "  a\nb  ", "want": "a b" },
+    { "name": "mail@x", "want": "mail＠x" },
+    { "name": "Make the compaction pass keep the API notes and the open questions", "want": "Make the compaction pass keep the…" }
+  ],
+  "refSpans": [
+    {
+      "text": "@修复登录页 和 @修复登录 比一下",
+      "refs": [{ "kind": "task", "id": "t1", "label": "修复登录" }, { "kind": "task", "id": "t2", "label": "修复登录页" }],
+      "want": [[0, 6, "t2"], [9, 14, "t1"]]
+    },
+    {
+      "text": "/keep 每天看一眼 @foo CI",
+      "refs": [{ "kind": "action", "id": "keep", "label": "keep" }, { "kind": "task", "id": "t3", "label": "foo CI" }],
+      "want": [[0, 5, "keep"], [12, 19, "t3"]]
+    }
+  ],
+  "match": [
+    { "q": "comp", "name": "compact", "hit": true },
+    { "q": "rev", "name": "code-review", "hit": true },
+    { "q": "登录", "name": "修复 foo 登录页", "hit": true },
+    { "q": "compactoin", "name": "fix the compaction pass", "hit": true },
+    { "q": "zzz", "name": "compact", "hit": false }
+  ]
+}

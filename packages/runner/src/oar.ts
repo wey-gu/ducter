@@ -934,6 +934,26 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       }
     },
 
+    // D534: the agent's own commands or skills in a task's folder, as its composer's / list shows
+    // them (OAR's inventories: Claude Code's initialize.commands, Codex's skills/list, pi's
+    // get_commands; all token-free). Read with the same env as a task's session.
+    async inventory(harness, kind, cwd) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return undefined;
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const read = (rt as unknown as Record<string, ((i: unknown, o: unknown) => Promise<{ kind: string; items?: { name: string; description?: string; source?: string; userInvocable?: boolean }[] }>) | undefined> | undefined)?.[kind];
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const inst = await rt?.installation?.({ env });
+        if (!read || !inst || inst.kind !== "available") return undefined;
+        const r = await read(inst, { env, cwd, timeoutMs: 20_000 });
+        if (r.kind !== "ok" || !r.items) return undefined;
+        return r.items.map((i) => ({ name: i.name, ...(i.description ? { description: i.description } : {}), ...(i.source ? { source: i.source } : {}), ...(i.userInvocable === false ? { userInvocable: false } : {}) }));
+      } catch {
+        return undefined;
+      }
+    },
+
     // D416: the agent's own sign-out (Antigravity: ACP `logout` on a fresh `agy acp`, then `agy
     // models` decides). Never deletes a credential file itself.
     async logout(harness) {

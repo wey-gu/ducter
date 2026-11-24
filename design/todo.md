@@ -9,6 +9,17 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## New tasks start, after D510 (`where.md` §23)
+
+- [ ] **The author's review** of the group, its words and its place in Settings › Partner, on hel with
+  the MacBook. *Check:* a GitHub to-do handed over with Where hel and Who Codex runs on hel (a clone
+  there first when hel has none) and says **你设的默认**.
+- [ ] **A comprehension pass** on **你设的默认 / Your default** beside **按你的规则 / your rule**.
+- [ ] **"Not this computer"** as its own word ("别放本机"): today the partner sets the one other computer,
+  and asks when there are several. *Trigger:* a person with three computers says it.
+- [ ] **The iPhone and Android views** of the group (they read the web client's; a native pane would
+  need its own). *Trigger:* the phones get a native Settings pane.
+
 ## The same model another way, after D503 (`where.md` §21, research/219)
 
 - [ ] **A second account on the same computer.** A Ducter-owned config folder per extra account
@@ -48,6 +59,15 @@ line.
 - [ ] **Touch walked on iOS:** a long press on a message (D492; read in code only), the keyboard over the
   composer and a sheet, overscroll. The Simulator can't be touched from the shell. *Trigger:* a driver that
   can tap the Simulator, or a real iPhone in hand.
+
+## On hand, after D508 (`on-hand.md` "Under its PR")
+
+- **A live check on hel**: a GitHub-issue task's PR walks checks, review, ready and merged on the
+  board, and a review task's evidence never adopts a PR. Trigger: the next release.
+- **A PR a task made but neither declared nor named** stays unknown (the task reads as done).
+  Trigger: a report of one.
+- **The opened task's head says the PR's phase too** (today only its PR chip). Trigger: the
+  author's review.
 
 ## On hand, after D498 (`on-hand.md`, research/216)
 
@@ -295,6 +315,41 @@ line.
   `ducter check run errand-checkout`.
 - [ ] **A worker Mac's Ducter browser over a real socket** (remote.ts): the card's picture, the
   live view and the person's click through the worker. Covered by fakes only. Check: `ducter check run worker-browser`.
+
+## A server home signs in through your Mac's browser (D505, `where.md` §22)
+
+- [ ] **The live run** on hel (the home) and the MacBook (a worker, 上网 on, Claude in Chrome
+  connected): from the phone, 「看看我淘宝最近的订单」 without naming the Mac; the task ran in the
+  MacBook's Chrome (`body_selected` with `where.kind: signed_in`, `uses: chrome`), no sign-in card
+  came up on hel, the move line and 用你的 Chrome read right on the phone and the Mac, the answer is
+  the real orders; then a task that starts on hel with public pages and meets the sign-in page
+  mid-way (the move itself); then the lid closed (it waits, never signs in on hel by itself).
+  Check: `ducter check run worker-browser` (its `signin_*` steps). Trigger: the next release on hel.
+- [ ] **With the Mac asleep, wait for it by default** (W2b's ask for a running task): the sign-in
+  card gets **等 {device} 醒（默认） / Wait for {device}** beside signing in on hel, and the task
+  moves when it wakes. Today the card stays on hel as before. Trigger: the first time it happens to
+  the author, or a person asks why it wanted a password on the server.
+- [ ] **A sign-in in a worker's Ducter browser relays the person's keys through the home** (D151's
+  live view, driven from the home): sign in at that Mac itself (its own window) instead. Trigger: a
+  buy errand on a server home whose site is signed in nowhere.
+- [ ] **A standing "never my Chrome"** the move honours, said to the partner (「别用我的 Chrome」):
+  D505 (rev.)'s card already asks once per site, and its Hold signs in here; a standing no needs the partner
+  to keep it (a partner tool, or a kind beside D495's, which are permissions only and keep sign-ins
+  out), so a persona change with its eval (D175). It would sit in Settings' `chromeSites` store as a
+  never. Today the person answers 我在这里登录 each time, or the partner moves a task back (D376).
+  Trigger: the first person who says it.
+- [ ] **D505 (rev.) live:** the first sign-in card on hel for a site the MacBook's Chrome has, read on the
+  phone and the Mac (the question, 好，换过去, 我在这里登录, 不回的话，我先放着，等你回。); Go, then the
+  move line's 「你说过 taobao.com 都直接用你的 Chrome」; the second task at that site moving with no
+  card; 移除 in 上网 / Web and the card again. Check: `ducter check run worker-browser`. Trigger: the
+  next release on hel.
+- [ ] **D505 (rev.) in a chat app:** the card is answered only in Ducter (open); if people ask to answer it
+  from Telegram, its Go there could be allowed (the Hold needs the live view). Trigger: a person asks.
+- [ ] **Which agent there has native Chrome tools**: the move keeps the same agent when it is on the
+  Mac; if that agent's own Chrome tools aren't ready there (Claude in Chrome not connected), it falls
+  back to cua-driver or Ducter's browser on that Mac (D130), which lacks the sign-in. Prefer an agent
+  whose native tools are ready there. Trigger: the live run, or one task that asked to sign in again
+  on the Mac.
 - [ ] **A real phone paying in the live view**: a wallet or a QR page, 3-D Secure, a bank's own app
   opening from the page (it may leave the view: say what then).
 - [ ] **The pay words on real checkouts**: the gate's list (zh, en, ja) read against five real

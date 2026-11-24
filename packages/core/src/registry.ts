@@ -1,13 +1,14 @@
 // TaskRegistry: the TaskCard projection, rebuilt from the Log and kept live by subscription.
 import type { Attention, Bodies, LogEvent, OnHand, PastMark, Residency, TaskCard } from "@ducter/protocol";
 import { isDoneToday } from "@ducter/protocol/src/done-today.ts";
+import { prGoesOn, prUrl, type TaskPR } from "@ducter/protocol/src/pr-state.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
@@ -115,6 +116,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
           // D341: a retitle keeps its to-do.
           ...(prev?.source ? { source: prev.source } : {}),
+          // D508: and its PRs.
+          ...(prev?.prs ? { prs: prev.prs } : {}),
         });
         break;
       }
@@ -146,6 +149,25 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         if (b.op === "untick") wrote.delete("tick");
         else wrote.add(b.op);
         c.source = { ...c.source, wrote: [...wrote], ...(b.op === "close" || b.op === "tick" ? { state: "closed" as const } : b.op === "untick" ? { state: "open" as const } : {}) };
+        break;
+      }
+      case "owned_news": {
+        // D508: where a PR the task owns stands at Ducter's last look; merged or closed, the task's
+        // work there ended then (today's 今天做完 counts it from that moment).
+        const b = e.body as Bodies["owned_news"];
+        const c = cards.get(b.taskId);
+        if (!c) return;
+        const was = c.prs?.find((p) => p.pr === b.pr);
+        const rest = (c.prs ?? []).filter((p) => p.pr !== b.pr);
+        const state = b.seen.state;
+        if (state === "not_ours") {
+          if (rest.length) c.prs = rest;
+          else delete c.prs;
+          return;
+        }
+        const pr: TaskPR = { pr: b.pr, url: prUrl(b.pr), state: state ?? "open", at: e.ts, ...(b.seen.standing ? { standing: b.seen.standing } : {}) };
+        c.prs = [...rest, pr];
+        if (pr.state !== "open" && was?.state !== pr.state) c.updatedAt = e.ts;
         break;
       }
       case "task_held": {
@@ -326,11 +348,13 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         // A speculative open the partner replaced before it was briefed never was a task (D120).
         if (neverStarted(c)) continue;
         const age = now - Date.parse(c.updatedAt);
-        if (c.attention === "needs_you") counts.needs_you++;
-        else if (c.attention === "blocked") counts.waiting++;
+        // D508: a finished task whose PR is open is not done: it waits on that PR (ready: on the person).
+        const pr = c.attention === "done" || c.attention === "done_claimed" ? prGoesOn(c.prs) : undefined;
+        if (c.attention === "needs_you" || pr?.stands === "needs") counts.needs_you++;
+        else if (c.attention === "blocked" || pr) counts.waiting++;
         else if (c.attention === "working" || c.attention === "queued" || c.attention === "done_claimed") counts.working++;
-        if (isDoneToday(c.attention, c.updatedAt, now, day)) counts.done_today++; // D310: one meaning, every surface
-        if (isActive(c.attention) || age < DAY_MS) {
+        if (isDoneToday(c.attention, c.updatedAt, now, day, !!pr)) counts.done_today++; // D310: one meaning, every surface
+        if (isActive(c.attention) || age < DAY_MS || pr) {
           const card = copy(c);
           const l = latestOf(c.taskId);
           if (l) card.latest = structuredClone(l);

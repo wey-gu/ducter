@@ -110,7 +110,8 @@ task in {name}** where the bare ＋ stood.
    here, out of 等你 and its count, its line **{time} 再问你：{question} / Asking again {time}:
    {question}** with **现在就定 / Decide now** (on hover on a wide screen; the opened card always),
    until its time puts it back in 等你 (no default runs on it there until it is seen). 今天做完 (D467:
-   finished on today's date, a done still being checked too): new results, then the seen ones;
+   finished on today's date, a done still being checked too; D508: never one whose PR is open, which
+   stands under its PR, ready in 等你 and the rest in 在等): new results, then the seen ones;
    what finished before today folds under **还有 n 个是昨天做完的 / n more done yesterday**, closed by
    default. Its count is D310's one number. One reading
    column (760; 840 beside the peek). D467 (rev.), D471: a section's name is a quiet label (12/700,
@@ -142,11 +143,12 @@ detail, on hover and in the task.
 | Part | What it shows |
 |---|---|
 | State mark | A 32-pt sunk round with a group part's glyph: a flag (needs you, stopped), D498's pebble (working: it beats once each time a step lands and rests between, dimmed after ten quiet minutes; research/216), Ongoing's drawn repeat (a task in rounds between rounds), the D279 ring filling toward its next look (waiting), a tick (a new result; quiet once seen), a cross (didn't work out) |
-| Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
+| Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; D508: past two lines cut at a word's end, the whole title then its tooltip, and no other tooltip; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
 | Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it |
 | Quiet (working) | D498: no progress line. After ten minutes with no step, under the living line, **上一步 {ago} / last step {ago}** in the quiet ink (a fact; the partner judges a stall, D481). The living line is D498's `saidOf`: this turn's latest line in a sentence (the agent's words, a step that said what it was for, or the unworded steps as one gist, **跑了 3 条命令，看了 2 个文件**), never a bare command; a failed step the task went past keeps the quiet ink. The client asks once for a working task's history |
-| Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**) from the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
-| Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover Merge / draft PR, Pause, D454's × and ⋯ |
+| Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**): D508: the PR Ducter watches for it first, else the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
+| Under its PR (D508) | A finished task whose PR is open is not done: its living line is where the PR stands (`pr-state.ts`), the phase in the state's ink and its facts each its own element: **在等 CI 跑完**, **CI 没过** (**没过的：{names}**), **在等评审** (**等 {who} 看**), **{who} 要求修改**, **和 {base} 有冲突**, **还是草稿**, **可以合了** (**{who} 通过了评审**), CI as **CI 过了 {n}/{m}** or **CI 都过了**; its mark the waiting ring at rest (ready: the flag); its right edge when it last moved. Ready stands in 等你 with **到 GitHub 合并 / Merge on GitHub**; every other open phase in 在等; merged or closed in 今天做完 (**已合并** beside its +a −d). Never 合进 {base} or 开草稿 PR while a PR holds the branch |
+| Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover, in a slot of its own inside the row (D508: never over the time, never past the sheet's edge), Pause, D454's × and ⋯; a branch with no PR has 合进 {base} and 开草稿 PR in that ⋯ |
 
 A new result pops once the first time it is drawn (D313). A group (D360) is the same card with its
 name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
@@ -171,7 +173,8 @@ reads at a glance (**还没有活交过来 / Nothing handed over yet** with **�
 个** on the time edge; each its own element. A tap opens its row in Settings › Agent 通信. **Under it**, set in
 by the mark's width (38 wide, 36 stacked; Mac 46) on the same sheet, the work it keeps, each the board's own row
 (what waits for the person first): a task until it ends, and a finished one while its PR is open, its line
-**能合并了，等人合并 / Can merge; waiting for a merge**; a merge or a close lets it go to 今天做完 with the helper's
+D508's (where the PR stands, "Under its PR" above: **在等评审**, **可以合了** with **到 GitHub 合并**, never 做完;
+a PR ready to merge waits for the person, so the sheet stands in 等你); a merge or a close lets it go to 今天做完 with the helper's
 name among its where-facts (as anywhere else it stands: beside an opened task, in Find, under a project lens).
 **Where:** like a group (D360), at the head of 等你 when something on it waits for the person (the sheet on the
 needs-you ledge), else under **你的帮手 / Your helpers** after 在等. Both clients read the home's one model of

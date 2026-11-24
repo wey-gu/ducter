@@ -43,6 +43,8 @@ export function whereReason(w: WhereWhy | undefined): string {
     case "always_on":
       return w.other ? t("where.reason.always_on", w.other) : t("where.reason.always_on.0");
     case "signed_in":
+      // D505 (rev.): a site the person said goes straight to their Chrome says so.
+      if (w.site && w.always) return t("where.reason.signed_in.always", w.site);
       return w.site ? t("where.reason.signed_in", w.site) : t("where.reason.signed_in.0");
     case "only_here":
       if (w.thing === "app") return t("where.reason.only_app", dev, w.app ?? "");
@@ -62,6 +64,8 @@ export function whereReason(w: WhereWhy | undefined): string {
     case "moved":
       return t("where.reason.moved", w.other ?? "", dev);
     case "you":
+      // D510: New tasks start named this computer.
+      if (w.ruleId === "new_tasks") return t("where.reason.newtasks", dev);
       return w.text ? t("where.reason.rule", w.text) : t("where.reason.you", dev);
     case "home":
       return t("where.reason.home", dev);

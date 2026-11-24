@@ -7,7 +7,7 @@ import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_K
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D395: the levels tried, in order, when the model doesn't offer the one asked for in words. */
@@ -43,6 +43,14 @@ export interface Loadout {
   // effort (D282): the same agent with another model or effort keeps its native session.
   // by (D376): the partner moved it for the person's follow-up (the note says so); D503 "limit": Ducter moved it, same agent and model, off a used-up account; else the person did.
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string, by?: "partner" | "limit"): Promise<{ ok: boolean; message?: string }>;
+  /**
+   * D505: a task's browser asked for the person's sign-in to a site on a computer they don't sit at
+   * (a server home). `to`: an awake computer already has that sign-in (Ducter's browser signed in
+   * there, or their own Chrome); `move` carries the task there (call it after the tool answers).
+   * `asleep`: one could, but it is asleep. Undefined: nowhere else; the sign-in card stays.
+   */
+  // D505 (rev.): move({ always }): the site (as remembered) is on the person's straight-to-Chrome list; the move line says so.
+  signInElsewhere(taskId: string, site: string, runner: Runner | undefined): Promise<{ to: string; uses: "chrome" | "ducter"; move(o?: { always?: string }): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
   /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
   defaults(): Promise<KindDefault[]>;
   /**
@@ -329,6 +337,46 @@ export function createLoadout(o: {
         rules: rulesWith(kind),
         current,
       });
+    },
+
+    async signInElsewhere(taskId, site, runner) {
+      const card = o.tasks.get(taskId);
+      if (!card || !runner?.moveTask || card.place.kind === "folder" || card.place.kind === "repo") return undefined;
+      const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      const comps = await computers(open?.needs);
+      if (!comps || comps.length < 2) return undefined;
+      const r = signInRoute({ computers: comps, here: card.place.device || "local", site, ...(open?.needs?.buy ? { buy: true } : {}) });
+      if (!r) return undefined;
+      if ("asleep" in r) return { asleep: r.asleep.name };
+      const to = r.to;
+      // The same agent and model there when it can; else the best one there (D157's ranking).
+      const rows = (await api.candidates(taskId)).filter((x) => x.device === to.id && !x.blocked && !x.waits);
+      const c = rows.find((x) => x.harness === card.harness && (x.model ?? "") === (card.model ?? "")) ?? rows.find((x) => x.harness === card.harness) ?? rows[0];
+      if (!c) return undefined;
+      const here = comps.find((x) => (card.place.device && card.place.device !== "local" ? x.id === card.place.device || x.name === card.place.device : x.home));
+      const home = comps.find((x) => x.home)?.name;
+      return {
+        to: to.name,
+        uses: r.uses,
+        async move(m) {
+          const always = r.uses === "chrome" ? m?.always : undefined;
+          const res = await runner.moveTask!(taskId, { device: to.home ? "local" : to.name, name: to.name, ...(home ? { homeName: home } : {}), signIn: always ? { site: always, uses: r.uses, always: true } : { site, uses: r.uses } }, c.harness, c.model);
+          if (!res.ok) return res;
+          // The partner only knows (to answer "why is it on the MacBook?"); the task's own line says it.
+          o.log.append({
+            stream: "channel",
+            origin: "user",
+            kind: "job_status",
+            body: {
+              jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`,
+              taskId,
+              state: "done",
+              text: `this task needed the user signed in to ${site}; ${here?.name ?? "the home"} has none of their sign-ins, so Ducter moved it to ${to.name}, where ${r.uses === "chrome" ? "their own Chrome is" : "Ducter's own browser is"} signed in already (${harnessName(c.harness)}). Nothing was typed on ${here?.name ?? "the home"}, and their sign-ins stay on ${to.name}.${always ? ` The user said ${always} goes straight to their Chrome (they take it back in Settings, under Web: 移除 / Remove; then the next sign-in there asks again).` : ""} The task's own line already says so: mention it only if the user asks why it moved.`,
+            } as Bodies["job_status"],
+          });
+          return { ok: true };
+        },
+      };
     },
 
     async switchTask(taskId, harness, model, runner, device, effort, by) {
@@ -646,6 +694,49 @@ export function neverPick<P extends { harness: string; model?: string; why: Body
   if (!r) return pick;
   const { first: _f, keeps: _k, ...rest } = pick.why;
   return { ...pick, why: { ...rest, kind: "rule", ruleId: r.id, text: r.text } };
+}
+
+/**
+ * D510: 新任务默认 / New tasks start, as the person said it in the conversation ("以后默认在 hel 上跑，
+ * 用 Codex"): the same setting Settings › Partner writes (Settings.newTasks). The partner judges the
+ * words; code only checks the names (a computer of this home, an agent that does tasks).
+ */
+export function registerNewTasksTool(mcp: CoreMcpHub, o: { settings: SettingsStore; computers: () => { id: string; name: string; home: boolean; aliases?: string[] }[] }) {
+  const agents = HARNESS_IDS.filter((h) => HARNESSES[h].task);
+  mcp.register(
+    "partner",
+    "new_tasks",
+    'The user\'s default for every new task from now on, said for all work, not a kind ("以后默认在 hel 上跑，用 Codex", "恢复自动"); Settings shows it as New tasks start. where: a [devices] name or "auto"; agent: an AI agent or "auto". Only what they said; the other stays. A kind of work is rule_save. Then one short line.',
+    {
+      type: "object",
+      properties: {
+        where: { type: "string" },
+        agent: { type: "string", enum: [...agents, "auto"] },
+      },
+    },
+    async (a: { where?: unknown; agent?: unknown }) => {
+      const cur = o.settings.get().newTasks ?? {};
+      const next: { where?: string; agent?: HarnessId } = { ...cur };
+      const comps = o.computers();
+      if (typeof a.where === "string" && a.where.trim()) {
+        const w = a.where.trim().toLowerCase();
+        if (w === "auto") delete next.where;
+        else {
+          const c = w === "local" ? comps.find((x) => x.home) : comps.find((x) => x.id.toLowerCase() === w || x.name.toLowerCase() === w || (x.aliases ?? []).some((n) => n.toLowerCase() === w));
+          if (!c) return { ok: false, error: `"${a.where}" is not a computer of this home. Its computers: ${comps.map((x) => x.name).join(", ")}.` };
+          next.where = c.home ? "local" : c.id;
+        }
+      }
+      if (typeof a.agent === "string" && a.agent) {
+        if (a.agent === "auto") delete next.agent;
+        else if (isHarnessId(a.agent) && HARNESSES[a.agent].task) next.agent = a.agent;
+        else return { ok: false, error: `${a.agent} isn't an AI agent that does tasks.` };
+      }
+      o.settings.set({ newTasks: next });
+      const where = next.where ? comps.find((x) => (x.home ? "local" : x.id) === next.where)?.name : undefined;
+      return { ok: true, newTasks: { where: where ?? "auto", agent: next.agent ?? "auto" }, note: "Saved; Settings shows it. Say it back in one short line in their words, nothing more." };
+    },
+  );
 }
 
 /**

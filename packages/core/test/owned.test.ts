@@ -12,7 +12,7 @@ import { openLog } from "../src/log.ts";
 import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
 import { createWork } from "../src/work.ts";
-import { openTask, tempDir, tick } from "./helpers.ts";
+import { openTask, report, tempDir, tick } from "./helpers.ts";
 
 let cleanup = () => {};
 afterEach(() => cleanup());
@@ -24,6 +24,7 @@ const flush = async () => {
 function fakeGitHub() {
   const gh = {
     head: "e2b8b625ff6a9de8a3fa5de2bbfb9b3bd72f294d",
+    ref: "ducter/fix-graph-error-response",
     state: "open",
     merged: false,
     comments: [] as { id: number; by: string; at: string; text: string }[],
@@ -36,7 +37,7 @@ function fakeGitHub() {
     gh.calls++;
     const path = argv[2] ?? "";
     const out = (v: unknown) => ({ exitCode: 0, stdout: JSON.stringify(v) });
-    if (/^repos\/[^/]+\/[^/]+\/pulls\/\d+$/.test(path)) return out({ head: gh.head, state: gh.state, merged: gh.merged });
+    if (/^repos\/[^/]+\/[^/]+\/pulls\/\d+$/.test(path)) return out({ head: gh.head, ref: gh.ref, state: gh.state, merged: gh.merged });
     if (/issues\/\d+\/comments/.test(path)) return out(gh.comments);
     if (/pulls\/\d+\/comments/.test(path)) return out(gh.notes);
     if (/pulls\/\d+\/reviews/.test(path)) return out(gh.reviews);
@@ -185,4 +186,40 @@ test("a request for changes from before the PR was declared is told on the first
   await work.owned.sweep();
   expect(work.owned.standing("xf")).not.toContain("requested changes");
   expect(work.owned.standing("xf")).toContain("approved by hawkingrei");
+});
+
+// D508: a task whose result is an open PR is not done. The author's 今天做完, 2026-11-24: three
+// GitHub-issue tasks each opened a draft PR (#11070) and stood as done, with 合进 main offered.
+test("a done report naming its own PR: Ducter watches it, the card says where it stands, done only once merged", async () => {
+  const { gh, exec } = fakeGitHub();
+  const { log, tasks, work, sent } = setup(exec);
+  const repo = (id: string, branch: string) =>
+    log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: "Fix graph error response", project: "mem", place: { kind: "repo", repoPath: "/r/mem", branch, baseBranch: "main" }, harness: "codex", brief: "Fix #11027." } });
+  repo("own", "ducter/fix-graph-error-response");
+  repo("other", "ducter/review-something");
+  tasks.setState("own", "done", "cold");
+  tasks.setState("other", "done", "cold");
+  report(log, "own", { state: "done", summary: "开了草稿 PR #11070。", evidence: [{ kind: "url", label: "PR #11070", ref: "https://github.com/nowledge-co/mem/pull/11070" }] });
+  report(log, "other", { state: "done", summary: "看了 PR #11070。", evidence: [{ kind: "url", label: "PR #11070", ref: "https://github.com/nowledge-co/mem/pull/11070" }] });
+  await work.owned.sweep();
+  expect(sent.every((s) => s.taskId === "own")).toBe(true); // the other task's line about it reaches its owner (D483)
+  const card = (id: string) => tasks.onHand().tasks.find((c) => c.taskId === id)!;
+  expect(card("own").prs?.[0]).toMatchObject({ pr: "nowledge-co/mem#11070", url: "https://github.com/nowledge-co/mem/pull/11070", state: "open" });
+  expect(card("own").prs?.[0]?.standing?.checks?.pending).toEqual(["ci/mem-bazel"]);
+  expect(card("other").prs).toBeUndefined(); // its branch isn't the PR's: not its own
+  expect(work.owned.of("other")).toEqual([]);
+  // Not done while the PR is open: it waits (one: the other task is done today).
+  expect(tasks.onHand().counts).toMatchObject({ waiting: 1, done_today: 1 });
+  // CI passes and a reviewer approves: ready, the merge is the person's.
+  gh.runs = [{ name: "ci/mem-bazel", status: "completed", conclusion: "success" }];
+  gh.reviews.push({ id: 51, by: "hawkingrei", at: "2026-11-24T09:00:00Z", state: "APPROVED", text: "" });
+  await work.owned.sweep();
+  expect(card("own").prs?.[0]?.standing?.approvedBy).toEqual(["hawkingrei"]);
+  expect(tasks.onHand().counts).toMatchObject({ needs_you: 1, waiting: 0, done_today: 1 });
+  // Merged: only now done.
+  gh.merged = true;
+  gh.state = "closed";
+  await work.owned.sweep();
+  expect(card("own").prs?.[0]?.state).toBe("merged");
+  expect(tasks.onHand().counts).toMatchObject({ needs_you: 0, waiting: 0, done_today: 2 });
 });

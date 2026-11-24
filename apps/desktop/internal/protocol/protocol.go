@@ -1041,6 +1041,9 @@ type TaskCard struct {
 	// Rounds (D498, D427): a task in rounds Ducter keeps; On hand stands it
 	// under 一直在跑 / Ongoing and says its rhythm.
 	Rounds *TaskRounds `json:"rounds,omitempty"`
+	// PRs (D508): the pull requests it made or took over, where each
+	// stands; a finished task whose PR is open is not done.
+	PRs []TaskPR `json:"prs,omitempty"`
 	// Helper (D507, D494): the helper whose work this is, so a row standing
 	// anywhere but under its helper still says whose it is.
 	Helper *TaskHelper `json:"helper,omitempty"`
@@ -1184,16 +1187,33 @@ type HelperWork struct {
 }
 
 // HelperItem (D507) is one piece of work a helper keeps: At is "work" (on
-// it), "you" (waits for the person) or "ready" (finished, its PR open and
-// waiting for a merge).
+// it, or its PR waiting on CI or a review), "you" (waits for the person) or
+// "ready" (finished, its PR ready to merge: D508, the person's to merge).
 type HelperItem struct {
 	TaskID string `json:"taskId"`
 	Title  string `json:"title"`
 	At     string `json:"at"`
 	Yours  string `json:"yours,omitempty"`
 	PR     string `json:"pr,omitempty"`
-	Merge  string `json:"merge,omitempty"`
-	Stands string `json:"stands,omitempty"`
+	// Said (D508): where that PR stands, the one model (store.SayPR's).
+	Said *PRSaid `json:"said,omitempty"`
+}
+
+// PRSaid (D508) is a PR's phase with its facts, as pr-state.ts says it
+// (store.SayPR makes it).
+type PRSaid struct {
+	Phase  string        `json:"phase"`
+	By     []string      `json:"by,omitempty"`
+	Failed []string      `json:"failed,omitempty"`
+	Checks *PRChecksSaid `json:"checks,omitempty"`
+}
+
+// PRChecksSaid is how many of a PR's checks passed, of how many, and how
+// many still run.
+type PRChecksSaid struct {
+	Passed  int `json:"passed"`
+	Total   int `json:"total"`
+	Pending int `json:"pending"`
 }
 
 // OpenAsks (D481): the questions open at the home, as of AsOf.
@@ -1800,6 +1820,19 @@ type Settings struct {
 	// Met are the first-time lines already met on any device (D451); nil
 	// from a home too old to keep them (then none is ever shown).
 	Met []string `json:"met"`
+	// ChromeSites (D505 rev.): sites whose sign-ins go straight to the person's
+	// own Chrome on their Mac (换过去 on a site's first card).
+	ChromeSites []string `json:"chromeSites,omitempty"`
+	// NewTasks (D510) is 新任务默认 / New tasks start: where ("local" or a
+	// worker's id) and which agent every new task starts with; nil: Ducter picks.
+	NewTasks *NewTasks `json:"newTasks,omitempty"`
+}
+
+// NewTasks is the person's default for new tasks (D510); an empty field is
+// Ducter's own pick.
+type NewTasks struct {
+	Where string `json:"where,omitempty"`
+	Agent string `json:"agent,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -1820,6 +1853,12 @@ type SettingsPatch struct {
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
 	// Met adds first-time lines met here (D451); never removes.
 	Met []string `json:"met,omitempty"`
+	// ChromeSites (D505 rev.) keeps only these sites (移除 / Remove); never adds.
+	// A pointer so that an empty list is sent.
+	ChromeSites *[]string `json:"chromeSites,omitempty"`
+	// NewTasks replaces New tasks start whole (D510); a pointer to an empty
+	// value clears it.
+	NewTasks *NewTasks `json:"newTasks,omitempty"`
 }
 
 // Peers is the partner's link with the person's own agents (D332, one

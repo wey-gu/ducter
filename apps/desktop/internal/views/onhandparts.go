@@ -60,7 +60,10 @@ func (a *App) finishedToday(task *store.Task) bool {
 
 // boardSplit is the board's tasks by section (D467).
 type boardSplit struct {
-	needs, stopped, failed, working, waiting, today, earlier []*store.Task
+	// ready (D508): a finished task whose PR is ready to merge: the merge is
+	// the person's. A finished task whose PR waits on CI or a reviewer is in
+	// waiting; only a merged or closed one is done.
+	needs, stopped, ready, failed, working, waiting, today, earlier []*store.Task
 }
 
 func (a *App) splitOf(b store.Board) boardSplit {
@@ -85,6 +88,10 @@ func (a *App) splitOf(b store.Board) boardSplit {
 			s.working = append(s.working, x)
 		case x.Attention() == protocol.Failed:
 			s.failed = append(s.failed, x)
+		case prStandsAt(x) == "needs":
+			s.ready = append(s.ready, x)
+		case prStandsAt(x) == "waiting":
+			s.waiting = append(s.waiting, x)
 		case a.finishedToday(x):
 			s.today = append(s.today, x)
 		default:
@@ -92,6 +99,13 @@ func (a *App) splitOf(b store.Board) boardSplit {
 		}
 	}
 	return s
+}
+
+// prStandsAt is where the board stands a finished task under its open PR
+// ("needs", "waiting"), or "" when it has none open (D508).
+func prStandsAt(task *store.Task) string {
+	_, _, st := prRow(task)
+	return st
 }
 
 // mendingOf: a failure or a stop Ducter is mending right now (D473): its
@@ -168,8 +182,13 @@ func (a *App) stateMark(c *ui.Context, task *store.Task, stopped bool) {
 		box.Background(t.SurfaceSunken).Children(func() {
 			ui.Box(c.Key("rep")).Size(18, 18).Draw(drawPastGlyph("repeat", t.InkSoft))
 		})
-	case stopped || att == protocol.NeedsYou:
+	case stopped || att == protocol.NeedsYou || prStandsAt(task) == "needs":
 		box.Background(t.NeedsYou.Surface).Draw(drawGroupMark("needs", t.NeedsYou.Dot, t.Surface))
+	case prStandsAt(task) == "waiting":
+		// D508: it waits on its PR (CI, a reviewer, its next turn): the waiting ring, at rest.
+		box.Background(t.SurfaceSunken).Children(func() {
+			ui.Box(c.Key("ring")).Size(16, 16).Draw(drawRing(t.Waiting.Ink.Alpha(0.5), t.Waiting.Ink, 0))
+		})
 	case att == protocol.Failed:
 		box.Background(t.Failed.Surface).Draw(drawGroupMark("failed", t.Failed.Dot, t.Surface))
 	case att == protocol.Working || att == protocol.Queued:

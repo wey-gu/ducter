@@ -108,6 +108,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	// to add another AI, then when a limit runs out (D297, D307).
 	a.thinksGroup(c)
 	a.tasksGroup(c)
+	a.newTasksGroup(c) // D510: 新任务默认 / New tasks start
 	a.addGroup(c)
 	a.handoffGroup(c, st)
 	a.talkCard(c, st)

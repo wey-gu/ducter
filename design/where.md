@@ -119,7 +119,9 @@ asked of the user: every fact comes from a computer's hello or its ability state
    that lives on one computer pins that computer too.
 4. **Least access that does the job**: among rows that meet the needs, Ducter's own browser
    over the user's Chrome; a computer with only the site's sign-in over one with all of them.
-5. **Keeps going**: for long or ongoing work, a computer that doesn't sleep.
+5. **New tasks start** (D510, §22): the computer the person set as the default, then their default
+   agent. Under what the task needs, so a default never sends signed-in work away from their Chrome.
+5b. **Keeps going**: for long or ongoing work, a computer that doesn't sleep.
 6. **Continuity**: where the task's worktree, session or the user's uncommitted work is; where
    the repo already is over one that must clone it.
 7. **The agent's own rank**, as today (rule, tier, plan before pay-per-use, the limit when
@@ -140,7 +142,7 @@ The partner may override the ranking with a reason, as today (principle 14).
 | Two computers can both start it, differences invisible (W1, W4) | never | the top row; the line says where |
 | The only computer that meets the needs is asleep, and **no** other computer could do it (W3) | never | it waits (`queued`, **在等 · MacBook 睡着了**), said once in the ack; **叫醒它 / Wake it** only where a wake path exists (A3) |
 | The best computer sleeps, another could do it **with a visible difference**: other sign-ins, or the user must sign in there (W2b) | **one line, default wait** | **等它醒（默认）** · **现在在 hel 上做**; not answering waits; no countdown (waiting is free, A3) |
-| The other computer would **widen** access (your Chrome instead of Ducter's browser; a computer signed in as you) | **always** | never automatic, never by a rule-free fallback |
+| The other computer would **widen** access (your Chrome instead of Ducter's browser; a computer signed in as you) | **always** | never automatic, never by a rule-free fallback; one exception (D505 and its rev., §22): a sign-in a task asks for on a server goes to your Chrome on an awake Mac after one card per site (换过去 / Move it there, then remembered), said in its line |
 | Your own pick can't run (the agent's computer can't be reached) | one line | **Claude Code 只在 MacBook 上，它现在连不上。等它，还是换个来做？** (D128's "never moves silently") |
 | The computer you named has no agent that can take it (a lent server with none signed in) | one line | no task opens; the partner says so and offers to sign one in there or do it elsewhere (D353) |
 | The repo isn't on the only awake computer | C1's clone ask, once per repo | — |
@@ -245,7 +247,9 @@ its pushed branch; uncommitted work never moves. What this note adds:
    (§4.3 step 5), so W6 rarely needs a move at all. This is the 惊喜.
 5. **Never toward more access without the person**: a move to the user's Chrome or a computer
    signed in as them always comes from their tap, their Go, or their words asking for their own
-   account (D376).
+   account (D376), or (D505 and its rev., §22) from their 换过去 / Move it there on a site's first
+   sign-in card on a server (remembered for that site), where the alternative is typing a password
+   into a browser the server relays.
 
 ## 8. Copy (zh + en, from the glossary; D78 spacing: a space where Han meets Latin or a digit)
 
@@ -529,6 +533,8 @@ start, and D385's hand-over of several (the sheet's Where default, and the place
    place's own device when the partner set one; when that computer can't read the repository the
    facts go back to the partner (which computers have a copy), never a quiet move elsewhere (D477);
 2. a where-rule (a rule with a computer whose words match the work);
+2b. (D510) the computer **新任务默认 / New tasks start** names, when it is awake: its own copy, else a
+   clone there when its own git can read it; otherwise the next step decides, as before;
 3. with no computer named, a computer that has a clone: the one that builds first (a Mac 2, a
    worker 1, a server home 0), then the most recently touched copy; where it went is said back to
    the partner as a fact (the tool result's `where`, D477), so its words match what happened;
@@ -706,3 +712,78 @@ once. Research: research/219.
   named and a folder task stay where they are.
 - **Not yet:** a second account on the same computer (a Ducter-owned config folder), a key as a
   route the person agrees to, the partner's own turns on another account (`design/todo.md`).
+
+## 22. A server home signs in through your Mac's browser (D505 and its rev.)
+
+**Who.** The author: hel is the home (a server, Ducter's own browser, none of his sign-ins), the
+MacBook a worker whose Chrome is signed in everywhere. Every server-mode user is in the same
+place. **Before:** a task on hel that met a sign-in page asked him to sign in on hel, typing a
+password through a live view the server relays. **After:** the task goes on in the MacBook's
+Chrome, where he is signed in already; nothing is typed anywhere, the cookies stay on the Mac,
+and one line says where. Ducter asks once per site before it uses his own Chrome (D505 rev.), then
+never again for that site.
+
+- **Who judges.** The model: the partner's `needs.signedIn` from the person's words at the start
+  (§4.1, W2), or, mid-task, the task's own `browser_ask_sign_in`. Code reads only facts: awake or
+  not, which computers browse in the person's own Chrome (`web.where: chrome`), which Ducter
+  browsers already hold the site (Signed-in sites), whether the task's computer is a Mac.
+- **Where it goes** (`core/src/candidates.ts` `signInRoute`, `loadout.ts` `signInElsewhere`): a
+  sign-in asked on a computer that is not a Mac goes to another awake computer that has it: a
+  Ducter browser there signed in to the site first (least access), else the person's Chrome on a
+  Mac. The task **moves** by §7 (the same agent and model when it is there). Not a remote
+  browser step: their own Chrome is reachable only by an agent on that Mac, and driving their real
+  profile from the server would put every session one command from leaving it.
+- **Asked once per site** (D505 rev.), only when the route is the person's own Chrome: the first
+  sign-in at a site is one go/hold card, in the task's language: **要登录 {site}。换到 {computer} 上你已登录的
+  Chrome 接着做？ / This needs you signed in to {site}. Continue on {computer}, in your Chrome where
+  you're signed in?** Go **换过去 / Move it there** moves the task and remembers the site (Settings'
+  `chromeSites`); Hold **我在这里登录 / I'll sign in here** puts the sign-in card below up where the
+  task is; unanswered it waits (A3, no countdown). Later sign-ins at that site move with no card.
+  A Ducter browser elsewhere already signed in to the site takes it with no card (nothing widens).
+  Never answered on a standing word (D499), a reply or a chat app's button.
+- **The remembered sites** are listed in 上网 / Web under Signed-in sites as **直接用你的 Chrome /
+  Straight to your Chrome**, one row per site with **移除 / Remove**; a site removed asks again.
+- **Still the sign-in card** (D151, as before): a task on a Mac; a step that is theirs on the page (a
+  CAPTCHA, a code); buying or booking with no Ducter browser elsewhere already signed in to the
+  site (D436: never in their Chrome, the pay gate is code only in Ducter's browser); no computer
+  that has it; a move that fails.
+- **What they see.** The task's move line **换到 {computer} 接着做 / Continued on
+  {computer}**, its meta **在 {computer} 上 · 用你的 Chrome**, and on a tap **要用你登录着的 {site} /
+  Needs your signed-in {site}**, or for a remembered site **你说过 {site} 都直接用你的 Chrome / You said
+  {site} goes straight to your Chrome**. The partner gets a hidden note and answers "why is it on the
+  MacBook?" only when asked.
+- **The sign-ins stay where they are.** In their Chrome by construction (the agent runs on that
+  Mac; reports, page text and evidence come back). In a worker's Ducter browser the worker's relay
+  holds it whatever the home asks (`browser/remote.ts` `staysHere`): cookie reads come up without
+  values; network traffic, posted form data, response bodies and page storage are refused. The
+  briefs say never to read, copy or report cookies, tokens or saved passwords.
+- **When the Mac sleeps.** Nothing moves to a sleeping computer: the card stays on hel. Once on
+  the Mac, a lid that closes is A3: the task waits with its session held and goes on when it
+  wakes, never back to the server by itself.
+- **Not yet** (`design/todo.md`): with the Mac asleep, wait for it by default with signing in on
+  hel as the other choice; a sign-in in a worker's Ducter browser still relays keys through the
+  home; a standing "never my Chrome" said to the partner (a partner-tool change); the live run
+  (`ducter check run worker-browser`).
+## 23. New tasks start where and with whom you said (D510)
+
+**Who.** The author, 2026-11-24: the partner told him about a newly assigned GitHub issue, he tapped
+交给 Ducter, and it ran on his MacBook on Claude Code. **Why (VERIFIED in code):** a GitHub to-do names
+its repository, so §18 places it; with no computer named and no where-rule, the computer with a clone
+that builds first wins (a Mac before a worker before a server home). The agent was the ranking's top
+row there (no rule; the smartest first; Claude Code first among equals). Nothing let him say "start
+everything on hel, with Codex" once.
+
+**The setting.** `Settings.newTasks`: where (a computer that runs tasks) and agent, each **自动 /
+Automatic** by default. Two doors, one store: Settings › Partner's group **新任务默认 / New tasks start**
+(rows **在哪儿做 / Where** and **谁来做 / Who does it**, only where there is a choice), and the
+partner's `new_tasks` tool from the person's words ("以后默认在 hel 上跑，用 Codex", "恢复自动").
+
+**Its weight.** A preference, never a hard filter: the person's word for one task, a rule for a kind of
+work, and what a task needs (the person's Chrome, a Mac app, a folder's only copy) come first; a
+default computer asleep or away never holds a task (one that is awake takes it). For a repository the
+default computer is asked first (its copy, or a clone there when its git can read it, §18 step 2b).
+
+**Said.** The meta line is as before (**在 hel 上**, **Codex**); the reason on hover is **你设的默认，在
+hel 上做 / Your default: on hel**, the agent's **你设的默认 / your default**, and when the default agent
+can't run where the task must go, **你设的默认是 Codex，它在这儿用不了**. The hand-over sheet (D385) says
+**你设的默认 / Your default** under Where and Who.

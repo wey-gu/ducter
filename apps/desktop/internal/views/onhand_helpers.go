@@ -20,7 +20,7 @@ func (a *App) helperWaits(h protocol.HelperWork) int {
 	n := 0
 	for _, x := range h.Items {
 		task := a.S.Task(x.TaskID)
-		if x.At == "you" || (task != nil && a.stoppedWait(task)) {
+		if x.At == "you" || x.At == "ready" || (task != nil && a.stoppedWait(task)) { // D508: a PR ready to merge waits for the person
 			n++
 		}
 	}
@@ -51,16 +51,23 @@ func (a *App) helperSheet(c *ui.Context, h protocol.HelperWork) {
 	ui.Column(c.Key("helper:"+h.ID)).Width(w).Radius(16).Background(t.Surface).Clip().
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
 		a.helperHead(c, h, you, w)
-		prev, prevIn := a.oh.rowFirst, a.oh.inHelper
+		prev, prevIn, prevActs := a.oh.rowFirst, a.oh.inHelper, a.oh.actsCol
 		a.oh.inHelper = true
-		defer func() { a.oh.rowFirst, a.oh.inHelper, a.oh.readyRow = prev, prevIn, false }()
+		// D508: a PR ready to merge offers its merge: the sheet keeps the column for it.
+		a.oh.actsCol = false
+		for _, x := range h.Items {
+			if x.At == "ready" {
+				a.oh.actsCol = true
+			}
+		}
+		defer func() { a.oh.actsCol = prevActs }()
+		defer func() { a.oh.rowFirst, a.oh.inHelper = prev, prevIn }()
 		for _, x := range h.Items {
 			task := a.S.Task(x.TaskID)
 			if task == nil {
 				continue // not held by this window yet: the home's model still counts it
 			}
 			a.oh.rowFirst = false
-			a.oh.readyRow = x.At == "ready"
 			ui.Box(c.Key("in:"+x.TaskID)).Width(w).Padding(0, 0, 0, helperIndent).Children(func() {
 				a.taskCard(c.Key(x.TaskID), task, w-helperIndent)
 			})

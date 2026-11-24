@@ -81,7 +81,7 @@ import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
 import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
-import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
+import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, registerNewTasksTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { createMender } from "./mend.ts";
 import { hostAlias } from "./bound.ts";
@@ -835,7 +835,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onHandChanged();
   });
   /** D507: what each helper keeps now (the one model: On hand's sheet reads it, a helper's app will too). */
-  const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t), prs: (t) => work.owned.prs(t) });
+  const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t) });
   const helperHolds = (taskId: string): boolean => {
     const id = helperIndex.tasks.get(taskId);
     return !!id && helperItemsOf(id).some((x) => x.taskId === taskId);
@@ -1038,7 +1038,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief, needs) => { const open = log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string; needs?: TaskNeeds } | undefined; return !!(needs ?? open?.needs)?.buy || autofill.wants(brief !== undefined ? { brief } : open); }, mayPay: (taskId, site) => autofill.fill?.mayPay(taskId, site) ?? false, media: () => mediaRef.store, tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief, needs) => { const open = log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string; needs?: TaskNeeds } | undefined; return !!(needs ?? open?.needs)?.buy || autofill.wants(brief !== undefined ? { brief } : open); }, mayPay: (taskId, site) => autofill.fill?.mayPay(taskId, site) ?? false, media: () => mediaRef.store, signInElsewhere: (taskId, site) => loadout.signInElsewhere(taskId, site, runner), chromeSites: { has: (site) => !!settings.get().chromeSites?.includes(site), add: (site) => settings.rememberChrome(site) }, tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
@@ -1388,7 +1388,11 @@ export function startCore(opts: CoreOptions = {}): Core {
       return computers.folderInfo(dev, path, ms).catch(() => "offline" as const);
     },
     rules: () => rules.list(),
+    // D510: New tasks start's computer, preferred for a repository whenever it can have the code.
+    prefer: () => settings.get().newTasks?.where,
   });
+  // D510: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
+  registerNewTasksTool(mcp, { settings, computers: whereComputers });
   // D476: the home in the partner's [devices] line: its name, the names the person calls it, its agents.
   api.homeDevice = () => {
     const home = whereComputers()[0]!;
@@ -2192,7 +2196,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D395: the one resolver task_open uses: the computer with its code (or a clone first).
       const where = item.kind === "github" && item.where ? await repoWhere.resolve({ remote: item.where, texts: [item.title] }).catch(() => undefined) : undefined;
       const place = where?.ok ? where.place : item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
-      const r = await newTask.open({ words: item.title, ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
+      // D508: the to-do's whole title, and the person's language (never the issue's).
+      const r = await newTask.open({ words: item.title, title: item.title, language: langNow(), ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
       if (!r.ok) return { ok: false, error: r.message ?? r.reason };
       return "card" in r ? { ok: true, taskId: r.card.taskId } : { ok: false, error: "it became a routine" };
     },
@@ -2221,6 +2226,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
       rules: () => rules.list(),
+      newTasks: () => settings.get().newTasks,
       // D395: the one resolver task_open uses, so the sheet's Where and the tasks it opens agree with it.
       repoWhere: (a) => repoWhere.resolve(a) as Promise<import("./task-sources/handover.ts").RepoWhereAnswer>,
       addRule: (r) => void rules.add(r),

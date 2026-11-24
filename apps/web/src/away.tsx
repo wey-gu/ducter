@@ -20,11 +20,15 @@ export interface Finished {
   /** The task 打开 / 看看为什么 opens (the first that didn't work out, else the card's own). */
   openId?: string;
   groupId?: string;
+  /** D508: a finished repo task with a branch and no PR: ⋯ offers 合进 {base} and 开草稿 PR (never
+   *  on the row, where they pushed the time out). */
+  integrate?: { base: string };
 }
 
 /** What ⋯ offers on a finished card, in order (pure: the Mac's FinishedMenu says the same). */
-export function finishedMenu(f: Pick<Finished, "failedIds" | "openId">): ("retry" | "why" | "open" | "remove")[] {
+export function finishedMenu(f: Pick<Finished, "failedIds" | "openId" | "integrate">): ("retry" | "why" | "open" | "remove" | "merge" | "open_pr")[] {
   if (f.failedIds.length) return ["retry", "why", "remove"];
+  if (f.openId && f.integrate) return ["merge", "open_pr", "open", "remove"];
   return f.openId ? ["open", "remove"] : ["remove"];
 }
 
@@ -45,7 +49,8 @@ export function AwayX({ f }: { f: Finished }) {
 
 /** What a ⋯ item does. */
 export function runFinished(k: ReturnType<typeof finishedMenu>[number], f: Finished, full?: boolean) {
-  if (k === "retry") A.retry(f.failedIds);
+  if (k === "merge" || k === "open_pr") f.openId && A.taskAction(f.openId, k);
+  else if (k === "retry") A.retry(f.failedIds);
   else if (k === "why" || k === "open") f.openId && A.go({ name: "task", id: f.openId, full: !!full });
   else putAway(f);
 }
@@ -71,7 +76,7 @@ export function FinishedActs({ f, full, menuOnly }: { f: Finished; full?: boolea
                 runFinished(k, f, full);
               }}
             >
-              {t(`away.${k}`)}
+              {k === "merge" ? t("result.merge", f.integrate?.base ?? "main") : k === "open_pr" ? t("result.pr") : t(`away.${k}`)}
             </MenuItem>
           ))}
         </Menu>,

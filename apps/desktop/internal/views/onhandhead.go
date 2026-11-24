@@ -226,7 +226,7 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 		if w := a.S.WaiterFor(x.ID); w != nil && w.Limit != nil && w.Limit.HandTo != nil {
 			hand = true // D297: another agent can take it now
 		}
-		if stopped || hand || x.Attention() == protocol.Failed || (x.Attention() == protocol.Blocked && a.quietWait(x)) {
+		if stopped || hand || x.Attention() == protocol.Failed || (x.Attention() == protocol.Blocked && a.quietWait(x)) || prStandsAt(x) == "needs" {
 			acts = true // a row here always shows what to do: the sheet keeps a column for it
 		}
 	}
@@ -259,7 +259,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	stopped := !mending && a.stoppedWait(task)
 	failed := att == protocol.Failed && !mending
 	quiet := att == protocol.Blocked && !stopped && a.quietWait(task)
-	seen := (att == protocol.Done || att == protocol.DoneClaimed) && !fresh
+	// D508: a finished task whose PR is open is not done: its row says where the PR is.
+	pr, prSaid, prStands := prRow(task)
+	seen := (att == protocol.Done || att == protocol.DoneClaimed) && !fresh && pr == nil
 	// D498 (D427): a task in rounds says its rhythm (the round under way, else
 	// the last round and the next), never "at work for 182 hours".
 	var rounds *protocol.TaskRounds
@@ -301,9 +303,30 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			card.Scale(sc, sc).Cache()
 		}
 	}
-	tip := longTitleTip(task.Title())
-	for _, why := range a.whereWhy(task) {
-		tip += "\n" + why // who does it and where: a detail, on hover
+	// D508: a row with a PR groups its facts by what they describe (prGroup).
+	_, outcomeURL := outcomeOf(task)
+	grouped := a.oh.room != "rail" && (pr != nil || (finishedAtt(att) && outcomeURL != ""))
+	// D471: the time on one edge of the sheet; what to do on one column; D508:
+	// a hover's own actions in a slot of their own, so they never cover the
+	// time or run past the sheet's edge.
+	whenW, actsW, hoverW := float32(112), float32(216), float32(64)
+	if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) { // D507: a row set in under its helper keeps its sheet's columns
+		whenW, actsW, hoverW = 92, 184, 60
+	}
+	slot := !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)
+	// D508: the title whole in its two lines, else cut at a word's end; the
+	// tooltip says only what the row doesn't (the whole title, when cut).
+	wordsW := w - 28 - 32 - 14*3 - whenW
+	if slot {
+		wordsW -= hoverW
+	}
+	if a.oh.actsCol {
+		wordsW -= actsW
+	}
+	shown := sayName(task.Title(), max(24, int(wordsW/7.6)*2-6))
+	tip := ""
+	if shown != task.Title() {
+		tip = task.Title()
 	}
 	acted := false
 	card.Children(func() {
@@ -321,8 +344,14 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					ink = t.InkSoft // what you have seen recedes, never greyed
 				}
 				// D471: the title whole, in up to two lines (a source's cut title untrailed, never cut again).
-				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).TextColor(ink).
-					MaxLines(2).Shrink(1).MinWidth(0).Tooltip(tip)
+				title := uiText(c.Key("title"), keepWords(autospace(shown))).FontSize(t.MD).FontWeight(600).TextColor(ink).
+					MaxLines(2).Shrink(1).MinWidth(0)
+				if tip != "" {
+					title.Tooltip(tip)
+				}
+				if grouped {
+					return // D508: the source and the PR stand on lines of their own, below
+				}
 				if s := taskTodo(task); s != nil {
 					ui.Box(c.Key("todo")).Shrink(0).Children(func() { a.todoChip(c, "card:"+task.ID, s.SourceItemRef) }) // D341
 				}
@@ -346,7 +375,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 						}
 					})
 				}
-				if act := integrated(task); act != "" {
+				if act := prAct(task); act != "" {
 					key := "onhand.pr.draft"
 					if act == "merge" {
 						key = "onhand.pr.merged"
@@ -357,6 +386,29 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					a.outcomeChip(c, "chip", task) // D467: what it made, to open
 				}
 			})
+			if grouped {
+				// D508: grouped by what the facts describe: the source (its to-do and
+				// where), then the PR (its chip, its diff, where it stands), each its own
+				// element in one sentence's order; with no to-do, where and the PR share a line.
+				meta := a.whereMeta(task)
+				where := func() {
+					for _, m := range meta {
+						uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
+					}
+				}
+				if s := taskTodo(task); s != nil {
+					ui.Row(c.Key("src")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+						ui.Box(c.Key("todo")).Shrink(0).Children(func() { a.todoChip(c, "card:"+task.ID, s.SourceItemRef) })
+						where()
+					})
+					ui.Row(c.Key("prg")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() { a.prGroup(c, task, pr, prSaid, prStands) })
+				} else {
+					ui.Row(c.Key("prg")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+						where()
+						a.prGroup(c, task, pr, prSaid, prStands)
+					})
+				}
+			}
 			// The living line: what it is on now, in its own words.
 			ink := t.InkSoft
 			switch {
@@ -378,14 +430,13 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			if att == protocol.Blocked && !stopped && !mending {
 				sw = a.waitCardWords(task, sw) // D467: never the title again
 			}
-			if a.oh.readyRow {
-				sw = a.L.T("helper.ready") // D507: finished, its PR waits for a merge
-			}
 			words := keepWords(autospace(sw))
 			if s.code != "" {
 				words += "  " + s.code
 			}
-			if rounds != nil && !working {
+			if pr != nil {
+				// D508: where its PR is stands in the PR's own group above.
+			} else if rounds != nil && !working {
 				// D498: between rounds, the last round's facts, each its own element (D291).
 				ink := t.InkSoft
 				if rounds.Health != nil {
@@ -407,7 +458,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					uiText(c.Key("l2"), held).FontSize(t.SM).LineHeight(1.45).TextColor(ink).MaxLines(2).Tooltip(s.words)
 				})
 			} else {
-				l2 := uiText(c.Key("l2"), words).FontSize(t.SM).LineHeight(1.45).TextColor(ink).Tooltip(s.words)
+				l2 := uiText(c.Key("l2"), words).FontSize(t.SM).LineHeight(1.45).TextColor(ink)
 				if stopped || failed {
 					l2.MaxLines(2) // why it stopped is what you need to read
 				} else {
@@ -432,23 +483,26 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				}
 			}
 		})
-		// D471: the time on one edge of the sheet; what to do on one column.
-		whenW, actsW := float32(112), float32(216)
-		// D507: a row set in under its helper keeps its sheet's columns.
-		if sheetW := w; sheetW < 700 && !(a.oh.inHelper && sheetW+helperIndent >= 700) {
-			whenW, actsW = 92, 184
+		if slot {
+			// D508: the hover's own slot (× and ⋯, or Pause), inside the row's
+			// padding: the time beside it stays where it is.
+			ui.Row(c.Key("hover")).Width(hoverW).Gap(2).AlignItems(ui.Center).Justify(ui.End).Shrink(0).Children(func() {
+				if !hover {
+					return
+				}
+				a.rowActs(c, task, true)
+				if f := finishedOf(task); f != nil {
+					a.finishedActs(c, *f)
+				}
+			})
 		}
-		overlay := hover && !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)
 		ui.Column(c.Key("when")).Width(whenW).AlignItems(ui.End).Shrink(0).Children(func() {
 			switch {
-			case overlay:
-				// No column for actions on this sheet: a hover's come in over the time.
-				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					a.rowActs(c, task, true)
-					if f := finishedOf(task); f != nil {
-						a.finishedActs(c, *f)
-					}
-				})
+			case task.Acting != "":
+				// A merge or a draft PR under way says so where its time stood.
+				uiText(c.Key("busy"), a.L.TFamily("result.acting."+task.Acting, task.Place().BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).TextAlign(ui.End)
+			case pr != nil && task.Card != nil:
+				uiText(c.Key("since"), a.agoLong(task.Card.UpdatedAt)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 			case rounds != nil:
 				if w := a.roundsBeat(task, rounds, working); w != "" {
 					uiText(c.Key("rb"), w).FontSize(t.XS).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
@@ -486,6 +540,15 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 						acted = true
 						a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
 					}
+				}
+			case prStands == "needs":
+				// D508: the one thing a ready PR needs: its merge, on GitHub.
+				if a.button(c, a.L.T("onhand.prs.merge"), btnSecondary, t.ControlSM, t.Surface) {
+					acted = true
+					c.OpenURL(pr.URL)
+				}
+				if hover {
+					a.finishedActs(c, *finishedOf(task))
 				}
 			case hover && (finishedOf(task) != nil || att == protocol.Working):
 				a.rowActs(c, task, true)
@@ -592,6 +655,15 @@ func (a *App) beat(c *ui.Context, task *store.Task, att protocol.Attention, sign
 		uiText(c.Key("beat"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	case protocol.Done, protocol.DoneClaimed, protocol.Failed:
 		if task.Card == nil {
+			return
+		}
+		// D508: a finished task whose PR is open isn't done: its phase, never 做完.
+		if _, said, st := prRow(task); st != "" {
+			ink := t.Waiting.Ink
+			if st == "needs" {
+				ink = t.NeedsYou.Ink
+			}
+			uiText(c.Key("beat"), a.prWords(task, said)).FontSize(t.XS).FontWeight(600).TextColor(ink).SingleLine()
 			return
 		}
 		if at := store.ParseTime(task.Card.UpdatedAt); !at.IsZero() {

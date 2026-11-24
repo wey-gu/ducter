@@ -1,6 +1,7 @@
 package views
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -71,7 +72,7 @@ func (a *App) tryRow(c *ui.Context, dv *protocol.DeviceView) {
 
 // sitesList is 已登录的网站 / Signed-in sites: asked for when it shows
 // (and again after a minute), each row with 退出 / Sign out.
-func (a *App) sitesList(c *ui.Context) {
+func (a *App) sitesList(c *ui.Context, dv *protocol.DeviceView) {
 	t := a.T
 	s := &a.sites
 	if s.askedAt.IsZero() || a.Now().Sub(s.askedAt) > time.Minute {
@@ -82,7 +83,12 @@ func (a *App) sitesList(c *ui.Context) {
 	ui.Column(c.Key("sites")).Gap(t.S2).Children(func() {
 		uiText(c, a.L.T("sites.title")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 		if f == nil || len(f.Sites) == 0 {
-			uiText(c, a.L.T("sites.none")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			// D505 (rev.): with a Mac whose Chrome can take a sign-in, say the ask that comes first.
+			if mac := a.chromeMac(dv); mac != "" {
+				uiText(c, a.L.T("sites.none.mac", mac)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			} else {
+				uiText(c, a.L.T("sites.none")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			}
 			return
 		}
 		for _, site := range f.Sites {
@@ -102,6 +108,59 @@ func (a *App) sitesList(c *ui.Context) {
 		} else if a.buttonFor(c, a.L.T("sites.clear"), a.L.T("sites.title"), btnText, t.ControlSM, t.Surface) {
 			s.clearing = true
 		}
+	})
+	a.chromeSites(c)
+}
+
+// chromeMac is another computer, a Mac whose 上网 is the person's own Chrome,
+// that a sign-in on dv can go to (its name), or "" (D505 rev.).
+func (a *App) chromeMac(dv *protocol.DeviceView) string {
+	for _, d := range a.S.Devices {
+		if d.ID == dv.ID || !strings.HasPrefix(d.Platform, "darwin") {
+			continue
+		}
+		for _, ab := range d.Abilities {
+			if ab.ID == protocol.AbilityWeb && ab.State == protocol.AbilityOn && ab.Where == protocol.WhereChrome {
+				return d.Name
+			}
+		}
+	}
+	return ""
+}
+
+// chromeSites is 直接用你的 Chrome / Straight to your Chrome (D505 rev.): the
+// sites whose sign-ins go straight to the person's own Chrome on their Mac
+// (换过去 on a site's first card), each with 移除 / Remove. Only when there is one.
+func (a *App) chromeSites(c *ui.Context) {
+	t := a.T
+	if a.S.Settings == nil || len(a.S.Settings.ChromeSites) == 0 {
+		return
+	}
+	list := a.S.Settings.ChromeSites
+	ui.Column(c.Key("chrome-sites")).Gap(t.S2).Children(func() {
+		uiText(c, a.L.T("sites.chrome.title")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+		uiText(c, a.L.T("sites.chrome.about")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		// One line per site on the same left edge as the head, a quiet Remove at the right (as Your rules').
+		ui.Column(c.Key("chrome-site-rows")).Children(func() {
+			for i, site := range list {
+				site := site
+				if i > 0 {
+					ui.Box(c.Key("chrome-site-rule:" + site)).Height(1).Background(t.LineSoft)
+				}
+				ui.Row(c.Key("chrome-site:" + site)).Gap(t.S3).AlignItems(ui.Center).Height(t.ControlSM + 4).Children(func() {
+					uiText(c, site).FontSize(t.SM).FontWeight(700).SingleLine().Grow(1).MinWidth(0)
+					if a.quietDanger(c, "chrome-site-remove:"+site, a.L.T("sites.chrome.remove"), site) {
+						keep := make([]string, 0, len(list))
+						for _, x := range list {
+							if x != site {
+								keep = append(keep, x)
+							}
+						}
+						a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{ChromeSites: &keep}})
+					}
+				})
+			}
+		})
 	})
 }
 

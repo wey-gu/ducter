@@ -2379,6 +2379,25 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
     rubric: "A standing preference about who does a kind of work. It keeps it as a rule (rule_save) and says it back in one short Chinese line in the user's terms (e.g. 好，以后 HawDB 的事交给 Codex。). No task opened, no explanation of rules or harnesses.",
   },
+  // D510: a default for every new task (where and who), said once, not a kind of work: New tasks start.
+  {
+    id: "new-tasks-default-zh",
+    category: "rules",
+    lang: "zh",
+    computers: [{ name: "hel", web: "ducter", harnesses: ["codex", "claude-code"] }],
+    steps: [{ user: "以后新任务默认放 hel 上跑，用 Codex，别老在我这台 Mac 上跑" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "new_tasks", args: { where: /hel/i, agent: "codex" } }], notCalled: ["rule_save", "task_open"] },
+    rubric: "A standing default for every new task: where (hel, not this Mac) and who (Codex), not a kind of work. It keeps it (new_tasks with hel and codex) and says it back in one short Chinese line (e.g. 好，以后新任务默认在 hel 上用 Codex。). No task opened, no rule for a kind of work, no explanation of settings.",
+  },
+  {
+    id: "new-tasks-default-en",
+    category: "rules",
+    lang: "en",
+    computers: [{ name: "hel", web: "ducter", harnesses: ["codex", "claude-code"] }],
+    steps: [{ user: "From now on start new tasks on hel by default, not on this Mac." }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "new_tasks", args: { where: /hel/i } }], notCalled: ["rule_save", "task_open"] },
+    rubric: "A standing default for where every new task starts (hel), not a kind of work and no agent named. It keeps it (new_tasks with where hel) and says it back in one short English line. No task opened, no rule for a kind of work, no agent chosen for them.",
+  },
   // ---------- D372: the kind of work picks who does it (live: hel, 2026-11-18) ----------
   {
     id: "kind-errand-first-zh",

@@ -9,6 +9,7 @@
     { "_": "D467: a done whose check is still to come is listed as done, so it counts", "attention": "done_claimed", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": true },
     { "_": "still working", "attention": "working", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
     { "_": "no time known", "attention": "done", "at": "", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "want": false },
+    { "_": "D508: done today with its PR still open: its work goes on in the PR", "attention": "done", "at": "2026-11-17T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "Asia/Shanghai", "prOpen": true, "want": false },
     { "_": "a week ago", "attention": "done", "at": "2026-11-10T09:00:00Z", "now": "2026-11-17T10:00:00Z", "zone": "UTC", "want": false }
   ]
 }

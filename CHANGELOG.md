@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.32 - 2026-11-24
+
+<!-- whats-new
+zh: 新任务默认在哪跑、用谁，一句话设好；开着 PR 的任务不再算做完
+en: Pick where new tasks run and who does them; open PRs aren't done
+-->
+
+**New tasks start where you said**
+- Settings › Partner has New tasks start: where new tasks run (automatic, or a computer) and who
+  does them (automatic, or an agent). Saying it works too: "new tasks on hel, with Codex". A
+  task that needs your Chrome or a Mac app still goes where that is.
+
+**A task with an open PR isn't done**
+- On hand keeps it under its PR: waiting on checks, on a review, changes asked, still a draft.
+  Ready to merge moves it to Needs you with Merge on GitHub. Only merged or closed is done.
+- Rows with a PR no longer offer Merge into main or Open a draft; hover controls no longer cover
+  the time, and titles from GitHub show whole.
+
+**Signing in from a server home**
+- When a task on your server needs a site you're signed in to on your Mac, it asks once:
+  carry on in your Mac's Chrome, or sign in here. Say yes and that site goes straight there
+  next time. The list is in Settings › your server › Web, where you can remove a site.
+
 ## 0.1.31 - 2026-11-24
 
 <!-- whats-new

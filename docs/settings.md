@@ -113,6 +113,16 @@ At the top is your partner, its name and one line: where it lives and what it th
   first time. Under your rules, two lines show these defaults; a rule you say changes them. If the
   faster one doesn't get an errand done, the task moves to the smartest by itself, once, and only
   then do you hear about it.
+- **New tasks start.** Where every new task runs and which AI agent does it, when you'd rather not
+  leave it to your partner each time: **Where** is **Automatic** or one of your computers (for
+  example a server that never sleeps instead of your laptop), **Who does it** is **Automatic** or one
+  of your signed-in AI agents. It shows once there is a choice (two computers, or two AI agents).
+  Saying it works too: "start new tasks on hel with Codex from now on", or "back to automatic". A
+  task still goes elsewhere when it has to: when you name another computer or agent for it, when a
+  rule of yours covers that kind of work, when it needs something only another computer has (your
+  Chrome where you're signed in, a Mac app), or when your computer is asleep or can't be reached.
+  For code, your computer gets its own copy of the project first if it doesn't have one and can
+  reach it. The task says so: under **Who's doing it** and on the computer's name, **Your default**.
 - **Add another AI agent.** One place for adding one, with a line on what it gives you (with a
   second one, your partner picks per task, and when one runs out of limit the other carries on).
   Claude Code or Codex not signed in yet has **Install** or **Sign in**, which take you to

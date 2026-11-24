@@ -27,6 +27,24 @@ export function splitProfile(p: string): { device: string; profile: string } | u
 
 // ---------- the worker's side ----------
 
+/**
+ * D505: the person's sign-ins never leave the computer they are on. The home drives a worker's
+ * browser over the socket and gets back what pages show, never what keeps anyone signed in: a
+ * cookie read comes up with its name, site and path and an empty value (Signed-in sites counts
+ * them, signing out deletes them by name), and the reads that would carry a session out (request
+ * traffic with its Cookie and Authorization headers, posted form data, a page's storage) are
+ * refused here, by the worker, whatever the home asks.
+ */
+const COOKIE_READS = new Set(["Storage.getCookies", "Network.getCookies", "Network.getAllCookies"]);
+const STAY_PREFIXES = ["Fetch.", "DOMStorage.", "IndexedDB.", "CacheStorage."];
+const STAY = new Set(["Network.enable", "Network.getRequestPostData", "Network.getResponseBody", "Network.takeResponseBodyForInterceptionAsStream", "Storage.getStorageKeyForFrame", "Storage.getSharedStorageEntries", "Storage.getTrustTokens"]);
+export const staysHere = (method: string) => STAY.has(method) || STAY_PREFIXES.some((p) => method.startsWith(p));
+function withoutValues(out: unknown): unknown {
+  const r = out as { cookies?: unknown } | undefined;
+  if (!r || !Array.isArray(r.cookies)) return out;
+  return { ...r, cookies: r.cookies.map((c) => ({ ...(c as object), value: "" })) };
+}
+
 export interface WorkerBrowserOptions {
   dataDir: string;
   send(frame: object): void;
@@ -90,7 +108,10 @@ export function workerBrowserOps(o: WorkerBrowserOptions): { ops: Record<string,
       async cdpSend(a: { key?: unknown; method?: unknown; params?: unknown; sessionId?: unknown; timeoutMs?: unknown }) {
         const r = running.get(String(a.key ?? ""));
         if (!r) throw new Error("closed");
-        return r.conn.send(String(a.method ?? ""), (a.params as object) ?? {}, typeof a.sessionId === "string" ? a.sessionId : undefined, typeof a.timeoutMs === "number" ? a.timeoutMs : 15_000);
+        const method = String(a.method ?? "");
+        if (staysHere(method)) throw new Error(`${method} stays on this computer: sign-ins never leave it`);
+        const out = await r.conn.send(method, (a.params as object) ?? {}, typeof a.sessionId === "string" ? a.sessionId : undefined, typeof a.timeoutMs === "number" ? a.timeoutMs : 15_000);
+        return COOKIE_READS.has(method) ? withoutValues(out) : out;
       },
       async chromeQuit(a: { key?: unknown }) {
         await quit(String(a.key ?? ""));

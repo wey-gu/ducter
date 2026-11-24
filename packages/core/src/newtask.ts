@@ -6,7 +6,7 @@
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { AgentModels, Bodies, Candidate, CloneReason, DucterFolderView, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
-import { detect, fill, words as wordsIn } from "@ducter/protocol";
+import { cutAtWord, detect, fill, words as wordsIn } from "@ducter/protocol";
 import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
@@ -326,6 +326,11 @@ export interface NewTaskInput {
   /** D391: 从这一步重来 / Redo from here: the step of `from` it redoes, and the commit its code starts from. */
   fromStep?: number;
   fromCommit?: string;
+  /** D508: a to-do from the person's own apps: its own title is the task's (whole; a source's title is
+   *  a name, not the person's sentence), and the person's language is the one it reports in (the
+   *  issue's words are not the person's: an English issue told the task English). */
+  title?: string;
+  language?: LangTag;
 }
 
 export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
@@ -358,6 +363,9 @@ export function triggerOf(when: NewTaskWhen | undefined): Extract<RoutineTrigger
 
 const CJK = /[㐀-鿿豈-﫿　-〿＀-￯]/;
 const wide = (ch: string) => (CJK.test(ch) ? 2 : 1);
+
+/** D508: a to-do's own title, whole, up to what a card's two lines hold (columns; Han counts two). */
+export const TITLE_MAX = 200;
 
 /** About 24 Chinese characters, or 48 letters of English: what fits on a card's one line. */
 export const TITLE_WIDTH = 48;
@@ -435,9 +443,9 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   }
   // D186: a project the user added keeps the name they know it by.
   project = d.projects?.of(place)?.name ?? project;
-  const title = titleFromWords(words);
+  const title = (input.title?.trim() ? cutAtWord(input.title, TITLE_MAX) : "") || titleFromWords(words);
   const when = input.when;
-  const language = languageOf(words, d.settings);
+  const language = input.language ?? languageOf(words, d.settings);
   // D185: at a time, or every …: a routine of the user's own, active at once.
   const trigger = triggerOf(when);
   if (trigger) {

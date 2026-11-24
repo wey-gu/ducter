@@ -215,6 +215,21 @@ export interface Question {
   computer?: ComputerAsk;
   /** D238: may this task use the person's own phone now (set by the home's handset code only). */
   handset?: HandsetAsk;
+  /** D505 (rev.): carry this sign-in to the person's own Chrome on their Mac, asked once per site (set by browser_ask_sign_in only; hold: the Hold's words, default the Go's; reversible false here, the card waits with no countdown). */
+  signInWhere?: SignInWhereAsk & { hold?: string };
+}
+
+/**
+ * D505 (rev.): a task on a computer the person doesn't sit at (a server home) needs them signed in to a
+ * site, and their own Chrome on an awake Mac (`to`) has it. The first time for that site: Go (换过去 /
+ * Move it there) moves the task there and remembers the site (Settings' chromeSites); Hold (我在这里登录
+ * / I'll sign in here) puts today's sign-in card up where the task is. Unanswered, it waits (A3). The
+ * card's words come with it (question, goLabel, holdLabel), so every client draws it as any go/hold ask.
+ */
+export interface SignInWhereAsk {
+  site: string; // the site as remembered ("taobao.com")
+  url: string; // the sign-in page the task asked for (its host is what the move carries)
+  to: string; // the computer, by name ("MacBook")
 }
 
 /**
@@ -420,6 +435,7 @@ export interface Bodies {
     // through as questions, Hold (不理 / Ignore, the default) mutes it. Remembered per sender.
     sender?: { from: string; space?: string; messageId: string };
     holdLabel?: string; // D334: Hold's own words when the card's code names them (不理 / Ignore)
+    signInWhere?: SignInWhereAsk; // D505 (rev.): 换过去 / Move it there (the person's Chrome on their Mac, remembered per site) or 我在这里登录 / I'll sign in here
     // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
     // never "don't ask next time". kind "question": a question from the line, pushed at once even
     // in quiet hours; its choices are buttons that answer with option "reply" and that text.
@@ -998,6 +1014,10 @@ export interface TaskCard {
   /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
    *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
   rounds?: import("./past.ts").TaskRounds;
+  /** D508: the pull requests it made or took over, where each stands at Ducter's last look (core's
+   *  owned looks, D483, D496). A finished task whose PR is open is not done: On hand stands it under
+   *  that PR's state (pr-state.ts). */
+  prs?: import("./pr-state.ts").TaskPR[];
   /** D507 (D494): the helper whose work this is (its claim went out naming this task), so a row that
    *  stands anywhere but under the helper (beside an opened task, in Find, done after its PR merged)
    *  still says whose it is. Which of its tasks it keeps is OnHand.helpers' items. */
@@ -2869,6 +2889,27 @@ export interface Settings {
    * are added, never removed; an empty list in a patch starts them over (Settings › Look and sound).
    */
   met?: FirstMeet[];
+  /**
+   * D505 (rev.): sites whose sign-ins go straight to the person's own Chrome on their Mac (换过去 / Move it
+   * there on the first sign-in card, remembered). Added only by that Go; a patch can only take sites
+   * out (Settings › 上网 / Web, 移除 / Remove), and a site taken out asks again next time. Absent: none.
+   */
+  chromeSites?: string[];
+  /** D510: 新任务默认 / New tasks start: where and who every new task starts with unless its words, a rule or what it needs say otherwise. Absent (or a field absent): Ducter picks. */
+  newTasks?: NewTasks;
+}
+
+/**
+ * D510: the person's standing default for new tasks, set in Settings › Partner or by saying it
+ * (the partner's new_tasks tool). where: a computer that runs tasks ("local" for the home, else a
+ * worker's device id), preferred whenever it can do the task and can be reached; agent: an AI
+ * agent preferred whenever it is signed in where the task runs. A pin in the moment, a rule for a
+ * kind of work, and what the task needs (the person's Chrome, a Mac app, the only copy of a folder)
+ * come first. A patch replaces the whole object; {} clears it.
+ */
+export interface NewTasks {
+  where?: string;
+  agent?: HarnessId;
 }
 
 /**
@@ -3168,7 +3209,11 @@ export interface OwnedSeen {
   head?: string;
   /** The head whose CI ending was told. */
   ciFor?: string;
-  state?: "open" | "closed" | "merged";
+  /** D508: not_ours: a PR a report named whose branch isn't the task's (it isn't watched). */
+  state?: "open" | "closed" | "merged" | "not_ours";
+  /** D508: how Ducter came to watch it when the task didn't declare it: its own done report named it
+   *  (checked against its branch at the first look), or Ducter opened it as the task's draft PR. */
+  from?: "report" | "integrate";
   /** Comment and review ids already told (bounded). */
   ids?: string[];
   /** D496: the failed checks already told for `head` (a failure is news before every check ends). */
@@ -3249,3 +3294,4 @@ export interface LendFrame {
   name?: string;
 }
 export * from "./names.ts";
+export * from "./pr-state.ts";

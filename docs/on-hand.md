@@ -49,7 +49,8 @@ Below that, the rest:
 - **Ongoing**: work that runs in rounds on its own rhythm, such as a review every 45 minutes. It
   says how often it runs, what its last round found, and when the next one comes; while a round
   runs, how long this round has taken. When one needs you, it stands under **Needs you** instead.
-- **Done today**: tasks that finished today. A wait that didn't happen is listed there too with its
+- **Done today**: tasks that finished today. A task whose result is a pull request is done only
+  once that pull request is merged (see below). A wait that didn't happen is listed there too with its
   own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
   yesterday**.
 
@@ -71,7 +72,7 @@ column, so you can read down them:
   agent can take it;
 - done: when it finished.
 
-Which AI agent does the task shows when you point at the title, and in the task itself.
+Which AI agent does the task, and on which computer, is in the task itself.
 
 A wait that still checks by itself but hasn't changed for over a day says when it last changed and
 offers **Check now** (it looks again now).
@@ -79,6 +80,26 @@ offers **Check now** (it looks again now).
 A card says which computer it runs on only when that isn't the one most of your tasks use.
 
 A finished task shows what it made, such as its pull request (**#1190**), which you can open.
+
+### A task whose result is a pull request
+
+When a task opens a pull request, its work goes on there: CI runs, someone reviews it, it gets
+merged. Ducter keeps looking at it for you, so the task isn't listed as done while the pull request
+is open. Its row stands under **Waiting** and says, in one quiet line, where the pull request is:
+
+- **Waiting for CI**, with how many checks have passed (**6 of 10 checks passed**);
+- **CI failed**, with which checks;
+- **Waiting for review**, with whom it waits on;
+- **hawkingrei asked for changes** (the task hears about it and works on them);
+- **Conflicts with main**;
+- **Still a draft**.
+
+When it's signed off and every check has passed, it reads **Ready to merge**, stands under **Needs
+you**, and offers **Merge on GitHub**. Once it's merged, the task is done and moves to **Done
+today**. A pull request closed without merging says **Closed without merging**.
+
+A task with a pull request never offers **Merge into main** or **Open draft PR**: the pull request
+holds the work.
 
 On a wide window, a task shows on the right as it works: the one you moved to with the arrow keys,
 or else the one at work. You see what it's doing now, its last few steps in plain sentences (several quick ones as one line,
@@ -88,7 +109,7 @@ last picture you saw of that phone and **Watch the phone**; for one in a browser
 follow; press Enter to go in.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**
-or **Merged** once you've done either from Ducter.
+or **Merged** once you've done either from Ducter, or once its pull request merged.
 
 ### Calm when there is a lot
 
@@ -126,8 +147,10 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
 - **/** jumps to Find. **Esc** clears what you typed, then the number you picked.
 - **⌘O** opens any task by a few words of its title. If nothing matches, Enter starts a new task
   with those words.
-- **Merge into main** or **Open draft PR** shows when you hover over a finished task with a
-  branch. **Pause** shows when you hover over a task at work.
+- A finished task with a branch and no pull request has **Merge into main** and **Open draft PR**
+  in its **⋯**. **Pause** shows when you hover over a task at work. What shows on hover never
+  covers the row's time. Pointing at a title shows the whole title only when the row had to
+  shorten it.
 - On the full-screen On hand, **⌘-click** or **⇧-click** selects several tasks (or press **x**
   on a selected row). A bar at the bottom then offers what fits them: merge them, open draft
   PRs, pause them, or cancel them. Cancel asks you first.
@@ -186,8 +209,9 @@ stands on **On hand** as one card of its own. Its first line says how it is doin
 took this week. Tap it to see it in **Settings › Agent messaging**.
 
 Each piece of work your agents hand it is a task listed under it, and stays there until it is really
-over: a task that finished while its pull request is still open says **Can merge; waiting for a merge**
-and moves to **Done today** once the pull request is merged or closed. When something under a helper
+over: a task that finished while its pull request is still open says where the pull request is, as
+any such task does (**Waiting for review**, **Ready to merge** with **Merge on GitHub**), and moves to
+**Done today** once the pull request is merged or closed. When something under a helper
 needs you, the whole card moves up to **Needs you**. Anywhere else a helper's task shows, such as in
 Find, it carries the helper's name.
 

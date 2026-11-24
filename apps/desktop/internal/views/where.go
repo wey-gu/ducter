@@ -99,6 +99,9 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 		}
 		return a.L.T("where.reason.always_on.0")
 	case "signed_in":
+		if w.Site != "" && w.Always {
+			return a.L.T("where.reason.signed_in.always", w.Site) // D505 (rev.)
+		}
 		if w.Site != "" {
 			return a.L.T("where.reason.signed_in", w.Site)
 		}
@@ -125,6 +128,9 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 	case "moved":
 		return a.L.T("where.reason.moved", w.Other, dev)
 	case "you":
+		if w.RuleID == "new_tasks" { // D510: New tasks start named this computer
+			return a.L.T("where.reason.newtasks", dev)
+		}
 		if w.Text != "" {
 			return a.L.T("where.reason.rule", w.Text)
 		}

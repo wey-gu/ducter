@@ -186,3 +186,47 @@ async function until(ok: () => unknown, ms = 3000) {
     await new Promise((r) => setTimeout(r, 10));
   }
 }
+
+// D528: hel's round 298 reported once at 06:26:01, a request arrived at 06:26:40, the end-of-round
+// look found it at 06:27:17, and the board showed it only a round later. Now the final look's
+// report replaces the first in the same round, and the new request is said once.
+test("a request that arrives between the first look and the final look is in that round's report and board, said once", async () => {
+  const { core, open, ts } = boot();
+  await ts.add("github");
+  await ts.look();
+  open("swj3zc4w", "持续评审 nowledge-co 的 PR", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR，结束之前再看一次有没有新的请求。");
+  const wake = (waiterId: string) => core.log.append({ stream: "channel", origin: "system", kind: "waiter", body: { waiterId, taskId: "swj3zc4w", wakes: "task", state: "fired", reason: "再看一轮评审", at: new Date(NOW).toISOString() } });
+  const lines = () => core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 100 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  const two = [
+    { ref: "nowledge-co/mem#11092", head: "753a729", changed: false },
+    { ref: "nowledge-co/mem#11093", head: "27428e4", changed: false },
+  ];
+  const site = { ref: "nowledge-co/nowledge-labs-website#551", title: "Shared H2 at 20 px", head: "b4bb875", changed: false };
+
+  // Round 297: the first round ever says nothing of its requests (its report is the whole list).
+  wake("w_297");
+  await call(core, "swj3zc4w", { prs: two });
+  expect(lines()).toEqual([]);
+
+  // Round 298: the first look reports two; the end-of-round look finds the website's request.
+  wake("w_298");
+  await call(core, "swj3zc4w", { prs: two });
+  expect(ts.pile.rounds("swj3zc4w")).toBe(2);
+  const a = await call(core, "swj3zc4w", { prs: [...two, site] });
+  expect(a).toContain("replaces this round's earlier review_report");
+  expect(ts.pile.rounds("swj3zc4w")).toBe(2);
+  const board = ts.pile.board("swj3zc4w")!;
+  expect(board.waiting).toBe(3);
+  expect(board.prs.map((p) => p.ref)).toContain("nowledge-co/nowledge-labs-website#551");
+  expect(ts.pile.standing("swj3zc4w")).toMatchObject({ waiting: 3 });
+  expect(lines()).toEqual(["新来了一个评审请求：[nowledge-labs-website#551](https://github.com/nowledge-co/nowledge-labs-website/pull/551)「Shared H2 at 20 px」。"]);
+
+  // The same report again, and the next round with the same PR at the same head: never said again.
+  await call(core, "swj3zc4w", { prs: [...two, site] });
+  wake("w_299");
+  await call(core, "swj3zc4w", { prs: [...two, site] });
+  expect(ts.pile.rounds("swj3zc4w")).toBe(3);
+  expect(lines()).toHaveLength(1);
+  // Nothing about a line said is internal: the standing has no round bookkeeping in it.
+  expect(Object.keys(ts.pile.standing("swj3zc4w")!)).not.toContain("told");
+});

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.44 - 2026-11-24
+
+<!-- whats-new
+zh: 任务吃光内存不再拖垮整台服务器；评审循环当轮就报新请求
+en: A task that runs out of memory no longer takes your home down
+-->
+
+**A task can't take your home down**
+- On a Linux home, when the computer runs out of memory the kernel stops a task's heaviest
+  process, not Ducter, and the service keeps running. Ducter notes what was largest when memory
+  ran low, and `ducter doctor` says so. The service settings update themselves after the upgrade.
+
+**Review rounds**
+- A review request that arrives late in a round shows on the board that same round, and a new
+  request is mentioned to you once.
+- Times a task tells you are in your own time zone, never UTC.
+- A round that starts fresh by design no longer says its earlier record couldn't be continued.
+
 ## 0.1.43 - 2026-11-24
 
 <!-- whats-new

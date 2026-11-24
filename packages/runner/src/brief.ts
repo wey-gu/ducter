@@ -14,6 +14,8 @@ export interface BriefInput {
   mcpServerName: string; // the Ducter MCP server name, e.g. "ducter"
   /** The language the user reads reports in, a BCP 47 tag (D292); absent: the brief's own words decide. */
   language?: LangTag;
+  /** D528: the user's time zone (IANA): every time they read is written in it. */
+  zone?: string;
   /** D168: plugin = the user's Nowledge Mem plugin is on in this session; ducter = Ducter's own read-only memory stands in. Absent: none (off, or a browser). */
   memory?: "plugin" | "ducter";
   /** D417: Ducter runs Mem's two steps around this session (an agent with no per-session plugin): the Context Bundle first, the thread kept after each turn. */
@@ -110,6 +112,15 @@ function languageLine(lang: BriefInput["language"]): string {
   return `- **Language: ${langName(tag)}.** The user reads ${short}: ${what} in ${short}, whatever language the code, files or tool output are in. Code, commands and names stay as they are. They may read them as they are.`;
 }
 
+/**
+ * D528: hel's review rounds said 「下一轮将在 07:13 UTC 进行」: the server's clock and the tools'
+ * ISO times are UTC, the person is not. Model-visible (snapshot-tested).
+ */
+export function timeLine(zone: string | undefined): string {
+  const where = zone && zone !== "UTC" && zone !== "Etc/UTC" ? `the user's time zone, ${zone}` : "the user's own time zone";
+  return `- **Times:** a time the user reads (in \`summary\`, a question, \`wait_for\`'s \`reason\` and \`unmetSays\`) is in ${where}, like "15:13" or "明天 9:00", or relative ("in 45 minutes", "45 分钟后"); never "UTC", an offset or an ISO timestamp, though the clock you run on and your tools may give UTC. Your checkpoints may keep any form.`;
+}
+
 function placeLine(p: Place, cwd: string): string {
   switch (p.kind) {
     case "repo":
@@ -159,10 +170,11 @@ ${b.goes?.length ? goesBrief(b.goes) : ""}
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
 ${languageLine(b.language)}
+${timeLine(b.zone)}
 - \`summary\` is written for the user, not for you: they read it as it is, often on their phone. Open with the result in one plain sentence anyone could follow (what is now true for them), then at most a few short lines on what stands. Write ordinary sentences with ordinary spacing: a number keeps its unit and its spaces ("16 checks, 15 passed", "16 项检查，15 项通过"), never glued into notes like "16checks15success". Leave out your own bookkeeping (round numbers, counters, ledger or note file names, ids, hashes) unless the user needs one to act; it goes in \`evidence\` or your checkpoint. At most 600 characters; shorter is better.
 - Say what changed since your last report, not everything again.
 - Work that repeats (a watcher, a review every so often): a round that found nothing new for the user doesn't report at all; call \`wait_for\` with the time of the next round and end your turn (silence means nothing changed). Report only when something new needs them: a new request, a change with new findings, a draft ready to send. Then say what still stands too, never "nothing new" alone while things wait on them ("8 review requests wait on you: 3 had new commits and are reviewed again, 5 unchanged").
-- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief (or "What you may do without asking") says to do it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts the drafts the person said may go without asking, and asks once a round for the rest; never post or ask about them yourself.
+- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief (or "What you may do without asking") says to do it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: Ducter posts the drafts the person said may go without asking, and asks once a round for the rest; never post or ask about them yourself. Call it from the round's final look (after you check once more for new requests); if a later look finds more, call it again with the whole list: the later call replaces the earlier one for that round.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.

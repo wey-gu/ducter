@@ -12,6 +12,9 @@ import { readKeys } from "@ducter/protocol/src/keys.ts";
 import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { childEnvironment } from "@ducter/runner/src/child-env.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
+import { RECORD_FILE, type MemRecord } from "@ducter/core/src/memory-watch.ts";
+import { REFRESH_RECORD } from "@ducter/core/src/unit-refresh.ts";
+import { homedir } from "node:os";
 import { spawnNow } from "@ducter/protocol/src/which.ts";
 
 export const MIN_BUN = "1.3.0";
@@ -49,7 +52,7 @@ export interface Host {
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli" | "pdf";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli" | "pdf" | "memory";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -81,6 +84,8 @@ export interface DoctorOptions {
   port: number;
   dataDir: string;
   memoryOff?: boolean; // default: DUCTER_MEMORY=off
+  /** Tests: the systemd user unit's path (default ~/.config/systemd/user/ducter.service). */
+  unitPath?: string;
 }
 
 /**
@@ -277,7 +282,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   }
 
   const checks = [bun, git, claudeCheck, codexCheck, ...extra, nmem, cua, portCheck, dataCheck];
-  if (server) checks.push(...(await serverChecks(host, c)));
+  if (server) checks.push(...(await serverChecks(host, c, opts)));
   return { checks, ok: checks.every((k) => !k.required || k.status === "ok"), harnessReady: anyReady };
 }
 
@@ -287,7 +292,7 @@ type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean
  * Server-only rows: does Ducter outlive this SSH session, is any device connected, and (D506) can
  * the document check read a PDF's pages (Poppler, from the system's own package manager). All optional.
  */
-async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
+async function serverChecks(host: Host, c: Mk, opts: DoctorOptions): Promise<Check[]> {
   const user = process.env.USER || "$USER";
   let service: Check;
   if (!host.which("systemctl")) service = c("service", "check.service", "missing", false, "check.service.off", {}, SERVER_FIX.service);
@@ -298,14 +303,64 @@ async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
     ]);
     if (active.stdout.trim() !== "active") service = c("service", "check.service", "missing", false, "check.service.off", {}, SERVER_FIX.service);
     else if (!/Linger=yes/.test(linger.stdout)) service = c("service", "check.service", "warn", false, "check.service.noLinger", {}, SERVER_FIX.linger(user));
-    else service = c("service", "check.service", "ok", false, "check.service.ok");
+    else service = c("service", "check.service", "ok", false, refreshedLately(host, opts.dataDir) ? "check.service.refreshed" : "check.service.ok");
   }
   const n = host.pairedDevices?.() ?? 0;
   const devices = n > 0 ? c("devices", "check.devices", "ok", false, "check.devices.ok", { n }) : c("devices", "check.devices", "missing", false, "check.devices.none", {}, SERVER_FIX.devices);
   const pdf = POPPLER_TOOLS.every((x) => host.which(x))
     ? c("pdf", "check.pdf", "ok", false, "check.pdf.ok")
     : c("pdf", "check.pdf", "missing", false, "check.pdf.missing", {}, popplerCmd("linux", (x) => !!host.which(x)));
-  return [service, devices, pdf];
+  return [service, devices, pdf, await memoryCheck(host, c, opts)];
+}
+
+/** D524: the home brought an older unit's settings up to date in the last week (unit-refresh.ts). */
+function refreshedLately(host: Host, dataDir: string): boolean {
+  try {
+    const at = Date.parse(JSON.parse(host.read?.(join(dataDir, REFRESH_RECORD)) ?? "{}").at);
+    return Number.isFinite(at) && Date.now() - at < 7 * 86_400_000;
+  } catch {
+    return false;
+  }
+}
+
+/** A command line as a person reads it: program names without their folders, at most 60 chars. */
+export function whoRan(cmd: string): string {
+  const words = cmd.split(" ").filter(Boolean).slice(0, 4).map((w) => (w.includes("/") && !w.startsWith("-") ? basename(w) : w));
+  const s = words.join(" ");
+  return s.length > 60 ? `${s.slice(0, 57)}...` : s;
+}
+
+/**
+ * D524: whether the kernel stopped something of Ducter's for lack of memory in the last day (the
+ * unit's journal, and the home's own memory-watch.json for who was biggest), and whether the
+ * service file is old enough that such a stop takes the whole home down with it.
+ */
+async function memoryCheck(host: Host, c: Mk, opts: DoctorOptions): Promise<Check> {
+  const unit = host.read?.(opts.unitPath ?? join(homedir(), ".config", "systemd", "user", "ducter.service"));
+  const oldUnit = !!unit && !/^OOMPolicy=continue$/m.test(unit);
+  const j = host.which("journalctl")
+    ? await host.run(["journalctl", "--user", "-u", "ducter.service", "--since", "-24h", "--no-pager", "-o", "short-iso", "-g", "OOM killer"], 8_000)
+    : { code: 1, stdout: "" };
+  const kills = j.code === 0 ? j.stdout.split("\n").filter((l) => /OOM killer/.test(l)) : [];
+  let records: MemRecord[] = [];
+  try {
+    const r = JSON.parse(host.read?.(join(opts.dataDir, RECORD_FILE)) ?? "[]");
+    if (Array.isArray(r)) records = r;
+  } catch {}
+  const since = Date.now() - 86_400_000;
+  const recent = records.filter((r) => Date.parse(r.at) >= since);
+  const watched = recent.filter((r) => r.kind === "oom_kill").reduce((n, r) => n + (r.kills ?? 1), 0);
+  const n = Math.max(kills.length, watched);
+  const last = [...recent].reverse().find((r) => r.top?.some((p) => !p.home));
+  const big = last?.top.find((p) => !p.home);
+  const at = kills.length ? /\d{4}-\d\d-\d\dT(\d\d:\d\d)/.exec(kills[kills.length - 1]!)?.[1] : last?.at.slice(11, 16);
+  const vars = { n, at: at ?? "", who: big ? whoRan(big.cmd) || big.name : "", mb: big?.rssMb ?? 0 };
+  if (n > 0) {
+    const key: MsgKey = big ? "check.memory.killedWho" : "check.memory.killed";
+    return c("memory", "check.memory", "warn", false, key, vars, oldUnit ? SERVER_FIX.service : undefined);
+  }
+  if (oldUnit) return c("memory", "check.memory", "warn", false, "check.memory.oldUnit", vars, SERVER_FIX.service);
+  return c("memory", "check.memory", "ok", false, "check.memory.ok");
 }
 
 export interface Style {

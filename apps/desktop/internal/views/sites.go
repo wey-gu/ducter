@@ -103,6 +103,37 @@ func (a *App) sitesList(c *ui.Context) {
 			s.clearing = true
 		}
 	})
+	a.chromeSites(c)
+}
+
+// chromeSites is 直接用你的 Chrome / Straight to your Chrome (D505 rev.): the
+// sites whose sign-ins go straight to the person's own Chrome on their Mac
+// (换过去 on a site's first card), each with 移除 / Remove. Only when there is one.
+func (a *App) chromeSites(c *ui.Context) {
+	t := a.T
+	if a.S.Settings == nil || len(a.S.Settings.ChromeSites) == 0 {
+		return
+	}
+	list := a.S.Settings.ChromeSites
+	ui.Column(c.Key("chrome-sites")).Gap(t.S2).Children(func() {
+		uiText(c, a.L.T("sites.chrome.title")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+		uiText(c, a.L.T("sites.chrome.about")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		for _, site := range list {
+			site := site
+			ui.Row(c.Key("chrome-site:"+site)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
+				uiText(c, site).FontSize(t.SM).FontWeight(700).SingleLine().Grow(1).MinWidth(0)
+				if a.buttonFor(c, a.L.T("sites.chrome.remove"), site, btnText, t.ControlSM, t.SurfaceSunken) {
+					keep := make([]string, 0, len(list))
+					for _, x := range list {
+						if x != site {
+							keep = append(keep, x)
+						}
+					}
+					a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{ChromeSites: &keep}})
+				}
+			})
+		}
+	})
 }
 
 func (a *App) siteRow(c *ui.Context, site protocol.SiteView) {

@@ -310,8 +310,19 @@ line.
 - [ ] **A sign-in in a worker's Ducter browser relays the person's keys through the home** (D151's
   live view, driven from the home): sign in at that Mac itself (its own window) instead. Trigger: a
   buy errand on a server home whose site is signed in nowhere.
-- [ ] **A standing "never my Chrome"** the move honours (a rule naming the computer or the browser);
-  today the person says so and the partner moves it back. Trigger: the first person who says it.
+- [ ] **A standing "never my Chrome"** the move honours, said to the partner (「别用我的 Chrome」):
+  D505 (rev.)'s card already asks once per site, and its Hold signs in here; a standing no needs the partner
+  to keep it (a partner tool, or a kind beside D495's, which are permissions only and keep sign-ins
+  out), so a persona change with its eval (D175). It would sit in Settings' `chromeSites` store as a
+  never. Today the person answers 我在这里登录 each time, or the partner moves a task back (D376).
+  Trigger: the first person who says it.
+- [ ] **D505 (rev.) live:** the first sign-in card on hel for a site the MacBook's Chrome has, read on the
+  phone and the Mac (the question, 好，换过去, 我在这里登录, 不回的话，我先放着，等你回。); Go, then the
+  move line's 「taobao.com 以后都直接用你的 Chrome」; the second task at that site moving with no
+  card; 移除 in 上网 / Web and the card again. Check: `ducter check run worker-browser`. Trigger: the
+  next release on hel.
+- [ ] **D505 (rev.) in a chat app:** the card is answered only in Ducter (open); if people ask to answer it
+  from Telegram, its Go there could be allowed (the Hold needs the live view). Trigger: a person asks.
 - [ ] **Which agent there has native Chrome tools**: the move keeps the same agent when it is on the
   Mac; if that agent's own Chrome tools aren't ready there (Claude in Chrome not connected), it falls
   back to cua-driver or Ducter's browser on that Mac (D130), which lacks the sign-in. Prefer an agent

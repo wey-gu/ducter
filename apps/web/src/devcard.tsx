@@ -767,7 +767,28 @@ function Sites({ dv }: { dv: DeviceView }) {
         ) : (
           <Btn kind="text" size="sm" label={t("sites.clear")} onClick={() => setClearing(true)} />
         ))}
+      <ChromeSites />
     </div>
+  );
+}
+
+/** D505 (rev.): the sites whose sign-ins go straight to the person's own Chrome (换过去 on a site's first card), each with 移除 / Remove. */
+function ChromeSites() {
+  const list = A.settings?.chromeSites ?? [];
+  if (!list.length) return null;
+  return (
+    <>
+      <div class="dev-sub">{t("sites.chrome.title")}</div>
+      <div class="small sub">{t("sites.chrome.about")}</div>
+      {list.map((site) => (
+        <div class="dev-site" key={site}>
+          <div class="dev-site-what">
+            <div class="dev-site-name">{site}</div>
+          </div>
+          <Btn kind="text" size="sm" label={t("sites.chrome.remove")} about={site} onClick={() => A.setSettings({ chromeSites: list.filter((x) => x !== site) })} />
+        </div>
+      ))}
+    </>
   );
 }
 

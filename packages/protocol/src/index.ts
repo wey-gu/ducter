@@ -215,6 +215,21 @@ export interface Question {
   computer?: ComputerAsk;
   /** D238: may this task use the person's own phone now (set by the home's handset code only). */
   handset?: HandsetAsk;
+  /** D505 (rev.): carry this sign-in to the person's own Chrome on their Mac, asked once per site (set by browser_ask_sign_in only; hold: the Hold's words, default the Go's; reversible false here, the card waits with no countdown). */
+  signInWhere?: SignInWhereAsk & { hold?: string };
+}
+
+/**
+ * D505 (rev.): a task on a computer the person doesn't sit at (a server home) needs them signed in to a
+ * site, and their own Chrome on an awake Mac (`to`) has it. The first time for that site: Go (换过去 /
+ * Move it there) moves the task there and remembers the site (Settings' chromeSites); Hold (我在这里登录
+ * / I'll sign in here) puts today's sign-in card up where the task is. Unanswered, it waits (A3). The
+ * card's words come with it (question, goLabel, holdLabel), so every client draws it as any go/hold ask.
+ */
+export interface SignInWhereAsk {
+  site: string; // the site as remembered ("taobao.com")
+  url: string; // the sign-in page the task asked for (its host is what the move carries)
+  to: string; // the computer, by name ("MacBook")
 }
 
 /**
@@ -420,6 +435,7 @@ export interface Bodies {
     // through as questions, Hold (不理 / Ignore, the default) mutes it. Remembered per sender.
     sender?: { from: string; space?: string; messageId: string };
     holdLabel?: string; // D334: Hold's own words when the card's code names them (不理 / Ignore)
+    signInWhere?: SignInWhereAsk; // D505 (rev.): 换过去 / Move it there (the person's Chrome on their Mac, remembered per site) or 我在这里登录 / I'll sign in here
     // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
     // never "don't ask next time". kind "question": a question from the line, pushed at once even
     // in quiet hours; its choices are buttons that answer with option "reply" and that text.
@@ -2854,6 +2870,12 @@ export interface Settings {
    * are added, never removed; an empty list in a patch starts them over (Settings › Look and sound).
    */
   met?: FirstMeet[];
+  /**
+   * D505 (rev.): sites whose sign-ins go straight to the person's own Chrome on their Mac (换过去 / Move it
+   * there on the first sign-in card, remembered). Added only by that Go; a patch can only take sites
+   * out (Settings › 上网 / Web, 移除 / Remove), and a site taken out asks again next time. Absent: none.
+   */
+  chromeSites?: string[];
 }
 
 /**

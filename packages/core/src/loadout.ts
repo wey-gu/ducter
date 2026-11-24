@@ -49,7 +49,8 @@ export interface Loadout {
    * there, or their own Chrome); `move` carries the task there (call it after the tool answers).
    * `asleep`: one could, but it is asleep. Undefined: nowhere else; the sign-in card stays.
    */
-  signInElsewhere(taskId: string, site: string, runner: Runner | undefined): Promise<{ to: string; uses: "chrome" | "ducter"; move(): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
+  // D505 (rev.): move({ always }): the site (as remembered) is on the person's straight-to-Chrome list; the move line says so.
+  signInElsewhere(taskId: string, site: string, runner: Runner | undefined): Promise<{ to: string; uses: "chrome" | "ducter"; move(o?: { always?: string }): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
   /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
   defaults(): Promise<KindDefault[]>;
   /**
@@ -357,8 +358,9 @@ export function createLoadout(o: {
       return {
         to: to.name,
         uses: r.uses,
-        async move() {
-          const res = await runner.moveTask!(taskId, { device: to.home ? "local" : to.name, name: to.name, ...(home ? { homeName: home } : {}), signIn: { site, uses: r.uses } }, c.harness, c.model);
+        async move(m) {
+          const always = r.uses === "chrome" ? m?.always : undefined;
+          const res = await runner.moveTask!(taskId, { device: to.home ? "local" : to.name, name: to.name, ...(home ? { homeName: home } : {}), signIn: always ? { site: always, uses: r.uses, always: true } : { site, uses: r.uses } }, c.harness, c.model);
           if (!res.ok) return res;
           // The partner only knows (to answer "why is it on the MacBook?"); the task's own line says it.
           o.log.append({
@@ -369,7 +371,7 @@ export function createLoadout(o: {
               jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`,
               taskId,
               state: "done",
-              text: `this task needed the user signed in to ${site}; ${here?.name ?? "the home"} has none of their sign-ins, so Ducter moved it to ${to.name}, where ${r.uses === "chrome" ? "their own Chrome is" : "Ducter's own browser is"} signed in already (${harnessName(c.harness)}). Nothing was typed on ${here?.name ?? "the home"}, and their sign-ins stay on ${to.name}. The task's own line already says so: mention it only if the user asks why it moved.`,
+              text: `this task needed the user signed in to ${site}; ${here?.name ?? "the home"} has none of their sign-ins, so Ducter moved it to ${to.name}, where ${r.uses === "chrome" ? "their own Chrome is" : "Ducter's own browser is"} signed in already (${harnessName(c.harness)}). Nothing was typed on ${here?.name ?? "the home"}, and their sign-ins stay on ${to.name}.${always ? ` The user said ${always} goes straight to their Chrome (they take it back in Settings, under Web: 移除 / Remove; then the next sign-in there asks again).` : ""} The task's own line already says so: mention it only if the user asks why it moved.`,
             } as Bodies["job_status"],
           });
           return { ok: true };

@@ -108,6 +108,8 @@ export interface WhereWhy {
   text?: string;
   /** What it uses on that computer when that is the point: the user's Chrome, Ducter's own browser, an app. */
   uses?: "chrome" | "ducter" | "app";
+  /** D505 (rev.): with signed_in: the site is one the person said goes straight to their Chrome (Settings' chromeSites). */
+  always?: boolean;
 }
 
 /**

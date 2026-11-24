@@ -4,7 +4,7 @@
 // said once in its own line; their sign-ins never come up the worker's socket. Fakes only.
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import type { DeviceHarness } from "@ducter/protocol";
+import type { Bodies, DeviceHarness } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
 import { movedOver } from "../../runner/src/brief.ts";
 import { signInRoute, type Computer } from "../src/candidates.ts";
@@ -14,6 +14,9 @@ import { FakeClock } from "../src/clock.ts";
 import { openLog } from "../src/log.ts";
 import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
+import { createDecisions } from "../src/decisions.ts";
+import { openSettings } from "../src/settings.ts";
+import { openPushStore } from "../src/push.ts";
 import { tempDir } from "./helpers.ts";
 
 const h = (harness: string): DeviceHarness => ({ harness, installed: true, loggedIn: true, canBePartner: true });
@@ -39,12 +42,12 @@ test("the rule: from a server, to an awake Mac's own Chrome; least access first;
   expect(signInRoute({ computers: [HEL, mac(), mini], here: "local", site: "taobao.com", buy: true })).toMatchObject({ to: { name: "Mac mini" }, uses: "ducter" });
 });
 
-function home(o: { macState?: "awake" | "asleep"; moveOk?: boolean } = {}) {
+function home(o: { macState?: "awake" | "asleep"; moveOk?: boolean; zh?: boolean } = {}) {
   const t = tempDir();
   const clock = new FakeClock(Date.parse("2026-11-24T06:00:00Z"));
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
   const tasks = createRegistry(log, clock);
-  log.append({ stream: "task:t1", origin: "partner", kind: "task_open", body: { taskId: "t1", title: "看看我淘宝的订单", project: "", place: { kind: "browser", device: "local", profile: "default" }, harness: "codex", brief: "List my recent Taobao orders.", needs: { browse: true } } as never });
+  log.append({ stream: "task:t1", origin: "partner", kind: "task_open", body: { taskId: "t1", title: "看看我淘宝的订单", project: "", place: { kind: "browser", device: "local", profile: "default" }, harness: "codex", brief: "List my recent Taobao orders.", needs: { browse: true }, ...(o.zh ? { language: "zh" } : {}) } as never });
   const dv = (id: string, name: string, isHome: boolean, kind: string, where: "chrome" | "ducter", state: string, platform: string, harnesses: DeviceHarness[]) => ({ id, name, kind, home: isHome, state, platform, harnesses, abilities: [{ id: "web", state: "on", where }] });
   const frame = { t: "devices", devices: [dv("local", "hel", true, "server", "ducter", "awake", "linux", [h("codex")]), dv("dev_mac", "MacBook", false, "laptop", "chrome", o.macState ?? "awake", "darwin", [h("claude-code"), h("codex")])], reach: { clients: [] } };
   const moves: unknown[][] = [];
@@ -58,19 +61,20 @@ test("a sign-in asked on hel: the task moves to the MacBook's Chrome, said in it
   const lo = createLoadout({ log: s.log, tasks: s.tasks, settings: { get: () => ({ brain: { harness: "codex" } }) } as never, rules: { list: () => [] } as never, devices: () => ({ frame: async () => s.frame }) as never });
   const mcp = createMcpHub({ secret: "s" });
   const host = { task: (id: string) => (id === "t1" ? { taskId: id, profile: "default" } : undefined), blind: () => false, touch() {} } as never;
-  registerBrowserTools({ mcp, host, log: s.log, tasks: s.tasks as never, signInElsewhere: (id, site) => lo.signInElsewhere(id, site, s.runner) });
+  // D505 (rev.): taobao.com already said to go straight to their Chrome (this test is the silent move).
+  registerBrowserTools({ mcp, host, log: s.log, tasks: s.tasks as never, signInElsewhere: (id, site) => lo.signInElsewhere(id, site, s.runner), chromeSites: { has: (x) => x === "taobao.com", add() {} } });
   try {
     const said = String(await mcp.call({ role: "task", taskId: "t1" } as never, "browser_ask_sign_in", { url: "https://login.taobao.com/", why: "要看你的订单" }));
     expect(said).toContain("MacBook");
     expect(said).toContain("End your turn");
     await Bun.sleep(5);
     // Moved there with the same agent, for the sign-in (the meta line: 在 MacBook 上 · 用你的 Chrome).
-    expect(s.moves).toEqual([["t1", { device: "MacBook", name: "MacBook", homeName: "hel", signIn: { site: "login.taobao.com", uses: "chrome" } }, "codex", undefined]]);
+    expect(s.moves).toEqual([["t1", { device: "MacBook", name: "MacBook", homeName: "hel", signIn: { site: "taobao.com", uses: "chrome", always: true } }, "codex", undefined]]);
     // No sign-in card on hel.
     expect(s.log.read({ stream: "task:t1", kinds: ["report"], limit: 10 })).toEqual([]);
     // The partner's hidden note: why it moved, nothing typed on hel.
     const note = s.log.read({ stream: "channel", kinds: ["job_status"], limit: 10 }).map((e) => (e.body as { text: string }).text);
-    expect(note.join("\n")).toMatch(/signed in to login\.taobao\.com.*moved it to MacBook.*Nothing was typed on hel/);
+    expect(note.join("\n")).toMatch(/signed in to login\.taobao\.com.*moved it to MacBook.*Nothing was typed on hel.*goes straight to their Chrome/);
   } finally {
     s.t.cleanup();
   }
@@ -133,4 +137,79 @@ test("the first turn on the MacBook: why it moved, don't sign in again, and the 
   expect(s).toContain("the user's own Chrome, where they are signed in already");
   expect(s).toContain("never read, copy or report cookies");
   expect(movedOver("hel", "MacBook", [], false)).toContain("The user moved this task");
+});
+
+// D505 (rev.): ask once per site, then remember. The first sign-in a task on hel needs at a site the
+// person's Chrome has: one go/hold card (换过去 / 我在这里登录), unanswered it waits. Go moves it and
+// remembers the site; the next one there moves without a card; taken out in Settings, it asks again.
+test("ask once per site: first time a card; Go moves and remembers; next time silent; removed in Settings, the card again", async () => {
+  const { createLoadout } = await import("../src/loadout.ts");
+  const s = home({ zh: true });
+  const settings = openSettings({ dataDir: s.t.dir, log: s.log, push: openPushStore(s.t.dir), persona: { name: "Pebble", identity: "" } });
+  const decisions = createDecisions({ log: s.log, tasks: s.tasks, clock: new FakeClock(Date.parse("2026-11-24T06:00:00Z")) });
+  const lo = createLoadout({ log: s.log, tasks: s.tasks, settings: { get: () => ({ brain: { harness: "codex" } }) } as never, rules: { list: () => [] } as never, devices: () => ({ frame: async () => s.frame }) as never });
+  const mcp = createMcpHub({ secret: "s" });
+  const host = { task: (id: string) => (id === "t1" ? { taskId: id, profile: "default" } : undefined), blind: () => false, touch() {} } as never;
+  registerBrowserTools({ mcp, host, log: s.log, tasks: s.tasks as never, signInElsewhere: (id, site) => lo.signInElsewhere(id, site, s.runner), chromeSites: { has: (x) => !!settings.get().chromeSites?.includes(x), add: (x) => settings.rememberChrome(x) } });
+  const signIn = () => mcp.call({ role: "task", taskId: "t1" } as never, "browser_ask_sign_in", { url: "https://login.taobao.com/" }).then(String);
+  const cards = () => s.log.read({ stream: "channel", kinds: ["decision"], limit: 50 }).map((e) => e.body as Bodies["decision"]);
+  try {
+    // 1. First time: the card, in the task's language; nothing moved; it waits, no countdown.
+    const said = await signIn();
+    expect(said).toContain("End your turn");
+    await Bun.sleep(5);
+    expect(s.moves).toEqual([]);
+    const [c1] = cards();
+    expect(c1).toMatchObject({ taskId: "t1", question: "要登录 taobao.com。换到 MacBook 上你已登录的 Chrome 接着做？", goLabel: "换过去", holdLabel: "我在这里登录", defaultOption: "hold", reversible: true, signInWhere: { site: "taobao.com", to: "MacBook", url: "https://login.taobao.com/" } });
+    expect(c1!.defaultAt).toBeUndefined();
+    expect(s.tasks.get("t1")?.attention).toBe("needs_you");
+    expect(settings.get().chromeSites).toBeUndefined();
+
+    // 2. Go: moved to the MacBook's Chrome, and the site remembered (the move line says so).
+    decisions.decide(c1!.decisionId, "go");
+    await Bun.sleep(10);
+    expect(s.moves).toEqual([["t1", { device: "MacBook", name: "MacBook", homeName: "hel", signIn: { site: "taobao.com", uses: "chrome", always: true } }, "codex", undefined]]);
+    expect(settings.get().chromeSites).toEqual(["taobao.com"]);
+
+    // 3. Next time on that site: no card, it just moves.
+    s.moves.length = 0;
+    expect(await signIn()).toContain("Don't sign in here");
+    await Bun.sleep(5);
+    expect(s.moves).toHaveLength(1);
+    expect(cards()).toHaveLength(1);
+
+    // 4. 移除 / Remove in Settings › 上网: a patch only takes sites out; the next sign-in asks again.
+    expect(settings.set({ chromeSites: ["somewhere-else.com"] })).toEqual(["chromeSites"]);
+    expect(settings.get().chromeSites).toBeUndefined();
+    s.moves.length = 0;
+    await signIn();
+    await Bun.sleep(5);
+    expect(s.moves).toEqual([]);
+    const c2 = cards().at(-1)!;
+    expect(c2.signInWhere?.site).toBe("taobao.com");
+    expect(c2.decisionId).not.toBe(c1!.decisionId);
+
+    // 5. 我在这里登录 / I'll sign in here: today's sign-in card where the task is; nothing remembered, nothing moved.
+    decisions.decide(c2.decisionId, "hold");
+    await Bun.sleep(10);
+    expect(s.moves).toEqual([]);
+    expect(settings.get().chromeSites).toBeUndefined();
+    expect(cards().at(-1)).toMatchObject({ signIn: { site: "login.taobao.com", url: "https://login.taobao.com/" } });
+    expect(s.tasks.get("t1")?.attention).toBe("needs_you");
+  } finally {
+    decisions.stop();
+    s.t.cleanup();
+  }
+});
+
+test("the card is its own kind: never answered on someone's word, never by a chat app's button, nothing forwarded", async () => {
+  const { plainAsk, forwardText } = await import("../src/decisions.ts");
+  const { plainDecision } = await import("../src/reply.ts");
+  const { cardPolicy } = await import("../src/channels/hub.ts");
+  const d = { decisionId: "d1", taskId: "t1", question: "要登录 taobao.com。换到 MacBook 上你已登录的 Chrome 接着做？", goLabel: "换过去", holdLabel: "我在这里登录", defaultOption: "hold", reversible: true, signInWhere: { site: "taobao.com", url: "https://login.taobao.com/", to: "MacBook" } } as Bodies["decision"];
+  expect(plainAsk(d)).toBe(false);
+  expect(plainDecision(d)).toBe(false);
+  expect(cardPolicy(d)).toBe("open");
+  expect(forwardText(d, { decisionId: "d1", option: "go" })).toBe("");
+  expect(forwardText(d, { decisionId: "d1", option: "hold" })).toBe("");
 });

@@ -48,8 +48,9 @@ exactly what it will and won't do. This page lists it.
   the contents of password fields, and it can't type into them. What it can see: the pages it
   opens, their text and links, and pictures of them it saves as evidence.
 - **Your sign-ins stay on the computer they're on.** When Ducter runs on a server and a task needs
-  a site you're signed in to on your Mac, the task runs on your Mac rather than asking for your
-  password on the server. The server gets back what the pages say, never the cookies that keep you
+  a site you're signed in to on your Mac, Ducter asks you once for that site, then the task runs
+  on your Mac rather than asking for your password on the server. It never uses your own Chrome
+  for a site you haven't said yes to, and you can take a site back in **Signed-in sites**. The server gets back what the pages say, never the cookies that keep you
   signed in or the browser's saved data: your Mac holds them back, whatever the server asks.
 - **It never types into a page you had open.** A web task in your own Chrome opens a window or
   tab of its own, checks that it's the one in front before typing, and closes it when it's done.

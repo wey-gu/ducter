@@ -2539,6 +2539,9 @@ const signin: Record<Lang, Record<string, string>> = {
     "sites.clear.ask": "清除以后，这些网站都要你重新登录。",
     "sites.clear.go": "清除",
     "sites.keep": "取消",
+    "sites.chrome.title": "直接用你的 Chrome",
+    "sites.chrome.about": "这些网站要登录时，任务直接换到你 Mac 上已登录的 Chrome 接着做，不再先问。",
+    "sites.chrome.remove": "移除",
   },
   en: {
     "signin.title": "Sign in to %s",
@@ -2605,6 +2608,9 @@ const signin: Record<Lang, Record<string, string>> = {
     "sites.clear.ask": "After this, every site needs you to sign in again.",
     "sites.clear.go": "Clear",
     "sites.keep": "Keep them",
+    "sites.chrome.title": "Straight to your Chrome",
+    "sites.chrome.about": "When a task needs you signed in to one of these, it goes on in your own Chrome on your Mac, without asking first.",
+    "sites.chrome.remove": "Remove",
   },
 };
 
@@ -2622,6 +2628,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.reason.always_on.0": "一直醒着，合上电脑也不停",
     "where.reason.signed_in": "要用你登录着的 %s",
     "where.reason.signed_in.0": "要用你登录着的网站",
+    "where.reason.signed_in.always": "%s 以后都直接用你的 Chrome",
     "where.reason.only_app": "只有 %[1]s 有 %[2]s",
     "where.reason.only_chrome": "只有 %s 有你的 Chrome",
     "where.reason.only_web": "只有 %s 能上网",
@@ -2703,6 +2710,7 @@ const where: Record<Lang, Record<string, string>> = {
     "where.reason.always_on.0": "Always awake; keeps going when a laptop closes",
     "where.reason.signed_in": "Needs your signed-in %s",
     "where.reason.signed_in.0": "Needs the sites you're signed in to",
+    "where.reason.signed_in.always": "%s goes straight to your Chrome from now on",
     "where.reason.only_app": "Only %[1]s has %[2]s",
     "where.reason.only_chrome": "Only %s has your Chrome",
     "where.reason.only_web": "Only %s can browse",

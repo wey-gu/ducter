@@ -140,7 +140,7 @@ The partner may override the ranking with a reason, as today (principle 14).
 | Two computers can both start it, differences invisible (W1, W4) | never | the top row; the line says where |
 | The only computer that meets the needs is asleep, and **no** other computer could do it (W3) | never | it waits (`queued`, **在等 · MacBook 睡着了**), said once in the ack; **叫醒它 / Wake it** only where a wake path exists (A3) |
 | The best computer sleeps, another could do it **with a visible difference**: other sign-ins, or the user must sign in there (W2b) | **one line, default wait** | **等它醒（默认）** · **现在在 hel 上做**; not answering waits; no countdown (waiting is free, A3) |
-| The other computer would **widen** access (your Chrome instead of Ducter's browser; a computer signed in as you) | **always** | never automatic, never by a rule-free fallback; one exception (D505, §22): a sign-in a task asks for on a server goes to your Chrome on an awake Mac, said in its line |
+| The other computer would **widen** access (your Chrome instead of Ducter's browser; a computer signed in as you) | **always** | never automatic, never by a rule-free fallback; one exception (D505 and its rev., §22): a sign-in a task asks for on a server goes to your Chrome on an awake Mac after one card per site (换过去 / Move it there, then remembered), said in its line |
 | Your own pick can't run (the agent's computer can't be reached) | one line | **Claude Code 只在 MacBook 上，它现在连不上。等它，还是换个来做？** (D128's "never moves silently") |
 | The computer you named has no agent that can take it (a lent server with none signed in) | one line | no task opens; the partner says so and offers to sign one in there or do it elsewhere (D353) |
 | The repo isn't on the only awake computer | C1's clone ask, once per repo | — |
@@ -245,8 +245,9 @@ its pushed branch; uncommitted work never moves. What this note adds:
    (§4.3 step 5), so W6 rarely needs a move at all. This is the 惊喜.
 5. **Never toward more access without the person**: a move to the user's Chrome or a computer
    signed in as them always comes from their tap, their Go, or their words asking for their own
-   account (D376), or (D505, §22) from a task asking for their sign-in on a server, where the
-   alternative is typing a password into a browser the server relays.
+   account (D376), or (D505 and its rev., §22) from their 换过去 / Move it there on a site's first
+   sign-in card on a server (remembered for that site), where the alternative is typing a password
+   into a browser the server relays.
 
 ## 8. Copy (zh + en, from the glossary; D78 spacing: a space where Han meets Latin or a digit)
 
@@ -708,14 +709,15 @@ once. Research: research/219.
 - **Not yet:** a second account on the same computer (a Ducter-owned config folder), a key as a
   route the person agrees to, the partner's own turns on another account (`design/todo.md`).
 
-## 22. A server home signs in through your Mac's browser (D505)
+## 22. A server home signs in through your Mac's browser (D505 and its rev.)
 
 **Who.** The author: hel is the home (a server, Ducter's own browser, none of his sign-ins), the
 MacBook a worker whose Chrome is signed in everywhere. Every server-mode user is in the same
 place. **Before:** a task on hel that met a sign-in page asked him to sign in on hel, typing a
 password through a live view the server relays. **After:** the task goes on in the MacBook's
 Chrome, where he is signed in already; nothing is typed anywhere, the cookies stay on the Mac,
-and one line says where.
+and one line says where. Ducter asks once per site before it uses his own Chrome (D505 rev.), then
+never again for that site.
 
 - **Who judges.** The model: the partner's `needs.signedIn` from the person's words at the start
   (§4.1, W2), or, mid-task, the task's own `browser_ask_sign_in`. Code reads only facts: awake or
@@ -724,16 +726,27 @@ and one line says where.
 - **Where it goes** (`core/src/candidates.ts` `signInRoute`, `loadout.ts` `signInElsewhere`): a
   sign-in asked on a computer that is not a Mac goes to another awake computer that has it: a
   Ducter browser there signed in to the site first (least access), else the person's Chrome on a
-  Mac. The task **moves** by §7 (the same agent and model when it is there); no card. Not a remote
+  Mac. The task **moves** by §7 (the same agent and model when it is there). Not a remote
   browser step: their own Chrome is reachable only by an agent on that Mac, and driving their real
   profile from the server would put every session one command from leaving it.
-- **Still the card** (D151, as before): a task on a Mac; a step that is theirs on the page (a
+- **Asked once per site** (D505 rev.), only when the route is the person's own Chrome: the first
+  sign-in at a site is one go/hold card, in the task's language: **要登录 {site}。换到 {computer} 上你已登录的
+  Chrome 接着做？ / This needs you signed in to {site}. Continue on {computer}, in your Chrome where
+  you're signed in?** Go **换过去 / Move it there** moves the task and remembers the site (Settings'
+  `chromeSites`); Hold **我在这里登录 / I'll sign in here** puts the sign-in card below up where the
+  task is; unanswered it waits (A3, no countdown). Later sign-ins at that site move with no card.
+  A Ducter browser elsewhere already signed in to the site takes it with no card (nothing widens).
+  Never answered on a standing word (D499), a reply or a chat app's button.
+- **The remembered sites** are listed in 上网 / Web under Signed-in sites as **直接用你的 Chrome /
+  Straight to your Chrome**, one row per site with **移除 / Remove**; a site removed asks again.
+- **Still the sign-in card** (D151, as before): a task on a Mac; a step that is theirs on the page (a
   CAPTCHA, a code); buying or booking with no Ducter browser elsewhere already signed in to the
   site (D436: never in their Chrome, the pay gate is code only in Ducter's browser); no computer
   that has it; a move that fails.
-- **What they see.** No new words: the task's move line **换到 {computer} 接着做 / Continued on
+- **What they see.** The task's move line **换到 {computer} 接着做 / Continued on
   {computer}**, its meta **在 {computer} 上 · 用你的 Chrome**, and on a tap **要用你登录着的 {site} /
-  Needs your signed-in {site}**. The partner gets a hidden note and answers "why is it on the
+  Needs your signed-in {site}**, or for a remembered site **{site} 以后都直接用你的 Chrome / {site}
+  goes straight to your Chrome from now on**. The partner gets a hidden note and answers "why is it on the
   MacBook?" only when asked.
 - **The sign-ins stay where they are.** In their Chrome by construction (the agent runs on that
   Mac; reports, page text and evidence come back). In a worker's Ducter browser the worker's relay
@@ -745,4 +758,5 @@ and one line says where.
   wakes, never back to the server by itself.
 - **Not yet** (`design/todo.md`): with the Mac asleep, wait for it by default with signing in on
   hel as the other choice; a sign-in in a worker's Ducter browser still relays keys through the
-  home; a standing "never my Chrome"; the live run (`ducter check run worker-browser`).
+  home; a standing "never my Chrome" said to the partner (a partner-tool change); the live run
+  (`ducter check run worker-browser`).

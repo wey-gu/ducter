@@ -1761,6 +1761,9 @@ type Settings struct {
 	// Met are the first-time lines already met on any device (D451); nil
 	// from a home too old to keep them (then none is ever shown).
 	Met []string `json:"met"`
+	// ChromeSites (D505 rev.): sites whose sign-ins go straight to the person's
+	// own Chrome on their Mac (换过去 on a site's first card).
+	ChromeSites []string `json:"chromeSites,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -1781,6 +1784,9 @@ type SettingsPatch struct {
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
 	// Met adds first-time lines met here (D451); never removes.
 	Met []string `json:"met,omitempty"`
+	// ChromeSites (D505 rev.) keeps only these sites (移除 / Remove); never adds.
+	// A pointer so that an empty list is sent.
+	ChromeSites *[]string `json:"chromeSites,omitempty"`
 }
 
 // Peers is the partner's link with the person's own agents (D332, one

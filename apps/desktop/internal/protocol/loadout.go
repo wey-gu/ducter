@@ -89,6 +89,8 @@ type WhereWhy struct {
 	RuleID string `json:"ruleId,omitempty"`
 	Text   string `json:"text,omitempty"`
 	Uses   string `json:"uses,omitempty"`
+	// Always (D505 rev.): with signed_in, the site goes straight to their Chrome.
+	Always bool `json:"always,omitempty"`
 }
 
 // TaskBody is who does a task now, and why.

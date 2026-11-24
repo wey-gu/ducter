@@ -17,6 +17,8 @@ import type { BrowserHost } from "./host.ts";
 import { isKey, pressKey } from "./keys.ts";
 import { focusExpression, locateExpression, narrow, PAY_FACTS, readExpression } from "./reader.ts";
 import type { BrowserNotes } from "./notes.ts";
+import { siteOf } from "./sites.ts";
+import { words, type LangTag } from "@ducter/protocol/src/lang.ts";
 
 const READ_CHARS = 16_000;
 const OPEN_LINES = 120;
@@ -189,10 +191,19 @@ export interface BrowserToolsDeps {
   media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
   /** D505: a sign-in the person already has on another awake computer: the task goes there instead of the card. */
   signInElsewhere?: SignInElsewhere;
+  /** D505 (rev.): the sites the person said go straight to their own Chrome (Settings' chromeSites); 换过去 adds one. */
+  chromeSites?: { has(site: string): boolean; add(site: string): void };
 }
 
+/** D505 (rev.): the one card before a sign-in goes to the person's own Chrome on their Mac, the first time for a site. */
+const WHERE_SIGN_IN = {
+  zh: { question: "要登录 {site}。换到 {to} 上你已登录的 Chrome 接着做？", go: "换过去", hold: "我在这里登录" },
+  en: { question: "This needs you signed in to {site}. Continue on {to}, in your Chrome where you're signed in?", go: "Move it there", hold: "I'll sign in here" },
+};
+const fillIn = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? "");
+
 /** D505: where a sign-in the person already has is (loadout.signInElsewhere, the runner bound). */
-export type SignInElsewhere = (taskId: string, site: string) => Promise<{ to: string; uses: "chrome" | "ducter"; move(): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
+export type SignInElsewhere = (taskId: string, site: string) => Promise<{ to: string; uses: "chrome" | "ducter"; move(o?: { always?: string }): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
 
 export function registerBrowserTools(d: BrowserToolsDeps): void {
   const { mcp, host } = d;
@@ -427,6 +438,79 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     },
   );
 
+  /** D151: the sign-in card (or the person's own step on the page) where the task is. */
+  const askHere = (taskId: string, url: string, site: string, why: string, step = "") => {
+    const card = d.tasks.get(taskId);
+    const q: Question = step
+      ? { id: "step", text: `Your step on ${site}: ${step}`, blocking: true, default: "Done", reversible: false, signIn: { site, url, step } }
+      : { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
+    const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || (step ? `Needs you on ${site}: ${step}` : `Needs you to sign in to ${site}.`), questions: [q], evidence: [] };
+    d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
+    d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+  };
+  /** The task's tab on the sign-in page (kept when it is already there). */
+  const openSignIn = async (taskId: string, url: string) => {
+    const send = await page(taskId, true);
+    const here = await evaluate(send, "location.href").catch(() => "");
+    if (String(here).split("#")[0] !== url.split("#")[0]) {
+      await send("Page.navigate", { url });
+      await settle(send);
+    }
+  };
+  /** D505: move the task to where the sign-in is; a move that fails puts the card up here after all. */
+  const moveFor = (taskId: string, there: { to: string; move(o?: { always?: string }): Promise<{ ok: boolean; message?: string }> }, url: string, why: string, always?: string) =>
+    void there
+      .move(always ? { always } : undefined)
+      .catch((e: Error) => ({ ok: false, message: e.message }))
+      .then(async (r) => {
+        if (r.ok) return;
+        console.warn(`[browser] couldn't move ${taskId} to ${there.to} for its sign-in:`, r.message);
+        await openSignIn(taskId, url).catch(() => {});
+        askHere(taskId, url, hostOf(url)!, why);
+      });
+  /** D505 (rev.): 换到 {to} 上你已登录的 Chrome 接着做？ in the task's language: Go moves it and remembers the site; Hold signs in here. */
+  const askWhere = (taskId: string, w: { site: string; url: string; to: string }, why: string) => {
+    const card = d.tasks.get(taskId);
+    const open = d.log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { language?: LangTag } | undefined;
+    const t = words(WHERE_SIGN_IN, open?.language);
+    const text = fillIn(t.question, { site: w.site, to: w.to });
+    const q: Question = { id: "sign_in_where", text, blocking: true, default: t.go, reversible: false, signInWhere: { ...w, hold: t.hold } };
+    const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || text, questions: [q], evidence: [] };
+    d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
+    d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+  };
+  // D505 (rev.): the answer, whenever it comes (after a restart too: the card's facts are on it).
+  const asked = new Map<string, NonNullable<Bodies["decision"]["signInWhere"]> & { taskId: string }>();
+  d.log.subscribe((e) => {
+    if (e.kind === "decision") {
+      const b = e.body as Bodies["decision"];
+      if (b.signInWhere && b.taskId) asked.set(b.decisionId, { ...b.signInWhere, taskId: b.taskId });
+      return;
+    }
+    if (e.kind !== "decision_resolved") return;
+    const r = e.body as Bodies["decision_resolved"];
+    let a = asked.get(r.decisionId);
+    if (!a) {
+      const b = d.log.read({ stream: "channel", kinds: ["decision"], beforeSeq: e.seq, limit: 1000 }).map((x) => x.body as Bodies["decision"]).find((x) => x.decisionId === r.decisionId);
+      if (!b?.signInWhere || !b.taskId) return;
+      a = { ...b.signInWhere, taskId: b.taskId };
+    }
+    asked.delete(r.decisionId);
+    const { taskId, site, url } = a;
+    const why = "";
+    // A reply is words to the task (it asks again if it still needs to); closed by what happened: nothing.
+    if (r.option === "reply" || r.by === "ended") return;
+    if (r.option === "hold") return void openSignIn(taskId, url).catch(() => {}).then(() => askHere(taskId, url, hostOf(url)!, why));
+    d.chromeSites?.add(site);
+    void (async () => {
+      const there = await d.signInElsewhere?.(taskId, hostOf(url)!).catch(() => undefined);
+      if (there && "to" in there) return moveFor(taskId, there, url, why, there.uses === "chrome" ? site : undefined);
+      // The Mac went to sleep or away since: the sign-in card here, so the task never waits on nothing.
+      await openSignIn(taskId, url).catch(() => {});
+      askHere(taskId, url, hostOf(url)!, why);
+    })();
+  });
+
   reg(
     "browser_ask_sign_in",
     "When the work needs the user signed in to a site: opens its sign-in page in your tab and asks the user to sign in themselves, in a live view of this browser (you can't see it while they do). Then end your turn; a message arrives when they're done. Never type passwords or codes yourself.",
@@ -450,42 +534,25 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       // D505: on a computer the person doesn't sit at (a server home), a sign-in they already have
       // on another awake computer is used there: the task moves, nothing is typed here, and their
       // sign-ins never leave that computer. A step that is theirs on this page (step) stays here.
+      // D505 (rev.): the person's own Chrome is asked once per site (换过去 remembers it); Ducter's own
+      // browser elsewhere, already signed in, takes it without a card (no wider access).
       const why = String(args.why ?? "").trim().slice(0, 300);
-      const ask = () => {
-        const card = d.tasks.get(taskId);
-        const q: Question = step
-          ? { id: "step", text: `Your step on ${site}: ${step}`, blocking: true, default: "Done", reversible: false, signIn: { site, url, step } }
-          : { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
-        const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || (step ? `Needs you on ${site}: ${step}` : `Needs you to sign in to ${site}.`), questions: [q], evidence: [] };
-        d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
-        d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
-      };
       if (!step && d.signInElsewhere) {
         const there = await d.signInElsewhere(taskId, site).catch(() => undefined);
         if (there && "to" in there) {
+          const remembered = siteOf(site);
+          if (there.uses === "chrome" && !d.chromeSites?.has(remembered)) {
+            askWhere(taskId, { site: remembered, url, to: there.to }, why);
+            return `Asked the user whether to carry on on ${there.to}, in their own Chrome where they are signed in to ${site}, or to sign in here. End your turn now. Either Ducter moves this task there (you carry on there from your saved progress) or a message arrives once they've signed in here (then browser_read to check).`;
+          }
           // After this answer reaches the task (the move ends its session). A move that fails puts
           // the sign-in card up here after all, so the task never waits on nothing.
-          setTimeout(() => {
-            void there
-              .move()
-              .catch((e: Error) => ({ ok: false, message: e.message }))
-              .then((r) => {
-                if (r.ok) return;
-                console.warn(`[browser] couldn't move ${taskId} to ${there.to} for its sign-in:`, r.message);
-                ask();
-              });
-          }, 0);
+          setTimeout(() => moveFor(taskId, there, url, why, there.uses === "chrome" ? remembered : undefined), 0);
           return `Don't sign in here. The user is already signed in to ${site} on ${there.to} (${there.uses === "chrome" ? "in their own Chrome" : "in Ducter's browser there"}), so Ducter is moving this task there now; you carry on there from your saved progress. End your turn now.`;
         }
       }
-      const send = await page(taskId, true);
-      const here = await evaluate(send, "location.href").catch(() => "");
-      // Already on that page (it asked to sign in right there): keep it; else open the sign-in page.
-      if (String(here).split("#")[0] !== url.split("#")[0]) {
-        await send("Page.navigate", { url });
-        await settle(send);
-      }
-      ask();
+      await openSignIn(taskId, url);
+      askHere(taskId, url, site, why, step);
       return step
         ? `Asked the user to do this step on ${site} themselves. End your turn now. When they're done you'll get a message; then browser_read to check, and carry on.`
         : `Asked the user to sign in to ${site}. End your turn now. When they're done you'll get a message; then browser_read to check you're signed in.`;

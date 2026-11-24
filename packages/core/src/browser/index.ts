@@ -6,7 +6,7 @@ import { installChrome, type InstallResult, type InstallStep } from "./chrome.ts
 import { createBrowserHost, type BrowserHost, type HostOptions } from "./host.ts";
 import { createLive, type Live, type LiveDeps } from "./live.ts";
 import { createSites, type Sites } from "./sites.ts";
-import { registerBrowserTools, type SignInElsewhere } from "./tools.ts";
+import { registerBrowserTools, type BrowserToolsDeps, type SignInElsewhere } from "./tools.ts";
 import { checkBrowser, checkLine } from "./check.ts";
 import type { BrowserAbout, BrowserCheck, MediaRef, TaskNeeds } from "@ducter/protocol";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
@@ -64,6 +64,8 @@ export interface DucterBrowserOptions extends HostOptions {
   media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
   /** D505: a sign-in the person already has on another awake computer (the loadout's). */
   signInElsewhere?: SignInElsewhere;
+  /** D505 (rev.): the sites whose sign-ins go straight to the person's own Chrome (Settings' chromeSites). */
+  chromeSites?: BrowserToolsDeps["chromeSites"];
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -82,7 +84,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
   const notes = createBrowserNotes();
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona, notes, ...(o.tell ? { tell: o.tell } : {}) });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}), ...(o.mayPay ? { mayPay: o.mayPay } : {}), ...(o.media ? { media: o.media } : {}), ...(o.signInElsewhere ? { signInElsewhere: o.signInElsewhere } : {}) });
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}), ...(o.mayPay ? { mayPay: o.mayPay } : {}), ...(o.media ? { media: o.media } : {}), ...(o.signInElsewhere ? { signInElsewhere: o.signInElsewhere } : {}), ...(o.chromeSites ? { chromeSites: o.chromeSites } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;

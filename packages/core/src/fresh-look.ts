@@ -42,7 +42,7 @@ export type LookWhat = "code" | "outward";
 /** What the look would read this report as, or undefined when it gets none. */
 export function lookWhat(r: Bodies["report"]): LookWhat | undefined {
   if (r.state === "needs_input") {
-    const outward = r.questions.some((q) => !q.pay && !q.fill && !q.key && !q.signIn && !q.phone && !q.computer && !q.handset && !q.where && OUTWARD.test(`${q.text}\n${q.default ?? ""}`));
+    const outward = r.questions.some((q) => !q.pay && !q.fill && !q.key && !q.signIn && !q.signInWhere && !q.phone && !q.computer && !q.handset && !q.where && OUTWARD.test(`${q.text}\n${q.default ?? ""}`));
     return outward ? "outward" : undefined;
   }
   if (r.state !== "done") return undefined;

@@ -215,7 +215,8 @@ func TestCharacterSheet(t *testing.T) {
 
 		// Turning on an ability is one tap: Use the computer off is one tap too (nothing at stake).
 		app = sheetApp(t, lang, "awake")
-		tt = sheetTester(app, 1280, 860, true)
+		// D538: 关于这台 sits above the connections' fold: a window tall enough to reach its foot.
+		tt = sheetTester(app, 1280, 940, true)
 		var sent []any
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		click(tt, spoken(L, L.T("chip.computer"), L.T("chip.state.on")))

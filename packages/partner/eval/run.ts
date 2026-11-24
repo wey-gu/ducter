@@ -720,10 +720,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D376: other computers (the [devices] line), and task_switch's move to one recorded, not made.
   if (sc.computers) {
     const others = sc.computers;
-    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false, os: c.os ?? "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })) }));
+    // D538: a computer's memory as it measured it ([total GB, free GB]).
+    const res = (m: [number, number] | undefined) => (m ? { at: "2026-11-24T08:00:00.000Z", memTotal: m[0] * 2 ** 30, memFree: m[1] * 2 ** 30, cores: m[0] >= 32 ? 16 : 4 } : undefined);
+    const memOf = (m: [number, number] | undefined) => (m ? { mem: { total: m[0] * 2 ** 30, free: m[1] * 2 ** 30 } } : {});
+    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false, os: c.os ?? "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })), ...(c.mem ? { resources: res(c.mem) } : {}) }));
+    if (sc.homeMem) {
+      const was = core.homeDevice?.bind(core);
+      (core as { homeDevice?: unknown }).homeDevice = () => ({ ...(was?.() ?? { name: "" }), resources: res(sc.homeMem) });
+    }
     const comps: Computer[] = [
-      { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" } },
-      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: c.online === false ? ("unreachable" as const) : ("awake" as const), alwaysOn: false, mac: (c.os ?? "macOS") === "macOS", harnesses: [], web: { on: true, where: c.web } })),
+      { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" }, ...memOf(sc.homeMem) },
+      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: c.online === false ? ("unreachable" as const) : ("awake" as const), alwaysOn: false, mac: (c.os ?? "macOS") === "macOS", harnesses: [], web: { on: true, where: c.web }, ...memOf(c.mem) })),
     ];
     core.loadout.computers = async () => comps;
     core.loadout.switchTask = async (taskId, harness, _m, _r, device) => {

@@ -7,7 +7,7 @@ import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_K
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, roomFor, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D395: the levels tried, in order, when the model doesn't offer the one asked for in words. */
@@ -34,6 +34,10 @@ export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
   choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476: the person's word on where it runs */ bound?: TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
+  /** D538: whether that computer ("local" the home) has room for heavy work now (a task waiting for room asks). */
+  room(device: string): Promise<boolean>;
+  /** D538: heavy tasks at work or starting now, per computer ("local" the home). */
+  heavyNow(): Map<string, number>;
   /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
   candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }, opts?: { every?: true }): Promise<Candidate[]>;
@@ -98,7 +102,9 @@ export function createLoadout(o: {
     const f = await frameOf(v);
     if (!f) return undefined;
     clients = f.reach?.clients;
-    const comps = computersOf(f.devices, o.sites);
+    // D538: each computer's heavy tasks at work or starting now, beside its measured memory.
+    const heavy = heavyOn();
+    const comps = computersOf(f.devices, o.sites).map((c) => (heavy.get(c.id) ? { ...c, heavyNow: heavy.get(c.id)! } : c));
     const which = whichPhone(needs);
     // D251: Ducter's own phone only where it is on (用手机); the person's phone never stands in.
     if (which === "ducter") return comps;
@@ -110,6 +116,21 @@ export function createLoadout(o: {
     // D247: no phone anywhere, but their Android app is here: the task opens, and offers it there.
     if (!comps.some((c) => c.phone) && o.handsetOffer?.()) return comps.map((c) => ({ ...c, phone: true }));
     return comps;
+  };
+  /**
+   * D538: heavy tasks (the partner's needs.heavy, kept on the task's own task_open) at work or about
+   * to start, per computer ("local" for the home). A task waiting for room isn't one of them.
+   */
+  const heavyOn = (): Map<string, number> => {
+    const n = new Map<string, number>();
+    for (const c of o.tasks.list()) {
+      if (c.attention !== "working" && c.attention !== "queued") continue;
+      const open = o.log.read({ stream: taskStream(c.taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      if (!open?.needs?.heavy) continue;
+      const d = ("device" in c.place && c.place.device) || "local";
+      n.set(d, (n.get(d) ?? 0) + 1);
+    }
+    return n;
   };
   /** A computer the user named in the place (not the home's "local" default), for a place that can go anywhere. */
   const pinOf = (place?: Place) => {
@@ -181,6 +202,14 @@ export function createLoadout(o: {
 
   const api: Loadout = {
     computers,
+    heavyNow: () => heavyOn(),
+
+    async room(device) {
+      const comps = await computers();
+      const c = comps?.find((x) => x.id === device || (device === "local" && x.home));
+      // Gone from the frame, or no frame at all: no opinion; the task starts and its computer says.
+      return !c || (c.state === "awake" && roomFor(c));
+    },
 
     stop() {
       stopped = true;
@@ -477,11 +506,11 @@ export function createLoadout(o: {
 }
 
 /** The partner's rule tools: save a rule the person agreed to, list the rules (role "partner"). */
-export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
+export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore, o?: { computers?: () => { id: string; name: string; home: boolean }[] }) {
   mcp.register(
     "partner",
     "rule_save",
-    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. The user removes rules on the Partner page; never remove one yourself.",
+    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. A computer for some work (\"验证的活多放 haswell\", \"hel 别跑浏览器\"): place, device, for; no harness. The user removes rules on the Partner page; never remove one yourself.",
     {
       type: "object",
       properties: {
@@ -493,11 +522,24 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
         kind: { type: "array", items: { type: "string", enum: [...WORK_KINDS] }, description: "The task_open kinds it covers (订酒店、看机票这类: errand)" },
         never: { type: "boolean", description: "NOT this agent (or model) for it" },
         no_second_look: { type: "boolean", description: "这类不用复查: no other AI looks this kind's results over first (kind; none: all work); no harness" },
+        place: { type: "string", enum: ["prefer", "avoid"], description: "More (prefer) or less (avoid) of it on device" },
+        for: { type: "string", enum: ["heavy", "web", "all"], description: "With place: heavy, web or all work" },
       },
       required: ["text"],
     },
-    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown; no_second_look?: unknown }) => {
+    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown; no_second_look?: unknown; place?: unknown; for?: unknown }) => {
       try {
+        // D538: which computer gets which work: a placement rule, the person's own, shared by every partner.
+        if (a.place === "prefer" || a.place === "avoid") {
+          const device = typeof a.device === "string" ? a.device.trim() : "";
+          if (!device) return { ok: false, error: "A computer rule names its computer: device, as [devices] names it." };
+          const comps = o?.computers?.();
+          const hit = comps?.find((c) => c.name.toLowerCase() === device.toLowerCase() || c.id === device || (c.home && device === "local"));
+          if (comps && !hit) return { ok: false, error: `No computer called "${device}". The [devices] line lists them: ${comps.map((c) => c.name).join(", ")}.` };
+          const kinds = (Array.isArray(a.kind) ? a.kind.map(String) : typeof a.kind === "string" ? [a.kind] : []).filter(isWorkKind);
+          const r = rules.addWhere({ text: String(a.text ?? ""), device: hit?.name ?? device, ...(a.place === "avoid" ? { avoid: true } : {}), ...(a.for === "heavy" ? { heavy: true } : a.for === "web" ? { web: true } : {}), ...(kinds.length ? { kinds } : {}), ...(Array.isArray(a.match) ? { match: a.match.map(String) } : {}) });
+          return { ok: true, rule: r, note: `Saved: it shows on ${r.device}'s card (About this computer) and on the Partner page. Say it back in one short line in their words.` };
+        }
         // D499 (retiring D437's word reader): the partner keeps 这类不用复查 itself; code keeps only what it names.
         if (a.no_second_look === true) {
           const kinds = (Array.isArray(a.kind) ? a.kind.map(String) : typeof a.kind === "string" ? [a.kind] : []).filter(isWorkKind);

@@ -1517,7 +1517,7 @@ export function OnHandList({ room }: { room: Room }) {
   // and its PR merged or closed): never scattered into 在做 or 今天做完. A helper whose work waits for
   // the person stands at the head of 等你; the rest under 你的帮手 after the waits. Find and the rail
   // beside an opened task show the tasks as rows, each with its helper's name.
-  // D511: 在照看的 / Looking after takes the place of 你的帮手 and 一直在跑的 when the home sends Keeps:
+  // D511: 看守中 / Looking after takes the place of 你的帮手 and 一直在跑的 when the home sends Keeps:
   // each Keep one sheet; a task it owns stands under it (a Keep in rounds is its task), never in 在做
   // or 在等; one that waits for the person stays in 等你 once, its row naming the Keep.
   const keepsOn = A.S.onHand?.keeps;
@@ -1646,7 +1646,7 @@ export function OnHandList({ room }: { room: Room }) {
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
-      {/* D511: 在照看的 / Looking after: what Ducter keeps on for the person, each its own sheet, after the waits. */}
+      {/* D511: 看守中 / Looking after: what Ducter keeps on for the person, each its own sheet, after the waits. */}
       {ks.length > 0 && show(2) && (
         <Section name={t("keep.section")}>
           {ks.map((k) => (

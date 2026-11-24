@@ -1,4 +1,4 @@
-// D511: 照看 / Looking after, built: On hand's 在照看的 with the author's real setup on hel, each a Keep
+// D511: 照看 / Looking after, built: On hand's 看守中 with the author's real setup on hel, each a Keep
 // carried over from what was there before (the migration on start): the PR babysitter (a helper, D507's
 // busy shape: #11030 fixing lint, #10932 asking for /test, #10847 can merge), the review loop every 45
 // minutes (a task in rounds, D498: its rounds, most of them silent, one asking for the 2 drafted

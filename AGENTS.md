@@ -93,7 +93,7 @@ Design notes:
 - `made.md`: 给你做的 / Made for you, what Ducter made found again: asked for, or browsed in Past tasks (D383).
 - `apps.md`: 小应用 / Apps, small apps the partner makes from one sentence: kept on the home, sandboxed, changed by talking, asking the partner from inside (D405); their place 你的小应用 / Your apps, the kit, apps that open already filled (D410).
 - `documents.md`: 拿去就能发 / Ready to send, a document the person will send held to a bar, checked page by page, an Office file read as its pages (D439).
-- `standing-work.md`: 照看 / Looking after, one object for work Ducter keeps on: helpers, routines, loops and babysits as a Keep with wakes, a judged goal, held items, rounds, asks, rules; its sheet on On hand and its own page (D511, built: phases 1–3).
+- `standing-work.md`: 看守中 / Looking after, one object for work Ducter keeps on: helpers, routines, loops and babysits as a Keep with wakes, a judged goal, held items, rounds, asks, rules; its sheet on On hand and its own page (D511, built: phases 1–3).
 - `move.md`: moving Ducter to another computer with nothing lost: what goes, what is redone and why, what follows the new address, work under way, the Mem/Bridge handover, cut-over and the way back; `ducter move --plan` first (D504).
 - `tidy.md`: 整理工作副本 / tidying the working copies Ducter made: the keep-rules, the windows (finished 3 days, dropped 7) from hel's Log, `git worktree remove` only, the quiet line, `ducter worktrees` (D514).
 - `self-repair.md`: what fails (task starts, mid-run, finish, the partner, state), the ladder Ducter climbs by itself within budgets, the partner as the judgment rung, the person once; `ducter repairs` (D473).

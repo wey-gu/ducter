@@ -60,6 +60,7 @@ func (a *App) task(c *ui.Context) {
 		// motion.
 		still := c.Preferences().ReduceMotion
 		stage := ui.Box(c.Key("taskstage")).Grow(1).MinWidth(0).MinHeight(0)
+		a.toastsOver(stage) // D527: between On hand's rail and the workbench
 		if !still {
 			stage.ChildExit(ui.Motion{})
 		}

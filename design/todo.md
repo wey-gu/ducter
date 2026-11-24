@@ -42,10 +42,15 @@ line.
 - [ ] **Seen on a real hel restart:** the Mac app on hel's next update or restart says 正在重新连上 hel…
   and comes back by itself; `app.log` shows `lost the home: … refused the connection for now`.
   *Trigger:* the first release with D520 on the author's Mac.
-- [ ] **The web client, iPhone and Android** still treat a 401 from `api/me` on their own origin as
-  revoked and clear the token (`apps/web/src/main.tsx` `opening`). Same rule: ask the standing,
-  leave only on a signed gone. *Trigger:* next change to the web client's boot, or a phone report of
-  the same card.
+- [x] **The web client, iPhone and Android** keep the token on a 401 and leave only on a signed gone
+  (D532).
+- [ ] **D532 on a real phone:** the iPhone app (Simulator first) and an Android phone over hel's Caddy
+  through a hel restart: 正在重新连上 hel…, back by itself, and `ducterresume` redialing on coming to
+  the front; WebKit's and Android WebView's Ed25519 in WebCrypto checked on the oldest supported OS
+  (without it no revoke is ever acted on: the long-outage notice stays, and 再连一次 is the way out). *Trigger:* the first release
+  with D532.
+- [ ] **The pair screen's notice in dark** (D532): the sunken tint is the Mac's notice token, faint on
+  the dark paper. *Trigger:* the author's review of the shots.
 - [ ] **Why hel's home was OOM-killed three times in four minutes** (2026-11-24 07:26–07:30 UTC,
   6.8 GB peak): its own investigation. *Trigger:* next.
 ## Toasts, after D527 (`ui.md` "Toasts: one slot")
@@ -1013,6 +1018,8 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 
 ### Several partners in chat apps (D516, `channels.md` §10)
 
+- [ ] **D531 live on a real Slack** (trigger: the author's next Slack check on hel): the manifest imported as is, `app_redirect` landing on the Messages tab, `icon_url` from ducter.ai shown per message, a reinstall clearing the update line, a channel @-mention answered in its thread; and whether Slack answers `missing_scope` or drops a username quietly without `chat:write.customize`.
+- [ ] **Faces per partner from the home itself** (trigger: a home without internet to ducter.ai, or a partner's own look beyond the five): serve the PNG from the home when it has an https address (D228), else keep the site's.
 - [ ] **A bot of its own per partner** on Telegram and Slack: Settings › Chat apps binds a second bot (or Slack app) to a chosen partner, so it is its own contact in the chat app's list (D513's shape); the one thread stays for WeChat and iMessage. Trigger: a person with several partners asks, or the author's review.
 - [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
 - [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
@@ -1044,6 +1051,11 @@ Built against a fake iLink and CDN only.
 - [ ] **agy on web work**: never routed there (`no_web`), since OAR refuses `exclude` for agy (draft §3). Trigger: an OAR release that supports it.
 - [ ] **A live background check in the probe**: `scripts/probe-harnesses.ts --live` runs research/222's two cheap runs (Claude Code haiku, Codex luna, scratch homes) and fails when `background.ownTurn` no longer holds. Trigger: the next Claude Code or Codex upgrade past the verified range.
 - [ ] **The card's wait sentence for background work** (D261: a wait says what it waits for): "在后台跑着：{x}" as the card's line while the task's turn is over. Trigger: the author's review of D266 on On hand.
+- [ ] **Stop for a Codex background terminal** (D521): the tray offers no 停下 on one, because OAR 0.124's `stopTask` covers a Codex subagent's turn only and a background terminal is an open tool call, not a task (`runtimes/codex/task-control.js`: "Task id is not an observed child of this session"). Ask OAR for a terminal kill (Codex's app-server has the process; add it beside §1 of the issue draft), then set `stop` on those starts. Trigger: an OAR release with it.
+- [ ] **Antigravity's and pi's background work in the tray** (D521): none shows, since OAR reports no task events for them. Trigger: OAR reporting them.
+- [ ] **The tray live** (D521): one Claude Code task with a background shell, a Monitor and a subagent through Ducter's runner, Stop on one, its wake saying the person stopped it; the On hand count. Trigger: before the release that carries D521.
+- [ ] **The background list on request** (D521's alternative): if On hand frames grow heavy with finished tails (30 a task, 600 characters each), send the finished ones only to the socket that opened the task. Trigger: an On hand frame over 256 KB.
+- [ ] **iOS Simulator pass on the tray** (D521): the phone shots are Chrome at 390 and 320; review it in the iPhone app's own web view. Trigger: the next iPhone build.
 
 ## iMessage through the Mac app (D277, `design/imessage.md`)
 
@@ -1297,9 +1309,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       worker's link is slow too. Trigger: the author's review of D284.
 
 - [ ] **A long session, after D320**: (1) scroll a real 50,000-event loop on the author's VPS home
-      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) The
-      locator's rail draws one tick per turn: past about 2,000 turns the ticks merge; consider
-      drawing it by time or by density. (3) The browser app a run of steps is in no longer
+      in the Mac app and Safari on an iPhone (the perf tests and headless Chrome only). (2) Done by
+      D526: the rail draws one mark per landmark and keeps the one that matters where two touch;
+      still owed: whether a long quiet stretch should take more room (the rail by time). (3) The browser app a run of steps is in no longer
       carries from the turn before (a turn is built only when drawn). (4) Key redaction is slow
       on one megabyte-long token (a base64 blob): the cut at 20,000 characters bounds it at about
       half a second; a faster redaction for long tokens. (5) Placeholders are blank; a faint

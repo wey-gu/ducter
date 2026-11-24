@@ -6,6 +6,8 @@ import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
 import { AutoText, ComposerBox } from "./composer.tsx";
+import { BgTray } from "./bg-tray.tsx";
+import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -36,7 +38,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say, Waiting } from "./set-grid.tsx";
-import { DangerButton } from "./controls.tsx";
+import { DangerButton, Notice } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -1726,6 +1728,40 @@ function Counts() {
   );
 }
 
+/**
+ * D532: the link lost for a while, said plainly above the composer (the Mac's linkLostNotice): what
+ * is wrong, where to look, when it tries next, Try now; for a home elsewhere a quiet 再连一次 too.
+ * The token and everything on screen stay; only the home's own word ends the pairing.
+ */
+export function LinkLost() {
+  const lost = A.link() === "lost";
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!lost) return;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [lost]);
+  if (!lost) return null;
+  const home = A.linkHome();
+  const far = A.linkElsewhere();
+  const left = Math.ceil(((A.conn?.nextAt ?? 0) - Date.now()) / 1000);
+  return (
+    <Notice
+      class="link-lost"
+      glyph="pebble"
+      title={far ? t("conn.lost.title", home) : t("conn.lost.title.local")}
+      body={far ? t("conn.lost.body", home) : t("conn.lost.body.local")}
+      sub={left > 0 ? t("conn.retry.in", left) : t("conn.retrying")}
+      actions={
+        <>
+          {far && A.onLinkAgain && <Btn kind="text" size="sm" label={t("conn.lost.again")} onClick={() => A.onLinkAgain?.()} />}
+          <Btn kind="secondary" size="sm" label={t("conn.retry")} onClick={() => A.linkRetry()} />
+        </>
+      }
+    />
+  );
+}
+
 function Held() {
   if (!A.held) return null;
   return (
@@ -1770,6 +1806,7 @@ function Composer({ taskId }: { taskId?: string }) {
   const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
     <div class="composer-wrap" ref={wrap}>
+      <LinkLost />
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       {/* D305: hold to talk, over the conversation's composer. */}
@@ -2734,6 +2771,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </button>
         </div>
       )}
+      {/* D521: its agent's background work, over the composer. */}
+      <BgTray taskId={id} bg={task.card?.background} />
       <TaskFoot task={task} blocks={blocks} />
       {/* A pending ask sits over the composer, where the answer is typed (D152). */}
       {d && !d.resolved && (

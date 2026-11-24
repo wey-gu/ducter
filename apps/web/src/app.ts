@@ -14,7 +14,8 @@ import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type Vi
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import type { View } from "@ducter/protocol/src/session.ts";
-import { Api, Connection, deviceName, myShape, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { Api, Connection, deviceName, myShape, pinFp, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { heard, LONG_OUTAGE_MS, linkState, memoStore, type LinkState } from "./link.ts";
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -636,9 +637,12 @@ class AppState {
         this.status = s;
         // D209: the app, which opened this page from its cache, learns whether the home answers.
         if (s !== "connecting" && inApp()) tellReach(s === "connected");
+        this.linkTick();
         this.changed();
       },
     );
+    // D532: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
+    this.conn.onRefused = () => (this.linkTick(), this.changed(), this.onLinkRefused?.());
     this.conn.onWritten = (f) => {
       if (f.t === "task_action" && (f.action === "merge" || f.action === "open_pr")) this.actSent.set(f.taskId, f.action);
     };
@@ -826,6 +830,8 @@ class AppState {
       learnModelLabels(devices.flatMap((d) => d.harnesses)); // D355: a model in its agent's own words
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
+      // D532: the home's name, for the link's words on a later open while it can't be reached.
+      if (home?.name && this.linkMemo.get().home !== home.name) this.linkMemo.set({ ...this.linkMemo.get(), home: home.name });
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
     if (f.t === "lend") return void ((this.lend = applyLend(this.lend, f)), this.changed());
@@ -936,10 +942,19 @@ class AppState {
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
+    // D521: a stop the agent refused: the row runs on, and says so once.
+    if (f.t === "action_result" && f.action === "stop_background" && !f.ok) {
+      for (const k of this.bgStopping.keys()) if (k.startsWith(`${f.taskId}|`)) this.bgStopping.delete(k);
+      this.toast(this.L.t("bg.stop.failed"));
+    }
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
     if (f.t === "welcome") {
+      // D532: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
+      if (f.fp) pinFp(f.fp);
+      heard(this.linkMemo);
+      this.onLinkHeard?.();
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D381: what is pinned comes right after, for the default conversation only.
       this.pins = [];
@@ -3443,6 +3458,16 @@ class AppState {
     this.changed();
   }
 
+  /** D521: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */
+  bgStopping = new Map<string, number>();
+  stopBackground(id: string, job: string) {
+    const k = `${id}|${job}`;
+    if (this.bgStopping.has(k)) return;
+    this.bgStopping.set(k, Date.now());
+    this.send({ t: "task_action", taskId: id, action: "stop_background", job });
+    this.changed();
+  }
+
   /** D395: a task that couldn't start: start it on another computer's copy, clone it here, or ask again. */
   cantAction(id: string, action: "start_at" | "clone_here" | "reopen" | "clear_lock" | "start_in", device?: string, place?: Place) {
     // D472: one tap is one start: a second within a moment (a double click, the brief and the page) is the same.
@@ -3580,6 +3605,50 @@ class AppState {
     return "idle";
   }
 
+  // ---------- the link to the home (D532, the web's D520) ----------
+
+  /** What this device remembers of its home's answers (link.ts). */
+  linkMemo = memoStore(typeof localStorage === "undefined" ? undefined : localStorage);
+  /** The link as the person meets it now. */
+  link(now = Date.now()): LinkState {
+    return linkState(this.status, this.conn?.downSince ?? 0, now);
+  }
+  /** The home in the link's words: its own name when it is elsewhere ("hel"), else Ducter. */
+  linkHome(): string {
+    if (this.me?.via === "local") return "Ducter";
+    const name = this.homeName || this.linkMemo.get().home;
+    if (name) return name;
+    const h = this.base?.hostname ?? "";
+    return h && !/^(localhost|127\.|\[?::1\]?$)/.test(h) ? h : "Ducter";
+  }
+  /** The home is another computer than this page's (a phone, or a browser elsewhere). */
+  linkElsewhere(): boolean {
+    return this.me?.via !== "local";
+  }
+  /** Try now: a fresh dial, and a fresh question to the home if it refuses. */
+  linkRetry() {
+    this.conn?.retryNow();
+    this.onLinkRetry?.();
+    this.changed();
+  }
+  /** main.tsx: asks the home whether this device still stands there (Try now asks at once). */
+  onLinkRetry?: () => void;
+  /** main.tsx: a socket was refused before its welcome. */
+  onLinkRefused?: () => void;
+  /** main.tsx: the home said welcome (it learns once whether the home can say a standing). */
+  onLinkHeard?: () => void;
+  /** main.tsx: 再连一次, the pair screen over the app (a home whose key changed: no signature reaches it). */
+  onLinkAgain?: () => void;
+  private linkTimer?: ReturnType<typeof setTimeout>;
+  /** A quiet loss becomes a plain one by itself: one redraw when LONG_OUTAGE_MS is up. */
+  private linkTick() {
+    clearTimeout(this.linkTimer);
+    const down = this.conn?.downSince ?? 0;
+    if (this.status === "connected" || !down) return;
+    const left = LONG_OUTAGE_MS - (Date.now() - down);
+    if (left > 0) this.linkTimer = setTimeout(() => this.changed(), left + 20);
+  }
+
   /** 今天做完 / Done today over the whole board, the same count On hand and the menu bar say (D310). */
   doneToday(): number {
     return doneTodayOf(this.S.board().lanes[LANE.done]!);
@@ -3593,7 +3662,10 @@ class AppState {
    *  offline; filter is the strip's (1–4) when it names one thing only, else 0 (all of On hand). */
   summaryParts(): { words: string; parts?: string[]; link: boolean; filter: number; needs?: string } {
     const L = this.L;
-    if (this.status === "offline") return { words: L.t("conn.offline"), link: false, filter: 0 };
+    // D532: a lost link is said quietly, then plainly after LONG_OUTAGE_MS (the notice says the rest).
+    const ls = this.link();
+    if (ls === "back") return { words: L.t("conn.reconnecting", this.linkHome()), link: false, filter: 0 };
+    if (ls === "lost") return { words: L.t("conn.offline", this.linkHome()), link: false, filter: 0 };
     // D209: painted from the last screen, the line it showed then stands until the home answers
     // (a second at most), rather than "connecting" on every open.
     if (!this.S.welcomed && !this.fromGlance) return { words: L.t("conn.connecting"), link: false, filter: 0 };

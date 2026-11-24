@@ -569,8 +569,26 @@ window as it was.
 - *Where:* `packages/core/src/auth.ts` (`standing`), `core.ts` (`STANDING_PATH`),
   `protocol/src/reach.ts`; the Mac's `internal/remote/standing.go`, `internal/client`
   (`Gone`, `GoneError`, `ErrRefused`, `Redial`, `Nudge`) and `views/link.go` (`App.Linked`, the
-  one place that decides). The web client, iPhone and Android still treat an HTTP 401 from their
-  own origin as revoked (`todo.md`).
+  one place that decides).
+- *The web client, and the iPhone, iPad and Android apps that show it (D532):* the same rule. A
+  401 from `/api/me` or a socket closed before its welcome never clears the token: the page asks
+  `/api/me` (at most every 5 s), and on a 401 asks the standing (at most every 30 s; Try now and
+  a resume ask at once) and checks it with WebCrypto (`protocol/src/reach-verify-web.ts`, the
+  same answers as `reach-verify.ts`) against the fingerprint pinned at pairing (`fp` in the pair
+  answer; a record from before pins the first welcome's). Only a verified `revoked` or `unknown`
+  clears the token and shows the pair screen in those words ("…已经断开了这台手机 / …disconnected
+  this phone"), the address being the page's own. A proof that doesn't verify, or nothing pinned,
+  never does. *An old home* (no standing: a 404 or an unsigned 401 there) is taken the old way
+  only after 5 such answers, the first and last at least 15 minutes apart with no welcome
+  between; a home that has ever answered a standing never is (the page asks once after a welcome
+  to learn that). A restart behind a proxy lasts seconds to minutes; a revoke lasts. Retrying is
+  the Mac's (500 ms doubling to 5 s, 15 s after a minute, ±20%), at once on `online` (a socket
+  silent for 5 s is dropped first), on `visibilitychange` and on `ducterresume`, which the iPhone
+  app (`scenePhase` active) and the Android app (`onResume`) send. The header line and, from 30 s,
+  the notice above the composer (`Notice`, `controls.tsx`) use the Mac's words; **再连一次**
+  opens the pair screen over the app with **返回 / Back**, keeping the token. *Where:*
+  `apps/web/src/link.ts` (`judge`, `createLinkWatch`), `conn.ts` (`Connection`), `main.tsx`
+  (`gone`, the one place the token is cleared), `views.tsx` (`LinkLost`).
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's

@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.45 - 2026-11-24
+
+<!-- whats-new
+zh: 看守中的事有了自己的页；Slack 换上伙伴的名字和头像
+en: Looking-after work gets its own page; Slack shows your partner's face
+-->
+
+**Looking after**
+- Each piece of work Ducter looks after opens to its own page: its goal, its rounds, what it
+  holds and what it asks you, with the one composer to talk to it.
+
+**In the background**
+- An opened task shows what it left running in the background in a quiet tray: each item's
+  state and time, and a failure in plain words.
+
+**Smoother lists and marks**
+- Pointing at a row tints it without moving anything around it.
+- The marks beside a long conversation are drawn from the theme, readable in light and dark.
+
+**Back online by itself**
+- The web and phone clients reconnect on their own after your home restarts, instead of asking
+  you to pair again.
+
+**Slack**
+- The setup follows Slack's pages as they are today, step by step. 获得口令 / Get a code links
+  you, with a button that opens the chat with your partner in Slack.
+- Each partner speaks in Slack with its own name and face. Mention it in a channel and it
+  answers in the thread, for you only.
+- After upgrading, paste the new app config into your Slack app's App Manifest page and
+  reinstall the app once; Settings reminds you.
+
 ## 0.1.44 - 2026-11-24
 
 <!-- whats-new

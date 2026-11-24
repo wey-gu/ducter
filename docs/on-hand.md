@@ -187,6 +187,28 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   goes. A task that finishes while you're looking elsewhere keeps that smile in every list until
   you open it.
 
+## Work running in the background
+
+An agent often starts something that keeps going after its turn: a long build or benchmark, a
+command that waits for a server, a helper agent (a subagent) working on part of the task, or a
+watch on a log. Ducter shows these in the open task, just above where you type:
+
+- **3 running in the background** heads the list, with how long the oldest has been going. One
+  row per job: a mark for what it is (a command, a subagent, a watch), the agent's own words for
+  it (or the command, shortened), and how long it has run.
+- **Stop** (a small square at the end of a row) stops just that one, through the agent's own
+  way of stopping it; the agent hears that you stopped it. A row has no Stop when its agent
+  can't stop that kind of job by itself (a command Codex keeps running in the background, for
+  now). To stop everything, use **Pause** by the message box.
+- What ended folds under **22 done**. Open it to see each one's result: **Exit 2** when a
+  command failed, **Stopped**, or **Result unknown** when Ducter restarted before it heard the
+  end. Open a row to read the last lines of its output.
+- Click the heading to fold the list away; on a computer it stays the way you left it. On a
+  phone the list starts folded.
+
+On hand says it too: a task at work with jobs still running shows **3 running in the
+background** in its row.
+
 ## At a glance
 
 You don't have to open Ducter to know how things stand.

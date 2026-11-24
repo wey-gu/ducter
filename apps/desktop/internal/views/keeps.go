@@ -229,9 +229,7 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 		line := a.keepLine(k)
 		row := ui.Row(c.Key("head")).Width(w).Gap(14).Padding(14, 16, 14, 16).MinHeight(64).AlignItems(ui.Start).
 			Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(a.L.T("keep.open", k.Title)).Focusable()
-		if row.Hovered() {
-			row.Background(t.Ink.Alpha(0.03))
-		}
+		a.rowHover(c, row, groundNeutral(), false) // D529
 		row.Children(func() {
 			a.keepMark(c, k.ID, k.Life, 40)
 			ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {

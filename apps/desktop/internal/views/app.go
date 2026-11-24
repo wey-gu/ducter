@@ -222,8 +222,11 @@ type App struct {
 	taskDrafts map[string]string
 	// D325: the held message being changed in place over a task's composer.
 	heldEditing *heldEdit
-	heldFocus   bool
-	replyOpen   map[string]bool
+	// D521: background jobs asked to stop ("task|job"), and a stop its agent refused, by task.
+	bgStopping map[string]bool
+	bgRefused  map[string]time.Time
+	heldFocus  bool
+	replyOpen  map[string]bool
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
 	laterOpen  map[string]bool
@@ -1158,6 +1161,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+		if f.Action == "stop_background" && !f.OK {
+			a.bgRefusedFor(f.TaskID)
+		}
 	case "outside_adopted":
 		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
 	case "outside_hidden":

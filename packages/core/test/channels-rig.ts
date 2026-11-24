@@ -27,7 +27,7 @@ export async function waitFor<T>(fn: () => T | undefined | false | null, ms = 40
   }
 }
 
-export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string } = {}) {
+export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[] } = {}) {
   const t = tempDir();
   const clock = new FakeClock(Date.parse("2026-11-16T04:00:00Z")); // 12:00 in Shanghai
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
@@ -51,6 +51,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
       notifyOff: () => off,
       lang: () => o.lang ?? (o.zh === false ? "en" : "zh"),
       personaName: () => "Ducter",
+      ...(o.partners ? { partners: () => o.partners! } : {}),
       ...(o.openUrl ? { openUrl: () => o.openUrl } : {}),
       sleep: async (ms) => void sleeps.push(ms),
       gapMs: 0,

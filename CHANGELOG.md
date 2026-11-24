@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.39 - 2026-11-24
+
+<!-- whats-new
+zh: 伙伴栏更顺滑；等你的数字处处一致，处理完就消
+en: A smoother partner rail; one needs-you count that clears
+-->
+
+**The partner rail, redone**
+- On the Mac the rail owns the top-left corner like a native sidebar, with the window buttons in
+  their own band, and names show under each face at any width.
+- Switching partners keeps the rail still: the selection slides over and the conversation comes
+  in. Each partner breathes and blinks, and nudges when something new arrives; with reduced
+  motion it stays still.
+- The count on a face, the Dock, the menu bar and On hand's head are now one number, and every
+  item it counts sits under Needs you with its own action. Looking at a stopped task or answering
+  a question clears it.
+
+## 0.1.38 - 2026-11-24
+
+<!-- whats-new
+zh: 聊天软件里所有伙伴在一个会话，开头叫名字就找到它
+en: All your partners in one chat; start with a name to reach one
+-->
+
+**Several partners in your chat apps**
+- In Telegram, Slack, WeChat and iMessage, every partner talks in the one chat you already have,
+  with its name in front ("小家: ..."). Reply to its message, or start with its name, and your
+  words go to it.
+- Asks from any partner reach you in that chat with their name, and a tap answers the right one.
+- iMessage answers from a partner other than the one first set up now come back to you.
+
 ## 0.1.37 - 2026-11-24
 
 <!-- whats-new

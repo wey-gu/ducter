@@ -74,6 +74,15 @@ func (a *App) shownPartner() *protocol.PartnerInfo {
 	return nil
 }
 
+// ChatLabel (D516) is the name the shown partner leads with in a chat app
+// the Mac carries (iMessage): "" for the default, or with one partner.
+func (a *App) ChatLabel() string {
+	if p := a.shownPartner(); p != nil && p.ID != protocol.DefaultPartner {
+		return p.Name
+	}
+	return ""
+}
+
 // defaultName is the default partner's name (the one Settings › 伙伴
 // renames), whoever is shown.
 func (a *App) defaultName() string {
@@ -91,8 +100,9 @@ func (a *App) defaultName() string {
 // needsAcross is the one needs-you count across partners (D309): On hand
 // is everyone's already, the shown conversation's questions are counted
 // here, and every other partner's own questions join them.
+// D517: it is the count of needsYou's items, the same On hand draws under 等你.
 func (a *App) needsAcross(b store.Board) int {
-	return protocol.NeedsAcross(len(b.Lanes[store.LaneNeedsYou])+len(a.partnerDecisions()), a.S.Partners, a.shownPartnerID())
+	return len(a.needsYouIn(b, true))
 }
 
 // taskPartner is whose a task is: its card's partner, else the default's.
@@ -132,19 +142,14 @@ func (a *App) barNeeds(b store.Board) int {
 	if !a.manyPartners() {
 		return a.needsAcross(b)
 	}
-	return len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+	return needsOf(a.needsYou(), a.shownPartnerID())
 }
 
-// partnerNeeds is what waits on the person from another partner (D497):
-// its own conversation's questions and its tasks that need them.
+// partnerNeeds is what waits on the person from one partner (D497, D517):
+// its items of the person's one count (needsyou.go), so the rows add up to
+// the Dock badge and On hand's head.
 func (a *App) partnerNeeds(p protocol.PartnerInfo) int {
-	n := p.Asks
-	for _, t := range a.S.Board().Lanes[store.LaneNeedsYou] {
-		if a.taskPartner(t) == p.ID {
-			n++
-		}
-	}
-	return n
+	return needsOf(a.needsYou(), p.ID)
 }
 
 // SwitchPartner shows another partner's conversation: the window starts
@@ -163,6 +168,7 @@ func (a *App) SwitchPartner(id string) {
 		return
 	}
 	partners := a.S.Partners
+	a.holdRail() // D517: the list keeps its numbers until the welcome
 	a.Local.SetPartner(id)
 	a.forgetShown()
 	a.S.Partners, a.S.PersonaName = partners, name

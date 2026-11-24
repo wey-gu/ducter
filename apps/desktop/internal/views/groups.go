@@ -70,10 +70,16 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 	if a.S.OnHand == nil {
 		return nil
 	}
+	// D517: a part that waits for the person (it asks, stopped, didn't work
+	// out, or its PR can merge) puts the card in 等你, where the head counts
+	// it; by the store's lanes alone a stopped part stood under 在等.
 	laneOf := func(id string) int {
 		for i, l := range b.Lanes {
 			for _, x := range l {
 				if x.ID == id {
+					if a.waitsForYou(x) {
+						return int(store.LaneNeedsYou)
+					}
 					return i
 				}
 			}

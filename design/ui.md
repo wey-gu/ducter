@@ -409,12 +409,20 @@ button (D270).
 
 **The list of partners (D513, `personas.md`).** Only with more than one partner. On a computer a
 column at the conversation's left, its own hairline (`--line` / `ChromeLine`) and the chrome's
-ground; on the Mac it holds the traffic lights (the conversation's bar then starts at 24). Its
+ground; on the Mac it holds the traffic lights (the conversation's bar then starts at 24). D517:
+it owns the title bar's zone as a Mac sidebar does: a top band 60 tall in the chrome's tint with
+the lights centred in it, ending on the header's bottom rule (one T where the list's divider meets
+it); nothing of the list sits in the band; the first figure 16 below the rule. Its
 title **伙伴们** at the bar's one size (14/600) in the bar's height; rows 64 tall, radius `--r-md`:
-the figure (40) in its own clay with its number on its shoulder (18, the needs-you surface and ink,
-a 2-pt ring of the ground it sits on), the name (15/700 ink) and the last line (13 muted, one line,
-cut with an ellipsis). The row shown is the knob (the surface on its 4-pt ledge); hover is the
-sunken ground. 272 wide from 1360; from 1000 to 1359, 80 wide with the figures and numbers only.
+the figure (40) in its own clay, breathing and blinking out of step with the others, with its
+number on its shoulder (D517: a clay pebble 18 tall, radius 8, the needs-you surface and ink on the
+needs-you ledge, a 1.5-pt ring of the ground it sits on), the name (15/700 ink) and the last line
+(13 muted, one line, cut with an ellipsis). The row shown is the knob (the surface on its 4-pt
+ledge), one element gliding from row to row on a spring (420 ms, bounce about 0.2), the chosen
+figure 6% taller; hover is a light sunken ground; no tooltip. A figure hops once (700 ms) when
+something new comes from its partner. D517: 272 wide from 1200 on the Mac and 1360 on the web;
+under that 88 wide, each figure with its name under it (11/700). Reduce Motion: no glide, no
+breath, no blink, no hop.
 On a phone it is a page of its own: the bar's **伙伴们** as a level's name with the places, rows 76
 tall (figure 52, name 18/700, line 15), the add row at its foot; the conversation's bar starts with
 **‹** (the chevron, 44 tall) and the others' number beside it. No pills, no coloured edge, no
@@ -540,6 +548,7 @@ A new control is added to the set (and to this table) before it is used.
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
+| A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
 | **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines, its slots (pictures, the mic, the context ring, After this, Stop), and the send in three states: empty (resting at 45%, not pressable), ready (raised on its ledge), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
 | A section's name over its card (在等你, 手上的, 每一轮, 怎么照看; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken) | `tag` (`composer.go`) | `Tag` |
@@ -547,7 +556,7 @@ A new control is added to the set (and to this table) before it is used.
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
 
 **Deny by default (D519).** The guards cover every view file, never a list: Mac
-`TestSharedControlsOnly` walks every `.go` file in `views` but the files that define the set
+`TestSharedControlsEverywhere` walks every `.go` file in `views` but the files that define the set
 (`components.go`, `quiet.go`, `shared.go`, `menu.go`, `composer.go`, each with its reason), and web
 `apps/web/test/controls.test.ts` walks every `src/*.tsx` but `controls.tsx`, `composer.tsx` and
 `menu.tsx`. Views that drew raw controls before the rule stand on a ceiling list that may only

@@ -27,7 +27,7 @@ test("D497: each look recolours the clay figure by the protocol's one table, and
 
 test("the bar's line speaks for the partner it sits under; each other partner's face carries its own number", () => {
   const app = src("app.ts");
-  expect(app).toContain("needsAcross(");
+  expect(app).toContain("needsCount("); // D517: one source, needsYouItems (onhand.tsx)
   expect(app).toContain("barBoard()");
   expect(app).toMatch(/partnerNeeds\(p: PartnerInfo\)/);
   expect(src("partners.tsx")).toContain("A.partnerNeeds(p)");

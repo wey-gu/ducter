@@ -31,7 +31,7 @@ import { openHand } from "./handover.tsx";
 import type { PileView } from "@ducter/protocol";
 import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
-import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
+import { handover, isNewResult, lookedAt, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
 import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
 import { linesOfPart } from "./asks.tsx";
@@ -42,6 +42,7 @@ import { healthLine, interval, RepeatGlyph, reviewLine } from "./past.tsx";
 import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import { cutAtWord } from "@ducter/protocol";
+import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -198,16 +199,73 @@ export function boardParts(lanes: Task[][], now = Date.now()) {
   const done = lanes[LANE.done]!;
   // D473, D471: what Ducter is mending right now is at work, never the person's yet.
   const mending = [...done, ...waiting].filter((x) => !!mendingOf(x));
-  const stopped = waiting.filter((x) => stoppedWait(x, now) && !mending.includes(x));
-  const failed = done.filter((x) => attention(x) === "failed" && !mending.includes(x));
+  // D517: a stop, a failure or a PR to merge the person has opened since it last changed leaves 等你:
+  // the stop waits with the rest, the failure stands with what finished on its day, the PR waits.
+  const stopped = waiting.filter((x) => stoppedWait(x, now) && !mending.includes(x) && !looked(x));
+  const failed = done.filter((x) => attention(x) === "failed" && !mending.includes(x) && !looked(x));
+  const seenFailed = done.filter((x) => attention(x) === "failed" && !mending.includes(x) && looked(x));
+  const onToday = (x: Task) => {
+    const at = lastChange(x);
+    return !Number.isFinite(at) || new Date(at).toDateString() === new Date(now).toDateString();
+  };
   // D508: a finished task whose PR is open is not done: ready to merge stands in 等你 (the merge is
   // the person's), any other open phase waits in 在等; only merged or closed is done.
   const pr = (x: Task) => (mending.includes(x) ? undefined : prRowOf(x)?.stands);
-  const ready = done.filter((x) => pr(x) === "needs");
-  const prWait = done.filter((x) => pr(x) === "waiting");
-  const today = done.filter((x) => doneToday(x, now) && !pr(x));
-  const earlier = done.filter((x) => attention(x) !== "failed" && !doneToday(x, now) && !pr(x));
+  const ready = done.filter((x) => pr(x) === "needs" && !looked(x));
+  const prWait = done.filter((x) => pr(x) === "waiting" || (pr(x) === "needs" && looked(x)));
+  const today = [...done.filter((x) => doneToday(x, now) && !pr(x)), ...seenFailed.filter(onToday)];
+  const earlier = [...done.filter((x) => attention(x) !== "failed" && !doneToday(x, now) && !pr(x)), ...seenFailed.filter((x) => !onToday(x))];
   return { stopped, ready, failed, mending, waiting: [...waiting.filter((x) => !stopped.includes(x) && !mending.includes(x)), ...prWait], today, earlier };
+}
+
+/** D517: a stop, a failure or a PR to merge the person opened on this device after it last changed. A
+ *  question is never "looked": it leaves 等你 when it is answered. */
+export function looked(task: Task): boolean {
+  return attention(task) !== "needs_you" && lookedAt(task.id, task.card?.updatedAt);
+}
+
+/** D517: a task that stands in 等你: it asks, or (until looked at) it stopped, didn't work out, or its
+ *  PR can merge. Ducter mending it is at work, not the person's yet. */
+export function waitsForYou(x: Task, now = Date.now()): boolean {
+  const a = attention(x);
+  if (a === "needs_you") return true;
+  if (mendingOf(x) || looked(x)) return false;
+  return a === "failed" || stoppedWait(x, now) || prRowOf(x)?.stands === "needs";
+}
+
+/** D517: where a group card stands: 等你 when a part waits for the person, else its parts' first lane. */
+export function groupLaneOf(lanes: Task[][]) {
+  return (id: string) => {
+    const at = lanes.findIndex((l) => l.some((x) => x.id === id));
+    const task = at >= 0 ? A.S.tasks.get(id) : undefined;
+    return task && waitsForYou(task) ? LANE.needs : at;
+  };
+}
+
+/** D517: the person's one count's items, from one source: the Dock and app badge, the conversation's
+ *  line, a partner's number in the list of partners and On hand's head all count these, and On hand
+ *  draws each of them under 等你. A lens counts its tasks; all (and Other) the questions of no task too. */
+export function needsYouItems(lens = "", now = Date.now()): { partner: string }[] {
+  const l = lensLanes(lens);
+  const parts = boardParts(l, now);
+  const out: { partner: string }[] = [];
+  const inLine = new Set<string>();
+  for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(l), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))) {
+    if (!g.stopped) continue;
+    for (const id of g.ids) inLine.add(id);
+    const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
+    out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER });
+  }
+  for (const x of [...l[LANE.needs]!, ...parts.stopped, ...parts.ready, ...parts.failed]) {
+    if (attention(x) === "failed" && inLine.has(x.id)) continue; // a part of a stopped line is the line's
+    out.push({ partner: A.taskPartner(x) });
+  }
+  if (looseIn(lens)) {
+    const shown = A.S.persona || A.partnerShown || DEFAULT_PARTNER;
+    for (const _ of A.S.partnerDecisions()) out.push({ partner: shown });
+    for (const a of A.otherAsks()) out.push({ partner: a.persona });
+  }
+  return out;
 }
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
@@ -529,12 +587,9 @@ export function stateCounts(lens: string, now = Date.now()): number[] {
   const parts = boardParts(l, now);
   const loose = looseIn(lens);
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
-  // D360: a group whose line stopped waits for the person's word: it counts as one that needs them.
-  const lanes = l;
-  const stopped = boardGroups(A.S.onHand?.groups, (id) => lanes.findIndex((x) => x.some((t) => t.id === id)), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined)).filter((b) => b.stopped).length;
   return [
-    // D467: what stopped (a wait nothing brings back, a task that didn't work out) needs the person too.
-    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0) + parts.stopped.length + parts.ready.length + parts.failed.length,
+    // D467, D517: 等你 is the person's one count's items (needsYouItems): the badges say the same.
+    needsYouItems(lens, now).length,
     l[1]!.length + parts.mending.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     parts.waiting.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
     // D467: 今天做完 counts what it lists: finished today (a done being checked included); a failed
@@ -1446,7 +1501,8 @@ export function OnHandList({ room }: { room: Room }) {
   const keep = (ts: Task[]) => (q ? ts.filter((x) => matches(x, q)) : ts);
   // D360: a group stands as one card in its most urgent member's section (not while finding, nor
   // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
-  const laneOf = (id: string) => lanes.findIndex((l) => l.some((x) => x.id === id));
+  // D517: a group with a part that waits for the person stands in 等你, where the head counts it.
+  const laneOf = groupLaneOf(lanes);
   const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
   // D507: each helper that is on is its own sheet, its work under it until it lets go (the task ended
@@ -1458,7 +1514,6 @@ export function OnHandList({ room }: { room: Room }) {
   // or 在等; one that waits for the person stays in 等你 once, its row naming the Keep.
   const keepsOn = A.S.onHand?.keeps;
   const ks = rail || q || (lens && lens !== OTHER) ? [] : (keepsOn ?? []);
-  const waitsForYou = (x: Task) => ["needs_you", "failed"].includes(attention(x)) || stoppedWait(x) || prRowOf(x)?.stands === "needs";
   const byKeep = ks.flatMap((k) => k.taskIds).filter((id) => !A.S.tasks.has(id) || !waitsForYou(A.S.tasks.get(id)!));
   const hws = keepsOn || rail || q || (lens && lens !== OTHER) ? [] : (A.S.onHand?.helpers ?? []);
   const kept = new Set([...hws.flatMap((h) => h.items.map((x) => x.taskId)), ...byKeep]);
@@ -2326,3 +2381,7 @@ export function Peek() {
     </aside>
   );
 }
+
+// D517: the app's counts (the conversation's line, a partner's number in the list) read the same items as
+// On hand's 等你.
+A.needsItems = () => needsYouItems("");

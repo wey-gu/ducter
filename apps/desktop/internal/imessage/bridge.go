@@ -149,7 +149,10 @@ type Options struct {
 	Upload func(path, mime string) (string, error)
 	// Name is the partner's name; Lang the app's language (zh | en).
 	Name func() string
-	Lang func() string
+	// Label (D516) is the name another partner leads with when the Mac shows
+	// it ("" for the default, or with one partner).
+	Label func() string
+	Lang  func() string
 	// Quiet is the partner's quiet hours (nil: none).
 	Quiet func() *protocol.QuietHours
 	// Foreground: the person has the Ducter window in front, so what
@@ -1094,6 +1097,12 @@ func (b *Bridge) deliver(ctx context.Context, m outMsg) {
 	text := m.text
 	if mode == ModeSelf {
 		text = say(b.lang(), "self", b.name()) + text
+	} else if b.o.Label != nil {
+		// D516: the partner's own Apple ID is the default's; another partner
+		// this Mac shows speaks there with its name in front.
+		if l := b.o.Label(); l != "" {
+			text = say(b.lang(), "self", l) + text
+		}
 	}
 	now := b.o.Now()
 	b.mu.Lock()

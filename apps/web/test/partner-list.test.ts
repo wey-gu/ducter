@@ -89,10 +89,36 @@ describe("D513: the list of partners", () => {
     expect(fn("PartnerRowItem")).toContain("A.partnerNeeds(p)");
     expect(fn("PartnersBack")).toContain("A.partnerNeeds(p)");
   });
-  test("a narrower window keeps the figures and the numbers; a phone's rows are a thumb tall", () => {
-    expect(css).toMatch(/@media \(min-width: 1000px\) and \(max-width: 1359px\) \{\s*\.pane\.partners \{ flex-basis: 80px; \}/);
-    expect(blocks(".partners-home .pl-row")).toMatch(/min-height:\s*76px/);
+  test("D517: a narrower window keeps each figure with its name under it; a phone's rows are a thumb tall", () => {
+    const slim = css.slice(css.indexOf("@media (min-width: 1000px) and (max-width: 1359px) {\n  .pane.partners { flex-basis: 88px; }"));
+    expect(slim.length).toBeGreaterThan(0);
+    const block = slim.slice(0, slim.indexOf("\n}"));
+    expect(block).toContain(".pane.partners .pl-row { flex-direction: column;");
+    expect(block).toContain(".pane.partners .pl-last { display: none; }");
+    expect(block).not.toContain(".pl-words { display: none");
+    expect(blocks(".partners-home .pl-rows")).toMatch(/--row:\s*76px/);
     expect(blocks(".top .partners-back")).toMatch(/min-height:\s*44px/);
+  });
+  test("D517: no tooltip on a row (it covered the Mac's window controls); the name is the label", () => {
+    expect(fn("PartnerRowItem")).not.toContain("title=");
+    expect(fn("PartnersBack")).not.toContain("title=");
+  });
+  test("D517: the list stays still on a switch: the chosen pebble glides, the conversation comes in", () => {
+    expect(blocks(".pl-knob")).toMatch(/transform:\s*translateY\(calc\(var\(--at, 0\)/);
+    expect(blocks(".pl-knob")).toMatch(/transition:\s*transform 420ms var\(--spring-soft\)/);
+    expect(src("main.tsx")).toContain('class={A.manyPartners() ? "pane conv conv-in" : "pane conv"}');
+    // Each row's number holds while the switch waits for its welcome.
+    expect(src("app.ts")).toContain("if (partner && this.railHeld && !this.S.welcomed) return this.railHeld[partner] ?? 0;");
+  });
+  test("D517: at 320 the phone's bar with ‹ drops the face so the places never cover the name", () => {
+    const m = css.slice(css.indexOf("@media (max-width: 360px) {\n  .top:has(.partners-back) .who-face { display: none; }"));
+    expect(m.length).toBeGreaterThan(0);
+    expect(m).toContain(".top:has(.partners-back) .who-words { min-width: 0; }");
+  });
+  test("D517: every motion of the list is still under Reduce Motion", () => {
+    const m = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .pl-knob, .pl-hop { transition: none; }"));
+    expect(m).toContain(".pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }");
+    expect(m).toContain(".conv-in { animation: none; }");
   });
   test("tokens only, and every word in both languages without a dot join", () => {
     const tail = css.slice(css.indexOf("D513: 伙伴们 / Your partners, as a messaging app"));

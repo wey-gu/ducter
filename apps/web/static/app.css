@@ -21388,19 +21388,38 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .pane.partners > .top { min-height: 64px; box-sizing: border-box; }
 .pl-rows {
+  --row: 64px;
+  --gap: 4px;
+  position: relative;
   list-style: none;
   margin: 0;
   padding: 4px 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--gap);
 }
+/* D517: the chosen pebble: the surface on its ledge under the row it marks, gliding to the row picked
+   on a spring; the rows themselves never move. */
+.pl-knob {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  right: 10px;
+  height: var(--row);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+  transform: translateY(calc(var(--at, 0) * (var(--row) + var(--gap))));
+  transition: transform 420ms var(--spring-soft);
+  pointer-events: none;
+}
+.pl-rows > li:not(.pl-knob) { position: relative; }
 .pl-row {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 64px;
+  height: var(--row);
   padding: 8px 12px;
   box-sizing: border-box;
   border-radius: var(--r-md);
@@ -21410,14 +21429,9 @@ html[data-text-size="large"] .brand-mark > svg {
   transition: background-color 0.15s var(--ease);
 }
 @media (hover: hover) {
-  .pl-row:hover { background: var(--surface-sunken); }
+  .pl-row:not(.on):hover { background: color-mix(in srgb, var(--surface-sunken) 70%, transparent); }
 }
-.pl-row:active { background: var(--surface-sunken); }
-.pl-row.on,
-.pl-row.on:hover {
-  background: var(--surface);
-  box-shadow: var(--base);
-}
+.pl-row:not(.on):active { background: var(--surface-sunken); }
 .pl-row:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -21427,16 +21441,17 @@ html[data-text-size="large"] .brand-mark > svg {
   flex: none;
   display: inline-flex;
 }
+/* D517: the number is a clay pebble in the needs-you colours, on its ledge. */
 .pl-n {
-  min-width: 18px;
+  min-width: 19px;
   height: 18px;
   padding: 0 5px;
   box-sizing: border-box;
-  border-radius: 9px;
+  border-radius: 8px;
   background: var(--needs-surface);
   color: var(--needs-ink);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -21446,10 +21461,53 @@ html[data-text-size="large"] .brand-mark > svg {
 .pl-face > .pl-n {
   position: absolute;
   top: -4px;
-  right: -6px;
-  box-shadow: 0 0 0 2px var(--bg);
+  right: -7px;
+  box-shadow: 0 0 0 1.5px var(--bg), 0 2px 0 1.5px var(--needs-ledge);
 }
-.pl-row.on .pl-face > .pl-n { box-shadow: 0 0 0 2px var(--surface); }
+.pl-row.on .pl-face > .pl-n { box-shadow: 0 0 0 1.5px var(--surface), 0 2px 0 1.5px var(--needs-ledge); }
+/* D517: each figure breathes and blinks in its own clay, out of step with the others (--d); the one
+   chosen stands a little taller (the pebble lifted); one with something new hops once. */
+.pl-hop {
+  display: inline-flex;
+  transform-origin: 50% 100%;
+  transition: transform 360ms var(--spring);
+}
+.pl-row.on .pl-hop { transform: translateY(-2px) scale(1.06); }
+.pl-hop.on { animation: pl-hop 700ms var(--ease) both; }
+.pl-breathe {
+  position: relative;
+  transform-origin: 50% 100%;
+  animation: breathe 3.8s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.pl-breathe .shut {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: pl-blink 4.7s steps(1, end) infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes pl-blink {
+  0%, 95% { opacity: 0; }
+  96%, 98% { opacity: 1; }
+}
+@keyframes pl-hop {
+  0% { transform: translateY(0); }
+  22% { transform: translateY(-7px) scale(1.04, 0.97); }
+  44% { transform: translateY(0) scale(1.05, 0.95); }
+  62% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-knob, .pl-hop { transition: none; }
+  .pl-hop.on, .pl-breathe, .pl-breathe .shut { animation: none; }
+  .conv-in { animation: none; }
+}
+/* D517: a partner's conversation comes in when picked; the list beside it stays still. */
+.conv-in { animation: conv-in 220ms var(--ease) both; }
+@keyframes conv-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
 .pl-words {
   flex: 1 1 auto;
   min-width: 0;
@@ -21472,20 +21530,25 @@ html[data-text-size="large"] .brand-mark > svg {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* A window from 1000 to 1359: the figures and their numbers, the conversation keeps its width. */
+/* D517: a window from 1000 to 1359 (On hand stands beside): each figure with its name under it, so
+   the slim list reads by itself; the last lines wait for a wider window. */
 @media (min-width: 1000px) and (max-width: 1359px) {
-  .pane.partners { flex-basis: 80px; }
+  .pane.partners { flex-basis: 88px; }
   .pane.partners > .top .level { visibility: hidden; }
-  .pane.partners .pl-rows { padding-inline: 8px; }
-  .pane.partners .pl-row { justify-content: center; padding: 8px 0; }
-  .pane.partners .pl-words { display: none; }
+  .pane.partners .pl-rows { --row: 74px; padding-inline: 6px; }
+  .pane.partners .pl-knob { left: 6px; right: 6px; }
+  .pane.partners .pl-row { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 4px; }
+  .pane.partners .pl-words { flex: none; align-items: center; max-width: 100%; }
+  .pane.partners .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
+  .pane.partners .pl-last { display: none; }
 }
 /* A phone: the list is the level above the conversation, rows a thumb's height. */
 .partners-home {
   padding-top: 4px;
 }
-.partners-home .pl-rows { padding-inline: 8px; gap: 4px; }
-.partners-home .pl-row { min-height: 76px; gap: 14px; }
+.partners-home .pl-rows { --row: 76px; padding-inline: 8px; }
+.partners-home .pl-knob { left: 8px; right: 8px; }
+.partners-home .pl-row { gap: 14px; }
 .partners-home .pl-name { font-size: var(--lg); }
 .partners-home .pl-last { font-size: var(--md); }
 .partners-home .pl-add { margin: 12px 16px 0; }
@@ -22257,4 +22320,10 @@ html[data-text-size="large"] .brand-mark > svg {
     position: sticky;
     bottom: 8px;
   }
+}
+/* D517: at 320 the places, ‹ and the 44-point face left the name a few points and the places covered
+   it: there the bar drops the face (‹ and the name say who), the name and its first count keep room. */
+@media (max-width: 360px) {
+  .top:has(.partners-back) .who-face { display: none; }
+  .top:has(.partners-back) .who-words { min-width: 0; }
 }

@@ -200,7 +200,14 @@ func (a *App) keepHidden() map[string]bool {
 // stopped, or its PR can merge (the merge is the person's, D508).
 func (a *App) waitsForYou(task *store.Task) bool {
 	att := task.Attention()
-	if att == protocol.NeedsYou || att == protocol.Failed || a.stoppedWait(task) {
+	if att == protocol.NeedsYou {
+		return true
+	}
+	// D517: a stop, a failure or a PR to merge, until the person has looked at it.
+	if _, _, mending := mendingOf(task); mending || a.looked(task) {
+		return false
+	}
+	if att == protocol.Failed || a.stoppedWait(task) {
 		return true
 	}
 	if pr, _, stands := prRow(task); pr != nil && stands == "needs" {

@@ -371,25 +371,10 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 // what 今天做完 lists (today's, never yesterday's).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
 	sp := a.splitOf(b)
-	// A part that didn't work out in a stopped line is the line's: counted once, as the line.
-	inLine := map[string]bool{}
-	for _, g := range a.boardGroups(b) {
-		if g.stopped != nil {
-			for id := range g.ids {
-				inLine[id] = true
-			}
-		}
-	}
-	failed := 0
-	for _, x := range sp.failed {
-		if !inLine[x.ID] {
-			failed++
-		}
-	}
-	n := [4]int{len(sp.needs) + len(sp.stopped) + len(sp.ready) + failed, len(sp.working), len(sp.waiting), len(sp.today)}
-	n[0] += a.stoppedGroups(b) // D360: a stopped line waits for the person's word
+	// D517: 等你 is the person's one count's items (needsyou.go), the Dock
+	// badge's and the list of partners' numbers; a stopped line counts once.
+	n := [4]int{len(a.needsYouIn(b, loose(lens))), len(sp.working), len(sp.waiting), len(sp.today)}
 	if loose(lens) {
-		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too
 		n[2] += len(a.looseWaiters())
 	}
 	return n
@@ -568,7 +553,7 @@ func (a *App) arriving(c *ui.Context, r ui.Element, name string) {
 // that stopped, one that didn't work out), or nil (D467 round 3).
 func (a *App) lensNeeds(tasks []*store.Task) *store.Task {
 	for _, x := range tasks {
-		if x.Attention() == protocol.NeedsYou || x.Attention() == protocol.Failed || a.stoppedWait(x) {
+		if a.waitsForYou(x) {
 			return x
 		}
 	}

@@ -117,7 +117,8 @@ function App() {
         <div class={split ? `panes ${split.kind}` : "panes"}>
           {/* D513: with more than one partner, the list of them at the conversation's left. */}
           {!split && <PartnerList at="side" />}
-          <section class="pane conv" aria-label={t("nav.conversation")}>
+          {/* D517: picking a partner brings its conversation in (keyed by whose it is); the list stays still. */}
+          <section key={A.manyPartners() ? `conv:${A.S.persona || "switching"}` : "conv"} class={A.manyPartners() ? "pane conv conv-in" : "pane conv"} aria-label={t("nav.conversation")}>
             <Conversation />
           </section>
           <section class="pane side" aria-label={r.name === "task" ? undefined : t("nav.onhand")}>

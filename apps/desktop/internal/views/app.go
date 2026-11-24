@@ -369,6 +369,7 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	partners partnersUI // D309
+	rail     railUI     // D517: the list of partners' own motion and held numbers
 	// cal is the calendar screens' own memory (D222).
 	cal      calUI
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards

@@ -34,6 +34,8 @@ export interface ChannelRec {
   /** D301: when the person last wrote there, and how many messages went out since (the window). */
   heardAt?: string;
   sentSince?: number;
+  /** D516: the other partners already told how to talk to them in this chat app (once each). */
+  hinted?: string[];
 }
 
 interface File {

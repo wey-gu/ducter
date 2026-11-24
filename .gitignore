@@ -8,7 +8,8 @@ out/
 .env.*
 .ducter/
 apps/desktop/bin/
-.claude/
+.claude/*
+!.claude/skills/
 .gstack/
 .vercel/
 /apps/desktop/desktop

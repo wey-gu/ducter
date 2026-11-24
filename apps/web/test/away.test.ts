@@ -76,7 +76,7 @@ test("every finished card and group on On hand offers ×, ⋯ and a swipe", () =
   const src = readFileSync(join(import.meta.dir, "../src/onhand.tsx"), "utf8");
   // D467: the one card (a new result and a seen one alike) and the group.
   expect(src.match(/useSwipeAway\(ref, fin\)/g)?.length).toBe(2);
-  // D524: over the time, or (a row with actions of its own) its ⋯ alone in that group.
+  // D527: over the time, or (a row with actions of its own) its ⋯ alone in that group.
   expect(src.match(/<FinishedActs f=\{fin\}/g)?.length).toBe(2);
   expect(src).toContain('<FinishedActs f={fin} full={room === "full"} menuOnly />');
   // The group: × in its head, its ⋯ menu leads with try again / see why and ends with remove.

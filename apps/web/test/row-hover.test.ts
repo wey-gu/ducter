@@ -1,4 +1,4 @@
-// D524: the one row hover. Hovering a row or a card never reflows it: its size, line breaks and
+// D527: the one row hover. Hovering a row or a card never reflows it: its size, line breaks and
 // positions stay, and what it reveals keeps its room or comes in over the time in a fixed slot. On
 // the web that is the stylesheet's to keep: a :hover or :focus-within rule on a row changes paint
 // only (fill, shadow, ink, opacity), never display, size, spacing or a transform that moves it.
@@ -22,7 +22,7 @@ function rules(): { sel: string; body: string }[] {
   return out;
 }
 
-describe("a row's hover never reflows (D524)", () => {
+describe("a row's hover never reflows (D527)", () => {
   const hovered = rules().filter((r) => /:hover|:focus-within|\.pcard\.on\b/.test(r.sel) && ROWS.test(r.sel));
   test("there are row hover rules to check", () => expect(hovered.length).toBeGreaterThan(10));
   for (const r of hovered) {
@@ -36,7 +36,7 @@ describe("a row's hover never reflows (D524)", () => {
   }
 });
 
-describe("what a row reveals is there for Tab too (D524)", () => {
+describe("what a row reveals is there for Tab too (D527)", () => {
   test("revealed controls fade by opacity, never display or visibility", () => {
     const reveal = rules().filter((r) => /(\.tacts|\.fin-acts)\b/.test(r.sel) && /:hover|:focus-within/.test(r.sel) && ROWS.test(r.sel));
     expect(reveal.length).toBeGreaterThan(0);

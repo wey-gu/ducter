@@ -173,7 +173,7 @@ type Tokens struct {
 	// for a screen or a notice coming in, Bouncy for the living message
 	// and the equip.
 	Bouncy, Snappy     ui.Animation
-	// Hover is the one row hover (D524): its fill and what it reveals
+	// Hover is the one row hover (D527): its fill and what it reveals
 	// cross-fade over 140 ms, easing out; nothing moves.
 	Hover ui.Animation
 	PressDur, EnterDur time.Duration

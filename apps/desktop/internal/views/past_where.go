@@ -349,7 +349,7 @@ func (a *App) pastStepRow(c *ui.Context, it *protocol.PastItem, st protocol.Past
 					Background(t.Surface).SingleLine().Shrink(0)
 			}
 			ui.Box(c).Grow(1)
-			// D524: kept in its slot, revealed in place; it never pushes the words.
+			// D527: kept in its slot, revealed in place; it never pushes the words.
 			a.revealSlot(c, "redo", hover || picking, func() {
 				if a.buttonFor(c, a.L.T("past.step.redo"), fmt.Sprint(it.Title, " ", st.N), btnSecondary, t.ControlSM, t.SurfaceSunken) {
 					a.openRedo(it, st)

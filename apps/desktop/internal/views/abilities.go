@@ -356,7 +356,7 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 	if sel {
 		row.Background(t.Surface).InsetShadow(0, 0, 0, 2, t.Ink)
 	} else {
-		a.rowHover(c, row, groundPage(), false) // D524
+		a.rowHover(c, row, groundPage(), false) // D527
 	}
 	row.Children(func() {
 		clay()

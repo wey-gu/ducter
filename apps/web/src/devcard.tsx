@@ -13,7 +13,7 @@ import { inApp } from "./native.ts";
 import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
 import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
 import { changelogUrl } from "@ducter/protocol/src/version.ts";
-import { tidiedLine } from "@ducter/protocol/src/tidy.ts";
+import { tidySize } from "@ducter/protocol/src/tidy.ts";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -256,7 +256,7 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <Guard words={t(dv.home ? "home.g" : "worker.g", A.S.personaName)} />
       <DucterLine dv={dv} />
       {/* D514: what Ducter tidied away here, one quiet line; nothing before the first. */}
-      {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{tidiedLine(A.uiLang, dv.tidied)}</div>}
+      {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{A.L.t("card.tidied", dv.tidied.count, tidySize(dv.tidied.bytes))}</div>}
       {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
       {dv.home && <Ways home={dv.name} />}
       {!dv.home && (

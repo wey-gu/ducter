@@ -1,4 +1,4 @@
-// D525: an opened task's steps as the rows it draws. The desktop
+// D530: an opened task's steps as the rows it draws. The desktop
 // (apps/desktop/internal/views/stepview_test.go) passes the same cases (fixtures/stepview.json).
 import { expect, test } from "bun:test";
 import cases from "../fixtures/stepview.json";

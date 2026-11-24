@@ -84,7 +84,7 @@ func TestOpenedTaskMem(t *testing.T) {
 	}
 }
 
-// D525: a finished turn folds its work under one head ("n 步，m 条消息");
+// D530: a finished turn folds its work under one head ("n 步，m 条消息");
 // opened, each step is its own row; the probes in it say "not there" in
 // plain words, never 出错; a real failure says its words under it.
 func TestOpenedTaskMemStretches(t *testing.T) {

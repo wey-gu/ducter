@@ -1,6 +1,6 @@
 package views
 
-// D525: the opened task's steps as rows. Inside a turn's work (its head is
+// D530: the opened task's steps as rows. Inside a turn's work (its head is
 // workHead), the agent's words at their own size and, between them, one
 // 28-tall row per step: a drawn mark by kind, a plain verb in 13 medium,
 // its object in a mono chip (a command, a pattern) or a file chip (a file
@@ -41,7 +41,7 @@ func (a *App) workWords(w Work) string {
 	return s
 }
 
-// stepItems draws a stretch of steps (D525): its rows, a run of file reads
+// stepItems draws a stretch of steps (D530): its rows, a run of file reads
 // as one; past stepTail, the last ones under "前面还有 n 步", which opens
 // the rest in place. The live stretch's last step is its own row.
 func (a *App) stepItems(c *ui.Context, task *store.Task, b *Block) {
@@ -137,7 +137,7 @@ type stepParts struct {
 	verb, code, file, path, words, more, tip string
 }
 
-// stepMark is a step's drawn mark (D525): a search of the web a globe, a
+// stepMark is a step's drawn mark (D530): a search of the web a globe, a
 // service's tool a plug, else its kind's.
 func stepMark(st *Step) func(ui.Color) func(*ui.Painter, ui.Rect) {
 	switch {
@@ -149,7 +149,7 @@ func stepMark(st *Step) func(ui.Color) func(*ui.Painter, ui.Rect) {
 	return stepGlyph(st.Kind)
 }
 
-// rowParts is a step in its row's words (D525): a plain verb (the present
+// rowParts is a step in its row's words (D530): a plain verb (the present
 // tense while it is the live one) and the object it acted on, never alone.
 func (a *App) rowParts(r *StepRow, live bool) stepParts {
 	now := func(k, past string) string {

@@ -1,4 +1,4 @@
-// D525: an opened task's steps as the rows it draws. A turn's work (everything before its last
+// D530: an opened task's steps as the rows it draws. A turn's work (everything before its last
 // words) is one group under a quiet head, "12 步，3 条消息" / "12 steps, 3 messages", with a mark
 // for what failed; inside it, the agent's words at their own size and, between them, one row per
 // step: a drawn mark by kind, a plain verb, its object in a mono chip or files as file chips. A
@@ -35,7 +35,7 @@ export function itemsOf(lines: Line[]): Item[] {
   return out;
 }
 
-/** What a turn's work holds (D525): its steps (thinking is no step), the words it said along the way, how many failed. */
+/** What a turn's work holds (D530): its steps (thinking is no step), the words it said along the way, how many failed. */
 export interface Work {
   steps: number;
   messages: number;
@@ -57,7 +57,7 @@ export function workOf(blocks: Block[]): Work {
   return w;
 }
 
-/** What a connected service's tool did, as a person says it (D525). */
+/** What a connected service's tool did, as a person says it (D530). */
 export type ToolAct = "read" | "list" | "search" | "create" | "update" | "delete" | "send" | "run" | "use";
 
 const ACTS: [RegExp, ToolAct][] = [
@@ -88,7 +88,7 @@ export function toolAct(name: string): { act: ToolAct; object: string } {
 }
 
 /**
- * A command or a pattern cut for its chip (D525): its first line, a heredoc's body left out, at
+ * A command or a pattern cut for its chip (D530): its first line, a heredoc's body left out, at
  * most `max` characters cut at a word's end, with an ellipsis when cut.
  */
 export function chipText(s: string, max = 72): string {
@@ -109,7 +109,7 @@ export function chipText(s: string, max = 72): string {
   return cut ? `${line}…` : line;
 }
 
-/** A file's name and the kind its chip draws (D525): code, text, picture, data, or a plain file. */
+/** A file's name and the kind its chip draws (D530): code, text, picture, data, or a plain file. */
 export function fileKind(path: string): "code" | "text" | "picture" | "data" | "file" {
   const ext = /\.([A-Za-z0-9]+)$/.exec(path)?.[1]?.toLowerCase() ?? "";
   if (/^(png|jpe?g|gif|webp|svg|heic|ico|bmp|avif)$/.test(ext)) return "picture";

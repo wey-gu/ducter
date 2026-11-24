@@ -327,9 +327,9 @@ func (a *App) foldHead(c *ui.Context, name string, n int, folded bool) bool {
 	return n > 0 && fold.Clicked()
 }
 
-// ---------- D525: the opened task's steps ----------
+// ---------- D530: the opened task's steps ----------
 
-// workHead is a turn's work under one quiet line (D525): the drawn stack
+// workHead is a turn's work under one quiet line (D530): the drawn stack
 // (the shared spinner while it works), "12 步，3 条消息" in 13 secondary
 // ink, a small × in the failed ink with how many failed, the chevron, and a
 // hairline on to the column's edge. Hovered, the words darken and nothing
@@ -366,7 +366,7 @@ func (a *App) workHead(c *ui.Context, key, words string, failed int, live, open 
 	return row.Clicked()
 }
 
-// stepLine is a step's one row (D268, D525): 28 tall, its mark at 16, what
+// stepLine is a step's one row (D268, D530): 28 tall, its mark at 16, what
 // it holds, and a 12 chevron in faint ink when it opens; hovered, a soft
 // tint under it that moves nothing (it pads into its own negative margin).
 // It answers a click. The web's .step.
@@ -388,7 +388,7 @@ func (a *App) stepLine(c *ui.Context, label string, expandable, open bool, child
 	return expandable && row.Clicked()
 }
 
-// stepChip is a step's object in mono on the inline code tint (D525): a
+// stepChip is a step's object in mono on the inline code tint (D530): a
 // command cut at a word's end, a pattern, a service's object; one line,
 // cut with an ellipsis, its whole on hover. Never pressable on its own.
 // The web's .chip.code.
@@ -397,24 +397,24 @@ func (a *App) stepChip(c *ui.Context, text, tip string) {
 	if tip == "" {
 		tip = text
 	}
-	ui.Row(c.Key("chip")).Height(stepChipH).Padding(0, 6).Radius(t.RadiusXS).Background(t.Sunken).AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tip).Children(func() {
+	ui.Row(c.Key("chip")).Height(stepChipH).Padding(0, 6).Radius(t.RadiusXS).Background(chipGround(t)).AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tip).Children(func() {
 		uiText(c, text).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 	})
 }
 
-// fileChip is a file a step read or edited (D525): its kind's small mark and
+// fileChip is a file a step read or edited (D530): its kind's small mark and
 // its name in mono on the inline code tint, its tail on hover; when the
 // path is known it opens the file inside Ducter (D356's viewer), a deeper
 // tint under it on hover. The web's FileChip.
 func (a *App) fileChip(c *ui.Context, key, tail, path, taskID string) {
 	t := a.T
 	name := chipFileName(tail)
-	el := ui.Row(c.Key("file:"+key)).Gap(4).Height(stepChipH).Padding(0, 6, 0, 4).Radius(t.RadiusXS).Background(t.Sunken).
+	el := ui.Row(c.Key("file:"+key)).Gap(4).Height(stepChipH).Padding(0, 6, 0, 4).Radius(t.RadiusXS).Background(chipGround(t)).
 		AlignItems(ui.Center).MinWidth(0).Shrink(1).Tooltip(tail)
 	if path != "" {
 		el.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("file.open", name))
 		if el.Hovered() {
-			el.Background(t.SurfaceSunken)
+			el.Background(t.LineSoft)
 		}
 		if el.Clicked() {
 			a.OpenFileLink(path, taskID)
@@ -428,4 +428,14 @@ func (a *App) fileChip(c *ui.Context, key, tail, path, taskID string) {
 		a.glyph(c, 12, mark(t.InkMuted))
 		uiText(c, name).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 	})
+}
+
+// chipGround is a step chip's ground (D530): the inline code tint in the
+// light; in the dark one step above it (Surface), so the chip reads on the
+// page. The web's --chip-ground.
+func chipGround(t *theme.Tokens) ui.Color {
+	if t.Dark {
+		return t.Surface
+	}
+	return t.Sunken
 }

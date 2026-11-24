@@ -34,7 +34,7 @@ var sharedControls = map[string]bool{
 	"sheetFold": true, "extraStep": true,
 	// D518: a step's number in a short numbered sequence
 	"stepNumber": true,
-	// D525: the opened task's steps: the work's head, a step's row, its object chip and its file chip
+	// D530: the opened task's steps: the work's head, a step's row, its object chip and its file chip
 	"workHead": true, "stepLine": true, "stepChip": true, "fileChip": true,
 }
 

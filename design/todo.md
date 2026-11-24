@@ -3260,9 +3260,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
   is a scroll away when the transcript is long; the end line says the wait but not the PR.
   *Trigger:* the author asks for the head on open, or the PR in the end line.
-- [ ] **D525's step rows take the shared row hover** once the branch defining it lands (today a soft
+- [ ] **D530's step rows take the shared row hover** once the branch defining it lands (today a soft
   tint into the row's own margin). *Trigger:* the shared row hover merges.
-- [ ] **D525: agy's `invoke_subagent` input keys** are inferred (`Description`, then `Prompt`); check
+- [ ] **D530: agy's `invoke_subagent` input keys** are inferred (`Description`, then `Prompt`); check
   them on a live agy run and add the recorded shape to `steps.json`. *Trigger:* the next agy task.
 - [ ] **On hand's latest line says a subagent as "做了 1 样别的事"** (D268's tally has no subagent
   kind). *Trigger:* the next On hand pass.

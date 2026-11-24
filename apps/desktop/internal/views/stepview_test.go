@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// D525: the web (packages/protocol/test/stepview.test.ts) passes the same cases.
+// D530: the web (packages/protocol/test/stepview.test.ts) passes the same cases.
 func TestStepviewFixture(t *testing.T) {
 	data, err := os.ReadFile("../../../../packages/protocol/fixtures/stepview.json")
 	if err != nil {

@@ -294,7 +294,7 @@ What the window writes is what the user reads when they open the task, in one co
   command beside them, else a verb and a short summary, the same kinds on every harness:
   `packages/protocol/src/steps.ts`; a connected service's tool keeps its service as `via`),
   thinking as its headings with how long it took, a probe that found nothing in neutral
-  words. D525 (`packages/protocol/src/stepview.ts`, its Go port
+  words. D530 (`packages/protocol/src/stepview.ts`, its Go port
   `views/stepview.go`; the rows in `views/taskrows.go` and `transcript.tsx`): a turn's work
   (everything before its last words; all of it while it works) sits under one quiet head,
   **12 步，3 条消息 / 12 steps, 3 messages** with a small × and how many failed (`workOf`), the
@@ -371,7 +371,7 @@ What the window writes is what the user reads when they open the task, in one co
   a hairline in the user's language. A wake's text leaves out what the check saw when it is a
   bare number;
 - **the end line** (D271) says only what the state proves: `inTurn` (something happened since
-  the last `turn_ended`) and a working card is a turn under way: D525's foot, a hairline then On
+  the last `turn_ended`) and a working card is a turn under way: D530's foot, a hairline then On
   hand's working pulse, the state's word (**在做 / Working**, or the retry) and the turn's clock at
   the right, in the meta line's 12 (never a floating coloured word); no turn and an armed wait of its own is **等 {what} · {time} 回来** (D279), how it checks
   opened under it; otherwise nothing. Since D279 a progress report after `wait_for` leaves the
@@ -402,4 +402,4 @@ What the window writes is what the user reads when they open the task, in one co
   them in every frame and push it sends; the Log keeps them for the task (D152);
 - the diff of the worktree is a list of files; a diff shows only when the user opens a file.
 - **where it works** is the header's branch and place control and 看细节 / Details; the
-  transcript never prints the working copy's raw path (D525, was D198's path over the changes).
+  transcript never prints the working copy's raw path (D530, was D198's path over the changes).

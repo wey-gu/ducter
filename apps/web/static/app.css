@@ -27,6 +27,7 @@
   --bg-deep: #fcecd7;
   --surface: #ffffff;
   --sunken: #f7ebda;
+  --chip-ground: #f7ebda; /* D530: a step's code and file chips (sunken in the light) */
   --surface-sunken: #f3e6d3; /* sunken-2 */
   --surface-raised: #fffbf0;
   --ink: #2b2118;
@@ -216,6 +217,7 @@
     --bg-deep: #120e0b;
     --surface: #231c16;
     --sunken: #1d1712;
+    --chip-ground: #231c16; /* D530: the code chip one step above sunken in the dark */
     --surface-raised: #2a221b;
     --surface-sunken: #1d1712;
     --ink: #f6ebdd;
@@ -301,6 +303,7 @@
   --bg-deep: #120e0b;
   --surface: #231c16;
   --sunken: #1d1712;
+  --chip-ground: #231c16; /* D530: the code chip one step above sunken in the dark */
   --surface-raised: #2a221b;
   --surface-sunken: #1d1712;
   --ink: #f6ebdd;
@@ -11184,7 +11187,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   height: 1px;
   background: var(--line);
 }
-/* D525: a turn's work under one quiet head: the stack (a spinner while it works), "12 步，3 条消息"
+/* D530: a turn's work under one quiet head: the stack (a spinner while it works), "12 步，3 条消息"
    in 13 medium muted ink, a small × with how many failed, the chevron, a hairline on to the edge.
    Folded once the turn is done, open while it works. Hover darkens the words; nothing moves. */
 .turns .work-head {
@@ -11238,7 +11241,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex-direction: column;
   gap: 12px;
 }
-/* D525: a step's verb in 13 medium, its object in a chip (mono on the inline code tint, 20 tall),
+/* D530: a step's verb in 13 medium, its object in a chip (mono on the inline code tint, 20 tall),
    muted words after; what it took or that it failed at the row's right edge. */
 .turns .step .verb {
   flex: none;
@@ -11282,7 +11285,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   height: max(20px, 1.25rem);
   padding: 0 6px;
   border-radius: var(--r-xs);
-  background: var(--sunken);
+  background: var(--chip-ground);
   font-family: var(--mono);
   font-size: var(--xs);
   font-weight: 400;
@@ -11310,14 +11313,27 @@ button.chip-file {
 }
 @media (hover: hover), (any-hover: hover) {
   button.chip-file:hover {
-    background: var(--surface-sunken);
+    background: var(--line-soft);
     color: var(--ink);
+  }
+}
+/* D530: at a phone's width a run of reads shows its first file and counts the rest. */
+.turns .step.files .more-narrow {
+  display: none;
+}
+@media (max-width: 480px) {
+  .turns .step.files .extra,
+  .turns .step.files .more-wide {
+    display: none;
+  }
+  .turns .step.files .more-narrow {
+    display: inline;
   }
 }
 .turns .step.earlier-steps .words {
   color: var(--ink-muted);
 }
-/* D525: the transcript's foot while it works: a hairline, On hand's working pulse, the state in its
+/* D530: the transcript's foot while it works: a hairline, On hand's working pulse, the state in its
    own words and the turn's clock at the right, in the meta line's 12. */
 .work-foot {
   display: flex;

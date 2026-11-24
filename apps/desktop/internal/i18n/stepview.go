@@ -1,6 +1,6 @@
 package i18n
 
-// D525: the opened task's steps, redrawn: a turn's work under one quiet
+// D530: the opened task's steps, redrawn: a turn's work under one quiet
 // head, one row per step (a plain verb, its object in a chip), a service's
 // tool by the service and what it did, the live row in the present tense.
 // The same keys and words as the web (apps/web/src/i18n-stepview.ts).

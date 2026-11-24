@@ -18,7 +18,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D525: the opened task's steps, redrawn. Two real-shaped runs: an
+// D530: the opened task's steps, redrawn. Two real-shaped runs: an
 // Antigravity (agy) task walking Mem's screens, still running (its own MCP
 // naming, run_command, read_file with Path, invoke_subagent), and a Claude
 // Code fix, finished, with a failed step, a subagent, three reads in a row

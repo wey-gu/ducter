@@ -1,8 +1,8 @@
-// D525: the opened task's steps, redrawn, as a demo core: the author's Antigravity task walking Mem's
+// D530: the opened task's steps, redrawn, as a demo core: the author's Antigravity task walking Mem's
 // screens, still running (agy's own tool names), and a finished Claude Code fix with a failed step,
 // a subagent, three reads in a row and two edits. The same runs as the Mac's shots
 // (apps/desktop/internal/views/transcriptv2_shots_test.go).
-//   DUCTER_PORT=7524 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-d525.ts
+//   DUCTER_PORT=7524 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-d530.ts
 // then open http://127.0.0.1:7524/app#task=t_agy (t_cc for the finished one).
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +13,7 @@ import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const w = (z: string, e: string) => (zh ? z : e);
-const dataDir = process.env.DUCTER_DATA_DIR || join(mkdtempSync(join(tmpdir(), "ducter-demo-d525-")), "data");
+const dataDir = process.env.DUCTER_DATA_DIR || join(mkdtempSync(join(tmpdir(), "ducter-demo-d530-")), "data");
 let shift = 0;
 const clock = { now: () => Date.now() + shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
 const core = startCore({ dataDir, push: false, persona: { id: "default", name: "Ducter", identity: "" }, ooSource: noOo, clock });

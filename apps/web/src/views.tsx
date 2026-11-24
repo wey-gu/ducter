@@ -77,7 +77,7 @@ const PrMark = () => (
 import { PartnersBack, PartnersSection, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
-import { useWide } from "./wide.ts";
+import { useSplit, useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { CheckoutBody, StepBody } from "./errand.tsx";
 
@@ -1638,6 +1638,9 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
   // way to the other places (one per screen: the conversation's, when the panes stand side by side).
   const wide = useWide();
+  // D541: the others' faces in the bar on a phone, and on a fold (no list stands beside there).
+  const phoneBar = usePhone();
+  const fold = useSplit();
   // D290: back at the conversation, the partner glances round at where you were (app.css .look).
   const face = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1678,7 +1681,7 @@ function Top({ back, plus, level, extra, own }: { back?: string; plus?: boolean;
           way, D262); the counts under the name open On hand, narrowed to what they name when they
           name one thing. Each tints on its own under the pointer. */}
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
-      {!wide && <PartnersBack />}
+      {((!wide && phoneBar) || fold) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. */}
         <button class="who-face" ref={face} tabIndex={-1} aria-hidden="true" data-look={A.shownPartner()?.look} title={t("nav.partner.about", A.S.personaName)} onClick={() => A.openSettings("partner")}>

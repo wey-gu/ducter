@@ -17,7 +17,7 @@ import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { PartnerList, partnerKey } from "./partners.tsx";
-import { escUp, useFill, useSplit, useWide } from "./wide.ts";
+import { escUp, useFill, usePhone, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
 import { nthKey, walkKey } from "./onhand.tsx";
@@ -72,6 +72,8 @@ function App() {
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
   const wide = useWide();
+  // D541: under 700 the list of partners is the level above the conversation; from 700 it stands beside.
+  const phone = usePhone();
   // D182: on a foldable the panes split at the fold, left and right (a book) or top and bottom
   // (tabletop); app.css places them from --fold-a and --fold-gap.
   const split = useSplit();
@@ -118,12 +120,13 @@ function App() {
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
-          {/* D513: with more than one partner, the list of them at the conversation's left. */}
+          {/* D513: with more than one partner, the list of them at the conversation's left; D541: on a
+              fold the conversation's bar holds the others' faces instead, and the list opens over it. */}
           {!split && <PartnerList at="side" />}
           {/* D541: picking a partner shows its conversation in place, in this frame (held, or peeked);
               the list, the bar and the composer stay still. */}
           <section class="pane conv" aria-label={t("nav.conversation")}>
-            <Conversation />
+            {split && A.partnersOpen && A.manyPartners() ? <PartnerList at="home" /> : <Conversation />}
           </section>
           <section class="pane side" aria-label={r.name === "task" ? undefined : t("nav.onhand")}>
             {r.name === "task" ? <TaskView key={r.id} id={r.id} /> : <OnHand />}
@@ -132,7 +135,21 @@ function App() {
       ) : (
         <>
           {/* D513: a phone's list of partners is the level above the conversation. */}
-          {r.name === "conv" && (A.partnersOpen && A.manyPartners() ? <PartnerList at="home" places={<Places onHand />} /> : <Conversation />)}
+          {r.name === "conv" &&
+            (A.partnersOpen && A.manyPartners() ? (
+              <PartnerList at="home" places={<Places onHand />} />
+            ) : A.manyPartners() && !phone ? (
+              // D541: between a phone and two panes (700–999: an iPad upright, a foldable open), the
+              // slim list of faces and numbers at the conversation's left, as from 1000.
+              <div class="panes mid">
+                <PartnerList at="side" slim />
+                <section class="pane conv" aria-label={t("nav.conversation")}>
+                  <Conversation />
+                </section>
+              </div>
+            ) : (
+              <Conversation />
+            ))}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
           {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}

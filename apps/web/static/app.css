@@ -21609,6 +21609,21 @@ html[data-text-size="large"] .brand-mark > svg {
   .pane.partners .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
   .pane.partners .pl-last { display: none; }
 }
+/* D541: the same slim list from 700 to 999 (an iPad upright, a foldable open), at the conversation's
+   left in the one column, which grows by the list's width so the conversation keeps its measure. */
+.pane.partners.slim { flex-basis: 88px; }
+.pane.partners.slim > .top .level { visibility: hidden; }
+.pane.partners.slim .pl-rows { --row: 74px; padding-inline: 6px; }
+.pane.partners.slim .pl-knob { left: 6px; right: 6px; }
+.pane.partners.slim .pl-row { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 4px; }
+.pane.partners.slim .pl-words { flex: none; align-items: center; max-width: 100%; }
+.pane.partners.slim .pl-name { font-size: 0.6875rem; max-width: 76px; text-align: center; }
+.pane.partners.slim .pl-last { display: none; }
+#app:has(> .panes.mid) {
+  width: min(728px, calc(100% - var(--safe-left) - var(--safe-right)));
+  margin-left: max(var(--safe-left), calc((100% - 728px) / 2));
+}
+.panes.mid .pane.conv { flex: 1 1 0; }
 /* A phone: the list is the level above the conversation, rows a thumb's height. */
 .partners-home {
   padding-top: 4px;
@@ -21633,6 +21648,37 @@ html[data-text-size="large"] .brand-mark > svg {
   color: var(--ink-soft);
 }
 .top .partners-back:active { color: var(--ink); }
+/* D541: the other partners' figures, a small stack in their own clays (the nearest on top), the
+   number of what waits in them on the stack's shoulder: who is behind ‹, never a bare "back". */
+.pb-faces {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-inline-end: 2px;
+}
+.pb-face {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sunken);
+  box-shadow: 0 0 0 1.5px var(--bg);
+  overflow: hidden;
+  align-items: center;
+}
+.pb-face + .pb-face { margin-inline-start: -9px; }
+.pb-face:nth-child(1) { z-index: 3; }
+.pb-face:nth-child(2) { z-index: 2; }
+.pb-face:nth-child(3) { z-index: 1; }
+.pb-face img { width: 22px; margin-top: 3px; }
+.top .partners-back .pb-chev { width: 16px; height: 16px; margin-inline-end: 1px; }
+.top .partners-back .pb-chev path { stroke-width: 2.2; }
+.top .partners-back:has(.pb-faces) { margin-inline-end: 2px; }
+.pb-faces > .pl-n {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  z-index: 4;
+}
 /* A phone's bar with ‹: the counts line keeps one fact, whole (the first: what needs you comes first; the
    rest is in its label), so the bar stays one line tall beside the places. */
 @media (max-width: 600px) {

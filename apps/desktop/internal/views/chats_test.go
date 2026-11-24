@@ -62,7 +62,7 @@ func TestChatsCode(t *testing.T) {
 		{Kind: "telegram", State: "unlinked", Bot: &protocol.ChannelBot{Name: "Ducter", Handle: "my_ducter_bot"}},
 		{Kind: "slack", State: "off"},
 	})
-	if err := tt.Click("让我的账号连上"); err != nil {
+	if err := tt.Click("获得口令"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

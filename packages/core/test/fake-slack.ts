@@ -2,7 +2,11 @@
 // adapter uses), so the adapter and the hub are tested without a workspace or a real token.
 import type { ServerWebSocket } from "bun";
 
-export function fakeSlack(o: { botToken?: string; appToken?: string } = {}) {
+/**
+ * scopes: the bot token's scopes as Slack lists them in x-oauth-scopes (D531; absent: no header).
+ * A post with a username or icon_url without chat:write.customize answers missing_scope.
+ */
+export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: string[] } = {}) {
   const botToken = o.botToken ?? "xoxb-1111-2222-abcdefghijklmnopqrst";
   const appToken = o.appToken ?? "xapp-1-A111-2222-abcdefghijklmnopqrst";
   const calls: { method: string; body: Record<string, any>; ts?: string }[] = [];
@@ -14,6 +18,7 @@ export function fakeSlack(o: { botToken?: string; appToken?: string } = {}) {
   let opened = 0;
   const nextTs = () => `${ts++}.000100`;
   const files = new Map<string, Uint8Array>();
+  let scopes = o.scopes;
 
   const server = Bun.serve({
     port: 0,
@@ -50,14 +55,21 @@ export function fakeSlack(o: { botToken?: string; appToken?: string } = {}) {
       const wantApp = method === "apps.connections.open";
       if (auth !== `Bearer ${wantApp ? appToken : botToken}`) return Response.json({ ok: false, error: "invalid_auth" });
       calls.push({ method, body });
-      const ok = (x: Record<string, unknown> = {}) => Response.json({ ok: true, ...x });
+      const headers = scopes ? { "x-oauth-scopes": scopes.join(",") } : undefined;
+      const ok = (x: Record<string, unknown> = {}) => Response.json({ ok: true, ...x }, { headers });
       switch (method) {
         case "auth.test":
-          return ok({ user_id: "UBOT", user: "ducter", team: "Acme", bot_id: "B1" });
+          return ok({ user_id: "UBOT", user: "ducter", team: "Acme", team_id: "T0ACME", bot_id: "B1" });
+        case "bots.info":
+          return ok({ bot: { id: body.bot, app_id: "A0DUCTER", name: "ducter" } });
         case "apps.connections.open":
           opened++;
           return ok({ url: `ws://127.0.0.1:${server.port}/socket` });
         case "chat.postMessage":
+          if ((body.username || body.icon_url) && scopes && !scopes.includes("chat:write.customize")) {
+            calls.at(-1)!.method = "chat.postMessage!";
+            return Response.json({ ok: false, error: "missing_scope", needed: "chat:write.customize", provided: scopes.join(",") }, { headers });
+          }
           calls.at(-1)!.ts = nextTs();
           return ok({ ts: calls.at(-1)!.ts, channel: body.channel });
         case "chat.update":
@@ -117,6 +129,12 @@ export function fakeSlack(o: { botToken?: string; appToken?: string } = {}) {
       envelope("events_api", { event: { type: "message", subtype: "file_share", channel: `D${user}`, channel_type: "im", user, text: "", ts: t, files: [{ id: "Fx", name, size: bytes.length, url_private_download: `http://127.0.0.1:${server.port}${path}` }] } });
       return t;
     },
+    /** D531: user @-mentions the bot in a channel it was added to (Slack's app_mention event). */
+    mentions(user: string, channel: string, text: string, extra: Record<string, unknown> = {}) {
+      const t = nextTs();
+      envelope("events_api", { event: { type: "app_mention", channel, user, text: `<@UBOT> ${text}`, ts: t, event_ts: t, ...extra } });
+      return t;
+    },
     inChannel(user: string, text: string) {
       envelope("events_api", { event: { type: "message", channel: "C1", channel_type: "channel", user, text, ts: nextTs() } });
     },
@@ -130,6 +148,8 @@ export function fakeSlack(o: { botToken?: string; appToken?: string } = {}) {
     failNext(method: string, status: number, answer: any, headers?: Record<string, string>) {
       failures.push({ method, status, answer, headers });
     },
+    /** D531: the app reinstalled with other scopes. */
+    setScopes: (s: string[] | undefined) => void (scopes = s),
     stop: () => server.stop(true),
   };
 }

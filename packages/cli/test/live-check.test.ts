@@ -6,7 +6,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { activityShapes, CHECKS, checkNamed, checkoutOf, contactShapes, expectedManager, firstAnswer, holdsOf, holdVerdict, limitShapes, loopsOf, offersWeek } from "../src/live-check/checks.ts";
+import { activityShapes, CHECKS, checkNamed, checkoutOf, contactShapes, expectedManager, firstAnswer, holdsOf, holdVerdict, inboxSpaceShapes, limitShapes, loopsOf, offersWeek, receiptShapes } from "../src/live-check/checks.ts";
 import { realCheckEnv } from "../src/live-check/env.ts";
 import { askHome, automatic, type CheckEnv, type CheckResult, latest, listText, type LoggedEvent, outcomeOf, readResults, reportText, resultText, runCheck, todoLine, writeResult } from "../src/live-check/kit.ts";
 import { checkMain, parseOpts } from "../src/live-check/main.ts";
@@ -407,6 +407,9 @@ describe("mem-shapes (D433, D444, D458)", () => {
     "bridge connections list --space-id s1 --agent-id a1 --include-activity": { code: 0, out: JSON.stringify(conns), err: "" },
     "m search -n 5 -- decided": { code: 0, out: JSON.stringify({ memories: [{ id: "m", title: "Use bun", source: "agent", unit_type: "decision" }] }), err: "" },
     "resources get -- nowledgemem://memory/abc": { code: 0, out: JSON.stringify({ resource: { title: "Plan", body: "words" } }), err: "" },
+    // D555: nmem 0.10.123's outbox with a read receipt (shape INFERRED from the binary), and the identity inbox's Spaces.
+    "--agent-context ducter-hel bridge outbox": { code: 0, out: JSON.stringify({ operations: [{ operation: "bo1:a", phase: "delivered", message: "bm1:x", read_receipt: { receipt_available: true, read_state: "read", read_recipients: 1 } }], outcome_unknown: false }), err: "" },
+    "--agent-context ducter-hel bridge inbox": { code: 0, out: JSON.stringify({ messages: [], spaces: [{ space_id: "s1", status: "observed" }, { space_id: "s2", status: "observed" }] }), err: "" },
   };
   const env = (over: Record<string, any> = {}) =>
     fakeEnv({
@@ -426,7 +429,7 @@ describe("mem-shapes (D433, D444, D458)", () => {
 
   test("every read verb answered in the shapes Ducter reads: pass", async () => {
     const r = await runCheck(checkNamed("mem-shapes")!, env(), { uri: ["nowledgemem://memory/abc"], message: ["/s/msg.json"] });
-    expect(r.steps.map((s) => [s.id, s.outcome])).toEqual([["nmem", "pass"], ["contacts", "pass"], ["activity", "pass"], ["search", "pass"], ["resource", "pass"], ["references", "pass"]]);
+    expect(r.steps.map((s) => [s.id, s.outcome])).toEqual([["nmem", "pass"], ["contacts", "pass"], ["activity", "pass"], ["search", "pass"], ["resource", "pass"], ["references", "pass"], ["receipts", "pass"], ["inbox-spaces", "pass"]]);
     expect(r.outcome).toBe("pass");
     expect(r.steps[5]!.observed).toMatchObject({ refs: 2, where: ["message.knowledge_references"] });
     expect(JSON.stringify(r)).not.toContain("Use bun"); // a memory's title never lands in the result
@@ -437,6 +440,25 @@ describe("mem-shapes (D433, D444, D458)", () => {
     expect(r.steps[1]).toMatchObject({ outcome: "fail", note: "no card carries mailbox_available" });
     expect(r.steps[4]!.outcome).toBe("skip");
     expect(r.outcome).toBe("fail");
+  });
+
+  // D555 (research/226): a sent message's read receipt and each inbox Space's state, field names and counts only.
+  test("receipts: read where Mem gives one; none yet is not a fail; one Ducter can't read is", async () => {
+    const out = (j: any) => ({ "--agent-context ducter-hel bridge outbox": { code: 0, out: JSON.stringify(j), err: "" } });
+    const step = async (j: any) => (await runCheck(checkNamed("mem-shapes")!, env(out(j)))).steps.find((s) => s.id === "receipts")!;
+    expect(receiptShapes({ operations: [{ operation: "bo1:a", phase: "settled" }] })).toMatchObject({ ops: 1, receiptField: 0, read: 0 });
+    expect((await step({ operations: [{ operation: "bo1:a", phase: "settled" }] })).outcome).toBe("not-yet"); // 0.10.121's bare entry
+    expect((await step({ operations: [] })).outcome).toBe("not-yet");
+    const odd = await step({ operations: [{ operation: "bo1:a", read_receipt: { receipt_available: true, opened: 1 } }] });
+    expect(odd).toMatchObject({ outcome: "fail", observed: { receiptField: 1, read: 0, receiptFields: ["opened", "receipt_available"] } });
+    expect(JSON.stringify(odd)).not.toContain("bo1:a"); // no ids kept
+  });
+
+  test("inbox Spaces: a personal Space still unreconciled fails and says so", async () => {
+    const j = { messages: [], spaces: [{ space_id: "s1", status: "observed" }, { space_id: "p1", status: "unavailable", error_code: "cloud_mailbox_own_source_unreconciled", retryable: false }] };
+    expect(inboxSpaceShapes(j)).toMatchObject({ spaces: 2, stuck: 1, stuckSpace: true, refused: null });
+    const r = await runCheck(checkNamed("mem-shapes")!, env({ "--agent-context ducter-hel bridge inbox": { code: 0, out: JSON.stringify(j), err: "" } }));
+    expect(r.steps.find((s) => s.id === "inbox-spaces")).toMatchObject({ outcome: "fail", note: "1 Space(s) still say a cloud_mailbox_*_unreconciled code" });
   });
 
   test("activity offered but read nowhere fails", async () => {

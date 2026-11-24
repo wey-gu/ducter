@@ -105,7 +105,7 @@ test("plugin installed there: it stays on, as the persona, with no Ducter notes 
   const runner = createRunner(core, { harness: h.port, newId: () => "tsk8" });
   await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
   expect(h.specs[0]!.disablePlugins).toBeUndefined();
-  expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_NO_MAILBOX_NOTICE: "1" });
+  expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_NO_MAILBOX_NOTICE: "1", NMEM_BRIDGE_SESSION_MAILBOX: "0" });
   expect(h.specs[0]!.appendSystemPrompt).toContain("Nowledge Mem is on in this session");
   expect(h.turns[0]).toStartWith('Start the task "x"');
   expect(asked).toBe(1); // D304: asked once, for other tools' memories; the person's own come from the plugin
@@ -135,7 +135,7 @@ test("D229: Ducter's nmem named in NMEM_CLI_PATH (put in off PATH) reaches the t
     const h = recordingPort();
     const runner = createRunner(core, { harness: h.port, newId: () => "tsk8b" });
     await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
-    expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_CLI_PATH: "/home/u/.local/bin/nmem", NMEM_NO_MAILBOX_NOTICE: "1" });
+    expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_CLI_PATH: "/home/u/.local/bin/nmem", NMEM_NO_MAILBOX_NOTICE: "1", NMEM_BRIDGE_SESSION_MAILBOX: "0" });
   } finally {
     if (was === undefined) delete process.env.NMEM_CLI_PATH;
     else process.env.NMEM_CLI_PATH = was;

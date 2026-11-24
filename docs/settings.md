@@ -337,12 +337,16 @@ your partner, in plain words, with when it last came at the right:
   it; Nowledge Mem never picks a Space for you, so neither does Ducter. It never touches your
   partner's own connection.
 - **With Nowledge Mem's plugin, it can hand me work**, with **Install** to put it in.
-- pi and Antigravity share one quiet row. When they're signed in on a computer of Ducter's, it says
-  **Tasks {name} runs on them pass messages; yours can't yet**: a task your partner runs on them can
-  ask your other agents something. The first time it does, a card in your conversation shows which
-  task, who it's for and the words, with **Send**; nothing goes before you tap it, and the answer goes
-  back into the task. Otherwise it says **Their Nowledge Mem plugin can't pass messages yet**: that
-  is for Nowledge Mem to add, nothing for you to fix.
+- Antigravity has its own row like the others: Nowledge Mem's Antigravity plugin can pass messages
+  too (in Antigravity, ask it with `/nmem-bridge-chat`). Nowledge Mem doesn't tell Ducter whether that
+  plugin is in, so the row says so until Antigravity first hands your partner something, or Nowledge
+  Mem lists its mailbox.
+- pi has a quiet row of its own. When it's signed in on a computer of Ducter's, it says **Tasks
+  {name} runs on it pass messages; yours can't yet**: a task your partner runs on it can ask your
+  other agents something. The first time it does, a card in your conversation shows which task, who
+  it's for and the words, with **Send**; nothing goes before you tap it, and the answer goes back into
+  the task. Otherwise it says **Its Nowledge Mem plugin can't pass messages yet**: that is for
+  Nowledge Mem to add, nothing for you to fix.
 
 **Your helpers** lists each helper's address, with **Open** to its page under **On hand › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull

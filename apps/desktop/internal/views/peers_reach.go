@@ -13,11 +13,14 @@ import (
 // seen for a day. The web's: reachRows and awayFor (apps/web/src/mem-view.ts).
 
 // bridgeTools are the tools whose Nowledge Mem plugin carries Bridge today
-// (research/66 §10, research/183); noBridgeTools share the memory but can't
-// pass a message yet.
+// (research/66 §10, research/183; D555, research/226: Antigravity's since its
+// plugin 0.1.4, which Mem's plugin check doesn't list, so its row says yes only
+// from Mem's contact list or an exchange); noBridgeTools share the memory but
+// can't pass a message yet (pi: its plugin 0.8.19 only reminds a session set up
+// by hand to check an approved mailbox at start).
 var (
-	bridgeTools   = []string{"claude-code", "codex"}
-	noBridgeTools = []string{"pi", "antigravity"}
+	bridgeTools   = []string{"claude-code", "codex", "antigravity"}
+	noBridgeTools = []string{"pi"}
 	toolNames     = map[string]string{"claude-code": "Claude Code", "codex": "Codex", "pi": "pi", "antigravity": "Antigravity"}
 )
 
@@ -82,11 +85,11 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		}
 		row := reachRow{Harness: h, Tool: tool, Last: last, Box: box}
 		switch {
-		case (h == "pi" || h == "antigravity") && runs:
+		case noBridge(h) && runs:
 			// D448: signed in on a computer of Ducter's: the tasks Ducter runs on it pass
 			// messages through Ducter; the person's own sessions of it still can't.
 			row.Can, row.Box = "relay", ""
-		case h == "pi" || h == "antigravity":
+		case noBridge(h):
 			row.Can, row.Box = "none", ""
 		case on || last != "" || box == "open":
 			row.Can, row.Device, row.DeviceName = "yes", onID, onName
@@ -98,6 +101,16 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		out = append(out, row)
 	}
 	return out
+}
+
+// noBridge: the tool's own Mem plugin can't pass a message yet.
+func noBridge(h string) bool {
+	for _, x := range noBridgeTools {
+		if x == h {
+			return true
+		}
+	}
+	return false
 }
 
 // awayFor: Mem last saw that computer over a day ago (0: Mem didn't say).

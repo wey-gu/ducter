@@ -540,6 +540,10 @@ func (a *App) noBridgeRow(c *ui.Context, rows []reachRow, name string) {
 			}
 		})
 	}
+	if len(rows) == 1 {
+		// D555: pi alone (Antigravity has its own row now) wears the same tile as every agent row.
+		tile = a.toolTile(c, rows[0].Tool)
+	}
 	a.tileRow(c, "agents-nobridge", tile, a.listWords(tools), line, nil)
 }
 

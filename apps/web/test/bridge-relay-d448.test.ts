@@ -12,13 +12,20 @@ const dev = (harnesses: string[]) => ({ id: "local", name: "Mac", home: true, ha
 let n = 0;
 const ev = (body: Bodies["bridge_msg"], seq = ++n): LogEvent => ({ seq, ts: new Date(1_763_000_000_000 + seq * 1000).toISOString(), persona: "p", stream: "channel", origin: body.direction === "in" ? "peer" : "partner", kind: "bridge_msg", body }) as LogEvent;
 
-describe("能找到{name}的: pi and Antigravity where Ducter runs tasks", () => {
+describe("能找到{name}的: pi where Ducter runs tasks", () => {
   test("signed in on a computer of Ducter's: relay; known only from the person's own records: none", () => {
+    expect(reachRows([dev(["pi"])], [], []).map((r) => [r.harness, r.can])).toEqual([["pi", "relay"]]);
+    expect(reachRows([], ["pi"], []).map((r) => r.can)).toEqual(["none"]);
+  });
+  // D555 (research/226): Antigravity's Mem plugin carries Bridge since 0.1.4, so it is never the quiet row
+  // again. Mem's plugin check doesn't list Antigravity: its row says yes from Mem's contact list or an exchange.
+  test("Antigravity stands as Claude Code and Codex do", () => {
     expect(reachRows([dev(["pi", "antigravity"])], [], []).map((r) => [r.harness, r.can])).toEqual([
+      ["antigravity", "unknown"],
       ["pi", "relay"],
-      ["antigravity", "relay"],
     ]);
-    expect(reachRows([], ["antigravity"], []).map((r) => r.can)).toEqual(["none"]);
+    expect(reachRows([], ["antigravity"], [], [{ harness: "antigravity", open: true }])).toEqual([{ harness: "antigravity", tool: "Antigravity", can: "yes", box: "open" }]);
+    expect(reachRows([], ["antigravity"], [{ agent: "你的 Antigravity", at: "2026-11-24T08:00:00Z" }]).map((r) => r.can)).toEqual(["yes"]);
   });
   test("the line says both halves, in both languages", () => {
     // D489: pi and Antigravity share one row, so the line names neither.

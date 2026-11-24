@@ -22,8 +22,8 @@ describe("能找到{name}的 / Who can reach (D433)", () => {
     expect(rows.map((r) => [r.harness, r.can, r.device ?? ""])).toEqual([
       ["claude-code", "install", "local"],
       ["codex", "yes", "local"], // D470: where its mailbox opens
+      ["antigravity", "unknown", ""], // D555: its plugin carries Bridge, and Mem's plugin check doesn't list it
       ["pi", "relay", ""], // D448: signed in where Ducter runs tasks: its tasks pass messages through Ducter
-      ["antigravity", "relay", ""],
     ]);
   });
 

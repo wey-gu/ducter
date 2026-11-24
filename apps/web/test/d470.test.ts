@@ -24,7 +24,7 @@ describe("who reaches whom (D470)", () => {
     expect(reachWays(row("codex", "unknown"))).toEqual({ to: "unknown", back: "unknown" });
     expect(reachWays({ can: "none" })).toEqual({ to: "no", back: "no" });
   });
-  test("split: both ways, one way, not yet; pi and Antigravity are Mem's to add", () => {
+  test("split: both ways, one way, not yet; pi is Mem's to add (D555: Antigravity is a Bridge tool)", () => {
     const s = reachSplit([row("codex", "yes", { box: "open" }), row("claude-code", "yes", { box: "closed", device: "local" }), { harness: "pi", tool: "pi", can: "relay" }]);
     expect([s.both.map((r) => r.harness), s.oneWay.map((r) => r.harness), s.notYet.length]).toEqual([["codex"], ["claude-code"], 0]);
   });

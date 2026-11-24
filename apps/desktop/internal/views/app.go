@@ -347,6 +347,8 @@ type App struct {
 	undoUntil time.Time
 	// dev is Your devices and abilities' own state.
 	dev devicesState
+	// about is a device card's 关于这台 / About this computer: the rule being changed or added (D538).
+	about aboutState
 	// Desktop is the window app's hands on macOS (focus, notifications);
 	// nil in tests that don't need it.
 	Desktop Desktop

@@ -170,7 +170,13 @@ export interface CoreApi {
   /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
   branchAsk?(prompt: string): Promise<string>;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
-  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
+  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
+  /**
+   * D538: where work goes, as the person said it and as it stands: their computer rules (多放 / 少放 a
+   * computer for heavy, web or all work), what Mem holds about computers not kept as a rule here yet
+   * (offered once), and the heavy tasks running per computer ("local" the home).
+   */
+  placement?(): { rules: { device: string; text: string; avoid?: boolean; heavy?: boolean; web?: boolean }[]; hints?: { text: string }[]; heavy?: Record<string, number> };
   /**
    * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
    * closed (box): it reaches the partner, the answers can't go back. Only what isn't whole.
@@ -493,6 +499,11 @@ export interface BodyChooser {
   // its name, "local" for the home), whether it waits there, and what it uses.
   // D202: effort, the user's pick, is checked against the chosen model's levels on its computer.
   choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
+  /**
+   * D538: whether that computer ("local" for the home, else a worker's id) has room for heavy work
+   * now (its memory free and its heavy tasks under its share). A task waiting for room asks this.
+   */
+  room?(device: string): Promise<boolean>;
 }
 
 /** D157: who does a new task, on which computer, and why. */
@@ -503,7 +514,8 @@ export interface BodyChoice {
   device?: string;
   deviceId?: string;
   home?: boolean;
-  waits?: "asleep" | "unreachable";
+  /** D538: room: heavy work, and that computer hasn't the memory free for it now (it waits for room). */
+  waits?: "asleep" | "unreachable" | "room";
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
   now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
@@ -601,7 +613,10 @@ export interface WorkerInfo {
   /** D157: how it browses for tasks (its 上网), when it is on. */
   web?: "chrome" | "ducter";
   /** D157: it doesn't sleep. */
-  alwaysOn?: boolean;}
+  alwaysOn?: boolean;
+  /** D538: what it has and has free now, from its heartbeat (only while it is connected). */
+  resources?: import("./index.ts").DeviceResources;
+}
 
 /** The main's handle on one worker. Stable across reconnects. */
 export interface WorkerLink {
@@ -952,6 +967,8 @@ export interface PlacesPort {
     where?: { on?: string; only?: boolean; not?: string[] };
     /** D477: the task this one opens again (a rethink): its recorded word on where carries over. */
     replaces?: string;
+    /** D538: what the task needs (heavy work and the person's placement rules are checked against the computer). */
+    needs?: TaskNeeds;
   }): Promise<PreflightResult>;
   /** D120's early open: a place on this computer that is that repository now (read at once, no git). */
   quick(place: Place, remote?: string): boolean;

@@ -1584,6 +1584,9 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
+  // D538: a placement rule kept from a computer's 关于这台 / About this computer: add one, or change
+  // the one `id` names (prefer or avoid, and which work: heavy, web, or all). A fresh rules frame follows.
+  | { t: "rule_where"; id?: string; device: string; avoid?: boolean; work: "heavy" | "web" | "all"; lang?: string }
   // D413: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
   | { t: "standing_revoke"; id: string }
   // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
@@ -2517,6 +2520,32 @@ export interface DeviceView {
   records?: DeviceRecordsView;
   /** D514: the working copies Ducter tidied away on this computer so far, and the room it freed (its card's quiet line). */
   tidied?: { count: number; bytes: number };
+  /**
+   * D538: what Ducter measured on this computer itself (the home's own look; a worker's heartbeat),
+   * never asked of the person. Absent from a worker before D538.
+   */
+  resources?: DeviceResources;
+}
+
+/**
+ * D538: a computer's own measurements, in bytes. memFree: what programs can still take now (Linux
+ * MemAvailable; on a Mac free, inactive, purgeable and speculative pages). diskFree: the disk Ducter's
+ * folder is on. cpu: the processor's own name; gpu: a graphics card Ducter can name (nvidia-smi).
+ * oom: the times the kernel stopped a program there for memory in the last day (Linux: the service's
+ * own cgroup), newest last.
+ */
+export interface DeviceResources {
+  at: string;
+  memTotal: number;
+  memFree: number;
+  cores: number;
+  load?: number;
+  swapTotal?: number;
+  diskFree?: number;
+  diskTotal?: number;
+  cpu?: string;
+  gpu?: string;
+  oom?: string[];
 }
 
 /**

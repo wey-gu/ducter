@@ -28,6 +28,9 @@ import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createTidied, holdOf } from "./tidied.ts";
+import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
+import { roomFor } from "./candidates.ts";
+import { createPlacementMem, HINTS_EVERY_MS, type PlacementMemClient } from "./placement-mem.ts";
 import { createRedo } from "./redo.ts";
 import { createOutside } from "./outside.ts";
 import { createMade, type Made } from "./made.ts";
@@ -436,6 +439,8 @@ export interface Core extends CoreApi {
   partnerSessions(): Map<string, Partner>;
   /** D486: another partner's own Mem bundle as identity text (main.ts reads it at its session's start). */
   setPartnerBundle(id: string, text: string | undefined): void;
+  /** D538: the Mem client the person's computer rules are mirrored through, while Mem is on (main.ts). */
+  setPlacementMem?(c: PlacementMemClient | undefined): void;
   /** D486: removes another partner: its session ends, its conversation stays, its tasks become the default's. */
   removePartner(id: string): { ok: true } | { ok: false; error: PartnerError };
 }
@@ -603,7 +608,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     return p === DEFAULT_PARTNER ? undefined : p;
   });
   const rules = openRules(dataDir);
-  registerRuleTools(mcp, rules);
+  // D538: a computer rule names one of the home's computers (checked when the rule is saved).
+  registerRuleTools(mcp, rules, { computers: () => whereComputers() });
   // D381: what the person pinned at the top of the conversation.
   const pins = openPins({ dataDir, log });
   // D405: the apps the partner made (the partner frees an app's ask when it answers it).
@@ -1410,6 +1416,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       }),
     ];
   };
+  // D538: the awake computers without room for heavy work now, with their free memory (no frame: none).
+  const noRoomNow = async () => ((await loadout.computers().catch(() => undefined)) ?? []).filter((c) => c.state === "awake" && !roomFor(c)).map((c) => ({ id: c.id, ...(c.mem ? { free: c.mem.free } : {}) }));
   const repoWhere = createRepoWhere({
     computers: whereComputers,
     async clones(dev, remote, probe, ms) {
@@ -1430,6 +1438,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     rules: () => rules.list(),
     // D510: New tasks start's computer, preferred for a repository whenever it can have the code.
     prefer: () => settings.get().newTasks?.where,
+    // D538: heavy work goes where there is room (each computer's own measured memory, its heavy tasks).
+    noRoom: async () => (await noRoomNow()).map((x) => x.id),
   });
   // D510: 以后默认在 hel 上跑，用 Codex: the partner sets New tasks start from the person's words.
   registerNewTasksTool(mcp, { settings, computers: whereComputers });
@@ -1437,8 +1447,19 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.homeDevice = () => {
     const home = whereComputers()[0]!;
     const hs = devicesView?.harnessesNow();
-    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
+    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}), ...(homeLook ? { resources: homeLook } : {}) };
   };
+  // D538: the person's computer rules (Ducter's own rules.json is their source of truth), mirrored to
+  // Mem as the person's preferences while Mem is on; Mem's own labelled ones come back as hints.
+  const placementMem = createPlacementMem({ dataDir, rules, on: () => (memOnRef?.() ?? false) && !!placementClient, client: () => placementClient, persona: () => persona.id });
+  rules.onChange(() => void placementMem.sync().catch(() => {}));
+  const hintsTimer = setInterval(() => void placementMem.refreshHints().catch(() => {}), HINTS_EVERY_MS);
+  (hintsTimer as { unref?: () => void }).unref?.();
+  api.placement = () => ({
+    rules: rules.list().filter((r) => r.where && r.device).map((r) => ({ device: r.device!, text: r.text, ...(r.where!.avoid ? { avoid: true } : {}), ...(r.where!.heavy ? { heavy: true } : {}), ...(r.where!.web ? { web: true } : {}) })),
+    hints: placementMem.takeHints(),
+    heavy: Object.fromEntries(loadout.heavyNow()),
+  });
   // D480: what isn't whole about the person's own agents' mail, for the partner: the mailboxes Mem lists closed.
   api.agentMail = () => {
     if (!settings.get().memory) return [];
@@ -1447,6 +1468,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
+    rules: () => rules.list(),
+    noRoom: () => noRoomNow(),
     tasks,
     opened: (id) => {
       const b = log.read({ stream: `task:${id}`, kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
@@ -1780,6 +1803,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let memPluginsRef: MemPlugins | undefined;
   // D366: memory on and the home's Mem connected (D169's gate), set once memPlugins is made.
   let memOnRef: (() => boolean) | undefined;
+  /** D538: the Mem client computer rules are mirrored through (main.ts sets it; none in tests). */
+  let placementClient: PlacementMemClient | undefined;
   let memRelayRef: import("./mem-relay.ts").MemRelay | undefined;
   let memCarriedRef: (() => boolean) | undefined;
   // D366: Nowledge Mem on a computer for tasks: the worker's own mem_setup op.
@@ -2116,7 +2141,24 @@ export function startCore(opts: CoreOptions = {}): Core {
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
   // D514: the working copies tidied on each computer, for its card's quiet line.
   const tidiedCount = createTidied(log, () => devicesView?.changed());
-  devicesView = createDevicesView({ tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  // D538: the home looks at itself every 15 s (memory, cores, disk, the kernel's stops); its card
+  // hears a new look only when it moved enough to show. Tests and demos that fake the probes give
+  // their own look, or none.
+  const homeProbe = opts.deviceProbes ? opts.deviceProbes.resources : ((p) => () => p.look())(createResourceProbe({ dir: dataDir }));
+  let homeLook: import("@ducter/protocol").DeviceResources | undefined;
+  const lookHome = () =>
+    homeProbe?.()
+      .then((r) => {
+        if (!r) return;
+        const moved = resourcesMoved(homeLook, r);
+        homeLook = r;
+        if (moved) devicesView?.changed();
+      })
+      .catch(() => {});
+  void lookHome();
+  const homeLookTimer = homeProbe ? setInterval(lookHome, 15_000) : undefined;
+  (homeLookTimer as { unref?: () => void } | undefined)?.unref?.();
+  devicesView = createDevicesView({ resources: () => homeLook, tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -2728,6 +2770,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (text?.trim()) bundleOf.set(id, text.trim());
       else bundleOf.delete(id);
     },
+    setPlacementMem(c) {
+      placementClient = c;
+      void placementMem.sync().then(() => placementMem.refreshHints(true));
+    },
     removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
     shedCaches() {
@@ -2736,6 +2782,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     async stop() {
       keepsRef?.stop(); // D519: its rounds' reading stops with the home
+      clearInterval(homeLookTimer);
+      clearInterval(hintsTimer);
       ws.stop();
       agentLimits.stop();
       loadout.stop();

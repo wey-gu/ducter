@@ -2564,6 +2564,25 @@ type DeviceView struct {
 	// Tidied is the working copies Ducter tidied away on this computer so far
 	// and the room it freed (D514): the card's one quiet line.
 	Tidied *DeviceTidied `json:"tidied,omitempty"`
+	// Resources is what Ducter measured on this computer itself (D538): its
+	// memory, cores, disk and the kernel's out-of-memory stops.
+	Resources *DeviceResources `json:"resources,omitempty"`
+}
+
+// DeviceResources is a computer's own measurements, in bytes (D538,
+// packages/protocol/src/index.ts DeviceResources).
+type DeviceResources struct {
+	At        string   `json:"at"`
+	MemTotal  float64  `json:"memTotal"`
+	MemFree   float64  `json:"memFree"`
+	Cores     int      `json:"cores"`
+	Load      *float64 `json:"load,omitempty"`
+	SwapTotal *float64 `json:"swapTotal,omitempty"`
+	DiskFree  *float64 `json:"diskFree,omitempty"`
+	DiskTotal *float64 `json:"diskTotal,omitempty"`
+	CPU       string   `json:"cpu,omitempty"`
+	GPU       string   `json:"gpu,omitempty"`
+	OOM       []string `json:"oom,omitempty"`
 }
 
 // DeviceTidied counts the working copies tidied away on a computer (D514).

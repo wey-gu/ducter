@@ -21,7 +21,7 @@ import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
-import type { RulesStore } from "./rules.ts";
+import { placeRuleText, type RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import { firstScreen, partnerScreen, starters, type FirstScreenInput } from "./first-screen.ts";
@@ -1655,6 +1655,16 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.rules = true;
         // A revoke pushes a fresh frame to every subscriber; an unknown id: answer this one.
         if (!deps.standing.revoke(String(f.id ?? ""))) send(ws, await rulesFrame());
+        return;
+      }
+      case "rule_where": {
+        // D538: 关于这台 / About this computer: a placement rule added, or one changed (多放 / 少放, which work).
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        const device = String(f.device ?? "").trim();
+        const work = f.work === "heavy" || f.work === "web" ? f.work : "all";
+        if (!device) return send(ws, await rulesFrame());
+        deps.rules.addWhere({ text: placeRuleText(typeof f.lang === "string" ? f.lang : undefined, device, f.avoid === true, work), device, ...(f.avoid === true ? { avoid: true } : {}), ...(work === "heavy" ? { heavy: true } : work === "web" ? { web: true } : {}), ...(typeof f.id === "string" && f.id ? { id: f.id } : {}) });
         return;
       }
       case "rule_remove": {

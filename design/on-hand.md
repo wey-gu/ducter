@@ -152,6 +152,8 @@ A new result pops once the first time it is drawn (D313). A group (D360) is the 
 name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
 line); D498: a part at work has the board's pebble and its living line.
 
+> D511 (designed, not built, for review): helpers, routines and tasks in rounds become one object, 照看 / Looking after, with its own page; see `standing-work.md`. What follows is what runs today.
+
 **一直在跑的 / Ongoing (D498, D427).** A task in rounds (the home's `rounds` on its card), at work on a
 round or resting till the next, is a row here, never under 在做 or 在等; one that asks or stopped stays
 in 等你. Its mark between rounds is Ongoing's drawn repeat (at work, the pebble); beside its project

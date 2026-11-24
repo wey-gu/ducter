@@ -1338,6 +1338,8 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
 
 ## Helpers: named addresses the home owns (D494, 2026-11-23)
 
+> D511 (designed, not built, for review): helpers, routines and tasks in rounds become one object, 照看 / Looking after, with its own page; see `standing-work.md`. A helper would be a Keep with an address; what follows is what runs today.
+
 The author asked the partner on hel for "a Codex loop agent named like Nowledge Mem PR babysitter, in Nowledge
 Bridge", that his agents hand PRs to and that fixes CI and review comments until the PR can merge, then replies
 over Bridge, and, if Bridge can't wake it, wakes itself to read its mailbox. The partner opened a Codex task

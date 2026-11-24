@@ -9,6 +9,12 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Looking after, after D511 (`standing-work.md`, research/221)
+
+- [ ] **The author reviews D511** (the model, the name 照看 / Looking after, the ask staying in 等你, made at once with Undo). *Trigger:* the author reads `standing-work.md` and the shots in `.shots/standing-work/`.
+- [ ] **The lantern and the track as clay art**, rated with images and the author before the mark is decided (prompt in `standing-work.md` §8). *Trigger:* D511 accepted.
+- [ ] **Build phases 1–6** (`standing-work.md` §11): the Keep and the migration of loops, helpers and routines; On hand and the page; `keep_make` / `keep_change` / `keep_list` with an eval; goals and news as recorded judgments; the art; a week live on hel. *Trigger:* D511 accepted.
+
 ## The same model another way, after D503 (`where.md` §21, research/219)
 
 - [ ] **A second account on the same computer.** A Ducter-owned config folder per extra account

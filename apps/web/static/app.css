@@ -4492,6 +4492,18 @@ a.btn {
   font-weight: 600;
   color: var(--ink-soft);
 }
+/* D539: the copy card's facts and note keep the partner side's 14px step in and end at the
+   tray's right edge, so the card reads as one column. */
+.askq.copykey > .pay-facts,
+.askq.copykey > .small {
+  align-self: flex-start;
+  box-sizing: border-box;
+  width: calc(min(88%, var(--bubble-measure)) - 14px);
+  max-width: calc(min(88%, var(--bubble-measure)) - 14px);
+}
+.askq.copykey > .small {
+  padding: 0 var(--s3);
+}
 .askq .dflt {
   display: flex;
   flex-wrap: wrap;

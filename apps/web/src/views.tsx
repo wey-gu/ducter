@@ -1139,7 +1139,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   // D539: 复制密钥 / Copy a key, receipt-like: the facts and the two buttons on the card itself.
   if (d.copyKey)
     return (
-      <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div ref={ref} class={`partner askq pay key copykey${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
         <div class="bubble" dir="auto">{copyKeyTitle(d)}</div>
         {(buttons || !open) && <CopyKeyBody d={d} compact />}
       </div>

@@ -618,9 +618,10 @@ export function CopyKeyBody({ d, compact }: { d: DecisionState; compact?: boolea
         <>
           <div class="small sub">{t("copykey.note")}</div>
           <div class={compact ? "tray" : "btns decide"}>
+            {/* D482: the action first, then 先不 as the quieter one. */}
+            <Btn kind="primary" size={compact ? "sm" : undefined} label={t(failedAll ? "copykey.retry" : "copykey.go")} about={k.env} onClick={() => A.copyKey(d.decisionId)} />
             <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("copykey.hold")} about={k.env} onClick={() => A.decide(d.decisionId, "hold")} />
             {compact && <span class="grow" />}
-            <Btn kind="primary" size={compact ? "sm" : undefined} label={t(failedAll ? "copykey.retry" : "copykey.go")} about={k.env} onClick={() => A.copyKey(d.decisionId)} />
           </div>
         </>
       ) : (

@@ -104,9 +104,7 @@ func (a *App) copyKeyButtons(c *ui.Context, d *store.DecisionState, st decisionS
 		goLabel = a.L.T("copykey.retry")
 	}
 	ui.Row(c.Key("copykey-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("copykey.hold"), k.Env, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
+		// D482: the action first, then 先不 as the quieter one.
 		if a.buttonFor(c, goLabel, k.Env, btnPrimary, st.height, st.quietBg) {
 			if dd := a.S.Decisions[d.DecisionID]; dd != nil {
 				dd.Pending, dd.AnsweredAt = "go", a.Now()
@@ -114,6 +112,9 @@ func (a *App) copyKeyButtons(c *ui.Context, d *store.DecisionState, st decisionS
 			delete(a.S.KeyCopies, d.DecisionID)
 			a.markRead()
 			a.send(protocol.Decide{T: "decide", DecisionID: d.DecisionID, Option: "go"})
+		}
+		if a.buttonFor(c, a.L.T("copykey.hold"), k.Env, btnText, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
 		}
 	})
 }

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.43 - 2026-11-24
+
+<!-- whats-new
+zh: 提示条有了固定位置；状态词读起来更自然
+en: Toasts have one place; status words read more naturally
+-->
+
+**Toasts in one place**
+- On the Mac, short notices like "Updated to {v}" appear centred over what you're looking at,
+  above the composer, never over it, and rise in and settle out. Pointing at one keeps it.
+
+**Status words**
+- Chinese status words read like a native app: 看守中, 评审中, CI 运行中, 可合并, 已暂停.
+
 ## 0.1.42 - 2026-11-24
 
 <!-- whats-new

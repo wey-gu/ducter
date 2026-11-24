@@ -52,7 +52,8 @@ heard of a subagent.
   (UnifiedPush, `todo.md`).
 - **Move your Ducter between computers.** Start on a Mac, move to a server later (and back):
   one command moves the conversation, settings, routines and accounts; the old machine keeps
-  doing tasks for its local repos.
+  doing tasks for its local repos. Designed (D504, `move.md`); the first slice, `ducter move
+  --plan`, is built (read-only); receive, bundle, import, handover, cut-over and rollback are next.
 - **Browse and use apps on your Mac from a server-hosted Ducter.** When your Ducter lives on a
   server, tasks that need your own Chrome, sign-ins or Mac apps run on your Mac (as a helper
   computer), with the same safety rules. Built with fakes: one tap in the Mac app makes the Mac a

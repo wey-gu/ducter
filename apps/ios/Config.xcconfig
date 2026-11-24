@@ -10,4 +10,13 @@ DUCTER_PUSH_RELAY = https:/$()/ducter.ai/api/push
 // D306: the Lock Screen glance (Live Activities). Off until its push path is checked on a real
 // iPhone; 1 turns it on (the Simulator shots build with it on).
 DUCTER_LIVE_ACTIVITIES = 0
+// D553: the share sheet (DucterShare, D537) and the app group on the app. 0 builds the app without
+// both, for an account whose App IDs don't have the App Group yet (design/release/ios.md step 5):
+// scripts/ci/testflight.sh falls back to it when the export can't make their profiles. Without the
+// group the app keeps its pairing to itself and the share outbox is never filled.
+DUCTER_SHARE = 1
+DUCTER_APP_ENTITLEMENTS_1 = Ducter/Ducter.entitlements
+DUCTER_APP_ENTITLEMENTS_0 = Ducter/DucterNoShare.entitlements
+DUCTER_SHARE_EXCLUDED_1 =
+DUCTER_SHARE_EXCLUDED_0 = DucterShare.appex
 #include? "Local.xcconfig"

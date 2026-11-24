@@ -38,7 +38,7 @@ func TestAgentRowLook(t *testing.T) {
 		{protocol.DeviceHarness{Installable: true, Setup: &protocol.AgentSetupState{Phase: "failed", Reason: "network"}}, "failed"},
 		{protocol.DeviceHarness{Installed: true}, "signin"},
 		{protocol.DeviceHarness{Installed: true, Login: &protocol.AgentLoginState{State: "waiting"}}, "login"},
-		{protocol.DeviceHarness{Installed: true, LoggedIn: true, Login: &protocol.AgentLoginState{State: "done"}}, "login"},
+		{protocol.DeviceHarness{Installed: true, LoggedIn: true, Login: &protocol.AgentLoginState{State: "done"}}, "ready"}, // D518: 登录好了 on a ready row
 		{protocol.DeviceHarness{Installed: true, LoggedIn: true}, "ready"},
 		{protocol.DeviceHarness{}, "missing"},
 	}

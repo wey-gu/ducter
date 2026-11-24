@@ -32,6 +32,7 @@ type sheetState struct {
 	squish    map[string]time.Time // a chip's key → when it was toggled
 	pop       map[string]time.Time // a coin's key → when its update landed
 	phase     map[string]string    // a coin's key → its update phase, last frame
+	tileMid   map[string]float32   // D518: a tray tile's key → its middle's x as last drawn (the detail's notch points there)
 	fold      string               // D398: the card whose fold (how it's connected, disconnect) is open
 	lockSteps string               // D398: the phone whose 锁屏时也能借给任务 steps are open
 	handOff   string               // D398: the phone whose 用这台手机 chip asked before turning off
@@ -43,7 +44,9 @@ const (
 	heroArt       = 150
 	heroArtTall   = 92  // a phone's clay is tall
 	heroArtTablet = 112 // D263: an iPad's, as tall and wider
-	coinTileW     = 76
+	coinTileW     = 70  // the narrowest a tile is
+	coinTileMaxW  = 112
+	coinTilePadX  = 6 // D518: the name never comes closer than this to the tile's edge
 	coinTileGap   = 2
 	coinSize      = 52
 	chipH         = 40
@@ -371,29 +374,78 @@ func (a *App) coinTray(c *ui.Context, dv *protocol.DeviceView) {
 	if strings.HasPrefix(s.coin, dv.ID+"|") {
 		open = strings.TrimPrefix(s.coin, dv.ID+"|")
 	}
+	// D518: each tile as wide as its name needs, with room on both sides.
+	ws := make([]float32, 0, n)
+	for _, h := range shown {
+		ws = append(ws, a.coinTileWidth(c, harnessName(h.Harness), 700)) // its widest weight: signing in never moves the row
+	}
+	if socket {
+		ws = append(ws, a.coinTileWidth(c, a.L.T("coin.socket"), 600))
+	}
 	ui.Row(c.Key("tray:"+dv.ID)).Gap(coinTileGap).Justify(ui.Center).Wrap().Padding(t.S3, t.S2, t.S2, t.S2).Radius(18).Background(t.Sunken).
 		Role(ui.RoleGroup).Label(a.L.T("devices.accounts", a.deviceNameIn(dv))).Children(func() {
-		for _, h := range shown {
-			a.coinTile(c, dv, h, open == h.Harness)
+		for i, h := range shown {
+			a.coinTile(c, dv, h, open == h.Harness, ws[i])
 		}
 		if socket {
-			a.socketTile(c, dv, open == "+")
+			a.socketTile(c, dv, open == "+", ws[n-1])
 		}
 	})
 	switch {
 	case open == "+" && socket:
-		a.socketDetail(c, dv, n-1, n)
+		a.socketDetail(c, dv, n-1, ws)
 	case open != "":
 		for i, h := range shown {
 			if h.Harness == open {
-				a.coinDetail(c, dv, h, i, n)
+				a.coinDetail(c, dv, h, i, ws)
 			}
 		}
 	}
 }
 
+// coinTileWidth is how wide a tray tile is for its name (D518): the name's
+// own width and coinTilePadX on each side, never narrower than coinTileW;
+// a name wider than coinTileMaxW takes two lines (D398) inside that.
+func (a *App) coinTileWidth(c *ui.Context, name string, weight int) float32 {
+	w, _ := c.MeasureText(0, ui.Span{Text: name, Size: a.T.XS, Weight: weight})
+	return coinTileFor(w)
+}
+
+// notchX is where tile idx's middle is, from the middle of the centred row
+// of tiles ws wide.
+func notchX(ws []float32, idx int) float32 {
+	total, at := float32(0), float32(0)
+	for i, w := range ws {
+		if i > 0 {
+			total += coinTileGap
+		}
+		if i == idx {
+			at = total + w/2
+		}
+		total += w
+	}
+	return at - total/2
+}
+
+// markTileMid keeps where a tray tile's middle is drawn, for the detail's
+// notch under it.
+func (a *App) markTileMid(tile ui.Element, key string) {
+	s := &a.devState().card.sheet
+	tile.Draw(func(_ *ui.Painter, r ui.Rect) {
+		if s.tileMid == nil {
+			s.tileMid = map[string]float32{}
+		}
+		s.tileMid[key] = r.X + r.W/2
+	})
+}
+
+// coinTileFor is the tile width for a name measured at w.
+func coinTileFor(w float32) float32 {
+	return min(coinTileMaxW, max(coinTileW, float32(math.Ceil(float64(w)))+2*coinTilePadX))
+}
+
 // coinTile is one coin in the tray, with its name under it.
-func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness, sel bool) {
+func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness, sel bool, w float32) {
 	t := a.T
 	d := a.devState()
 	s := &d.card.sheet
@@ -409,8 +461,9 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 	}
 	label := spoken(a.L, name, a.deviceNameIn(dv), out, avail)
 	key := coinKey(dv.ID, h.Harness)
-	tile := ui.Column(c.Key("coin:"+key)).Width(coinTileW).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0, 2, 0).Radius(14).
+	tile := ui.Column(c.Key("coin:"+key)).Width(w).AlignItems(ui.Center).Gap(2).Padding(t.S1, coinTilePadX, 2, coinTilePadX).Radius(14).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(sel)
+	a.markTileMid(tile, key)
 	ring := t.Sunken
 	switch {
 	case sel:
@@ -485,12 +538,13 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 }
 
 // socketTile is the dashed coin-sized socket at the row's end: 再登录一个.
-func (a *App) socketTile(c *ui.Context, dv *protocol.DeviceView, sel bool) {
+func (a *App) socketTile(c *ui.Context, dv *protocol.DeviceView, sel bool, w float32) {
 	t := a.T
 	s := &a.devState().card.sheet
 	label := a.L.T("coin.socket")
-	tile := ui.Column(c.Key("coin-socket:"+dv.ID)).Width(coinTileW).AlignItems(ui.Center).Gap(2).Padding(t.S1, 0, 2, 0).Radius(14).
+	tile := ui.Column(c.Key("coin-socket:"+dv.ID)).Width(w).AlignItems(ui.Center).Gap(2).Padding(t.S1, coinTilePadX, 2, coinTilePadX).Radius(14).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(sel)
+	a.markTileMid(tile, coinKey(dv.ID, "+"))
 	if sel {
 		tile.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 	} else if tile.Hovered() {
@@ -523,14 +577,16 @@ func (a *App) socketTile(c *ui.Context, dv *protocol.DeviceView, sel bool) {
 }
 
 // detailBox is the in-place detail under the tray, its notch pointing at
-// the coin (idx of n tiles).
-func (a *App) detailBox(c *ui.Context, key, label string, idx, n int, body func()) {
+// the coin (idx of the tiles, ws their widths).
+func (a *App) detailBox(c *ui.Context, key, label string, idx int, ws []float32, body func()) {
 	t := a.T
 	box := ui.Column(c.Key("coin-detail:"+key)).Gap(t.S1).Margin(10, 0, 0, 0).Padding(t.S3+2, t.S4).Radius(t.RadiusMD).Background(t.Surface).
 		InsetShadow(0, 0, 0, 1, t.Line).Shadow(0, 2, 0, 0, t.Line).Role(ui.RoleGroup).Label(label)
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
-		total := float32(n)*coinTileW + float32(n-1)*coinTileGap
-		x := r.X + (r.W-total)/2 + float32(idx)*(coinTileW+coinTileGap) + coinTileW/2
+		x := r.X + r.W/2 + notchX(ws, idx)
+		if m, ok := a.devState().card.sheet.tileMid[key]; ok && m > r.X && m < r.X+r.W {
+			x = m // where its tile really is, also when the tray wrapped to two rows
+		}
 		var m ui.Path
 		m.MoveTo(x-8, r.Y+1).LineTo(x, r.Y-7).LineTo(x+8, r.Y+1).Close()
 		p.FillPath(&m, t.Surface)
@@ -580,12 +636,12 @@ func (a *App) sharedWith(dv *protocol.DeviceView, harness string) string {
 // coinDetail is one agent's detail, in place: its name and model, its
 // version and how it was installed, the honest "not checked" line once,
 // the update with its steps, 用它做事, who shares the account, sign out.
-func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness, idx, n int) {
+func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness, idx int, ws []float32) {
 	t := a.T
 	d := a.devState()
 	name := harnessName(h.Harness)
 	manage := a.manageAccount(dv, h)
-	a.detailBox(c, coinKey(dv.ID, h.Harness), name, idx, n, func() {
+	a.detailBox(c, coinKey(dv.ID, h.Harness), name, idx, ws, func() {
 		// D363: being put there, or there and not signed in, on a computer this app
 		// doesn't run Ducter on: its row, with 登录 and the sign-in in place.
 		// D416: its own sign-out running (or refused) shows in its row too.
@@ -629,6 +685,10 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 				uiText(c, m).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
+		// D518: the moment its own check said signed in, said once where the person is looking.
+		if h.Login != nil && h.Login.State == "done" {
+			uiText(c, a.L.T("ag.login.done")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).LineHeight(1.5)
+		}
 		if h.Version != "" {
 			// Its version and how it was installed: two facts, side by side (D291).
 			a.facts(c, t.SM, t.InkSoft, a.L.T("agentv.version", h.Version), a.coinHow(h))
@@ -687,10 +747,10 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 
 // socketDetail lists the agents not on that device yet; where this app runs
 // Ducter, each installs from here.
-func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
+func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx int, ws []float32) {
 	t := a.T
 	d := a.devState()
-	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, n, func() {
+	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, ws, func() {
 		uiText(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		installable, agyOnly := false, false
 		for _, h := range dv.Harnesses {

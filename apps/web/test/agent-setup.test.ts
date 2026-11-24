@@ -5,7 +5,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { DeviceHarness } from "@ducter/protocol";
 import { agentRowLook, anyInstalling, anyReady, offerable } from "../src/agent-setup-view.ts";
-import { shortUrl } from "../src/agent-setup.tsx";
+import { loginSteps, loginTrouble, minutesLeft, shortUrl } from "../src/agent-setup.tsx";
+import { agentSetupWords } from "../src/i18n-agentsetup.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 const h = (harness: string, o: Partial<DeviceHarness> = {}): DeviceHarness => ({ harness, installed: false, loggedIn: false, canBePartner: false, ...o });
@@ -18,7 +19,7 @@ describe("a row's look", () => {
     expect(agentRowLook(h("codex", { installable: true, setup: { phase: "failed", reason: "network" } }))).toBe("failed");
     expect(agentRowLook(h("codex", { installed: true }))).toBe("signin");
     expect(agentRowLook(h("codex", { installed: true, login: { state: "waiting", url: "https://auth.openai.com/codex/device", code: "ABCD-EFGHI" } }))).toBe("login");
-    expect(agentRowLook(h("codex", { installed: true, loggedIn: true, login: { state: "done" } }))).toBe("login"); // 登录好了 a moment
+    expect(agentRowLook(h("codex", { installed: true, loggedIn: true, login: { state: "done" } }))).toBe("ready"); // D518: 登录好了 on a ready row
     expect(agentRowLook(h("codex", { installed: true, loggedIn: true }))).toBe("ready");
     // An older Ducter there can't install: nothing to press.
     expect(agentRowLook(h("deepseek-harness"))).toBe("missing");
@@ -57,6 +58,38 @@ describe("where it shows", () => {
     expect(lend).toContain("<LendAgents dv={dv} done={done} setDone={setDone} />");
     expect(lend).toContain('t("lend.setup.q")');
     const row = src("agent-setup.tsx");
-    for (const k of ["ag.login.codex", "ag.login.claude", "ag.login.paste", "ag.login.pi", "ag.retry"]) expect(row).toContain(k);
+    for (const k of ["ag.login.${k}.1", "ag.login.${k}.2", "ag.login.paste", "ag.login.pi", "ag.retry", "ag.login.wait.paste", "ag.login.confirming"]) expect(row).toContain(k);
   });
+});
+
+// D518: a sign-in from a server: two steps in each agent's words, a live line, how it ended.
+test("a sign-in's steps, its trouble and its time left, in both languages", () => {
+  expect(loginSteps("claude-code")).toEqual({ open: "ag.login.claude.1", code: "ag.login.claude.2" });
+  expect(loginSteps("codex")).toEqual({ open: "ag.login.codex.1", code: "ag.login.codex.2" });
+  expect(loginSteps("antigravity")).toEqual({ open: "ag.login.agy.1", code: "ag.login.agy.2" });
+  expect(loginTrouble({ state: "expired" })).toBe("ag.login.expired");
+  expect(loginTrouble({ state: "failed", reason: "not_seen" })).toBe("ag.login.not_seen");
+  expect(loginTrouble({ state: "failed", reason: "no_answer" })).toBe("ag.login.no_answer");
+  expect(loginTrouble({ state: "failed", reason: "wrong_code" })).toBe("ag.login.wrong_code");
+  expect(loginTrouble({ state: "failed" })).toBe("ag.login.failed");
+  expect(minutesLeft(15 * 60_000, 0)).toBe(15);
+  expect(minutesLeft(61_000, 0)).toBe(2);
+  expect(minutesLeft(0, 5000)).toBe(1);
+  const keys = ["ag.signing_in", "ag.login.wait.paste", "ag.login.wait.self", "ag.login.left", "ag.login.confirming", "ag.login.not_seen", "ag.login.no_answer", "ag.login.send", "ag.login.claude.1", "ag.login.claude.2", "ag.login.codex.1", "ag.login.codex.2", "ag.login.agy.1", "ag.login.agy.2"];
+  for (const lang of ["zh", "en"] as const) for (const k of keys) expect(agentSetupWords[lang][k]).toBeTruthy();
+  // 好了 / Done read as "I finished" beside the paste box; it sends the code.
+  expect(agentSetupWords.zh["ag.login.send"]).toBe("确认登录");
+  expect(agentSetupWords.en["ag.login.send"]).toBe("Confirm");
+  // The Mac's words are the same (apps/desktop/internal/i18n/agentsetup.go).
+  const mac = readFileSync(new URL("../../desktop/internal/i18n/agentsetup.go", import.meta.url), "utf8");
+  for (const lang of ["zh", "en"] as const) for (const k of keys) expect(mac).toMatch(new RegExp(`"${k.replace(/\./g, "\\.")}":\\s+${JSON.stringify(agentSetupWords[lang][k]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+});
+
+// D518: a tray tile holds its name with room on both sides; a long one grows it (never clipped).
+test("a coin tile pads its name and grows for a long one", () => {
+  const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");
+  const rule = /\n\.coin-tile \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  expect(rule).toContain("padding: 4px 8px 2px");
+  expect(rule).toContain("min-width: 70px");
+  expect(rule).not.toMatch(/(^|[ ;])width: 70px/);
 });

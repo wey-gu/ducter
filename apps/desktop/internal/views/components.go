@@ -1107,3 +1107,12 @@ func (a *App) decisionAbout(d *store.DecisionState) string {
 	}
 	return string(q)
 }
+
+// stepNumber is a step's number in a short numbered sequence: a sunken disc
+// with the number (the lend sheet's three steps; D518 a sign-in's two).
+func (a *App) stepNumber(c *ui.Context, n int) {
+	t := a.T
+	ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+		uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+	})
+}

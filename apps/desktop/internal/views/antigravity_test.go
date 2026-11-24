@@ -74,7 +74,8 @@ func TestAntigravityRow(t *testing.T) {
 	must("重新安装")
 	show(agySignIn)
 	must("Google 的条款说：用第三方程序访问 Antigravity 违反条款，账号可能被停用；个人套餐也不支持把 agy 放进别的应用里用。登录前请自己掂量。")
-	must("在任意设备上打开这个链接，用 Google 登录，再把页面给你的码（或者最后停在的那个网址）粘贴到这里：")
+	must("在任意设备上打开这个链接，用 Google 登录：")
+	must("把页面给你的码（或者最后停在的那个网址）粘贴到这里：")
 	// D416: signed in, it can be signed out from its row with its own sign-out.
 	show(protocol.DeviceHarness{Installed: true, LoggedIn: true, Version: "1.5.13", How: "installer"})
 	if err := tt.Click("退出登录"); err != nil {

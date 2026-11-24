@@ -67,7 +67,9 @@ export function agentPin(h: HarnessId): { pkg: string; version: string } | undef
   return pkg && (INSTALLABLE as readonly string[]).includes(h) ? { pkg, version: HARNESS_FACTS[h].verified.to } : undefined;
 }
 
-type Login = { view: AgentLoginState; proc?: LoginProc; timer?: unknown; out: string; mark?: number };
+type Login = { view: AgentLoginState; proc?: LoginProc; timer?: unknown; check?: unknown; out: string; mark?: number };
+/** D518: how long a pasted code may go unanswered before the sign-in says so and offers again. */
+export const LOGIN_CHECK_MS = 90_000;
 /** D371: how often a DeepSeek Harness sign-in made elsewhere (its app, a key saved by hand) is looked for. */
 export const DSH_LOOK_MS = 3000;
 
@@ -166,6 +168,15 @@ export function createAgentSetup(o: {
   probe: () => Promise<void>;
   /** The state changed: send the rows up now. */
   changed: () => void;
+  /**
+   * D518: is this agent signed in here now, by its own check run fresh (`claude auth status`, never
+   * a cached reading)? A sign-in that ended well says 登录好了 only once this says yes. Absent
+   * (older callers, tests of the rest): the sign-in's own exit is taken at its word.
+   */
+  signedIn?: (h: string) => Promise<boolean>;
+  /** Tests: how long a sign-in waits (LOGIN_WAIT_MS), how long a pasted code may go unanswered (LOGIN_CHECK_MS). */
+  waitMs?: number;
+  checkMs?: number;
   now?: () => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (t: unknown) => void;
@@ -361,9 +372,12 @@ export function createAgentSetup(o: {
     }
   };
 
+  const waitMs = o.waitMs ?? LOGIN_WAIT_MS;
+  const checkMs = o.checkMs ?? LOGIN_CHECK_MS;
   const endLogin = (h: string, view: AgentLoginState) => {
     const l = logins.get(h);
     if (l?.timer) clearTimer(l.timer);
+    if (l?.check) clearTimer(l.check);
     if (view.state === "done") {
       logins.set(h, { view, out: "", timer: setTimer(() => (logins.get(h)?.view === view ? (logins.delete(h), o.changed()) : undefined), LOGIN_DONE_SHOWN_MS) });
     } else logins.set(h, { view, out: "" });
@@ -473,25 +487,29 @@ export function createAgentSetup(o: {
         logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
         return o.changed();
       }
-      const entry = { view: { state: "starting" } as AgentLoginState, proc, out: "", timer: undefined as unknown, mark: 0 };
+      // D518: the person sees when it stops by itself.
+      const until = now() + waitMs;
+      const entry: Login = { view: { state: "starting", until }, proc, out: "", timer: undefined as unknown, mark: 0 };
       logins.set(h, entry);
       entry.timer = setTimer(() => {
         if (logins.get(h) !== entry) return;
         proc.kill();
         endLogin(h, { state: "expired" });
         o.changed();
-      }, LOGIN_WAIT_MS);
+      }, waitMs);
       proc.onOutput((text) => {
         if (logins.get(h) !== entry) return;
         entry.out = (entry.out + text).slice(-20_000);
         const got = parseLogin(h, entry.out);
         // Claude answers a wrong paste and keeps waiting for another (2.1.322: "Invalid code.").
-        if (entry.view.state === "checking" && /invalid|expired|error/i.test(entry.out.slice(entry.mark).replace(ANSI, ""))) {
+        if (entry.view.state === "checking" && entry.mark !== undefined && entry.mark >= 0 && /invalid|expired|error/i.test(entry.out.slice(entry.mark).replace(ANSI, ""))) {
+          if (entry.check) clearTimer(entry.check);
+          entry.check = undefined;
           entry.view = { ...entry.view, state: "waiting", reason: "wrong_code" };
           return o.changed();
         }
         if (got.url && entry.view.state === "starting" && (h !== "codex" || got.code)) {
-          entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}) };
+          entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}), until };
           o.changed();
         }
       });
@@ -499,6 +517,22 @@ export function createAgentSetup(o: {
         if (logins.get(h) !== entry) return;
         const out = entry.out;
         if (code === 0) {
+          // D518: its sign-in says it ended well; the agent's own check, run fresh, decides.
+          // (hel, 2026-11-24: claude wrote its sign-in, the card read a stale "signed out" and
+          // said 登录好了 beside 未登录.)
+          if (o.signedIn) {
+            if (entry.check) clearTimer(entry.check);
+            entry.check = undefined;
+            entry.mark = -1;
+            entry.view = { state: "checking", until };
+            o.changed();
+            const ok = await o.signedIn(h).catch(() => false);
+            if (logins.get(h) !== entry) return;
+            if (!ok) {
+              endLogin(h, { state: "failed", reason: "not_seen" });
+              return o.changed();
+            }
+          }
           endLogin(h, { state: "done" });
           await o.probe().catch(() => {});
         } else
@@ -542,12 +576,21 @@ export function createAgentSetup(o: {
       l.proc.write(c + "\n");
       const { reason: _, ...rest } = l.view;
       l.view = { ...rest, state: "checking" };
+      // D518: a code that gets no answer says so, never a box that waits on forever.
+      if (l.check) clearTimer(l.check);
+      l.check = setTimer(() => {
+        if (logins.get(h) !== l || l.view.state !== "checking" || l.mark === -1) return;
+        l.proc?.kill();
+        endLogin(h, { state: "failed", reason: "no_answer" });
+        o.changed();
+      }, checkMs);
       o.changed();
     },
     cancel(h) {
       const l = logins.get(h);
       l?.proc?.kill();
       if (l?.timer) clearTimer(l.timer);
+      if (l?.check) clearTimer(l.check);
       logins.delete(h);
       o.changed();
     },
@@ -566,7 +609,10 @@ export function createAgentSetup(o: {
         // D416: a sign-out under way, or one that didn't take, shows on a row that still reads signed in.
         const signOut = s.login?.state === "signing_out" || s.login?.reason === "signout_failed";
         const login = s.login && (signOut || !(r.loggedIn && s.login.state !== "done")) ? s.login : undefined;
-        return { ...r, ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
+        // D518: done is the agent's own fresh check saying signed in: the row, its coin and every
+        // island read signed in at once, whatever an older probe of the card still holds.
+        const signedNow = login?.state === "done" && r.installed;
+        return { ...r, ...(signedNow ? { loggedIn: true } : {}), ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
       });
     },
     busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking" || l.view.state === "signing_out"),
@@ -574,6 +620,7 @@ export function createAgentSetup(o: {
       for (const l of logins.values()) {
         l.proc?.kill();
         if (l.timer) clearTimer(l.timer);
+        if (l.check) clearTimer(l.check);
       }
       logins.clear();
       queue.length = 0;

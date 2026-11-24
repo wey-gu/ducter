@@ -411,6 +411,8 @@ export interface Core extends CoreApi {
   /** D228: 从外面连 / From outside (the tunnel and its guided setup). */
   anywhere: AnywhereCtl;
   setPartner(p: Partner): void;
+  /** D524: memory is low: drop what can be read again (the outside agents' session records). */
+  shedCaches(): void;
   stop(): Promise<void>;
   /** D309: 伙伴们 / Partners. */
   partners: Partners;
@@ -2658,6 +2660,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     removePartner: (id) => removeOther(id),
     partnerSessions: () => sessions,
+    shedCaches() {
+      firstReader.forget();
+      outsideReader.forget();
+    },
     async stop() {
       ws.stop();
       agentLimits.stop();

@@ -301,9 +301,40 @@ describe("doctor on a Linux server", () => {
     expect(byId(has, "pdf").fix).toBeUndefined();
   });
 
+  test("D524: an out-of-memory stop in the last day is said, with who was biggest, and an old unit gets the reinstall line", async () => {
+    const at = new Date(Date.now() - 3_600_000).toISOString();
+    const journal = {
+      "journalctl --user -u ducter.service --since -24h --no-pager -o short-iso -g OOM killer": {
+        code: 0,
+        stdout: ["2026-11-24T07:26:01+0000 hel systemd[1115]: ducter.service: The kernel OOM killer killed some processes in this unit.", "2026-11-24T07:27:26+0000 hel systemd[1115]: ducter.service: The kernel OOM killer killed some processes in this unit.", "2026-11-24T07:30:15+0000 hel systemd[1115]: ducter.service: The kernel OOM killer killed some processes in this unit.", ""].join("\n"),
+      },
+    };
+    const record = JSON.stringify([{ at, kind: "low", availableMb: 300, totalMb: 7782, top: [{ pid: 300, name: "MainThread", rssMb: 2662, cmd: "/root/.cache/node/bin/node --max-old-space-size=4096 /w/node_modules/typescript/bin/tsc --noEmit" }, { pid: 100, name: "ducter", rssMb: 130, cmd: "ducter up", home: true }] }]);
+    const files: Record<string, string> = { "/u/ducter.service": "[Service]\nRestart=on-failure\n", [`${opts.dataDir}/memory-watch.json`]: record };
+    const h = Object.assign(server({ tools: [...ALL, "journalctl"] }, { ...svc("active", "yes"), ...journal }), { read: (p: string) => files[p] });
+    const r = await runDoctor(h, en, { ...opts, unitPath: "/u/ducter.service" });
+    expect(byId(r, "memory")).toMatchObject({ status: "warn", required: false, fix: "ducter service install" });
+    expect(byId(r, "memory").detail).toBe("this server ran out of memory 3 times in the last day (last at 07:30); the biggest then was a task's node --max-old-space-size=4096 tsc --noEmit (2662 MB)");
+    expect(r.ok).toBe(true);
+    // A unit written by this Ducter: the stop is still said, with nothing to run.
+    files["/u/ducter.service"] = "[Service]\nOOMPolicy=continue\n";
+    const now = await runDoctor(h, zh, { ...opts, unitPath: "/u/ducter.service" });
+    expect(byId(now, "memory")).toMatchObject({ status: "warn" });
+    expect(byId(now, "memory").fix).toBeUndefined();
+    expect(byId(now, "memory").detail).toContain("内存用完 3 次");
+  });
+
+  test("D524: no stop and an old unit: the reinstall line; no stop and a new unit: fine", async () => {
+    const files: Record<string, string> = { "/u/ducter.service": "[Service]\nRestart=on-failure\n" };
+    const h = Object.assign(server({}, svc("active", "yes")), { read: (p: string) => files[p] });
+    expect(byId(await runDoctor(h, en, { ...opts, unitPath: "/u/ducter.service" }), "memory")).toMatchObject({ status: "warn", fix: "ducter service install" });
+    files["/u/ducter.service"] = "OOMPolicy=continue\n";
+    expect(byId(await runDoctor(h, en, { ...opts, unitPath: "/u/ducter.service" }), "memory")).toMatchObject({ status: "ok" });
+  });
+
   test("a Mac shows no server rows", async () => {
     const r = await runDoctor(fake(), en, opts);
-    expect(r.checks.some((c) => c.id === "service" || c.id === "devices" || c.id === "pdf")).toBe(false);
+    expect(r.checks.some((c) => c.id === "service" || c.id === "devices" || c.id === "pdf" || c.id === "memory")).toBe(false);
   });
 });
 

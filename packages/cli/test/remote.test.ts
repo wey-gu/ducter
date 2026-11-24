@@ -31,6 +31,17 @@ describe("systemd unit", () => {
     expect(systemdUnit({ execStart: ["/b"], dataDir: "/d", path: "/p", port: 1, worker: true })).not.toContain("DUCTER_SERVICE_DATA_DIR");
   });
 
+  test("D524: a task's child stopped for memory leaves the home running; the unit has its own ceiling", () => {
+    for (const worker of [false, true]) {
+      const u = systemdUnit({ execStart: ["/b"], dataDir: "/d", path: "/p", port: 1, worker });
+      expect(u).toMatch(/^OOMPolicy=continue$/m);
+      expect(u).toMatch(/^MemoryHigh=80%$/m);
+      expect(u).toMatch(/^MemoryMax=90%$/m);
+      // The home's own score is left to systemd: lowering it needs privilege a user unit lacks.
+      expect(u).not.toMatch(/^OOMScoreAdjust=/m);
+    }
+  });
+
   test("a public bind is carried only when asked; paths with spaces are quoted", () => {
     const u = systemdUnit({ execStart: ["/opt/my apps/bun", "/src/main.ts"], dataDir: "/d", path: "/usr/bin", port: 7790, host: "0.0.0.0" });
     expect(u).toContain('ExecStart="/opt/my apps/bun" /src/main.ts up --headless --port 7790 --host 0.0.0.0');

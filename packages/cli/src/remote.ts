@@ -355,6 +355,13 @@ export function systemdUnit(u: UnitSpec): string {
     "Restart=on-failure",
     ...(u.worker ? ["# Exit 3: the main revoked this worker. Pair again; don't retry.", "RestartPreventExitStatus=3"] : []),
     "RestartSec=3",
+    // D524: tasks' children (tsc, a dev server, a browser) run in this unit. When the kernel stops
+    // one for memory, only it goes: the home keeps running (systemd's default stops the unit).
+    "# A task's child stopped for lack of memory takes only itself; Ducter keeps running.",
+    "OOMPolicy=continue",
+    "# Memory runs short inside this unit first, never for the whole computer (sshd stays).",
+    "MemoryHigh=80%",
+    "MemoryMax=90%",
     "WorkingDirectory=%h",
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,
     // D340: the home the service runs is the person's own: it connects to their Mem by itself.

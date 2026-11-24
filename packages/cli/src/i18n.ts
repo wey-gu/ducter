@@ -239,6 +239,11 @@ const en = {
   "check.pdf": "PDF pages",
   "check.pdf.ok": "Poppler (each page of a PDF is checked before you get it)",
   "check.pdf.missing": "Poppler isn't installed (most layout mistakes in a PDF go unseen)",
+  "check.memory": "Server memory (RAM)",
+  "check.memory.ok": "nothing stopped for lack of memory in the last day",
+  "check.memory.killed": "this server ran out of memory {n} times in the last day (last at {at}); a task's work was stopped",
+  "check.memory.killedWho": "this server ran out of memory {n} times in the last day (last at {at}); the biggest then was a task's {who} ({mb} MB)",
+  "check.memory.oldUnit": "the service is from an older Ducter: running out of memory would stop all of Ducter, not just the task's work",
 
   "headless.ready": "{name} is running on {device}",
   "headless.listen": "Listening",
@@ -1094,6 +1099,11 @@ const zh: Record<MsgKey, string> = {
   "check.pdf": "PDF 逐页检查",
   "check.pdf.ok": "Poppler（PDF 给你之前，每一页都查过）",
   "check.pdf.missing": "没装 Poppler（PDF 的版面问题多半看不出来）",
+  "check.memory": "服务器内存",
+  "check.memory.ok": "最近一天没有因为内存不够停掉任何东西",
+  "check.memory.killed": "这台服务器最近一天内存用完 {n} 次（最后一次 {at}），任务的活被停掉了",
+  "check.memory.killedWho": "这台服务器最近一天内存用完 {n} 次（最后一次 {at}），当时最大的是任务跑的 {who}（{mb} MB）",
+  "check.memory.oldUnit": "服务文件是旧版 Ducter 写的：内存一用完，整个 Ducter 都会停，而不只是任务的活",
 
   "headless.ready": "{name} 在 {device} 上运行了",
   "headless.listen": "监听",

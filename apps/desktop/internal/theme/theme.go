@@ -172,10 +172,10 @@ type Tokens struct {
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
 	// and the equip.
-	Bouncy, Snappy     ui.Animation
+	Bouncy, Snappy ui.Animation
 	// Hover is the one row hover (D529): its fill and what it reveals
 	// cross-fade over 140 ms, easing out; nothing moves.
-	Hover ui.Animation
+	Hover              ui.Animation
 	PressDur, EnterDur time.Duration
 	// Breathe is one breath of a waiting bead (D279), slower than any
 	// reading rhythm; Pop is the moment a wait comes true.

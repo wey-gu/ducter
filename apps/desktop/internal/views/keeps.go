@@ -18,7 +18,7 @@ import (
 // wakes next at the right, and the tasks at work on it set in under it. What
 // waits for the person stands in 等你 once; the sheet says how many. A tap
 // opens the Keep's own page in the board's place (never Settings): its life,
-// 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么运行
+// 你说的, 等你, 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做
 // with 暂停 and 停下.
 
 // keepState is the Keep whose page is open ("" the list) and the page's own
@@ -707,7 +707,7 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 	})
 }
 
-// keepRules is 怎么运行 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
+// keepRules is 怎么做 / How it runs, with 暂停 ▾, 现在看一次 and 停下.
 func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	t := a.T
 	w := float32(320)

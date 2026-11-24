@@ -157,7 +157,7 @@ The other states are crisp: 已暂停, 已完成, 已停止, 已结束.
 | the page's kicker | **{name} 看守中** | **{name} is looking after** |
 | the partner's acknowledgement | **好，我来照看：…** | **Done, I'll look after it: …** |
 | life | **看守中 / 已暂停 / 已完成 / 已停止** | **On / Paused / Done / Stopped** |
-| the page's parts | **你说的 · 等你 · 手上的 · 每一轮 · 怎么运行** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
+| the page's parts | **你说的 · 等你 · 手上的 · 每一轮 · 怎么做** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
 | its rules | **什么时候醒 · 做到什么时候 · 什么时候出声 · 上限 · 在哪儿做，谁来做 · 别的 agent 怎么找到它** | **When it wakes · Until · When it speaks · Limits · Where and who · How your agents find it** |
 | a round's outcome | **没出声 / 说了一句 / 问了你**; one under way **进行中** | **Silent / Told you / Asked you**; **Running** |
 | silent rounds folded | **又看过 {n} 次，都没有变化** | **Looked {n} more times; nothing changed** |
@@ -217,7 +217,7 @@ the side column after the rounds.
 7. **Change by talking**: a composer under the rounds, its placeholder an example from this Keep
    (**想改什么，直接说：「ducter 仓库的 PR 也接」**). What is typed goes to the partner with the Keep attached; the
    partner changes it with one tool (`keep_change`) and says the change in one line.
-8. **怎么运行 / How it runs** (the side column): when it wakes, until, when it speaks, limits, where and who, and
+8. **怎么做 / How it runs** (the side column): when it wakes, until, when it speaks, limits, where and who, and
    for a Keep with an address **别的 agent 怎么找到它** (its Mem name and **已连上**; the Bridge details one more tap
    in, never the page's subject). At its foot **暂停 ▾** (1 小时, 明天早上, 一周, 直到我恢复) and **停下** (in the
    failed ink, asks once).

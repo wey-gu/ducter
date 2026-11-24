@@ -3,7 +3,7 @@
 // (D291), its last change, when it wakes next at the right, and the tasks at work on it set in under
 // it. What waits for the person stands in 等你 once; the sheet only says how many. A tap opens the
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
-// 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么运行 with 暂停 and 停下. The receipt
+// 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
 import { foldRounds, keepBeat, type KeepCard, type KeepItem, type KeepPage, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import { useState } from "preact/hooks";

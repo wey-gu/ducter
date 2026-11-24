@@ -34,7 +34,7 @@ export const keepWords: { zh: Record<string, string>; en: Record<string, string>
     "keep.rounds": "每一轮",
     "keep.rounds.none": "还没有醒过。",
     "keep.rounds.fold": "又看过 %d 次，都没有变化",
-    "keep.how": "怎么运行",
+    "keep.how": "怎么做",
     "keep.rule.wakes": "什么时候醒",
     "keep.rule.until": "做到什么时候",
     "keep.rule.speaks": "什么时候出声",

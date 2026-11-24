@@ -480,7 +480,7 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 				a.glyph(c, 14, drawCheck(t.InkMuted))
 				uiText(c, a.shortDur(time.Duration(*r.Ms)*time.Millisecond)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 			}
-			if bad {
+			if bad && (r.Step == nil || r.Step.Kind != "background") { // D521: a background failure says it in its words
 				uiText(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink.Alpha(0.85)).Shrink(0)
 			}
 		})

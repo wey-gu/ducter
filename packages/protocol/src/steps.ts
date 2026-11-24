@@ -458,7 +458,7 @@ export function backgroundStep(raw: unknown): { step: Step; failed: boolean; qui
   if (!["started", "ended", "stopped", "failed"].includes(act)) return undefined;
   const what = str(b.what).trim();
   const failed = act === "failed" || (act === "ended" && typeof b.exitCode === "number" && b.exitCode !== 0);
-  const step: Step = { kind: "background", act: act === "started" ? "start" : act === "stopped" ? "stop" : "end", ...(what ? { target: what } : {}) };
+  const step: Step = { kind: "background", act: act === "started" ? "start" : act === "stopped" ? "stop" : failed ? "fail" : "end", ...(what ? { target: what } : {}) };
   // D521: the opened task's tray shows every job and its time; the transcript draws nothing for a
   // start and nothing for an end that simply went well. Only a failure or a stop is a line.
   return { step, failed, ...(act === "started" || (act === "ended" && !failed) ? { quiet: true as const } : {}) };

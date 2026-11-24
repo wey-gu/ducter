@@ -758,6 +758,9 @@ func backgroundStep(raw json.RawMessage) (st Step, failed, quiet, ok bool) {
 	}
 	failed = b.Act == "failed" || (b.Act == "ended" && b.ExitCode != nil && *b.ExitCode != 0)
 	quiet = b.Act == "started" || (b.Act == "ended" && !failed)
+	if failed {
+		act = "fail"
+	}
 	return Step{Kind: "background", Act: act, Target: strings.TrimSpace(b.What)}, failed, quiet, true
 }
 

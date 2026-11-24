@@ -398,7 +398,7 @@ function Row({ r, live }: { r: StepRow; live?: boolean }) {
           {r.ms !== undefined && r.ms >= 1000 ? dur(r.ms) : ""}
         </span>
       )}
-      {bad && <span class="bad-tag">{t("step.label.error")}</span>}
+      {bad && st.kind !== "background" && <span class="bad-tag">{t("step.label.error")}</span>}
       {opens && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );

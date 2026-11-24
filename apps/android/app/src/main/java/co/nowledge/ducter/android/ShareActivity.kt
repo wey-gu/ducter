@@ -209,6 +209,12 @@ class ShareActivity : Activity() {
             send.alpha = 0.5f
         }
 
+        // The note is where the person starts, with the keyboard up (as the iPhone's sheet).
+        if (note.visibility == View.VISIBLE) note.postDelayed({
+            note.requestFocus()
+            getSystemService(android.view.inputmethod.InputMethodManager::class.java)?.showSoftInput(note, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }, 250)
+
         // The sheet rises from the foot and the dim comes in (Pebble's enter; at once when animations are off).
         val off = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
         if (!off) {
@@ -279,19 +285,41 @@ class ShareActivity : Activity() {
             setPadding(dp(c, 12), dp(c, 10), dp(c, 14), dp(c, 10))
             minimumHeight = dp(c, 64)
         }
-        val badge = TextView(c).apply {
-            text = Share.badge(f.name)
-            Pebble.text(this, 11f, 800, R.color.on_accent)
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply { cornerRadius = dp(c, 6).toFloat(); setColor(Pebble.color(c, R.color.accent)) }
+        // D286's badge: a little page whose band, in its family's colour, says the extension.
+        val ext = Share.badge(f.name)
+        val night = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val badge = FrameLayout(c).apply {
+            background = GradientDrawable().apply { cornerRadius = dp(c, 5).toFloat(); setColor(Pebble.color(c, R.color.sunken)); setStroke(dp(c, 1), Pebble.color(c, R.color.line)) }
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            addView(TextView(c).apply {
+                text = ext.take(4)
+                Pebble.text(this, 9f, 800, R.color.surface)
+                setTextColor(if (night) 0xFF1A130D.toInt() else 0xFFFFFFFF.toInt())
+                gravity = Gravity.CENTER
+                val r = dp(c, 5).toFloat()
+                background = GradientDrawable().apply { cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r); setColor(Share.familyColor(ext, night)) }
+            }, FrameLayout.LayoutParams(MATCH_PARENT, dp(c, 16), Gravity.BOTTOM))
         }
-        row.addView(badge, LinearLayout.LayoutParams(dp(c, 38), dp(c, 46)))
+        row.addView(badge, LinearLayout.LayoutParams(dp(c, 36), dp(c, 44)))
         val words = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL }
-        words.addView(TextView(c).apply { text = f.name ?: Share.badge(f.name); Pebble.text(this, 15f, 700); maxLines = 2; ellipsize = TextUtils.TruncateAt.MIDDLE })
-        f.size?.let { words.addView(TextView(c).apply { text = Share.size(it); Pebble.text(this, 13f, 400, R.color.ink_muted) }, lp(2)) }
+        words.addView(TextView(c).apply { text = f.name ?: ext; Pebble.text(this, 15f, 700); maxLines = 2; ellipsize = TextUtils.TruncateAt.MIDDLE })
+        // Its size and, for a PDF, its pages: each fact its own element (D291).
+        val facts = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL }
+        f.size?.let { facts.addView(TextView(c).apply { text = Share.size(it); Pebble.text(this, 13f, 400, R.color.ink_muted) }) }
+        words.addView(facts, lp(2))
+        if (ext == "PDF") Thread {
+            val n = pages(Uri.parse(f.uri))
+            if (n > 0) main.post { facts.addView(TextView(c).apply { text = resources.getQuantityString(R.plurals.share_pages, n, n); Pebble.text(this, 13f, 400, R.color.ink_muted) }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(c, 10) }) }
+        }.start()
         row.addView(words, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { marginStart = dp(c, 12) })
         return row
+    }
+
+    /** A PDF's page count, read on the phone (Android's own PdfRenderer); 0 when it can't be read. */
+    private fun pages(uri: Uri): Int = try {
+        contentResolver.openFileDescriptor(uri, "r")?.use { fd -> android.graphics.pdf.PdfRenderer(fd).use { it.pageCount } } ?: 0
+    } catch (_: Exception) {
+        0
     }
 
     private fun thumb(uri: Uri, px: Int): Bitmap? = try {

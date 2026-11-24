@@ -121,4 +121,7 @@
     <string name="share_refused">没发出去：你的 Ducter 没收下。</string>
     <string name="share_pictures">%1$d 张图片</string>
     <string name="share_picture">一张图片</string>
+    <plurals name="share_pages">
+        <item quantity="other">%d 页</item>
+    </plurals>
 </resources>

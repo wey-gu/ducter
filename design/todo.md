@@ -1868,8 +1868,8 @@ note and a `Dn`) before it is built.
       conversation with a tray): media.md "Sharing into Ducter".
 - [ ] **D537 on real phones.** The extension opened from Safari, Photos, Files, WeChat and X on a
       real iPhone (and from another app's share sheet in the Simulator, never driven here); the
-      Android sheet on any device (the emulator's adb hung; no Android shots yet); a 40 MB PDF over
-      the tunnel; the outbox across a home restart. Trigger: the first TestFlight build with D537.
+      Android sheet on a real phone from a real app (the emulator was driven with intents and the
+      app's own FileProvider); a 40 MB PDF over the tunnel; the outbox across a home restart. Trigger: the first TestFlight build with D537.
 - [ ] **D537's App Groups capability.** The release's export signs `group.<app id>` on the app and
       `<app id>.share`; if automatic signing doesn't register the group, add it once by hand
       (release/ios.md). Trigger: the first release after D537 (its TestFlight job).

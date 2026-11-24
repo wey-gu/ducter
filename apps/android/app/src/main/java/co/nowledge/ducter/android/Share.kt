@@ -83,6 +83,24 @@ object Share {
         return ext?.uppercase()?.take(4) ?: "FILE"
     }
 
+    /** D286: a file's family colour for its badge's band (app.css --fam-*, light and dark), by its badge. */
+    fun familyColor(badge: String, night: Boolean): Int {
+        val (light, dark) = when (badge.lowercase()) {
+            "pdf" -> 0xD65A40 to 0xEE8A72
+            "doc", "docx", "page", "rtf", "odt" -> 0x3F74C2 to 0x7CA9EA
+            "xls", "xlsx", "csv", "tsv", "numb", "ods" -> 0x3C8F57 to 0x74C48E
+            "ppt", "pptx", "key", "odp" -> 0xD9772C to 0xF2A35F
+            "zip", "gz", "tgz", "tar", "7z", "rar" -> 0x9A7A50 to 0xC9A77A
+            "m4a", "mp3", "wav", "aac", "flac" -> 0x8659BD to 0xB893E8
+            "mp4", "mov", "m4v", "webm" -> 0x2F8A92 to 0x66C0C7
+            "txt", "md", "log" -> 0x8C7458 to 0xC4AA8A
+            "ts", "js", "go", "py", "kt", "rs", "sh", "json", "yaml", "yml", "html", "css" -> 0x5469A3 to 0x8EA4DC
+            "jpg", "jpeg", "png", "heic", "gif", "webp" -> 0xC1648A to 0xE69BB8
+            else -> 0x9A8670 to 0xB9A690
+        }
+        return (0xFF000000.toInt()) or (if (night) dark else light)
+    }
+
     /** "2.1 MB", "640 KB", "12 B" (the file cards' sizes). */
     fun size(bytes: Long): String = when {
         bytes >= 1024L * 1024 -> String.format(java.util.Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024)).replace(".0 MB", " MB")

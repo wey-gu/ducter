@@ -126,4 +126,8 @@
     <string name="share_refused">It didn\'t go: your Ducter didn\'t take it.</string>
     <string name="share_pictures">%1$d pictures</string>
     <string name="share_picture">A picture</string>
+    <plurals name="share_pages">
+        <item quantity="one">%d page</item>
+        <item quantity="other">%d pages</item>
+    </plurals>
 </resources>

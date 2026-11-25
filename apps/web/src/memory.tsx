@@ -627,7 +627,7 @@ function MemFilesRow() {
   const on = !!s.memFiles;
   return (
     <>
-      <GRow cls={tr && on ? "mem-files bad" : "mem-files"} title={t("memfile.row")} line={tr && on ? t("memfile.trouble", tr.name, keepWhy(tr.why, tr.message)) : t("memfile.row.line")}>
+      <GRow cls={tr && on ? "mem-files bad" : "mem-files"} title={t("memfile.row")} line={tr && on ? t("memfile.trouble", tr.name, keepWhy(tr.why)) : t("memfile.row.line")}>
         <Switch label={t("memfile.row")} on={on} onChange={(v) => (A.setSettings({ memFiles: v }), say("memfiles", t(v ? "said.memfiles.on" : "said.memfiles.off")))} />
       </GRow>
       <Said k="memfiles" />

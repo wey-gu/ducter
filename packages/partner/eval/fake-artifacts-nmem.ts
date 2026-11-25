@@ -2,7 +2,7 @@
 // A FAKE `nmem` for D566 (keeping files in Nowledge Mem): Artifacts and their folders in one JSON
 // file, so tests and the partner eval never write to the person's Mem. It implements only what
 // core/src/mem-files.ts runs, after nmem 0.10.123's help (research/231):
-//   status · artifacts folders ls|mk · artifacts add · artifacts update · artifacts list · artifacts history · artifacts show
+//   status · bridge setup (passive) · artifacts folders ls|mk · artifacts add · artifacts update · artifacts list · artifacts history · artifacts show
 // The read shapes (list/show/history/folders ls, status) copy the REAL ones seen on 2026-11-25
 // (packages/core/test/fixtures/mem-artifacts.json, VERIFIED). add, update and folders mk were never
 // run against the real Mem: their answers here are GUESSES from the CLI's own strings (an
@@ -17,6 +17,13 @@
 //   NMEM_FAKE_BACKEND=local                 status says a local Mem (no web link)
 //   NMEM_FAKE_UNLISTED=1                    a write answers ok but list never shows it (the read-back fails)
 //   NMEM_FAKE_BARE=1                        add answers exit 0 with words, no JSON (a shape Ducter can't parse)
+//   NMEM_FAKE_SPACES=hel|mac|none|off       D572: the Spaces passive `bridge setup` lists (default hel: the
+//                                           personal Space plus Everyone as write_default, as hel's key
+//                                           answered on 2026-11-25; mac: personal is the write default;
+//                                           none: Spaces, none personal or write_default; off: no Spaces)
+// D572: `folders mk` without --space, --space-id or --parent refuses exactly as the real 0.10.123 did
+// on hel ("Pass --space (or --parent) to choose where the folder goes."), except with Spaces off.
+// Folders answer in the binary's own field names (LibraryFolder: folder_id, parent_folder_id).
 // state.bump = <doc id>: someone saved a newer version of it in Mem (the next update is stale).
 import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
@@ -50,7 +57,10 @@ if (process.env.NMEM_FAKE_DOWN === "1") fail("error sending request: connection 
 
 const words = argv.filter((a) => a !== "--json" && a !== "-j");
 const [cmd, sub, verb] = words;
-const space = opt("--space") ?? "default";
+const named = opt("--space-id") ?? opt("--space");
+const space = named ?? "default";
+const spaces = process.env.NMEM_FAKE_SPACES ?? "hel";
+const PERSONAL = "personal-00000000-0000-0000-0000-00000000fake";
 
 const sourceOf = (d: Doc, r = d.revs.at(-1)!) => ({
   id: r.source_id,
@@ -86,19 +96,31 @@ const sourceOf = (d: Doc, r = d.revs.at(-1)!) => ({
 });
 
 if (cmd === "status") out({ status: "ok", cli_version: "0.10.123", api_url: process.env.NMEM_FAKE_BACKEND === "local" ? "http://127.0.0.1:14242" : "https://cloud.nowledge.co/remote-api", mode: "remote", backend: process.env.NMEM_FAKE_BACKEND ?? "cloud" });
+// The VERIFIED passive setup shape (0.10.123, 2026-11-25): it creates and selects nothing.
+if (cmd === "bridge" && sub === "setup" && !argv.includes("--enable")) {
+  if (spaces === "off") out({ state: "candidates_unavailable", detail: "Spaces are off.", candidates: [] });
+  const team = [
+    { id: "default", label: "Before the team", kind: "default", readers: 6, write_default: false },
+    { id: "all", label: "Everyone", kind: "commons", readers: 10, write_default: spaces === "hel" },
+    { id: "codex", label: "Codex", kind: "team", readers: 7, write_default: false },
+  ];
+  const personal = { id: PERSONAL, label: "Only me", kind: "personal", readers: 1, write_default: spaces === "mac" };
+  out({ state: "selection_needed", detail: "Choose the exact Space for Bridge. No identity, credential or mailbox was created.", note: "Name the Space explicitly by its id. Suggested entries are hints, not a choice. A write that names no Space lands in write_default.", candidates: spaces === "none" ? team.map((c) => ({ ...c, write_default: false })) : [...team.slice(0, 2), personal, team[2]] });
+}
 if (cmd !== "artifacts") fail(`the subcommand '${cmd}' wasn't recognized`, 2);
 
 const s = load();
 if (sub === "folders" && (verb === "ls" || verb === undefined)) {
-  out({ folders: s.folders.filter((f) => f.space_id === space).map((f) => ({ id: f.id, name: f.name, parent_id: f.parent_id, space_id: f.space_id, children: [] })), next_cursor: null, folder_view: "tree" });
+  out({ folders: s.folders.filter((f) => f.space_id === space).map((f) => ({ folder_id: f.id, name: f.name, parent_folder_id: f.parent_id, space_id: f.space_id, document_count: s.docs.filter((d) => d.folder_id === f.id).length })), next_cursor: null, folder_view: "tree" });
 }
 if (sub === "folders" && verb === "mk") {
   const name = words[3]!;
+  if (!named && !opt("--parent") && spaces !== "off") fail("Pass --space (or --parent) to choose where the folder goes.");
   const id = opt("--id") ?? `fold_${++s.seq}`;
   const had = s.folders.find((f) => f.id === id);
   if (!had) s.folders.push({ id, name, parent_id: opt("--parent") ?? null, space_id: space });
   save(s);
-  out({ folder: { id, name, parent_id: null, space_id: space } });
+  out({ folder_id: id, name, parent_folder_id: null, space_id: space, document_count: 0 });
 }
 if (sub === "add") {
   if (process.env.NMEM_FAKE_REFUSE) fail(`/sources/ingest/file returned 400: ${process.env.NMEM_FAKE_REFUSE}`);
@@ -142,7 +164,7 @@ if (sub === "update") {
 if (sub === "list") {
   const n = Number(opt("-n") ?? opt("--limit") ?? 20);
   if (process.env.NMEM_FAKE_UNLISTED === "1") out({ sources: [], total: 0 });
-  const all = s.docs.filter((d) => !opt("--space") || d.space_id === space).map((d) => sourceOf(d));
+  const all = s.docs.filter((d) => !named || d.space_id === space).map((d) => sourceOf(d));
   all.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
   out({ sources: all.slice(0, n), total: all.length });
 }

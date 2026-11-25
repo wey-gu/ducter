@@ -16,7 +16,7 @@ type MemFileSaved struct {
 }
 
 // MemFileTrouble is the last file the Settings default didn't keep, and why
-// (off | missing | signed_out | unreachable | secret | gone | refused, with
+// (off | missing | signed_out | unreachable | secret | gone | refused | no_space, with
 // Mem's own words in Message).
 type MemFileTrouble struct {
 	Name    string `json:"name"`

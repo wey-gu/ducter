@@ -265,7 +265,8 @@ What your partner remembers about you has its own section, **Memory**.
   button (**Sign in again**, **Check again** or **Update**), right under the line that says so.
 - **Also keep files I make in Nowledge Mem**, off until you turn it on: when a task is done, the
   reports and documents it made (PDFs, documents, sheets, slides, Markdown and text) go to a folder
-  named **Ducter** in your Nowledge Mem, so your other AI tools find them too. Logs, code and
+  named **Ducter** in your Nowledge Mem (in your own space there, the one only you read), so your
+  other AI tools find them too. Logs, code and
   screenshots don't, nor any file with what looks like a key or password in it. A newer version of
   the same file becomes its next version there, never a second copy. If one couldn't go (its
   sign-in had stopped working, say), the line under the switch says which and why.

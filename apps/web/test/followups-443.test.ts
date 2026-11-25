@@ -34,5 +34,6 @@ test("a to-do row's size pill gives way to a line that already says it (pile and
 test("the Agent messaging pane: a state row's long fix drops under its words on a phone", () => {
   const css = src("static/app.css");
   expect(css).toMatch(/\.mem-g \.chat-row\.act-under \{ flex-wrap: wrap; \}/);
-  expect((src("src/memory.tsx").match(/cls="act-under"/g) ?? []).length).toBe(3);
+  // D582: and Nowledge Mem's count and its agents' row on Memory.
+  expect((src("src/memory.tsx").match(/cls="act-under"/g) ?? []).length).toBe(5);
 });

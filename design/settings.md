@@ -567,6 +567,10 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
 
 ## Agent messaging in the same voice (D470)
 
+Since D557 (the Bridge live trial passed, 2026-11-25) the pane's switch is simply on by default: where the
+home's Mem is ready and the person runs agents of their own, the home connects by itself (D332) and nothing
+on the pane says "preview" or waits on a trial. Off is the switch, or `DUCTER_BRIDGE=0` for the whole home.
+
 Who: H wants who reaches whom at a glance and what came of each exchange; C wants to know nothing can
 make the partner act without them; F sees the page only once they run an agent, and before any exchange
 meets an invitation, not an empty list. The pane now reads top-down as the others do: the partner's

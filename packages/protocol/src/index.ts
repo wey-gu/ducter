@@ -734,7 +734,7 @@ export interface Bodies {
   // D224: 全部更新 / Update all, on the same stream: a plan started, finished or was stopped (its
   // items' own steps are device_update and agent_update events). by: a tap, the CLI, or the night.
   update_all: { id: string; phase: "started" | "finished" | "stopped"; by: UpdateAllBy; items: number; done?: number; failed?: number };
-  // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
+  // Nowledge Bridge (on with the home's connection, D557; design/bridge.md). "in": a message another agent
   // sent the persona (origin "peer"); its text is untrusted task context, never the user's
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
   // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
@@ -3363,7 +3363,7 @@ export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
 // role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add,
-//   bridge_reply (only with DUCTER_BRIDGE=1)
+//   bridge_reply (only while Bridge is on: the home connected, D557)
 // role "task:<id>": report_to_main, log_search, log_read, checkpoint
 
 export interface ToolArgs {

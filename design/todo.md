@@ -780,7 +780,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       show how many recipients opened it); Ducter parses `read_receipt` (`receiptOf`, only when `receipt_available`)
       but shows nothing until the shape is seen. Trigger: `ducter check run mem-shapes` on hel passes its `receipts`
       step (or Mem confirms the JSON, private ask item 1); then read the outbox when the pane wants it (as D444's
-      contacts) and say **已读 / Read** beside a sent message, both clients, with shots.
+      contacts) and say **已读 / Read** beside a sent message, both clients, with shots. D557 (the 2026-11-25 live
+      pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
+      "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
+      so the trigger stands.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
@@ -796,6 +799,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - [ ] A live run: an Antigravity task on the author's Mac asks his Codex through the real Mem (a throwaway exchange
       he approves), and the answer lands in the task. Trigger: the next live Bridge pass, with the author's Go.
+      Still owed after the 2026-11-25 pass (D557): `bridge:live` has no scenario where a task asks through Ducter
+      (its S1–X1 are the partner's own), so it didn't cover this. Owed: a task on pi or Antigravity, its card,
+      the send on Go, the answer into the task; `bridge:live` could gain it as a fifth scenario.
 - [x] A Claude Code or Codex task gets `agent_message` too: done as D494 (every task; the home receives for it).
 - [ ] Follow-through when a task's message gets no answer (today the task waits, its card says 在等…回话): one line
       to the task, or to the person, after a while. Trigger: a task waits more than a day once.
@@ -843,7 +849,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - [ ] A read-only live check against the real Mem of what D444 reads by INFERRED shapes: `bridge contacts` (grouped)
       cards' `mailbox_available` / `unavailable` and member, `resources get --json`'s title and body fields, and where a
-      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass. Check: `ducter check run mem-shapes
+      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass (the 2026-11-25
+      one, D557, opened no message that cited a memory: `open`'s keys were only research/226 4.4's). Check: `ducter check run mem-shapes
       [--uri <link>] [--message <saved bridge open>]`.
 - [x] A read-only live check against the real Mem of what D444 reads by INFERRED shapes. Done as D461 (research/200):
       the grouped contacts and `resources get` VERIFIED and fixed.
@@ -2419,16 +2426,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
       a first send; native-session Agents all "Bridge agent". Trigger: the author's go.
 - [x] Read Mem #10278's `sender`, `in_reply_to` and `mailbox_available`, and retry Mem's "can't right now"
       briefly (D294; over the fake's `presentation` shape).
-- [ ] Rerun `bridge:live -- --real` (D324: as the trial's own identity) and make the live S2 check pass (5/5);
+- [x] Rerun `bridge:live -- --real` (D324: as the trial's own identity) and make the live S2 check pass (5/5);
       then drop D249 (5)'s maybe-answered rule (D364 already leaves Mem's `in_reply_to: null` originals out of it),
       and the "until the live trial passes" wording in `bridge.md` and `roadmap.md`. Check on that first run that
       Mem connects a freshly enrolled identity at once, that `agents delete` retires its mailbox, that `--cleanup`
       finds nothing after, and what `sender` really holds (research/134 §1.1: 3 fields, #10278 named 4).
       Trigger met 2026-11-18: nmem 0.10.120 asks for #10278's representation (research/134); the exact run is in
       `bridge.md` "Try it live". Waits on the author's Go (it writes a throwaway identity to Mem).
-- [ ] D364: after the live run, check on hel (nmem 0.10.120) that a real native Claude Code's message reaches the
-      partner named (`sender.agent` other than "Bridge agent") or by its tool; if Mem still says "Bridge agent" for
-      every native session, ask Nowledge for the session's label in `sender` (research/66 §8.4). Trigger: the live run.
+      **Done 2026-11-25 (D557, research/226 §4):** PASS, S2 5/5. Mem connected the fresh identity at once; revoke +
+      `agents delete` removed it; `sender` holds `{actor_id, member, agent, agent_id, host?}`; D249 (5) kept only for
+      nmem before 0.10.120 (by version) and the "until" wording gone. `--cleanup` was not run after (nothing left).
+- [ ] D364: ask Nowledge for a native session's own label in `sender` (research/66 §8.4). The 2026-11-25 pass (D557,
+      research/226 4.5) answered the check: a native Claude Code session's `sender.agent` is still "Bridge agent", with
+      `host: "claude-code"`, so Ducter names it by its tool (**Claude Code 里的 agent**). Trigger: the author's go to ask.
 - [ ] D324 on the author's homes: end the Mac's leftover `ducter` connection (the 2026-11-13 trial's, made by the
       Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 和你的其他 agent 通信 › 只留这台, or on the
       Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.
@@ -2467,11 +2477,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it (met 2026-11-20: it reads again, research/161 §9).
 - [x] D409: rerun the live trial with the 120 s limit and rule 2d. Done 2026-11-20 02:58 UTC: 10/17; `open` and
       `reply` work after `enable_needed` (4 to 13 s each); what was left is D412's (research/161 §10).
-- [ ] D412: rerun the live trial (`bun run bridge:live -- --connected --real`) with the guard reading Mem's `bm1:`
+- [x] D412: rerun the live trial (`bun run bridge:live -- --connected --real`) with the guard reading Mem's `bm1:`
       references, the card's name check and one follow-through line per agent. Read in its raw output: a peer
       `open` under its own context for each of Ducter's claim, result and answer; the peer's `reply` linked to
       Ducter's question (S2); whether `--watch` brings the arrival before the minute check.
-      Trigger: the coordinator merges D412.
+      Trigger: the coordinator merges D412. Done 2026-11-25 (D557): the peer opened each of Ducter's claim, result and
+      answer under its own context, and its reply came back linked to Ducter's question. `--watch` was not measured
+      (the trial runs its checks itself); D335's long-poll item below holds it.
 - [ ] D409: the start mark (B14) is the first inbox read that *works*: if it fails until mail has arrived (the
       2026-11-20 run, every read timed out), the first real request is taken for old mail and never opened. Mark
       only entries sent before the first attempt (0.10.121 gives no send time; `expires_at_ms` minus Mem's 7 days
@@ -2536,8 +2548,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
       ＋ in the tile column. Trigger: the next Mac Settings change.
 - [ ] Unnamed own agents share one name, so the daily quota, mute and "3 open asks" count them together (D249).
       Trigger: a user with two own agents writing on the same day.
-- [ ] The live driver: the peer's native context keeps its inbox across runs; give each run its own peer session
-      context, or have the peer ignore what predates the run. Trigger: the next live run.
+- [x] The live driver: the peer's native context keeps its inbox across runs; give each run its own peer session
+      context, or have the peer ignore what predates the run. Trigger: the next live run. Done by D367's guard,
+      VERIFIED 2026-11-25 (D557): 26 to 35 older messages in the peer's mailbox, every check passed.
 - [x] (history) Connect the persona in Only me (D205): on the home, Settings › 连上的 AI agent › 连接 (it runs
       `nmem bridge connections connect --space-id <Only me> --agent-id ducter --context ducter`). Run once on a
       scratch home 2026-11-12: Mem answered 503 `cloud_bridge_setup_unavailable` (research/66 §3). On hel first
@@ -2597,8 +2610,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       (D111's channel was not reachable from the session that found them).
 - [x] Read the real shapes from the live run (D249): `inbox`, `open`, send/reply, `inspect` and the 409; the fake
       answers in them by default. The older fields stay as fallbacks until Mem's next shape.
-- [ ] Turn Bridge on by default by D170 (9)'s criteria (the first is met by D205: Ducter finds the persona's
+- [x] Turn Bridge on by default by D170 (9)'s criteria (the first is met by D205: Ducter finds the persona's
       context itself; 断开 and 谁都不行 are the offs). Trigger: the live run passes (2026-11-13: everything but the linked reply, B17).
+      Done as D557: the 2026-11-25 run passed; on by default where Mem is ready and the home is the person's own
+      (D332); the switch and `DUCTER_BRIDGE=0` are the offs.
 - [x] Clients render the quiet lines (发来请求 / 已发给 / 已回复, and a sender set aside) (D170).
 - [ ] Follow-through by a time the user named ("今晚前告诉我"). Trigger: a user asks for it; `wait_until`
       covers it today.

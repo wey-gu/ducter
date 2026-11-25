@@ -298,8 +298,10 @@ message your partner through Nowledge Bridge: **Settings › Talk with your othe
 session you have open hand your partner a job or ask for your call, and lets your partner ask that
 session what it knows. At first your partner checks with you before it takes on a job; on that page
 you can let one of your agents hand it work directly, up to a few tasks a day (past that it asks
-you), switch one back to asking, or stop listening to it. Once Nowledge Mem is signed in, it connects
-by itself; one switch on that page turns it all off.
+you), switch one back to asking, or stop listening to it. It's on by default: once Nowledge Mem is
+signed in and Ducter sees you use agents of your own, it connects by itself and your partner tells you
+once. One switch on that page turns it all off; to keep it off on a computer from the start, start
+Ducter there with `DUCTER_BRIDGE=0`.
 
 What it needs, and what you can do today from that same section:
 

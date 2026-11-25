@@ -63,10 +63,17 @@ heard of a subagent.
   server, your cookies staying on the Mac (D505). Owed: the live run (`ducter check run
   worker-browser`), and waiting for a sleeping Mac by default mid-task.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
-  and native browser use, and the Nowledge Bridge live trial (still behind a flag; see below).
+  and native browser use. The Nowledge Bridge live trial passed on 2026-11-25 (below).
   The owed checks of D425–D459 are one command each since D463 (`ducter check list`, then
   `run <name>`; `design/build-and-run.md` "Live checks"); none has run for real yet.
 - **Nowledge Bridge live trial** (your terminal agents reaching your partner, against Mem Cloud):
+  - **2026-11-25 (D557, research/226 §4): passed, every check.** On the author's Mac with Mem's command line
+    0.10.123, haiku both sides: handing work over (S1) 6 of 6, asking an agent (S2) 5 of 5 with the answer
+    linked to the question, following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3,
+    and Mem marking an original as one. So Bridge is on by default: wherever Nowledge Mem is ready on your own
+    home and you use agents of your own, your partner connects by itself (one switch in Settings turns it off;
+    `DUCTER_BRIDGE=0` turns it off for the whole home). Step 3 below is done; steps 1, 2 and 4 are still
+    owed on hel.
   - 2026-11-25 (D555, research/226): Mem's command line 0.10.123 adds read receipts; Mem's Antigravity
     plugin can now pass messages (it has its own row in Settings), pi's can't yet; Ducter's tasks no
     longer open a mailbox of their own. Ready to run, in this order, on the computer that receives
@@ -76,8 +83,8 @@ heard of a subagent.
        Space still reports `cloud_mailbox_own_source_unreconciled` (nothing opened or sent).
     2. Read only, after any task: `nmem --json bridge connections list --space-id <Only me> --agent-id
        ducter` lists no new `codex` / `claude-code` connection made by a task.
-    3. Writes to Mem, your Go: `bun run bridge:live -- --connected` (dry), then `-- --connected --real`
-       (S1, S2, S3, X1 as the trial's own throwaway identity; about 15 minutes, removed after).
+    3. Done 2026-11-25 (above, on the Mac): `bun run bridge:live -- --real` (S1, S2, S3, X1 as the trial's
+       own throwaway identity; about 7 minutes, removed after).
     4. Writes to Mem, your Go: in Antigravity on the Mac, `/nmem-bridge-chat` to send your partner one
        short test (its plugin may ask to enable its mailbox once in a Space; "Only me" is the one your
        partner reads); the Antigravity row then says it hands work over, and step 1's `receipts` shows

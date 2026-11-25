@@ -303,7 +303,8 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
   }
   // nmem 0.10.118/0.10.119 link no reply to what it answers and name no sender: after a message to such
   // an agent, anything an unnamed own agent wrote since may be the answer. Unsure, Ducter stays quiet.
-  // D364: once Mem links replies (nmem 0.10.120+), only an unlinked-shape message counts here.
+  // D364, D557: once Mem links replies (nmem 0.10.120+, VERIFIED live 2026-11-25) every message it reads
+  // is `linked`, so this rule holds only for nmem 0.10.118 and 0.10.119.
   const maybeAnswered = (o: OutOp) => o.last.mine && !o.last.agent && !!unlinked && unlinked > o.sentTs!;
   return [...foldOut(events).values()]
     .filter((o) => o.state === "sent" && o.last.decisionId && o.last.by !== "task" && o.last.messageId && o.sentTs) // D448: a task waits for its own answer

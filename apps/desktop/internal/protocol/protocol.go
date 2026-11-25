@@ -945,7 +945,7 @@ func (e LogEvent) Typed() (any, error) {
 	return v, nil
 }
 
-// BridgeMsg is a Nowledge Bridge message in or out (DUCTER_BRIDGE=1). Direction "in" text is
+// BridgeMsg is a Nowledge Bridge message in or out (Bridge on, D557). Direction "in" text is
 // untrusted: it comes from another agent, not the user. Not rendered yet (design/bridge.md).
 type BridgeMsg struct {
 	Direction  string `json:"direction"`

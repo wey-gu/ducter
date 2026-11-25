@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.64 - 2026-11-25
+
+<!-- whats-new
+zh: Mac 上设置的每一行也读得完整，词不再被拆开
+en: On the Mac too, every settings line keeps its words whole
+-->
+
+**Settings on the Mac**
+- Every row, note and page heading keeps short phrases together, so a word is never split across two
+  lines, and a heading no longer leaves one word alone on its last line.
+
 ## 0.1.63 - 2026-11-25
 
 <!-- whats-new

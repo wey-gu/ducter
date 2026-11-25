@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.72 - 2026-11-25
+
+<!-- whats-new
+zh: ⌘W、标准菜单栏、⌘[ ⌘] 和缩放：Mac 上该有的都有了
+en: ⌘W, the standard menu bar, ⌘[ ⌘] and zoom: the Mac keys your hands know
+-->
+
+**The keys your hands already know**
+- On the Mac, ⌘W works everywhere. In the main window it closes the top layer first, then Settings,
+  then hides the window; an app's own window closes.
+- The standard menu bar: File (New task ⌘N, Find anything ⌘K, Close ⌘W), Edit with Find ⌘F,
+  View with Back ⌘[, Forward ⌘], zoom ⌘= ⌘− ⌘0 and full screen, and Help with every shortcut (⌘/).
+- Back and forward also follow a two-finger swipe and your mouse's side buttons, and the main window
+  reopens where you left it.
+- ⌘Return sends from any box that takes a newline.
+- On the web, Esc closes one thing at a time, the browser's Back closes a sheet before it leaves
+  the page, and the tab title shows what's waiting on you. On Android, Back closes the top layer
+  first.
+
 ## 0.1.71 - 2026-11-25
 
 <!-- whats-new

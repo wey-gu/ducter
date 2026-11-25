@@ -101,6 +101,8 @@ export interface BridgeContact {
   contact: string; // the opaque handle `send --to` takes; choosing it grants nothing
   label: string; // "agent (member)" when the member has a name, else the agent alone, for the user's card
   agent?: string;
+  /** D559: the tool it runs in, when Mem says (a native session's `sender.host`): how the person reads a nameless one. */
+  host?: string;
   mine?: boolean; // the user's own agent
   description?: string;
   space?: string; // the exact Space the card came from, when the CLI says

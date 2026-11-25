@@ -845,7 +845,8 @@ author's.** The terminal hands over a task (as S1) that opens on pi, which has n
 (scripted) calls `agent_message` to the agent that handed it over; one card, 发送, Ducter sends it as the trial with
 the task named; the terminal replies; the answer goes into the task by code, and the partner says nothing of it.
 The task's message goes only as a reply on the terminal's own message to the trial (`contacts` finds no native
-session by name, research/66 §7); a card addressed to anything else is held, never sent. The run:
+session by name, research/66 §7); a card addressed to anything else is held, never sent. The first real T1 (2/6)
+found the product gap: `agent_message` looked the hander up by name; it now replies on the hander's own message. The run:
 
 ```sh
 bun run bridge:live -- --connected --only t1          # read-only preflight
@@ -1220,8 +1221,9 @@ the partner's Bridge client already sends, recovers and reads. So Ducter carries
 
 ```
 task (pi / agy, Bridge on, not a browser)
-  agent_message {to, text}  ── Ducter finds the one meant: an agent that answered this task, one that wrote
-                               lately, else Mem's own list (bridge contacts <to>); several → handles back
+  agent_message {to, text}  ── Ducter finds the one meant: an agent that answered this task, the one that
+                               handed it over (D559: a reply on its own message), one that wrote lately,
+                               else Mem's own list (bridge contacts <to>); several → handles back
   first message to an agent → card in the conversation, tied to the task (On hand: 等你)
       「{task}」想发给{who}：「{words}」 · 发送 · default hold · not reversible
       Log: bridge_msg{out, by: task, taskId, head, state pending, decisionId}  (before the card)

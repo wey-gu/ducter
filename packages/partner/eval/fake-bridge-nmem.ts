@@ -82,10 +82,13 @@
 // takes `--device-label` (kept on the connection); before 0.10.121 it is an unexpected argument.
 // `bridge notices status` (local): NMEM_FAKE_NOTICES=on lists a subscription for the context's identity
 // with the OS channel on; else none. Before 0.10.121 `notices` is an unrecognized subcommand.
+// D559 (the live T1, 2026-11-25, VERIFIED): a native session's identity (`native: "<host>"`, made by
+// `bridge session ... prepare`) is in no `contacts` answer, and its mail names it as Mem does: `sender.agent`
+// "Bridge agent" with `sender.host` its host. It is reached only by a reply on a message it sent.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean; space?: string }
-interface Ident { agent: string; member: string; member_id?: string; description: string; space?: string }
+interface Ident { agent: string; member: string; member_id?: string; description: string; space?: string; native?: string }
 interface Space { id: string; label: string; kind: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string; device_label?: string }
 interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; staled?: boolean; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }>; spaces?: Space[]; everywhere?: string[] }
@@ -395,7 +398,7 @@ if (verb === "session") {
   const session = flag("--session-id");
   if (!host || !session || !argv.includes("prepare")) fail("bad_arguments", "fake nmem: only `bridge session --host H --session-id S prepare`", 2);
   const name = `${host}-${session!.slice(0, 8)}`;
-  s.identities[name] ??= { agent: host === "claude-code" ? "terminal-claude" : host!, member: "Weyl", member_id: "member-weyl", description: `${host} session in ~/dev/ducter` };
+  s.identities[name] ??= { agent: host === "claude-code" ? "terminal-claude" : host!, member: "Weyl", member_id: "member-weyl", description: `${host} session in ~/dev/ducter`, native: host! };
   save(s);
   out({ schema_version: 1, state: "prepared", contact: `bsc1:${name}`, host, native_session_id: session, context: name, selection: { scope: { space_id: SPACE.id }, address: { agent_id: s.identities[name]!.agent } }, delivery_ready: true, resumed: false });
   process.exit(0);
@@ -460,7 +463,10 @@ const newId = () => `msg-${String(++s.seq).padStart(3, "0")}`;
   }
 }
 // Mem #10278's sender attribution, as the owner's CLI shows it (member label as on its cards).
-const sender = (name: string) => ({ actor_id: `actor-${memberId(name)}-${s.identities[name]!.agent}`, member: process.env.NMEM_FAKE_SENDER_MEMBER ?? `Member ${memberId(name)}`, agent: s.identities[name]!.agent, agent_id: s.identities[name]!.agent });
+const sender = (name: string) => {
+  const id = s.identities[name]!;
+  return { actor_id: `actor-${memberId(name)}-${id.agent}`, member: process.env.NMEM_FAKE_SENDER_MEMBER ?? `Member ${memberId(name)}`, agent: id.native ? "Bridge agent" : id.agent, agent_id: id.agent, ...(id.native ? { host: id.native } : {}) };
+};
 // A lost answer: the operation is kept (delivered, or pending until resume), the caller hears nothing.
 const lose = (kind: "send" | "reply", m: Msg): boolean => {
   const want = (process.env.NMEM_FAKE_BRIDGE_LOSE ?? "").split(",").includes(kind);
@@ -499,7 +505,7 @@ switch (verb) {
       const cards: unknown[] = [];
       for (const sp of spaces) {
         const here = new Map<string, string>(); // agent -> the context that shows it here
-        for (const n of Object.keys(s.identities)) if (spaceOf(n) === sp.id && !here.has(s.identities[n]!.agent)) here.set(s.identities[n]!.agent, n);
+        for (const n of Object.keys(s.identities)) if (!s.identities[n]!.native && spaceOf(n) === sp.id && !here.has(s.identities[n]!.agent)) here.set(s.identities[n]!.agent, n);
         for (const a of s.everywhere ?? []) {
           const rep = Object.keys(s.identities).find((n) => s.identities[n]!.agent === a);
           if (rep && !here.has(a)) here.set(a, `${rep}@${sp.id}`);
@@ -522,7 +528,7 @@ switch (verb) {
       const cards: unknown[] = [];
       for (const n of Object.keys(s.identities)) {
         const a = s.identities[n]!.agent;
-        if (seen.has(a)) continue;
+        if (seen.has(a) || s.identities[n]!.native) continue;
         if (words.length && !words.some((w) => `${n} ${a} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w))) continue;
         seen.add(a);
         const available = process.env.NMEM_FAKE_UNREGISTERED !== n;
@@ -533,7 +539,7 @@ switch (verb) {
       break;
     }
     const contacts = Object.keys(s.identities)
-      .filter((n) => n !== me && spaceOf(n) === spaceOf(me))
+      .filter((n) => n !== me && !s.identities[n]!.native && spaceOf(n) === spaceOf(me))
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
       .map((n) => {
         const available = process.env.NMEM_FAKE_UNREGISTERED !== n;

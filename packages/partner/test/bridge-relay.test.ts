@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { relaysBridge, type Bodies, type TaskCard } from "../../protocol/src/index.ts";
 import { createPartner, type BridgeClient, type BridgeContact, type BridgeMessage } from "../src/index.ts";
 import { followCandidates } from "../src/bridge-out.ts";
-import { namesAgent, relayAnswer, relayHead, relayQuestion } from "../src/bridge-relay.ts";
+import { namesAgent, relayAnswer, relayHead, relayQuestion, whoForTask } from "../src/bridge-relay.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner } from "./fakes.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ducter-bridge-relay-test-"));
@@ -217,6 +217,28 @@ describe("a task's message out: a card first, then Ducter sends it with the task
     expect((await tool({ to: "nobody", text: "hi" }, "t1")).ok).toBe(false);
     const secret = await tool({ to: "ct-codex", text: "use token ghp_" + "a".repeat(36) });
     expect(secret.error).toContain("secret");
+  });
+
+  test("D559: the agent that handed the task over is reached by a reply on its own message, though Mem's list doesn't name it", async () => {
+    const { fc, w, tool, decisions, outs, tap } = setup("pi");
+    // A native Claude Code session (the live T1): Mem names it "Bridge agent" with its host, and `contacts` has no card for it.
+    const hander: Bodies["bridge_msg"] = { direction: "in", messageId: "bm-h1", from: "Bridge agent", agent: "Bridge agent", host: "claude-code", mine: true, text: "Task (please run this on pi): make live.test.ts's open assertion cross-platform." };
+    fc.core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: hander });
+    fc.core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", opId: "bo-claim", to: "Bridge agent", host: "claude-code", mine: true, inReplyTo: "bm-h1", taskId: "t1", text: 'Taken: "Fix the Linux CI".', state: "sent", messageId: "bm-c1" } as Bodies["bridge_msg"] });
+    const to = whoForTask(hander);
+    expect((await w.bridge.contacts!(to)).contacts).toHaveLength(0);
+    const r = await tool({ to, text: "Did your bridge branch touch live.test.ts?" });
+    expect(r.ok).toBe(true);
+    expect(decisions()).toHaveLength(1);
+    expect(outs().at(-1)).toMatchObject({ by: "task", state: "pending", contact: "reply:bm-h1", host: "claude-code" });
+    tap(decisions()[0]!.decisionId);
+    await settle();
+    expect(w.sends).toHaveLength(0);
+    expect(w.replies).toEqual([{ messageId: "bm-h1", text: 'Ducter\'s task "Fix the Linux CI":\nDid your bridge branch touch live.test.ts?' }]);
+    // Another name still goes by Mem's list.
+    const other = await tool({ to: "reviewer", text: "Is the bench done?" });
+    expect(other.ok).toBe(true);
+    expect(decisions().at(-1)!.question).toContain("reviewer (Alex)");
   });
 
   test("D494: a Claude Code task is carried too (the home is the one receiver; its plugin would speak as the partner)", async () => {

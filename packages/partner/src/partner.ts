@@ -4615,6 +4615,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const sentBody = (b: Pick<Bodies["bridge_msg"], "text" | "head">) => (b.head ? `${b.head}\n${b.text}` : b.text);
   /** D448: the message a task sent that Mem's id names (an answer to it goes into that task). */
   const taskSentAs = (messageId: string) => loggedBridge().find((e) => e.body.direction === "out" && e.body.by === "task" && !!e.body.messageId && e.body.messageId === messageId)?.body;
+  /** D559: the message whose sender handed this task over (the claim went back as a reply on it). */
+  function handedBy(taskId: string): Bodies["bridge_msg"] | undefined {
+    const claim = loggedBridge().find((e) => e.body.direction === "out" && e.body.taskId === taskId && e.body.by !== "task" && !!e.body.inReplyTo);
+    return claim ? bridgeIn(claim.body.inReplyTo!) : undefined;
+  }
   function bridgeIn(messageId: string): Bodies["bridge_msg"] | undefined {
     // D334: a teammate's held message let through is logged again without a state: that one.
     const all = loggedBridge().filter((e) => e.body.direction === "in" && e.body.messageId === messageId);
@@ -4886,7 +4891,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (age > 7 * DAY_MS) break;
       if (b.direction !== "in" || b.state || !b.text) continue;
       if (b.agent && out.some((x) => x.agent === b.agent)) continue; // a named agent once, by its latest
-      out.push({ contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.mine ? { mine: true } : {}), wrote: b.text, ago: age });
+      out.push({ contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.host ? { host: b.host } : {}), ...(b.mine ? { mine: true } : {}), wrote: b.text, ago: age });
     }
     return out;
   }
@@ -5001,10 +5006,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     for (let i = evs.length - 1; i >= 0; i--) {
       const b = evs[i]!.body;
       if (b.direction !== "in" || b.state !== "task" || b.taskId !== taskId || !namesAgent(to, b)) continue;
-      const c: BridgeContact = { contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.mine ? { mine: true } : {}) };
+      const c: BridgeContact = { contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.host ? { host: b.host } : {}), ...(b.mine ? { mine: true } : {}) };
       if (!answered.some((x) => agentKey(x) === agentKey(c))) answered.push(c);
     }
     if (answered.length === 1) return { one: answered[0]! };
+    // D559: the agent that handed this task over is reached as the partner reaches it, by a reply on
+    // its own message (a native Claude Code session is in no `contacts` list by name: the live T1).
+    const h = answered.length ? undefined : handedBy(taskId);
+    if (h && namesAgent(to, h)) {
+      const c: BridgeContact = { contact: `${REPLY}${h.messageId}`, label: !h.from || h.from === "another agent" ? "" : h.from, ...(h.agent ? { agent: h.agent } : {}), ...(h.host ? { host: h.host } : {}), ...(h.mine ? { mine: true } : {}) };
+      taskHandles.set(`${taskId} ${c.contact}`, c);
+      return { one: c };
+    }
     const fit: BridgeContact[] = answered.length ? answered : recentWriters(now()).filter((c) => namesAgent(to, { ...c, from: c.label })).map(({ wrote: _w, ago: _a, ...c }) => c);
     if (!answered.length && bridge?.contacts) {
       const r = await bridge.contacts(to).catch(() => undefined);
@@ -5556,7 +5569,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const spaceLabel = via?.spaceLabel ?? c.spaceLabel;
         const base = {
           opId: newId("bo"), by: "task" as const, taskId: card.taskId, contact: c.contact, to: c.label,
-          ...(c.agent ? { agent: c.agent } : {}), ...(c.mine ? { mine: true } : {}), ...(via?.selfNamed ? { selfNamed: true } : {}), ...(via?.role ? { role: via.role } : {}),
+          ...(c.agent ? { agent: c.agent } : {}), ...(c.host ? { host: c.host } : {}), ...(c.mine ? { mine: true } : {}), ...(via?.selfNamed ? { selfNamed: true } : {}), ...(via?.role ? { role: via.role } : {}),
           ...(space ? { space } : {}), ...(spaceLabel ? { spaceLabel } : {}),
           text, head: relayHead(core.persona.name || "Ducter", card.title, text),
         };

@@ -117,7 +117,7 @@ if (LIVE) {
   // partner on other days, opened long ago): Mem lists 20 a page, oldest first, so this run's is on page 2.
   const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const older = Array.from({ length: Number(arg("older", "25")) }, (_, i) => ({ id: `older-${String(i).padStart(3, "0")}`, op: `op-older-${i}`, from: "ducter-home", to: PEER_CTX, body: `(an older answer from another day, #${i})`, in_reply_to: `older-q-${i}`, created_at: at, read_at: at }));
-  writeFileSync(state, JSON.stringify({ seq: 0, messages: older, identities: { [CTX]: ident("Ducter", "Weyl's personal AI partner (always on)"), [PEER_CTX]: ident("terminal-claude", "Weyl's Claude Code in a terminal, ~/dev/ducter"), "ducter-home": ident("ducter", "Weyl's partner on his home server") } }));
+  writeFileSync(state, JSON.stringify({ seq: 0, messages: older, identities: { [CTX]: ident("Ducter", "Weyl's personal AI partner (always on)"), [PEER_CTX]: { ...ident("terminal-claude", "Weyl's Claude Code in a terminal, ~/dev/ducter"), native: "claude-code" }, "ducter-home": ident("ducter", "Weyl's partner on his home server") } }));
 }
 chmodSync(nmem, 0o755);
 // The fake answers as nmem 0.10.120 does (a sender on every inbox entry, D364), unless told otherwise.

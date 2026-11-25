@@ -2,7 +2,7 @@
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
-import { agentBack, type AgentBack } from "@ducter/protocol/src/mem-health.ts";
+import { agentBack, MEM_BRIDGE_SKILL, type AgentBack } from "@ducter/protocol/src/mem-health.ts";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
 /** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
@@ -232,15 +232,15 @@ export function recentHandoffs(
 /**
  * D433: the tools whose Nowledge Mem plugin carries Bridge today (research/66 §10, research/183): they can reach
  * the partner. D555 (research/226): Antigravity's since its plugin 0.1.4 (`/nmem-bridge-chat`). Mem's own plugin
- * check doesn't list Antigravity, so its row says yes only from Mem's contact list or an exchange.
+ * check doesn't list Antigravity, so its row says yes only from Mem's contact list or an exchange. D576: pi's since
+ * its plugin 0.8.20 (its `bridge` skill, MEM_BRIDGE_SKILL): it stands as the others do, from its plugin's version.
  */
-export const BRIDGE_TOOLS = ["claude-code", "codex", "antigravity"] as const;
+export const BRIDGE_TOOLS = ["claude-code", "codex", "antigravity", "pi"] as const;
 /**
  * D433: tools the person may run whose Mem plugin has no Bridge yet: they share the memory but can't pass a message.
- * D555: pi's plugin 0.8.19 only reminds a session set up by hand to check an approved mailbox at start; by default
- * its sessions still can't.
+ * D576: none today (pi joined BRIDGE_TOOLS); the relay and none rows stay for the next such tool.
  */
-export const NO_BRIDGE_TOOLS = ["pi"] as const;
+export const NO_BRIDGE_TOOLS: readonly string[] = [];
 export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi", antigravity: "Antigravity" };
 
 /**
@@ -380,11 +380,14 @@ export function tryAgents(devices: { id: string; name: string; home?: boolean; h
  */
 export type Way = "yes" | "no" | "soon" | "unknown";
 export type Ways = { to: Way; back: Way; fix?: "install" | "update" };
-export function reachWays(r: Pick<ReachRow, "can" | "box" | "device" | "back" | "update">): Ways {
+// D576: an agent whose plugin carries Bridge itself (pi, MEM_BRIDGE_SKILL): older than that, it can't write either.
+type Reach = Pick<ReachRow, "can" | "box" | "device" | "back" | "update"> & { harness?: string };
+export function reachWays(r: Reach): Ways {
   switch (r.can) {
     case "yes": {
       const back = r.back ?? (r.box === "open" ? "yes" : "unknown");
-      if (back === "old") return { to: "yes", back: "no", ...(r.device && r.update ? { fix: "update" as const } : {}) };
+      const to = r.harness && MEM_BRIDGE_SKILL[r.harness] && back === "old" ? "no" : "yes";
+      if (back === "old") return { to, back: "no", ...(r.device && r.update ? { fix: "update" as const } : {}) };
       return { to: "yes", back: back === "next" ? "soon" : back };
     }
     case "install":
@@ -402,12 +405,17 @@ export function reachWays(r: Pick<ReachRow, "can" | "box" | "device" | "back" | 
  * to (it hands work; Mem hasn't said about the way back), install (Mem's plugin is missing), unknown
  * (Mem's check hasn't said), relay (no Bridge in its Mem plugin, but Ducter's own tasks on it pass
  * messages through Ducter), none (no Bridge in its Mem plugin: Mem's to add, nothing to fix).
+ * D576, an agent whose plugin carries Bridge itself (pi): ask (it hands work and reads the reply when the
+ * person asks it to look: no session waits for it), talk (its plugin's update lets it pass messages at all:
+ * the one button).
  */
-export type Standing = "both" | "next" | "old" | "to" | "install" | "unknown" | "relay" | "none";
-export function standing(r: Pick<ReachRow, "can" | "box" | "device" | "back" | "update">): Standing {
+export type Standing = "both" | "ask" | "next" | "old" | "talk" | "to" | "install" | "unknown" | "relay" | "none";
+export function standing(r: Reach): Standing {
   if (r.can === "relay" || r.can === "none") return r.can;
   const w = reachWays(r);
-  if (w.to === "yes") return w.back === "yes" ? "both" : w.back === "soon" ? "next" : w.back === "no" ? "old" : "to";
+  const skill = !!r.harness && !!MEM_BRIDGE_SKILL[r.harness];
+  if (w.to === "yes") return w.back === "yes" ? (skill ? "ask" : "both") : w.back === "soon" ? "next" : w.back === "no" ? "old" : "to";
+  if (skill && r.can === "yes" && w.back === "no") return "talk";
   return r.can === "install" ? "install" : "unknown";
 }
 
@@ -417,7 +425,7 @@ export function reachSplit(rows: readonly ReachRow[]): { both: ReachRow[]; oneWa
   const oneWay: ReachRow[] = [];
   const notYet: ReachRow[] = [];
   for (const r of rows) {
-    if (!(BRIDGE_TOOLS as readonly string[]).includes(r.harness)) continue; // pi: Mem's to add
+    if (!(BRIDGE_TOOLS as readonly string[]).includes(r.harness)) continue; // a tool whose plugin has no Bridge: Mem's to add
     const w = reachWays(r);
     if (w.to === "yes" && w.back === "no") oneWay.push(r);
     else if (w.to === "yes") both.push(r);

@@ -5,7 +5,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import { memoryWords } from "../src/i18n-memory.ts";
-import { reachRows, recentHandoffs } from "../src/mem-view.ts";
+import { reachRows, recentHandoffs, standing } from "../src/mem-view.ts";
 import { Store } from "../src/store.ts";
 
 const dev = (harnesses: string[]) => ({ id: "local", name: "Mac", home: true, harnesses: harnesses.map((harness) => ({ harness, installed: true, loggedIn: true })) });
@@ -13,16 +13,27 @@ let n = 0;
 const ev = (body: Bodies["bridge_msg"], seq = ++n): LogEvent => ({ seq, ts: new Date(1_763_000_000_000 + seq * 1000).toISOString(), persona: "p", stream: "channel", origin: body.direction === "in" ? "peer" : "partner", kind: "bridge_msg", body }) as LogEvent;
 
 describe("能找到{name}的: pi where Ducter runs tasks", () => {
-  test("signed in on a computer of Ducter's: relay; known only from the person's own records: none", () => {
-    expect(reachRows([dev(["pi"])], [], []).map((r) => [r.harness, r.can])).toEqual([["pi", "relay"]]);
-    expect(reachRows([], ["pi"], []).map((r) => r.can)).toEqual(["none"]);
+  // D576: pi's Mem plugin carries Bridge itself from 0.8.20, so the person's own pi stands from its plugin,
+  // as the others do; nothing Mem said about the plugin reads unknown, never the relay row.
+  test("signed in with no word on its plugin: unknown; known only from the person's own records: unknown", () => {
+    expect(reachRows([dev(["pi"])], [], []).map((r) => [r.harness, r.can])).toEqual([["pi", "unknown"]]);
+    expect(reachRows([], ["pi"], []).map((r) => r.can)).toEqual(["unknown"]);
+  });
+  test("its plugin is the fact: 0.8.20 hands work and reads the reply when asked; older is its update", () => {
+    const pi = (state: string, version?: string) => [{ id: "local", name: "Mac", home: true, harnesses: [{ harness: "pi", installed: true, loggedIn: true, mem: { state, ...(version ? { version } : {}) } }] }];
+    expect(reachRows(pi("installed", "0.8.20"), [], [])).toEqual([{ harness: "pi", tool: "pi", can: "yes", back: "yes", device: "local", deviceName: "Mac" }]);
+    expect(standing(reachRows(pi("installed", "0.8.21"), [], [])[0]!)).toBe("ask");
+    const [old] = reachRows(pi("update", "0.8.19"), [], []);
+    expect(old).toMatchObject({ can: "yes", back: "old", update: true, device: "local" });
+    expect(standing(old!)).toBe("talk");
+    expect(reachRows(pi("absent"), [], []).map((r) => [r.can, r.device])).toEqual([["install", "local"]]);
   });
   // D555 (research/226): Antigravity's Mem plugin carries Bridge since 0.1.4, so it is never the quiet row
   // again. Mem's plugin check doesn't list Antigravity: its row says yes from Mem's contact list or an exchange.
   test("Antigravity stands as Claude Code and Codex do", () => {
     expect(reachRows([dev(["pi", "antigravity"])], [], []).map((r) => [r.harness, r.can])).toEqual([
       ["antigravity", "unknown"],
-      ["pi", "relay"],
+      ["pi", "unknown"],
     ]);
     expect(reachRows([], ["antigravity"], [], [{ harness: "antigravity", open: true }])).toEqual([{ harness: "antigravity", tool: "Antigravity", can: "yes", box: "open", back: "yes" }]);
     expect(reachRows([], ["antigravity"], [{ agent: "你的 Antigravity", at: "2026-11-24T08:00:00Z" }]).map((r) => r.can)).toEqual(["yes"]);

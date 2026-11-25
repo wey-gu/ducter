@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task; D576: pi a Bridge tool from its plugin 0.8.20) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once), D557 (the live trial passed; on by default; the real shapes read); still open: J-Q1–3, J-Q8 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -1171,7 +1171,7 @@ CLI, read from help and the binary only).
   and Codex: **能找到{name}** (with when it last came), else **装上 Nowledge Mem 插件就能找到{name}** with **装上**, else
   **接上 Nowledge Mem 就能找到{name}**. pi (and Antigravity until D555): **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
   `bridge` skill; Mem's to add; D448: one signed in on a computer of Ducter's reads **{name}开的 {tool} 任务能传话，你自己开的还不行**,
-  below). No `bridge contacts` call per view (31 to 40 s each).
+  below; D576: pi has its own row from its plugin 0.8.20, "pi, a Bridge tool" below). No `bridge contacts` call per view (31 to 40 s each).
 - **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **发送中**, **确认送达中**,
   **未能确认送达**, **发送失败** in place of the time (D525).
 - **An away home.** `bridge connections list --include-activity` when the help offers it; Mem's `last_seen_at_ms`
@@ -1239,7 +1239,7 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
   report.
 - **The person sees:** the card; **已发给{who}** after the Go; Recently by the task (**「{task}」问 {who}**,
   **{who} 回「{task}」**); 能找到{name}的: **{name}开的 {tool} 任务能传话，你自己开的还不行** for pi (D555: Antigravity has its own row)
-  signed in on a computer of Ducter's.
+  signed in on a computer of Ducter's, until D576 (pi's row is now said from its own plugin; tasks on pi still relay).
 - **The live trial** (D559): T1 in `bun run bridge:live` runs this end to end, a task on pi asking the terminal
   that handed it over ("Try it live"); passed over the fake Bridge, the real run is the author's.
 - **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
@@ -1358,7 +1358,7 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
   **能把事交给我** (Mem hasn't said about the way back), **装上 Nowledge Mem 插件，它就能把事交给我** with
   **装上**, **Nowledge Mem 还没说它装没装插件**, **正在让它收到回话，好了这里会变** (the task is running). pi and
   Antigravity shared one quiet row until D555 (now pi alone, **{name}开的任务能替它传话，你自己开的还不行**) (D448's relay) or
-  **它们的 Nowledge Mem 插件还不会传话**. No arrows, no dashes, no needs-you ink on the pane.
+  **它们的 Nowledge Mem 插件还不会传话** (D576: pi joined the agent rows; the quiet row waits for the next such tool). No arrows, no dashes, no needs-you ink on the pane.
 - **One tap to hear back** (D480's facts stand). Showing the pane looks up that computer's Spaces once,
   read only (`mailbox_look`), for the agent whose answers can't reach it; under its row: **回话会送到
   Nowledge Mem 的「只有你」空间，只有你能看到。** with **让它收到回话**: the tap is the Go, with that Space.
@@ -1437,8 +1437,8 @@ community repo and the Antigravity plugin, read-only calls on the author's Mac).
   brief's rule and the home-label filter stay for plugins before it.
 - **Antigravity has its own row** on 你的 agent / Your agents, standing as Claude Code and Codex do, its
   clay coin as the tile. Mem's `plugins inspect` lists no Antigravity, so the row says yes from Mem's
-  contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone keeps
-  the quiet row, with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
+  contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone kept
+  the quiet row (until D576, below), with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
 - **Read receipts: parsed, not shown yet.** An outbox or inspect op's `read_receipt` (shape INFERRED:
   `receipt_available`, `read_state` unread | partially_read | read, `read_recipients`,
   `receipt_observed_at_us`) is kept on the op (`BridgeOp.read`, `receiptOf`) only when Mem says a receipt
@@ -1489,6 +1489,33 @@ core + clients  agentBack(tool) = yes    open, or a message from one of its sess
   or nothing), Overview's second needs-you row.
 - **Not yet:** a backend that refuses a session's native mailbox shows "next" until a session connects;
   Mem names no field for it (asked in `research/private/bridge-ask-2026-11-25.md`).
+
+## pi, a Bridge tool (D576, 2026-11-25)
+
+Mem's `nowledge-mem-pi` 0.8.20 carries a `bridge` skill (research/226 §5: find a contact, send, open and reply,
+from the login mailbox or a named Agent Context; tested by Mem on real Pi 1.6.0). It prepares no session, Mem
+lists no connection for pi, and a message from it carries no `sender.host`, so the one fact is the plugin's
+version (`MEM_BRIDGE_SKILL`, the Mac's `memBridgeSkill`):
+
+```
+agentBack(pi) = yes   plugin ≥ 0.8.20 (or a connection or a message Mem labels pi, if it ever does)
+              = old   older (it passes no message at all)
+standing(pi)  = ask   能把事交给我；你让它看看，就收得到我的回话 / Hands me work; reads my answers when you ask it to look
+              = talk  它的插件更新后，就能和我来回传话 / Talks with me both ways once its plugin is updated
+                      with 让它能和我传话 / Let it talk with me; while it runs 正在更新它的 Nowledge Mem 插件，好了就能和我传话
+              = install, unknown   as every agent
+```
+
+- **"Ask", not "both".** pi reads the reply when the person asks it to; it doesn't wake by itself (its skill:
+  "does not wake an idle session"). Claude Code and Codex surface mail each turn through their hooks. The head
+  sentence counts pi with the agents that talk both ways; a pi a step away is **%s 的插件更新一下，就能和我来回传话。**
+- **The update.** Mem's `plugins check` lists no pi, so an installed pi below 0.8.20 reads update to 0.8.20 from
+  Ducter's table (core's `lineOf`); the tap opens the same update task as any (D466, D552), its brief saying the
+  version is published rather than "plugins check says"; Mem's guide updates pi with `pi update`.
+- **The partner** (`[your agents' mail]`): an older pi is said as one that can't write or read replies, with the
+  button's words; a pi on 0.8.20+ is whole and not said. Tasks on pi still run with `--no-extensions` and relay
+  through the partner (D448), unchanged.
+- **Not yet:** a fact that pi heard back (todo).
 
 ## Open questions
 

@@ -28,7 +28,7 @@ On the left is a row of tabs; the one you pick shows on the right. Settings open
 | **Overview** | Your partner telling you how everything stands, and your computers |
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
-| **Agent messaging** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
+| **Agent messaging** | Your Claude Code, Codex or pi handing it work, and it asking them (shown if you use them yourself) |
 | **Notifications** | When I come to you, quiet hours, and how long it waits if you don't answer |
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Passwords & cards** | Sign-ins, cards, your details and keys, for signing in, paying and filling in addresses; locked on your computer |
@@ -359,12 +359,18 @@ your partner, in plain words, with when it last came at the right:
   too (in Antigravity, ask it with `/nmem-bridge-chat`). Nowledge Mem doesn't tell Ducter whether that
   plugin is in, so the row says so until Antigravity first hands your partner something, or Nowledge
   Mem lists its mailbox.
-- pi has a quiet row of its own. When it's signed in on a computer of Ducter's, it says **Tasks
-  {name} runs on it pass messages; yours can't yet**: a task your partner runs on it can ask your
-  other agents something. The first time it does, a card in your conversation shows which task, who
-  it's for and the words, with **Send**; nothing goes before you tap it, and the answer goes back into
-  the task. Otherwise it says **Its Nowledge Mem plugin can't pass messages yet**: that is for
-  Nowledge Mem to add, nothing for you to fix.
+- pi has its own row like the others, from the version of its Nowledge Mem plugin:
+  - **Hands me work; reads my answers when you ask it to look**: with plugin 0.8.20 or newer, your pi
+    can find your partner, hand it work and ask it things. pi doesn't check for answers by itself, so
+    ask it ("did {name} answer?") and it opens your partner's reply.
+  - **Talks with me both ways once its plugin is updated**: an older plugin can't pass messages yet.
+    **Let it talk with me** updates it on that computer; while it runs the row says so. Open pi again
+    afterwards so it loads the new plugin.
+  - **With Nowledge Mem's plugin, it can hand me work**, with **Install** to put it in.
+
+  A task your partner runs on pi can ask your other agents something either way: the first time it does,
+  a card in your conversation shows which task, who it's for and the words, with **Send**; nothing goes
+  before you tap it, and the answer goes back into the task.
 
 **Your helpers** lists each helper's address, with **Open** to its page under **On hand › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull

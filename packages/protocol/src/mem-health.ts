@@ -22,9 +22,22 @@ export const MEM_CONNECT_TOOLS: Readonly<Record<string, string>> = { "claude-cod
  */
 export const MEM_AUTO_SESSION: Readonly<Record<string, string>> = { "claude-code": "0.7.35", codex: "0.1.50" };
 
-/** D560: "auto" when this plugin version prepares its sessions by itself, "old" when it is older, undefined when not known. */
+/**
+ * D576: the first version of an agent's Mem plugin that carries Bridge with no session mailbox of its own:
+ * the agent finds the partner, sends, and opens the reply in the mailbox it wrote from when the person asks
+ * it to look (pi 0.8.20, its `bridge` skill; research/226 §5, tested by Mem on real Pi 1.6.0). It prepares
+ * no session and Mem lists no connection for it, so the version is the fact. Older ones pass no message at
+ * all (0.8.19 only reminds a session set up by hand). Mem's `plugins check` doesn't list pi, so this
+ * version also stands as a newer one out (core's mem-plugins). The Mac app keeps the same table.
+ */
+export const MEM_BRIDGE_SKILL: Readonly<Record<string, string>> = { pi: "0.8.20" };
+
+/** D560, D576: the plugin version an agent needs for the partner's replies to reach it (either table). */
+export const memBackMin = (harness: string): string | undefined => MEM_AUTO_SESSION[harness] ?? MEM_BRIDGE_SKILL[harness];
+
+/** D560: "auto" when this plugin version prepares its sessions by itself (D576: or carries Bridge itself), "old" when it is older, undefined when not known. */
 export function memSessions(harness: string, version: string | undefined): "auto" | "old" | undefined {
-  const min = MEM_AUTO_SESSION[harness];
+  const min = memBackMin(harness);
   const v = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version?.trim() ?? "");
   const m = min ? /^(\d+)\.(\d+)\.(\d+)/.exec(min) : null;
   if (!v || !m) return undefined;
@@ -37,13 +50,15 @@ export function memSessions(harness: string, version: string | undefined): "auto
  * yes (Mem has an active connection labelled with it, or a message came from one of its sessions:
  * a reply goes back to that session); next (its plugin readies each new session by itself and none has
  * connected yet: the next one the person opens will); old (its plugin is older than that: updating it
- * is the fix); unknown (Mem hasn't said). The Settings row and the partner's facts read the same.
+ * is the fix); unknown (Mem hasn't said). D576: an agent whose plugin carries Bridge itself (pi 0.8.20+)
+ * is yes from that version, with no session to wait for; older is old (and it can't write either).
+ * The Settings row and the partner's facts read the same.
  */
 export type AgentBack = "yes" | "next" | "old" | "unknown";
 export function agentBack(harness: string, o: { open?: boolean; heard?: boolean; versions: readonly (string | undefined)[] }): AgentBack {
   if (o.open || o.heard) return "yes";
   const s = o.versions.map((v) => memSessions(harness, v));
-  if (s.includes("auto")) return "next";
+  if (s.includes("auto")) return MEM_BRIDGE_SKILL[harness] ? "yes" : "next";
   if (s.includes("old")) return "old";
   return "unknown";
 }

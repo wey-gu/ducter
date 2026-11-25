@@ -30,7 +30,7 @@
 // (已更新到 0.7.38) until the next check.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
+import { MEM_BRIDGE_SKILL, MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { MEM_HOSTS, withAvailable, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
 
@@ -154,7 +154,7 @@ export function memSetupBrief(o: { agent: string; host: string; device: string; 
   const tried = o.tried ? `\nNowledge Mem's own \`nmem connect --tool ${o.tried.tool} --on-conflict abort\` ran first and didn't put it in${o.tried.said ? ` (its last line: ${o.tried.said})` : ""}. If ${o.agent} already has another memory integration, say which and ask the user before changing anything.\n` : "";
   const head =
     what.kind === "update"
-      ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. Nowledge Mem's own \`nmem --json plugins check\` says a newer one is out.`
+      ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. ${MEM_BRIDGE_SKILL[o.host] ? `Its version ${MEM_BRIDGE_SKILL[o.host]} or newer is published (Nowledge Mem's \`plugins check\` doesn't list ${o.agent}; the guide's update step for it is the way).` : "Nowledge Mem's own `nmem --json plugins check` says a newer one is out."}`
       : what.kind === "tidy"
         ? `Nowledge Mem's own check finds the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) more than once${what.versions?.length ? ` (versions ${what.versions.join(", ")})` : ""}, so which one ${o.agent} loads is unclear. Leave exactly one: the current one, set up the way the guide installs it. The user tapped Keep one for this.`
         : what.kind === "review"
@@ -244,7 +244,10 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
    */
   const lineOf = (id: string, harness: string): MemPluginView | undefined => {
     const m = seen.get(id)?.[harness];
-    return m ? withAvailable(m, saved.catalog?.versions[harness]) : undefined;
+    // D576: an agent Mem's check doesn't list (pi) has a newer one out when it is older than the plugin
+    // that carries Bridge (MEM_BRIDGE_SKILL: published, read on npm), so its Update works the same way.
+    const out = saved.catalog?.versions[harness] ?? MEM_BRIDGE_SKILL[harness];
+    return m ? withAvailable(m, out) : undefined;
   };
 
   // D466: Mem's newest versions, asked at most once in CATALOG_STALE_MS, one ask at a time. Offline or

@@ -387,7 +387,7 @@ line.
   contexts, a watch that delivers in seconds, a mailbox-changed event. Trigger: the author sends it and Mem ships
   any of them; then drop the offer (or its look) where Mem makes it unneeded. D555 (research/226, nmem 0.10.123):
   only Bridge in Antigravity's plugin shipped (adopted); pi has an opt-in reminder only; the rest unchanged, asked
-  again in `research/private/bridge-ask-2026-11-25.md` (not sent).
+  again in `research/private/bridge-ask-2026-11-25.md` (not sent). D576: pi's plugin 0.8.20 carries Bridge (adopted).
 - **The pane's row says "both ways" the moment a session connects.** Trigger: Mem emits a connection-changed event
   (item 6); until then the row turns at the next connection read (D560: on looking, 5 minutes old).
 - **D560: a session whose native mailbox Mem refuses.** Today such an agent reads "next session" forever, and
@@ -643,7 +643,7 @@ line.
   Codex command that removes the older copy, or stop and report? Trigger: Mem publishes a newer
   Claude Code plugin, or the author taps 理成一份.
 - [ ] **Updates for Codex, pi and DeepSeek Harness's Mem plugin (D466).** `nmem plugins check`
-  lists only Claude Code of Ducter's agents. Trigger: Mem adds them (matched by inspect's host id
+  lists only Claude Code of Ducter's agents (D576: pi below 0.8.20 reads update to 0.8.20 from Ducter's own table). Trigger: Mem adds them (matched by inspect's host id
   or Ducter's own, no change needed; add a fixture).
 - [ ] **A host's own plugin update command instead of a task (D466).** Faster, no tokens, like
   D375's `nmem connect` for an install. Trigger: Mem's guide names an update command per host for
@@ -821,8 +821,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
       research/226). Cursor (0.2.3) carries it too, but is no agent Ducter runs: no row.
-- [ ] pi can talk to the partner once Mem's pi plugin carries a `bridge` skill (0.8.19 has only an opt-in start-up
-      reminder for a session set up by hand). Trigger: a pi plugin with Bridge; then it moves to the agent rows.
+- [x] pi can talk to the partner once Mem's pi plugin carries a `bridge` skill. Done as D576 (nowledge-mem-pi 0.8.20,
+      research/226 §5): its row stands from the plugin's version; 0.8.20 stands as the newer one out for its Update.
+- [ ] A fact that a person's pi heard back (D576). pi prepares no session and Mem lists no connection for it, and a
+      message from it carries no `sender.host`, so its row is said from the plugin's version alone. Trigger: Mem
+      labels pi's sends or connections (a `host` or `client_label` "pi"); then `heard` reads it as Claude Code's does.
+- [ ] Codex's Update on the Agent messaging row (D560, D576). Mem's `plugins check` doesn't list Codex, so an older
+      Codex plugin shows no button; pi's gap was closed with its known Bridge version as the floor. Trigger: Mem lists
+      Codex, or the author wants MEM_AUTO_SESSION's 0.1.50 laid the same way.
 - [ ] Antigravity's plugin and its version per computer (Mem's `plugins inspect` lists no Antigravity, so its row
       says "Mem hasn't said" until it writes). Read its manifest (`~/.gemini/config/plugins/...`, research/172) on the
       home and through a worker op, or take Mem's host once `plugins inspect` lists it (private ask item 2).

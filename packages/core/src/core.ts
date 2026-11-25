@@ -14,7 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL,MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
@@ -1554,7 +1554,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         .map((b) => b.host),
     );
     const out: { harness: string; back: "next" | "old"; version?: string; update?: true }[] = [];
-    for (const h of Object.keys(MEM_AUTO_SESSION)) {
+    // D576: pi too (MEM_BRIDGE_SKILL): 0.8.20+ is whole (nothing said); older can't pass a message at all.
+    for (const h of [...Object.keys(MEM_AUTO_SESSION), ...Object.keys(MEM_BRIDGE_SKILL)]) {
       const lines = (memPluginsRef?.lines(h) ?? []).filter((x) => x.line.state === "installed" || x.line.state === "update");
       if (!lines.length) continue;
       const back = agentBack(h, { open: open.has(h), heard: heard.has(harnessName(h)), versions: lines.map((x) => x.line.version) });

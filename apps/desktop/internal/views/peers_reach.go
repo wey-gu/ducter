@@ -15,12 +15,12 @@ import (
 // bridgeTools are the tools whose Nowledge Mem plugin carries Bridge today
 // (research/66 §10, research/183; D555, research/226: Antigravity's since its
 // plugin 0.1.4, which Mem's plugin check doesn't list, so its row says yes only
-// from Mem's contact list or an exchange); noBridgeTools share the memory but
-// can't pass a message yet (pi: its plugin 0.8.19 only reminds a session set up
-// by hand to check an approved mailbox at start).
+// from Mem's contact list or an exchange; D576: pi's since its plugin 0.8.20,
+// memBridgeSkill); noBridgeTools share the memory but can't pass a message yet
+// (none today; the relay and none rows stay for the next such tool).
 var (
-	bridgeTools   = []string{"claude-code", "codex", "antigravity"}
-	noBridgeTools = []string{"pi"}
+	bridgeTools   = []string{"claude-code", "codex", "antigravity", "pi"}
+	noBridgeTools = []string{}
 	toolNames     = map[string]string{"claude-code": "Claude Code", "codex": "Codex", "pi": "pi", "antigravity": "Antigravity"}
 )
 
@@ -44,10 +44,19 @@ type reachRow struct {
 // MEM_AUTO_SESSION, research/226 2.6).
 var memAutoSession = map[string]string{"claude-code": "0.7.35", "codex": "0.1.50"}
 
-// memSessions is "auto" when this plugin version readies its sessions by itself, "old"
-// when it is older, "" when not known (the web's memSessions).
+// memBridgeSkill is the first version of an agent's Mem plugin that carries Bridge
+// itself, with no session mailbox (D576, pi 0.8.20; MEM_BRIDGE_SKILL in
+// packages/protocol/src/mem-health.ts): from it the agent hands work and reads the
+// reply when the person asks it to look; older passes no message either way.
+var memBridgeSkill = map[string]string{"pi": "0.8.20"}
+
+// memSessions is "auto" when this plugin version readies its sessions by itself (D576:
+// or carries Bridge itself), "old" when it is older, "" when not known (the web's memSessions).
 func memSessions(harness, version string) string {
 	min := memAutoSession[harness]
+	if min == "" {
+		min = memBridgeSkill[harness]
+	}
 	v := semverCore(version)
 	m := semverCore(min)
 	if v == nil || m == nil {
@@ -92,6 +101,9 @@ func agentBack(harness string, open, heard bool, versions []string) string {
 	for _, v := range versions {
 		switch memSessions(harness, v) {
 		case "auto":
+			if memBridgeSkill[harness] != "" {
+				return "yes" // D576: no session to wait for; the reply is in the mailbox it wrote from
+			}
 			return "next"
 		case "old":
 			old = true

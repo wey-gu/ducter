@@ -917,7 +917,9 @@ export function peersSay(): string {
   const split = reachSplit(peersReachRows());
   const { oneWay, notYet } = split;
   // D489: both ways only where Mem said so; an agent whose way back Mem hasn't told is said as what it does.
-  const both = split.both.filter((r) => standing(r) === "both");
+  // D576: pi (it reads the reply when asked) talks both ways too.
+  const both = split.both.filter((r) => standing(r) === "both" || standing(r) === "ask");
+  const talk = notYet.filter((r) => standing(r) === "talk");
   const next = split.both.filter((r) => standing(r) === "next");
   const to = split.both.filter((r) => standing(r) === "to");
   const tools = (rs: ReachRow[]) => rs.map((r) => r.tool).join(t("acct.sep"));
@@ -929,6 +931,7 @@ export function peersSay(): string {
   if (next.length) return t("say.peers.next", tools(next));
   if (both.length) return t("say.peers.both", tools(both));
   if (to.length) return t("say.peers.to", tools(to));
+  if (talk.length) return t("say.peers.talk", tools(talk));
   if (notYet.length) return t("say.peers.notyet");
   return t("say.peers");
 }
@@ -946,20 +949,23 @@ export function peersReaching(): string[] {
  * partner said as what the person gets (never a diagram), and when it last came. D560: what the row says is
  * Mem's facts now (agentBack): one whose next session will hear back says so and offers nothing; one whose
  * plugin is older than that carries its one button, the plugin's update (while it runs, the row says so).
- * pi, whose own Mem plugin carries no Bridge (Mem's to add), keeps one quiet row, never drawn as a fault.
+ * D576: pi's row stands the same way from its plugin (0.8.20+ carries Bridge itself: it reads the reply when
+ * asked; older: its update, in its own words). A tool whose plugin carries no Bridge keeps one quiet row.
  */
 function AgentRow({ r }: { r: ReachRow }) {
   const st = standing(r);
-  const updating = st === "old" && !!r.busy;
-  const line = updating ? t("peers.st.updating") : t(`peers.st.${st}`);
+  // D576: pi's update (talk) works the same way as the others' (old), in its own words.
+  const fix = st === "old" || st === "talk";
+  const updating = fix && !!r.busy;
+  const line = updating ? t(st === "talk" ? "peers.st.updating.talk" : "peers.st.updating") : t(`peers.st.${st}`);
   const last = r.last && st !== "install" && st !== "unknown" ? t("peers.last", ago(A.L, r.last)) : "";
-  const hear = st === "old" && r.update && r.device && !updating;
+  const hear = fix && r.update && r.device && !updating;
   return (
     <GRow cls={`agent-row${hear ? " act-under" : ""}`} tile={<ToolTile from={r.tool} />} title={r.tool} line={line}>
       {st === "install" && r.device ? (
         <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />
       ) : hear ? (
-        <Btn kind="secondary" size="sm" label={t("peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)} />
+        <Btn kind="secondary" size="sm" label={t(st === "talk" ? "peers.fix.talk" : "peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)} />
       ) : last ? (
         <small class="g-state">{last}</small>
       ) : null}

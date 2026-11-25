@@ -69,11 +69,12 @@ func TestOverviewNeedsCarryTheirFixD469(t *testing.T) {
 		for _, n := range app.setNeeds() {
 			got = append(got, n.key+">"+n.tab)
 		}
-		want := "[src:oo>accounts memask>memory memp:local:codex>memory]"
+		// D569: Mem's asks are its own bookkeeping, never a need.
+		want := "[src:oo>accounts memp:local:codex>memory]"
 		if s := "[" + strings.Join(got, " ") + "]"; s != want {
 			t.Fatalf("%s: needs %s, want %s", lang, s, want)
 		}
-		for _, s := range []string{L.T("home.lead.many", 3), L.T("need.source", "OOMOL"), L.T("need.memask.one"), L.T("need.memplug", "Codex")} {
+		for _, s := range []string{L.T("home.lead.many", 2), L.T("need.source", "OOMOL"), L.T("need.memplug", "Codex")} {
 			if _, ok := tt.Find(s); !ok {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}
@@ -109,17 +110,16 @@ func TestOverviewNeedsCarryTheirFixD469(t *testing.T) {
 		if !installed {
 			t.Fatalf("%s: OK sent nothing", lang)
 		}
-		if err := tt.Click(spoken(L, L.T("need.go.look"), L.T("need.memask.one"))); err != nil {
-			t.Fatalf("%s: %v", lang, err)
-		}
+		// D569: Memory's head says the need and carries its fix right there (busy now), never a page below.
+		app.openTab(TabMemory)
 		frames()
-		if app.settingsTab() != TabMemory {
-			t.Fatalf("%s: went to %q", lang, app.settingsTab())
-		}
-		for _, s := range []string{L.T("say.memory.on"), L.T("need.memask.one")} {
+		for _, s := range []string{L.T("say.memory.on"), L.T("need.memplug", "Codex"), L.T("mem.check.unsure.one")} {
 			if _, ok := tt.Find(s); !ok {
-				t.Fatalf("%s: memory head lacks %q in %q", lang, s, tt.Texts())
+				t.Fatalf("%s: memory lacks %q in %q", lang, s, tt.Texts())
 			}
+		}
+		if _, ok := tt.Find(spoken(L, L.T("memp.btn.updating"), L.T("need.memplug", "Codex"))); !ok {
+			t.Fatalf("%s: no busy fix in Memory's head: %q", lang, tt.Texts())
 		}
 	}
 }
@@ -139,7 +139,7 @@ func TestPaneSaysItsStateD469(t *testing.T) {
 		t.Fatalf("memory off: %q", got)
 	}
 	// Never the retired words, never a counter of things.
-	for _, k := range []string{"home.lead.many", "need.update", "need.memask", "say.accounts"} {
+	for _, k := range []string{"home.lead.many", "need.update", "mem.check.unsure", "say.accounts"} {
 		for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 			s := i18n.New(lang).T(k, 2)
 			for _, bad := range []string{"件", " · ", "奏章", "朱批"} {

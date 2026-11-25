@@ -3556,3 +3556,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
   keep two or more apps in the Dock and find them under Ducter's icon.
 - [ ] **People as raters** for 放到程序坞 / Keep in the Dock against 添加到程序坞. Trigger: the next naming round with people.
 - [ ] **D566 leftovers.** (a) Verify on the author's Mac that `nowledgemem://source/<id>` opens that artifact in the Nowledge Mem app (research/231 §1, INFERRED) and that `add`/`update`/`folders mk` answer in the shapes the fake guesses; trigger: the author's first real save. (b) A message with several files shows the Mem line under each: consider one line for the message once someone finds it noisy. (c) Mem on the web has no link to one artifact: link to it when Mem has one. (d) Made for you's cards and its Mac window could carry In Nowledge Mem too. (e) A task cannot mark a file sensitive: add the flag if a task ever needs to keep a shown file out of Mem beyond the secret detector. (f) Tighten `artifactOf` to the shape `add` and `update` really answer, read from the first real `mem_file` events in the Log (`raw`); trigger: the author's first real save. Until then a save counts only once `artifacts list` shows it.
+
+## Memory: updates from any computer, Mem's asks judged, preferences typed (D569, research/232)
+
+- [ ] **Confirm haswell's cause on hel.** Read-only: the devices frame's `loggedIn` for haswell's Claude Code
+  (expected false). If it is true there, the cause was the computer read as away; the fix covers both.
+  Trigger: the author's next look at Memory on 0.1.69+.
+- [ ] **The partner's old untyped saves.** Ducter's own saves before D569 sit in Mem as `context` (e.g.
+  「GitHub 评审不想逐次确认」, 2026-11-20), so 你喜欢的做法 doesn't show them. Re-typing them is a write to the
+  person's Mem (`nmem m update --unit-type`, judged per memory); behind a Go. Trigger: the author's go.
+- [ ] **Send Mem the note** in research/232 (thread distillation silent since 2026-09-25; explicit owner
+  preferences typed `context`). Trigger: the author's OK to message the Mem team.
+- [ ] **A judge eval for Mem's asks** (a dozen real pairs with known answers, haiku and the brain's model).
+  Trigger: a wrong suggestion reported, or a second Mem account to sample.
+

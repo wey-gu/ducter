@@ -24722,3 +24722,14 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 /* D566: why it wasn't kept, then the one thing that fixes it, under it on the same edge. */
 .memkeep.is-failed { flex-direction: column; align-items: flex-start; padding-top: 4px; }
 .fc-keep > .memkeep.is-failed > .btn.text { margin-inline-start: -10px; margin-top: -2px; }
+/* D569: Mem's asks are one quiet row; open, each carries the suggestion (its words over the reason),
+   and the group's one primary, Take the suggestions, sits on the rows' own left edge. */
+.mem-check-advice { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s1); line-height: 1.45; }
+.mem-check-advice b { font-weight: 600; color: var(--ink); }
+.mem-check-advice small { color: var(--ink-soft); overflow-wrap: anywhere; }
+.g-acts.mem-check-all { justify-content: flex-start; }
+/* D569: a plugin's update on the Memory pane's head, where its need is said: the sentence, then its
+   Update, as the Overview's need line; asked in place under it. */
+.pane-says .ps-fix .sb-need { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.pane-says .ps-fix .sb-need.asking { flex-direction: column; align-items: stretch; }
+.pane-says .ps-fix .sb-ask { display: block; margin-top: 6px; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--base); font-weight: 400; color: var(--ink); }

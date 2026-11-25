@@ -87,6 +87,24 @@ func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, a
 	return "", "", ""
 }
 
+// memCant is whether an update (or any setup) can run on that computer from
+// here, as the home runs it (core mem-plugins.ts openSetup): the computer
+// awake and any AI signed in there, not only the one whose plugin it is
+// (D569: a worker's Claude Code signed out there hid 更新 while its Codex
+// could do it). "" when it can; else why not ("away", "no_agent"), said
+// under the row, and nothing offers an update.
+func memCant(dv *protocol.DeviceView) string {
+	if dv.State != protocol.DeviceAwake {
+		return "away"
+	}
+	for _, x := range dv.Harnesses {
+		if x.Installed && x.LoggedIn {
+			return ""
+		}
+	}
+	return "no_agent"
+}
+
 // memSendingFor is how long this window's own tap reads busy without the
 // home's word (D552; the frame with its task comes in a second or two).
 const memSendingFor = 15 * time.Second
@@ -215,7 +233,11 @@ func (a *App) memPluginRows(c *ui.Context) {
 		key := dv.ID + ":" + h.Harness
 		agent := harnessName(h.Harness)
 		line, action, busy := a.memPluginWords(a.memLine(dv, h), h.Harness)
-		can := action != "" && h.LoggedIn && dv.State == protocol.DeviceAwake
+		cant := ""
+		if action != "" {
+			cant = memCant(dv)
+		}
+		can := action != "" && cant == ""
 		asking := can && d.card.memAsk == key
 		var control func()
 		if busy != "" {
@@ -230,6 +252,10 @@ func (a *App) memPluginRows(c *ui.Context) {
 			}
 		}
 		a.tileRow(c, "memp:"+key, a.toolTile(c, agent), a.L.T("memp.row", agent, a.deviceNameIn(dv)), line, control)
+		if cant != "" {
+			// D569: why it can't be done from here, in one line; nothing claims 去更新.
+			a.textBlock(c, "mempcant:"+key, func() { a.note(c, a.L.T("memp.cant."+cant, a.deviceNameIn(dv))) })
+		}
 		if asking {
 			a.textBlock(c, "mempask:"+key, func() { a.memAskBlock(c, dv, h) })
 		}
@@ -243,7 +269,7 @@ func (a *App) memPluginRows(c *ui.Context) {
 // the in-place ask once tapped, and why it didn't start. A computer that is
 // away shows the line alone.
 func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness) {
-	if h.Mem == nil || !h.Installed || !h.LoggedIn {
+	if h.Mem == nil || !h.Installed {
 		return
 	}
 	_, action, busy := a.memPluginWords(a.memLine(dv, h), h.Harness)
@@ -256,7 +282,7 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 		ui.Row(c.Key("memp:" + key)).Children(func() { a.busyButton(c, busy, about, t.ControlSM, t.Surface) })
 		return
 	}
-	if action == "" || dv.State != protocol.DeviceAwake {
+	if action == "" || memCant(dv) != "" {
 		return
 	}
 	if d.card.memAsk != key {

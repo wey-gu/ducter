@@ -69,24 +69,24 @@ describe("Settings' brief (D469)", () => {
     A.devices = [home([agent("claude-code", { mem: { state: "update" } })])] as any;
     A.updateAll = { offer: [{ key: "x" }, { key: "y" }], notNow: [] } as any;
     const needs = h.setNeeds();
-    expect(needs.map((n) => n.page)).toEqual(["partner", "accounts", "memory", "memory", "devices"]);
+    // D569: Mem's asks are its own bookkeeping, never a need.
+    expect(needs.map((n) => n.page)).toEqual(["partner", "accounts", "memory", "devices"]);
     expect(needs.map((n) => n.text)).toEqual([
       "我还没有能想事情的 AI agent。",
       "OOMOL 连不上了，它连着的账号我先看不到。",
-      "Nowledge Mem 有 2 处想请你确认。",
       "Claude Code 里的 Nowledge Mem 有新版本。",
       "有 2 项更新可以装。",
     ]);
     expect(h.homeLead(needs)).toBe("还差一步，我就能想事情了。");
     A.agents = [agent("codex")] as any;
-    expect(h.homeLead(h.setNeeds())).toBe("有 4 处要你看一眼。");
-    expect(h.needsOf("memory").length).toBe(2);
+    expect(h.homeLead(h.setNeeds())).toBe("有 3 处要你看一眼。");
+    expect(h.needsOf("memory").length).toBe(1);
   });
 
-  test("Mem's asks need you only while memory is on; an update under way isn't asked", async () => {
+  test("D569: Mem's asks never need you; an update under way isn't asked", async () => {
     const { A, h } = await setup();
-    A.mem = { state: "connected", noted: [], check: { asks: [{ id: "a" }], rules: [] } } as any;
-    expect(h.setNeeds().map((n) => n.text)).toEqual(["Nowledge Mem 有一处想请你确认。"]);
+    A.mem = { state: "connected", noted: [], check: { asks: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }], rules: [] } } as any;
+    expect(h.setNeeds()).toEqual([]);
     A.settings = { name: "Ducter", memory: false } as any;
     expect(h.setNeeds()).toEqual([]);
     A.updateAll = { offer: [{ key: "x" }], notNow: [], plan: { items: [], finishedAt: "" } } as any;
@@ -178,11 +178,28 @@ describe("Settings' Overview, round 2 (D469)", () => {
     expect(press).not.toContain("installMem");
     expect(src("mem-plugin.tsx")).toMatch(/label=\{w\.ok\}[^\n]*A\.installMem/);
     expect(sent).toEqual([]);
-    // A computer that is asleep keeps the way to the page.
+    // D569: a computer that is asleep, or one with no AI signed in, is no need (nothing claims 去更新);
+    // its row on Memory says why.
     A.devices = [{ ...home([agent("claude-code", { mem: { state: "update" } })]), state: "asleep" }] as any;
-    const away = h.setNeeds().find((n) => n.key.startsWith("memp:"))!;
-    expect(away.fix).toBeUndefined();
-    expect(away.go).toBe("去更新");
+    expect(h.setNeeds().find((n) => n.key.startsWith("memp:"))).toBeUndefined();
+    A.devices = [home([agent("claude-code", { loggedIn: false, mem: { state: "update" } })])] as any;
+    expect(h.setNeeds().find((n) => n.key.startsWith("memp:"))).toBeUndefined();
+    expect(src("settings-home.tsx")).not.toContain('t("need.go.update") : ');
+  });
+
+  test("D569: a worker whose Claude Code is signed out there still updates its plugin: another AI there does it", async () => {
+    const { A, h } = await setup();
+    const { memCant } = await import("../src/mem-plugin.tsx");
+    const haswell = { id: "w1", name: "haswell", kind: "server", home: false, state: "awake", abilities: [], harnesses: [agent("claude-code", { loggedIn: false, mem: { state: "update", version: "0.7.37", available: "0.7.38" } }), agent("codex")] };
+    A.devices = [home([agent("codex")]), haswell] as any;
+    A.updateAll = undefined as any;
+    expect(memCant(haswell as any)).toBe("");
+    const n = h.setNeeds().find((x) => x.key === "memp:w1:claude-code")!;
+    expect(n).toMatchObject({ go: "更新", page: "memory", fix: { kind: "memp" } });
+    expect(memCant({ ...haswell, state: "unreachable" } as any)).toBe("away");
+    expect(memCant({ ...haswell, harnesses: [agent("claude-code", { loggedIn: false })] } as any)).toBe("no_agent");
+    // The pane's head carries the same fix where the need is said.
+    expect(src("settings-home.tsx")).toMatch(/n\.fix\?\.kind === "memp" \?[\s\S]{0,200}<NeedLine/);
   });
 
   test("D552: two computers' notices say which; a tap reads 更新中 at once, sends once; it clears when the check says updated", async () => {

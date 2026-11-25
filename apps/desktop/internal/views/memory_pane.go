@@ -135,6 +135,7 @@ type memPageState struct {
 	copied              string
 	copiedAt            time.Time
 	ruleOff             string // D465: the rule asked to turn off, in place
+	checkOpen           bool   // D569: Mem's asks opened from their one quiet row
 }
 
 // memFind sends the search's words to Mem now ("" clears it).

@@ -53,30 +53,33 @@ func (a *App) setNeeds() []setNeed {
 			out = append(out, setNeed{key: "memhealth", text: a.L.T("need.mem.unreachable", a.memHome()), goLabel: a.L.T("need.go.look"), tab: TabMemory})
 		}
 	}
-	if m := a.S.Mem; m != nil && m.Check != nil && len(m.Check.Asks) > 0 && a.S.Settings != nil && a.S.Settings.Memory {
-		s := a.L.T("need.memask.one")
-		if n := len(m.Check.Asks); n > 1 {
-			s = a.L.T("need.memask", n)
-		}
-		out = append(out, setNeed{key: "memask", text: s, goLabel: a.L.T("need.go.look"), tab: TabMemory})
-	}
+	// D569: what Nowledge Mem couldn't settle by itself is its own bookkeeping,
+	// never a need: it waits, one quiet row on Memory, the partner's suggestions in it.
+	//
 	// D552: one per agent per computer, each saying which computer when there
 	// is more than one, so two never read the same; one being updated stays,
 	// its fix the busy button, until the check after the task clears it.
+	// D569: only one that can run from here (the computer awake, any AI signed
+	// in there): its fix is the pane's own 更新, right here, never a 去更新 to a
+	// row with no button. One that can't is no need; its row says why.
 	var memp []memPluginRow
 	comps := map[string]bool{}
 	for _, r := range memPluginRowsFor(a.S.Devices) {
-		if r.h.Mem != nil && r.h.Mem.State == "update" {
-			memp = append(memp, r)
-			comps[r.dv.ID] = true
+		if r.h.Mem == nil || r.h.Mem.State != "update" || memCant(r.dv) != "" {
+			continue
 		}
+		if _, action, busy := a.memPluginWords(a.memLine(r.dv, r.h), r.h.Harness); action == "" && busy == "" {
+			continue
+		}
+		memp = append(memp, r)
+		comps[r.dv.ID] = true
 	}
 	for _, r := range memp {
 		text := a.L.T("need.memplug", harnessName(r.h.Harness))
-		if len(comps) > 1 {
+		if len(comps) > 1 || !r.dv.Home { // D569: a computer not the home is always named (haswell, not hel)
 			text = a.L.T("need.memplug.on", harnessName(r.h.Harness), a.deviceNameIn(r.dv))
 		}
-		out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: text, goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
+		out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: text, goLabel: a.L.T("memp.btn.update"), tab: TabMemory, dv: r.dv, h: r.h})
 	}
 	if n, running := a.updatesWaiting(); n > 0 && !running {
 		s := a.L.T("need.update.one")
@@ -325,7 +328,20 @@ func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 					uiText(c.Key("say"), keepClauses(autospace(say))).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.InkSoft)
 				}
 				for _, n := range needs {
-					uiText(c.Key("need:"+n.key), keepClauses(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.55)).TextColor(t.NeedsYou.Ink)
+					n := n
+					if n.dv == nil {
+						uiText(c.Key("need:"+n.key), keepClauses(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.55)).TextColor(t.NeedsYou.Ink)
+						continue
+					}
+					// D569: a plugin's update is done here, where its need is said (as on
+					// Overview), never a page below; asked in place under it.
+					ui.Row(c.Key("need:" + n.key)).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
+						uiText(c.Key("t"), keepClauses(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.55)).TextColor(t.NeedsYou.Ink).Shrink(1).MinWidth(0)
+						a.needFix(c, n)
+					})
+					if a.devState().card.memAsk == "need:"+n.dv.ID+":"+n.h.Harness {
+						a.memAskBlock(c, n.dv, n.h)
+					}
 				}
 			})
 		})
@@ -340,12 +356,12 @@ func (a *App) needFix(c *ui.Context, n setNeed) {
 	switch {
 	case n.dv != nil:
 		_, action, busy := a.memPluginWords(a.memLine(n.dv, n.h), n.h.Harness)
-		key := n.dv.ID + ":" + n.h.Harness
-		if busy != "" && n.h.LoggedIn && n.dv.State == protocol.DeviceAwake {
+		key := "need:" + n.dv.ID + ":" + n.h.Harness // its ask opens here, not under the pane's row
+		if busy != "" && memCant(n.dv) == "" {
 			a.busyButton(c, busy, n.text, t.ControlSM, t.Bg)
 			return
 		}
-		if action != "" && n.h.LoggedIn && n.dv.State == protocol.DeviceAwake {
+		if action != "" && memCant(n.dv) == "" {
 			if a.devState().card.memAsk != key && a.buttonFor(c, action, n.text, btnSecondary, t.ControlSM, t.Bg) {
 				a.devState().card.memAsk = key
 			}
@@ -436,7 +452,7 @@ func (a *App) homePanel(c *ui.Context) {
 									uiText(c.Key("t"), keepClauses(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
 									a.needFix(c, n)
 								})
-								if n.dv != nil && a.devState().card.memAsk == n.dv.ID+":"+n.h.Harness {
+								if n.dv != nil && a.devState().card.memAsk == "need:"+n.dv.ID+":"+n.h.Harness {
 									a.memAskBlock(c, n.dv, n.h) // the pane's own ask, here
 								}
 							}

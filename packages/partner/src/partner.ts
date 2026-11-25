@@ -3901,11 +3901,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         title: { type: "string", description: "Short title in the user's language, e.g. 测试里用假时钟 / Fake clock in tests" },
         content: { type: "string", description: "One or two self-contained sentences stating it about them (\"Weyl prefers pnpm\", not \"always use pnpm\"), and the why if they gave one" },
         said: { type: "string", description: "Their own words it rests on, copied exactly from their message (or a task's report)" },
+        kind: { type: "string", enum: ["preference", "decision", "fact"], description: "preference: how they like things; decision: a choice they made; fact: about their work or people" },
         importance: { type: "number", description: "0..1, default 0.6; 0.8+ for explicit \"always/never\" rules" },
       },
-      required: ["title", "content", "said"],
+      required: ["title", "content", "said", "kind"],
     },
-    async (args: { title?: unknown; content?: unknown; said?: unknown; importance?: unknown }) => {
+    async (args: { title?: unknown; content?: unknown; said?: unknown; kind?: unknown; importance?: unknown }) => {
       const title = typeof args?.title === "string" ? args.title.trim().slice(0, 80) : "";
       const content = typeof args?.content === "string" ? args.content.trim().slice(0, 1200) : "";
       if (!title || !content) return { ok: false, error: "memory_add needs `title` and `content`." };
@@ -3923,9 +3924,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { ok: false, error: "That is task plumbing (ids, branches, worktrees, commits). Remember only durable things about the user and their work; nothing was saved." };
       if (t && t.noted.length >= 2) return { ok: false, error: "Enough remembered this turn." };
       const report = t?.triggers.find((e) => e.kind === "report");
+      // D569: what it is, the model's word, as Mem's own kind, so Settings › 记忆 shows a said preference
+      // under 你喜欢的做法 (Mem typed every untyped save "context": none since September showed there).
+      const kind = args.kind === "preference" || args.kind === "decision" || args.kind === "fact" ? args.kind : undefined;
       const r = await memory.add({
         title,
         content,
+        ...(kind ? { unitType: kind } : {}),
         importance: typeof args.importance === "number" ? args.importance : undefined,
         provenance: {
           persona: core.persona.id,

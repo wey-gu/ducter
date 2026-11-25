@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.75 - 2026-11-25
+
+<!-- whats-new
+zh: Tab 留在弹窗里，后退只关面板；文件可在访达中显示
+en: Tab stays in a sheet, Back closes it first; Show in Finder and drag files out
+-->
+
+**Keys and gestures**
+- On the web, Tab stays inside an open sheet and focus returns where it was when it closes; the
+  browser's Back closes a sheet before it leaves the page; task rows are real links, so ⌘-click and
+  middle-click open them in a new tab.
+- On the Mac, a file Ducter made or you sent from this Mac has "Show in Finder" on its card and in
+  the viewer, and you can drag a card out to Finder or another app.
+- On iPhone, a swipe from the edge goes back exactly one step, and tapping the status bar scrolls
+  to the top.
+
+**Your partner**
+- Taking items out of a group no longer removes the whole group, and it says how many are left.
+- A call that's too late in the other person's day waits for the morning, and your partner says so
+  plainly when you ask.
+
 ## 0.1.74 - 2026-11-25
 
 <!-- whats-new

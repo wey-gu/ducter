@@ -253,6 +253,12 @@ What your partner remembers about you has its own section, **Memory**.
   {name} through it too** leads to **Agent messaging**. When Nowledge Mem's sign-in stopped
   working, it can't be reached, or it is too old, this group comes first on the page, with its one
   button (**Sign in again**, **Check again** or **Update**), right under the line that says so.
+- **Also keep files I make in Nowledge Mem**, off until you turn it on: when a task is done, the
+  reports and documents it made (PDFs, documents, sheets, slides, Markdown and text) go to a folder
+  named **Ducter** in your Nowledge Mem, so your other AI tools find them too. Logs, code and
+  screenshots don't, nor any file with what looks like a key or password in it. A newer version of
+  the same file becomes its next version there, never a second copy. If one couldn't go (its
+  sign-in had stopped working, say), the line under the switch says which and why.
 - The same group also names any of your AI agents, on any of your computers, whose Nowledge Mem
   is worth a tap: **Claude Code on Mac mini**, "Nowledge Mem 0.7.34; 0.7.37 is out", with **Update**;
   or "Nowledge Mem is in twice: 0.1.10 and 0.1.53", with **Keep one**. Each asks first what it will

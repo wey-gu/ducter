@@ -79,6 +79,26 @@ chat tables only with it, research/152 §4).
 Mac: the same tab in the Past tasks window. Web: the same tab in the Past tasks sheet (920 wide,
 the whole screen on a phone).
 
+## In Nowledge Mem (D566)
+
+When the person's Nowledge Mem is connected, what Ducter made can be kept there too, in Mem's own
+library (its Artifacts), where every agent that reads their Mem finds it. Evidence: research/231.
+
+- **On a file.** Under a file card Ducter made, and in the viewer's action row: **存到 Nowledge Mem /
+  Save to Nowledge Mem**; then **正在存到 Nowledge Mem… / Saving to Nowledge Mem…**; then **已在
+  Nowledge Mem / In Nowledge Mem** with **在 Nowledge Mem 里看 / Open in Nowledge Mem** (the Mem app on
+  a Mac) or **打开 Nowledge Mem / Open Nowledge Mem** (Mem on the web); or **没存进去：{why} / Not
+  saved: {why}** with its one fix. Shown only while memory is on and Mem is connected and signed in,
+  and only for a file Mem reads (documents, sheets, slides, PDFs, Markdown and text, code).
+- **The same file is one thing in Mem.** Keyed by its task and its name: saved again, or a newer
+  version after the task changed it, it is the next version of the same artifact
+  (`update --base`), never a second one.
+- **Where.** One 「Ducter」 folder at the root of the persona's Space (none bound: Mem's default).
+- **By itself.** Settings › 记忆: **做好的文件也存进 Nowledge Mem / Also keep files I make in
+  Nowledge Mem**, off by default: a done report's documents only, never a log, code, a screenshot
+  or a file with a key in it (`settings.md`, `memory.md` "Files in Nowledge Mem").
+- **By asking.** 「把这份报告存到 Mem 里」: `made_find` finds it, `keep` saves it, one line says so.
+
 ## Not yet
 
 A document a task made to send (D439, `documents.md`) is listed once: an Office file with its PDF is one thing that opens as its pages. Saving a made thing into a folder or a repo (I3's 存到… / Save to…), versions of a document,

@@ -719,6 +719,7 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 				}
 			}
 		}
+		a.memKeepBar(c, fv.ref) // D566: keep it in the person's Nowledge Mem (memkeep.go)
 		if fv.office != nil { // D439: the PDF it reads as, and the file itself
 			if a.button(c, a.L.T("file.savePdf"), btnText, t.ControlSM, t.Surface) {
 				a.saveFileCopy(fv.ref)

@@ -25,7 +25,25 @@ const memRun = async (argv: string[], ms: number) => {
   clearTimeout(timer);
   return { code, out, err };
 };
-const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", memFiles: { run: memRun } });
+// The home's own Mem, connected and up to date (as demo-memory.ts DEMO_MEM=on): a pretend pipx copy.
+const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
+const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
+const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
+const bridgeRun = async (args: string[]) => {
+  const a = args.join(" ");
+  if (args[0] === "--version") return ok("nmem 0.10.123");
+  if (a.includes("bridge connections --help")) return { code: 0, out: "", err: "" };
+  if (a === "status") return ok({ status: "healthy", backend: "cloud", update: { current: "0.10.123", latest: "0.10.123", update_available: false } });
+  if (a === "bridge setup") return ok({ state: "selection_needed", candidates: [{ id: SPACE, label: "Only me", kind: "personal", readers: 1, write_default: true }] });
+  if (a.includes("connections connect")) return ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
+  if (a.includes("--agent-context ducter bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
+  if (a.includes("connections list")) return ok({ schema_version: 1, connections: [conn], next_connection_id: null });
+  return { code: 2, out: "", err: "demo: not scripted" };
+};
+const NMEM = "/home/wei/.local/pipx/venvs/nmem-cli/bin/nmem";
+const tools: Record<string, string> = { nmem: NMEM, pipx: "/usr/bin/pipx" };
+const sys = { which: (c: string) => tools[c], exists: (p: string) => p === NMEM, read: () => undefined, list: () => [], real: (p: string) => p, home: "/home/wei", platform: "linux" as const, uid: 1000 };
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", memFiles: { run: memRun }, update: { homeName: "home-server" }, bridgeLink: { run: bridgeRun as never, env: {}, sys, exec: async () => new Promise<never>(() => {}) } as never });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.persona.mem = { agentId: "ducter", owned: true };
@@ -68,4 +86,5 @@ core.tasks.setState(t1, "done", "warm");
 log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j1", text: w.title, state: "done", taskId: t1 } });
 log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w.said, replyTo: u.seq, media: [report, csv] } });
 if (want === "saved") await core.memFiles.save(report.id, "tap");
+void core.bridgeLink.connect();
 console.log(`[demo] up at ${core.url}/app (data: ${core.dataDir}) · ${zh ? "zh" : "en"} · ${want}`);

@@ -24464,14 +24464,16 @@ html.kb #app {
   color: var(--ink-muted);
   animation: pop-in var(--t-med) var(--spring);
 }
-.fc-keep > .memkeep > .btn.text:first-child { margin-inline-start: -10px; }
+.fc-keep > .memkeep > .btn.text:first-child { margin-inline-start: -9px; }
 .memkeep .mk-done { color: var(--done-ink); font-weight: 600; }
 .memkeep .mk-fail { color: var(--failed-ink); text-wrap: pretty; }
-.fc-keep > .memkeep > .mk-done:first-child,
-.fc-keep > .memkeep > .mk-fail:first-child { padding-inline-start: 2px; }
+.fc-keep > .memkeep > .mk-done:first-child { padding-inline-start: 1px; }
 .memkeep .mk-open { font-size: var(--sm); }
 .fv-bar .memkeep { min-height: 0; animation: none; }
 .chat-row.mem-files.bad small { color: var(--failed-ink); }
 @media (prefers-reduced-motion: reduce) {
   .memkeep { animation: none; }
 }
+/* D566: why it wasn't kept, then the one thing that fixes it, under it on the same edge. */
+.memkeep.is-failed { flex-direction: column; align-items: flex-start; padding-top: 4px; }
+.fc-keep > .memkeep.is-failed > .btn.text { margin-inline-start: -10px; margin-top: -2px; }

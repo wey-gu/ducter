@@ -286,7 +286,9 @@ changes.
   never said as read; the morning note ranks its finds by its focus (`memory.md`, "Working
   Memory and past conversations").
 - **Writes to Mem.** Ducter writes only its own persona, via compare-and-swap, and user edits
-  win. It also writes distilled memories, the person's computer rules while Mem is on (D538), and,
+  win. It also writes distilled memories, the person's computer rules while Mem is on (D538), the files
+  Ducter made that the person keeps there (D566: Artifacts in a 「Ducter」 folder, by a tap, their
+  word or the Settings default; `memory.md` "Files in Nowledge Mem"), and,
   if the user opts in, finished window transcripts. It never mirrors the channel and never creates Spaces without opt-in.
 - **Provenance on every Mem write.** It records *who*, *through what*, and *from where*:
   - who: the persona's AI Identity (`agent_id`), set wherever Mem accepts it;

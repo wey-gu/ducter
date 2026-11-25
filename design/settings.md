@@ -823,3 +823,16 @@ The audit, ranked, and what was left are in D561.
   shell).
 - The Mac: typing into its fields with a real keyboard (the doubling was the driver's, D408); the
   accessible text and a chat app's link walked again in the real window.
+
+## 记忆 › Nowledge Mem: files (D566)
+
+One row in the Nowledge Mem group, after how much Mem holds: **做好的文件也存进 Nowledge Mem / Also
+keep files I make in Nowledge Mem**, a switch, off by default; its line says what goes (a done
+task's reports and documents, to the 「Ducter」 folder) and what never does (logs, code,
+screenshots, a file with a key). The partner's word after a change (D296): **好，以后做好的报告和文档我都存一份到
+Nowledge Mem。/ Got it: from now on I'll keep a copy of the reports and documents I make in Nowledge
+Mem.** When the last one it should have kept didn't go, the line says so in the failed ink,
+**上次「{name}」没存进去：{why}**, until the next one goes. Who: the developer who wants every report
+where their agents look; the consumer who never opens it (off is right for them); the fresh user
+without Mem never sees the group.
+

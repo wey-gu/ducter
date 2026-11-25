@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.77 - 2026-11-26
+
+<!-- whats-new
+zh: 接着你查好的行程订票时，交给原来那个任务，不另开
+en: Booking what a task already found goes back to that task, not a new one
+-->
+
+**Your partner**
+- When you ask to book what a task already found, like the flights and hotel it looked up, your
+  partner hands it back to that task instead of starting a new one.
+- It no longer gives a time estimate it has no grounds for.
+
+**Under the hood**
+- Your partner's checks are steadier still: each judgment is asked several times and the majority
+  counts.
+
 ## 0.1.76 - 2026-11-26
 
 <!-- whats-new

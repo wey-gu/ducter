@@ -232,7 +232,7 @@ func TestFloatComesOnceWithTheEditor(t *testing.T) {
 		t.Fatalf("the editor: shows %d, first %v", rec.shows, app.float.first)
 	}
 	tt := floatTester(app, false)
-	if !tt.HasText("我在这儿陪着你。按 ⌃⌥⌘空格可以收起我，再按一次我就回来。") {
+	if !hasText(tt, "我在这儿陪着你。按 ⌃⌥⌘空格可以收起我，再按一次我就回来。") {
 		t.Errorf("the first line: %q", tt.Texts())
 	}
 	app.HideFloat()
@@ -242,7 +242,7 @@ func TestFloatComesOnceWithTheEditor(t *testing.T) {
 	}
 	app.ToggleFloat()
 	tt.Frame()
-	if app.float.first || tt.HasText("⌃⌥⌘空格") {
+	if app.float.first || hasText(tt, "⌃⌥⌘空格") {
 		t.Errorf("shown again by hand, it still teaches the key")
 	}
 }
@@ -261,7 +261,7 @@ func TestFloatKeyTakenSaysSo(t *testing.T) {
 	app.OpenFolder = func(with, path string) error { return nil }
 	app.openFolder("/Applications/Zed.app", "/tmp")
 	tt := floatTester(app, false)
-	if tt.HasText("⌃⌥⌘空格") || !tt.HasText("我在这儿陪着你。快捷键被别的应用占用了，在菜单栏点「小窗」可以收起我，再点一次我就回来。") {
+	if hasText(tt, "⌃⌥⌘空格") || !hasText(tt, "我在这儿陪着你。快捷键被别的应用占用了，在菜单栏点「小窗」可以收起我，再点一次我就回来。") {
 		t.Errorf("the first line with the key taken: %q", tt.Texts())
 	}
 	en, _, _ := floatApp(t, i18n.EN, "working")

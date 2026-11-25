@@ -43,7 +43,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	h.until("a failed attempt", func() bool { return h.app.Failed })
 	h.click("我的 Ducter 在另一台电脑上")
 	for _, want := range []string{"连接到你的 Ducter", PairCommand, "地址", "连接码", "连接"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("connect card lacks %q: %q", want, h.tt.Texts())
 		}
 	}
@@ -52,7 +52,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	h.app.conn.address = "https://ducter.example.com"
 	h.app.conn.code = "AAAA-AAAA"
 	h.click("连接")
-	if !h.tt.HasText("这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。") {
+	if !hasText(h.tt, "这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。") {
 		t.Errorf("no bad-code line: %q", h.tt.Texts())
 	}
 	h.shot("connect-badcode")
@@ -65,7 +65,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	if want := []string{"https://ducter.example.com AAAA-AAAA", "https://ducter.example.com K7QM-4XPA"}; strings.Join(tries, "|") != strings.Join(want, "|") {
 		t.Errorf("tries %q", tries)
 	}
-	if h.tt.HasText("连接到你的 Ducter") || !h.tt.HasText("手头") {
+	if hasText(h.tt, "连接到你的 Ducter") || !hasText(h.tt, "手头") {
 		t.Errorf("still on the connect card: %q", h.tt.Texts())
 	}
 }
@@ -79,11 +79,11 @@ func TestRevokedDeviceSeesConnectCard(t *testing.T) {
 	h.app.Linked(client.Disconnected, &client.GoneError{Reason: "revoked"}) // D520: the home's signed word
 	h.tt.Frame()
 	for _, want := range []string{"Connect to your Ducter", "Your Ducter on hel.example.com disconnected this Mac. Connect it again to come back."} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("lacks %q: %q", want, h.tt.Texts())
 		}
 	}
-	if h.tt.HasText("Back") {
+	if hasText(h.tt, "Back") {
 		t.Error("a revoked device has nowhere to go back to")
 	}
 	if h.app.conn.address != "https://hel.example.com" {
@@ -125,7 +125,7 @@ func TestSettingsConnectElsewhere(t *testing.T) {
 	h.app.Route, h.app.settings.tab = RouteSettings, TabRun
 	h.tt.Frame()
 	h.click("Connect to a Ducter on another computer")
-	if h.app.conn.address != "https://hel.example.com/pair#c=K7QM-4XPA" || !h.tt.HasText("Connect to your Ducter") {
+	if h.app.conn.address != "https://hel.example.com/pair#c=K7QM-4XPA" || !hasText(h.tt, "Connect to your Ducter") {
 		t.Fatalf("card not prefilled: %q", h.app.conn.address)
 	}
 	h.click("Connect")
@@ -138,13 +138,13 @@ func TestSettingsConnectElsewhere(t *testing.T) {
 		t.Fatalf("still on this Mac's Ducter")
 	}
 	for _, want := range []string{"Keep the Ducter on this Mac running?", "Keep it running", "Stop it", "Use the Ducter on this Mac again"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("lacks %q: %q", want, h.tt.Texts())
 		}
 	}
 	h.shot("settings-connect-elsewhere")
 	h.click("Keep it running")
-	if fb.rested != 0 || h.tt.HasText("Stop it") {
+	if fb.rested != 0 || hasText(h.tt, "Stop it") {
 		t.Errorf("keep stopped it (rested %d) or asked again", fb.rested)
 	}
 	h.click("Use the Ducter on this Mac again")

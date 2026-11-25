@@ -58,7 +58,7 @@ func TestAgentVersions(t *testing.T) {
 			d.sel = "local"
 			h.settle(200 * time.Millisecond)
 			// D161: the card shows one dot; the versions are in each coin's detail.
-			if h.tt.HasText(L.T("agentv.unverified")) || h.tt.HasText(L.T("agentv.version", "0.167.0")) {
+			if hasText(h.tt, L.T("agentv.unverified")) || hasText(h.tt, L.T("agentv.version", "0.167.0")) {
 				t.Fatalf("per-version facts on the card itself: %q", h.tt.Texts())
 			}
 			open := func(name string, wants ...string) {
@@ -67,7 +67,7 @@ func TestAgentVersions(t *testing.T) {
 				h.click(name)
 				h.settle(200 * time.Millisecond)
 				for _, want := range wants {
-					if !h.tt.HasText(want) {
+					if !hasText(h.tt, want) {
 						t.Fatalf("%s detail: missing %q in %q", name, want, h.tt.Texts())
 					}
 				}
@@ -88,7 +88,7 @@ func TestAgentVersions(t *testing.T) {
 				{"failed", L.T("agentv.phase.rolledback", "0.167.0")},
 			} {
 				h.hub.AgentStep("local", "codex", step.phase)
-				h.until(step.phase, func() bool { return h.tt.HasText(step.want) })
+				h.until(step.phase, func() bool { return hasText(h.tt, step.want) })
 				shot("codex-" + step.phase)
 			}
 
@@ -101,7 +101,7 @@ func TestAgentVersions(t *testing.T) {
 			}
 			h.settle(100 * time.Millisecond)
 			h.click(spoken(L, L.T("agentv.button"), "Codex"))
-			h.until("done", func() bool { return h.tt.HasText(L.T("agentv.phase.done", "0.168.0")) })
+			h.until("done", func() bool { return hasText(h.tt, L.T("agentv.phase.done", "0.168.0")) })
 			shot("codex-done")
 
 			// A copy inside the Codex app: where its update comes from, never a button.
@@ -109,7 +109,7 @@ func TestAgentVersions(t *testing.T) {
 			h.settle(200 * time.Millisecond)
 			h.click(spoken(L, "Codex", "Mac mini"))
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("agentv.version", "0.166.0")) || !h.tt.HasText(L.T("agentv.how.app", "Codex")) || h.tt.HasText(spoken(L, L.T("agentv.button"), "Codex")) {
+			if !hasText(h.tt, L.T("agentv.version", "0.166.0")) || !hasText(h.tt, L.T("agentv.how.app", "Codex")) || hasText(h.tt, spoken(L, L.T("agentv.button"), "Codex")) {
 				t.Fatalf("mac card: %q", h.tt.Texts())
 			}
 			shot("mac-app-copy")

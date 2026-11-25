@@ -127,7 +127,7 @@ func TestD322PartnerStory(t *testing.T) {
 		must := func(tt *ui.Tester, name string, want ...string) {
 			t.Helper()
 			for _, w := range want {
-				if !tt.HasText(w) {
+				if !hasText(tt, w) {
 					t.Errorf("%s %s: no %q in %q", lang, name, w, tt.Texts())
 				}
 			}
@@ -135,7 +135,7 @@ func TestD322PartnerStory(t *testing.T) {
 		never := func(tt *ui.Tester, name string, not ...string) {
 			t.Helper()
 			for _, w := range not {
-				if tt.HasText(w) {
+				if hasText(tt, w) {
 					t.Errorf("%s %s: %q should not show", lang, name, w)
 				}
 			}
@@ -161,7 +161,7 @@ func TestD322PartnerStory(t *testing.T) {
 		if s, ok := lastSent[protocol.SettingsSet](*sent); !ok || s.Patch.Brain == nil || s.Patch.Brain.Harness != "codex" {
 			t.Errorf("%s: switch sent %+v", lang, s)
 		}
-		if !tt.HasText(L.T("said.brain", "Codex")) {
+		if !hasText(tt, L.T("said.brain", "Codex")) {
 			t.Errorf("%s: no word after the switch", lang)
 		}
 		// Nothing signed in: one empty row, the add block, no tasks or hand-off.

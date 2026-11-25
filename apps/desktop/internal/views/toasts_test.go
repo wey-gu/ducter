@@ -73,7 +73,7 @@ func TestToastSlotPlacesEveryToast(t *testing.T) {
 				t.Errorf("%s at %d: the toast sits on the window's edge", p.name, w)
 			}
 			frames(60, 100*time.Millisecond) // gone (4 s)
-			if h.tt.HasText(words) {
+			if hasText(h.tt, words) {
 				t.Errorf("%s at %d: the toast stayed past its time", p.name, w)
 			}
 		}
@@ -88,12 +88,12 @@ func TestToastSlotPlacesEveryToast(t *testing.T) {
 	r, _ := h.tt.Find(words)
 	h.tt.Move(r.X+r.W/2, r.Y+r.H/2)
 	frames(80, 100*time.Millisecond)
-	if !h.tt.HasText(words) {
+	if !hasText(h.tt, words) {
 		t.Fatal("the pointer on the toast didn't hold it")
 	}
 	h.tt.Move(r.X+r.W/2, h.app.toastAt.floor+30) // on the composer
 	frames(60, 100*time.Millisecond)
-	if h.tt.HasText(words) {
+	if hasText(h.tt, words) {
 		t.Error("the pointer on the composer held the toast")
 	}
 }

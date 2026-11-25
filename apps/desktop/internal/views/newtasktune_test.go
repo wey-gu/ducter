@@ -86,7 +86,7 @@ func TestNewTaskTuneDrawn(t *testing.T) {
 		cd, _ := app.chosenCandidate(app.S.NewTaskOptions.Candidates)
 		click(t, tt, spoken(L, L.T("newtask.who"), app.whoLabel(*cd)))
 		for _, s := range []string{L.T("newtask.agent.elsewhere", "Macbook Pro M3"), L.T("newtask.agent.copy", "Macbook Pro M3", "ducter"), "GPT-6.1 Terra", L.T("newtask.effort")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: no %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -98,7 +98,7 @@ func TestNewTaskTuneDrawn(t *testing.T) {
 		cd, _ = app.chosenCandidate(app.S.NewTaskOptions.Candidates)
 		click(t, tt, spoken(L, L.T("newtask.who"), app.whoLabel(*cd)))
 		for _, s := range []string{L.T("newtask.model"), "Opus 5.5", "Sonnet 5.5", L.T("newtask.effort"), L.T("effort.xhigh")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: no %q under Claude Code: %q", lang, s, tt.Texts())
 			}
 		}

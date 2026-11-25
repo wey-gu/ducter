@@ -221,7 +221,7 @@ func (a *App) sheetCardNoted(c *ui.Context, key, title, note string, body func()
 // note is a quiet explanation line.
 func (a *App) note(c *ui.Context, text string) {
 	t := a.T
-	uiText(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+	uiText(c, keepClauses(text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 }
 
 // choices is a segmented clay control (D76): a sunken track, the chosen

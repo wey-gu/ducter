@@ -86,7 +86,7 @@ func TestIslesWorkingAndAccount(t *testing.T) {
 	h.hub.Scene("cloud-working")
 	h.until("cloud", func() bool { return h.app.S.Device("cloud1") != nil && h.app.runningOn(h.app.S.Device("cloud1")) == 1 })
 	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(L.T("list.state.tasks.one")) || !h.tt.HasText(L.T("isles.working.one")) {
+	if !hasText(h.tt, L.T("list.state.tasks.one")) || !hasText(h.tt, L.T("isles.working.one")) {
 		t.Fatalf("no working line: %q", h.tt.Texts())
 	}
 	h.click(spoken(L, "Claude Code", h.app.deviceNameIn(h.app.homeDevice())))
@@ -117,7 +117,7 @@ func TestIslesPairingInScene(t *testing.T) {
 			h.click(L.T("add.talk", h.app.S.PersonaName))
 			h.until("code", func() bool { return h.app.S.PairCode != nil })
 			h.settle(700 * time.Millisecond)
-			if !h.tt.HasText("K7QM-4XPA") || !h.tt.HasText(L.T("pair.waiting")) {
+			if !hasText(h.tt, "K7QM-4XPA") || !hasText(h.tt, L.T("pair.waiting")) {
 				t.Fatalf("no sign: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("isles-%s-pairing", lang))
@@ -144,7 +144,7 @@ func TestIslesPhone(t *testing.T) {
 	line, _ := h.app.clientWord(&h.app.S.Reach.Clients[0]) // D161: one word of state
 	h.click(spoken(L, "iPhone", line))
 	h.settle(200 * time.Millisecond)
-	if h.app.devState().selClient != "c-iphone" || h.tt.HasText(L.T("devices.grid")) {
+	if h.app.devState().selClient != "c-iphone" || hasText(h.tt, L.T("devices.grid")) {
 		t.Fatalf("phone card: %q", h.tt.Texts())
 	}
 	_ = protocol.AbilityWeb

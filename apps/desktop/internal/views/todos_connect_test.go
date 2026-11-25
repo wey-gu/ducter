@@ -51,7 +51,7 @@ func TestTodosConnectGitHub(t *testing.T) {
 	app.openTab(TabTodos)
 	todoFrames(tt, 4)
 	for _, want := range []string{"GitHub", "分给你的 GitHub issue", "连上", app.L.T("todos.add.path")} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Fatalf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -67,7 +67,7 @@ func TestTodosConnectGitHub(t *testing.T) {
 	app.Receive(ghFrame(cid, "no_gh", func(r *protocol.ServerFrame) { r.GhInstall = releasePlan }))
 	todoFrames(tt, 2)
 	offer := app.L.T("newtask.gh.install.release", "Lin's MacBook Pro", "~/.ducter/tools/bin")
-	if !tt.HasText(offer) || !tt.HasText("装上 gh") {
+	if !hasText(tt, offer) || !hasText(tt, "装上 gh") {
 		t.Fatalf("no install offer: %q", tt.Texts())
 	}
 	if err := tt.Click("装上 gh，GitHub"); err != nil {
@@ -81,23 +81,23 @@ func TestTodosConnectGitHub(t *testing.T) {
 	p := 41.0
 	app.Receive(ghFrame(cid, "installing", func(r *protocol.ServerFrame) { r.GhInstall, r.GhProgress = releasePlan, &p }))
 	todoFrames(tt, 2)
-	if !tt.HasText("正在下载 gh… 41%") {
+	if !hasText(tt, "正在下载 gh… 41%") {
 		t.Fatalf("no progress: %q", tt.Texts())
 	}
-	if tt.HasText("取消") {
+	if hasText(tt, "取消") {
 		t.Error("an install offers a Cancel it can't keep")
 	}
 	app.Receive(ghFrame(cid, "code", func(r *protocol.ServerFrame) { r.Code, r.URL = "AB12-CD34", "https://github.com/login/device" }))
 	todoFrames(tt, 2)
 	for _, want := range []string{"AB12-CD34", "github.com/login/device", "复制", "打开", app.L.T("newtask.gh.waiting")} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Fatalf("no %q in %q", want, tt.Texts())
 		}
 	}
 	app.Receive(ghFrame(cid, "signed_in", func(r *protocol.ServerFrame) { r.Account = "lin-dev" }))
 	app.Receive(connectedFrame())
 	todoFrames(tt, 2)
-	if app.todos.login != nil || !tt.HasText("已用 lin-dev 连上 GitHub。") || !tt.HasText("4 个没做完") {
+	if app.todos.login != nil || !hasText(tt, "已用 lin-dev 连上 GitHub。") || !hasText(tt, "4 个没做完") {
 		t.Fatalf("connected isn't said with the count: %q", tt.Texts())
 	}
 	if strings.Count(strings.Join(tt.Texts(), "\n"), "分给你的 GitHub issue") != 0 {
@@ -124,7 +124,7 @@ func TestTodosConnectFailures(t *testing.T) {
 	cid := app.todos.login.cid
 	app.Receive(ghFrame(cid, "failed", func(r *protocol.ServerFrame) { r.Reason = "network" }))
 	todoFrames(tt, 2)
-	if !tt.HasText("Lin's MacBook Pro can't reach GitHub. Check its network, then try again.") || !tt.HasText("Try again") {
+	if !hasText(tt, "Lin's MacBook Pro can't reach GitHub. Check its network, then try again.") || !hasText(tt, "Try again") {
 		t.Fatalf("no network line: %q", tt.Texts())
 	}
 	if err := tt.Click("Try again"); err != nil {
@@ -136,7 +136,7 @@ func TestTodosConnectFailures(t *testing.T) {
 	app.Receive(ghFrame(app.todos.login.cid, "code", func(r *protocol.ServerFrame) { r.Code = "AB12-CD34" }))
 	app.Receive(ghFrame(app.todos.login.cid, "failed", func(r *protocol.ServerFrame) { r.Reason = "expired" }))
 	todoFrames(tt, 2)
-	if !tt.HasText(app.L.T("newtask.gh.err.expired")) {
+	if !hasText(tt, app.L.T("newtask.gh.err.expired")) {
 		t.Fatalf("no expired line: %q", tt.Texts())
 	}
 	if err := tt.Click("Try again"); err != nil {
@@ -151,7 +151,7 @@ func TestTodosConnectFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	todoFrames(tt, 2)
-	if !tt.HasText("Make one on GitHub") {
+	if !hasText(tt, "Make one on GitHub") {
 		t.Fatalf("no token link: %q", tt.Texts())
 	}
 	if !strings.Contains(protocol.TokenNewURL, "issues=write") {

@@ -26,14 +26,14 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		app.pickAgent(rows[1], topCandidate(rows), true) // Claude Code on the Mac: no copy there
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.add"), L.T("newtask.nowhere")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the Mac's empty list offers a way on: no %q: %q", lang, s, tt.Texts())
 			}
 		}
 		newTaskShot(t, tt, "clone-row-"+string(lang))
 		click(t, tt, spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Macbook Pro M3")))
 		for _, s := range []string{L.T("newtask.add.title", "Macbook Pro M3"), L.T("newtask.new", "Macbook Pro M3"), L.T("newtask.choose", "Macbook Pro M3"), L.T("newtask.clone")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the add panel: no %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -44,7 +44,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		}
 		// Where it goes: the Mac's own Ducter folder, its real path (the fallback here).
 		where := L.T("newtask.clone.where", "~/ducter-work/projects", "Macbook Pro M3")
-		if !tt.HasText(where) || !tt.HasText(L.T("newtask.clone.title", "Macbook Pro M3")) {
+		if !hasText(tt, where) || !hasText(tt, L.T("newtask.clone.title", "Macbook Pro M3")) {
 			t.Errorf("%s: the field says where and on which computer: %q", lang, tt.Texts())
 		}
 		tt.Type("nowledge-co/con")
@@ -56,7 +56,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 			t.Fatalf("%s: cloned on the Mac: %+v", lang, k)
 		}
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.clone.busy")) {
+		if !hasText(tt, L.T("newtask.clone.busy")) {
 			t.Errorf("%s: cloning says so: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "clone-busy-"+string(lang))
@@ -71,7 +71,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		tt.Frame()
 		// D272: a GitHub repository and no GitHub sign-in on the Mac: say so, offer it.
 		why := L.T("newtask.clone.err.no_access.gh", "Macbook Pro M3")
-		if !tt.HasText(why) {
+		if !hasText(tt, why) {
 			t.Errorf("%s: the failure in words: %q", lang, tt.Texts())
 		}
 		st, _ := lastFrame[protocol.GitLogin](sent)
@@ -91,7 +91,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		app.drainNewTask()
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.gh.title", "Macbook Pro M3"), "AB12-CD34", "github.com/login/device", L.T("newtask.gh.waiting"), L.T("newtask.gh.key")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the sign-in shows %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -105,7 +105,7 @@ func TestNewTaskCloneOnTheMac(t *testing.T) {
 		if app.nt.login != nil || k.ClientID == before.ClientID || k.Address != "nowledge-co/con" {
 			t.Fatalf("%s: the clone goes again after the sign-in: %+v %+v", lang, k, app.nt.login)
 		}
-		if !tt.HasText(L.T("newtask.gh.done", "Macbook Pro M3", "wey-gu")) {
+		if !hasText(tt, L.T("newtask.gh.done", "Macbook Pro M3", "wey-gu")) {
 			t.Errorf("%s: says who it signed in as: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "gh-done-"+string(lang))
@@ -129,7 +129,7 @@ func TestNewTaskCloneOlderWorker(t *testing.T) {
 		L := app.L
 		app.nt.shut("place")
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.old.row", "Macbook Pro M3")) || !tt.HasText(L.T("newtask.old.why")) {
+		if !hasText(tt, L.T("newtask.old.row", "Macbook Pro M3")) || !hasText(tt, L.T("newtask.old.why")) {
 			t.Errorf("%s: the older Mac says to update it: %q", lang, tt.Texts())
 		}
 		for _, s := range []string{spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Macbook Pro M3"))} {
@@ -144,7 +144,7 @@ func TestNewTaskCloneOlderWorker(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "folder_browse_result", ClientID: f.ClientID, Device: "dev_mac", Reason: "old", Message: "Macbook Pro M3 runs an older Ducter that can't look through its folders yet; update it first."})
 		app.drainNewTask()
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.old", "Macbook Pro M3")) {
+		if !hasText(tt, L.T("newtask.old", "Macbook Pro M3")) {
 			t.Errorf("%s: an older Mac's browse: %q", lang, tt.Texts())
 		}
 	}
@@ -164,17 +164,17 @@ func TestNewTaskCloneFirstRun(t *testing.T) {
 		app.nt.shut("place")
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.empty"), L.T("newtask.add"), L.T("newtask.nowhere")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: first run: no %q: %q", lang, s, tt.Texts())
 			}
 		}
 		newTaskShot(t, tt, "clone-firstrun-"+string(lang))
 		click(t, tt, L.T("newtask.add"))
-		if !tt.HasText(L.T("newtask.choose.finder")) {
+		if !hasText(tt, L.T("newtask.choose.finder")) {
 			t.Errorf("%s: this Mac's own folders are picked in Finder: %q", lang, tt.Texts())
 		}
 		click(t, tt, L.T("newtask.clone"))
-		if !tt.HasText(L.T("newtask.clone.where", "~/ducter/projects", "Ana's MacBook")) {
+		if !hasText(tt, L.T("newtask.clone.where", "~/ducter/projects", "Ana's MacBook")) {
 			t.Errorf("%s: this Mac's folder: %q", lang, tt.Texts())
 		}
 	}

@@ -45,14 +45,14 @@ func lastAdd(sent *[]any) (protocol.ConnectionAdd, bool) {
 func TestOomolHostedForm(t *testing.T) {
 	app, sent, tt, opened := hostedForm(t, i18n.ZH)
 	for _, want := range []string{"在 OOMOL 登录，把 Gmail、Discord 这些账号连上。", "去 OOMOL 连账号", "在 OOMOL 控制台新建一个密钥。", "获取密钥", "密钥", "显示"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q", want)
 		}
 	}
-	if tt.HasText("地址") {
+	if hasText(tt, "地址") {
 		t.Errorf("OOMOL Hosted has one address: no address field")
 	}
-	if tt.HasText("Access") || tt.HasText("Create Token") {
+	if hasText(tt, "Access") || hasText(tt, "Create Token") {
 		t.Errorf("the hosted steps still name OpenConnector's Access page")
 	}
 	tt.Click("获取密钥")
@@ -68,14 +68,14 @@ func TestOomolHostedForm(t *testing.T) {
 	if len(*sent) != n {
 		t.Errorf("an empty key was sent")
 	}
-	if !tt.HasText("先填上密钥。") {
+	if !hasText(tt, "先填上密钥。") {
 		t.Errorf("no inline line for the empty key")
 	}
 
 	// A pasted key with a space and a line break: trimmed, sent to the hosted address.
 	app.partner.acctToken = "  api_abc123 \n"
 	tt.Frame()
-	if tt.HasText("先填上密钥。") {
+	if hasText(tt, "先填上密钥。") {
 		t.Errorf("the empty-key line stays once a key is typed")
 	}
 	tt.Click("检查并添加")
@@ -101,13 +101,13 @@ func TestOomolHostedOutcomes(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "connection_result", OK: false, Reason: reason})
 		tt.Frame()
 		tt.Frame()
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("%s: no %q", reason, want)
 		}
 		if app.partner.toast != "" {
 			t.Errorf("%s: a refusal went to the done-look toast", reason)
 		}
-		if (reason == "unauthorized") != (tt.HasText("获取密钥") && app.partner.acctErr == "unauthorized") {
+		if (reason == "unauthorized") != (hasText(tt, "获取密钥") && app.partner.acctErr == "unauthorized") {
 			t.Errorf("%s: Get a key beside the refusal is only for a refused key", reason)
 		}
 	}
@@ -129,7 +129,7 @@ func TestOomolHostedOutcomes(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D468: the partner's said line under the sources, not a boxed toast.
-	if !tt.HasText("加上了 OOMOL，现在能看：Gmail、Discord") || app.partner.toast != "" {
+	if !hasText(tt, "加上了 OOMOL，现在能看：Gmail、Discord") || app.partner.toast != "" {
 		t.Errorf("added: the said line lists what it reads (toast %q)", app.partner.toast)
 	}
 	if app.partner.acctAdding {
@@ -145,7 +145,7 @@ func TestOomolHostedOutcomes(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D166: the card's status line says so, with the way to fix it under it.
-	if app.partner.toast != "" || !tt.HasText("No accounts connected there yet; connect one") || !tt.HasText("there is nothing there to read yet") {
+	if app.partner.toast != "" || !hasText(tt, "No accounts connected there yet; connect one") || !hasText(tt, "there is nothing there to read yet") {
 		t.Errorf("connected but empty: toast %q", app.partner.toast)
 	}
 	tt.Click("Connect accounts in OOMOL")

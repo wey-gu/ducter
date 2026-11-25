@@ -35,7 +35,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			newTaskShot(t, tt, "d272-list"+sz)
 			click(t, tt, L.T("newtask.add"))
 			for _, s := range []string{L.T("newtask.add.title", "Hetzner Server"), L.T("newtask.new", "Hetzner Server"), L.T("newtask.new.line", "/root/ducter/projects"), L.T("newtask.choose", "Hetzner Server"), L.T("newtask.choose.line"), L.T("newtask.clone")} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: the add panel: no %q: %q", lang, s, tt.Texts())
 				}
 			}
@@ -46,7 +46,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			tt.Type(map[i18n.Lang]string{i18n.ZH: "发票", i18n.EN: "Invoices"}[lang])
 			tt.Frame()
 			name := map[i18n.Lang]string{i18n.ZH: "发票", i18n.EN: "Invoices"}[lang]
-			if !tt.HasText(L.T("newtask.new.where", "/root/ducter/projects/"+name)) {
+			if !hasText(tt, L.T("newtask.new.where", "/root/ducter/projects/"+name)) {
 				t.Errorf("%s: says where it goes: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d272-new"+sz)
@@ -58,7 +58,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			app.Receive(protocol.ServerFrame{T: "project_new_result", OK: false, ClientID: n.ClientID, Reason: "invalid"})
 			app.drainNewTask()
 			tt.Frame()
-			if !tt.HasText(L.T("newtask.new.err.invalid")) {
+			if !hasText(tt, L.T("newtask.new.err.invalid")) {
 				t.Errorf("%s: a bad name says why: %q", lang, tt.Texts())
 			}
 			app.startNewFolder()
@@ -96,7 +96,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			tt.Type("https://github.com/nowledge-co/mem")
 			tt.Frame()
 			for _, s := range []string{L.T("newtask.gh.out", "Hetzner Server"), L.T("newtask.gh.signin", "Hetzner Server"), L.T("newtask.clone.go")} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: the clone field: no %q: %q", lang, s, tt.Texts())
 				}
 			}
@@ -116,7 +116,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			key := "ghp_" + "f4k3k3yf4k3k3yf4k3k3yf4k3k3yf4k3k3y"
 			tt.Type(key)
 			tt.Frame()
-			if tt.HasText(key) {
+			if hasText(tt, key) {
 				t.Errorf("%s: the key shows in the clear", lang)
 			}
 			newTaskShot(t, tt, "d272-key"+sz)
@@ -128,7 +128,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			app.Receive(protocol.ServerFrame{T: "git_login_state", ClientID: k.ClientID, GitHost: "github.com", State: "failed", Reason: "bad_token", Message: "missing required scope 'read:org'"})
 			app.drainNewTask()
 			tt.Frame()
-			if !tt.HasText(L.T("newtask.gh.err.bad_key", "missing required scope 'read:org'")) || app.nt.login.phase != "token" {
+			if !hasText(tt, L.T("newtask.gh.err.bad_key", "missing required scope 'read:org'")) || app.nt.login.phase != "token" {
 				t.Errorf("%s: a refused key says why and stays in the key field: %q", lang, tt.Texts())
 			}
 			// No gh on the server: what to run there.
@@ -136,7 +136,7 @@ func TestNewTaskAddOnAServer(t *testing.T) {
 			app.Receive(protocol.ServerFrame{T: "git_login_state", GitHost: "github.com", State: "no_gh"})
 			app.drainNewTask()
 			tt.Frame()
-			if !tt.HasText(L.T("newtask.gh.nogh", "Hetzner Server")) || !tt.HasText(L.T("newtask.gh.recheck")) {
+			if !hasText(tt, L.T("newtask.gh.nogh", "Hetzner Server")) || !hasText(tt, L.T("newtask.gh.recheck")) {
 				t.Errorf("%s: no gh says what to run: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d272-nogh"+sz)

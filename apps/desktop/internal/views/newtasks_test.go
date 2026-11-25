@@ -50,11 +50,11 @@ func TestD510NewTasksGroup(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range []string{tc.title, tc.where, tc.who, "hel", "Codex"} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText("iPhone") {
+		if hasText(tt, "iPhone") {
 			t.Errorf("%s: a phone offered as a place to run tasks", tc.lang)
 		}
 		*sent = nil
@@ -73,7 +73,7 @@ func TestD510NewTasksGroup(t *testing.T) {
 		}
 		tt.Frame()
 		for _, want := range []string{unjoin(keepClauses(tc.on)), tc.said} { // D556: the line keeps its last words
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}
 		}
@@ -90,7 +90,7 @@ func TestD510NoChoiceNoGroup(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText("新任务默认") {
+	if hasText(tt, "新任务默认") {
 		t.Errorf("New tasks start shown with nothing to choose: %q", tt.Texts())
 	}
 }

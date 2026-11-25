@@ -72,7 +72,7 @@ func TestAbilitiesScreen(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
 			for _, want := range []string{L.T("devices.title"), L.T("device.local"), "ducter-worker", "+ " + L.T("chip.web"), "+ " + L.T("chip.remote"), "Claude Code", "Codex", L.T("card.status.home", h.app.S.PersonaName)} {
-				if !h.tt.HasText(want) {
+				if !hasText(h.tt, want) {
 					t.Fatalf("missing %q in %q", want, h.tt.Texts())
 				}
 			}
@@ -92,7 +92,7 @@ func TestAbilitiesScreen(t *testing.T) {
 			})
 			h.settle(200 * time.Millisecond)
 			done := L.T("ability.web.done", L.T("device.local"))
-			if !h.tt.HasText(done) {
+			if !hasText(h.tt, done) {
 				t.Fatalf("no %q in %q", done, h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-added", lang))
@@ -119,7 +119,7 @@ func TestAbilitiesEquipMotion(t *testing.T) {
 	h.settle(260 * time.Millisecond)
 	h.shotAs("abilities-zh-snap")
 	h.settle(time.Second)
-	if h.app.dev.fx != nil || !h.tt.HasText(L.T("ability.web.done", L.T("device.local"))) {
+	if h.app.dev.fx != nil || !hasText(h.tt, L.T("ability.web.done", L.T("device.local"))) {
 		t.Fatalf("not landed: %q", h.tt.Texts())
 	}
 }
@@ -131,10 +131,10 @@ func TestAbilitiesRefusedGoesBack(t *testing.T) {
 	h.click("+ " + L.T("chip.web"))
 	h.until("back", func() bool { return h.app.dev.fx == nil && len(h.app.dev.refused) > 0 })
 	h.settle(300 * time.Millisecond)
-	if h.tt.HasText(L.T("ability.web.done", L.T("device.local"))) {
+	if hasText(h.tt, L.T("ability.web.done", L.T("device.local"))) {
 		t.Fatal("said it can browse when the server said no")
 	}
-	if !h.tt.HasText(L.T("ability.reason.cua_old")) {
+	if !hasText(h.tt, L.T("ability.reason.cua_old")) {
 		t.Fatalf("no reason: %q", h.tt.Texts())
 	}
 }
@@ -159,13 +159,13 @@ func TestAbilitiesStates(t *testing.T) {
 			h.settle(100 * time.Millisecond)
 			h.click(spoken(L, "Mac mini", L.T("list.state.asleep")))
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.state.asleep")) {
+			if !hasText(h.tt, L.T("device.state.asleep")) {
 				t.Fatalf("asleep line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-asleep", lang))
 			h.click(spoken(L, "ducter-vps", L.T("list.state.away")))
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("card.status.away")) || !h.tt.HasText(L.T("device.last_seen", L.T("time.ago.hour", 2))) {
+			if !hasText(h.tt, L.T("card.status.away")) || !hasText(h.tt, L.T("device.last_seen", L.T("time.ago.hour", 2))) {
 				t.Fatalf("unreachable line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-unreachable", lang))
@@ -182,7 +182,7 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			// D228: + 从外面连 opens its ⓘ: what it needs, and 让 Ducter 帮我设好.
 			h.click("+ " + L.T("chip.remote"))
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("anywhere.need")) || !h.tt.HasText(L.T("anywhere.setup")) {
+			if !hasText(h.tt, L.T("anywhere.need")) || !hasText(h.tt, L.T("anywhere.setup")) {
 				t.Fatalf("anywhere off: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-off")
@@ -194,7 +194,7 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			})
 			h.settle(200 * time.Millisecond)
 			for _, want := range []string{L.T("anywhere.step.get"), L.T("anywhere.step.login"), L.T("anywhere.login.open"), L.T("anywhere.login.button"), L.T("anywhere.task")} {
-				if !h.tt.HasText(want) {
+				if !hasText(h.tt, want) {
 					t.Fatalf("setup: missing %q in %q", want, h.tt.Texts())
 				}
 			}
@@ -202,28 +202,28 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			h.hub.AnywhereStage("go")
 			h.until("go", func() bool { return h.app.S.Reach.Anywhere.Setup != nil && h.app.S.Reach.Anywhere.Setup.Login == nil })
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("anywhere.step.name", mock.MockHostname)) || !h.tt.HasText(L.T("anywhere.go.wait")) {
+			if !hasText(h.tt, L.T("anywhere.step.name", mock.MockHostname)) || !hasText(h.tt, L.T("anywhere.go.wait")) {
 				t.Fatalf("go: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-go")
 			h.hub.AnywhereStage("taken")
 			h.until("taken", func() bool { return anywhereSetupFailed(h.app.S.Reach.Anywhere) })
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("anywhere.why.taken", mock.MockHostname)) || !h.tt.HasText(L.T("anywhere.retry")) {
+			if !hasText(h.tt, L.T("anywhere.why.taken", mock.MockHostname)) || !hasText(h.tt, L.T("anywhere.retry")) {
 				t.Fatalf("taken: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-taken")
 			h.hub.AnywhereStage("on")
 			h.until("on", func() bool { return h.app.S.Reach.Address != "" })
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText("https://"+mock.MockHostname) || !h.tt.HasText(L.T("anywhere.who")) || !h.tt.HasText(L.T("anywhere.edge")) {
+			if !hasText(h.tt, "https://"+mock.MockHostname) || !hasText(h.tt, L.T("anywhere.who")) || !hasText(h.tt, L.T("anywhere.edge")) {
 				t.Fatalf("on: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-on")
 			h.click(L.T("chip.remote.again"))
 			h.until("code", func() bool { return h.app.S.PairCode != nil && h.app.S.PairCode.Address != "" })
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText("K7QM-4XPA") || h.tt.HasText(L.T("pair.noaddress")) {
+			if !hasText(h.tt, "K7QM-4XPA") || hasText(h.tt, L.T("pair.noaddress")) {
 				t.Fatalf("pair sheet: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-pair")
@@ -231,13 +231,13 @@ func TestAbilitiesReachFromAnywhere(t *testing.T) {
 			h.until("joined", func() bool { return len(h.app.S.Reach.Clients) == 1 })
 			h.settle(300 * time.Millisecond)
 			// 关掉 asks once more and says the tunnel stays in their account; then it is kept off.
-			if !h.tt.HasText(L.T("anywhere.off")) {
+			if !hasText(h.tt, L.T("anywhere.off")) {
 				h.click(spoken(L, L.T("chip.info"), L.T("chip.remote")))
 				h.settle(200 * time.Millisecond)
 			}
 			h.click(L.T("anywhere.off"))
 			h.settle(100 * time.Millisecond)
-			if !h.tt.HasText(L.T("anywhere.off.note", L.T("device.local"))) && !h.tt.HasText(L.T("anywhere.off.note", h.app.deviceName(h.app.S.Device("local")))) {
+			if !hasText(h.tt, L.T("anywhere.off.note", L.T("device.local"))) && !hasText(h.tt, L.T("anywhere.off.note", h.app.deviceName(h.app.S.Device("local")))) {
 				t.Fatalf("off note: %q", h.tt.Texts())
 			}
 			h.shotAs("anywhere-" + string(lang) + "-offask")
@@ -297,7 +297,7 @@ func TestAbilitiesLive(t *testing.T) {
 		return d.Ability(protocol.AbilityWeb).State == protocol.AbilityOn && h.app.dev.fx == nil
 	})
 	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(L.T("ability.web.done", L.T("device.local"))) {
+	if !hasText(h.tt, L.T("ability.web.done", L.T("device.local"))) {
 		t.Fatalf("no line: %q", h.tt.Texts())
 	}
 	h.shotAs(fmt.Sprintf("abilities-live-%s-added", lang))

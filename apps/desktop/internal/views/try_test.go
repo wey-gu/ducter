@@ -33,7 +33,7 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range []string{pick("试一下", "Try it"), pick("打开一个测试网页，亲眼看看它能上网。", "Opens a test page so you can see it browse.")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -59,11 +59,11 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 			pick("这是 hetzner-1 上的浏览器看到的网页，不是你的 Chrome。可以点一点、滚动看看。", "This is the page as the browser on hetzner-1 sees it, not your Chrome. Click and scroll as you like."),
 			pick("完成", "Done"),
 		} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(pick("暂不登录", "Not now")) {
+		if hasText(tt, pick("暂不登录", "Not now")) {
 			t.Errorf("%s: Try it has nothing to put off", lang)
 		}
 		if ack, ok := lastSent[protocol.LiveAckReq](*sent); !ok || ack.Seq != 1 {
@@ -101,13 +101,13 @@ func TestTryItWhileItOpens(t *testing.T) {
 			t.Errorf("%s: back at %+v, under the traffic lights (78)", lang, r)
 		}
 		note := L.T("live.try.note", "hetzner-1")
-		if !tt.HasText(note) || !tt.HasText(L.T("live.opening", "example.com")) {
+		if !hasText(tt, note) || !hasText(tt, L.T("live.opening", "example.com")) {
 			t.Errorf("%s: while opening, no %q in %q", lang, note, tt.Texts())
 		}
 		now = now.Add(41 * time.Second)
 		tt.Advance(time.Second)
 		tt.Frame()
-		if !tt.HasText(L.T("live.stuck", "hetzner-1")) {
+		if !hasText(tt, L.T("live.stuck", "hetzner-1")) {
 			t.Fatalf("%s: stuck: %q", lang, tt.Texts())
 		}
 		n := len(*sent)
@@ -118,7 +118,7 @@ func TestTryItWhileItOpens(t *testing.T) {
 			t.Errorf("%s: 再试一次 sent %#v", lang, open)
 		}
 		tt.Frame()
-		if tt.HasText(L.T("live.stuck", "hetzner-1")) {
+		if hasText(tt, L.T("live.stuck", "hetzner-1")) {
 			t.Errorf("%s: still stuck right after a retry", lang)
 		}
 		// The server said no: the view closes with why.

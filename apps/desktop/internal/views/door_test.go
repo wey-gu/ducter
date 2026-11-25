@@ -34,7 +34,7 @@ func TestD535KeepPageNavigation(t *testing.T) {
 				t.Fatalf("%s %d: no 对话 crumb: %q", lang, w, tt.Texts())
 			}
 			title := "持续评审 nowledge-co，并处理 100gle 分给你的待办"
-			if !tt.HasText(title) {
+			if !hasText(tt, title) {
 				t.Fatalf("%s %d: the breadcrumb doesn't name the Keep: %q", lang, w, tt.Texts())
 			}
 			// Once as the crumb, once as the places' mark: never a back link too.
@@ -51,7 +51,7 @@ func TestD535KeepPageNavigation(t *testing.T) {
 			}
 			app.Route = RouteOnHand
 			tt.Frame()
-			if app.oh.keep.open != "" || !tt.HasText(app.L.T("lane.needs_you")) {
+			if app.oh.keep.open != "" || !hasText(tt, app.L.T("lane.needs_you")) {
 				t.Fatalf("%s %d: On hand didn't open on its overview: %q", lang, w, tt.Texts())
 			}
 			// The crumb 手头的事 goes up from the page to the overview, in place.
@@ -107,7 +107,7 @@ func TestD535CountIsADoor(t *testing.T) {
 		tt.Frame()
 		// The pinned line: what waits is out of view (it lives in On hand).
 		line := app.L.T("door.line", 2)
-		if !tt.HasText(line) {
+		if !hasText(tt, line) {
 			t.Fatalf("%s: no %q over the composer: %q", lang, line, tt.Texts())
 		}
 		count := spoken(app.L, app.L.T("header.needs", 2), app.L.T("door.line.about"))
@@ -186,10 +186,10 @@ func TestD535NoCardThatOpensNothing(t *testing.T) {
 		app.Route = RouteOnHand
 		tt := ui.NewTesterWith(app.View, 1150, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		if tt.HasText("通用设置") {
+		if hasText(tt, "通用设置") {
 			t.Fatalf("%s: the card that opens nothing is listed: %q", lang, tt.Texts())
 		}
-		if !tt.HasText("整理 hawdb 的 issue") || !tt.HasText("给 #120 写复现") {
+		if !hasText(tt, "整理 hawdb 的 issue") || !hasText(tt, "给 #120 写复现") {
 			t.Fatalf("%s: the hand-over with held parts is gone: %q", lang, tt.Texts())
 		}
 	}

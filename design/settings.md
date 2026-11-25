@@ -787,9 +787,12 @@ and the web at 390 and 1000, zh and en, light and dark (`.shots/settings-polish/
 
 - **A Chinese line breaks only between words.** On the web every Settings page breaks a Chinese line only at its
   punctuation or a space (`word-break: keep-all` on `.set-page` and `.pane-says`; a clause too long for its line
-  still wraps). A short Latin token keeps its hyphens (`keepTokens`: GPT-6.2-Sol). On the Mac 发现了就说's line goes through
-  `keepClauses`, which now keeps a clause of up to six characters whole (**急的随时说**) and a longer one's last
-  four; the other shared rows wait for a test lookup by accessible name (`todo.md`).
+  still wraps). A short Latin token keeps its hyphens (`keepTokens`: GPT-6.2-Sol). On the Mac every shared row
+  (title and line, a group's heading and note, a pane's lede and note, a foot, a setup step, the pane's head) draws
+  its words through `keepClauses` (D564): MyGo's text has no keep-all for Chinese, so a run between punctuation, a
+  space or Latin of up to ten characters is joined whole (**急的随时说**, **再回来登录**), a longer one keeps its last
+  four, and only a Latin sentence (with its stop) keeps its last two words. The views tests find words with
+  `hasText`, which reads a text as said, joiners out.
 - **A pane's note under its lede sits on the group headings' edge** (Mac `ledeNote`, `ledeHow`), as on the web.
 - **Two rows never say one sentence.** New tasks start's 谁来做 while automatic says **按上面「做事的」来挑。**, not
   做事的's own note again.

@@ -152,7 +152,7 @@ func TestFirstScreenStarterFillsTheComposer(t *testing.T) {
 func TestFirstScreenNewsOpensTheResult(t *testing.T) {
 	h := firstScreen(t, i18n.ZH, "小鸭", firstNews, true)
 	h.has("早上好，小鸭在呢。", autospace("「整理十月的发票」做好了，结果在这儿。"))
-	if h.tt.HasText(autospace(h.app.words(firstNews.Line))) {
+	if hasText(h.tt, autospace(h.app.words(firstNews.Line))) {
 		t.Error("the news replaces the line, not both")
 	}
 	h.click("查看")
@@ -225,26 +225,26 @@ func TestTheFirstResultIsCelebratedOnce(t *testing.T) {
 	h := newWelcome(t, i18n.ZH, dir, false)
 	line := "第一个任务做完了。以后做完的事都会这样告诉你，也会说我是怎么确认的。"
 	finish(h, "t1", "修好 ducter 里没过的测试")
-	if !h.tt.HasText(line) {
+	if !hasText(h.tt, line) {
 		t.Fatalf("no first-result line: %q", h.tt.Texts())
 	}
 	h.shot("firstrun-first-result")
 	// It leaves by itself.
 	h.app.Now = func() time.Time { return time.Now().Add(FirstResultFor + time.Second) }
 	h.tt.Frame()
-	if h.tt.HasText(line) {
+	if hasText(h.tt, line) {
 		t.Error("still shown after FirstResultFor")
 	}
 	h.app.Now = time.Now
 	// The second result is just a result.
 	finish(h, "t2", "说说 website 这周改了什么")
-	if h.tt.HasText(line) {
+	if hasText(h.tt, line) {
 		t.Error("celebrated a second time")
 	}
 	// And a new launch on the same Mac remembers.
 	again := newWelcome(t, i18n.ZH, dir, true)
 	finish(again, "t3", "再来一件")
-	if again.tt.HasText(line) {
+	if hasText(again.tt, line) {
 		t.Error("celebrated again after a relaunch")
 	}
 }
@@ -254,13 +254,13 @@ func TestReplayedResultsAreNotTheFirst(t *testing.T) {
 	h := newWelcome(t, i18n.EN, hintsDir(t, ""), true)
 	h.app.S.HeadSeq = 1000 // everything below came before this window
 	finish(h, "old", "an old task")
-	if h.tt.HasText("Your first task is done. Everything I finish comes back to you like this, with proof.") {
+	if hasText(h.tt, "Your first task is done. Everything I finish comes back to you like this, with proof.") {
 		t.Error("celebrated a replay")
 	}
 	h.app.S.HeadSeq = 0
 	seq = 2000
 	finish(h, "new", "a new task")
-	if h.tt.HasText("Your first task is done. Everything I finish comes back to you like this, with proof.") {
+	if hasText(h.tt, "Your first task is done. Everything I finish comes back to you like this, with proof.") {
 		t.Error("celebrated although the Log already held a finished task")
 	}
 }

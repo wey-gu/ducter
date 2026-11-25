@@ -59,10 +59,10 @@ func TestAgentStepWords(t *testing.T) {
 				want = k.en
 			}
 			_, tt, _ := apApp(t, lang, k.p)
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
-			if tt.HasText("比平常慢，可能是网络慢") || tt.HasText("Slower than usual; the network may be slow") {
+			if hasText(tt, "比平常慢，可能是网络慢") || hasText(tt, "Slower than usual; the network may be slow") {
 				t.Errorf("%s: slow line before its time for %+v", lang, k.p)
 			}
 		}
@@ -73,7 +73,7 @@ func TestAgentStepSlowLine(t *testing.T) {
 	p := protocol.AgentProgress{Step: "downloading", Got: 40_000_000, Size: 155_000_000, Since: ago(5 * time.Minute), SlowMs: 240_000}
 	app, tt, sent := apApp(t, i18n.ZH, p)
 	for _, w := range []string{"正在下载（40 / 155 MB）", "比平常慢，可能是网络慢", "再等等", "停止"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("no %q in %q", w, tt.Texts())
 		}
 	}
@@ -82,7 +82,7 @@ func TestAgentStepSlowLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if tt.HasText("比平常慢，可能是网络慢") {
+	if hasText(tt, "比平常慢，可能是网络慢") {
 		t.Error("the slow line stayed after 再等等")
 	}
 	// Another slow stretch later, it comes back; 停止 stops that one step only.

@@ -322,10 +322,10 @@ func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 			a.avatar(c, pose, 40)
 			ui.Column(c.Key("says")).Gap(t.S1).Grow(1).Shrink(1).MinWidth(0).Padding(t.S1, 0, 0, 0).Children(func() {
 				if say != "" {
-					uiText(c.Key("say"), keepWords(autospace(say))).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.InkSoft)
+					uiText(c.Key("say"), keepClauses(autospace(say))).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.InkSoft)
 				}
 				for _, n := range needs {
-					uiText(c.Key("need:"+n.key), keepWords(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.55)).TextColor(t.NeedsYou.Ink)
+					uiText(c.Key("need:"+n.key), keepClauses(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.55)).TextColor(t.NeedsYou.Ink)
 				}
 			})
 		})
@@ -433,7 +433,7 @@ func (a *App) homePanel(c *ui.Context) {
 							for _, n := range needs {
 								n := n
 								ui.Row(c.Key("n:" + n.key)).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-									uiText(c.Key("t"), keepWords(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
+									uiText(c.Key("t"), keepClauses(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
 									a.needFix(c, n)
 								})
 								if n.dv != nil && a.devState().card.memAsk == n.dv.ID+":"+n.h.Harness {

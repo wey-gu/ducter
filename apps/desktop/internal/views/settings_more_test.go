@@ -24,7 +24,7 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		for _, want := range []string{L.T("key.settings.row"), L.T("handoff.title"), L.T("handoff.row"), L.T("records.title"), L.T("records.look"), L.T("records.hidden", "Codex")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -45,7 +45,7 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		if s, ok := lastSent[protocol.SettingsSet](*sent); !ok || s.Patch.LimitHandoff == nil || !*s.Patch.LimitHandoff {
 			t.Errorf("%s: hand-off sent %+v", lang, s)
 		}
-		if !tt.HasText(L.T("said.handoff.on")) {
+		if !hasText(tt, L.T("said.handoff.on")) {
 			t.Errorf("%s: no word after the hand-off", lang)
 		}
 		// Codex's conversations back in Past tasks.
@@ -56,19 +56,19 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		if v, ok := lastSent[protocol.OutsideHide](*sent); !ok || v.Agent != "codex" || v.Hidden {
 			t.Errorf("%s: show again sent %+v", lang, v)
 		}
-		if tt.HasText(L.T("records.hidden", "Codex")) {
+		if hasText(tt, L.T("records.hidden", "Codex")) {
 			t.Errorf("%s: Codex still listed as hidden", lang)
 		}
 		// D424: what it reads is one quiet tap away, not on the row.
 		detail := L.T("records.look.help", L.T("first.here"))
-		if tt.HasText(detail) {
+		if hasText(tt, detail) {
 			t.Errorf("%s: the records row still shows its paragraph", lang)
 		}
 		if err := tt.Click(spoken(L, L.T("records.look"), L.T("how.more"))); err != nil {
 			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
 		}
 		tt.Frame()
-		if !tt.HasText(detail) {
+		if !hasText(tt, detail) {
 			t.Fatalf("%s: 怎么做到的 opens nothing: %q", lang, tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("records.look"), L.T("how.less"))); err != nil {
@@ -86,7 +86,7 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if tt.HasText(L.T("key.paste.title")) {
+		if hasText(tt, L.T("key.paste.title")) {
 			t.Errorf("%s: the Settings card repeats the conversation's title", lang)
 		}
 		app.kp.key = "sk-0123456789abcdef0123456789abcdef"
@@ -101,7 +101,7 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		good := &protocol.Words{ZH: "好了，这把 DeepSeek 的密钥能用。", EN: "That DeepSeek key works."}
 		app.Receive(protocol.ServerFrame{T: "key_add_result", ClientID: k.ClientID, KeyResult: &protocol.KeyResult{OK: true, Provider: "deepseek", Harness: "pi", Say: good}})
 		tt.Frame()
-		if !tt.HasText(autospace(app.words(*good))) {
+		if !hasText(tt, autospace(app.words(*good))) {
 			t.Errorf("%s: no answer in Settings: %q", lang, tt.Texts())
 		}
 		if app.keyJustAdded() {

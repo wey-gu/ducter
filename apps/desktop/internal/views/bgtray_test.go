@@ -126,7 +126,7 @@ func TestD521Tray(t *testing.T) {
 			app, tt, sent := d518Task(t, lang, w, 6, 22)
 			L := app.L
 			for _, s := range []string{L.T("bg.head", 6), "S0: per-question eval ledger", L.T("bg.done", 22), "cargo bench --bench wal -- --save-baseline main"} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s %d: no %q in %q", lang, w, s, tt.Texts())
 				}
 			}
@@ -170,7 +170,7 @@ func TestD521Tray(t *testing.T) {
 			if fmt.Sprint(got) != "[a1]" {
 				t.Errorf("%s %d: stops sent %v", lang, w, got)
 			}
-			if !tt.HasText(L.T("bg.stopping")) {
+			if !hasText(tt, L.T("bg.stopping")) {
 				t.Errorf("%s %d: no %q after Stop", lang, w, L.T("bg.stopping"))
 			}
 			// The finished fold opens: each state in words, the failure's exit code.
@@ -179,7 +179,7 @@ func TestD521Tray(t *testing.T) {
 			}
 			tt.Frame()
 			for _, s := range []string{L.T("bg.st.exit", 2), L.T("bg.st.stopped"), L.T("bg.st.unknown")} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s %d: open, no %q", lang, w, s)
 				}
 			}
@@ -190,7 +190,7 @@ func TestD521Tray(t *testing.T) {
 			}
 			tt.ClickAt(hb.Bounds.X+hb.Bounds.W/2, hb.Bounds.Y+hb.Bounds.H/2)
 			tt.Frame()
-			if tt.HasText("S0: per-question eval ledger") || !tt.HasText(L.T("bg.head", 6)) || !app.Local.BgTrayShut() {
+			if hasText(tt, "S0: per-question eval ledger") || !hasText(tt, L.T("bg.head", 6)) || !app.Local.BgTrayShut() {
 				t.Errorf("%s %d: folded shows %q", lang, w, tt.Texts())
 			}
 			app.Local.SetBgTrayShut(false)
@@ -203,11 +203,11 @@ func TestD521Tray(t *testing.T) {
 func TestD521Quiet(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt, _ := d518Task(t, lang, 1400, 0, 0)
-		if tt.HasText(app.L.T("bg.head", 0)) || tt.HasText(app.L.T("bg.head.done", 0)) {
+		if hasText(tt, app.L.T("bg.head", 0)) || hasText(tt, app.L.T("bg.head.done", 0)) {
 			t.Errorf("%s: a tray with nothing", lang)
 		}
 		app, tt, _ = d518Task(t, lang, 1400, 0, 22)
-		if !tt.HasText(app.L.T("bg.head.done", 22)) || tt.HasText("make lint") {
+		if !hasText(tt, app.L.T("bg.head.done", 22)) || hasText(tt, "make lint") {
 			t.Errorf("%s: finished only: %q", lang, tt.Texts())
 		}
 	}

@@ -145,7 +145,7 @@ func TestConversationPagesBack(t *testing.T) {
 		t.Fatalf("asked before %d, want the oldest held %d", before, window[0].Seq)
 	}
 	tt.Frame()
-	if !tt.HasText(app.L.T("conv.older")) {
+	if !hasText(tt, app.L.T("conv.older")) {
 		t.Errorf("no quiet line while the page is on its way: %q", texts(tt))
 	}
 	for range 3 {
@@ -179,8 +179,8 @@ func TestConversationPagesBack(t *testing.T) {
 	}
 	olderShot(t, tt, "mac-zh-03-landed")
 	// Still near the top: the next page is asked at once, and the line says so only while one is on its way.
-	if tt.HasText(app.L.T("conv.older")) != app.S.LoadingOlder() {
-		t.Errorf("the quiet line (%v) doesn't follow the page on its way (%v)", tt.HasText(app.L.T("conv.older")), app.S.LoadingOlder())
+	if hasText(tt, app.L.T("conv.older")) != app.S.LoadingOlder() {
+		t.Errorf("the quiet line (%v) doesn't follow the page on its way (%v)", hasText(tt, app.L.T("conv.older")), app.S.LoadingOlder())
 	}
 	if len(app.S.Channel) <= 200*2/3 {
 		t.Errorf("the page didn't join: %d rows", len(app.S.Channel))
@@ -207,7 +207,7 @@ func TestConversationPagesBack(t *testing.T) {
 		tt.Wheel(500, 400, 0, -900)
 		tt.Frame()
 	}
-	if !tt.HasText("CI 又红了，看一下是哪个测试") {
+	if !hasText(tt, "CI 又红了，看一下是哪个测试") {
 		t.Errorf("the first message isn't reachable at the top: %q", texts(tt))
 	}
 	if n := len(app.S.Channel); n != 360 {

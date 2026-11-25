@@ -152,10 +152,20 @@ func uiText(c *ui.Context, s string) ui.Element {
 		onDrawn(s)
 	}
 	e := ui.Text(c, s)
-	if strings.ContainsRune(s, wordJoiner) {
-		e.Label(unjoin(s))
+	if strings.ContainsRune(s, wordJoiner) || strings.ContainsRune(s, noBreakSpace) {
+		e.Label(asSaid(s))
 	}
 	return e
+}
+
+// noBreakSpace is keepTail's join of a Latin sentence's last two words.
+const noBreakSpace = ' '
+
+// asSaid is a drawn text as it is said and read (D564): without the joiners line breaking put in,
+// and keepTail's no-break space a plain one. uiText names its text so, and the views tests find
+// a text so (hasText, findText), whatever a shared row kept whole.
+func asSaid(s string) string {
+	return strings.NewReplacer(string(wordJoiner), "", string(noBreakSpace), " ").Replace(s)
 }
 
 // onDrawn, when set (tests), hears every text drawn (D519: no template is
@@ -282,13 +292,23 @@ func keepWords(s string) string {
 // clausePunct ends a Chinese clause: what keepClauses keeps a clause's last word against.
 const clausePunct = "，。；：？！、"
 
-// keepClauses is keepWords for a sentence (D556): short Chinese runs stay whole as there,
-// a clause of up to six before its punctuation (or the end) whole (D561: 「急的随时说」), and in a longer run the last four characters before a clause's punctuation (or the end)
-// stay together, as keepTail's four (D493), so a clause never ends its line mid-word: never
-// 「…后天到」 with 「期，」 next, 「…才用得」 with 「上。」. A long run still wraps anywhere
-// else. A sentence ending in Latin keeps its last two words together (never "running." alone).
+// keepAllRun is the longest run of Chinese characters keepClauses joins whole (D564): what a
+// row's narrowest words column (rowWordsMin, 160) holds at a row's title size (MD, 15). A run
+// joined whole then always fits a line of its own, so Core Text never has to cut it at a place
+// of its own choosing (it does, at a cluster, when a joined run is wider than its line).
+const keepAllRun = 10
+
+// keepClauses is keepWords for a sentence (D556, D561, D564), the Mac's stand-in for the web's
+// word-break: keep-all (MyGo's text keeps words whole only in Korean). A run of Chinese characters
+// up to keepAllRun long (a clause or a phrase: what lies between punctuation, a space, Latin or a
+// quote) is joined whole with word joiners, so a line breaks only there (「急的随时说」, 「后天到期，」);
+// a longer run keeps its last four before a clause's punctuation (or the end) together, as
+// keepTail's four (D493), and wraps anywhere else: never 「…才用得」 with 「上。」. A short Latin
+// token keeps its hyphens and slashes (keepTokens: GPT-6.2-Sol), and a Latin sentence its last
+// two words (never "running." alone). Joiners already in s are taken out first, so a
+// shared row may be handed a text its caller already kept.
 func keepClauses(s string) string {
-	rs := []rune(s)
+	rs := []rune(keepTokens(unjoin(s)))
 	var b strings.Builder
 	for i := 0; i < len(rs); {
 		j := i
@@ -299,7 +319,7 @@ func keepClauses(s string) string {
 			end := j == len(rs) || strings.ContainsRune(clausePunct, rs[j])
 			for k := i; k < j; k++ {
 				b.WriteRune(rs[k])
-				if k < j-1 && (j-i <= 4 || end && (j-i <= 6 || k >= j-4)) {
+				if k < j-1 && (j-i <= keepAllRun || end && k >= j-4) {
 					b.WriteRune(wordJoiner)
 				}
 			}
@@ -309,7 +329,9 @@ func keepClauses(s string) string {
 		b.WriteRune(rs[i])
 		i++
 	}
-	if n := len(rs); n > 0 && !isHan(rs[n-1]) && (n < 2 || !isHan(rs[n-2])) {
+	// D564: only a sentence (it ends in its stop) keeps its last two Latin words: a row's title
+	// has none, and joined it broke as "When I / notice something".
+	if n := len(rs); n > 1 && !isHan(rs[n-2]) && strings.ContainsRune(".!?", rs[n-1]) {
 		return keepTail(b.String())
 	}
 	return b.String()
@@ -328,6 +350,9 @@ func keepTail(s string) string {
 	}
 	if !isHan(rs[n-2]) {
 		for i := n - 1; i > n-16 && i > 0; i-- {
+			if rs[i] == ' ' {
+				return s // already kept
+			}
 			if rs[i] == ' ' {
 				return string(rs[:i]) + " " + string(rs[i+1:])
 			}

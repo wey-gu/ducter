@@ -57,7 +57,7 @@ func TestAddFolderSheet(t *testing.T) {
 			tt.Frame()
 			// The project column says where each project lives.
 			for _, s := range []string{"HawDB", "ducter", "Hetzner Server", "MacBook Pro"} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: the column: no %q: %q", lang, s, tt.Texts())
 				}
 			}
@@ -86,7 +86,7 @@ func TestAddFolderSheet(t *testing.T) {
 			app.drainNewTask()
 			tt.Frame()
 			for _, s := range []string{L.T("addfolder.title"), L.T("addfolder.computer"), "Hetzner Server", "Mac mini", "MacBook Pro", L.T("addfolder.recent"), "github.com/acme/hawdb", "~", "code"} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: the sheet: no %q: %q", lang, s, tt.Texts())
 				}
 			}
@@ -107,7 +107,7 @@ func TestAddFolderSheet(t *testing.T) {
 			}})
 			app.drainNewTask()
 			tt.Frame()
-			if tt.HasText("site") || !tt.HasText("hawdb") || !tt.HasText("hawdb-bench") {
+			if hasText(tt, "site") || !hasText(tt, "hawdb") || !hasText(tt, "hawdb-bench") {
 				t.Errorf("%s: narrowed to ha: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d455-filter"+sz)
@@ -120,7 +120,7 @@ func TestAddFolderSheet(t *testing.T) {
 				Folders: []protocol.BrowseFolder{{Name: "cmd", Path: "/root/code/hawdb/cmd"}, {Name: "pkg", Path: "/root/code/hawdb/pkg"}}})
 			app.drainNewTask()
 			tt.Frame()
-			if !tt.HasText(L.T("addfolder.add.on", "hawdb", "Hetzner Server")) {
+			if !hasText(tt, L.T("addfolder.add.on", "hawdb", "Hetzner Server")) {
 				t.Errorf("%s: the add button names it: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d455-repo"+sz)
@@ -166,7 +166,7 @@ func TestAddFolderSheet(t *testing.T) {
 			if app.nt.newf == nil || app.nt.newf.device != "local" {
 				t.Fatalf("%s: new folder on the server: %+v", lang, app.nt.newf)
 			}
-			if !tt.HasText(L.T("newtask.new.where", "/root/ducter/projects")) {
+			if !hasText(tt, L.T("newtask.new.where", "/root/ducter/projects")) {
 				t.Errorf("%s: says where it goes: %q", lang, tt.Texts())
 			}
 			click(t, tt, L.T("addfolder.cancel"))

@@ -125,11 +125,11 @@ func TestServerSignInFlow(t *testing.T) {
 	until := helNow.Add(15 * time.Minute).UnixMilli()
 	app, tt, sent := helApp(t, i18n.ZH, false, protocol.DeviceHarness{Login: &protocol.AgentLoginState{State: "waiting", URL: claudeURL, Paste: true, Until: until}})
 	for _, s := range []string{"打开链接，用 Claude 账号登录：", "把页面给你的码粘贴到这里：", "等你在页面上登录…", "还剩 15 分钟", "确认登录", "打开链接", "不登录了", "正在登录"} {
-		if !tt.HasText(s) {
+		if !hasText(tt, s) {
 			t.Errorf("waiting: no %q", s)
 		}
 	}
-	if tt.HasText("登录好了") {
+	if hasText(tt, "登录好了") {
 		t.Fatal("waiting says 登录好了")
 	}
 	app.ag.code = map[string]string{coinKey("local", "claude-code"): "  abc#def  "}
@@ -157,21 +157,21 @@ func TestServerSignInFlow(t *testing.T) {
 		tt.Frame()
 	}
 	set(&protocol.AgentLoginState{State: "checking", URL: claudeURL, Paste: true, Until: until}, false)
-	if !tt.HasText("正在和 Claude Code 确认…") {
+	if !hasText(tt, "正在和 Claude Code 确认…") {
 		t.Error("checking: no live line")
 	}
 	set(&protocol.AgentLoginState{State: "waiting", URL: claudeURL, Paste: true, Until: until, Reason: "wrong_code"}, false)
-	if !tt.HasText("那个码不对，或者过期了。") {
+	if !hasText(tt, "那个码不对，或者过期了。") {
 		t.Error("wrong code: not said")
 	}
 	for reason, want := range map[string]string{"not_seen": "Claude Code 说登录完了，但它自己查还是未登录。", "no_answer": "粘贴的码一分半钟没有回应，停了。"} {
 		set(&protocol.AgentLoginState{State: "failed", Reason: reason}, false)
-		if !tt.HasText(want) || !tt.HasText("再试一次") {
+		if !hasText(tt, want) || !hasText(tt, "再试一次") {
 			t.Errorf("%s: not said with 再试一次", reason)
 		}
 	}
 	set(&protocol.AgentLoginState{State: "expired"}, false)
-	if !tt.HasText("登录等太久，停了。") || !tt.HasText("再试一次") {
+	if !hasText(tt, "登录等太久，停了。") || !hasText(tt, "再试一次") {
 		t.Error("expired: not said with 再试一次")
 	}
 	// Done: the agent's own check said signed in. The tile reads signed in at once.
@@ -181,7 +181,7 @@ func TestServerSignInFlow(t *testing.T) {
 			t.Fatalf("done: the tile still says 未登录 (%q)", ai.Name)
 		}
 	}
-	if tt.HasText("未登录") {
+	if hasText(tt, "未登录") {
 		t.Error("done: 未登录 still shows")
 	}
 }

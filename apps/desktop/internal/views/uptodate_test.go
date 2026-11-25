@@ -45,7 +45,7 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		for _, part := range strings.Split(tc.line, "\n") {
-			if !tt.HasText(part) {
+			if !hasText(tt, part) {
 				t.Errorf("%s: no %q in %q", tc.lang, part, tt.Texts())
 			}
 		}

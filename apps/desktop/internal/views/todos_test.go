@@ -166,11 +166,11 @@ func TestTodosPane(t *testing.T) {
 	todoFrames(tt, 4)
 	for _, want := range []string{"待办来源", "GitHub", "标给 lin-dev 的 issue 和 PR", "Life", "整个库", "3 个没做完", "1 个在做", "你接下过两次以后定的",
 		"新的来了", "做完以后", "勾掉", "还能加上", "Work notes", "加上一个 Obsidian 库…", "Jira", "即将推出"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("3 个没做完 · 1 个在做") {
+	if hasText(tt, "3 个没做完 · 1 个在做") {
 		t.Error("the counts are joined with a dot (D291)")
 	}
 	// GitHub is added: it isn't offered again; the vault already added isn't either.
@@ -191,7 +191,7 @@ func TestTodosPane(t *testing.T) {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	todoFrames(tt, 2)
-	if !tt.HasText("移除 GitHub？已经接下的事还在。") {
+	if !hasText(tt, "移除 GitHub？已经接下的事还在。") {
 		t.Fatalf("Remove doesn't ask in place: %q", tt.Texts())
 	}
 	if _, ok := lastSent[protocol.SourceRemoveReq](*sent); ok {
@@ -213,7 +213,7 @@ func TestTodosPane(t *testing.T) {
 	// A refusal says why, with the home's name.
 	app.Receive(protocol.ServerFrame{T: "source_result", Sources: &protocol.SourcesFrame{Op: "add", Reason: "missing"}})
 	todoFrames(tt, 2)
-	if !tt.HasText("这个文件夹不在 Lin's MacBook Pro 上。") {
+	if !hasText(tt, "这个文件夹不在 Lin's MacBook Pro 上。") {
 		t.Errorf("the refusal isn't said: %q", tt.Texts())
 	}
 }
@@ -229,13 +229,13 @@ func TestTodosProblemsAndEmpty(t *testing.T) {
 	app.openTab(TabTodos)
 	todoFrames(tt, 4)
 	for _, want := range []string{"Lin's MacBook Pro isn't signed in to GitHub yet.", "Reconnect", "This vault's folder isn't on Lin's MacBook Pro.", "Open to-dos in Tasks"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
 	app.Receive(protocol.ServerFrame{T: "sources", Sources: &protocol.SourcesFrame{View: &protocol.SourcesView{}}})
 	todoFrames(tt, 2)
-	if !tt.HasText(app.L.T("todos.empty")) {
+	if !hasText(tt, app.L.T("todos.empty")) {
 		t.Errorf("nothing added doesn't say so: %q", tt.Texts())
 	}
 }
@@ -254,11 +254,11 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 		app.openTab(TabTodos)
 		todoFrames(tt, 4)
 		for _, want := range []string{w("正在看…", "Looking…"), w("没能读到 Obsidian。", "Couldn't read Obsidian."), "gh: Server Error (HTTP 502)", w("再试一次", "Try again")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(w("0 个没做完", "0 open")) {
+		if hasText(tt, w("0 个没做完", "0 open")) {
 			t.Errorf("%s: a count no look read: %q", lang, tt.Texts())
 		}
 		*sent = nil
@@ -269,7 +269,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 			t.Fatal("Try again doesn't ask the home to look")
 		}
 		todoFrames(tt, 2)
-		if tt.HasText(w("再试一次", "Try again")) {
+		if hasText(tt, w("再试一次", "Try again")) {
 			t.Error("Try again stays while the look runs")
 		}
 		// Read and empty: then 0 is true.
@@ -278,7 +278,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 			{ID: "src_gh", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at},
 		}}}})
 		todoFrames(tt, 2)
-		if !tt.HasText(w("0 个没做完", "0 open")) || tt.HasText(w("正在看…", "Looking…")) {
+		if !hasText(tt, w("0 个没做完", "0 open")) || hasText(tt, w("正在看…", "Looking…")) {
 			t.Errorf("%s: a look that read nothing: %q", lang, tt.Texts())
 		}
 		// The true total (not the page of 50), PRs waiting for review apart; a lower bound says so.
@@ -288,7 +288,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 		}}}})
 		todoFrames(tt, 2)
 		for _, want := range []string{w("557 个没做完", "557 open"), w("4 个 PR 等你 review", "4 PRs waiting for your review"), w("至少 50 个没做完", "At least 50 open")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -300,10 +300,10 @@ func TestTodoChipOnTask(t *testing.T) {
 	app, _, tt := todoApp(t, i18n.ZH, 1280, 900)
 	app.OpenTask("t_dark")
 	todoFrames(tt, 4)
-	if !tt.HasText("#12") || !tt.HasText("已留言") {
+	if !hasText(tt, "#12") || !hasText(tt, "已留言") {
 		t.Fatalf("no chip and state word: %q", tt.Texts())
 	}
-	if tt.HasText("#12 已留言") || tt.HasText("#12 · 已留言") {
+	if hasText(tt, "#12 已留言") || hasText(tt, "#12 · 已留言") {
 		t.Error("the chip and its state are one element (D291)")
 	}
 	if got := todoTip(app.S.Task("t_dark").Card.Source.SourceItemRef); !strings.HasPrefix(got, "acme/web#12\n") {
@@ -324,7 +324,7 @@ func TestTodoLens(t *testing.T) {
 	app.Route = RouteOnHand
 	todoFrames(tt, 4)
 	for _, want := range []string{"来自", "GitHub", "Life", "#12", "#9"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -374,13 +374,13 @@ func TestTodoPick(t *testing.T) {
 		t.Fatalf("the pick asks %+v", req)
 	}
 	todoFrames(tt, 1)
-	if !tt.HasText("正在读…") {
+	if !hasText(tt, "正在读…") {
 		t.Errorf("no loading line: %q", tt.Texts())
 	}
 	app.Receive(todoItems(i18n.ZH, req.ClientID))
 	todoFrames(tt, 2)
 	for _, want := range []string{"导出 CSV 时日期列是空的", "在做", "2026-11-28 到期"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -388,7 +388,7 @@ func TestTodoPick(t *testing.T) {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	todoFrames(tt, 2)
-	if app.nt.words != "导出 CSV 时日期列是空的" || app.nt.item == nil || !tt.HasText("不用这个") {
+	if app.nt.words != "导出 CSV 时日期列是空的" || app.nt.item == nil || !hasText(tt, "不用这个") {
 		t.Fatalf("the pick: words %q item %+v", app.nt.words, app.nt.item)
 	}
 	app.StartNewTask()
@@ -410,7 +410,7 @@ func TestTodoWriteCard(t *testing.T) {
 	app.OpenTask("t_safari")
 	todoFrames(tt, 4)
 	for _, want := range []string{"It will post", todoComment(i18n.EN), "Then close it", "Comment and close", "Not now"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}

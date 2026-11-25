@@ -198,7 +198,7 @@ func linkTo(t *testing.T, home *proxiedHome, lang i18n.Lang) *linked {
 	return l
 }
 
-func (l *linked) onConnectCard() bool { return l.tt.HasText(l.app.L.T("connect.title")) }
+func (l *linked) onConnectCard() bool { return hasText(l.tt, l.app.L.T("connect.title")) }
 
 // notGone fails when the app has left its pairing in any way.
 func (l *linked) notGone(when string) {
@@ -225,7 +225,7 @@ func TestReconnectHomeRestart(t *testing.T) {
 	home.drop()
 	l.until("the loss", func() bool { return l.app.link() == linkBack && home.dialCount() >= 3 })
 	l.notGone("while it restarts")
-	if !l.tt.HasText("正在重新连上 Ducter…") {
+	if !hasText(l.tt, "正在重新连上 Ducter…") {
 		t.Errorf("no quiet line: %q", l.tt.Texts())
 	}
 	if !errors.Is(l.errs[len(l.errs)-1], client.ErrRefused) {
@@ -303,7 +303,7 @@ func TestReconnectLongOutage(t *testing.T) {
 	l.until("said plainly", func() bool { return l.app.link() == linkLost })
 	l.tt.Frame()
 	for _, want := range []string{"连不上 Ducter，正在重试", "这台 Mac 上的 Ducter 没有回应", "立即连接"} {
-		if !l.tt.HasText(want) {
+		if !hasText(l.tt, want) {
 			t.Errorf("lacks %q: %q", want, l.tt.Texts())
 		}
 	}
@@ -311,7 +311,7 @@ func TestReconnectLongOutage(t *testing.T) {
 	home.set("up", "live")
 	l.click("立即连接")
 	l.backUp("tried now")
-	if l.tt.HasText("这台 Mac 上的 Ducter 没有回应") {
+	if hasText(l.tt, "这台 Mac 上的 Ducter 没有回应") {
 		t.Error("the notice outlived the outage")
 	}
 }
@@ -341,10 +341,10 @@ func TestReconnectExplicitRevoke(t *testing.T) {
 	home.drop()
 	l.until("gone", func() bool { return l.app.link() == linkGone })
 	l.tt.Frame()
-	if !l.onConnectCard() || !l.tt.HasText("Your Ducter on "+hostOf(home.wsURL())+" disconnected this Mac. Connect it again to come back.") {
+	if !l.onConnectCard() || !hasText(l.tt, "Your Ducter on "+hostOf(home.wsURL())+" disconnected this Mac. Connect it again to come back.") {
 		t.Fatalf("no revoke card: %q", l.tt.Texts())
 	}
-	if l.tt.HasText("Back") {
+	if hasText(l.tt, "Back") {
 		t.Error("a revoked Mac has nowhere to go back to")
 	}
 	if got, want := l.app.conn.address, remote.BaseOf(home.wsURL()); got != want {
@@ -406,10 +406,10 @@ func TestLinkViewStates(t *testing.T) {
 		if got := a.link(); got != s.want {
 			t.Errorf("%s: state %d, want %d", s.name, got, s.want)
 		}
-		if card := tt.HasText("连接到你的 Ducter"); card != (s.want == linkGone) {
+		if card := hasText(tt, "连接到你的 Ducter"); card != (s.want == linkGone) {
 			t.Errorf("%s: connect card %v", s.name, card)
 		}
-		if s.text != "" && !tt.HasText(s.text) {
+		if s.text != "" && !hasText(tt, s.text) {
 			t.Errorf("%s: lacks %q: %q", s.name, s.text, tt.Texts())
 		}
 		if s.want == linkGone && a.conn.address != "https://hel.example.com" {

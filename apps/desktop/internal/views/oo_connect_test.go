@@ -36,11 +36,11 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"你在 oo 里的账号", "Gmail", "wei@work.example", "wei@home.example", "Slack", "用这些账号", "你的邮件和登录凭据会经过 OOMOL 的服务器。", "用地址和密钥添加"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q", want)
 		}
 	}
-	if tt.HasText("添加") && !tt.HasText("用地址和密钥添加") {
+	if hasText(tt, "添加") && !hasText(tt, "用地址和密钥添加") {
 		t.Errorf("the address-and-key form should step back behind a quiet link")
 	}
 	n := len(*sent)
@@ -65,11 +65,11 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	tt.Frame()
 	// D166: a character sheet: the name, its tiles, where mail passes, and 加一个 stepped back.
 	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "你的邮件和消息会经过 oo 和 OOMOL 的服务器。", "添加"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("after adding: no %q", want)
 		}
 	}
-	if tt.HasText("用这些账号") {
+	if hasText(tt, "用这些账号") {
 		t.Errorf("the offer stays after adding")
 	}
 }
@@ -82,12 +82,12 @@ func TestOoOfferLoadingAndEmpty(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("Looking at what's in oo…") || tt.HasText("Use these accounts") {
+	if !hasText(tt, "Looking at what's in oo…") || hasText(tt, "Use these accounts") {
 		t.Errorf("before oo answers: a loading line and no button")
 	}
 	app.Receive(ooFrame(protocol.OoDetect{Installed: true, Account: true, Apps: []protocol.OoApp{}}))
 	tt.Frame()
-	if !tt.HasText("No accounts in oo yet. Add Gmail and the rest in oo, then come back and tap once.") {
+	if !hasText(tt, "No accounts in oo yet. Add Gmail and the rest in oo, then come back and tap once.") {
 		t.Errorf("an oo with no accounts says so")
 	}
 }
@@ -162,12 +162,12 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	if len(*sent) != n {
 		t.Fatalf("the first tap sends nothing, sent %d", len(*sent)-n)
 	}
-	if !tt.HasText("停用以后，我就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") || !tt.HasText("取消") {
+	if !hasText(tt, "停用以后，我就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") || !hasText(tt, "取消") {
 		t.Fatalf("the card asks first; texts: %v", tt.Texts())
 	}
 	tt.Click("取消，oo 里的账号")
 	tt.Frame()
-	if tt.HasText("停用以后，它就看不到这些账号") || len(*sent) != n {
+	if hasText(tt, "停用以后，它就看不到这些账号") || len(*sent) != n {
 		t.Fatalf("Keep it closes the ask and sends nothing")
 	}
 	tt.Click(stop)
@@ -183,7 +183,7 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	// The added line says "Accounts in oo", never the record name "oo".
 	app.Receive(protocol.ServerFrame{T: "connection_result", OK: true, ID: "conn_1", Readable: ooApps})
 	tt.Frame()
-	if !tt.HasText("加上了 oo 里的账号，现在能看：Gmail、Slack、Discord bot") {
+	if !hasText(tt, "加上了 oo 里的账号，现在能看：Gmail、Slack、Discord bot") {
 		t.Errorf("the added line names oo as people see it; texts: %v", tt.Texts())
 	}
 }

@@ -26,7 +26,7 @@ func TestPresenceWhileWaiting(t *testing.T) {
 	tt.Frame()
 	app.SendMessage("帮我看下 #1592 的 CI")
 	tt.Frame()
-	if !tt.HasText("在想…") {
+	if !hasText(tt, "在想…") {
 		t.Fatalf("no 在想… right after sending: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "帮我看下 #1592 的 CI", ClientID: app.pending[0].clientID})}})
@@ -36,16 +36,16 @@ func TestPresenceWhileWaiting(t *testing.T) {
 	// D425: the line holds for its dwell, then the step replaces it.
 	tt.Advance(aliveDwell)
 	tt.Frame()
-	if !tt.HasText("在翻之前聊过的…") || tt.HasText("在想…") {
+	if !hasText(tt, "在翻之前聊过的…") || hasText(tt, "在想…") {
 		t.Fatalf("the step didn't replace the line: %q", tt.Texts())
 	}
-	if tt.HasText("在想…") || tt.HasText("log_search") {
+	if hasText(tt, "在想…") || hasText(tt, "log_search") {
 		t.Errorf("a tool name or a stale line shows: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(2, protocol.OriginPartner, protocol.KindAck, protocol.Ack{JobID: "j1", Text: "好，我去查。", ReplyTo: 1})}})
 	app.Receive(protocol.ServerFrame{T: "activity"})
 	tt.Frame()
-	if tt.HasText("在翻之前聊过的…") || !tt.HasText("好，我去查。") {
+	if hasText(tt, "在翻之前聊过的…") || !hasText(tt, "好，我去查。") {
 		t.Errorf("the line stays after the reply: %q", tt.Texts())
 	}
 }
@@ -62,13 +62,13 @@ func TestPresenceWhileWebLook(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "web", Since: now, StepSince: now}})
 	tt.Frame()
-	if !tt.HasText("在网上查…") || !tt.HasText("我看一下明天上海的天气。") {
+	if !hasText(tt, "在网上查…") || !hasText(tt, "我看一下明天上海的天气。") {
 		t.Fatalf("no 在网上查… under the line that named the look: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(4, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "明天上海有小雨（中国天气网）。", ReplyTo: 1})}})
 	app.Receive(protocol.ServerFrame{T: "activity"})
 	tt.Frame()
-	if tt.HasText("在网上查…") || !tt.HasText("明天上海有小雨（中国天气网）。") {
+	if hasText(tt, "在网上查…") || !hasText(tt, "明天上海有小雨（中国天气网）。") {
 		t.Errorf("the line stays after the answer: %q", tt.Texts())
 	}
 }
@@ -128,12 +128,12 @@ func TestPresenceEndsWithSilentTurn(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "hi"})}})
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("Thinking…") {
+	if !hasText(tt, "Thinking…") {
 		t.Fatalf("no Thinking… for an unanswered message: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "activity"})
 	tt.Frame()
-	if tt.HasText("Thinking…") {
+	if hasText(tt, "Thinking…") {
 		t.Errorf("Thinking… stays after the turn ended: %q", tt.Texts())
 	}
 }
@@ -160,12 +160,12 @@ func TestLivingQuiet(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"Rebase it?", "Rebase", "1 more waiting on you", "Go on all 2 defaults", "Bump tokio to 1.41 didn't work: 4 places don't build."} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
 	for _, not := range []string{"Change the 3 calls now?", "Review this week's PRs · Read 2", "2 need you"} {
-		if tt.HasText(not) {
+		if hasText(tt, not) {
 			t.Errorf("%q shows by default: %q", not, tt.Texts())
 		}
 	}
@@ -173,14 +173,14 @@ func TestLivingQuiet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("Change the 3 calls now?") || !tt.HasText("Change them") {
+	if !hasText(tt, "Change the 3 calls now?") || !hasText(tt, "Change them") {
 		t.Errorf("the gathered ask doesn't open: %q", tt.Texts())
 	}
 	// Details shown by default (Settings) brings back the status lines.
 	app.Local.SetDetailsShown(true)
 	defer app.Local.SetDetailsShown(false)
 	tt.Frame()
-	if !tt.HasText("Review this week's PRs") || !tt.HasText("Read 2") {
+	if !hasText(tt, "Review this week's PRs") || !hasText(tt, "Read 2") {
 		t.Errorf("Details shown doesn't list work under way: %q", tt.Texts())
 	}
 }
@@ -201,7 +201,7 @@ func TestLivingWithNothingToShowDrawsNothing(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText(app.L.T("living.away")) {
+	if hasText(tt, app.L.T("living.away")) {
 		t.Fatalf("a bare divider with nothing under it: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
@@ -211,7 +211,7 @@ func TestLivingWithNothingToShowDrawsNothing(t *testing.T) {
 	}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("Bump tokio to 1.41 didn't work: 4 places don't build.") {
+	if !hasText(tt, "Bump tokio to 1.41 didn't work: 4 places don't build.") {
 		t.Fatalf("a failure isn't said: %q", tt.Texts())
 	}
 }

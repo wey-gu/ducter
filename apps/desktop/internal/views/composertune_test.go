@@ -47,11 +47,11 @@ func TestComposerTuneChips(t *testing.T) {
 			t.Fatalf("%s: no one chip under the composer: %q", lang, tt.Texts())
 		}
 		for _, s := range []string{"GPT-6.1 Terra", L.T("effort.low")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the chip: %q", lang, s, tt.Texts())
 			}
 		}
-		if tt.HasText("GPT-6.2-Sol") {
+		if hasText(tt, "GPT-6.2-Sol") {
 			t.Fatalf("%s: the card stays closed until asked", lang)
 		}
 		composerTuneShot(t, tt, "mac-chip-"+string(lang))
@@ -66,7 +66,7 @@ func TestComposerTuneChips(t *testing.T) {
 			t.Fatalf("%s: the slider reads %q, want %q", lang, sl.Value, want)
 		}
 		for _, s := range []string{L.T("effort.ultra"), L.T("newtask.effort.default")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the card: %q", lang, s, tt.Texts())
 			}
 		}
@@ -89,7 +89,7 @@ func TestComposerTuneChips(t *testing.T) {
 		if !ok || sw.TaskID != "t_asc" || sw.Harness != "codex" || sw.Model != "gpt-6.1-terra" || sw.Effort != "high" {
 			t.Fatalf("%s: the effort in place: %+v (%v)", lang, sw, ok)
 		}
-		if !tt.HasText(L.T("tune.next.effort", L.T("effort.high"))) {
+		if !hasText(tt, L.T("tune.next.effort", L.T("effort.high"))) {
 			t.Fatalf("%s: no line after the effort: %q", lang, tt.Texts())
 		}
 		composerTuneShot(t, tt, "mac-moved-"+string(lang))
@@ -106,7 +106,7 @@ func TestComposerTuneChips(t *testing.T) {
 		// The model line turns the card to the live list; a pick switches the model.
 		click(t, tt, spoken(L, L.T("tune.change.model"), "GPT-6.1 Terra"))
 		for _, s := range []string{"GPT-6.2-Sol", "GPT-6.2-Astra", "GPT-5.6-Sol"} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the model list: %q", lang, s, tt.Texts())
 			}
 		}
@@ -117,19 +117,19 @@ func TestComposerTuneChips(t *testing.T) {
 			t.Fatalf("%s: the model in place: %+v", lang, sw)
 		}
 		said := L.T("tune.next.model", "GPT-6.2-Sol")
-		if !tt.HasText(said) {
+		if !hasText(tt, said) {
 			t.Fatalf("%s: no %q after choosing: %q", lang, said, tt.Texts())
 		}
 		// The home's answer: no "Continued on" with no one named.
 		app.Receive(protocol.ServerFrame{T: "action_result", TaskID: "t_asc", Action: "switch", OK: true})
 		tt.Frame()
-		if done := map[i18n.Lang]string{i18n.ZH: "接着做了", i18n.EN: "Continued on"}[lang]; tt.HasText(done) {
+		if done := map[i18n.Lang]string{i18n.ZH: "接着做了", i18n.EN: "Continued on"}[lang]; hasText(tt, done) {
 			t.Fatalf("%s: %q after an in-place choice: %q", lang, done, tt.Texts())
 		}
 		tt.Advance(tuneSaidFor + time.Second)
 		tt.Frame()
 		tt.Frame()
-		if tt.HasText(said) {
+		if hasText(tt, said) {
 			t.Fatalf("%s: the line is said once, then goes", lang)
 		}
 
@@ -143,7 +143,7 @@ func TestComposerTuneChips(t *testing.T) {
 		if _, ok := tt.AccessByRole(ui.RoleSlider, L.T("newtask.effort")); ok {
 			t.Fatalf("%s: a slider for a model without levels", lang)
 		}
-		if !tt.HasText("GPT-6.2-Astra") {
+		if !hasText(tt, "GPT-6.2-Astra") {
 			t.Fatalf("%s: no model list for a model without levels: %q", lang, tt.Texts())
 		}
 		tt.Key(0, ui.KeyEscape)

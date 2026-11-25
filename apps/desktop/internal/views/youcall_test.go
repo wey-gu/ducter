@@ -58,7 +58,7 @@ func TestOwnPhoneServerHome(t *testing.T) {
 			i18n.EN: {"You call: I write what to say on a call sheet first.", "Coming soon"},
 		}[lang]
 		for _, w := range want {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Errorf("%s: lacks %q: %q", lang, w, tt.Texts())
 			}
 		}
@@ -81,12 +81,12 @@ func TestOwnPhoneInstallAndLook(t *testing.T) {
 	app.own.opened = true // D337: 设置 / Set up pressed
 	tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("MacBook 上还没看到手机") || !tt.HasText("20:14") {
+	if !hasText(tt, "MacBook 上还没看到手机") || !hasText(tt, "20:14") {
 		t.Fatalf("the look's line: %q", tt.Texts())
 	}
 	v.Looking = true
 	tt.Frame()
-	if !tt.HasText("正在找…") || tt.HasText("再找一次") {
+	if !hasText(tt, "正在找…") || hasText(tt, "再找一次") {
 		t.Fatalf("looking: %q", tt.Texts())
 	}
 }
@@ -102,7 +102,7 @@ func TestYouCallSheetDialsOnPhone(t *testing.T) {
 	tt.Frame()
 	// In the conversation the partner has just said why (its one line); the sheet and the dial follow.
 	for _, w := range []string{"你好，我想问一下小保养大概要多久，需要预约吗？", "在 Pixel Fold 上拨打"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the sheet lacks %q: %q", w, tt.Texts())
 		}
 	}
@@ -113,12 +113,12 @@ func TestYouCallSheetDialsOnPhone(t *testing.T) {
 		t.Fatalf("Call on Pixel Fold sent %#v", (*sent)[len(*sent)-1])
 	}
 	tt.Frame()
-	if !tt.HasText("正在让 Pixel Fold 打出去…") {
+	if !hasText(tt, "正在让 Pixel Fold 打出去…") {
 		t.Errorf("asking: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "handset_dial_result", CallID: "call_y", OK: true, DialPhone: "Pixel Fold · Ducter", How: "rang"})
 	tt.Frame()
-	if !tt.HasText("Pixel Fold 在打了。通话单也在它的通知里，通话时下拉就能看。") {
+	if !hasText(tt, "Pixel Fold 在打了。通话单也在它的通知里，通话时下拉就能看。") {
 		t.Errorf("rang: %q", tt.Texts())
 	}
 	if f, err := protocol.DecodeServerFrame([]byte(`{"t":"handset_dial_result","callId":"c","ok":false,"reason":"timeout","phone":"Pixel Fold · Ducter"}`)); err != nil || f.Reason != "timeout" || f.DialPhone != "Pixel Fold · Ducter" {

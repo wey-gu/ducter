@@ -87,11 +87,11 @@ func TestD472NoFolderSaysWhyAndTheRealFix(t *testing.T) {
 			t.Fatalf("%s: the reason isn't on the page and in its step (%q): %q", lang, want, all)
 		}
 		for _, label := range []string{L.T("cant.clone_to", "Hetzner Server"), L.T("cant.pick", "Hetzner Server")} {
-			if !tt.HasText(label) {
+			if !hasText(tt, label) {
 				t.Errorf("%s: no %q: %q", lang, label, all)
 			}
 		}
-		if tt.HasText(L.T("task.action.retry")) || tt.HasText(L.T("task.action.tell")) || strings.Contains(all, L.T("note.error_start")+"\n") {
+		if hasText(tt, L.T("task.action.retry")) || hasText(tt, L.T("task.action.tell")) || strings.Contains(all, L.T("note.error_start")+"\n") {
 			t.Errorf("%s: the generic failure is still shown: %q", lang, all)
 		}
 		d472Shot(t, app, fmt.Sprintf("after-mac-no-folder-%s", lang))
@@ -99,7 +99,7 @@ func TestD472NoFolderSaysWhyAndTheRealFix(t *testing.T) {
 		if !app.addf.open || app.addf.device != "local" || app.addf.forTask != "smx2jjb3" {
 			t.Fatalf("%s: D455's sheet opens on Hetzner Server for this task: %+v", lang, app.addf)
 		}
-		if !tt.HasText(L.T("cant.pick.title")) {
+		if !hasText(tt, L.T("cant.pick.title")) {
 			t.Errorf("%s: the sheet says what it is for: %q", lang, texts(tt))
 		}
 		app.afPlaced(protocol.PlaceChoice{Name: "nowledge-mem", Place: protocol.Place{Kind: "repo", Device: "local", RepoPath: "/root/code/nowledge-mem"}})
@@ -124,10 +124,10 @@ func TestD472OtherAndSignedOut(t *testing.T) {
 		k := protocol.CantStart{Why: "other", Computer: "Macbook Pro M3", What: "Antigravity", Device: "dev_mac", Harness: "antigravity", Detail: "git worktree add failed: fatal: invalid reference: release/0.9", More: "git worktree add failed: fatal: invalid reference: release/0.9\nhint: the branch is on hel only"}
 		app, sent, tt := helCant(t, lang, k)
 		L := app.L
-		if !tt.HasText(app.cantLine(&k)) || !tt.HasText(k.Detail) {
+		if !hasText(tt, app.cantLine(&k)) || !hasText(tt, k.Detail) {
 			t.Fatalf("%s: what is known isn't said: %q", lang, texts(tt))
 		}
-		if !tt.HasText(L.T("task.action.retry")) || !tt.HasText(L.T("cant.why")) {
+		if !hasText(tt, L.T("task.action.retry")) || !hasText(tt, L.T("cant.why")) {
 			t.Fatalf("%s: 再试一次 and 看看为什么: %q", lang, texts(tt))
 		}
 		if strings.Contains(texts(tt), "hint: the branch is on hel only") {
@@ -143,7 +143,7 @@ func TestD472OtherAndSignedOut(t *testing.T) {
 		app2, sent2, tt2 := helCant(t, lang, so)
 		_ = sent
 		label := app2.L.T("cant.login", "Antigravity", "Macbook Pro M3")
-		if !tt2.HasText(app2.cantLine(&so)) || !tt2.HasText(label) {
+		if !hasText(tt2, app2.cantLine(&so)) || !hasText(tt2, label) {
 			t.Fatalf("%s: signed out: %q", lang, texts(tt2))
 		}
 		click(t, tt2, label)

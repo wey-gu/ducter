@@ -43,7 +43,7 @@ func TestKeyCardSendsTheKeyWithGo(t *testing.T) {
 		t.Errorf("question %q", q)
 	}
 	for _, want := range []string{"DigitalOcean deploy token", "DO_TOKEN", "to push the new build", "Paste the key here", "Remember it", "Just this once", "Save and continue", "Don't give"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
@@ -73,7 +73,7 @@ func TestKeyCardSendsTheKeyWithGo(t *testing.T) {
 	if strings.Contains(fmt.Sprint(tt.Texts()), "secretsecret") {
 		t.Error("the key is drawn")
 	}
-	if !tt.HasText("Given to Deploy the blog") {
+	if !hasText(tt, "Given to Deploy the blog") {
 		t.Errorf("no receipt: %q", tt.Texts())
 	}
 	// The menu bar opens the window for it; it never offers Go.
@@ -98,7 +98,7 @@ func TestKeysInSettings(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"密钥", "让任务向你要密钥", "DigitalOcean 部署密钥", "DO_TOKEN", "添加密钥", "把 DigitalOcean 部署密钥交给了任务，只这一次"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
@@ -114,12 +114,12 @@ func TestKeysInSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("「变量名」还没填好。") {
+	if !hasText(tt, "「变量名」还没填好。") {
 		t.Errorf("a Save that can't go says nothing: %q", tt.Texts())
 	}
 	app.af.keyEnv = "HCLOUD_TOKEN"
 	tt.Frame()
-	if tt.HasText("「变量名」还没填好。") {
+	if hasText(tt, "「变量名」还没填好。") {
 		t.Error("the line stays once the field is filled")
 	}
 }

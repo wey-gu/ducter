@@ -48,12 +48,12 @@ func TestD337OneCheck(t *testing.T) {
 	// The failed read came after the home's answer: it stands, and the home's
 	// row doesn't say "latest" under it.
 	_, tt, _ := d337About(t, i18n.ZH, time.Minute, 7*time.Minute)
-	if !tt.HasText("这次没能检查") || tt.HasText("7 分钟前看过，已经是最新的") || !tt.HasText("GitHub 没应答，一小时内再试。 7 分钟前检查过") || d337Count(tt.Texts(), "检查更新") != 2 {
+	if !hasText(tt, "这次没能检查") || hasText(tt, "7 分钟前看过，已经是最新的") || !hasText(tt, "GitHub 没应答，一小时内再试。 7 分钟前检查过") || d337Count(tt.Texts(), "检查更新") != 2 {
 		t.Fatalf("failed last: %q", tt.Texts())
 	}
 	// The home answered after the failed read: its answer is the one line.
 	app, tt, sent := d337About(t, i18n.ZH, 9*time.Minute, 7*time.Minute)
-	if tt.HasText("这次没能检查") || d337Count(tt.Texts(), "7 分钟前看过，已经是最新的") != 1 || d337Count(tt.Texts(), "检查更新") != 2 {
+	if hasText(tt, "这次没能检查") || d337Count(tt.Texts(), "7 分钟前看过，已经是最新的") != 1 || d337Count(tt.Texts(), "检查更新") != 2 {
 		t.Fatalf("home last: %q", tt.Texts())
 	}
 	if err := tt.Click("检查更新"); err != nil {
@@ -70,7 +70,7 @@ func TestD337OneCheck(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "update_result", Device: "local", OK: true})
 	tt.Advance(time.Second)
 	tt.Frame()
-	if tt.HasText("在检查…") || d337Count(tt.Texts(), "检查更新") != 2 {
+	if hasText(tt, "在检查…") || d337Count(tt.Texts(), "检查更新") != 2 {
 		t.Fatalf("still checking after the home answered: %q", tt.Texts())
 	}
 }

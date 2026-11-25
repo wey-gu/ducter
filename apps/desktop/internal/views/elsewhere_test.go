@@ -40,7 +40,7 @@ func TestHomeAbilitiesElsewhere(t *testing.T) {
 				t.Fatalf("%s: %s is still 以后会有 on the home", lang, id)
 			}
 		}
-		if !tt.HasText(L.T("chip.elsewhere", "MacBook")) {
+		if !hasText(tt, L.T("chip.elsewhere", "MacBook")) {
 			t.Fatalf("%s: the chip doesn't say where: %q", lang, tt.Texts())
 		}
 		// Evidence, not source (D75): DUCTER_CARD_SHOTS=… go test ./internal/views -run HomeAbilitiesElsewhere
@@ -56,7 +56,7 @@ func TestHomeAbilitiesElsewhere(t *testing.T) {
 			t.Fatalf("%s: ⓘ: %v", lang, err)
 		}
 		tt.Frame()
-		if !tt.HasText(L.T("ability.phone.elsewhere", "MacBook")) {
+		if !hasText(tt, L.T("ability.phone.elsewhere", "MacBook")) {
 			t.Fatalf("%s: the ⓘ doesn't say where: %q", lang, tt.Texts())
 		}
 		// A tap opens the MacBook's card; nothing is asked of the core.

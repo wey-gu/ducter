@@ -259,7 +259,7 @@ func (a *App) chatStep(c *ui.Context, n int, text string, aside func()) {
 			})
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
-			uiText(c, text).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+			uiText(c, keepClauses(text)).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 			if aside != nil {
 				aside()
 			}
@@ -280,9 +280,9 @@ func (a *App) chatRowHow(c *ui.Context, key, title, line, detail string, control
 	ui.Row(c.Key("chat-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 			if detail != "" {
 				a.how(c, key, title, detail)
@@ -301,7 +301,7 @@ func (a *App) chatFoot(c *ui.Context, key, note string, buttons func()) {
 	a.sep(c)
 	ui.Row(c.Key("chat-foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
-		uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if buttons != nil {
 			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
 		}

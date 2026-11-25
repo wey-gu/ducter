@@ -63,7 +63,7 @@ func TestShelfTilesSayTheirState(t *testing.T) {
 		unjoin(autospace(app.L.T("app.live.old"))),
 		app.L.T("app.live.renew"), unjoin(autospace(app.L.T("app.live.fix", "Ducter"))), app.L.T("app.kept.retry"),
 	} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -94,7 +94,7 @@ func TestAppWindowSaysItsState(t *testing.T) {
 	tt := ui.NewTesterWith(app.AppWinView(app.NewAppWin("a5b6c7")), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	for _, want := range []string{unjoin(autospace(app.L.T("app.live.old"))), app.L.T("app.live.renew"), unjoin(autospace(app.L.T("app.private")))} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -145,7 +145,7 @@ func TestAppWindowSentLineEnds(t *testing.T) {
 	w.sent = true
 	tt.Frame()
 	sent := unjoin(autospace(app.L.T("app.ask.sent", "Ducter")))
-	if !tt.HasText(sent) {
+	if !hasText(tt, sent) {
 		t.Fatalf("no %q while it is being changed: %q", sent, tt.Texts())
 	}
 	for i := range app.S.Apps {
@@ -155,7 +155,7 @@ func TestAppWindowSentLineEnds(t *testing.T) {
 	}
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText(sent) {
+	if hasText(tt, sent) {
 		t.Errorf("%q still shows after the partner answered: %q", sent, tt.Texts())
 	}
 }

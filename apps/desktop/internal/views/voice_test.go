@@ -114,7 +114,7 @@ func TestVoiceHoldPutsWordsInTheComposer(t *testing.T) {
 		if !r.rec.Listening || r.app.vox.phase != "listen" {
 			t.Fatalf("%s: not listening (%q)", lang, r.app.vox.phase)
 		}
-		if !r.tt.HasText(heard) || !r.tt.HasText(r.app.L.T("voice.release")) {
+		if !hasText(r.tt, heard) || !hasText(r.tt, r.app.L.T("voice.release")) {
 			t.Errorf("%s: the strip lacks the words or its line: %v", lang, r.tt.Texts())
 		}
 		if r.rec.Locale != map[i18n.Lang]string{i18n.ZH: "zh-CN", i18n.EN: "en-US"}[lang] {
@@ -139,7 +139,7 @@ func TestVoiceHoldPutsWordsInTheComposer(t *testing.T) {
 func TestVoiceSlideUpSendsAndLeftDrops(t *testing.T) {
 	r := voiceApp(t, i18n.EN, true)
 	r.hold(t, "ship the release notes", 0, -80, time.Second, false)
-	if r.app.vox.intent != voice.Send || !r.tt.HasText(r.app.L.T("voice.release.send")) {
+	if r.app.vox.intent != voice.Send || !hasText(r.tt, r.app.L.T("voice.release.send")) {
 		t.Fatalf("slid up: intent %q", r.app.vox.intent)
 	}
 	x, y := r.mic(t)
@@ -164,7 +164,7 @@ func TestVoiceTapShowsHowAndEmptySaysSo(t *testing.T) {
 	r := voiceApp(t, i18n.ZH, true)
 	// D442: a tap on the mark is 放手说 / Talk hands-free (its card the first time).
 	r.hold(t, "", 0, 0, 100*time.Millisecond, true)
-	if !r.tt.HasText(r.app.L.T("talk.ask.title")) || r.rec.Listening {
+	if !hasText(r.tt, r.app.L.T("talk.ask.title")) || r.rec.Listening {
 		t.Errorf("a tap shows no talk card: %v", r.tt.Texts())
 	}
 	if err := r.tt.Click(r.app.L.T("voice.ask.later")); err != nil {
@@ -178,16 +178,16 @@ func TestVoiceTapShowsHowAndEmptySaysSo(t *testing.T) {
 	*r.now = r.now.Add(100 * time.Millisecond)
 	r.tt.CodeUp(0, ui.CodeAltRight)
 	r.frames()
-	if !r.tt.HasText(r.app.L.T("voice.tap")) {
+	if !hasText(r.tt, r.app.L.T("voice.tap")) {
 		t.Errorf("a key tap shows no hint: %v", r.tt.Texts())
 	}
 	*r.now = r.now.Add(3 * time.Second)
 	r.frames()
-	if r.tt.HasText(r.app.L.T("voice.tap")) {
+	if hasText(r.tt, r.app.L.T("voice.tap")) {
 		t.Errorf("the hint stays")
 	}
 	r.hold(t, "", 0, 0, time.Second, true)
-	if !r.tt.HasText(r.app.L.T("voice.empty")) || r.app.draft != "" {
+	if !hasText(r.tt, r.app.L.T("voice.empty")) || r.app.draft != "" {
 		t.Errorf("nothing heard: %q, %v", r.app.draft, r.tt.Texts())
 	}
 }
@@ -197,7 +197,7 @@ func TestVoiceFirstHoldAsksThenTheSystem(t *testing.T) {
 	r.rec.Avail.Mic, r.rec.Avail.Speech = voice.Ask, voice.Ask
 	r.hold(t, "", 0, 0, time.Second, true)
 	for _, k := range []string{"voice.ask.title", "voice.ask.why", "voice.privacy.device", "voice.ask.go"} {
-		if !r.tt.HasText(r.app.L.T(k)) {
+		if !hasText(r.tt, r.app.L.T(k)) {
 			t.Errorf("the first card lacks %s", k)
 		}
 	}
@@ -208,7 +208,7 @@ func TestVoiceFirstHoldAsksThenTheSystem(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.frames()
-	if r.rec.Avail.Mic != voice.Granted || !r.app.Local.VoiceAsked() || !r.tt.HasText(r.app.L.T("voice.tap")) {
+	if r.rec.Avail.Mic != voice.Granted || !r.app.Local.VoiceAsked() || !hasText(r.tt, r.app.L.T("voice.tap")) {
 		t.Errorf("after asking: %+v, asked %v", r.rec.Avail, r.app.Local.VoiceAsked())
 	}
 }
@@ -217,7 +217,7 @@ func TestVoiceDeniedAndUnavailable(t *testing.T) {
 	r := voiceApp(t, i18n.EN, true)
 	r.rec.Avail = voice.Availability{Why: voice.WhyMic, Mic: voice.Denied, Speech: voice.Granted}
 	r.hold(t, "", 0, 0, time.Second, true)
-	if !r.tt.HasText(r.app.L.T("voice.denied.mic")) {
+	if !hasText(r.tt, r.app.L.T("voice.denied.mic")) {
 		t.Fatalf("denied: %v", r.tt.Texts())
 	}
 	if err := r.tt.Click(r.app.L.T("voice.denied.open")); err != nil {
@@ -230,7 +230,7 @@ func TestVoiceDeniedAndUnavailable(t *testing.T) {
 	r.rec.Avail = voice.Availability{Why: voice.WhyLang}
 	r.app.vox.phase = ""
 	r.hold(t, "", 0, 0, time.Second, true)
-	if !r.tt.HasText(r.app.L.T("voice.off")) || !r.tt.HasText(r.app.L.T("voice.why.lang", "English")) {
+	if !hasText(r.tt, r.app.L.T("voice.off")) || !hasText(r.tt, r.app.L.T("voice.why.lang", "English")) {
 		t.Errorf("unavailable: %v", r.tt.Texts())
 	}
 }
@@ -245,7 +245,7 @@ func TestVoiceRightOptionHoldsToTalk(t *testing.T) {
 	r.rec.Hear("check the deploy")
 	*r.now = r.now.Add(time.Second)
 	r.frames()
-	if !r.tt.HasText(r.app.L.T("voice.cue.key", "Right Option")) {
+	if !hasText(r.tt, r.app.L.T("voice.cue.key", "Right Option")) {
 		t.Errorf("the key's line: %v", r.tt.Texts())
 	}
 	r.tt.CodeUp(0, ui.CodeAltRight)
@@ -272,7 +272,7 @@ func TestVoiceReadAloudAndReadBack(t *testing.T) {
 	if len(r.spk.Said) != 1 || strings.Contains(r.spk.Said[0], "**") || r.spk.Locales[0] != "zh-CN" {
 		t.Fatalf("said %q in %v", r.spk.Said, r.spk.Locales)
 	}
-	if !r.tt.HasText(r.app.L.T("voice.read.stop")) {
+	if !hasText(r.tt, r.app.L.T("voice.read.stop")) {
 		t.Errorf("no Stop while reading: %v", r.tt.Texts())
 	}
 	if err := r.tt.Click(r.app.L.T("voice.read.stop")); err != nil {
@@ -312,7 +312,7 @@ func TestVoiceSettingsGroup(t *testing.T) {
 	r.tt.SetSize(1280, 1400)
 	r.frames()
 	for _, k := range []string{"voice.settings", "voice.settings.key", "voice.settings.key.ropt", "voice.settings.readback", "voice.privacy.device"} {
-		if !r.tt.HasText(r.app.L.T(k)) {
+		if !hasText(r.tt, r.app.L.T(k)) {
 			t.Errorf("Settings lacks %s", k)
 		}
 	}
@@ -320,7 +320,7 @@ func TestVoiceSettingsGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.frames()
-	if r.app.Local.VoiceKey() != "fn" || !r.tt.HasText(r.app.L.T("voice.settings.key.fn.help")) {
+	if r.app.Local.VoiceKey() != "fn" || !hasText(r.tt, r.app.L.T("voice.settings.key.fn.help")) {
 		t.Errorf("Fn: %q", r.app.Local.VoiceKey())
 	}
 }

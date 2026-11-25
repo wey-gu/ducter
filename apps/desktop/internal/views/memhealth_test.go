@@ -177,8 +177,8 @@ func TestMemOfferSettledCard(t *testing.T) {
 		}})
 		h.app.Route = RouteConversation
 		done := L.T("memp.card.done")
-		h.until("settled", func() bool { return h.tt.HasText(done) })
-		if h.tt.HasText(L.T("decision.resolved.default")) {
+		h.until("settled", func() bool { return hasText(h.tt, done) })
+		if hasText(h.tt, L.T("decision.resolved.default")) {
 			t.Fatalf("%s: reads as a default taken", lang)
 		}
 		if dir := os.Getenv("DUCTER_MEMHEALTH_SHOTS"); dir != "" {

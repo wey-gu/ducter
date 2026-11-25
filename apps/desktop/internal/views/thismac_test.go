@@ -42,10 +42,10 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		// This app is current (0.0.7): the worker only needs a restart.
 		app.Updates = &fakeUpdates{st: update.Status{State: update.UpToDate, Current: "0.0.7"}}
 		tt := sheetTester(app, 1100, 1800, true)
-		if tt.HasText(L.T("devup.how.app", "MacBook")) {
+		if hasText(tt, L.T("devup.how.app", "MacBook")) {
 			t.Errorf("%s: this Mac told to open Ducter on itself: %q", lang, tt.Texts())
 		}
-		if !tt.HasText(L.T("devup.how.helper", "0.0.7", "Ducter")) {
+		if !hasText(tt, L.T("devup.how.helper", "0.0.7", "Ducter")) {
 			t.Fatalf("%s: no restart line in %q", lang, tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("devup.restart"), "MacBook")); err != nil {
@@ -58,7 +58,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 			t.Errorf("%s: restarts %d", lang, w.restarts)
 		}
 		tt.Frame()
-		if !tt.HasText(L.T("devup.phase.restarting")) {
+		if !hasText(tt, L.T("devup.phase.restarting")) {
 			t.Errorf("%s: no 在重启… after the tap: %q", lang, tt.Texts())
 		}
 
@@ -67,7 +67,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		app2.Receive(world("0.0.6"))
 		app2.Updates = &fakeUpdates{st: update.Status{State: update.Ready, Current: "0.0.6", Version: "0.0.7"}}
 		tt2 := sheetTester(app2, 1100, 1800, true)
-		if tt2.HasText(L.T("devup.how.app", "MacBook")) || tt2.HasText(L.T("devup.how.helper", "0.0.6", "hel")) {
+		if hasText(tt2, L.T("devup.how.app", "MacBook")) || hasText(tt2, L.T("devup.how.helper", "0.0.6", "hel")) {
 			t.Errorf("%s: app behind: %q", lang, tt2.Texts())
 		}
 		if _, ok := tt2.Find(L.T("devup.button")); !ok {
@@ -80,7 +80,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		app3.MacWorker = &otherMacWorker{macWorkOn{on: true}} // its own worker, not dev_mac (D187: matched by id)
 		app3.Receive(world("0.0.6"))
 		tt3 := sheetTester(app3, 1100, 1800, true)
-		if !tt3.HasText(L.T("devup.how.app", "MacBook")) {
+		if !hasText(tt3, L.T("devup.how.app", "MacBook")) {
 			t.Errorf("%s: another Mac: %q", lang, tt3.Texts())
 		}
 	}

@@ -62,7 +62,7 @@ func TestDraftedReplyInTheNote(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"回给 CamLi", "发之前确认：大文件导入的问题修没修好", "好，发出去", "先不用"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -84,7 +84,7 @@ func TestDraftedReplyInTheNote(t *testing.T) {
 		ev("channel", protocol.KindFindState, protocol.FindState{FindID: "fd1", Kind: "waiting_on_you", State: "sending", Until: until}),
 	}})
 	tt.Frame()
-	if !tt.HasText("撤回") || tt.HasText("回给 CamLi") && tt.HasText("发之前确认：大文件导入的问题修没修好") {
+	if !hasText(tt, "撤回") || hasText(tt, "回给 CamLi") && hasText(tt, "发之前确认：大文件导入的问题修没修好") {
 		t.Errorf("sending shows %q", tt.Texts())
 	}
 	*sent = nil
@@ -112,7 +112,7 @@ func TestDraftedReplyInTheNote(t *testing.T) {
 		ev("channel", protocol.KindFindState, protocol.FindState{FindID: "fd1", Kind: "waiting_on_you", State: "sent"}),
 	}})
 	tt.Frame()
-	if !tt.HasText("已发给 CamLi") {
+	if !hasText(tt, "已发给 CamLi") {
 		t.Errorf("sent shows %q", tt.Texts())
 	}
 }
@@ -127,7 +127,7 @@ func TestDraftOnHandNeverSays(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1400, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("看草稿") {
+	if !hasText(tt, "看草稿") {
 		t.Fatalf("On hand has no 看草稿: %q", tt.Texts())
 	}
 	for _, s := range tt.Texts() {

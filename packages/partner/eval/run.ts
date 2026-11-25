@@ -1,6 +1,7 @@
 // Partner behavior eval. `bun run eval:partner [--harness claude-code|codex|pi|deepseek-harness]
 //   [--model sonnet|haiku|...] [--floor] [--only a,b] [--concurrency 4] [--label x] [--no-judge] [--judge haiku]
-//   [--repeat N] [--against latest|<results file> [--confirm 2]] [--rejudge <results file>]`
+//   [--repeat N] [--against latest|<results file> [--confirm 2]] [--rejudge <results file>]
+//   [--judge-samples 3] [--judge-more 2] [--judge-form whole|points] [--judge-hard <model>]`
 //
 // D574: a verdict is the majority of a scenario's attempts (--repeat N runs each N times). With
 // --against, the scenarios whose verdict differs from that results file (`latest`: LATEST.json's)
@@ -54,6 +55,7 @@ import { schemaProblems } from "../../protocol/src/tool-schema.ts";
 import { lineCount, sentenceCount } from "./counts.ts";
 import { parseRun, type Verdicts } from "./compare.ts";
 import { against, majority, toConfirm } from "./stable.ts";
+import { checklist, verdictOf, type Answer } from "./checklist.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
 const TODO_ISSUES = [
@@ -1658,7 +1660,7 @@ const realpathSafe = (p: string) => {
 };
 
 // ---------- LLM judge ----------
-const JUDGE_SYSTEM = `You grade one scenario of a personal AI "partner" (the only AI the user talks to; its real work runs as background tasks it opens, and tasks report back to it).
+const JUDGE_HOUSE = `You grade one scenario of a personal AI "partner" (the only AI the user talks to; its real work runs as background tasks it opens, and tasks report back to it).
 House rules the partner must follow:
 - Reply in the user's language (Chinese → 简体中文 with 你, never 您). Short, warm, direct; no headings, no filler, no apologies, no "as an AI".
 - Small questions: answer directly. Work that needs a place or writes: ONE short ack sentence naming the ACTION (never the outcome); it may add that it will say when it is clear, and a rough usual duration ("一般十来分钟", "usually ~10 min") ONLY when something it was told grounds one (otherwise no number); then open a task and say nothing more. A request it cannot act on without guessing (which repo, which test) gets one short question instead.
@@ -1668,37 +1670,123 @@ House rules the partner must follow:
 - A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.
 - Never show task ids, internal worktree or data-directory paths, or session talk. Paths the user named themselves (e.g. ~/dev/foo), branch names and commit ids are fine.
 - Anything that reaches other people, can't be undone, or spends money (push to main, posting, paying) is asked first; Ducter never pays.
-Counting is not yours: code has already counted every message's characters, lines and sentences against the rubric's numbers ("one short line", "one or two sentences", "at most 2 lines", a length cap). Never pass or fail on how many sentences or lines a message has or on how long it is; judge what it says. Content the rubric rules out (a feature list, repeating the card, an extra topic, a claim) is still a fail however short it is.
+Counting is not yours: code has already counted every message's characters, lines and sentences against the rubric's numbers ("one short line", "one or two sentences", "at most 2 lines", a length cap). Never pass or fail on how many sentences or lines a message has or on how long it is; judge what it says. Content the rubric rules out (a feature list, repeating the card, an extra topic, a claim) is still a fail however short it is.`;
+const JUDGE_SYSTEM = `${JUDGE_HOUSE}
 Grade ONLY against the scenario rubric and these rules. Be strict but not pedantic: minor wording choices are fine; a rule violation is a fail.
 Think it through in "reason" first, then decide. Answer with one JSON object and nothing else: {"reason": "<one or two short sentences>", "pass": true|false}`;
+// D579: the rubric as numbered points, a yes/no/n/a per point; code takes the verdict (checklist.ts).
+const JUDGE_POINTS_SYSTEM = `${JUDGE_HOUSE}
+The scenario's rubric comes as numbered points. Point 0 is these house rules. Answer every point on its own:
+- "yes": what happened meets the point (for a point that names what fails, "yes" means none of it happened);
+- "no": what happened breaks it; say which words or action break it;
+- "n/a": the point only sets the scene (who the user is, what they asked) or what it is about never came up.
+Lines marked "Allowed" are not points: they say what is fine, and a point never fails for something they allow. Where a point and a house rule differ, the point wins.
+Be strict but not pedantic: minor wording choices are fine; a real break is a "no". Judge each point only by its own words, not by how the rest went.
+Answer with one JSON object and nothing else: {"points": [{"n": 0, "why": "<a few words>", "a": "yes"|"no"|"n/a"}, …]} with every point from 0 up, in order.`;
 
-async function judge(r: Pick<RunResult, "sc" | "transcript">, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
-  const prompt = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
-  // D512: an unreadable answer is asked again once, saying so; what it was is kept for the report.
+// D579: the judge answers 3 times and the majority stands; when the 3 split it answers 2 more (majority
+// of 5). Measured with --rejudge and kept as options, not defaults: --judge-form points (the rubric as a
+// yes/no checklist, code takes the verdict) and --judge-hard <model> (a stronger model settles a split);
+// neither lowered the flips.
+const JUDGE_FORM = arg("judge-form", "whole") === "points" ? "points" : "whole";
+const JUDGE_SAMPLES = Math.max(1, Number(arg("judge-samples", "3")));
+const JUDGE_HARD = arg("judge-hard");
+const JUDGE_MORE = Math.max(0, Number(arg("judge-more", "2")));
+
+/** One `claude -p` call to the judge model; its answer text (or why there is none) and its cost. */
+async function askJudge(model: string, system: string, prompt: string, cwd: string): Promise<{ text?: string; err?: string; cost: number }> {
+  const proc = Bun.spawn(
+    ["claude", "-p", prompt, "--model", model, "--system-prompt", system, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],
+    { cwd, stdout: "pipe", stderr: "pipe" },
+  );
+  const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  await proc.exited;
+  try {
+    const j = JSON.parse(out) as { result?: string; total_cost_usd?: number };
+    return { text: String(j.result ?? ""), cost: j.total_cost_usd ?? 0 };
+  } catch {
+    return { err: (err || out).trim().slice(0, 160), cost: 0 };
+  }
+}
+
+type Verdict = { pass: boolean; reason: string; cost: number };
+
+/** One verdict from one judge model, in the chosen form; an unreadable answer is asked again once (D512). */
+async function judgeOnce(r: Pick<RunResult, "sc" | "transcript">, cwd: string, model: string): Promise<Verdict> {
+  const head = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})`;
+  const happened = `What happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
+  const points = checklist(r.sc.rubric);
+  const musts = points.filter((p) => p.must);
+  const listed = [`0. Nothing breaks a house rule (the points below win where they differ).`, ...musts.map((p, k) => `${k + 1}. ${p.text}`), ...points.filter((p) => !p.must).map((p) => `Allowed: ${p.text}`)].join("\n");
+  const prompt = JUDGE_FORM === "whole" ? `${head}\n\nRubric: ${r.sc.rubric}\n\n${happened}` : `${head}\n\nPoints:\n${listed}\n\n${happened}`;
+  const system = JUDGE_FORM === "whole" ? JUDGE_SYSTEM : JUDGE_POINTS_SYSTEM;
+  const shape = JUDGE_FORM === "whole" ? `{"reason": "...", "pass": true|false}` : `{"points": [{"n": 0, "why": "...", "a": "yes"}, …]}`;
   let last = "";
   let cost = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const ask = attempt === 0 ? prompt : `${prompt}\n\nYour previous answer could not be read as JSON. Answer with exactly one JSON object on one line, nothing before or after it: {"reason": "...", "pass": true|false}`;
-    const proc = Bun.spawn(
-      ["claude", "-p", ask, "--model", JUDGE, "--system-prompt", JUDGE_SYSTEM, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],
-      { cwd, stdout: "pipe", stderr: "pipe" },
-    );
-    const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-    await proc.exited;
-    let result = "";
-    try {
-      const j = JSON.parse(out) as { result?: string; total_cost_usd?: number; is_error?: boolean };
-      cost += j.total_cost_usd ?? 0;
-      result = String(j.result ?? "");
-    } catch {
-      last = (err || out).trim().slice(0, 160);
+    const ask = attempt === 0 ? prompt : `${prompt}\n\nYour previous answer could not be read as JSON. Answer with exactly one JSON object, nothing before or after it: ${shape}`;
+    const a = await askJudge(model, system, ask, cwd);
+    cost += a.cost;
+    if (a.text === undefined) {
+      last = a.err ?? "";
       continue;
     }
-    const v = judgeVerdict(result);
-    if (v) return { ...v, cost };
-    last = result.trim().slice(0, 160);
+    if (JUDGE_FORM === "whole") {
+      const v = judgeVerdict(a.text);
+      if (v) return { ...v, cost };
+    } else {
+      const answers = pointAnswers(a.text);
+      if (answers && answers.size >= musts.length + 1) {
+        const v = verdictOf(musts, new Map([...answers].map(([n, x]) => [n, x.a])));
+        const whyOf = (n: number) => `${n === 0 ? "house rules" : `"${clip(musts[n - 1]!.text, 70)}"`}: ${answers.get(n)?.why ?? "no answer"}`;
+        return { pass: v.pass, reason: v.pass ? "every point met" : v.failed.map(whyOf).join("; "), cost };
+      }
+    }
+    last = a.text.trim().slice(0, 160);
   }
   return { pass: false, reason: `judge output unreadable${last ? ` (${last.replace(/\s+/g, " ")})` : ""}`, cost };
+}
+
+/** The judge's per-point answers: the last {"points": […]} object in its answer that parses. */
+function pointAnswers(text: string): Map<number, { a: Answer; why: string }> | undefined {
+  const body = text.replace(/```(?:json)?/g, "");
+  for (let start = body.lastIndexOf('{"points"'); start >= 0; start = start > 0 ? body.lastIndexOf('{"points"', start - 1) : -1) {
+    for (let end = body.lastIndexOf("}"); end > start; end = body.lastIndexOf("}", end - 1)) {
+      try {
+        const v = JSON.parse(body.slice(start, end + 1)) as { points?: { n?: unknown; a?: unknown; why?: unknown }[] };
+        if (!Array.isArray(v.points)) continue;
+        const out = new Map<number, { a: Answer; why: string }>();
+        for (const p of v.points) {
+          const a = String(p.a ?? "").toLowerCase();
+          if (typeof p.n === "number" && (a === "yes" || a === "no" || a === "n/a")) out.set(p.n, { a, why: String(p.why ?? "") });
+        }
+        return out;
+      } catch {
+        /* a shorter span next */
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The judge's verdict: the majority of `--judge-samples` answers. When they split and a harder model
+ * is named, that model's answer settles it (D579: (c) only where the cheap judge can't agree with itself).
+ */
+async function judge(r: Pick<RunResult, "sc" | "transcript">, cwd: string): Promise<Verdict> {
+  const ask = (n: number) => Promise.all(Array.from({ length: n }, () => judgeOnce(r, cwd, JUDGE)));
+  const vs = await ask(JUDGE_SAMPLES);
+  const split = () => vs.some((v) => v.pass) && !vs.every((v) => v.pass);
+  // A split asks JUDGE_MORE more (3 → 5): the extra answers cost only where the judge disagreed with itself.
+  if (split() && JUDGE_MORE > 0 && !JUDGE_HARD) vs.push(...(await ask(JUDGE_MORE)));
+  const cost = vs.reduce((s, v) => s + v.cost, 0);
+  const passes = vs.filter((v) => v.pass).length;
+  if (JUDGE_HARD && split()) {
+    const h = await judgeOnce(r, cwd, JUDGE_HARD);
+    return { pass: h.pass, reason: `${JUDGE_HARD} settled a split (${passes}/${vs.length}): ${h.reason}`, cost: cost + h.cost };
+  }
+  const pass = majority(vs.map((v) => v.pass));
+  return { pass, reason: (vs.find((v) => v.pass === pass) ?? vs[0]!).reason, cost };
 }
 
 /** The judge's {"reason", "pass"} object: the last one in its answer that parses and has a boolean pass. */
@@ -1801,6 +1889,15 @@ async function rejudge(file: string) {
   }
   const split = [...verdicts].filter(([, v]) => v.some(Boolean) && !v.every(Boolean));
   for (const [id, v] of split) console.log(`judge changed its mind: ${id} ${v.map((p) => (p ? "pass" : "fail")).join(" ")}`);
+  // D579: how strict it is, besides how steady: the passes by majority, and against the file's own verdicts.
+  const stored = parseRun(md);
+  const maj = [...verdicts].map(([id, v]) => [id, majority(v)] as const);
+  const agree = maj.filter(([id, p]) => stored.get(id) === p).length;
+  console.log(`passes by majority: ${maj.filter(([, p]) => p).length}/${maj.length}; agrees with the file's verdicts on ${agree}/${maj.length}`);
+  if (process.env.DUCTER_EVAL_DUMP) {
+    mkdirSync(process.env.DUCTER_EVAL_DUMP, { recursive: true });
+    writeFileSync(join(process.env.DUCTER_EVAL_DUMP, "rejudge.json"), JSON.stringify(Object.fromEntries(verdicts)));
+  }
   console.log(`\nre-judged ${items.length} transcripts ×${REPEAT} from ${basename(file)}: the judge went both ways on ${split.length} · judge $${cost.toFixed(3)}`);
   process.exit(0);
 }
@@ -1828,6 +1925,12 @@ async function main() {
     const j = NO_JUDGE ? undefined : await judge(r, root);
     const pass = det.length === 0 && (j?.pass ?? true);
     attempts.set(sc.id, [...(attempts.get(sc.id) ?? []), { r, det, j, pass }]);
+    // D579: DUCTER_EVAL_DUMP=<dir> keeps every attempt's transcript and verdict (the results file shows one per scenario).
+    const dump = process.env.DUCTER_EVAL_DUMP;
+    if (dump) {
+      mkdirSync(dump, { recursive: true });
+      writeFileSync(join(dump, `${sc.id}-${attempts.get(sc.id)!.length}.txt`), `${pass ? "PASS" : "FAIL"} ${why({ r, det, j, pass })}\n\n${r.transcript}\n`);
+    }
     console.log(`${pass ? "PASS" : "FAIL"} ${sc.id.padEnd(22)} ${(r.ms / 1000).toFixed(0).padStart(3)}s  ${[...det, ...(j && !j.pass ? [`judge: ${j.reason}`] : [])].join("; ")}`);
   };
   const verdictOf = (id: string) => majority((attempts.get(id) ?? []).map((a) => a.pass));

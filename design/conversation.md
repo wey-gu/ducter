@@ -46,6 +46,8 @@ human opens them.
    the partner's own **[[later]]** mark (hidden). With nothing in that turn that brings it back (a
    task opened or sent to, a wait, a routine, a card), it is held for one correction round that asks
    for the call (its line then goes out as that call's ack) or an "OK" (it goes out as it was).
+   One turn never says the same line twice (D570): words already said this turn, as a message or
+   an ack, are not said again (the correction's call took the held line, then the model wrote it again).
    Kept by tasks, the promise is recorded (state.json, five at most, three days) and shown as a fact
    (`[what you told them you'd come back to them with; still owed]`) on the turn one of its tasks ends
    in and whenever the person writes, until a turn after its tasks ended has said something. No code

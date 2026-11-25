@@ -424,7 +424,7 @@ const zh: Record<string, string> = {
   "wait.last": "上次看是%s",
   "wait.often": "多久一次",
   "wait.looks": "看过的",
-  "wait.looks.v": "看了 %d 次，变了 %d 次",
+  "wait.looks.v": "看了 %d 次，其中 %d 次有新动静",
   "wait.cancel": "不用再去看了",
   "wait.look": "现在就去看一次",
   // D279: a wait that comes back on its own says when; its ring, its looks, the moment it comes true.
@@ -1449,7 +1449,7 @@ const en: Record<string, string> = {
   "wait.last": "Last looked %s",
   "wait.often": "How often",
   "wait.looks": "Looks",
-  "wait.looks.v": "%d looks, changed %d times",
+  "wait.looks.v": "Looked %d times; something new %d times",
   "wait.cancel": "Stop checking",
   "wait.look": "Check now",
   // D279: a wait that comes back on its own says when; its ring, its looks, the moment it comes true.

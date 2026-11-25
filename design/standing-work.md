@@ -239,7 +239,7 @@ the side column after the rounds.
    the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
    approved; D508's words), **打开 PR ›**, and its task one tap away.
 6. **每一轮 / Rounds**: newest first; each round its time in the time column (today the clock, else the day alone),
-   what woke it (**#11030 的 CI 变了**, **Codex 交过来一个 PR**, **到点了（每 45 分钟）**), what happened in one line
+   what woke it (D560, a sentence: **#11030 有新提交** from its wait's command, a condition as it stands **PR #11070 推上回应评审的新提交**, **Codex 交过来一个活**, **到点了（每 45 分钟）**), what happened in one line
    to the person (D519: the cheap model's reading of the report, recorded once; never the report's words to Ducter),
    and **没出声 / 说了一句 / 问了你**; **看细节 / Details** shows the report as written and the way to its task. D550:
    every run of two or more quiet rounds, anywhere in the list, is one row, the work head the opened task folds them

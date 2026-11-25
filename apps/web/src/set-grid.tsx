@@ -7,6 +7,7 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { Btn, DangerButton } from "./controls.tsx";
+import { keepClauses } from "./format.ts";
 
 /** D432: a pane still being read: the shape of its first group, quietly breathing, and the word in it, so
  *  the page never jumps from a bare line to its cards. Same on the Mac (`paneWait`). */
@@ -54,7 +55,7 @@ export function GRow(p: { tile?: ComponentChildren; title?: string; line?: strin
       {p.tile}
       <span class="grow">
         {p.title && <b>{p.title}</b>}
-        {p.line && <small>{p.line}</small>}
+        {p.line && <small>{keepClauses(p.line)}</small>}
       </span>
       {p.children}
     </div>

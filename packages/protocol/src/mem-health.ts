@@ -14,6 +14,40 @@ import type { MemHealth } from "./index.ts";
  */
 export const MEM_CONNECT_TOOLS: Readonly<Record<string, string>> = { "claude-code": "claude-code", codex: "codex-cli" };
 
+/**
+ * D560: the first version of each agent's Mem plugin that gets every new session ready to receive by
+ * itself (SessionStart prepares the native Bridge session unless `NMEM_BRIDGE_SESSION_MAILBOX=0`;
+ * research/226 2.6: Claude Code 0.7.35, Codex 0.1.50). A reply to a message from such a session goes
+ * back to that session; nothing is opened by hand. The Mac app keeps the same table (views/peers_reach.go).
+ */
+export const MEM_AUTO_SESSION: Readonly<Record<string, string>> = { "claude-code": "0.7.35", codex: "0.1.50" };
+
+/** D560: "auto" when this plugin version prepares its sessions by itself, "old" when it is older, undefined when not known. */
+export function memSessions(harness: string, version: string | undefined): "auto" | "old" | undefined {
+  const min = MEM_AUTO_SESSION[harness];
+  const v = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version?.trim() ?? "");
+  const m = min ? /^(\d+)\.(\d+)\.(\d+)/.exec(min) : null;
+  if (!v || !m) return undefined;
+  for (let i = 1; i <= 3; i++) if (Number(v[i]) !== Number(m[i])) return Number(v[i]) > Number(m[i]) ? "auto" : "old";
+  return "auto";
+}
+
+/**
+ * D560: whether the partner's replies reach one of the person's agents, from Mem's facts only:
+ * yes (Mem has an active connection labelled with it, or a message came from one of its sessions:
+ * a reply goes back to that session); next (its plugin readies each new session by itself and none has
+ * connected yet: the next one the person opens will); old (its plugin is older than that: updating it
+ * is the fix); unknown (Mem hasn't said). The Settings row and the partner's facts read the same.
+ */
+export type AgentBack = "yes" | "next" | "old" | "unknown";
+export function agentBack(harness: string, o: { open?: boolean; heard?: boolean; versions: readonly (string | undefined)[] }): AgentBack {
+  if (o.open || o.heard) return "yes";
+  const s = o.versions.map((v) => memSessions(harness, v));
+  if (s.includes("auto")) return "next";
+  if (s.includes("old")) return "old";
+  return "unknown";
+}
+
 interface Check {
   name?: unknown;
   status?: unknown;

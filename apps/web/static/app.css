@@ -12215,6 +12215,9 @@ button.chip-file {
   font-size: var(--sm);
   line-height: 1.5;
   color: var(--ink-muted);
+  /* D560: no Latin word alone on a subline's last line; a Chinese one is kept by GRow's keepClauses
+     (Chrome's pretty and balance don't lift a CJK widow: 「回话」「不行」 at 390). */
+  text-wrap: pretty;
 }
 .chat-row p,
 .chat-step p {

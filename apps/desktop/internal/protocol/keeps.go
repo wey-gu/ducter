@@ -27,12 +27,23 @@ type KeepItem struct {
 	Said   *PRSaid `json:"said,omitempty"`
 }
 
+// PrWake is what changed on one pull request (D560): its number ("#11093") and
+// which kind of change: commits, checks, reviews, comments or state.
+type PrWake struct {
+	PR   string `json:"pr"`
+	What string `json:"what"`
+}
+
 // KeepRound is one wake: what woke it (time, arrival, change, now, first),
 // what it did, and whether it spoke (silent, told, asked).
 type KeepRound struct {
 	At       string `json:"at"`
 	Woke     string `json:"woke"`
 	WokeWhat string `json:"wokeWhat,omitempty"`
+	// D560: WokeMet: WokeWhat is a condition that came true, said as it stands;
+	// WokePr: what changed on one pull request, from its wait's own command.
+	WokeMet bool    `json:"wokeMet,omitempty"`
+	WokePr  *PrWake `json:"wokePr,omitempty"`
 	// Did is what happened, in one line to the person (the model's reading
 	// of the report, D519); absent until read. Report is the task's own
 	// words to Ducter, shown only behind 看细节.

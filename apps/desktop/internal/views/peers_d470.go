@@ -32,17 +32,25 @@ type ways struct{ To, Back, Fix string }
 func reachWays(r reachRow) ways {
 	switch r.Can {
 	case "yes":
-		if r.Box == "closed" {
+		// D560: the way back is Mem's facts (agentBack): yes, soon (its next session), no (its plugin's update, the fix).
+		back := r.Back
+		if back == "" {
+			back = "unknown"
+			if r.Box == "open" {
+				back = "yes"
+			}
+		}
+		switch back {
+		case "old":
 			w := ways{To: "yes", Back: "no"}
-			if r.Device != "" {
-				w.Fix = "mailbox"
+			if r.Device != "" && r.Update {
+				w.Fix = "update"
 			}
 			return w
+		case "next":
+			return ways{To: "yes", Back: "soon"}
 		}
-		if r.Box == "open" {
-			return ways{To: "yes", Back: "yes"}
-		}
-		return ways{To: "yes", Back: "unknown"}
+		return ways{To: "yes", Back: back}
 	case "install":
 		w := ways{To: "no", Back: "no"}
 		if r.Device != "" {
@@ -324,22 +332,6 @@ func (a *App) peersOn() bool {
 	return peersPhase(a.S.Bridge, peersSwitchOn(st.Peers.Reach, a.S.Bridge)) == "on"
 }
 
-// peersOneWay is the agents whose answers can't get back (Mem lists their mailbox closed), each
-// with the computer its fix runs on, less the ones this window already asked to open.
-func (a *App) peersOneWay() []reachRow {
-	if !a.peersOn() {
-		return nil
-	}
-	_, one, _ := reachSplit(a.peersReachRows())
-	var out []reachRow
-	for _, r := range one {
-		if r.Device != "" && !a.mailboxOpening[r.Device+":"+r.Harness] {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
 // peersSay is the partner's sentence at the head of Agent messaging.
 func (a *App) peersSay() string {
 	st := a.S.Settings
@@ -355,24 +347,32 @@ func (a *App) peersSay() string {
 	}
 	reach, one, notYet := reachSplit(a.peersReachRows())
 	// D489: both ways only where Mem said so; an agent whose way back Mem hasn't told is said as what it does.
-	var both, to []reachRow
+	var both, next, to []reachRow
 	for _, r := range reach {
-		if standing(r) == "both" {
+		switch standing(r) {
+		case "both":
 			both = append(both, r)
-		} else {
+		case "next":
+			next = append(next, r)
+		default:
 			to = append(to, r)
 		}
 	}
 	switch {
-	case len(both) == 0 && len(one) == 0 && len(to) > 0:
-		return a.L.T("say.peers.to", a.listWords(toolsOf(to)))
 	case len(both) > 0 && len(one) > 0:
-		// D489: one agent a tap from hearing back is said as the step it is, beside the ones that work.
+		// D489: an agent a step from hearing back (its plugin's update) is said as the step it is.
 		return a.L.T("say.peers.mixed", a.listWords(toolsOf(both)), a.listWords(toolsOf(one)))
-	case len(both) > 0:
-		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
 	case len(one) > 0:
 		return a.L.T("say.peers.oneway", a.listWords(toolsOf(one)))
+	case len(both) > 0 && len(next) > 0:
+		// D560: one whose next session will hear back needs nothing from the person: said once, as what will happen.
+		return a.L.T("say.peers.mixed.next", a.listWords(toolsOf(both)), a.listWords(toolsOf(next)))
+	case len(next) > 0:
+		return a.L.T("say.peers.next", a.listWords(toolsOf(next)))
+	case len(both) > 0:
+		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
+	case len(to) > 0:
+		return a.L.T("say.peers.to", a.listWords(toolsOf(to)))
 	case len(notYet) > 0:
 		return a.L.T("say.peers.notyet")
 	}
@@ -396,21 +396,11 @@ func toolsOf(rows []reachRow) []string {
 	return out
 }
 
-// openMailbox is 让它收到回话 / Let it hear back (D489): one task on that computer opens the agent's
-// Nowledge Mem mailbox (the tap is its Go), in the Space the person chose in place (D480).
-func (a *App) openMailbox(device, harness string, space *protocol.MailboxSpaceRef) {
-	if a.mailboxOpening == nil {
-		a.mailboxOpening = map[string]bool{}
-	}
-	a.mailboxOpening[device+":"+harness] = true
-	a.mailboxChoosing = nil
-	a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: device, Harness: harness, What: "mailbox", Space: space})
-}
-
 // standing is how one agent stands with the partner, said as what the person gets (D489; the web's
-// standing in mem-view.ts): both, oneway (it hands work, the answers can't reach it), to (the way
-// back unknown), install, unknown, relay (no Bridge in its Mem plugin; Ducter's tasks on it carry
-// messages), none (no Bridge in its Mem plugin: Mem's to add).
+// standing in mem-view.ts): both, next (D560: its next session will hear back; nothing to tap), old
+// (D560: its plugin's update lets it hear back: the one button), to (the way back unknown), install,
+// unknown, relay (no Bridge in its Mem plugin; Ducter's tasks on it carry messages), none (no Bridge
+// in its Mem plugin: Mem's to add).
 func standing(r reachRow) string {
 	if r.Can == "relay" || r.Can == "none" {
 		return r.Can
@@ -420,8 +410,10 @@ func standing(r reachRow) string {
 		switch w.Back {
 		case "yes":
 			return "both"
+		case "soon":
+			return "next"
 		case "no":
-			return "oneway"
+			return "old"
 		}
 		return "to"
 	}
@@ -433,9 +425,7 @@ func standing(r reachRow) string {
 
 // peersAgents is 你的 agent / Your agents (D489): a literal row per agent whose Mem plugin carries
 // Bridge (its coin, its name, what it can do with the partner, when it last came; never a
-// diagram), the ones whose plugin doesn't on one quiet row, and under an agent whose answers can't
-// reach it, its one-tap offer. Showing the pane looks up that agent's Spaces once (read only), so
-// the offer already says where its answers would go.
+// diagram), and the ones whose plugin doesn't on one quiet row.
 func (a *App) peersAgents(c *ui.Context, name string) {
 	rows := a.peersReachRows()
 	if len(rows) == 0 {
@@ -449,20 +439,6 @@ func (a *App) peersAgents(c *ui.Context, name string) {
 			bridged = append(bridged, r)
 		}
 	}
-	for _, r := range bridged {
-		key := r.Device + ":" + r.Harness
-		if standing(r) != "oneway" || r.Device == "" || a.mailboxOpening[key] {
-			continue
-		}
-		if a.mailboxChoosing == nil && !a.mailboxAsked[key] {
-			if a.mailboxAsked == nil {
-				a.mailboxAsked = map[string]bool{}
-			}
-			a.mailboxAsked[key] = true
-			a.chooseMailbox(r.Device, r.Harness)
-		}
-		break
-	}
 	a.group(c, "peers-agents", a.L.T("peers.agents.title"), "", func() {
 		for _, r := range bridged {
 			a.peerAgentRow(c, r)
@@ -473,16 +449,17 @@ func (a *App) peersAgents(c *ui.Context, name string) {
 	})
 }
 
-// peerAgentRow is one agent: its coin, its name, what it can do with the partner, at the right edge when
-// it last came (or 装上 when Mem's plugin is missing there); under it, its offer when the answers
-// can't reach it.
+// peerAgentRow is one agent: its coin, its name, what it can do with the partner, and at the right edge
+// when it last came, 装上 when Mem's plugin is missing there, or (D560) 让它也能收到我的回话 when its
+// plugin is older than the one whose sessions receive and Mem offers the newer one: the plugin's update.
+// One whose next session will hear back says so and offers nothing.
 func (a *App) peerAgentRow(c *ui.Context, r reachRow) {
 	t := a.T
 	st := standing(r)
-	opening := r.Device != "" && a.mailboxOpening[r.Device+":"+r.Harness]
+	updating := st == "old" && r.Busy
 	line := a.L.T("peers.st." + st)
-	if opening {
-		line = a.L.T("peers.st.opening")
+	if updating {
+		line = a.L.T("peers.st.updating")
 	}
 	last := ""
 	if r.Last != "" && st != "install" && st != "unknown" {
@@ -498,13 +475,16 @@ func (a *App) peerAgentRow(c *ui.Context, r reachRow) {
 				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
 			}
 		}
+	case st == "old" && r.Update && r.Device != "" && !updating:
+		control = func() {
+			if a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
+			}
+		}
 	case last != "":
 		control = func() { uiText(c, last).FontSize(t.SM).TextColor(t.InkMuted).SingleLine() }
 	}
 	a.tileRow(c, "agent:"+r.Harness, a.toolTile(c, r.Tool), r.Tool, line, control)
-	if st == "oneway" && r.Device != "" && !opening {
-		a.textBlock(c, "hear:"+r.Harness, func() { a.hearBack(c, r) })
-	}
 }
 
 // noBridgeRow is the agents whose own Mem plugin carries no Bridge, together: what Ducter's tasks on

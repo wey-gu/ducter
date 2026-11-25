@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once), D557 (the live trial passed; on by default; the real shapes read); still open: J-Q1–3, J-Q8 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -1299,6 +1299,10 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
 
 ## The mailbox's Space, chosen in place (D480, 2026-11-22)
 
+> D560: retired. No Space is chosen and no task opens a mailbox: a reply goes back in the message's own
+> Space (D334, D400), and Claude Code and Codex ready each session's mailbox themselves (below, "Replies
+> to your agents, from Mem's facts"). Kept for the record; the facts about Mem's explicit Space stand.
+
 > D489: the question and its two buttons are replaced by the offer under the agent's row (**让它收到回话**,
 > the Space in its one line, **换一个空间**); the facts below (Mem's explicit Space, the suggestion, no
 > "another Mem") stand.
@@ -1339,6 +1343,9 @@ open.
 - **Not yet**: the enable run once for real (it writes Mem-side; the author's step).
 
 ## Your agents, said as what you get, and one tap to hear back (D489, 2026-11-23)
+
+> D560: the rows stand; "one way" and its one tap with the Space in it are replaced by next (nothing to
+> tap) and old (the plugin's update), below.
 
 The author, on 0.1.18's pane: 「这个 bridge 是什么情况？我们的 bridge 本身有新的体验上的设计上的问题么」. D470's
 谁能找到谁 drew one two-arrow picture per agent: a one-tap setup in red dashes with a red sentence about
@@ -1442,6 +1449,47 @@ community repo and the Antigravity plugin, read-only calls on the author's Mac).
 - **Not retired:** D334's per-Space contexts and D338's back-off (for 0.10.120), D400's 5 s clamp, D369's
   stuck line.
 - **Mem's side still:** `research/private/bridge-ask-2026-11-25.md` (draft, not sent).
+
+## Replies to your agents, from Mem's facts (D560, 2026-11-25)
+
+The author, on hel (0.1.59): Settings said Claude Code's replies go to "Only me"; he picked Everyone and
+tapped 让它收到回话; the task enabled a mailbox (`state: ready`, `session_kind: logical_identity_mailbox`,
+`receiving_confirmed: false`); the partner said it was still closed and sent him to the same tap; the row
+never moved. Read-only on hel (nmem 0.10.123):
+
+- **The "closed" was a name.** Mem's grouped contacts (all 8 Spaces) list the person's identities with no
+  tool on them; D444 told a card's tool by its name and found "Claude 收尾协调" (an old identity,
+  `mailbox_available: false`). The mailbox the task enabled is the login's own "Bridge agent"
+  (`bridge-b1d8b41a`), open in all 8 Spaces and tied to no tool. Not a Space mismatch.
+- **What receives is the session.** Claude Code 0.7.35+ and Codex 0.1.50+ prepare each session's native
+  mailbox at SessionStart (Mem's community plugin, `nmem_startup.py`: `bridge session --host … prepare`);
+  Mem then lists an active connection with `client_label: "claude-code"` (or `"codex"`), and a reply to a
+  message from that session goes back to it (D557's S2). The login's mailbox the task enabled is read by
+  no session. Ducter's tasks turn the automatic session off (D555), so a task can't stand in for it.
+- **The Space never mattered.** The partner answers with Mem's `reply_args_prefix`, in the message's own
+  Space (D334, D400).
+
+What Ducter does now:
+
+```
+partner's Bridge client  bridge connections list --space-id <its Space>   (read only; pages by next_connection_id)
+  active connection, client_label claude-code | codex | antigravity, agent not Ducter's  ─▶ that tool: open
+core + clients  agentBack(tool) = yes    open, or a message from one of its sessions (sender.host)
+                                 = next   its plugin ≥ MEM_AUTO_SESSION (Claude Code 0.7.35, Codex 0.1.50)
+                                 = old    its plugin older (the fix: its update, where Mem offers it)
+                                 = unknown
+```
+
+- **The row:** next **能把事交给我；你下次打开它，就收得到我的回话**, nothing to tap; old **能把事交给我；它的插件更新后，
+  就收得到我的回话** with **让它也能收到我的回话** (the update task, where Mem offers the newer one), and while it
+  runs **正在更新它的 Nowledge Mem 插件，好了就收得到我的回话**; after the update it reads next, once. The list is
+  read again when the pane is looked at and is 5 minutes old.
+- **The partner** (`[your agents' mail]`, every turn while not whole): next says its next session hears
+  back, with nothing to tap, no Space, no task; old names the update. Never "closed".
+- **Gone:** the Space picker, the mailbox task (`what: "mailbox"` from an older app is the plugin's update
+  or nothing), Overview's second needs-you row.
+- **Not yet:** a backend that refuses a session's native mailbox shows "next" until a session connects;
+  Mem names no field for it (asked in `research/private/bridge-ask-2026-11-25.md`).
 
 ## Open questions
 

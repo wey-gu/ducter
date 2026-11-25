@@ -423,7 +423,7 @@ describe("mem-shapes (D433, D444, D458)", () => {
     });
 
   test("the shapes Ducter reads, field names and counts only", () => {
-    expect(contactShapes(contacts)).toMatchObject({ list: "contacts", cards: 2, mailboxField: true, unavailableField: true, memberField: true, ownTools: [], usable: 1 });
+    expect(contactShapes(contacts)).toMatchObject({ list: "contacts", cards: 2, mailboxField: true, unavailableField: true, memberField: true, usable: 1 });
     expect(activityShapes(conns)).toMatchObject({ connections: 1, activityFields: ["last_seen_at_ms"], seenRead: 1 });
   });
 

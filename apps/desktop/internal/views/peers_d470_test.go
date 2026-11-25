@@ -15,8 +15,8 @@ func TestD470ReachWays(t *testing.T) {
 		want ways
 	}{
 		{reachRow{Harness: "codex", Can: "yes", Box: "open"}, ways{"yes", "yes", ""}},
-		{reachRow{Harness: "claude-code", Can: "yes", Box: "closed", Device: "local"}, ways{"yes", "no", "mailbox"}},
-		{reachRow{Harness: "claude-code", Can: "yes", Box: "closed"}, ways{"yes", "no", ""}},
+		{reachRow{Harness: "claude-code", Can: "yes", Back: "old", Update: true, Device: "local"}, ways{"yes", "no", "update"}},
+		{reachRow{Harness: "claude-code", Can: "yes", Back: "old"}, ways{"yes", "no", ""}},
 		{reachRow{Harness: "codex", Can: "yes"}, ways{"yes", "unknown", ""}},
 		{reachRow{Harness: "codex", Can: "install", Device: "local"}, ways{"no", "no", "install"}},
 		{reachRow{Harness: "codex", Can: "unknown"}, ways{"unknown", "unknown", ""}},

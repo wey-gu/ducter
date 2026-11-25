@@ -51,14 +51,12 @@ remembers, and where else you can reach it (your chat apps, and your own agents 
 such as **Your Codex, Claude Code**). Click a line to open its tab. When something needs you
 (a source of accounts that can't be reached, Nowledge Mem signed out or out of reach, something
 Nowledge Mem would like you to confirm, a newer Nowledge Mem for one of your AI agents (with the
-computer's name when you have more than one), one of your agents that can reach your partner but
-can't get its answers back, updates ready), your partner raises its little flag,
+computer's name when you have more than one), updates ready), your partner raises its little flag,
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
-AI agents asks you first, in place, then updates it; **Let it hear back** takes you to that agent
-on **Talk with your other agents**, where one more tap does it; updates ready start with one tap, as in
+AI agents asks you first, in place, then updates it; updates ready start with one tap, as in
 **Devices**.
 
 Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
@@ -328,14 +326,12 @@ them for you, and anything that needs your call shows up in your conversation.
 your partner, in plain words, with when it last came at the right:
 
 - **Hands me work and hears my answers**: everything works both ways.
-- **Hands me work; my answers can't reach it yet**: one step is left, and it sits right under the
-  row: **Its answers go to the "Only you" Space in Nowledge Mem; only you can read them.** with **Let
-  it hear back**. Your partner looked up that computer's Spaces in Nowledge Mem when you opened the
-  page (just a look, nothing changes) and suggests the one it already listens in. One tap is your
-  go-ahead: a small task on that computer opens the way back there, through the agent's own Nowledge
-  Mem plugin, and never asks you for a name. **Another Space** shows the rest, each with who can read
-  it; Nowledge Mem never picks a Space for you, so neither does Ducter. It never touches your
-  partner's own connection.
+- **Hands me work; hears my answers from your next session**: Claude Code and Codex get each new
+  session ready to hear back by themselves, through their Nowledge Mem plugin. Nothing to tap: the next
+  time you open it, your partner's answers reach the session that wrote, and the row says both ways.
+- **Hands me work; hears my answers once its plugin is updated**: its Nowledge Mem plugin is older than
+  that. **Let it hear my answers** updates it on that computer (only when Nowledge Mem offers the newer
+  one); while it runs the row says so, and after it the next session hears back.
 - **With Nowledge Mem's plugin, it can hand me work**, with **Install** to put it in.
 - Antigravity has its own row like the others: Nowledge Mem's Antigravity plugin can pass messages
   too (in Antigravity, ask it with `/nmem-bridge-chat`). Nowledge Mem doesn't tell Ducter whether that

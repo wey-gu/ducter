@@ -356,4 +356,29 @@ describe("D550: a round's structured outcome, for the page's quiet folds", () =>
     const rounds = keeps.page(id)!.rounds;
     expect(rounds.slice(0, 3).map((r) => !!r.changed)).toEqual([false, true, false]);
   });
+
+  test("D560: what woke a round is a sentence: a pull request's change from its wait's command, a condition as it stands", async () => {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    seedOld(t.dir);
+    const core = boot(t.dir);
+    stops.push(() => core.stop());
+    const keeps = core.keeps!;
+    const id = keeps.all().find((k) => k.from.kind === "loop" && k.from.taskId === "t_review")!.keepId;
+    const done = () => core.log.append({ stream: "task:t_review", origin: "task", kind: "report", body: { taskId: "t_review", state: "done", summary: "看过了。", questions: [], evidence: [] } });
+    // hel, 2026-11-24: a check on one PR's head commit, in the task's own words.
+    const wait = (n: number, b: Partial<Bodies["waiter"]>) => core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_d560_${n}`, taskId: "t_review", wakes: "task", state: "fired", at: new Date().toISOString(), reason: "", ...b } as Bodies["waiter"] });
+    wait(1, { kind: "check", reason: "PR #11070 推上回应评审的新提交", check: { argv: ["gh", "pr", "view", "11070", "--repo", "nowledge-co/mem", "--json", "headRefOid", "--jq", ".headRefOid"], succeedWhen: { matches: "^(?!54602a0b08)" } } });
+    done();
+    wait(2, { kind: "judge", reason: "nowledge-co 出现新的 review 请求", check: { argv: ["curl", "-fsSL", "https://api.example.test/search"], succeedWhen: { matches: "x" } }, judge: "new?" });
+    done();
+    wait(3, { kind: "change", reason: "#11093 的 CI", watch: { argv: ["gh", "pr", "checks", "11093"] } });
+    done();
+    const rounds = keeps.page(id)!.rounds;
+    expect(rounds[2]).toMatchObject({ woke: "change", wokeMet: true, wokePr: { pr: "#11070", what: "commits" } });
+    expect(rounds[1]).toMatchObject({ woke: "change", wokeMet: true, wokeWhat: "nowledge-co 出现新的 review 请求" });
+    expect(rounds[1]!.wokePr).toBeUndefined();
+    expect(rounds[0]).toMatchObject({ woke: "change", wokePr: { pr: "#11093", what: "checks" } });
+    expect(rounds[0]!.wokeMet).toBeUndefined();
+  });
 });

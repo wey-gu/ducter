@@ -78,13 +78,6 @@ type App struct {
 	meets firstMeets
 	// memSent is the Mem installs and updates this window asked for, and when (D552: "device:harness").
 	memSent map[string]time.Time
-	// mailboxOpening is the agents' mailboxes this window asked to open (D470: "device:harness").
-	mailboxOpening map[string]bool
-	// mailboxChoosing is the in-place choice open under one agent's row (D480), or nil.
-	mailboxChoosing *mailboxChoice
-	// mailboxAsked is the agents whose Spaces this window looked up by itself when Agent messaging
-	// showed (D489: once each, read only).
-	mailboxAsked map[string]bool
 	// peerSpoken and peerOrigin (D470): the request lines the partner's next words say, and the
 	// message each stands over.
 	peerSpoken map[int64]bool
@@ -1202,8 +1195,6 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.outsideAdopted(f.Past) // D299 (pastoutside.go)
 	case "outside_hidden":
 		a.askPast()
-	case "mailbox_look":
-		a.mailboxLooked(f) // D480 (mailbox_d480.go)
 	case "media_keys":
 		a.keysCame(f.MediaKeys)
 	case "devices":

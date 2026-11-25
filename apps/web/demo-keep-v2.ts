@@ -158,6 +158,15 @@ await round(15 * HOUR, NEW, false, true);
 // mid-morning saw new commits.
 for (let ago = 9 * HOUR + 12 * MIN; ago > 50 * MIN; ago -= 45 * MIN) await round(ago, ago === 3 * HOUR + 57 * MIN ? NEW : undefined, false, ago === 3 * HOUR + 57 * MIN);
 await round(37 * MIN, w("2 个有新提交已复审，7 个没变；2 份评审草稿等你看。", "2 with new commits reviewed again, 7 unchanged; 2 review drafts for you to see."), true, true);
+// D560: rounds woken by the task's own waits on a PR, as hel wrote them on 2026-11-24 (a check on one
+// PR's head commit, a judged look at the org's review requests): the row says what changed.
+const waitRound = async (ago: number, body: Partial<Bodies["waiter"]>, text: string) => {
+  await at(-ago);
+  log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_rv_w${ago}`, taskId: "t_review", wakes: "task", state: "fired", at: iso(-ago), reason: "", ...body } as Bodies["waiter"] });
+  report("t_review", { state: "done", summary: text, evidence: [] });
+};
+await waitRound(25 * MIN, { kind: "judge", reason: w("nowledge-co 有新的评审请求或提及", "A new review request or mention in nowledge-co"), check: { argv: ["curl", "-fsSL", "https://api.github.com/search/issues?q=org%3Anowledge-co+is%3Apr"], succeedWhen: { matches: "total_count" } }, judge: "Is there a new review request or mention for the user?" }, w("#11102 请你评审，读过了，写了草稿。", "#11102 asks for your review; read it and drafted one."));
+await waitRound(12 * MIN, { kind: "check", reason: w("PR #11093 推上回应评审的新提交", "PR #11093 pushes a commit answering the review"), check: { argv: ["gh", "pr", "view", "11093", "--repo", "nowledge-co/mem", "--json", "headRefOid", "--jq", ".headRefOid"], succeedWhen: { matches: "^(?!54602a0b08)" } } }, w("#11093 推了新提交，复审过了，评审意见都改了。", "#11093 pushed a new commit; reviewed again, every comment addressed."));
 // The PR its rounds keep open (100gle's to-do it took on), as the home last read it.
 log.append({ stream: "task:t_review", origin: "system", kind: "owned_news", body: { taskId: "t_review", pr: "nowledge-co/mem#11024", news: [], seen: { since: iso(-20 * HOUR), head: "e41b7c2", state: "open", standing: { at: iso(-20 * MIN), title: w("发布流程：macOS 构建在 CI 里签名", "release: sign the macOS build in CI"), head: "e41b7c2", awaiting: ["100gle"], checks: { total: 14, passed: 14, failed: [], pending: [] }, merge: "blocked" } } } });
 seed.tasks.setState("t_review", "needs_you", "parked");
@@ -200,7 +209,9 @@ const LINES: [string[], string, string][] = [
   [["请 Ducter", "Ducter: apply"], "100gle 确认了 #11024 可以合，记成了常设许可，不用再问你", "100gle confirmed #11024 can merge; kept as a standing go, no need to ask you"],
   [["#10849"], "#10849 有新提交，复审过了；#11024 在等 CI", "#10849 had new commits and was reviewed again; #11024 waits on CI"],
   [["2 份评审草稿", "review drafts for you"], "复审了 2 个新提交，2 份评审写好了等你看", "Reviewed 2 new commits; 2 reviews drafted for you to see"],
-  [["第一轮", "First round"], "看完了 9 个在等你的请求，写了 3 份评审草稿", "Read all 9 requests waiting for you; 3 reviews drafted"],
+  [["#11102"], "#11102 请你评审，读过了，写好了草稿", "#11102 asks for your review; read it and drafted one"],
+  [["#11093"], "#11093 的评审意见都改了，复审过了", "Every comment on #11093 is addressed; reviewed again"],
+  [["第一轮", "First round"],"看完了 9 个在等你的请求，写了 3 份评审草稿", "Read all 9 requests waiting for you; 3 reviews drafted"],
   [[""], "没有新的请求", "No new requests"],
 ];
 const roundAsk = async (r: { report: string }) => {

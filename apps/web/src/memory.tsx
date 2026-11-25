@@ -10,7 +10,7 @@
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
 // D470: 和你的其他 agent 通信 says who reaches whom as a picture per agent with each broken way's fix, the
 // exchanges as a thread per agent with what came of each, who may ask what, and the one switch first.
-import type { BridgeView, MailboxSpace, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
+import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -846,13 +846,6 @@ const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : 
 /** D433, D470: each agent the person runs and how it reaches the partner, from what this window holds. */
 export const peersReachRows = (): ReachRow[] => reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes);
 
-/** D470: the agents whose answers can't get back (Mem lists their mailbox closed), each with the computer its fix runs on. */
-export function peersOneWay(): ReachRow[] {
-  const s = A.settings;
-  if (!s?.peers || peersPhase(A.bridge, peersSwitchOn(s.peers.reach, A.bridge)) !== "on") return [];
-  return reachSplit(peersReachRows()).oneWay.filter((r) => r.device && !A.mailboxOpening.has(`${r.device}:${r.harness}`));
-}
-
 /** D470: the partner's sentence at the head of Agent messaging: who and it reach each other now. */
 export function peersSay(): string {
   const s = A.settings;
@@ -864,13 +857,17 @@ export function peersSay(): string {
   const { oneWay, notYet } = split;
   // D489: both ways only where Mem said so; an agent whose way back Mem hasn't told is said as what it does.
   const both = split.both.filter((r) => standing(r) === "both");
+  const next = split.both.filter((r) => standing(r) === "next");
   const to = split.both.filter((r) => standing(r) === "to");
   const tools = (rs: ReachRow[]) => rs.map((r) => r.tool).join(t("acct.sep"));
-  // D489: one agent a tap from hearing back is said as the step it is, beside the ones that work.
-  if (!both.length && !oneWay.length && to.length) return t("say.peers.to", tools(to));
+  // D489: an agent a step from hearing back (its plugin's update) is said as the step it is, beside the ones that work.
   if (both.length && oneWay.length) return t("say.peers.mixed", tools(both), tools(oneWay));
-  if (both.length) return t("say.peers.both", tools(both));
   if (oneWay.length) return t("say.peers.oneway", tools(oneWay));
+  // D560: one whose next session will hear back needs nothing from the person: said once, as what will happen.
+  if (both.length && next.length) return t("say.peers.mixed.next", tools(both), tools(next));
+  if (next.length) return t("say.peers.next", tools(next));
+  if (both.length) return t("say.peers.both", tools(both));
+  if (to.length) return t("say.peers.to", tools(to));
   if (notYet.length) return t("say.peers.notyet");
   return t("say.peers");
 }
@@ -885,22 +882,27 @@ export function peersReaching(): string[] {
 
 /**
  * D489: 你的 agent / Your agents, one literal row per agent: its coin, its name, what it can do with the
- * partner said as what the person gets (never a diagram), and when it last came. An agent whose answers
- * can't reach it carries its one-tap offer under the row (HearBack); pi, whose own Mem plugin carries no
- * Bridge (Mem's to add), keeps one quiet row, never drawn as a fault (D555: Antigravity has its own row now).
+ * partner said as what the person gets (never a diagram), and when it last came. D560: what the row says is
+ * Mem's facts now (agentBack): one whose next session will hear back says so and offers nothing; one whose
+ * plugin is older than that carries its one button, the plugin's update (while it runs, the row says so).
+ * pi, whose own Mem plugin carries no Bridge (Mem's to add), keeps one quiet row, never drawn as a fault.
  */
 function AgentRow({ r }: { r: ReachRow }) {
   const st = standing(r);
-  const opening = !!r.device && A.mailboxOpening.has(`${r.device}:${r.harness}`);
-  const line = opening ? t("peers.st.opening") : t(`peers.st.${st}`);
+  const updating = st === "old" && !!r.busy;
+  const line = updating ? t("peers.st.updating") : t(`peers.st.${st}`);
   const last = r.last && st !== "install" && st !== "unknown" ? t("peers.last", ago(A.L, r.last)) : "";
+  const hear = st === "old" && r.update && r.device && !updating;
   return (
-    <>
-      <GRow cls="agent-row" tile={<ToolTile from={r.tool} />} title={r.tool} line={line}>
-        {st === "install" && r.device ? <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} /> : last ? <small class="g-state">{last}</small> : null}
-      </GRow>
-      {st === "oneway" && r.device && !opening && <HearBack r={r} />}
-    </>
+    <GRow cls={`agent-row${hear ? " act-under" : ""}`} tile={<ToolTile from={r.tool} />} title={r.tool} line={line}>
+      {st === "install" && r.device ? (
+        <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />
+      ) : hear ? (
+        <Btn kind="secondary" size="sm" label={t("peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)} />
+      ) : last ? (
+        <small class="g-state">{last}</small>
+      ) : null}
+    </GRow>
   );
 }
 
@@ -926,114 +928,14 @@ function NoBridgeRow({ rows, name }: { rows: ReachRow[]; name: string }) {
   );
 }
 
-/** D480: a Space as the person reads it: Mem's personal and everyone Spaces in Ducter's words, a team's by its own name. */
-export function spaceName(s: MailboxSpace): string {
-  if (s.kind === "personal") return t("mailbox.space.personal");
-  if (s.kind === "commons") return t("mailbox.space.everyone");
-  return s.label;
-}
-
-/** D480: who can read a Space's mail, said under its name (the partner's own Space says that it listens there). */
-export function spaceReaders(s: MailboxSpace): string {
-  if (s.partner) return t("mailbox.listens");
-  if (s.kind === "personal") return t("mailbox.readers.you");
-  return s.readers ? t("mailbox.readers", String(s.readers)) : "";
-}
-
-/** D489: where the answers will go, in one line: the Space and who can read it. */
-const hearIn = (s: MailboxSpace) => (s.kind === "personal" ? t("mailbox.in.you", spaceName(s)) : s.readers ? t("mailbox.in.some", spaceName(s), String(s.readers)) : t("mailbox.in", spaceName(s)));
-
-/**
- * D489 (D480's choice, one tap): under an agent whose answers can't reach it, the offer: where they will
- * go (the Space Ducter suggests, read from that computer's own Mem as soon as the pane shows, read only)
- * and who can read it in one line, 让它收到回话 / Let it hear back (the tap is the Go, with that Space),
- * and 换一个空间 / Another Space, quiet, for the real list. Mem never picks a Space; without a suggestion
- * the list is open and the person picks first. Never a typed name.
- */
-function HearBack({ r }: { r: ReachRow }) {
-  const c = A.mailboxChoosing;
-  const mine = !!c && c.device === r.device && c.harness === r.harness;
-  const where = r.deviceName ?? r.device ?? "";
-  const look = mine ? c.look : undefined;
-  const set = (o: Partial<NonNullable<typeof A.mailboxChoosing>>) => ((A.mailboxChoosing = { ...c!, ...o }), A.changed());
-  const go = <Btn kind="secondary" size="sm" label={t("peers.fix.hear")} about={r.tool} onClick={() => (mine ? undefined : A.chooseMailbox(r.device!, r.harness))} />;
-  if (!mine || !look)
-    return (
-      <GBlock>
-        <div class="hear" aria-busy={mine ? "true" : undefined}>
-          <small class="grow">{mine ? t("mailbox.looking", where) : t("mailbox.ask", where)}</small>
-          {!mine && go}
-        </div>
-      </GBlock>
-    );
-  if (look.state !== "choose" || !look.spaces?.length)
-    return (
-      <GBlock>
-        <div class="hear">
-          <small class="grow">{t(`mailbox.${look.state === "choose" ? "failed" : look.state}`, where)}</small>
-          {look.state !== "old" && <Btn kind="text" size="sm" label={t("mailbox.again")} about={r.tool} onClick={() => A.chooseMailbox(r.device!, r.harness)} />}
-        </div>
-      </GBlock>
-    );
-  const spaces = look.spaces;
-  const rec = spaces.find((s) => s.id === look.recommend);
-  const pick = spaces.find((s) => s.id === c.pick) ?? rec;
-  const open = c.more || !rec;
-  // Open, the list comes first and the offer follows it, saying the Space picked.
-  const offer = (
-    <div class="hear">
-      <small class="grow">{pick ? hearIn(pick) : t("mailbox.pick")}</small>
-      {pick && <Btn kind="secondary" size="sm" label={t("peers.fix.hear")} about={r.tool} onClick={() => A.openMailbox(r.device!, r.harness, { id: pick.id, label: pick.label })} />}
-    </div>
-  );
-  return (
-    <GBlock>
-      {open ? (
-        <>
-          <div class="mb-list" role="radiogroup" aria-label={t("mailbox.title")}>
-            {spaces.map((s) => {
-              const who = spaceReaders(s);
-              return (
-                <MenuRow key={s.id} label={`${spaceName(s)}${who ? `, ${who}` : ""}`} on={s.id === pick?.id} onClick={() => set({ pick: s.id })}>
-                  <span class="mb-name">
-                    <b>{spaceName(s)}</b>
-                    {s.id === rec?.id && <span class="mb-tag">{t("newtask.suggested")}</span>}
-                  </span>
-                  {who && <small>{who}</small>}
-                </MenuRow>
-              );
-            })}
-          </div>
-          {offer}
-        </>
-      ) : (
-        <>
-          {offer}
-          <button type="button" class="mb-more" onClick={() => set({ more: true })}>
-            {t("mailbox.other")}
-          </button>
-        </>
-      )}
-    </GBlock>
-  );
-}
-
 /**
  * D489: 你的 agent / Your agents: the agents whose Mem plugin carries Bridge, a row each; then the ones
- * whose plugin doesn't, together. Showing the pane asks that computer's Mem (read only) for the one
- * agent whose answers can't reach it, so its offer already says where they'd go.
+ * whose plugin doesn't, together.
  */
 function PeersAgents({ name }: { name: string }) {
   const rows = peersReachRows();
   const bridged = rows.filter((r) => r.can !== "relay" && r.can !== "none");
   const rest = rows.filter((r) => r.can === "relay" || r.can === "none");
-  const first = bridged.find((r) => standing(r) === "oneway" && r.device && !A.mailboxOpening.has(`${r.device}:${r.harness}`));
-  const key = first ? `${first.device}:${first.harness}` : "";
-  useEffect(() => {
-    if (!first || A.mailboxChoosing || A.mailboxAsked.has(key)) return;
-    A.mailboxAsked.add(key);
-    A.chooseMailbox(first.device!, first.harness);
-  }, [key]);
   if (!rows.length) return null;
   return (
     <section class="set mem-sec">

@@ -6,7 +6,7 @@ import { BRIDGE_CONNECTION_FILE, pipxCmd, seenAtOf } from "@ducter/core/src/brid
 import { findNmem } from "@ducter/core/src/mem-cli.ts";
 import { popplerCmd } from "@ducter/core/src/pkg-line.ts";
 import { foundOf } from "@ducter/core/src/mem-glance.ts";
-import { contactsOf, inboxRefused, mailboxesOf, receiptOf, refsIn, resourceOf, stuckSpaceIn } from "@ducter/partner/src/bridge.ts";
+import { contactsOf, ducterIdentity, inboxRefused, receiptOf, receiversOf, refsIn, resourceOf, stuckSpaceIn } from "@ducter/partner/src/bridge.ts";
 import { readFreeLimit, type FreeProvider, WIDER_KINDS } from "@ducter/protocol";
 import { askHome, type Check, type Ctx, dayOf, doNow, fieldsOf, jsonOf, type LoggedEvent, type Observed, opt, type Step, type StepDone, yesNo } from "./kit.ts";
 import { payControls } from "./pay-page.ts";
@@ -149,7 +149,6 @@ export function checkoutOf(events: readonly LoggedEvent[], since: number) {
 export function contactShapes(j: any): Observed & { list: string } {
   const key = Array.isArray(j?.contacts) ? "contacts" : Array.isArray(j?.cards) ? "cards" : "none";
   const list: any[] = key === "none" ? [] : j[key];
-  const boxes = mailboxesOf(j);
   return {
     list: key,
     cards: list.length,
@@ -157,7 +156,6 @@ export function contactShapes(j: any): Observed & { list: string } {
     mailboxField: list.some((c) => c && typeof c === "object" && "mailbox_available" in c),
     unavailableField: list.some((c) => c && typeof c === "object" && "unavailable" in c),
     memberField: list.some((c) => c && typeof c === "object" && ("member" in c || "member_id" in c || "member_name" in c)),
-    ownTools: boxes.map((b) => `${b.harness}:${b.open ? "open" : "closed"}`),
     usable: contactsOf(j).length,
   };
 }
@@ -182,6 +180,8 @@ export function activityShapes(j: any): Observed {
     seenNotYet: read.filter((c) => has(c) && seenAtOf(c, j) === undefined).length,
     seenMissing: read.filter((c) => !has(c)).length,
     saysNoActivity: list.length - read.length,
+    // D560: the person's own tools Mem says can receive (an active connection labelled with the tool).
+    receivers: receiversOf(j, ducterIdentity).map((b) => b.harness),
   };
 }
 

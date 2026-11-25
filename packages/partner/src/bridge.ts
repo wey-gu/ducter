@@ -200,9 +200,10 @@ export interface BridgeClient {
    */
   reply(messageId: string, text: string, space?: string, route?: string[]): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
   /**
-   * D444: Mem's contact list grouped per identity (`bridge contacts` with no Space selector, nmem
-   * 0.10.121): the person's own agents by the AI tool each runs, and whether Mem says its mailbox
-   * takes messages now. Read only; one call (30 to 40 s on a wide identity).
+   * D560: which of the person's own AI tools Mem says can receive now: an active connection Mem labels
+   * with that tool (`bridge connections list`, `client_label`: what a native session's prepare makes),
+   * never Ducter's own identities. Only `open: true` comes back; a tool Mem says nothing about is left
+   * out, never guessed closed from a name (D444's card-name reading, retired). Read only.
    */
   mailboxes?(): Promise<BridgeResult<{ list: { harness: string; open: boolean }[] }>>;
   /**
@@ -587,23 +588,32 @@ export function toolOfCard(c: any): string | undefined {
   return undefined;
 }
 
+/** D560: Mem's own tool label on a connection (`client_label`), as Ducter's harness id. */
+const LABEL_HARNESS: Record<string, string> = { "claude-code": "claude-code", codex: "codex", "codex-cli": "codex", antigravity: "antigravity", agy: "antigravity" };
+
 /**
- * D444: the person's own agents in Mem's grouped contact list, by tool: open when any of that tool's
- * cards says its mailbox takes messages (`mailbox_available` not false, not `unavailable`). A teammate's
- * card, or one whose tool can't be told, is left out.
+ * D560: the person's own AI tools Mem says can receive now, from `bridge connections list` (schema 2,
+ * VERIFIED on hel 2026-11-25: `connections[] {connection_id, agent_id, client_label, state, created_at_ms,
+ * last_seen_at_ms, home_id, device_label}`, `next_connection_id`). A connection is the tool's when Mem
+ * labels it so (`client_label` "claude-code" or "codex": what each native session's prepare makes) and
+ * it is `active`. Ducter's own identities (the partner's, its helpers', its trials': `skip`) are never the
+ * person's tool, whatever their session's label. A tool Mem says nothing about is left out, never guessed
+ * closed from a card's name (D444 read "Claude 收尾协调", a closed identity, as Claude Code's mailbox).
  */
-export function mailboxesOf(j: any, me?: string): { harness: string; open: boolean }[] {
-  const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
-  const by = new Map<string, boolean>();
+export function receiversOf(j: any, skip: (agentId: string) => boolean = () => false): { harness: string; open: boolean }[] {
+  const list = Array.isArray(j?.connections) ? j.connections : [];
+  const out: { harness: string; open: boolean }[] = [];
   for (const c of list) {
-    if (!c || typeof c !== "object" || !isMine(c, me)) continue;
-    const h = toolOfCard(c);
-    if (!h) continue;
-    const open = c.mailbox_available !== false && !c.unavailable;
-    by.set(h, (by.get(h) ?? false) || open);
+    const h = LABEL_HARNESS[(str(c?.client_label) ?? "").toLowerCase()];
+    const agent = str(c?.agent_id);
+    if (!h || !agent || skip(agent) || str(c?.state) !== "active") continue;
+    if (!out.some((x) => x.harness === h)) out.push({ harness: h, open: true });
   }
-  return [...by].map(([harness, open]) => ({ harness, open }));
+  return out;
 }
+
+/** D560: an identity Ducter made (the partner's default `ducter`, `ducter-helper-…`, `ducter-trial-…`). */
+export const ducterIdentity = (agentId: string): boolean => /^ducter(-|$)/i.test(agentId);
 
 const REF_URI = /nowledgemem:\/\/[^\s<>"'`)\]}，。；、]+/g;
 
@@ -852,7 +862,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   // A saved context, read locally (nothing sent): the user's own member is its custodian, and its
   // exact Space. "personal-<custodian>" is the user's "Only me" place (VERIFIED 2026-11-13: every card
   // there is that member's), where every sender can only be one of the user's own agents.
-  const where = new Map<string, Promise<{ custodian?: string; space?: string; personal: boolean }>>();
+  const where = new Map<string, Promise<{ custodian?: string; space?: string; agent?: string; personal: boolean }>>();
   const placeOf = (ctx: string) => {
     let p = where.get(ctx);
     if (!p) {
@@ -862,7 +872,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         const sel = parse(c.out)?.selection;
         const custodian = str(sel?.address?.custodian_id);
         const space = str(sel?.scope?.space_id);
-        return { ...(custodian ? { custodian } : {}), ...(space ? { space } : {}), personal: !!custodian && space === `personal-${custodian}` };
+        const agent = str(sel?.address?.agent_id);
+        return { ...(custodian ? { custodian } : {}), ...(space ? { space } : {}), ...(agent ? { agent } : {}), personal: !!custodian && space === `personal-${custodian}` };
       })();
       where.set(ctx, p);
     }
@@ -1246,11 +1257,23 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return { ok: true, contacts: cards, more };
     },
     async mailboxes() {
-      const r = await read(["contacts"]);
-      if ("missing" in r || r.code !== 0) return failure(r);
-      const j = parse(r.out);
-      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
-      return { ok: true, list: mailboxesOf(j, await self()) };
+      // D560: Mem's connections in the home's Space (the login's whole list, the same in every Space:
+      // VERIFIED on hel), a few pages at most; the partner's own identity is never one of the person's tools.
+      const own = await placeOf(home.context);
+      const space = home.spaceId ?? own.space;
+      const skip = (a: string) => ducterIdentity(a) || a === own.agent;
+      const found = new Map<string, { harness: string; open: boolean }>();
+      let after: string | undefined;
+      for (let page = 0; page < 5; page++) {
+        const r = await read(["connections", "list", ...(space ? ["--space-id", space] : []), ...(after ? ["--after-connection-id", after] : [])]);
+        if ("missing" in r || r.code !== 0) return failure(r);
+        const j = parse(r.out);
+        if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+        for (const x of receiversOf(j, skip)) found.set(x.harness, x);
+        after = str(j?.next_connection_id);
+        if (!after) break;
+      }
+      return { ok: true, list: [...found.values()] };
     },
     async resource(uri) {
       if (!/^nowledgemem:\/\/[^\s]{1,400}$/i.test(uri)) return undefined;

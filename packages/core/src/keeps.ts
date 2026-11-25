@@ -12,7 +12,7 @@
 //     the person did (pause, resume, stop). Whether a goal holds or a round is news is the model's
 //     to judge (principle 21); nothing here reads meaning from words.
 import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepChanged, KeepBody, KeepCard, KeepEdit, KeepField, KeepFrom, KeepItem, KeepPage, KeepProposal, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
-import { fill, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX } from "@ducter/protocol";
+import { fill, prWakeOf, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX, type PrWake } from "@ducter/protocol";
 import { HELPER_DAILY } from "@ducter/protocol/src/helpers.ts";
 import { describeTrigger, validateTimeTrigger } from "./schedule.ts";
 import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
@@ -451,7 +451,7 @@ export function createKeeps(o: {
    */
   function taskRounds(taskId: string, opts: { first?: boolean; change?: string } = {}): Round[] {
     const out: Round[] = [];
-    let wake: { at: string; woke: KeepRound["woke"]; what?: string } | undefined;
+    let wake: { at: string; woke: KeepRound["woke"]; what?: string; met?: true; pr?: PrWake } | undefined;
     let asked = false;
     let progress: string | undefined;
     let progressSeq = 0;
@@ -475,7 +475,7 @@ export function createKeeps(o: {
     const silent = () => {
       if (!wake) return;
       // A loop's rounds report progress (loops.ts tells them to): the last one is the round's words.
-      out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(progress ? { report: progress.slice(0, REPORT_MAX), key: `${taskId}:${progressSeq}` } : {}), spoke: asked ? "asked" : "silent", state: "done", ...(changed ? { changed: true as const } : {}), taskId });
+      out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(wake.met ? { wokeMet: true as const } : {}), ...(wake.pr ? { wokePr: wake.pr } : {}), ...(progress ? { report: progress.slice(0, REPORT_MAX), key: `${taskId}:${progressSeq}` } : {}), spoke: asked ? "asked" : "silent", state: "done", ...(changed ? { changed: true as const } : {}), taskId });
       n++;
     };
     for (const e of [...own, ...shared, ...changes].sort((a, b) => a.seq - b.seq)) {
@@ -485,7 +485,11 @@ export function createKeeps(o: {
         const w = e.body as Bodies["waiter"];
         if (w.state !== "fired" || w.taskId !== taskId || w.routineId || w.limit) continue;
         silent();
-        wake = { at: e.ts, woke: kindOf(w) === "timer" ? "time" : "change", ...(w.reason ? { what: firstLine(w.reason) } : {}) };
+        // D560: a check's or a judged wait's words are a condition that came true; a wait on one pull
+        // request says what changed on it from its own command, never "changed" stuck on its words.
+        const k = kindOf(w);
+        const pr = k === "timer" ? undefined : prWakeOf(w.check?.argv ?? w.watch?.argv);
+        wake = { at: e.ts, woke: k === "timer" ? "time" : "change", ...(w.reason ? { what: firstLine(w.reason) } : {}), ...(k !== "timer" && k !== "change" ? { met: true as const } : {}), ...(pr ? { pr } : {}) };
         asked = false;
         progress = undefined;
         changed = false;
@@ -499,8 +503,9 @@ export function createKeeps(o: {
         }
         const woke: KeepRound["woke"] = wake?.woke ?? (n === 0 && opts.first !== false ? "first" : opts.change ? "change" : "time");
         const what = wake?.what ?? (woke === "change" ? opts.change : undefined);
+        const how = { ...(wake?.met ? { wokeMet: true as const } : {}), ...(wake?.pr ? { wokePr: wake.pr } : {}) };
         const report = r.summary?.trim();
-        out.push({ at: wake?.at ?? e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...(report ? { report: report.slice(0, REPORT_MAX), key: `${taskId}:${e.seq}` } : {}), spoke: asked || r.state === "needs_input" ? "asked" : "silent", state: r.state === "failed" ? "failed" : "done", ...(changed ? { changed: true as const } : {}), taskId });
+        out.push({ at: wake?.at ?? e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...how, ...(report ? { report: report.slice(0, REPORT_MAX), key: `${taskId}:${e.seq}` } : {}), spoke: asked || r.state === "needs_input" ? "asked" : "silent", state: r.state === "failed" ? "failed" : "done", ...(changed ? { changed: true as const } : {}), taskId });
         wake = undefined;
         asked = false;
         progress = undefined;
@@ -509,7 +514,7 @@ export function createKeeps(o: {
       }
     }
     const c = tasks.get(taskId);
-    if (wake && c && AT_WORK.has(c.attention)) out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), spoke: "silent", state: "running", taskId });
+    if (wake && c && AT_WORK.has(c.attention)) out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(wake.met ? { wokeMet: true as const } : {}), ...(wake.pr ? { wokePr: wake.pr } : {}), spoke: "silent", state: "running", taskId });
     else silent();
     return out;
   }
@@ -534,7 +539,7 @@ export function createKeeps(o: {
         // A skip's reason is Ducter's own words (its computer was asleep), said as they are.
         const did = b.state === "skipped" ? firstLine(b.reason) : undefined;
         const prev = byRun.get(b.runId);
-        byRun.set(b.runId, { at: prev?.at ?? e.ts, woke: cond ? "change" : "time", ...(cond && r ? { wokeWhat: r.triggerWords } : {}), ...(did ? { did } : {}), ...(report ? { report: report.slice(0, REPORT_MAX), ...(state !== "running" ? { key: `run:${b.runId}` } : {}) } : {}), spoke: asked ? "asked" : told ? "told" : "silent", state, ...(b.taskId ? { taskId: b.taskId } : {}) });
+        byRun.set(b.runId, { at: prev?.at ?? e.ts, woke: cond ? "change" : "time", ...(cond && r ? { wokeWhat: r.triggerWords, wokeMet: true as const } : {}), ...(did ? { did } : {}), ...(report ? { report: report.slice(0, REPORT_MAX), ...(state !== "running" ? { key: `run:${b.runId}` } : {}) } : {}), spoke: asked ? "asked" : told ? "told" : "silent", state, ...(b.taskId ? { taskId: b.taskId } : {}) });
       }
       out = [...byRun.values()];
     } else {

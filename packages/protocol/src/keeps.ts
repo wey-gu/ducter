@@ -99,6 +99,12 @@ export interface KeepRound {
   woke: "time" | "arrival" | "change" | "now" | "first" | "edit";
   /** What woke it, in words where there are some (#11030's CI; Codex). */
   wokeWhat?: string;
+  /** D560: `wokeWhat` is a condition that came true (a check's or a judged wait's words, a condition
+   *  routine's trigger), said as it stands, never with "changed" stuck on. */
+  wokeMet?: true;
+  /** D560: what changed on a pull request, read from the wait's own command (`gh pr view N --json
+   *  <one field>`, `gh pr checks N`), never from words: #11093 有新提交. */
+  wokePr?: PrWake;
   /** What happened, in one line to the person in their language: the cheap model's reading of the
    *  round's report, judged once and recorded (principle 21); absent until it has, never the raw
    *  report. A helper's arrival says the piece of work it took. */
@@ -356,4 +362,44 @@ export interface KeepsApi {
   /** The one-line answer for one Keep in the person's language (keep_list's `say`). */
   say(id: string): string;
   stop(): void;
+}
+
+/** D560: what changed on one pull request, read from a wait's command: its number and which kind of change. */
+export interface PrWake {
+  pr: string;
+  what: "commits" | "checks" | "reviews" | "comments" | "state";
+}
+
+// gh's own JSON field names (`gh pr view --json`), by the change each stands for.
+const PR_FIELDS: Record<string, PrWake["what"]> = {
+  headRefOid: "commits",
+  commits: "commits",
+  statusCheckRollup: "checks",
+  reviews: "reviews",
+  latestReviews: "reviews",
+  reviewDecision: "reviews",
+  reviewRequests: "reviews",
+  comments: "comments",
+  state: "state",
+  mergedAt: "state",
+  closed: "state",
+  isDraft: "state",
+  mergeable: "state",
+  mergeStateStatus: "state",
+};
+
+/**
+ * D560: what a wait on a pull request watches, from its argv alone: `gh pr view <n> --json <fields of
+ * one kind>` (that kind) or `gh pr checks <n>` (its checks). Fields of several kinds, another command or
+ * no number: undefined, and the round says the wait's own words instead.
+ */
+export function prWakeOf(argv: readonly string[] | undefined): PrWake | undefined {
+  if (!argv || argv[0] !== "gh" || argv[1] !== "pr" || !/^\d+$/.test(argv[3] ?? "")) return undefined;
+  const pr = `#${argv[3]}`;
+  if (argv[2] === "checks") return { pr, what: "checks" };
+  if (argv[2] !== "view") return undefined;
+  const i = argv.indexOf("--json");
+  const fields = i >= 0 ? (argv[i + 1] ?? "").split(",").map((f) => f.trim()).filter(Boolean) : [];
+  const kinds = [...new Set(fields.map((f) => PR_FIELDS[f]).filter((k): k is PrWake["what"] => !!k))];
+  return kinds.length === 1 ? { pr, what: kinds[0]! } : undefined;
 }

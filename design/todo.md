@@ -371,24 +371,24 @@ line.
   any of them; then drop the offer (or its look) where Mem makes it unneeded. D555 (research/226, nmem 0.10.123):
   only Bridge in Antigravity's plugin shipped (adopted); pi has an opt-in reminder only; the rest unchanged, asked
   again in `research/private/bridge-ask-2026-11-25.md` (not sent).
-- **The pane's row says "done" the moment the mailbox opens.** Trigger: Mem emits a mailbox-changed event (item 6);
-  until then the row turns at the next contact read (D444).
-
-- **Let it hear back (D489; was Open its mailbox), run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
-  The task writes Mem-side (`nmem bridge setup --enable` in that agent's own context); check the brief's steps
-  against Mem's then-current help, and that the row turns both ways after Mem's next contact read.
+- **The pane's row says "both ways" the moment a session connects.** Trigger: Mem emits a connection-changed event
+  (item 6); until then the row turns at the next connection read (D560: on looking, 5 minutes old).
+- **D560: a session whose native mailbox Mem refuses.** Today such an agent reads "next session" forever, and
+  only its messages arriving without `sender.host` hint at it. Trigger: Mem names the refusal in a field Ducter can
+  read (`connections list`, or `plugins inspect`'s runtime), or a person reports the row never turning; then say
+  it plainly on the row, with no tap. Asked in `research/private/bridge-ask-2026-11-25.md`.
+- **D560: retire `mailbox_look` and `mem_bridge_look`** (served only to apps from before D560). Trigger: the
+  release after next, when no app older than D560 is in use on the author's devices.
 - **A sender's daily use shown** (of SENDER_DAILY, TRUSTED_DAILY) in its thread's head. Trigger: a sender is set
   aside for the first time, or the author asks. Needs the count in a frame (the partner counts it today).
 - **A thread's older exchanges** (more than three per agent). Trigger: an agent has more than three this week in
   real use; then a 看看全部 in place, not a new page.
 - **The phones' native clients** (iOS, Android) say the pane through the web view today; a native look owed with
   their own Settings pass.
-- **D480: the chosen Space run once for real**, with the author's Claude Code on the Mac (its mailbox closed
-  today). Trigger: the author taps **在「只有你」打开**. Check that `--space-id` with the agent's own context
-  enables it, and the row turns both ways after Mem's next contact read.
-- **D480: an eval scenario for `[your agents' mail]`** (a closed mailbox; the partner never promises a reply,
-  never says another Mem, points at the row, opens no task). Trigger: the next persona or partner-tool change
-  (its eval run carries it), or the partner promising a reply that can't arrive.
+- **D560 (was D480): an eval scenario for `[your agents' mail]`** (an agent whose next session will hear back: the
+  partner says so once, sends the person nowhere, opens no task, never says closed or another Mem; an old plugin:
+  it names the update). Trigger: the next persona or partner-tool change (its eval run carries it), or the
+  partner sending the person to Settings for nothing again.
 - **D480 round 2: "same Mem" from identity, if ever needed.** Trigger: a person really on two Mems (a Mem app
   on one computer, Cloud on another). Then from what Mem reports (account or member, backend), the home's relay
   resolved to its upstream; never from API URLs.

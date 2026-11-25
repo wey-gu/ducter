@@ -1,16 +1,17 @@
 // D489: Agent messaging in the author's real shape. The home is the server hel, on the person's one
 // Nowledge Mem (Nowledge Cloud; the partner listens in "Only me"); the person's MacBook Pro M3 is a
-// computer for tasks with Claude Code, Codex, pi and Antigravity, Mem's plugin in each. Claude Code reaches
-// the partner but Mem lists its mailbox closed; Codex both ways; pi and Antigravity's own Mem plugins carry
-// no Bridge (Ducter's tasks on them pass messages through Ducter). Eight Spaces, "Only me" the write
-// default (the author's list, 2026-11-22). No nmem runs: scripted stand-ins answer as nmem 0.10.122 would.
+// computer for tasks with Claude Code, Codex, pi and Antigravity, Mem's plugin in each. D560: Claude Code's
+// plugin (0.7.37) readies each new session by itself and none has connected yet, so its next session hears
+// back; Codex both ways (Mem has an active connection labelled codex); pi's own Mem plugin carries no Bridge
+// (Ducter's tasks on it pass messages through Ducter). No nmem runs: scripted stand-ins answer as nmem would.
 //   DUCTER_PORT=7489 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_STAGE=author bun apps/web/demo-d489.ts
 // DEMO_STAGE:
 //   author    as above, with a week of exchanges (a request that became a task, one answered, the
 //             partner's question waiting, a reply to Claude Code that didn't go)
 //   fresh     as author, nothing exchanged yet
-//   linked    as author after the one tap: both mailboxes open
-//   plugin    Codex has no Mem plugin on the Mac yet (one tap to install); Claude Code one way
+//   linked    as author after a Claude Code session connected: both ways for both
+//   old       D560: Claude Code's plugin is 0.7.20 and Mem offers 0.7.38: its update is the one button
+//   plugin    Codex has no Mem plugin on the Mac yet (one tap to install)
 //   off       the switch off
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -68,7 +69,7 @@ const core = startCore({
     kind: async () => "server",
   },
   update: { homeName: "hel", autoEveryMs: 0, run: () => new Promise(() => {}) },
-  memPlugins: { inspectLocal: async () => ({ codex: stage === "plugin" ? { state: "absent" } : { state: "installed", version: "0.7.37" } }), everyMs: 0, connected: () => true },
+  memPlugins: { inspectLocal: async () => ({ codex: stage === "plugin" ? { state: "absent" } : { state: "installed", version: "0.1.53" } }), ...(stage === "old" ? { checkUpdates: async () => ({ "claude-code": "0.7.38", codex: "0.1.53" }) } : {}), everyMs: 0, connected: () => true },
 });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
@@ -77,18 +78,20 @@ core.settings.setMemState("connected");
 core.settings.set({ language: zh ? "zh" : "en" });
 if (stage === "off") core.settings.set({ peers: { reach: "off" } } as never);
 if (stage !== "off") void core.bridgeLink.connect(); // off: the link is down, as after the switch
-core.bridgeLink.setMailboxes?.([...(stage === "plugin" ? [] : [{ harness: "codex", open: true }]), { harness: "claude-code", open: stage === "linked" }]);
+// D560: Mem's connections say which tools can receive; nothing is ever said closed.
+core.bridgeLink.setMailboxes?.([...(stage === "plugin" ? [] : [{ harness: "codex", open: true }]), ...(stage === "linked" ? [{ harness: "claude-code", open: true }] : [])]);
 
 const w = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: MAC, platform: "darwin-arm64", computer: MAC } as never) as { token: string };
 const ws = new WebSocket(`ws://127.0.0.1:${core.port}/worker`, { headers: { "x-forwarded-for": "203.0.113.9", authorization: `Bearer ${w.token}` } } as never);
 await new Promise<void>((r) => (ws.onopen = () => r()));
-const codexPlugin = stage === "plugin" ? { state: "absent" } : { state: "installed", version: "0.7.37" };
+const codexPlugin = stage === "plugin" ? { state: "absent" } : { state: "installed", version: "0.1.53" };
+const claudePlugin = { state: "installed", version: stage === "old" ? "0.7.20" : "0.7.37" };
 ws.onmessage = (m) => {
   const f = JSON.parse(String(m.data));
   if (f.t !== "req") return;
   const reply = (result: unknown) => ws.send(JSON.stringify({ t: "res", id: f.id, ok: true, result }));
   if (f.op === "mem_plugins")
-    return reply({ "claude-code": { state: "installed", version: "0.7.37" }, codex: codexPlugin, pi: { state: "installed", version: "0.2.4" }, antigravity: { state: "installed", version: "0.1.9" } });
+    return reply({ "claude-code": claudePlugin, codex: codexPlugin, pi: { state: "installed", version: "0.2.4" }, antigravity: { state: "installed", version: "0.1.9" } });
   if (f.op === "mem_bridge_look") return reply({ signedIn: true, setup: { state: "selection_needed", candidates } });
   reply(null);
 };

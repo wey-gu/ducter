@@ -2,6 +2,7 @@
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
+import { agentBack, type AgentBack } from "@ducter/protocol/src/mem-health.ts";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
 /** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
@@ -240,10 +241,14 @@ export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code",
  * D448: relay: its Mem plugin can't, but it is signed in on a computer of Ducter's, so the tasks Ducter
  * runs on it pass messages through Ducter; the person's own sessions of it outside Ducter still can't.
  */
-// D444: box, from Mem's grouped contact list: its mailbox takes messages (open) or not (closed); absent when Mem didn't list it.
-export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none" | "relay"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed" };
+// D560: box "open": Mem has an active connection labelled with this tool (core reads `bridge connections
+// list`); nothing else is ever said of it (a "closed" from an older home is not a fact and is dropped).
+// back: whether the partner's replies reach it (agentBack): yes, next (its next session will), old (its
+// plugin's update is the fix), unknown. update: Mem offers a newer plugin there; busy: that update is running.
+export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none" | "relay"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed"; back?: AgentBack; update?: true; busy?: true };
+type MemLine = { state: string; version?: string; taskId?: string; busy?: boolean };
 export function reachRows(
-  devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
+  devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: MemLine }[] }[],
   ownAgents: readonly string[],
   recent: readonly Pick<Handoff, "agent" | "host" | "at">[],
   boxes: readonly { harness: string; open: boolean }[] = [],
@@ -252,8 +257,8 @@ export function reachRows(
   const out: ReachRow[] = [];
   for (const h of [...BRIDGE_TOOLS, ...NO_BRIDGE_TOOLS] as string[]) {
     const here = ds.flatMap((d) => d.harnesses.filter((x) => x.harness === h && x.installed && x.loggedIn).map((x) => ({ d, x })));
-    const mb = boxes.find((x) => x.harness === h);
-    const box = mb ? { box: mb.open ? ("open" as const) : ("closed" as const) } : {};
+    const mb = boxes.find((x) => x.harness === h && x.open);
+    const box = mb ? { box: "open" as const } : {};
     if (!here.length && !ownAgents.includes(h) && !mb) continue;
     const tool = TOOL_NAME[h]!;
     const last = recent.find((r) => r.host === tool || new RegExp(`\\b${tool.replace(/ /g, "\\s*")}\\b`, "i").test(r.agent))?.at;
@@ -263,10 +268,15 @@ export function reachRows(
       continue;
     }
     // D444: Mem listing its mailbox as open is the plainest proof it can reach the partner.
-    if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last || mb?.open) {
-      // D470: the computer where it is signed in with the plugin, home first: where its mailbox is opened.
-      const on = here.find((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") ?? here[0];
-      out.push({ harness: h, tool, can: "yes", ...at, ...box, ...(on ? { device: on.d.id, deviceName: on.d.name } : {}) });
+    const plugged = here.filter((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update");
+    if (plugged.length || last || mb) {
+      // D470: the computer where it is signed in with the plugin, home first. D560: a message that came
+      // from one of its sessions (Mem's `sender.host`) is a fact that replies reach it: they go back to that session.
+      const on = plugged.find((v) => v.x.mem?.state === "update") ?? plugged[0] ?? here[0];
+      const back = agentBack(h, { open: !!mb, heard: recent.some((r) => r.host === tool), versions: plugged.map((v) => v.x.mem?.version) });
+      const update = plugged.some((v) => v.x.mem?.state === "update");
+      const busy = plugged.some((v) => !!v.x.mem?.taskId || !!v.x.mem?.busy);
+      out.push({ harness: h, tool, can: "yes", ...at, ...box, ...(back !== "unknown" ? { back } : {}), ...(update ? { update: true as const } : {}), ...(busy ? { busy: true as const } : {}), ...(on ? { device: on.d.id, deviceName: on.d.name } : {}) });
       continue;
     }
     const off = here.find((v) => v.x.mem?.state === "absent");
@@ -355,16 +365,18 @@ export function tryAgents(devices: { id: string; name: string; home?: boolean; h
 /**
  * D470: who reaches whom, read off a reach row: the way from the agent to the partner (`to`) and back
  * (`back`), each yes, no, or not known yet; and the one fix Ducter can start when a way is missing:
- * install (Mem's plugin isn't in it) or mailbox (Mem lists its mailbox closed, so the partner's answers
- * can't reach it).
+ * install (Mem's plugin isn't in it) or, D560, update (its plugin is older than the one whose sessions
+ * receive, and Mem offers the newer one there). An agent whose next session will hear back is `soon`.
  */
-export type Way = "yes" | "no" | "unknown";
-export type Ways = { to: Way; back: Way; fix?: "install" | "mailbox" };
-export function reachWays(r: Pick<ReachRow, "can" | "box" | "device">): Ways {
+export type Way = "yes" | "no" | "soon" | "unknown";
+export type Ways = { to: Way; back: Way; fix?: "install" | "update" };
+export function reachWays(r: Pick<ReachRow, "can" | "box" | "device" | "back" | "update">): Ways {
   switch (r.can) {
-    case "yes":
-      if (r.box === "closed") return { to: "yes", back: "no", ...(r.device ? { fix: "mailbox" as const } : {}) };
-      return { to: "yes", back: r.box === "open" ? "yes" : "unknown" };
+    case "yes": {
+      const back = r.back ?? (r.box === "open" ? "yes" : "unknown");
+      if (back === "old") return { to: "yes", back: "no", ...(r.device && r.update ? { fix: "update" as const } : {}) };
+      return { to: "yes", back: back === "next" ? "soon" : back };
+    }
     case "install":
       return { to: "no", back: "no", ...(r.device ? { fix: "install" as const } : {}) };
     case "unknown":
@@ -375,16 +387,17 @@ export function reachWays(r: Pick<ReachRow, "can" | "box" | "device">): Ways {
 
 /**
  * D489: how one agent stands with the partner, said as what the person gets: both (it hands the partner
- * work and hears back), oneway (it hands work, the answers can't reach it: one tap fixes it where Ducter
- * knows the computer), to (it hands work; Mem hasn't said about the way back), install (Mem's plugin is
- * missing), unknown (Mem's check hasn't said), relay (no Bridge in its Mem plugin, but Ducter's own tasks
- * on it pass messages through Ducter), none (no Bridge in its Mem plugin: Mem's to add, nothing to fix).
+ * work and hears back), D560: next (it hands work; its next session will hear back: nothing to tap), old
+ * (it hands work; its plugin's update lets it hear back: the one button, where Mem offers the update),
+ * to (it hands work; Mem hasn't said about the way back), install (Mem's plugin is missing), unknown
+ * (Mem's check hasn't said), relay (no Bridge in its Mem plugin, but Ducter's own tasks on it pass
+ * messages through Ducter), none (no Bridge in its Mem plugin: Mem's to add, nothing to fix).
  */
-export type Standing = "both" | "oneway" | "to" | "install" | "unknown" | "relay" | "none";
-export function standing(r: Pick<ReachRow, "can" | "box" | "device">): Standing {
+export type Standing = "both" | "next" | "old" | "to" | "install" | "unknown" | "relay" | "none";
+export function standing(r: Pick<ReachRow, "can" | "box" | "device" | "back" | "update">): Standing {
   if (r.can === "relay" || r.can === "none") return r.can;
   const w = reachWays(r);
-  if (w.to === "yes") return w.back === "yes" ? "both" : w.back === "no" ? "oneway" : "to";
+  if (w.to === "yes") return w.back === "yes" ? "both" : w.back === "soon" ? "next" : w.back === "no" ? "old" : "to";
   return r.can === "install" ? "install" : "unknown";
 }
 

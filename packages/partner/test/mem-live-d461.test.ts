@@ -2,7 +2,7 @@
 // nmem 0.10.121 (research/200). Each fixture below has the live answer's field names and types;
 // every value is a fake that looks fake (no id, name or text from the real Mem).
 import { expect, test } from "bun:test";
-import { contactsMore, contactsOf, inboxRefused, mailboxesOf, refKind, resourceOf, withoutFrontmatter } from "../src/bridge.ts";
+import { contactsMore, contactsOf, ducterIdentity, inboxRefused, receiversOf, refKind, resourceOf, withoutFrontmatter } from "../src/bridge.ts";
 
 const ME = "00000000-0000-4000-8000-00000000me01";
 const TEAMMATE = "00000000-0000-4000-8000-0000000tm002";
@@ -36,11 +36,38 @@ test("the grouped contact list as Mem returns it: contacts[] wins over cards[], 
   expect(cs.find((c) => c.contact === "bi1:FAKE-c3")!.label).toBe("another agent");
 });
 
-test("which of the person's own agents' mailboxes take messages, by tool, from the live shape", () => {
-  expect(mailboxesOf(contactsLive, ME)).toEqual([
+// D560: `bridge connections list --space-id <id> --json` (schema 2), the shape VERIFIED read-only on hel
+// 2026-11-25 (nmem 0.10.123): the login's whole list, the same in every Space. Values are fakes.
+const connectionsLive = {
+  schema_version: 2,
+  activity_available: true,
+  metadata_available: true,
+  outcome_unknown: false,
+  next_connection_id: null,
+  connections: [
+    // a native Claude Code session's prepare (its plugin 0.7.35+ at SessionStart), and a Codex one on the same identity
+    { connection_id: "fake-conn-1", agent_id: "bridge-fake-0001", identity_birth: "fake-birth-1", client_label: "claude-code", state: "active", created_at_ms: 1, last_seen_at_ms: 2, home_id: "fake-home", device_label: "fake-laptop" },
+    { connection_id: "fake-conn-2", agent_id: "bridge-fake-0001", identity_birth: "fake-birth-1", client_label: "codex", state: "active", created_at_ms: 1, last_seen_at_ms: null, home_id: null, device_label: null },
+    // a Ducter task's session under the partner's own identity: never the person's Codex
+    { connection_id: "fake-conn-3", agent_id: "ducter", identity_birth: "fake-birth-2", client_label: "codex", state: "active", created_at_ms: 1, last_seen_at_ms: null, home_id: null, device_label: null },
+    // the partner's and a trial's own connections, and a revoked Antigravity one
+    { connection_id: "fake-conn-4", agent_id: "ducter-trial-fake", identity_birth: "fake-birth-3", client_label: "ducter-trial-fake", state: "revoked", created_at_ms: 1, last_seen_at_ms: null, home_id: null, device_label: null },
+    { connection_id: "fake-conn-5", agent_id: "bridge-fake-0002", identity_birth: "fake-birth-4", client_label: "antigravity", state: "revoked", created_at_ms: 1, last_seen_at_ms: null, home_id: null, device_label: null },
+    { connection_id: "fake-conn-6", agent_id: "fake-mcp-role", identity_birth: "fake-birth-5", client_label: "MCP", state: "active", created_at_ms: 1, last_seen_at_ms: null, home_id: null, device_label: null },
+  ],
+};
+
+test("D560: which of the person's own tools can receive is Mem's connection label, never a card's name", () => {
+  expect(receiversOf(connectionsLive, ducterIdentity)).toEqual([
+    { harness: "claude-code", open: true },
     { harness: "codex", open: true },
-    { harness: "claude-code", open: false },
   ]);
+  // Without the Codex session the person ran, the partner's own task session never stands in for it.
+  const noCodex = { ...connectionsLive, connections: connectionsLive.connections.filter((c) => c.connection_id !== "fake-conn-2") };
+  expect(receiversOf(noCodex, ducterIdentity)).toEqual([{ harness: "claude-code", open: true }]);
+  // The live contact list holds a closed card whose name says Claude ("fake claude code laptop"): it is
+  // not a fact about Claude Code's mailbox, so nothing reads it as closed (the hel loop of 2026-11-25).
+  expect(receiversOf(contactsLive, ducterIdentity)).toEqual([]);
 });
 
 test("more pages: the Space batch's own fields, never the top-level sentence", () => {

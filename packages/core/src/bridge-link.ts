@@ -121,8 +121,8 @@ export function httpStatusIn(out: string, err: string): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
-/** D444: Mem's grouped contact list is read again when the pane is looked at and it is older than this. */
-export const MAILBOXES_TTL_MS = 30 * 60_000;
+/** D444: read again when the pane is looked at and older than this. D560: Mem's connection list (one quick read, not the 30 s contact list), so a session the person just opened shows within minutes. */
+export const MAILBOXES_TTL_MS = 5 * 60_000;
 
 /** D338: a Space Mem answered 404 for is tried again once a day, or when nmem's version changes. */
 export const UNREAD_RETRY_MS = 24 * 3_600_000;

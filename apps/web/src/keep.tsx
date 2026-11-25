@@ -316,6 +316,10 @@ function wokeWords(r: KeepRound, k: KeepPage): string {
     case "arrival":
       return r.wokeWhat ? t("keep.woke.arrival", r.wokeWhat) : t("keep.woke.arrival.bare");
     case "change":
+      // D560: what changed, as a sentence: a pull request's own change (from its wait's command), a
+      // condition that came true in its own words, or new activity on what it watches.
+      if (r.wokePr) return t(`keep.woke.pr.${r.wokePr.what}`, r.wokePr.pr);
+      if (r.wokeWhat && r.wokeMet) return t("keep.woke.met", r.wokeWhat);
       return r.wokeWhat ? t("keep.woke.change", r.wokeWhat) : t("keep.woke.change.bare");
     case "now":
       return t("keep.woke.now");

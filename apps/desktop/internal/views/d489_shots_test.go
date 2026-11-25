@@ -14,8 +14,7 @@ import (
 )
 
 // D489: Agent messaging in the author's real shape (apps/web/demo-d489.ts), at 1280 and 760, zh and
-// en, light and dark; for the author stage also with Claude Code's one tap opened and its other
-// Spaces shown. A live run only:
+// en, light and dark (D560: no Space choice any more). A live run only:
 //
 //	DUCTER_PORT=7489 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_STAGE=author bun apps/web/demo-d489.ts
 //	DUCTER_SHELL_URL=ws://127.0.0.1:7489/ws DUCTER_SHELL_LANG=zh DUCTER_SHOTS_DIR=<.shots/d489/after> \
@@ -62,24 +61,5 @@ func TestD489Shots(t *testing.T) {
 	settle()
 	for _, w := range []int{1280, 760} {
 		shoot("peers", w, 2000)
-	}
-	if stage != "author" {
-		return
-	}
-	mac := ""
-	for _, d := range h.app.S.Devices {
-		if !d.Home {
-			mac = d.ID
-		}
-	}
-	h.app.chooseMailbox(mac, "claude-code")
-	h.until("look", func() bool { return h.app.mailboxChoosing != nil && h.app.mailboxChoosing.Look != nil })
-	settle()
-	for _, w := range []int{1280, 760} {
-		shoot("choose", w, 2000)
-	}
-	h.app.mailboxChoosing.More = true
-	for _, w := range []int{1280, 760} {
-		shoot("more", w, 2400)
 	}
 }

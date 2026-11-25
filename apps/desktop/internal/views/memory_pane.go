@@ -34,12 +34,20 @@ func (a *App) memoryPanel(c *ui.Context) {
 	a.partnerToast(c)
 	switch phase {
 	case "on":
+		// D563: Mem signed out, out of reach or too old is said at the top (D552) and fixed right
+		// under it: its group, with 重新登录 / 再看一次 / 更新, comes first, never a page below.
+		trouble := memTrouble(a.S.Mem, b, a.homeHarnesses())
+		if trouble {
+			a.memLink(c, b)
+		}
 		a.memHead(c, st)
 		a.memAbout(c)
 		a.memCheck(c)
 		a.memRules(c)
 		a.memTools(c)
-		a.memLink(c, b)
+		if !trouble {
+			a.memLink(c, b)
+		}
 	case "off":
 		a.memHead(c, st)
 	case "closed":

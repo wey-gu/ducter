@@ -33,26 +33,26 @@ func TestWatchTroubleSaidOnTheRow(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range []string{L.T("tile.trouble.unsupported"), L.T("tile.trouble.reconnect")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no row state %q in %q", lang, want, tt.Texts())
 			}
 		}
 		// The bot's detail says why, and not the mentions line it can't keep.
 		app.cards().tile["c1"] = "discordbot:wey"
 		tt.Frame()
-		if !tt.HasText(L.T("tile.trouble.unsupported.chat")) {
+		if !hasText(tt, L.T("tile.trouble.unsupported.chat")) {
 			t.Errorf("%s: no unsupported note", lang)
 		}
-		if tt.HasText(L.T("tile.mentions")) {
+		if hasText(tt, L.T("tile.mentions")) {
 			t.Errorf("%s: the mentions line beside a watch that can't read them", lang)
 		}
 		// The account to connect again: its note names the place, and the link opens it.
 		app.cards().tile["c1"] = "gmail:old@example.com"
 		tt.Frame()
-		if !tt.HasText(L.T("tile.trouble.reconnect.note", "OOMOL")) {
+		if !hasText(tt, L.T("tile.trouble.reconnect.note", "OOMOL")) {
 			t.Errorf("%s: no reconnect note in %q", lang, tt.Texts())
 		}
-		if !tt.HasText(L.T("tile.trouble.reconnect.go", "OOMOL")) {
+		if !hasText(tt, L.T("tile.trouble.reconnect.go", "OOMOL")) {
 			t.Errorf("%s: no reconnect link", lang)
 		}
 		_ = sent

@@ -255,7 +255,9 @@ What your partner remembers about you has its own section, **Memory**.
   out, a row says so with **Update** (your sign-in and your memories stay as they are), and the
   Settings entry for Memory says it too. **Details** shows the exact computer, version, identity
   and space, for when you need help. When you use agents of your own, **Your other agents reach
-  {name} through it too** leads to **Agent messaging**.
+  {name} through it too** leads to **Agent messaging**. When Nowledge Mem's sign-in stopped
+  working, it can't be reached, or it is too old, this group comes first on the page, with its one
+  button (**Sign in again**, **Check again** or **Update**), right under the line that says so.
 - The same group also names any of your AI agents, on any of your computers, whose Nowledge Mem
   is worth a tap: **Claude Code on Mac mini**, "Nowledge Mem 0.7.34; 0.7.37 is out", with **Update**;
   or "Nowledge Mem is in twice: 0.1.10 and 0.1.53", with **Keep one**. Each asks first what it will

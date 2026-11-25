@@ -87,10 +87,10 @@ func TestD339PausedLoanLivesInTheTaskNotTheTitleBar(t *testing.T) {
 	if on, _ := app.taskWhere(app.S.Task("t_wx")); on != "在你的 Pixel Fold 上" {
 		t.Errorf("where: %q", on)
 	}
-	if !tt.HasText("在你的 Pixel Fold 上") || strings.Contains(strings.Join(tt.Texts(), "|"), "用 Ducter 自己的浏览器") {
+	if !hasText(tt, "在你的 Pixel Fold 上") || strings.Contains(strings.Join(tt.Texts(), "|"), "用 Ducter 自己的浏览器") {
 		t.Errorf("head: %q", tt.Texts())
 	}
-	if tt.HasText("看它上网") || app.watchesBrowser(app.S.Task("t_wx")) {
+	if hasText(tt, "看它上网") || app.watchesBrowser(app.S.Task("t_wx")) {
 		t.Errorf("看它上网 offered for a phone task that never browsed")
 	}
 	for _, k := range app.benchTabs(app.S.Task("t_wx")) {

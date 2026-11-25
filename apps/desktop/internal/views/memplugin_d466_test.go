@@ -186,16 +186,16 @@ func TestMemPluginCoinD466(t *testing.T) {
 			d.sel = "local"
 			d.card.sheet.coin = coinKey("local", "claude-code")
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("memp.update.to", "0.7.34", "0.7.37")) {
+			if !hasText(h.tt, L.T("memp.update.to", "0.7.34", "0.7.37")) {
 				t.Fatalf("claude coin: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("d466-mac-coin-update-light-%s", lang))
 			h.click(spoken(L, L.T("memp.btn.update"), spoken(L, "Claude Code", "Nowledge Mem")))
-			h.until("ask", func() bool { return h.tt.HasText(L.T("memp.means.update", "Claude Code", "hel")) })
+			h.until("ask", func() bool { return hasText(h.tt, L.T("memp.means.update", "Claude Code", "hel")) })
 			h.shotAs(fmt.Sprintf("d466-mac-coin-ask-light-%s", lang))
 			d.card.sheet.coin = coinKey("local", "codex")
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("memp.review.two", "0.1.10", "0.1.53")) {
+			if !hasText(h.tt, L.T("memp.review.two", "0.1.10", "0.1.53")) {
 				t.Fatalf("codex coin: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("d466-mac-coin-two-light-%s", lang))

@@ -47,11 +47,11 @@ func TestD372PartnerRules(t *testing.T) {
 			tt.Frame()
 			sonnet := L.T("loadout.default.errand", app.whoName("claude-code", "sonnet"))
 			rest := L.T("loadout.default.rest", app.whoName("claude-code", "opus"))
-			if !tt.HasText(rest) {
+			if !hasText(tt, rest) {
 				t.Errorf("%s never=%v: no %q in %q", lang, never, rest, tt.Texts())
 			}
-			if tt.HasText(sonnet) == never {
-				t.Errorf("%s never=%v: the errand default shows=%v", lang, never, tt.HasText(sonnet))
+			if hasText(tt, sonnet) == never {
+				t.Errorf("%s never=%v: the errand default shows=%v", lang, never, hasText(tt, sonnet))
 			}
 			for _, s := range tt.Texts() {
 				if strings.Contains(s, "→") { // D500: an arrow is said in words
@@ -61,7 +61,7 @@ func TestD372PartnerRules(t *testing.T) {
 					t.Errorf("%s: a space after a full-width bracket in %q", lang, s)
 				}
 			}
-			if never && !tt.HasText(L.T("loadout.rule.line.never")) {
+			if never && !hasText(tt, L.T("loadout.rule.line.never")) {
 				t.Errorf("%s: no never line", lang)
 			}
 			if dir := os.Getenv("DUCTER_D372_SHOTS"); dir != "" {

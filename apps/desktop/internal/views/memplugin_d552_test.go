@@ -111,7 +111,7 @@ func TestMemPluginD552(t *testing.T) {
 			// The Overview: two notices, each saying which computer.
 			hel, mini := app.deviceNameIn(app.S.Device("local")), app.deviceNameIn(app.S.Device("w1"))
 			for _, s := range []string{L.T("need.memplug.on", "Claude Code", hel), L.T("need.memplug.on", "Claude Code", mini)} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 				}
 			}
@@ -130,7 +130,7 @@ func TestMemPluginD552(t *testing.T) {
 			}
 			frames()
 			// The tap's own busy: 更新中… on hel's row at once, no Update to press again there.
-			if !tt.HasText(L.T("memp.btn.updating")) || !tt.HasText(L.T("memp.setting.update.to", "0.7.38")) {
+			if !hasText(tt, L.T("memp.btn.updating")) || !hasText(tt, L.T("memp.setting.update.to", "0.7.38")) {
 				t.Fatalf("%s: no busy in %q", lang, tt.Texts())
 			}
 			shot("tapped")
@@ -152,7 +152,7 @@ func TestMemPluginD552(t *testing.T) {
 			shot("running")
 			app.openTab(TabHome)
 			frames()
-			if !tt.HasText(L.T("memp.btn.updating")) {
+			if !hasText(tt, L.T("memp.btn.updating")) {
 				t.Fatalf("%s: Overview without busy: %q", lang, tt.Texts())
 			}
 			shot("overview-running")
@@ -161,14 +161,14 @@ func TestMemPluginD552(t *testing.T) {
 			// the row says the version it reached.
 			app.Receive(d552Devices(`{"state":"installed","version":"0.7.38","updated":true}`, d552Behind))
 			frames()
-			if tt.HasText(L.T("need.memplug.on", "Claude Code", hel)) || !tt.HasText(L.T("need.memplug", "Claude Code")) {
+			if hasText(tt, L.T("need.memplug.on", "Claude Code", hel)) || !hasText(tt, L.T("need.memplug", "Claude Code")) {
 				t.Fatalf("%s: notices after the update: %q", lang, tt.Texts())
 			}
 			shot("overview-updated")
 			app.openTab(TabMemory)
 			frames()
 			done := L.T("memp.updated", "0.7.38", "Claude Code")
-			if !tt.HasText(done) {
+			if !hasText(tt, done) {
 				t.Fatalf("%s: no %q in %q", lang, done, tt.Texts())
 			}
 			if strings.Contains(done, "%") {

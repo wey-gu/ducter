@@ -73,7 +73,7 @@ func lastHello(t *testing.T, sent []any) protocol.Hello {
 
 func TestD541SwitchVisitedInOneFrame(t *testing.T) {
 	app, tt, sent := d541App(t)
-	if !tt.HasText(autospace("工作 答 399")) {
+	if !hasText(tt, autospace("工作 答 399")) {
 		t.Fatalf("the default's conversation is not at its end: %q", tt.Texts())
 	}
 	// The others' newest stretch is asked for once connected.
@@ -113,7 +113,7 @@ func TestD541SwitchVisitedInOneFrame(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "welcome", Persona: "p2", PersonaName: "小家", HeadSeq: 3000})
 	app.Receive(protocol.ServerFrame{T: "events", Events: d541Talk("家里", 2500, 30)})
 	d513Frames(tt)
-	if !tt.HasText(autospace("家里 答 29")) {
+	if !hasText(tt, autospace("家里 答 29")) {
 		t.Fatalf("小家's conversation: %q", tt.Texts())
 	}
 	n := len(*sent)
@@ -123,7 +123,7 @@ func TestD541SwitchVisitedInOneFrame(t *testing.T) {
 	// Back to the default: drawn in the very next frame, with no frame from the link.
 	app.SwitchPartner("default")
 	tt.Frame()
-	if !tt.HasText(autospace("工作 问 150")) || tt.HasText(autospace("家里 答 29")) {
+	if !hasText(tt, autospace("工作 问 150")) || hasText(tt, autospace("家里 答 29")) {
 		t.Fatalf("the default's conversation was not drawn in one frame: %q", tt.Texts())
 	}
 	if f, _ := app.list.Visible(); f != first {
@@ -161,10 +161,10 @@ func TestD541SwitchPeekedInOneFrame(t *testing.T) {
 	_ = before
 	app.SwitchPartner("p3")
 	tt.Frame()
-	if !tt.HasText(autospace("伙伴3 答 24")) {
+	if !hasText(tt, autospace("伙伴3 答 24")) {
 		t.Fatalf("多比's peek was not drawn in one frame: %q", tt.Texts())
 	}
-	if tt.HasText(autospace("工作 答 399")) {
+	if hasText(tt, autospace("工作 答 399")) {
 		t.Fatalf("the default's words are still shown")
 	}
 	h := lastHello(t, (*sent)[n:])
@@ -175,7 +175,7 @@ func TestD541SwitchPeekedInOneFrame(t *testing.T) {
 		t.Errorf("the switch's hello reads big frames gzipped")
 	}
 	// The bar names 多比 in that same frame.
-	if !tt.HasText("多比") {
+	if !hasText(tt, "多比") {
 		t.Errorf("the bar doesn't name 多比")
 	}
 }
@@ -220,7 +220,7 @@ func TestD541ChromeStill(t *testing.T) {
 				t.Fatalf("frame %d: %q moved: %v, was %v", i, s, r, at[s])
 			}
 		}
-		if !tt.HasText(autospace("伙伴4 答 24")) || !tt.HasText("小新") {
+		if !hasText(tt, autospace("伙伴4 答 24")) || !hasText(tt, "小新") {
 			t.Fatalf("frame %d: 小新's conversation is not drawn: %q", i, tt.Texts())
 		}
 	}

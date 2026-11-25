@@ -80,7 +80,7 @@ func TestOwnPhoneFlow(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	// D337: nothing started: one row, its why and 设置 / Set up; no steps yet.
-	if !tt.HasText("用你的安卓手机和 SIM 卡打，对方看到的是你的号码。") || tt.HasText("再找一次") || tt.HasText("实时语音") {
+	if !hasText(tt, "用你的安卓手机和 SIM 卡打，对方看到的是你的号码。") || hasText(tt, "再找一次") || hasText(tt, "实时语音") {
 		t.Fatalf("at rest: %q", tt.Texts())
 	}
 	if err := tt.Click("设置，用你自己的号码打"); err != nil {
@@ -88,7 +88,7 @@ func TestOwnPhoneFlow(t *testing.T) {
 	}
 	tt.Frame()
 	for _, w := range []string{"用你自己的号码打", "用 USB 线把安卓手机插到 Studio 上，再在手机的开发者选项里打开 USB 调试。", "只拨号、挂断、按键、看通话状态；不碰短信、通讯录和别的 App，不录音。"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the first step lacks %q: %q", w, tt.Texts())
 		}
 	}
@@ -102,14 +102,14 @@ func TestOwnPhoneFlow(t *testing.T) {
 	app.Receive(ownFrame("voice"))
 	tt.Frame()
 	for _, w := range []string{"Pixel 7（Android 15）", "中国移动的卡，号码 +86 139 1234 5678", "电话里实时说话要用一个语音模型，得单独有个 Key：Claude 和 ChatGPT 的订阅都不含实时语音。"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the voice step lacks %q: %q", w, tt.Texts())
 		}
 	}
 	// The test call asks whether the other phone heard it.
 	app.Receive(ownFrame("asking"))
 	tt.Frame()
-	if !tt.HasText("那边听到提示音和那句话了吗？") || !tt.HasText("这边没听到电话里的声音：看看手机耳机那头的线，再把手机音量调大一点。") {
+	if !hasText(tt, "那边听到提示音和那句话了吗？") || !hasText(tt, "这边没听到电话里的声音：看看手机耳机那头的线，再把手机音量调大一点。") {
 		t.Fatalf("the test's question: %q", tt.Texts())
 	}
 	if err := tt.Click("听到了"); err != nil {
@@ -121,7 +121,7 @@ func TestOwnPhoneFlow(t *testing.T) {
 	// Live: the card says so and hangs up from here.
 	app.Receive(ownFrame("live"))
 	tt.Frame()
-	if !tt.HasText("正在用你的手机打给鼎泰丰") || !tt.HasText("能用你的号码打了") {
+	if !hasText(tt, "正在用你的手机打给鼎泰丰") || !hasText(tt, "能用你的号码打了") {
 		t.Fatalf("the live card: %q", tt.Texts())
 	}
 	if err := tt.Click("挂断"); err != nil {
@@ -146,7 +146,7 @@ func TestOwnPhoneGoCard(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	for _, w := range []string{"你的号码 +86 139 1234 5678（Pixel 7）", "约 4 分钟，语音花 $0.80 左右，话费走你的套餐"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the Go card lacks %q: %q", w, tt.Texts())
 		}
 	}

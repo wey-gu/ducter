@@ -79,7 +79,7 @@ func TestContextRingCard(t *testing.T) {
 		ring := L.T("ctx.ring", "48%")
 		click(t, tt, ring)
 		for _, s := range []string{L.T("ctx.title"), "97k / 200k", L.T("ctx.used", "48%"), L.T("ctx.auto", "160k"), L.T("ctx.compacted.one"), L.T("ctx.last", "152k", "31k"), L.T("ctx.compact")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the context card: %q", lang, s, tt.Texts())
 			}
 		}
@@ -94,7 +94,7 @@ func TestContextRingCard(t *testing.T) {
 		}}})
 		tt.Frame()
 		for _, s := range []string{L.T("ctx.limit.days", 7), L.T("ctx.left", "60%"), L.T("ctx.limit.hours", 5), "Max"} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the limits: %q", lang, s, tt.Texts())
 			}
 		}

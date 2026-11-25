@@ -77,6 +77,16 @@ export type MemHealthLook =
   | { look: "signed_out" }
   | { look: "plugin"; agents: string[]; busy: boolean };
 
+/**
+ * D563: Mem's own doctor finds something the person must fix (signed out, out of reach, too old):
+ * then the Nowledge Mem group, with its one action, comes first on Memory, right under the need
+ * that says it (D552), never a page below. The Mac's twin is memTrouble in memory.go.
+ */
+export function memTrouble(mem: MemView | undefined, b: BridgeView | undefined, home: { harness: string; mem?: { state: string; busy?: true; fresh?: true } }[] = []): boolean {
+  const l = memHealthLook(mem?.health, b, home).look;
+  return l === "signed_out" || l === "unreachable" || l === "old";
+}
+
 export function memHealthLook(h: MemHealth | undefined, b: BridgeView | undefined, home: { harness: string; mem?: { state: string; busy?: true; fresh?: true } }[] = []): MemHealthLook {
   if (!h) return { look: "unread" };
   switch (h.issue) {

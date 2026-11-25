@@ -100,11 +100,11 @@ func TestD329NotedLine(t *testing.T) {
 				old = "周报周五下午发"
 			}
 			for _, w := range []string{L.T("memory.replaced", old), L.T("memory.waiting"), L.T("memory.undo")} {
-				if !tt.HasText(w) {
+				if !hasText(tt, w) {
 					t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 				}
 			}
-			if tt.HasText(L.T("partner.memory.forget")) {
+			if hasText(tt, L.T("partner.memory.forget")) {
 				t.Errorf("%s: a fresh line offers Forget, not Undo", lang)
 			}
 			d329Shot(t, tt, "noted-fresh", dark, lang)
@@ -121,7 +121,7 @@ func TestD329NotedLine(t *testing.T) {
 			f.Undid = &protocol.Undid{Seq: 3, OK: false}
 			app.Receive(f)
 			tt.Frame()
-			if !tt.HasText(L.T("memory.undo.failed")) {
+			if !hasText(tt, L.T("memory.undo.failed")) {
 				t.Errorf("%s: no undo failure in %q", lang, tt.Texts())
 			}
 			d329Shot(t, tt, "noted-undo-failed", dark, lang)
@@ -134,7 +134,7 @@ func TestD329NotedLine(t *testing.T) {
 			if zh {
 				title = "周报周四下午发"
 			}
-			if !tt.HasText(L.T("memory.undone", title)) || tt.HasText(L.T("memory.replaced", old)) {
+			if !hasText(tt, L.T("memory.undone", title)) || hasText(tt, L.T("memory.replaced", old)) {
 				t.Errorf("%s: undone line: %q", lang, tt.Texts())
 			}
 			d329Shot(t, tt, "noted-undone", dark, lang)
@@ -152,7 +152,7 @@ func TestD329NotedAfterTheyspoke(t *testing.T) {
 	app, _ := d329Conversation(t, i18n.ZH)
 	app.S.LastUserSeq = 9
 	tt := d329Tester(app, 1100, 760, false)
-	if tt.HasText("撤销") || !tt.HasText("忘掉") {
+	if hasText(tt, "撤销") || !hasText(tt, "忘掉") {
 		t.Errorf("after the person spoke: %q", tt.Texts())
 	}
 }
@@ -166,7 +166,7 @@ func TestD329MemClosed(t *testing.T) {
 			app.openTab(TabMemory)
 			tt := d329Tester(app, 1280, 1400, dark)
 			for _, w := range []string{L.T("bridge.mem.closed"), L.T("bridge.mem.closed.open", "hel"), L.T("bridge.mem.open")} {
-				if !tt.HasText(w) {
+				if !hasText(tt, w) {
 					t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 				}
 			}
@@ -180,7 +180,7 @@ func TestD329MemClosed(t *testing.T) {
 			// A home that can't open it: the line alone.
 			app.S.Bridge = &protocol.BridgeView{State: "mem_closed", Identity: "ducter", Home: "hel"}
 			tt.Frame()
-			if !tt.HasText(L.T("bridge.mem.closed.there", "hel")) || hasExact(tt, L.T("bridge.mem.open")) {
+			if !hasText(tt, L.T("bridge.mem.closed.there", "hel")) || hasExact(tt, L.T("bridge.mem.open")) {
 				t.Errorf("%s: no way to open: %q", lang, tt.Texts())
 			}
 		}
@@ -195,7 +195,7 @@ func TestD329UpdateAllMem(t *testing.T) {
 			items := append(uaItems()[:3], protocol.UpdateAllItem{Key: "mem:local", Kind: "mem", Device: "local", DeviceName: "hel", From: "0.10.118", To: "0.10.121", State: "queued", At: at})
 			app, _, _ := uaApp(t, lang, &protocol.UpdateAllView{Offer: items}, false)
 			tt := d329Tester(app, 1280, 1800, dark)
-			if !tt.HasText(L.T("upall.item.mem", "hel")) || !tt.HasText("0.10.118 → 0.10.121") {
+			if !hasText(tt, L.T("upall.item.mem", "hel")) || !hasText(tt, "0.10.118 → 0.10.121") {
 				t.Fatalf("%s: no Mem in %q", lang, tt.Texts())
 			}
 			d329Shot(t, tt, "update-all-mem", dark, lang)
@@ -207,7 +207,7 @@ func TestD329UpdateAllMem(t *testing.T) {
 			run[3].State, run[3].Phase, run[3].To = "running", "updating", ""
 			app.Receive(protocol.ServerFrame{T: "devices", Devices: uaDevices(), UpdateAll: &protocol.UpdateAllView{Plan: &protocol.UpdateAllPlan{ID: "ua-1", By: "user", Items: run}}})
 			tt.Frame()
-			if !tt.HasText(L.T("upall.state.updating.bare")) || tt.HasText("0.10.118 → ") {
+			if !hasText(tt, L.T("upall.state.updating.bare")) || hasText(tt, "0.10.118 → ") {
 				t.Errorf("%s: running Mem: %q", lang, tt.Texts())
 			}
 			d329Shot(t, tt, "update-all-mem-running", dark, lang)
@@ -237,11 +237,11 @@ func TestD329MemClosedPeers(t *testing.T) {
 			app.openTab(TabPeers)
 			tt := d329Tester(app, 1280, 1400, dark)
 			for _, w := range []string{L.T("bridge.mem.closed"), L.T("bridge.mem.closed.open", "hel"), L.T("bridge.mem.open")} {
-				if !tt.HasText(w) {
+				if !hasText(tt, w) {
 					t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 				}
 			}
-			if tt.HasText("ducter") {
+			if hasText(tt, "ducter") {
 				t.Errorf("%s: identity shown: %q", lang, tt.Texts())
 			}
 			d329Shot(t, tt, "peers-closed", dark, lang)
@@ -253,7 +253,7 @@ func TestD329MemClosedPeers(t *testing.T) {
 			}
 			app.S.Bridge = &protocol.BridgeView{State: "mem_closed", Identity: "ducter", Home: "hel"}
 			tt.Frame()
-			if !tt.HasText(L.T("bridge.mem.closed.there", "hel")) || hasExact(tt, L.T("bridge.mem.open")) {
+			if !hasText(tt, L.T("bridge.mem.closed.there", "hel")) || hasExact(tt, L.T("bridge.mem.open")) {
 				t.Errorf("%s: no way to open: %q", lang, tt.Texts())
 			}
 		}

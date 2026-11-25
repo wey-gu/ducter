@@ -47,7 +47,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		app.pickAgent(rows[1], topCandidate(rows), true)
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.find.empty", "Macbook Pro M3"), L.T("newtask.add")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the Mac's empty list: no %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -65,7 +65,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "folder_browse_result", OK: true, ClientID: f.ClientID, Device: "dev_mac", Path: "/Users/weyl/Sites", HomeDir: "/Users/weyl", Parent: "/Users/weyl", Folders: []protocol.BrowseFolder{{Name: "blog", Path: "/Users/weyl/Sites/blog", Repo: true}, {Name: "drafts", Path: "/Users/weyl/Sites/drafts"}}})
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.find.title", "Macbook Pro M3"), "~/Sites", L.T("newtask.find.up"), "blog", L.T("newtask.find.use")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the browser: no %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -74,7 +74,7 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		f, _ = lastFrame[protocol.FolderBrowse](sent)
 		app.Receive(protocol.ServerFrame{T: "folder_browse_result", OK: true, ClientID: f.ClientID, Device: "dev_mac", Path: "/Users/weyl/Sites/blog", HomeDir: "/Users/weyl", Parent: "/Users/weyl/Sites"})
 		tt.Frame()
-		if !tt.HasText(L.T("addfolder.empty")) {
+		if !hasText(tt, L.T("addfolder.empty")) {
 			t.Errorf("%s: an empty folder says so, and that it can be added as it is: %q", lang, tt.Texts())
 		}
 		click(t, tt, spoken(L, L.T("newtask.find.use"), "~/Sites/blog"))
@@ -107,7 +107,7 @@ func TestNewTaskFindOnTheHome(t *testing.T) {
 	f, _ = lastFrame[protocol.FolderBrowse](sent)
 	app.Receive(protocol.ServerFrame{T: "folder_browse_result", ClientID: f.ClientID, Device: "dev_mac", Reason: "offline"})
 	tt.Frame()
-	if !tt.HasText("Can't reach Macbook Pro M3 right now.") {
+	if !hasText(tt, "Can't reach Macbook Pro M3 right now.") {
 		t.Errorf("away: %q", tt.Texts())
 	}
 }

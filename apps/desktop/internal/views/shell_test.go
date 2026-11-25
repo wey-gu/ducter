@@ -93,10 +93,10 @@ func TestLaunchHasNoVisibleSwitch(t *testing.T) {
 	tt.Frame()
 	tt.Advance(400 * time.Millisecond) // the window's own first entrance
 	first := tt.Texts()
-	if !tt.HasText("小鸭") || !tt.HasText("设置") {
+	if !hasText(tt, "小鸭") || !hasText(tt, "设置") {
 		t.Errorf("first frame lacks the remembered name or language: %q", first)
 	}
-	if tt.HasText("连接中") || tt.HasText("Connecting") {
+	if hasText(tt, "连接中") || hasText(tt, "Connecting") {
 		t.Errorf("first frame says connecting: %q", first)
 	}
 	name0 := crop(tt.Image(), 150, 4, 260, 28)
@@ -109,7 +109,7 @@ func TestLaunchHasNoVisibleSwitch(t *testing.T) {
 	if name1 := crop(tt.Image(), 150, 4, 260, 28); !bytes.Equal(name0, name1) {
 		t.Errorf("the name moved or changed after the welcome (the entrance replayed?)")
 	}
-	if !tt.HasText("设置") {
+	if !hasText(tt, "设置") {
 		t.Errorf("language switched after the welcome: %q", tt.Texts())
 	}
 	writeShotTo(t, tt, "shell", "mac-launch-after-welcome")
@@ -119,7 +119,7 @@ func TestBarSaysAnUpdate(t *testing.T) {
 	app, tt := tinycart(t, i18n.ZH, 3*time.Minute)
 	app.Route = RouteConversation
 	tt.Frame()
-	if tt.HasText("4 项更新") {
+	if hasText(tt, "4 项更新") {
 		t.Fatal("an update is said with nothing to update")
 	}
 	app.Receive(protocol.ServerFrame{T: "devices", Devices: uaDevices(), UpdateAll: &protocol.UpdateAllView{Offer: uaItems()}})

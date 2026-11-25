@@ -46,7 +46,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		tt = sheetTester(app, 1280, 860, true)
 		click(t, tt, spoken(L, L.T("chip.computer"), L.T("chip.failed")))
 		for _, s := range []string{L.T("computeruse.perms", "MacBook"), L.T("computeruse.perm.accessibility"), L.T("computeruse.perm.screen"), L.T("computeruse.perm.on"), L.T("computeruse.perm.off")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}
 		}
@@ -54,7 +54,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		if r, ok := lastSent[protocol.ComputerGrantReq](sent); !ok || r.Device != "dev_mac" {
 			t.Fatalf("%s: the guide sent %#v", lang, sent)
 		}
-		if !tt.HasText(L.T("computeruse.guide.sent", "MacBook")) {
+		if !hasText(tt, L.T("computeruse.guide.sent", "MacBook")) {
 			t.Fatalf("%s: the guide isn't said to be open: %q", lang, tt.Texts())
 		}
 
@@ -65,7 +65,7 @@ func TestWorkerMacPhoneAndComputer(t *testing.T) {
 		sent = nil
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		tt = sheetTester(app, 1280, 860, true)
-		if !tt.HasText(L.T("computeruse.using", "回张三的邮件", "Mail")) {
+		if !hasText(tt, L.T("computeruse.using", "回张三的邮件", "Mail")) {
 			t.Fatalf("%s: the card doesn't say the task is in Mail: %q", lang, tt.Texts())
 		}
 		click(t, tt, spoken(L, L.T("computeruse.stop"), "回张三的邮件"))

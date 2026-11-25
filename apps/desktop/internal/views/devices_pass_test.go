@@ -60,24 +60,24 @@ func TestDevicesPassPhoneCard(t *testing.T) {
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		// The list: the one thing worth knowing per device; no header line repeating its first row.
 		for _, want := range []string{L.T("list.state.ready"), L.T("list.state.lendable")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: the list misses %q: %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(L.T("devices.subtitle", "Ducter", "Hetzner Server")) {
+		if hasText(tt, L.T("devices.subtitle", "Ducter", "Hetzner Server")) {
 			t.Errorf("%s: the header still repeats where Ducter runs", lang)
 		}
 		sheet := &app.devState().card.sheet
 		app.devState().selClient = "pix"
 		lendFrame(tt)
 		for _, want := range []string{L.T("handset.status.ready"), L.T("chip.handset"), L.T("handset.g"), L.T("handset.lock.row"), L.T("reach.how")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: the card misses %q: %q", lang, want, tt.Texts())
 			}
 		}
 		// Nothing that can wait shows by default: the steps, the connection, the destructive action.
 		for _, not := range []string{L.T("handset.lock.s1"), L.T("reach.private"), L.T("card.disconnect.device", "Pixel Fold")} {
-			if tt.HasText(not) {
+			if hasText(tt, not) {
 				t.Errorf("%s: %q shows before it is asked for", lang, not)
 			}
 		}
@@ -85,7 +85,7 @@ func TestDevicesPassPhoneCard(t *testing.T) {
 		sheet.lockSteps = "pix"
 		lendFrame(tt)
 		for _, want := range []string{L.T("handset.lock.s1"), L.T("handset.lock.s2"), L.T("handset.lock.s3"), L.T("handset.lock.never")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: the lock steps miss %q", lang, want)
 			}
 		}
@@ -99,14 +99,14 @@ func TestDevicesPassPhoneCard(t *testing.T) {
 				danger[s] = true
 			}
 		}
-		if len(danger) != 1 || !tt.HasText(L.T("reach.private")) || tt.HasText(L.T("card.via.more")) {
+		if len(danger) != 1 || !hasText(tt, L.T("reach.private")) || hasText(tt, L.T("card.via.more")) {
 			t.Errorf("%s: the fold has %d kinds of destructive action: %q", lang, len(danger), tt.Texts())
 		}
 		// Turning the chip off asks first; yes sends handset_set off.
 		sheet.fold = ""
 		sheet.handOff = "pix"
 		lendFrame(tt)
-		if !tt.HasText(L.T("handset.off.ask")) {
+		if !hasText(tt, L.T("handset.off.ask")) {
 			t.Fatalf("%s: no ask before turning it off: %q", lang, tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("handset.off.go"), "Pixel Fold")); err != nil {

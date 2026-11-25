@@ -154,6 +154,29 @@ describe("memory_add", () => {
     expect(channel().filter((e) => e.origin === "partner").map((e) => e.kind)).toEqual(["ai_msg"]);
   });
 
+  // D563: the note says the true reason: no Mem on the home is never "not signed in", and never pitched.
+  for (const [down, has, hasNot] of [
+    [true, /conversation itself still holds/, /signed in on the home|Settings › Memory is where/],
+    ["signed_out", /sign-in on the home has lapsed/, /switched memory off/],
+    ["off", /switched memory off/, /signed in|lapsed/],
+  ] as const) {
+    test(`a save that went nowhere says why (${down})`, async () => {
+      let r: any;
+      const { partner, user, fc } = setup(
+        async (_i, s) => {
+          r = await fc.callTool("memory_add", { title: "t", content: "c", said: "以后都用中文回我" });
+          s.end();
+        },
+        fakeMemory([], { down }),
+      );
+      user("以后都用中文回我");
+      await partner.idle();
+      expect(r).toMatchObject({ ok: false, saved: false });
+      expect(r.note).toMatch(has);
+      expect(r.note).not.toMatch(hasNot);
+    });
+  }
+
   test("memory tools between the ack line and task_open keep the ack intact", async () => {
     const { partner, user, fc, channel } = setup(async (_i, s) => {
       s.say("我照上次的跑法去跑 HawDB 的基准。");

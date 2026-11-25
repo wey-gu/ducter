@@ -63,7 +63,7 @@ func TestD327LookFirstThenHowIKnow(t *testing.T) {
 			tt.Frame()
 			look := map[i18n.Lang]string{i18n.ZH: "接着我最近在 Claude Code 和 Codex 里做的事", i18n.EN: "Pick up what I was doing in Claude Code and Codex lately"}[lang]
 			// Nothing was read: no line about records, only the offer to look.
-			if !tt.HasText(autospace(look)) || tt.HasText(L.T("first.stop")) {
+			if !hasText(tt, autospace(look)) || hasText(tt, L.T("first.stop")) {
 				t.Fatalf("%s: %q", lang, tt.Texts())
 			}
 			size := map[int]string{1280: "wide", 720: "narrow"}[w]
@@ -81,11 +81,11 @@ func TestD327LookFirstThenHowIKnow(t *testing.T) {
 			// The home answers: the offers, the scope line, 别再看了; the look start is gone.
 			app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{answer}})
 			tt.Frame()
-			if tt.HasText(autospace(look)) {
+			if hasText(tt, autospace(look)) {
 				t.Errorf("%s: the look start is still offered", lang)
 			}
 			for _, s := range []string{L.T("first.from", "Ada’s MacBook Air"), L.T("first.stop"), L.T("first.how")} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: no %q in %q", lang, s, tt.Texts())
 				}
 			}
@@ -96,7 +96,7 @@ func TestD327LookFirstThenHowIKnow(t *testing.T) {
 			}
 			tt.Frame()
 			for _, s := range []string{L.T("first.how.from", "Claude Code"), "~/src/hawdb", L.T("first.how.on", "Ada’s MacBook Air"), L.T("first.how.leave")} {
-				if !tt.HasText(s) {
+				if !hasText(tt, s) {
 					t.Errorf("%s: how I know lacks %q in %q", lang, s, tt.Texts())
 				}
 			}
@@ -111,7 +111,7 @@ func TestD327LookFirstThenHowIKnow(t *testing.T) {
 			if strings.Contains(strings.Join(tt.Texts(), "\n"), "Raft") {
 				t.Errorf("%s: the folder's offer is still shown", lang)
 			}
-			if !tt.HasText(L.T("first.how.left", "~/src/hawdb")) {
+			if !hasText(tt, L.T("first.how.left", "~/src/hawdb")) {
 				t.Errorf("%s: no word after leaving the folder out", lang)
 			}
 			shotTester(t, tt, "mac-first-left-"+size+"-"+string(lang))

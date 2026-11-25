@@ -15,7 +15,7 @@ func TestD348HeldIdle(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		app, tt, _ := d325Task(t, lang, "claude-code", true)
-		if !tt.HasText(L.T("held.head")) {
+		if !hasText(tt, L.T("held.head")) {
 			t.Fatalf("%s: working, the head isn't %q: %q", lang, L.T("held.head"), tt.Texts())
 		}
 		task := app.S.Task("k1")
@@ -24,7 +24,7 @@ func TestD348HeldIdle(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{card}}})
 		tt.Frame()
 		tt.Frame()
-		if !tt.HasText(L.T("held.head.idle")) || tt.HasText(L.T("held.head")) {
+		if !hasText(tt, L.T("held.head.idle")) || hasText(tt, L.T("held.head")) {
 			t.Errorf("%s: stopped, the head says %q", lang, tt.Texts())
 		}
 	}
@@ -41,7 +41,7 @@ func TestD348MemoryPinned(t *testing.T) {
 		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 		app.openTab(TabMemory)
 		todoFrames(tt, 3)
-		if !tt.HasText(app.L.T("mem.pinned")) || tt.HasText(app.L.T("partner.memory.off")) {
+		if !hasText(tt, app.L.T("mem.pinned")) || hasText(tt, app.L.T("partner.memory.off")) {
 			t.Fatalf("%s: no reason given: %q", lang, tt.Texts())
 		}
 		if _, ok := tt.Find(app.L.T("partner.memory.switch")); !ok {
@@ -64,7 +64,7 @@ func TestD348TodoFilters(t *testing.T) {
 	app.openTab(TabTodos)
 	todoFrames(tt, 4)
 	for _, w := range []string{"只看这些仓库", "写成「用户名/仓库名」，几个用逗号隔开", "看哪个文件夹", "只看带这个标签的"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("no %q in %q", w, tt.Texts())
 		}
 	}

@@ -113,7 +113,10 @@ export interface Replaced {
   title: string;
 }
 
-export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_configured" | "unavailable" | "rejected"; message: string };
+/** D563: why a call found no Mem to use: memory switched off, no Mem on the home, or Mem there but not signed in. */
+export type MemWhy = "off" | "missing" | "signed_out";
+
+export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_configured" | "unavailable" | "rejected"; message: string; why?: MemWhy };
 
 /** D461: a narrower read for the morning's offers: one kind of memory (`--unit-type`). */
 export interface SearchOpts {
@@ -261,10 +264,10 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
     }
   };
   const failure = (r: { code: number; err: string; out: string } | { missing: true }) => {
-    if ("missing" in r) return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't installed on this machine." };
+    if ("missing" in r) return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't installed on this machine.", why: "missing" as const };
     const text = `${r.err}\n${r.out}`;
     if (/api key|unauthori[sz]ed|not configured|no (api )?url|connect link|401|403/i.test(text))
-      return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected." };
+      return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected.", why: "signed_out" as const };
     return { ok: false as const, reason: "unavailable" as const, message: `Nowledge Mem didn't answer (${clip(r.err || r.out || `exit ${r.code}`, 120)}).` };
   };
   const client: MemoryClient = {
@@ -437,6 +440,6 @@ export function aboutHits(list: any[], kind: "preference" | "decision" | "fact")
 
 /** Mem switched off (DUCTER_MEMORY=off) or absent: every call says so, the partner carries on. */
 export const noMemory: MemoryClient = {
-  search: async () => ({ ok: false, reason: "not_configured", message: "Memory is off for this partner." }),
-  add: async () => ({ ok: false, reason: "not_configured", message: "Memory is off for this partner." }),
+  search: async () => ({ ok: false, reason: "not_configured", message: "Memory is off for this partner.", why: "off" }),
+  add: async () => ({ ok: false, reason: "not_configured", message: "Memory is off for this partner.", why: "off" }),
 };

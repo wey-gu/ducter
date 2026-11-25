@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.65 - 2026-11-25
+
+<!-- whats-new
+zh: 记忆说实话：没装 Mem 也记得对话，出问题修在眼前
+en: Memory tells the truth, and its fix sits right where the problem is said
+-->
+
+**Memory**
+- Ask your partner to remember something without Nowledge Mem, and it simply says it will: it keeps
+  what you talk about. It only mentions Mem when Mem itself needs you, like a sign-in that ran out.
+- With memory turned off, it says so once, and where to turn it back on.
+- When Nowledge Mem needs you, Settings › Memory puts the fix right under the line that says so.
+- Ask how to connect memory, and your partner points you to Settings › Memory in one line.
+- Plainer, warmer words when you first meet memory, and "You told me" on what it recalled.
+
+## 0.1.64 - 2026-11-25
+
+<!-- whats-new
+zh: Mac 上设置的每一行也读得完整，词不再被拆开
+en: On the Mac too, every settings line keeps its words whole
+-->
+
+**Settings on the Mac**
+- Every row, note and page heading keeps short phrases together, so a word is never split across two
+  lines, and a heading no longer leaves one word alone on its last line.
+
 ## 0.1.63 - 2026-11-25
 
 <!-- whats-new

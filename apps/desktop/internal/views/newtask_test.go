@@ -156,7 +156,7 @@ func TestNewTaskCard(t *testing.T) {
 			t.Fatalf("%s: empty words were sent", lang)
 		}
 		emptyLine := L.T("newtask.err.empty")
-		if !tt.HasText(emptyLine) {
+		if !hasText(tt, emptyLine) {
 			t.Fatalf("%s: Start with no words says nothing: %q", lang, tt.Texts())
 		}
 		tt.Type("修") // the words field has the focus
@@ -165,7 +165,7 @@ func TestNewTaskCard(t *testing.T) {
 			t.Fatalf("%s: typing didn't reach the words field", lang)
 		}
 		tt.Frame()
-		if tt.HasText(emptyLine) {
+		if hasText(tt, emptyLine) {
 			t.Errorf("%s: the empty-words line stays once there are words", lang)
 		}
 
@@ -176,7 +176,7 @@ func TestNewTaskCard(t *testing.T) {
 
 		// Who: the list has every agent, one that can't greyed; picking one is remembered.
 		click(t, tt, spoken(L, L.T("newtask.who"), "Claude Code", "Opus"))
-		if !tt.HasText("Codex") || !tt.HasText("pi") {
+		if !hasText(tt, "Codex") || !hasText(tt, "pi") {
 			t.Fatalf("%s: the agents' list: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "card-who-"+string(lang))
@@ -196,7 +196,7 @@ func TestNewTaskCard(t *testing.T) {
 		// Where: recent folders with their paths, No folder.
 		click(t, tt, spoken(L, L.T("newtask.where"), "ducter"))
 		for _, want := range []string{"hawdb", "~/dev/tinycart", L.T("newtask.nowhere")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in Where's list: %q", lang, want, tt.Texts())
 			}
 		}
@@ -213,7 +213,7 @@ func TestNewTaskCard(t *testing.T) {
 
 		// The branch.
 		click(t, tt, spoken(L, L.T("newtask.branch.title"), "main"))
-		if !tt.HasText("release/0.0.1") {
+		if !hasText(tt, "release/0.0.1") {
 			t.Fatalf("%s: the branch list doesn't open: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "card-branch-"+string(lang))
@@ -243,7 +243,7 @@ func TestNewTaskCard(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "task_new_result", OK: true, ClientID: f2.ClientID, TaskID: "t_newtask", Card: &protocol.TaskCard{TaskID: "t_newtask", Title: title}})
 		tt.Frame()
 		tt.Frame()
-		if !app.nt.open || app.nt.words != "" || app.Route != RouteOnHand || !tt.HasText(L.T("newtask.opened", title)) || !tt.HasText(spoken(L, L.T("newtask.open"), L.T("newtask.opened", title))) {
+		if !app.nt.open || app.nt.words != "" || app.Route != RouteOnHand || !hasText(tt, L.T("newtask.opened", title)) || !hasText(tt, spoken(L, L.T("newtask.open"), L.T("newtask.opened", title))) {
 			t.Fatalf("%s: start-and-another: open %v words %q route %v %q", lang, app.nt.open, app.nt.words, app.Route, tt.Texts())
 		}
 		if app.chosenPlace(app.newTaskPlaces()).Place.RepoPath != "/Users/someone/dev/ducter" || app.nt.branch != "release/0.0.1" || app.nt.pick == "" {
@@ -255,14 +255,14 @@ func TestNewTaskCard(t *testing.T) {
 		app.nt.words = map[i18n.Lang]string{i18n.ZH: "看一眼 hawdb 的 nightly，挂了就修。", i18n.EN: "Look at hawdb's nightly; fix it if it broke."}[lang]
 		click(t, tt, spoken(L, L.T("newtask.when"), L.T("newtask.when.now")))
 		for _, k := range []string{"now", "at", "every", "when", "until"} {
-			if !tt.HasText(L.T("newtask.when." + k)) {
+			if !hasText(tt, L.T("newtask.when."+k)) {
 				t.Errorf("%s: no %q in When's list", lang, L.T("newtask.when."+k))
 			}
 		}
 		newTaskShot(t, tt, "card-when-"+string(lang))
 		click(t, tt, L.T("newtask.when.every"))
 		click(t, tt, L.T("newtask.every.weekday"))
-		if !tt.HasText(L.T("newtask.pill.weekdays", "9:00")) || !tt.HasText(L.T("newtask.schedule")) {
+		if !hasText(tt, L.T("newtask.pill.weekdays", "9:00")) || !hasText(tt, L.T("newtask.schedule")) {
 			t.Fatalf("%s: weekdays at 9 isn't on the card: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "card-every-"+string(lang))
@@ -289,7 +289,7 @@ func TestNewTaskCard(t *testing.T) {
 		tt.Frame()
 		app.StartNewTask()
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.err.time")) {
+		if !hasText(tt, L.T("newtask.err.time")) {
 			t.Errorf("%s: a bad time says nothing: %q", lang, tt.Texts())
 		}
 		app.nt.atTime = "9.30"
@@ -303,7 +303,7 @@ func TestNewTaskCard(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "task_new_result", OK: false, ClientID: f4.ClientID, Reason: "past"})
 		tt.Frame()
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.err.past")) {
+		if !hasText(tt, L.T("newtask.err.past")) {
 			t.Errorf("%s: a past time isn't said: %q", lang, tt.Texts())
 		}
 
@@ -341,7 +341,7 @@ func TestNewTaskAddFolder(t *testing.T) {
 	app.Receive(newTaskOptions(i18n.EN))
 	tt.Frame()
 	click(t, tt, "Where, ducter")
-	if !tt.HasText(app.L.T("newtask.add")) {
+	if !hasText(tt, app.L.T("newtask.add")) {
 		t.Fatalf("no Add a folder… in Where's list: %q", tt.Texts())
 	}
 	// D272: Add a folder… offers New folder, Choose and Clone; Choose on this Mac is macOS's picker.
@@ -351,7 +351,7 @@ func TestNewTaskAddFolder(t *testing.T) {
 	}
 	home := app.computerName(app.nt.add.device)
 	for _, s := range []string{app.L.T("newtask.new", home), app.L.T("newtask.choose", home), app.L.T("newtask.clone"), app.L.T("newtask.choose.finder")} {
-		if !tt.HasText(s) {
+		if !hasText(tt, s) {
 			t.Errorf("the add panel has no %q: %q", s, tt.Texts())
 		}
 	}
@@ -372,7 +372,7 @@ func TestNewTaskAddFolder(t *testing.T) {
 	app.Receive(opts)
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("Where, notes") {
+	if !hasText(tt, "Where, notes") {
 		t.Fatalf("the card isn't at notes: %q", tt.Texts())
 	}
 	newTaskShot(t, tt, "card-added-folder-en")
@@ -416,24 +416,24 @@ func TestNewTaskAddFolderOnThisMacForAHomeElsewhere(t *testing.T) {
 			tt.Frame()
 			click(t, tt, spoken(L, L.T("newtask.where"), "hawdb"))
 			// The worker's repo has its branch pill; each row says its computer.
-			if !tt.HasText("main") {
+			if !hasText(tt, "main") {
 				t.Errorf("%s: no branch pill for the Mac's repo: %q", lang, tt.Texts())
 			}
 			for _, line := range []string{"~/dev/hawdb", "Macbook Pro M3", "/root/ducter-server", "Hetzner Server"} {
-				if !tt.HasText(line) {
+				if !hasText(tt, line) {
 					t.Errorf("%s: no %q in Where's list: %q", lang, line, tt.Texts())
 				}
 			}
 			why := L.T("newtask.addfolder.off", app.personaName())
 			if on {
-				if tt.HasText(why) {
+				if hasText(tt, why) {
 					t.Errorf("%s: the off line shows with the worker on", lang)
 				}
 				// D272: one Add a folder… per computer. The server's opens the server's
 				// folders (never this Mac's picker); this Mac's opens the picker.
 				click(t, tt, spoken(L, L.T("newtask.add"), L.T("newtask.find.on", "Hetzner Server")))
 				newTaskShot(t, tt, "card-add-panel-home-"+string(lang))
-				if tt.HasText(L.T("newtask.choose.finder")) {
+				if hasText(tt, L.T("newtask.choose.finder")) {
 					t.Errorf("%s: the server's add panel offers Finder: %q", lang, tt.Texts())
 				}
 				click(t, tt, L.T("newtask.choose", "Hetzner Server"))
@@ -451,7 +451,7 @@ func TestNewTaskAddFolderOnThisMacForAHomeElsewhere(t *testing.T) {
 				newTaskShot(t, tt, "card-add-folder-worker-"+string(lang))
 				continue
 			}
-			if !tt.HasText(why) {
+			if !hasText(tt, why) {
 				t.Fatalf("%s: no line saying how to add a folder here: %q", lang, tt.Texts())
 			}
 			_ = tt.Click(spoken(L, L.T("newtask.addfolder"), why))

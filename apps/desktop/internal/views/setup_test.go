@@ -298,7 +298,7 @@ func TestCLIOfferOnceAfterTheFirstReply(t *testing.T) {
 	h.app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: "Ducter", HeadSeq: 0})
 	h.app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{}})
 	h.tt.Frame()
-	if h.tt.HasText("在终端里也能用 ducter？") {
+	if hasText(h.tt, "在终端里也能用 ducter？") {
 		t.Fatal("offered before the partner said anything")
 	}
 	h.app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
@@ -312,7 +312,7 @@ func TestCLIOfferOnceAfterTheFirstReply(t *testing.T) {
 	}
 	h.has("~/.local/bin 还不在 PATH 里", "export PATH=")
 	h.click("知道了")
-	if h.tt.HasText("在终端里也能用 ducter？") || h.app.Local.CLIOffer() != "linked" {
+	if hasText(h.tt, "在终端里也能用 ducter？") || h.app.Local.CLIOffer() != "linked" {
 		t.Errorf("offer stays: %q", h.app.Local.CLIOffer())
 	}
 	// A new launch doesn't ask again.
@@ -322,7 +322,7 @@ func TestCLIOfferOnceAfterTheFirstReply(t *testing.T) {
 		ev("channel", protocol.KindAIMsg, protocol.AIMsg{Text: "你好"}),
 	}})
 	again.tt.Frame()
-	if again.tt.HasText("在终端里也能用 ducter？") {
+	if hasText(again.tt, "在终端里也能用 ducter？") {
 		t.Error("asked twice")
 	}
 }

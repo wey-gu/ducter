@@ -110,23 +110,23 @@ func TestAliveLineWords(t *testing.T) {
 	tt.Advance(aliveDwell + 10*time.Millisecond) // past the first line's dwell
 	app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "checking_task", About: "查 ITIN 的申请材料", Since: now, StepSince: now}})
 	tt.Frame()
-	if !tt.HasText("在看「查 ITIN 的申请材料」做到哪了…") {
+	if !hasText(tt, "在看「查 ITIN 的申请材料」做到哪了…") {
 		t.Fatalf("the task's title isn't in the line: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "looking", Source: "calendar", Since: now, StepSince: now}})
 	tt.Frame()
-	if !tt.HasText("在看「查 ITIN 的申请材料」做到哪了…") || tt.HasText("在看你的日程…") {
+	if !hasText(tt, "在看「查 ITIN 的申请材料」做到哪了…") || hasText(tt, "在看你的日程…") {
 		t.Errorf("a step sooner than the dwell replaced the line: %q", tt.Texts())
 	}
 	tt.Advance(aliveDwell + 50*time.Millisecond)
 	tt.Frame()
-	if !tt.HasText("在看你的日程…") {
+	if !hasText(tt, "在看你的日程…") {
 		t.Errorf("the next step didn't come after the dwell: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(2, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "快好了。", ReplyTo: 1})}})
 	app.Receive(protocol.ServerFrame{T: "activity"})
 	tt.Frame()
-	if tt.HasText("在看你的日程…") {
+	if hasText(tt, "在看你的日程…") {
 		t.Errorf("the line stays after the reply: %q", tt.Texts())
 	}
 }
@@ -171,7 +171,7 @@ func TestAliveHiddenStill(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "hi"})}})
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{})
 	tt.Frame()
-	if !tt.HasText("Thinking…") {
+	if !hasText(tt, "Thinking…") {
 		t.Fatalf("no line: %q", tt.Texts())
 	}
 	tt.SetWindowHidden(true)

@@ -114,7 +114,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range []string{pick("你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。", "You sign in yourself. While you do, it can't see the page or your password."), pick("去登录", "Sign in"), pick("暂不登录", "Not now")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -131,7 +131,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 		if !ok || open.DecisionID != "d_signin" || open.Width < 360 || open.Height < 360 {
 			t.Fatalf("%s: no live_open: %#v", lang, *sent)
 		}
-		if !tt.HasText(pick("正在打开 console.example.com……", "Opening console.example.com…")) {
+		if !hasText(tt, pick("正在打开 console.example.com……", "Opening console.example.com…")) {
 			t.Errorf("%s: no opening line: %q", lang, tt.Texts())
 		}
 		data, w, h := testFrame(t)
@@ -142,7 +142,7 @@ func TestSignInCardAndLiveView(t *testing.T) {
 		if ack, ok := lastSent[protocol.LiveAckReq](*sent); !ok || ack.Seq != 1 || ack.ID != "lv1" {
 			t.Fatalf("%s: frame 1 not acked: %#v", lang, *sent)
 		}
-		if !tt.HasText(pick("它现在看不见这个浏览器", "It can't see this browser now")) {
+		if !hasText(tt, pick("它现在看不见这个浏览器", "It can't see this browser now")) {
 			t.Errorf("%s: the top line doesn't say the partner can't see: %q", lang, tt.Texts())
 		}
 		shoot(t, tt, "desktop-live-view-"+string(lang)+".png")

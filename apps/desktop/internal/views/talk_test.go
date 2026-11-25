@@ -74,7 +74,7 @@ func TestTalkTurnsReplyAndCutIn(t *testing.T) {
 	if !r.app.hf.on || !r.rec.Listening || r.rec.Locale != "zh-CN" {
 		t.Fatalf("a tap didn't start the talk (on %v, listening %v)", r.app.hf.on, r.rec.Listening)
 	}
-	if !r.tt.HasText(r.app.L.T("talk.listening")) || !r.tt.HasText(r.app.L.T("talk.end")) {
+	if !hasText(r.tt, r.app.L.T("talk.listening")) || !hasText(r.tt, r.app.L.T("talk.end")) {
 		t.Errorf("no talk panel: %v", r.tt.Texts())
 	}
 	r.rec.Hear("牛腩要炖")
@@ -88,7 +88,7 @@ func TestTalkTurnsReplyAndCutIn(t *testing.T) {
 	if got := sends(r.snt); len(got) != 1 || got[0] != "牛腩要炖多久" {
 		t.Fatalf("the turn went as %v", got)
 	}
-	if !r.tt.HasText(r.app.L.T("talk.thinking")) {
+	if !hasText(r.tt, r.app.L.T("talk.thinking")) {
 		t.Errorf("not thinking: %v", r.tt.Texts())
 	}
 	r.event(4, protocol.KindAIMsg, protocol.AIMsg{Text: "小火炖一个半小时，筷子能轻松戳透就好。", ReplyTo: 3})
@@ -123,7 +123,7 @@ func TestTalkCardByVoiceAndTheFloor(t *testing.T) {
 	if len(r.spk.Said) != 1 || r.spk.Said[0] != "一个半小时后提醒你关火？说「好」，或者「先等等」。" {
 		t.Fatalf("the card wasn't asked: %v", r.spk.Said)
 	}
-	if !r.tt.HasText(r.app.L.T("talk.yes")) || !r.tt.HasText(r.app.L.T("talk.no")) {
+	if !hasText(r.tt, r.app.L.T("talk.yes")) || !hasText(r.tt, r.app.L.T("talk.no")) {
 		t.Errorf("the card's answers aren't shown: %v", r.tt.Texts())
 	}
 	r.spk.Finish()
@@ -140,7 +140,7 @@ func TestTalkCardByVoiceAndTheFloor(t *testing.T) {
 	if last := r.spk.Said[len(r.spk.Said)-1]; last != "付 ¥73 买周六 8:05 去杭州的车票？这个要你在屏幕上点一下。" {
 		t.Fatalf("the pay card was said as %q", last)
 	}
-	if !r.tt.HasText(r.app.L.T("talk.floor.show")) || r.app.hf.card == nil || !r.app.hf.card.floor {
+	if !hasText(r.tt, r.app.L.T("talk.floor.show")) || r.app.hf.card == nil || !r.app.hf.card.floor {
 		t.Errorf("the floor card shows a Go: %v", r.tt.Texts())
 	}
 	// D446: the question and the floor line are on the card, once each, not again above it.
@@ -187,7 +187,7 @@ func TestTalkQuietMinuteAndThatsAll(t *testing.T) {
 	if r.app.hf.on || r.rec.Listening {
 		t.Fatalf("still talking after the quiet minute")
 	}
-	if !r.tt.HasText(r.app.L.T("talk.ended.quiet")) {
+	if !hasText(r.tt, r.app.L.T("talk.ended.quiet")) {
 		t.Errorf("no line after it stopped: %v", r.tt.Texts())
 	}
 	r.wait(3000)
@@ -202,7 +202,7 @@ func TestTalkQuietMinuteAndThatsAll(t *testing.T) {
 func TestTalkFirstTapAsks(t *testing.T) {
 	r := voiceApp(t, i18n.ZH, true)
 	r.tapMic(t)
-	if r.app.hf.on || r.rec.Listening || !r.tt.HasText(r.app.L.T("talk.ask.title")) {
+	if r.app.hf.on || r.rec.Listening || !hasText(r.tt, r.app.L.T("talk.ask.title")) {
 		t.Fatalf("the first tap listened or showed no card: %v", r.tt.Texts())
 	}
 	if err := r.tt.Click(r.app.L.T("talk.ask.go")); err != nil {
@@ -273,7 +273,7 @@ func TestTalkCantAnswerYet(t *testing.T) {
 			t.Fatalf("%s: it talked with nothing to think with (on %v, listening %v, said %v)", lang, r.app.hf.on, r.rec.Listening, r.spk.Said)
 		}
 		for _, w := range []string{r.app.L.T("talk.cant.title"), r.app.L.T("key.route.go", "Google Gemini")} {
-			if !r.tt.HasText(w) {
+			if !hasText(r.tt, w) {
 				t.Errorf("%s: no %q in %v", lang, w, r.tt.Texts())
 			}
 		}
@@ -281,7 +281,7 @@ func TestTalkCantAnswerYet(t *testing.T) {
 			t.Fatalf("%s: %v", lang, err)
 		}
 		r.frames()
-		if r.app.hf.cant || r.tt.HasText(r.app.L.T("talk.cant.title")) {
+		if r.app.hf.cant || hasText(r.tt, r.app.L.T("talk.cant.title")) {
 			t.Errorf("%s: the card stayed", lang)
 		}
 	}

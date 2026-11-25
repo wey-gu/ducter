@@ -229,7 +229,7 @@ func TestSettingsRealShapeFits(t *testing.T) {
 					tt.Frame()
 					tt.Advance(200 * time.Millisecond)
 				}
-				if want, ok := pass3Marks[tab]; ok && !tt.HasText(want) {
+				if want, ok := pass3Marks[tab]; ok && !hasText(tt, want) {
 					t.Fatalf("%s %s %d: the real shape isn't on the pane (no %q): %q", lang, tab, w, want, tt.Texts())
 				}
 				for _, b := range paneGeometry(tt, float32(w)) {

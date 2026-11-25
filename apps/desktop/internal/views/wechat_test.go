@@ -30,12 +30,12 @@ func TestWechatConnect(t *testing.T) {
 	app, sent, tt := chatsApp(t, i18n.ZH, []protocol.ChannelView{tg, sl, {Kind: "wechat", State: "off"}})
 	for _, want := range []string{"微信", "用微信自己的 ClawBot 连", "断开微信"} {
 		if want == "断开微信" {
-			if tt.HasText(want) {
+			if hasText(tt, want) {
 				t.Errorf("%q shown before connecting", want)
 			}
 			continue
 		}
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
@@ -43,7 +43,7 @@ func TestWechatConnect(t *testing.T) {
 		t.Errorf("the honest line is missing: %q", tt.Texts())
 	}
 	// D365: it rests as its row until 设置 opens the steps.
-	if tt.HasText("连上") {
+	if hasText(tt, "连上") {
 		t.Errorf("the steps are open before 设置: %q", tt.Texts())
 	}
 	if err := tt.Click("设置，微信"); err != nil {
@@ -61,14 +61,14 @@ func TestWechatConnect(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"等你用微信扫码", "不连了"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
 	app.Receive(protocol.ServerFrame{T: "channels", Channels: []protocol.ChannelView{tg, sl, {Kind: "wechat", State: "scan", Scan: fakeScan("verify")}}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("微信里显示的数字") {
+	if !hasText(tt, "微信里显示的数字") {
 		t.Errorf("no field for WeChat's number: %q", tt.Texts())
 	}
 	if err := tt.Click("不连了"); err != nil {
@@ -85,7 +85,7 @@ func TestWechatLinked(t *testing.T) {
 	_, _, tt := chatsApp(t, i18n.EN, []protocol.ChannelView{{Kind: "telegram", State: "off"}, {Kind: "slack", State: "off"},
 		{Kind: "wechat", State: "linked", Bot: &protocol.ChannelBot{Name: "ClawBot"}, Linked: &protocol.ChannelLinked{At: at}, OpenUntil: time.Now().Add(20 * time.Hour).UTC().Format(time.RFC3339)}})
 	for _, want := range []string{"WeChat", "Waiting for you in WeChat's ClawBot", "Linked to your WeChat", "It can reach you in WeChat now", "Disconnect WeChat"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}

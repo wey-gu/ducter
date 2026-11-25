@@ -42,13 +42,13 @@ func TestHomeCallChip(t *testing.T) {
 				tt.Frame()
 			}
 			// The ghosts: their clay, their words, 以后会有; a tap explains and adds nothing.
-			if !tt.HasText(L.T("chip.phone")) {
+			if !hasText(tt, L.T("chip.phone")) {
 				t.Fatalf("%s: no ghost phone in %q", lang, tt.Texts())
 			}
 			if _, ok := tt.Find(spoken(L, L.T("chip.computer"), L.T("chip.state.later"))); ok {
 				t.Fatalf("%s: a 用电脑 ghost on a Linux server: %q", lang, tt.Texts())
 			}
-			if _, ok := tt.Find(spoken(L, L.T("chip.phone"), L.T("chip.state.later"))); !ok || !tt.HasText(L.T("chip.state.later")) {
+			if _, ok := tt.Find(spoken(L, L.T("chip.phone"), L.T("chip.state.later"))); !ok || !hasText(tt, L.T("chip.state.later")) {
 				t.Fatalf("%s: the ghosts don't say %q: %q", lang, L.T("chip.state.later"), tt.Texts())
 			}
 			// Evidence, not source (D75): DUCTER_CARD_SHOTS=… go test ./internal/views -run HomeCallChip

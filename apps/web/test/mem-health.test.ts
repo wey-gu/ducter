@@ -1,7 +1,7 @@
 // D375: what Memory's Nowledge Mem head and a lent computer's Mem row say about Mem's own health.
 import { expect, test } from "bun:test";
 import type { BridgeView, DeviceMemView } from "@ducter/protocol";
-import { memHealthLook } from "../src/mem-view.ts";
+import { memHealthLook, memTrouble } from "../src/mem-view.ts";
 import { memRowHealth } from "../src/worker-mem-view.ts";
 import { TABLES } from "../src/i18n.ts";
 
@@ -21,6 +21,18 @@ test("old: Update only when Ducter can run it, and never twice (the update row a
 test("unreachable and signed out are said as they are", () => {
   expect(memHealthLook({ issue: "unreachable" }, b())).toEqual({ look: "unreachable" });
   expect(memHealthLook({ issue: "signed_out" }, b())).toEqual({ look: "signed_out" });
+});
+
+// D563: Mem's own trouble puts the Nowledge Mem group (and its one action) first; an offer never does.
+test("trouble: signed out, out of reach or too old come first; all well, unread or the plugin offer don't", () => {
+  const m = (issue?: string, agents?: string[]) => ({ health: { ...(issue ? { issue } : {}), ...(agents ? { agents } : {}) } }) as never;
+  expect(memTrouble(m("signed_out"), b())).toBe(true);
+  expect(memTrouble(m("unreachable"), b())).toBe(true);
+  expect(memTrouble(m("old"), b({ canRun: true }))).toBe(true);
+  expect(memTrouble(m(), b())).toBe(false);
+  expect(memTrouble(m("plugin", ["claude-code"]), b())).toBe(false);
+  expect(memTrouble({} as never, b())).toBe(false);
+  expect(memTrouble(undefined, b())).toBe(false);
 });
 
 test("plugin (D554: Mem itself ok, the agents an offer under it): the agents left, busy while Mem's own command runs, gone once it put one in", () => {

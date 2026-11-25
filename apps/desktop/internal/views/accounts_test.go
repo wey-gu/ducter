@@ -56,11 +56,11 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D432: 发现了就说 is said once, on Notifications; Accounts is what it can read.
-	if tt.HasText("发现了就说") {
+	if hasText(tt, "发现了就说") {
 		t.Errorf("Accounts still shows 发现了就说")
 	}
 	for _, want := range []string{"oo 里的账号", "在留意", "你的邮件、日程、消息和 GitHub 通知会经过 oo 和 OOMOL 的服务器。", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "再连一个账号服务", "日历", "Discord"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -68,7 +68,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	app.cards().tile["c1"] = "discord:wey"
 	tt.Frame()
 	for _, want := range []string{"只看 @你 和私信", "自己留意", "不让 Ducter 看这个", "要退出登录，去 oo 里"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("tile detail: no %q", want)
 		}
 	}
@@ -93,7 +93,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt.Frame()
 	app.cards().stopping = "c1"
 	tt.Frame()
-	if !tt.HasText("停用以后，我就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") {
+	if !hasText(tt, "停用以后，我就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") {
 		t.Errorf("stop doesn't ask first")
 	}
 }
@@ -124,7 +124,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	app.open["how:f3"] = true
 	tt.Frame()
 	for _, want := range []string{"好，打开续费页", "先不用", "怎么知道的", "有用", "这类不用告诉我", "两处对不上"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -380,10 +380,10 @@ func TestQuietDayUnderTheSwitch(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("没法细读你的信：这台电脑上没装 Claude Code，现在只看得到标题。") {
+	if !hasText(tt, "没法细读你的信：这台电脑上没装 Claude Code，现在只看得到标题。") {
 		t.Fatalf("no problem line in %q", tt.Texts())
 	}
-	if tt.HasText("看了 152 封信、3 个日程") {
+	if hasText(tt, "看了 152 封信、3 个日程") {
 		t.Fatal("the counts show before the button is pressed")
 	}
 	got := strings.Join(app.dayLines(app.S.Day), "\n")

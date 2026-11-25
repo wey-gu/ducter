@@ -66,10 +66,10 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 			h.app.StartLocal()
 			install := T("fix.install.short")
 			h.has(T("setup.pick.body"), "Claude Code", "Codex", install, T("setup.auto.app"))
-			if h.tt.HasText(T("setup.recheck")) || h.tt.HasText("Nowledge Mem") {
+			if hasText(h.tt, T("setup.recheck")) || hasText(h.tt, "Nowledge Mem") {
 				t.Error("Check again or the optional line on an automatic screen")
 			}
-			if h.tt.HasText("curl -fsSL") {
+			if hasText(h.tt, "curl -fsSL") {
 				t.Error("the installer's command shows as a step to type")
 			}
 			h.shot("onboard-ai-fresh-" + string(lang))
@@ -270,11 +270,11 @@ func TestOnboardAsksAfterResults(t *testing.T) {
 			h.app.Backend, h.app.Desktop = f, d
 			T := h.app.L.T
 			h.tt.Frame()
-			if h.tt.HasText(T("notify.ask")) {
+			if hasText(h.tt, T("notify.ask")) {
 				t.Fatal("asked at launch")
 			}
 			finish(h, "t1", "修好 ducter 里没过的测试")
-			if h.tt.HasText(T("notify.ask")) {
+			if hasText(h.tt, T("notify.ask")) {
 				t.Fatal("asked over the first-result line")
 			}
 			h.app.firstDone.at = time.Time{} // Got it
@@ -292,7 +292,7 @@ func TestOnboardAsksAfterResults(t *testing.T) {
 			if len(f.settings) != 1 || f.settings[0] != local.NotificationsFor("co.nowledge.ducter") {
 				t.Fatalf("settings %q", f.settings)
 			}
-			if h.tt.HasText(T("phone.ask")) {
+			if hasText(h.tt, T("phone.ask")) {
 				t.Fatal("the next ask came at once, without a new result")
 			}
 			finish(h, "t2", "说说这周改了什么")

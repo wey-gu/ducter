@@ -24,7 +24,7 @@ func TestD329UpdateAllMemShownAndNamed(t *testing.T) {
 	items := append(uaItems(), protocol.UpdateAllItem{Key: "mem:local", Kind: "mem", Device: "local", DeviceName: "hel", From: "0.10.118", To: "0.10.121", State: "queued", At: at})
 	app, _, _ := uaApp(t, i18n.ZH, &protocol.UpdateAllView{Offer: items}, false)
 	tt := d329Tester(app, 1280, 1800, false)
-	if !tt.HasText(L.T("upall.item.mem", "hel")) {
+	if !hasText(tt, L.T("upall.item.mem", "hel")) {
 		t.Fatalf("Mem hidden in a long offer: %q", tt.Texts())
 	}
 	if s := app.updAllOrder(); s != L.T("upall.order.mem", "hel") && s != L.T("upall.order.solo.mem") {

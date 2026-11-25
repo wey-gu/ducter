@@ -24,7 +24,7 @@ func TestNotifyPreviewFollowsTheChoices(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"CI 有两种修法，先试改动小的那个？", "30 分钟内没回，我就先试它。", "23:00 到 08:00 不响，到点一起告诉你。"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -32,17 +32,17 @@ func TestNotifyPreviewFollowsTheChoices(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("1 小时内没回，我就先试它。") {
+	if !hasText(tt, "1 小时内没回，我就先试它。") {
 		t.Errorf("the preview didn't follow the default wait: %q", tt.Texts())
 	}
 	app.S.Settings.Quiet = nil
 	tt.Frame()
-	if !tt.HasText("随时会响。") {
+	if !hasText(tt, "随时会响。") {
 		t.Errorf("quiet hours off, the preview still says them: %q", tt.Texts())
 	}
 	app.S.Settings.Notify = false
 	tt.Frame()
-	if !tt.HasText("不弹出来：它在「手头的事」里等你。") {
+	if !hasText(tt, "不弹出来：它在「手头的事」里等你。") {
 		t.Errorf("notifications off, the preview doesn't say where it waits: %q", tt.Texts())
 	}
 	_ = sent
@@ -61,10 +61,10 @@ func TestQuietHoursAre24HourPills(t *testing.T) {
 		tt.SetRegion(i18n.Region{Locale: "en-US", HourCycle: 12})
 		tt.Frame()
 		tt.Frame()
-		if tt.HasText("PM") || tt.HasText("下午") {
+		if hasText(tt, "PM") || hasText(tt, "下午") {
 			t.Fatalf("%s: a 12-hour time in %q", lang, tt.Texts())
 		}
-		if !tt.HasText("23:00") || !tt.HasText("08:00") {
+		if !hasText(tt, "23:00") || !hasText(tt, "08:00") {
 			t.Fatalf("%s: no 23:00 and 08:00 in %q", lang, tt.Texts())
 		}
 		if err := tt.Click("23:00"); err != nil {
@@ -99,12 +99,12 @@ func TestRepliesInShowsTheVoice(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("はい、明日の 9:00 にお知らせします。") {
+	if !hasText(tt, "はい、明日の 9:00 にお知らせします。") {
 		t.Errorf("no Japanese sample under Replies in: %q", tt.Texts())
 	}
 	app.S.Settings.Language = "auto"
 	tt.Frame()
-	if !tt.HasText("好，明天 9:00 叫你。") {
+	if !hasText(tt, "好，明天 9:00 叫你。") {
 		t.Errorf("Follow me shows no sample in the window's language: %q", tt.Texts())
 	}
 }

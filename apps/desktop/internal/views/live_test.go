@@ -256,7 +256,7 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 	h := dial(t, "ws://"+addr+"/ws", i18n.ZH)
 	h.until("a failed attempt", func() bool { return h.app.Failed })
 	for _, want := range []string{"Ducter 还没启动", StartCommand, "立即连接"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("first run lacks %q: %q", want, h.tt.Texts())
 		}
 	}
@@ -279,7 +279,7 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 	t.Cleanup(func() { srv.Close() })
 	h.click("立即连接")
 	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
-	if h.tt.HasText("Ducter 还没启动") || !h.tt.HasText("手头") {
+	if hasText(h.tt, "Ducter 还没启动") || !hasText(h.tt, "手头") {
 		t.Errorf("still on first run: %q", h.tt.Texts())
 	}
 }

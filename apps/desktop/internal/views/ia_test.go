@@ -51,25 +51,25 @@ func TestPartnerPage(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"小鸭", "怎么说话", "跟着你", "先问你", "付钱"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
 	// D257: what it remembers is its own tab, not a card on the partner's.
-	if tt.HasText("测试统一用假时钟") {
+	if hasText(tt, "测试统一用假时钟") {
 		t.Errorf("the noted lines are still on the partner's tab")
 	}
 	tt.Click("记忆")
 	tt.Frame()
 	for _, want := range []string{"小鸭记得你", "记住事情", "我知道的关于你", "测试统一用假时钟", "Nowledge Mem"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
 	}
 	// When it comes to you is its own tab now (D150).
 	tt.Click("通知")
 	tt.Frame()
-	if !tt.HasText("什么时候找你") || !tt.HasText("你没回的时候") {
+	if !hasText(tt, "什么时候找你") || !hasText(tt, "你没回的时候") {
 		t.Errorf("no notifications tab: %q", tt.Texts())
 	}
 }
@@ -89,29 +89,29 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"我在 hel 上运行，用 Codex 想事情。", "现在每个任务都由 Codex 来做。"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
 	// D322: no tray on the pane, and no 自动选的 when there was nothing else to pick.
 	for _, not := range []string{"自动选的：只有 Codex 登录了", "hel 上的 AI agent"} {
-		if tt.HasText(not) {
+		if hasText(tt, not) {
 			t.Errorf("%q still on the pane", not)
 		}
 	}
-	if tt.HasText("Claude Code · Opus") {
+	if hasText(tt, "Claude Code · Opus") {
 		t.Errorf("claims Claude Code: %q", tt.Texts())
 	}
 	// Mem not connected (D257, Memory): the way to get it, and no switch that says it remembers.
 	app.openTab(TabMemory)
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"我还记不住你：接上 Nowledge Mem，你说过的偏好、定下的事，我都记得。", "还没接上", "了解 Nowledge Mem"} {
-		if !tt.HasText(want) {
+	for _, want := range []string{"我们聊过的我都记着；接上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。", "还没接上", "了解 Nowledge Mem"} {
+		if !hasText(tt, want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("记住事情") {
+	if hasText(tt, "记住事情") {
 		t.Errorf("memory has its switch while Mem is missing")
 	}
 }
@@ -132,11 +132,11 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	tt.Frame()
 	// D322: with pi signed in too, the switch is there; the 自动选的 lines are retired.
 	for _, want := range []string{"我在 hel 上运行，用 DeepSeek Harness 想事情。", "换一个"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("自动选的：只有 DeepSeek Harness 登录了") {
+	if hasText(tt, "自动选的：只有 DeepSeek Harness 登录了") {
 		t.Errorf("says only DeepSeek Harness is signed in while pi is too: %q", tt.Texts())
 	}
 }
@@ -159,7 +159,7 @@ func TestMemoryTabKeptUnder(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		tt.Frame()
-		if !tt.HasText(tc.want) {
+		if !hasText(tt, tc.want) {
 			t.Errorf("%s: no %q in %q", tc.lang, tc.want, tt.Texts())
 		}
 	}
@@ -175,10 +175,10 @@ func TestMemoryTabEmptyHidesList(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText("What it noted") {
+	if hasText(tt, "What it noted") {
 		t.Errorf("an empty noted list still has its heading")
 	}
-	if !tt.HasText("About Nowledge Mem") {
+	if !hasText(tt, "About Nowledge Mem") {
 		t.Errorf("no way to get Mem when it is missing: %q", tt.Texts())
 	}
 }
@@ -212,13 +212,13 @@ func TestSettingsPage(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range wants {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", tab, want, tt.Texts())
 			}
 		}
 	}
 	// Updates hide until the app can check.
-	if tt.HasText("Check for updates") {
+	if hasText(tt, "Check for updates") {
 		t.Errorf("Check for updates shows without an updater")
 	}
 }
@@ -333,7 +333,7 @@ func TestSettingsUpdateReady(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"Restart to use version 0.3.1", "Restart Now", "Update automatically when quitting"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}

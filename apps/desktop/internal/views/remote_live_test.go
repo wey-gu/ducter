@@ -105,7 +105,7 @@ func TestRemoteDucter(t *testing.T) {
 		h.until("the task waits on its device", byStamp("blocked"))
 		h.click(h.app.L.T("nav.onhand"))
 		h.tt.Advance(time.Second)
-		if !h.tt.HasText(h.app.L.T("device.unreachable", device)) {
+		if !hasText(h.tt, h.app.L.T("device.unreachable", device)) {
 			t.Errorf("On hand doesn't say %q: %q", h.app.L.T("device.unreachable", device), h.tt.Texts())
 		}
 		h.shot("remote-device-unreachable")

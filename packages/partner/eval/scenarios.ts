@@ -346,9 +346,9 @@ export interface Scenario {
   seed?: Seed[];
   /** D512: PRs the eval's fake gh answers as still open and unmerged ("owner/repo#n"), never the real GitHub. */
   openPrs?: string[];
-  /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed. */
+  /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed (`true`), installed but signed out, or switched off (D563). */
   memories?: SeedMemory[];
-  memoryDown?: boolean;
+  memoryDown?: boolean | "signed_out" | "off";
   /** D368 (G3): the person's past conversations with other AI tools in the fake Mem (threads). */
   threads?: import("../src/memory.ts").ThreadHit[];
   /** D368 (G2): the person's Working Memory in the fake Mem (nmem's `parsed` fields); omitted = none. */
@@ -1886,11 +1886,46 @@ export const scenarios: Scenario[] = [
     id: "mem-remember-signed-out-zh",
     category: "memory",
     lang: "zh",
-    memoryDown: true,
+    // D563: really signed out (Mem there, its sign-in lapsed); was the fake's "not installed" (a state that lied).
+    memoryDown: "signed_out",
     steps: [{ user: "记住，周报每周五下午发给产品组。" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, require: [/没(能)?记住|记不住|没记下|没能记|这次.{0,6}记/] },
     rubric:
       "The user asks the partner to remember something, but Nowledge Mem isn't signed in on the home, so nothing could be kept (memory_add said so). Pass if the partner says in one or two short, plain Chinese sentences that it couldn't keep this one this time, that Nowledge Mem isn't signed in (naming Nowledge Mem or 记忆 is right here), and that Settings › 记忆 is where to fix it. Fail on a plain 「好」 as if it was kept, on a promise to remember, on error codes or commands, or on opening a task.",
+  },
+  {
+    // D563: no Mem on the home at all (the fresh user): the conversation still holds it; never "not signed in",
+    // never a word about Nowledge Mem or settings (D169).
+    id: "mem-remember-no-mem-zh",
+    category: "memory",
+    lang: "zh",
+    memoryDown: true,
+    steps: [{ user: "记住，我对花生过敏。" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, forbid: [NO_MEM_TALK, /登录|设置|没(能)?记住|记不住|没记下/] },
+    rubric:
+      "A user with no long-term memory app asks the partner to remember an allergy. Nothing could go to long-term memory, but the conversation itself holds it. Pass if the partner acknowledges it in a few natural, warm Chinese words (e.g. 好，记着了 and maybe one caring word), without mentioning Nowledge Mem, memory, signing in or settings, and without saying it couldn't be kept. Fail on any claim that something is signed out or broken, on pointing to settings, or on opening a task.",
+  },
+  {
+    // D563: connecting memory, asked in the conversation: one line to where it's done, nothing more.
+    id: "mem-how-to-connect-zh",
+    category: "memory",
+    lang: "zh",
+    memoryDown: true,
+    steps: [{ user: "我在 Claude Code 里交代过的习惯，怎么让你也知道？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 140, require: [/设置/, /记忆/, /Nowledge Mem/] },
+    rubric:
+      "The user, who has no long-term memory app connected, asks how the partner could also know the habits they told Claude Code. Pass if the partner says in one or two short, plain Chinese lines that 设置 › 记忆 is where Nowledge Mem (free) is connected, in two steps, and then it knows what their other AI tools saved. Fail on commands, install instructions, jargon (CLI, API key, Space), opening a task, or a long explanation.",
+  },
+  {
+    // D563: the person switched memory off themselves: said as their choice, never as a fault.
+    id: "mem-remember-off-en",
+    category: "memory",
+    lang: "en",
+    memoryDown: "off",
+    steps: [{ user: "Remember that I take my coffee black." }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/off/i, /settings/i], forbid: [/sign(ed)? ?(in|out)|broken|error/i] },
+    rubric:
+      "The user switched memory off in Settings › Memory, then asks the partner to remember something. Pass if the partner says in one or two short, plain English sentences that memory is off right now, so this stays only in this conversation, and that turning it on in Settings › Memory would keep it. Fail on any claim that it was saved or will be remembered for good, on 'signed out' or anything broken, or on opening a task.",
   },
   {
     // D554: a reaction is not a preference; only what the person says about themselves is kept.

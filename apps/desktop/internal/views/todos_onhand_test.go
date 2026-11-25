@@ -73,7 +73,7 @@ func TestTodoGroupOnHand(t *testing.T) {
 		todoFrames(tt, 4)
 		for _, want := range []string{w("GitHub 上标给你的", "Assigned to you on GitHub"), "557", w("等你 review", "Waiting for your review"), w("提到了你", "Mentions you"),
 			w("mei-chen 提的", "By mei-chen"), w("还有 555 个", "555 more"), app.L.T("onhand.todos.hand", app.personaName()), app.L.T("todos.chip.open", "GitHub")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -86,19 +86,19 @@ func TestTodoGroupOnHand(t *testing.T) {
 			t.Fatalf("hand over sends %+v", f)
 		}
 		todoFrames(tt, 1)
-		if !tt.HasText(app.L.T("onhand.todos.handing", app.personaName())) {
+		if !hasText(tt, app.L.T("onhand.todos.handing", app.personaName())) {
 			t.Errorf("%s: handing over isn't said: %q", lang, tt.Texts())
 		}
 		// A refusal says why on the card.
 		app.Receive(protocol.ServerFrame{T: "task_new_result", OK: false, ClientID: f.ClientID, Reason: "no_agent"})
 		todoFrames(tt, 2)
-		if !tt.HasText(app.L.T("newtask.err.no_agent")) {
+		if !hasText(tt, app.L.T("newtask.err.no_agent")) {
 			t.Errorf("%s: the refusal isn't said: %q", lang, tt.Texts())
 		}
 		// No source: nothing at all.
 		app.Receive(protocol.ServerFrame{T: "sources", Sources: &protocol.SourcesFrame{View: &protocol.SourcesView{}}})
 		todoFrames(tt, 2)
-		if tt.HasText(w("GitHub 上标给你的", "Assigned to you on GitHub")) || tt.HasText(w("你的待办", "Your to-dos")) {
+		if hasText(tt, w("GitHub 上标给你的", "Assigned to you on GitHub")) || hasText(tt, w("你的待办", "Your to-dos")) {
 			t.Errorf("%s: the group shows with no source", lang)
 		}
 	}
@@ -121,7 +121,7 @@ func TestTodoFold(t *testing.T) {
 	app.Receive(todoFoldPage(i18n.ZH, r.ClientID, 1, true))
 	todoFrames(tt, 3)
 	for _, want := range []string{"找标题或编号…", "全部", "等你 review 4", "web", "api", "infra", "深色模式下日期选择器还是白的", "再看 30 个"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -139,7 +139,7 @@ func TestTodoFold(t *testing.T) {
 	if n := len(app.todos.fold.items); n != 8 {
 		t.Errorf("two pages hold %d", n)
 	}
-	if tt.HasText("再看 30 个") {
+	if hasText(tt, "再看 30 个") {
 		t.Error("more offered after the last page")
 	}
 	if err := tt.Click("等你 review 4"); err != nil {
@@ -158,7 +158,7 @@ func TestTodoFold(t *testing.T) {
 	r5, _ := lastSent[protocol.SourceItemsReq](*sent)
 	app.Receive(protocol.ServerFrame{T: "source_items_result", Sources: &protocol.SourcesFrame{ClientID: r5.ClientID, Page: 1, Limited: true, Errors: []protocol.SourceErr{{Source: "src_gh", Error: "rate limit"}}}})
 	todoFrames(tt, 2)
-	if !tt.HasText("GitHub 让我们慢一点。过一分钟再试。") {
+	if !hasText(tt, "GitHub 让我们慢一点。过一分钟再试。") {
 		t.Errorf("the rate limit isn't said: %q", tt.Texts())
 	}
 }

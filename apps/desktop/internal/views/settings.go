@@ -508,7 +508,7 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 // said once at the top, never left under the last card.
 func (a *App) ledeNote(c *ui.Context, key, text string) {
 	t := a.T
-	uiText(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0).Padding(0, t.S5)
+	uiText(c.Key(key), keepClauses(text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0).Padding(0, t.S5)
 }
 
 // how is the quiet tap that keeps an explanation reachable without showing it (D424): 怎么做到的 /
@@ -528,7 +528,7 @@ func (a *App) how(c *ui.Context, key, about, detail string) {
 			}
 		})
 		if open {
-			uiText(c, detail).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, keepClauses(detail)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}
 	})
 }
@@ -543,9 +543,9 @@ func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, contr
 	// control under the words here too (D445).
 	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		a.wordsThenControl(c, func() {
-			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
-				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(help)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 			a.how(c, key, label, detail)
 		}, control)
@@ -603,9 +603,9 @@ func (a *App) row(c *ui.Context, key, label, help string, control func()) {
 	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		// D445: the words keep their width; a narrow window drops the control under them.
 		a.wordsThenControl(c, func() {
-			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
-				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(help)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		}, control)
 	})
@@ -770,9 +770,9 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	a.rowHover(c, b, groundNeutral(), false) // D529
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
-				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(help)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		mark := drawChevron(t.InkMuted, false)

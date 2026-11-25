@@ -168,7 +168,7 @@ func TestBridgeRow(t *testing.T) {
 				tt.Frame()
 				L := app.L
 				for _, w := range s.want(L) {
-					if !tt.HasText(w) {
+					if !hasText(tt, w) {
 						t.Fatalf("no %q in %q", w, tt.Texts())
 					}
 				}
@@ -216,7 +216,7 @@ func TestBridgeRow(t *testing.T) {
 						t.Fatal(err)
 					}
 					tt.Frame()
-					if len(*sent) != n || !tt.HasText(ask) {
+					if len(*sent) != n || !hasText(tt, ask) {
 						t.Fatalf("%s ran without asking: %v %q", goLabel, (*sent)[n:], tt.Texts())
 					}
 					bridgeShot(t, tt, fmt.Sprintf("mac-%s-%s-ask", lang, s.name))
@@ -265,10 +265,10 @@ func TestBridgeRowAbsentForAFreshUser(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		tt.Frame()
-		if tt.HasText(app.L.T("settings.tab.peers")) {
+		if hasText(tt, app.L.T("settings.tab.peers")) {
 			t.Fatalf("和你的其他 agent 通信 shows for a fresh user (%v): %q", b, tt.Texts())
 		}
-		if b != nil && !tt.HasText(app.L.T("peers.invite")) {
+		if b != nil && !hasText(tt, app.L.T("peers.invite")) {
 			t.Fatalf("no invitation on the Partner page (%v): %q", b, tt.Texts())
 		}
 	}

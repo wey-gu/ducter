@@ -66,15 +66,15 @@ func TestDeviceCards(t *testing.T) {
 				map[i18n.Lang]string{i18n.ZH: "Ducter 和它的电脑都能原地更新，出错会换回来", i18n.EN: "Update Ducter and its computers in place, with a rollback"}[lang],
 				L.T("coin.socket"),
 			} {
-				if !h.tt.HasText(want) {
+				if !hasText(h.tt, want) {
 					t.Fatalf("home card: missing %q in %q", want, h.tt.Texts())
 				}
 			}
 			// What's new is in the card's own language, never the other one's (D172).
-			if other := map[i18n.Lang]string{i18n.ZH: "Update Ducter and its computers in place, with a rollback", i18n.EN: "Ducter 和它的电脑都能原地更新，出错会换回来"}[lang]; h.tt.HasText(other) {
+			if other := map[i18n.Lang]string{i18n.ZH: "Update Ducter and its computers in place, with a rollback", i18n.EN: "Ducter 和它的电脑都能原地更新，出错会换回来"}[lang]; hasText(h.tt, other) {
 				t.Fatalf("home card: the other language's notes %q in %q", other, h.tt.Texts())
 			}
-			if h.tt.HasText("Codex") {
+			if hasText(h.tt, "Codex") {
 				t.Fatalf("an AI that isn't installed shows before + Sign in another AI: %q", h.tt.Texts())
 			}
 			shot("home-behind")
@@ -96,7 +96,7 @@ func TestDeviceCards(t *testing.T) {
 				{"failed", L.T("devup.phase.rolledback", "0.0.3")},
 			} {
 				h.hub.UpdateStep("local", step.phase, 0.4)
-				h.until(step.phase, func() bool { return h.tt.HasText(step.want) })
+				h.until(step.phase, func() bool { return hasText(h.tt, step.want) })
 				shot("home-" + step.phase)
 			}
 			// One tap: the mock runs the steps; back on the new version.
@@ -104,13 +104,13 @@ func TestDeviceCards(t *testing.T) {
 			d.sel = "local"
 			h.settle(100 * time.Millisecond)
 			h.click(spoken(L, L.T("devup.button"), "vps-1"))
-			h.until("back", func() bool { return h.tt.HasText(L.T("devup.phase.done", "0.0.4")) })
+			h.until("back", func() bool { return hasText(h.tt, L.T("devup.phase.done", "0.0.4")) })
 			shot("home-done")
 
 			// A Mac doing tasks: it updates with its own app, so no button here.
 			d.sel = "a3f9c2d1e0"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("devup.how.app", "Mac mini")) {
+			if !hasText(h.tt, L.T("devup.how.app", "Mac mini")) {
 				t.Fatalf("mac card: %q", h.tt.Texts())
 			}
 			shot("mac-worker")
@@ -130,7 +130,7 @@ func TestDeviceCards(t *testing.T) {
 			// The phone: what it is, when it was last here, and 断开 with a confirm.
 			d.selClient = "c1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("card.via", L.T("card.via.safari"))) || !h.tt.HasText(L.T("device.last_seen", L.T("time.ago.hour", 3))) {
+			if !hasText(h.tt, L.T("card.via", L.T("card.via.safari"))) || !hasText(h.tt, L.T("device.last_seen", L.T("time.ago.hour", 3))) {
 				t.Fatalf("phone card: %q", h.tt.Texts())
 			}
 			shot("phone")
@@ -138,7 +138,7 @@ func TestDeviceCards(t *testing.T) {
 			h.settle(100 * time.Millisecond)
 			h.click(L.T("card.disconnect.device", "Wey 的 iPhone"))
 			h.settle(100 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.disconnect.ask", "Wey 的 iPhone")) {
+			if !hasText(h.tt, L.T("device.disconnect.ask", "Wey 的 iPhone")) {
 				t.Fatalf("confirm: %q", h.tt.Texts())
 			}
 			shot("phone-disconnect")
@@ -154,7 +154,7 @@ func TestDeviceCards(t *testing.T) {
 			cardWorld(h)
 			h.app.OpenAbout()
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("settings.versions.title")) {
+			if !hasText(h.tt, L.T("settings.versions.title")) {
 				t.Fatalf("settings: %q", h.tt.Texts())
 			}
 			h.tt.SetSize(1280, 2000)

@@ -11,12 +11,11 @@ line.
 
 ## Settings read whole, after D561 (`settings.md` "Read whole (D561)")
 
-- [ ] **The Mac's shared rows keep their Chinese words whole.** `row`, `tileRow`, `headRow`,
-  `explainedRow`, `footRow` and the group and lede notes through `keepClauses`, as 发现了就说's line
-  already is. Blocked on the view tests: dozens find a row by its exact words with MyGo's `HasText`,
-  which reads the drawn text with its word joiners. Trigger: a views test helper that matches the
-  accessible name (`unjoin`), then the swap and a walk at 1000.
-- [ ] **The author's review of `.shots/settings-polish/`** (crops in `crops/`).
+- [x] **The Mac's shared rows keep their Chinese words whole** (D564: every shared row through
+  `keepClauses`, keep-all approximated up to ten characters, the tests on `hasText`).
+- [ ] **The author's review of `.shots/settings-polish/` and `.shots/mac-keep-words/`** (crops in `crops/`).
+- [ ] **A true keep-all on the Mac** (D564's alternative): MyGo's `keepWordsWhole` for Chinese, without
+  Korean glyphs. Trigger: a Chinese run over ten characters seen broken mid-word in a walk.
 
 ## The site, after D558 (`site.md`, research/227)
 

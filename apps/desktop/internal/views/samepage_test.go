@@ -40,7 +40,7 @@ func TestThisMacsRowAndTheTopCardAgree(t *testing.T) {
 		app.openTab(TabAbout)
 		tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		if tt.HasText(L.T("devup.how.app", "Macbook Pro M3")) {
+		if hasText(tt, L.T("devup.how.app", "Macbook Pro M3")) {
 			t.Errorf("%s: this Mac told to open Ducter on that Mac: %q", lang, tt.Texts())
 		}
 		if _, ok := tt.Find(spoken(L, L.T("devup.button"), "Macbook Pro M3")); !ok {

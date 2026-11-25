@@ -107,7 +107,7 @@ func TestMemD554Words(t *testing.T) {
 			tt.Frame()
 		}
 		for _, s := range []string{L.T("mem.health.ok"), L.T("mem.health.plugin", "Claude Code"), unjoin(keepClauses(L.T("mem.health.plugin.why.one")))} { // D556: one agent is 它
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}
 		}
@@ -129,7 +129,7 @@ func TestMemD554Words(t *testing.T) {
 		tf.Frame()
 		tf.Frame()
 		for _, s := range []string{L.T("mem.step.account"), L.T("mem.step.account.go")} {
-			if !tf.HasText(s) {
+			if !hasText(tf, s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tf.Texts())
 			}
 		}

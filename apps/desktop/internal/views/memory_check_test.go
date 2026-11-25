@@ -40,7 +40,7 @@ func TestMemCheck(t *testing.T) {
 		tt.Frame()
 		L := app.L
 		for _, w := range []string{L.T("mem.check.title"), L.T("mem.check.contra"), L.T("mem.check.earlier"), L.T("mem.check.later"), L.T("mem.check.rule"), L.T("mem.check.more"), L.T("mem.rules.title"), L.T("mem.rules.note", app.personaName())} {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
@@ -53,14 +53,14 @@ func TestMemCheck(t *testing.T) {
 			t.Fatalf("以后记的为准 sent %v", (*sent)[n:])
 		}
 		tt.Frame()
-		if tt.HasText(L.T("mem.check.contra")) || !tt.HasText(L.T("said.mem.check.newer")) {
+		if hasText(tt, L.T("mem.check.contra")) || !hasText(tt, L.T("said.mem.check.newer")) {
 			t.Fatalf("the ask didn't leave, or no word: %q", tt.Texts())
 		}
 		// Mem refused: the ask is back with the next settings frame, and a line says so.
 		app.Receive(protocol.ServerFrame{T: "mem_answered", MemAnswered: &protocol.MemAnswered{ID: "e2", Answer: "newer", OK: false}})
 		app.S.Mem.Check = memCheckFixture()
 		tt.Frame()
-		if !tt.HasText(L.T("mem.check.failed")) {
+		if !hasText(tt, L.T("mem.check.failed")) {
 			t.Fatalf("no line after a refusal: %q", tt.Texts())
 		}
 		// A learned rule turned on joins the rules on.
@@ -82,7 +82,7 @@ func TestMemCheck(t *testing.T) {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if len(*sent) != n || !tt.HasText(L.T("mem.rules.off.ask", on)) {
+		if len(*sent) != n || !hasText(tt, L.T("mem.rules.off.ask", on)) {
 			t.Fatalf("停用 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("mem.rules.off"), on)); err != nil {
@@ -100,7 +100,7 @@ func TestMemCheckQuiet(t *testing.T) {
 	app.openTab(TabMemory)
 	tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if tt.HasText(app.L.T("mem.check.title")) || tt.HasText(app.L.T("mem.rules.title")) {
+	if hasText(tt, app.L.T("mem.check.title")) || hasText(tt, app.L.T("mem.rules.title")) {
 		t.Fatalf("a section with nothing in it: %q", tt.Texts())
 	}
 	f, err := protocol.DecodeServerFrame([]byte(`{"t":"mem_answered","id":"e2","answer":"newer","ok":false}`))

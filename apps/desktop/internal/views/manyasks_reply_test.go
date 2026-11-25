@@ -28,7 +28,7 @@ func TestManyAsksReplyToOneLine(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		word := app.L.T("asks.reply")
-		if tt.HasText(word) {
+		if hasText(tt, word) {
 			t.Fatalf("%s: a line's pebble shows without a hover", lang)
 		}
 		r, ok := tt.Find(k.lines[3].Words)
@@ -68,7 +68,7 @@ func TestManyAsksReplyToOneLine(t *testing.T) {
 			t.Errorf("%s: replying opened the task (route %v)", lang, app.Route)
 		}
 		// The composer's imprint quotes the line's words.
-		if !tt.HasText("“" + k.lines[3].Words + "”") {
+		if !hasText(tt, "“"+k.lines[3].Words+"”") {
 			t.Errorf("%s: the composer doesn't show the line it replies to: %q", lang, tt.Texts())
 		}
 		app.CancelReply()

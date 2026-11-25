@@ -32,17 +32,17 @@ func TestPuttingInScreen(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		for _, want := range []string{tc.title, tc.body} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(app.L.T("update.restart")) {
+		if hasText(tt, app.L.T("update.restart")) {
 			t.Errorf("%s: Restart Now still on screen", tc.lang)
 		}
 		// The copy failed its check: back to Settings' update card.
 		app.UpdateFailed()
 		tt.Frame()
-		if tt.HasText(tc.title) || !tt.HasText(app.L.T("update.restart")) {
+		if hasText(tt, tc.title) || !hasText(tt, app.L.T("update.restart")) {
 			t.Errorf("%s: after a refused copy: %q", tc.lang, tt.Texts())
 		}
 	}
@@ -56,7 +56,7 @@ func TestUpdatedToSaysTheVersion(t *testing.T) {
 	app.OpenUpdate()
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("已更新到 0.0.6") {
+	if !hasText(tt, "已更新到 0.0.6") {
 		t.Errorf("no 已更新到 0.0.6 in %q", tt.Texts())
 	}
 	if !app.installedSaid {

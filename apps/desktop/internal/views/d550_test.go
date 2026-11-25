@@ -88,7 +88,7 @@ func TestKeepQuietFoldOpens(t *testing.T) {
 		}
 		from, to := keepSpan(lang, page.Rounds[3].At, page.Rounds[1].At, app.Now())
 		three := app.L.T("loop.quiet", 3, from, to)
-		if !tt.HasText(app.L.T("keep.round.asked")) {
+		if !hasText(tt, app.L.T("keep.round.asked")) {
 			t.Fatalf("%s: no page: %q", lang, tt.Texts())
 		}
 		silent := func() int {

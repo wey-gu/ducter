@@ -37,14 +37,14 @@ func TestD413StandingOnPartner(t *testing.T) {
 			}
 		}
 		frames()
-		if tt.HasText(L.T("standing.title")) {
+		if hasText(tt, L.T("standing.title")) {
 			t.Fatalf("%s: the list shows before anything was said", lang)
 		}
 		words := map[i18n.Lang]string{i18n.ZH: "review 做好了直接发别和我确认", i18n.EN: "Just post the reviews when they're done, don't ask me"}[lang]
 		app.Receive(protocol.ServerFrame{T: "rules", StandingList: []protocol.StandingView{{ID: "st_1", Action: "pr_review", Orgs: []string{"nowledge-co"}, Text: words, CreatedAt: "2026-11-19T14:44:04Z"}}})
 		frames()
 		for _, want := range []string{L.T("standing.title"), L.T("standing.pr_review"), L.T("standing.where.orgs", "nowledge-co"), L.T("standing.said", words)} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
@@ -66,7 +66,7 @@ func TestD413StandingOnPartner(t *testing.T) {
 		if !got {
 			t.Fatalf("%s: Take back sent no standing_revoke: %#v", lang, (*sent)[n:])
 		}
-		if !tt.HasText(L.T("standing.revoked")) {
+		if !hasText(tt, L.T("standing.revoked")) {
 			t.Fatalf("%s: no word after Take back in %q", lang, tt.Texts())
 		}
 	}

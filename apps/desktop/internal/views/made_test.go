@@ -108,7 +108,7 @@ func TestMadeTab(t *testing.T) {
 	app.Receive(madeResult(madeItems(i18n.ZH), q.ID))
 	tt.Frame()
 	for _, want := range []string{"给你做的", "kyoto-itinerary.md", unjoin(keepWords(autospace("来自「排 12 月京都三日行程」"))), unjoin(keepWords(autospace("你问的：M4 Pro 和 M4 Max 比一下"))), "已置顶", "PR", "PDF", "看那个任务", "上周", "今天"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -126,7 +126,7 @@ func TestMadeTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if app.past.made.open != "b:30:0" || !tt.HasText("¥27,999") {
+	if app.past.made.open != "b:30:0" || !hasText(tt, "¥27,999") {
 		t.Errorf("the table drawn again: open %q texts %q", app.past.made.open, tt.Texts())
 	}
 	if err := tt.Click("PR #412"); err != nil {
@@ -154,7 +154,7 @@ func TestMadeTab(t *testing.T) {
 	app.past.q = "婚礼座位表"
 	app.Receive(madeResult(nil, ""))
 	tt.Frame()
-	if !tt.HasText("找到 0 个") && !tt.HasText(app.L.T("made.none", firstNonEmpty(app.defaultName(), "Ducter"))) {
+	if !hasText(tt, "找到 0 个") && !hasText(tt, app.L.T("made.none", firstNonEmpty(app.defaultName(), "Ducter"))) {
 		t.Errorf("none %q", tt.Texts())
 	}
 	app.pastEsc()

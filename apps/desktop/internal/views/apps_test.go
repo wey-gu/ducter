@@ -58,7 +58,7 @@ func TestAppsCardLineAndOpen(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	for _, want := range []string{"北京出差花销", "改好了", unjoin(keepWords(autospace("关于「北京出差花销」"))), unjoin(keepWords(autospace("「北京出差花销」问"))), "打开"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -78,7 +78,7 @@ func TestAppsCardLineAndOpen(t *testing.T) {
 	// Gone from the list: the card says so and offers no Open.
 	app.Receive(protocol.ServerFrame{T: "apps", AppsF: &protocol.AppsFrame{T: "apps", Apps: []protocol.AppMeta{{ID: "zz", Name: "x"}}}})
 	tt.Frame()
-	if !tt.HasText(unjoin(keepWords(autospace("这个小应用已经删掉了。")))) {
+	if !hasText(tt, unjoin(keepWords(autospace("这个小应用已经删掉了。")))) {
 		t.Errorf("gone %q", tt.Texts())
 	}
 }

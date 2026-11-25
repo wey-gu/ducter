@@ -27,7 +27,7 @@ export async function waitFor<T>(fn: () => T | undefined | false | null, ms = 40
   }
 }
 
-export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[]; /** D531: each partner's look (Slack's per-message face). */ looks?: Record<string, string>; slackScopes?: string[] } = {}) {
+export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boolean; lang?: string; /** D516: the home's partners, the default first. */ partners?: { id: string; name: string }[]; /** D531: each partner's look (Slack's per-message face). */ looks?: Record<string, string>; slackScopes?: string[]; /** D580: Slack display names by user id. */ slackNames?: Record<string, string> } = {}) {
   const t = tempDir();
   const clock = new FakeClock(Date.parse("2026-11-16T04:00:00Z")); // 12:00 in Shanghai
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
@@ -35,7 +35,7 @@ export function channelRig(o: { quiet?: Quiet | null; openUrl?: string; zh?: boo
   const decisions = createDecisions({ log, tasks, clock });
   const media = createMediaStore(t.dir);
   const tg = fakeTelegram();
-  const sl = fakeSlack(o.slackScopes ? { scopes: o.slackScopes } : {});
+  const sl = fakeSlack({ ...(o.slackScopes ? { scopes: o.slackScopes } : {}), ...(o.slackNames ? { names: o.slackNames } : {}) });
   const wx = fakeWechat();
   const sleeps: number[] = [];
   let quiet: Quiet | null = o.quiet ?? null;

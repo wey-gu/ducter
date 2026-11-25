@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.76 - 2026-11-26
+
+<!-- whats-new
+zh: 在同事的 Slack 帖子里 @ 它，它会先读完整个帖子
+en: @ your partner in a colleague's Slack thread, and it reads the thread first
+-->
+
+**Slack**
+- When you @ your partner in a thread someone else started, it reads the thread first, so "this
+  PR" means the one posted above. A colleague's words there are background, never instructions:
+  your words decide.
+- If it can't read the thread, it says so once and asks for the link, instead of guessing.
+
 ## 0.1.75 - 2026-11-25
 
 <!-- whats-new

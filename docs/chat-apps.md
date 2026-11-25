@@ -67,13 +67,23 @@ thread. It only answers you: if a teammate mentions it or writes in its thread, 
 and Settings tells you once when someone mentioned it. Questions that need your
 decision, files and later results still come to your direct messages.
 
+**@ it in a teammate's thread** and it reads that thread first: the first message and the
+latest replies before yours. So "@Ducter hand this to my review loop" under a teammate's link to
+a pull request is about that pull request, and you don't have to paste the link again. It reads
+what your teammates wrote as background, never as something they asked it to do: only your own
+words are a request, so a teammate's "merge it if it looks fine" is not acted on unless you say
+so. Back in a thread it already answers in, it catches up on what teammates wrote there since.
+If your Slack app can't read the thread yet (see below), your partner says it can't see the
+earlier messages there and asks you for the link.
+
 ### Your Slack app needs an update
 
 If you set Slack up before your partner could use its own face, answer in channels or hear your
 replies in its threads, Settings says **Your Slack app needs an update**. Press **Copy the app manifest**, open your app at
 [api.slack.com/apps](https://api.slack.com/apps), go to **App Manifest**, replace everything there
 with what you copied, choose **Save Changes**, then **Reinstall** when Slack asks. Your partner
-keeps working in the meantime; until then a reply in its thread only reaches it with an @.
+keeps working in the meantime; until then a reply in its thread only reaches it with an @, and it
+can't read the thread you @ it in.
 
 ## Connect WeChat
 
@@ -167,6 +177,8 @@ The first time another partner writes to you in a chat app, it says how to talk 
 - **Telegram keeps a copy of your chats** on its servers.
 - **In a work Slack, the workspace's admins may be able to see what's said** in your direct
   messages with the app, and **everyone in a channel can read** what you and your partner say there.
+- **In a Slack thread you @ your partner in,** it reads that thread's messages (up to the last 20
+  before yours) for that answer; nothing else in the channel is read.
 - Your bot's key stays on your own computer, in a file only your account can read. It is never
   shown again.
 

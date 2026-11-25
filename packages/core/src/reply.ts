@@ -163,7 +163,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
 export function logUserMessage(
   log: LogStore,
   decisions: ReplyDecisions,
-  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"]; /** D405: about one of the person's apps, or its ask. */ app?: Bodies["user_msg"]["app"]; /** D537: through the share sheet. */ shared?: Bodies["user_msg"]["shared"]; /** D511: typed on a Keep's page. */ keep?: Bodies["user_msg"]["keep"]; /** D534: what the words refer to with @ or /, resolved. */ refs?: Bodies["user_msg"]["refs"]; /** D309: a second partner's conversation (channelOf); absent: the default's. */ stream?: string },
+  m: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyWant; via?: Bodies["user_msg"]["via"]; forwarded?: Bodies["user_msg"]["forwarded"]; /** D580: the chat-app thread before these words. */ thread?: Bodies["user_msg"]["thread"]; /** D405: about one of the person's apps, or its ask. */ app?: Bodies["user_msg"]["app"]; /** D537: through the share sheet. */ shared?: Bodies["user_msg"]["shared"]; /** D511: typed on a Keep's page. */ keep?: Bodies["user_msg"]["keep"]; /** D534: what the words refer to with @ or /, resolved. */ refs?: Bodies["user_msg"]["refs"]; /** D309: a second partner's conversation (channelOf); absent: the default's. */ stream?: string },
 ): LogEvent<"user_msg"> {
   let reply: ReplyRef | undefined;
   if (m.reply) {
@@ -185,6 +185,7 @@ export function logUserMessage(
     ...(reply ? { reply } : {}),
     ...(m.via ? { via: m.via } : {}),
     ...(m.forwarded ? { forwarded: m.forwarded } : {}),
+    ...(m.thread ? { thread: m.thread } : {}),
     ...(m.app ? { app: m.app } : {}),
     ...(m.keep ? { keep: m.keep } : {}),
     ...(m.refs?.length ? { refs: m.refs } : {}),

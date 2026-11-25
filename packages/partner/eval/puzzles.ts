@@ -90,6 +90,18 @@ const PROW_SEED = [
   { task: { key: "hel", title: "在 hel 配置并验证 Prow 日志 MCP", ack: "好。", state: "working" as const } },
 ];
 
+// D580: the author's own world on hel: his review loop and his PR babysitter, both running; earlier talk of two other PRs.
+const LOOP_SEED = [
+  { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。这个就叫 review loop" },
+  { task: { key: "rev", title: "review loop：每 45 分钟审 nowledge-co 里请我 review 的 PR（mem 的 review skill）", ack: "好，每 45 分钟去看一轮，审好的先给你过目再发。", state: "working" as const, harness: "codex" } },
+  { loop: { task: "rev", everyMin: 45, reason: "看 nowledge-co 新的评审请求" } },
+  { user: "再起一个 PR babysitter：交给它的 PR 盯 CI 和评审意见，修到能合并，不合并" },
+  { task: { key: "sit", title: "PR babysitter：盯交给它的 PR，修 CI 和评审意见到能合并（不合并）", ack: "好，交给它的 PR 盯到能合并。", state: "working" as const, harness: "codex" } },
+  { user: "mem#11041 和 mem#10332 的 CI 怎么样了" },
+  { ai: "#11041 绿了，#10332 还在跑。" },
+];
+const LOOP_ASK = "你帮忙交给我的 review loop 看下，然后再给 pr babysitter 吧";
+
 const HEL_WORDS = "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。只在 hel 上做，不要用 Mac 上的。";
 
 export const puzzles: Scenario[] = [
@@ -704,6 +716,41 @@ export const puzzles: Scenario[] = [
     expect: { lines: 1, opens: 0, noAsk: true, msgs: [1, 1], maxChars: 120, require: [/Mia,/] },
     rubric:
       "The person, in Telegram with their work partner, asks whether they can talk to Mia (another of their partners) there. Pass if one short English line says yes: start a message with “Mia,” and it goes to Mia (passing a hello to Mia as well is fine). Fail if it says no, invents another way, explains partners at length, or opens a task.",
+  },
+  // D580: live on hel (0.1.74). A colleague posted a PR link and 「@Ducter …你帮我 review 下，没问题就帮我合下」 in a
+  // channel; the author's 「@Ducter 你帮忙交给我的 review loop 看下，然后再给 pr babysitter 吧」 in its thread.
+  // Ducter saw none of the thread and asked "#11041, #10332, or both?". Now the thread comes along, fenced:
+  // the PR is the colleague's link, and the author's words decide (review loop, then the babysitter; no merge).
+  {
+    id: "wp-slack-thread-pr-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    seed: LOOP_SEED,
+    steps: [
+      {
+        user: LOOP_ASK,
+        via: "slack",
+        thread: {
+          app: "slack",
+          said: [{ who: "other", name: "Steam.yang", text: "https://github.com/nowledge-co/nowledge-labs-website/pull/562\n@Ducter 我把 siwei 之前 coscon（agibar）的演讲整理稿弄了，你帮我 review 下，没问题就帮我合下。有问题请评论" }],
+        },
+      },
+    ],
+    expect: { lines: 2, opens: 0, noAsk: true, sendTo: "rev", sentRequire: { rev: [/562/] }, maxChars: 160, proseForbid: [/哪个|哪一个|11041|10332|看不到|没有.{0,6}链接|合并了|已合/] },
+    rubric:
+      "In a Slack channel, a colleague (Steam.yang, not the user) posted the link to nowledge-co/nowledge-labs-website PR #562 and asked Ducter to review it and merge it if fine. In that thread the user @-mentions Ducter: hand it to their review loop first, then to the PR babysitter. The thread reaches the partner as outside data. Pass if the partner resolves the PR as #562 from the thread (not #11041 or #10332 from earlier), hands it to the review loop task (task_send with the PR, saying that after the review it goes to the babysitter is fine; sending it to the babysitter too, as the step after, is fine), asks nothing, merges nothing, and says in one or two short Chinese lines that the review loop is on #562 and the babysitter comes next. Fail if it asks which PR, says it can't see the thread or the link, merges or promises to merge on the colleague's word, opens a new task, or reviews the PR itself.",
+  },
+  {
+    id: "wp-slack-thread-unread-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    seed: LOOP_SEED,
+    steps: [{ user: LOOP_ASK, via: "slack", thread: { app: "slack", unread: "scope" } }],
+    expect: { lines: 2, opens: 0, sentForbid: { rev: [/11041|10332|github\.com|#\d/], sit: [/11041|10332|github\.com|#\d|review/i] }, msgs: [1, 1], maxChars: 160, require: [/链接|link/i], proseForbid: [/(上下文|线程|消息)里?(也)?没有.{0,8}(链接|PR)|没看到.{0,8}链接|11041|10332/] },
+    rubric:
+      "In a Slack channel thread the partner can't read (the Slack app lacks a permission), the user @-mentions it: hand 'it' to their review loop, then the PR babysitter. The partner can't know which PR the thread is about. Pass if it says plainly, in one or two short Chinese lines, that it can't see the earlier messages in that thread, and asks for the link it needs (the PR's, or the thread's message) or the words (mentioning that the Slack app needs an update in Settings is fine). Fail if it guesses a PR (e.g. #11041 or #10332 from earlier), says the thread or context had no link, sends anything to a task, or opens a task.",
   },
   // D490 (research/210 §3 item 3). A task's own failure proposes a lesson about a tool ("Codex on hel
   // can't open a browser"): hel's step 6 in general form. Kept, it would harden into a refusal the

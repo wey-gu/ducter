@@ -49,6 +49,11 @@ export interface ChannelThread {
   ts: string;
   with: string;
   at: string;
+  /**
+   * D580: the ts of the first message in it the partner didn't take (a teammate's), since it was
+   * last there: the next words it takes there bring what it missed. Never the words themselves.
+   */
+  missed?: string;
 }
 /** D571: how many channel threads a chat app remembers (the oldest drop off). */
 export const THREADS_KEPT = 200;

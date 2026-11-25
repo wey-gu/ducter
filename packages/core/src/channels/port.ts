@@ -124,6 +124,23 @@ export interface Channel {
   /** Telegram's small toast for a tap; Slack has none. */
   answerTap(t: InTap, text?: string): Promise<void>;
   sendFile(chat: string, f: { path: string; name: string; type: string; caption?: string }): Promise<string>;
+  /**
+   * D580, Slack: a channel thread's messages before `before` (and from `after` on, inclusive, when
+   * given), oldest first: the thread's first message, then at most `max - 1` of the newest others
+   * (`more` counts the rest left out). unread: it can't be read (the app lacks the scope, or the
+   * service didn't answer). Absent: the chat app has no threads to read.
+   */
+  thread?(chat: string, ts: string, o: { before: string; after?: string; max: number }): Promise<{ said: ThreadSaid[]; more: number } | { unread: "scope" | "failed" }>;
+}
+
+/** D580: one message of a thread, as the service has it (Slack's own markup made plain). */
+export interface ThreadSaid {
+  ts: string;
+  from: { id: string; name: string };
+  /** Posted by this bot (any partner of it), or by another app. */
+  mine?: boolean;
+  bot?: boolean;
+  text: string;
 }
 
 /** The service asked to wait (Telegram's retry_after, Slack's Retry-After). */

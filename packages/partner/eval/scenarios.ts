@@ -117,7 +117,8 @@ export type Step =
   // refs (D534): what the user picked with @ or / in the composer: a seeded task by key, or one of
   // their skills or Ducter's actions by name (the home resolves them as mentions.ts does).
   // via (D571): the words came from that chat app (the [partners] line then says how to talk to another there).
-  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[]; via?: "telegram" | "slack" | "wechat" }
+  // thread (D580, with via): the chat-app thread the words were written in, before them, as the hub reads it.
+  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[]; via?: "telegram" | "slack" | "wechat"; thread?: import("../../protocol/src/index.ts").ChatThread }
   // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
   | { users: UserSay[] }
   // told (D340): what the user typed straight into that task's own box before this report, oldest first.

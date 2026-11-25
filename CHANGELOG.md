@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.73 - 2026-11-25
+
+<!-- whats-new
+zh: 存进 Nowledge Mem 的文件，只放只有你看得到的地方
+en: Files saved to Nowledge Mem stay where only you can read them
+-->
+
+**Save to Nowledge Mem**
+- Ducter now reads where Nowledge Mem itself would put a file, and still keeps it in your own
+  Space first.
+- If Mem would put it somewhere others can read, like a shared "Everyone" Space, nothing is saved
+  until you choose: "Only me" (the default) or that Space. You choose once, and it's remembered.
+- Card titles in the conversation no longer break inside a word.
+
 ## 0.1.72 - 2026-11-25
 
 <!-- whats-new

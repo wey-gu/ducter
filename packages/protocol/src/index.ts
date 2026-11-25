@@ -718,7 +718,7 @@ export interface Bodies {
    * how it ended, and Mem's raw answer to the write (its metadata, clipped; never the file's
    * contents), so the first real saves show the true shape (research/231 §3).
    */
-  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update" | "folder"; space?: string; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
+  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update" | "folder" | "space"; space?: string; target?: string; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
   memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
@@ -1460,7 +1460,9 @@ export type ClientFrame =
   | { t: "file_open"; id: string; path: string; taskId?: string }
   // D566: 存到 Nowledge Mem / Save to Nowledge Mem on a file card or in the viewer: the home keeps
   // the file (by its media id) in the person's Mem, a new version of the one it saved before.
-  | { t: "mem_file_save"; id: string; media: string }
+  // D575: space, the person's answer when Mem's write target is a Space others read (shared_space):
+  // personal (their own, the default) or shared (Mem's target); asked once, then remembered.
+  | { t: "mem_file_save"; id: string; media: string; space?: "personal" | "shared" }
   | { t: "read"; upToSeq: number }
   // D284: an opened task asks for its newest window first (limit ~200), then older pages with
   // beforeSeq = the oldest seq it holds; limit is at most 2,000.
@@ -1978,7 +1980,7 @@ export type ServerFrame =
   | ({ t: "file_open"; id: string } & ({ ok: true; file: MediaRef } | { ok: false; error: import("./media.ts").FileOpenError; message?: string }))
   // D566: the answer to mem_file_save (same id): kept (the settings frame's mem.files says so from
   // then on), or why not, in Mem's own words.
-  | ({ t: "mem_file_save"; id: string; media: string } & ({ ok: true; saved: MemFileSaved } | { ok: false; why: MemFileWhy; message?: string }))
+  | ({ t: "mem_file_save"; id: string; media: string } & ({ ok: true; saved: MemFileSaved } | { ok: false; why: MemFileWhy; message?: string; shared?: MemFileShared }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
   // D293: the ways to reach the home and its key, right after the welcome and whenever they change.
   | { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }
@@ -3160,11 +3162,24 @@ export interface MemFileSaved {
  * D566: why a file wasn't kept in Mem, from Mem's facts (D563), never guessed. off: memory is off;
  * missing: no Nowledge Mem on the home; signed_out: Mem refused the sign-in; unreachable: Mem didn't
  * answer; secret: the file holds what looks like a key or password (it stays in Ducter); gone: the
- * file is no longer on the home; refused: Mem said no; no_space (D572): Mem needs a Space and marks
- * none of the person's as theirs or as its write default. message: Mem's own words, clipped, shown
+ * file is no longer on the home; refused: Mem said no; no_space (D572): Mem needs a Space and names
+ * none of the person's as theirs or as its write target; shared_space (D575): Mem's write target is a
+ * Space others read, so the person chooses first (MemFileShared). message: Mem's own words, clipped, shown
  * only on demand behind 原话 / Its words (D572), never as the line itself.
  */
-export type MemFileWhy = "off" | "missing" | "signed_out" | "unreachable" | "secret" | "gone" | "refused" | "no_space";
+export type MemFileWhy = "off" | "missing" | "signed_out" | "unreachable" | "secret" | "gone" | "refused" | "no_space" | "shared_space";
+
+/**
+ * D575: shared_space, not a failure but a question asked once: the only place Mem's own write target
+ * names is a Space others read (context's write_target, reason key_write_space, e.g. Everyone), so
+ * nothing is written until the person chooses. label and readers: that Space as Mem lists it;
+ * personal: whether they have a personal Space to keep it in instead (the default).
+ */
+export interface MemFileShared {
+  label: string;
+  readers?: number;
+  personal: boolean;
+}
 
 /**
  * D465: one thing Nowledge Mem would like the person to settle, from Mem's own review queue.

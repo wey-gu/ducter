@@ -6,21 +6,26 @@
 //     reports and documents (memAutoKeeps), never a log, code or a picture, never a file of secrets.
 // Through the person's own `nmem` (its own sign-in), as their own data: no Go (D61 covers outward
 // actions on others; this is the person's own store, said in D566).
-//   - into one folder named 「Ducter」 at the root of a Space Mem itself names (D572): the Space the
-//     persona is bound to (D141: persona.mem.space); else, from Mem's passive `bridge setup` (it
-//     creates and selects nothing), the person's own personal Space (kind personal: only them),
-//     else the one Mem marks write_default; a Mem that lists no Spaces (Spaces off): no --space.
-//     Mem names neither: the write names none (never a Space Ducter picked) and Mem, refusing,
-//     says why (no_space). `folders mk` refuses without one ("Pass --space (or --parent) to choose where the folder goes.", hel
-//     0.1.68, 2026-11-25), which D566's "omit --space" hit. An existing top-level 「Ducter」 folder
-//     there is used; else it is made with a client-chosen id (`folders mk --id`, safe to repeat);
+//   - into one folder named 「Ducter」 at the root of a Space Mem itself names (D572, D575): the Space
+//     the persona is bound to (D141: persona.mem.space); else the person's personal Space: Mem's own
+//     write target (`context`'s active_space.write_target) when its reason is personal_zone, else the
+//     personal candidate of Mem's passive `bridge setup` (it creates and selects nothing); else Mem's
+//     write target itself, but never silently into a Space others read: when the only target Mem
+//     gives is a shared one (key_write_space, e.g. Everyone), nothing is written until the person
+//     chooses, once (shared_space; their personal Space is the default, Mem's target the other
+//     choice). A Mem that lists no Spaces (Spaces off): no --space. Mem names none (or its target
+//     asks for an explicit choice): the write names none, never a guessed Space, and Mem, refusing,
+//     says why (no_space). `folders mk` refuses without one ("Pass --space (or --parent) to choose
+//     where the folder goes.", hel 0.1.68, 2026-11-25), which D566's "omit --space" hit. An existing
+//     top-level 「Ducter」 folder there is used; else it is made with a client-chosen id
+//     (`folders mk --id`, safe to repeat);
 //   - a file is one artifact for its life: the same name from the same task (or the conversation)
 //     saved again is `artifacts update <doc> --base <rev> --file`, a new version, never a second
 //     artifact; Mem answers `unchanged` for the same bytes. Refused because someone saved a newer
 //     version in Mem: asked by the person, saved on top of it (both versions stay in Mem's history);
 //     by itself, left as it is (their version stays current) and said once;
 //   - why it wasn't kept comes from Mem's facts (D563): off, missing, signed_out, unreachable,
-//     refused, no_space, secret (redact.ts finds a key in it, or a secrets file's name), gone (no
+//     refused, no_space, shared_space, secret (redact.ts finds a key in it, or a secrets file's name), gone (no
 //     longer on the home). Mem's own words ride along as `message`, shown by the clients only
 //     behind 原话 / Its words (D572). The file always stays where it is. Every step that asks Mem
 //     and fails (the folder's too) leaves its raw answer in the Log as mem_file.
@@ -28,7 +33,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { fileFamily, memAutoKeeps, memKeeps, secretFileName, type Bodies, type LogEvent, type MediaRef, type MemFileSaved, type MemFileWhy } from "@ducter/protocol";
+import { fileFamily, memAutoKeeps, memKeeps, secretFileName, type Bodies, type LogEvent, type MediaRef, type MemFileSaved, type MemFileShared, type MemFileWhy } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import { nmemEnv } from "@ducter/protocol/src/tool-env.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -40,7 +45,9 @@ export const MEM_FILE_MS = 120_000;
 const SAVED_MAX = 500;
 const TEXT_CHECK_BYTES = 1024 * 1024;
 
-export type MemFileResult = { ok: true; saved: MemFileSaved } | { ok: false; why: MemFileWhy; message?: string };
+export type MemFileResult = { ok: true; saved: MemFileSaved } | { ok: false; why: MemFileWhy; message?: string; shared?: MemFileShared };
+/** D575: the person's answer to shared_space: their personal Space (the default) or Mem's target. */
+export type MemFilePick = "personal" | "shared";
 export type MemFileBy = "tap" | "partner" | "auto";
 export type Run = (argv: string[], timeoutMs: number) => Promise<{ code: number; out: string; err: string } | { missing: true }>;
 
@@ -78,10 +85,12 @@ interface State {
   trouble?: { name: string; why: MemFileWhy; message?: string; at: string };
   /** Mem on the web, from `nmem status` (Cloud only). */
   web?: string;
+  /** D575: the person's answer, once, for Mem's shared write target (by that Space's id). */
+  choice?: { target: string; pick: MemFilePick; at: string };
 }
 
 export interface MemFiles {
-  save(mediaId: string, by?: MemFileBy): Promise<MemFileResult>;
+  save(mediaId: string, by?: MemFileBy, pick?: MemFilePick): Promise<MemFileResult>;
   view(): Record<string, MemFileSaved>;
   trouble(): State["trouble"];
   /** The one place Mem says why a save failed, said as it is (never a stack). */
@@ -118,30 +127,87 @@ export function whyOf(r: { code: number; out: string; err: string } | { missing:
   return { why: "refused", ...said };
 }
 
+const SPACE_ID = /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}$/;
+
 /**
- * D572: the Space Mem itself names for a write, from its passive `bridge setup` (VERIFIED, 0.10.123
- * on this Mac and on hel: `{ state, note, candidates: [{ id, label, kind, readers, write_default }] }`;
- * the note: "A write that names no Space lands in write_default"). The person's personal Space
- * first (kind personal, readers 1: a file kept there is read by no one they haven't let in, D566 (6);
- * on hel the write default is Everyone, ten readers and the team's Slack agent); else the one Mem
- * marks write_default. "none": Mem lists Spaces but names neither. "off": no Spaces listed (a Mem
- * with Spaces off), so the write names none.
+ * D575: Mem's own write target for a credential that names no Space, from the read-only
+ * `nmem --json context --no-ensure --no-working-memory` (0.10.123; Mem's Bridge owner, 2026-11-25:
+ * use it rather than borrowing `bridge setup`'s write_default). VERIFIED: this Mac
+ * `{ space_id: "personal-…", reason: "personal_zone" }`; hel (another key on the same account)
+ * `{ space_id: "all", reason: "key_write_space" }`, Everyone, ten readers. raw: the object as Mem
+ * gave it (for the Log). target: undefined when it is missing, names no usable Space, or asks for an
+ * explicit choice: never guessed.
  */
-export function spaceFrom(out: string): { id: string; kind: "personal" | "write_default" } | "none" | "off" {
+export function writeTargetFrom(out: string): { target?: { id: string; reason: string }; raw: string } {
+  let j: any;
+  try {
+    j = JSON.parse(out);
+  } catch {
+    return { raw: "(not json)" };
+  }
+  const wt = j?.active_space?.write_target;
+  const raw = wt === undefined ? "(none)" : clip(JSON.stringify(wt), 300);
+  if (!wt || typeof wt !== "object" || typeof wt.space_id !== "string" || !SPACE_ID.test(wt.space_id)) return { raw };
+  const reason = typeof wt.reason === "string" ? wt.reason : "";
+  if (/explicit|choose|choice|select|ambiguous/i.test(reason) || wt.requires_choice === true) return { raw };
+  return { target: { id: wt.space_id, reason }, raw };
+}
+
+/** One Space as Mem's passive `bridge setup` lists it. */
+export interface SpaceSeen {
+  id: string;
+  label: string;
+  kind: string;
+  readers?: number;
+}
+
+/**
+ * D572: the Spaces Mem's passive `bridge setup` lists (VERIFIED, 0.10.123 on this Mac and on hel:
+ * `{ state, note, candidates: [{ id, label, kind, readers, write_default }] }`); it creates and
+ * selects nothing. "off": no Spaces listed (a Mem with Spaces off). D575: only the personal one is
+ * taken from here (kind personal, one reader), and a shared target's label and readers; its
+ * write_default is no longer borrowed.
+ */
+export function spacesFrom(out: string): SpaceSeen[] | "off" {
   let j: any;
   try {
     j = JSON.parse(out);
   } catch {
     return "off";
   }
-  const SAFE = /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}$/;
-  const cands: any[] = (Array.isArray(j?.candidates) ? j.candidates : []).filter((c: any) => c && typeof c.id === "string" && SAFE.test(c.id));
+  const cands: any[] = (Array.isArray(j?.candidates) ? j.candidates : []).filter((c: any) => c && typeof c.id === "string" && SPACE_ID.test(c.id));
   if (!cands.length) return "off";
-  const personal = cands.find((c) => c.kind === "personal");
-  if (personal) return { id: personal.id, kind: "personal" };
-  const wd = cands.find((c) => c.write_default === true);
-  if (wd) return { id: wd.id, kind: "write_default" };
-  return "none";
+  return cands.map((c) => ({
+    id: c.id,
+    label: typeof c.label === "string" && c.label.trim() ? clip(c.label, 60) : c.id,
+    kind: typeof c.kind === "string" ? c.kind : "",
+    ...(Number.isInteger(c.readers) && c.readers > 0 ? { readers: c.readers } : {}),
+  }));
+}
+
+/**
+ * D575: where a save goes, from Mem's facts (the persona's bound Space is taken before this).
+ *   personal  the person's personal Space: the write target when its reason is personal_zone (or it
+ *             is a Space Mem lists as personal), else bridge setup's personal candidate;
+ *   shared    Mem's only target is a Space others read: the person chooses first (personal, when
+ *             they have one, is the default);
+ *   none      Mem names nothing usable (or asks for an explicit choice): no Space named, Mem's own
+ *             refusal is said (no_space); off: no Spaces at all, no Space named.
+ */
+export function placeFrom(
+  target: { id: string; reason: string } | undefined,
+  spaces: SpaceSeen[] | "off" | undefined,
+): { personal: string } | { shared: SpaceSeen; personal?: string } | "none" | "off" {
+  if (target?.reason === "personal_zone") return { personal: target.id };
+  const list = spaces === "off" || !spaces ? [] : spaces;
+  const mine = list.find((c) => c.kind === "personal");
+  if (target) {
+    const seen = list.find((c) => c.id === target.id);
+    if (seen?.kind === "personal" || target.id === mine?.id) return { personal: target.id };
+    return { shared: seen ?? { id: target.id, label: target.id, kind: "" }, ...(mine ? { personal: mine.id } : {}) };
+  }
+  if (mine) return { personal: mine.id };
+  return spaces === "off" ? "off" : "none";
 }
 
 /** The artifact an `add` or `update` answered with (every shape seen or guessed, research/231 §4). */
@@ -252,27 +318,58 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
   let webRead = false;
 
   /**
-   * D572: where this save's writes go: the persona's own Space (D141, by name), else the Space Mem
-   * names (spaceFrom, by its exact id), read once and again after a refusal; Spaces off: none.
+   * D572, D575: where this save's writes go: the persona's own Space (D141, by name), else Mem's facts
+   * (placeFrom: `context`'s write target, and the passive `bridge setup` only when that target isn't
+   * personal_zone), read once a run and again after a refusal; Spaces off: none.
    */
   type Where = { key: string; args: string[] };
   type Said = { code: number; out: string; err: string } | { missing: true };
-  let named: Where | undefined;
-  const where = async (): Promise<Where | { fail: Said }> => {
+  type Facts = { place: ReturnType<typeof placeFrom>; raw: string };
+  let facts: Facts | undefined;
+  let targetRaw: string | undefined;
+  const readFacts = async (): Promise<Facts | { fail: Said }> => {
+    if (facts) return facts;
+    const c = await run(["context", "--no-ensure", "--no-working-memory"], 20_000);
+    if ("missing" in c) return { fail: c };
+    if (c.code !== 0) {
+      const w = whyOf(c);
+      if (w.why === "signed_out" || w.why === "unreachable") return { fail: c };
+    }
+    const wt = c.code === 0 ? writeTargetFrom(c.out) : { raw: clip(`(exit ${c.code}) ${c.err || c.out}`, 300) };
+    let spaces: SpaceSeen[] | "off" | undefined;
+    if (wt.target?.reason !== "personal_zone") {
+      const r = await run(["bridge", "setup"], 20_000);
+      if ("missing" in r) return { fail: r };
+      if (r.code !== 0) {
+        const w = whyOf(r);
+        if (w.why === "signed_out" || w.why === "unreachable") return { fail: r };
+      } else spaces = spacesFrom(r.out);
+    }
+    // A Mem that answers neither read the way 0.10.123 does: its own default, as before (D566).
+    if (!wt.target && spaces === undefined) return (facts = { place: "off", raw: wt.raw });
+    return (facts = { place: placeFrom(wt.target, spaces), raw: wt.raw });
+  };
+  const byId = (id: string): Where => ({ key: id, args: ["--space-id", id] });
+  const NONE: Where = { key: "", args: [] };
+  const where = async (pick: MemFilePick | undefined, by: MemFileBy): Promise<Where | { fail: Said } | { ask: MemFileShared; shared: string }> => {
     const bound = d.identity()?.space;
     if (bound) return { key: bound, args: ["--space", bound] };
-    if (named) return named;
-    const r = await run(["bridge", "setup"], 20_000);
-    if ("missing" in r) return { fail: r };
-    if (r.code !== 0) {
-      const w = whyOf(r);
-      if (w.why === "signed_out" || w.why === "unreachable") return { fail: r };
-      return (named = { key: "", args: [] }); // a Mem without this read: its own default
+    const f = await readFacts();
+    if ("fail" in f) return f;
+    targetRaw = f.raw;
+    const p = f.place;
+    if (p === "none" || p === "off") return NONE;
+    if (!("shared" in p)) return byId(p.personal);
+    const { shared, personal } = p;
+    // Never silently into a Space others read: the person's answer, this time or once before.
+    if (pick && by === "tap" && (pick === "shared" || personal)) {
+      st.choice = { target: shared.id, pick, at: new Date(now()).toISOString() };
+      keep();
     }
-    const got = spaceFrom(r.out);
-    // Mem names none: no Space is picked for it; the write names none and Mem's own answer is said.
-    named = typeof got === "string" ? { key: "", args: [] } : { key: got.id, args: ["--space-id", got.id] };
-    return named;
+    const said = pick ?? (st.choice?.target === shared.id ? st.choice.pick : undefined);
+    if (said === "shared") return byId(shared.id);
+    if (said === "personal" && personal) return byId(personal);
+    return { ask: { label: shared.label, ...(shared.readers ? { readers: shared.readers } : {}), personal: !!personal }, shared: shared.id };
   };
   let at: Where = { key: "", args: [] };
   const space = () => at.key || undefined;
@@ -354,7 +451,7 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     return clip(title ? `Made by Ducter: ${title}` : "Made by Ducter in the conversation", 200);
   };
 
-  const doSave = async (id: string, by: MemFileBy): Promise<MemFileResult> => {
+  const doSave = async (id: string, by: MemFileBy, pick?: MemFilePick): Promise<MemFileResult> => {
     if (!d.memory()) return { ok: false, why: "off" };
     const had = st.saved[id];
     if (had) return { ok: true, saved: had };
@@ -378,7 +475,7 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     };
     const sha = createHash("sha256").update(readFileSync(path)).digest("hex");
     /** The raw answer of a write, for the Log (Mem's metadata only, never the file's contents). */
-    const note = (op: "add" | "update" | "folder", r: Awaited<ReturnType<Run>>, res: MemFileResult) =>
+    const note = (op: "add" | "update" | "folder" | "space", r: Awaited<ReturnType<Run>> | undefined, res: MemFileResult) =>
       d.log.append({
         stream: "mem",
         origin: "system",
@@ -389,21 +486,29 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
           by,
           op,
           ...(at.key ? { space: at.key } : {}),
+          ...(targetRaw ? { target: targetRaw } : {}),
           ok: res.ok,
           ...(res.ok ? { uri: res.saved.uri, rev: res.saved.rev } : { why: res.why, ...(res.message ? { message: res.message } : {}) }),
-          ...("missing" in r ? { raw: "(no nmem)" } : { code: r.code, raw: clip(`${r.out}\n${r.err}`, 2000) }),
+          ...(!r ? { raw: "" } : "missing" in r ? { raw: "(no nmem)" } : { code: r.code, raw: clip(`${r.out}\n${r.err}`, 2000) }),
         },
       });
     /** Any step that asks Mem and fails (the Space, the folder, a write): said, and its raw answer in the Log. */
     const failed = (op: "add" | "update" | "folder", r: Awaited<ReturnType<Run>>): MemFileResult => {
       const res: MemFileResult = { ok: false, ...whyOf(r) };
-      if (res.why === "no_space") named = undefined; // read Mem's Spaces again next time
+      if (res.why === "no_space") facts = undefined; // read Mem's Spaces again next time
       note(op, r, res);
       return res;
     };
-    // D572: the Space Mem names, before anything is written.
-    const w = await where();
+    // D572, D575: the Space Mem names, before anything is written.
+    const w = await where(pick, by);
     if ("fail" in w) return failed("folder", w.fail);
+    if ("ask" in w) {
+      // D575: the only target Mem gives is read by others: nothing written; the person chooses once.
+      at = { key: w.shared, args: [] };
+      const res: MemFileResult = { ok: false, why: "shared_space", shared: w.ask };
+      note("space", undefined, res);
+      return res;
+    }
     at = w;
     sp = space();
     /** Saved only once Mem's own list shows it (the write's answer is a hint at most). */
@@ -463,12 +568,12 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     }
   };
 
-  const save = (id: string, by: MemFileBy = "tap"): Promise<MemFileResult> => {
+  const save = (id: string, by: MemFileBy = "tap", pick?: MemFilePick): Promise<MemFileResult> => {
     if (typeof id !== "string" || !/^[a-f0-9]{16,64}$/.test(id)) return Promise.resolve({ ok: false, why: "gone" });
     const going = inFlight.get(id);
     if (going) return going;
     // One at a time: two versions of one file never race to be its next version.
-    const p = (chain = chain.then(() => doSave(id, by)).catch((e) => ({ ok: false as const, why: "refused" as const, message: clip(String((e as Error)?.message ?? e), 200) }))) as Promise<MemFileResult>;
+    const p = (chain = chain.then(() => doSave(id, by, pick)).catch((e) => ({ ok: false as const, why: "refused" as const, message: clip(String((e as Error)?.message ?? e), 200) }))) as Promise<MemFileResult>;
     inFlight.set(id, p);
     void p.finally(() => inFlight.delete(id));
     return p;

@@ -3162,6 +3162,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             secret: "it holds what looks like a key or password, so it was kept out of Nowledge Mem: say so; it stays in Ducter",
             gone: "the file is no longer on their computer: say so and offer to have it made again",
             no_space: "Nowledge Mem marks no Space as theirs or as its default, so it wasn't kept: say once that choosing a default Space in Nowledge Mem lets it go; never pick a Space for them; the file stays in Ducter",
+            // D575: Mem's own write target is a Space other people read; nothing is written until they choose, once.
+            shared_space:
+              "Nowledge Mem would put it in a Space other people can read, so nothing was kept yet: say so once, plainly, and that the first save asks where it goes: under the file, 存到 Nowledge Mem / Save to Nowledge Mem offers only them (the default) or that shared Space; show the file (made_find show) so they can choose; never choose for them; the file stays in Ducter",
           };
           for (const id of keepIds) {
             const it = made.get(id);

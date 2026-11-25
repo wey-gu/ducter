@@ -112,7 +112,7 @@ func TestMemKeepShots(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, dark := range []bool{false, true} {
 			theme := map[bool]string{false: "light", true: "dark"}[dark]
-			for _, state := range []string{"1-can", "2-saving", "3-saved", "4-failed", "4b-failed-words"} {
+			for _, state := range []string{"1-can", "2-saving", "3-saved", "4-failed", "4b-failed-words", "4c-asked", "4d-asked-only"} {
 				app, _, refs := memKeepApp(t, lang)
 				L := app.L
 				switch state {
@@ -125,6 +125,10 @@ func TestMemKeepShots(t *testing.T) {
 				case "4b-failed-words":
 					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "no_space", msg: "Pass --space (or --parent) to choose where the folder goes."}}
 					app.open = map[string]bool{"mkraw:" + refs[0].ID: true}
+				case "4c-asked": // D575
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "shared_space", shared: &protocol.MemFileShared{Label: "Everyone", Readers: 10, Personal: true}}}
+				case "4d-asked-only":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "shared_space", shared: &protocol.MemFileShared{Label: "Everyone", Readers: 10}}}
 				}
 				tt := mediaTester(app, 1150, 1100)
 				tt.SetDark(dark)
@@ -133,7 +137,7 @@ func TestMemKeepShots(t *testing.T) {
 				name := "mac-" + string(lang) + "-" + state + "-1150-" + theme
 				save(tt.Image(), name)
 				// 2x crop: the first card and its line.
-				want := map[string]string{"1-can": L.T("memfile.save"), "2-saving": L.T("memfile.saving"), "3-saved": L.T("memfile.saved"), "4-failed": L.T("memfile.failed", L.T("memfile.why.unreachable")), "4b-failed-words": L.T("memfile.failed", L.T("memfile.why.no_space"))}[state]
+				want := map[string]string{"1-can": L.T("memfile.save"), "2-saving": L.T("memfile.saving"), "3-saved": L.T("memfile.saved"), "4-failed": L.T("memfile.failed", L.T("memfile.why.unreachable")), "4b-failed-words": L.T("memfile.failed", L.T("memfile.why.no_space")), "4c-asked": L.T("memfile.shared", "Everyone", "10"), "4d-asked-only": L.T("memfile.shared.only", "Everyone", "10")}[state]
 				line, ok := tt.Find(want)
 				head, ok2 := tt.Find("investigation.md")
 				if !ok || !ok2 {
@@ -144,7 +148,7 @@ func TestMemKeepShots(t *testing.T) {
 				save(tt.Image().SubImage(r), name+"-crop")
 			}
 			// D572: the viewer's foot bar in each state, with a 2x crop of the bar.
-			for _, vs := range []string{"a-idle", "b-saving", "c-saved", "d-failed", "e-failed-words", "f-signed-out"} {
+			for _, vs := range []string{"a-idle", "b-saving", "c-saved", "d-failed", "e-failed-words", "f-signed-out", "g-asked"} {
 				app, _, refs := memKeepApp(t, lang)
 				switch vs {
 				case "b-saving":
@@ -156,6 +160,8 @@ func TestMemKeepShots(t *testing.T) {
 				case "e-failed-words":
 					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "no_space", msg: "Pass --space (or --parent) to choose where the folder goes."}}
 					app.open = map[string]bool{"mkraw:" + refs[0].ID: true}
+				case "g-asked": // D575
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "shared_space", shared: &protocol.MemFileShared{Label: "Everyone", Readers: 10, Personal: true}}}
 				case "f-signed-out":
 					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "signed_out", msg: "/sources returned 401: Invalid or missing API key."}}
 				}
@@ -270,5 +276,47 @@ func TestMemKeepTroubleInk(t *testing.T) {
 	tt := mediaTester(app, 1150, 900)
 	if !hasText(tt, app.L.T("memfile.failed", app.L.T("memfile.why.unreachable"))) || !hasText(tt, app.L.T("memfile.retry")) || !hasText(tt, app.L.T("memfile.raw")) {
 		t.Fatalf("the card's failed line lacks its words, fix or 原话: %q", tt.Texts())
+	}
+}
+
+// D575: Mem's only write target is a Space others read (hel: Everyone, ten
+// readers): the line says where and who reads it, then Only me (first, the
+// default) and Put it in “Everyone”; each tap sends its answer. With no
+// personal Space, only the shared one is offered.
+func TestMemKeepAsksForSharedSpace(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent, refs := memKeepApp(t, lang)
+		L := app.L
+		tt := mediaTester(app, 1150, 900)
+		app.Receive(protocol.ServerFrame{T: "mem_file_save", MemFile: &protocol.MemFileAnswer{Media: refs[0].ID, Why: "shared_space", Shared: &protocol.MemFileShared{Label: "Everyone", Readers: 10, Personal: true}}})
+		tt.Frame()
+		tt.Frame()
+		words := L.T("memfile.shared", "Everyone", "10")
+		mine, shared := L.T("memfile.pick.personal"), L.T("memfile.pick.shared", "Everyone")
+		if !hasText(tt, words) || !hasText(tt, mine) || !hasText(tt, shared) {
+			t.Fatalf("%s: the question lacks its words or its two answers: %q", lang, tt.Texts())
+		}
+		if hasText(tt, L.T("memfile.failed", L.T("memfile.why.shared_space"))) {
+			t.Fatalf("%s: the question is said as a failure", lang)
+		}
+		a, okA := tt.Find(mine)
+		b, okB := tt.Find(shared)
+		if !okA || !okB || a.X >= b.X {
+			t.Fatalf("%s: Only me isn't first: %v %v", lang, a, b)
+		}
+		click(t, tt, mine)
+		if f, ok := lastFrame[protocol.MemFileSaveReq](sent); !ok || f.Media != refs[0].ID || f.Space != "personal" {
+			t.Fatalf("%s: Only me sent %+v", lang, f)
+		}
+		app.Receive(protocol.ServerFrame{T: "mem_file_save", MemFile: &protocol.MemFileAnswer{Media: refs[1].ID, Why: "shared_space", Shared: &protocol.MemFileShared{Label: "Everyone", Readers: 10}}})
+		tt.Frame()
+		tt.Frame()
+		if !hasText(tt, L.T("memfile.shared.only", "Everyone", "10")) || hasText(tt, mine) {
+			t.Fatalf("%s: with no personal Space, the line or its one answer is wrong: %q", lang, tt.Texts())
+		}
+		click(t, tt, shared)
+		if f, ok := lastFrame[protocol.MemFileSaveReq](sent); !ok || f.Media != refs[1].ID || f.Space != "shared" {
+			t.Fatalf("%s: Put it in Everyone sent %+v", lang, f)
+		}
 	}
 }

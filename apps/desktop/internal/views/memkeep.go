@@ -22,10 +22,12 @@ import (
 // Shown only for a file Mem reads while Mem is connected and signed in; a
 // file already kept says so whatever Mem's state is now.
 
-// memKeepNow is what one file's save is doing on this Mac.
+// memKeepNow is what one file's save is doing on this Mac; shared (D575):
+// Mem's only write target is a Space others read, so the person is asked.
 type memKeepNow struct {
 	saving   bool
 	why, msg string
+	shared   *protocol.MemFileShared
 }
 
 var memKeepSeq int
@@ -80,7 +82,11 @@ func (a *App) memKeepLook(ref protocol.MediaRef) string {
 }
 
 // keepInMem asks the home to keep the file in the person's Mem.
-func (a *App) keepInMem(ref protocol.MediaRef) {
+func (a *App) keepInMem(ref protocol.MediaRef) { a.keepInMemAt(ref, "") }
+
+// keepInMemAt carries the person's answer to shared_space (D575): "personal"
+// (their own Space, the default) or "shared" (the one Mem named); "" for none.
+func (a *App) keepInMemAt(ref protocol.MediaRef, space string) {
 	if a.memKeep == nil {
 		a.memKeep = map[string]*memKeepNow{}
 	}
@@ -90,7 +96,7 @@ func (a *App) keepInMem(ref protocol.MediaRef) {
 	n := &memKeepNow{saving: true}
 	a.memKeep[ref.ID] = n
 	memKeepSeq++
-	a.send(protocol.MemFileSaveReq{T: "mem_file_save", ID: "mk" + strconv.Itoa(memKeepSeq), Media: ref.ID})
+	a.send(protocol.MemFileSaveReq{T: "mem_file_save", ID: "mk" + strconv.Itoa(memKeepSeq), Media: ref.ID, Space: space})
 	if a.Win == nil {
 		return // tests answer by hand
 	}
@@ -125,7 +131,7 @@ func (a *App) memFileFrame(f protocol.ServerFrame) {
 	if why == "" {
 		why = "refused"
 	}
-	a.memKeep[m.Media] = &memKeepNow{why: why, msg: m.Message}
+	a.memKeep[m.Media] = &memKeepNow{why: why, msg: m.Message, shared: m.Shared}
 }
 
 // keepWhy is why it wasn't kept in the person's words (D563: from Mem's
@@ -182,6 +188,10 @@ func (a *App) memKeepTrouble(c *ui.Context, ref protocol.MediaRef) {
 		return
 	}
 	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
+	if n.why == "shared_space" && n.shared != nil {
+		a.memKeepAsk(c, ref, name, n.shared)
+		return
+	}
 	rawKey := "mkraw:" + ref.ID
 	ui.Row(c.Key("mk-line:" + ref.ID)).Gap(t.S1).Wrap().AlignItems(ui.Center).MinHeight(28).Children(func() {
 		uiText(c, a.L.T("memfile.failed", a.keepWhy(n.why))).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).
@@ -217,6 +227,36 @@ func (a *App) memKeepTrouble(c *ui.Context, ref protocol.MediaRef) {
 	if n.msg != "" && a.open[rawKey] {
 		uiText(c.Key("mk-rawtext:"+ref.ID), n.msg).FontSize(t.XS).TextColor(t.InkMuted).Selectable().LineHeight(a.leading(1.5)).MinWidth(0).Margin(0, 0, t.S1, 0)
 	}
+}
+
+// sharedWords (D575) is where Mem would put the file and who reads it.
+func (a *App) sharedWords(s *protocol.MemFileShared) string {
+	key := "memfile.shared"
+	if !s.Personal {
+		key += ".only"
+	}
+	if s.Readers <= 0 {
+		return keepClauses(a.L.T(key+".some", s.Label))
+	}
+	return keepClauses(a.L.T(key, s.Label, strconv.Itoa(s.Readers)))
+}
+
+// memKeepAsk (D575) is the question asked once when Mem's only write target
+// is a Space others read: nothing is written until the person chooses. One
+// line in the needs-you ink, then 只给我看 / Only me (the default, first, when
+// they have a personal Space) and 放进「{Space}」/ Put it in “{Space}”.
+func (a *App) memKeepAsk(c *ui.Context, ref protocol.MediaRef, name string, s *protocol.MemFileShared) {
+	t := a.T
+	ui.Row(c.Key("mk-line:" + ref.ID)).Gap(t.S1).Wrap().AlignItems(ui.Center).MinHeight(28).Children(func() {
+		uiText(c, a.sharedWords(s)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).
+			MinWidth(0).Shrink(1).LineHeight(a.leading(1.4)).Role(ui.RoleStatus).Margin(0, t.S1, 0, 0)
+		if s.Personal && a.quietButton(c, "mk-mine:"+ref.ID, a.L.T("memfile.pick.personal"), name, true, 0) {
+			a.keepInMemAt(ref, "personal")
+		}
+		if a.quietButton(c, "mk-shared:"+ref.ID, a.L.T("memfile.pick.shared", s.Label), name, false, 0) {
+			a.keepInMemAt(ref, "shared")
+		}
+	})
 }
 
 // memKeepCard is the line under a card Ducter made (nothing for the person's own files).

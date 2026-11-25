@@ -49,3 +49,19 @@ test("a tap sends one frame; the answer clears it or says why", () => {
   expect(keepNow("a".repeat(64))).toBeUndefined();
   expect(redraws).toBeGreaterThan(2);
 });
+
+// D575: Mem's only write target is a Space others read: the answer carries where; the person's
+// choice goes back with the next tap.
+test("shared_space is kept with where Mem would put it; the answer rides the next frame", () => {
+  const sent: { space?: string }[] = [];
+  memKeepWire((f) => void sent.push(f as { space?: string }), () => {});
+  const id = "b".repeat(64);
+  keepInMem(id);
+  expect(sent[0]!.space).toBeUndefined();
+  onMemFileFrame({ media: id, ok: false, why: "shared_space", shared: { label: "Everyone", readers: 10, personal: true } });
+  expect(keepNow(id)).toEqual({ state: "failed", why: "shared_space", shared: { label: "Everyone", readers: 10, personal: true } });
+  keepInMem(id, "personal");
+  expect(sent[1]).toMatchObject({ t: "mem_file_save", media: id, space: "personal" });
+  onMemFileFrame({ media: id, ok: true });
+  expect(keepNow(id)).toBeUndefined();
+});

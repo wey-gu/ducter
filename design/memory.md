@@ -824,12 +824,19 @@ a report is a document to find and read, not a fact to recall. `packages/core/sr
   version of the same file (its task and its name); `history` when Mem says a newer version is
   current. Never `delete`, `move` or a folder rename. State in `<dataDir>/mem-files.json` (0600):
   the folder per Space, the artifact per file, every version saved by media id.
-- **Where (D572).** One 「Ducter」 folder at the root of a Space Mem names: `persona.mem.space` (by
-  name), else from Mem's passive `bridge setup` (read once a run; it creates and selects nothing)
-  the person's **personal** Space, else the one it marks **`write_default`** (by id, `--space-id`,
-  for every call). Personal comes first: on hel the key's write default is Everyone (ten readers),
-  and a kept file must be read by no one the person hasn't let in. Spaces off: no Space. Mem names
-  neither: none is named and Mem's own refusal is said (`no_space`). `folders mk` needs a Space
+- **Where (D572, D575).** One 「Ducter」 folder at the root of a Space Mem names, by id
+  (`--space-id`, for every call): `persona.mem.space` (by name); else the person's **personal**
+  Space: Mem's own write target (read-only `nmem --json context --no-ensure --no-working-memory`,
+  `active_space.write_target`) when its `reason` is `personal_zone`, else the `kind: personal`
+  candidate of Mem's passive `bridge setup` (it creates and selects nothing; asked only when the
+  target isn't `personal_zone`); else Mem's write target, never silently: when the only target Mem
+  gives is a Space others read (`key_write_space`, e.g. hel's Everyone, ten readers), nothing is
+  written until the person chooses once (`shared_space`: the line says where and who reads it, then
+  只给我看 / Only me, the default, and 放进「{Space}」/ Put it in “{Space}”; no personal Space: only
+  the latter). The choice is kept in `mem-files.json` by that Space's id. `bridge setup`'s
+  `write_default` is no longer borrowed. Both reads once a run. Spaces off: no Space. A target
+  missing or asking for an explicit choice, and no personal Space: none is named, never a guess, and
+  Mem's own refusal is said (`no_space`). `folders mk` needs a Space
   ("Pass --space (or --parent) to choose where the folder goes."), which D566's "no `--space`"
   hit on hel. Found by `folders ls` (nmem's `folder_id`, `parent_folder_id`), else made with a
   client-chosen id.
@@ -841,9 +848,10 @@ a report is a document to find and read, not a fact to recall. `packages/core/sr
   show the file (its artifact, else the 「Ducter」 folder and its exact name, with these bytes);
   else it isn't called saved. Each write's raw answer is logged as `mem_file` (stream `mem`; Mem's
   metadata only) until the real shape is known; D572: every failing step too (the Space read, the
-  folder), `op: folder`, with the Space used.
+  folder), `op: folder`, with the Space used; D575: the raw `write_target` as `target` on every
+  event, and the question itself as `op: space`.
 - **Honest.** Why not comes from Mem (D563): off, missing, signed out, unreachable, no Space,
-  refused; said in plain words, Mem's own sentence kept as `message` and shown only behind 原话 /
+  a shared target (D575), refused; said in plain words, Mem's own sentence kept as `message` and shown only behind 原话 /
   Its words (D572); the Settings row says the last one the default couldn't keep, once.
 - **Provenance.** Mem's artifacts carry no AI Identity or source app: the `ducter` label and the
   comment naming the task say where it came from (research/231 §1).

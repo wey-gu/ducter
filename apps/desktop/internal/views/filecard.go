@@ -285,7 +285,7 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 						return
 					}
 					if g.title != "" {
-						uiText(c, g.title).Font(t.Display).FontSize(t.MD).FontWeight(800).LineHeight(1.3).TextColor(t.Ink).MaxLines(2).Shrink(0)
+						uiText(c, keepClauses(g.title)).Font(t.Display).FontSize(t.MD).FontWeight(800).LineHeight(1.3).TextColor(t.Ink).MaxLines(2).Shrink(0)
 					}
 					for _, l := range g.lines {
 						uiText(c, l).FontSize(t.XS).LineHeight(1.55).TextColor(t.InkSoft).MaxLines(2).Shrink(0)

@@ -167,8 +167,11 @@ partner decides. Tasks in a browser get none of it, so a web page can't ask for 
 
 **Files you keep there.** With Nowledge Mem connected, a file your partner or a task made shows
 **Save to Nowledge Mem** under it (and in the file's own view). One tap keeps it in a folder named
-**Ducter** in your Nowledge Mem, in your own account: in your own space there that only you read,
-or, if Nowledge Mem shows none, the one it saves to by default. **In Nowledge Mem** says it is there. Saving it
+**Ducter** in your Nowledge Mem, in your own account: in your own space there that only you read.
+If Nowledge Mem would save it somewhere other people read too (a space for everyone on your team,
+say), nothing goes until you choose: the first time, the line under the file says where Nowledge
+Mem would put it and how many people read it there, with **Only me** and **Put it in “{space}”**.
+Your choice is kept, so it asks once. **In Nowledge Mem** says it is there. Saving it
 again after the task changed it makes a new version of the same file, never a copy. You can also
 just ask: "save this report to Mem". It is your own data going to your own memory, so it doesn't
 ask first. Nothing goes by itself unless you turn on **Also keep files I make in Nowledge Mem**, and

@@ -446,6 +446,11 @@ The window is only a view. Ducter is the one doing the work, so:
 - **Closing the window** (⌘W, or the red button) hides it. Click Ducter in the Dock to bring it
   back as it was. The Dock badge counts what is waiting for you.
 - **⌘Q** closes the app window only. Your tasks keep going.
+- **⌘W** closes what is in front first: a sheet, a picture or file you opened, or Settings. Press it
+  again to close the window.
+- **⌘[** and **⌘]** go back and forward through what you looked at, as in a browser; a two-finger
+  swipe does the same. **⌘+**, **⌘−** and **⌘0** make the window's text larger, smaller or normal,
+  and Ducter remembers it. Every key is in **Help › Keyboard Shortcuts** (⌘/).
 - **Ducter starts again when you log in**, and restarts by itself if it ever crashes.
 
 On a Linux server, Ducter runs as a service: it starts with the server and keeps going while

@@ -1110,7 +1110,7 @@ func (a *App) viewer(c *ui.Context) {
 		m.viewer = nil
 		return
 	}
-	ui.DialogBase(c, &v.open, func(back, panel ui.Element) {
+	a.dialogBase(c, &v.open, func(back, panel ui.Element) {
 		back.Background(t.Lightbox)
 		panel.Width(w).Height(h).Label(a.L.T("media.image"))
 		// D286: the dimmed page comes and goes with the picture.

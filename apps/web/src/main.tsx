@@ -17,7 +17,7 @@ import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
 import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { PartnerList, partnerKey } from "./partners.tsx";
-import { escUp, phoneNow, useFill, usePhone, useSplit, useWide } from "./wide.ts";
+import { backOne, escUp, layerUp, phoneNow, tabTitle, useFill, usePhone, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
 import { nthKey, walkKey } from "./onhand.tsx";
@@ -396,6 +396,16 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
+  // D573: the Android app's Back asks the page first: the layer on top closes, else the place goes
+  // up; false at the top, where Back leaves the app.
+  (globalThis as { ducterBack?: () => boolean }).ducterBack = backOne;
+  // D573: the tab says what waits for the person.
+  const title = () => {
+    const t = tabTitle(A.needsCount());
+    if (document.title !== t) document.title = t;
+  };
+  A.onChange(title);
+  title();
   // D344: the Android app's own update card opened a version's notes (its 看看都改了什么).
   (globalThis as { ducterNotesSeen?: (v: string) => void }).ducterNotesSeen = (v) => A.notesSeen(String(v));
   addEventListener("keydown", (e) => void benchKey(e));
@@ -408,7 +418,18 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", densityKey); // D457
   // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a
   // hashchange that follows a pop lands after the move has its old picture.
-  addEventListener("popstate", (e) => popMove(e, A.route, () => A.fromHash()));
+  // D573: Back with a sheet, a viewer or a menu over the place closes that first and keeps the place
+  // (its address is put back), as a phone's Back does.
+  let shown = location.hash;
+  A.onChange(() => void (shown = location.hash));
+  addEventListener("popstate", (e) => {
+    if (layerUp()) {
+      history.pushState(null, "", shown || location.pathname);
+      backOne();
+      return;
+    }
+    popMove(e, A.route, () => A.fromHash());
+  });
   addEventListener("hashchange", () => !navBusy() && A.fromHash());
   const page = document.getElementById("app");
   if (page)

@@ -2556,7 +2556,8 @@ export function createWsHandler(deps: WsDeps) {
         const mediaId = typeof f.media === "string" ? f.media.slice(0, 64) : "";
         const mf = deps.core.memFiles;
         if (!mf || ws.data.client === "cli") return send(ws, { t: "mem_file_save", id, media: mediaId, ok: false, why: "missing" });
-        const r = await mf.save(mediaId, "tap");
+        const pick = f.space === "personal" || f.space === "shared" ? f.space : undefined; // D575
+        const r = await mf.save(mediaId, "tap", pick);
         send(ws, { t: "mem_file_save", id, media: mediaId, ...r });
         return;
       }

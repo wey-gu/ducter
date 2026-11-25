@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
 import { createMediaStore } from "../src/media.ts";
-import { artifactOf, confirmFrom, createMemFiles, currentOf, spaceFrom, whyOf } from "../src/mem-files.ts";
+import { artifactOf, confirmFrom, createMemFiles, currentOf, placeFrom, spacesFrom, whyOf, writeTargetFrom } from "../src/mem-files.ts";
 import { tempDir } from "./helpers.ts";
 
 const FAKE = join(import.meta.dir, "../../partner/eval/fake-artifacts-nmem.ts");
@@ -68,8 +68,8 @@ test("a tap keeps the file in one 「Ducter」 folder; saving it again changes n
   const n = s.calls().length;
   expect((await s.mf.save(m.id)).ok).toBe(true);
   expect(s.calls().length).toBe(n);
-  // D572: the persona is bound to none, so the Space Mem names: the person's personal one, by its
-  // exact id, for the folder and the file; never hel's write default (Everyone, ten readers).
+  // D572, D575: the persona is bound to none, so the Space Mem names: the person's personal one (this
+  // Mac's write target, personal_zone), by its exact id, for the folder and the file.
   const mk = s.calls().find((c) => c.includes("mk"))!;
   expect(mk[mk.indexOf("--space-id") + 1]).toBe(PERSONAL);
   const add = s.calls().find((c) => c.includes("add"))!;
@@ -273,18 +273,102 @@ test("where Mem's personal Space is its write default (this Mac), and where Spac
   const off = seed({ env: { NMEM_FAKE_SPACES: "off" } });
   expect((await off.mf.save(off.put("b.md", "b").id)).ok).toBe(true);
   expect(off.calls().some((c) => c.includes("--space") || c.includes("--space-id"))).toBe(false);
-  // The Space is read once a run, not before every file.
+  // Mem's facts are read once a run, not before every file.
   await mac.mf.save(mac.put("c.md", "c").id);
-  expect(mac.calls().filter((c) => c.includes("setup"))).toHaveLength(1);
+  expect(mac.calls().filter((c) => c[1] === "context")).toHaveLength(1);
 });
 
-test("Mem's Spaces, read: personal first, else its write default, else none", () => {
-  const c = (o: object) => JSON.stringify({ state: "selection_needed", candidates: [{ id: "all", kind: "commons", readers: 10, write_default: true }, o] });
-  expect(spaceFrom(c({ id: "personal-1", kind: "personal", readers: 1, write_default: false }))).toEqual({ id: "personal-1", kind: "personal" });
-  expect(spaceFrom(c({ id: "codex", kind: "team", write_default: false }))).toEqual({ id: "all", kind: "write_default" });
-  expect(spaceFrom(JSON.stringify({ candidates: [{ id: "codex", kind: "team", write_default: false }] }))).toBe("none");
-  expect(spaceFrom(JSON.stringify({ state: "candidates_unavailable", candidates: [] }))).toBe("off");
-  expect(spaceFrom("not json")).toBe("off");
-  expect(spaceFrom(JSON.stringify({ candidates: [{ id: "--space x", kind: "personal" }] }))).toBe("off"); // never an argument
+// D575: Mem's own write target (`context`'s active_space.write_target), as Mem's Bridge owner said.
+test("write target personal_zone (this Mac): the personal Space by its id, bridge setup never asked, the target logged", async () => {
+  const s = seed();
+  const r = await s.mf.save(s.put("gtm-plan.md", "# GTM plan").id);
+  expect(r.ok).toBe(true);
+  const ctx = s.calls().find((c) => c.includes("context"))!;
+  expect(ctx).toEqual(["--json", "context", "--no-ensure", "--no-working-memory"]); // read-only
+  expect(s.calls().some((c) => c.includes("setup"))).toBe(false);
+  for (const c of s.calls().filter((c) => c.includes("mk") || c.includes("add"))) expect(c[c.indexOf("--space-id") + 1]).toBe(PERSONAL);
+  const b = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 })[0]!.body as Bodies["mem_file"];
+  expect(b).toMatchObject({ op: "add", ok: true, space: PERSONAL });
+  expect(JSON.parse(b.target!)).toEqual({ space_id: PERSONAL, reason: "personal_zone" });
+});
+
+test("write target key_write_space (hel, Everyone): nothing goes to `all` until the person chooses; personal is the default", async () => {
+  const s = seed({ env: { NMEM_FAKE_SPACES: "hel" } });
+  const m = s.put("gtm-plan.md", "# GTM plan");
+  // The first save asks, once, in the person's words: nothing written anywhere.
+  const r = await s.mf.save(m.id);
+  expect(r).toEqual({ ok: false, why: "shared_space", shared: { label: "Everyone", readers: 10, personal: true } });
+  expect(s.calls().some((c) => c.includes("mk") || c.includes("add"))).toBe(false);
+  const ask = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 })[0]!.body as Bodies["mem_file"];
+  expect(ask).toMatchObject({ op: "space", ok: false, why: "shared_space", space: "all" });
+  expect(JSON.parse(ask.target!)).toEqual({ space_id: "all", reason: "key_write_space" });
+  // The partner and the Settings default never choose for them either.
+  expect((await s.mf.save(m.id, "partner")).ok).toBe(false);
+  expect((await s.mf.save(m.id, "auto")).ok).toBe(false);
+  expect(s.calls().flat()).not.toContain("all");
+  // Their answer, the default: their own Space; remembered, so the next file isn't asked again.
+  expect((await s.mf.save(m.id, "tap", "personal")).ok).toBe(true);
+  expect((await s.mf.save(s.put("q4.md", "# Q4").id, "partner")).ok).toBe(true);
+  expect(s.mem().docs.map((d) => d.space_id)).toEqual([PERSONAL, PERSONAL]);
+  expect(s.calls().flat()).not.toContain("all");
+  expect(JSON.parse(readFileSync(join(s.t.dir, "mem-files.json"), "utf8")).choice).toMatchObject({ target: "all", pick: "personal" });
+  // Chosen the other way, Mem's target it is, by its id.
+  const t = seed({ env: { NMEM_FAKE_SPACES: "hel" } });
+  expect((await t.mf.save(t.put("team-notes.md", "# Team").id, "tap", "shared")).ok).toBe(true);
+  expect(t.mem().docs[0]!.space_id).toBe("all");
+  expect(t.calls().find((c) => c.includes("add"))!).toContain("all");
+});
+
+test("only a shared target and no personal Space: asked, never saved there without a yes", async () => {
+  const s = seed({ env: { NMEM_FAKE_SPACES: "commons" } });
+  const m = s.put("gtm-plan.md", "# GTM plan");
+  expect(await s.mf.save(m.id)).toEqual({ ok: false, why: "shared_space", shared: { label: "Everyone", readers: 10, personal: false } });
+  // "Personal" can't be honoured: asked again, nothing remembered or written.
+  expect((await s.mf.save(m.id, "tap", "personal")).ok).toBe(false);
+  expect(s.calls().some((c) => c.includes("add"))).toBe(false);
+  expect((await s.mf.save(m.id, "tap", "shared")).ok).toBe(true);
+  expect(s.mem().docs[0]!.space_id).toBe("all");
+});
+
+test("write target missing, asking for a choice, or unknown to this nmem: the personal candidate, never write_default, never a guess", async () => {
+  for (const how of ["missing", "choose", "old"]) {
+    const s = seed({ env: { NMEM_FAKE_SPACES: "hel", NMEM_FAKE_CONTEXT: how } });
+    expect((await s.mf.save(s.put("a.md", "a").id)).ok).toBe(true);
+    expect(s.mem().docs[0]!.space_id).toBe(PERSONAL); // hel's write_default (all) is no longer borrowed
+    expect(s.calls().some((c) => c.includes("setup"))).toBe(true);
+    // No personal Space either: no Space named, and Mem's own refusal is what is said.
+    const n = seed({ env: { NMEM_FAKE_SPACES: "commons", NMEM_FAKE_CONTEXT: how } });
+    const r = await n.mf.save(n.put("b.md", "b").id);
+    expect(r).toMatchObject({ ok: false, why: "no_space" });
+    expect(n.calls().flat()).not.toContain("all");
+  }
+});
+
+test("Mem's facts, read: the write target, the Spaces, and where that puts a file", () => {
+  const ctx = (wt: unknown) => JSON.stringify({ active_space: { primary_space_id: "x", read_scope: "all-readable", ...(wt === undefined ? {} : { write_target: wt }) } });
+  expect(writeTargetFrom(ctx({ space_id: "personal-1", reason: "personal_zone" }))).toEqual({ target: { id: "personal-1", reason: "personal_zone" }, raw: '{"space_id":"personal-1","reason":"personal_zone"}' });
+  expect(writeTargetFrom(ctx({ space_id: "all", reason: "key_write_space" })).target).toEqual({ id: "all", reason: "key_write_space" });
+  expect(writeTargetFrom(ctx(undefined))).toEqual({ raw: "(none)" });
+  expect(writeTargetFrom(ctx({ space_id: null, reason: "explicit_choice_required" })).target).toBeUndefined();
+  expect(writeTargetFrom(ctx({ space_id: "all", reason: "explicit_choice_required" })).target).toBeUndefined();
+  expect(writeTargetFrom(ctx({ space_id: "--space x", reason: "key_write_space" })).target).toBeUndefined(); // never an argument
+  expect(writeTargetFrom("not json")).toEqual({ raw: "(not json)" });
+  const c = (o: object) => JSON.stringify({ state: "selection_needed", candidates: [{ id: "all", label: "Everyone", kind: "commons", readers: 10, write_default: true }, o] });
+  const spaces = spacesFrom(c({ id: "personal-1", label: "Only me", kind: "personal", readers: 1, write_default: false }));
+  expect(spaces).toEqual([
+    { id: "all", label: "Everyone", kind: "commons", readers: 10 },
+    { id: "personal-1", label: "Only me", kind: "personal", readers: 1 },
+  ]);
+  expect(spacesFrom(JSON.stringify({ state: "candidates_unavailable", candidates: [] }))).toBe("off");
+  expect(spacesFrom("not json")).toBe("off");
+  expect(spacesFrom(JSON.stringify({ candidates: [{ id: "--space x", kind: "personal" }] }))).toBe("off");
+  const team = spacesFrom(c({ id: "codex", kind: "team", write_default: false }));
+  expect(placeFrom({ id: "p", reason: "personal_zone" }, undefined)).toEqual({ personal: "p" });
+  expect(placeFrom({ id: "all", reason: "key_write_space" }, spaces)).toEqual({ shared: { id: "all", label: "Everyone", kind: "commons", readers: 10 }, personal: "personal-1" });
+  expect(placeFrom({ id: "personal-1", reason: "key_write_space" }, spaces)).toEqual({ personal: "personal-1" }); // a key bound to their own Space
+  expect(placeFrom({ id: "all", reason: "key_write_space" }, team)).toEqual({ shared: { id: "all", label: "Everyone", kind: "commons", readers: 10 } });
+  expect(placeFrom(undefined, spaces)).toEqual({ personal: "personal-1" });
+  expect(placeFrom(undefined, team)).toBe("none"); // write_default is never borrowed (D575)
+  expect(placeFrom(undefined, "off")).toBe("off");
   expect(whyOf({ code: 1, out: "", err: "error: Pass --space (or --parent) to choose where the folder goes." })).toEqual({ why: "no_space", message: "Pass --space (or --parent) to choose where the folder goes." });
 });

@@ -112,6 +112,18 @@ Tags: **VERIFIED** (seen in a real answer here), **DOCUMENTED** (help text or Me
 - A folder's own type in the binary is LibraryFolder: `folder_id`, `space_id`, `parent_folder_id`,
   `name`, `document_count`, … (INFERRED from its field names; `folders ls` returned none to see).
 - So Ducter names the persona's Space, else the personal Space, else the write default, by its id.
+  (Refined by D575, below: Mem's own write target replaces the borrowed `write_default`.)
+- **The server's own write target (D575).** Mem's Bridge owner said (over Bridge, 2026-11-25) that
+  for a credential naming no Space, the read-only `nmem --json context --no-ensure
+  --no-working-memory` gives the server's own write target as `.active_space.write_target.space_id`
+  and `.reason`, and to use it instead of borrowing `bridge setup`'s `candidates[].write_default`;
+  keep passing `--space-id` explicitly to `folders mk` and `add`; if it is missing or asks for an
+  explicit choice, don't guess. DOCUMENTED (Mem's owner). Our read-only measurement, 0.10.123,
+  VERIFIED: this Mac `{ space_id: "personal-4e74…", reason: "personal_zone" }` (with
+  `primary_space_id` the same and `read_scope: "all-readable"`); hel (the author's home, another
+  key on the same account) `{ space_id: "all", reason: "key_write_space" }`, i.e. Everyone, readable
+  by ten including a team Slack agent. Other reasons, and the shape of an explicit-choice answer,
+  were not seen (INFERRED: treated as no target).
 
 ## Implications for Ducter
 

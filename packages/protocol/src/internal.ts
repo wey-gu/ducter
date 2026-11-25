@@ -256,7 +256,7 @@ export interface CoreApi {
   memCarry?: MemCarry;
   /** D566: keeps a file Ducter made (by its media id) in the person's Nowledge Mem (core/src/mem-files.ts); absent in stubs. */
   memFiles?: {
-    save(mediaId: string, by?: "tap" | "partner" | "auto"): Promise<({ ok: true; saved: import("./index.ts").MemFileSaved }) | { ok: false; why: import("./index.ts").MemFileWhy; message?: string }>;
+    save(mediaId: string, by?: "tap" | "partner" | "auto", pick?: "personal" | "shared"): Promise<({ ok: true; saved: import("./index.ts").MemFileSaved }) | { ok: false; why: import("./index.ts").MemFileWhy; message?: string; shared?: import("./index.ts").MemFileShared }>;
   };
   /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
   bridgeLink?: BridgeLinkApi;

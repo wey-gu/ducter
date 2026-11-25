@@ -2,7 +2,7 @@
 // A FAKE `nmem` for D566 (keeping files in Nowledge Mem): Artifacts and their folders in one JSON
 // file, so tests and the partner eval never write to the person's Mem. It implements only what
 // core/src/mem-files.ts runs, after nmem 0.10.123's help (research/231):
-//   status · bridge setup (passive) · artifacts folders ls|mk · artifacts add · artifacts update · artifacts list · artifacts history · artifacts show
+//   status · context (read-only) · bridge setup (passive) · artifacts folders ls|mk · artifacts add · artifacts update · artifacts list · artifacts history · artifacts show
 // The read shapes (list/show/history/folders ls, status) copy the REAL ones seen on 2026-11-25
 // (packages/core/test/fixtures/mem-artifacts.json, VERIFIED). add, update and folders mk were never
 // run against the real Mem: their answers here are GUESSES from the CLI's own strings (an
@@ -17,10 +17,17 @@
 //   NMEM_FAKE_BACKEND=local                 status says a local Mem (no web link)
 //   NMEM_FAKE_UNLISTED=1                    a write answers ok but list never shows it (the read-back fails)
 //   NMEM_FAKE_BARE=1                        add answers exit 0 with words, no JSON (a shape Ducter can't parse)
-//   NMEM_FAKE_SPACES=hel|mac|none|off       D572: the Spaces passive `bridge setup` lists (default hel: the
-//                                           personal Space plus Everyone as write_default, as hel's key
-//                                           answered on 2026-11-25; mac: personal is the write default;
-//                                           none: Spaces, none personal or write_default; off: no Spaces)
+//   NMEM_FAKE_SPACES=mac|hel|commons|none|off
+//                                           D572, D575: the Spaces passive `bridge setup` lists and the
+//                                           write target `context` names (default mac: personal is the
+//                                           write default, write_target personal_zone, as this Mac answered
+//                                           on 2026-11-25; hel: the personal Space plus Everyone as
+//                                           write_default, write_target { all, key_write_space }, as hel's
+//                                           key answered; commons: hel's target with no personal Space;
+//                                           none: Spaces, none personal or write_default, no write_target;
+//                                           off: no Spaces, no write_target)
+//   NMEM_FAKE_CONTEXT=missing|choose|old    D575: context has no write_target; names none and asks for an
+//                                           explicit choice; or is a command this nmem doesn't know
 // D572: `folders mk` without --space, --space-id or --parent refuses exactly as the real 0.10.123 did
 // on hel ("Pass --space (or --parent) to choose where the folder goes."), except with Spaces off.
 // Folders answer in the binary's own field names (LibraryFolder: folder_id, parent_folder_id).
@@ -59,7 +66,7 @@ const words = argv.filter((a) => a !== "--json" && a !== "-j");
 const [cmd, sub, verb] = words;
 const named = opt("--space-id") ?? opt("--space");
 const space = named ?? "default";
-const spaces = process.env.NMEM_FAKE_SPACES ?? "hel";
+const spaces = process.env.NMEM_FAKE_SPACES ?? "mac";
 const PERSONAL = "personal-00000000-0000-0000-0000-00000000fake";
 
 const sourceOf = (d: Doc, r = d.revs.at(-1)!) => ({
@@ -96,6 +103,19 @@ const sourceOf = (d: Doc, r = d.revs.at(-1)!) => ({
 });
 
 if (cmd === "status") out({ status: "ok", cli_version: "0.10.123", api_url: process.env.NMEM_FAKE_BACKEND === "local" ? "http://127.0.0.1:14242" : "https://cloud.nowledge.co/remote-api", mode: "remote", backend: process.env.NMEM_FAKE_BACKEND ?? "cloud" });
+// D575: the read-only context bundle, only its active_space (the VERIFIED shape, 0.10.123, 2026-11-25:
+// this Mac { space_id: "personal-…", reason: "personal_zone" }, hel { space_id: "all", reason: "key_write_space" }).
+if (cmd === "context") {
+  const how = process.env.NMEM_FAKE_CONTEXT;
+  if (how === "old") fail(`the subcommand 'context' wasn't recognized`, 2);
+  const wt =
+    how === "missing" ? undefined
+    : how === "choose" ? { space_id: null, reason: "explicit_choice_required" }
+    : spaces === "mac" ? { space_id: PERSONAL, reason: "personal_zone" }
+    : spaces === "hel" || spaces === "commons" ? { space_id: "all", reason: "key_write_space" }
+    : undefined;
+  out({ schema_version: 1, bundle_kind: "context", active_space: { primary_space_id: wt?.space_id ?? null, read_scope: "all-readable", ...(wt ? { write_target: wt } : {}) }, warnings: [] });
+}
 // The VERIFIED passive setup shape (0.10.123, 2026-11-25): it creates and selects nothing.
 if (cmd === "bridge" && sub === "setup" && !argv.includes("--enable")) {
   if (spaces === "off") out({ state: "candidates_unavailable", detail: "Spaces are off.", candidates: [] });
@@ -105,7 +125,7 @@ if (cmd === "bridge" && sub === "setup" && !argv.includes("--enable")) {
     { id: "codex", label: "Codex", kind: "team", readers: 7, write_default: false },
   ];
   const personal = { id: PERSONAL, label: "Only me", kind: "personal", readers: 1, write_default: spaces === "mac" };
-  out({ state: "selection_needed", detail: "Choose the exact Space for Bridge. No identity, credential or mailbox was created.", note: "Name the Space explicitly by its id. Suggested entries are hints, not a choice. A write that names no Space lands in write_default.", candidates: spaces === "none" ? team.map((c) => ({ ...c, write_default: false })) : [...team.slice(0, 2), personal, team[2]] });
+  out({ state: "selection_needed", detail: "Choose the exact Space for Bridge. No identity, credential or mailbox was created.", note: "Name the Space explicitly by its id. Suggested entries are hints, not a choice. A write that names no Space lands in write_default.", candidates: spaces === "none" ? team.map((c) => ({ ...c, write_default: false })) : spaces === "commons" ? team.map((c) => ({ ...c, write_default: c.id === "all" })) : [...team.slice(0, 2), personal, team[2]] });
 }
 if (cmd !== "artifacts") fail(`the subcommand '${cmd}' wasn't recognized`, 2);
 

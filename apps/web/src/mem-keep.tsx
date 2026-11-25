@@ -6,12 +6,15 @@
 //              person's Mem is its Cloud): two elements, never one joined line (D291)
 //   failed     D572: one line in the needs-you ink, human words (没存进 Nowledge Mem：{why}), the one
 //              fix as a text button, and Mem's own sentence only behind 原话 / Its words
+//   asked      D575: Mem's only write target is a Space others read (shared_space): nothing written;
+//              one line saying where Mem would put it and who reads it, then 只给我看 / Only me (the
+//              default, first, when they have a personal Space) and 放进「{Space}」/ Put it in “{Space}”
 // The viewer (D572): its foot bar keeps one aligned row (来自… | 拷贝 | 存一份 | 存到 Nowledge Mem); a
 // failure is its own full-width line above the bar (MemKeepTrouble), never wedged between buttons.
 // Shown only for a file Mem reads (memKeeps) while Mem is connected and signed in; a file already
 // kept says so whatever Mem's state is now. Shared controls only (Btn, TextLink).
 import { useState } from "preact/hooks";
-import { memKeeps, type MediaRef, type MemFileWhy } from "@ducter/protocol";
+import { memKeeps, type MediaRef, type MemFileShared, type MemFileWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { Btn, TextLink } from "./controls.tsx";
 import { keepInMem, keepNow, memKeepReady, memKeepWire } from "./mem-keep-state.ts";
@@ -41,11 +44,33 @@ function Fix({ m, why }: { m: MediaRef; why: MemFileWhy }) {
   return null;
 }
 
+/** D575: where Mem would put it and who reads it, in one sentence. */
+export function sharedWords(s: MemFileShared): string {
+  const key = `memfile.shared${s.personal ? "" : ".only"}${s.readers ? "" : ".some"}`;
+  return s.readers ? t(key, s.label, String(s.readers)) : t(key, s.label);
+}
+
+/** D575: the question asked once: the person's own Space (the default) or the shared one. */
+function Ask({ m, s, cls }: { m: MediaRef; s: MemFileShared; cls: string }) {
+  return (
+    <div class={`mk-trouble mk-ask ${cls}`} data-memkeep={m.id}>
+      <div class="mk-line">
+        <span class="mk-fail" role="status">
+          {sharedWords(s)}
+        </span>
+        {s.personal && <Btn kind="text" size="sm" class="mk-fix" label={t("memfile.pick.personal")} about={m.name ?? ""} onClick={() => keepInMem(m.id, "personal")} />}
+        <Btn kind="text" size="sm" class="mk-fix" label={t("memfile.pick.shared", s.label)} about={m.name ?? ""} onClick={() => keepInMem(m.id, "shared")} />
+      </div>
+    </div>
+  );
+}
+
 /** D572: a failure as one line: the words, the fix, and Mem's own sentence on demand. */
 function Trouble({ m, cls }: { m: MediaRef; cls: string }) {
   const n = keepNow(m.id);
   const [raw, setRaw] = useState(false);
   if (n?.state !== "failed") return null;
+  if (n.why === "shared_space" && n.shared) return <Ask m={m} s={n.shared} cls={cls} />;
   return (
     <div class={`mk-trouble ${cls}`} data-memkeep={m.id}>
       <div class="mk-line">

@@ -289,7 +289,7 @@ func (a *App) csvTable(c *ui.Context, fv *fileViewState) {
 		} else if n%2 == 1 {
 			bg = t.Sunken.Mix(t.SurfaceRaised, 0.55)
 		}
-		row := ui.Row(c.Key("r"+strconv.Itoa(n))).Height(csvRowH).Width(total).AlignItems(ui.Center).Background(bg).Role(ui.RoleRow)
+		row := ui.Row(c.Key("r" + strconv.Itoa(n))).Height(csvRowH).Width(total).AlignItems(ui.Center).Background(bg).Role(ui.RoleRow)
 		if head {
 			row.Sticky().Top(0).BorderWidth(0, 0, 2, 0).BorderColor(t.Line)
 		} else {

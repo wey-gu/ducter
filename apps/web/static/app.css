@@ -24547,16 +24547,16 @@ html.kb #app {
 .fv-table th { white-space: normal; overflow-wrap: anywhere; }
 .fv-body :is(.md-table, pre, .fv-table) { --fade: 32px; }
 .fv-body :is(.md-table, pre, .fv-table).fade-e {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--fade)), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - var(--fade)), transparent);
 }
 .fv-body :is(.md-table, pre, .fv-table).fade-s:not(.key) {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade));
-  mask-image: linear-gradient(to right, transparent, #000 var(--fade));
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--fade));
+  mask-image: linear-gradient(to right, transparent, black var(--fade));
 }
 .fv-body :is(.md-table, pre, .fv-table).fade-s.fade-e:not(.key) {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--fade), black calc(100% - var(--fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, black var(--fade), black calc(100% - var(--fade)), transparent);
 }
 /* 铺满 / Fill the window: the sheet takes the window, its edges a little in from the window's. */
 .fv-sheet.fill {

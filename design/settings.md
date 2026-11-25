@@ -348,7 +348,7 @@ passes above, on the device card:
 - **Trust as a sentence, not a list.** What a device uses and never sees is one or two plain sentences
   in the card's soft tray, no marks: the computer for tasks, the phone lent to tasks, and the home
   (**你和 {name} 的对话都存在这台电脑上。**). A phone that is only a window has none.
-- **The role once.** The chip that says **帮 {name} 做事** is the role; the line under the name then
+- **The role once.** The chip that says **帮你做事** (D556; was **帮 {name} 做事**) is the role; the line under the name then
   says **待命** while idle.
 
 ## Read at a glance (D424)
@@ -534,7 +534,7 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   that can't be reached (Accounts), Mem's questions (D465) and a Mem plugin behind (D466) (Memory), updates
   (About on the Mac, Devices on the web). The brief names each with its button; the pane's head names its own.
 - **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
-  it is to the partner (D551: **我在这台上运行**, **帮我做事**, **这会儿连不上**); the home's card carries what
+  it is to the partner (D551: **我在这台上运行**, **这会儿连不上**; D556: **帮你做事**, true with one partner or four); the home's card carries what
   lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
   On Overview and on Where it runs; a card opens Devices.
 - **Every pane's head is the partner speaking** (Mac `paneSpeaks`, the web the same): the pane's name, then the
@@ -731,7 +731,7 @@ before and after per pane). Opened most often first:
 | 记忆 / Memory, Agent 通信 | C first meeting Mem | **…Ducter 会自己找到。**, **…Ducter 会自己连上…**, **…把事交给 Ducter。** under a head in the first person | **我会自己找到**, **我会自己连上**, **把事交给我** |
 | 通知 / Notifications | C and F: "will it bother me?" | The web's **等多久再按默认做** stacked its four choices under its words at every width (the old `set-item`); the preview's question left **个？** alone on a line on a phone | A row (`GRow`, `flat`), the choice at the right edge as on the Mac; the preview wraps without an orphan |
 | 你的设备 / Your devices (web) | H checking versions; C after a new phone | Rows 56 tall with 36 clay, unlike every other pane's 64 and 40; the home's row **Ducter 在这台上运行** under **我在 Hetzner Server 上运行…** | 64 tall, the clay at 40, the hairline from the name's edge; **我在这台上运行** |
-| 概览 / Overview, 在哪儿运行 / Where it runs | All three, to see whether something needs them | The web's sheet put seven devices two across in 200-tall cards (D547 had made the phone one glance, the wide view a long scroll); on the Mac at 1000 the computers stopped 145 short of the card under them; the cards said **帮 Ducter 做事** under **都好好的，我在这儿。**; the web listed a browser window as a place | Three across on the web (172); the Mac's grids share their row (`gridCardW`), one right edge; **我在这台上运行 / 帮我做事 / 随时找我**; a window on a computer is not a place (as the Mac) |
+| 概览 / Overview, 在哪儿运行 / Where it runs | All three, to see whether something needs them | The web's sheet put seven devices two across in 200-tall cards (D547 had made the phone one glance, the wide view a long scroll); on the Mac at 1000 the computers stopped 145 short of the card under them; the cards said **帮 Ducter 做事** under **都好好的，我在这儿。**; the web listed a browser window as a place | Three across on the web (172); the Mac's grids share their row (`gridCardW`), one right edge; **我在这台上运行 / 帮我做事 / 随时找我** (帮你做事 since D556); a window on a computer is not a place (as the Mac) |
 | 账号 / Accounts | C | Tuwa's **录好了** before **去 Tuwa 录** (D543: the primary first); **Ducter 在 Tuwa 上替你关了**, **现在用 Ducter 自己的声音** | **去 Tuwa 录** then **录好了**; **我在 Tuwa 上替你关了**, **现在用我自己的声音** |
 | 待办来源 / To-do sources | H, C | **待办还是那个软件的，Ducter 只管做完。** | **…我只管做完。** |
 | 聊天软件 / Chat apps | C | **Ducter 不登录你的微信…** | **我不登录你的微信…** |
@@ -739,19 +739,38 @@ before and after per pane). Opened most often first:
 | 外观和声音 / Look and sound, 这台电脑 / This computer | Everyone, briefly | The web's four choices stacked under their words at every width, where the Mac sets them at the right edge | Rows, as Notifications' wait |
 | 关于 / About | H | Nothing new | Unchanged |
 
-Left, with a recommendation:
+Left, with a recommendation (closed by D556 but the last):
 
-- **About's versions card on the Mac:** the home's version sits left of **检查更新** while the other computers'
-  versions end at the card's edge, two right edges in one column. Recommended: **检查更新** in the card's last
-  line beside the night switch, every version on one edge.
-- **New tasks start's empty tile column:** while both are **自动** its two rows keep a 40 tile column with
-  nothing in it; the chosen agent's coin fills it once one is picked. Recommended: keep (the words would jump
-  52 on a pick); revisit if the group gains a mark of its own.
-- **Devices' cards and chips** still say **帮 {name} 做事** (a device's role, read among several partners);
-  Overview and the list now say 帮我做事. Recommended: the card in the first person too, in Devices' own pass.
-- **The Mac's preview wraps 到 / 期** in a Chinese word on Notifications' morning note at 1150; the web wraps it
-  whole. Recommended: `keepWords` over the preview's sentences.
 - **The web's partner rows** still put the model's pill on its own line at 390 (D475's choice, kept).
+
+## The leftovers closed (D556)
+
+Shots `.shots/settings-leftovers/` (before and after; Mac 1000, 1150, 1400 from `TestD475Shots`, with a
+device's card as `devices:<name>`, and `TestD556Shots` for New tasks start's pick as frames and Memory's
+offer with one agent and two; web 390 and 1024 over CDP; zh and en, light and dark; 2x crops in `crops/`).
+
+- **About's versions card (Mac):** **检查更新 / Check now** (and **在查…** in its place) moved to the card's last
+  row beside the night switch (`versionsCheck`); every computer's version now ends on the card's one right
+  edge. With no switch (no settings yet) it stays on the home's row. The web's card already had no version
+  beside its button.
+- **What a computer for tasks is, said truly with several partners:** **帮你做事 / Does tasks for you**, and
+  **在帮你做 n 个任务 / Doing n tasks for you**, **在这儿做着 n 个任务 / Working on n tasks here** on the home,
+  on the device card and its chip, the list, Overview, Where it runs and About's versions card, Mac and web.
+  A computer serves the person; whichever partner is shown, 我 would be false for the others' tasks.
+- **The preview's sentences keep their words (Mac and web):** `keepClauses` (Mac `type.go`, web `format.ts`):
+  keepWords' short runs whole, and in a longer run a clause's last two characters together, so the morning
+  note reads **…的域名后天 / 到期，还没续费。**, never **…后天到 / 期，**. Memory's offer to connect an agent
+  uses it too (**…才用 / 得上。**, never **上。** alone).
+- **Memory's offer takes the count:** one agent **…你自己用它时也记得你…只改它自己的设置**, two or more
+  **…它们…**; en **it / its** and **them / their** (`mem.health.plugin.why.one`).
+- **New tasks start without an empty column:** while both are **自动** there is no tile column; the words of
+  both rows and the foot sit on the text edge, as every group with no tile (D501). Picking an agent opens
+  the column for the whole group: the words slide 52 over with the Across spring, the right-edge controls
+  stand still, and the coin comes in 120 ms later, once the words have cleared its place (Mac `pickCol`,
+  `choiceRow`, `pickFoot`; web `.g-group.picks`, `Tile enter`). Never on opening the page; at once under
+  reduced motion. Why not a neutral glyph in the slot: **自动** has no object to draw, and a made-up mark
+  for "automatic" is a new concept visual (the metaphor process) standing in every default view, which
+  most people never change, to save one 52 move they cause themselves and see happen.
 
 ## Not done
 

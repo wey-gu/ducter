@@ -90,9 +90,10 @@ export function GConfirm(p: { ask: string; keep: string; go: string; about?: str
 }
 
 /** A tile: clay art fitted in the 40 column, or a drawn mark on a small white clay tile. */
-export function Tile(p: { art?: string; faded?: boolean; mark?: boolean; children?: ComponentChildren }) {
+/** enter (D556): a tile that arrives with a pick comes in, opening its column, the words moving over with it. */
+export function Tile(p: { art?: string; faded?: boolean; mark?: boolean; enter?: boolean; children?: ComponentChildren }) {
   return (
-    <span class={`g-tile${p.mark ? " mark" : ""}${p.faded ? " faded" : ""}`} aria-hidden="true">
+    <span class={`g-tile${p.mark ? " mark" : ""}${p.faded ? " faded" : ""}${p.enter ? " enter" : ""}`} aria-hidden="true">
       {p.art ? <img src={p.art} alt="" /> : p.children}
     </span>
   );

@@ -240,7 +240,7 @@ func (a *App) kindLine(dv *protocol.DeviceView) string {
 	if dv.Home {
 		return a.L.T("card.status.home", who)
 	}
-	return a.L.T("card.status.does", who)
+	return a.L.T("card.status.does")
 }
 
 // behind: an update is available and not under way: said in words by the
@@ -526,7 +526,13 @@ func (a *App) updateSection(c *ui.Context) {
 		}
 		if auto := a.S.Settings; auto != nil {
 			v, ch := auto.AutoUpdate, false
+			// D556: 检查更新 sits in this last row beside the switch, both about getting the new
+			// version, so every version above ends on the card's one right edge.
+			check := a.versionsCheck(c, home)
 			a.explainedRow(c, "autoupdate", a.L.T("settings.versions.night"), a.nightNote(), a.L.T("settings.versions.night.how"), func() {
+				if check != nil {
+					check()
+				}
 				ch = a.switchControl(c, "autoupdate", a.L.T("settings.versions.night"), &v)
 			})
 			if ch {
@@ -538,10 +544,11 @@ func (a *App) updateSection(c *ui.Context) {
 
 // versionRow is one computer in Settings' versions card: its name and what
 // it is, with its one state under them: the update's step, 有新版本 x, or
-// 已经是最新的 and when it was read; its version at the right end with the
-// home's 检查更新, which reads 在查… in the same place while it asks (D374:
+// 已经是最新的 and when it was read; its version at the right end (D374:
 // a row like every other, not a column of three at the right edge). 没更新成
-// opens its why and the one next step under the row on a tap (D167).
+// opens its why and the one next step under the row on a tap (D167). The
+// home's 检查更新 is the card's last row's, beside the night switch (D556):
+// every version ends on one right edge; with no switch it stays on the row.
 func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 	u := dv.Update
 	v := dv.Version
@@ -588,18 +595,8 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 		}
 	}
 	var action func()
-	if current && home {
-		action = func() {
-			d := a.devState()
-			if d.card.checking {
-				a.sideStatus(c, a.L.T("devup.checking"), sideMuted)
-				return
-			}
-			if a.buttonFor(c, a.L.T("devup.checknow"), a.deviceName(dv), btnSecondary, a.T.ControlSM, a.T.Surface) {
-				d.card.checking = true
-				a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID, Check: true})
-			}
-		}
+	if home && a.S.Settings == nil {
+		action = a.versionsCheck(c, dv)
 	}
 	// This Mac's row, home or worker, is itself the way to update it (D187).
 	act := behind(dv) && (u.How == "self" && dv.State == protocol.DeviceAwake || u.How == "app" && a.appOnThisMac(dv))
@@ -622,6 +619,29 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 	a.stateRow(c, key, a.deviceName(dv), a.versionSub(dv), state, v, action, below)
 }
 
+// versionsCheck is the versions card's 检查更新 for the home while it is current (在查… in its
+// place while it asks), or nil: behind, running or failed, the home's row says what to do.
+func (a *App) versionsCheck(c *ui.Context, dv *protocol.DeviceView) func() {
+	if dv == nil {
+		return nil
+	}
+	u := dv.Update
+	if u == nil || u.Latest == "" || u.Phase != "" || behind(dv) || a.homeHere() == dv {
+		return nil
+	}
+	return func() {
+		d := a.devState()
+		if d.card.checking {
+			a.sideStatus(c, a.L.T("devup.checking"), sideMuted)
+			return
+		}
+		if a.buttonFor(c, a.L.T("devup.checknow"), a.deviceName(dv), btnSecondary, a.T.ControlSM, a.T.Surface) {
+			d.card.checking = true
+			a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID, Check: true})
+		}
+	}
+}
+
 // versionSub is a computer's line in the versions card: what it is to the
 // partner, as a phrase under its name (D296), never "这台 Mac · Ducter 在这台上运行"
 // under 这台 Mac.
@@ -629,7 +649,7 @@ func (a *App) versionSub(dv *protocol.DeviceView) string {
 	if dv.Home {
 		return a.L.T("settings.versions.home", a.S.PersonaName)
 	}
-	return a.L.T("settings.versions.worker", a.S.PersonaName)
+	return a.L.T("settings.versions.worker")
 }
 
 // homeDevice is the home among the devices shown, or nil.

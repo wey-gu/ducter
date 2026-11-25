@@ -834,13 +834,15 @@ func (a *App) newTasksGroup(c *ui.Context) {
 		a.S.Settings.NewTasks = &v
 		a.SetSettings(protocol.SettingsPatch{NewTasks: &v})
 	}
+	// D556: a column only once an agent is picked (its coin); both 自动, the words on the text edge.
+	col := showWho && whoSel > 0
 	a.group(c, "newtasks", a.L.T("newtasks.title"), "", func() {
 		if showWhere {
 			line := a.L.T("newtasks.where.auto")
 			if whereSel > 0 {
 				line = a.L.T("newtasks.where.on", comps[whereSel-1].Name)
 			}
-			a.tileRow(c, "newtasks:where", nil, a.L.T("newtasks.where"), line, func() {
+			a.choiceRow(c, "newtasks:where", col, nil, a.L.T("newtasks.where"), line, func() {
 				if i := a.fewOrPill(c, "newtasks-where", a.L.T("newtasks.where"), whereLabels, whereSel); i >= 0 && i != whereSel {
 					n := nt
 					n.Where = ""
@@ -861,7 +863,7 @@ func (a *App) newTasksGroup(c *ui.Context) {
 				line = a.L.T("newtasks.who.on", harnessName(agents[whoSel-1]))
 				tile = a.agentTile(c, agents[whoSel-1], false)
 			}
-			a.tileRow(c, "newtasks:who", tile, a.L.T("newtasks.who"), line, func() {
+			a.choiceRow(c, "newtasks:who", col, tile, a.L.T("newtasks.who"), line, func() {
 				if i := a.fewOrPill(c, "newtasks-who", a.L.T("newtasks.who"), whoLabels, whoSel); i >= 0 && i != whoSel {
 					n := nt
 					n.Agent = ""
@@ -875,7 +877,7 @@ func (a *App) newTasksGroup(c *ui.Context) {
 				}
 			})
 		}
-		a.footRow(c, "newtasks", a.L.T("newtasks.foot"), nil)
+		a.pickFoot(c, "newtasks", a.L.T("newtasks.foot"), col)
 	})
 	a.saidLine(c, "newtasks")
 }

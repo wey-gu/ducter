@@ -9,6 +9,7 @@ import { replySample } from "@ducter/protocol/src/lang.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Avatar } from "./views.tsx";
+import { keepClauses } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** How long the partner smiles after a change on a page with a preview (the Mac's cheerFor). */
@@ -63,8 +64,8 @@ export function NotifyPreview() {
             <b>{A.S.personaName}</b>
             <small>{t("notify.pv.now")}</small>
           </span>
-          <span class="pv-ask">{t("notify.pv.ask")}</span>
-          {s.defaultAfterMin > 0 && <small class="pv-wait">{t("notify.pv.default", waitLabel(s.defaultAfterMin))}</small>}
+          <span class="pv-ask">{keepClauses(t("notify.pv.ask"))}</span>
+          {s.defaultAfterMin > 0 && <small class="pv-wait">{keepClauses(t("notify.pv.default", waitLabel(s.defaultAfterMin)))}</small>}
         </span>
       </div>
       {find && find !== "off" && (
@@ -75,12 +76,12 @@ export function NotifyPreview() {
               <b>{A.S.personaName}</b>
               <small>{find === "urgent" ? t("notify.pv.now") : t("notify.pv.morning")}</small>
             </span>
-            <span class="pv-ask">{t(`notify.pv.find.${find}`)}</span>
+            <span class="pv-ask">{keepClauses(t(`notify.pv.find.${find}`))}</span>
           </span>
         </div>
       )}
       <p class="pv-under" key={under}>
-        {under}
+        {keepClauses(under)}
       </p>
     </section>
   );

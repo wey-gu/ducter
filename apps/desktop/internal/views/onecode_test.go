@@ -80,7 +80,7 @@ func TestOneCodeLive(t *testing.T) {
 	h.wait = 0
 	h.tt.Advance(time.Second)
 	h.tt.Frame()
-	if !h.tt.HasText(L.T("card.status.does", h.app.S.PersonaName)) {
+	if !h.tt.HasText(L.T("card.status.does")) {
 		t.Fatalf("card: %q", h.tt.Texts())
 	}
 	t.Logf("joined: %s (%s, %s)", dv.Name, dv.ID, dv.State)

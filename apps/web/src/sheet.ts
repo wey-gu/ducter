@@ -18,11 +18,12 @@ export function statusLine(L: Words, dv: DeviceView, o: { persona: string; home:
   if (dv.state === "unreachable") return { state: L.t("card.status.away"), text: o.ago ? L.t("device.client.seen", o.ago) : "", tone: "away" };
   if (dv.state === "asleep") return { state: L.t("device.state.asleep"), text: L.t("device.asleep.after"), tone: "asleep" };
   const n = o.running;
-  if (dv.home) return { text: n === 1 ? L.t("card.status.home.working.one", o.persona) : n > 1 ? L.t("card.status.home.working", o.persona, n) : L.t("card.status.home", o.persona), tone: "" };
+  if (dv.home) return { text: n === 1 ? L.t("card.status.home.working.one") : n > 1 ? L.t("card.status.home.working", n) : L.t("card.status.home", o.persona), tone: "" };
   if (dv.kind === "phone") return { text: L.t("device.client.now"), tone: "" };
-  if (n === 1) return { text: L.t("card.status.working.one", o.persona), tone: "working" };
-  if (n > 1) return { text: L.t("card.status.working", o.persona, n), tone: "working" };
-  return { text: L.t("card.status.does", o.persona), tone: "" };
+  // D556: a computer for tasks serves the person, whichever partner is shown (one or four).
+  if (n === 1) return { text: L.t("card.status.working.one"), tone: "working" };
+  if (n > 1) return { text: L.t("card.status.working", n), tone: "working" };
+  return { text: L.t("card.status.does"), tone: "" };
 }
 
 /** The list's one word of state: the status line shortened to its first idea. */

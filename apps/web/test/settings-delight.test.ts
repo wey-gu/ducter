@@ -53,3 +53,17 @@ test("Notifications waits in its shape and shows its preview; This phone shows L
   const phone = v.slice(v.indexOf("function PhoneSettings"), v.indexOf("const SECTIONS"));
   expect(phone).toContain("<LookPreview />");
 });
+
+// D556: the preview's sentences keep a clause's last word whole (到期，), as the Mac's keepClauses.
+test("the preview never breaks a clause's last word", async () => {
+  const { keepClauses } = await import("../src/format.ts");
+  const s = "早上好。值得说的三条，第一条：ducter.ai 的域名后天到期，还没续费。";
+  const kept = keepClauses(s);
+  expect(kept.replaceAll("⁠", "")).toBe(s);
+  expect(kept).toContain("到⁠期，");
+  expect(kept).toContain("还⁠没⁠续⁠费。");
+  expect(kept).not.toContain("后⁠天");
+  expect(keepClauses("Two ways to fix CI.")).toBe("Two ways to fix CI.");
+  const v = src("settings-delight.tsx");
+  for (const k of ['t("notify.pv.ask")', "t(`notify.pv.find.${find}`)", "under)"]) expect(v).toContain(`keepClauses(${k}`);
+});

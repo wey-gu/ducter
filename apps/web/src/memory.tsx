@@ -18,7 +18,7 @@ import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
-import { ago, harnessName, spoken } from "./format.ts";
+import { ago, harnessName, keepClauses, spoken } from "./format.ts";
 import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
@@ -520,7 +520,7 @@ function MemHealthHead({ b }: { b: BridgeView | undefined }) {
         {act}
       </GHead>
       {p && (
-        <GRow title={t("mem.health.plugin", who)} line={p.busy ? t("mem.health.plugin.busy", who) : t("mem.health.plugin.why")}>
+        <GRow title={t("mem.health.plugin", who)} line={p.busy ? t("mem.health.plugin.busy", who) : keepClauses(t(p.agents.length === 1 ? "mem.health.plugin.why.one" : "mem.health.plugin.why"))}>
           {p.busy ? <Btn kind="secondary" size="sm" busy label={t("mem.health.plugin.going")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => {}} /> : homeDv && <Btn kind="secondary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => p.agents.forEach((a) => A.installMem(homeDv.id, a))} />}
         </GRow>
       )}

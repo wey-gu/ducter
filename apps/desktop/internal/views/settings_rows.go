@@ -95,6 +95,69 @@ func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string
 	})
 }
 
+// pickCol is the tile column of a group whose only tile is what the person picked (D556): New
+// tasks start shows the chosen agent's coin, and while both are 自动 nothing, so the group has
+// no column at all and its words sit on the text edge (never beside an empty column, as
+// headRow, D501). A pick opens the column in every row of the group with the Across spring,
+// the coin coming in with it: the words move over together, the pick arriving. Reduced
+// motion: at once.
+func (a *App) pickCol(c *ui.Context, key string, col bool, tile func()) {
+	t := a.T
+	// The coin waits for the words to clear its place, then comes in.
+	an := t.Nav.Across
+	an.Delay = 120 * time.Millisecond
+	in := ui.ElementTransition{Animation: &an, Enter: &ui.Motion{Y: 6, Scale: 0.8}}
+	if c.Preferences().ReduceMotion {
+		in = ui.ElementTransition{Duration: -1}
+	}
+	w := float32(0)
+	if col {
+		w = 40 + t.S3
+	}
+	ui.Row(c.Key("pcol:" + key)).Width(w).Shrink(0).AlignItems(ui.Center).Children(func() {
+		if tile != nil {
+			ui.Row(c.Key("ptile:" + key)).Width(40).Shrink(0).Justify(ui.Center).AlignItems(ui.Center).Transition(in).Children(tile)
+		}
+	})
+}
+
+// pickMove is how what follows pickCol moves when the column opens or closes: its left edge
+// slides and its right edge stays, so the words travel and the control at the right edge stands.
+func (a *App) pickMove(c *ui.Context) ui.ElementTransition {
+	if c.Preferences().ReduceMotion {
+		return ui.ElementTransition{Duration: -1}
+	}
+	return ui.ElementTransition{Animation: &a.T.Nav.Across, Position: true, Width: true}
+}
+
+// choiceRow is tileRow with pickCol's column: there only while col (some row of the group has
+// its picked tile).
+func (a *App) choiceRow(c *ui.Context, key string, col bool, tile func(), title, line string, control func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("prow:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+		a.pickCol(c, key, col, tile)
+		ui.Row(c.Key("pwords:" + key)).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Transition(a.pickMove(c)).Children(func() {
+			a.wordsThenControl(c, func() {
+				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+				if line != "" {
+					uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				}
+			}, control)
+		})
+	})
+}
+
+// pickFoot is footRow (no actions) with pickCol's column.
+func (a *App) pickFoot(c *ui.Context, key, note string, col bool) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("foot:"+key)).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
+		a.pickCol(c, key+":foot", col, nil)
+		uiText(c.Key("pwords:"+key+":foot"), note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0).Transition(a.pickMove(c))
+	})
+}
+
 // rowWordsMin is the least width a row's words keep beside its control
 // (D445): narrower, the control drops under the words on the text column,
 // as a phone's row does (D273), never squeezing the words to a letter a line

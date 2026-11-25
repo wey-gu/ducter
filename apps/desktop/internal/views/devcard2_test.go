@@ -156,7 +156,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			d.selClient = "app1"
 			d.card.sheet.fold = "cl:app1" // D398: how it's connected is folded at the foot
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker", "Ducter")} {
+			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("this Mac's card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -194,7 +194,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient, d.sel = "", "w-mac"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("card.via", L.T("card.via.app")), L.T("chip.worker", "Ducter")} {
+			for _, want := range []string{L.T("card.via", L.T("card.via.app")), L.T("chip.worker")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("worker card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -208,7 +208,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.sel, d.selClient = "", "app1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("chip.worker", "Ducter")) || h.tt.HasText(L.T("work.mac.note.off", "hel")) {
+			if !h.tt.HasText(L.T("chip.worker")) || h.tt.HasText(L.T("work.mac.note.off", "hel")) {
 				t.Fatalf("off: the chip, its helper behind ⓘ: %q", h.tt.Texts())
 			}
 			h.shotPage(fmt.Sprintf("mac-%s-work-off", lang))

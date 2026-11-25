@@ -279,6 +279,38 @@ func keepWords(s string) string {
 	return b.String()
 }
 
+// clausePunct ends a Chinese clause: what keepClauses keeps a clause's last word against.
+const clausePunct = "，。；：？！、"
+
+// keepClauses is keepWords for a sentence (D556): short Chinese runs stay whole as there,
+// and in a longer run the last two characters before a clause's punctuation (or the end)
+// stay together, the clause's last word, where a break reads worst: never 「…后天到」
+// with 「期，还没续费。」 on the next line. A long run still wraps anywhere else.
+func keepClauses(s string) string {
+	rs := []rune(s)
+	var b strings.Builder
+	for i := 0; i < len(rs); {
+		j := i
+		for j < len(rs) && isHan(rs[j]) {
+			j++
+		}
+		if j > i {
+			end := j == len(rs) || strings.ContainsRune(clausePunct, rs[j])
+			for k := i; k < j; k++ {
+				b.WriteRune(rs[k])
+				if k < j-1 && (j-i <= 4 || end && k == j-2) {
+					b.WriteRune(wordJoiner)
+				}
+			}
+			i = j
+			continue
+		}
+		b.WriteRune(rs[i])
+		i++
+	}
+	return b.String()
+}
+
 // keepTail keeps a question's last few characters together (D493), so a
 // wrapped question never ends on a line of its own like 「吗？」: in Chinese
 // the last four characters are joined with word joiners (Core Text honours

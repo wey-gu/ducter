@@ -32,7 +32,7 @@ func TestDevcardTrim(t *testing.T) {
 		lendFrame(tt)
 		lendFrame(tt)
 		persona := app.personaName()
-		for _, want := range []string{L.T("wmem.carried", "Hetzner Server"), L.T("worker.g", persona), L.T("chip.worker", persona)} {
+		for _, want := range []string{L.T("wmem.carried", "Hetzner Server"), L.T("worker.g", persona), L.T("chip.worker")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: the card misses %q: %q", lang, want, tt.Texts())
 			}
@@ -44,7 +44,7 @@ func TestDevcardTrim(t *testing.T) {
 		// The role once: the chip says 帮 Ducter 做事, the line under the name only that it is free.
 		n := 0
 		for _, s := range tt.Texts() {
-			if s == L.T("card.status.does", persona) {
+			if s == L.T("card.status.does") {
 				n++
 			}
 		}
@@ -57,7 +57,7 @@ func TestDevcardTrim(t *testing.T) {
 		// haswell has no chip, so its line keeps the role.
 		app.devState().sel = "haswell"
 		lendFrame(tt)
-		if !tt.HasText(L.T("card.status.does", persona)) || !tt.HasText(L.T("worker.g", persona)) {
+		if !tt.HasText(L.T("card.status.does")) || !tt.HasText(L.T("worker.g", persona)) {
 			t.Errorf("%s: haswell's card: %q", lang, tt.Texts())
 		}
 		app.devState().sel = "local"

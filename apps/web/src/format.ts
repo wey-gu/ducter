@@ -129,6 +129,30 @@ export function deviceLabel(L: Strings, d: string | undefined): string {
 }
 
 
+/**
+ * D556, as the Mac's keepClauses: a sentence's Chinese words kept whole where a break reads worst.
+ * A run of up to four characters stays together, and in a longer run the last two before a clause's
+ * punctuation (or the end), its last word: never 「…后天到」 with 「期，还没续费。」 on the next line.
+ * Word joiners (U+2060), which every browser honours; a long run still wraps anywhere else.
+ */
+export function keepClauses(s: string): string {
+  const rs = [...s];
+  const han = (c: string | undefined) => !!c && /\p{Script=Han}/u.test(c);
+  let out = "";
+  for (let i = 0; i < rs.length; ) {
+    let j = i;
+    while (j < rs.length && han(rs[j])) j++;
+    if (j === i) {
+      out += rs[i++];
+      continue;
+    }
+    const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
+    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && k === j - 2)) ? "\u2060" : "");
+    i = j;
+  }
+  return out;
+}
+
 /** A reason's first clause: up to its first comma or full stop outside quotes. */
 export function firstClause(s: string): string {
   let depth = 0;

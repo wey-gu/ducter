@@ -243,29 +243,28 @@ func (a *App) sheetStatus(dv *protocol.DeviceView) (state, line string, ink ui.C
 		who := a.S.PersonaName
 		switch {
 		case n == 1:
-			return "", a.L.T("card.status.home.working.one", who), t.InkMuted, false
+			return "", a.L.T("card.status.home.working.one"), t.InkMuted, false
 		case n > 1:
-			return "", a.L.T("card.status.home.working", who, n), t.InkMuted, false
+			return "", a.L.T("card.status.home.working", n), t.InkMuted, false
 		}
 		return "", a.L.T("card.status.home", who), t.InkMuted, false
 	}
 	if dv.Kind == "phone" {
 		return "", a.L.T("device.client.now"), t.InkMuted, false
 	}
-	// D358: a computer helps the partner, never another machine.
-	home := a.personaName()
+	// D358: a computer helps, never another machine; D556: it helps you, whichever partner is shown.
 	switch {
 	case n == 1:
-		return "", a.L.T("card.status.working.one", home), t.Working.Ink, true
+		return "", a.L.T("card.status.working.one"), t.Working.Ink, true
 	case n > 1:
-		return "", a.L.T("card.status.working", home, n), t.Working.Ink, true
+		return "", a.L.T("card.status.working", n), t.Working.Ink, true
 	}
-	// D420: this Mac's card has the 帮 {name} 做事 chip, which says its role;
+	// D420: this Mac's card has the 帮你做事 chip, which says its role;
 	// the line under the name says only that it is free, as the list does.
 	if a.isThisMac(deviceComputer(dv)) && a.canWork() {
 		return "", a.L.T("list.state.ready"), t.InkMuted, false
 	}
-	return "", a.L.T("card.status.does", home), t.InkMuted, false
+	return "", a.L.T("card.status.does"), t.InkMuted, false
 }
 
 // sheetState is a device's state word under its name, centered, in its
@@ -1098,7 +1097,7 @@ func (a *App) workerChip(c *ui.Context, card string, dv *protocol.DeviceView) ch
 	if h := a.homeDevice(); h != nil {
 		art = deviceArt(h)
 	}
-	sp := chipSpec{id: "worker", label: a.L.T("chip.worker", a.personaName()), art: art, look: chipOff, busy: w.busy != ""}
+	sp := chipSpec{id: "worker", label: a.L.T("chip.worker"), art: art, look: chipOff, busy: w.busy != ""}
 	switch {
 	case w.busy == "on":
 		sp.look = chipOn

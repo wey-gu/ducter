@@ -142,7 +142,7 @@ func TestCharacterSheet(t *testing.T) {
 			app := sheetApp(t, lang, "awake")
 			tt := sheetTester(app, sz[0], sz[1], false)
 			// The default card: who, how it is, what it carries, what it can do; nothing else.
-			has(tt, L.T("card.status.working", "Ducter", 2), L.T("chip.worker", "Ducter"), L.T("chip.computer"), "+ "+L.T("chip.web"),
+			has(tt, L.T("card.status.working", 2), L.T("chip.worker"), L.T("chip.computer"), "+ "+L.T("chip.web"),
 				L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")))
 			// D398: the one 断开 waits in the fold at the foot.
 			hasNot(tt, L.T("card.disconnect.device", "MacBook"))
@@ -196,10 +196,10 @@ func TestCharacterSheet(t *testing.T) {
 		// ⓘ holds the old helper; the chip asks before stopping running tasks, default 做完再停.
 		app = sheetApp(t, lang, "awake")
 		tt = sheetTester(app, 1280, 860, true)
-		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker", "Ducter")))
+		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker")))
 		has(tt, L.T("work.mac.note.off", "hel")+" "+L.T("where.first_line"))
-		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker", "Ducter")))
-		click(tt, spoken(L, L.T("chip.worker", "Ducter"), L.T("chip.state.on")))
+		click(tt, spoken(L, L.T("chip.info"), L.T("chip.worker")))
+		click(tt, spoken(L, L.T("chip.worker"), L.T("chip.state.on")))
 		has(tt, L.T("chip.stop.ask", "MacBook", 2), L.T("chip.stop.after"), L.T("chip.stop.now"))
 		shot(tt, "stop-ask")
 		click(tt, L.T("chip.stop.after"))

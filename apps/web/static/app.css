@@ -24393,3 +24393,12 @@ html.kb #app {
    the words only when they would keep less than about 160 (D468). */
 .chat-row.flat { --chat-col: 0px; padding-left: var(--set-in, var(--s4)); flex-wrap: wrap; }
 .chat-row.flat > .grow { flex: 1 1 160px; }
+/* D556: a tile that arrives with a pick (New tasks start's agent) opens its column as it comes in: the words
+   start where they were and move over with it, never a jump. Never on opening the page; still under reduced motion. */
+.g-tile.enter { animation: tile-open var(--t-across) var(--ease-push), tile-in var(--t-across) var(--ease-push) 120ms both; }
+@keyframes tile-open { from { margin-inline-end: calc(-40px - var(--s3)); } }
+@keyframes tile-in { from { opacity: 0; transform: translateY(6px) scale(0.8); } }
+/* New tasks start: no column while both are 自动 (bare); a pick opens it, the rows and the foot moving over. */
+.g-group.picks.bare { --chat-col: 0px; }
+.g-group.picks > .chat-row, .g-group.picks > .chat-foot { transition: padding var(--t-across) var(--ease-push); }
+@media (prefers-reduced-motion: reduce) { .g-tile.enter { animation: none; } .g-group.picks > .chat-row, .g-group.picks > .chat-foot { transition: none; } }

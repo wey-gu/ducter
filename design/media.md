@@ -215,8 +215,12 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   card's own left edge, outside it (the whole card opens the file): **存到 Nowledge Mem / Save to
   Nowledge Mem**, saving, **已存进 Nowledge Mem / In Nowledge Mem** and **去看 / Open**, or why not with its
   fix; only while Mem is connected and signed in, only for a file Mem reads. The viewer carries the
-  same action in its existing row, before **存一份 / Save a copy** (web `mem-keep.tsx`, Mac
-  `memkeep.go`).
+  same action last in its foot bar, one aligned row: 来自… on the left, then **拷贝 / Copy**, **存一份 /
+  Save a copy** and **存到 Nowledge Mem** (D572; on a phone 来自… takes its own row and the actions
+  the next, at the small size). A failure is never in the row: one line in the needs-you ink, under
+  the card on its edge or above the viewer's bar on its text edge, **没存进去：{why} / Not saved:
+  {why}** with its one fix and, when Mem said something, **原话 / Its words** opening Mem's sentence
+  under it (web `mem-keep.tsx`, Mac `memkeep.go`).
 - **Sounds (D286):** `.m4a`, `.mp3`, `.wav`, `.aac` are files Ducter knows (`FILE_TYPES`,
   `fileView` "audio", the partner's line says "audio"); the viewer plays one; the Mac offers
   **在 Mac 上打开**.

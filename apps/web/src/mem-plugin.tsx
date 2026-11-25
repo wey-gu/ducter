@@ -45,6 +45,17 @@ export function MemAsk({ dv, h, onDone }: { dv: DeviceView; h: DeviceHarness; on
   );
 }
 
+/**
+ * D569: whether an update (or any setup) can run on that computer from here, as the home runs it
+ * (core mem-plugins.ts openSetup): the computer awake and any AI signed in there, not only the one
+ * whose plugin it is (a worker's Claude Code signed out there hid the button while its Codex could
+ * do it). "" when it can; else why not, said under the row, and nothing offers an update.
+ */
+export function memCant(dv: DeviceView): "" | "away" | "no_agent" {
+  if (dv.state !== "awake") return "away";
+  return (dv.harnesses ?? []).some((x) => x.installed && x.loggedIn) ? "" : "no_agent";
+}
+
 const answerFor = (dv: DeviceView, h: DeviceHarness) => (A.memAnswer?.device === dv.id && A.memAnswer.harness === h.harness ? A.memAnswer.reason : undefined);
 
 /**
@@ -53,7 +64,7 @@ const answerFor = (dv: DeviceView, h: DeviceHarness) => (A.memAnswer?.device ===
  */
 export function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const [asking, setAsking] = useState(false);
-  if (!h.mem || !h.installed || !h.loggedIn) return null;
+  if (!h.mem || !h.installed) return null;
   const w = memWords(A.L, memLine(dv, h), harnessName(h.harness), h.harness);
   const about = spoken(A.L, harnessName(h.harness), "Nowledge Mem");
   if (w.busy)
@@ -62,7 +73,7 @@ export function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
         <Btn kind="secondary" size="sm" label={w.busy} about={about} busy onClick={() => {}} />
       </div>
     );
-  if (!w.action || dv.state !== "awake") return null;
+  if (!w.action || memCant(dv)) return null;
   const answer = answerFor(dv, h);
   return (
     <>
@@ -97,13 +108,19 @@ function MemPluginRow({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const [asking, setAsking] = useState(false);
   const agent = harnessName(h.harness);
   const w = memWords(A.L, memLine(dv, h), agent, h.harness);
-  const can = !!w.action && h.loggedIn && dv.state === "awake";
+  const cant = w.action ? memCant(dv) : "";
+  const can = !!w.action && !cant;
   const answer = answerFor(dv, h);
   return (
     <>
       <GRow tile={<Tile><Coin harness={h.harness} size={36} /></Tile>} title={t("memp.row", agent, shownDeviceName(dv.name))} line={w.line}>
         {w.busy ? <Btn kind="secondary" size="sm" label={w.busy} about={spoken(A.L, agent, "Nowledge Mem")} busy onClick={() => {}} /> : can && !asking && <Btn kind="secondary" size="sm" label={w.action!} about={spoken(A.L, agent, "Nowledge Mem")} onClick={() => setAsking(true)} />}
       </GRow>
+      {cant && (
+        <GBlock>
+          <small class="mem-why">{t(`memp.cant.${cant}`, shownDeviceName(dv.name))}</small>
+        </GBlock>
+      )}
       {can && asking && (
         <GBlock>
           <MemAsk dv={dv} h={h} onDone={() => setAsking(false)} />

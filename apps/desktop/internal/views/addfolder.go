@@ -229,7 +229,7 @@ func (a *App) addFolderSheet(c *ui.Context) {
 		title = a.L.T("cant.pick.title")
 	}
 	open := true
-	ui.DialogBase(c, &open, func(back, panel ui.Element) {
+	a.dialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S6, 600)).MaxHeight(sheetBack(c, back, h)).Padding(t.S5+4, t.S6, t.S5, t.S6).Gap(t.S4).Radius(t.RadiusXL).
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)

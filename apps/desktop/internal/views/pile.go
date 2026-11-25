@@ -314,7 +314,7 @@ func (a *App) pileSheet(c *ui.Context) {
 		title = a.L.T("pile.g." + p.group)
 	}
 	open := true
-	ui.DialogBase(c, &open, func(back, panel ui.Element) {
+	a.dialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S6, 760)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		a.enter(c, panel)

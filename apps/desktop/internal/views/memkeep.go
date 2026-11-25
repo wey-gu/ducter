@@ -128,61 +128,95 @@ func (a *App) memFileFrame(f protocol.ServerFrame) {
 	a.memKeep[m.Media] = &memKeepNow{why: why, msg: m.Message}
 }
 
-// keepWhy is Mem's reason in the person's words (D563: from Mem's facts).
-func (a *App) keepWhy(why, msg string) string {
-	if why == "refused" {
-		if msg != "" {
-			return a.L.T("memfile.why.refused", msg)
-		}
-		return a.L.T("memfile.why.refused.none")
-	}
+// keepWhy is why it wasn't kept in the person's words (D563: from Mem's
+// facts; D572: never Mem's raw sentence, which waits behind 原话).
+func (a *App) keepWhy(why string) string {
 	return a.L.T("memfile.why." + why)
 }
 
 // memKeepLine is the quiet line under a file card (and the viewer's word once
-// kept or failed): on the card's own left edge, its width at most.
+// kept): on the card's own left edge, its width at most.
 func (a *App) memKeepLine(c *ui.Context, ref protocol.MediaRef, look string) {
 	t := a.T
 	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
+	if look == "failed" {
+		ui.Column(c.Key("mk:" + ref.ID)).MaxWidth(cardWidth).Shrink(1).Children(func() { a.memKeepTrouble(c, ref) })
+		return
+	}
 	ui.Row(c.Key("mk:" + ref.ID)).MaxWidth(cardWidth).Shrink(1).Gap(t.S2).Wrap().AlignItems(ui.Center).MinHeight(28).Children(func() {
-		switch look {
-		case "save":
-			if a.quietButton(c, "mk:"+ref.ID, a.L.T("memfile.save"), name, false, 0) {
+		a.memKeepWords(c, ref, look, name)
+	})
+}
+
+// memKeepWords is what the line says for can save, saving and kept.
+func (a *App) memKeepWords(c *ui.Context, ref protocol.MediaRef, look, name string) {
+	t := a.T
+	switch look {
+	case "save":
+		if a.quietButton(c, "mk:"+ref.ID, a.L.T("memfile.save"), name, false, 0) {
+			a.keepInMem(ref)
+		}
+	case "saving":
+		ui.Box(c).Size(12, 12).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
+		uiText(c, a.L.T("memfile.saving")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+	case "saved":
+		uiText(c, a.L.T("memfile.saved")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
+		saved := a.S.Mem.Files[ref.ID]
+		to := saved.Web
+		if memAppHere() && saved.URI != "" {
+			to = saved.URI
+		}
+		if to != "" && a.quietLink(c, "mk-open:"+ref.ID, a.L.T("memfile.open"), spoken(a.L, a.L.T("memfile.open"), a.L.T("memfile.saved"))) {
+			a.openLink(to)
+		}
+	}
+}
+
+// memKeepTrouble (D572) is why a file wasn't kept, as one line: the human
+// words in the needs-you ink (never the failed red), the one fix as a quiet
+// button, and Mem's own sentence only behind 原话 / Its words.
+func (a *App) memKeepTrouble(c *ui.Context, ref protocol.MediaRef) {
+	t := a.T
+	n := a.memKeep[ref.ID]
+	if n == nil || n.saving {
+		return
+	}
+	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
+	rawKey := "mkraw:" + ref.ID
+	ui.Row(c.Key("mk-line:" + ref.ID)).Gap(t.S1).Wrap().AlignItems(ui.Center).MinHeight(28).Children(func() {
+		uiText(c, a.L.T("memfile.failed", a.keepWhy(n.why))).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).
+			MinWidth(0).Shrink(1).LineHeight(a.leading(1.4)).Role(ui.RoleStatus).Margin(0, t.S1, 0, 0)
+		switch n.why {
+		case "signed_out", "missing", "off":
+			label := a.L.T("memfile.settings")
+			if n.why == "signed_out" {
+				label = a.L.T("memfile.signin")
+			}
+			if a.quietButton(c, "mk-fix:"+ref.ID, label, "Nowledge Mem", true, 1) {
+				a.fileView = nil
+				a.openTab(TabMemory)
+			}
+		case "unreachable", "refused", "no_space":
+			if a.quietButton(c, "mk-retry:"+ref.ID, a.L.T("memfile.retry"), name, true, 0) {
 				a.keepInMem(ref)
 			}
-		case "saving":
-			ui.Box(c).Size(12, 12).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(11, 11) })
-			uiText(c, a.L.T("memfile.saving")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
-		case "saved":
-			uiText(c, a.L.T("memfile.saved")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
-			saved := a.S.Mem.Files[ref.ID]
-			to := saved.Web
-			if memAppHere() && saved.URI != "" {
-				to = saved.URI
+		}
+		if n.msg != "" {
+			chev := 1
+			if a.open[rawKey] {
+				chev = 2
 			}
-			if to != "" && a.quietLink(c, "mk-open:"+ref.ID, a.L.T("memfile.open"), spoken(a.L, a.L.T("memfile.open"), a.L.T("memfile.saved"))) {
-				a.openLink(to)
-			}
-		case "failed":
-			n := a.memKeep[ref.ID]
-			uiText(c, a.L.T("memfile.failed", a.keepWhy(n.why, n.msg))).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0).Shrink(1).LineHeight(a.leading(1.4))
-			switch n.why {
-			case "signed_out", "missing", "off":
-				label := a.L.T("memfile.settings")
-				if n.why == "signed_out" {
-					label = a.L.T("memfile.signin")
+			if a.quietButton(c, "mk-raw:"+ref.ID, a.L.T("memfile.raw"), "Nowledge Mem", false, chev) {
+				if a.open == nil {
+					a.open = map[string]bool{}
 				}
-				if a.quietButton(c, "mk-fix:"+ref.ID, label, "Nowledge Mem", true, 1) {
-					a.fileView = nil
-					a.openTab(TabMemory)
-				}
-			case "unreachable", "refused":
-				if a.quietButton(c, "mk-retry:"+ref.ID, a.L.T("memfile.retry"), name, true, 0) {
-					a.keepInMem(ref)
-				}
+				a.open[rawKey] = !a.open[rawKey]
 			}
 		}
 	})
+	if n.msg != "" && a.open[rawKey] {
+		uiText(c.Key("mk-rawtext:"+ref.ID), n.msg).FontSize(t.XS).TextColor(t.InkMuted).Selectable().LineHeight(a.leading(1.5)).MinWidth(0).Margin(0, 0, t.S1, 0)
+	}
 }
 
 // memKeepCard is the line under a card Ducter made (nothing for the person's own files).
@@ -192,20 +226,29 @@ func (a *App) memKeepCard(c *ui.Context, ref protocol.MediaRef) {
 	}
 }
 
-// memKeepBar is the viewer's action, in its existing row: a text button while
-// it can save, the line's own words once saving, kept or failed. Only what a
-// task made (the person's own files open there too).
+// memKeepBar is the viewer's slot, last in its foot bar (D572): a text button
+// while it can save and after a failure (so the row never re-lays out), busy
+// while saving, the quiet word once kept. A failure is its own line above the
+// bar (memKeepFailing). Only what a task made (the person's own files open
+// there too).
 func (a *App) memKeepBar(c *ui.Context, ref protocol.MediaRef) {
 	if ref.From == nil {
 		return
 	}
 	switch look := a.memKeepLook(ref); look {
 	case "":
-	case "save":
+	case "save", "failed":
 		if a.buttonFor(c, a.L.T("memfile.save"), firstNonEmpty(ref.Name, a.L.T("media.file")), btnText, a.T.ControlSM, a.T.Surface) {
 			a.keepInMem(ref)
 		}
-	default:
-		a.memKeepLine(c, ref, look)
+	default: // saving: the shared spinner and its words; kept: the quiet word and Open, on the bar's line
+		ui.Row(c.Key("mk-bar:" + ref.ID)).Height(a.controlHeight(a.T.ControlSM)).Gap(a.T.S2).AlignItems(ui.Center).Shrink(0).Children(func() {
+			a.memKeepWords(c, ref, look, firstNonEmpty(ref.Name, a.L.T("media.file")))
+		})
 	}
+}
+
+// memKeepFailing says whether the viewer shows a failure line above its bar.
+func (a *App) memKeepFailing(ref protocol.MediaRef) bool {
+	return ref.From != nil && a.memKeepLook(ref) == "failed"
 }

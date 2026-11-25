@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.1.72 - 2026-11-25
+
+<!-- whats-new
+zh: ⌘W、标准菜单栏、⌘[ ⌘] 和缩放：Mac 上该有的都有了
+en: ⌘W, the standard menu bar, ⌘[ ⌘] and zoom: the Mac keys your hands know
+-->
+
+**The keys your hands already know**
+- On the Mac, ⌘W works everywhere. In the main window it closes the top layer first, then Settings,
+  then hides the window; an app's own window closes.
+- The standard menu bar: File (New task ⌘N, Find anything ⌘K, Close ⌘W), Edit with Find ⌘F,
+  View with Back ⌘[, Forward ⌘], zoom ⌘= ⌘− ⌘0 and full screen, and Help with every shortcut (⌘/).
+- Back and forward also follow a two-finger swipe and your mouse's side buttons, and the main window
+  reopens where you left it.
+- ⌘Return sends from any box that takes a newline.
+- On the web, Esc closes one thing at a time, the browser's Back closes a sheet before it leaves
+  the page, and the tab title shows what's waiting on you. On Android, Back closes the top layer
+  first.
+
+## 0.1.71 - 2026-11-25
+
+<!-- whats-new
+zh: 记忆页更顺：更新在眼前，存文件只放你自己的空间
+en: Memory: updates where you look, files kept where only you can read
+-->
+
+**Memory**
+- An outdated Nowledge Mem plugin on any of your computers has Update right on its row, and the
+  Overview's line updates it in place. When it can't run from here, one line says why.
+- Nowledge Mem's own questions no longer count as waiting on you. They sit in one quiet row, each
+  with your partner's suggestion and "Take the suggestions" for all of them.
+- Things you say you prefer are saved as preferences, so they show under the ways you like things.
+
+**Save to Nowledge Mem**
+- Files go to your own Space, the one only you can read, and saving no longer fails for want of a
+  Space.
+- If a save doesn't go through, one plain line says why, with its fix; Mem's own words sit behind
+  "Its words". The viewer's buttons stay in one row.
+
 ## 0.1.70 - 2026-11-25
 
 <!-- whats-new

@@ -104,6 +104,9 @@ type state struct {
 	// FloatOffered is set once it came by itself (it never does again).
 	FloatOpen    bool `json:"floatOpen,omitempty"`
 	FloatOffered bool `json:"floatOffered,omitempty"`
+	// D573: View › Zoom In / Zoom Out (⌘+ ⌘−), the window content's zoom on
+	// this Mac; 0 is actual size.
+	Zoom float32 `json:"zoom,omitempty"`
 }
 
 // StartLang is the window's language at launch (a BCP 47 tag the strings
@@ -320,6 +323,26 @@ func (l *Local) SetDensity(v string) {
 		v = ""
 	}
 	l.st.Density = v
+	l.save()
+}
+
+// Zoom is the window content's zoom on this Mac (D573), 1 for actual size.
+func (l *Local) Zoom() float32 {
+	if l == nil || l.st.Zoom == 0 {
+		return 1
+	}
+	return l.st.Zoom
+}
+
+// SetZoom remembers it (1 forgets it).
+func (l *Local) SetZoom(z float32) {
+	if l == nil {
+		return
+	}
+	if z == 1 {
+		z = 0
+	}
+	l.st.Zoom = z
 	l.save()
 }
 

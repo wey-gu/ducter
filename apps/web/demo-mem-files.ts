@@ -5,7 +5,9 @@
 //   DUCTER_PORT=7977 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_KEEP=can bun apps/web/demo-mem-files.ts
 // DEMO_KEEP: can (nothing kept yet) · saved (the report already kept) · slow (a tap waits DEMO_SLOW_MS,
 //   default 20 s, so the busy state can be seen) · signed_out (a tap answers Mem's 401) · auto (the
-//   Settings default on while Mem is out of reach: the one it couldn't keep is said under its row)
+//   Settings default on while Mem is out of reach: the one it couldn't keep is said under its row) ·
+//   no_space (D572: Mem lists Spaces but marks none personal or write default, as a tap meets it) ·
+//   down (a tap meets Mem out of reach)
 // then open http://127.0.0.1:7977/app (or #settings=memory)
 import { join, resolve } from "node:path";
 import { startCore, stubRunner } from "./demo-core.ts";
@@ -19,7 +21,7 @@ const FAKE = resolve(import.meta.dir, "../../packages/partner/eval/fake-artifact
 const slow = want === "slow" ? Number(process.env.DEMO_SLOW_MS ?? 20_000) : 0;
 const memRun = async (argv: string[], ms: number) => {
   if (slow && (argv.includes("add") || argv.includes("update"))) await Bun.sleep(slow);
-  const p = Bun.spawn(["bun", FAKE, "--json", ...argv], { stdout: "pipe", stderr: "pipe", env: { PATH: process.env.PATH ?? "", NMEM_FAKE_ARTIFACTS: state, ...(want === "signed_out" ? { NMEM_FAKE_SIGNED_OUT: "1" } : want === "auto" ? { NMEM_FAKE_DOWN: "1" } : {}) } });
+  const p = Bun.spawn(["bun", FAKE, "--json", ...argv], { stdout: "pipe", stderr: "pipe", env: { PATH: process.env.PATH ?? "", NMEM_FAKE_ARTIFACTS: state, ...(want === "signed_out" ? { NMEM_FAKE_SIGNED_OUT: "1" } : want === "auto" || want === "down" ? { NMEM_FAKE_DOWN: "1" } : want === "no_space" ? { NMEM_FAKE_SPACES: "none" } : {}) } });
   const timer = setTimeout(() => p.kill(), ms);
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   clearTimeout(timer);

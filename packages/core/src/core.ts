@@ -319,6 +319,8 @@ export interface CoreOptions {
   bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined>; exec?: import("./bridge-link.ts").MemExec; sys?: import("./mem-cli.ts").MemSys };
   /** D368: Nowledge Mem's Working Memory, read-only: tests and the eval pass a fake nmem (else bridgeLink's, else none in tests). */
   workingMemory?: { run?: NmemCall; ttlMs?: number };
+  /** D569: the partner's judge for Nowledge Mem's asks (tests and demos: a fake; else the cheap model, never in a test). */
+  memAdvise?: (prompt: string) => Promise<string>;
   /** D380: the quick web look (tests, the eval and demos: a fake; else one on the agent the partner thinks with). */
   webLook?: import("@ducter/protocol/src/internal.ts").WebLookPort;
   /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
@@ -1307,6 +1309,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
     on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     changed: () => settings.bridgeChanged(),
+    // D569: the partner's suggestion for each ask, on its cheap model, judged from Mem's own facts.
+    advise: opts.memAdvise ?? (process.env.NODE_ENV === "test" ? undefined : async (prompt) => (await createHarnessAsk({ harness: () => runner?.harness, pick: () => brainInUse(), dataDir, cheap: true, dir: "judge", timeoutMs: 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt)).text),
+    lang: () => langNow(),
   });
   settings.setCheck(() => memCheck.get(), (id, answer) => memCheck.answer(id, answer));
   // D375: Mem's own health on the home (its doctor) for the same page's Nowledge Mem head, gated like the glance.

@@ -206,6 +206,8 @@ export interface Expect {
   noThreadSearch?: boolean;
   /** A memory was saved whose title + content matches this. */
   remember?: RegExp;
+  /** D569: what was saved carries this kind (Mem's unit type). */
+  rememberKind?: "preference" | "decision" | "fact";
   /** Nothing was saved to memory. */
   noRemember?: boolean;
   /** Text no memory_add call (even a refused one) may contain. */
@@ -1809,7 +1811,8 @@ export const scenarios: Scenario[] = [
     floor: true,
     memories: MEM_BACKGROUND,
     steps: [{ user: "以后写测试，凡是涉及时间的都用假时钟，别再用真的 sleep 了。" }],
-    expect: { lines: 1, opens: 0, remember: /假时钟|fake clock/i, msgs: [0, 1], maxChars: 60, forbid: [NO_MEM_TALK] },
+    // D569: kept as a preference (Mem's own kind), so Settings › 记忆 shows it under 你喜欢的做法.
+    expect: { lines: 1, opens: 0, remember: /假时钟|fake clock/i, msgs: [0, 1], maxChars: 60, forbid: [NO_MEM_TALK], rememberKind: "preference" },
     rubric:
       "The user states a lasting preference. Pass if the partner saved it to memory (memory_add) and replies with at most one short, natural Chinese line (e.g. \"好，以后都这样。\") or nothing. The reply must not announce the mechanics (存入记忆, saved to memory, 已记录); the app shows a small Noted line by itself. No task is opened.",
   },
@@ -1819,7 +1822,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: MEM_BACKGROUND,
     steps: [{ user: "By the way, I use pnpm, not npm, in all my JS projects. Keep that in mind." }],
-    expect: { lines: 1, opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK] },
+    expect: { lines: 1, opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK], rememberKind: "preference" },
     rubric:
       "A lasting preference. Pass if the partner saved it (memory_add) and answers with at most one short natural English line (\"Got it, pnpm from now on.\") or nothing, without saying it saved anything to memory. No task.",
   },

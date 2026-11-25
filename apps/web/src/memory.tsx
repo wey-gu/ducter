@@ -282,22 +282,36 @@ function MemAbout() {
   );
 }
 
-/** D465: an answer's words: the one Mem suggests is the primary, the others quiet. */
+/** D465: an answer's words. */
 const ANSWER_KEY: Record<MemCheckAnswer, string> = { newer: "mem.check.newer", older: "mem.check.older", both: "mem.check.both", use: "mem.check.use", not: "mem.check.not" };
 
+const aboutOf = (it: MemCheckItem) => it.title ?? it.pair?.map((p) => p.title).join(" / ") ?? "";
+
+/**
+ * D569: the suggestion, said, then the answers: the suggested one first as the secondary clay, the
+ * others quiet text buttons (the group's one primary is Take the suggestions). The partner's reason
+ * when it judged; else Mem's own suggestion, named as Mem's.
+ */
 function CheckAnswers({ it }: { it: MemCheckItem }) {
-  const about = it.title ?? it.pair?.map((p) => p.title).join(" / ") ?? "";
+  const about = aboutOf(it);
   return (
-    <span class="g-acts mem-check-acts">
-      {/* Mem's suggestion, the primary, first on the left (D543). */}
-      {[...it.answers].sort((x, y) => Number(y === it.suggest) - Number(x === it.suggest)).map((a) => (
-        <Btn key={a} kind={a === it.suggest ? "primary" : "text"} size="sm" label={t(ANSWER_KEY[a])} about={about} onClick={() => (A.memSettle(it.id, a), say("mem-check", t(`said.mem.check.${a}`)))} />
-      ))}
-    </span>
+    <>
+      {it.suggest && (
+        <span class="mem-check-advice">
+          <b>{t(it.why ? "mem.check.mine" : "mem.check.mems", t(ANSWER_KEY[it.suggest]))}</b>
+          {it.why && <small dir="auto">{it.why}</small>}
+        </span>
+      )}
+      <span class="g-acts mem-check-acts">
+        {[...it.answers].sort((x, y) => Number(y === it.suggest) - Number(x === it.suggest)).map((a) => (
+          <Btn key={a} kind={a === it.suggest ? "secondary" : "text"} size="sm" label={t(ANSWER_KEY[a])} about={about} onClick={() => (A.memSettle(it.id, a), say("mem-check", t(`said.mem.check.${a}`)))} />
+        ))}
+      </span>
+    </>
   );
 }
 
-/** D465: two memories Mem found may disagree: both titles, earlier first, Mem's suggestion the default. */
+/** D465: two memories Mem found may disagree: both titles, earlier first. */
 function CheckContra({ it }: { it: MemCheckItem }) {
   const pair = it.pair ?? [];
   return (
@@ -330,22 +344,45 @@ function CheckRule({ it }: { it: MemCheckItem }) {
   );
 }
 
+/** D569: every ask with a suggestion, answered as suggested, one Mem answer each; said once. */
+export function takeSuggestions(asks: MemCheckItem[]) {
+  const todo = asks.filter((it) => it.suggest && it.answers.includes(it.suggest));
+  for (const it of todo) A.memSettle(it.id, it.suggest!);
+  if (todo.length) say("mem-check", todo.length === 1 ? t("said.mem.check.all.one") : t("said.mem.check.all", todo.length));
+}
+
 /**
- * D465: what Nowledge Mem would like the person to settle (two memories that disagree, a rule it
- * learned), each with Mem's own suggestion as the default; the rest stays in Mem, said once, never
+ * D465, D569: what Nowledge Mem couldn't settle by itself (two memories that disagree, a rule it
+ * learned) is its own bookkeeping, never a needs-you: one quiet row, 「Nowledge Mem 有 n 处拿不定」
+ * with 看看; open, each ask with the partner's suggestion as its default and its reason, every answer
+ * still one tap, and Take the suggestions for all of them. The rest stays in Mem, said once, never
  * counted. Nothing waiting: no section at all.
  */
 function MemCheckSec() {
+  const [open, setOpen] = useState(false);
   const c = A.mem?.check;
   if (!c || (!c.asks.length && !c.more)) return null;
+  const n = c.asks.length;
+  const suggested = c.asks.filter((it) => it.suggest).length;
   return (
     <section class="set mem-sec mem-check-sec">
-      <h3>{t("mem.check.title")}</h3>
-      <p class="g-note">{t("mem.check.note")}</p>
       <Group class="mem-g" label={t("mem.check.title")}>
-        {c.asks.map((it) => (it.kind === "rule" ? <CheckRule key={it.id} it={it} /> : <CheckContra key={it.id} it={it} />))}
-        {!c.asks.length && <GRow tile={<PebbleTile />} title={t("mem.check.clear")} />}
-        {c.more && (
+        {n > 0 ? (
+          <GRow tile={<PebbleTile />} title={keepClauses(n === 1 ? t("mem.check.unsure.one") : t("mem.check.unsure", n))} line={t("mem.check.line")}>
+            <Btn kind="text" size="sm" chev expanded={open} label={t(open ? "mem.check.fold" : "mem.check.look")} about={t("mem.check.title")} onClick={() => setOpen(!open)} />
+          </GRow>
+        ) : (
+          <GRow tile={<PebbleTile />} title={t("mem.check.clear")} />
+        )}
+        {open && n > 0 && suggested > 0 && (
+          <GBlock>
+            <span class="g-acts mem-check-all">
+              <Btn kind="primary" size="sm" label={t("mem.check.take")} about={t("mem.check.title")} onClick={() => (takeSuggestions(c.asks), setOpen(false))} />
+            </span>
+          </GBlock>
+        )}
+        {open && c.asks.map((it) => (it.kind === "rule" ? <CheckRule key={it.id} it={it} /> : <CheckContra key={it.id} it={it} />))}
+        {(open || n === 0) && c.more && (
           <GFoot note={t("mem.check.more")}>
             <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
           </GFoot>
@@ -590,7 +627,7 @@ function MemFilesRow() {
   const on = !!s.memFiles;
   return (
     <>
-      <GRow cls={tr && on ? "mem-files bad" : "mem-files"} title={t("memfile.row")} line={tr && on ? t("memfile.trouble", tr.name, keepWhy(tr.why, tr.message)) : t("memfile.row.line")}>
+      <GRow cls={tr && on ? "mem-files bad" : "mem-files"} title={t("memfile.row")} line={tr && on ? t("memfile.trouble", tr.name, keepWhy(tr.why)) : t("memfile.row.line")}>
         <Switch label={t("memfile.row")} on={on} onChange={(v) => (A.setSettings({ memFiles: v }), say("memfiles", t(v ? "said.memfiles.on" : "said.memfiles.off")))} />
       </GRow>
       <Said k="memfiles" />

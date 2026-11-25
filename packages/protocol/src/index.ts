@@ -718,7 +718,7 @@ export interface Bodies {
    * how it ended, and Mem's raw answer to the write (its metadata, clipped; never the file's
    * contents), so the first real saves show the true shape (research/231 §3).
    */
-  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update"; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
+  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update" | "folder"; space?: string; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
   memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
@@ -3160,9 +3160,11 @@ export interface MemFileSaved {
  * D566: why a file wasn't kept in Mem, from Mem's facts (D563), never guessed. off: memory is off;
  * missing: no Nowledge Mem on the home; signed_out: Mem refused the sign-in; unreachable: Mem didn't
  * answer; secret: the file holds what looks like a key or password (it stays in Ducter); gone: the
- * file is no longer on the home; refused: Mem said no (message: its own words, clipped).
+ * file is no longer on the home; refused: Mem said no; no_space (D572): Mem needs a Space and marks
+ * none of the person's as theirs or as its write default. message: Mem's own words, clipped, shown
+ * only on demand behind 原话 / Its words (D572), never as the line itself.
  */
-export type MemFileWhy = "off" | "missing" | "signed_out" | "unreachable" | "secret" | "gone" | "refused";
+export type MemFileWhy = "off" | "missing" | "signed_out" | "unreachable" | "secret" | "gone" | "refused" | "no_space";
 
 /**
  * D465: one thing Nowledge Mem would like the person to settle, from Mem's own review queue.
@@ -3177,7 +3179,10 @@ export interface MemCheckItem {
   pair?: { title: string; at?: string }[];
   title?: string;
   body?: string;
+  /** The default answer: the partner's judgement over the true facts when it has one (D569), else Mem's own. */
   suggest?: MemCheckAnswer;
+  /** D569: why the partner suggests it, one short line in the person's language (absent: Mem's own suggestion, or none). */
+  why?: string;
   answers: MemCheckAnswer[];
   at?: string;
 }

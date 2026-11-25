@@ -497,11 +497,24 @@ Settings › 记忆 now carries the few that change what the partner and every o
   total only, to know whether more waits), `rules list`. At most every 10 minutes while the page is viewed,
   in the background, gated like the glance (memory on, Mem connected, never on a test without a fake nmem).
   Only titles, days and a rule's words travel; a memory's contents never leave Mem.
-- **What is shown**, after 我知道的关于你 / What I know about you: **Nowledge Mem 想跟你确认 / Nowledge Mem
-  would like to check**, at most 3 contradictions (newest first: the two titles, earlier first) and 2 learned
-  draft rules (title and words). Mem's own suggestion is the primary button (a contradiction's
-  `recommended_action`; a learned rule's 用上 / Use it), the others quiet. Nothing waiting and nothing more:
-  no section. More waiting (skills, upkeep): one line pointing to Mem, never a count.
+- **Never a needs-you (D569).** These are Mem's own bookkeeping, low stakes, and Mem settles them by itself
+  after a month: they never count on the Overview, in 等你 or in a pane's head.
+- **What is shown**, after 我知道的关于你 / What I know about you: one quiet row, **Nowledge Mem 有 n 处拿不定 /
+  Nowledge Mem isn't sure about n things**, **不急，不回它也会照原样留着。/ No rush: left alone, it keeps them as
+  they are.**, and **看看 / Look**. Open, at most 3 contradictions (newest first: the two titles, earlier first)
+  and 2 learned draft rules (title and words), each with the suggestion said (**我的建议：后记的对 / I'd say: The
+  later one holds**, its reason under it) and its answers: the suggested one the secondary clay, first, the
+  others quiet; over them the group's one primary, **按建议都处理 / Take the suggestions**. Nothing waiting and
+  nothing more: no section. More waiting (skills, upkeep): one line pointing to Mem, never a count.
+- **The suggestion is the partner's (D569).** The model judges, never a pattern in code: one short tool-less
+  turn on the cheap model (`judge.ts` `createHarnessAsk`) over Mem's own facts, on the home: both memories'
+  words (Mem's `content_snippets`), their days and sources, Mem's reason and confidence, Mem's own
+  recommendation as one more fact; a rule's words and day. Code guards only the answer (one the ask allows,
+  with a reason, clipped). Judged once per ask and language, in the background after a read, asked again at
+  most twice; until it answers, or with no agent, Mem's own suggestion stands, named as Mem's (**Nowledge Mem
+  的建议：… / Nowledge Mem suggests: …**). The words go to the partner's own model, never to a client. On the
+  author's four (research/232) haiku overruled Mem's cautious "both" where a later note is a correction, and
+  kept the earlier note where it was the final number.
 - **Answering** (`mem_answer` → `mem_answered`): the ask leaves at once and the partner says one word under
   the section. A contradiction runs `feed resolve <id> --action <a>`; a graph action comes back as a
   preview and is confirmed by its exact `--plan-id` (never a fresh preview); a preview without a plan is a
@@ -807,12 +820,19 @@ What Ducter made can be kept in the person's Mem as Artifacts (Mem's library), n
 a report is a document to find and read, not a fact to recall. `packages/core/src/mem-files.ts`.
 
 - **How.** The person's own `nmem`: `artifacts add <file> --folder <Ducter> -l ducter -c "Made by
-  Ducter: {task}" [--space]`, then `artifacts update <doc> --base <rev> --file` for every later
+  Ducter: {task}" [--space-id]`, then `artifacts update <doc> --base <rev> --file` for every later
   version of the same file (its task and its name); `history` when Mem says a newer version is
   current. Never `delete`, `move` or a folder rename. State in `<dataDir>/mem-files.json` (0600):
   the folder per Space, the artifact per file, every version saved by media id.
-- **Where.** One 「Ducter」 folder at the root of the persona's Space (`persona.mem.space`; none:
-  no `--space`), found or made with a client-chosen id.
+- **Where (D572).** One 「Ducter」 folder at the root of a Space Mem names: `persona.mem.space` (by
+  name), else from Mem's passive `bridge setup` (read once a run; it creates and selects nothing)
+  the person's **personal** Space, else the one it marks **`write_default`** (by id, `--space-id`,
+  for every call). Personal comes first: on hel the key's write default is Everyone (ten readers),
+  and a kept file must be read by no one the person hasn't let in. Spaces off: no Space. Mem names
+  neither: none is named and Mem's own refusal is said (`no_space`). `folders mk` needs a Space
+  ("Pass --space (or --parent) to choose where the folder goes."), which D566's "no `--space`"
+  hit on hel. Found by `folders ls` (nmem's `folder_id`, `parent_folder_id`), else made with a
+  client-chosen id.
 - **When.** A tap (file card, viewer), the partner on the person's word (`made_find keep`), or the
   Settings default (off): a **done** report's reports and documents (`memAutoKeeps`).
 - **Never.** A file the shared secret detector finds a key in, or one named like a secrets file
@@ -820,8 +840,10 @@ a report is a document to find and read, not a fact to recall. `packages/core/sr
 - **Saved only when Mem shows it.** After a write, `artifacts list --json` (a VERIFIED shape) must
   show the file (its artifact, else the 「Ducter」 folder and its exact name, with these bytes);
   else it isn't called saved. Each write's raw answer is logged as `mem_file` (stream `mem`; Mem's
-  metadata only) until the real shape is known.
-- **Honest.** Why not comes from Mem (D563): off, missing, signed out, unreachable, Mem's own
-  words; the Settings row says the last one the default couldn't keep, once.
+  metadata only) until the real shape is known; D572: every failing step too (the Space read, the
+  folder), `op: folder`, with the Space used.
+- **Honest.** Why not comes from Mem (D563): off, missing, signed out, unreachable, no Space,
+  refused; said in plain words, Mem's own sentence kept as `message` and shown only behind 原话 /
+  Its words (D572); the Settings row says the last one the default couldn't keep, once.
 - **Provenance.** Mem's artifacts carry no AI Identity or source app: the `ducter` label and the
   comment naming the task say where it came from (research/231 §1).

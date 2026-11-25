@@ -18,7 +18,7 @@ import (
 func memCheckFixture() *protocol.MemCheck {
 	return &protocol.MemCheck{
 		Asks: []protocol.MemCheckItem{
-			{ID: "e2", Kind: "contradiction", Pair: []protocol.MemPairItem{{Title: "Cloud UTC 午夜与本地 rolling 24h 的 token 重置语义", At: "2026-11-09"}, {Title: "mem reset window is rolling 24h, not UTC midnight", At: "2026-11-12"}}, Suggest: "both", Answers: []string{"newer", "older", "both"}},
+			{ID: "e2", Kind: "contradiction", Pair: []protocol.MemPairItem{{Title: "Cloud UTC 午夜与本地 rolling 24h 的 token 重置语义", At: "2026-11-09"}, {Title: "mem reset window is rolling 24h, not UTC midnight", At: "2026-11-12"}}, Suggest: "newer", Why: "后记的那条是更正。", Answers: []string{"newer", "older", "both"}},
 			{ID: "rule:feishu-deploy", Kind: "rule", Title: "Feishu 生产部署必须经 GitHub Actions 故障安全门禁", Body: "Production Feishu Worker 必须通过 GitHub Actions 的 fail-closed 门禁部署，且部署源需与当前 origin/main 的精确 SHA 完全一致。", Suggest: "use", Answers: []string{"use", "not"}},
 		},
 		More:  true,
@@ -39,7 +39,15 @@ func TestMemCheck(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		L := app.L
-		for _, w := range []string{L.T("mem.check.title"), L.T("mem.check.contra"), L.T("mem.check.earlier"), L.T("mem.check.later"), L.T("mem.check.rule"), L.T("mem.check.more"), L.T("mem.rules.title"), L.T("mem.rules.note", app.personaName())} {
+		// D569: one quiet row until opened, never the pairs on the page.
+		if hasText(tt, L.T("mem.check.contra")) || !hasText(tt, L.T("mem.check.unsure", 2)) {
+			t.Fatalf("%s: not one quiet row: %q", lang, tt.Texts())
+		}
+		if err := tt.Click(spoken(L, L.T("mem.check.look"), L.T("mem.check.title"))); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		for _, w := range []string{L.T("mem.check.take"), L.T("mem.check.mine", L.T("mem.check.newer")), "后记的那条是更正。", L.T("mem.check.mems", L.T("mem.check.use")), L.T("mem.check.contra"), L.T("mem.check.earlier"), L.T("mem.check.later"), L.T("mem.check.rule"), L.T("mem.check.more"), L.T("mem.rules.title"), L.T("mem.rules.note", app.personaName())} {
 			if !hasText(tt, w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
@@ -90,6 +98,40 @@ func TestMemCheck(t *testing.T) {
 		}
 		if a := (*sent)[len(*sent)-1].(protocol.MemAnswer); a.ID != "rule:ci-first" || a.Answer != "not" {
 			t.Fatalf("停用 sent %v", a)
+		}
+	}
+}
+
+// D569: 按建议都处理 answers each ask as suggested, one answer each, and the
+// partner says so once; the row folds.
+func TestMemCheckTakeSuggestions(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent := memApp(t, lang, "on")
+		app.S.Mem.Check = memCheckFixture()
+		app.openTab(TabMemory)
+		tt := ui.NewTesterWith(app.View, 1150, 2800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		L := app.L
+		if err := tt.Click(spoken(L, L.T("mem.check.look"), L.T("mem.check.title"))); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		n := len(*sent)
+		if err := tt.Click(spoken(L, L.T("mem.check.take"), L.T("mem.check.title"))); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		var got []string
+		for _, f := range (*sent)[n:] {
+			if a, ok := f.(protocol.MemAnswer); ok {
+				got = append(got, a.ID+"="+a.Answer)
+			}
+		}
+		if fmt.Sprint(got) != "[e2=newer rule:feishu-deploy=use]" {
+			t.Fatalf("%s: sent %v", lang, got)
+		}
+		tt.Frame()
+		if !hasText(tt, L.T("said.mem.check.all", 2)) {
+			t.Fatalf("%s: no word after: %q", lang, tt.Texts())
 		}
 	}
 }

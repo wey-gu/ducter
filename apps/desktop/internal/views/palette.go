@@ -368,7 +368,7 @@ func (a *App) palette(c *ui.Context) {
 		}
 		return false
 	}
-	ui.DialogBase(c, &a.oh.sw, func(back, panel ui.Element) {
+	a.dialogBase(c, &a.oh.sw, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		if keys() {
 			return

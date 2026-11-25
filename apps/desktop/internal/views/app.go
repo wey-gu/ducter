@@ -460,6 +460,7 @@ type App struct {
 	pal        palState  // D391: 找任何东西 / Find anything, ⌘K (palette.go)
 	keysOpen   bool      // D456: 键盘 / Keyboard, ⌘/ (keymap.go)
 	did        didState  // D300: 替你做过的 / Done for you (did.go)
+	conv       convState // D573: ⌘W's layer, ⌘[ ⌘]'s places (conventions.go)
 }
 
 // UndoWindow is how long a drop can be undone (D52).
@@ -592,7 +593,8 @@ func (a *App) flushOutbox() {
 
 // View is the window's content.
 func (a *App) View(c *ui.Context) {
-	a.talkFeed(c) // D442: while talking hands-free, what came is said, on any page
+	a.convFrame(c) // D573: the layers counted, the place noted, the zoom
+	a.talkFeed(c)  // D442: while talking hands-free, what came is said, on any page
 	if a.followAppearance(c) {
 		a.uiTheme = nil
 	}
@@ -695,6 +697,9 @@ func (a *App) shortcuts(c *ui.Context) {
 	a.railKeys(c)    // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
 	a.taskKeys(c)    // D456: ⌃1–⌃9 the nth task on hand; ⌘/ every key
 	a.partnerKeys(c) // D497: ⌥⌘1–⌥⌘4 the partners
+	if a.navKeys(c) {
+		return // D573: ⌘[ ⌘], a swipe between pages, a mouse's side buttons
+	}
 	switch {
 	case c.Shortcut(ui.Cmd, ui.KeyO):
 		a.OpenSwitcher()

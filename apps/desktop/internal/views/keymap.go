@@ -108,7 +108,7 @@ func (a *App) keysSheet(c *ui.Context) {
 	}
 	t := a.T
 	w, h := c.Size()
-	ui.DialogBase(c, &a.keysOpen, func(back, panel ui.Element) {
+	a.dialogBase(c, &a.keysOpen, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		if c.Shortcut(0, ui.KeyEscape) || c.Shortcut(ui.Cmd, ui.KeySlash) {
 			a.keysOpen = false

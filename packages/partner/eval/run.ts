@@ -1482,6 +1482,8 @@ function check(r: RunResult): string[] {
   const savedText = r.remembered.map((m) => `${m.title}\n${m.content}`).join("\n");
   if (e.remember && !e.remember.test(savedText)) fails.push(`nothing saved matching ${e.remember}`);
   if (e.noRemember && r.remembered.length) fails.push(`saved to memory ×${r.remembered.length} (want none)`);
+  // D569: kept as Mem's own kind (the model's word, passed as --unit-type), read from what Mem took.
+  if (e.rememberKind && !r.remembered.some((m) => m.unitType === e.rememberKind)) fails.push(`nothing saved as a ${e.rememberKind} (got ${r.remembered.map((m) => m.unitType ?? "none").join(", ") || "nothing"})`);
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");

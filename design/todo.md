@@ -3555,4 +3555,49 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **An app's own process** (its own ⌘Tab entry and running Dock dot, like Chrome's app shims). Trigger: people
   keep two or more apps in the Dock and find them under Ducter's icon.
 - [ ] **People as raters** for 放到程序坞 / Keep in the Dock against 添加到程序坞. Trigger: the next naming round with people.
-- [ ] **D566 leftovers.** (a) Verify on the author's Mac that `nowledgemem://source/<id>` opens that artifact in the Nowledge Mem app (research/231 §1, INFERRED) and that `add`/`update`/`folders mk` answer in the shapes the fake guesses; trigger: the author's first real save. (b) A message with several files shows the Mem line under each: consider one line for the message once someone finds it noisy. (c) Mem on the web has no link to one artifact: link to it when Mem has one. (d) Made for you's cards and its Mac window could carry In Nowledge Mem too. (e) A task cannot mark a file sensitive: add the flag if a task ever needs to keep a shown file out of Mem beyond the secret detector. (f) Tighten `artifactOf` to the shape `add` and `update` really answer, read from the first real `mem_file` events in the Log (`raw`); trigger: the author's first real save. Until then a save counts only once `artifacts list` shows it.
+
+## Memory: updates from any computer, Mem's asks judged, preferences typed (D569, research/232)
+
+- [ ] **Confirm haswell's cause on hel.** Read-only: the devices frame's `loggedIn` for haswell's Claude Code
+  (expected false). If it is true there, the cause was the computer read as away; the fix covers both.
+  Trigger: the author's next look at Memory on 0.1.69+.
+- [ ] **The partner's old untyped saves.** Ducter's own saves before D569 sit in Mem as `context` (e.g.
+  「GitHub 评审不想逐次确认」, 2026-11-20), so 你喜欢的做法 doesn't show them. Re-typing them is a write to the
+  person's Mem (`nmem m update --unit-type`, judged per memory); behind a Go. Trigger: the author's go.
+- [ ] **Send Mem the note** in research/232 (thread distillation silent since 2026-09-25; explicit owner
+  preferences typed `context`). Trigger: the author's OK to message the Mem team.
+- [ ] **A judge eval for Mem's asks** (a dozen real pairs with known answers, haiku and the brain's model).
+  Trigger: a wrong suggestion reported, or a second Mem account to sample.
+
+- [ ] **D566 leftovers.** (a) Verify on the author's Mac that `nowledgemem://source/<id>` opens that artifact in the Nowledge Mem app (research/231 §1, INFERRED) and that `add`/`update`/`folders mk` answer in the shapes the fake guesses; trigger: the author's first real save. (b) A message with several files shows the Mem line under each: consider one line for the message once someone finds it noisy. (c) Mem on the web has no link to one artifact: link to it when Mem has one. (d) Made for you's cards and its Mac window could carry In Nowledge Mem too. (e) A task cannot mark a file sensitive: add the flag if a task ever needs to keep a shown file out of Mem beyond the secret detector. (f) Tighten `artifactOf` to the shape `add` and `update` really answer, read from the first real `mem_file` events in the Log (`raw`); trigger: the author's first real save. Until then a save counts only once `artifacts list` shows it. (D572: the folder half is done, `folder_id`/`parent_folder_id` from nmem's own type; `add`/`update` still wait.)
+- [ ] **D572 leftovers.** (a) The first real save on hel after D572: read its `mem_file` events (`op: folder`, `add`; `space` the personal Space) and confirm `folders mk --space-id` and `add` answer as the fake guesses; trigger: the author's next tap. (b) A Space choice in Settings › Memory for keeping files, only if a Mem is ever seen that marks no personal Space and no write default (`no_space` in the Log); until then the line offers 再试一次 and Mem's words, never a 去设置 that would loop. (c) A person whose write default is a team Space gets files in their personal Space: say where it went (the Space's name beside 已存进 Nowledge Mem) if anyone looks for one there. (d) In English at the card's narrowest width a long reason wraps the line's buttons under it; shorter words if it reads crowded.
+
+## D573: platform conventions left (research/233)
+
+- [ ] **⌘= pressed live, and a real trackpad swipe.** Zoom In works from the menu (VERIFIED); the key press and
+  a two-finger swipe between pages on hardware are owed. Trigger: the next Mac release check.
+- [ ] **Spelling and Grammar in the Edit menu.** MyGo's text input has no spell checker. Trigger: MyGo adds
+  NSSpellChecker to its text fields, or a person asks.
+- [ ] **View › Show Sidebar ⌃⌘S.** Nothing to hide yet: the partners' list shows only with more than one partner
+  and has its own control. Trigger: a place gets a sidebar a person may want gone.
+- [ ] **Increase Contrast and the system accent.** Not read today. Trigger: MyGo's Preferences reports them.
+- [ ] **Reveal in Finder and Copy Path on a file card's right-click; a file card dragged out.** Trigger: the next
+  pass on the workbench's files (D214).
+- [ ] **Scroll position per place across a switch.** Not checked. Trigger: a person loses their place switching
+  places.
+- [ ] **Android predictive back.** The callback is always enabled, so the back-to-home preview never shows. The
+  page should say whether Back has a step (`back.can` over the bridge). Trigger: the next Android pass.
+- [ ] **Android share out.** WebView has no `navigator.share`; add a `share` bridge message. Trigger: the next
+  Android pass.
+- [ ] **Android Back on a device.** `ducterBack` is unit-tested; owed on a phone with a sheet, the viewer and a
+  menu open. Trigger: the next Android build.
+- [ ] **iOS: one back gesture.** The WKWebView's `allowsBackForwardNavigationGestures` and the page's edge swipe
+  both take the left edge (INFERRED double step). Trigger: checked on an iPhone, then keep the page's.
+- [ ] **iOS: tap the status bar to scroll to top.** The page scrolls in inner views, so the system's gesture does
+  nothing; a hidden scrollsToTop view relaying to the page. Trigger: the next iPhone pass.
+- [ ] **iOS long-press callout** on images and links outside the viewer stacks on the reply menu. Trigger: the
+  next iPhone pass.
+- [ ] **Web: sheets trap focus and give it back**, and the web sheets become history entries so Back from the
+  conversation with a sheet open stays in the app. Trigger: the next web keyboard pass.
+- [ ] **Web: task rows as real links** (middle-click, ⌘-click opens a new tab; On hand's ⌘-click multi-select kept).
+  Trigger: a person opens tasks in tabs.

@@ -48,8 +48,24 @@ func spoken(l *i18n.Strings, parts ...string) string {
 			keep = append(keep, p)
 		}
 	}
-	if l == nil {
-		return strings.Join(keep, ", ")
+	sep := ", "
+	if l != nil {
+		sep = l.T("spoken.sep")
 	}
-	return strings.Join(keep, l.T("spoken.sep"))
+	// A fact that ends its own sentence (付款……这里。) needs no comma after it: never 「。，」.
+	var b strings.Builder
+	for i, p := range keep {
+		if i > 0 {
+			prev := []rune(keep[i-1])
+			switch last := prev[len(prev)-1]; {
+			case strings.ContainsRune("。！？；：", last):
+			case strings.ContainsRune(".!?;:", last):
+				b.WriteString(" ")
+			default:
+				b.WriteString(sep)
+			}
+		}
+		b.WriteString(p)
+	}
+	return b.String()
 }

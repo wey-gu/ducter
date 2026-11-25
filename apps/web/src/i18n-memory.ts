@@ -4,7 +4,7 @@
 export const memoryWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     "settings.tab.memory": "记忆",
-    "settings.list.memory": "我记得的关于你的事，和 Nowledge Mem",
+    "settings.list.memory": "我记得的关于你的事，和帮我记的 Nowledge Mem",
     "settings.tab.peers": "和你的其他 agent 通信",
     "settings.short.peers": "Agent 通信",
     "settings.list.peers": "接上 Nowledge Mem 的 agent 都能和我互相发消息",
@@ -308,7 +308,7 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
   },
   en: {
     "settings.tab.memory": "Memory",
-    "settings.list.memory": "What I remember about you, and Nowledge Mem",
+    "settings.list.memory": "What I remember about you, and Nowledge Mem, where I keep it",
     "settings.tab.peers": "Talk with your other agents",
     "settings.short.peers": "Agent messaging",
     "settings.list.peers": "Agents connected to Nowledge Mem can message me, both ways",

@@ -136,7 +136,7 @@ export function deviceLabel(L: Strings, d: string | undefined): string {
  * browser honours; a long run still wraps anywhere else. Latin keeps its last two words together.
  */
 export function keepClauses(s: string): string {
-  const rs = [...s];
+  const rs = [...keepTokens(s)];
   const han = (c: string | undefined) => !!c && /\p{Script=Han}/u.test(c);
   let out = "";
   for (let i = 0; i < rs.length; ) {
@@ -147,12 +147,18 @@ export function keepClauses(s: string): string {
       continue;
     }
     const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
-    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && k >= j - 4)) ? "\u2060" : "");
+    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && (j - i <= 6 || k >= j - 4))) ? "\u2060" : "");
     i = j;
   }
   // Latin: the last two words together (a no-break space), never one word alone on the last line.
   if (rs.length > 1 && !han(rs[rs.length - 1]) && !han(rs[rs.length - 2])) out = out.replace(/ (\S+)$/, "\u00a0$1");
   return out;
+}
+
+/** D561, as the Mac's keepTokens: a short Latin token with a hyphen (GPT-6.2-Sol, gpt-5-codex) never breaks
+ *  at its hyphen; word joiners (U+2060) around it. A long one (over 24) may still wrap there. */
+export function keepTokens(s: string): string {
+  return s.replace(/[A-Za-z0-9][A-Za-z0-9._]*(?:-[A-Za-z0-9._]+)+/g, (tok) => (tok.length <= 24 ? tok.replaceAll("-", "\u2060-\u2060") : tok));
 }
 
 /** A reason's first clause: up to its first comma or full stop outside quotes. */

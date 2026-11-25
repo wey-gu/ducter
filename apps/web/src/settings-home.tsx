@@ -12,7 +12,7 @@ import { BrandMark, BrandTile, brandOf } from "./brand.tsx";
 import { linkedChats } from "./channels.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
-import { ago, harnessName, memWords, modelName, shownDeviceName } from "./format.ts";
+import { ago, harnessName, keepClauses, memWords, modelName, shownDeviceName } from "./format.ts";
 import { MemAsk, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook, peersReaching, peersSay } from "./memory.tsx";
@@ -182,7 +182,7 @@ export function PaneSays({ page }: { page: SettingsPage }) {
     <div class={`pane-says${needs.length ? " needs" : ""}`}>
       <Avatar size={36} state={needs.length ? "needsyou" : "idle"} />
       <div class="ps-words">
-        {say && <p class="ps-say">{say}</p>}
+        {say && <p class="ps-say">{keepClauses(say)}</p>}
         {needs.map((n) => (
           <p key={n.key} class="ps-need">
             {n.text}

@@ -29,7 +29,7 @@ import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -2947,7 +2947,7 @@ function NameRow() {
         <>
           <span class="grow">
             <h2>{A.defaultName()}</h2>
-            {lede && <small>{lede}</small>}
+            {lede && <small>{keepClauses(lede)}</small>}
           </span>
           {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.defaultName()), setEditing(true))} />}
         </>

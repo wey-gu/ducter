@@ -9,6 +9,15 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Settings read whole, after D561 (`settings.md` "Read whole (D561)")
+
+- [ ] **The Mac's shared rows keep their Chinese words whole.** `row`, `tileRow`, `headRow`,
+  `explainedRow`, `footRow` and the group and lede notes through `keepClauses`, as 发现了就说's line
+  already is. Blocked on the view tests: dozens find a row by its exact words with MyGo's `HasText`,
+  which reads the drawn text with its word joiners. Trigger: a views test helper that matches the
+  accessible name (`unjoin`), then the swap and a walk at 1000.
+- [ ] **The author's review of `.shots/settings-polish/`** (crops in `crops/`).
+
 ## The site, after D558 (`site.md`, research/227)
 
 - [ ] **A recorded live demo under the hero** (research/227 rec 3; needs its own D). The real web

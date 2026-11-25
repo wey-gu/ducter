@@ -355,7 +355,7 @@ func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
 		}
 		ui.Column(c.Key("filter:" + k)).Gap(6).Grow(1).MinWidth(0).Children(func() {
 			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
-			in := ui.TextInput(c.Key("in:"+k), &v).Placeholder(placeholder).Label(label+"，"+name).
+			in := ui.TextInput(c.Key("in:"+k), &v).Placeholder(placeholder).Label(spoken(a.L, label, name)).
 				FontSize(t.MD).Height(44).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).MinWidth(0)
 			focused := in.Focused()
 			edge := t.Line2

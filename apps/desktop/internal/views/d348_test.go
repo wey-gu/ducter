@@ -63,7 +63,7 @@ func TestD348TodoFilters(t *testing.T) {
 	app, sent, tt := todoApp(t, i18n.ZH, 1280, 1900)
 	app.openTab(TabTodos)
 	todoFrames(tt, 4)
-	for _, w := range []string{"只看这些仓库", "写 主人/仓库，几个就用逗号隔开", "看哪个文件夹", "只看带这个标签的"} {
+	for _, w := range []string{"只看这些仓库", "写成「用户名/仓库名」，几个用逗号隔开", "看哪个文件夹", "只看带这个标签的"} {
 		if !tt.HasText(w) {
 			t.Errorf("no %q in %q", w, tt.Texts())
 		}

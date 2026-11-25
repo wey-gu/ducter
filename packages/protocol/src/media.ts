@@ -456,6 +456,36 @@ export function fileFamily(m: { type: string; name?: string }): FileFamily {
   return "other";
 }
 
+/**
+ * D566: a file worth keeping in the person's Nowledge Mem, by what Mem reads (research/231): its
+ * documents, sheets, slides, PDFs, Markdown and text, and code a developer may want found again.
+ * Pictures, sounds, videos and archives Mem would store but not read: no offer.
+ */
+export function memKeeps(m: { type: string; name?: string }): boolean {
+  const f = fileFamily(m);
+  return f === "pdf" || f === "text" || f === "doc" || f === "sheet" || f === "slides" || f === "code";
+}
+
+/**
+ * D566: what 做好的文件也存进 Nowledge Mem / Also keep files I make in Nowledge Mem keeps by itself:
+ * reports and documents only (a PDF, a document, a sheet, slides, Markdown or plain text), never a
+ * log, code, a picture or anything else a task shows along the way.
+ */
+export function memAutoKeeps(m: { type: string; name?: string }): boolean {
+  const f = fileFamily(m);
+  if (f === "text") return extOf(m.name) !== "log";
+  return f === "pdf" || f === "doc" || f === "sheet" || f === "slides";
+}
+
+/**
+ * D566: names a file of secrets goes by (keys, credentials, env files): never kept in Mem, on a
+ * tap or by itself, whatever is inside (the text check is the home's, the shared detector).
+ */
+export function secretFileName(name: string | undefined): boolean {
+  const n = (name ?? "").toLowerCase();
+  return /(^|\.)env(\.|$)|\.(pem|key|p12|pfx|keychain|kdbx|gpg)$|^id_(rsa|ed25519|ecdsa|dsa)|credentials|secrets?\.|passwords?\.|\.netrc$|\.npmrc$|\.pgpass$/.test(n);
+}
+
 /** D286: the few letters on a file's badge: its extension as a person knows it (PDF, TS, DOCX), at most 4. */
 export function fileBadge(m: { type: string; name?: string }): string {
   const ext = extOf(m.name);

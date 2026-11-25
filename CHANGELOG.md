@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.68 - 2026-11-25
+
+<!-- whats-new
+zh: 做好的文件能存进 Nowledge Mem，你的其他 AI 也找得到
+en: Keep what Ducter made in Nowledge Mem, where your other AI tools find it too
+-->
+
+**Keep what Ducter made in Nowledge Mem**
+- With Nowledge Mem connected, a report, document or table a task made has "Save to Nowledge Mem"
+  under its card and in the viewer. It goes into a "Ducter" folder, and saving it again after a
+  change keeps it as a new version, never a second copy.
+- Or turn on "Also keep files I make in Nowledge Mem" in Settings › Memory: finished reports and
+  documents go there by themselves. Logs, code, screenshots and anything holding a key never do.
+- Or just ask: "save this report to Mem".
+- If a save doesn't go through, it says why, in Mem's own words, with the way to fix it.
+
 ## 0.1.67 - 2026-11-25
 
 <!-- whats-new

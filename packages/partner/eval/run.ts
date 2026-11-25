@@ -639,7 +639,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
       }
     : {};
-  const core = startCore({ ...brainHome, ...(sc.world ? worldCoreOptions(sc, dataDir) : {}), dataDir, port: 0, persona, webLook, clock, work: { exec: ownedExec(sc) }, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D566: the person's Nowledge Mem for files, a fake one in this run's folder (never the real Mem).
+  const memFilesRun = sc.memFiles
+    ? async (argv: string[], ms: number) => {
+        const p = Bun.spawn(["bun", resolve(import.meta.dir, "fake-artifacts-nmem.ts"), "--json", ...argv], { stdout: "pipe", stderr: "pipe", env: { PATH: process.env.PATH ?? "", HOME: dataDir, NMEM_FAKE_ARTIFACTS: join(dataDir, "fake-mem.json"), ...(sc.memFiles === "signed_out" ? { NMEM_FAKE_SIGNED_OUT: "1" } : {}) } });
+        const timer = setTimeout(() => p.kill(), ms);
+        const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
+        clearTimeout(timer);
+        return { code, out, err };
+      }
+    : async () => ({ missing: true as const });
+  const core = startCore({ ...brainHome, memFiles: { run: memFilesRun }, ...(sc.world ? worldCoreOptions(sc, dataDir) : {}), dataDir, port: 0, persona, webLook, clock, work: { exec: ownedExec(sc) }, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -1398,6 +1408,13 @@ function check(r: RunResult): string[] {
   const blockText = (r.blocks ?? []).map((b) => JSON.stringify(b.ui)).join("\n");
   // D383: what made_find show put under a message (a file by its name, a block by its JSON).
   if (e.madeShown && !(r.shown ?? []).some((n) => e.madeShown!.test(n)) && !e.madeShown.test(blockText)) fails.push(`nothing shown matching ${e.madeShown} (shown: ${(r.shown ?? []).join(", ") || "none"})`);
+  // D566: what the (fake) Nowledge Mem holds at the end.
+  if (e.memKept || e.noMemKept) {
+    const memState = join(r.dataDir, "fake-mem.json");
+    const names: string[] = existsSync(memState) ? (JSON.parse(readFileSync(memState, "utf8")).docs ?? []).map((d: { name: string }) => d.name) : [];
+    if (e.memKept && !names.some((n) => e.memKept!.test(n))) fails.push(`nothing kept in Nowledge Mem matching ${e.memKept} (kept: ${names.join(", ") || "none"})`);
+    if (e.noMemKept && names.length) fails.push(`kept ${names.join(", ")} in Nowledge Mem though it couldn't be`);
+  }
   // D405: the app card, the answer to an app's ask, the file, and a seeded app kept as it was.
   const cards = r.appCards ?? [];
   if (e.appCard && !cards.some((c) => c.change === e.appCard)) fails.push(`no ${e.appCard} app card (cards: ${cards.map((c) => c.change).join(", ") || "none"})`);

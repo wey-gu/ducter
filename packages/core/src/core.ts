@@ -34,6 +34,7 @@ import { createPlacementMem, HINTS_EVERY_MS, type PlacementMemClient } from "./p
 import { createRedo } from "./redo.ts";
 import { createOutside } from "./outside.ts";
 import { createMade, type Made } from "./made.ts";
+import { createMemFiles, type MemFiles, type MemFilesDeps } from "./mem-files.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
 import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
@@ -281,6 +282,8 @@ export interface CoreOptions {
    * home with fake Claude Code and Codex folders). Absent: no first words.
    */
   firstWords?: { home?: string; env?: Record<string, string | undefined> };
+  /** D566 test seams: how `nmem` runs for keeping files in Mem (a fake nmem). */
+  memFiles?: Partial<Pick<MemFilesDeps, "run" | "bin">>;
   /** D298 test seams for a pasted key: the network, and which agents this computer can run. */
   keyFetch?: typeof fetch;
   keyCanRun?: (h: HarnessId) => boolean;
@@ -414,6 +417,8 @@ export interface Core extends CoreApi {
   outside: import("./outside.ts").Outside;
   /** D383: 给你做的 / Made for you: what Ducter made, found again by words, kind and time (read from the Log). */
   made: Made;
+  /** D566: what Ducter made, kept in the person's Nowledge Mem (on a tap, the partner's word, or the Settings default). */
+  memFiles: MemFiles;
   /** D391: 做过的事 / Past tasks for the partner (task_find), and 从这一步重来 / Redo from here (task_fork). */
   past: import("./past.ts").Past;
   /** D285: the person's marks on tasks (a star, a name; D514: keep the working copy). */
@@ -1652,6 +1657,24 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D383: 给你做的 / Made for you: the files, pictures, tables and links Ducter made, from the Log.
   const made = createMade({ log, tasks, pins: () => pins.list(), app: (id) => apps.get(id), now: () => clock.now() });
   (api as { made?: Made }).made = made;
+  // D566: files kept in the person's Nowledge Mem (mem-files.ts): on a tap, when asked, or by the Settings default.
+  const memFiles = createMemFiles({
+    dataDir,
+    log,
+    media,
+    memory: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off",
+    autoOn: () => settings.get().memFiles === true,
+    memState: () => (settings.memMissing() ? "missing" : "connected"),
+    identity: () => persona.mem,
+    taskTitle: (id) => tasks.get(id)?.title,
+    changed: () => settings.memChanged(),
+    ...(opts.memFiles ?? {}),
+  });
+  settings.setFiles(() => {
+    const trouble = memFiles.trouble();
+    return { files: memFiles.view(), ...(trouble ? { fileTrouble: trouble } : {}) };
+  });
+  (api as { memFiles?: MemFiles }).memFiles = memFiles;
   // D299: the sessions the person ran in their own agents here (read only when Past tasks asks).
   const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
@@ -2805,6 +2828,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     asks,
     outside,
     made,
+    memFiles,
     past,
     marks,
     redo,

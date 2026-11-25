@@ -23,6 +23,7 @@ import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthL
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
+import { keepWhy } from "./mem-keep.tsx";
 import { openKeep } from "./keep.tsx";
 import { Avatar, Check } from "./views.tsx";
 import { title } from "./store.ts";
@@ -556,6 +557,7 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
       <GRow title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
         <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
       </GRow>
+      <MemFilesRow />
       {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
       {peersPageShown() && (
         <GRow title={t("mem.peers.row", A.settings!.name)}>
@@ -574,6 +576,25 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
         <Btn kind="text" size="sm" label={t("mem.details")} about="Nowledge Mem" expanded={more} onClick={() => setMore(!more)} />
       </GFoot>
     </Group>
+  );
+}
+
+/**
+ * D566: 做好的文件也存进 Nowledge Mem / Also keep files I make in Nowledge Mem (off by default): a
+ * finished task's reports and documents go to Mem's 「Ducter」 folder by themselves. The last one
+ * that didn't go says so here once, in Mem's words, until the next one is kept.
+ */
+function MemFilesRow() {
+  const s = A.settings!;
+  const tr = A.mem?.fileTrouble;
+  const on = !!s.memFiles;
+  return (
+    <>
+      <GRow cls={tr && on ? "mem-files bad" : "mem-files"} title={t("memfile.row")} line={tr && on ? t("memfile.trouble", tr.name, keepWhy(tr.why, tr.message)) : t("memfile.row.line")}>
+        <Switch label={t("memfile.row")} on={on} onChange={(v) => (A.setSettings({ memFiles: v }), say("memfiles", t(v ? "said.memfiles.on" : "said.memfiles.off")))} />
+      </GRow>
+      <Said k="memfiles" />
+    </>
   );
 }
 

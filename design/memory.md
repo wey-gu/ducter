@@ -800,3 +800,28 @@ haswell. The consumer never sees any of this; the fresh user has no Mem and lose
   (`todo.md`).
 - The auto-recall gate: built and off; on the eval corpus 5 of 8 admitted hits carried the
   evidence. Turn it on only past 0.8 on a real channel.
+
+## Files in Nowledge Mem (D566)
+
+What Ducter made can be kept in the person's Mem as Artifacts (Mem's library), never as memories:
+a report is a document to find and read, not a fact to recall. `packages/core/src/mem-files.ts`.
+
+- **How.** The person's own `nmem`: `artifacts add <file> --folder <Ducter> -l ducter -c "Made by
+  Ducter: {task}" [--space]`, then `artifacts update <doc> --base <rev> --file` for every later
+  version of the same file (its task and its name); `history` when Mem says a newer version is
+  current. Never `delete`, `move` or a folder rename. State in `<dataDir>/mem-files.json` (0600):
+  the folder per Space, the artifact per file, every version saved by media id.
+- **Where.** One 「Ducter」 folder at the root of the persona's Space (`persona.mem.space`; none:
+  no `--space`), found or made with a client-chosen id.
+- **When.** A tap (file card, viewer), the partner on the person's word (`made_find keep`), or the
+  Settings default (off): a **done** report's reports and documents (`memAutoKeeps`).
+- **Never.** A file the shared secret detector finds a key in, or one named like a secrets file
+  (`secretFileName`): not by itself, not on a tap.
+- **Saved only when Mem shows it.** After a write, `artifacts list --json` (a VERIFIED shape) must
+  show the file (its artifact, else the 「Ducter」 folder and its exact name, with these bytes);
+  else it isn't called saved. Each write's raw answer is logged as `mem_file` (stream `mem`; Mem's
+  metadata only) until the real shape is known.
+- **Honest.** Why not comes from Mem (D563): off, missing, signed out, unreachable, Mem's own
+  words; the Settings row says the last one the default couldn't keep, once.
+- **Provenance.** Mem's artifacts carry no AI Identity or source app: the `ducter` label and the
+  comment naming the task say where it came from (research/231 §1).

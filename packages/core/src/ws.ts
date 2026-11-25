@@ -2550,6 +2550,16 @@ export function createWsHandler(deps: WsDeps) {
         }
         return;
       }
+      case "mem_file_save": {
+        // D566: 存到 Nowledge Mem / Save to Nowledge Mem: the home keeps the file in the person's Mem.
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        const mediaId = typeof f.media === "string" ? f.media.slice(0, 64) : "";
+        const mf = deps.core.memFiles;
+        if (!mf || ws.data.client === "cli") return send(ws, { t: "mem_file_save", id, media: mediaId, ok: false, why: "missing" });
+        const r = await mf.save(mediaId, "tap");
+        send(ws, { t: "mem_file_save", id, media: mediaId, ...r });
+        return;
+      }
       case "folder_changes": {
         // D142: the list behind a folder task's Changes (a walk of the folder, so on request).
         const r = deps.runner();

@@ -139,6 +139,7 @@ type App struct {
 	// a line or a copy it hands to the next frame.
 	fileView            *fileViewState
 	fileToast, copyText string
+	memKeep             map[string]*memKeepNow // D566: a file's Save to Nowledge Mem under way, or why it wasn't kept
 	// copied is the copy button that copied last (D492), for 已拷贝 in place.
 	copied copiedState
 	// devicesAsked: the where line (D157) asked for devices once on its own.
@@ -1269,6 +1270,10 @@ func (a *App) Applied(f protocol.ServerFrame) {
 	}
 	if f.T == "file_open" {
 		a.fileOpenFrame(f) // D356: a linked file, or why not
+		return
+	}
+	if f.T == "mem_file_save" {
+		a.memFileFrame(f) // D566: a file kept in Nowledge Mem, or why not
 		return
 	}
 	if f.T == "folder_changes" {

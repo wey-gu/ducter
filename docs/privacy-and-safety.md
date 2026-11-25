@@ -165,6 +165,16 @@ more. A task never saves memories itself; it can suggest something worth keeping
 partner decides. Tasks in a browser get none of it, so a web page can't ask for it. Turn off
 **Remember things** and tasks get no memory: the plugin is switched off inside them too.
 
+**Files you keep there.** With Nowledge Mem connected, a file your partner or a task made shows
+**Save to Nowledge Mem** under it (and in the file's own view). One tap keeps it in a folder named
+**Ducter** in your Nowledge Mem, in your own account; **In Nowledge Mem** says it is there. Saving it
+again after the task changed it makes a new version of the same file, never a copy. You can also
+just ask: "save this report to Mem". It is your own data going to your own memory, so it doesn't
+ask first. Nothing goes by itself unless you turn on **Also keep files I make in Nowledge Mem**, and
+even then only a finished task's reports and documents. A file with what looks like a key or
+password in it never goes, not even on a tap. If Nowledge Mem can't take it, the line under the file
+says why, and the file stays in Ducter.
+
 **Is it working?** **Settings › Memory** says how your Nowledge Mem is doing, as Nowledge Mem
 itself sees it: **Connected and working** when all is well. If something is wrong it says the one
 thing, with the one button that fixes it: **Sign in again** when its sign-in stopped working,

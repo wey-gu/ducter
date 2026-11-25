@@ -713,6 +713,12 @@ export interface Bodies {
    * supersede, never a duplicate); waiting: the outbox key when Mem was down and the save waits to go
    * in (MemView.waiting says while it still does).
    */
+  /**
+   * D566: one write of a file to the person's Nowledge Mem (stream "mem"): what it was, who asked,
+   * how it ended, and Mem's raw answer to the write (its metadata, clipped; never the file's
+   * contents), so the first real saves show the true shape (research/231 §3).
+   */
+  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update"; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
   memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
@@ -1452,6 +1458,9 @@ export type ClientFrame =
   // reads it from the task's own folders (taskId: the task it was shown in, a hint) and answers
   // with a file_open frame carrying the same id: the file as a media ref for the viewer, or why not.
   | { t: "file_open"; id: string; path: string; taskId?: string }
+  // D566: 存到 Nowledge Mem / Save to Nowledge Mem on a file card or in the viewer: the home keeps
+  // the file (by its media id) in the person's Mem, a new version of the one it saved before.
+  | { t: "mem_file_save"; id: string; media: string }
   | { t: "read"; upToSeq: number }
   // D284: an opened task asks for its newest window first (limit ~200), then older pages with
   // beforeSeq = the oldest seq it holds; limit is at most 2,000.
@@ -1967,6 +1976,9 @@ export type ServerFrame =
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | ({ t: "file_open"; id: string } & ({ ok: true; file: MediaRef } | { ok: false; error: import("./media.ts").FileOpenError; message?: string }))
+  // D566: the answer to mem_file_save (same id): kept (the settings frame's mem.files says so from
+  // then on), or why not, in Mem's own words.
+  | ({ t: "mem_file_save"; id: string; media: string } & ({ ok: true; saved: MemFileSaved } | { ok: false; why: MemFileWhy; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
   // D293: the ways to reach the home and its key, right after the welcome and whenever they change.
   | { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }
@@ -2982,6 +2994,8 @@ export interface Settings {
   peers?: PeersSettings;
   /** D297: when an agent's usage limit runs out, hand the task to another signed-in agent at once instead of waiting for the reset. Off by default; chosen on the task's own limit card. */
   limitHandoff?: boolean;
+  /** D566: 做好的文件也存进 Nowledge Mem / Also keep files I make in Nowledge Mem: a finished task's reports and documents go to Mem by themselves. Off by default. */
+  memFiles?: boolean;
   /**
    * D451: the first-time lines already met, on any device (first-meet.ts names them). A patch's names
    * are added, never removed; an empty list in a patch starts them over (Settings › Look and sound).
@@ -3124,7 +3138,31 @@ export interface MemView {
   health?: MemHealth;
   /** D465: what Nowledge Mem would like the person to settle, and the rules every connected tool follows. */
   check?: MemCheck;
+  /** D566: the files kept in the person's Mem, by media id (every version Ducter saved), the newest 500. */
+  files?: Record<string, MemFileSaved>;
+  /** D566: the last file the Settings default didn't keep, and why (said once under its row; gone after the next one is kept). */
+  fileTrouble?: { name: string; why: MemFileWhy; message?: string; at: string };
 }
+
+/**
+ * D566: one file Ducter kept in the person's Nowledge Mem. uri: Mem's own stable reference
+ * (nowledgemem://source/<id>), which the Nowledge Mem app opens; rev: the version this file is;
+ * web: Nowledge Mem on the web, where the person's Mem is its Cloud.
+ */
+export interface MemFileSaved {
+  uri: string;
+  rev: number;
+  at: string;
+  web?: string;
+}
+
+/**
+ * D566: why a file wasn't kept in Mem, from Mem's facts (D563), never guessed. off: memory is off;
+ * missing: no Nowledge Mem on the home; signed_out: Mem refused the sign-in; unreachable: Mem didn't
+ * answer; secret: the file holds what looks like a key or password (it stays in Ducter); gone: the
+ * file is no longer on the home; refused: Mem said no (message: its own words, clipped).
+ */
+export type MemFileWhy = "off" | "missing" | "signed_out" | "unreachable" | "secret" | "gone" | "refused";
 
 /**
  * D465: one thing Nowledge Mem would like the person to settle, from Mem's own review queue.

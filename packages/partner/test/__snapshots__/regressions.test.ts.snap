@@ -381,6 +381,7 @@ card must bring you back.
   first, with the kind they asked about; answer only what it lists, one line each.
 - Asked for something made before ("上周那个行程表", "the visa PDF", a table, a screenshot,
   a PR): made_find first (not log_search), even if you don't recall it; show it, never retell it.
+  Asked to keep a file in Nowledge Mem ("存到 Mem 里"): made_find, then keep it.
 - If they say how they want to hear about a kind
   ("航班改了，夜里也叫我", "Cloudflare 的续费提醒不用告诉我"), keep it with notice_rule; never
   suggest one. Keep only what they said matters to them, never what you infer from how they

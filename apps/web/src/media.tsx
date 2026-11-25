@@ -25,6 +25,7 @@ import { title } from "./store.ts";
 import { picturesIn, viewerKey } from "./media-keys.ts";
 import { decode, draw, flights, localOf, type Pic, type ViewCtx } from "./media-up.ts";
 import { aliasGlimpse, FileBadge, FileCard } from "./filecard.tsx";
+import { MemKeep } from "./mem-keep.tsx";
 
 export { picturesIn, viewerKey };
 export { FileCard };
@@ -226,9 +227,17 @@ export function MediaBlock({ media, pics, side, ctx }: { media?: MediaRef[]; pic
   return (
     <div class={`media on-${side}`}>
       <Pictures items={shown} side={side} onOpen={(s, el) => s.ref && openViewer(ctx, s.ref, el)} />
-      {files.map((m) => (
-        <FileCard key={m.id} m={m} />
-      ))}
+      {files.map((m) =>
+        side === "user" ? (
+          <FileCard key={m.id} m={m} />
+        ) : (
+          // D566: what Ducter made can be kept in Nowledge Mem: one quiet line under its card.
+          <div class="fc-keep" key={m.id}>
+            <FileCard m={m} />
+            <MemKeep m={m} />
+          </div>
+        ),
+      )}
       {sending.map((p) => (
         <SendingFile key={p.key} p={p} />
       ))}

@@ -1927,6 +1927,9 @@ type Settings struct {
 	// LimitHandoff (D297): hand a task to another agent right away when a
 	// usage limit runs out (chosen on the task's limit card).
 	LimitHandoff bool `json:"limitHandoff,omitempty"`
+	// MemFiles (D566): 做好的文件也存进 Nowledge Mem, a finished task's
+	// reports and documents kept in Mem by themselves (off by default).
+	MemFiles bool `json:"memFiles,omitempty"`
 	// Met are the first-time lines already met on any device (D451); nil
 	// from a home too old to keep them (then none is ever shown).
 	Met []string `json:"met"`
@@ -1961,6 +1964,7 @@ type SettingsPatch struct {
 	Proactive       string                 `json:"proactive,omitempty"`
 	Peers           *Peers                 `json:"peers,omitempty"`
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
+	MemFiles        *bool                  `json:"memFiles,omitempty"` // D566
 	// Met adds first-time lines met here (D451); never removes.
 	Met []string `json:"met,omitempty"`
 	// ChromeSites (D505 rev.) keeps only these sites (移除 / Remove); never adds.
@@ -2036,6 +2040,10 @@ type MemView struct {
 	Health *MemHealth `json:"health,omitempty"`
 	// D465: Check is what Nowledge Mem would like settled, and the rules on.
 	Check *MemCheck `json:"check,omitempty"`
+	// D566: Files are the files kept in Mem, by media id; FileTrouble the last
+	// one the Settings default didn't keep.
+	Files       map[string]MemFileSaved `json:"files,omitempty"`
+	FileTrouble *MemFileTrouble         `json:"fileTrouble,omitempty"`
 }
 
 // MemCheck is what Nowledge Mem would like the person to settle (D465): Asks
@@ -3262,6 +3270,8 @@ type ServerFrame struct {
 	MemFound *MemFound `json:"-"`
 	// MemAnswered is mem_answered (D465), decoded on its own (its answer is a word, not a WbAnswer).
 	MemAnswered *MemAnswered `json:"-"`
+	// MemFile (D566) is a mem_file_save answer: kept, or why not.
+	MemFile *MemFileAnswer `json:"-"`
 	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
 	Sources *SourcesFrame `json:"-"`
 	// D480: mailbox_look's answer (with Device and Harness).
@@ -3484,6 +3494,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "mention_list", "slash_list":
 		// D534: the composers' @ and / lists ("items" and "entries" are their own shapes).
 		return decodeMentions(data, ServerFrame{T: head.T})
+	case "mem_file_save":
+		// D566: its "media" is one id where the shared struct's is a list of refs.
+		return decodeMemFileAnswer(data, ServerFrame{T: head.T})
 	case "mem_answered":
 		// D465: its "answer" is a word where the shared struct's is the workbench's.
 		return decodeMemAnswered(data, ServerFrame{T: head.T})

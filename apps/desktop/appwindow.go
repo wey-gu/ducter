@@ -16,6 +16,8 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/appdock"
+	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/views"
 )
 
@@ -72,6 +74,7 @@ func installApps(app *views.App) {
 			http.Error(w, "not found", http.StatusNotFound)
 		}
 	})
+	installDock(app)
 	// D446: an open app follows a live switch of the Mac's appearance (or
 	// of Ducter's own Look setting), as its first frame did.
 	mygo.Theme.OnUpdated(func() { b.Theme(mygo.Theme.IsDark()) })
@@ -102,8 +105,9 @@ func installApps(app *views.App) {
 		// itself in an untrusted web view on its own scheme, as before.
 		aw := app.NewAppWin(id)
 		w := mygo.NewWindow(mygo.WindowOptions{
-			Title:                name,
-			Width:                520,
+			Title: name,
+			// D562: room for the kit's whole page (560 at most) inside the stage's margins.
+			Width:                600,
 			Height:               860,
 			MinWidth:             380,
 			MinHeight:            520,
@@ -158,4 +162,74 @@ func installApps(app *views.App) {
 			app.Win.Update(func() { app.CloseAppWin(id) })
 		})
 	}
+}
+
+// D562: 放到程序坞 / Keep in the Dock. An app kept there is a tiny bundle in
+// ~/Applications/Ducter Apps (DUCTER_APP_STUBS_DIR elsewhere, and then the
+// person's Dock is never touched) whose one line opens ducter://app/<id> in
+// this Ducter; that link opens the app's own window, once the home is there.
+func installDock(app *views.App) {
+	dir := appdock.DefaultDir()
+	var dock appdock.Dock = &appdock.MacDock{}
+	if os.Getenv("DUCTER_APP_STUBS_DIR") != "" {
+		dock = nil
+	}
+	hc := &http.Client{Timeout: 20 * time.Second}
+	app.Dock = &appdock.Stubs{
+		Dir:      dir,
+		BundleID: ownBundleID(),
+		Dock:     dock,
+		Register: appdock.RegisterBundle,
+		Fetch: func(path string) ([]byte, error) {
+			res, err := hc.Get(app.Media.Home().URL(path))
+			if err != nil {
+				return nil, err
+			}
+			defer res.Body.Close()
+			if res.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("the home said %s", res.Status)
+			}
+			return io.ReadAll(io.LimitReader(res.Body, 4<<20))
+		},
+	}
+	mygo.App.OnOpenURL(func(u string) {
+		m := appLinkRe.FindStringSubmatch(u)
+		if m == nil {
+			return
+		}
+		openWhenConnected(app, m[1], 60)
+	})
+}
+
+var appLinkRe = regexp.MustCompile(`^ducter://app/(a[0-9a-f]{1,15})/?$`)
+
+// openWhenConnected opens the app's window once the home is connected (a
+// link from the Dock can start Ducter itself), trying for about tries/2 s.
+func openWhenConnected(app *views.App, id string, tries int) {
+	app.Win.Update(func() {
+		if app.Status == client.Connected && len(app.S.Apps) > 0 {
+			app.OpenApp(id)
+			return
+		}
+		if tries <= 0 {
+			app.OpenApp(id)
+			return
+		}
+		time.AfterFunc(500*time.Millisecond, func() { openWhenConnected(app, id, tries-1) })
+	})
+}
+
+var bundleIDRe = regexp.MustCompile(`<key>CFBundleIdentifier</key>\s*<string>([^<]+)</string>`)
+
+// ownBundleID is this Ducter's bundle id (a test build has its own), read
+// from its Info.plist; a development run uses the release's.
+func ownBundleID() string {
+	if exe, err := os.Executable(); err == nil {
+		if b, err := os.ReadFile(filepath.Join(filepath.Dir(exe), "..", "Info.plist")); err == nil {
+			if m := bundleIDRe.FindSubmatch(b); m != nil {
+				return string(m[1])
+			}
+		}
+	}
+	return "co.nowledge.ducter"
 }

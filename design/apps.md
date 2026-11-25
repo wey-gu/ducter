@@ -9,7 +9,8 @@ visuals are Pebble's (`ui.md`). D422 (`research/174-apps-bar.md`) brought them t
 apps made before the kit, marks drawn for what an app is about, one state line from one truth each,
 plain words in the foot, and the flows walked end to end (below). D431 (`research/181-apps-first-state.md`)
 closed its follow-ups: an empty app opens on a designed first state, an app's things live in its data and
-never in its file, and the loop was walked through a real client.
+never in its file, and the loop was walked through a real client. D562 (`research/229-apps-as-real-apps.md`)
+lets a kept app open like the rest of the person's apps (the Dock, the Home Screen) and polished the loop.
 
 ## Who and how it starts
 
@@ -134,8 +135,9 @@ research/169 §4 (空间 / Space read as Nowledge Mem's Spaces by every rater; t
   changed or opened. Wide: as many columns as fit; a phone: two, the whole screen. A tap opens it.
 - **「⋯」** (on the tile and in the app's head): **改名 / Rename** (in place), **让{name}改… / Ask {name}
   to change it…** (opens it, its line focused), **改回去 / Undo the change** (when there is one),
-  **置顶 / Pin to the top** · **取消置顶 / Unpin**, **不再让「{task}」更新它 / Stop “{task}” updating it**,
-  **删掉 / Delete**.
+  **置顶 / Pin to the top** · **取消置顶 / Unpin**, D562's **放到程序坞 / Keep in the Dock** · **从程序坞拿掉 /
+  Remove from the Dock** (the Mac) or **添加到主屏幕 / Add to Home Screen** (a phone's or computer's browser),
+  **不再让「{task}」更新它 / Stop “{task}” updating it**, **删掉 / Delete**.
 - **Delete** asks first: **删掉「{name}」？ / Delete “{name}”?**, **它记下的东西会一起删掉。 / What it keeps
   goes with it.**, **不删 / Keep it**, **删掉 / Delete**; then **删掉了「{name}」 / Deleted “{name}”** with
   **撤销 / Undo**. The home keeps a deleted app and its data 30 days (`apps/.removed/<id>/`), then it is
@@ -248,7 +250,7 @@ D410's, unchanged, with its shots. Not walked: 4 end to end with a real partner,
 8. **Rename** in place from 「⋯」 (D410).
 9. **Delete** from 「⋯」 or by asking: asked first, **撤销** after, kept 30 days (D410).
 10. **It broke:** its tile and window say so; **让{name}修好它** sends the error as the person's words
-    about it; **改回去** is in the head when there was a change.
+    about it; **改回去** is in 「⋯」 when there was a change.
 11. **An app from before the kit** (the author's case): **换成新样子** remakes it with the kit, filled
     from what Ducter knows, its keys kept; **改回去** undoes it.
 
@@ -272,9 +274,10 @@ open as a card after the first save (it folds back).
   “Beijing trip expenses”**.
 - The partner changes it with edits (find and replace, each matching once) or a whole new file; the
   card says **改好了 / Changed**; an app open on any device runs again as it is now, with a green line
-  **改好了** and the partner's few words of what changed.
-- **改回去 / Undo the change** in the sheet's head (the web, the phone and the Mac's window) brings the
-  version before back (as a new version), as far as ten back.
+  **改好了** and the partner's few words of what changed, and **改回去** beside them (D562).
+- **改回去 / Undo the change** on that line and in 「⋯」 (the web, the phone and the Mac's window; D562 took it
+  out of the head, where it cut a long name) brings the version before back (as a new version), as far as ten
+  back. When it lands in the open app, the line says **改回去了 / Changed back** (D562: it said 改好了).
 - The partner can also **fill** an app ("把我今天的打车记进去"): it writes keys into its data; the card
   says **填好了 / Filled in**.
 
@@ -344,8 +347,45 @@ re-read; after, one page always current on every device and a quiet conversation
 |---|---|
 | The policy (all clients) | `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'` (the Mac: `'self'`, its own scheme); `form-action`, `base-uri`, `frame-src`, `worker-src`, `object-src` none. In the document before anything else, and as a header. |
 | The web and the phone | the page's own policy forbids inline scripts in a `srcdoc` frame, so the home serves the app at `/app-frame/<token>` (a one-app capability, 30 minutes, minted on each open) with the policy and `sandbox allow-scripts allow-forms`: an opaque origin (no cookies, no storage, no reading the page around it), no popups, no top navigation, no modals. The page frames only its own origin (`frame-src 'self'`). The frame talks by `postMessage`; the page takes only messages from that frame, for that app. |
-| The Mac | its own window (D410: a native head with its tile, name, 改回去 and 「⋯」, the first-open and 改好了 lines, and a foot with the line to change it; the app between them): a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
+| The Mac | its own window, 600 wide (D410: a native head with its tile, its name and 「⋯」, the first-open and 改好了 lines, and a foot with the line to change it, the conversation's composer since D562; the app between them): a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
 | The home | keys are short and printable, data is capped, asks are rate-limited, a frame token is one app's and expires; an app of another partner is never opened. |
+
+## Open like the rest of your apps (D562)
+
+**Who:** the consumer opening the trip app every evening of the trip; the developer keeping the review
+board up all day; the fresh user, who meets this only as one more line in an app's 「⋯」. **Felt:** before,
+an app they live with sat a click inside Ducter away; after, it is in the Dock or on the Home Screen with its
+own mark and opens straight into itself, as it is now (好用; 惊喜: it looks like their app). **First time:**
+the 「⋯」 they already use. The evidence and Anthropic's "Install as app" are `research/229`.
+
+- **The Mac: 放到程序坞 / Keep in the Dock** (then **从程序坞拿掉 / Remove from the Dock**), on the tile and in the
+  window. It writes `~/Applications/Ducter Apps/<name>.app` (`appdock`; `DUCTER_APP_STUBS_DIR` elsewhere, and
+  then the person's Dock is never edited): a two-line script, `open -b <Ducter's bundle id> ducter://app/<id>`,
+  `LSUIElement` (no Dock icon of its own while it runs), its icon an `.icns` of the home's PNGs; and keeps it
+  in the Dock (`persistent-apps` through `defaults` and PlistBuddy; the Dock restarts a moment). Then
+  **「{name}」在程序坞里了，在聚焦搜索里也找得到。/ “{name}” is in the Dock, and in Spotlight.** (else **没放成：{why} /
+  Couldn't add it: {why}**). A rename renames the bundle in its Dock place; a new mark redraws it; deleting the
+  app on this Mac takes it out. `ducter://app/<id>` (Ducter's URL scheme) opens its window once the home is
+  there. The window is Ducter's: ⌘Tab and the running dot say Ducter.
+- **The phone and the web: 添加到主屏幕 / Add to Home Screen** (never inside Ducter's own iPhone or Android
+  app, which can't add one). While an app is open the page is that app: its manifest
+  (`/app-icon/<id>/<key>/manifest.webmanifest`: its own `id`, `start_url` `/app?app=<id>`, standalone), its
+  180 px icon, its name, the address `/app?app=<id>`. The item shows the icon at 60 points with the name
+  under it, **把「{name}」放到主屏幕 / Put “{name}” on your Home Screen**, the one step this browser takes
+  (**在 Safari 里点「分享」，再点「添加到主屏幕」。/ In Safari, tap Share, then Add to Home Screen.**; Chrome's own
+  **添加 / Add** with **点「添加」，它就在主屏幕上了。/ Tap Add and it's on your Home Screen.**; else **在浏览器的菜单里选
+  「安装」或「添加到主屏幕」。/ In your browser's menu, choose Install or Add to Home Screen.**), **点它直接打开这个小应用，
+  铺满整个屏幕；你让{name}改过的，它也跟着变。/ It opens straight into this app, full screen, and keeps every change
+  you ask {name} for.** and **好 / Done**.
+- **The icon** is the app's mark pressed into its clay (D422's glyph a touch bolder, so it reads at 16), drawn by
+  the home (`packages/core/src/app-icon.ts`): `icon-<size>.png`, the whole square (a Home Screen masks it),
+  and `mac-<size>.png`, the macOS grid with the clay's ledge. Served at `AppMeta.home` without the device token
+  (a Home Screen and the Dock send none) under a key, an HMAC of the id with the home's own secret
+  (`apps/.icon-key`); it says the name, mark and clay, nothing the app keeps.
+- **Updates** follow as before: both open the app as it is now on the home. With the home away, the Home
+  Screen app shows Ducter's offline page, as `#app=` does (`offline.md`).
+- **Permissions stay one** (the sandbox below). An app's own notifications or menu-bar item, always-on-top
+  or shortcuts, permission tiers and asking again per version are `todo.md`'s, behind D61 and Go.
 
 ## Not in v1
 
@@ -355,8 +395,8 @@ harness is signed in, the drawn mark until then; people as raters.
 Sharing an app with someone (a link, their own data or a shared copy, viewer-pays, a first-use
 consent); an app calling a connected account or the web by itself (only through the partner, behind
 Go); pointing at part of an app to change it; an app made by a coding task (several files, a build);
-offline on the phone (the frame needs the home); an app's own notification or schedule (a routine
-filling it is the way, D407); reordering the shelf by hand, folders; a list of deleted apps to bring
+offline on the phone (the frame needs the home); an app's own notification, menu-bar item or schedule
+(a routine filling it is the way, D407; D562's todo); reordering the shelf by hand, folders; a list of deleted apps to bring
 back after the toast or card is gone (the home keeps them 30 days); ideas from the calendar and
 routines on the empty shelf (only noted bookings so far); the Android and iPhone shells' native
 bridges (the web's frame serves them). `todo.md`.

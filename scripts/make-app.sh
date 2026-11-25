@@ -118,6 +118,17 @@ cat >"$APP/Contents/Info.plist" <<EOF
 	<string>$MIN_MACOS</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$ID</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ducter</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSHighResolutionCapable</key>

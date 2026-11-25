@@ -87,6 +87,10 @@ type App struct {
 	// OpenAppWindow (D405) opens one of the person's apps in its own window
 	// (main.go: a web view on the app's own scheme); nil records it only.
 	OpenAppWindow func(id, name string)
+	// Dock (D562) is this Mac's apps kept in the Dock (main.go); docked the
+	// ids kept there, read again after a change.
+	Dock   AppDock
+	docked map[string]bool
 	// ShowMain (D407) brings the main window forward (an app's 看草稿 opens
 	// the draft sheet there); nil in tests.
 	ShowMain func()
@@ -1168,6 +1172,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	a.S.Apply(f)
 	if a.bridge != nil {
 		a.bridge.receive(f) // D405: an app window's data, answers, refusals
+	}
+	if f.AppsF != nil && f.AppsF.T == "apps" {
+		a.dockFollow() // D562: an app kept in the Dock follows its renames; a deleted one leaves
 	}
 	a.liveIndex(f)
 	if f.T == "task_history" || f.T == "task_index" {

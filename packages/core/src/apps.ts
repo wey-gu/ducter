@@ -6,7 +6,7 @@
 // the conversation as the person's message from that app, rate-limited here.
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   APP_ASKS_PER_HOUR,
   APP_DATA_MAX,
@@ -97,6 +97,14 @@ export interface AppsStore {
   /** D422: Ongoing moved: the list goes out again when an app is kept by a task. */
   liveMoved(): void;
   onChange(fn: (c: AppChange) => void): () => void;
+  /**
+   * D562: the key in an app's icon and Home Screen paths (`/app-icon/<id>/<key>/…`): a keyed hash of
+   * its id with this home's own secret, so a Home Screen or Dock icon keeps working and nobody guesses
+   * another app's name from its id. Undefined for an app that isn't there.
+   */
+  iconKey(id: string): string | undefined;
+  /** D562: the app behind an icon path, when its key is right. */
+  byIconKey(id: string, key: string): AppMeta | undefined;
 }
 
 const write = (path: string, text: string) => {
@@ -231,6 +239,23 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     if (look.rows >= 2) l.inFile = look.rows;
     return Object.keys(l).length ? l : undefined;
   };
+  // D562: this home's secret for icon paths, made once and kept beside the apps.
+  let iconSecret: Buffer | undefined;
+  const secret = () => {
+    if (iconSecret) return iconSecret;
+    const p = join(root, ".icon-key");
+    try {
+      const kept = Buffer.from(readFileSync(p, "utf8").trim(), "hex");
+      if (kept.length >= 16) return (iconSecret = kept);
+    } catch {
+      /* none yet */
+    }
+    mkdirSync(root, { recursive: true });
+    iconSecret = randomBytes(32);
+    write(p, iconSecret.toString("hex"));
+    return iconSecret;
+  };
+  const keyOf = (id: string) => createHmac("sha256", secret()).update(`app-icon:${id}`).digest("base64url").slice(0, 22);
   const store: AppsStore = {
     list: (persona) =>
       [...metas.values()]
@@ -238,8 +263,16 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
         .sort((a, b) => b.updated.localeCompare(a.updated))
         .map((m) => {
           const live = liveOf(m);
-          return live ? { ...m, live } : m;
+          return { ...m, ...(live ? { live } : {}), home: `/app-icon/${m.id}/${keyOf(m.id)}/` };
         }),
+    iconKey: (id) => (metas.has(id) ? keyOf(id) : undefined),
+    byIconKey(id, key) {
+      const m = metas.get(id);
+      if (!m) return undefined;
+      const want = Buffer.from(keyOf(id));
+      const got = Buffer.from(key);
+      return got.length === want.length && timingSafeEqual(got, want) ? m : undefined;
+    },
     get: (id) => metas.get(id),
     html,
     data: (id) => (metas.has(id) ? data(id) : {}),

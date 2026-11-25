@@ -89,6 +89,7 @@ import { takeBackAtOnce } from "./mem-takeback.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
+import { appIconResponse } from "./app-icon.ts";
 import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, registerNewTasksTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
@@ -2703,6 +2704,15 @@ export function startCore(opts: CoreOptions = {}): Core {
         const doc = apps.frameDoc(frame[1]!);
         if (!doc) return new Response("gone", { status: 404, headers: { "cache-control": "no-store" } });
         return new Response(doc, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": `${appCsp("message")}; sandbox ${APP_SANDBOX}`, "x-content-type-options": "nosniff", "referrer-policy": "no-referrer" } });
+      }
+      // D562: an app's own icon and Home Screen manifest, by its key (a Home Screen, a manifest
+      // fetch and the Mac's Dock send no token). Only its name, mark and clay: nothing it keeps.
+      const icon = /^\/app-icon\/(a[0-9a-f]{1,15})\/([A-Za-z0-9_-]{22})\/(?:(icon|mac)-(\d{2,4})\.png|manifest\.webmanifest)$/.exec(url.pathname);
+      if (icon && (req.method === "GET" || req.method === "HEAD")) {
+        const m = apps.byIconKey(icon[1]!, icon[2]!);
+        if (!m) return new Response("gone", { status: 404, headers: { "cache-control": "no-store" } });
+        const res = appIconResponse(m, icon[3] as "icon" | "mac" | undefined, Number(icon[4] ?? 0), url.pathname.replace(/[^/]*$/, ""));
+        return req.method === "HEAD" ? new Response(null, { status: res.status, headers: res.headers }) : res;
       }
       // D206: a picture's bytes, by its key (an <img> sends no token); everything else about it is behind the gate.
       const pic = await media.serve(req);

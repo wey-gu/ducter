@@ -95,7 +95,7 @@ import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
-import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
+import { AppCardView, AppRefGlyph, appNameNow, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
 import { closeKeep, K, KeepReceipt } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
@@ -1391,8 +1391,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         return (
           <div class="app-asked" data-seq={e.firstSeq}>
             <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
-              {APP_GLYPH(14)}
-              <span>{t("app.asks", a.name)}</span>
+              <AppRefGlyph id={a.id} />
+              <span>{t("app.asks", appNameNow(a))}</span>
             </button>
             <div class="app-asked-bubble" dir="auto">
               {e.user.text}
@@ -1402,8 +1402,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
       return (
         <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
           <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
-            {APP_GLYPH(14)}
-            <span>{t("app.about", a.name)}</span>
+            <AppRefGlyph id={a.id} />
+            <span>{t("app.about", appNameNow(a))}</span>
           </button>
           <UserWords text={e.user.text} reply={e.user.reply} refs={e.user.refs} cls="user" peb={rk} />
         </div>

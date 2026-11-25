@@ -111,6 +111,11 @@ export interface AppMeta {
   broke?: { text: string; at: string; version: number };
   /** D422: what it is doing now, worked out by the home on every list (never kept): AppLive. */
   live?: AppLive;
+  /**
+   * D562: where this home serves the app's own icon and Home Screen manifest, worked out on every
+   * list (never kept): `/app-icon/<id>/<key>/` + `icon-<size>.png`, `mac-<size>.png`, `manifest.webmanifest`.
+   */
+  home?: string;
 }
 
 /**

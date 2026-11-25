@@ -47,7 +47,7 @@ const DEFINE: Record<string, string> = {
   "menu.tsx": "defines the one clay menu (D421)",
 };
 const OLDER: Record<string, number> = {
-  "apps-shelf.tsx": 1, "apps.tsx": 8, "fileview.tsx": 12, "first-words.tsx": 1, "handover.tsx": 5, "live.tsx": 5, "main.tsx": 1, "media.tsx": 5,
+  "apps-shelf.tsx": 1, "apps.tsx": 7, "fileview.tsx": 12, "first-words.tsx": 1, "handover.tsx": 5, "live.tsx": 5, "main.tsx": 1, "media.tsx": 5,
   "memory.tsx": 2, "newtask.tsx": 1, "onhand.tsx": 5, "past-preview.tsx": 1, "phone-use.tsx": 4, "phone.tsx": 1, "pile.tsx": 1, "pins.tsx": 1,
   "reply.tsx": 3, "rich.tsx": 2, "sim.tsx": 1, "talk.tsx": 6, "task-sheet.tsx": 1, "transcript.tsx": 1, "views.tsx": 12, "voice.tsx": 4,
   "work.tsx": 6, "workbench.tsx": 1, "worker-mem.tsx": 1,

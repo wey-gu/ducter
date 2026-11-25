@@ -3101,6 +3101,9 @@ class AppState {
       history.replaceState(null, "", location.pathname);
       return openApp(app[1]!);
     }
+    // D562: ?app=<id> is an app put on the Home Screen (its own start, straight into it).
+    const own = /^\?app=([a-z0-9]{1,16})$/.exec(location.search);
+    if (own && !(this.sheet?.kind === "app" && this.sheet.id === own[1])) return openApp(own[1]!);
     const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);

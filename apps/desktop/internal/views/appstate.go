@@ -86,11 +86,15 @@ func (a *App) appStateLine(c *ui.Context, key string, m *protocol.AppMeta) {
 			a.appTrack(c)
 		}
 		if words != "" {
-			col := t.InkSoft
+			col, weight := t.InkSoft, 700
 			if bad {
 				col = t.Failed.Ink
 			}
-			uiText(c.Key("words"), keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(col).MaxLines(3)
+			// D562: a task keeping it current is a quiet fact, never louder than the app's own line.
+			if s == "kept_next" {
+				col, weight = t.InkMuted, 500
+			}
+			uiText(c.Key("words"), keepWords(autospace(words))).FontSize(t.XS).FontWeight(weight).TextColor(col).MaxLines(3)
 		}
 		if s == "plain" || s == "kept_next" || s == "old" {
 			at := m.Updated

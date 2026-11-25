@@ -54,8 +54,9 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 			if gone {
 				ink = t.InkMuted
 			}
-			uiText(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
-			uiText(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			// D562: the name takes two lines before it is cut; the line under it keeps its clauses whole.
+			uiText(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).MaxLines(2).Shrink(1).MinWidth(0).Tooltip(name)
+			uiText(c, keepClauses(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		})
 		switch {
 		case card.Change == "removed" && now == nil:
@@ -93,16 +94,21 @@ func (a *App) appFace(c *ui.Context, size float32, gone bool) {
 // typed about an app): its mark and name; a click opens the app.
 func (a *App) userAppLine(c *ui.Context, key string, ref *protocol.AppRef) {
 	t := a.T
-	words := a.L.T("app.about", ref.Name)
+	// D562: the app as it is now: its own mark, its name after a rename.
+	name, now := ref.Name, a.appByID(ref.ID)
+	if now != nil {
+		name = now.Name
+	}
+	words := a.L.T("app.about", name)
 	if ref.Ask != "" {
-		words = a.L.T("app.asks", ref.Name)
+		words = a.L.T("app.asks", name)
 	}
 	ui.Row(c.Key("appfrom:" + key)).Children(func() {
 		ui.Spacer(c)
 		b := ui.Row(c.Key("b")).Gap(6).AlignItems(ui.Center).Padding(2, t.S2).Radius(999).Background(t.Sunken).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
-			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
+			a.appRefMark(c, now, t.InkSoft)
 			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
@@ -116,11 +122,15 @@ func (a *App) userAppLine(c *ui.Context, key string, ref *protocol.AppRef) {
 func (a *App) appAskBubble(c *ui.Context, key string, ref *protocol.AppRef, text string) {
 	t := a.T
 	ui.Column(c.Key("appask:" + key)).Gap(4).AlignItems(ui.Start).MaxWidthPercent(80).Children(func() {
-		words := a.L.T("app.asks", ref.Name)
+		name, now := ref.Name, a.appByID(ref.ID)
+		if now != nil {
+			name = now.Name
+		}
+		words := a.L.T("app.asks", name)
 		b := ui.Row(c.Key("b")).Gap(6).AlignItems(ui.Center).Padding(2, t.S2).Radius(999).Background(t.Sunken).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
-			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
+			a.appRefMark(c, now, t.InkSoft)
 			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
@@ -385,4 +395,14 @@ func (b *AppBridge) receive(f protocol.ServerFrame) {
 		}
 		b.push(m.AppAnswer.ID, map[string]any{"ducterApp": m.AppAnswer.ID, "t": "answer", "ref": m.AppAnswer.Ask, "text": strings.TrimSpace(m.Text)})
 	}
+}
+
+// appRefMark is the 14-point mark on a line about an app: its own (a
+// suitcase for the trip), else the app window while the list hasn't come.
+func (a *App) appRefMark(c *ui.Context, m *protocol.AppMeta, ink ui.Color) {
+	draw := drawMadeKind("app", ink)
+	if m != nil {
+		draw = drawAppIcon(m.IconOf(), ink, ui.Transparent, ui.Transparent)
+	}
+	ui.Box(c.Key("g")).Size(14, 14).Shrink(0).AccessHidden(true).Draw(draw)
 }

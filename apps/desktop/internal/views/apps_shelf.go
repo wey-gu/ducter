@@ -11,6 +11,7 @@ package views
 // what the home knows. Facts are separate elements (D291), never joined.
 
 import (
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -129,8 +130,10 @@ func (a *App) appsView(c *ui.Context) {
 					a.shelfEmpty(c)
 					return
 				}
-				tw := a.shelfTileWidth()
-				ui.Row(c.Key("apps-grid")).Gap(t.S4).Wrap().AlignItems(ui.Stretch).Children(func() {
+				tw, rowW := a.shelfTileWidth()
+				// D562: the row is as wide as its columns (it wrapped after two and left a third of
+				// the place empty at 1150 and 1400).
+				ui.Row(c.Key("apps-grid")).Width(rowW).MaxWidthPercent(100).Gap(t.S4).Wrap().AlignItems(ui.Stretch).Children(func() {
 					for i := range apps {
 						a.shelfTile(c, &apps[i], tw)
 					}
@@ -222,14 +225,15 @@ func wordsIn(l *i18n.Strings, w protocol.Words) string {
 
 // shelfTileWidth fits as many tiles of about shelfTileW as the place
 // holds, the row filled edge to edge.
-func (a *App) shelfTileWidth() float32 {
+func (a *App) shelfTileWidth() (tile, row float32) {
 	t := a.T
 	avail := float32(pastMeasure)
 	if a.winW > 0 {
 		avail = min(avail, a.winW-2*t.S6)
 	}
 	cols := max(1, int((avail+t.S4)/(shelfTileW-24+t.S4)))
-	return (avail - t.S4*float32(cols-1)) / float32(cols)
+	// Whole points: a third of 760 less its gaps came to a hair too wide, and the row wrapped after two.
+	return float32(math.Floor(float64((avail - t.S4*float32(cols-1)) / float32(cols)))), avail
 }
 
 // shelfTile is one app on the shelf: its tile, its name, its own line,
@@ -336,6 +340,11 @@ func (a *App) deleteApp(m *protocol.AppMeta) {
 	sh := &a.shelf
 	gone := *m
 	a.send(protocol.AppIDReq{T: "app_remove", ID: m.ID})
+	// D562: an app deleted here leaves the Dock too (its 撤销 brings the app back, not the Dock icon).
+	if d := a.Dock; d != nil && a.appDocked(m.ID) {
+		a.docked = nil
+		go func() { _ = d.Drop(gone.ID) }()
+	}
 	keep := a.S.Apps[:0:0]
 	for _, x := range a.S.Apps {
 		if x.ID != m.ID {
@@ -370,6 +379,9 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 			a.openAppAsk(id)
 		}
 		if m.Back && mn.Item(a.L.T("app.back")).Chosen() {
+			if w := a.appWins[id]; w != nil {
+				w.undoing = true // D562: its window says 改回去了 when it lands
+			}
 			a.send(protocol.AppIDReq{T: "app_back", ID: id})
 		}
 		mn.Separator()
@@ -383,6 +395,7 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 				x.Pinned = to
 			}
 		}
+		a.dockMenu(mn, m)
 		if m.Task != nil && mn.Item(a.L.T("apps.m.untask", m.Task.Title)).Chosen() {
 			a.send(protocol.AppSetReq{T: "app_set", ID: id, Untask: true})
 		}

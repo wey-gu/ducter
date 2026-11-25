@@ -38,6 +38,9 @@ type AppMeta struct {
 	// D422: its page threw on a version; what it is doing now (the home's).
 	Broke *AppBroke `json:"broke,omitempty"`
 	Live  *AppLive  `json:"live,omitempty"`
+	// D562: where the home serves its own icon and Home Screen manifest
+	// (/app-icon/<id>/<key>/), worked out on every list.
+	Home string `json:"home,omitempty"`
 }
 
 // AppTints are the shelf's clay tints (D410: the person's muted clays, D285).

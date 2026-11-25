@@ -181,7 +181,7 @@ func TestShelfCardRemovedCardAndPins(t *testing.T) {
 		protocol.NewEvent(10, ts, "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "Deleted the lunch splitter and its two rows.", ReplyTo: 9, App: &protocol.AppCard{ID: "a7a7a7", Name: "Team lunch splitter", Version: 2, Change: "removed"}}),
 	}})
 	tt := shelfTester(app, 1280)
-	for _, want := range []string{"3 apps", "Open Your apps", unjoin(unjoin(autospace("Deleted, with what it kept."))), "Reading streak"} {
+	for _, want := range []string{"3 apps", "Open Your apps", unjoin(keepClauses(autospace("Deleted, with what it kept."))), "Reading streak"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -218,13 +218,19 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	w := app.NewAppWin("a1b2c3")
 	tt := ui.NewTesterWith(app.AppWinView(w), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), "改回去", unjoin(autospace(app.L.T("app.private")))} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), unjoin(autospace(app.L.T("app.private")))} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
+	// D562: the head keeps the whole name; 改回去 is said beside a change that lands (below).
+	if tt.HasText("改回去") {
+		t.Errorf("改回去 in the head: %q", tt.Texts())
+	}
+	// D519, D562: the ask is the conversation's composer.
 	w.said = "加一笔打车 84"
-	if err := tt.Click(spoken(app.L, "发送", "北京出差 11/20–21")); err != nil {
+	tt.Frame()
+	if err := tt.Click("发送"); err != nil {
 		t.Fatal(err)
 	}
 	s, ok := lastPast[protocol.Send](*sent)
@@ -244,6 +250,19 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	tt.Frame()
 	if reloads != 1 || !tt.HasText("改好了") || !tt.HasText(unjoin(autospace("加了打车 ¥84"))) {
 		t.Errorf("reloads %d %q", reloads, tt.Texts())
+	}
+	// D562: 改回去 beside the change; when that Undo lands, it says 改回去了, never 改好了.
+	if err := tt.Click(spoken(app.L, "改回去", "北京出差 11/20–21")); err != nil {
+		t.Fatalf("%v %q", err, tt.Texts())
+	}
+	if b, ok := lastPast[protocol.AppIDReq](*sent); !ok || b.T != "app_back" || b.ID != "a1b2c3" {
+		t.Errorf("undo sent %#v", b)
+	}
+	apps[0].Version, apps[0].Note = 4, "加了打车 ¥84"
+	app.Receive(protocol.ServerFrame{T: "apps", AppsF: &protocol.AppsFrame{T: "apps", Apps: apps}})
+	tt.Frame()
+	if !tt.HasText("改回去了") || tt.HasText("改好了") || tt.HasText(unjoin(autospace("加了打车 ¥84"))) {
+		t.Errorf("after the undo landed %q", tt.Texts())
 	}
 	// A second open of an app already opened has no first line.
 	w2 := app.NewAppWin("a4f5e6")

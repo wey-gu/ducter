@@ -46,6 +46,9 @@ type AppWin struct {
 	busy     bool
 	focusAsk bool
 	gone     bool
+	// undoing: 改回去 was asked here; undone: the version that landed is that Undo (D562: it says
+	// 改回去了, never 改好了).
+	undoing, undone bool
 }
 
 // NewAppWin is the state of a window opening on app id now: its first-open
@@ -96,6 +99,10 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 		// A change landed while open: the page runs again as it is now.
 		if m != nil && w.version != 0 && m.Version != w.version {
 			w.version, w.changed, w.landed, w.first, w.sent = m.Version, m.Note, true, "", false
+			w.undone, w.undoing = w.undoing, false
+			if w.undone {
+				w.changed = ""
+			}
 			if w.Reload != nil {
 				w.Reload()
 			}
@@ -119,13 +126,7 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 				a.appWinFirst(c, w)
 			}
 			if w.landed {
-				ui.Row(c.Key("changed")).Margin(0, t.S4, t.S2, t.S4).Padding(t.S2, t.S3).Gap(t.S2).Radius(t.RadiusSM).
-					Background(t.Done.Surface).AlignItems(ui.Baseline).Role(ui.RoleStatus).Children(func() {
-					uiText(c, a.L.T("app.changed")).FontSize(t.SM).FontWeight(800).TextColor(t.Done.Ink).Shrink(0)
-					if w.changed != "" {
-						uiText(c, autospace(w.changed)).FontSize(t.SM).TextColor(t.Done.Ink).Grow(1).Shrink(1).MinWidth(0)
-					}
-				})
+				a.appWinChanged(c, w, m, name)
 			}
 			if m != nil && !w.gone && a.appStripShown(m) {
 				a.appWinStrip(c, m)
@@ -160,9 +161,8 @@ func (a *App) appWinHead(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 		if m == nil {
 			return
 		}
-		if m.Back && a.buttonFor(c, a.L.T("app.back"), name, btnText, t.ControlSM, t.Bg) {
-			a.send(protocol.AppIDReq{T: "app_back", ID: m.ID})
-		}
+		// D562: 改回去 is said beside the change it undoes (appWinChanged) and in 「⋯」, so the
+		// head keeps the whole name.
 		a.appMore(c, m, true)
 	})
 }
@@ -203,21 +203,34 @@ func (a *App) appWinFoot(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 		if m == nil {
 			return
 		}
-		ui.Row(c.Key("ask")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			in := ui.TextInput(c.Key("ask-in"), &w.said).Placeholder(a.L.T("app.ask.ph", partner)).Label(a.L.T("app.ask.ph", partner)).
-				Grow(1).MinWidth(0).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).FontSize(t.MD)
-			if w.focusAsk {
-				in.Focus()
-				w.focusAsk = false
-			}
-			if in.Changed() {
-				w.sent = false
-			}
-			send := a.buttonFor(c, a.L.T("app.ask.send"), name, btnPrimary, t.ControlMD, t.Bg)
-			if (send || in.Submitted()) && strings.TrimSpace(w.said) != "" {
-				a.appWinSend(w, m.ID)
-			}
+		// D519, D562: asking from inside the app is the conversation's composer (ui.md "The composer"),
+		// never a field and a button of its own.
+		before := w.said
+		ui.Row(c.Key("ask")).Children(func() {
+			a.composerBox(c, composerOpts{
+				key:         "app-ask-" + m.ID,
+				draft:       &w.said,
+				placeholder: a.L.T("app.ask.ph", partner),
+				label:       a.L.T("app.ask.ph", partner),
+				lines:       4,
+				fontSize:    t.MD,
+				sendSize:    t.ControlMD,
+				sendLabel:   a.L.T("app.ask.send"),
+				focus:       w.focusAsk,
+				onSend: func(text string) bool {
+					if strings.TrimSpace(text) == "" {
+						return false
+					}
+					w.said = text
+					a.appWinSend(w, m.ID)
+					return true
+				},
+			})
 		})
+		w.focusAsk = false
+		if w.said != before && w.said != "" {
+			w.sent = false
+		}
 		ui.Row(c.Key("meta")).Gap(t.S4).Padding(0, t.S1).Wrap().Children(func() {
 			if w.sent {
 				uiText(c.Key("sent"), keepWords(autospace(a.L.T("app.ask.sent", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
@@ -234,6 +247,30 @@ func (a *App) appWinFoot(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 			}
 			a.appStateLine(c, "state", m)
 		})
+	})
+}
+
+// appWinChanged is the change that landed while it was open: 改好了 and the
+// partner's few words, with 改回去 beside them (D562); an Undo that landed
+// says 改回去了.
+func (a *App) appWinChanged(c *ui.Context, w *AppWin, m *protocol.AppMeta, name string) {
+	t := a.T
+	ui.Row(c.Key("changed")).Margin(0, t.S4, t.S2, t.S4).Padding(t.S2, t.S2, t.S2, t.S3).Gap(t.S3).Radius(t.RadiusMD).
+		Background(t.Done.Surface).AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
+		ui.Row(c.Key("words")).Gap(t.S2).AlignItems(ui.Baseline).Grow(1).Shrink(1).MinWidth(0).Wrap().Children(func() {
+			word := a.L.T("app.changed")
+			if w.undone {
+				word = a.L.T("app.undone")
+			}
+			uiText(c, word).FontSize(t.SM).FontWeight(800).TextColor(t.Done.Ink).Shrink(0)
+			if w.changed != "" {
+				uiText(c, autospace(w.changed)).FontSize(t.SM).TextColor(t.Done.Ink).Grow(1).Shrink(1).MinWidth(0)
+			}
+		})
+		if m != nil && m.Back && !w.undone && a.buttonFor(c, a.L.T("app.back"), name, btnSecondary, t.ControlSM, t.Done.Surface) {
+			w.undoing = true
+			a.send(protocol.AppIDReq{T: "app_back", ID: m.ID})
+		}
 	})
 }
 

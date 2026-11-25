@@ -48,6 +48,7 @@ you:
 - **Ask your partner to change it**
 - **Undo the change** (when there was one)
 - **Pin to the top**: pinned apps come first and sit at the top of your conversation, one tap away
+- **Keep in the Dock** (on your Mac) or **Add to Home Screen** (in a browser): see below
 - **Stop** a repeating task from updating it
 - **Delete** it: you're asked first, and what it keeps goes with it. **Undo** brings it back.
 
@@ -56,6 +57,23 @@ You can also just ask: "where are my apps?" or "open my trip expenses app". Apps
 
 No apps yet? **Your apps** suggests a few to start with, your own coming trip first. Tap one and your
 partner makes it.
+
+## Open it like your other apps
+
+An app you use every day can live where your other apps do.
+
+- **On your Mac:** in its **⋯**, choose **Keep in the Dock**. It goes in your Dock with its own icon
+  (its little picture on its colour), and in Spotlight: type its name and press Return. It opens
+  straight into the app's own window. To take it out, choose **Remove from the Dock** in the same
+  menu. (It's a small file in **Applications › Ducter Apps** in your home folder; the window it opens is
+  Ducter's.)
+- **On your phone, or in a browser:** open the app, then in its **⋯** choose **Add to Home Screen**.
+  It shows the icon you'll get and the one step your browser needs: on iPhone, tap Safari's **Share**,
+  then **Add to Home Screen**; in Chrome, tap **Add**. From your Home Screen it opens full screen,
+  straight into the app.
+
+Either way it's the same app on the same Ducter: when your partner changes it, the icon opens the
+new version, with everything you put in. It needs your Ducter to be reachable, as the app always does.
 
 ## Changing it
 
@@ -66,8 +84,9 @@ in the browser, on your phone or in the app's own window on your Mac:
 - "Make it green"
 - "Set a 3,000 budget and show red when I'm over"
 
-Your partner changes the app in place; if it's open, it refreshes and says what changed. Don't like
-the change? **Undo the change** at the top of the app brings back the one before (up to ten back).
+Your partner changes the app in place; if it's open, it refreshes and says what changed, with **Undo
+the change** right beside it. Press it to bring back the one before (up to ten back, also in the app's
+**⋯**); the app then says **Changed back**.
 
 Your partner can also fill it in for you: "add today's taxi rides to my trip app". Or delete it: "delete
 my shopping list app" (its card has **Undo**).

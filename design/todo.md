@@ -3514,3 +3514,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D547 on a real phone:** the composer standing on iOS Safari's keyboard (checked only with an
   emulated visual viewport; the Simulator's Safari never loaded the demo) and the Android app's;
   Overview on the iPhone app at its real text size. *Trigger:* the next build on the author's phone.
+
+## D562: small apps open like the rest of your apps (`apps.md`, research/229)
+
+- [ ] **Add to Home Screen on a real iPhone**: does the app's own Home Screen icon keep the pairing (iOS keeps
+  storage per Home Screen web app, INFERRED), and does it open straight into the app? Trigger: the next
+  iPhone pass, or the first person who adds one.
+- [ ] **Keep in the Dock live, with a signed build**: the bundle in ~/Applications, Spotlight finding it, the
+  Dock entry kept across a rename, removed on delete. Trigger: the next release's Mac check.
+- [ ] **Notifications or a menu-bar item from an app** (Anthropic's installed artifacts have both). Trigger: a
+  person asks for an app that tells them something by itself, more than once. Behind D61 and a Go.
+- [ ] **Permission tiers, asked again after each change** (always-on-top, shortcuts, more than a browser can).
+  Trigger: an app needs something the sandbox can't give; never before. D61's floor applies.
+- [ ] **An app's own process** (its own ⌘Tab entry and running Dock dot, like Chrome's app shims). Trigger: people
+  keep two or more apps in the Dock and find them under Ducter's icon.
+- [ ] **People as raters** for 放到程序坞 / Keep in the Dock against 添加到程序坞. Trigger: the next naming round with people.

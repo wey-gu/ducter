@@ -1,0 +1,105 @@
+<!-- D562: a stand-in for what the partner writes now for "做个小应用，记一下这趟北京出差的花销" while Ducter knows the booked train and hotel: the answer first (this trip's total), the costs by day with where a prefilled one came from, adding last and folded. Its things live in its data (D431). -->
+<main class="k-app">
+  <section class="k-sum">
+    <span class="k-sum-label" id="label"></span>
+    <span class="k-sum-value" id="total"></span>
+    <span class="k-sum-sub" id="sub"></span>
+    <span class="k-sum-next" id="next"></span>
+  </section>
+  <div id="days"></div>
+  <p class="k-empty" id="empty"></p>
+  <details class="k-add">
+    <summary id="addS"></summary>
+    <input class="k-num" id="amt" inputmode="decimal" autocomplete="off" />
+    <div class="k-chips" id="cats" role="group"></div>
+    <input class="k-input" id="what" autocomplete="off" />
+    <button class="k-btn primary" id="save" type="button"></button>
+  </details>
+</main>
+<script>
+  const zh = (ducter.lang || "zh").startsWith("zh");
+  const W = zh
+    ? { label: "这趟一共", none: "还没记", n: (n) => `${n} 笔`, booked: (n) => `${n} 笔来自你的预订`, next: (s) => `花得最多：${s}`, empty: "每一笔按天列在这里。", add: "记一笔", amt: "多少钱", what: "花在哪（如：打车去会场）", save: "记下", from: "你的预订", cats: { go: "交通", stay: "住宿", eat: "吃饭", other: "其他" } }
+    : { label: "This trip so far", none: "Nothing yet", n: (n) => (n === 1 ? "1 cost" : `${n} costs`), booked: (n) => `${n} from your bookings`, next: (s) => `Most on: ${s}`, empty: "Each cost lists here by day.", add: "Add a cost", amt: "How much", what: "What for (e.g. taxi to the venue)", save: "Add it", from: "Your booking", cats: { go: "Travel", stay: "Stay", eat: "Food", other: "Other" } };
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => "¥" + Math.round(n).toLocaleString("en-US");
+  const md = (d) => { const [, m, dd] = String(d).split("-"); return `${Number(m)}/${Number(dd)}`; };
+  let cat = "go";
+  const xs = () => ducter.get("expenses") || [];
+  function draw() {
+    const all = xs();
+    const sum = all.reduce((a, x) => a + (Number(x.yuan) || 0), 0);
+    $("label").textContent = W.label;
+    $("total").textContent = all.length ? fmt(sum) : W.none;
+    $("total").classList.toggle("k-none", !all.length);
+    const booked = all.filter((x) => x.from).length;
+    $("sub").textContent = all.length ? (booked && booked < all.length ? W.n(all.length) + (zh ? "，" : ", ") + W.booked(booked) : booked ? W.booked(booked) : W.n(all.length)) : "";
+    const by = {};
+    for (const x of all) by[x.cat || "other"] = (by[x.cat || "other"] || 0) + (Number(x.yuan) || 0);
+    const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+    $("next").textContent = top && all.length > 1 ? W.next(`${W.cats[top[0]]} ${fmt(top[1])}`) : "";
+    const box = $("days");
+    box.innerHTML = "";
+    const groups = {};
+    for (const x of all) (groups[x.day || ""] ||= []).push(x);
+    for (const d of Object.keys(groups).sort()) {
+      const h = document.createElement("h2");
+      h.className = "k-h";
+      h.textContent = `${md(d)}  ${fmt(groups[d].reduce((a, x) => a + (Number(x.yuan) || 0), 0))}`;
+      const ul = document.createElement("ul");
+      ul.className = "k-list";
+      for (const x of groups[d]) {
+        const li = document.createElement("li");
+        li.className = "k-row";
+        const main = document.createElement("span");
+        main.className = "k-row-main";
+        main.textContent = x.what;
+        const sub = document.createElement("span");
+        sub.className = "k-row-sub";
+        sub.textContent = W.cats[x.cat] || W.cats.other;
+        if (x.from) {
+          const f = document.createElement("span");
+          f.className = "k-from";
+          f.textContent = W.from;
+          sub.append(" ", f);
+        }
+        main.appendChild(sub);
+        const v = document.createElement("span");
+        v.className = "k-row-value";
+        v.textContent = fmt(x.yuan);
+        li.append(main, v);
+        ul.appendChild(li);
+      }
+      box.append(h, ul);
+    }
+    $("empty").textContent = W.empty;
+    $("empty").hidden = !!all.length;
+    $("addS").textContent = W.add;
+    $("amt").placeholder = W.amt;
+    $("what").placeholder = W.what;
+    $("save").textContent = W.save;
+    const c = $("cats");
+    c.innerHTML = "";
+    for (const [k, label] of Object.entries(W.cats)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "k-chip";
+      b.textContent = label;
+      b.setAttribute("aria-pressed", String(k === cat));
+      b.onclick = () => ((cat = k), draw());
+      c.appendChild(b);
+    }
+    ducter.summary(all.length ? (zh ? `${W.n(all.length)}，合计 ${fmt(sum)}` : `${W.n(all.length)}, ${fmt(sum)} in all`) : "");
+  }
+  $("save").onclick = () => {
+    const yuan = Number(String($("amt").value).replace(/[^\d.]/g, ""));
+    if (!yuan) return $("amt").focus();
+    const today = new Date().toISOString().slice(0, 10);
+    ducter.set("expenses", [...xs(), { id: Date.now(), what: $("what").value.trim() || W.cats[cat], yuan, cat, day: today }]);
+    $("amt").value = "";
+    $("what").value = "";
+    draw();
+  };
+  ducter.onChange(draw);
+  draw();
+</script>

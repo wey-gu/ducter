@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { APP_GLYPH_STROKE, APP_GLYPHS, APP_SANDBOX, appIcon, appState, appShowRef, appTint, type AppCard, type AppIcon, type AppIdea, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { ComposerBox } from "./composer.tsx";
+import { Btn } from "./controls.tsx";
 import { stamp, when } from "./format.ts";
 import { url } from "./media.tsx";
 import { Menu, MenuItem, MenuSep } from "./menu.tsx";
@@ -26,7 +27,7 @@ export const AP = {
   seen: false,
   // first (D410): the partner's line of what it filled in, shown the first time it is opened.
   // focus: the line to change it is focused (the shelf's 「让…改」).
-  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string }; first?: string; focus?: boolean },
+  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string; undone?: boolean }; first?: string; focus?: boolean; undoing?: boolean; home?: boolean },
 };
 
 /** The app mark, drawn (never an emoji): a small window with a title bar and two rows. */
@@ -63,6 +64,21 @@ export function AppFace({ m, size = 48, gone }: { m?: Pick<AppMeta, "id" | "icon
   );
 }
 
+/** D562: a line over a message about an app names it as it is now (its mark, its name after a rename). */
+export function appNameNow(a: { id: string; name: string }): string {
+  return AP.list.find((m) => m.id === a.id)?.name ?? a.name;
+}
+export function AppRefGlyph({ id }: { id: string }) {
+  const m = AP.list.find((x) => x.id === id);
+  return m ? <AppIconGlyph icon={appIcon(m)} size={14} flat /> : APP_GLYPH(14);
+}
+
+/** D562: 改回去 / Undo the change; the open app then says it changed back, not that it changed. */
+export function undoApp(id: string) {
+  if (AP.open?.id === id) AP.open.undoing = true;
+  A.send({ t: "app_back", id });
+}
+
 const dark = () => {
   const th = document.documentElement.dataset.theme;
   return th ? th === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
@@ -72,10 +88,16 @@ function ask(id: string) {
   A.send({ t: "app_open", id, transport: "message", dark: dark(), lang: A.L.lang });
 }
 
-export function openApp(id: string, o: { focus?: boolean } = {}) {
+export function openApp(id: string, o: { focus?: boolean; home?: boolean } = {}) {
   const meta = AP.list.find((a) => a.id === id);
+  if (AP.open?.id === id && A.sheet?.kind === "app") {
+    // Already open (its own 「⋯」): only what was asked for changes.
+    if (o.focus) AP.open.focus = true;
+    if (o.home) AP.open.home = true;
+    return A.changed();
+  }
   // D410: the first time it opens, the partner's line of what it already filled in.
-  AP.open = { id, asks: new Set(), sent: new Map(), ...(meta && !meta.opened && meta.note ? { first: meta.note } : {}), ...(o.focus ? { focus: true } : {}) };
+  AP.open = { id, asks: new Set(), sent: new Map(), ...(meta && !meta.opened && meta.note ? { first: meta.note } : {}), ...(o.focus ? { focus: true } : {}), ...(o.home ? { home: true } : {}) };
   A.sheet = { kind: "app", id };
   ask(id);
   A.changed();
@@ -102,7 +124,8 @@ export function onAppsFrame(f: ServerFrame): boolean {
     const now = o && f.apps.find((a) => a.id === o.id);
     // The partner changed the open app: it runs again as it is now, with a word of what changed.
     if (o?.app && now && now.version !== o.app.version) {
-      o.changed = { version: now.version, ...(now.note ? { note: now.note } : {}) };
+      o.changed = o.undoing ? { version: now.version, undone: true } : { version: now.version, ...(now.note ? { note: now.note } : {}) };
+      o.undoing = false;
       ask(o.id);
     } else if (o?.app && !now) o.gone = true;
     // Opened before the socket was up (a link): ask again now that it is.
@@ -347,13 +370,18 @@ export function AppMenu({ m, rename, close, inSheet }: { m: AppMeta; rename: () 
         {inSheet ? t("apps.m.change", partner).replace(/[…]$/, "") : t("apps.m.change", partner)}
       </MenuItem>
       {m.back && (
-        <MenuItem onClick={shut(() => A.send({ t: "app_back", id: m.id }))}>
+        <MenuItem onClick={shut(() => undoApp(m.id))}>
           {t("app.back")}
         </MenuItem>
       )}
       <MenuItem onClick={shut(() => A.send({ t: "app_set", id: m.id, pinned: !m.pinned }))}>
         {m.pinned ? t("apps.m.unpin") : t("apps.m.pin")}
       </MenuItem>
+      {canAddToHome() && m.home && (
+        <MenuItem onClick={shut(() => openApp(m.id, { home: true }))}>
+          {t("apps.m.home")}
+        </MenuItem>
+      )}
       {m.task && (
         <MenuItem onClick={shut(() => A.send({ t: "app_set", id: m.id, untask: true }))}>
           {t("apps.m.untask", m.task.title)}
@@ -426,6 +454,9 @@ export function AppSheet({ id }: { id: string }) {
   useEffect(() => {
     if (o) o.frame = frame.current ?? undefined;
   });
+  // D562: while an app is open, this page is that app: Add to Home Screen (and the browser's own
+  // Install) take its name, its icon and a link straight into it.
+  useEffect(() => (meta?.home ? homeLinks(meta) : undefined), [id, meta?.home, meta?.name]);
   // D431: the change landed (or the partner answered): its sent line gives way to what is true now.
   const landed = o?.changed?.version;
   useEffect(() => void (landed !== undefined && setSent(false)), [landed]);
@@ -472,11 +503,6 @@ export function AppSheet({ id }: { id: string }) {
               <span class="app-title">{name}</span>
             )}
           </h2>
-          {meta?.back && (
-            <button type="button" class="btn text sm" onClick={() => A.send({ t: "app_back", id })}>
-              <span class="lbl">{t("app.back")}</span>
-            </button>
-          )}
           {meta && (
             <span class="app-more">
               <button type="button" class={`more-btn${menu ? " open" : ""}`} aria-label={t("apps.more", name)} aria-expanded={menu} onClick={() => setMenu(!menu)}>
@@ -496,10 +522,17 @@ export function AppSheet({ id }: { id: string }) {
           </p>
         )}
         {o?.changed && (
-          <p class="app-changed" key={o.changed.version}>
-            <span class="app-changed-word">{t("app.changed")}</span>
-            {o.changed.note && <span class="app-changed-note">{o.changed.note}</span>}
-          </p>
+          // D562: the change is said where it landed, with its 改回去 beside it (the head keeps only 「⋯」,
+          // so a long name is never cut); an Undo that landed says so, never 改好了.
+          <div class="app-changed" key={o.changed.version} role="status">
+            <span class="app-changed-words">
+              <span class="app-changed-word">{t(o.changed.undone ? "app.undone" : "app.changed")}</span>
+              {!o.changed.undone && o.changed.note && <span class="app-changed-note">{o.changed.note}</span>}
+            </span>
+            {!o.changed.undone && meta?.back && (
+              <Btn kind="secondary" size="sm" label={t("app.back")} about={name} onClick={() => undoApp(id)} />
+            )}
+          </div>
         )}
         {meta && (stateAction(meta) || appState(meta) === "changing") && <StateStrip m={meta} />}
         <div class="app-stage">
@@ -515,6 +548,7 @@ export function AppSheet({ id }: { id: string }) {
           {/* D519: asking from inside the app is the conversation's composer (composer.tsx). */}
           <ComposerBox id="app-ask" value={said} onInput={(v) => (setSaid(v), setSent(false))} onSend={send} label={t("app.ask.ph", partner)} placeholder={t("app.ask.ph", partner)} sendLabel={t("app.ask.send")} />
         </div>
+        {o?.home && meta && <AppHomeSheet m={meta} close={() => ((o.home = false), A.changed())} />}
         <p class="app-meta">
           {sent && (!meta || appState(meta) !== "changing") ? (
             <span>{t("app.ask.sent", partner)}</span>
@@ -531,5 +565,93 @@ export function AppSheet({ id }: { id: string }) {
         </p>
       </div>
     </>
+  );
+}
+
+/** D562: a browser where a page can go on the Home Screen (never inside Ducter's own iPhone or Android app). */
+export function canAddToHome(): boolean {
+  return typeof window !== "undefined" && !(window as { ducterNative?: unknown }).ducterNative;
+}
+
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+/** Chrome's own install prompt, held for the app's 「添加」 (it comes once a page can be installed). */
+let installPrompt: (Event & { prompt: () => Promise<void> }) | undefined;
+if (typeof window !== "undefined")
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installPrompt = e as typeof installPrompt;
+  });
+
+/** Points the page's manifest, Home Screen icon, title and address at one app; gives back the way back. */
+function homeLinks(m: AppMeta): () => void {
+  const head = document.head;
+  const point = (tag: "link" | "meta", key: "rel" | "name", value: string, attr: "href" | "content", to: string) => {
+    let el = head.querySelector(`${tag}[${key}="${value}"]`);
+    const made = !el;
+    if (!el) {
+      el = document.createElement(tag);
+      el.setAttribute(key, value);
+      head.appendChild(el);
+    }
+    const before = el.getAttribute(attr);
+    el.setAttribute(attr, to);
+    const node = el;
+    return () => {
+      if (made) head.removeChild(node);
+      else if (before === null) node.removeAttribute(attr);
+      else node.setAttribute(attr, before);
+    };
+  };
+  const base = m.home!;
+  const back = [
+    point("link", "rel", "manifest", "href", `${base}manifest.webmanifest`),
+    point("link", "rel", "apple-touch-icon", "href", `${base}icon-180.png`),
+    point("meta", "name", "apple-mobile-web-app-title", "content", m.name),
+  ];
+  const path = location.pathname;
+  const there = `${path}?app=${m.id}`;
+  if (path + location.search !== there) history.replaceState(history.state, "", there);
+  return () => {
+    for (const b of back) b();
+    if (location.search === `?app=${m.id}`) history.replaceState(history.state, "", path);
+  };
+}
+
+/**
+ * D562: 添加到主屏幕 / Add to Home Screen: the app's own icon at the size the Home Screen shows it, its
+ * name under it, and the one step this browser takes (Safari's Share; Chrome's own Add; else its menu).
+ */
+function AppHomeSheet({ m, close }: { m: AppMeta; close: () => void }) {
+  const partner = A.defaultName() || "Ducter";
+  const prompt = isIOS() ? undefined : installPrompt;
+  const how = isIOS() ? t("app.home.ios") : prompt ? t("app.home.prompt") : t("app.home.other");
+  return (
+    <div class="pmenu app-home" role="dialog" aria-label={t("app.home.h", m.name)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), close())}>
+      <span class="app-home-icon" aria-hidden="true">
+        <img src={`${m.home}icon-180.png`} width={60} height={60} alt="" />
+        <span class="app-home-name">{m.name}</span>
+      </span>
+      <span class="app-home-words">
+        <b class="app-home-h">{t("app.home.h", m.name)}</b>
+        <span class="app-home-how">{how}</span>
+        <span class="app-home-after">{t("app.home.after", partner)}</span>
+      </span>
+      <span class="app-home-acts">
+        {prompt && (
+          <Btn
+            kind="primary"
+            size="sm"
+            label={t("app.home.add")}
+            about={m.name}
+            onClick={() => {
+              installPrompt = undefined;
+              void prompt.prompt().finally(close);
+            }}
+          />
+        )}
+        <Btn kind={prompt ? "text" : "secondary"} size="sm" label={t("app.home.ok")} onClick={close} />
+      </span>
+    </div>
   );
 }

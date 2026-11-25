@@ -73,7 +73,14 @@ var zhApps = Table{
 	"apps.card.open":   "打开「你的小应用」",
 	"app.removed":      "删掉了，连同它记下的东西。",
 	"app.first":        "%s先填好了",
-	"pal.go.apps":      "小应用",
+	// D562: an Undo that landed says so; an app kept in the Dock like the rest of the Mac's apps.
+	"app.undone":      "改回去了",
+	"apps.m.dock":     "放到程序坞",
+	"apps.m.undock":   "从程序坞拿掉",
+	"app.dock.done":   "「%s」在程序坞里了，在聚焦搜索里也找得到。",
+	"app.dock.undone": "「%s」不在程序坞里了。",
+	"app.dock.fail":   "没放成：%s",
+	"pal.go.apps":     "小应用",
 }
 
 var enApps = Table{
@@ -146,6 +153,12 @@ var enApps = Table{
 	"apps.card.open":   "Open Your apps",
 	"app.removed":      "Deleted, with what it kept.",
 	"app.first":        "%s filled in",
+	"app.undone":       "Changed back",
+	"apps.m.dock":      "Keep in the Dock",
+	"apps.m.undock":    "Remove from the Dock",
+	"app.dock.done":    "“%s” is in the Dock, and in Spotlight.",
+	"app.dock.undone":  "“%s” is out of the Dock.",
+	"app.dock.fail":    "Couldn't add it: %s",
 	"pal.go.apps":      "Apps",
 }
 

@@ -840,13 +840,12 @@ answer linked to our question), S3 3/3, X1 3/3, "✓ Mem marks an original as on
 That met the gate below: D170 (9) is applied (Bridge on by default, D557) and D249 (5)'s rule keeps only nmem
 before 0.10.120. The history of the earlier runs follows.
 
-**T1, a task Ducter carries messages for (D559, D448): built, fake 9/9, dry preflight READY; `--real` is the
-author's.** The terminal hands over a task (as S1) that opens on pi, which has no Bridge of its own; the task
+**T1, a task Ducter carries messages for (D559, D448): built, fake 9/9, real 9/9 (2026-11-25 02:20 UTC).** The terminal hands over a task (as S1) that opens on pi, which has no Bridge of its own; the task
 (scripted) calls `agent_message` to the agent that handed it over; one card, 发送, Ducter sends it as the trial with
 the task named; the terminal replies; the answer goes into the task by code, and the partner says nothing of it.
 The task's message goes only as a reply on the terminal's own message to the trial (`contacts` finds no native
 session by name, research/66 §7); a card addressed to anything else is held, never sent. The first real T1 (2/6)
-found the product gap: `agent_message` looked the hander up by name; it now replies on the hander's own message. The run:
+found the product gap: `agent_message` looked the hander up by name; it now replies on the hander's own message. The second (4/6) met a Mem upstream `feature_policy_unavailable` (retryable, outcome unknown) on the send; Ducter marked it unknown and sent nothing twice. The third passed 9/9: the answer ("no conflict") came back as a reply and went into the task. The run:
 
 ```sh
 bun run bridge:live -- --connected --only t1          # read-only preflight

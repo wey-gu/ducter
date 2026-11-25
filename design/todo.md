@@ -817,7 +817,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       he approves), and the answer lands in the task. Trigger: the next live Bridge pass, with the author's Go.
       D559: `bridge:live` has it as T1 (a task on pi asks the terminal Claude Code that handed it over; its card,
       the send on Go as the trial, the answer into the task), 9/9 over the fake Bridge, the dry preflight READY.
-      Owed: `bun run bridge:live -- --connected --real --only t1`, the author's run. Then still open: a task asking
+      Real run: 9/9 on 2026-11-25 (the third try; see bridge.md "Try it live"). Still open: a task asking
       an agent that never wrote to Ducter (Mem's `contacts` lists no native session by name), and an Antigravity
       task on the real agent rather than the fake runner.
 - [x] A Claude Code or Codex task gets `agent_message` too: done as D494 (every task; the home receives for it).

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.61 - 2026-11-25
+
+<!-- whats-new
+zh: Agent 通信说实话，不再兜圈子；任务能问交活的 agent
+en: Agent messaging tells the truth; a task can ask the agent who handed it over
+-->
+
+**Agent messaging**
+- Each of your agents now says plainly whether it hears your partner's answers, read from Nowledge
+  Mem itself: both ways, from the next time you open it, or after its plugin updates. No more
+  button that leads back to itself, and no Space to pick.
+- The button, when there is one, says "Let it hear my answers" and updates the plugin.
+
+**Tasks and your other agents**
+- A task can ask the agent that handed it the work a question. You see one card, and the answer
+  comes back into the task.
+- A message whose receipt was lost is found again in your outbox, never sent twice.
+
+**Looking after**
+- A round says what changed ("#11093 has new commits", "new reviews") instead of a bare "changed".
+
 ## 0.1.60 - 2026-11-25
 
 <!-- whats-new

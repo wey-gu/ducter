@@ -582,7 +582,7 @@ each part opening its pane. Full words in `bridge.md` "Who reaches whom…" and 
 
 D489 (the author: 「这个 bridge 是什么情况？」): **谁能找到谁** is now **你的 agent / Your agents**, a literal row
 per agent saying what it can do as what the person gets (no arrows, no red); pi and Antigravity one quiet row (D555: Antigravity its own row, pi alone in the quiet one);
-the one-way agent's offer under its row with the Space already in it (**让它收到回话**, **换一个空间**). The head
+the one-way agent's offer under its row with the Space already in it (**让它收到回话**, **换一个空间**; D560: gone, an agent whose next session will hear back says so with nothing to tap, an old plugin's update is **让它也能收到我的回话**). The head
 says it in the plain ink (the pane carries no needs line; Overview's 等你 stays), and the switch's last line
 says what the pane is for. `bridge.md` "Your agents, said as what you get…".
 

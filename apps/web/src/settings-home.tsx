@@ -15,7 +15,7 @@ import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
 import { ago, harnessName, memWords, modelName, shownDeviceName } from "./format.ts";
 import { MemAsk, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
-import { Notebook, peersOneWay, peersReaching, peersSay } from "./memory.tsx";
+import { Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
 import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
@@ -32,7 +32,7 @@ export type SetNeed = {
   /** D552: its fix is under way (更新中…): the button says so and takes no tap. */
   busy?: boolean;
   /** D469 round 2: a fix that can happen right here, the same one the page's button does. */
-  fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string } | { kind: "mailbox"; device: string; harness: string };
+  fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string };
 };
 
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";
@@ -68,8 +68,6 @@ export function setNeeds(): SetNeed[] {
     const text = several ? t("need.memplug.on", harnessName(h.harness), shownDeviceName(dv.name)) : t("need.memplug", harnessName(h.harness));
     out.push({ key: `memp:${dv.id}:${h.harness}`, text, go: here ? (w.busy ?? w.action!) : t("need.go.update"), page: "memory", ...(here && w.busy ? { busy: true } : {}), ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
   }
-  // D470: one of the person's agents reaches the partner, but the answers can't get back: its mailbox's one task, here.
-  for (const r of peersOneWay()) out.push({ key: `peers:${r.harness}`, text: t("need.peers.oneway", r.tool), go: t("peers.fix.hear"), page: "peers", about: r.tool, fix: { kind: "mailbox", device: r.device!, harness: r.harness } });
   const u = updatesWaiting();
   if (u.n > 0 && !u.running) {
     // Devices' own one tap (Update all), which asks nothing more there either.
@@ -371,7 +369,6 @@ function NeedLine({ n, go, phone }: { n: SetNeed; go: (p: SettingsPage) => void;
     if (!f) return go(n.page);
     if (f.kind === "update") return A.startUpdateAll();
     // D480: the Space is chosen in place, on Agent messaging, under that agent's row.
-    if (f.kind === "mailbox") return A.chooseMailbox(f.device, f.harness), go(n.page);
     setAsking(true);
   };
   return (

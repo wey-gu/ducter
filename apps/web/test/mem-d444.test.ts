@@ -9,14 +9,14 @@ import { reachRows } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 
 const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
-const KEYS = ["peers.st.both", "peers.st.oneway","peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
+const KEYS = ["peers.st.both", "peers.st.next", "peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
 
 describe("能找到{name}的 with Mem's contact list (D444)", () => {
   const dev = { id: "local", name: "Mac", home: true, harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] };
-  test("a mailbox Mem lists as open makes a tool able; closed is said; pi and Antigravity unchanged", () => {
+  test("a tool Mem says can receive makes it able; D560: a closed card is no fact; pi and Antigravity unchanged", () => {
     const rows = reachRows([dev], [], [], [{ harness: "claude-code", open: false }, { harness: "codex", open: true }, { harness: "pi", open: true }]);
     expect(rows.map((r) => [r.harness, r.can, r.box ?? ""])).toEqual([
-      ["claude-code", "yes", "closed"],
+      ["claude-code", "yes", ""],
       ["codex", "yes", "open"],
       ["pi", "none", ""],
     ]);

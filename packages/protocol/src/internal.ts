@@ -180,10 +180,10 @@ export interface CoreApi {
    */
   placement?(): { rules: { device: string; text: string; avoid?: boolean; heavy?: boolean; web?: boolean }[]; hints?: { text: string }[]; heavy?: Record<string, number> };
   /**
-   * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
-   * closed (box): it reaches the partner, the answers can't go back. Only what isn't whole.
+   * D560 (was D480): facts about the person's own agents' mail, for the partner: an agent whose replies
+   * wait for its next session (next) or its plugin's update (old). Only what isn't whole.
    */
-  agentMail?(): { harness: string; box: "closed" }[];
+  agentMail?(): { harness: string; back: "next" | "old"; version?: string; update?: true }[];
   /** D477: the code Ducter knows is on each computer (device "local" for the home): the person's projects and the places tasks worked in, with origins when known. */
   codeOn?(): { device: string; name: string; remote?: string }[];
   /** D486: the person's partners (with what each looks after) and which one this is; for the [partners] line. */

@@ -29,10 +29,78 @@ var (
 // hasn't said), none (its plugin can't pass messages yet) or relay (D448: it
 // can't, but the tasks Ducter runs on it pass messages through Ducter). Last is the
 // newest exchange with it.
-// Box (D444) is what Mem's grouped contact list says of its mailbox: "open",
-// "closed", or "" when Mem didn't list it.
+// Box (D560) is "open" when Mem has an active connection labelled with this tool
+// (core reads `bridge connections list`), else ""; an older home's "closed" is not
+// a fact and is dropped. Back (agentBack) is whether the partner's replies reach it:
+// yes, next (its next session will), old (its plugin's update is the fix) or
+// unknown. Update: Mem offers a newer plugin there; Busy: that update is running.
 type reachRow struct {
-	Harness, Tool, Can, Device, DeviceName, Last, Box string
+	Harness, Tool, Can, Device, DeviceName, Last, Box, Back string
+	Update, Busy                                            bool
+}
+
+// memAutoSession is the first version of each agent's Mem plugin that gets every new
+// session ready to receive by itself (D560; packages/protocol/src/mem-health.ts
+// MEM_AUTO_SESSION, research/226 2.6).
+var memAutoSession = map[string]string{"claude-code": "0.7.35", "codex": "0.1.50"}
+
+// memSessions is "auto" when this plugin version readies its sessions by itself, "old"
+// when it is older, "" when not known (the web's memSessions).
+func memSessions(harness, version string) string {
+	min := memAutoSession[harness]
+	v := semverCore(version)
+	m := semverCore(min)
+	if v == nil || m == nil {
+		return ""
+	}
+	for i := 0; i < 3; i++ {
+		if v[i] != m[i] {
+			if v[i] > m[i] {
+				return "auto"
+			}
+			return "old"
+		}
+	}
+	return "auto"
+}
+
+var semverRe = regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)`)
+
+func semverCore(v string) []int {
+	m := semverRe.FindStringSubmatch(strings.TrimSpace(v))
+	if m == nil {
+		return nil
+	}
+	out := make([]int, 3)
+	for i := 0; i < 3; i++ {
+		n := 0
+		for _, ch := range m[i+1] {
+			n = n*10 + int(ch-'0')
+		}
+		out[i] = n
+	}
+	return out
+}
+
+// agentBack is whether the partner's replies reach one agent, from Mem's facts only
+// (D560; the web's and core's agentBack): yes, next, old or unknown.
+func agentBack(harness string, open, heard bool, versions []string) string {
+	if open || heard {
+		return "yes"
+	}
+	old := false
+	for _, v := range versions {
+		switch memSessions(harness, v) {
+		case "auto":
+			return "next"
+		case "old":
+			old = true
+		}
+	}
+	if old {
+		return "old"
+	}
+	return "unknown"
 }
 
 func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, boxes ...protocol.BridgeMailbox) []reachRow {
@@ -41,7 +109,9 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 	var out []reachRow
 	for _, h := range append(append([]string(nil), bridgeTools...), noBridgeTools...) {
 		found, runs, on, off, offName := false, false, false, "", ""
-		onID, onName := "", "" // D470: where it is signed in with the plugin (home first): where its mailbox opens
+		onID, onName := "", "" // D470: where it is signed in with the plugin (home first)
+		var versions []string
+		update, busy, onUpdate := false, false, false
 		for _, d := range ds {
 			for _, x := range d.Harnesses {
 				if x.Harness != h || !x.Installed || !x.LoggedIn {
@@ -50,9 +120,14 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 				found, runs = true, true
 				if x.Mem != nil && (x.Mem.State == "installed" || x.Mem.State == "update") {
 					on = true
-					if onID == "" {
+					versions = append(versions, x.Mem.Version)
+					busy = busy || x.Mem.TaskID != "" || x.Mem.Busy
+					// D560: the computer whose plugin Mem offers an update for comes first: the one button's.
+					if onID == "" || (x.Mem.State == "update" && !onUpdate) {
 						onID, onName = d.ID, d.Name
+						onUpdate = x.Mem.State == "update"
 					}
+					update = update || x.Mem.State == "update"
 				}
 				if x.Mem != nil && x.Mem.State == "absent" && off == "" {
 					off, offName = d.ID, d.Name
@@ -64,11 +139,8 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		}
 		box := ""
 		for _, m := range boxes {
-			if m.Harness == h {
-				box = "closed"
-				if m.Open {
-					box = "open"
-				}
+			if m.Harness == h && m.Open {
+				box = "open"
 			}
 		}
 		if !found && box == "" {
@@ -76,11 +148,14 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		}
 		tool := toolNames[h]
 		re := regexp.MustCompile(`(?i)\b` + strings.ReplaceAll(regexp.QuoteMeta(tool), " ", `\s*`) + `\b`)
-		last := ""
+		last, heard := "", false
 		for _, r := range recent {
 			if r.Host == tool || re.MatchString(r.Agent) {
-				last = r.At
-				break
+				if last == "" {
+					last = r.At
+				}
+				// D560: a message from one of its sessions (Mem's sender.host): a reply goes back to that session.
+				heard = heard || r.Host == tool
 			}
 		}
 		row := reachRow{Harness: h, Tool: tool, Last: last, Box: box}
@@ -93,6 +168,8 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 			row.Can, row.Box = "none", ""
 		case on || last != "" || box == "open":
 			row.Can, row.Device, row.DeviceName = "yes", onID, onName
+			row.Back = agentBack(h, box == "open", heard, versions)
+			row.Update, row.Busy = update, busy
 		case off != "":
 			row.Can, row.Device, row.DeviceName = "install", off, offName
 		default:

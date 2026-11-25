@@ -36,7 +36,7 @@ describe("能找到{name}的 / Who can reach (D433)", () => {
 
   test("every line short, in both languages (D424)", () => {
     for (const lang of ["zh", "en"] as const)
-      for (const k of ["peers.st.both", "peers.st.oneway", "peers.st.to", "peers.st.install", "peers.st.unknown", "peers.st.opening", "peers.st.relay", "peers.st.relay.one", "peers.st.none", "peers.st.none.one"]) {
+      for (const k of ["peers.st.both", "peers.st.next", "peers.st.old", "peers.st.updating", "peers.st.to", "peers.st.install", "peers.st.unknown", "peers.st.relay", "peers.st.relay.one", "peers.st.none", "peers.st.none.one"]) {
         const s = memoryWords[lang][k]!.replace("%s", "Ducter");
         expect(s.length).toBeLessThanOrEqual(lang === "zh" ? 40 : 60);
         expect(s).not.toContain(" · ");

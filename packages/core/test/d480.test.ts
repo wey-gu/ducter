@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mailboxChoice, type TaskCard } from "@ducter/protocol";
+import { agentBack, mailboxChoice, memSessions, type TaskCard } from "@ducter/protocol";
 import { inspectMemBridge, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
 import { renderAgentMail } from "../../partner/src/partner.ts";
 import { createMemPlugins, memSetupBrief } from "../src/mem-plugins.ts";
@@ -109,31 +109,54 @@ describe("the look and the open, in core (D480)", () => {
     expect((await m.mp.mailboxLook("mac", "claude-code", {})).state).toBe("no_mem");
     m.mp.stop();
   });
-  test("the open names the chosen Space by its id, so the task never asks which", async () => {
+  test("D560: no task opens a mailbox any more; an older app's tap is the plugin's update or nothing", async () => {
     const { mp, opened } = make({ signedIn: true, setup: SETUP });
-    const r = await mp.install("mac", "claude-code", "mailbox", { id: "personal-4e74", label: "Only me" });
-    expect(r.ok).toBe(true);
-    expect(opened[0].brief).toContain("--space-id personal-4e74");
-    expect(opened[0].brief).toContain("never ask which Space");
-    expect(opened[0].brief).toContain("If Mem refuses that Space, stop and report");
+    const r = await mp.install("mac", "claude-code", "mailbox", { id: "all", label: "Everyone" });
+    expect(r).toEqual({ ok: false, reason: "unknown" });
+    expect(opened).toEqual([]);
+    // No brief ever asks for --enable: the login's own mailbox is not what an agent's sessions read.
+    expect(memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "update", from: "0.7.20", to: "0.7.38" } })).not.toContain("--enable");
     mp.stop();
-  });
-  test("the brief without a chosen Space stays D470's", () => {
-    const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "mailbox" } });
-    expect(b).not.toContain("--space-id");
-    expect(b).toContain("--enable");
   });
 });
 
-describe("the partner is told what can't arrive (D480)", () => {
-  test("a closed mailbox as a fact, the one Mem and the relay said truthfully, and where the person fixes it", () => {
-    const s = renderAgentMail([{ harness: "claude-code", box: "closed" }]);
-    expect(s).toContain("Claude Code: Nowledge Mem lists its mailbox closed");
+describe("the partner is told what can't arrive, and what needs nothing (D560)", () => {
+  test("the next session: the truth, and nothing to send the person to", () => {
+    const s = renderAgentMail([{ harness: "claude-code", back: "next", version: "0.7.38" }], "zh");
+    expect(s).toContain("Claude Code: its Nowledge Mem plugin (0.7.38) gets each new Claude Code session ready to receive by itself");
+    expect(s).toContain("from the next Claude Code session the person opens");
+    expect(s).toContain("no Space to choose, no task to open");
+    expect(s).toContain("never send the person to Settings for something these facts say needs nothing from them");
+    expect(s).not.toContain("让它也能收到我的回话");
     expect(s).toContain("share one Nowledge Mem");
     expect(s).toContain("through Ducter's relay on the home: the same Mem, not another one");
-    expect(s).not.toMatch(/two different|another server|hel\.siwei|cloud\.nowledge/);
-    expect(s).toContain("Never promise a reply");
-    expect(s).toContain("never ask them to type a Space name");
+    expect(s).not.toMatch(/two different|another server|hel\.siwei|cloud\.nowledge|mailbox closed/);
+  });
+  test("an old plugin: its update is the fix, named by the button's own words", () => {
+    const s = renderAgentMail([{ harness: "codex", back: "old", version: "0.1.40", update: true }], "zh");
+    expect(s).toContain("Codex: its Nowledge Mem plugin (0.1.40) is older than the one that lets its sessions receive (0.1.50)");
+    expect(s).toContain('"让它也能收到我的回话" under it in 设置 › ');
+    expect(renderAgentMail([{ harness: "codex", back: "old" }], "en")).toContain("Nowledge Mem hasn't offered a newer one there yet");
     expect(renderAgentMail([])).toBe("");
+  });
+});
+
+describe("whether replies reach an agent, from Mem's facts only (D560)", () => {
+  test("the plugin's version says whether its sessions get ready by themselves", () => {
+    expect(memSessions("claude-code", "0.7.38")).toBe("auto");
+    expect(memSessions("claude-code", "0.7.35")).toBe("auto");
+    expect(memSessions("claude-code", "0.7.34")).toBe("old");
+    expect(memSessions("codex", "0.1.53")).toBe("auto");
+    expect(memSessions("codex", "0.1.9")).toBe("old");
+    expect(memSessions("antigravity", "0.1.7")).toBeUndefined();
+    expect(memSessions("claude-code", undefined)).toBeUndefined();
+  });
+  test("hel, 2026-11-25: Claude Code 0.7.38 and no session connected yet reads as the next session, never closed", () => {
+    expect(agentBack("claude-code", { versions: ["0.7.38"] })).toBe("next");
+    expect(agentBack("claude-code", { open: true, versions: ["0.7.38"] })).toBe("yes");
+    expect(agentBack("claude-code", { heard: true, versions: [] })).toBe("yes");
+    expect(agentBack("codex", { versions: ["0.1.40", undefined] })).toBe("old");
+    expect(agentBack("codex", { versions: ["0.1.40", "0.1.53"] })).toBe("next");
+    expect(agentBack("antigravity", { versions: ["0.1.7"] })).toBe("unknown");
   });
 });

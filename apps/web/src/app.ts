@@ -7,7 +7,7 @@ import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -928,13 +928,8 @@ class AppState {
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
     if (f.t === "ability_result" && f.ability === "remote" && f.on && !f.ok && f.reason === "no_address") return void this.beginAnywhere();
     if (f.t === "anywhere_setup_result" && !f.step) return void ((this.anywhereAnswer = f.ok || f.reason === "running" ? undefined : (f.reason ?? "failed")), this.changed());
-    if (f.t === "mailbox_look") {
-      // D480: the answer for the row still open (a later tap elsewhere wins).
-      const c = this.mailboxChoosing;
-      if (!c || c.device !== f.device || c.harness !== f.harness) return;
-      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend };
-      return void this.changed();
-    }
+    // D560: no Space is chosen for an agent's mailbox any more; an older home's look answer is ignored.
+    if (f.t === "mailbox_look") return;
     // D552: a no ends the busy at once; a yes keeps it a moment, until the devices frame carries the task.
     if (f.t === "mem_plugin_result") return void (f.ok || this.memSent.delete(`${f.device}:${f.harness}`), (this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
@@ -2673,38 +2668,6 @@ class AppState {
     const at = this.memSent.get(`${device}:${harness}`);
     return at !== undefined && Date.now() - at < MEM_SENDING_MS;
   }
-  /**
-   * D470, D480, D489: 让它收到回话 / Let it hear back: one task on that device opens the agent's Nowledge Mem
-   * mailbox (the tap is its Go), in the Space the person chose in place (never asked again by the task).
-   */
-  openMailbox(device: string, harness: string, space?: { id: string; label: string }) {
-    this.memAnswer = undefined;
-    this.mailboxOpening.add(`${device}:${harness}`);
-    this.mailboxChoosing = undefined;
-    this.send({ t: "mem_plugin_install", device, harness, what: "mailbox", ...(space ? { space } : {}) });
-    this.changed();
-  }
-  /**
-   * D480: the in-place choice under one agent's link row: which agent, what that computer's Mem said
-   * (undefined while it looks), and the Space the person has picked so far (the recommendation first).
-   */
-  mailboxChoosing: { device: string; harness: string; look?: MailboxLook; pick?: string; more?: boolean } | undefined;
-  /** D480: opens the choice under that agent's row and asks that computer's Mem (read only). */
-  chooseMailbox(device: string, harness: string) {
-    this.memAnswer = undefined;
-    this.mailboxChoosing = { device, harness };
-    this.send({ t: "mailbox_look", device, harness });
-    this.changed();
-  }
-  /** D480: the choice put away; nothing was changed anywhere. */
-  closeMailboxChoice() {
-    this.mailboxChoosing = undefined;
-    this.changed();
-  }
-  /** D489: the agents whose Spaces this window already looked up by itself when the pane showed (once each). */
-  mailboxAsked = new Set<string>();
-  /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */
-  mailboxOpening = new Set<string>();
   /** D470: the request lines the partner's next words already say (hidden), and the message each one stands over (origin). */
   peerSpoken = new Set<number>();
   peerOrigin = new Map<number, NonNullable<Entry["peer"]>>();

@@ -24,7 +24,7 @@ describe("能找到{name}的: pi where Ducter runs tasks", () => {
       ["antigravity", "unknown"],
       ["pi", "relay"],
     ]);
-    expect(reachRows([], ["antigravity"], [], [{ harness: "antigravity", open: true }])).toEqual([{ harness: "antigravity", tool: "Antigravity", can: "yes", box: "open" }]);
+    expect(reachRows([], ["antigravity"], [], [{ harness: "antigravity", open: true }])).toEqual([{ harness: "antigravity", tool: "Antigravity", can: "yes", box: "open", back: "yes" }]);
     expect(reachRows([], ["antigravity"], [{ agent: "你的 Antigravity", at: "2026-11-24T08:00:00Z" }]).map((r) => r.can)).toEqual(["yes"]);
   });
   test("the line says both halves, in both languages", () => {

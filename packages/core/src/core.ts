@@ -14,7 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
@@ -1530,10 +1530,28 @@ export function startCore(opts: CoreOptions = {}): Core {
     hints: placementMem.takeHints(),
     heavy: Object.fromEntries(loadout.heavyNow()),
   });
-  // D480: what isn't whole about the person's own agents' mail, for the partner: the mailboxes Mem lists closed.
+  // D560: whether the partner's replies reach each of the person's agents whose Mem plugin carries Bridge,
+  // as Settings › Agent messaging says it (agentBack): only what isn't whole, every turn while so.
   api.agentMail = () => {
-    if (!settings.get().memory) return [];
-    return (bridgeLink?.mailboxesNow?.() ?? []).filter((m) => !m.open).map((m) => ({ harness: m.harness, box: "closed" as const }));
+    if (!settings.get().memory || !bridgeLink?.context()) return [];
+    const open = new Set((bridgeLink.mailboxesNow?.() ?? []).filter((m) => m.open).map((m) => m.harness));
+    const heard = new Set(
+      log
+        .read({ stream: "channel", kinds: ["bridge_msg"], limit: 2000 })
+        .map((e) => e.body as Bodies["bridge_msg"])
+        .filter((b) => b.direction === "in" && b.host)
+        .map((b) => b.host),
+    );
+    const out: { harness: string; back: "next" | "old"; version?: string; update?: true }[] = [];
+    for (const h of Object.keys(MEM_AUTO_SESSION)) {
+      const lines = (memPluginsRef?.lines(h) ?? []).filter((x) => x.line.state === "installed" || x.line.state === "update");
+      if (!lines.length) continue;
+      const back = agentBack(h, { open: open.has(h), heard: heard.has(harnessName(h)), versions: lines.map((x) => x.line.version) });
+      if (back !== "next" && back !== "old") continue;
+      const v = lines.find((x) => x.line.version)?.line;
+      out.push({ harness: h, back, ...(v?.version ? { version: v.version } : {}), ...(lines.some((x) => x.line.state === "update") ? { update: true as const } : {}) });
+    }
+    return out;
   };
   api.places = createPlaces({
     where: repoWhere,

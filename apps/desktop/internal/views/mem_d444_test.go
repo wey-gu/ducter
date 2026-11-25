@@ -16,13 +16,13 @@ import (
 )
 
 // D444: the same rules as apps/web/test/mem-d444.test.ts: Mem's contact
-// list's word on a mailbox, and what a message handed over from Mem.
+// list's word on a mailbox (D560: only "open" is a fact), and what a message handed over from Mem.
 func TestReachRowsMailboxes(t *testing.T) {
 	devs := []protocol.DeviceView{{ID: "local", Name: "Mac", Home: true, Harnesses: []protocol.DeviceHarness{
 		{Harness: "claude-code", Installed: true, LoggedIn: true, Mem: &protocol.MemPluginView{State: "installed"}},
 	}}}
 	r := reachRows(devs, nil, nil, protocol.BridgeMailbox{Harness: "claude-code", Open: false}, protocol.BridgeMailbox{Harness: "codex", Open: true}, protocol.BridgeMailbox{Harness: "pi", Open: true})
-	if len(r) != 3 || r[0].Box != "closed" || r[0].Can != "yes" || r[1].Harness != "codex" || r[1].Can != "yes" || r[1].Box != "open" || r[2].Can != "none" || r[2].Box != "" {
+	if len(r) != 3 || r[0].Box != "" || r[0].Can != "yes" || r[1].Harness != "codex" || r[1].Can != "yes" || r[1].Box != "open" || r[2].Can != "none" || r[2].Box != "" {
 		t.Fatalf("rows %+v", r)
 	}
 	if r := reachRows(nil, nil, nil); len(r) != 0 {

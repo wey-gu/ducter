@@ -53,7 +53,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, MEM_AUTO_SESSION, pickTag, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
 import { roomFor } from "../../protocol/src/resources.ts";
 import type { DeviceResources } from "../../protocol/src/index.ts";
@@ -6388,16 +6388,27 @@ export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefin
   return `[live] ${live.slice(0, LIVE_MAX).map(one).join(" · ")}${more > 0 ? ` · and ${more} more` : ""}. True now.`;
 }
 
+/** D560: the words on the one button that updates an agent's Mem plugin so it hears back (the clients' peers.fix.hear). */
+const HEAR_BACK = { zh: "让它也能收到我的回话", en: "Let it hear my answers" } as const;
+
 /**
- * D480: the facts about the person's own agents' mail that would make a promise false: Mem lists an
- * agent's mailbox closed (it reaches the partner, the answers can't go back). Round 2: it also says
- * the truth about where Mem is (one Nowledge Mem; tasks elsewhere reach it through Ducter's relay on
- * the home), so the partner never invents a second Mem. Facts only; the fix is the person's, in Settings.
+ * D560 (was D480): the facts about the person's own agents' mail that would make a promise false, the
+ * same Settings › Agent messaging shows (agentBack): an agent whose replies reach the next session the
+ * person opens (its plugin readies each session by itself; nothing to tap, and no Space to pick: a reply
+ * goes back to the session that wrote, in the Space it wrote from), or one whose plugin is older than that
+ * (its update is the fix). It also says the truth about where Mem is (one Nowledge Mem; tasks elsewhere
+ * reach it through Ducter's relay on the home), so the partner never invents a second Mem.
  */
-export function renderAgentMail(facts: { harness: string; box: "closed" }[], lang: LangTag = "en"): string {
+export function renderAgentMail(facts: { harness: string; back: "next" | "old"; version?: string; update?: true }[], lang: LangTag = "en"): string {
   if (!facts.length) return "";
-  const lines = facts.slice(0, 6).map((f) => `${harnessName(f.harness)}: Nowledge Mem lists its mailbox closed, so it can write to you but your replies can't reach it`);
-  return `[your agents' mail] True now: ${lines.join("; ")}. The person's agents, you and the tasks share one Nowledge Mem (tasks on other computers reach it through Ducter's relay on the home: the same Mem, not another one); a closed mailbox is the only gap here. Never promise a reply these facts say can't arrive. The person opens it in one tap under that agent in ${paneName("peers", lang)} (it shows their real Nowledge Mem Spaces to pick from): point them there by that name, exactly as written; never open a task for it and never ask them to type a Space name.`;
+  const button = HEAR_BACK[pickTag(lang, ["zh", "en"] as const)];
+  const lines = facts.slice(0, 6).map((f) => {
+    const name = harnessName(f.harness);
+    const v = f.version ? ` (${f.version})` : "";
+    if (f.back === "next") return `${name}: its Nowledge Mem plugin${v} gets each new ${name} session ready to receive by itself, and none has connected since; it can write to you now, and your replies reach it from the next ${name} session the person opens. Nothing to tap or set up, no Space to choose, no task to open: the only step is the person opening ${name} again`;
+    return `${name}: its Nowledge Mem plugin${v} is older than the one that lets its sessions receive (${MEM_AUTO_SESSION[f.harness] ?? "newer"}), so it can write to you but your replies can't reach it yet; ${f.update ? `updating the plugin is the fix: "${button}" under it in ${paneName("peers", lang)} does that` : "the plugin's update is the fix, and Nowledge Mem hasn't offered a newer one there yet"}`;
+  });
+  return `[your agents' mail] True now: ${lines.join("; ")}. The person's agents, you and the tasks share one Nowledge Mem (tasks on other computers reach it through Ducter's relay on the home: the same Mem, not another one). Never promise a reply these facts say can't arrive, and never send the person to Settings for something these facts say needs nothing from them.`;
 }
 
 /**

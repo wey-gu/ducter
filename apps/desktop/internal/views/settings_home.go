@@ -30,8 +30,6 @@ type setNeed struct {
 	// plugin's update (its in-place ask first), or Update all.
 	dv *protocol.DeviceView
 	h  protocol.DeviceHarness
-	// D470: an agent whose answers can't get back: its mailbox's one task on that computer.
-	boxDevice, boxHarness string
 }
 
 // setNeeds is everything on Settings that needs the person, most blocking first.
@@ -79,9 +77,6 @@ func (a *App) setNeeds() []setNeed {
 			text = a.L.T("need.memplug.on", harnessName(r.h.Harness), a.deviceNameIn(r.dv))
 		}
 		out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: text, goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
-	}
-	for _, r := range a.peersOneWay() {
-		out = append(out, setNeed{key: "peers:" + r.Harness, text: a.L.T("need.peers.oneway", r.Tool), goLabel: a.L.T("peers.fix.hear"), tab: TabPeers, boxDevice: r.Device, boxHarness: r.Harness})
 	}
 	if n, running := a.updatesWaiting(); n > 0 && !running {
 		s := a.L.T("need.update.one")
@@ -343,12 +338,6 @@ func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 func (a *App) needFix(c *ui.Context, n setNeed) {
 	t := a.T
 	switch {
-	case n.boxDevice != "":
-		if a.buttonFor(c, n.goLabel, n.text, btnSecondary, t.ControlSM, t.Bg) {
-			a.chooseMailbox(n.boxDevice, n.boxHarness) // D480: its Space is chosen in place, under its row
-			a.openTab(TabPeers)
-		}
-		return
 	case n.dv != nil:
 		_, action, busy := a.memPluginWords(a.memLine(n.dv, n.h), n.h.Harness)
 		key := n.dv.ID + ":" + n.h.Harness

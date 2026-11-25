@@ -8,7 +8,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Bodies } from "../../protocol/src/index.ts";
-import { mailboxesOf, refKind, refsIn, resourceOf, toolOfCard, type BridgeClient, type BridgeMessage } from "../src/bridge.ts";
+import { refKind, refsIn, resourceOf, toolOfCard, type BridgeClient, type BridgeMessage } from "../src/bridge.ts";
 import { createPartner } from "../src/index.ts";
 import { refsLine } from "../src/render.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner } from "./fakes.ts";
@@ -34,22 +34,7 @@ test("a resolved resource: Mem's title and first words, any of the shapes", () =
   expect(resourceOf("{}")).toBeUndefined();
 });
 
-test("the grouped contact list: the person's own agents by tool, open unless Mem says not", () => {
-  const j = {
-    contacts: [
-      { contact: "c1", agent: { name: "terminal-claude", host: "claude-code" }, member: "Member me", mailbox_available: true },
-      { contact: "c2", agent: { name: "Mem 协作 Codex" }, member: "Member me", mailbox_available: false },
-      { contact: "c3", agent: { name: "codex-2" }, member: "Member me" },
-      { contact: "c4", agent: { name: "reviewer Codex" }, member: "Member alex" },
-      { contact: "c5", agent: { name: "Bridge agent" }, member: "Member me" },
-    ],
-  };
-  expect(mailboxesOf(j, "me")).toEqual([
-    { harness: "claude-code", open: true },
-    { harness: "codex", open: true },
-  ]);
-  expect(mailboxesOf({ contacts: [j.contacts[1]] }, "me")).toEqual([{ harness: "codex", open: false }]);
-  expect(mailboxesOf(j, undefined)).toEqual([]); // whose is unknown: none is the person's
+test("a contact card's tool, by its name, still names a sender's card (D444); it never decides a mailbox (D560)", () => {
   expect(toolOfCard({ agent: { name: "agy helper", description: "Antigravity" } })).toBe("antigravity");
 });
 

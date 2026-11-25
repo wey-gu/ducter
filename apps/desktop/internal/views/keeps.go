@@ -642,6 +642,14 @@ func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
 		}
 		return a.L.T("keep.woke.arrival.bare")
 	case "change":
+		// D560: what changed, as a sentence: a pull request's own change (from its wait's command), a
+		// condition that came true in its own words, or new activity on what it watches.
+		if r.WokePr != nil && r.WokePr.PR != "" {
+			return a.L.T("keep.woke.pr."+r.WokePr.What, r.WokePr.PR)
+		}
+		if r.WokeWhat != "" && r.WokeMet {
+			return a.L.T("keep.woke.met", r.WokeWhat)
+		}
 		if r.WokeWhat != "" {
 			return a.L.T("keep.woke.change", r.WokeWhat)
 		}

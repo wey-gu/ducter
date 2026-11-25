@@ -17,15 +17,18 @@ const row = (harness: string, can: ReachRow["can"], extra: Partial<ReachRow> = {
 describe("who reaches whom (D470)", () => {
   test("each way read off what Mem said, and the fix only where Ducter can start it", () => {
     expect(reachWays(row("codex", "yes", { box: "open" }))).toEqual({ to: "yes", back: "yes" });
-    expect(reachWays(row("claude-code", "yes", { box: "closed", device: "local" }))).toEqual({ to: "yes", back: "no", fix: "mailbox" });
-    expect(reachWays(row("claude-code", "yes", { box: "closed" }))).toEqual({ to: "yes", back: "no" });
+    // D560: an old plugin's update is the fix; a "closed" from an older home is no fact.
+    expect(reachWays(row("claude-code", "yes", { back: "old", update: true, device: "local" }))).toEqual({ to: "yes", back: "no", fix: "update" });
+    expect(reachWays(row("claude-code", "yes", { back: "old" }))).toEqual({ to: "yes", back: "no" });
+    expect(reachWays(row("claude-code", "yes", { back: "next", device: "local" }))).toEqual({ to: "yes", back: "soon" });
+    expect(reachWays(row("claude-code", "yes", { box: "closed" }))).toEqual({ to: "yes", back: "unknown" });
     expect(reachWays(row("codex", "yes"))).toEqual({ to: "yes", back: "unknown" });
     expect(reachWays(row("codex", "install", { device: "local" }))).toEqual({ to: "no", back: "no", fix: "install" });
     expect(reachWays(row("codex", "unknown"))).toEqual({ to: "unknown", back: "unknown" });
     expect(reachWays({ can: "none" })).toEqual({ to: "no", back: "no" });
   });
   test("split: both ways, one way, not yet; pi is Mem's to add (D555: Antigravity is a Bridge tool)", () => {
-    const s = reachSplit([row("codex", "yes", { box: "open" }), row("claude-code", "yes", { box: "closed", device: "local" }), { harness: "pi", tool: "pi", can: "relay" }]);
+    const s = reachSplit([row("codex", "yes", { box: "open" }), row("claude-code", "yes", { back: "old", update: true, device: "local" }), { harness: "pi", tool: "pi", can: "relay" }]);
     expect([s.both.map((r) => r.harness), s.oneWay.map((r) => r.harness), s.notYet.length]).toEqual([["codex"], ["claude-code"], 0]);
   });
 });
@@ -137,16 +140,15 @@ describe("the words (D470)", () => {
   });
 });
 
-describe("the fix is the button (D470)", () => {
-  test("Open its mailbox is one task through the agent's own plugin, never Ducter's own connection", () => {
-    const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "mailbox" } });
-    expect(b).toContain("--enable");
-    expect(b).toContain("Never touch Ducter's own Nowledge Mem connection");
-    expect(read("../../packages/protocol/src/index.ts")).toContain('{ t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox"; space?: { id: string; label: string } }'); // D480: with the Space chosen in place
+describe("the fix is the button (D470, D560)", () => {
+  test("no task opens a mailbox: an old plugin's fix is its update, the same task Memory's Update starts", () => {
+    expect(memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "update", from: "0.7.20", to: "0.7.38" } })).not.toContain("--enable");
+    expect(read("src/memory.tsx")).toContain('label={t("peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)}');
+    expect(read("../desktop/internal/views/peers_d470.go")).toContain('a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface)');
   });
-  test("a one-way link is what needs you on Overview, with that button", () => {
-    expect(read("src/settings-home.tsx")).toContain('fix: { kind: "mailbox", device: r.device!, harness: r.harness }');
-    expect(read("../desktop/internal/views/settings_home.go")).toContain("a.chooseMailbox(n.boxDevice, n.boxHarness)"); // D480: chosen in place
+  test("Overview carries no second row for it: Memory's update row is the one needs-you", () => {
+    expect(read("src/settings-home.tsx")).not.toContain("peersOneWay");
+    expect(read("../desktop/internal/views/settings_home.go")).not.toContain("peersOneWay");
   });
 });
 

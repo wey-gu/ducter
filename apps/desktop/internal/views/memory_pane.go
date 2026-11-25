@@ -574,6 +574,9 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 		who := a.memAgentsWords(h.Agents)
 		about := spoken(a.L, who, "Nowledge Mem")
 		sub := a.L.T("mem.health.plugin.why")
+		if len(h.Agents) == 1 {
+			sub = a.L.T("mem.health.plugin.why.one") // D556: 它 for one agent, 它们 for two
+		}
 		var ctl func()
 		if h.Busy {
 			sub = a.L.T("mem.health.plugin.busy", who)
@@ -588,7 +591,7 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 				}
 			}
 		}
-		a.tileRow(c, "mem-plugin", nil, a.L.T("mem.health.plugin", who), sub, ctl)
+		a.tileRow(c, "mem-plugin", nil, a.L.T("mem.health.plugin", who), keepClauses(sub), ctl) // D556: never 「上。」 alone
 	}
 	if h.Look == "signed_out" && a.memReSign {
 		a.textBlock(c, "mem-resign", func() {

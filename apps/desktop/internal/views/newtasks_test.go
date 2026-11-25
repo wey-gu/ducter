@@ -72,7 +72,7 @@ func TestD510NewTasksGroup(t *testing.T) {
 			t.Fatalf("%s: sent %+v, want where dev_hel", tc.lang, got)
 		}
 		tt.Frame()
-		for _, want := range []string{tc.on, tc.said} {
+		for _, want := range []string{unjoin(keepClauses(tc.on)), tc.said} { // D556: the line keeps its last words
 			if !tt.HasText(want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}
@@ -92,6 +92,34 @@ func TestD510NoChoiceNoGroup(t *testing.T) {
 	tt.Frame()
 	if tt.HasText("新任务默认") {
 		t.Errorf("New tasks start shown with nothing to choose: %q", tt.Texts())
+	}
+}
+
+// D556: both 自动, New tasks start has no tile column (its words on the text
+// edge, as Partner's 还没有能想事情的 AI agent, D501); a picked agent's coin
+// opens the column for every row and the foot, so the group keeps one edge.
+func TestD556NoEmptyTileColumn(t *testing.T) {
+	foot := i18n.New(i18n.ZH).T("newtasks.foot")
+	at := func(nt *protocol.NewTasks) (where, who, f ui.Rect) {
+		app, _ := d510App(t, i18n.ZH, nt)
+		tt := ui.NewTesterWith(app.View, 1150, 2000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		tt.Frame()
+		where, _ = tt.Find("在哪儿做")
+		who, _ = tt.Find("谁来做")
+		f, _ = tt.Find(foot)
+		return
+	}
+	w0, h0, f0 := at(nil)
+	if w0.X != h0.X || w0.X != f0.X {
+		t.Fatalf("both 自动: three edges, where %v, who %v, foot %v", w0.X, h0.X, f0.X)
+	}
+	w1, h1, f1 := at(&protocol.NewTasks{Agent: "codex"})
+	if w1.X != h1.X || w1.X != f1.X {
+		t.Fatalf("Codex picked: three edges, where %v, who %v, foot %v", w1.X, h1.X, f1.X)
+	}
+	if d := w1.X - w0.X; d != 52 {
+		t.Errorf("the coin's column is %v wide, want 40 and the gap (52)", d)
 	}
 }
 

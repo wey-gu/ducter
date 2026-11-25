@@ -737,7 +737,7 @@ line.
 ## Add a computer for tasks (D347, D358, `where.md` §17)
 
 - **The device words with people (D358).** research/128 used LLM raters only: show three people
-  (one of each kind) the devices page with 在这台上运行 / 帮 {name} 做事 and ask what turning each off
+  (one of each kind) the devices page with 在这台上运行 / 帮你做事 and ask what turning each off
   does. Trigger: the next real user session.
 
 - **Live check: a LAN Linux box joins hel.** On a Linux machine on the author's home network (no

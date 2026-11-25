@@ -106,7 +106,7 @@ func TestMemD554Words(t *testing.T) {
 			tt.Advance(150 * time.Millisecond)
 			tt.Frame()
 		}
-		for _, s := range []string{L.T("mem.health.ok"), L.T("mem.health.plugin", "Claude Code"), L.T("mem.health.plugin.why")} {
+		for _, s := range []string{L.T("mem.health.ok"), L.T("mem.health.plugin", "Claude Code"), unjoin(keepClauses(L.T("mem.health.plugin.why.one")))} { // D556: one agent is 它
 			if !tt.HasText(s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}

@@ -182,7 +182,7 @@ and the server's card shows **Use the computer** with that Mac's name under it.
 ## Let this Mac help with tasks
 
 When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*), your Mac's
-card has a chip **Helps Ducter with tasks**, and **Settings › Where it runs** has the same switch: **Let this
+card has a chip **Does tasks for you**, and **Settings › Where it runs** has the same switch: **Let this
 Mac help Ducter with tasks**. Turn it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
 Code and others), its repos and its browsers: *"run it on my Mac"* now works, and so do errands
 that need the sites you're signed in to in your Chrome. If a task on hel comes to a page that

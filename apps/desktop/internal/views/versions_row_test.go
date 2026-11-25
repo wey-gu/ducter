@@ -22,10 +22,11 @@ func versionsApp(t *testing.T, devices ...protocol.DeviceView) (*App, *ui.Tester
 	return app, tt, sent
 }
 
-// 在查… sits in the home's row, at its right under the version, where 已经是
-// 最新的 · 现在检查 was: never on a line of its own between the rows and
-// the night-time switch.
-func TestCheckingSitsInTheHomesRow(t *testing.T) {
+// D556: 检查更新, and 在查… in its place while it asks, sits in the card's last
+// row beside the night switch, at its right: never in the home's row, where it
+// pushed the home's version off the edge every other version ends on, and
+// never on a line of its own.
+func TestCheckingSitsBesideTheNightSwitch(t *testing.T) {
 	at := time.Now().Add(-3 * time.Hour).UTC().Format(time.RFC3339)
 	_, tt, _ := versionsApp(t,
 		protocol.DeviceView{ID: "hel", Name: "hel", Kind: "server", Home: true, State: protocol.DeviceAwake, Version: "0.0.7",
@@ -33,6 +34,23 @@ func TestCheckingSitsInTheHomesRow(t *testing.T) {
 		protocol.DeviceView{ID: "w1", Name: "Siweis-MacBook-Pro", Kind: "laptop", State: protocol.DeviceAwake, Version: "0.0.7",
 			Update: &protocol.DeviceUpdate{Current: "0.0.7", Latest: "0.0.7", How: "app", CheckedAt: at}},
 	)
+	name, _ := tt.Find("hel")
+	mac, _ := tt.Find("Siweis-MacBook-Pro")
+	night, _ := tt.Find("自动更新")
+	beside := func(what string, r ui.Rect) {
+		t.Helper()
+		if !(r.Y > mac.Y && r.Y > night.Y-24 && r.Y < night.Y+48) {
+			t.Errorf("%s at y=%v: not in the night switch's row (hel %v, the Mac %v, night %v)", what, r.Y, name.Y, mac.Y, night.Y)
+		}
+		if r.X < name.X+300 {
+			t.Errorf("%s at x=%v: not at the row's right (name at %v)", what, r.X, name.X)
+		}
+	}
+	check, ok := tt.Find("检查更新")
+	if !ok {
+		t.Fatalf("no 检查更新 in %q", tt.Texts())
+	}
+	beside("检查更新", check)
 	if err := tt.Click("检查更新"); err != nil {
 		t.Fatal(err)
 	}
@@ -44,15 +62,7 @@ func TestCheckingSitsInTheHomesRow(t *testing.T) {
 	if !ok {
 		t.Fatalf("no 正在检查… in %q", tt.Texts())
 	}
-	name, _ := tt.Find("hel")
-	mac, _ := tt.Find("Siweis-MacBook-Pro")
-	night, _ := tt.Find("自动更新")
-	if !(checking.Y > name.Y && checking.Y < mac.Y && checking.Y < night.Y) {
-		t.Errorf("在查… at y=%v: not inside hel's row (hel %v, the Mac %v, night %v)", checking.Y, name.Y, mac.Y, night.Y)
-	}
-	if checking.X < name.X+300 {
-		t.Errorf("在查… at x=%v: left-aligned like a row of its own, not at the row's right (name at %v)", checking.X, name.X)
-	}
+	beside("在查…", checking)
 }
 
 // 没更新成 shows only while the device still runs what it started from;

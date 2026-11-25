@@ -64,9 +64,9 @@ function brainNow() {
   return A.brainNow ?? A.settings?.brain ?? { harness: "claude-code", model: "opus" };
 }
 
-function AgentTile({ harness, off = false }: { harness: string; off?: boolean }) {
+function AgentTile({ harness, off = false, enter = false }: { harness: string; off?: boolean; enter?: boolean }) {
   return (
-    <Tile>
+    <Tile enter={enter}>
       <Coin harness={harness} size={40} off={off} />
     </Tile>
   );
@@ -287,6 +287,9 @@ export function taskAgents(): string[] {
  * only where there is a choice (two computers, two agents); 自动 / Automatic is Ducter's own pick.
  * The partner's new_tasks tool writes the same setting from the person's words.
  */
+// D556: the agent picked here this visit, so its coin comes in with the pick (never on opening the page).
+let whoPicked = "";
+
 export function NewTasksSection() {
   const s = A.settings;
   if (!s) return null;
@@ -309,6 +312,7 @@ export function NewTasksSection() {
   const pickWho = (v: string) => {
     if (v === (nt.agent ?? "")) return;
     set({ ...nt, agent: v || undefined });
+    whoPicked = v;
     say("newtasks", v ? t("said.newtasks.who", harnessName(v)) : t("said.newtasks.who.auto", name));
   };
   const whereOpts = [{ v: "", label: t("newtasks.auto") }, ...comps.map((d) => ({ v: idOf(d), label: d.name }))];
@@ -319,14 +323,15 @@ export function NewTasksSection() {
   return (
     <section class="set">
       <h3>{title}</h3>
-      <Group label={title}>
+      {/* D556: no tile column while both are 自动; a picked agent's coin opens it for every row. */}
+      <Group label={title} class={`picks${nt.agent && showWho ? "" : " bare"}`}>
         {showWhere && (
           <GRow title={t("newtasks.where")} line={whereOn ? t("newtasks.where.on", whereOn.name) : t("newtasks.where.auto")}>
             {control(t("newtasks.where"), whereOn ? idOf(whereOn) : "", whereOpts, pickWhere)}
           </GRow>
         )}
         {showWho && (
-          <GRow tile={nt.agent ? <AgentTile harness={nt.agent} /> : undefined} title={t("newtasks.who")} line={nt.agent ? t("newtasks.who.on", harnessName(nt.agent)) : t("newtasks.who.auto")}>
+          <GRow tile={nt.agent ? <AgentTile harness={nt.agent} enter={nt.agent === whoPicked} /> : undefined} title={t("newtasks.who")} line={nt.agent ? t("newtasks.who.on", harnessName(nt.agent)) : t("newtasks.who.auto")}>
             {control(t("newtasks.who"), nt.agent ?? "", whoOpts, pickWho)}
           </GRow>
         )}

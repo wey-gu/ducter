@@ -60,9 +60,9 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find str
 					uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
 					uiText(c, a.L.T("notify.pv.now")).FontSize(t.XS).TextColor(soft).Shrink(0)
 				})
-				uiText(c, a.L.T("notify.pv.ask")).FontSize(t.MD).LineHeight(a.leading(1.45)).TextColor(ink)
+				uiText(c, keepClauses(a.L.T("notify.pv.ask"))).FontSize(t.MD).LineHeight(a.leading(1.45)).TextColor(ink)
 				if wait != "" {
-					uiText(c, a.L.T("notify.pv.default", wait)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(soft)
+					uiText(c, keepClauses(a.L.T("notify.pv.default", wait))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(soft)
 				}
 			})
 		})
@@ -86,7 +86,7 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find str
 						uiText(c, a.S.PersonaName).FontSize(t.XS).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
 						uiText(c, when).FontSize(t.XS).TextColor(soft).Shrink(0)
 					})
-					uiText(c, a.L.T("notify.pv.find."+find)).FontSize(t.SM).LineHeight(a.leading(1.45)).TextColor(ink)
+					uiText(c, keepClauses(a.L.T("notify.pv.find."+find))).FontSize(t.SM).LineHeight(a.leading(1.45)).TextColor(ink)
 				})
 			})
 		}
@@ -96,7 +96,7 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find str
 		an := t.Nav.Across
 		ui.Row(c.Key("notify-pv-under:"+under)).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S1).
 			Transition(ui.ElementTransition{Animation: &an, Enter: &ui.Motion{Y: 4}}).Children(func() {
-			uiText(c, under).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+			uiText(c, keepClauses(under)).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
 		})
 	})
 }

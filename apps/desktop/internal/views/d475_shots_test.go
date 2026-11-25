@@ -56,7 +56,18 @@ func TestD475Shots(t *testing.T) {
 		tabs = strings.Split(only, ",")
 	}
 	for _, tab := range tabs {
-		h.app.openTab(tab)
+		if dev, ok := strings.CutPrefix(tab, "devices:"); ok {
+			// D556: a device's card, the computer named (its role tag among the partners).
+			h.app.OpenDevices()
+			h.until("devices", func() bool { return len(h.app.S.Devices) > 0 })
+			for _, d := range h.app.S.Devices {
+				if d.Name == dev {
+					h.app.devState().sel = d.ID
+				}
+			}
+		} else {
+			h.app.openTab(tab)
+		}
 		h.until("settings", func() bool { return h.app.S.Settings != nil })
 		settle()
 		widths := []int{1280, 760}
@@ -71,7 +82,7 @@ func TestD475Shots(t *testing.T) {
 		for _, w := range widths {
 			h.tt.SetSize(w, pass3Height(tab))
 			settle()
-			name := fmt.Sprintf("mac-%d-%s-%s-%s-%s", w, lang, paper, state, tab)
+			name := fmt.Sprintf("mac-%d-%s-%s-%s-%s", w, lang, paper, state, strings.ReplaceAll(strings.ReplaceAll(tab, ":", "-"), " ", "_"))
 			var img image.Image = h.tt.Image()
 			bottom := float32(0)
 			for _, s := range h.tt.Texts() {

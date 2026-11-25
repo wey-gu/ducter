@@ -30,3 +30,24 @@ func TestKeepWords(t *testing.T) {
 		t.Fatalf("latin tail: %q", got)
 	}
 }
+
+// D556: a sentence keeps its clauses' last words whole (Notifications' preview at 1150 broke 到 / 期).
+func TestKeepClauses(t *testing.T) {
+	s := "早上好。值得说的三条，第一条：ducter.ai 的域名后天到期，还没续费。"
+	got := keepClauses(s)
+	if unjoin(got) != s {
+		t.Fatalf("text changed: %q", got)
+	}
+	j := string(wordJoiner)
+	for _, want := range []string{"后" + j + "天" + j + "到" + j + "期，", "还" + j + "没" + j + "续" + j + "费。", "早" + j + "上" + j + "好。"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("%q not kept in %q", want, got)
+		}
+	}
+	if strings.Contains(got, "名"+j+"后") {
+		t.Fatalf("a long run lost a break it should keep: %q", got)
+	}
+	if got := keepClauses("Two ways to fix CI."); got != "Two ways to fix\u00a0CI." {
+		t.Fatalf("latin changed: %q", got)
+	}
+}

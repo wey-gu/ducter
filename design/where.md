@@ -537,8 +537,8 @@ each failure one sentence and one button under the clay (D353's 没有回应 / �
 Back is an arrow, one step. Reduced motion keeps the clay still.
 
 **The words for the computers (D358, research/128).** The home: **{name} 在这台上运行 / {name} runs here**;
-a computer that does tasks: **帮 {name} 做事 / Helps {name} with tasks**, the partner's name, never a
-machine's. Where a computer is added or switched on, one line says it never sees the conversation.
+a computer that does tasks: **帮你做事 / Does tasks for you** (D556: it serves the person, whichever of
+several partners is shown; was **帮 {name} 做事**), never a machine's name. Where a computer is added or switched on, one line says it never sees the conversation.
 
 ## 18. A repository is named by its remote, never guessed by path (D395)
 

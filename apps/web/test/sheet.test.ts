@@ -14,10 +14,10 @@ describe("the character sheet (D161)", () => {
   test("one status line: the role or the state, never the kind", () => {
     const home = dev({ id: "local", name: "hel", kind: "server", home: true });
     expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 0 })).toEqual({ text: "小鸭在这台上运行", tone: "" });
-    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("小鸭在这儿做着 3 个任务");
-    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "在帮小鸭做 2 个任务", tone: "working" });
-    expect(statusLine(en, dev({}), { persona: "Ducter", home: "hel", running: 2 }).text).toBe("Doing 2 tasks for Ducter");
-    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 0 }).text).toBe("帮小鸭做事");
+    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("在这儿做着 3 个任务") // D556: tasks there may be any partner's;
+    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "在帮你做 2 个任务", tone: "working" });
+    expect(statusLine(en, dev({}), { persona: "Ducter", home: "hel", running: 2 }).text).toBe("Doing 2 tasks for you");
+    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 0 }).text).toBe("帮你做事");
     // D291: the state is its own word (drawn with its dot), the line under it its own element.
     expect(statusLine(zh, dev({ state: "asleep" }), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ state: "睡着了", text: "醒来就接着做", tone: "asleep" });
     expect(statusLine(en, dev({ state: "unreachable" }), { persona: "Ducter", home: "hel", running: 0, ago: "2 hours ago" })).toEqual({ state: "Can't reach", text: "Last seen 2 hours ago", tone: "away" });

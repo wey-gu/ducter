@@ -101,7 +101,7 @@ export function installFocusTrap(doc: Document = document) {
       if (!t || !t.el.isConnected) return;
       const at = doc.activeElement as HTMLElement | null;
       // A menu opened from the sheet (drawn outside it) keeps its own keys.
-      if (at && !t.el.contains(at) && at.closest('[role="menu"], [role="listbox"]')) return;
+      if (at && !t.el.contains(at) && at.closest("[role=menu], [role=listbox]")) return;
       const list = [...t.el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(shown);
       const go = list.length ? tabTarget(list, at && t.el.contains(at) ? at : null, e.shiftKey) : t.el;
       if (!go) return;

@@ -534,7 +534,7 @@ test("D415: own subjects: put, find by membership, take out, rename, merge, remo
   expect(f.items.map((p) => [p.item.ref, p.by])).toEqual(expect.arrayContaining([["acme/mem#1002", "subject"], ["acme/mem#1006", "subject"]]));
   expect(f.items.length).toBe(2);
   // Out of a subject: the to-do carries none (not its old sort subject either).
-  pile.subject({ op: "take", name: "通用设置", refs: ["acme/mem#1006"] });
+  expect(pile.subject({ op: "take", name: "通用设置", refs: ["acme/mem#1006"] })).toMatchObject({ ok: true, name: "通用设置", n: 1, out: 1 });
   expect(pile.subjectOf("acme/mem#1006")).toBeUndefined();
   expect(b.ts.view().pile!.subjects![0]).toEqual({ name: "通用设置", n: 1, own: true });
   // Rename the sort's own subject, then merge it into the person's.

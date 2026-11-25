@@ -3611,6 +3611,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Partner eval after D574 (stable verdicts)
 
-- [ ] **The six confirmed regressions** (failed every attempt on the same code that passed in 0.1.71's run): continue-trip-zh, bridge-own-status-zh, noticed-anything-en, noticed-how-zh, subject-rename-en, call-quiet-hours-en. Read their transcripts; fix the persona or tool facts where the cause is ours. Trigger: the next partner change.
-- [ ] **The judge's own flips.** Re-judging one run three times flips 35 scenarios with the new prompt (22 with the old). Try a stricter rubric format (yes/no per point) or a stronger judge model for the flagged ones, measured with `--rejudge`. Trigger: before the next persona overhaul.
+- [x] **The six confirmed regressions** (D577): bridge-own-status-zh, noticed-anything-en, noticed-how-zh, subject-rename-en are fixes against d574; call-quiet-hours-en and continue-trip-zh are noise. Causes: the todos tool's `remove` and a take with no count, the call note's reason on a real clock, and rubrics at odds with the persona.
+- [ ] **continue-trip-zh's real faults** (1 of 3 on D577's code): haiku sometimes opens a second task for the flights despite rule 2d's own example, or gives an ungrounded duration ("十来分钟"). Trigger: the next persona change to rule 2.
+- [ ] **The judge's own flips.** Re-judging one run three times flips 35 scenarios with the new prompt (22 with the old). D577: two full runs on nearly the same code each named 7 to 10 "regressions" against d574 that went both ways when rerun, with only two in common; the 3-attempt confirm is not yet enough. Try a stricter rubric format (yes/no per point) or a stronger judge model for the flagged ones, measured with `--rejudge`. Trigger: before the next persona overhaul.
 - [x] **AGENTS.md's D175 line** now names `--against latest` (the author's go, 2026-11-25).

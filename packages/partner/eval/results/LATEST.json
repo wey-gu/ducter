@@ -1,10 +1,10 @@
 {
-  "file": "2026-11-25-haiku-d574.md",
+  "file": "2026-11-25-haiku-d577.md",
   "date": "2026-11-25",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "254/308",
-  "against": "2026-11-25-haiku-0171.md",
+  "pass": "259/308",
+  "against": "2026-11-25-haiku-d574.md",
   "persona": "ff026c8bce74087b",
-  "tools": "529eac35fc754481"
+  "tools": "cb1181d2e578543e"
 }

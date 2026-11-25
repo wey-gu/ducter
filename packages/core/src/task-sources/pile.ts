@@ -455,7 +455,7 @@ export interface Pile {
   /** D385: the subjects of the open ones, most first (D415: own: one the person made or named). */
   subjects(): { name: string; n: number; own?: boolean }[];
   /** D415: the person's own subjects: put, take out, rename (or merge), remove, make. */
-  subject(o: { op: SubjectOp; name: string; to?: string; refs?: string[] }): { ok: boolean; name?: string; n?: number; error?: string };
+  subject(o: { op: SubjectOp; name: string; to?: string; refs?: string[] }): { ok: boolean; name?: string; n?: number; out?: number; error?: string };
   /** D415: a to-do's subject as the person sees it (theirs over the sort's). */
   subjectOf(ref: string): string | undefined;
   sortedAt(): string | undefined;
@@ -590,7 +590,7 @@ export function createPile(d: PileDeps): Pile {
     return m?.made.find((x) => subjectKey(x.name) === k)?.name ?? Object.values(m?.as ?? {}).find((x) => subjectKey(x) === k) ?? Object.values(m?.of ?? {}).find((x) => x && subjectKey(x) === k) ?? name.trim();
   }
 
-  function subject(o: { op: SubjectOp; name: string; to?: string; refs?: string[] }): { ok: boolean; name?: string; n?: number; error?: string } {
+  function subject(o: { op: SubjectOp; name: string; to?: string; refs?: string[] }): { ok: boolean; name?: string; n?: number; out?: number; error?: string } {
     const clean = (s: string | undefined) => (s ?? "").replace(/\s+/g, " ").replace(/^[「『“"'#\s]+|[」』”"'\s。.]+$/gu, "").trim().slice(0, SUBJECT_NAME_MAX);
     const name = clean(o.name);
     if (!name) return { ok: false, error: "A subject needs a name." };
@@ -599,6 +599,7 @@ export function createPile(d: PileDeps): Pile {
     const at = new Date(d.now()).toISOString();
     const known = new Set(st.items.map((i) => i.ref));
     const refs = (o.refs ?? []).filter((r) => known.has(r)).slice(0, 200);
+    let out: number | undefined;
     const keep = (n: string) => {
       if (!m.made.some((x) => subjectKey(x.name) === subjectKey(n))) m.made.unshift({ name: n, at });
       m.gone = m.gone.filter((g) => g !== subjectKey(n));
@@ -616,6 +617,8 @@ export function createPile(d: PileDeps): Pile {
       }
       case "take":
         if (!refs.length) return { ok: false, error: "Which to-dos come out?" };
+        // D577: how many were in it and came out (a count that stays the same reads as "nothing happened").
+        out = refs.filter((r) => subjectOf(r) && subjectKey(subjectOf(r)!) === subjectKey(nameOf(name))).length;
         for (const r of refs) m.of[r] = "";
         break;
       case "rename": {
@@ -645,9 +648,10 @@ export function createPile(d: PileDeps): Pile {
     }
     if (m.made.length > SUBJECTS_KEPT) m.made.length = SUBJECTS_KEPT;
     save();
-    const now = o.op === "rename" ? nameOf(clean(o.to)) : o.op === "remove" || o.op === "take" ? undefined : nameOf(name);
+    // D577: a take says how many the subject still holds too (a rename then a take ended on the rename's count).
+    const now = o.op === "rename" ? nameOf(clean(o.to)) : o.op === "remove" ? undefined : nameOf(name);
     const n = now ? st.items.filter((i) => !taken(i.ref) && groupOf(i.ref) && subjectOf(i.ref) && subjectKey(subjectOf(i.ref)!) === subjectKey(now)).length : undefined;
-    return { ok: true, ...(now ? { name: now } : {}), ...(n !== undefined ? { n } : {}) };
+    return { ok: true, ...(now ? { name: now } : {}), ...(n !== undefined ? { n } : {}), ...(out !== undefined ? { out } : {}) };
   }
 
   /** D385: the subjects of the open ones not taken, most first (a name as most of its to-dos write it). */

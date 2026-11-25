@@ -423,6 +423,14 @@ function fakeBridge(dir: string, spaces = false, nmem?: string) {
 
 const PARTNER_KINDS = new Set(["ack", "ai_msg", "decision"]);
 
+/** D577: what the call card says about a wait (D208), so the judge reads the card as the person does. */
+function callWhy(plan: { wait?: { why: string; their: string; then: string }; canNow?: boolean }): string {
+  const w = plan.wait;
+  if (!w) return "";
+  const why = w.why === "quiet" ? "the user's quiet hours" : w.why === "late" ? `it's ${w.their} where they are, too late to call (Ducter never calls outside 8:00–21:00 there)` : `it's ${w.their} where they are, outside 9:00–20:00`;
+  return `; the card says why: ${why}, it dials at ${w.then} their time; ${plan.canNow ? "it offers Call now" : "no Call now"}`;
+}
+
 async function settle(partner: { idle(): Promise<void> }) {
   for (let i = 0; i < 3; i++) {
     await Bun.sleep(i === 0 ? 50 : 400);
@@ -1103,7 +1111,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         // D215: a call sheet: the user calls it themselves (the app shows 自己打 / Call it yourself, a tel: link).
         const sh = d.call?.plan?.sheet;
         if (d.call?.plan && sh) lines.push(`    [the call sheet shows, for the user to call themselves] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · open with: ${sh.open} · ask: ${sh.ask.join(" / ") || "-"} · may say: ${d.call.plan.say.join(", ") || "-"} · don't share: ${sh.dont.join(", ") || "-"} · note down: ${sh.note.join(" / ") || "-"} · buttons: 自己打 / Call it yourself (dials on their phone), 打完了 / Done calling, 先不打 / Not now · Ducter dials nothing`);
-        else if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)` : "right after Go"} · nothing is dialed before Go`);
+        else if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)${callWhy(d.call.plan)}` : "right after Go"} · nothing is dialed before Go`);
         // D222: a calendar change's card.
         if (d.src) lines.push(`    [this decision card IS the to-do write-back card (made by the todos tool), and shows] ${d.src.kind} · ${d.src.item.where ?? ""}${d.src.item.label} "${d.src.item.title}"${d.src.text ? ` · the comment, whole: ${d.src.text}` : ""}${d.src.close ? " · and closes it" : ""} · goes out only on the user's tap`);
         if (d.cal) lines.push(`    [this decision card IS the calendar change card (one card, made by the calendar tool), and shows] ${d.cal.kind}${d.cal.response ? ` (${d.cal.response})` : ""} · ${d.cal.title} · ${d.cal.allDay ? d.cal.start : `${d.cal.start.slice(0, 16)}–${d.cal.end.slice(11, 16)}`}${d.cal.was ? ` (was ${d.cal.was.start.slice(0, 16)})` : ""} · in ${[d.cal.calendar || "main calendar", d.cal.account].filter(Boolean).join(" · ")} · notifies: ${d.cal.notify.join(", ") || "nobody"}${d.cal.clash ? ` · overlaps "${d.cal.clash}"` : ""}${d.cal.theirZone ? ` · their zone ${d.cal.theirZone}` : ""} · runs only on the user's tap, then the card shows it done`);

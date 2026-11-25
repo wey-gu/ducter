@@ -302,3 +302,120 @@ test("D571: switching to another partner in a thread: passed on, it says hello i
   sl.inChannel("UWEY", "Ducter，你回来", { thread_ts: t }, "C0TIME");
   await waitFor(() => rig!.userMsgs().find((m) => m.text === "Ducter，你回来"));
 });
+
+// D580: live on hel (0.1.74), a colleague's post with a PR link and 「@Ducter …帮我合下」; the author's
+// 「@Ducter 你帮忙交给我的 review loop 看下…」 in its thread. Ducter saw none of the thread and asked which PR.
+const PR = "https://github.com/nowledge-co/nowledge-labs-website/pull/562";
+const STEAM = "我把 siwei 之前 coscon（agibar）的演讲整理稿弄了，你帮我 review 下，没问题就帮我合下。有问题请评论";
+const ASK = "你帮忙交给我的 review loop 看下，然后再给 pr babysitter 吧";
+
+test("D580: first @ in a thread someone else started: the thread so far comes along, fenced and attributed, its link intact", async () => {
+  rig = channelRig({ slackScopes: SCOPES, slackNames: { USTEAM: "Steam.yang" } });
+  const { hub, sl } = rig;
+  await rig.linked("slack");
+  // The colleague's post @s the bot: not the linked person, so nothing (the stranger line only).
+  const top = sl.mentions("USTEAM", "C0WEB", `<${PR}>\n<@UBOT> ${STEAM}`);
+  sl.inChannel("USTEAM", "图在 PR 里", { thread_ts: top }, "C0WEB");
+  await waitFor(() => slackView().strangerAt);
+  await hub.idle();
+  expect(rig.userMsgs()).toEqual([]);
+  expect(sl.sent("conversations.replies")).toEqual([]);
+  // The author's @ in that thread: the thread is read once, up to the mention.
+  const at = sl.mentions("UWEY", "C0WEB", ASK, { thread_ts: top });
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  expect(u).toMatchObject({ text: ASK, via: "slack", clientId: `slack:C0WEB:${at}` });
+  expect(sl.sent("conversations.replies")).toEqual([expect.objectContaining({ channel: "C0WEB", ts: top, latest: at })]);
+  expect(u.thread).toEqual({
+    app: "slack",
+    said: [
+      { who: "other", name: "Steam.yang", text: `@ducter ${PR}\n@ducter ${STEAM}` },
+      { who: "other", name: "Steam.yang", text: "图在 PR 里" },
+    ],
+  });
+  // The person's words stay only theirs.
+  expect(u.text).not.toContain("合下");
+  // Its answer goes in that thread, one it answers in from now on.
+  rig.say("好，交给 review loop 看 #562，审完再给 PR babysitter。", u.seq);
+  expect(await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).startsWith("好，交给")))).toMatchObject({ channel: "C0WEB", thread_ts: top });
+});
+
+test("D580: a thread it already answers in: nothing read, then only what it missed there", async () => {
+  rig = channelRig({ slackScopes: SCOPES, slackNames: { USTEAM: "Steam.yang" } });
+  const { hub, sl } = rig;
+  await rig.linked("slack");
+  const t = sl.mentions("UWEY", "C0WEB", "看下 #562");
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  expect(u.thread).toBeUndefined();
+  rig.say("在看了。", u.seq);
+  await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "在看了。"));
+  await hub.idle();
+  // The person's reply (no @) and an @ in the thread it answers in: it knows the thread, no read.
+  sl.inChannel("UWEY", "顺便看下图", { thread_ts: t }, "C0WEB");
+  await waitFor(() => rig!.userMsgs()[1]);
+  sl.mentions("UWEY", "C0WEB", "还有标题", { thread_ts: t });
+  const third = await waitFor(() => rig!.userMsgs()[2]);
+  expect(sl.sent("conversations.replies")).toEqual([]);
+  expect(rig.userMsgs().every((m) => !m.thread)).toBe(true);
+  expect(third.text).toBe("还有标题");
+  // A colleague writes in it (dropped unread, nothing logged); the person's next words bring only that.
+  const said = sl.inChannel("USTEAM", "标题我改过了，见 PR 第二个 commit", { thread_ts: t }, "C0WEB");
+  await new Promise((r) => setTimeout(r, 100));
+  await hub.idle();
+  expect(rig.userMsgs().length).toBe(3);
+  sl.inChannel("UWEY", "那就合吧", { thread_ts: t }, "C0WEB");
+  const fourth = await waitFor(() => rig!.userMsgs()[3]);
+  expect(sl.sent("conversations.replies")).toEqual([expect.objectContaining({ channel: "C0WEB", ts: t, oldest: said })]);
+  expect(fourth.thread).toEqual({ app: "slack", since: true, said: [{ who: "other", name: "Steam.yang", text: "标题我改过了，见 PR 第二个 commit" }] });
+  // Caught up: the next words there read nothing again.
+  sl.inChannel("UWEY", "好了吗", { thread_ts: t }, "C0WEB");
+  const fifth = await waitFor(() => rig!.userMsgs()[4]);
+  expect(fifth.thread).toBeUndefined();
+  expect(sl.sent("conversations.replies").length).toBe(1);
+});
+
+test("D580: the thread can't be read (an app without the history scopes): said plainly, never 'nothing there'", async () => {
+  rig = channelRig({ slackScopes: SCOPES.filter((x) => x !== "channels:history" && x !== "groups:history") });
+  const { sl } = rig;
+  await rig.linked("slack");
+  const top = sl.posted("USTEAM", `<${PR}> 帮我合下`, {}, "C0WEB");
+  sl.mentions("UWEY", "C0WEB", ASK, { thread_ts: top });
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  expect(u.thread).toEqual({ app: "slack", unread: "scope" });
+  // Known from the listed scopes: Slack isn't even asked.
+  expect(sl.sent("conversations.replies")).toEqual([]);
+});
+
+test("D580: no scope list, and Slack answers missing_scope: the same honest line; another refusal reads 'failed'", async () => {
+  rig = channelRig();
+  const { sl } = rig;
+  await rig.linked("slack");
+  const top = sl.posted("USTEAM", `<${PR}> 帮我合下`, {}, "C0WEB");
+  sl.failNext("conversations.replies", 200, { ok: false, error: "missing_scope", needed: "channels:history" });
+  sl.mentions("UWEY", "C0WEB", ASK, { thread_ts: top });
+  expect((await waitFor(() => rig!.userMsgs()[0])).thread).toEqual({ app: "slack", unread: "scope" });
+  // Not a refused token: Slack stays linked.
+  expect(slackView().state).toBe("linked");
+  const other = sl.posted("USTEAM", "另一个", {}, "C0OPS");
+  sl.failNext("conversations.replies", 200, { ok: false, error: "thread_not_found" });
+  sl.mentions("UWEY", "C0OPS", "看下这个", { thread_ts: other });
+  expect((await waitFor(() => rig!.userMsgs()[1])).thread).toEqual({ app: "slack", unread: "failed" });
+});
+
+test("D580: a long thread comes bounded: its first message, then the newest, about 4,000 characters", async () => {
+  rig = channelRig({ slackScopes: SCOPES, slackNames: { USTEAM: "Steam.yang" } });
+  const { sl } = rig;
+  await rig.linked("slack");
+  const top = sl.posted("USTEAM", `<${PR}> 帮我 review`, {}, "C0WEB");
+  for (let i = 0; i < 40; i++) sl.posted(i % 2 ? "UWEY" : "USTEAM", `第 ${i} 条 ${"字".repeat(300)}`, { thread_ts: top }, "C0WEB");
+  sl.mentions("UWEY", "C0WEB", ASK, { thread_ts: top });
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  const said = u.thread!.said!;
+  expect(said[0]).toEqual({ who: "other", name: "Steam.yang", text: `${PR} 帮我 review` });
+  expect(said.at(-1)!.text).toStartWith("第 39 条");
+  expect(said.length).toBeLessThanOrEqual(20);
+  expect(said.map((s) => s.text).join("").length).toBeLessThanOrEqual(4_100);
+  expect(u.thread!.more).toBe(41 - said.length);
+  // The person's own earlier words there are marked as theirs, with no name.
+  expect(said.at(-1)).toMatchObject({ who: "user" });
+  expect(said.at(-1)!.name).toBeUndefined();
+});

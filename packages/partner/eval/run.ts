@@ -1223,6 +1223,9 @@ function describeStep(st: Step): string {
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st && st.app === "ask") return `the user tapped a button in their own app (the first one listed in [apps]), and the app asked the partner through ducter.ask: ${st.user}`;
   if ("user" in st && st.app === "about") return `user types in the sheet of their app (the first one listed in [apps]), about it: ${st.user}`;
+  if ("user" in st && st.via && st.thread?.said?.length)
+    return `in a ${{ telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[st.via]} channel thread the partner wasn't in, which held before (shown to the partner as outside data): ${st.thread.said.map((s) => `${s.who === "user" ? "the user" : s.who === "ducter" ? "the partner" : `${s.name ?? "someone"} (not the user)`}: "${s.text}"`).join("; ")}; then the user @-mentions the partner there and says: ${st.user}`;
+  if ("user" in st && st.via && st.thread?.unread) return `in a ${{ telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[st.via]} channel thread whose earlier messages the partner can't read (${st.thread.unread === "scope" ? "the app lacks a permission" : "the chat app didn't answer"}), the user @-mentions the partner and says: ${st.user}`;
   if ("user" in st && st.via) return `user says, in ${{ telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[st.via]} (a chat app the partner answers in): ${st.user}`;
   if ("user" in st && st.refs?.length) return `user says: ${st.user} (picked in the composer: ${st.refs.map((r) => ("task" in r ? `@ the task "${r.task}"` : "skill" in r ? `/ their skill ${r.skill}` : `/ Ducter's action ${r.action}`)).join(", ")})`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
@@ -1280,7 +1283,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       if ("skill" in r) return { kind: "skill", id: r.skill, label: r.skill, ...(r.about ? { about: r.about } : {}) };
       return { kind: "action", id: r.action, label: r.label };
     });
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}), ...(st.via ? { via: st.via } : {}) });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}), ...(st.via ? { via: st.via } : {}), ...(st.thread ? { thread: st.thread } : {}) });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {

@@ -7,7 +7,7 @@
 // Tokens ride only in the Authorization header; no error or log line here ever carries one.
 import { readFileSync } from "node:fs";
 import { parseMarkdown, slackEscape, splitParsed, toSlack } from "./format.ts";
-import { ChannelError, RetryAfter, type BotInfo, type Channel, type ChannelEvents, type InFile, type InMessage, type OutPart } from "./port.ts";
+import { ChannelError, RetryAfter, type BotInfo, type Channel, type ChannelEvents, type InFile, type InMessage, type OutPart, type ThreadSaid } from "./port.ts";
 
 export const SLACK_API = "https://slack.com/api";
 /** Slack keeps 40,000 characters of a message's text; a section block holds 3,000. */
@@ -42,7 +42,8 @@ export const isSlackAppToken = (t: string) => /^xapp-[A-Za-z0-9-]{20,}$/.test(t.
  * app_mentions:read, so the person can @ the partner in a channel it was added to. D571:
  * message.channels / message.groups with channels:history / groups:history, so the person's replies
  * in a thread the partner answered in reach it without an @ (Slack sends a channel's messages only
- * with these; the hub takes only the linked person's, only in such a thread).
+ * with these; the hub takes only the linked person's, only in such a thread). D580: the same scopes
+ * let it read a thread it is @-mentioned in (conversations.replies), on the person's words there only.
  */
 export function slackManifest(name: string): string {
   const n = name.trim().slice(0, 35) || "Ducter";
@@ -101,6 +102,7 @@ export function createSlack(o: SlackOpts): Channel {
   let running = false;
   let sock: WebSocket | undefined;
   let me: BotInfo | undefined;
+  let myBot: string | undefined;
   const names = new Map<string, string>();
   let scopes: string | null = null;
   let events: ChannelEvents | undefined;
@@ -302,6 +304,7 @@ export function createSlack(o: SlackOpts): Channel {
       // D531: the app's id, for the link that opens its messages (best effort: users:read covers it).
       const appId = r.bot_id ? await call<{ bot?: { app_id?: string } }>("bots.info", { bot: r.bot_id }).then((b) => b.bot?.app_id, () => undefined) : undefined;
       // Slack lists a token's scopes on every answer; absent (an older proxy), assume it can and learn on the first post.
+      myBot = r.bot_id;
       me = { id: r.user_id, name: r.user ?? "Ducter", ...(r.team ? { team: r.team } : {}), ...(r.team_id ? { teamId: r.team_id } : {}), ...(appId ? { appId } : {}) };
       if (scopes !== null) fresh(me, scopes);
       running = true;
@@ -346,7 +349,70 @@ export function createSlack(o: SlackOpts): Channel {
       await call("files.completeUploadExternal", { files: [{ id: up.file_id, title: file.name }], channel_id: chat, ...(file.caption ? { initial_comment: slackEscape(file.caption) } : {}) });
       return up.file_id;
     },
+    // D580: the thread so far, when the partner is first @-mentioned in it (or what it missed since),
+    // through conversations.replies (channels:history / groups:history). Read only on the linked
+    // person's own words there; nothing of it is kept but what the hub logs with those words.
+    async thread(chat, ts, o) {
+      if (scopes !== null) {
+        const has = new Set(scopes.split(",").map((x) => x.trim()));
+        if (SLACK_THREAD_SCOPES.every((x) => !has.has(x))) return { unread: "scope" };
+      }
+      const all: SlackMsg[] = [];
+      try {
+        let cursor: string | undefined;
+        for (let page = 0; page < THREAD_PAGES; page++) {
+          const r = await call<{ messages?: SlackMsg[]; has_more?: boolean; response_metadata?: { next_cursor?: string } }>("conversations.replies", { channel: chat, ts, latest: o.before, ...(o.after ? { oldest: o.after } : {}), inclusive: "true", limit: "200", ...(cursor ? { cursor } : {}) });
+          all.push(...(r.messages ?? []));
+          cursor = r.response_metadata?.next_cursor || undefined;
+          if (!r.has_more || !cursor) break;
+        }
+      } catch (err) {
+        return { unread: err instanceof ChannelError && /missing_scope|not_allowed_token_type/.test(err.message) ? "scope" : "failed" };
+      }
+      const seen = new Set<string>();
+      const kept = all
+        .filter((m) => m.ts && !seen.has(m.ts) && (seen.add(m.ts), true))
+        .filter((m) => cmpTs(m.ts!, o.before) < 0 && (!o.after || cmpTs(m.ts!, o.after) >= 0))
+        .filter((m) => !m.subtype || THREAD_SUBTYPES.has(m.subtype))
+        .sort((a, b) => cmpTs(a.ts!, b.ts!));
+      const first = kept[0]?.ts === ts ? kept.slice(0, 1) : [];
+      const rest = kept.slice(first.length);
+      const shown = [...first, ...rest.slice(Math.max(0, rest.length - (o.max - first.length)))];
+      // Who wrote each, and everyone @-mentioned in them, by name (users:read; cached, bounded).
+      const ids = new Set<string>();
+      for (const m of shown) {
+        if (m.user && !m.bot_id) ids.add(m.user);
+        for (const x of (m.text ?? "").matchAll(/<@([UW][A-Z0-9]+)(\|[^>]*)?>/g)) ids.add(x[1]!);
+      }
+      await Promise.all([...ids].slice(0, 30).map((id) => (id === me?.id ? Promise.resolve() : nameOf(id))));
+      const said: ThreadSaid[] = shown.map((m) => {
+        const mine = (!!myBot && m.bot_id === myBot) || (!!me && m.user === me.id);
+        const bot = !mine && !!m.bot_id;
+        const name = mine ? (m.username ?? me?.name ?? "Ducter") : bot ? (m.username ?? m.bot_profile?.name ?? "an app") : (names.get(m.user ?? "") ?? m.user ?? "someone");
+        const text = [
+          plain((m.text ?? "").replace(/<@([UW][A-Z0-9]+)(\|[^>]*)?>/g, (_, id: string) => `@${id === me?.id ? me.name : (names.get(id) ?? id)}`).replace(/<#C\w+\|([^>]+)>/g, "#$1").replace(/<!(here|channel|everyone)>/g, "@$1")),
+          ...(m.files ?? []).map((x) => `[a file: ${x.name ?? "file"}]`),
+          ...(m.attachments ?? []).filter((a) => a.is_share).map((a) => `[shared${a.author_name ? ` from ${a.author_name}` : ""}: ${plain(a.text ?? a.fallback ?? "").slice(0, 300)}]`),
+        ]
+          .filter((x) => x.trim())
+          .join(" ");
+        return { ts: m.ts!, from: { id: m.user ?? m.bot_id ?? "", name }, ...(mine ? { mine: true } : {}), ...(bot ? { bot: true } : {}), text };
+      });
+      return { said, more: kept.length - shown.length };
+    },
   };
+}
+
+/** D580: at most this many pages of conversations.replies (200 a page) for one thread. */
+const THREAD_PAGES = 5;
+/** D580: the kinds of a thread's messages that are someone's words (joins, topic changes and the like are not). */
+const THREAD_SUBTYPES = new Set(["file_share", "thread_broadcast", "bot_message", "me_message"]);
+type SlackMsg = { ts?: string; user?: string; bot_id?: string; username?: string; bot_profile?: { name?: string }; subtype?: string; text?: string; files?: SlackFile[]; attachments?: { is_share?: boolean; text?: string; fallback?: string; author_name?: string }[] };
+/** Slack's ts ("1700000000.000100") in order, exactly (a float would lose the last digits). */
+export function cmpTs(a: string, b: string): number {
+  const [ai = "", af = ""] = a.split(".");
+  const [bi = "", bf = ""] = b.split(".");
+  return ai.length !== bi.length ? ai.length - bi.length : ai !== bi ? (ai < bi ? -1 : 1) : af.padEnd(6, "0") < bf.padEnd(6, "0") ? -1 : af.padEnd(6, "0") > bf.padEnd(6, "0") ? 1 : 0;
 }
 
 /** D531: what the bot token's listed scopes say it can do; true when that changed. */

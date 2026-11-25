@@ -6,7 +6,7 @@ import type { ServerWebSocket } from "bun";
  * scopes: the bot token's scopes as Slack lists them in x-oauth-scopes (D531; absent: no header).
  * A post with a username or icon_url without chat:write.customize answers missing_scope.
  */
-export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: string[] } = {}) {
+export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: string[]; /** D580: display names by user id (users.info); others are "Wey". */ names?: Record<string, string> } = {}) {
   const botToken = o.botToken ?? "xoxb-1111-2222-abcdefghijklmnopqrst";
   const appToken = o.appToken ?? "xapp-1-A111-2222-abcdefghijklmnopqrst";
   const calls: { method: string; body: Record<string, any>; ts?: string }[] = [];
@@ -19,6 +19,9 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
   const nextTs = () => `${ts++}.000100`;
   const files = new Map<string, Uint8Array>();
   let scopes = o.scopes;
+  /** D580: every message in a channel (people's and the bot's), for conversations.replies. */
+  const history: Record<string, any>[] = [];
+  const keep = (m: Record<string, any>) => void (m.channel && !String(m.channel).startsWith("D") && !history.some((x) => x.channel === m.channel && x.ts === m.ts) && history.push(m));
 
   const server = Bun.serve({
     port: 0,
@@ -71,11 +74,27 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
             return Response.json({ ok: false, error: "missing_scope", needed: "chat:write.customize", provided: scopes.join(",") }, { headers });
           }
           calls.at(-1)!.ts = nextTs();
+          keep({ channel: body.channel, ts: calls.at(-1)!.ts, ...(body.thread_ts ? { thread_ts: body.thread_ts } : {}), text: body.text, user: "UBOT", bot_id: "B1", ...(body.username ? { username: body.username } : {}) });
           return ok({ ts: calls.at(-1)!.ts, channel: body.channel });
+        case "conversations.replies": {
+          // D580: a thread's messages, the parent first, then the replies, between oldest and latest.
+          const need = String(body.channel).startsWith("G") ? "groups:history" : "channels:history";
+          if (scopes && !scopes.includes(need)) return Response.json({ ok: false, error: "missing_scope", needed: need, provided: scopes.join(",") }, { headers });
+          const n = (x: string) => Number(x);
+          const inc = body.inclusive === "true";
+          const all = history
+            .filter((m) => m.channel === body.channel && (m.ts === body.ts || m.thread_ts === body.ts))
+            .filter((m) => (!body.latest || (inc ? n(m.ts) <= n(body.latest) : n(m.ts) < n(body.latest))) && (!body.oldest || (inc ? n(m.ts) >= n(body.oldest) : n(m.ts) > n(body.oldest))))
+            .sort((a, b) => n(a.ts) - n(b.ts));
+          const from = Number(body.cursor ?? 0);
+          const size = Number(body.limit ?? 100);
+          const more = from + size < all.length;
+          return ok({ messages: all.slice(from, from + size), has_more: more, ...(more ? { response_metadata: { next_cursor: String(from + size) } } : {}) });
+        }
         case "chat.update":
           return ok({ ts: body.ts, channel: body.channel });
         case "users.info":
-          return ok({ user: { id: body.user, name: "wey", real_name: "Wey Gu", profile: { display_name: "Wey" } } });
+          return ok({ user: { id: body.user, name: "wey", real_name: o.names?.[body.user] ?? "Wey Gu", profile: { display_name: o.names?.[body.user] ?? "Wey" } } });
         case "files.getUploadURLExternal":
           return ok({ upload_url: `http://127.0.0.1:${server.port}/upload`, file_id: "F1" });
         case "files.completeUploadExternal":
@@ -132,13 +151,23 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
     /** D531: user @-mentions the bot in a channel it was added to (Slack's app_mention event). */
     mentions(user: string, channel: string, text: string, extra: Record<string, unknown> = {}) {
       const t = nextTs();
-      envelope("events_api", { event: { type: "app_mention", channel, user, text: `<@UBOT> ${text}`, ts: t, event_ts: t, ...extra } });
+      const ev = { type: "app_mention", channel, user, text: `<@UBOT> ${text}`, ts: t, event_ts: t, ...extra };
+      keep(ev);
+      envelope("events_api", { event: ev });
       return t;
     },
     /** A message in a channel the bot is in (message.channels); D571: with thread_ts, a reply in that thread. */
     inChannel(user: string, text: string, extra: Record<string, unknown> = {}, channel = "C1") {
       const t = nextTs();
-      envelope("events_api", { event: { type: "message", channel, channel_type: "channel", user, text, ts: t, ...extra } });
+      const ev = { type: "message", channel, channel_type: "channel", user, text, ts: t, ...extra };
+      keep(ev);
+      envelope("events_api", { event: ev });
+      return t;
+    },
+    /** D580: a message in a channel that sends the bot no event (an app's, or before the scopes). */
+    posted(user: string, text: string, extra: Record<string, unknown> = {}, channel = "C1") {
+      const t = nextTs();
+      keep({ type: "message", channel, user, text, ts: t, ...extra });
       return t;
     },
     taps(user: string, messageTs: string, value: string) {

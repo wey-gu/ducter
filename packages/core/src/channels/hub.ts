@@ -20,8 +20,8 @@
 //    @: the model still judges the rest and passes on, D486), else the one they are talking with
 //    (TURN_MS), else the default. Every partner's asks and results reach the one place.
 import { CHANNEL_KINDS } from "@ducter/protocol";
-import type { Bodies, ChannelKind, ChannelView, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
-import { fill, words as wordsIn } from "@ducter/protocol";
+import type { Bodies, ChannelKind, ChannelView, ChatThread, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
+import { fill, THREAD_CHARS, THREAD_MESSAGES, words as wordsIn } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
@@ -47,6 +47,8 @@ export const STATUS_AFTER_MS = 60_000;
 /** Telegram's typing lasts about 5 s: it is said again every 4 s, at most this long. */
 export const TYPING_EVERY_MS = 4_000;
 export const TYPING_MAX_MS = 120_000;
+/** D580: how long the person's words wait for their thread to be read (Slack wants each event answered within 3 s). */
+export const THREAD_WAIT_MS = 2_500;
 /** A typed 好 / ok answers the newest card with buttons only while it is this fresh. */
 export const GO_WORD_MS = 24 * 3600_000;
 const DAY_MS = 24 * 3600_000;
@@ -275,9 +277,52 @@ export function createChannels(deps: ChannelDeps): Channels {
   /** The thread, when a partner answers in it: the person's words there are for it, no @ needed. */
   const threadOf = (kind: ChannelKind, chat: string, ts: string): ChannelThread | undefined => store.get(kind)?.threads?.find((t) => t.chat === chat && t.ts === ts);
   /** Remembers the thread (newest last), with the partner it is with now. */
-  const keepThread = (kind: ChannelKind, chat: string, ts: string, withId: string) => {
-    const rest = (store.get(kind)?.threads ?? []).filter((t) => !(t.chat === chat && t.ts === ts));
-    store.patch(kind, { threads: [...rest, { chat, ts, with: withId, at: new Date(clock.now()).toISOString() }].slice(-THREADS_KEPT) });
+  const keepThread = (kind: ChannelKind, chat: string, ts: string, withId: string, o: { caught?: boolean } = {}) => {
+    const all = store.get(kind)?.threads ?? [];
+    const was = all.find((t) => t.chat === chat && t.ts === ts);
+    const rest = all.filter((t) => t !== was);
+    // D580: what it missed there stays to bring, until words it takes there brought it (caught).
+    const missed = !o.caught && was?.missed ? { missed: was.missed } : {};
+    store.patch(kind, { threads: [...rest, { chat, ts, with: withId, at: new Date(clock.now()).toISOString(), ...missed }].slice(-THREADS_KEPT) });
+  };
+  /** D580: a teammate's words in a thread a partner answers in are dropped unread; the thread only notes from when it missed something. */
+  const missedIn = (kind: ChannelKind, chat: string, ts: string, at: string) => {
+    const all = store.get(kind)?.threads ?? [];
+    if (!all.some((t) => t.chat === chat && t.ts === ts && !t.missed)) return;
+    store.patch(kind, { threads: all.map((t) => (t.chat === chat && t.ts === ts ? { ...t, missed: at } : t)) });
+  };
+  /**
+   * D580: the thread the person's words were written in, as it stood before them, for the partner:
+   * all of it (bounded) the first time it is in that thread, else only what it missed there. Outside
+   * data, who said each part marked. Undefined: nothing to bring (or the chat app has no threads).
+   */
+  const readThread = async (kind: ChannelKind, chat: string, ts: string, before: string, person: string, known: ChannelThread | undefined): Promise<ChatThread | undefined> => {
+    const ch = live.get(kind)?.ch;
+    if (!ch?.thread || (known && !known.missed)) return undefined;
+    const since = known?.missed;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<{ unread: "failed" }>((res) => (timer = setTimeout(() => res({ unread: "failed" }), THREAD_WAIT_MS)));
+    const r = await Promise.race([ch.thread(chat, ts, { before, ...(since ? { after: since } : {}), max: THREAD_MESSAGES }), late]).catch(() => ({ unread: "failed" as const }));
+    clearTimeout(timer);
+    if ("unread" in r) return { app: kind, unread: r.unread, ...(since ? { since: true } : {}) };
+    // What it missed: never its own words there, nor the person's it already took.
+    const said = since ? r.said.filter((s) => !s.mine && s.from.id !== person) : r.said;
+    if (!said.length) return undefined;
+    // About THREAD_CHARS in all: the thread's first message (it says what the thread is about), then the newest.
+    const head = !since && said[0]!.ts === ts ? [said[0]!] : [];
+    const out: NonNullable<ChatThread["said"]> = [];
+    let room = THREAD_CHARS;
+    const one = (s: (typeof said)[number], max: number) => {
+      const text = s.text.length > max ? `${s.text.slice(0, max - 1)}…` : s.text;
+      room -= text.length;
+      return { who: s.mine ? ("ducter" as const) : s.from.id === person ? ("user" as const) : ("other" as const), ...(s.from.name && s.from.id !== person ? { name: s.from.name } : {}), text };
+    };
+    const first = head.map((s) => one(s, 1_200));
+    const rest = said.slice(head.length);
+    let i = rest.length;
+    while (i > 0 && room > 0) out.unshift(one(rest[--i]!, Math.min(600, Math.max(room, 80))));
+    const more = r.more + i;
+    return { app: kind, said: [...first, ...out], ...(more ? { more } : {}), ...(since ? { since: true } : {}) };
   };
 
   // ---------- what is up ----------
@@ -833,10 +878,12 @@ export function createChannels(deps: ChannelDeps): Channels {
     const thread = !m.direct && !m.mention && m.replyTo ? threadOf(kind, m.chat, m.replyTo) : undefined;
     if (!m.direct && !m.mention && !thread) return note(kind, m.replyTo && !m.direct ? "ignored: a thread it doesn't answer in" : "ignored: not a direct message");
     const acc = rec.linked;
-    if (thread && (!acc || m.from.id !== acc.id)) return note(kind, "ignored: a thread reply, not from the linked person");
+    // D580: dropped unread; the thread notes it missed something, so the person's next words there bring it.
+    if (thread && (!acc || m.from.id !== acc.id)) return missedIn(kind, m.chat, thread.ts, m.id), note(kind, "ignored: a thread reply, not from the linked person");
     if (m.mention && (!acc || m.from.id !== acc.id)) {
       // Anyone else's mention gets nothing, in the channel or anywhere (the bot is one person's).
       note(kind, acc ? "ignored: a mention, not from the linked person" : "ignored: a mention before an account is linked");
+      if (m.replyTo) missedIn(kind, m.chat, m.replyTo, m.id);
       return void (acc && stranger(kind));
     }
     if (!acc) {
@@ -898,14 +945,18 @@ export function createChannels(deps: ChannelDeps): Channels {
       to = (replied?.seq === replySeq && replied ? whoseOf(replied.stream) : undefined) ?? (m.forwarded ? undefined : addressed(text)) ?? (cur && clock.now() - cur.at < TURN_MS ? cur.id : DEFAULT_PARTNER);
       withOf.set(kind, { id: to, at: clock.now() });
     }
+    // D580: first in a thread someone else started (an @ in a reply), or back in one it missed words
+    // in: the thread so far comes along, as outside data with who said each part.
+    const before = threadTs && m.replyTo && !m.forwarded ? await readThread(kind, m.chat, threadTs, m.id.replace(/#\d+$/, ""), acc.id, known) : undefined;
+    if (before) note(kind, before.unread ? `the thread couldn't be read (${before.unread})` : `read the thread: ${before.said?.length ?? 0} message(s)${before.since ? " it missed" : ""}`);
     fromChat++;
     try {
-      const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}), ...(to !== DEFAULT_PARTNER ? { stream: channelOf(to) } : {}) });
+      const e = logUserMessage(log, decisions, { text, clientId, media, ...(reply ? { reply } : {}), via: kind, ...(m.forwarded ? { forwarded: m.forwarded } : {}), ...(before ? { thread: before } : {}), ...(to !== DEFAULT_PARTNER ? { stream: channelOf(to) } : {}) });
       seqOf.set(clientId, e.seq);
       svcOf.set(e.seq, { kind, chat: m.chat, id: m.id });
       // D531: its answer goes in a thread under the mention (or in the thread it was made in).
       // D571: and the thread is one it answers in from now on: the person's replies there need no @.
-      if (threadTs) mentionOf.set(e.seq, { chat: m.chat, thread: threadTs }), keepThread(kind, m.chat, threadTs, to);
+      if (threadTs) mentionOf.set(e.seq, { chat: m.chat, thread: threadTs }), keepThread(kind, m.chat, threadTs, to, { caught: !m.forwarded });
       note(kind, m.mention ? "taken: a mention from the linked person" : thread ? "taken: a thread reply from the linked person" : "taken: a message from the linked person");
     } finally {
       fromChat--;

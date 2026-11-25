@@ -353,6 +353,26 @@ export interface ReplyWant {
   /** D430: 回复这一条 / Reply to this one: one line under the person's message, by its index. */
   ask?: number;
 }
+/**
+ * D580: the chat-app thread the person's words were written in, as it stood before them: what the
+ * partner hadn't seen of it (all of it the first time it is @-mentioned there; later, only what it
+ * missed). Outside data: who said each part is marked, and a colleague's words are never the
+ * person's request. unread: the thread couldn't be read (the app lacks the permission, or the chat
+ * app didn't answer); the partner says so plainly and asks for what it needs.
+ */
+export interface ChatThread {
+  app: ChannelKind;
+  /** Oldest first; the thread's first message is kept whatever the bound. */
+  said?: { who: "user" | "other" | "ducter"; name?: string; text: string }[];
+  /** Earlier messages left out by the bound. */
+  more?: number;
+  /** Only what it missed since it was last in the thread (it knows the rest). */
+  since?: boolean;
+  unread?: "scope" | "failed";
+}
+/** D580: how much of a thread comes along: the last THREAD_MESSAGES before the words, about THREAD_CHARS in all. */
+export const THREAD_MESSAGES = 20;
+export const THREAD_CHARS = 4_000;
 
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
@@ -363,7 +383,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; /** D580: the chat-app thread these words were written in, before them (outside data). */ thread?: ChatThread; app?: AppRef; passed?: { from: string }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.

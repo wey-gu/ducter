@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.59 - 2026-11-25
+
+<!-- whats-new
+zh: 设置里更整齐：版本号对齐，说法更准确
+en: Settings, tidier: versions line up, and the words fit any number of partners
+-->
+
+**Settings**
+- About lines every computer's version up on one edge; Check for updates sits beside the nightly
+  update switch.
+- Computers that do work for you say 帮你做事 / Does tasks for you, true with one partner or four.
+- Previews and notes keep their last words together instead of leaving one alone on a line.
+- New task defaults leave no empty space when both are automatic.
+
+**iPhone**
+- Share to Ducter is set up for the iPhone app; this build includes it when Apple's signing allows.
+
 ## 0.1.58 - 2026-11-25
 
 <!-- whats-new

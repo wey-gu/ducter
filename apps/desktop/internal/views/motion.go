@@ -202,7 +202,8 @@ func (a *App) ownerFace(c *ui.Context, key, persona string, p theme.Presence, w 
 // faceOf is the living face in a look, its label naming who.
 func (a *App) faceOf(c *ui.Context, key, look, who string, p theme.Presence, w, room float32) ui.Element {
 	bmp := theme.FaceAs(look, p, w*2)
-	idle := theme.FaceAs(look, theme.Idle, w*2)
+	// D565: every figure stands in the pebble's box, at the same optical size.
+	idle := theme.FaceAs("", theme.Idle, w*2)
 	h := w
 	if idle != nil {
 		iw, ih := idle.Size()
@@ -219,6 +220,7 @@ func (a *App) faceOf(c *ui.Context, key, look, who string, p theme.Presence, w, 
 		// bottom edge.
 		at := fitIn(bmp, artRect(r, room))
 		at.Y = r.Y + r.H - at.H
+		at = figureIn(bmp, artRect(r, room), look, at)
 		var lids *blinkArt
 		if p == theme.Idle {
 			lids = faceBlinkAs(look, w*2)

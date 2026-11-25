@@ -208,6 +208,16 @@ function homeLives(): string {
   return h && !(h.alwaysOn || h.kind === "server") ? name : t("home.lives.on", name);
 }
 
+/** D568: what the partner you are talking with thinks with: its own agent when it has one, else the default's. */
+export function speakerThinks(): string {
+  const own = A.speakerBrain(A.speakerFor());
+  if (!own) return homeThinks();
+  const agent = harnessName(own.harness);
+  if (!own.model) return agent;
+  const m = (A.brainOptions?.find((o) => o.harness === own.harness)?.models ?? (A.brainNow?.harness === own.harness ? A.brainNow.models : [])).find((x) => x.id === own.model);
+  return t("home.thinks", agent, m?.label || modelName(own.model));
+}
+
 export function homeThinks(): string {
   const b = A.brainNow ?? A.settings?.brain;
   if (!b) return "";
@@ -254,7 +264,7 @@ export function homeLines(): HomeLine[] {
   const lives = homeLives();
   if (lives) out.push({ key: "lives", label: t("home.l.lives"), text: lives, page: "devices" });
   if (A.settings && !noBrain()) {
-    const th = homeThinks();
+    const th = speakerThinks(); // D568: the brief speaks as the partner you are talking with
     if (th) out.push({ key: "thinks", label: t("home.l.thinks"), text: th, page: "partner" });
   }
   out.push({ key: "reads", label: t("home.l.reads"), text: homeReads(), page: "accounts" });
@@ -386,7 +396,7 @@ function NeedLine({ n, go, phone }: { n: SetNeed; go: (p: SettingsPage) => void;
 
 /** What a computer is to the partner, in a few words. */
 export function placeRole(dv: DeviceView): string {
-  const name = A.S.personaName;
+  const name = A.speakerFor().name;
   if (dv.state === "unreachable") return t("home.role.away");
   if (dv.home) return t("home.role.home");
   if (dv.kind === "phone") return t("home.role.phone");

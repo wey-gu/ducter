@@ -61,6 +61,9 @@ type pendingMsg struct {
 
 // App is the window's state.
 type App struct {
+	// figs, when set (tests), collects every figure a frame draws and whom
+	// it stands for (D568, speaker.go).
+	figs *[]drawnFig
 	// mnState (D534): the composers' @ and / (mentions.go).
 	mnState *mentionsState
 	// ctlAvail is the width a row's control may take while it is built

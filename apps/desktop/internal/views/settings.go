@@ -391,7 +391,10 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		}
 		bmp = theme.Clay(art)
 	case TabPartner:
-		bmp = theme.Face(theme.Idle, size*2)
+		// D568: the pane's head is the partner you are talking with; so is its mark.
+		sp := a.speakerFor(speakShown)
+		a.noteFig("tab:partner", sp.Wear, sp.Name, sp.Brand)
+		bmp = theme.FaceAs(sp.Wear, theme.Idle, size*2)
 	case TabMemory:
 		box.Draw(a.drawNotebook())
 		return

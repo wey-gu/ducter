@@ -396,7 +396,7 @@ func (a *App) homePanel(c *ui.Context) {
 	}
 	lines := []line{{key: "lives", label: a.L.T("home.l.lives"), text: a.homeLives(), tab: TabRun}}
 	if a.S.Settings != nil && !a.noBrain() {
-		lines = append(lines, line{key: "thinks", label: a.L.T("home.l.thinks"), text: a.homeThinks(), tab: TabPartner})
+		lines = append(lines, line{key: "thinks", label: a.L.T("home.l.thinks"), text: a.speakerThinks(a.speakerFor(speakShown)), tab: TabPartner}) // D568
 	}
 	lines = append(lines, line{key: "reads", label: a.L.T("home.l.reads"), text: a.homeReads(), tab: TabAccounts})
 	if s := a.homeMem(); s != "" {

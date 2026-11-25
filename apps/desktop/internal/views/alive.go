@@ -207,7 +207,9 @@ func (a *App) aliveFigure(c *ui.Context, key string, face theme.Presence, m aliv
 // its box (D446: the mini window's partner, cut at its side while waiting).
 func (a *App) aliveFigureIn(c *ui.Context, key string, face theme.Presence, m aliveMotion, w, room float32) ui.Element {
 	bmp := theme.Face(face, w*2)
-	idle := theme.Face(theme.Idle, w*2)
+	wear := theme.ShownWear()
+	// D565: every figure stands in the pebble's box, at the same optical size.
+	idle := theme.FaceAs("", theme.Idle, w*2)
 	h := w
 	if idle != nil {
 		iw, ih := idle.Size()
@@ -221,6 +223,7 @@ func (a *App) aliveFigureIn(c *ui.Context, key string, face theme.Presence, m al
 		}
 		at := fitIn(bmp, artRect(r, room))
 		at.Y = r.Y + r.H - at.H
+		at = figureIn(bmp, artRect(r, room), wear, at)
 		var lids *blinkArt
 		if face == theme.Idle && m != aliveStill {
 			lids = faceBlink(w * 2)

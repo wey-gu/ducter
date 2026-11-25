@@ -139,10 +139,16 @@ func (a *App) budgetLine(b *protocol.FreeBudget) string {
 // the AI agent it thinks with says so ("Ducter 想事情用"); "" otherwise.
 // The Devices stage calls it for each token.
 func (a *App) BrainMark(dv *protocol.DeviceView, harness string) string {
-	if dv == nil || !dv.Home || a.brain().Harness != harness {
+	// D568: the shown partner's mark, on the agent it thinks with (its own, else the default's).
+	sp := a.speakerFor(speakShown)
+	h := a.brain().Harness
+	if p := a.partnerByID(sp.ID); a.ownBrain(sp) {
+		h = p.Brain.Harness
+	}
+	if dv == nil || !dv.Home || h != harness {
 		return ""
 	}
-	return a.L.T("loadout.mark", a.S.PersonaName)
+	return a.L.T("loadout.mark", sp.Name)
 }
 
 // BrainBadge draws the mark as an icon only, so it fits any token: the
@@ -157,7 +163,9 @@ func (a *App) BrainBadge(c *ui.Context, dv *protocol.DeviceView, harness string)
 	}
 	ui.Box(c.Key("brain-badge")).Absolute().Right(-6).Bottom(-6).Size(26, 26).Radius(13).Background(t.Surface).
 		Shadow(0, 2, 0, 0, t.Line2).Role(ui.RoleImage).Label(m).Tooltip(m).Children(func() {
-		if bmp := theme.Face(theme.Idle, 48); bmp != nil {
+		sp := a.speakerFor(speakShown)
+		a.noteFig("brain-badge", sp.Wear, sp.Name, false)
+		if bmp := theme.FaceAs(sp.Wear, theme.Idle, 48); bmp != nil {
 			ui.Image(c, bmp).Size(20, 20).Absolute().Left(3).Top(3).AccessHidden(true)
 		}
 	})

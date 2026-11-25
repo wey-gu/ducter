@@ -15,6 +15,7 @@ import { readLang, speechLocale, type VoiceWhere, type VoiceWhy } from "@ducter/
 import { talkFloor, talkShown, talkStart, talkStep, type TalkEffect, type TalkEvent, type TalkState, type TalkWords } from "@ducter/protocol/src/talk.ts";
 import { words } from "@ducter/protocol";
 import { A } from "./app.ts";
+import { figArt } from "./partners.tsx";
 import { LinkBtn, Btn } from "./controls.tsx";
 import { haptic } from "./native.ts";
 import { noBrain } from "./partner-story.tsx";
@@ -349,7 +350,7 @@ function Face({ phase, size }: { phase: TalkState["phase"] | "ask"; size: number
   const art = phase === "think" ? "working" : phase === "ask" ? "needsyou" : "idle";
   return (
     <span class={`talk-face ${phase}`} style={{ width: size, height: size }} aria-hidden="true">
-      <img src={`app/art/${art}.webp`} alt="" draggable={false} />
+      <img src={figArt(art, A.shownWear())} alt="" draggable={false} />
     </span>
   );
 }

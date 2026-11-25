@@ -11,7 +11,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { HARNESSES, isHarnessId, type Bodies, type Brain, type LogEvent, type PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
-import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isLook, nextLook, partnerNameProblem, lastLine, type PartnerInfo, type PartnerLast, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isFigure, isLook, lookForFigure, nextFigure, partnerNameProblem, lastLine, type PartnerFigure, type PartnerInfo, type PartnerLast, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 
 export const PARTNERS_FILE = "partners.json";
 
@@ -19,6 +19,8 @@ interface Kept {
   id: string;
   name: string;
   look: PartnerLook;
+  /** D565: its figure; absent: the pebble (every partner made before D565). */
+  figure?: PartnerFigure;
   createdAt: string;
   /** D486: what it looks after, in the person's words. */
   about?: string;
@@ -43,6 +45,8 @@ export function cleanBrain(v: unknown): Brain | undefined {
 }
 interface File {
   defaultLook?: PartnerLook;
+  /** D565: the default partner's figure, once the person changed it (absent: the pebble). */
+  defaultFigure?: PartnerFigure;
   /** D486: what the default partner looks after (once there are others), in the person's words. */
   defaultAbout?: string;
   others: Kept[];
@@ -61,9 +65,9 @@ export interface Partners {
   get(id: string): PartnerInfo | undefined;
   /** Whether a client may show this partner's conversation. */
   has(id: string): boolean;
-  add(input: { name: string; look?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  add(input: { name: string; look?: unknown; /** D565 */ figure?: unknown; about?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** A rename, a new look or what it looks after. The default's rename goes through settings (persona.json), not here. */
-  set(id: string, patch: { name?: string; look?: unknown; about?: unknown; /** D536: null: the default's again. */ brain?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
+  set(id: string, patch: { name?: string; look?: unknown; /** D565 */ figure?: unknown; about?: unknown; /** D536: null: the default's again. */ brain?: unknown }): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** D486: removes another partner (never the default). Its conversation stays in the Log; its tasks become the default's. */
   remove(id: string): { ok: true; partner: PartnerInfo } | { ok: false; error: PartnerError };
   /** D486: a partner by its name (trimmed, case folded), the default included. */
@@ -98,9 +102,9 @@ export function openPartners(opts: {
       const others = (Array.isArray(raw?.others) ? raw.others : [])
         .filter((p: any) => typeof p?.id === "string" && /^[a-z0-9-]{1,40}$/.test(p.id) && p.id !== DEFAULT_PARTNER && typeof p?.name === "string" && p.name.trim())
         .slice(0, PARTNERS_MAX - 1)
-        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString(), ...(cleanAbout(p.about) ? { about: cleanAbout(p.about) } : {}), ...(cleanBrain(p.brain) ? { brain: cleanBrain(p.brain) } : {}) }));
+        .map((p: any): Kept => ({ id: p.id, name: String(p.name).trim(), look: isLook(p.look) ? p.look : "sage", ...(isFigure(p.figure) && p.figure !== "pebble" ? { figure: p.figure } : {}), createdAt: typeof p.createdAt === "string" ? p.createdAt : now().toISOString(), ...(cleanAbout(p.about) ? { about: cleanAbout(p.about) } : {}), ...(cleanBrain(p.brain) ? { brain: cleanBrain(p.brain) } : {}) }));
       const gone = (Array.isArray(raw?.gone) ? raw.gone : []).filter((g: unknown): g is string => typeof g === "string" && /^[a-z0-9-]{1,40}$/.test(g));
-      return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), ...(cleanAbout(raw?.defaultAbout) ? { defaultAbout: cleanAbout(raw.defaultAbout) } : {}), others, ...(gone.length ? { gone } : {}) };
+      return { ...(isLook(raw?.defaultLook) ? { defaultLook: raw.defaultLook } : {}), ...(isFigure(raw?.defaultFigure) && raw.defaultFigure !== "pebble" ? { defaultFigure: raw.defaultFigure } : {}), ...(cleanAbout(raw?.defaultAbout) ? { defaultAbout: cleanAbout(raw.defaultAbout) } : {}), others, ...(gone.length ? { gone } : {}) };
     } catch (err) {
       console.warn("[partners] couldn't read partners.json:", (err as Error).message);
       return { others: [] };
@@ -138,10 +142,11 @@ export function openPartners(opts: {
   };
   const asks = (id: string): number => questions(id).length;
 
-  const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", asks: asks(DEFAULT_PARTNER), ...(file.defaultAbout ? { about: file.defaultAbout } : {}) });
-  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, asks: asks(p.id), ...(p.about ? { about: p.about } : {}), ...(p.brain ? { brain: p.brain } : {}) });
+  const defaultInfo = (): PartnerInfo => ({ id: DEFAULT_PARTNER, name: opts.persona.name, look: file.defaultLook ?? "sand", ...(file.defaultFigure ? { figure: file.defaultFigure } : {}), asks: asks(DEFAULT_PARTNER), ...(file.defaultAbout ? { about: file.defaultAbout } : {}) });
+  const info = (p: Kept): PartnerInfo => ({ id: p.id, name: p.name, look: p.look, ...(p.figure ? { figure: p.figure } : {}), asks: asks(p.id), ...(p.about ? { about: p.about } : {}), ...(p.brain ? { brain: p.brain } : {}) });
   const names = (except?: string) => [opts.persona.name, ...file.others.map((p) => p.name)].filter((_, i) => (i === 0 ? except !== DEFAULT_PARTNER : file.others[i - 1]!.id !== except));
   const takenLooks = () => [file.defaultLook ?? "sand", ...file.others.map((p) => p.look)];
+  const takenFigures = (): PartnerFigure[] => [file.defaultFigure ?? "pebble", ...file.others.map((p) => p.figure ?? "pebble")];
   const newId = () => {
     for (let n = file.others.length + 2; ; n++) {
       const id = `p${n}`;
@@ -164,7 +169,10 @@ export function openPartners(opts: {
       const why = partnerNameProblem(name, names());
       if (why) return { ok: false, error: why };
       const about = cleanAbout(input.about);
-      const kept: Kept = { id: newId(), name, look: isLook(input.look) ? input.look : nextLook(takenLooks()), createdAt: now().toISOString(), ...(about ? { about } : {}) };
+      // D565: a new partner arrives as the first figure nobody has, in that figure's own clay unless taken.
+      const figure = isFigure(input.figure) ? input.figure : nextFigure(takenFigures());
+      const look = isLook(input.look) ? input.look : lookForFigure(figure, takenLooks());
+      const kept: Kept = { id: newId(), name, look, ...(figure !== "pebble" ? { figure } : {}), createdAt: now().toISOString(), ...(about ? { about } : {}) };
       file = { ...file, others: [...file.others, kept] };
       save();
       return { ok: true, partner: info(kept) };
@@ -173,11 +181,13 @@ export function openPartners(opts: {
       if (id === DEFAULT_PARTNER) {
         if (patch.name !== undefined) return { ok: false, error: "unknown" }; // settings_set renames the default
         if (patch.brain !== undefined) return { ok: false, error: "unknown" }; // D536: the default's is Settings.brain
-        if (patch.look === undefined && patch.about === undefined) return { ok: false, error: "unknown" };
+        if (patch.look === undefined && patch.about === undefined && patch.figure === undefined) return { ok: false, error: "unknown" };
         if (patch.look !== undefined && !isLook(patch.look)) return { ok: false, error: "unknown" };
+        if (patch.figure !== undefined && !isFigure(patch.figure)) return { ok: false, error: "unknown" };
         const about = patch.about !== undefined ? cleanAbout(patch.about) : file.defaultAbout;
-        const { defaultAbout: _was, ...rest } = file;
-        file = { ...rest, ...(patch.look !== undefined ? { defaultLook: patch.look as PartnerLook } : {}), ...(about ? { defaultAbout: about } : {}) };
+        const figure = patch.figure !== undefined ? (patch.figure as PartnerFigure) : file.defaultFigure;
+        const { defaultAbout: _was, defaultFigure: _fig, ...rest } = file;
+        file = { ...rest, ...(patch.look !== undefined ? { defaultLook: patch.look as PartnerLook } : {}), ...(figure && figure !== "pebble" ? { defaultFigure: figure } : {}), ...(about ? { defaultAbout: about } : {}) };
         save();
         return { ok: true, partner: defaultInfo() };
       }
@@ -194,6 +204,11 @@ export function openPartners(opts: {
       if (patch.look !== undefined) {
         if (!isLook(patch.look)) return { ok: false, error: "unknown" };
         next = { ...next, look: patch.look };
+      }
+      if (patch.figure !== undefined) {
+        if (!isFigure(patch.figure)) return { ok: false, error: "unknown" };
+        const { figure: _was, ...rest } = next;
+        next = patch.figure === "pebble" ? rest : { ...rest, figure: patch.figure };
       }
       if (patch.about !== undefined) {
         const about = cleanAbout(patch.about);

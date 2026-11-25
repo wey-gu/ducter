@@ -140,7 +140,16 @@ func (a *App) helloAvatar(c *ui.Context, size float32) {
 			*born = p.Now()
 		}
 		d := p.Now().Sub(*born)
-		p.Transform(helloPose(d, lean), r.X+r.W/2, r.Y+r.H, func() {
+		pose := helloPose(d, lean)
+		// D565: a partner met a moment ago walks in from the side first.
+		if ps := &a.partners; ps.meetID != "" && ps.meetID == a.shownPartnerID() {
+			if el := p.Now().Sub(ps.meetAt); el < walkInFor {
+				dx, dy := walkIn(el)
+				pose = ui.Translation(dx, dy).Then(pose)
+				p.AnimationFrame()
+			}
+		}
+		p.Transform(pose, r.X+r.W/2, r.Y+r.H, func() {
 			clayArt(p, r, bmp, idleBreathe, phase, lids)
 		})
 		if d < helloFor {

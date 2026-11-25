@@ -79,7 +79,8 @@ describe("D546: the owner, not the shown partner", () => {
     expect(A.nameOf("default")).toBe("阿福");
     expect(A.nameOf(undefined)).toBe("阿福");
     const one = await rig([{ id: "default", name: "阿福", look: "sky", asks: 0 }], "default");
-    expect(one.lookOf("default")).toBeUndefined();
+    // D568 (was D497's "the art as drawn"): the one partner wears what it was given.
+    expect(one.lookOf("default")).toBe("sky");
     expect(one.nameOf("default")).toBe("阿福");
   });
 
@@ -112,7 +113,7 @@ describe("D546: the owner, not the shown partner", () => {
     // The opened task: the page (its head's mark at 28, its transcript, its locator) and the workbench beside it.
     const v = src("views.tsx");
     expect(v).toContain('<main class="scroll task-page" data-look={A.lookOf(task.card?.persona)}');
-    expect(v).toContain("<Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} />");
+    expect(v).toContain("<Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} wear={A.wearOf(task.card?.persona) ?? {}} />");
     // A needs-you card for another partner's task says whose (its mark before the task's name) in its clay.
     expect(v).toContain("data-look={task && !inTask ? A.lookOf(task.card?.persona) : undefined}");
     expect(v).toContain("<PartnerMark persona={task.card?.persona} />");

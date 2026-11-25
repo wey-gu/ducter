@@ -247,6 +247,8 @@ interface TurnState {
   tooled?: boolean;
   /** D462: this turn is the one correction after a line that promised work and did nothing: pending holds that line. */
   heldPromise?: boolean;
+  /** D570: the lines this turn already put in the conversation (messages and acks): the same words never go out twice in one turn. */
+  saidLines?: Set<string>;
   /** D462, D490: the pending line waited across a call that does something: a line written after the call says it instead. */
   heldAcross?: boolean;
   /** D490: a line this turn carried the partner's [[later]] mark (it promised to come back), and its words. */
@@ -1098,6 +1100,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!raw) return;
     // Said already in the cut-off turn this one redoes: once is enough.
     if (turn?.carried && turn.carried.said.delete(raw)) return;
+    // D570 (live, hel: "好，授权码出来了我马上给你。" twice, 0.8 s apart): the correction turn's call took
+    // the held line as its ack, then the model wrote the same line again. One turn says one thing once.
+    if (!decisionId && turn?.saidLines?.has(raw)) return;
     // D303: each ```ducter-ui block, validated, stands in the text as its plain form; the block
     // goes with the message for the apps to draw. A task's question carries words only.
     const rich = parseRich(raw, userLang());
@@ -1178,6 +1183,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       turn.cal = undefined;
     }
     const e = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
+    if (turn && !decisionId) (turn.saidLines ??= new Set()).add(raw);
     if (pinAsks.length) core.pins!.put(e.seq, rich.ui, pinAsks);
     if (turn && !decisionId) turn.lastSaid = e.seq;
     if (!decisionId) recalledUnder(e.seq, mark);
@@ -1344,6 +1350,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const jobId = newId("job");
     const e = core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: parseRich(text.trim(), userLang()).text, replyTo: replyToFor(t) } });
     t.acked = true;
+    (t.saidLines ??= new Set()).add(text.trim()); // D570
     // D304: "像上次那样" opens a task the way it went last time: the ack carries what it remembered.
     t.lastSaid = e.seq;
     const mark = t.pendingMark;

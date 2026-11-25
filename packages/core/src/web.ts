@@ -103,10 +103,12 @@ import artPileMid from "../../../apps/web/static/art/pile_mid.webp" with { type:
 import artPileSmall from "../../../apps/web/static/art/pile_small.webp" with { type: "file" };
 import artPileClear from "../../../apps/web/static/art/pile_clear.webp" with { type: "file" };
 import artNowledgeMem from "../../../apps/web/static/art/nowledge_mem.webp" with { type: "file" }; // D314: Nowledge Mem's app icon
+import { FIGURE_ASSETS } from "./web-figures.ts"; // D565: the partners' figures (tools/art/figures.py)
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
 const ASSETS: Record<string, [string, string]> = {
+  ...FIGURE_ASSETS,
   "app.js": [appJs, "text/javascript; charset=utf-8"],
   "app.css": [appCss, "text/css; charset=utf-8"],
   "pdf.js": [pdfJs, "text/javascript; charset=utf-8"],

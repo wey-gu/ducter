@@ -159,8 +159,9 @@ func TestD546OnePartnerUnchanged(t *testing.T) {
 	if got := f.app.taskName(task); got != "阿福" {
 		t.Errorf("one partner named 阿福: %q", got)
 	}
-	if got := f.app.taskLook(task); got != "" {
-		t.Errorf("one partner: the art as drawn, got %q", got)
+	// D568 (was D497's "the art as drawn"): the one partner wears what it was given.
+	if got := f.app.taskLook(task); got != "sage" {
+		t.Errorf("one partner given sage: its own clay, got %q", got)
 	}
 }
 

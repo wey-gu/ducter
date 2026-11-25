@@ -25,7 +25,7 @@ type blinkArt struct {
 // faceBlink is the blink of the cut-out idle face (theme.Face).
 func faceBlink(px float32) *blinkArt {
 	if b := theme.FaceClosed(px); b != nil {
-		return &blinkArt{closed: b, lids: theme.FaceLids[:]}
+		return &blinkArt{closed: b, lids: theme.LidsOf(theme.ShownWear())}
 	}
 	return nil
 }
@@ -33,7 +33,7 @@ func faceBlink(px float32) *blinkArt {
 // faceBlinkAs is faceBlink in a partner's clay (D546: an owned face blinks in its owner's).
 func faceBlinkAs(look string, px float32) *blinkArt {
 	if b := theme.FaceClosedAs(look, px); b != nil {
-		return &blinkArt{closed: b, lids: theme.FaceLids[:]}
+		return &blinkArt{closed: b, lids: theme.LidsOf(look)}
 	}
 	return nil
 }
@@ -42,7 +42,7 @@ func faceBlinkAs(look string, px float32) *blinkArt {
 // mapped through where the cut-out art sits in the square.
 func squareBlink(px float32) *blinkArt {
 	if b := theme.ArtClosed(px); b != nil {
-		return &blinkArt{closed: b, lids: squareLids[:]}
+		return &blinkArt{closed: b, lids: theme.SquareLidsOf(theme.ShownWear())}
 	}
 	return nil
 }

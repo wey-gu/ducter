@@ -261,9 +261,18 @@ line.
 - [ ] **Human raters for the recoloured figure** (the LLM proxies are done): five people who never saw
   Ducter, the built bar with three partners, research/215's five questions. Trigger: the first
   person outside the author with two partners, or before v1 is called done.
-- [ ] **A clay character per partner** (another figure, not a recolour): the metaphor process with real
-  art (a full state set and the blink), the false implication "different powers" tested. Trigger: the
-  author asks for it, or raters confuse two recoloured partners.
+- [x] **A clay character per partner**: done by D565 (six figures, research/230).
+- [ ] **D565's figures before a wide release:** human raters with the real figures (research/228 §7's
+  protocol: one family, different characters, the needs-you face read the same on each), and a
+  person's copyright check of the cast. Trigger: before v1 is called done.
+- [ ] **A partner's figure in chat apps** (Slack's icon is `ducter.ai/faces/<look>.png`, the pebble in
+  its colour; Telegram and WeChat show their own). Faces per figure on the site. Trigger: a person
+  with a second partner in a chat app.
+- [ ] **A single partner's figure**: with one partner the figure is the pebble as drawn (D497's rule
+  for the colour too). Letting the one partner pick its shape is a Settings change. Trigger: the
+  author or a person asks.
+- [ ] **Leaner figure art in the Mac app** (about 7 MB of PNGs): a palette-quantized PNG or the
+  squares made from the crops at run time. Trigger: the app's size becomes a complaint.
 - [ ] **A partner's own starters**, written by the model once when it is made or what it looks after
   changes (the partner tool's make/set), kept with the partner and shown in its first meeting. Needs
   a partner-tool change, so a D175 eval. Trigger: the author asks for richer first meetings.

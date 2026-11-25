@@ -612,7 +612,15 @@ func (a *App) messageMedia(c *ui.Context, key string, refs []protocol.MediaRef, 
 			a.mediaGrid(c, key, items, end, scope)
 		}
 		for i := range files {
-			a.fileCard(c, &files[i])
+			if end {
+				a.fileCard(c, &files[i])
+				continue
+			}
+			// D566: what Ducter made can be kept in Nowledge Mem: one quiet line under its card.
+			ui.Column(c.Key("fc-keep:" + files[i].ID)).Gap(2).Children(func() {
+				a.fileCard(c, &files[i])
+				a.memKeepCard(c, files[i])
+			})
 		}
 		for _, x := range sending {
 			a.sendingFileCard(c, x)

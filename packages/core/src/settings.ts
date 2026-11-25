@@ -49,6 +49,8 @@ interface SettingsFile {
   peers?: PeersSettings;
   /** D297: hand a task to another signed-in agent at once when a usage limit runs out (off by default). */
   limitHandoff?: boolean;
+  /** D566: a finished task's reports and documents kept in Nowledge Mem by themselves (off by default). */
+  memFiles?: boolean;
   /** D298: false after 别再看了 / Stop looking: the first words never read the person's own agents' records. */
   localAgents?: boolean;
   /** D451: the first-time lines already met, on any device. */
@@ -122,6 +124,8 @@ export interface SettingsStore extends SettingsApi {
   bridgeChanged(): void;
   /** Mem answered "not installed or not connected" the last time it was asked (D169: then nothing about its plugin shows). */
   memMissing(): boolean;
+  /** D566: the files kept in Mem and the last one that wasn't kept by itself (mem-files.ts), read on each view. */
+  setFiles(fn: () => Pick<MemView, "files" | "fileTrouble">): void;
   /** D369: Mem's code when the partner's mailbox needs sorting out on Mem's side, else undefined. */
   bridgeTrouble(): { code: string } | undefined;
   /** A reversible decision's wait, from the setting. */
@@ -165,6 +169,7 @@ export function openSettings(opts: {
   let glanceOps: GlanceOps | undefined;
   let health: (() => MemView["health"]) | undefined;
   let check: (() => MemView["check"]) | undefined;
+  let files: (() => Pick<MemView, "files" | "fileTrouble">) | undefined;
   let checkAnswer: ((id: string, answer: MemCheckAnswer) => Promise<boolean>) | undefined;
   let memSeen: "connected" | "missing" | undefined;
   let bridgeTrouble: { code: string } | undefined; // D369: the partner's word, never saved
@@ -187,6 +192,7 @@ export function openSettings(opts: {
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
       ...(data.limitHandoff ? { limitHandoff: true } : {}),
+      ...(data.memFiles ? { memFiles: true } : {}),
       ...((nt) => (nt.where || nt.agent ? { newTasks: nt } : {}))(cleanNewTasks(data.newTasks)),
       // D451: always sent (a client reads its absence as a home too old to keep it).
       met: FIRST_MEETS.filter((m) => data.met?.includes(m)),
@@ -354,6 +360,9 @@ export function openSettings(opts: {
       return true;
     },
     memMissing: () => memSeen === "missing",
+    setFiles(fn) {
+      files = fn;
+    },
     async view() {
       const s = get();
       const state: MemView["state"] = !s.memory ? "off" : memSeen ?? (forgetter ? "connected" : "missing");
@@ -363,11 +372,12 @@ export function openSettings(opts: {
       const g = state !== "off" ? glance?.() : undefined;
       const h = state === "connected" ? health?.() : undefined;
       const c = state === "connected" ? check?.() : undefined;
+      const fv = state !== "off" ? files?.() : undefined;
       const forgotten = forgottenRecalls();
       const undone = data.undone ?? [];
       const keys = memHooks?.waiting() ?? new Set<string>();
       const waiting = keys.size ? opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).filter((x) => keys.has(String((x.body as Bodies["memory_noted"]).waiting ?? "")) && !undone.includes(x.seq)).map((x) => x.seq) : [];
-      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}), ...(h ? { health: h } : {}), ...(c ? { check: c } : {}) } };
+      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}), ...(h ? { health: h } : {}), ...(c ? { check: c } : {}), ...(fv?.files && Object.keys(fv.files).length ? { files: fv.files } : {}), ...(fv?.fileTrouble ? { fileTrouble: fv.fileTrouble } : {}) } };
     },
     set(patch) {
       const did: string[] = [];
@@ -388,6 +398,7 @@ export function openSettings(opts: {
         (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.limitHandoff === "boolean" && (data.limitHandoff === true) !== patch.limitHandoff) (data.limitHandoff = patch.limitHandoff), did.push("limitHandoff");
+      if (typeof patch.memFiles === "boolean" && (data.memFiles === true) !== patch.memFiles) (data.memFiles = patch.memFiles), did.push("memFiles");
       // D510: New tasks start: the whole object as sent ({} clears it); junk fields are dropped.
       if (patch.newTasks && typeof patch.newTasks === "object") {
         const next = cleanNewTasks(patch.newTasks);

@@ -254,6 +254,10 @@ export interface CoreApi {
    * Absent: no Mem connected on the home, memory off, or a test without it.
    */
   memCarry?: MemCarry;
+  /** D566: keeps a file Ducter made (by its media id) in the person's Nowledge Mem (core/src/mem-files.ts); absent in stubs. */
+  memFiles?: {
+    save(mediaId: string, by?: "tap" | "partner" | "auto"): Promise<({ ok: true; saved: import("./index.ts").MemFileSaved }) | { ok: false; why: import("./index.ts").MemFileWhy; message?: string }>;
+  };
   /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
   bridgeLink?: BridgeLinkApi;
   /** D494: 帮手 / Helpers, the person's named addresses in Bridge that this home owns (core/src/helpers.ts). */

@@ -77,7 +77,9 @@ func TestWhereMetaOnlyWhatDiffers(t *testing.T) {
 // doubles the sentence's comma.
 func TestDefaultLineKeepsOneMark(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
-	at := time.Now().Add(26 * time.Minute)
+	// 20 s of slack: DefaultAt is second-precision and frames take time, so a
+	// bare 26 min could read 25 at a minute's edge (CI, 0.1.76).
+	at := time.Now().Add(26*time.Minute + 20*time.Second)
 	d := &store.DecisionState{DecisionID: "d1", Reversible: true, DefaultOption: "go", DefaultAt: at.UTC().Format(time.RFC3339), GoLabel: "等你登录后继续。"}
 	var line string
 	tt := ui.NewTesterWith(func(c *ui.Context) { line = app.defaultLine(c, d) }, 400, 200, ui.TesterOptions{})

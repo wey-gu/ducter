@@ -621,7 +621,8 @@ async function main() {
 
   if (ONLY.includes("j6") && !LIVE) {
     say(`\n## J-Q6 · A send whose answer is lost is recovered, never sent twice (fake only)\n`);
-    env.NMEM_FAKE_BRIDGE_LOSE = "send";
+    // D559: the send may go as a reply on the terminal's latest message (T1 just ran), so either write is lost once.
+    env.NMEM_FAKE_BRIDGE_LOSE = "send,reply";
     env.NMEM_FAKE_BRIDGE_LOSE_MODE = "pending";
     user("跟我终端里那个 Claude 说一声：今晚别动 main。");
     await settle(partner);

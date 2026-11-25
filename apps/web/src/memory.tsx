@@ -894,7 +894,7 @@ function AgentRow({ r }: { r: ReachRow }) {
   const last = r.last && st !== "install" && st !== "unknown" ? t("peers.last", ago(A.L, r.last)) : "";
   const hear = st === "old" && r.update && r.device && !updating;
   return (
-    <GRow cls="agent-row" tile={<ToolTile from={r.tool} />} title={r.tool} line={line}>
+    <GRow cls={`agent-row${hear ? " act-under" : ""}`} tile={<ToolTile from={r.tool} />} title={r.tool} line={line}>
       {st === "install" && r.device ? (
         <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />
       ) : hear ? (

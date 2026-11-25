@@ -169,7 +169,10 @@ partner decides. Tasks in a browser get none of it, so a web page can't ask for 
 itself sees it: **Connected and working** when all is well. If something is wrong it says the one
 thing, with the one button that fixes it: **Sign in again** when its sign-in stopped working,
 **Check again** when it can't be reached, **Update** when its command line is too old to say, and
-**Connect** when Claude Code or Codex on this computer isn't connected to it yet. Ducter only reads
+**Connect** when Claude Code or Codex on this computer isn't connected to it yet. When Nowledge Mem
+needs you, its group moves to the top of the page, right under the line that says so. If you ask
+your partner to remember something meanwhile, it tells you plainly that it couldn't keep it this
+time, and why; with memory turned off, it says that it stays only in your conversation. Ducter only reads
 this; it never shows your key.
 
 **Putting the plugin in.** Each AI agent's line on your computer's card says whether it has the

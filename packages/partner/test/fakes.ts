@@ -205,8 +205,15 @@ export function fakeRunner(script: Script) {
   };
 }
 
+/** D563: what a Mem that can't be used answers, as the real client says it: none on the home (`true`), signed out, or switched off. */
+function downResult(down: true | "signed_out" | "off") {
+  if (down === "signed_out") return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected.", why: "signed_out" as const };
+  if (down === "off") return { ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner.", why: "off" as const };
+  return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't installed on this machine.", why: "missing" as const };
+}
+
 /** In-memory stand-in for Nowledge Mem: tests never reach the user's real Mem. */
-export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean; threads?: ThreadHit[] } = {}) {
+export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean | "signed_out" | "off"; threads?: ThreadHit[] } = {}) {
   const searches: { query: string; limit: number }[] = [];
   const threadSearches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];
@@ -217,7 +224,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
   const memory: MemoryClient = {
     async search(query, limit) {
       searches.push({ query, limit });
-      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      if (opts.down) return downResult(opts.down);
       const words = query.toLowerCase().split(/[\s,，。]+/).filter(Boolean);
       const score = (m: (typeof all)[number]) => words.filter((w) => `${m.title} ${m.content}`.toLowerCase().includes(w)).length;
       const hits = all.filter((m) => score(m) > 0).sort((a, b) => score(b) - score(a));
@@ -226,7 +233,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
     // D368 (G3): the person's past conversations with other tools, matched by any query word.
     async threads(query, limit) {
       threadSearches.push({ query, limit });
-      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      if (opts.down) return downResult(opts.down);
       const words = query.toLowerCase().split(/[\s,，。]+/).filter(Boolean);
       const ts = (opts.threads ?? []).filter((t) => words.some((w) => `${t.title} ${t.lines.map((l) => l.text).join(" ")}`.toLowerCase().includes(w)));
       return { ok: true, threads: ts.slice(0, limit) };
@@ -234,7 +241,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
     // D444: what Mem knows about the person, by D321's rule (preferences from anyone; decisions and facts only theirs).
     async about() {
       abouts.push(1);
-      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      if (opts.down) return downResult(opts.down);
       const hits = (["preference", "decision", "fact"] as const).flatMap((k) => aboutHits(all.filter((m) => m.kind === k).map((m) => ({ ...m, created_at: m.date })), k));
       return { ok: true, hits };
     },
@@ -245,7 +252,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
       return true;
     },
     async add(m) {
-      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      if (opts.down) return downResult(opts.down);
       added.push(m);
       return { ok: true, id: `mem-${added.length}` };
     },

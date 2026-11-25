@@ -19,7 +19,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
 import { ago, harnessName, keepClauses, spoken } from "./format.ts";
-import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
+import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
@@ -706,14 +706,17 @@ export function MemoryPage() {
       </>
     );
   if (phase !== "on") return <MemFirst phase={phase} b={b} />;
+  // D563: Mem's own trouble is fixed right under the line that says it, never a page below.
+  const trouble = memTrouble(A.mem, b, A.devices?.find((d) => d.home)?.harnesses ?? []);
   return (
     <>
+      {trouble && <MemLink b={b} />}
       <MemHead />
       <MemAbout />
       <MemCheckSec />
       <MemRules />
       <MemTools />
-      <MemLink b={b} />
+      {!trouble && <MemLink b={b} />}
     </>
   );
 }

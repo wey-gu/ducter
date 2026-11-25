@@ -129,6 +129,31 @@ type memHealthView struct {
 	Busy      bool
 }
 
+// memTrouble says whether Mem's own doctor finds something the person must fix
+// (signed out, out of reach, too old; D375): then the Nowledge Mem group, with
+// its one action, comes first on the page (D563). The web's twin is memTrouble
+// in apps/web/src/mem-view.ts.
+func memTrouble(m *protocol.MemView, b *protocol.BridgeView, home []protocol.DeviceHarness) bool {
+	if m == nil {
+		return false
+	}
+	switch memHealthLook(m.Health, b, home).Look {
+	case "signed_out", "unreachable", "old":
+		return true
+	}
+	return false
+}
+
+// homeHarnesses is the home's agents as the devices frame has them.
+func (a *App) homeHarnesses() []protocol.DeviceHarness {
+	for i := range a.S.Devices {
+		if a.S.Devices[i].Home {
+			return a.S.Devices[i].Harnesses
+		}
+	}
+	return nil
+}
+
 func memHealthLook(h *protocol.MemHealth, b *protocol.BridgeView, home []protocol.DeviceHarness) memHealthView {
 	if h == nil {
 		return memHealthView{Look: "unread"}

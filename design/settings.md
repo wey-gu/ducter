@@ -541,6 +541,8 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   partner at 40 and one sentence of what is true there (Accounts counts what it keeps an eye on; Where it runs
   says where and that closing the window doesn't stop it; Memory by its state), then that pane's needs in the
   needs-you ink with the partner's flag. A pane with nothing computed says its old lede in the first person.
+  D563: on Memory, a need that is Mem's own trouble (signed out, out of reach, too old) has its fix right under
+  it: the Nowledge Mem group with 重新登录 / 再看一次 / 更新 comes first, never a page below.
 - **Said once:** a row under a head that says the same is dropped or speaks only when it differs (Where it runs'
   computer row; Memory's first-run hero).
 

@@ -440,7 +440,7 @@ reply. Now each conversation `memory_search` returns with Mem's `thread_id` and 
 note asks for `[[c1]]` only when one changed the answer, one ref per message (a memory's or a conversation's). Code
 checks the ref against this turn's results and logs `memory_recalled {thread: true, from: <tool>, memoryId: <thread
 id>}`. The line: **想起了你 {date} 和 {tool} 聊的 / Remembered your talk with {tool} on {date}**; tapped: its title,
-**你和 {tool} 的对话**, the day, **这次的回答用到了这段对话。**, **在 Nowledge Mem 里打开**. No 忘掉: the conversation is the
+**你和 {tool} 的对话**, the day, **我刚才的回答用到了这段对话。**, **在 Nowledge Mem 里打开**. No 忘掉: the conversation is the
 tool's (a forget only hides the line). Evals: `thread-recall-en`, `thread-recall-zh` now expect the line.
 
 ## Mem in the person's day (D444, built 2026-11-21)
@@ -617,6 +617,18 @@ on every computer, without owning it (D17):
 - **Mem down (D552).** Memory on and Mem signed out or out of reach is a need on Settings'
   Overview, not only the Memory head. A save Mem refused because it isn't signed in is said once
   by the partner when the person asked to keep it; one that only waits (Mem down) stays unsaid.
+- **Why it wasn't kept, as it is (D563).** memory_add's refusal carries Mem's own reason (`why`:
+  `missing`, `signed_out`, `off`), never inferred from a word the partner reads. Signed out: D552's one
+  plain line, **这条这次没记住：Nowledge Mem 的登录失效了，去 设置 › 记忆 重新登录一下就好。** Switched off
+  (the person's own choice): **记忆现在关着，这条只在我们这段对话里；想一直记着，去 设置 › 记忆 打开就好。**
+  No Mem on the home (most fresh users): the conversation itself holds their words, so the partner simply
+  acknowledges (**好，记着了。**), never "not signed in" and never a word about Nowledge Mem (D169). Asked
+  how it could remember them for good or know what their other AI tools saved, one line points to
+  设置 › 记忆; never unasked. Evals: `mem-remember-signed-out-zh` (now really signed out),
+  `mem-remember-no-mem-zh`, `mem-remember-off-en`, `mem-how-to-connect-zh`.
+- **The fix under the line that says it (D563).** With Mem signed out, out of reach or too old (Mem's
+  doctor, D375), the Nowledge Mem group, with 重新登录 / 再看一次 / 更新, is the page's first group, right
+  under the need (both clients, `memTrouble`); all well, it is the last as before.
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
   own settings, so it waits for the tap). Once the check sees it in, however it got there, an

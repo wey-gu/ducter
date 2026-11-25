@@ -68,7 +68,7 @@ import { bridgeFor, bridgeKeyFor, createNmemBridge, type BridgeClient, type Brid
 import { HELPER_DAILY, type Helper } from "../../protocol/src/helpers.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
-import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
+import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type MemWhy, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
@@ -2304,6 +2304,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body });
     }
   };
+  // D563: why a save went nowhere, said as it is. Signed out: once, plainly, with where to sign in (D552).
+  // Switched off: the person's own choice; it stays in this conversation. No Mem on the home: the
+  // conversation itself still holds their words, and Mem is never pitched in the conversation (D169).
+  const notSavedNote = (r: { message: string; why?: MemWhy }): string => {
+    const why: MemWhy = r.why ?? (/\boff\b/i.test(r.message) ? "off" : /installed/i.test(r.message) ? "missing" : "signed_out");
+    const never = "Never words that say or suggest it is kept for good (记下了, 记住了, 先记在这儿, 之后再记, noted, I'll remember).";
+    if (why === "missing")
+      return `Not in long-term memory: there is none on this computer (${r.message}). This conversation itself still holds what they said, so if they asked you to remember it, acknowledge it in a few natural words as you would in conversation ("好，记着了。" / "Got it."). Never mention Nowledge Mem, memory tools, signing in or Settings, and never say it couldn't be kept. If they didn't ask, say nothing about it.`;
+    if (why === "off")
+      return `NOT SAVED: the user switched memory off in Settings › Memory, so nothing goes into their long-term memory (${r.message}). If they asked you to remember this, your whole reply is one plain line that memory is off right now, so this stays only in this conversation, and that turning it on in Settings › Memory keeps things like it, e.g. "记忆现在关着，这条只在我们这段对话里；想一直记着，去 设置 › 记忆 打开就好。". ${never} Never say anything is broken or signed out. If they didn't ask, say nothing about memory.`;
+    return `NOT SAVED: nothing was kept, here or anywhere, and nothing will be kept later by itself (${r.message}). If the user asked you to remember this, your whole reply is one plain line that you couldn't keep it this time because Nowledge Mem's sign-in on the home has lapsed, and that Settings › Memory is where to sign in again, e.g. "这条这次没记住：Nowledge Mem 的登录失效了，去 设置 › 记忆 重新登录一下就好。". ${never} If they didn't ask, say nothing about memory.`;
+  };
   const UNAVAILABLE = "Memory isn't available right now. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line (\"上次用的什么参数？\" / \"Which settings did we use?\"). Never say you couldn't find a record, or that memory or anything is unavailable, unless the user asks about memory.";
 
   // ---------- MCP tools (role "partner") ----------
@@ -3876,15 +3888,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       noteMemState(r);
       // D552: a save that can't wait in the outbox (Mem not signed in, or memory off) is lost. When the
       // person asked for it, a 「好」 with nothing kept breaks trust: they hear it once, plainly.
-      if (!r.ok)
-        return {
-          ok: false,
-          saved: false,
-          note:
-            r.reason === "not_configured"
-              ? `NOT SAVED: nothing was kept, here or anywhere, and nothing will be kept later by itself (${r.message}). If the user asked you to remember this, your whole reply is one plain line that you couldn't keep it this time because Nowledge Mem isn't signed in on the home (or memory is off), and that Settings › Memory is where to fix it, e.g. "这条这次没记住：Nowledge Mem 没登录，去 设置 › 记忆 登录一下就好。". Never words that say or suggest it is kept (记下了, 记住了, 先记在这儿, 之后再记, noted, got it, I'll remember). If they didn't ask, say nothing about memory.`
-              : `${UNAVAILABLE} Nothing was saved.`,
-        };
+      // D563: and what they hear is the true reason, never "not signed in" for a Mem that isn't there.
+      if (!r.ok) return { ok: false, saved: false, note: r.reason === "not_configured" ? notSavedNote(r) : `${UNAVAILABLE} Nothing was saved.` };
       const noted = { title, ...(r.id ? { memoryId: r.id } : {}), ...(r.replaced ? { replaced: r.replaced } : {}), ...(r.waiting ? { waiting: r.waiting } : {}) };
       if (t) t.noted.push(noted);
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });

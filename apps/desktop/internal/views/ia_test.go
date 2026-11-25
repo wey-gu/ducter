@@ -106,7 +106,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	app.openTab(TabMemory)
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"我还记不住你：接上 Nowledge Mem，你说过的偏好、定下的事，我都记得。", "还没接上", "了解 Nowledge Mem"} {
+	for _, want := range []string{"我们聊过的我都记着；接上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。", "还没接上", "了解 Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}

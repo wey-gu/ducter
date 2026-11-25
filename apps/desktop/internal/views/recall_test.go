@@ -107,7 +107,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	for _, s := range []string{"我想起的这条", "你跟我说的", "11 月 10 日", "这次的回答用到了它。", "在 Nowledge Mem 里打开"} {
+	for _, s := range []string{"我想起的这条", "你跟我说的", "11 月 10 日", "我刚才的回答用到了它。", "在 Nowledge Mem 里打开"} {
 		if !tt.HasText(s) {
 			t.Errorf("the card lacks %q", s)
 		}

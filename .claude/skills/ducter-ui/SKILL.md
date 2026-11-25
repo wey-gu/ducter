@@ -72,6 +72,9 @@ tooltip, a sidebar that blinked out on a partner switch, a label clipped by its 
 - Mac at 1000, 1150 (the common laptop window) and 1400. Web at 320, 390, 1000 and 1400.
 - Touch targets 44 tall. Text size scaling on the web (D452).
 - Keyboard: Tab order and visible focus, Escape closes, shortcuts work.
+- Platform conventions (D573, `design/ui.md` "Platform conventions"): ⌘W closes what is in front,
+  Esc and Back take one step, a new window has a `StateKey`, a new sheet uses `dialogBase`, a new
+  key sits on one menu item, and the menu bar stays the standard one. Check them on every surface.
 
 **Voice and content**
 - Words from the glossary, one voice: 我 is the partner and 你 is the person (D501).

@@ -139,7 +139,7 @@ func (a *App) pastWhereSheet(c *ui.Context) {
 	}
 	t := a.T
 	w, h := c.Size()
-	ui.DialogBase(c, &ps.sheet, func(back, panel ui.Element) {
+	a.dialogBase(c, &ps.sheet, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S5, 560)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("past.where"))
@@ -446,7 +446,7 @@ func (a *App) redoSheet(c *ui.Context) {
 	t := a.T
 	w, h := c.Size()
 	title := a.L.T("past.redo.title", r.step)
-	ui.DialogBase(c, &r.open, func(back, panel ui.Element) {
+	a.dialogBase(c, &r.open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S5, 560)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)

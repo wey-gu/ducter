@@ -386,7 +386,7 @@ func (a *App) handSheet(c *ui.Context) {
 	title := a.L.T("hand.title", name)
 	wide := w >= 900
 	open := true
-	ui.DialogBase(c, &open, func(back, panel ui.Element) {
+	a.dialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		ph := sheetBack(c, back, wh)
 		pw := min(w-2*t.S6, 1180)

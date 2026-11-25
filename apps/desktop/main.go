@@ -242,7 +242,9 @@ func main() {
 			TitleBarHeight:       views.ChromeH,
 			// The paper until the first frame paints, light or dark (D302).
 			BackgroundColor: "light-dark(#FFF6EA, #17120E)",
-			Content:         ui.View(app.View),
+			// D573: where and how large the window was, at the next launch.
+			StateKey: "main",
+			Content:  ui.View(app.View),
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
@@ -339,6 +341,18 @@ func main() {
 		}
 		lc.menu = appMenu(app, app.L, win, lc)
 		mygo.App.SetMenu(lc.menu)
+		// D573: Enter Full Screen and Exit Full Screen, as the window is.
+		full := func() {
+			if it := lc.menu.ItemByID("fullscreen"); it != nil {
+				key := "menu.fullscreen"
+				if win.IsFullScreen() {
+					key = "menu.fullscreen.x"
+				}
+				it.SetLabel(lc.l.T(key))
+			}
+		}
+		win.OnEnterFullScreen(full)
+		win.OnLeaveFullScreen(full)
 		tray = newTray(app, win)
 		// D438: the mini window; the menus' check follows it.
 		floatWin := installFloat(app, func() {
@@ -565,19 +579,83 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 		mygo.Separator(),
 		&mygo.MenuItem{Role: mygo.RoleQuit, Label: l.T("menu.quit")},
 	)
+	// D573: ⌘W in any window of this app. The main window: the sheet or
+	// viewer on top, or Settings, closes first; with none, the window
+	// closes (hides: Ducter keeps working, the Dock icon brings it back).
+	// An app's own window closes; the mini window hides.
+	closeWin := func(_ *mygo.MenuItem, w *mygo.Window) {
+		switch {
+		case w == nil:
+		case w == win:
+			win.Update(func() {
+				if app.CloseWindowAsked() {
+					win.Hide()
+				}
+			})
+		case w.IsPanel():
+			if app.FloatShown() {
+				win.Update(app.ToggleFloat)
+			}
+		default:
+			w.Close()
+		}
+	}
+	// View › Enter Full Screen says Exit while the window is full screen
+	// (main.go follows it as it changes).
+	fullLabel := func() string {
+		if win != nil && win.IsFullScreen() {
+			return l.T("menu.fullscreen.x")
+		}
+		return l.T("menu.fullscreen")
+	}
+	// What a key does in the main window only (find, back, zoom): it
+	// brings the window forward too.
+	inMain := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {
+		return func(_ *mygo.MenuItem, w *mygo.Window) {
+			if w != nil && w != win {
+				return
+			}
+			show(fn)(nil, w)
+		}
+	}
 	menu := mygo.NewMenu([]*mygo.MenuItem{
 		{Role: mygo.RoleAppMenu, Submenu: appItems},
-		{Role: mygo.RoleEditMenu},
-		{Label: l.T("menu.view"), Submenu: []*mygo.MenuItem{
-			{Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
-			{Label: l.T("pal.menu"), Accelerator: "CmdOrCtrl+K", Click: show(app.OpenSwitcher)}, // D391
-			{Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
+		{ID: "file", Label: l.T("menu.file"), Submenu: []*mygo.MenuItem{
+			{ID: "new", Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
+			{ID: "open", Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
+			{ID: "findany", Label: l.T("pal.menu"), Accelerator: "CmdOrCtrl+K", Click: show(app.OpenSwitcher)}, // D391
+			mygo.Separator(),
+			{ID: "close", Label: l.T("menu.close"), Accelerator: "CmdOrCtrl+W", Click: closeWin},
+		}},
+		{ID: "edit", Label: l.T("menu.edit"), Submenu: []*mygo.MenuItem{
+			{Role: mygo.RoleUndo},
+			{Role: mygo.RoleRedo},
+			mygo.Separator(),
+			{Role: mygo.RoleCut},
+			{Role: mygo.RoleCopy},
+			{Role: mygo.RolePaste},
+			{Role: mygo.RolePasteAndMatchStyle},
+			{Role: mygo.RoleDelete},
+			{Role: mygo.RoleSelectAll},
+			mygo.Separator(),
+			{ID: "find", Label: l.T("menu.find"), Submenu: []*mygo.MenuItem{
+				{ID: "find.find", Label: l.T("menu.find.find"), Accelerator: "CmdOrCtrl+F", Click: inMain(app.FindAsked)},
+				{ID: "find.next", Label: l.T("menu.find.next"), Accelerator: "CmdOrCtrl+G", Click: inMain(func() { app.FindStepAsked(1) })},
+				{ID: "find.prev", Label: l.T("menu.find.prev"), Accelerator: "CmdOrCtrl+Shift+G", Click: inMain(func() { app.FindStepAsked(-1) })},
+			}},
+			mygo.Separator(),
+			{Label: l.T("menu.speech"), Submenu: []*mygo.MenuItem{{Role: mygo.RoleStartSpeaking}, {Role: mygo.RoleStopSpeaking}}},
+		}},
+		{ID: "view", Label: l.T("menu.view"), Submenu: []*mygo.MenuItem{
+			{ID: "back", Label: l.T("menu.view.back"), Accelerator: "CmdOrCtrl+[", Click: inMain(func() { app.Back() })},
+			{ID: "forward", Label: l.T("menu.view.forward"), Accelerator: "CmdOrCtrl+]", Click: inMain(func() { app.Forward() })},
+			mygo.Separator(),
 			{Label: l.T("past.menu"), Accelerator: "CmdOrCtrl+Y", Click: show(func() { app.OpenPast("") })},
-			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300
-			{Label: l.T("apps.title"), Accelerator: "CmdOrCtrl+5", Click: show(app.OpenApps)},    // D410
+			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)},  // D300
+			{Label: l.T("menu.view.apps"), Accelerator: "CmdOrCtrl+5", Click: show(app.OpenApps)}, // D410
 			// D438: the mini window, beside whatever the person works in; never brings this window forward.
 			// D446: with its shortcut held by another app, the item says so and has no key.
-			{ID: "float", Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: floatAccel, Subtitle: floatSub,
+			{ID: "float", Label: l.T("menu.float"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: floatAccel, Subtitle: floatSub,
 				Click: func(*mygo.MenuItem, *mygo.Window) { win.Update(app.ToggleFloat) }},
 			// D244: the next and the previous task, in On hand's order.
 			{Label: l.T("onhand.walk.next"), Accelerator: "CmdOrCtrl+Shift+]", Click: show(func() { app.WalkTask(1) })},
@@ -588,10 +666,15 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{Label: l.T("menu.view.devices"), Accelerator: "CmdOrCtrl+3", Click: show(app.OpenDevices)},
 			{Label: l.T("menu.view.partner"), Accelerator: "CmdOrCtrl+4", Click: show(app.OpenPartner)},
 			mygo.Separator(),
-			{Role: mygo.RoleToggleFullScreen},
+			// D573: the window's content larger or smaller, kept on this Mac.
+			{ID: "zoom.reset", Label: l.T("menu.zoom.reset"), Accelerator: "CmdOrCtrl+0", Click: inMain(func() { app.ZoomBy(0) })},
+			{ID: "zoom.in", Label: l.T("menu.zoom.in"), Accelerator: "CmdOrCtrl+=", Click: inMain(func() { app.ZoomBy(1) })},
+			{ID: "zoom.out", Label: l.T("menu.zoom.out"), Accelerator: "CmdOrCtrl+-", Click: inMain(func() { app.ZoomBy(-1) })},
+			mygo.Separator(),
+			{ID: "fullscreen", Role: mygo.RoleToggleFullScreen, Label: fullLabel()},
 		}},
-		{Role: mygo.RoleWindowMenu},
-		lc.helpMenu(),
+		{ID: "window", Role: mygo.RoleWindowMenu},
+		lc.helpMenu(app, show),
 	})
 	// The item says what it will do: stop, or wake while resting.
 	app.OnResting = func(resting bool) {

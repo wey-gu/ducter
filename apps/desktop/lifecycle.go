@@ -97,10 +97,12 @@ func (lc *lifecycle) appMenuItems() []*mygo.MenuItem {
 	}}}
 }
 
-// helpMenu is Help: the docs, and Report a problem….
-func (lc *lifecycle) helpMenu() *mygo.MenuItem {
+// helpMenu is Help: macOS's search field (RoleHelp), the docs, every key
+// (⌘/, D573), and Report a problem….
+func (lc *lifecycle) helpMenu(app *views.App, show func(func()) func(*mygo.MenuItem, *mygo.Window)) *mygo.MenuItem {
 	items := []*mygo.MenuItem{
-		{Label: lc.l.T("menu.help.docs"), Click: func(*mygo.MenuItem, *mygo.Window) { _ = local.OpenURL(DocsURL) }},
+		{ID: "help.docs", Label: lc.l.T("menu.help.docs"), Click: func(*mygo.MenuItem, *mygo.Window) { _ = local.OpenURL(DocsURL) }},
+		{ID: "help.keys", Label: lc.l.T("menu.help.keys"), Accelerator: "CmdOrCtrl+/", Click: show(app.ToggleKeys)},
 	}
 	if lc.host != nil {
 		items = append(items, mygo.Separator(), &mygo.MenuItem{Label: lc.l.T("menu.help.report"), Click: func(*mygo.MenuItem, *mygo.Window) { go lc.reportProblem() }})

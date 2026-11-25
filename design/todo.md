@@ -3556,3 +3556,33 @@ Codex first, once OAR is near 1.0. See `research/17`.
   keep two or more apps in the Dock and find them under Ducter's icon.
 - [ ] **People as raters** for 放到程序坞 / Keep in the Dock against 添加到程序坞. Trigger: the next naming round with people.
 - [ ] **D566 leftovers.** (a) Verify on the author's Mac that `nowledgemem://source/<id>` opens that artifact in the Nowledge Mem app (research/231 §1, INFERRED) and that `add`/`update`/`folders mk` answer in the shapes the fake guesses; trigger: the author's first real save. (b) A message with several files shows the Mem line under each: consider one line for the message once someone finds it noisy. (c) Mem on the web has no link to one artifact: link to it when Mem has one. (d) Made for you's cards and its Mac window could carry In Nowledge Mem too. (e) A task cannot mark a file sensitive: add the flag if a task ever needs to keep a shown file out of Mem beyond the secret detector. (f) Tighten `artifactOf` to the shape `add` and `update` really answer, read from the first real `mem_file` events in the Log (`raw`); trigger: the author's first real save. Until then a save counts only once `artifacts list` shows it.
+
+## D573: platform conventions left (research/232)
+
+- [ ] **⌘= pressed live, and a real trackpad swipe.** Zoom In works from the menu (VERIFIED); the key press and
+  a two-finger swipe between pages on hardware are owed. Trigger: the next Mac release check.
+- [ ] **Spelling and Grammar in the Edit menu.** MyGo's text input has no spell checker. Trigger: MyGo adds
+  NSSpellChecker to its text fields, or a person asks.
+- [ ] **View › Show Sidebar ⌃⌘S.** Nothing to hide yet: the partners' list shows only with more than one partner
+  and has its own control. Trigger: a place gets a sidebar a person may want gone.
+- [ ] **Increase Contrast and the system accent.** Not read today. Trigger: MyGo's Preferences reports them.
+- [ ] **Reveal in Finder and Copy Path on a file card's right-click; a file card dragged out.** Trigger: the next
+  pass on the workbench's files (D214).
+- [ ] **Scroll position per place across a switch.** Not checked. Trigger: a person loses their place switching
+  places.
+- [ ] **Android predictive back.** The callback is always enabled, so the back-to-home preview never shows. The
+  page should say whether Back has a step (`back.can` over the bridge). Trigger: the next Android pass.
+- [ ] **Android share out.** WebView has no `navigator.share`; add a `share` bridge message. Trigger: the next
+  Android pass.
+- [ ] **Android Back on a device.** `ducterBack` is unit-tested; owed on a phone with a sheet, the viewer and a
+  menu open. Trigger: the next Android build.
+- [ ] **iOS: one back gesture.** The WKWebView's `allowsBackForwardNavigationGestures` and the page's edge swipe
+  both take the left edge (INFERRED double step). Trigger: checked on an iPhone, then keep the page's.
+- [ ] **iOS: tap the status bar to scroll to top.** The page scrolls in inner views, so the system's gesture does
+  nothing; a hidden scrollsToTop view relaying to the page. Trigger: the next iPhone pass.
+- [ ] **iOS long-press callout** on images and links outside the viewer stacks on the reply menu. Trigger: the
+  next iPhone pass.
+- [ ] **Web: sheets trap focus and give it back**, and the web sheets become history entries so Back from the
+  conversation with a sheet open stays in the app. Trigger: the next web keyboard pass.
+- [ ] **Web: task rows as real links** (middle-click, ⌘-click opens a new tab; On hand's ⌘-click multi-select kept).
+  Trigger: a person opens tasks in tabs.

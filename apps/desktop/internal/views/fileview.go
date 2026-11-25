@@ -479,7 +479,7 @@ func (a *App) fileViewer(c *ui.Context) {
 		pw, ph = min(w-2*t.S6, 620), 260
 		name = protocol.FileLinkName(fv.link)
 	}
-	ui.DialogBase(c, &fv.open, func(back, panel ui.Element) {
+	a.dialogBase(c, &fv.open, func(back, panel ui.Element) {
 		findKeys() // inside the dialog (a shortcut outside it never fires)
 		clickedOut = back.Clicked()
 		back.Background(t.Scrim)

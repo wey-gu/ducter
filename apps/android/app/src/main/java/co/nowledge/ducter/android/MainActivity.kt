@@ -123,9 +123,23 @@ class MainActivity : ComponentActivity() {
         Handset.listener = { ev -> js("dispatchEvent(new CustomEvent('ducterhandset',{detail:$ev}))") }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // The page's routes are history entries: back goes up a level, as in any app.
-                if (overlay == null && web.canGoBack()) web.goBack()
-                else { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
+                if (overlay != null) return leave()
+                // D573: the page takes Back first: the sheet, viewer or menu on top closes, else the
+                // place goes up a level; at the top ("0") Back leaves, as in any app. A page without
+                // ducterBack (an older home) answers "null": its routes are history entries.
+                web.evaluateJavascript("window.ducterBack?(window.ducterBack()?1:0):null") { took ->
+                    when (took) {
+                        "1" -> {}
+                        "0" -> leave()
+                        else -> if (web.canGoBack()) web.goBack() else leave()
+                    }
+                }
+            }
+
+            private fun leave() {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
             }
         })
         ShortcutManagerCompat.setDynamicShortcuts(this, listOf(

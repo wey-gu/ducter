@@ -95,7 +95,7 @@ export function upFrom(r: Route): Route | undefined {
 /** Esc goes up one level. Sheets and the live view take their own Esc; a field being typed in
  *  keeps it. */
 export function escUp(e: KeyboardEvent) {
-  if (e.key !== "Escape" || e.defaultPrevented || A.sheet || A.live) return;
+  if (e.key !== "Escape" || e.defaultPrevented || layerUp()) return;
   // D210: on a task at work, Esc (in its composer too) asks to pause it; a second Esc pauses.
   if (A.route.name === "task" && escPause(A.route.id)) return void e.preventDefault();
   const el = document.activeElement;
@@ -104,6 +104,36 @@ export function escUp(e: KeyboardEvent) {
   if (A.route.name === "onhand" && A.upInPlace?.()) return void e.preventDefault();
   const up = upFrom(A.route);
   if (up) A.go(up);
+}
+
+/** D573: something over the place that takes its own Esc: a sheet, the live view, the picture
+ *  viewer, the file viewer, or an open menu (the clay menu, a message's long-press menu). One Esc
+ *  closes it alone; the place under it never moves on the same key. */
+export function layerUp(): boolean {
+  if (A.sheet || A.live || A.viewer || A.fileView || A.fileLink) return true;
+  return typeof document !== "undefined" && !!document.querySelector?.('[role="menu"]');
+}
+
+/** D573: Back, the one step a phone's Back gesture (and a browser's Back inside the page) takes:
+ *  the layer on top closes (by its own Esc), else the place goes up one level. False at the top,
+ *  where Back leaves Ducter as every app does. */
+export function backOne(): boolean {
+  if (layerUp()) {
+    const at = (typeof document !== "undefined" && (document.activeElement as HTMLElement | null)) || undefined;
+    const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    (at ?? globalThis).dispatchEvent(ev);
+    return true;
+  }
+  if (A.route.name === "onhand" && A.upInPlace?.()) return true;
+  const up = upFrom(A.route);
+  if (!up) return false;
+  A.go(up);
+  return true;
+}
+
+/** D573: the tab says what waits for the person, as a mail tab says unread: 「(3) Ducter」. */
+export function tabTitle(needs: number, name = "Ducter"): string {
+  return needs > 0 ? `(${needs}) ${name}` : name;
 }
 
 /** D216, D244: room for On hand's rail beside a task at the whole screen: the rail

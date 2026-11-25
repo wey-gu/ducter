@@ -560,7 +560,7 @@ func (a *App) reviewSheet(c *ui.Context) {
 	}
 	title := a.L.T("hand.review")
 	open := true
-	ui.DialogBase(c, &open, func(back, panel ui.Element) {
+	a.dialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S6, 820)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title).Role(ui.RoleDialog)
 		a.enter(c, panel)

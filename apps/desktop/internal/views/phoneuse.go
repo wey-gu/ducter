@@ -294,7 +294,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 		w, h = 1040, 760
 	}
 	open := true
-	ui.DialogBase(c, &open, func(back, panel ui.Element) {
+	a.dialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S6, 540)).MaxHeight(sheetBack(c, back, h)).Padding(t.S5, t.S6, t.S5, t.S6).Gap(t.S3).Radius(t.RadiusXL).
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("phoneuse.install.title", name))

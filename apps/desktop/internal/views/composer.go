@@ -132,7 +132,7 @@ func (a *App) composerBox(c *ui.Context, o composerOpts) ui.Element {
 					if o.keys != nil && o.keys(k) {
 						return true
 					}
-					if k.Key == ui.KeyEnter && k.Mods == 0 {
+					if k.Key == ui.KeyEnter && (k.Mods == 0 || k.Mods == ui.Cmd) { // D573: ⌘↩ sends too, as the web
 						if o.sending {
 							return true
 						}

@@ -767,7 +767,44 @@ badge, sparkle, arrow, ring or button. Consent cards (hold to talk, talk hands-f
 yet) and promises said every time (the checkout's) are not this pattern. Names and words:
 `packages/protocol/src/first-meet.ts`, `research/196`. Shots: `.shots/first-meet/`.
 
-## Places (D71)
+## Platform conventions (D573)
+
+What every hand already knows is a contract (research/232). Every change a person can see is
+checked against this list, and a new window, sheet or key joins it. The guards: `TestStandardMenuBar`
+and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW` (views), the web's
+`d573-conventions.test.ts`.
+
+**Mac**
+- The standard menu bar, in order: the app menu (About, Check for Updates, Settings… ⌘,, Services,
+  Hide ⌘H, Hide Others ⌥⌘H, Show All, Quit ⌘Q); File (New Task… ⌘N, Open Task… ⌘O, Find Anything…
+  ⌘K, Close Window ⌘W); Edit (Undo, Redo, Cut, Copy, Paste, Paste and Match Style, Delete, Select
+  All, Find › ⌘F ⌘G ⇧⌘G, Speech); View (Back ⌘[, Forward ⌘], the places ⌘1–⌘5, Actual Size ⌘0,
+  Zoom In ⌘=, Zoom Out ⌘−, Enter Full Screen ⌃⌘F); Window (macOS's, with the window list); Help
+  (macOS's search, Ducter Docs, Keyboard Shortcuts ⌘/). Menu words are macOS's own in each language
+  (文件, 编辑, 显示, 窗口, 帮助; Title Case in English). A key lives on one item only.
+- ⌘W closes what is in front: the sheet or viewer on top (one per press), then Settings (back to
+  where the person was), then the window (hidden; Ducter keeps working). Every dialog is built with
+  `dialogBase`, never `ui.DialogBase` directly.
+- Esc closes the top sheet, popover or menu, one per press; with none, it goes up a level.
+- ⌘[ ⌘], a two-finger swipe and a mouse's side buttons go back and forward through places seen.
+- Every window has a `StateKey`: it comes back where and as large as it was. The Dock icon with no
+  window open brings the main window back.
+- ↩ sends, ⇧↩ breaks the line, ⌘↩ sends too; the same in every composer.
+- Messages are selectable and copyable; rows and messages have the right-click clay menu (D421).
+- Reduce Motion, Dark Mode switching live, VoiceOver labels on every control (D161).
+
+**Web**
+- One key, one step: Esc closes the top layer only (a sheet, the live view, a viewer, an open menu
+  hold the place still); ⌘/Ctrl+K finds; ⌘/Ctrl+↩ sends or starts.
+- The browser's Back with a layer up closes it and keeps the place; otherwise it goes up a level.
+- External links open in a new tab with noopener; ⌘F is the browser's except in the file viewer.
+- The tab title says what waits: 「(3) Ducter」.
+
+**Phone**
+- Android Back closes the top layer first, then goes up a level, then leaves (`ducterBack`).
+- iOS: the keyboard never covers the composer; long-press opens the message's menu; the share
+  sheet shares. Edge-to-edge insets on Android (`--safe-*`).
+
 
 v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:
 

@@ -3583,13 +3583,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **⌘= pressed live, and a real trackpad swipe.** Zoom In works from the menu (VERIFIED); the key press and
   a two-finger swipe between pages on hardware are owed. Trigger: the next Mac release check.
-- [ ] **Spelling and Grammar in the Edit menu.** MyGo's text input has no spell checker. Trigger: MyGo adds
-  NSSpellChecker to its text fields, or a person asks.
+- [ ] **Spelling and Grammar in the Edit menu.** Checked again for D578: MyGo's text input (v0.10.0) has no
+  spell-check option, and `TextRanges` styles only colour and weight, so even with NSSpellChecker called through
+  purego a misspelled word can't be underlined in the field nor its guesses put on the field's menu. Needs from
+  MyGo: continuous spell checking on text inputs, or a wavy underline in `TextRange` plus the field's context menu
+  taking items. Trigger: MyGo ships either, or a person asks.
 - [ ] **View › Show Sidebar ⌃⌘S.** Nothing to hide yet: the partners' list shows only with more than one partner
   and has its own control. Trigger: a place gets a sidebar a person may want gone.
 - [ ] **Increase Contrast and the system accent.** Not read today. Trigger: MyGo's Preferences reports them.
-- [ ] **Reveal in Finder and Copy Path on a file card's right-click; a file card dragged out.** Trigger: the next
-  pass on the workbench's files (D214).
+- [x] **Show in Finder on a file card's right-click and the viewer; a file card dragged out** (D578). Left: Copy
+  Path; a drag started before the copy is fetched does nothing (MyGo has no file promise); a real drag to Finder
+  on hardware is owed (the views tester can't read a started native drag). Trigger: the next Mac release check.
 - [ ] **Scroll position per place across a switch.** Not checked. Trigger: a person loses their place switching
   places.
 - [ ] **Android predictive back.** The callback is always enabled, so the back-to-home preview never shows. The
@@ -3598,16 +3602,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
   Android pass.
 - [ ] **Android Back on a device.** `ducterBack` is unit-tested; owed on a phone with a sheet, the viewer and a
   menu open. Trigger: the next Android build.
-- [ ] **iOS: one back gesture.** The WKWebView's `allowsBackForwardNavigationGestures` and the page's edge swipe
-  both take the left edge (INFERRED double step). Trigger: checked on an iPhone, then keep the page's.
-- [ ] **iOS: tap the status bar to scroll to top.** The page scrolls in inner views, so the system's gesture does
-  nothing; a hidden scrollsToTop view relaying to the page. Trigger: the next iPhone pass.
+- [x] **iOS: one back gesture** (D578): WebKit's history swipe is off, the page's edge swipe stays. Owed: a swipe
+  on an iPhone (code only so far). Trigger: the next iPhone build.
+- [x] **iOS: tap the status bar to scroll to top** (D578): a one-point relay view is the only scroll view saying
+  yes; the page moves the view under the screen's middle. Owed on an iPhone: that WebKit's inner scroll views don't
+  also say yes (INFERRED; if they do, UIKit scrolls none). Trigger: the next iPhone build.
 - [ ] **iOS long-press callout** on images and links outside the viewer stacks on the reply menu. Trigger: the
   next iPhone pass.
-- [ ] **Web: sheets trap focus and give it back**, and the web sheets become history entries so Back from the
-  conversation with a sheet open stays in the app. Trigger: the next web keyboard pass.
-- [ ] **Web: task rows as real links** (middle-click, ⌘-click opens a new tab; On hand's ⌘-click multi-select kept).
-  Trigger: a person opens tasks in tabs.
+- [x] **Web: sheets trap focus and give it back, and are history entries** (D578; checked in headless Chrome).
+- [x] **Web: task rows as real links** (D578, `TaskLink`). Left: Past tasks' and the palette's rows open from a
+  sheet, not yet links. Trigger: a person opens past tasks in tabs.
 
 ## Partner eval after D574 (stable verdicts)
 

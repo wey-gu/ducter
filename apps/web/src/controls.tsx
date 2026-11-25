@@ -3,7 +3,8 @@
 // device card draws a control any other way. A new control is added here, never inline.
 import type { ComponentChildren } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import { A } from "./app.ts";
+import { A, routeHash } from "./app.ts";
+import { inApp } from "./native.ts";
 import { Coin } from "./coin.tsx";
 import { spoken } from "./format.ts";
 import { Menu, MenuItem } from "./menu.tsx";
@@ -992,6 +993,42 @@ export function FactPill(p: { mark: ComponentChildren; facts: { text: string; le
         </span>
       ))}
     </button>
+  );
+}
+
+/** D578: a click a task's link leaves to the browser (a new tab or window): ⌘ or Ctrl, Shift, or a
+ *  button other than the first; never in the iPhone and Android apps, whose web view has no tabs. */
+export const newTabClick = (e: Pick<MouseEvent, "metaKey" | "ctrlKey" | "shiftKey" | "button">, app: boolean): boolean =>
+  !app && (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
+
+/**
+ * D578: a task's row as a real link to it (#task=<id>), so middle-click, ⌘-click and Copy Link work
+ * as on any page, and the address shows on hover. A plain click opens it in place (onOpen). A row that
+ * takes a modified click itself (On hand's ⌘-click and Shift-click to pick, D216) says so in onPick,
+ * which runs first; a middle-click still opens a tab there. Space opens it, as on the button it was.
+ */
+export function TaskLink(p: { id: string; full?: boolean; href?: string; class?: string; title?: string; label?: string; current?: boolean; onOpen: () => void; onPick?: (e: MouseEvent) => boolean; children: ComponentChildren }) {
+  return (
+    <a
+      class={`task-link${p.class ? ` ${p.class}` : ""}`}
+      href={p.href ?? routeHash({ name: "task", id: p.id, ...(p.full ? { full: true } : {}) })}
+      title={p.title}
+      aria-label={p.label}
+      aria-current={p.current ? "page" : undefined}
+      onClick={(e) => {
+        if (p.onPick?.(e)) return void e.preventDefault();
+        if (newTabClick(e, inApp())) return;
+        e.preventDefault();
+        p.onOpen();
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== " ") return;
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).click();
+      }}
+    >
+      {p.children}
+    </a>
   );
 }
 

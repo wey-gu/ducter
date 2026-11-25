@@ -9,6 +9,8 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
     enum Phase: Equatable { case loading, ready, unreachable }
     @Published var phase: Phase = .loading
     let web: WKWebView
+    /// D578: the one view that says yes to the status bar's tap, a point wide and never seen.
+    private let topTap = UIScrollView()
     private var loaded: URL?
     /// D305: hold to talk and read aloud (Voice.swift); events go to window.ducterVoice.
     private lazy var voice: Voice = {
@@ -55,8 +57,21 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         // The page lays itself out under the bars with env(safe-area-inset-*).
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.keyboardDismissMode = .interactive
-        // The page's routes are history entries: an edge swipe goes back, as in any iPhone app.
-        web.allowsBackForwardNavigationGestures = true
+        // D578: one back gesture on the left edge, the page's own (nav.ts `edgeSwipe`, which runs in
+        // the app): it knows the sheet, the viewer and the list of partners, and moves as Ducter moves.
+        // WebKit's history swipe took the same edge too, so one swipe went back two steps.
+        web.allowsBackForwardNavigationGestures = false
+        // D578: the page scrolls views of its own, never the document, so the status bar's tap had
+        // nothing to move. Only the relay below says it wants the tap; the page moves the view read.
+        web.scrollView.scrollsToTop = false
+        topTap.scrollsToTop = true
+        topTap.delegate = self
+        topTap.backgroundColor = .clear
+        topTap.showsVerticalScrollIndicator = false
+        topTap.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+        topTap.contentSize = CGSize(width: 1, height: 3)
+        topTap.contentOffset = CGPoint(x: 0, y: 1)
+        web.addSubview(topTap)
         web.allowsLinkPreview = false
         #if DEBUG
         web.isInspectable = true
@@ -400,6 +415,15 @@ extension UIApplication {
         var vc = connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.rootViewController
         while let p = vc?.presentedViewController { vc = p }
         return vc
+    }
+}
+
+/// D578: the status bar's tap, relayed to the page (`window.ducterTop`), which moves the view being
+/// read to its top; the relay itself never scrolls.
+extension Shell: UIScrollViewDelegate {
+    func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
+        if scrollView === topTap { web.evaluateJavaScript("window.ducterTop && window.ducterTop()") }
+        return false
     }
 }
 

@@ -38,7 +38,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { GRow, Said, say, Waiting } from "./set-grid.tsx";
-import { BackGlyph, DangerButton, Notice } from "./controls.tsx";
+import { BackGlyph, DangerButton, Notice, TaskLink } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -634,7 +634,7 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const [who, why] = whoLine(task);
   const live = who.length > 0 && !finished(task) && a !== "dropped";
   return (
-    <button class="taskline" aria-label={spoken(A.L, title(task) || t("task.unknown"), d, ...who)} onClick={() => A.go({ name: "task", id: task.id })}>
+    <TaskLink class="taskline" id={task.id} label={spoken(A.L, title(task) || t("task.unknown"), d, ...who)} onOpen={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
         <StateMark a={a} />
       </span>
@@ -643,7 +643,7 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
         <Facts items={[d, ...(live ? who : []), live && why]} />
         <Chev />
       </span>
-    </button>
+    </TaskLink>
   );
 }
 

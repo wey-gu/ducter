@@ -237,6 +237,9 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 	}
 	card.Shadow(0, lift, 0, 0, t.Raised.Color).AnimatePose(ui.Pose{Y: sink}, t.Snappy)
 	open := card.Clicked()
+	// D578: it drags out as the file, and right-click has Open, Save a copy and Show in Finder.
+	a.fileDrag(card, *ref)
+	a.fileMenu(c, card, *ref)
 	card.Children(func() {
 		switch kind {
 		case "pdf":

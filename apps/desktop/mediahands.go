@@ -76,6 +76,9 @@ func (h mediaHands) Save(name string, data []byte) (string, error) {
 	return p, os.WriteFile(p, data, 0o644)
 }
 
+// Reveal (D578): Show in Finder, the file selected in a Finder window.
+func (h mediaHands) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
+
 // OpenLocal (D239): a kind Ducter can't show (a PDF, a deck) opens in its
 // Mac app from a copy in this user's own temporary folder (0700, the file
 // 0600), never from the home's address in a browser. The copy is named as

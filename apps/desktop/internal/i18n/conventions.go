@@ -2,7 +2,8 @@ package i18n
 
 // D573: the standard Mac menu bar's own words (File, Edit › Find, View's
 // Back, Forward and zoom, Help's keys), in the words macOS itself uses in
-// each language, so the menus read as every other Mac app's.
+// each language, so the menus read as every other Mac app's. D578: Show in
+// Finder, as Finder and every Mac app say it.
 
 var zhConventions = Table{
 	"menu.file":         "文件",
@@ -23,6 +24,8 @@ var zhConventions = Table{
 	"menu.float":        "小窗",
 	"menu.fullscreen":   "进入全屏幕",
 	"menu.fullscreen.x": "退出全屏幕",
+	// D578: a file that is on this Mac, in Finder's own words.
+	"file.reveal": "在访达中显示",
 }
 
 var enConventions = Table{
@@ -44,6 +47,7 @@ var enConventions = Table{
 	"menu.float":        "Mini Window",
 	"menu.fullscreen":   "Enter Full Screen",
 	"menu.fullscreen.x": "Exit Full Screen",
+	"file.reveal":       "Show in Finder",
 }
 
 func init() {

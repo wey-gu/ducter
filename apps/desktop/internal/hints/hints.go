@@ -107,7 +107,15 @@ type state struct {
 	// D573: View › Zoom In / Zoom Out (⌘+ ⌘−), the window content's zoom on
 	// this Mac; 0 is actual size.
 	Zoom float32 `json:"zoom,omitempty"`
+	// D578: where a file Ducter showed is on this Mac (a copy saved to
+	// Downloads, or the file the person sent from here), by its id (the
+	// sha256 of its bytes), so Show in Finder can find it again.
+	FilesOnMac map[string]string `json:"filesOnMac,omitempty"`
 }
+
+// filesOnMacMax is how many of those places are kept (past it, one is let go
+// for each new one; a forgotten one only loses its Show in Finder).
+const filesOnMacMax = 200
 
 // StartLang is the window's language at launch (a BCP 47 tag the strings
 // resolve through their fallback chain): the one chosen in Settings
@@ -672,6 +680,34 @@ func (l *Local) SetReadBack(on bool) {
 
 // FileFill reports whether this kind of file opens filling the window (D567).
 func (l *Local) FileFill(kind string) bool { return l != nil && l.st.FileFill[kind] }
+
+// FileOnMac is where the file with this id was last known on this Mac
+// (D578), or "".
+func (l *Local) FileOnMac(id string) string {
+	if l == nil {
+		return ""
+	}
+	return l.st.FilesOnMac[id]
+}
+
+// SetFileOnMac remembers where the file with this id is on this Mac; at
+// most filesOnMacMax are kept.
+func (l *Local) SetFileOnMac(id, path string) {
+	if l == nil || id == "" || l.st.FilesOnMac[id] == path {
+		return
+	}
+	if l.st.FilesOnMac == nil {
+		l.st.FilesOnMac = map[string]string{}
+	}
+	for k := range l.st.FilesOnMac {
+		if len(l.st.FilesOnMac) < filesOnMacMax {
+			break
+		}
+		delete(l.st.FilesOnMac, k)
+	}
+	l.st.FilesOnMac[id] = path
+	l.save()
+}
 
 // SetFileFill remembers the person's last choice for this kind.
 func (l *Local) SetFileFill(kind string, on bool) {

@@ -23,6 +23,7 @@ import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { detectLang, langOfText, strings, TABLE_LANGS, type Handheld, type Lang, type Strings, type TableLang } from "./i18n.ts";
 import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
+import { isLayerEntry } from "./layer-history.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
 import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
@@ -3060,7 +3061,12 @@ class AppState {
     // at the whole screen too, as on the Mac; one opened from the conversation stands beside it.
     if (r.name === "task" && r.full === undefined && this.route.name !== "conv" && this.route.full) r = { ...r, full: true };
     const hash = routeHash(r);
-    if (location.hash !== hash) history.pushState(null, "", hash || location.pathname);
+    // D578: a sheet's own entry on top (a task chosen in a sheet) gives its place to the route, so
+    // Back from the task goes to the place under the sheet, never to a step with nothing on it.
+    if (location.hash !== hash) {
+      if (isLayerEntry(history.state)) history.replaceState(null, "", hash || location.pathname);
+      else history.pushState(null, "", hash || location.pathname);
+    }
     const was = this.route;
     // Taking the whole screen, or going back beside the conversation, morphs rather than jumps
     // (a view transition where the browser has one; none under reduced motion).

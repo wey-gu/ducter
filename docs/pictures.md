@@ -112,6 +112,10 @@ and it opens right there in Ducter:
 - **Copy** copies the text, **Save a copy** keeps the whole file on your device (on a phone, your
   share sheet: save it to Files or send it to an app; on a Mac, your Downloads folder). **From**
   and the task's name opens the task.
+- **On a Mac**, right-click a file for **Open**, **Save a copy** and, once the file is on this Mac
+  (a copy you saved, or a file you sent from it), **Show in Finder**; the file's bottom bar has
+  Show in Finder too. Drag a file out of the conversation, or by the mark at the top of an open
+  file, to drop it in Finder, Mail or any other app.
 - Close it with the ×, Esc, or by tapping outside it; on a phone, pull it down.
 
 A very long file shows its first part and says so; Save a copy has all of it. Kinds Ducter can't

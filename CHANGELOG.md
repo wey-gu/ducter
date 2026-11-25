@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.71 - 2026-11-25
+
+<!-- whats-new
+zh: 记忆页更顺：更新在眼前，存文件只放你自己的空间
+en: Memory: updates where you look, files kept where only you can read
+-->
+
+**Memory**
+- An outdated Nowledge Mem plugin on any of your computers has Update right on its row, and the
+  Overview's line updates it in place. When it can't run from here, one line says why.
+- Nowledge Mem's own questions no longer count as waiting on you. They sit in one quiet row, each
+  with your partner's suggestion and "Take the suggestions" for all of them.
+- Things you say you prefer are saved as preferences, so they show under the ways you like things.
+
+**Save to Nowledge Mem**
+- Files go to your own Space, the one only you can read, and saving no longer fails for want of a
+  Space.
+- If a save doesn't go through, one plain line says why, with its fix; Mem's own words sit behind
+  "Its words". The viewer's buttons stay in one row.
+
 ## 0.1.70 - 2026-11-25
 
 <!-- whats-new

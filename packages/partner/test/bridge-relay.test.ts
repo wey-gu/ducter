@@ -22,14 +22,35 @@ function world() {
   const sends: { contact: string; text: string }[] = [];
   const replies: { messageId: string; text: string }[] = [];
   const box: BridgeMessage[] = [];
-  const ctl = { refuse: false, contacts: [CODEX, ALEX] as BridgeContact[] };
+  const ctl = { refuse: false, lose: false, contacts: [CODEX, ALEX] as BridgeContact[] };
+  // D559: a reply whose answer is lost stays pending in Mem's outbox (as a reply on its parent) until resumed.
+  const kept: { operation: string; inReplyTo: string; body: string }[] = [];
   let n = 0;
   const bridge: BridgeClient = {
     async check(known) {
       return { ok: true, messages: box.filter((m) => !known.has(m.messageId)) };
     },
+    async outbox() {
+      return { ok: true, ops: kept.map((k) => ({ operation: k.operation, state: "pending" as const, inReplyTo: k.inReplyTo })), complete: true };
+    },
+    async inspect(operation) {
+      const k = kept.find((x) => x.operation === operation);
+      return k ? { ok: true, op: { operation, state: "pending" as const, inReplyTo: k.inReplyTo, body: k.body } } : { ok: false, reason: "refused", message: "no such op" };
+    },
+    async resume(operation) {
+      const i = kept.findIndex((x) => x.operation === operation);
+      if (i < 0) return { ok: false, reason: "refused", message: "no such op" };
+      const [k] = kept.splice(i, 1);
+      replies.push({ messageId: k!.inReplyTo, text: k!.body });
+      return { ok: true, messageId: `bm-o${++n}` };
+    },
     async reply(messageId, text) {
       if (ctl.refuse) return { ok: false, reason: "refused", message: "no" };
+      if (ctl.lose) {
+        ctl.lose = false;
+        kept.push({ operation: `op-${++n}`, inReplyTo: messageId, body: text });
+        return { ok: false, reason: "unavailable", message: "connection reset" };
+      }
       replies.push({ messageId, text });
       return { ok: true, messageId: `bm-o${++n}`, operation: `op-${n}` };
     },
@@ -239,6 +260,25 @@ describe("a task's message out: a card first, then Ducter sends it with the task
     const other = await tool({ to: "reviewer", text: "Is the bench done?" });
     expect(other.ok).toBe(true);
     expect(decisions().at(-1)!.question).toContain("reviewer (Alex)");
+  });
+
+  test("D559: a lost send that went as a reply on the agent's own message is recovered from Mem's outbox, never sent twice", async () => {
+    const { fc, w, partner, tool, decisions, outs, tap } = setup("pi");
+    const hander: Bodies["bridge_msg"] = { direction: "in", messageId: "bm-h1", from: "Bridge agent", agent: "Bridge agent", host: "claude-code", mine: true, text: "Task: make the open assertion cross-platform." };
+    fc.core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: hander });
+    fc.core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", opId: "bo-claim", to: "Bridge agent", host: "claude-code", mine: true, inReplyTo: "bm-h1", taskId: "t1", text: 'Taken: "Fix the Linux CI".', state: "sent", messageId: "bm-c1" } as Bodies["bridge_msg"] });
+    await tool({ to: whoForTask(hander), text: "Did your branch touch live.test.ts?" });
+    w.ctl.lose = true;
+    tap(decisions()[0]!.decisionId);
+    await settle();
+    expect(outs().at(-1)!.state).toBe("unknown");
+    expect(w.replies).toHaveLength(0);
+    await partner.checkBridge();
+    await settle();
+    expect(outs().at(-1)!.state).toBe("sent");
+    expect(w.replies).toEqual([{ messageId: "bm-h1", text: 'Ducter\'s task "Fix the Linux CI":\nDid your branch touch live.test.ts?' }]);
+    // Found in the outbox and resumed: never taken for "not in Mem" and written again.
+    expect(outs().some((b) => b.state === "failed")).toBe(false);
   });
 
   test("D494: a Claude Code task is carried too (the home is the one receiver; its plugin would speak as the partner)", async () => {

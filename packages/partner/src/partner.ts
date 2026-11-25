@@ -4761,7 +4761,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             complete = r.ok && r.complete === true;
           }
           // D418: nmem 0.10.121 lists an op as `{operation, phase}` only: such a one may be it, and only inspect says.
-          const same = outbox.filter((x) => x.bare || (o.last.inReplyTo ? x.inReplyTo === o.last.inReplyTo : !x.inReplyTo));
+          // D559: a send that went as a reply on the agent's own message (a `reply:` handle) is in Mem as that reply.
+          const parent = o.last.inReplyTo ?? (o.last.contact ? replyHandle(o.last.contact) : undefined);
+          const same = outbox.filter((x) => x.bare || (parent ? x.inReplyTo === parent : !x.inReplyTo));
           const byBody = same.filter((x) => x.body !== undefined && x.body.trim() === text);
           let all = true; // every candidate was looked at
           if (byBody.length === 1) found = byBody[0];
@@ -4776,7 +4778,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
                 if (!got.ok) all = false;
                 looked.set(x.operation, i);
               }
-              if (i && i.body?.trim() === text && (!o.last.inReplyTo || !i.inReplyTo || i.inReplyTo === o.last.inReplyTo)) {
+              if (i && i.body?.trim() === text && (!parent || !i.inReplyTo || i.inReplyTo === parent)) {
                 found = i;
                 break;
               }

@@ -24451,6 +24451,9 @@ html.kb #app {
 @keyframes tile-in { from { opacity: 0; transform: translateY(6px) scale(0.8); } }
 /* New tasks start: no column while both are 自动 (bare); a pick opens it, the rows and the foot moving over. */
 .g-group.picks.bare { --chat-col: 0px; }
+/* D582: a list of what it knows with no other tool's row has nothing to draw: no tile column, its
+   titles on the text edge under the kind's heading (as the Mac's openRowOn bare). */
+.g-group.mem-g.bare { --chat-col: 0px; }
 .g-group.picks > .chat-row, .g-group.picks > .chat-foot { transition: padding var(--t-across) var(--ease-push); }
 @media (prefers-reduced-motion: reduce) { .g-tile.enter { animation: none; } .g-group.picks > .chat-row, .g-group.picks > .chat-foot { transition: none; } }
 

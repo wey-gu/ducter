@@ -256,7 +256,7 @@ function MemAbout() {
       )}
       <MemFind />
       {A.memQuery ? (
-        <Group class="mem-g" label={t("mem.find.title")}>
+        <Group class={`mem-g${found?.ok && bareList(found.items) ? " bare" : ""}`} label={t("mem.find.title")}>
           {!found ? (
             <GRow title={t("mem.find.title")} line="…" />
           ) : !found.ok ? (
@@ -276,7 +276,7 @@ function MemAbout() {
         groups.map((gr) => (
           <Fragment key={gr.kind}>
             {!(groups.length === 1 && gr.kind === "other") && <h3 class="mem-kind">{t(`mem.kind.${gr.kind}`)}</h3>}
-            <Group class="mem-g" label={t(`mem.kind.${gr.kind}`)}>
+            <Group class={`mem-g${bareList(gr.items) ? " bare" : ""}`} label={t(`mem.kind.${gr.kind}`)}>
               {gr.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} bare={bareList(gr.items)} />)}
             </Group>
           </Fragment>

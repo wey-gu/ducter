@@ -6,18 +6,24 @@
 //     reports and documents (memAutoKeeps), never a log, code or a picture, never a file of secrets.
 // Through the person's own `nmem` (its own sign-in), as their own data: no Go (D61 covers outward
 // actions on others; this is the person's own store, said in D566).
-//   - into one folder named 「Ducter」 at the root of the Space the persona is bound to (D141:
-//     persona.mem.space; none bound: no --space, so Mem's own default; never a guessed Space). An
-//     existing top-level 「Ducter」 folder there is used; else it is made with a client-chosen id
-//     (`folders mk --id`, safe to repeat, research/231 §3);
+//   - into one folder named 「Ducter」 at the root of a Space Mem itself names (D572): the Space the
+//     persona is bound to (D141: persona.mem.space); else, from Mem's passive `bridge setup` (it
+//     creates and selects nothing), the person's own personal Space (kind personal: only them),
+//     else the one Mem marks write_default; a Mem that lists no Spaces (Spaces off): no --space.
+//     Mem names neither: the write names none (never a Space Ducter picked) and Mem, refusing,
+//     says why (no_space). `folders mk` refuses without one ("Pass --space (or --parent) to choose where the folder goes.", hel
+//     0.1.68, 2026-11-25), which D566's "omit --space" hit. An existing top-level 「Ducter」 folder
+//     there is used; else it is made with a client-chosen id (`folders mk --id`, safe to repeat);
 //   - a file is one artifact for its life: the same name from the same task (or the conversation)
 //     saved again is `artifacts update <doc> --base <rev> --file`, a new version, never a second
 //     artifact; Mem answers `unchanged` for the same bytes. Refused because someone saved a newer
 //     version in Mem: asked by the person, saved on top of it (both versions stay in Mem's history);
 //     by itself, left as it is (their version stays current) and said once;
 //   - why it wasn't kept comes from Mem's facts (D563): off, missing, signed_out, unreachable,
-//     refused (Mem's own words), secret (redact.ts finds a key in it, or a secrets file's name),
-//     gone (no longer on the home). The file always stays where it is.
+//     refused, no_space, secret (redact.ts finds a key in it, or a secrets file's name), gone (no
+//     longer on the home). Mem's own words ride along as `message`, shown by the clients only
+//     behind 原话 / Its words (D572). The file always stays where it is. Every step that asks Mem
+//     and fails (the folder's too) leaves its raw answer in the Log as mem_file.
 // Never `delete`, `move` or a folder rename: Ducter only adds and updates what it saved.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -102,10 +108,40 @@ export function memWords(text: string): string {
 export function whyOf(r: { code: number; out: string; err: string } | { missing: true }): { why: MemFileWhy; message?: string } {
   if ("missing" in r) return { why: "missing" };
   const text = `${r.err}\n${r.out}`;
-  if (/api key|unauthori[sz]ed|not (signed in|configured|connected)|connect link|\b401\b|\b403\b/i.test(text)) return { why: "signed_out" };
-  if (/timed? ?out|connection (refused|reset)|could not connect|unreachable|dns|network|\b50[234]\b|ECONN/i.test(text)) return { why: "unreachable" };
+  // D572: Mem's words ride along with every reason it gave; the clients show them only on demand.
   const words = memWords(r.err || r.out || `exit ${r.code}`);
-  return { why: "refused", ...(words ? { message: words } : {}) };
+  const said = words ? { message: words } : {};
+  if (/api key|unauthori[sz]ed|not (signed in|configured|connected)|connect link|\b401\b|\b403\b/i.test(text)) return { why: "signed_out", ...said };
+  if (/timed? ?out|connection (refused|reset)|could not connect|unreachable|dns|network|\b50[234]\b|ECONN/i.test(text)) return { why: "unreachable", ...said };
+  // D572: Mem wants a Space named (folders mk: "Pass --space (or --parent) to choose where the folder goes.").
+  if (/pass --space|choose where the folder goes|choose (the|a) (exact )?space/i.test(text)) return { why: "no_space", ...said };
+  return { why: "refused", ...said };
+}
+
+/**
+ * D572: the Space Mem itself names for a write, from its passive `bridge setup` (VERIFIED, 0.10.123
+ * on this Mac and on hel: `{ state, note, candidates: [{ id, label, kind, readers, write_default }] }`;
+ * the note: "A write that names no Space lands in write_default"). The person's personal Space
+ * first (kind personal, readers 1: a file kept there is read by no one they haven't let in, D566 (6);
+ * on hel the write default is Everyone, ten readers and the team's Slack agent); else the one Mem
+ * marks write_default. "none": Mem lists Spaces but names neither. "off": no Spaces listed (a Mem
+ * with Spaces off), so the write names none.
+ */
+export function spaceFrom(out: string): { id: string; kind: "personal" | "write_default" } | "none" | "off" {
+  let j: any;
+  try {
+    j = JSON.parse(out);
+  } catch {
+    return "off";
+  }
+  const SAFE = /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}$/;
+  const cands: any[] = (Array.isArray(j?.candidates) ? j.candidates : []).filter((c: any) => c && typeof c.id === "string" && SAFE.test(c.id));
+  if (!cands.length) return "off";
+  const personal = cands.find((c) => c.kind === "personal");
+  if (personal) return { id: personal.id, kind: "personal" };
+  const wd = cands.find((c) => c.write_default === true);
+  if (wd) return { id: wd.id, kind: "write_default" };
+  return "none";
 }
 
 /** The artifact an `add` or `update` answered with (every shape seen or guessed, research/231 §4). */
@@ -215,8 +251,32 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
   let chain: Promise<unknown> = Promise.resolve();
   let webRead = false;
 
-  const space = () => d.identity()?.space;
-  const spaceArgs = () => (space() ? ["--space", space()!] : []);
+  /**
+   * D572: where this save's writes go: the persona's own Space (D141, by name), else the Space Mem
+   * names (spaceFrom, by its exact id), read once and again after a refusal; Spaces off: none.
+   */
+  type Where = { key: string; args: string[] };
+  type Said = { code: number; out: string; err: string } | { missing: true };
+  let named: Where | undefined;
+  const where = async (): Promise<Where | { fail: Said }> => {
+    const bound = d.identity()?.space;
+    if (bound) return { key: bound, args: ["--space", bound] };
+    if (named) return named;
+    const r = await run(["bridge", "setup"], 20_000);
+    if ("missing" in r) return { fail: r };
+    if (r.code !== 0) {
+      const w = whyOf(r);
+      if (w.why === "signed_out" || w.why === "unreachable") return { fail: r };
+      return (named = { key: "", args: [] }); // a Mem without this read: its own default
+    }
+    const got = spaceFrom(r.out);
+    // Mem names none: no Space is picked for it; the write names none and Mem's own answer is said.
+    named = typeof got === "string" ? { key: "", args: [] } : { key: got.id, args: ["--space-id", got.id] };
+    return named;
+  };
+  let at: Where = { key: "", args: [] };
+  const space = () => at.key || undefined;
+  const spaceArgs = () => at.args;
 
   /** Mem on the web, once: its Cloud's own page (`nmem status`: backend cloud, api_url's origin). */
   const readWeb = async () => {
@@ -234,20 +294,29 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     }
   };
 
-  /** The 「Ducter」 folder in the persona's Space: found, else made with an id of ours (safe to repeat). */
+  /**
+   * D572 (D566 todo f): a folder's id. nmem 0.10.123's own type (LibraryFolder, its field names read
+   * from the binary: folder_id, space_id, parent_folder_id, name, document_count, …) names it
+   * folder_id; `id` kept for any other shape.
+   */
+  const folderId = (f: any): string | undefined => {
+    const v = f?.folder_id ?? f?.id;
+    return typeof v === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(v) ? v : undefined;
+  };
+  /** The 「Ducter」 folder in the Space Mem names: found, else made with an id of ours (safe to repeat). */
   const folder = async (): Promise<{ id: string } | { fail: { code: number; out: string; err: string } | { missing: true } }> => {
-    const sp = space() ?? "";
+    const sp = at.key;
     if (st.folders[sp]) return { id: st.folders[sp]! };
     const ls = await run(["artifacts", "folders", "ls", ...spaceArgs()], 30_000);
     if ("missing" in ls || ls.code !== 0) return { fail: ls };
     try {
       const j = JSON.parse(ls.out);
       const list: any[] = Array.isArray(j?.folders) ? j.folders : [];
-      const top = list.find((f) => f && typeof f.id === "string" && f.name === MEM_FOLDER && !f.parent_id);
+      const top = list.find((f) => f && folderId(f) && f.name === MEM_FOLDER && !(f.parent_folder_id ?? f.parent_id));
       if (top) {
-        st.folders[sp] = top.id;
+        st.folders[sp] = folderId(top)!;
         keep();
-        return { id: top.id };
+        return { id: folderId(top)! };
       }
     } catch {
       /* made below */
@@ -255,11 +324,10 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     const id = randomUUID();
     const mk = await run(["artifacts", "folders", "mk", MEM_FOLDER, "--id", id, ...spaceArgs()], 30_000);
     if ("missing" in mk || mk.code !== 0) return { fail: mk };
-    let got = id;
+    let got: string = id;
     try {
       const j = JSON.parse(mk.out);
-      const f = j?.folder ?? j;
-      if (typeof f?.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(f.id)) got = f.id;
+      got = folderId(j?.folder ?? j) ?? id;
     } catch {
       /* our own id */
     }
@@ -298,7 +366,7 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     await readWeb();
     const key = keyOf(m);
     const prev = st.docs[key];
-    const sp = space();
+    let sp: string | undefined;
     const done = (doc: string, rev: number): MemFileResult => {
       const saved: MemFileSaved = { uri: `nowledgemem://source/${doc}`, rev, at: new Date(now()).toISOString(), ...(st.web ? { web: st.web } : {}) };
       st.docs[key] = { doc, rev, ...(sp ? { space: sp } : {}) };
@@ -310,7 +378,7 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
     };
     const sha = createHash("sha256").update(readFileSync(path)).digest("hex");
     /** The raw answer of a write, for the Log (Mem's metadata only, never the file's contents). */
-    const note = (op: "add" | "update", r: Awaited<ReturnType<Run>>, res: MemFileResult) =>
+    const note = (op: "add" | "update" | "folder", r: Awaited<ReturnType<Run>>, res: MemFileResult) =>
       d.log.append({
         stream: "mem",
         origin: "system",
@@ -320,11 +388,24 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
           name: m.name ?? "",
           by,
           op,
+          ...(at.key ? { space: at.key } : {}),
           ok: res.ok,
           ...(res.ok ? { uri: res.saved.uri, rev: res.saved.rev } : { why: res.why, ...(res.message ? { message: res.message } : {}) }),
           ...("missing" in r ? { raw: "(no nmem)" } : { code: r.code, raw: clip(`${r.out}\n${r.err}`, 2000) }),
         },
       });
+    /** Any step that asks Mem and fails (the Space, the folder, a write): said, and its raw answer in the Log. */
+    const failed = (op: "add" | "update" | "folder", r: Awaited<ReturnType<Run>>): MemFileResult => {
+      const res: MemFileResult = { ok: false, ...whyOf(r) };
+      if (res.why === "no_space") named = undefined; // read Mem's Spaces again next time
+      note(op, r, res);
+      return res;
+    };
+    // D572: the Space Mem names, before anything is written.
+    const w = await where();
+    if ("fail" in w) return failed("folder", w.fail);
+    at = w;
+    sp = space();
     /** Saved only once Mem's own list shows it (the write's answer is a hint at most). */
     const confirmed = async (op: "add" | "update", r: { code: number; out: string; err: string }, want: { doc?: string; folder?: string }): Promise<MemFileResult> => {
       const hint = artifactOf(r.out);
@@ -351,30 +432,22 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
       }
       if (!("missing" in r) && r.code === 0) return confirmed("update", r, { doc: prev.doc });
       // Gone from Mem (deleted there): a new artifact, below. Anything else: said as Mem said it.
-      if ("missing" in r || !NOT_FOUND.test(`${r.err}\n${r.out}`)) {
-        const res: MemFileResult = { ok: false, ...whyOf(r) };
-        note("update", r, res);
-        return res;
-      }
+      if ("missing" in r || !NOT_FOUND.test(`${r.err}\n${r.out}`)) return failed("update", r);
     }
     const f = await folder();
-    if ("fail" in f) return { ok: false, ...whyOf(f.fail) };
+    if ("fail" in f) return failed("folder", f.fail);
     const add = await run(["artifacts", "add", path, "--folder", f.id, "-l", "ducter", "-c", comment(m), ...spaceArgs()], MEM_FILE_MS);
     if ("missing" in add || add.code !== 0) {
       // A folder removed in Mem since: found or made again once.
       if (!("missing" in add) && /folder/i.test(add.err) && NOT_FOUND.test(add.err)) {
         delete st.folders[sp ?? ""];
         const g = await folder();
-        if ("fail" in g) return { ok: false, ...whyOf(g.fail) };
+        if ("fail" in g) return failed("folder", g.fail);
         const again = await run(["artifacts", "add", path, "--folder", g.id, "-l", "ducter", "-c", comment(m), ...spaceArgs()], MEM_FILE_MS);
         if (!("missing" in again) && again.code === 0) return confirmed("add", again, { folder: g.id });
-        const res: MemFileResult = { ok: false, ...whyOf(again) };
-        note("add", again, res);
-        return res;
+        return failed("add", again);
       }
-      const res: MemFileResult = { ok: false, ...whyOf(add) };
-      note("add", add, res);
-      return res;
+      return failed("add", add);
     }
     return confirmed("add", add, { folder: f.id });
   };

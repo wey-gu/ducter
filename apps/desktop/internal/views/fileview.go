@@ -730,11 +730,22 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 	})
 }
 
-// fileBar: 来自 {task}; then Copy (text) and Save a copy.
+// fileBar: 来自 {task}; then Copy (text), Save a copy and, last, Save to
+// Nowledge Mem (D572: one aligned row; a failure is its own full-width line
+// above it, on the bar's text edge, never wedged between the buttons).
 func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 	t := a.T
-	ui.Row(c.Key("fv-bar")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2+2, t.S4, t.S3, t.S4).Background(t.Surface).
-		BorderWidth(1, 0, 0, 0).BorderColor(t.Line).Children(func() {
+	ui.Column(c.Key("fv-foot")).Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Line).Children(func() {
+		if a.memKeepFailing(fv.ref) {
+			ui.Column(c.Key("fv-trouble")).Padding(t.S2, t.S4, 0, t.S4).Children(func() { a.memKeepTrouble(c, fv.ref) })
+		}
+		a.fileBarRow(c, fv, kind)
+	})
+}
+
+func (a *App) fileBarRow(c *ui.Context, fv *fileViewState, kind string) {
+	t := a.T
+	ui.Row(c.Key("fv-bar")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2+2, t.S4, t.S3, t.S4).Children(func() {
 		// A task this Mac doesn't hold (a linked file from an old task, D356) has no 来自.
 		if ref := fv.ref; ref.From != nil && a.S.Task(ref.From.TaskID) != nil {
 			if title := a.S.Task(ref.From.TaskID).Title(); title != "" {
@@ -763,8 +774,6 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 				}
 			}
 		}
-		// D566: keep it in the person's Nowledge Mem (memkeep.go).
-		a.memKeepBar(c, fv.ref)
 		if fv.office != nil { // D439: the PDF it reads as, and the file itself
 			if a.button(c, a.L.T("file.savePdf"), btnText, t.ControlSM, t.Surface) {
 				a.saveFileCopy(fv.ref)
@@ -777,6 +786,8 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 				a.saveFileCopy(fv.ref)
 			}
 		}
+		// D566, D572: keep it in the person's Nowledge Mem (memkeep.go), last in the row.
+		a.memKeepBar(c, fv.ref)
 		if a.copyText != "" {
 			c.WriteClipboard(a.copyText)
 			c.Toast(a.L.T("media.copied"))

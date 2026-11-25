@@ -87,13 +87,15 @@ library (its Artifacts), where every agent that reads their Mem finds it. Eviden
 - **On a file.** Under a file card Ducter made, and in the viewer's action row: **存到 Nowledge Mem /
   Save to Nowledge Mem**; then **正在存到 Nowledge Mem… / Saving to Nowledge Mem…**; then **已存进
   Nowledge Mem / In Nowledge Mem** and, its own element beside it, **去看 / Open** (the Mem app on a
-  Mac, else Mem on the web); or **没存进去：{why} / Not
-  saved: {why}** with its one fix. Shown only while memory is on and Mem is connected and signed in,
+  Mac, else Mem on the web); or one line in the needs-you ink, **没存进去：{why} / Not saved: {why}**
+  in plain words, its one fix, and Mem's own sentence only behind **原话 / Its words** (D572). Shown only while memory is on and Mem is connected and signed in,
   and only for a file Mem reads (documents, sheets, slides, PDFs, Markdown and text, code).
 - **The same file is one thing in Mem.** Keyed by its task and its name: saved again, or a newer
   version after the task changed it, it is the next version of the same artifact
   (`update --base`), never a second one.
-- **Where.** One 「Ducter」 folder at the root of the persona's Space (none bound: Mem's default).
+- **Where.** One 「Ducter」 folder at the root of a Space Mem names (D572): the persona's own, else
+  the person's personal Space (only them), else the one Mem marks its write default; never one
+  Ducter picks.
 - **By itself.** Settings › 记忆: **做好的文件也存进 Nowledge Mem / Also keep files I make in
   Nowledge Mem**, off by default: a done report's documents only, never a log, code, a screenshot
   or a file with a key in it (`settings.md`, `memory.md` "Files in Nowledge Mem").

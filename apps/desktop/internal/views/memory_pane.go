@@ -525,7 +525,7 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 // memFilesRow is 做好的文件也存进 Nowledge Mem / Also keep files I make in
 // Nowledge Mem (D566, off by default): a finished task's reports and
 // documents go to Mem's 「Ducter」 folder by themselves. The last one that
-// didn't go says so here once, in Mem's words, until the next one is kept.
+// didn't go says so here once, in plain words (D572), until the next one is kept.
 func (a *App) memFilesRow(c *ui.Context) {
 	st := a.S.Settings
 	if st == nil {
@@ -534,7 +534,7 @@ func (a *App) memFilesRow(c *ui.Context) {
 	help := a.L.T("memfile.row.line")
 	if m := a.S.Mem; m != nil && m.FileTrouble != nil && st.MemFiles {
 		tr := m.FileTrouble
-		help = a.L.T("memfile.trouble", tr.Name, a.keepWhy(tr.Why, tr.Message))
+		help = a.L.T("memfile.trouble", tr.Name, a.keepWhy(tr.Why))
 	}
 	if v, ch := a.toggleRow(c, "memfiles", a.L.T("memfile.row"), help, st.MemFiles); ch {
 		st.MemFiles = v

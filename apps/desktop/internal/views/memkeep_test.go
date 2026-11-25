@@ -112,7 +112,7 @@ func TestMemKeepShots(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, dark := range []bool{false, true} {
 			theme := map[bool]string{false: "light", true: "dark"}[dark]
-			for _, state := range []string{"1-can", "2-saving", "3-saved", "4-failed"} {
+			for _, state := range []string{"1-can", "2-saving", "3-saved", "4-failed", "4b-failed-words"} {
 				app, _, refs := memKeepApp(t, lang)
 				L := app.L
 				switch state {
@@ -121,7 +121,10 @@ func TestMemKeepShots(t *testing.T) {
 				case "3-saved":
 					app.S.Mem.Files = map[string]protocol.MemFileSaved{refs[0].ID: {URI: "nowledgemem://source/src_1", Rev: 1}}
 				case "4-failed":
-					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "signed_out"}}
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "unreachable", msg: "error sending request: connection refused (os error 61)"}}
+				case "4b-failed-words":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "no_space", msg: "Pass --space (or --parent) to choose where the folder goes."}}
+					app.open = map[string]bool{"mkraw:" + refs[0].ID: true}
 				}
 				tt := mediaTester(app, 1150, 1100)
 				tt.SetDark(dark)
@@ -130,7 +133,7 @@ func TestMemKeepShots(t *testing.T) {
 				name := "mac-" + string(lang) + "-" + state + "-1150-" + theme
 				save(tt.Image(), name)
 				// 2x crop: the first card and its line.
-				want := map[string]string{"1-can": L.T("memfile.save"), "2-saving": L.T("memfile.saving"), "3-saved": L.T("memfile.saved"), "4-failed": L.T("memfile.failed", L.T("memfile.why.signed_out"))}[state]
+				want := map[string]string{"1-can": L.T("memfile.save"), "2-saving": L.T("memfile.saving"), "3-saved": L.T("memfile.saved"), "4-failed": L.T("memfile.failed", L.T("memfile.why.unreachable")), "4b-failed-words": L.T("memfile.failed", L.T("memfile.why.no_space"))}[state]
 				line, ok := tt.Find(want)
 				head, ok2 := tt.Find("investigation.md")
 				if !ok || !ok2 {
@@ -140,15 +143,36 @@ func TestMemKeepShots(t *testing.T) {
 				r := image.Rect(int((line.X-40)*s), int((head.Y-150)*s), int((line.X+cardWidth+40)*s), int((line.Y+line.H+40)*s))
 				save(tt.Image().SubImage(r), name+"-crop")
 			}
-			// The viewer's row, with Save to Nowledge Mem in it.
-			app, _, refs := memKeepApp(t, lang)
-			tt := mediaTester(app, 1150, 860)
-			tt.SetDark(dark)
-			app.OpenFile(refs[0], ui.Rect{})
-			tt.Advance(time.Second)
-			tt.Frame()
-			tt.Frame()
-			save(tt.Image(), "mac-"+string(lang)+"-5-viewer-1150-"+theme)
+			// D572: the viewer's foot bar in each state, with a 2x crop of the bar.
+			for _, vs := range []string{"a-idle", "b-saving", "c-saved", "d-failed", "e-failed-words", "f-signed-out"} {
+				app, _, refs := memKeepApp(t, lang)
+				switch vs {
+				case "b-saving":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {saving: true}}
+				case "c-saved":
+					app.S.Mem.Files = map[string]protocol.MemFileSaved{refs[0].ID: {URI: "nowledgemem://source/src_1", Rev: 1}}
+				case "d-failed":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "no_space", msg: "Pass --space (or --parent) to choose where the folder goes."}}
+				case "e-failed-words":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "no_space", msg: "Pass --space (or --parent) to choose where the folder goes."}}
+					app.open = map[string]bool{"mkraw:" + refs[0].ID: true}
+				case "f-signed-out":
+					app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "signed_out", msg: "/sources returned 401: Invalid or missing API key."}}
+				}
+				tt := mediaTester(app, 1150, 860)
+				tt.SetDark(dark)
+				app.OpenFile(refs[0], ui.Rect{})
+				tt.Advance(time.Second)
+				tt.Frame()
+				tt.Frame()
+				name := "mac-" + string(lang) + "-5" + vs + "-viewer-1150-" + theme
+				save(tt.Image(), name)
+				if sv, ok := tt.Find(app.L.T("file.save")); ok {
+					s := float32(2)
+					r := image.Rect(int(135*s), int((sv.Y-120)*s), int(1015*s), int((sv.Y+sv.H+22)*s))
+					save(tt.Image().SubImage(r), name+"-crop")
+				}
+			}
 			// Settings › Memory, the row.
 			ma, _ := memApp(t, lang, "on")
 			ma.openTab(TabMemory)
@@ -165,5 +189,86 @@ func TestMemKeepShots(t *testing.T) {
 				save(mt.Image().SubImage(r), "mac-"+string(lang)+"-6-settings-1150-"+theme+"-crop")
 			}
 		}
+	}
+}
+
+// D572: the viewer's foot bar keeps one aligned row (来自… | 拷贝 | 存一份 |
+// 存到 Nowledge Mem); a failure is its own line above it, in plain words with
+// its fix, and Mem's own sentence only behind 原话 / Its words.
+func TestMemKeepViewerFailure(t *testing.T) {
+	const raw = "Pass --space (or --parent) to choose where the folder goes."
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, _, refs := memKeepApp(t, lang)
+		L := app.L
+		tt := mediaTester(app, 1150, 860)
+		app.OpenFile(refs[0], ui.Rect{})
+		tt.Advance(time.Second)
+		tt.Frame()
+		mem := spoken(L, L.T("memfile.save"), refs[0].Name)
+		pos := func(s string) ui.Rect {
+			r, ok := tt.Find(s)
+			if !ok {
+				t.Fatalf("%s: %q not in the viewer: %q", lang, s, tt.Texts())
+			}
+			return r
+		}
+		saveIdle := pos(L.T("file.save"))
+		// Save to Nowledge Mem under the card and in the bar share a name; the bar's is the last one drawn.
+		app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "gone"}} // the card shows its line, not a button
+		tt.Frame()
+		memIdle := pos(mem)
+		app.memKeep = nil
+		tt.Frame()
+		mid := func(r ui.Rect) float32 { return r.Y + r.H/2 }
+		if saveIdle.X+saveIdle.W > memIdle.X {
+			t.Fatalf("%s: Save to Nowledge Mem isn't last in the bar: %v %v", lang, saveIdle, memIdle)
+		}
+		if d := mid(memIdle) - mid(saveIdle); d > 1 || d < -1 {
+			t.Fatalf("%s: the bar's buttons don't share one line: %v vs %v", lang, memIdle, saveIdle)
+		}
+		app.Receive(protocol.ServerFrame{T: "mem_file_save", MemFile: &protocol.MemFileAnswer{Media: refs[0].ID, Why: "no_space", Message: raw}})
+		tt.Frame()
+		tt.Frame()
+		words := L.T("memfile.failed", L.T("memfile.why.no_space"))
+		if n := strings.Count(strings.Join(tt.Texts(), "\n"), words); n != 2 { // under the card, and above the viewer's bar
+			t.Fatalf("%s: the failure is said %d times, want the card's and the viewer's: %q", lang, n, tt.Texts())
+		}
+		if hasText(tt, raw) {
+			t.Fatalf("%s: Mem's raw sentence is shown without asking", lang)
+		}
+		// The bar didn't move: the same buttons at the same places.
+		if r := pos(L.T("file.save")); r != saveIdle {
+			t.Fatalf("%s: Save a copy moved when the failure showed: %v -> %v", lang, saveIdle, r)
+		}
+		if r := pos(mem); r != memIdle {
+			t.Fatalf("%s: Save to Nowledge Mem moved when the failure showed: %v -> %v", lang, memIdle, r)
+		}
+		// Its words, on demand.
+		app.open = map[string]bool{"mkraw:" + refs[0].ID: true}
+		tt.Frame()
+		if !hasText(tt, raw) {
+			t.Fatalf("%s: 原话 doesn't show Mem's sentence: %q", lang, tt.Texts())
+		}
+		if strings.Contains(words, raw) {
+			t.Fatalf("%s: Mem's words in the line itself", lang)
+		}
+	}
+}
+
+// D572: the failed state is in the needs-you ink, never the failed red; the
+// card's line has its words, its fix and 原话.
+func TestMemKeepTroubleInk(t *testing.T) {
+	app, _, refs := memKeepApp(t, i18n.ZH)
+	app.memKeep = map[string]*memKeepNow{refs[0].ID: {why: "unreachable", msg: "error sending request: connection refused"}}
+	src, err := os.ReadFile("memkeep.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "Failed.Ink") {
+		t.Fatal("memkeep.go still paints a failure in the failed ink")
+	}
+	tt := mediaTester(app, 1150, 900)
+	if !hasText(tt, app.L.T("memfile.failed", app.L.T("memfile.why.unreachable"))) || !hasText(tt, app.L.T("memfile.retry")) || !hasText(tt, app.L.T("memfile.raw")) {
+		t.Fatalf("the card's failed line lacks its words, fix or 原话: %q", tt.Texts())
 	}
 }

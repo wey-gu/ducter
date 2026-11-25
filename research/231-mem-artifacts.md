@@ -97,6 +97,22 @@ Tags: **VERIFIED** (seen in a real answer here), **DOCUMENTED** (help text or Me
 - Ducter's persona is bound to a Space only when the person's own `NMEM_SPACE` was (D141,
   `persona.mem.space`). D566 passes `--space` exactly then, else nothing: never a guessed Space.
 
+## 5b. Addendum 2026-11-25 (D572): a folder needs a Space; which Space Mem names
+
+- `folders mk` without `--space`/`--space-id`/`--parent` is refused: "Pass --space (or --parent)
+  to choose where the folder goes." VERIFIED (the author's tap on hel, 0.1.68; the sentence is also
+  a string in the 0.10.123 binary). §5's "without either, Mem's own default" holds for `add`, not
+  for a folder.
+- Mem's passive `bridge setup` (creates and selects nothing) lists the Spaces with `kind` and
+  `write_default`, and notes "A write that names no Space lands in write_default." VERIFIED on this
+  Mac (write default: the personal Space "Only me", one reader) and on hel as user w (write
+  default: Everyone, `all`, ten readers; the personal Space present, not the default). `spaces list`
+  carries no personal Space and no write-default mark; `team whoami` says `key_write_target: null`.
+  Recent artifacts on this account landed in the personal Space and in `all` (VERIFIED, `list`).
+- A folder's own type in the binary is LibraryFolder: `folder_id`, `space_id`, `parent_folder_id`,
+  `name`, `document_count`, … (INFERRED from its field names; `folders ls` returned none to see).
+- So Ducter names the persona's Space, else the personal Space, else the write default, by its id.
+
 ## Implications for Ducter
 
 1. **One artifact per file, a version per change.** Key a saved file by (its task, its name);

@@ -10098,6 +10098,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   box-shadow: 0 -1px 0 var(--line);
 }
 .fv-bar .grow { flex: 1; }
+.fv-bar .fv-acts { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .fv-bar .from {
   min-width: 0;
   max-width: 55%;
@@ -24711,14 +24712,42 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 }
 .fc-keep > .memkeep > .btn.text:first-child { margin-inline-start: -9px; }
 .memkeep .mk-done { color: var(--done-ink); font-weight: 600; }
-.memkeep .mk-fail { color: var(--failed-ink); text-wrap: pretty; }
 .fc-keep > .memkeep > .mk-done:first-child { padding-inline-start: 1px; }
 .memkeep .mk-open { font-size: var(--sm); }
 .fv-bar .memkeep { min-height: 0; animation: none; }
-.chat-row.mem-files.bad small { color: var(--failed-ink); }
+.chat-row.mem-files.bad small { color: var(--needs-ink); }
 @media (prefers-reduced-motion: reduce) {
   .memkeep { animation: none; }
 }
-/* D566: why it wasn't kept, then the one thing that fixes it, under it on the same edge. */
-.memkeep.is-failed { flex-direction: column; align-items: flex-start; padding-top: 4px; }
-.fc-keep > .memkeep.is-failed > .btn.text { margin-inline-start: -10px; margin-top: -2px; }
+/* D572: why it wasn't kept, as one line in the needs-you ink (never the failed red): the words, the
+   one fix, and Mem's own sentence only behind 原话 / Its words. Under a card on the card's edge; in
+   the viewer its own full-width line above the foot bar, on the bar's text edge. */
+.mk-trouble { display: flex; flex-direction: column; font-size: var(--sm); }
+.mk-trouble.memkeep { flex-wrap: nowrap; align-items: stretch; }
+/* The words and a wrapped button start on one edge: the line sits out by a button's padding. */
+.mk-line { display: flex; flex-wrap: wrap; align-items: center; min-height: 36px; margin-inline-start: -8px; }
+.mk-line .mk-fail { color: var(--needs-ink); font-weight: 600; text-wrap: pretty; min-width: 0; padding-inline: 8px 0; }
+.fc-keep > .mk-trouble .mk-fail { padding-inline-start: 9px; }
+.mk-line .btn.text.sm { padding-inline: 8px; color: var(--ink-soft); }
+.mk-line .btn.text.sm.mk-fix { color: var(--ink); }
+.mk-raw { margin: 0 0 var(--s2); padding-inline-start: 1px; color: var(--ink-muted); font-size: var(--xs); line-height: 1.5; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+.fv-trouble { flex: none; padding: 4px 20px 0; background: var(--surface); box-shadow: 0 -1px 0 var(--line); animation: pop-in var(--t-med) var(--spring); }
+.fv-trouble + .fv-bar { box-shadow: none; }
+.fv-trouble .mk-raw { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .fv-trouble { animation: none; }
+}
+/* D572: on a phone the bar's buttons get their own row, under 来自…: never squeezed to fragments. */
+@media (max-width: 560px) {
+  .fv-bar { flex-wrap: wrap; row-gap: 2px; }
+  .fv-bar .from { flex: 1 0 100%; max-width: 100%; height: 32px; }
+  .fv-bar .grow { display: none; }
+  /* The actions at the small size on their own row, right-aligned; never cut: at the narrowest
+     width in English, Save to Nowledge Mem goes to the next line on the same right edge. */
+  .fv-bar .fv-acts { flex: 1 0 100%; flex-wrap: wrap; justify-content: flex-end; gap: 2px var(--s1); }
+  .fv-acts > .btn { flex: none; height: max(36px, calc((1.2em + 20px) * var(--grow, 1))); padding: 0 10px; font-size: var(--sm); }
+  .fv-acts > .btn.secondary { padding: 0 14px; }
+}
+@media (max-width: 699px), (max-height: 639px) {
+  .fv-trouble { padding-inline: max(18px, calc(var(--safe-left) + 6px)) max(18px, calc(var(--safe-right) + 6px)); }
+}

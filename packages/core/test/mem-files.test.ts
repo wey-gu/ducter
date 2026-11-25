@@ -7,10 +7,12 @@ import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
 import { createMediaStore } from "../src/media.ts";
-import { artifactOf, confirmFrom, createMemFiles, currentOf, whyOf } from "../src/mem-files.ts";
+import { artifactOf, confirmFrom, createMemFiles, currentOf, spaceFrom, whyOf } from "../src/mem-files.ts";
 import { tempDir } from "./helpers.ts";
 
 const FAKE = join(import.meta.dir, "../../partner/eval/fake-artifacts-nmem.ts");
+/** The fake's personal Space (its "Only me"), as Mem's passive setup lists it. */
+const PERSONAL = "personal-00000000-0000-0000-0000-00000000fake";
 
 function seed(o: { space?: string; auto?: boolean; env?: Record<string, string> } = {}) {
   const t = tempDir();
@@ -66,8 +68,15 @@ test("a tap keeps the file in one 「Ducter」 folder; saving it again changes n
   const n = s.calls().length;
   expect((await s.mf.save(m.id)).ok).toBe(true);
   expect(s.calls().length).toBe(n);
-  // No --space: the persona is bound to none, so Mem's own default (never a guessed Space).
-  expect(s.calls().some((c) => c.includes("--space"))).toBe(false);
+  // D572: the persona is bound to none, so the Space Mem names: the person's personal one, by its
+  // exact id, for the folder and the file; never hel's write default (Everyone, ten readers).
+  const mk = s.calls().find((c) => c.includes("mk"))!;
+  expect(mk[mk.indexOf("--space-id") + 1]).toBe(PERSONAL);
+  const add = s.calls().find((c) => c.includes("add"))!;
+  expect(add[add.indexOf("--space-id") + 1]).toBe(PERSONAL);
+  expect(mem.docs[0]!.space_id).toBe(PERSONAL);
+  expect(s.calls().flat()).not.toContain("all");
+  expect(s.calls().some((c) => c.includes("--enable"))).toBe(false); // the setup read is passive
   // Never a delete, a move or a rename.
   expect(s.calls().some((c) => c.some((a) => ["delete", "move", "rename", "rm", "mv"].includes(a)))).toBe(false);
 });
@@ -121,7 +130,7 @@ test("in the persona's Space when it is bound to one", async () => {
 
 test("an existing top-level 「Ducter」 folder is used, not a second one", async () => {
   const s = seed();
-  writeFileSync(s.state, JSON.stringify({ docs: [], folders: [{ id: "fold_mine", name: "Ducter", parent_id: null, space_id: "default" }], seq: 0 }));
+  writeFileSync(s.state, JSON.stringify({ docs: [], folders: [{ id: "fold_mine", name: "Ducter", parent_id: null, space_id: PERSONAL }], seq: 0 }));
   const m = s.put("a.md", "a");
   await s.mf.save(m.id);
   expect(s.mem().folders).toHaveLength(1);
@@ -131,7 +140,7 @@ test("an existing top-level 「Ducter」 folder is used, not a second one", asyn
 test("why it wasn't kept, from Mem's own facts; the file stays", async () => {
   const signedOut = seed({ env: { NMEM_FAKE_SIGNED_OUT: "1" } });
   const a = signedOut.put("a.md", "a");
-  expect(await signedOut.mf.save(a.id)).toEqual({ ok: false, why: "signed_out" });
+  expect(await signedOut.mf.save(a.id)).toMatchObject({ ok: false, why: "signed_out" });
   expect(signedOut.media.path(a.id)).toBeTruthy();
   const down = seed({ env: { NMEM_FAKE_DOWN: "1" } });
   expect((await down.mf.save(down.put("b.md", "b").id)).ok).toBe(false);
@@ -222,4 +231,60 @@ test("a write Mem never lists is not called saved: said in Mem's words, logged",
   expect(s.mf.view()[m.id]).toBeUndefined();
   const b = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 })[0]!.body as Bodies["mem_file"];
   expect(b.ok).toBe(false);
+});
+
+// D572: the author's refusal on hel 0.1.68 (folders mk with no Space), and where a file goes now.
+test("the fake refuses D566's call exactly as hel's Mem did: a folder needs a Space", async () => {
+  const t = tempDir();
+  const p = Bun.spawn(["bun", FAKE, "--json", "artifacts", "folders", "mk", "Ducter", "--id", "11111111-1111-4111-8111-111111111111"], { stdout: "pipe", stderr: "pipe", env: { ...process.env, NMEM_FAKE_ARTIFACTS: join(t.dir, "m.json") } });
+  const [err, code] = await Promise.all([new Response(p.stderr).text(), p.exited]);
+  expect(code).not.toBe(0);
+  expect(err).toContain("Pass --space (or --parent) to choose where the folder goes.");
+});
+
+test("Mem marks no Space as theirs or as its default: not saved, said once as no_space, Mem's words kept for 原话, logged", async () => {
+  const s = seed({ env: { NMEM_FAKE_SPACES: "none" } });
+  const m = s.put("gtm-plan.md", "# GTM plan");
+  const r = await s.mf.save(m.id);
+  expect(r).toMatchObject({ ok: false, why: "no_space" });
+  if (!r.ok) expect(r.message).toContain("Pass --space");
+  expect(s.calls().some((c) => c.includes("add"))).toBe(false); // nothing written
+  // No Space picked for Mem: the folder names none, and Mem's own refusal is what is said.
+  expect(s.calls().find((c) => c.includes("mk"))!.some((a) => a.startsWith("--space"))).toBe(false);
+  if (!r.ok) expect(r.message).toBe("Pass --space (or --parent) to choose where the folder goes.");
+  const ev = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 });
+  expect(ev).toHaveLength(1);
+  expect(ev[0]!.body).toMatchObject({ op: "folder", ok: false, why: "no_space", name: "gtm-plan.md" });
+  expect(s.mf.view()[m.id]).toBeUndefined();
+});
+
+test("a folder Mem refuses is logged too (D566 logged writes only, so hel's Log held nothing)", async () => {
+  const s = seed({ env: { NMEM_FAKE_SIGNED_OUT: "1" } });
+  await s.mf.save(s.put("a.md", "a").id);
+  const b = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 })[0]!.body as Bodies["mem_file"];
+  expect(b).toMatchObject({ op: "folder", ok: false, why: "signed_out" });
+  expect(b.raw).toContain("401");
+});
+
+test("where Mem's personal Space is its write default (this Mac), and where Spaces are off", async () => {
+  const mac = seed({ env: { NMEM_FAKE_SPACES: "mac" } });
+  expect((await mac.mf.save(mac.put("a.md", "a").id)).ok).toBe(true);
+  expect(mac.mem().docs[0]!.space_id).toBe(PERSONAL);
+  const off = seed({ env: { NMEM_FAKE_SPACES: "off" } });
+  expect((await off.mf.save(off.put("b.md", "b").id)).ok).toBe(true);
+  expect(off.calls().some((c) => c.includes("--space") || c.includes("--space-id"))).toBe(false);
+  // The Space is read once a run, not before every file.
+  await mac.mf.save(mac.put("c.md", "c").id);
+  expect(mac.calls().filter((c) => c.includes("setup"))).toHaveLength(1);
+});
+
+test("Mem's Spaces, read: personal first, else its write default, else none", () => {
+  const c = (o: object) => JSON.stringify({ state: "selection_needed", candidates: [{ id: "all", kind: "commons", readers: 10, write_default: true }, o] });
+  expect(spaceFrom(c({ id: "personal-1", kind: "personal", readers: 1, write_default: false }))).toEqual({ id: "personal-1", kind: "personal" });
+  expect(spaceFrom(c({ id: "codex", kind: "team", write_default: false }))).toEqual({ id: "all", kind: "write_default" });
+  expect(spaceFrom(JSON.stringify({ candidates: [{ id: "codex", kind: "team", write_default: false }] }))).toBe("none");
+  expect(spaceFrom(JSON.stringify({ state: "candidates_unavailable", candidates: [] }))).toBe("off");
+  expect(spaceFrom("not json")).toBe("off");
+  expect(spaceFrom(JSON.stringify({ candidates: [{ id: "--space x", kind: "personal" }] }))).toBe("off"); // never an argument
+  expect(whyOf({ code: 1, out: "", err: "error: Pass --space (or --parent) to choose where the folder goes." })).toEqual({ why: "no_space", message: "Pass --space (or --parent) to choose where the folder goes." });
 });

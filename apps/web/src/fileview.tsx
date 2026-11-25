@@ -21,7 +21,7 @@ import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { title } from "./store.ts";
 import { Facts, IconBtn } from "./controls.tsx";
 import { FileBadge } from "./filecard.tsx";
-import { MemKeepAction } from "./mem-keep.tsx";
+import { MemKeepAction, MemKeepTrouble } from "./mem-keep.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -663,6 +663,8 @@ export function FileViewer() {
           {body}
           {got.state === "ready" && got.cut && <p class="fv-cut">{t("file.cut", sizeWords(FILE_VIEW_BYTES))}</p>}
         </div>
+        {/* D572: why it wasn't kept in Nowledge Mem, its own line above the bar (mem-keep.tsx). */}
+        <MemKeepTrouble m={m} />
         <footer class="fv-bar">
           {from && (
             <button type="button" class="from" onClick={() => ((A.fileView = undefined), A.go({ name: "task", id: from }))}>
@@ -670,23 +672,26 @@ export function FileViewer() {
             </button>
           )}
           <span class="grow" />
-          {text != null && (
-            <button type="button" class="btn text" onClick={() => void copy()}>
-              <span class="lbl">{copied ? t("media.copied") : t("media.copy")}</span>
-            </button>
-          )}
-          {asPdf && (
-            <button type="button" class="btn text" onClick={() => void saveCopy(asPdf)}>
-              <span class="lbl">{t("file.savePdf")}</span>
-            </button>
-          )}
-          {/* D566: keep it in the person's Nowledge Mem (mem-keep.tsx), beside Save a copy. */}
-          <MemKeepAction m={m} />
-          {kind !== "none" && !(kind === "pdf" && pdfFailed && !asPdf) && (
-            <button type="button" class="btn secondary" onClick={() => void saveCopy(m)}>
-              <span class="lbl">{t("file.save")}</span>
-            </button>
-          )}
+          {/* D572: the actions as one group: on a phone their own row, never split across two. */}
+          <span class="fv-acts">
+            {text != null && (
+              <button type="button" class="btn text" onClick={() => void copy()}>
+                <span class="lbl">{copied ? t("media.copied") : t("media.copy")}</span>
+              </button>
+            )}
+            {asPdf && (
+              <button type="button" class="btn text" onClick={() => void saveCopy(asPdf)}>
+                <span class="lbl">{t("file.savePdf")}</span>
+              </button>
+            )}
+            {kind !== "none" && !(kind === "pdf" && pdfFailed && !asPdf) && (
+              <button type="button" class="btn secondary" onClick={() => void saveCopy(m)}>
+                <span class="lbl">{t("file.save")}</span>
+              </button>
+            )}
+            {/* D566, D572: keep it in the person's Nowledge Mem (mem-keep.tsx), last in the row. */}
+            <MemKeepAction m={m} />
+          </span>
         </footer>
       </article>
     </div>

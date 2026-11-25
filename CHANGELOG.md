@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.70 - 2026-11-25
+
+<!-- whats-new
+zh: Slack 帖子里接着说不用再 @；聊天软件里开头写名字就换伙伴
+en: In a Slack thread, just keep talking; start with a name to switch partners
+-->
+
+**Chat apps**
+- In a Slack thread your partner answered, just keep talking: no @ needed. In a channel it still
+  answers only when you @ it, and in a direct message it hears everything. Slack needs a one-time
+  update for this; Settings › Chat apps shows the steps and a button that copies the new setup.
+- Talking to another partner in a chat app: start with its name, like "小玛, …". Ask to switch,
+  and your partner hands you over; the new partner answers in the same thread, in its own name.
+
 ## 0.1.69 - 2026-11-25
 
 <!-- whats-new

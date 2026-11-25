@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.79 - 2026-11-26
+
+<!-- whats-new
+zh: 设置更利落：伙伴一行一眼看完，改一下才展开
+en: Settings, tidier: each partner is one line until you choose Change
+-->
+
+**Settings**
+- Partners: each partner is one short row (its figure, name, what it looks after and what it
+  thinks with). Change opens its name, figure and colour right there, and OK folds it away.
+- The Overview no longer says it reads nothing while your accounts are still loading.
+- Memory's lists line up on one edge, and on a phone the Nowledge Mem card's links sit under their
+  words instead of squeezing them.
+
 ## 0.1.78 - 2026-11-26
 
 <!-- whats-new

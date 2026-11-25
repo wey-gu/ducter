@@ -148,7 +148,7 @@ func stillFaceAs(c *ui.Context, key, look string, p theme.Presence, size float32
 	bmp := theme.FaceAs(look, p, size*2)
 	return ui.Box(c.Key(key)).Size(size, size).Shrink(0).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
 		if bmp != nil {
-			pt.Image(bmp, fitIn(bmp, r), ui.Contain)
+			pt.Image(bmp, figureIn(bmp, r, look, fitIn(bmp, r)), ui.Contain)
 		}
 	})
 }

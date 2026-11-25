@@ -54,8 +54,14 @@ func (a *App) watching() bool {
 // presences (at once under reduced motion). No bouncing: it is company,
 // not a mascot.
 func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
-	label := a.L.T(presenceLabel[p], a.S.PersonaName)
-	if theme.Art(p, size*2) == nil {
+	a.avatarAs(c, theme.ShownWear(), a.S.PersonaName, p, size)
+}
+
+// avatarAs is avatar for a given partner: its figure in its clay, its name
+// in the label (D565: the Partner pane's head is the default partner's own).
+func (a *App) avatarAs(c *ui.Context, wear, who string, p theme.Presence, size float32) {
+	label := a.L.T(presenceLabel[p], who)
+	if theme.ArtAs(wear, p, size*2) == nil {
 		fs := map[theme.Presence]FaceState{theme.Working: FaceWorking, theme.NeedsYou: FaceNeedsYou}[p]
 		a.face(c, fs, size, label)
 		return
@@ -64,7 +70,7 @@ func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
 	box := ui.Box(c.Key("avatar")).Size(size, size).Role(ui.RoleImage).Label(label).Shrink(0)
 	box.Children(func() {
 		for _, q := range theme.Presences {
-			bmp := theme.Art(q, size*2)
+			bmp := theme.ArtAs(wear, q, size*2)
 			if bmp == nil {
 				continue
 			}
@@ -82,7 +88,9 @@ func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
 			// It breathes, and blinks while idle (D77).
 			var lids *blinkArt
 			if q == theme.Idle {
-				lids = squareBlink(size * 2)
+				if b := theme.ArtClosedAs(wear, size*2); b != nil {
+					lids = &blinkArt{closed: b, lids: theme.SquareLidsOf(wear)}
+				}
 			}
 			phase := phaseOf(fmt.Sprint("avatar", size))
 			ui.Box(c.Key(q)).Size(size, size).Absolute().Top(0).Left(0).Opacity(op).Draw(func(p *ui.Painter, r ui.Rect) {

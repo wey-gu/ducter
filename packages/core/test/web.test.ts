@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import { PARTNER_FIGURES, PARTNER_LOOKS } from "@ducter/protocol/src/partners.ts";
 
 const stops: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -73,7 +74,11 @@ describe("the phone/web client", () => {
     // Every piece of art the web client names is served (idle_closed.webp was a 404 on every load).
     const src = await Bun.file(new URL("../../../apps/web/src/views.tsx", import.meta.url)).text();
     const named = [...new Set([...src.matchAll(/app\/art\/([a-z_]+)\.webp/g)].map((m) => m[1]!))];
-    expect(named).toContain("idle_closed");
+    // D565: every pose of every figure, its blink, and the sprout's in every clay (partners.tsx figArt).
+    const poses = ["idle", "idle_closed", "working", "needsyou", "done", "napping", "waiting"];
+    named.push(...poses);
+    for (const f of PARTNER_FIGURES.filter((f) => f !== "pebble")) for (const p of poses) named.push(`fig/${f}_${p}`);
+    for (const l of PARTNER_LOOKS.filter((l) => l !== "sand")) for (const p of poses) named.push(`fig/sprout-${l}_${p}`);
     for (const n of named) expect([n, (await fetch(`${base}/app/art/${n}.webp`, { headers: REMOTE })).status]).toEqual([n, 200]);
     expect((await fetch(`${base}/app/../devices.db`, { headers: REMOTE })).status).not.toBe(200);
     expect((await fetch(`${base}/app/nope.js`, { headers: REMOTE })).status).toBe(404);

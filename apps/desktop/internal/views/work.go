@@ -142,7 +142,8 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 	if big {
 		h, gh, who = 40, 10, 36
 	}
-	face := theme.FaceAs(a.ownerLook(a.waitPartner(w)), theme.Waiting, who*2) // D546
+	wl := a.ownerLook(a.waitPartner(w))
+	face := theme.FaceAs(wl, theme.Waiting, who*2) // D546
 	ui.Box(c.Key("groove")).Height(h).Grow(1).MinWidth(80).Role(ui.RoleImage).Label(a.waitCaption(w)).Draw(func(p *ui.Painter, r ui.Rect) {
 		y := r.Y + h - gh - 4
 		w0 := r.W - 10
@@ -153,7 +154,8 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 		p.Fill(ui.Rect{X: r.X + w0 - end/2, Y: y + gh/2 - end/2, W: end, H: end}, t.Surface, end/2)
 		if face != nil {
 			x := r.X + w0*f - who/2
-			p.Image(face, ui.Rect{X: max(r.X-4, x), Y: y + gh - who, W: who, H: who}, ui.Contain)
+			fr := ui.Rect{X: max(r.X-4, x), Y: y + gh - who, W: who, H: who}
+			p.Image(face, figureIn(face, fr, wl, fitIn(face, fr)), ui.Contain)
 		}
 	})
 	if big {

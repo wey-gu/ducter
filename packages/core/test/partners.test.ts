@@ -66,9 +66,11 @@ test("a second partner is made with a name, a look and what it looks after, kept
   expect(partners.add({ name: " " })).toEqual({ ok: false, error: "empty" });
   expect(partners.add({ name: "DUCTER" })).toEqual({ ok: false, error: "taken" });
   const a = partners.add({ name: "小家" });
-  expect(a.ok && a.partner).toEqual({ id: "p2", name: "小家", look: "sage", asks: 0 });
+  // D565: a new partner arrives as the first figure nobody has, in that figure's own clay.
+  expect(a.ok && a.partner).toEqual({ id: "p2", name: "小家", look: "butter", figure: "bun", asks: 0 });
   const b = partners.add({ name: "Mia", look: "plum" });
   expect(b.ok && b.partner.look).toBe("plum");
+  expect(b.ok && b.partner.figure).toBe("sprout");
   expect(partners.add({ name: "Leo" }).ok).toBe(true);
   expect(partners.add({ name: "Ann" })).toEqual({ ok: false, error: "full" }); // four in all
   expect(partners.list().map((p) => p.name)).toEqual(["Ducter", "小家", "Mia", "Leo"]);
@@ -84,14 +86,23 @@ test("a second partner is made with a name, a look and what it looks after, kept
   persona.name = "Ada"; // a rename on Settings › 伙伴 shows at once
   expect(partners.get("default")).toMatchObject({ name: "Ada", look: "apricot" });
 
+  // D565: a figure is changed freely, the default's too; a pebble is kept as no figure; an unknown one is refused.
+  expect(partners.set("p3", { figure: "cube" }).ok && partners.get("p3")?.figure).toBe("cube");
+  expect(partners.set("p3", { figure: "sprout" }).ok).toBe(true);
+  expect(partners.set("p3", { figure: "star" })).toEqual({ ok: false, error: "unknown" });
+  expect(partners.set("default", { figure: "bean" }).ok && partners.get("default")?.figure).toBe("bean");
+  expect(partners.set("default", { figure: "pebble" }).ok && partners.get("default")?.figure).toBeUndefined();
+  expect(partners.get("default")?.look).toBe("apricot");
+
   // Read again from disk (a restart).
   const again = openPartners({ dataDir: dir, log, persona, on: true });
   expect(again.list().map((p) => [p.id, p.name, p.look])).toEqual([
     ["default", "Ada", "apricot"],
     ["p2", "Home", "sky"],
     ["p3", "Mia", "plum"],
-    ["p4", "Leo", "sky"], // the first look nobody had
+    ["p4", "Leo", "sky"], // the cloud's own clay, nobody had it
   ]);
+  expect(again.list().map((p) => p.figure ?? "pebble")).toEqual(["pebble", "bun", "sprout", "cloud"]);
   expect(again.nameOf("p3")).toBe("Mia");
   expect(again.nameOf(undefined)).toBe("Ada");
 

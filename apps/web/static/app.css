@@ -762,12 +762,14 @@ a {
   object-position: 50% 100%;
 }
 .avatar .idle {
-  aspect-ratio: 360 / 324;
+  aspect-ratio: 1;
 }
 .avatar .idle img {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
 }
 .breathe {
   transform-origin: 50% 100%;
@@ -14328,6 +14330,7 @@ button.chip-file {
 [data-look="sky"], :root[data-clay="sky"] { --clay: hue-rotate(175deg) saturate(0.85); }
 [data-look="plum"], :root[data-clay="plum"] { --clay: hue-rotate(255deg) saturate(0.7); }
 [data-look="apricot"], :root[data-clay="apricot"] { --clay: hue-rotate(-28deg) saturate(1); }
+[data-look="butter"], :root[data-clay="butter"] { --clay: hue-rotate(22deg) saturate(1); }
 [data-look="sand"] { --clay: none; }
 img[src$="art/idle.webp"], img[src$="art/idle_closed.webp"], img[src$="art/working.webp"], img[src$="art/needsyou.webp"],
 img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.webp"] { filter: var(--clay, none); }
@@ -14338,8 +14341,12 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   justify-content: center;
 }
 .stone img {
+  /* D565: every figure fitted into the same square, standing on its feet (a tall bean never overruns
+     its box); a figure's optical size then scales it about its feet (partners.tsx, FIGURE_OPTICAL). */
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
   pointer-events: none;
   filter: var(--clay, none);
 }
@@ -24581,4 +24588,104 @@ html.kb #app {
 }
 @media (prefers-reduced-motion: reduce) {
   .fc-sheet.in > * { animation: none; }
+}
+
+/* D565: a partner's figure, its shape beside its clay (design/personas.md "Figures"). The figures'
+   frames are tinted by --clay as the pebble's are; the sprout's come ready in each clay (its leaves
+   stay green), so no filter touches them. */
+img[src*="art/fig/"] { filter: var(--clay, none); }
+img[src*="art/fig/sprout"] { filter: none !important; }
+/* The six as a 3 × 2 grid above the colours, as on the Mac. */
+/* The shared choices' clay (D76, D161, .seg): a sunken track; the chosen one a white surface standing
+   on its 2-px base, its name in ink 700; the others muted. The same on the Mac (figurePick). */
+.fig-pick {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 4px;
+  padding: 4px;
+  width: max-content;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.partners-set .partner-row > .fig-pick,
+.partners-set .partner-row > .said-line { margin-inline-start: 52px; }
+.partners-set .partner-row > .said-line { padding: 0; }
+.fig-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 0 4px;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-muted);
+  font-size: var(--xs);
+  font-weight: 500;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.fig-chip .stone { width: 36px; height: 36px; }
+@media (hover: hover) { .fig-chip:not(.on):hover { background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink-soft); } }
+.fig-chip:not(.on):active { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.fig-chip.on { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); color: var(--ink); font-weight: 700; }
+.fig-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fig-name { line-height: 1.2; white-space: nowrap; }
+/* The meeting: the six on the paper, breathing and blinking out of step; the chosen raised, a tap
+   hops it forward; its name and air beneath. */
+.meet { display: flex; flex-direction: column; gap: var(--s2); }
+.meet-note { margin: 0; color: var(--ink-muted); }
+.meet-stage {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--s1);
+  padding: var(--s4) var(--s2) var(--s2);
+  border-radius: var(--r-md);
+  background: var(--sunken);
+}
+.meet-fig {
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: 44px;
+  min-height: 72px;
+  padding: 0;
+  background: none;
+  border-radius: var(--r-sm);
+  opacity: 0.8;
+  transition: opacity 220ms var(--ease);
+}
+.meet-fig.on { opacity: 1; }
+.meet-fig .stone { width: 52px; height: 52px; }
+.meet-fig .pl-face > span { display: inline-flex; transform-origin: 50% 100%; transition: transform 360ms var(--spring); }
+.meet-fig.on .pl-face > span { transform: translateY(-6px) scale(1.12); }
+.meet-fig .meet-hop { animation: meet-hop 620ms var(--ease) both; }
+.meet-fig:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@keyframes meet-hop {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-14px) scale(1.1, 1.06); }
+  55% { transform: translateY(-4px) scale(1.15, 1.06); }
+  75% { transform: translateY(-8px) scale(1.11, 1.13); }
+  100% { transform: translateY(-6px) scale(1.12); }
+}
+.meet-who { display: flex; align-items: baseline; justify-content: center; gap: var(--s2); margin: 0; min-height: 1.6em; animation: said-in var(--t-across) var(--ease-push); }
+.meet-who b { font-size: var(--md); color: var(--ink); }
+.meet-who span { font-size: var(--sm); color: var(--ink-soft); }
+@media (max-width: 420px) { .meet-fig .stone { width: 44px; height: 44px; } }
+/* The partner's word after its figure changed: said by it, in its new shape. */
+.said-line .said-face { width: 18px; height: 18px; animation: said-pop var(--t-pop) var(--spring); }
+/* On Go the one met walks into its conversation: in from the side with two small steps. */
+.avatar.walk-in { animation: walk-in 900ms var(--ease) both; }
+@keyframes walk-in {
+  0% { transform: translateX(-56px); opacity: 0; }
+  20% { opacity: 1; }
+  30% { transform: translateX(-38px) translateY(-4px); }
+  50% { transform: translateX(-20px) translateY(0); }
+  70% { transform: translateX(-6px) translateY(-4px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fig-chip, .meet-fig, .meet-fig .pl-face > span { transition: none; }
+  .meet-fig .meet-hop, .meet-who, .said-line .said-face, .avatar.walk-in { animation: none; }
 }

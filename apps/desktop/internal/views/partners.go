@@ -31,6 +31,15 @@ type partnersUI struct {
 	look    string
 	focused bool
 	cid     string
+	// D565: the figure being met, whether the person chose a colour
+	// themselves (then a figure no longer brings its own), and when the
+	// chosen one last hopped; and the one made here a moment ago, walking
+	// into its conversation.
+	figure  string
+	ownLook bool
+	hopAt   time.Time
+	meetID  string
+	meetAt  time.Time
 	// D486: the row being changed (its name and line), or asked about removing.
 	editing   string
 	editName  string
@@ -56,9 +65,18 @@ func (a *App) shownPartnerID() string {
 // figure is then the art as drawn, whatever look the default was given).
 func (a *App) shownLook() string {
 	if p := a.shownPartner(); p != nil {
-		return p.Look
+		return a.wearOf(p)
 	}
 	return ""
+}
+
+// wearOf is how a partner's figure is drawn (D565): its figure in its
+// clay, the token theme's art functions take (theme.Wear).
+func (a *App) wearOf(p *protocol.PartnerInfo) string {
+	if p == nil {
+		return ""
+	}
+	return theme.Wear(p.Look, p.Figure)
 }
 
 // shownPartner is the shown partner as the partners frame says it (nil with one).
@@ -117,10 +135,10 @@ func (a *App) ownerLook(persona string) string {
 		return ""
 	}
 	if p := a.partnerByID(persona); p != nil {
-		return p.Look
+		return a.wearOf(p)
 	}
 	if p := a.partnerByID(protocol.DefaultPartner); p != nil {
-		return p.Look
+		return a.wearOf(p)
 	}
 	return ""
 }
@@ -254,7 +272,7 @@ func (a *App) stone(c *ui.Context, key, look string, size float32) ui.Element {
 		}
 		at := fitIn(bmp, r)
 		at.Y = r.Y + r.H - at.H
-		pt.Image(bmp, at, ui.Contain)
+		pt.Image(bmp, figureIn(bmp, r, look, at), ui.Contain)
 	})
 	return box
 }
@@ -299,7 +317,7 @@ func (a *App) partnerMark(c *ui.Context, key, persona string) {
 		return
 	}
 	ui.Box(c.Key("mark:" + key)).Shrink(0).Role(ui.RoleImage).Label(p.Name).Tooltip(p.Name).Children(func() {
-		a.stone(c, "mark-"+key, p.Look, 18)
+		a.stone(c, "mark-"+key, a.wearOf(p), 18)
 	})
 }
 
@@ -319,7 +337,7 @@ func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
 	}
 	a.doorCard(c, row, "a:"+x.DecisionID) // D535
 	row.Children(func() {
-		a.stone(c, "oask-"+x.DecisionID, p.Look, 32)
+		a.stone(c, "oask-"+x.DecisionID, a.wearOf(p), 32)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 			uiText(c, a.L.T("partners.asks.from", p.Name)).FontSize(t.XS).TextColor(t.InkSoft)
 			uiText(c, x.Question).FontSize(14).TextColor(t.Ink).MaxLines(2)
@@ -352,7 +370,7 @@ func (a *App) passedLine(c *ui.Context, key, from string) {
 		}
 		b.Children(func() {
 			if p != nil {
-				a.stone(c, "passed-"+key, p.Look, 14)
+				a.stone(c, "passed-"+key, a.wearOf(p), 14)
 			}
 			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
@@ -378,7 +396,7 @@ func (a *App) partnerKeys(c *ui.Context) {
 
 // lookPick is the five clays (D497: the figure in each, not a swatch), the
 // chosen one ringed; it returns the one clicked or "".
-func (a *App) lookPick(c *ui.Context, key, value string) string {
+func (a *App) lookPick(c *ui.Context, key, value, figure string) string {
 	t := a.T
 	hit := ""
 	ui.Row(c.Key("looks:" + key)).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("partners.look")).Children(func() {
@@ -392,7 +410,7 @@ func (a *App) lookPick(c *ui.Context, key, value string) string {
 			} else if chip.Hovered() {
 				chip.Background(t.SurfaceSunken)
 			}
-			chip.Children(func() { a.stone(c, "lk-"+key+"-"+l, l, 24) })
+			chip.Children(func() { a.stone(c, "lk-"+key+"-"+l, theme.Wear(l, figure), 24) })
 			if chip.Clicked() {
 				hit = l
 			}
@@ -414,7 +432,20 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 	shown := a.shownPartnerID()
 	many := a.manyPartners()
 	if ans := a.S.PartnerAnswer; ans != nil && ans.ClientID == ps.cid && ps.cid != "" && ans.WbError == "" && ps.adding {
-		a.partner.toast, a.partner.toastAt, a.partner.toastTone = a.L.T("partners.added", strings.TrimSpace(ps.name)), a.Now(), noticeDone
+		// D565: the one just met walks into its own conversation and greets
+		// the person there by the name they gave it; no toast over it.
+		made := ""
+		for _, p := range a.S.Partners {
+			if p.ID != protocol.DefaultPartner && p.Name == strings.TrimSpace(ps.name) {
+				made = p.ID
+			}
+		}
+		if made != "" {
+			ps.meetID, ps.meetAt = made, a.Now()
+			a.SwitchPartner(made)
+		} else {
+			a.partner.toast, a.partner.toastAt, a.partner.toastTone = a.L.T("partners.added", strings.TrimSpace(ps.name)), a.Now(), noticeDone
+		}
 		ps.adding, ps.name, ps.about, ps.cid = false, "", "", ""
 	}
 	note := a.L.T("partners.say")
@@ -428,7 +459,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				id, p := p.ID, p
 				if ps.removing == id {
 					ui.Row(c.Key("partner-removing:"+id)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Role(ui.RoleGroup).Label(a.L.T("partners.remove.ask", p.Name)).Children(func() {
-						a.stone(c, "row-"+id, p.Look, 40)
+						a.stone(c, "row-"+id, a.wearOf(&p), 40)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 							uiText(c, a.L.T("partners.remove.ask", p.Name)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 							uiText(c, a.L.T("partners.remove.what", a.defaultName())).FontSize(t.SM).TextColor(t.InkMuted)
@@ -466,7 +497,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				// buttons the width and squeezed the words on a phone.
 				ui.Column(c.Key("partner-row:"+id)).Gap(t.S2).Padding(t.S3, t.S5).Children(func() {
 					ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
-						a.stone(c, "row-"+id, p.Look, 40)
+						a.stone(c, "row-"+id, a.wearOf(&p), 40)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 							if ps.editing == id {
 								// D536: the shared field, both at the control height (the line used
@@ -485,8 +516,16 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							}
 						})
 					})
-					ui.Column(c).Padding(0, 0, 0, 52).Children(func() {
-						if l := a.lookPick(c, id, p.Look); l != "" && l != p.Look {
+					// D565: its figure above its colours, free to change any
+					// time; it says one line in its new shape.
+					ui.Column(c).Gap(t.S2).Padding(0, 0, 0, 52).Children(func() {
+						was := firstNonEmpty(p.Figure, "pebble")
+						if f := a.figurePick(c, id, was, p.Look, false); f != "" && f != was {
+							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Figure: f})
+							a.sayAs("fig:"+id, a.L.T("said.figure", a.L.T("partners.figure."+f)), theme.Wear(p.Look, f))
+						}
+						a.saidLineAt(c, "fig:"+id, 0)
+						if l := a.lookPick(c, id, p.Look, p.Figure); l != "" && l != p.Look {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
 						}
 					})
@@ -520,17 +559,19 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 			// D500: the shared add row (a ＋, the title, one line of what for), as on the web.
 			if a.addRow(c, "partner-add", a.L.T("partners.add"), a.L.T("partners.add.help")) {
 				ps.adding, ps.name, ps.focused, ps.cid = true, "", false, ""
-				taken := map[string]bool{}
+				// D565: the first figure nobody has, in its own clay unless taken.
+				figs := map[string]bool{}
 				for _, p := range a.S.Partners {
-					taken[p.Look] = true
+					figs[firstNonEmpty(p.Figure, "pebble")] = true
 				}
-				ps.look = "sage"
-				for _, l := range protocol.PartnerLooks[1:] {
-					if !taken[l] {
-						ps.look = l
+				ps.figure, ps.ownLook, ps.hopAt = "bun", false, time.Time{}
+				for _, f := range protocol.PartnerFigures[1:] {
+					if !figs[f] {
+						ps.figure = f
 						break
 					}
 				}
+				ps.look = a.lookForFigure(ps.figure)
 			}
 			return
 		}
@@ -539,12 +580,12 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				return
 			}
 			ps.cid = fmt.Sprintf("pa-%d", time.Now().UnixNano())
-			a.send(protocol.PartnerAdd{T: "partner_add", Name: ps.name, Look: ps.look, About: strings.TrimSpace(ps.about), ClientID: ps.cid})
+			a.send(protocol.PartnerAdd{T: "partner_add", Name: ps.name, Look: ps.look, Figure: ps.figure, About: strings.TrimSpace(ps.about), ClientID: ps.cid})
 		}
 		a.sep(c)
 		ui.Column(c.Key("partner-add")).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
+			a.meetStage(c)
 			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-				a.stone(c, "add", ps.look, 48)
 				ui.Column(c).Grow(1).Gap(t.S1).Children(func() {
 					uiText(c, a.L.T("partners.add.name")).FontSize(t.SM).TextColor(t.InkMuted)
 					in := a.lineField(c, "partner-add", a.L.T("partners.add.name"), &ps.name, a.L.T("partners.add.placeholder"), false, add)
@@ -557,8 +598,8 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 			uiText(c, a.L.T("partners.about")).FontSize(t.SM).TextColor(t.InkMuted)
 			a.lineField(c, "partner-add-about", a.L.T("partners.about"), &ps.about, a.L.T("partners.about.placeholder"), false, add)
 			uiText(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
-			if l := a.lookPick(c, "add", ps.look); l != "" {
-				ps.look = l
+			if l := a.lookPick(c, "add", ps.look, ps.figure); l != "" {
+				ps.look, ps.ownLook = l, true
 			}
 			if ans := a.S.PartnerAnswer; ans != nil && ans.ClientID == ps.cid && ans.WbError != "" {
 				uiText(c, a.L.T("partners.error."+ans.WbError)).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleAlert)

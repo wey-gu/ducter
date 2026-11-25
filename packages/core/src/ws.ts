@@ -957,13 +957,13 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "partner_add": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look, ...(f.about !== undefined ? { about: f.about } : {}) });
+        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look, ...(f.figure !== undefined ? { figure: f.figure } : {}), ...(f.about !== undefined ? { about: f.about } : {}) });
         // A made one: every socket hears it (onChange); this one also gets its clientId back.
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_set": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}), ...(f.brain !== undefined ? { brain: f.brain } : {}) });
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.figure !== undefined ? { figure: f.figure } : {}), ...(f.about !== undefined ? { about: f.about } : {}), ...(f.brain !== undefined ? { brain: f.brain } : {}) });
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_remove": {

@@ -10,6 +10,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { autonym } from "@ducter/protocol/src/lang.ts";
 import { HOLD_TAP_MS, holdIntent, joinHeard, meterBars, readLang, smoothLevel, speakable, speechLocale, type HoldIntent, type VoiceWhere, type VoiceWhy } from "@ducter/protocol/src/voice.ts";
 import { A } from "./app.ts";
+import { figArt } from "./partners.tsx";
 import { Toggle } from "./controls.tsx";
 import { haptic, inApp } from "./native.ts";
 import { talk, talkIfAny } from "./talk.tsx";
@@ -451,7 +452,7 @@ function Meter() {
 function ListeningFace() {
   return (
     <span class="voice-face" aria-hidden="true">
-      <img src="app/art/idle.webp" alt="" draggable={false} />
+      <img src={figArt("idle", A.shownWear())} alt="" draggable={false} />
     </span>
   );
 }

@@ -144,7 +144,8 @@ func (a *App) partnerHero(c *ui.Context) {
 		}
 	}
 	ui.Row(c.Key("partner-hero")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-		a.avatar(c, shown, 64)
+		// D565: the pane is the default partner's: its own figure and clay, whoever is shown.
+		a.avatarAs(c, a.ownerLook(protocol.DefaultPartner), a.defaultName(), shown, 64)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 			a.partnerName(c)
 			uiText(c, line).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)

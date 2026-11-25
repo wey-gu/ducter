@@ -13,13 +13,14 @@ export const PARTNERS_MAX = 4;
  * never a colour: the character is the same clay figure, recoloured by LOOK_CLAY. "sand" is the
  * default partner's own, the orange Pebble clay it has always had.
  */
-export const PARTNER_LOOKS = ["sand", "sage", "sky", "plum", "apricot"] as const;
+export const PARTNER_LOOKS = ["sand", "sage", "sky", "plum", "apricot", "butter"] as const;
 export type PartnerLook = (typeof PARTNER_LOOKS)[number];
 
 /**
  * D497: how each look recolours the clay figure: a hue turn (degrees) and a saturation, applied as
  * CSS's `hue-rotate()` then `saturate()` (web app.css --clay) and the same sRGB matrices on the Mac
  * (theme.Tinted). The default's sand is the art as drawn. "apricot" keeps its id; it reads as coral.
+ * D565: "butter", the bun's suggested clay, a warm yellow.
  */
 export const LOOK_CLAY: Record<PartnerLook, { hue: number; sat: number }> = {
   sand: { hue: 0, sat: 1 },
@@ -27,13 +28,49 @@ export const LOOK_CLAY: Record<PartnerLook, { hue: number; sat: number }> = {
   sky: { hue: 175, sat: 0.85 },
   plum: { hue: 255, sat: 0.7 },
   apricot: { hue: -28, sat: 1 },
+  butter: { hue: 22, sat: 1 },
 };
+
+/**
+ * D565: a partner's figure, its shape, beside its look (its colour): the same clay family drawn as six
+ * characters (design/personas.md "Figures", research/230). A token name, never an asset path. Every
+ * figure can do the same things; only the shape and the eyes are its own, the states' faces are one
+ * spec. "pebble" is the default partner's, the figure Ducter has always had; a partner without one is
+ * a pebble, and a client that doesn't know a figure draws the pebble.
+ */
+export const PARTNER_FIGURES = ["pebble", "bun", "sprout", "cloud", "cube", "bean"] as const;
+export type PartnerFigure = (typeof PARTNER_FIGURES)[number];
+
+/** D565: each figure's suggested clay: the look it arrives in unless someone has it already. */
+export const FIGURE_LOOK: Record<PartnerFigure, PartnerLook> = {
+  pebble: "sand",
+  bun: "butter",
+  sprout: "apricot",
+  cloud: "sky",
+  cube: "plum",
+  bean: "sage",
+};
+
+export const isFigure = (v: unknown): v is PartnerFigure => typeof v === "string" && (PARTNER_FIGURES as readonly string[]).includes(v);
+
+/** D565: the figure a new partner gets unless the person picks one: the first nobody has (never the pebble). */
+export function nextFigure(taken: readonly PartnerFigure[]): PartnerFigure {
+  return PARTNER_FIGURES.find((f) => f !== "pebble" && !taken.includes(f)) ?? PARTNER_FIGURES[1];
+}
+
+/** D565: the look a figure arrives in: its own suggested clay unless taken, else the first look nobody has. */
+export function lookForFigure(figure: PartnerFigure, taken: readonly PartnerLook[]): PartnerLook {
+  const own = FIGURE_LOOK[figure];
+  return taken.includes(own) ? nextLook(taken) : own;
+}
 
 /** One partner as every client sees it. asks: its conversation's own open questions (not its tasks'). */
 export interface PartnerInfo {
   id: string;
   name: string;
   look: PartnerLook;
+  /** D565: its figure (its shape); absent: the pebble. */
+  figure?: PartnerFigure;
   /** Open questions in this partner's own conversation; its tasks' are On hand's (shared). */
   asks: number;
   /** D486: what it looks after, in the person's own words ("家里的事、看病、孩子"); absent: not said. */

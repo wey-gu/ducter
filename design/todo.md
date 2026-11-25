@@ -9,6 +9,22 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## The site, after D558 (`site.md`, research/227)
+
+- [ ] **A recorded live demo under the hero** (research/227 rec 3; needs its own D). The real web
+  client in a window on the landing, built with a demo flag; its connection to the home answered in
+  the browser from recorded frames, writes kept in memory, a reload starts over, "nothing here is
+  real". Four stories as tabs: a flaky test fixed with proof, ten tasks on hand, the morning note,
+  an errand to the checkout, recorded from the demo cores that already seed the client
+  (`apps/web/demo-site.ts`, `demo-onhand.ts`, `demo.ts`). **Size (INFERRED): about 4 to 6 days**:
+  an in-browser fake of the client's connection that replays recorded frames and answers taps
+  (2), recording and trimming the four stories (1), the frame on the page with tabs, lazy loading
+  under a size budget and a phone fallback to the still shots (1 to 2), shots and review at every
+  width (1). Trigger: the author's go; it matters most for the consumer and the fresh user, who
+  won't install to find out.
+- [ ] **Share from your phone, on iPhone.** When the share sheet ships (below), the landing's card
+  and the README's cell drop "on iPhone, coming soon", and `docs/pictures.md` says it works on both.
+
 ## The share sheet on TestFlight, after D553 (`design/release/ios.md` step 5)
 
 - [ ] **Turn the share extension on: after the portal step, the next release ships it automatically.**

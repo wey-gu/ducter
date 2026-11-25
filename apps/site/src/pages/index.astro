@@ -9,29 +9,78 @@ import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
 import Shot from "../components/Shot.astro";
 import { launchFilm, siteLinks } from "../lib/links";
-import { agentsToday, agentsTodayAnd } from "../lib/agents";
+import { agents, agentsToday, agentsTodayAnd } from "../lib/agents";
+import { homeFaq } from "../lib/faq";
 
-// D326, D414: the page answers a visitor's questions in their order: what is it (the line names
-// it: a personal AI for builders that runs their AI agents on their own computers or servers),
-// what does it do for what I build, what does it do for the rest of my day, will it bother me, does it work
-// with what I have, can I reach it, does it know me, can I trust it, is it mine. How it's built lives in the README ("Under the hood"), linked from the footer.
+// D326, D414, D558: the page answers a visitor's questions in their order: what will it do for me
+// (the two-beat promise, then D414's line naming it: a personal AI for builders, on their own
+// computers or servers), how does it go (one real example in three steps), what does it do for
+// what I build, is it for me (and what changes), what does it do for the rest of my day, what can
+// it reach, will it bother me, can I reach it, does it know me, can I trust it, is it mine, and
+// the questions people ask. How it's built lives in the README ("Under the hood"), linked from
+// the footer.
 const { facts, dl, gh } = await siteLinks();
 const film = launchFilm();
 const title = "Ducter: a personal AI for builders, running your AI agents on your own computers or servers";
 const description =
   "Ducter is a free, open-source personal AI for builders. It runs your AI agents (Claude Code, Codex and more) side by side on your own computers or servers, on the plans you already pay for, and you hear only what matters.";
 const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
-const ld = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Ducter",
-  applicationCategory: "LifestyleApplication",
-  operatingSystem: "macOS, Linux, iOS, iPadOS, Android",
-  description,
-  url: "https://ducter.ai",
-  license: "https://www.apache.org/licenses/LICENSE-2.0",
-  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-};
+const ld = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Ducter",
+    applicationCategory: "LifestyleApplication",
+    operatingSystem: "macOS, Linux, iOS, iPadOS, Android",
+    description,
+    url: "https://ducter.ai",
+    license: "https://www.apache.org/licenses/LICENSE-2.0",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: homeFaq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  },
+];
+
+// D558: who Ducter is for, in lines a visitor recognises themselves in, builder first.
+const forYou = [
+  "You run several Claude Code or Codex sessions and lose track of which one is waiting on you.",
+  "You want the work to carry on while your laptop sleeps, on a computer you own.",
+  "You already pay for an AI plan, and want no second bill and no new account.",
+  "You'd rather answer from your phone, or from the chat app you already use.",
+  "You'd like the same partner to watch your mail and calendar, and flag the one thing that can't wait.",
+  "You want to read every line of the software that holds your keys and your mail.",
+];
+
+// D558: the pain first, then what Ducter does about it. Every right-hand side is built today.
+const beforeWith = [
+  ["Ten terminal tabs, and no idea which one is waiting on you.", "One conversation. On hand shows every task, and what needs you comes to the top with what it would do."],
+  ["Your laptop closes, and the agent stops.", "Ducter can live on a server you own, and keeps working while your Mac sleeps."],
+  ["A question sits unanswered while you're away.", "Every question comes with the answer it would take. Go is one tap, from your phone."],
+  ["You explain your project again in every session.", "Your partner remembers, and you can see what it knows."],
+  ["“Done”, with nothing to show for it.", "Finished work comes with How I know: the tests that ran, the checks, the changes."],
+  ["The one mail that matters hides in your inbox.", "It reads the pile for you, and brings up that one with a next step."],
+];
+
+// D558: what it can reach and use, in the person's words, each with the clay object the app
+// draws for it and the page that says how. Only what is built; a part that isn't says so.
+type Reach = { art: (keyof typeof import("../art.json"))[]; title: string; text: string; href: string };
+const reach: Reach[] = [
+  { art: ["server_awake"], title: "Your computers and servers", text: "It lives on your Mac or a Linux server you own. Add a NAS, a cloud machine or another Mac with one line, and say where a task should run.", href: "/docs/add-a-computer" },
+  { art: ["coin_claude_code", "coin_codex", "coin_pi", "coin_deepseek_harness", "coin_antigravity"], title: "The AI agents you have", text: `${agentsTodayAnd}, signed in as you, on the plans you already pay for. ${agents.byName.join(" and ")} too, when you ask for it by name.`, href: "/docs/faq#which-ai-agents-does-it-work-with" },
+  { art: ["ab_web"], title: "A real browser", text: "Its own Chrome window, apart from yours. Watch it from your phone, and take a turn when a page needs you.", href: "/docs/devices#browsing-the-web" },
+  { art: ["ab_computer"], title: "Your Mac's apps", text: "It exports the Keynote deck or answers the mail in your Mac's own apps, in the background, with Stop in reach.", href: "/docs/devices#tasks-in-your-macs-apps" },
+  { art: ["ab_phone", "android"], title: "A phone of its own, or yours", text: "An Android phone that runs on your Mac, for things that only happen in an app. Or a task borrows your own Android phone for a while.", href: "/docs/devices#ducters-phone" },
+  { art: ["ab_call"], title: "Phone calls", text: "It rings a restaurant, a clinic or a shop for you, only after you tap Call.", href: "/docs/calls" },
+  { art: ["wait_mail", "routine_calendar"], title: "Your mail and calendar", text: "Say yes once, and it reads them for you. Sending, changing or answering anything waits for your Go.", href: "/docs/accounts" },
+  { art: ["set_chats"], title: "Your chat apps", text: "Talk to it from iMessage, WeChat, Telegram or Slack. It's the same conversation as in the app.", href: "/docs/chat-apps" },
+  { art: ["nowledge_mem"], title: "One memory, and your other agents", text: "With Nowledge Mem, it shares one memory with your other AI tools, and the agents you open yourself can hand it work.", href: "/docs/settings#talk-with-your-other-agents" },
+  { art: ["tablet"], title: "Small apps, from one sentence", text: "Ask for a trip expense tracker or a habit tracker, keep it on every device, and change it by asking.", href: "/docs/apps" },
+  { art: ["set_autofill"], title: "Errands, to the checkout", text: "It books and buys with your saved sign-ins and cards, filled in without being seen. Paying is your own tap.", href: "/docs/buying-and-booking" },
+  { art: ["phone"], title: "Share from your phone", text: "Send a page, a photo or a PDF to your partner from any app's Share. On Android today; on iPhone, coming soon.", href: "/docs/pictures#share-from-another-app" },
+];
 ---
 <!doctype html>
 <html lang="en">
@@ -45,11 +94,14 @@ const ld = {
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1>A personal AI for builders. <span class="line quiet">It runs your AI agents on your own computers or servers, and you hear only what matters.</span></h1>
-      <p class="lede">You talk to one partner, from your phone, your desk or the chat app you already use. When you build, it hands the work to as many AI agents as it needs ({agentsTodayAnd}), side by side on the plans you already pay for, and any task is yours to open and steer. Finished work comes back with how it was checked. In between it minds your mail and calendar, runs errands, and stays quiet until something needs you.</p>
+      <h1>Hand it ten things. Hear back only what needs you. <span class="line quiet">A personal AI for builders, on your own computers or servers.</span></h1>
+      <p class="lede lines">
+        <span>You talk to one partner, from your phone, your desk or the chat app you already use.</span>
+        <span>It hands the work to the AI agents you already pay for, like Claude Code or Codex, and brings it back with how it was checked.</span>
+      </p>
       <div class="cta-row">
         <a class="btn lg" href="/start">Get started</a>
-        <a class="btn secondary lg" href="#many">See what it does</a>
+        <a class="btn secondary lg" href="#how">See how it goes</a>
       </div>
       <p class="facts">Free and open source. It lives on your Mac or a server you own, and anything that spends your money or reaches other people waits for your OK.</p>
     </div>
@@ -61,12 +113,40 @@ const ld = {
   </div>
 </section>
 
+<!-- ============ HOW IT GOES: one real job, in three steps (D558) ============ -->
+<section class="sec how" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>How it goes.</h2>
+    </div>
+    <ol class="does how-steps">
+      <li class="card reveal">
+        <div class="card-art"><Art name="ducter_idle" alt="" sizes="120px" /></div>
+        <h3>You say it</h3>
+        <p class="eg">“Fix the flaky compaction test in HawDB, and tell me when it's done.”</p>
+        <p>Then three more things, one after another. No setup for each.</p>
+      </li>
+      <li class="card reveal">
+        <div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div>
+        <h3>It hands it off</h3>
+        <p>Each one becomes a task on Claude Code or Codex, signed in as you, on its own branch, on your Mac or your server. While they work, you hear nothing.</p>
+      </li>
+      <li class="card reveal">
+        <div class="card-art"><Art name="ducter_done" alt="" sizes="120px" /></div>
+        <h3>You decide</h3>
+        <p class="eg">“Fixed: 50 of 50 runs pass, and so do the 412 workspace tests.”</p>
+        <p>You read how it knows, and tap <b>Merge into main</b>. Or don't: nothing lands without you.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
 <!-- ============ MANY AT ONCE: the work half (D414) ============ -->
 <section class="sec deep" id="many">
   <div class="wrap">
     <div class="sec-head">
       <h2>For what you build: a whole team of AI agents.</h2>
-      <p class="lede">Hand it ten things before lunch. Each becomes a task with an AI agent of its own, running side by side on your computers or servers. You don't watch any of them: what needs you comes to the top with what it would do, and the rest stays quiet until it's done.</p>
+      <p class="lede">Each thing you hand it becomes a task with an AI agent of its own, running side by side on your computers or servers. You don't watch any of them: what needs you comes to the top with what it would do, and the rest stays quiet until it's done.</p>
     </div>
     <div class="wide-shot many-shot reveal">
       <Shot name="many" width={1920} height={1000} sizes="(min-width: 1180px) 1080px, 94vw"
@@ -74,14 +154,37 @@ const ld = {
     </div>
     <ul class="points three">
       <li><span><b>Open any task, any time.</b> See every step and every change, steer it in your own words, or hand it to another AI agent mid-way.</span></li>
-      <li><span><b>Every question comes with a default.</b> Go on all of them in one tap, or let the ones that can be undone go ahead on their own.</span></li>
+      <li><span><b>Every question comes with a default.</b> Tap Go on all of them at once, or let the ones that can be undone go ahead on their own.</span></li>
       <li><span><b>Your code stays as you left it.</b> Each coding task works in its own copy, on its own branch, and merging is always your call.</span></li>
     </ul>
   </div>
 </section>
 
+<!-- ============ IS IT FOR YOU: who, and what changes (D558) ============ -->
+<section class="sec" id="fit">
+  <div class="wrap fit">
+    <div>
+      <div class="sec-head">
+        <h2>Ducter is for you if</h2>
+      </div>
+      <ul class="checks">
+        {forYou.map((line) => <li><span class="ck" set:html={check} /><span>{line}</span></li>)}
+      </ul>
+    </div>
+    <div class="bw reveal">
+      <table>
+        <caption>Before Ducter, and with it</caption>
+        <thead><tr><th scope="col">Before</th><th scope="col">With Ducter</th></tr></thead>
+        <tbody>
+          {beforeWith.map(([before, withIt]) => <tr><td data-label="Before">{before}</td><td data-label="With Ducter">{withIt}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <!-- ============ WHAT IT DOES FOR YOU ============ -->
-<section class="sec" id="what">
+<section class="sec deep" id="what">
   <div class="wrap">
     <div class="sec-head">
       <h2>For the rest of your day: a partner that looks out for you.</h2>
@@ -110,33 +213,12 @@ const ld = {
   </div>
 </section>
 
-<!-- ============ IT ONLY ASKS WHEN IT MATTERS ============ -->
-<section class="sec deep" id="asks">
-  <div class="wrap split">
-    <div>
-      <div class="sec-head">
-        <h2>It only asks when it matters.</h2>
-      </div>
-      <p class="lede">No stream of pings, however many tasks are running. You hear back when something is done or a decision is yours to make, on whichever device is in your hand.</p>
-      <ul class="points">
-        <li><span><b>Go or Hold, in one tap.</b> Or reply in your own words.</span></li>
-        <li><span><b>Or don't answer at all.</b> If its suggestion can be undone, it goes ahead after 30 minutes. Anything else waits for you.</span></li>
-        <li><span><b>Quiet hours are quiet.</b> Your phone stays still from 23:00 to 08:00 unless you say otherwise.</span></li>
-      </ul>
-    </div>
-    <div class="phone-shot reveal">
-      <Shot name="onhand-phone" width={780} height={1688} sizes="(min-width: 980px) 320px, 72vw"
-        alt="On hand on a phone: 2 things need you. ducter.dev expires on Nov 16 and isn't renewed yet, I'll do it once you say so, with Reply, Hold and Go. You land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Reply, Hold and Go. Done today: Book Saturday dinner for four." />
-    </div>
-  </div>
-</section>
-
-<!-- ============ YOUR COMPUTERS, YOUR AI ============ -->
+<!-- ============ YOUR COMPUTERS, YOUR AI, AND WHAT IT CAN REACH (D558) ============ -->
 <section class="sec" id="devices">
   <div class="wrap">
     <div class="sec-head">
-      <h2>On your computers, with the AI you already pay for.</h2>
-      <p class="lede">Ducter lives on your Mac or on a server you own. Its work runs there too, signed in to your own AI agent, on the plan you already have. There's no Ducter account to make and nothing to pay us.</p>
+      <h2>On your computers, and as far as you let it reach.</h2>
+      <p class="lede">Ducter lives on your Mac or on a server you own, and works through the AI agents you are already signed in to. There is no Ducter account to make and nothing to pay us. From there it can reach a browser, your Mac's apps, a phone, your mail and your chat apps, each one only once you say so.</p>
     </div>
 
     <div class="stage-wrap reveal">
@@ -158,16 +240,46 @@ const ld = {
       </div>
     </div>
 
-    <ul class="points three">
-      <li><span><b>Use the AI you have.</b> {agentsToday}, signed in as you. Switch for any job.</span></li>
-      <li><span><b>Lend it more computers.</b> A server keeps working while your laptop sleeps.</span></li>
-      <li><span><b>Lend it your Android phone.</b> A task can borrow an app on it for a while, and you can stop it any time.</span></li>
-    </ul>
+    <div class="reach" id="reach">
+      <h3>Everything it can reach</h3>
+      <ul class="reach-grid">
+        {reach.map((r) => (
+          <li>
+            <a class="reach-card" href={r.href}>
+              <span class={`reach-art${r.art.length > 2 ? " coins" : ""}`}>{r.art.map((n) => <Art name={n} alt="" sizes={r.art.length > 2 ? "40px" : "72px"} />)}</span>
+              <b>{r.title}</b>
+              <span class="reach-text">{r.text}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IT ONLY ASKS WHEN IT MATTERS ============ -->
+<section class="sec deep" id="asks">
+  <div class="wrap split">
+    <div>
+      <div class="sec-head">
+        <h2>It only asks when it matters.</h2>
+      </div>
+      <p class="lede">No stream of pings, however many tasks are running. You hear back when something is done or a decision is yours to make, on whichever device is in your hand.</p>
+      <ul class="points">
+        <li><span><b>Go or Hold, in one tap.</b> Or reply in your own words.</span></li>
+        <li><span><b>Or don't answer at all.</b> If its suggestion can be undone, it goes ahead after 30 minutes. Anything else waits for you.</span></li>
+        <li><span><b>Quiet hours are quiet.</b> Your phone stays still from 23:00 to 08:00 unless you say otherwise.</span></li>
+      </ul>
+    </div>
+    <div class="phone-shot reveal">
+      <Shot name="onhand-phone" width={780} height={1688} sizes="(min-width: 980px) 320px, 72vw"
+        alt="On hand on a phone: 2 things need you. ducter.dev expires on Nov 16 and isn't renewed yet, I'll do it once you say so, with Reply, Hold and Go. You land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Reply, Hold and Go. Done today: Book Saturday dinner for four." />
+    </div>
   </div>
 </section>
 
 <!-- ============ REACH IT ANYWHERE ============ -->
-<section class="sec deep" id="where">
+<section class="sec" id="where">
   <div class="wrap">
     <div class="sec-head">
       <h2>Reach it from anywhere.</h2>
@@ -216,7 +328,7 @@ const ld = {
 </section>
 
 <!-- ============ IT REMEMBERS YOU ============ -->
-<section class="sec" id="memory">
+<section class="sec deep" id="memory">
   <div class="wrap split flip">
     <div>
       <div class="sec-head">
@@ -260,7 +372,7 @@ const ld = {
 </section>
 
 <!-- ============ OPEN AND YOURS ============ -->
-<section class="sec deep" id="open">
+<section class="sec" id="open">
   <div class="wrap">
     <div class="sec-head">
       <h2>Open source, and yours.</h2>
@@ -281,6 +393,27 @@ const ld = {
         <a class="btn secondary lg" href="/download">Every download</a>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ============ QUESTIONS (D558; the same words are the page's FAQPage data) ============ -->
+<section class="sec deep" id="faq">
+  <div class="wrap faq">
+    <div class="sec-head">
+      <h2>Questions people ask.</h2>
+    </div>
+    <div class="faq-list">
+      {homeFaq.map((f) => (
+        <details class="fold">
+          <summary><span class="fold-q">{f.q}</span></summary>
+          <div class="fold-body">
+            <p>{f.a}</p>
+            <a class="fold-more" href={f.more.href}>{f.more.label}</a>
+          </div>
+        </details>
+      ))}
+    </div>
+    <p class="body more">More in <a href="/docs/faq">Questions people ask</a>, and the whole picture in <a href="/docs/concepts">How Ducter fits together</a>.</p>
   </div>
 </section>
 

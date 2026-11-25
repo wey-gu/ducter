@@ -52,8 +52,17 @@ const jobs = [
   ["coin_codex", clay("coin_codex"), [96, 192]],
   ["coin_pi", clay("coin_pi"), [96, 192]],
   ["coin_deepseek_harness", clay("coin_deepseek_harness"), [96, 192]],
+  ["coin_antigravity", clay("coin_antigravity"), [96, 192]],
   // What a wait waits for (On hand): a cloud for a CI run.
   ["wait_ci", clay("wait_ci"), [64, 128]],
+  // What it can reach (D558): the objects the app already draws for each kind of thing.
+  ["wait_mail", clay("wait_mail"), [128, 256]],
+  ["routine_calendar", clay("routine_calendar"), [128, 256]],
+  ["set_chats", clay("set_chats"), [128, 256]],
+  ["set_autofill", clay("set_autofill"), [128, 256]],
+  ["tablet", clay("tablet"), [128, 256]],
+  // Nowledge Mem's own mark, as the app shows it beside memory (a brand tile, kept square).
+  ["nowledge_mem", resolve(repo, "apps/desktop/internal/theme/art/brand/nowledge_mem.png"), [64, 128], { trim: false }],
 ];
 
 const manifest = {};

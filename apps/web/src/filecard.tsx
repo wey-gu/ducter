@@ -9,6 +9,7 @@ import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Facts } from "./controls.tsx";
+import { keepClauses } from "./format.ts";
 import { hlLines } from "./hl.ts";
 import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { openFile, readHead } from "./fileview.tsx";
@@ -251,7 +252,7 @@ function DocGlimpse({ g }: { g?: Glimpse }) {
       <div class={`fc-sheet${d ? " in" : ""}`}>
         {d ? (
           <>
-            {d.title && <span class="fc-dt">{d.title}</span>}
+            {d.title && <span class="fc-dt">{keepClauses(d.title)}</span>}
             {d.lines.map((l, i) => (
               <span key={i} class="fc-dl">
                 {l}

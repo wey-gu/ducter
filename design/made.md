@@ -96,8 +96,8 @@ library (its Artifacts), where every agent that reads their Mem finds it. Eviden
 - **Where.** One 「Ducter」 folder at the root of a Space Mem names (D572, D575): the persona's own,
   else the person's personal Space (only them; Mem's own write target when it is `personal_zone`),
   else Mem's write target, but never silently into a Space others read: the first save asks once,
-  **Nowledge Mem 会把它放进「{Space}」，{n} 个人看得到。/ Nowledge Mem would put it in “{Space}”,
-  where {n} people can read it.** with **只给我看 / Only me** (first, the default) and **放进「{Space}」/
+  **Nowledge Mem 会放进「{Space}」，{n} 人能看到。/ Nowledge Mem would put it in “{Space}”, seen
+  by {n} people.** with **只给我看 / Only me** (first, the default) and **放进「{Space}」/
   Put it in “{Space}”**; never one Ducter picks.
 - **By itself.** Settings › 记忆: **做好的文件也存进 Nowledge Mem / Also keep files I make in
   Nowledge Mem**, off by default: a done report's documents only, never a log, code, a screenshot

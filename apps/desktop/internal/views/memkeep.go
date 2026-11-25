@@ -236,9 +236,9 @@ func (a *App) sharedWords(s *protocol.MemFileShared) string {
 		key += ".only"
 	}
 	if s.Readers <= 0 {
-		return a.L.T(key+".some", s.Label)
+		return keepClauses(a.L.T(key+".some", s.Label))
 	}
-	return a.L.T(key, s.Label, strconv.Itoa(s.Readers))
+	return keepClauses(a.L.T(key, s.Label, strconv.Itoa(s.Readers)))
 }
 
 // memKeepAsk (D575) is the question asked once when Mem's only write target

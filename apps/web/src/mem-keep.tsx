@@ -16,6 +16,7 @@
 import { useState } from "preact/hooks";
 import { memKeeps, type MediaRef, type MemFileShared, type MemFileWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
+import { keepClauses } from "./format.ts";
 import { Btn, TextLink } from "./controls.tsx";
 import { keepInMem, keepNow, memKeepReady, memKeepWire } from "./mem-keep-state.ts";
 
@@ -47,7 +48,7 @@ function Fix({ m, why }: { m: MediaRef; why: MemFileWhy }) {
 /** D575: where Mem would put it and who reads it, in one sentence. */
 export function sharedWords(s: MemFileShared): string {
   const key = `memfile.shared${s.personal ? "" : ".only"}${s.readers ? "" : ".some"}`;
-  return s.readers ? t(key, s.label, String(s.readers)) : t(key, s.label);
+  return keepClauses(s.readers ? t(key, s.label, String(s.readers)) : t(key, s.label));
 }
 
 /** D575: the question asked once: the person's own Space (the default) or the shared one. */

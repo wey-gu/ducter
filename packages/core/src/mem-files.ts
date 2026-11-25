@@ -21,7 +21,7 @@
 // Never `delete`, `move` or a folder rename: Ducter only adds and updates what it saved.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileFamily, memAutoKeeps, memKeeps, secretFileName, type Bodies, type LogEvent, type MediaRef, type MemFileSaved, type MemFileWhy } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import { nmemEnv } from "@ducter/protocol/src/tool-env.ts";
@@ -140,6 +140,36 @@ export function currentOf(text: string): number | undefined {
   const m = /revision (\d+) is now current|(\d+) is now current, not \d+/i.exec(text);
   const n = Number(m?.[1] ?? m?.[2]);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * The read-back (D566 rev.): what `artifacts list --json` (a VERIFIED shape, research/231 §2) says of
+ * the file just written. By its artifact when the write named one (any of its versions), else by
+ * the 「Ducter」 folder and the file's exact name, newest first; with the file's sha256, only the
+ * version holding these bytes. Undefined: Mem doesn't show it, so it isn't called saved.
+ */
+export function confirmFrom(out: string, want: { doc?: string; folder?: string; name: string; sha256?: string }): { doc: string; rev: number } | undefined {
+  let j: any;
+  try {
+    j = JSON.parse(out);
+  } catch {
+    return undefined;
+  }
+  const items: any[] = Array.isArray(j?.sources) ? j.sources : Array.isArray(j) ? j : [];
+  const SAFE = /^[A-Za-z0-9_-]{1,80}$/;
+  const docOf = (x: any) => (typeof x?.document_id === "string" ? x.document_id : typeof x?.id === "string" ? x.id : "");
+  const fits = items.filter((x) => {
+    if (!x || typeof x !== "object" || !SAFE.test(docOf(x))) return false;
+    if (want.doc) {
+      if (docOf(x) !== want.doc && x.id !== want.doc) return false;
+    } else if (x.original_name !== want.name || (want.folder !== undefined && x.folder_id !== want.folder)) return false;
+    return !want.sha256 || x.sha256 === want.sha256;
+  });
+  const when = (x: any) => Date.parse(x.updated_at ?? x.created_at ?? "") || 0;
+  const best = fits.sort((a, b) => (Number(b.revision) || 0) - (Number(a.revision) || 0) || when(b) - when(a))[0];
+  if (!best) return undefined;
+  const rev = Number(best.revision ?? best.latest_revision ?? 1);
+  return { doc: docOf(best), rev: Number.isFinite(rev) && rev > 0 ? Math.floor(rev) : 1 };
 }
 
 const NOT_FOUND = /not found|no such|404|doesn't exist|does not exist|deleted/i;
@@ -278,6 +308,37 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
       d.changed();
       return { ok: true, saved };
     };
+    const sha = createHash("sha256").update(readFileSync(path)).digest("hex");
+    /** The raw answer of a write, for the Log (Mem's metadata only, never the file's contents). */
+    const note = (op: "add" | "update", r: Awaited<ReturnType<Run>>, res: MemFileResult) =>
+      d.log.append({
+        stream: "mem",
+        origin: "system",
+        kind: "mem_file",
+        body: {
+          media: id,
+          name: m.name ?? "",
+          by,
+          op,
+          ok: res.ok,
+          ...(res.ok ? { uri: res.saved.uri, rev: res.saved.rev } : { why: res.why, ...(res.message ? { message: res.message } : {}) }),
+          ...("missing" in r ? { raw: "(no nmem)" } : { code: r.code, raw: clip(`${r.out}\n${r.err}`, 2000) }),
+        },
+      });
+    /** Saved only once Mem's own list shows it (the write's answer is a hint at most). */
+    const confirmed = async (op: "add" | "update", r: { code: number; out: string; err: string }, want: { doc?: string; folder?: string }): Promise<MemFileResult> => {
+      const hint = artifactOf(r.out);
+      const doc = want.doc ?? hint?.doc;
+      let got: { doc: string; rev: number } | undefined;
+      for (let i = 0; i < 2 && !got; i++) {
+        if (i) await Bun.sleep(1500); // Mem may list it a moment later
+        const l = await run(["artifacts", "list", "-n", "50", ...spaceArgs()], 30_000);
+        if (!("missing" in l) && l.code === 0) got = confirmFrom(l.out, { ...(doc ? { doc } : { folder: want.folder }), name: m.name ?? "", sha256: sha });
+      }
+      const res: MemFileResult = got ? done(got.doc, got.rev) : { ok: false, why: "refused", message: memWords(r.err || r.out) || "Nowledge Mem didn't list the file after saving it" };
+      note(op, r, res);
+      return res;
+    };
     if (prev && (prev.space ?? "") === (sp ?? "")) {
       const update = (base: number) => run(["artifacts", "update", prev.doc, "--base", String(base), "--file", path, ...spaceArgs()], MEM_FILE_MS);
       let r = await update(prev.rev);
@@ -288,12 +349,13 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
         const cur = currentOf(`${r.err}\n${r.out}`) ?? (await latestOf(prev.doc));
         if (cur) r = await update(cur);
       }
-      if (!("missing" in r) && r.code === 0) {
-        const a = artifactOf(r.out);
-        return done(prev.doc, a?.rev ?? prev.rev + 1);
-      }
+      if (!("missing" in r) && r.code === 0) return confirmed("update", r, { doc: prev.doc });
       // Gone from Mem (deleted there): a new artifact, below. Anything else: said as Mem said it.
-      if ("missing" in r || !NOT_FOUND.test(`${r.err}\n${r.out}`)) return { ok: false, ...whyOf(r) };
+      if ("missing" in r || !NOT_FOUND.test(`${r.err}\n${r.out}`)) {
+        const res: MemFileResult = { ok: false, ...whyOf(r) };
+        note("update", r, res);
+        return res;
+      }
     }
     const f = await folder();
     if ("fail" in f) return { ok: false, ...whyOf(f.fail) };
@@ -305,17 +367,16 @@ export function createMemFiles(d: MemFilesDeps): MemFiles {
         const g = await folder();
         if ("fail" in g) return { ok: false, ...whyOf(g.fail) };
         const again = await run(["artifacts", "add", path, "--folder", g.id, "-l", "ducter", "-c", comment(m), ...spaceArgs()], MEM_FILE_MS);
-        if (!("missing" in again) && again.code === 0) {
-          const a = artifactOf(again.out);
-          if (a) return done(a.doc, a.rev);
-        }
-        return { ok: false, ...whyOf(again) };
+        if (!("missing" in again) && again.code === 0) return confirmed("add", again, { folder: g.id });
+        const res: MemFileResult = { ok: false, ...whyOf(again) };
+        note("add", again, res);
+        return res;
       }
-      return { ok: false, ...whyOf(add) };
+      const res: MemFileResult = { ok: false, ...whyOf(add) };
+      note("add", add, res);
+      return res;
     }
-    const a = artifactOf(add.out);
-    if (!a) return { ok: false, why: "refused", message: "Nowledge Mem's answer named no artifact" };
-    return done(a.doc, a.rev);
+    return confirmed("add", add, { folder: f.id });
   };
 
   const latestOf = async (doc: string): Promise<number | undefined> => {

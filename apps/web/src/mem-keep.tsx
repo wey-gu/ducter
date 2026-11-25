@@ -2,7 +2,8 @@
 // One quiet line under the card, never inside it (the whole card opens the file):
 //   can save   Save to Nowledge Mem (a text button)
 //   saving     the same button busy: Saving to Nowledge Mem…
-//   saved      In Nowledge Mem, and Open Nowledge Mem where Mem is the person's Cloud
+//   saved      已存进 Nowledge Mem / In Nowledge Mem, then 去看 / Open (Mem on the web, where the
+//              person's Mem is its Cloud): two elements, never one joined line (D291)
 //   failed     Not saved: {Mem's reason}, with the one thing that fixes it (Try again, or Sign in)
 // Shown only for a file Mem reads (memKeeps) while Mem is connected and signed in; a file already
 // kept says so whatever Mem's state is now. Shared controls only (Btn, TextLink).
@@ -42,7 +43,7 @@ export function MemKeep({ m }: { m: MediaRef }) {
       {look === "saved" && (
         <>
           <span class="mk-done">{t("memfile.saved")}</span>
-          {saved?.web && <TextLink class="mk-open" href={saved.web} label={t("memfile.openWeb")} />}
+          {saved?.web && <TextLink class="mk-open" href={saved.web} label={t("memfile.open")} about={t("memfile.saved")} />}
         </>
       )}
       {look === "failed" && n?.state === "failed" && (

@@ -817,6 +817,10 @@ a report is a document to find and read, not a fact to recall. `packages/core/sr
   Settings default (off): a **done** report's reports and documents (`memAutoKeeps`).
 - **Never.** A file the shared secret detector finds a key in, or one named like a secrets file
   (`secretFileName`): not by itself, not on a tap.
+- **Saved only when Mem shows it.** After a write, `artifacts list --json` (a VERIFIED shape) must
+  show the file (its artifact, else the 「Ducter」 folder and its exact name, with these bytes);
+  else it isn't called saved. Each write's raw answer is logged as `mem_file` (stream `mem`; Mem's
+  metadata only) until the real shape is known.
 - **Honest.** Why not comes from Mem (D563): off, missing, signed out, unreachable, Mem's own
   words; the Settings row says the last one the default couldn't keep, once.
 - **Provenance.** Mem's artifacts carry no AI Identity or source app: the `ducter` label and the

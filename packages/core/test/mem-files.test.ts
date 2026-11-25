@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
 import { createMediaStore } from "../src/media.ts";
-import { artifactOf, createMemFiles, currentOf, whyOf } from "../src/mem-files.ts";
+import { artifactOf, confirmFrom, createMemFiles, currentOf, whyOf } from "../src/mem-files.ts";
 import { tempDir } from "./helpers.ts";
 
 const FAKE = join(import.meta.dir, "../../partner/eval/fake-artifacts-nmem.ts");
@@ -181,4 +181,45 @@ test("Mem's answers, read: add and update shapes, the stale refusal, the reasons
   expect(whyOf({ missing: true })).toEqual({ why: "missing" });
   expect(whyOf({ code: 1, out: "", err: "error: /sources returned 401: Invalid API key" }).why).toBe("signed_out");
   expect(whyOf({ code: 1, out: "", err: "error: /sources/ingest/file returned 413: file exceeds the upload limit (Request ID: x)" })).toEqual({ why: "refused", message: "file exceeds the upload limit" });
+});
+
+// D566 (rev.): saved only once Mem's own list shows it; the write's raw answer is in the Log.
+test("the read-back reads the VERIFIED list shape: by artifact, else by folder and name, these bytes", () => {
+  const fixture = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/mem-artifacts.json"), "utf8"));
+  const src = fixture.list.sources[0];
+  const out = JSON.stringify(fixture.list);
+  expect(confirmFrom(out, { doc: "src_0a1b2c3d4e5f", name: "kyoto-3-days.md" })).toEqual({ doc: "src_0a1b2c3d4e5f", rev: 1 });
+  expect(confirmFrom(out, { folder: null as never, name: "kyoto-3-days.md", sha256: src.sha256 })).toEqual({ doc: "src_0a1b2c3d4e5f", rev: 1 });
+  expect(confirmFrom(out, { folder: "fold_ducter", name: "kyoto-3-days.md" })).toBeUndefined(); // not in the Ducter folder
+  expect(confirmFrom(out, { name: "kyoto-3-days.md", sha256: "f".repeat(64) })).toBeUndefined(); // other bytes
+  expect(confirmFrom(out, { name: "something-else.md" })).toBeUndefined();
+  // Newest first among two versions listed.
+  const two = JSON.stringify({ sources: [{ ...src, revision: 1 }, { ...src, id: "src_0a1b2c3d4e5f_r2", revision: 2, updated_at: "2026-11-25T08:00:00+00:00" }] });
+  expect(confirmFrom(two, { doc: "src_0a1b2c3d4e5f", name: "kyoto-3-days.md" })).toEqual({ doc: "src_0a1b2c3d4e5f", rev: 2 });
+  expect(confirmFrom("not json", { name: "x" })).toBeUndefined();
+});
+
+test("an answer Ducter can't parse still saves once Mem lists the file; the raw answer goes to the Log", async () => {
+  const s = seed({ env: { NMEM_FAKE_BARE: "1" } });
+  const m = s.put("trip.md", "# Trip");
+  const r = await s.mf.save(m.id);
+  expect(r.ok).toBe(true);
+  if (r.ok) expect(r.saved.uri).toBe(`nowledgemem://source/${s.mem().docs[0]!.id}`);
+  const ev = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 });
+  expect(ev).toHaveLength(1);
+  const b = ev[0]!.body as Bodies["mem_file"];
+  expect(b).toMatchObject({ op: "add", ok: true, by: "tap", name: "trip.md" });
+  expect(b.raw).toContain("Added 1 artifact");
+  expect(b.raw).not.toContain("# Trip"); // never the file's contents
+});
+
+test("a write Mem never lists is not called saved: said in Mem's words, logged", async () => {
+  const s = seed({ env: { NMEM_FAKE_UNLISTED: "1" } });
+  const m = s.put("trip.md", "# Trip");
+  const r = await s.mf.save(m.id);
+  expect(r.ok).toBe(false);
+  if (!r.ok) expect(r.why).toBe("refused");
+  expect(s.mf.view()[m.id]).toBeUndefined();
+  const b = s.log.read({ stream: "mem", kinds: ["mem_file"], limit: 10 })[0]!.body as Bodies["mem_file"];
+  expect(b.ok).toBe(false);
 });

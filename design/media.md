@@ -211,7 +211,7 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   the first lines; a video's frame and a waveform are the web's for now.
 - **Kept in Nowledge Mem (D566, `made.md`):** under a card Ducter made, one quiet line on the
   card's own left edge, outside it (the whole card opens the file): **存到 Nowledge Mem / Save to
-  Nowledge Mem**, saving, **已在 Nowledge Mem / In Nowledge Mem** with its link, or why not with its
+  Nowledge Mem**, saving, **已存进 Nowledge Mem / In Nowledge Mem** and **去看 / Open**, or why not with its
   fix; only while Mem is connected and signed in, only for a file Mem reads. The viewer carries the
   same action in its existing row, before **存一份 / Save a copy** (web `mem-keep.tsx`, Mac
   `memkeep.go`).

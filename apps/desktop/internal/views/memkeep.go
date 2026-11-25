@@ -15,9 +15,9 @@ import (
 // card, never inside it (the whole card opens the file):
 //   can save   Save to Nowledge Mem (a quiet button)
 //   saving     the shared spinner and Saving to Nowledge Mem…
-//   saved      In Nowledge Mem, and Open in Nowledge Mem where the Nowledge
-//              Mem app is on this Mac (Mem's own nowledgemem:// link), else
-//              Open Nowledge Mem where Mem is the person's Cloud
+//   saved      已存进 Nowledge Mem / In Nowledge Mem, then 去看 / Open: Mem's
+//              own nowledgemem:// link where the Nowledge Mem app is on this
+//              Mac, else Mem on the web; two elements, never joined (D291)
 //   failed     Not saved: {Mem's reason}, and the one thing that fixes it
 // Shown only for a file Mem reads while Mem is connected and signed in; a
 // file already kept says so whatever Mem's state is now.
@@ -156,14 +156,12 @@ func (a *App) memKeepLine(c *ui.Context, ref protocol.MediaRef, look string) {
 		case "saved":
 			uiText(c, a.L.T("memfile.saved")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
 			saved := a.S.Mem.Files[ref.ID]
+			to := saved.Web
 			if memAppHere() && saved.URI != "" {
-				if a.quietLink(c, "mk-open:"+ref.ID, a.L.T("memfile.open"), a.L.T("memfile.open")) {
-					a.openLink(saved.URI)
-				}
-			} else if saved.Web != "" {
-				if a.quietLink(c, "mk-open:"+ref.ID, a.L.T("memfile.openWeb"), a.L.T("memfile.openWeb")) {
-					a.openLink(saved.Web)
-				}
+				to = saved.URI
+			}
+			if to != "" && a.quietLink(c, "mk-open:"+ref.ID, a.L.T("memfile.open"), spoken(a.L, a.L.T("memfile.open"), a.L.T("memfile.saved"))) {
+				a.openLink(to)
 			}
 		case "failed":
 			n := a.memKeep[ref.ID]

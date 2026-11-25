@@ -2,7 +2,7 @@
 // A FAKE `nmem` for D566 (keeping files in Nowledge Mem): Artifacts and their folders in one JSON
 // file, so tests and the partner eval never write to the person's Mem. It implements only what
 // core/src/mem-files.ts runs, after nmem 0.10.123's help (research/231):
-//   status · artifacts folders ls|mk · artifacts add · artifacts update · artifacts history · artifacts show
+//   status · artifacts folders ls|mk · artifacts add · artifacts update · artifacts list · artifacts history · artifacts show
 // The read shapes (list/show/history/folders ls, status) copy the REAL ones seen on 2026-11-25
 // (packages/core/test/fixtures/mem-artifacts.json, VERIFIED). add, update and folders mk were never
 // run against the real Mem: their answers here are GUESSES from the CLI's own strings (an
@@ -15,6 +15,8 @@
 //   NMEM_FAKE_DOWN=1                        every call answers a connection failure
 //   NMEM_FAKE_REFUSE="<words>"              add and update answer Mem's 400 with those words
 //   NMEM_FAKE_BACKEND=local                 status says a local Mem (no web link)
+//   NMEM_FAKE_UNLISTED=1                    a write answers ok but list never shows it (the read-back fails)
+//   NMEM_FAKE_BARE=1                        add answers exit 0 with words, no JSON (a shape Ducter can't parse)
 // state.bump = <doc id>: someone saved a newer version of it in Mem (the next update is stale).
 import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
@@ -111,6 +113,7 @@ if (sub === "add") {
   const d: Doc = { id, name: basename(path), folder_id: folder, space_id: fs, labels, ...(opt("-c") ? { comment: opt("-c")! } : {}), revs: [{ source_id: id, revision: 1, sha256: sha(path), size_bytes: statSync(path).size, origin: "upload", created_at: now() }] };
   s.docs.push(d);
   save(s);
+  if (process.env.NMEM_FAKE_BARE === "1") (console.log("Added 1 artifact"), process.exit(0));
   out({ sources: [sourceOf(d)], added: 1 });
 }
 if (sub === "update") {
@@ -134,6 +137,14 @@ if (sub === "update") {
   d!.revs.push(rev);
   save(s);
   out({ outcome: "created", document_id: d!.id, source_id: rev.source_id, sha256: rev.sha256, size_bytes: rev.size_bytes, created_at: rev.created_at, revision: rev.revision, latest_revision: rev.revision });
+}
+// The VERIFIED list shape: each artifact as its latest version, newest first; --space narrows it.
+if (sub === "list") {
+  const n = Number(opt("-n") ?? opt("--limit") ?? 20);
+  if (process.env.NMEM_FAKE_UNLISTED === "1") out({ sources: [], total: 0 });
+  const all = s.docs.filter((d) => !opt("--space") || d.space_id === space).map((d) => sourceOf(d));
+  all.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
+  out({ sources: all.slice(0, n), total: all.length });
 }
 if (sub === "history") {
   const d = s.docs.find((x) => x.id === words[2]);

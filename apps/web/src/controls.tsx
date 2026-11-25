@@ -181,9 +181,10 @@ export function LinkBtn(p: { kind: "primary" | "secondary" | "text"; size?: "sm"
 
 /** D482: a page named in running words (a source under 怎么知道的): underlined words that wrap
  *  inside their column, never a one-line button past the card's edge; its chevron after them. */
-export function TextLink(p: { href: string; label: string; class?: string }) {
+export function TextLink(p: { href: string; label: string; class?: string; about?: string }) {
+  // D566: about, what a short link acts on ("Open": the file in Nowledge Mem), for its accessible name.
   return (
-    <a class={`tlink${p.class ? ` ${p.class}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer">
+    <a class={`tlink${p.class ? ` ${p.class}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer" aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined}>
       {p.label}
       <Chev cls="btn-chev" />
     </a>

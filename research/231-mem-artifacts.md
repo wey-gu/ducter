@@ -107,7 +107,9 @@ Tags: **VERIFIED** (seen in a real answer here), **DOCUMENTED** (help text or Me
 4. **Say Mem's reason**: signed out, unreachable, or its own words.
 5. **Link to it** with Mem's own `nowledgemem://source/<id>` where the Mem app is (the Mac); on
    the web, Mem's Cloud page. Verify that the app's deep link lands on the artifact (todo).
-6. **Provenance** rides a label (`ducter`) and a comment naming the task; Mem has no source-app
+6. **Never trust a guessed shape.** Count a save only once `list` (a VERIFIED shape) shows the
+   file; log each write's raw answer so the first real one shows the true shape.
+7. **Provenance** rides a label (`ducter`) and a comment naming the task; Mem has no source-app
    field for artifacts.
 
 ## Summary

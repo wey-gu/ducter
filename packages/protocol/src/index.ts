@@ -713,6 +713,12 @@ export interface Bodies {
    * supersede, never a duplicate); waiting: the outbox key when Mem was down and the save waits to go
    * in (MemView.waiting says while it still does).
    */
+  /**
+   * D566: one write of a file to the person's Nowledge Mem (stream "mem"): what it was, who asked,
+   * how it ended, and Mem's raw answer to the write (its metadata, clipped; never the file's
+   * contents), so the first real saves show the true shape (research/231 §3).
+   */
+  mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update"; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
   memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,

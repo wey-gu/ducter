@@ -85,9 +85,9 @@ When the person's Nowledge Mem is connected, what Ducter made can be kept there 
 library (its Artifacts), where every agent that reads their Mem finds it. Evidence: research/231.
 
 - **On a file.** Under a file card Ducter made, and in the viewer's action row: **存到 Nowledge Mem /
-  Save to Nowledge Mem**; then **正在存到 Nowledge Mem… / Saving to Nowledge Mem…**; then **已在
-  Nowledge Mem / In Nowledge Mem** with **在 Nowledge Mem 里看 / Open in Nowledge Mem** (the Mem app on
-  a Mac) or **打开 Nowledge Mem / Open Nowledge Mem** (Mem on the web); or **没存进去：{why} / Not
+  Save to Nowledge Mem**; then **正在存到 Nowledge Mem… / Saving to Nowledge Mem…**; then **已存进
+  Nowledge Mem / In Nowledge Mem** and, its own element beside it, **去看 / Open** (the Mem app on a
+  Mac, else Mem on the web); or **没存进去：{why} / Not
   saved: {why}** with its one fix. Shown only while memory is on and Mem is connected and signed in,
   and only for a file Mem reads (documents, sheets, slides, PDFs, Markdown and text, code).
 - **The same file is one thing in Mem.** Keyed by its task and its name: saved again, or a newer

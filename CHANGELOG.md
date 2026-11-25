@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.78 - 2026-11-26
+
+<!-- whats-new
+zh: 说变了的事就只说变化；你选好的不再追问
+en: A follow-up says only what changed; a choice you made isn't asked again
+-->
+
+**Your partner**
+- When you widen what a task is doing, its reply says the change itself, and the task gets a name
+  that fits.
+- A choice you made answers what it depended on: take the flight home from Pudong, and it won't
+  ask where you fly from.
+
 ## 0.1.77 - 2026-11-26
 
 <!-- whats-new

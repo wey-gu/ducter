@@ -23,7 +23,7 @@ describe("能找到{name}的 / Who can reach (D433)", () => {
       ["claude-code", "install", "local"],
       ["codex", "yes", "local"], // D470: where its mailbox opens
       ["antigravity", "unknown", ""], // D555: its plugin carries Bridge, and Mem's plugin check doesn't list it
-      ["pi", "relay", ""], // D448: signed in where Ducter runs tasks: its tasks pass messages through Ducter
+      ["pi", "yes", "hel"], // D576: its plugin carries Bridge itself; it stands as the others, where the plugin is
     ]);
   });
 

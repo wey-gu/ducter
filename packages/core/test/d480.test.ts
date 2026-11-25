@@ -160,3 +160,52 @@ describe("whether replies reach an agent, from Mem's facts only (D560)", () => {
     expect(agentBack("antigravity", { versions: ["0.1.7"] })).toBe("unknown");
   });
 });
+
+// D576: pi's Mem plugin carries Bridge itself from 0.8.20 (its `bridge` skill; research/226 §5). It prepares
+// no session and Mem lists no connection for it, so its version is the fact; older passes no message at all.
+describe("pi, a full peer from its plugin (D576)", () => {
+  test("0.8.20 reads yes with no session to wait for; older is its update", () => {
+    expect(memSessions("pi", "0.8.20")).toBe("auto");
+    expect(memSessions("pi", "0.8.19")).toBe("old");
+    expect(agentBack("pi", { versions: ["0.8.20"] })).toBe("yes");
+    expect(agentBack("pi", { versions: ["0.8.21"] })).toBe("yes");
+    expect(agentBack("pi", { versions: ["0.8.19"] })).toBe("old");
+    expect(agentBack("pi", { versions: [undefined] })).toBe("unknown");
+  });
+  test("the partner hears an older pi can't write either, and the button that fixes it", () => {
+    const s = renderAgentMail([{ harness: "pi", back: "old", version: "0.8.19", update: true }], "zh");
+    expect(s).toContain("older than the one that carries Nowledge Bridge (0.8.20)");
+    expect(s).toContain("can't write to you or read your replies yet");
+    expect(s).toContain('"让它能和我传话"');
+    expect(s).not.toContain("让它也能收到我的回话");
+  });
+  let dir: string;
+  beforeEach(() => (dir = mkdtempSync(join(tmpdir(), "ducter-d576-"))));
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+  test("Mem's check doesn't list pi: an older plugin reads update to 0.8.20 all the same, and the tap opens the update", async () => {
+    const opened: any[] = [];
+    const log = { read: () => [], append: (e: any) => e, subscribe: () => () => {} };
+    const mp = createMemPlugins({
+      dataDir: dir,
+      log: log as any,
+      tasks: { get: () => undefined, list: () => [] } as any,
+      persona: { id: "p" },
+      runner: () => ({ openTask: async (i: any) => (opened.push(i), { taskId: `tsk${opened.length}` } as TaskCard) }) as any,
+      on: () => true,
+      lang: () => "en",
+      inspectLocal: async () => ({ pi: { state: "installed", version: "0.8.19" }, "claude-code": { state: "installed", version: "0.7.38" } }),
+      inspectWorker: async () => undefined,
+      devices: async () => [{ id: "local", name: "Mac", home: true, awake: true, harnesses: [{ harness: "pi", installed: true, loggedIn: true }, { harness: "claude-code", installed: true, loggedIn: true }] }],
+      checkUpdates: async () => ({ "claude-code": "0.7.38" }),
+      everyMs: 0,
+    });
+    await mp.check("local");
+    expect(mp.lines("pi").map((x) => x.line)).toMatchObject([{ state: "update", version: "0.8.19", available: "0.8.20" }]);
+    expect(mp.lines("claude-code").map((x) => x.line.state)).toEqual(["installed"]);
+    const r = await mp.install("local", "pi");
+    expect(r.ok).toBe(true);
+    expect(opened.length).toBe(1);
+    expect(JSON.stringify(opened[0])).toContain("from 0.8.19 to 0.8.20");
+    mp.stop();
+  });
+});

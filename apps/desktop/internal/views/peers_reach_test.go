@@ -31,8 +31,8 @@ func TestReachRows(t *testing.T) {
 		{ID: "local", Name: "Mac", Home: true, Harnesses: []protocol.DeviceHarness{h("codex", "installed"), h("claude-code", "absent"), h("antigravity", "")}},
 	}
 	got := reachRows(devs, nil, nil)
-	// D555: Antigravity's plugin carries Bridge and Mem's plugin check doesn't list it (unknown); D448: pi signed in where Ducter runs tasks.
-	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", "local"}, {"antigravity", "unknown", ""}, {"pi", "relay", ""}}
+	// D555: Antigravity's plugin carries Bridge and Mem's plugin check doesn't list it (unknown); D576: pi stands as the others, from its plugin.
+	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", "local"}, {"antigravity", "unknown", ""}, {"pi", "yes", "hel"}}
 	if len(got) != len(want) {
 		t.Fatalf("rows %+v", got)
 	}
@@ -48,9 +48,23 @@ func TestReachRows(t *testing.T) {
 	if r := reachRows(nil, []string{"codex"}, nil); len(r) != 1 || r[0].Can != "unknown" {
 		t.Fatalf("unknown %+v", r)
 	}
-	// D448: a pi known only from the person's own records (not signed in where Ducter runs tasks) still can't.
-	if r := reachRows(nil, []string{"pi"}, nil); len(r) != 1 || r[0].Can != "none" {
+	// D576: a pi known only from the person's own records: Mem's check hasn't said about its plugin.
+	if r := reachRows(nil, []string{"pi"}, nil); len(r) != 1 || r[0].Can != "unknown" {
 		t.Fatalf("own records only %+v", r)
+	}
+	// D576: pi's plugin is the fact: 0.8.20+ hands work and reads the reply when asked (ask);
+	// 0.8.19, with the newer one out (the floor core lays), can't pass a message: its update (talk).
+	pi := func(state, v string) []protocol.DeviceView {
+		return []protocol.DeviceView{{ID: "local", Name: "Mac", Home: true, Harnesses: []protocol.DeviceHarness{{Harness: "pi", Installed: true, LoggedIn: true, Mem: &protocol.MemPluginView{State: state, Version: v}}}}}
+	}
+	if r := reachRows(pi("installed", "0.8.20"), nil, nil); len(r) != 1 || r[0].Back != "yes" || standing(r[0]) != "ask" {
+		t.Fatalf("pi 0.8.20 %+v", r)
+	}
+	if r := reachRows(pi("update", "0.8.19"), nil, nil); len(r) != 1 || r[0].Back != "old" || !r[0].Update || standing(r[0]) != "talk" || reachWays(r[0]) != (ways{"no", "no", "update"}) {
+		t.Fatalf("pi 0.8.19 %+v", r)
+	}
+	if r := reachRows(pi("absent", ""), nil, nil); len(r) != 1 || standing(r[0]) != "install" || r[0].Device != "local" {
+		t.Fatalf("pi absent %+v", r)
 	}
 	// D555: Antigravity as Claude Code and Codex: yes once Mem lists its mailbox open.
 	if r := reachRows(nil, []string{"antigravity"}, nil, protocol.BridgeMailbox{Harness: "antigravity", Open: true}); len(r) != 1 || r[0].Can != "yes" || r[0].Box != "open" {

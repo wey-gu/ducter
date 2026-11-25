@@ -43,6 +43,9 @@ func reachWays(r reachRow) ways {
 		switch back {
 		case "old":
 			w := ways{To: "yes", Back: "no"}
+			if memBridgeSkill[r.Harness] != "" {
+				w.To = "no" // D576: pi's older plugin can't write either
+			}
 			if r.Device != "" && r.Update {
 				w.Fix = "update"
 			}
@@ -67,7 +70,7 @@ func reachWays(r reachRow) ways {
 // (it reaches the partner, the answers can't go back), not yet.
 func reachSplit(rows []reachRow) (both, oneWay, notYet []reachRow) {
 	for _, r := range rows {
-		if r.Harness != "claude-code" && r.Harness != "codex" {
+		if r.Harness != "claude-code" && r.Harness != "codex" && r.Harness != "pi" {
 			continue
 		}
 		w := reachWays(r)
@@ -347,10 +350,15 @@ func (a *App) peersSay() string {
 	}
 	reach, one, notYet := reachSplit(a.peersReachRows())
 	// D489: both ways only where Mem said so; an agent whose way back Mem hasn't told is said as what it does.
-	var both, next, to []reachRow
+	var both, next, to, talk []reachRow
+	for _, r := range notYet {
+		if standing(r) == "talk" {
+			talk = append(talk, r)
+		}
+	}
 	for _, r := range reach {
 		switch standing(r) {
-		case "both":
+		case "both", "ask": // D576: pi reads the reply when asked: both ways too
 			both = append(both, r)
 		case "next":
 			next = append(next, r)
@@ -373,6 +381,8 @@ func (a *App) peersSay() string {
 		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
 	case len(to) > 0:
 		return a.L.T("say.peers.to", a.listWords(toolsOf(to)))
+	case len(talk) > 0:
+		return a.L.T("say.peers.talk", a.listWords(toolsOf(talk)))
 	case len(notYet) > 0:
 		return a.L.T("say.peers.notyet")
 	}
@@ -400,15 +410,23 @@ func toolsOf(rows []reachRow) []string {
 // standing in mem-view.ts): both, next (D560: its next session will hear back; nothing to tap), old
 // (D560: its plugin's update lets it hear back: the one button), to (the way back unknown), install,
 // unknown, relay (no Bridge in its Mem plugin; Ducter's tasks on it carry messages), none (no Bridge
-// in its Mem plugin: Mem's to add).
+// in its Mem plugin: Mem's to add). D576, an agent whose plugin carries Bridge itself (pi): ask (it
+// reads the reply when the person asks it to look), talk (its plugin's update lets it pass messages at all).
 func standing(r reachRow) string {
 	if r.Can == "relay" || r.Can == "none" {
 		return r.Can
 	}
 	w := reachWays(r)
+	skill := memBridgeSkill[r.Harness] != ""
+	if skill && r.Can == "yes" && w.To == "no" && w.Back == "no" {
+		return "talk"
+	}
 	if w.To == "yes" {
 		switch w.Back {
 		case "yes":
+			if skill {
+				return "ask"
+			}
 			return "both"
 		case "soon":
 			return "next"
@@ -456,10 +474,19 @@ func (a *App) peersAgents(c *ui.Context, name string) {
 func (a *App) peerAgentRow(c *ui.Context, r reachRow) {
 	t := a.T
 	st := standing(r)
-	updating := st == "old" && r.Busy
+	// D576: pi's update (talk) works as the others' (old), in its own words.
+	fix := st == "old" || st == "talk"
+	updating := fix && r.Busy
 	line := a.L.T("peers.st." + st)
+	fixLabel := a.L.T("peers.fix.hear")
+	if st == "talk" {
+		fixLabel = a.L.T("peers.fix.talk")
+	}
 	if updating {
 		line = a.L.T("peers.st.updating")
+		if st == "talk" {
+			line = a.L.T("peers.st.updating.talk")
+		}
 	}
 	last := ""
 	if r.Last != "" && st != "install" && st != "unknown" {
@@ -475,9 +502,9 @@ func (a *App) peerAgentRow(c *ui.Context, r reachRow) {
 				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
 			}
 		}
-	case st == "old" && r.Update && r.Device != "" && !updating:
+	case fix && r.Update && r.Device != "" && !updating:
 		control = func() {
-			if a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
+			if a.buttonFor(c, fixLabel, r.Tool, btnSecondary, t.ControlSM, t.Surface) {
 				a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
 			}
 		}

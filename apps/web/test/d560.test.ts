@@ -33,8 +33,9 @@ describe("the author's loop on hel (D560)", () => {
     const [busy] = reachRows([{ ...hel("0.7.20", "update"), harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "update", version: "0.7.20", taskId: "t1" } }] }], [], []);
     expect(busy!.busy).toBe(true);
     const mem = read("src/memory.tsx");
-    expect(mem).toContain('const updating = st === "old" && !!r.busy;');
-    expect(mem).toContain('const hear = st === "old" && r.update && r.device && !updating;');
+    expect(mem).toContain('const fix = st === "old" || st === "talk";');
+    expect(mem).toContain("const updating = fix && !!r.busy;");
+    expect(mem).toContain("const hear = fix && r.update && r.device && !updating;");
   });
   test("nothing on either client chooses a Space, opens a mailbox task or compares Mem servers", () => {
     for (const f of ["src/mem-view.ts", "src/memory.tsx", "src/app.ts", "src/settings-home.tsx", "../desktop/internal/views/peers_d470.go", "../desktop/internal/views/settings_home.go"]) {

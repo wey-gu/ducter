@@ -13,12 +13,12 @@ const KEYS = ["peers.st.both", "peers.st.next", "peers.ref", "peers.ref.inline",
 
 describe("能找到{name}的 with Mem's contact list (D444)", () => {
   const dev = { id: "local", name: "Mac", home: true, harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] };
-  test("a tool Mem says can receive makes it able; D560: a closed card is no fact; pi and Antigravity unchanged", () => {
+  test("a tool Mem says can receive makes it able; D560: a closed card is no fact; D576: pi as the others", () => {
     const rows = reachRows([dev], [], [], [{ harness: "claude-code", open: false }, { harness: "codex", open: true }, { harness: "pi", open: true }]);
     expect(rows.map((r) => [r.harness, r.can, r.box ?? ""])).toEqual([
       ["claude-code", "yes", ""],
       ["codex", "yes", "open"],
-      ["pi", "none", ""],
+      ["pi", "yes", "open"],
     ]);
     expect(reachRows([dev], [], []).map((r) => r.box)).toEqual([undefined]);
   });

@@ -5,7 +5,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { exchangeThreads, reachSplit, reachWays, SENDER_DAILY, spokenPeers, trustOf, TRUSTED_DAILY, type ReachRow } from "../src/mem-view.ts";
+import { exchangeThreads, reachSplit, reachWays, SENDER_DAILY, spokenPeers, standing, trustOf, TRUSTED_DAILY, type ReachRow } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 import { memSetupBrief } from "../../../packages/core/src/mem-plugins.ts";
 import { renderBridge } from "../../../packages/partner/src/render.ts";
@@ -27,9 +27,13 @@ describe("who reaches whom (D470)", () => {
     expect(reachWays(row("codex", "unknown"))).toEqual({ to: "unknown", back: "unknown" });
     expect(reachWays({ can: "none" })).toEqual({ to: "no", back: "no" });
   });
-  test("split: both ways, one way, not yet; pi is Mem's to add (D555: Antigravity is a Bridge tool)", () => {
-    const s = reachSplit([row("codex", "yes", { box: "open" }), row("claude-code", "yes", { back: "old", update: true, device: "local" }), { harness: "pi", tool: "pi", can: "relay" }]);
-    expect([s.both.map((r) => r.harness), s.oneWay.map((r) => r.harness), s.notYet.length]).toEqual([["codex"], ["claude-code"], 0]);
+  test("split: both ways, one way, not yet (D555: Antigravity, D576: pi are Bridge tools)", () => {
+    const s = reachSplit([row("codex", "yes", { box: "open" }), row("claude-code", "yes", { back: "old", update: true, device: "local" }), row("pi", "yes", { back: "yes" }), row("pi", "yes", { back: "old", update: true, device: "local" })]);
+    expect([s.both.map((r) => r.harness), s.oneWay.map((r) => r.harness), s.notYet.map((r) => r.harness)]).toEqual([["codex", "pi"], ["claude-code"], ["pi"]]);
+    // D576: pi's older plugin can't write either: its update is the fix, said in its own words.
+    expect(reachWays(row("pi", "yes", { back: "old", update: true, device: "local" }))).toEqual({ to: "no", back: "no", fix: "update" });
+    expect(standing(row("pi", "yes", { back: "old", update: true, device: "local" }))).toBe("talk");
+    expect(standing(row("pi", "yes", { back: "yes" }))).toBe("ask");
   });
 });
 
@@ -143,8 +147,14 @@ describe("the words (D470)", () => {
 describe("the fix is the button (D470, D560)", () => {
   test("no task opens a mailbox: an old plugin's fix is its update, the same task Memory's Update starts", () => {
     expect(memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "update", from: "0.7.20", to: "0.7.38" } })).not.toContain("--enable");
-    expect(read("src/memory.tsx")).toContain('label={t("peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)}');
-    expect(read("../desktop/internal/views/peers_d470.go")).toContain('a.buttonFor(c, a.L.T("peers.fix.hear"), r.Tool, btnSecondary, t.ControlSM, t.Surface)');
+    expect(read("src/memory.tsx")).toContain('label={t(st === "talk" ? "peers.fix.talk" : "peers.fix.hear")} about={r.tool} onClick={() => A.installMem(r.device!, r.harness)}');
+    expect(read("../desktop/internal/views/peers_d470.go")).toContain('fixLabel := a.L.T("peers.fix.hear")');
+    expect(read("../desktop/internal/views/peers_d470.go")).toContain("a.buttonFor(c, fixLabel, r.Tool, btnSecondary, t.ControlSM, t.Surface)");
+    // D576: pi's update says it lets pi pass messages at all; Mem's check doesn't list pi, so the brief says where the newer one comes from.
+    const pi = memSetupBrief({ agent: "pi", host: "pi", device: "Mac", lang: "en", what: { kind: "update", from: "0.8.19", to: "0.8.20" } });
+    expect(pi).toContain("from 0.8.19 to 0.8.20");
+    expect(pi).toContain("0.8.20 or newer is published");
+    expect(pi).not.toContain("plugins check` says");
   });
   test("Overview carries no second row for it: Memory's update row is the one needs-you", () => {
     expect(read("src/settings-home.tsx")).not.toContain("peersOneWay");

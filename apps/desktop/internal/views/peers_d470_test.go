@@ -21,14 +21,17 @@ func TestD470ReachWays(t *testing.T) {
 		{reachRow{Harness: "codex", Can: "install", Device: "local"}, ways{"no", "no", "install"}},
 		{reachRow{Harness: "codex", Can: "unknown"}, ways{"unknown", "unknown", ""}},
 		{reachRow{Harness: "pi", Can: "relay"}, ways{"no", "no", ""}},
+		// D576: pi's older plugin can't write either; its update is the fix.
+		{reachRow{Harness: "pi", Can: "yes", Back: "old", Update: true, Device: "local"}, ways{"no", "no", "update"}},
+		{reachRow{Harness: "pi", Can: "yes", Back: "yes"}, ways{"yes", "yes", ""}},
 	}
 	for _, c := range cases {
 		if got := reachWays(c.r); got != c.want {
 			t.Errorf("%+v: %+v, want %+v", c.r, got, c.want)
 		}
 	}
-	both, one, notYet := reachSplit([]reachRow{cases[0].r, cases[1].r, cases[6].r})
-	if len(both) != 1 || len(one) != 1 || len(notYet) != 0 {
+	both, one, notYet := reachSplit([]reachRow{cases[0].r, cases[1].r, cases[7].r, cases[8].r})
+	if len(both) != 2 || len(one) != 1 || len(notYet) != 1 {
 		t.Fatalf("split %v %v %v", both, one, notYet)
 	}
 }

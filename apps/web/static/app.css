@@ -24435,7 +24435,7 @@ html.kb #app {
 .app-home-icon { grid-row: span 2; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 72px; }
 /* The icon as the Home Screen shows it: 60 points, the system's rounded mask. */
 .app-home-icon img { width: 60px; height: 60px; border-radius: 13.5px; box-shadow: 0 2px 0 var(--line); display: block; }
-.app-home-name { font-size: 11px; line-height: 1.2; color: var(--ink-soft); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-home-name { font-size: var(--xs); line-height: 1.2; color: var(--ink-soft); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-home-words { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .app-home-h { font-family: var(--head); font-size: var(--md); line-height: 1.3; text-wrap: pretty; word-break: keep-all; overflow-wrap: anywhere; }
 .app-home-how { font-size: var(--sm); color: var(--ink); line-height: 1.45; text-wrap: pretty; }

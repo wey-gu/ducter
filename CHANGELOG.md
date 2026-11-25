@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.60 - 2026-11-25
+
+<!-- whats-new
+zh: 你的其他 agent 默认就能找伙伴；官网和 README 重写
+en: Your other agents reach your partner by default; a new site and README
+-->
+
+**Agent messaging, on by default**
+- Once Nowledge Mem is ready on your own home, your own agents can hand work to your partner and
+  ask it things without a switch to find. Turn it off in Settings › Agent messaging.
+
+**ducter.ai and the README**
+- A clear promise up top, one real job in three steps, who Ducter is for, and everything it can
+  reach, from your computers and agents to a real browser, phones, calls and chat apps.
+- The docs are grouped by what you want to do, with a page on how Ducter fits together and the
+  questions people ask.
+
+**Share from iPhone**
+- Share to Ducter works from the iPhone and iPad share sheet too.
+
 ## 0.1.59 - 2026-11-25
 
 <!-- whats-new

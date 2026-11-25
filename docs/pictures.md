@@ -34,8 +34,7 @@ are, with **Didn't send** and **Retry**. Nothing you typed is lost.
 ## Share from another app
 
 On your phone, anything you can share goes to your partner without saving it first: a page in
-your browser, a photo, a post, a PDF. This works in the Android app today; on iPhone and iPad
-it comes with a later beta (coming soon).
+your browser, a photo, a post, a PDF. This works in the iPhone, iPad and Android apps.
 
 1. Tap **Share** in that app and pick **Ducter** (the first time, you may need to find it under
    **More** and move it up the row).

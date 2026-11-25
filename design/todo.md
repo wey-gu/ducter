@@ -22,12 +22,12 @@ line.
   under a size budget and a phone fallback to the still shots (1 to 2), shots and review at every
   width (1). Trigger: the author's go; it matters most for the consumer and the fresh user, who
   won't install to find out.
-- [ ] **Share from your phone, on iPhone.** When the share sheet ships (below), the landing's card
+- [x] **Share from your phone, on iPhone.** Done 2026-11-25 (0.1.59 shipped the extension). When the share sheet ships (below), the landing's card
   and the README's cell drop "on iPhone, coming soon", and `docs/pictures.md` says it works on both.
 
 ## The share sheet on TestFlight, after D553 (`design/release/ios.md` step 5)
 
-- [ ] **Turn the share extension on: after the portal step, the next release ships it automatically.**
+- [x] **Turn the share extension on: after the portal step, the next release ships it automatically.** Done 2026-11-25: the App Group and `.share` App ID were registered in the portal (by the lead through the author's Chrome, with the author's go); 0.1.59's iOS job exported with `DUCTER_SHARE=1` (EXPORT SUCCEEDED, no D553 warning) and uploaded. Still to see: the extension in a real iPhone's share sheet.
   The author registers `group.co.nowledge.ducter.ios` on `co.nowledge.ducter.ios` and
   `co.nowledge.ducter.ios.share` (ios.md step 5); then check the release's iOS job has no D553
   warning and 分享到 Ducter / Share to Ducter shows in the iPhone's share sheet. Trigger: the portal

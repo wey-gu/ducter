@@ -75,7 +75,7 @@ Only what you turn on. Anything that sends, pays, calls or can't be taken back w
   </tr>
   <tr>
     <td><img src="apps/site/public/art/set_autofill-128.webp" width="44" align="left" alt=""><b>Errands, to the checkout.</b> It books and buys with your saved sign-ins and cards, filled in without being seen; paying is your own tap (<a href="docs/buying-and-booking.md">Buying and booking</a>).</td>
-    <td><img src="apps/site/public/art/phone-240.webp" width="44" align="left" alt=""><b>Share from your phone.</b> A page, a photo or a PDF, from any app's Share. On Android today; on iPhone, coming soon (<a href="docs/pictures.md#share-from-another-app">Share</a>).</td>
+    <td><img src="apps/site/public/art/phone-240.webp" width="44" align="left" alt=""><b>Share from your phone.</b> A page, a photo or a PDF, from any app's Share. On iPhone and Android (<a href="docs/pictures.md#share-from-another-app">Share</a>).</td>
   </tr>
 </table>
 

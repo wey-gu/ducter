@@ -837,7 +837,7 @@ D582's leftovers, then the review D582 skipped, on every pane at Mac 1150 and we
 | 2 | Partner, en at 390 | **Switch to Dobby / Change / Remove**: Remove wrapped to a line of its own | At rest **换到 / 改一下**; **移除** inside the open row, at the far end across from **好**, the shared quiet destructive action asking in place; the ask's **移除** in the danger ink |
 | 3 | Chat apps, phone | **换个账号** and **断开** each on a line of its own | One group in the card's last line, as Accounts' connection: one line when they fit; **Switch account** in en |
 | 4 | Accounts, phone | **去 Tuwa 录 ›** and **录好了** on two lines | One group, one line |
-| 5 | Every pane, zh at 390 | A lone 「。」 or 「，」 on a line (keep-all's emergency break) | `keepClauses`: one break before a long run's kept tail, punctuation glued; group feet kept as rows |
+| 5 | Every pane, zh at 390 | A lone 「。」 or 「，」 on a line (keep-all's emergency break) | `keepClauses`: a long run breaks only between its words (`Intl.Segmenter`), its kept tail starts at a word, punctuation glued; group feet kept as rows |
 | 6 | Memory, phone | **了解 Nowledge Mem** in a 150-wide column beside its button | `act-under` |
 | 7 | Partner, open row | Placeholder cut at 390; **正在聊** between the fields | **Like home, the doctor, the kids**; 正在聊 hidden while open |
 

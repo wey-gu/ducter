@@ -64,8 +64,12 @@ test("the preview never breaks a clause's last word", async () => {
   expect(kept).toContain("还⁠没⁠续⁠费⁠。");
   expect(kept).toContain("后\u2060天\u2060到\u2060期\u2060，");
   // D583: a clause's punctuation stays with its last character, never alone on a line.
-  // Settings is keep-all (D561): a long run's one break is before its kept tail, so the tail moves down whole.
-  expect(keepClauses("这个工作区的管理员可能看得到你在这儿说的话。")).toEndWith("这\u200b儿\u2060说\u2060的\u2060话\u2060。");
+  // Settings is keep-all (D561): a long run breaks only between its words, its kept tail starts at a word.
+  expect(keepClauses("这个工作区的管理员可能看得到你在这儿说的话。")).toEndWith("话\u2060。");
+  const call = keepClauses("要我用你的号码替你在电话里说话，手机得接在你身边的一台电脑上；");
+  for (const w of ["电话", "一台", "电脑", "号码"]) expect(call).not.toContain(`${w[0]}\u200b${w[1]}`);
+  expect(call).toContain("话\u2060，");
+  expect(call.replaceAll("\u200b", "").replaceAll("\u2060", "")).toBe("要我用你的号码替你在电话里说话，手机得接在你身边的一台电脑上；");
   expect(kept).not.toContain("名\u2060后");
   expect(keepClauses("Two ways to fix CI.")).toBe("Two ways to fix\u00a0CI.");
   const v = src("settings-delight.tsx");

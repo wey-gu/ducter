@@ -147,19 +147,41 @@ export function keepClauses(s: string): string {
       continue;
     }
     const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
-    // D583: Settings sets keep-all (D561), so a long run has no break inside it and Chrome's emergency
-    // break put the clause's last \u300c\u3002\u300d alone on a line. A zero-width space before the kept tail is the
-    // run's one break, so the tail moves down whole.
-    const tail = end && j - i > 6 && j < rs.length ? j - 4 : -1;
-    for (let k = i; k < j; k++) out += (k === tail ? "\u200b" : "") + rs[k] + (k < j - 1 && (j - i <= 4 || (end && (j - i <= 6 || k >= j - 4))) ? "\u2060" : "");
-    // D583: the clause's punctuation stays with its last character: after a joined run Chrome would
-    // otherwise put a lone \u300c\uff0c\u300d or \u300c\u3002\u300d on a line of its own at 390.
+    const n = j - i;
+    // D583: Settings sets keep-all (D561), so a long run had no break inside it and Chrome's emergency
+    // break fell anywhere: mid-word (\u7535 / \u8bdd) or before the clause's \u300c\u3002\u300d, alone on a line. A run over six
+    // now breaks only between its words (Intl.Segmenter, a zero-width space), and its kept tail starts
+    // at a word: the last word start at or before its last four characters.
+    const starts = n > 6 ? wordStarts(rs.slice(i, j).join("")) : [];
+    const tail = n <= 4 ? 0 : end && n > 6 ? Math.max(0, ...starts.filter((w) => w <= n - 4)) || n - 4 : end ? 0 : n;
+    for (let k = 0; k < n; k++) {
+      if (k > 0 && ((k < tail && starts.includes(k)) || (k === tail && n > 6))) out += "\u200b";
+      out += rs[i + k] + (k < n - 1 && k >= tail ? "\u2060" : "");
+    }
+    // D583: the clause's punctuation stays with its last character.
     if (j < rs.length && "\uff0c\u3002\uff1b\uff1a\uff1f\uff01\u3001".includes(rs[j]!)) out += "\u2060";
     i = j;
   }
   // Latin: the last two words together (a no-break space), never one word alone on the last line.
   if (rs.length > 1 && !han(rs[rs.length - 1]) && !han(rs[rs.length - 2])) out = out.replace(/ (\S+)$/, "\u00a0$1");
   return out;
+}
+
+/** D583: where Chinese words start in a run of Han characters (code point indexes, never 0), by the
+ *  platform's own segmenter; none where it has none. */
+function wordStarts(run: string): number[] {
+  type Seg = new (l: string, o: { granularity: "word" }) => { segment(s: string): Iterable<{ index: number }> };
+  const Segmenter = (Intl as unknown as { Segmenter?: Seg }).Segmenter;
+  if (!Segmenter) return [];
+  const byUnit = new Map<number, number>();
+  let u = 0;
+  [...run].forEach((c, k) => (byUnit.set(u, k), (u += c.length)));
+  const at: number[] = [];
+  for (const seg of new Segmenter("zh", { granularity: "word" }).segment(run)) {
+    const k = byUnit.get(seg.index);
+    if (k) at.push(k);
+  }
+  return at;
 }
 
 /** D561, as the Mac's keepTokens: a short Latin token with a hyphen (GPT-6.2-Sol, gpt-5-codex) never breaks

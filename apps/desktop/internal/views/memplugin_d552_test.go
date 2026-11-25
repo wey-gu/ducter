@@ -157,11 +157,11 @@ func TestMemPluginD552(t *testing.T) {
 			}
 			shot("overview-running")
 			crop2x("overview-running", L.T("need.memplug.on", "Claude Code", hel), 24, 60)
-			// Updated: hel's notice goes (the other stays, the only one now, so without its computer);
-			// the row says the version it reached.
+			// Updated: hel's notice goes (the other stays, the only one now, and still says its computer:
+			// D569, it isn't the home); the row says the version it reached.
 			app.Receive(d552Devices(`{"state":"installed","version":"0.7.38","updated":true}`, d552Behind))
 			frames()
-			if hasText(tt, L.T("need.memplug.on", "Claude Code", hel)) || !hasText(tt, L.T("need.memplug", "Claude Code")) {
+			if hasText(tt, L.T("need.memplug.on", "Claude Code", hel)) || !hasText(tt, L.T("need.memplug.on", "Claude Code", "Mac mini")) {
 				t.Fatalf("%s: notices after the update: %q", lang, tt.Texts())
 			}
 			shot("overview-updated")

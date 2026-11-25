@@ -13,7 +13,7 @@ import { linkedChats } from "./channels.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
 import { ago, harnessName, keepClauses, memWords, modelName, shownDeviceName } from "./format.ts";
-import { MemAsk, memLine, memPluginRows } from "./mem-plugin.tsx";
+import { MemAsk, memCant, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
@@ -55,18 +55,21 @@ export function setNeeds(): SetNeed[] {
   const issue = A.settings?.memory ? A.mem?.health?.issue : undefined;
   if (issue === "signed_out") out.push({ key: "memhealth", text: t("need.mem.signed_out"), go: t("need.go.signin"), page: "memory" });
   if (issue === "unreachable") out.push({ key: "memhealth", text: t("need.mem.unreachable", A.bridge?.home || homeName() || "Ducter"), go: t("need.go.look"), page: "memory" });
-  const asks = A.mem?.check?.asks.length ?? 0;
-  if (asks > 0 && A.settings?.memory) out.push({ key: "memask", text: asks > 1 ? t("need.memask", asks) : t("need.memask.one"), go: t("need.go.look"), page: "memory" });
+  // D569: what Nowledge Mem couldn't settle by itself is its own bookkeeping, never a need: it waits,
+  // one quiet row on Memory, the partner's suggestions in it.
   // D552: one per agent per computer, each saying which computer when there is more than one, so two
   // never read the same; one being updated stays, its fix the busy button, until the check clears it.
-  const memp = memPluginRows(A.devices).filter(({ h }) => h.mem?.state === "update");
+  // D569: only one that can run from here (the computer awake, any AI signed in there): its fix is the
+  // pane's own Update, right here, never a 去更新 to a row with no button. One that can't is no need;
+  // its row on Memory says why.
+  const memp = memPluginRows(A.devices).filter(({ dv, h }) => h.mem?.state === "update" && !memCant(dv));
   const several = new Set(memp.map(({ dv }) => dv.id)).size > 1;
   for (const { dv, h } of memp) {
-    // The pane's own action and its ask in place, where the pane would offer them (signed in, awake).
     const w = memWords(A.L, memLine(dv, h), harnessName(h.harness), h.harness);
-    const here = (!!w.action || !!w.busy) && h.loggedIn && dv.state === "awake";
-    const text = several ? t("need.memplug.on", harnessName(h.harness), shownDeviceName(dv.name)) : t("need.memplug", harnessName(h.harness));
-    out.push({ key: `memp:${dv.id}:${h.harness}`, text, go: here ? (w.busy ?? w.action!) : t("need.go.update"), page: "memory", ...(here && w.busy ? { busy: true } : {}), ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
+    if (!w.action && !w.busy) continue;
+    // D569: a computer not the home is always named (haswell, not hel).
+    const text = several || !dv.home ? t("need.memplug.on", harnessName(h.harness), shownDeviceName(dv.name)) : t("need.memplug", harnessName(h.harness));
+    out.push({ key: `memp:${dv.id}:${h.harness}`, text, go: w.busy ?? w.action!, page: "memory", ...(w.busy ? { busy: true } : {}), fix: { kind: "memp" as const, dv, h } });
   }
   const u = updatesWaiting();
   if (u.n > 0 && !u.running) {
@@ -183,11 +186,18 @@ export function PaneSays({ page }: { page: SettingsPage }) {
       <Avatar size={36} state={needs.length ? "needsyou" : "idle"} />
       <div class="ps-words">
         {say && <p class="ps-say">{keepClauses(say)}</p>}
-        {needs.map((n) => (
-          <p key={n.key} class="ps-need">
-            {n.text}
-          </p>
-        ))}
+        {needs.map((n) =>
+          // D569: a plugin's update is done from the head, where the need is said, never a page below.
+          n.fix?.kind === "memp" ? (
+            <p key={n.key} class="ps-need ps-fix">
+              <NeedLine n={n} go={() => {}} />
+            </p>
+          ) : (
+            <p key={n.key} class="ps-need">
+              {n.text}
+            </p>
+          ),
+        )}
       </div>
     </div>
   );

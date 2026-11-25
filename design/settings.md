@@ -531,8 +531,8 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   labelled lines in its voice, each opening its pane: **等你** (each need with the button to where its fix is),
   **运行在**, **想事情用**, **能看的**, **记得**, **也能找我**.
 - **What needs you, everywhere it is** (`setNeeds`, the web's twin): no agent to think with (Partner), a source
-  that can't be reached (Accounts), Mem's questions (D465) and a Mem plugin behind (D466) (Memory), updates
-  (About on the Mac, Devices on the web). The brief names each with its button; the pane's head names its own.
+  that can't be reached (Accounts), a Mem plugin behind that can be updated from here (D466, D569) (Memory),
+  updates (About on the Mac, Devices on the web). Mem's own questions (D465) never are (D569). The brief names each with its button; the pane's head names its own.
 - **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
   it is to the partner (D551: **我在这台上运行**, **这会儿连不上**; D556: **帮你做事**, true with one partner or four); the home's card carries what
   lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
@@ -836,3 +836,26 @@ Mem.** When the last one it should have kept didn't go, the line says so in the 
 where their agents look; the consumer who never opens it (off is right for them); the fresh user
 without Mem never sees the group.
 
+## Memory: the update that can be found, Mem's asks as one quiet row, the newest preferences (D569)
+
+The author on 0.1.67, home on hel: Overview said 「等你 · Claude Code 里的 Nowledge Mem 有新版本。[去更新]」; 去更新
+landed at Memory's top, and at the bottom haswell's row 「Nowledge Mem 0.7.37，有新的 0.7.38 了」 had no button
+(「更新我还是没看到，即使拉到底」). Overview also counted 「Nowledge Mem 有 4 处想请你确认」 as 等你.
+
+- **Who:** the heavy developer with a worker (haswell) whose Claude Code is signed out there; the consumer and the
+  fresh user who meet Mem's asks without knowing what Mem's graph is.
+- **Why the button was missing:** both clients offered 更新 only when the row's own agent was signed in on that
+  computer (`h.loggedIn`) and it was awake, while the home runs the update with any AI signed in there (core
+  `mem-plugins.ts` `openSetup`). haswell's Claude Code reads signed out there (INFERRED from the code: the only
+  gate that hides it on an awake computer whose Codex is signed in); the Overview then fell back to 去更新, a
+  way to a row with nothing to press.
+- **Now (`memCant`, Mac and web, one rule as core's):** the computer awake and any AI signed in there. Then every
+  outdated row on any computer carries **更新 / Update**; the need is the update itself, on the Overview and in
+  Memory's head where it is said (asked in place, busy, done), never 去更新. A computer that is not the home is
+  always named (**haswell 上 Claude Code 里的 Nowledge Mem 有新版本。**). Can't run from here: no need at all,
+  and the row says why in one line (**haswell 这会儿不在线，等它回来就能更新。** / **haswell 上没有登录着的 AI 能替你
+  更新，在那儿登录一个就行。**).
+- **Mem's asks:** never a need; one quiet row with 看看; open, the partner's suggestions and 按建议都处理
+  (`memory.md` "What Mem would like checked").
+- **你喜欢的做法:** newest first stays; what was stale was Mem's data (no preference typed since 2026-09-24) and
+  Ducter's own saves going in untyped; memory_add now says its kind (`memory.md`, research/232).

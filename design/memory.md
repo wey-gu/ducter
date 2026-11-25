@@ -497,11 +497,24 @@ Settings › 记忆 now carries the few that change what the partner and every o
   total only, to know whether more waits), `rules list`. At most every 10 minutes while the page is viewed,
   in the background, gated like the glance (memory on, Mem connected, never on a test without a fake nmem).
   Only titles, days and a rule's words travel; a memory's contents never leave Mem.
-- **What is shown**, after 我知道的关于你 / What I know about you: **Nowledge Mem 想跟你确认 / Nowledge Mem
-  would like to check**, at most 3 contradictions (newest first: the two titles, earlier first) and 2 learned
-  draft rules (title and words). Mem's own suggestion is the primary button (a contradiction's
-  `recommended_action`; a learned rule's 用上 / Use it), the others quiet. Nothing waiting and nothing more:
-  no section. More waiting (skills, upkeep): one line pointing to Mem, never a count.
+- **Never a needs-you (D569).** These are Mem's own bookkeeping, low stakes, and Mem settles them by itself
+  after a month: they never count on the Overview, in 等你 or in a pane's head.
+- **What is shown**, after 我知道的关于你 / What I know about you: one quiet row, **Nowledge Mem 有 n 处拿不准 /
+  Nowledge Mem isn't sure about n things**, **不急，不回它也会照原样留着。/ No rush: left alone, it keeps them as
+  they are.**, and **看看 / Look**. Open, at most 3 contradictions (newest first: the two titles, earlier first)
+  and 2 learned draft rules (title and words), each with the suggestion said (**我的建议：后记的对 / I'd say: The
+  later one holds**, its reason under it) and its answers: the suggested one the secondary clay, first, the
+  others quiet; over them the group's one primary, **按建议都处理 / Take the suggestions**. Nothing waiting and
+  nothing more: no section. More waiting (skills, upkeep): one line pointing to Mem, never a count.
+- **The suggestion is the partner's (D569).** The model judges, never a pattern in code: one short tool-less
+  turn on the cheap model (`judge.ts` `createHarnessAsk`) over Mem's own facts, on the home: both memories'
+  words (Mem's `content_snippets`), their days and sources, Mem's reason and confidence, Mem's own
+  recommendation as one more fact; a rule's words and day. Code guards only the answer (one the ask allows,
+  with a reason, clipped). Judged once per ask and language, in the background after a read, asked again at
+  most twice; until it answers, or with no agent, Mem's own suggestion stands, named as Mem's (**Nowledge Mem
+  的建议：… / Nowledge Mem suggests: …**). The words go to the partner's own model, never to a client. On the
+  author's four (research/232) haiku overruled Mem's cautious "both" where a later note is a correction, and
+  kept the earlier note where it was the final number.
 - **Answering** (`mem_answer` → `mem_answered`): the ask leaves at once and the partner says one word under
   the section. A contradiction runs `feed resolve <id> --action <a>`; a graph action comes back as a
   preview and is confirmed by its exact `--plan-id` (never a fresh preview); a preview without a plan is a

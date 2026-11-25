@@ -2056,6 +2056,7 @@ type MemCheckItem struct {
 	Title   string        `json:"title,omitempty"`
 	Body    string        `json:"body,omitempty"`
 	Suggest string        `json:"suggest,omitempty"`
+	Why     string        `json:"why,omitempty"` // D569: the partner's reason for Suggest
 	Answers []string      `json:"answers"`
 	At      string        `json:"at,omitempty"`
 }

@@ -49,15 +49,17 @@ Settings opens with your partner telling you, in a few lines, how things stand: 
 thinks with, which accounts it reads (and that anything sent or paid asks you first), what it
 remembers, and where else you can reach it (your chat apps, and your own agents that can reach it,
 such as **Your Codex, Claude Code**). Click a line to open its tab. When something needs you
-(a source of accounts that can't be reached, Nowledge Mem signed out or out of reach, something
-Nowledge Mem would like you to confirm, a newer Nowledge Mem for one of your AI agents (with the
-computer's name when you have more than one), updates ready), your partner raises its little flag,
+(a source of accounts that can't be reached, Nowledge Mem signed out or out of reach, a newer
+Nowledge Mem for one of your AI agents that can be updated from here (with the computer's name when
+it isn't the one your partner runs on, or you have more than one), updates ready), your partner raises its little flag,
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
-AI agents asks you first, in place, then updates it; updates ready start with one tap, as in
-**Devices**.
+AI agents asks you first, in place, then updates it on that computer (any AI signed in there does
+it); the **Memory** page carries the same **Update** right under the line that says so. Updates ready
+start with one tap, as in **Devices**. What Nowledge Mem itself isn't sure about never asks for your
+attention here; it waits quietly on the **Memory** page.
 
 Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
 picture with what it is to your partner (**Ducter runs here**, **Does tasks for Ducter**, **Reaches
@@ -226,7 +228,7 @@ What your partner remembers about you has its own section, **Memory**.
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
   notes anything, in the conversation or in its tasks; what it noted stays.
 - **What I know about you** groups what Nowledge Mem holds about you: **How you like things**,
-  **What you decided** and **What it knows**. What you told it is the usual source, so those lines
+  **What you decided** and **What it knows**, the newest of each first. What you told it is the usual source, so those lines
   say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You
   saved it**, or **Nowledge Mem drew it from your conversations**). Tap a line to **Fix** its words or
   **Forget** it; forgetting asks first and reaches Nowledge Mem, so your other AI tools won't recall
@@ -234,12 +236,14 @@ What your partner remembers about you has its own section, **Memory**.
   what it remembers about you** goes back to your conversation with that question ready to send; your
   partner answers in a few lines of its own, and you can tell it what's wrong there.
 - **Check this week's**, under the switch, opens what it noted about you in the last seven days.
-- **Nowledge Mem would like to check** shows the few things Nowledge Mem wasn't sure of while tidying
-  your memories: two that **seem to disagree** (pick **The later one holds**, **The earlier one holds**
-  or **Both hold**), or a rule it **learned from how you work** (**Use it** or **Not this**). The answer
-  Nowledge Mem suggests is the highlighted one. No answer is fine too: after a while Nowledge Mem leaves
-  them as they are. Other suggestions, like ways of working worth keeping as a skill, stay in Nowledge Mem.
-  When nothing is waiting, the section isn't there.
+- **Nowledge Mem isn't sure about n things** is one quiet row for what Nowledge Mem couldn't settle while
+  tidying your memories. It never asks for your attention; **Look** opens it. Each is two memories that
+  **seem to disagree** (**The later one holds**, **The earlier one holds** or **Both hold**) or a rule it
+  **learned from how you work** (**Use it** or **Not this**), with your partner's suggestion and why, read
+  from what the two memories say. **Take the suggestions** answers them all; any one can be answered
+  differently. No answer is fine too: after a while Nowledge Mem leaves them as they are. Other
+  suggestions, like ways of working worth keeping as a skill, stay in Nowledge Mem. When nothing is
+  waiting, the row isn't there.
 - **What all your AI tools follow** lists the rules in Nowledge Mem that every AI tool connected to it
   reads at each new conversation, your partner included. **Turn off** asks first.
 - **Your other AI tools share this memory** says which tools, like Claude Code, Codex or Cursor,
@@ -267,7 +271,9 @@ What your partner remembers about you has its own section, **Memory**.
   **Updating to 0.7.38…**, so a second tap starts nothing more; afterwards the line says
   **Updated to 0.7.38; start Claude Code again to use it**. Nothing happens until you tap, and when
   every agent is up to date there is no row at all. The agent's own detail in **Your devices**
-  says the same.
+  says the same. Any AI signed in on that computer can do the update, so the button is there even
+  when that agent itself isn't signed in there. When it can't be done from here, the row says why
+  in one line instead: the computer is offline right now, or no AI is signed in on it.
 - When Claude Code or Codex on the computer Ducter runs on isn't connected to Nowledge Mem yet, a
   quiet row under Nowledge Mem says so, with **Connect**. Nowledge Mem itself still reads as working:
   your partner's memory doesn't need it.

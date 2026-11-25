@@ -56,7 +56,10 @@ export function aboutOf(out: string, kind: "preference" | "decision" | "fact"): 
   const list = listOf(out);
   if (!list) return undefined;
   const items: MemItem[] = [];
-  for (const m of list) {
+  // D569: newest first, whatever order Mem answers in (it does today, VERIFIED on nmem 0.10.123): a
+  // kind's rows are the latest of it, never the first page of some other order.
+  const at = (m: any) => Date.parse(String(m?.created_at ?? "")) || 0;
+  for (const m of [...list].sort((a, b) => at(b) - at(a))) {
     if (items.length >= ABOUT_PER_KIND) break;
     const it = memItem({ ...m, unit_type: kind });
     if (!it) continue;

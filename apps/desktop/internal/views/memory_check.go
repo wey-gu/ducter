@@ -1,9 +1,12 @@
 package views
 
-// D465: Settings › 记忆's 「Nowledge Mem 想跟你确认」 / "Nowledge Mem would like to
-// check": two memories Mem found may disagree, a rule it learned from how the
-// person works, each with Mem's own suggestion as the primary; the rest stays
-// in Mem, said once, never counted. And 「你的 AI 都照着做的」 / "What all your
+// D465: Settings › 记忆's asks from Nowledge Mem: two memories Mem found may
+// disagree, a rule it learned from how the person works; the rest stays in
+// Mem, said once, never counted. D569: Mem's own bookkeeping, never a needs-you:
+// one quiet row, 「Nowledge Mem 有 n 处拿不准」 with 看看; open, each ask with the
+// partner's suggestion (the model's judgement over Mem's facts, core
+// mem-check.ts) as its default and its reason, every answer still one tap, and
+// 按建议都处理 / Take the suggestions for all of them. And 「你的 AI 都照着做的」 / "What all your
 // AI tools follow": the rules on in Mem, each one tap (asked first) to turn off.
 // The web's: apps/web/src/memory.tsx MemCheckSec, MemRules.
 
@@ -50,7 +53,9 @@ func (a *App) memSettle(id, answer string) {
 	a.send(protocol.MemAnswer{T: "mem_answer", ID: id, Answer: answer})
 }
 
-// memCheckAnswers is an ask's answers: Mem's suggestion the primary, the others quiet.
+// memCheckAnswers is an ask's suggestion, said, then its answers: the suggested
+// one first as the secondary clay, the others quiet (the group's one primary is
+// 按建议都处理). The partner's reason when it judged; else Mem's own, named so.
 func (a *App) memCheckAnswers(c *ui.Context, it protocol.MemCheckItem) {
 	t := a.T
 	about := it.Title
@@ -61,8 +66,20 @@ func (a *App) memCheckAnswers(c *ui.Context, it protocol.MemCheckItem) {
 		}
 		about = strings.Join(ts, " / ")
 	}
+	if it.Suggest != "" {
+		ui.Column(c.Key("mck-adv:" + it.ID)).Gap(2).Children(func() {
+			key := "mem.check.mems"
+			if it.Why != "" {
+				key = "mem.check.mine"
+			}
+			uiText(c, a.L.T(key, a.L.T("mem.check."+it.Suggest))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.45))
+			if it.Why != "" {
+				uiText(c, autospace(it.Why)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			}
+		})
+	}
 	ui.Row(c.Key("mck-acts:" + it.ID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-		// Mem's suggestion, the primary, first on the left (D543).
+		// The suggestion first on the left (D543).
 		answers := make([]string, 0, len(it.Answers))
 		for _, ans := range it.Answers {
 			if ans == it.Suggest {
@@ -77,7 +94,7 @@ func (a *App) memCheckAnswers(c *ui.Context, it protocol.MemCheckItem) {
 		for _, ans := range answers {
 			kind := btnText
 			if ans == it.Suggest {
-				kind = btnPrimary
+				kind = btnSecondary
 			}
 			if a.buttonFor(c, a.L.T("mem.check."+ans), about, kind, t.ControlSM, t.Surface) {
 				a.memSettle(it.ID, ans)
@@ -87,7 +104,37 @@ func (a *App) memCheckAnswers(c *ui.Context, it protocol.MemCheckItem) {
 	})
 }
 
-// memCheck is what Nowledge Mem would like settled (D465); nothing waiting: no section.
+// memTakeSuggestions answers every ask that has a suggestion as suggested,
+// one Mem answer each, and says so once (D569).
+func (a *App) memTakeSuggestions(asks []protocol.MemCheckItem) {
+	var todo []protocol.MemCheckItem
+	for _, it := range asks {
+		if it.Suggest != "" && slicesContains(it.Answers, it.Suggest) {
+			todo = append(todo, it)
+		}
+	}
+	for _, it := range todo {
+		a.memSettle(it.ID, it.Suggest)
+	}
+	switch {
+	case len(todo) == 1:
+		a.say("mem-check", a.L.T("said.mem.check.all.one"))
+	case len(todo) > 1:
+		a.say("mem-check", a.L.T("said.mem.check.all", len(todo)))
+	}
+}
+
+func slicesContains(xs []string, x string) bool {
+	for _, y := range xs {
+		if y == x {
+			return true
+		}
+	}
+	return false
+}
+
+// memCheck is what Nowledge Mem couldn't settle by itself (D465, D569): one
+// quiet row that opens in place; nothing waiting: no section.
 func (a *App) memCheck(c *ui.Context) {
 	t := a.T
 	m := a.S.Mem
@@ -95,10 +142,47 @@ func (a *App) memCheck(c *ui.Context) {
 		return
 	}
 	ck := m.Check
+	ps := &a.memPage
+	n := len(ck.Asks)
+	open := ps.checkOpen && n > 0
+	suggested := 0
+	for _, it := range ck.Asks {
+		if it.Suggest != "" {
+			suggested++
+		}
+	}
 	defer a.saidLine(c, "mem-check")
-	a.sectionHead(c, a.L.T("mem.check.title"), a.L.T("mem.check.note"))
 	a.group(c, "mem-check", "", "", func() {
+		if n > 0 {
+			title := a.L.T("mem.check.unsure", n)
+			if n == 1 {
+				title = a.L.T("mem.check.unsure.one")
+			}
+			look := a.L.T("mem.check.look")
+			chev := 1
+			if open {
+				look, chev = a.L.T("mem.check.fold"), 2
+			}
+			a.tileRow(c, "mem-check-row", a.pebbleTile(c), title, a.L.T("mem.check.line"), func() {
+				if a.quietButton(c, "mem-check-look", look, a.L.T("mem.check.title"), false, chev) {
+					ps.checkOpen = !open
+				}
+			})
+		}
+		if open && suggested > 0 {
+			a.textBlock(c, "mck-all", func() {
+				ui.Row(c.Key("mck-all-row")).Children(func() {
+					if a.buttonFor(c, a.L.T("mem.check.take"), a.L.T("mem.check.title"), btnPrimary, t.ControlSM, t.Surface) {
+						a.memTakeSuggestions(ck.Asks)
+						ps.checkOpen = false
+					}
+				})
+			})
+		}
 		for _, it := range ck.Asks {
+			if !open {
+				break
+			}
 			it := it
 			a.textBlock(c, "mck:"+it.ID, func() {
 				if it.Kind == "rule" {
@@ -129,7 +213,7 @@ func (a *App) memCheck(c *ui.Context) {
 		if len(ck.Asks) == 0 {
 			a.tileRow(c, "mem-check-clear", a.pebbleTile(c), a.L.T("mem.check.clear"), "", nil)
 		}
-		if ck.More {
+		if ck.More && (open || n == 0) {
 			a.footRow(c, "mem-check", a.L.T("mem.check.more"), func() {
 				if a.quietLink(c, "mem-check-open", a.L.T("mem.all.open"), a.L.T("mem.all.open")) {
 					a.openLink(memSite)

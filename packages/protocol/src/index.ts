@@ -3177,7 +3177,10 @@ export interface MemCheckItem {
   pair?: { title: string; at?: string }[];
   title?: string;
   body?: string;
+  /** The default answer: the partner's judgement over the true facts when it has one (D569), else Mem's own. */
   suggest?: MemCheckAnswer;
+  /** D569: why the partner suggests it, one short line in the person's language (absent: Mem's own suggestion, or none). */
+  why?: string;
   answers: MemCheckAnswer[];
   at?: string;
 }

@@ -11,22 +11,27 @@ const KEYS = Object.keys(memoryWords.zh).filter((k) => k.startsWith("mem.check."
 
 describe("Nowledge Mem would like to check (D465)", () => {
   test("every word in zh and en, no counter, no dot-joined facts, no text arrows", () => {
-    expect(KEYS.length).toBe(24);
+    expect(KEYS.length).toBe(33);
     for (const k of KEYS) {
       expect(memoryWords.en[k]).toBeTruthy();
       for (const w of [memoryWords.zh[k]!, memoryWords.en[k]!]) {
         expect(w).not.toMatch(/ · |件|->|→|=>/);
       }
     }
-    expect(memoryWords.zh["mem.check.title"]).toBe("Nowledge Mem 想跟你确认");
+    expect(memoryWords.zh["mem.check.title"]).toBe("Nowledge Mem 拿不准的地方");
     expect(memoryWords.en["mem.rules.title"]).toBe("What all your AI tools follow");
   });
 
-  test("the page: after what it knows, before the other tools; Mem's suggestion is the primary", () => {
+  test("the page: after what it knows, before the other tools; one quiet row, Take the suggestions the one primary", () => {
     const src = readFileSync(new URL("../src/memory.tsx", import.meta.url), "utf8");
     expect(src.indexOf("<MemCheckSec />")).toBeGreaterThan(src.indexOf("<MemAbout />"));
     expect(src.indexOf("<MemRules />")).toBeLessThan(src.indexOf("<MemTools />"));
-    expect(src).toContain('kind={a === it.suggest ? "primary" : "text"}');
+    // D569: the suggestion is the secondary clay per ask; the group's one primary takes them all.
+    expect(src).toContain('kind={a === it.suggest ? "secondary" : "text"}');
+    expect(src).toContain('<Btn kind="primary" size="sm" label={t("mem.check.take")}');
+    expect(memoryWords.zh["mem.check.unsure"]).toBe("Nowledge Mem 有 %d\u00a0处拿不准");
+    expect(memoryWords.zh["mem.check.take"]).toBe("按建议都处理");
+    expect(memoryWords.en["mem.check.take"]).toBe("Take the suggestions");
     const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");
     expect(css).toContain(".mem-pair li");
   });
@@ -56,7 +61,11 @@ describe("Nowledge Mem would like to check (D465)", () => {
       expect(A.mem!.check!.rules.map((x) => x.id)).toEqual(["rule:feishu", "rule:ci"]);
       A.memSettle("rule:ci", "not");
       expect(A.mem!.check!.rules.map((x) => x.id)).toEqual(["rule:feishu"]);
-      A.memSettle("e1", "newer");
+      // D569: Take the suggestions answers each as suggested, once each.
+      const { takeSuggestions } = await import("../src/memory.tsx");
+      const before = sent.length;
+      takeSuggestions([{ id: "e1", kind: "contradiction", suggest: "newer", why: "后记的是更正。", answers: ["newer", "older", "both"] }, { id: "x", kind: "contradiction", answers: ["newer", "both"] }]);
+      expect(sent.slice(before)).toEqual([{ t: "mem_answer", id: "e1", answer: "newer" }]);
       A.receive({ t: "mem_answered", id: "e1", answer: "newer", ok: false });
       expect(A.memSettleFailed).toBe("e1");
       A.receive({ t: "mem_answered", id: "e1", answer: "newer", ok: true });

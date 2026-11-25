@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, How, LinkBtn } from "./controls.tsx";
+import { keepClauses } from "./format.ts";
 import { Qr } from "./phone.tsx";
 import { GConfirm, Said, say, Waiting } from "./set-grid.tsx";
 
@@ -178,7 +179,8 @@ function Row(p: { title: string; line?: string; how?: string; children?: Compone
 function Foot(p: { note: string; children?: ComponentChildren }) {
   return (
     <div class="chat-foot">
-      <small class="grow">{p.note}</small>
+      {/* D583: kept as GRow's lines are (keepClauses): at 390 Slack's 「。」 stood alone on a line. */}
+      <small class="grow">{keepClauses(p.note)}</small>
       {p.children}
     </div>
   );
@@ -188,13 +190,18 @@ function Foot(p: { note: string; children?: ComponentChildren }) {
  * D399: 断开 asks in place, as on the Mac (D289): a disconnect throws the key away, and getting it
  * back means the steps again.
  */
-function ForgetFoot(p: { kind: ChannelKind; name: string; note: string; label: string }) {
+function ForgetFoot(p: { kind: ChannelKind; name: string; note: string; label: string; children?: ComponentChildren }) {
   const [asking, setAsking] = useState(false);
   if (asking)
     return <GConfirm ask={t("chats.forget.ask", p.name)} keep={t("card.stop.keep")} go={p.label} about={p.name} onKeep={() => setAsking(false)} onGo={() => (setAsking(false), A.send({ t: "channel_forget", kind: p.kind }), say(`chat:${p.kind}`, t("said.chats.off", p.name)))} />;
+  // D583: the link's quiet actions are one group, as a connection's on Accounts (看看我读了什么 and
+  // 停用 OOMOL): they share a line when they fit, on a phone too, the destructive one last.
   return (
     <Foot note={p.note}>
-      <DangerButton label={p.label} about={p.name} quiet onClick={() => setAsking(true)} />
+      <span class="g-acts">
+        {p.children}
+        <DangerButton label={p.label} about={p.name} quiet onClick={() => setAsking(true)} />
+      </span>
     </Foot>
   );
 }
@@ -232,11 +239,11 @@ function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
           {v.reinstall && <Reinstall manifest={manifest} />}
           {v.state === "unlinked" && <Link v={v} />}
           {v.state === "linked" && (
-            <Row title={t("chats.linked.who", v.linked?.name ?? "")} line={v.kind === "slack" ? t("chats.sl.linked.goes") : t("chats.linked.goes", name)}>
-              <Btn kind="text" size="sm" label={t("chats.unlink")} about={name} onClick={() => A.send({ t: "channel_unlink", kind: v.kind })} />
-            </Row>
+            <Row title={t("chats.linked.who", v.linked?.name ?? "")} line={v.kind === "slack" ? t("chats.sl.linked.goes") : t("chats.linked.goes", name)} />
           )}
-          <ForgetFoot kind={v.kind} name={name} note={who} label={t("chats.forget", name)} />
+          <ForgetFoot kind={v.kind} name={name} note={who} label={t("chats.forget", name)}>
+            {v.state === "linked" && <Btn kind="text" size="sm" label={t("chats.unlink")} about={name} onClick={() => A.send({ t: "channel_unlink", kind: v.kind })} />}
+          </ForgetFoot>
         </>
       )}
     </section>

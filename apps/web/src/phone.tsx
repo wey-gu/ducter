@@ -551,8 +551,11 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
       ) : (
         <GRow title={t("call.voice.title")} line={t("call.voice.none")}>
           {/* D551: the primary first (D533, D543), then the quiet "done recording". */}
-          <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
-          <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
+          {/* D583: one group, so the two share a line under the words on a phone, as a foot's do. */}
+          <span class="g-acts">
+            <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
+            <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
+          </span>
         </GRow>
       )}
       {A.voiceAnswer && (

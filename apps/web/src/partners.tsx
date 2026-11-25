@@ -16,7 +16,7 @@ import { A, type Wear } from "./app.ts";
 import { FIGURE_OPTICAL } from "@ducter/protocol/src/figures-gen.ts";
 import { say, Said } from "./set-grid.tsx";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, Chev, CountPebble, Facts, Field, IconBtn } from "./controls.tsx";
+import { AddRow, Btn, Chev, CountPebble, DangerButton, Facts, Field, IconBtn } from "./controls.tsx";
 import { phoneNow } from "./wide.ts";
 import { currentSplit } from "./fold.ts";
 import { harnessName, modelName } from "./format.ts";
@@ -440,7 +440,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
         </span>
         <span class="partner-acts">
           <Btn kind="text" size="sm" label={t("partners.remove.keep")} onClick={() => setRemoving(false)} />
-          <Btn kind="secondary" size="sm" label={t("partners.remove.go")} about={p.name} onClick={() => (setRemoving(false), A.removePartner(p.id))} />
+          <DangerButton label={t("partners.remove.go")} about={p.name} onClick={() => (setRemoving(false), A.removePartner(p.id))} />
         </span>
       </div>
     );
@@ -461,7 +461,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
               <ThinksLine p={p} />
             </>
           )}
-          {shown && (A.partners?.length ?? 0) > 1 ? <small>{t("partners.talking")}</small> : null}
+          {shown && !editing && (A.partners?.length ?? 0) > 1 ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
       {/* D582: the six figures and the colours rest behind 改一下 / Change, with the name, what it
@@ -486,12 +486,20 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
       {editing && <ThinksPick p={p} />}
       <span class="partner-acts">
         {editing ? (
-          <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />
+          <>
+            <Btn kind="primary" size="sm" label={t("partners.rename.save")} onClick={save} />
+            {/* D583: 移除 rests with the rest of 改一下, the shared quiet destructive action (D289)
+                at the far end, asking in place; at rest a row has only 换到 and 改一下. */}
+            {p.id !== DEFAULT_PARTNER && (
+              <span class="partner-remove">
+                <DangerButton quiet label={t("partners.remove")} about={p.name} onClick={() => (setEditing(false), setRemoving(true))} />
+              </span>
+            )}
+          </>
         ) : (
           <>
             {!shown && <Btn kind="secondary" size="sm" label={t("partners.switch", p.name)} onClick={() => A.openPartner(p.id)} />}
             <Btn kind="text" size="sm" label={t("partners.change")} about={p.name} onClick={() => (setDraft(p.name), setAboutDraft(p.about ?? ""), setEditing(true))} />
-            {p.id !== DEFAULT_PARTNER && <Btn kind="text" size="sm" label={t("partners.remove")} about={p.name} onClick={() => setRemoving(true)} />}
           </>
         )}
       </span>

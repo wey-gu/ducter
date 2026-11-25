@@ -93,8 +93,13 @@ describe("What it knows about you (D321)", () => {
     const zh = memoryWords.zh as Record<string, string>;
     const en = memoryWords.en as Record<string, string>;
     // D424 cut the lede to one line; the drawing below it shows both directions.
-    expect(zh["settings.lede.peers"]).toBe("接上 Nowledge Mem 的 agent 能和%[1]s互相发消息。");
-    expect(en["settings.lede.peers"]).toBe("Your agents on Nowledge Mem and %[1]s can message each other.");
+    // D583: the picture's label names them once (接上 Nowledge Mem 的 agent); the lede says the pane's own
+    // words and the switch's title says 它们, its accessible name kept whole.
+    expect(zh["settings.lede.peers"]).toBe("你的其他 agent 能和%[1]s互相发消息。");
+    expect(en["settings.lede.peers"]).toBe("Your other agents and %[1]s can message each other.");
+    expect(zh["peers.pic.them"]).toBe("接上 Nowledge Mem 的 agent");
+    expect(zh["peers.switch.title"]).toBe("让它们能找到%s");
+    expect(en["peers.switch.title"]).toBe("Let them reach %s");
     expect(zh["peers.switch"]).toBe("让接上 Nowledge Mem 的 agent 能找到%s");
     expect(en["peers.switch"]).toBe("Let agents connected to Nowledge Mem reach %s");
     // The switch's line stays about what shows up in the conversation.

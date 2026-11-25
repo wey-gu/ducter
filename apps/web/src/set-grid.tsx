@@ -71,7 +71,8 @@ export function GBlock(p: { children: ComponentChildren }) {
 export function GFoot(p: { note: string; children?: ComponentChildren }) {
   return (
     <div class="chat-foot">
-      <small class="grow">{p.note}</small>
+      {/* D583: kept as a row's line is (keepClauses): a lone 「，」 stood on a line of its own at 390. */}
+      <small class="grow">{keepClauses(p.note)}</small>
       {p.children && <span class="g-acts">{p.children}</span>}
     </div>
   );

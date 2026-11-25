@@ -81,7 +81,7 @@ var zhSetHome = Table{
 	"say.todos":             "你在 GitHub、Obsidian 里的待办，我能接过来做；做完替你留言或勾掉。",
 	"say.chats":             "在你常用的聊天软件里也能找我，还是同一段对话。",
 	"say.autofill":          "我把这些填进自己的浏览器，自己看不见；付款都先问你。",
-	"say.peers":             "接上 Nowledge Mem 的 agent 能和我互相发消息。",
+	"say.peers":             "你的其他 agent 能和我互相发消息。",
 }
 
 var enSetHome = Table{
@@ -161,7 +161,7 @@ var enSetHome = Table{
 	"say.todos":             "Your to-dos in GitHub and Obsidian: I can take them on, and comment or tick them off when done.",
 	"say.chats":             "Reach me from the chat apps you already use. It's still one conversation.",
 	"say.autofill":          "I fill these into my own browser without seeing them; every payment asks you first.",
-	"say.peers":             "Your agents on Nowledge Mem and I can message each other.",
+	"say.peers":             "Your other agents and I can message each other.",
 }
 
 func init() {

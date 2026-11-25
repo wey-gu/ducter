@@ -302,6 +302,8 @@ can do or what its states mean.
   colour; free, at once, any time. The partner answers in its new
   shape: its small figure where the said line's pebble pops, and **好，我现在是{figure}了，还是我。/
   There: I'm {figure} now. Still me.** (settings.md, D296).
+  The open row also holds **移除 / Remove** (not the default's), at the far end across from **好 / Save**,
+  asking in place (D583); at rest a row has only **换到** and **改一下**.
 - **Not taken** (research/230): the star (reads as a rating, and its big eyes turn every state into
   alarm), the drop (a tear or a flame, and the pebble's eyes), any animal (a species and a pet).
   Chat apps' icons (Slack's face, D531) stay the pebble in the partner's colour (todo).

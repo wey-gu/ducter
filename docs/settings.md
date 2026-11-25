@@ -203,7 +203,7 @@ that partner's shape and colour, and an opened task says which partner gave it t
   **Change** under its name to rename it, edit what it looks after, or pick another figure (**How
   it looks**) or colour; a new figure or colour takes at once, and it tells you it's still itself.
   **Save** closes it again. Your first partner can change its figure too, even when it is your only
-  one; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
+  one. **Remove** sits at the far end of the same open row, across from **Save**, and asks once. Its conversation is kept, and your first partner takes over its tasks.
 - **Give one its own AI.** Under each partner's name a line says what it thinks with; one you
   haven't set says **Thinks with the same as** your first partner. **Change** on its row shows
   **Thinks with**: keep **Same as …**, or pick another signed-in AI agent, then its model and
@@ -341,8 +341,8 @@ once in the conversation.
 Your partner speaks first at the top of the page, saying how things stand now, for example
 **Codex and I talk both ways; Claude Code is one step away.** When one of your agents can hand your
 partner work but your partner's answers can't get back to it yet, the same step waits for you on
-Settings' **Overview**. Then comes the one switch, **Let agents connected to Nowledge Mem reach
-{name}**, and under it what it gives you: they can hand {name} work and ask it things, {name} asks
+Settings' **Overview**. The picture at the top shows who they are: agents connected to Nowledge
+Mem. Then comes the one switch, **Let them reach {name}**, and under it what it gives you: they can hand {name} work and ask it things, {name} asks
 them for you, and anything that needs your call shows up in your conversation.
 
 **Your agents** lists each AI tool you use, one row each: its mark, its name, and what it can do with
@@ -423,7 +423,7 @@ say which agent wrote, nor which message answers what your partner asked; while 
 the page says so with **Update** (it only swaps the program: you stay signed in, and your memories
 don't move).
 
-One switch, **Let agents connected to Nowledge Mem reach {name}**, turns it all on or off. If something is wrong
+One switch, **Let them reach {name}**, turns it all on or off. If something is wrong
 (Nowledge Mem says no, or another computer is answering your agents), one row says what and offers
 the one fix. If you told your partner to stop listening to an agent, that agent has a row with
 **Undo**. In the conversation each agent is called by what it is and where it works, for example

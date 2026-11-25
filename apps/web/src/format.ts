@@ -147,7 +147,14 @@ export function keepClauses(s: string): string {
       continue;
     }
     const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
-    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && (j - i <= 6 || k >= j - 4))) ? "\u2060" : "");
+    // D583: Settings sets keep-all (D561), so a long run has no break inside it and Chrome's emergency
+    // break put the clause's last \u300c\u3002\u300d alone on a line. A zero-width space before the kept tail is the
+    // run's one break, so the tail moves down whole.
+    const tail = end && j - i > 6 && j < rs.length ? j - 4 : -1;
+    for (let k = i; k < j; k++) out += (k === tail ? "\u200b" : "") + rs[k] + (k < j - 1 && (j - i <= 4 || (end && (j - i <= 6 || k >= j - 4))) ? "\u2060" : "");
+    // D583: the clause's punctuation stays with its last character: after a joined run Chrome would
+    // otherwise put a lone \u300c\uff0c\u300d or \u300c\u3002\u300d on a line of its own at 390.
+    if (j < rs.length && "\uff0c\u3002\uff1b\uff1a\uff1f\uff01\u3001".includes(rs[j]!)) out += "\u2060";
     i = j;
   }
   // Latin: the last two words together (a no-break space), never one word alone on the last line.

@@ -822,14 +822,31 @@ and 1000, first screen and full, zh and en, light and dark (`.shots/settings-r2/
 | 4 | 记忆 / Memory, Nowledge Mem | The count squeezed to four lines by its way at 390; the Mac's files row 52 left of its card's rows, and in another place than the web's | The ways under their words on a phone; the files row the card's own shape, right after the count, on both |
 
 Kept: Memory's order (the switch, what it knows, Mem's asks, Mem itself) and its fact rows; Notifications,
-Accounts, To-do sources, Passwords & cards, Look and sound, Where it runs, About. Left: Agent messaging saying
-**接上 Nowledge Mem 的 agent** three times on its first screen (a copy pass of its own, `todo.md`); Chat apps'
-quiet actions on a phone (D475's); a lone **改一下** keeping its text button's padding.
+Accounts, To-do sources, Passwords & cards, Look and sound, Where it runs, About. Left, and closed by D583: Agent
+messaging saying **接上 Nowledge Mem 的 agent** three times on its first screen; Chat apps' quiet actions on a
+phone (D475's). Still left: a lone **改一下** keeping its text button's padding.
+
+## Said once, and the review pass (D583)
+
+D582's leftovers, then the review D582 skipped, on every pane at Mac 1150 and web 390, zh and en, light and dark
+(`.shots/settings-r3/{before,after}`, 2x crops in `crops/` and `mac2x/`).
+
+| # | Where | Found | Now |
+|---|---|---|---|
+| 1 | Agent messaging | **接上 Nowledge Mem 的 agent** in the lede, the picture and the switch | Said once, as the picture's label (D501's exception). Lede **你的其他 agent 能和我互相发消息。**; switch title **让它们能找到{name}**, its accessible name whole; **你的其他 agent** for 你别的 AI in its rows |
+| 2 | Partner, en at 390 | **Switch to Dobby / Change / Remove**: Remove wrapped to a line of its own | At rest **换到 / 改一下**; **移除** inside the open row, at the far end across from **好**, the shared quiet destructive action asking in place; the ask's **移除** in the danger ink |
+| 3 | Chat apps, phone | **换个账号** and **断开** each on a line of its own | One group in the card's last line, as Accounts' connection: one line when they fit; **Switch account** in en |
+| 4 | Accounts, phone | **去 Tuwa 录 ›** and **录好了** on two lines | One group, one line |
+| 5 | Every pane, zh at 390 | A lone 「。」 or 「，」 on a line (keep-all's emergency break) | `keepClauses`: one break before a long run's kept tail, punctuation glued; group feet kept as rows |
+| 6 | Memory, phone | **了解 Nowledge Mem** in a 150-wide column beside its button | `act-under` |
+| 7 | Partner, open row | Placeholder cut at 390; **正在聊** between the fields | **Like home, the doctor, the kids**; 正在聊 hidden while open |
+
+Rejected in review: flattening the clay (ledges, shadows, stones, the sunken picture); the slop scanner's hits
+outside Settings; labels over the open row's fields; centring the picture's labels.
 
 ## Not done
 
-- D475's own: Chat apps' quiet
-  actions each on a line of their own on a phone; Where it runs'
+- D475's own: Where it runs'
   cards say what each computer is doing only when the home reports it (the demo reports none); the
   author's review.
 - D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on

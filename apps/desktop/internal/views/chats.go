@@ -375,11 +375,7 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			if v.Kind == "slack" {
 				goes = a.L.T("chats.sl.linked.goes") // D531: @-mentions in a channel too
 			}
-			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), goes, func() {
-				if a.buttonFor(c, a.L.T("chats.unlink"), name, btnText, t.ControlSM, t.Surface) {
-					a.send(protocol.ChannelOpReq{T: "channel_unlink", Kind: v.Kind})
-				}
-			})
+			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), goes, nil)
 		}
 		// D289: a destructive action is quiet until hovered, and asks in place.
 		if a.chats.forgetting == v.Kind {
@@ -394,7 +390,12 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			}
 			return
 		}
+		// D583: the link's quiet actions are one group in the foot, as a connection's on Accounts:
+		// 换个账号, then the destructive one last.
 		a.chatFoot(c, "end:"+v.Kind, a.L.T(who), func() {
+			if v.State == "linked" && a.buttonFor(c, a.L.T("chats.unlink"), name, btnText, t.ControlSM, t.Surface) {
+				a.send(protocol.ChannelOpReq{T: "channel_unlink", Kind: v.Kind})
+			}
 			if a.quietDanger(c, "chat-forget:"+v.Kind, a.L.T("chats.forget", name), name) {
 				a.chats.forgetting = v.Kind
 			}

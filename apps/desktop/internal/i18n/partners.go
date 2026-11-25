@@ -85,7 +85,7 @@ var zhPartners = Table{
 
 var enPartners = Table{
 	"partners.title":             "Your partners",
-	"partners.help":              "Each partner has its own name and conversation, and can't see the others'. Your devices, accounts and On hand are shared.",
+	"partners.help":              "Each partner has its own name and its own conversation, which the others can't see. Your devices, accounts and On hand are shared.",
 	"partners.add":               "Add a partner",
 	"partners.add.help":          "One for work and one for home, say, or one for each person in the family.",
 	"partners.add.name":          "Its name",
@@ -108,7 +108,7 @@ var enPartners = Table{
 	"partners.error.unknown":     "That didn't change. Try again.",
 	"partners.say":               "Or just tell me: \"make me another partner for things at home\".",
 	"partners.about":             "What it looks after",
-	"partners.about.placeholder": "For example: home, the doctor, the kids",
+	"partners.about.placeholder": "Like home, the doctor, the kids",
 	"partners.about.shown":       "Looks after: %s",
 	"partners.change":            "Change",
 	"partners.remove":            "Remove",

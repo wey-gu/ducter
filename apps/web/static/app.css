@@ -14008,6 +14008,9 @@ button.chip-file {
 .g-block.first { padding: var(--s4) var(--set-in, var(--s4)); }
 .g-group > .switch { min-height: 64px; padding: var(--s3) var(--set-in, var(--s4)) var(--s3) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
 .g-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+/* D583: a group of actions never runs past its line: when even the group alone doesn't fit, it
+   wraps inside itself, still at the right edge (a long English pair at 320). */
+.chat-row > .g-acts, .chat-foot > .g-acts { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
 .g-tag { flex: none; padding: 4px var(--s2); border-radius: var(--r-xs); background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--xs); font-weight: 700; white-space: nowrap; }
 .g-checks { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
 .g-checks b { font-size: var(--md); font-weight: 700; line-height: 1.5; }
@@ -14411,6 +14414,8 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   gap: 4px 8px;
 }
 .partners-set .partner-acts:empty { display: none; }
+/* D583: 移除 / Remove rests inside 改一下 / Change, at the far end of its line, away from 好 / Save. */
+.partners-set .partner-acts .partner-remove { margin-inline-start: auto; }
 .look-pick {
   display: flex;
   flex-wrap: wrap;

@@ -157,7 +157,7 @@ export const channelWords: { zh: Record<string, string>; en: Record<string, stri
     "chats.code.ttl": "Works once, for 10 minutes.",
     "chats.linked.who": "Linked to %s",
     "chats.linked.goes": "What you say in %s, I answer there.",
-    "chats.unlink": "Use another account",
+    "chats.unlink": "Switch account",
     "chats.forget": "Disconnect %s",
     "chats.forget.ask": "Once disconnected, I can't be reached in %s; our conversation stays here.",
     "chats.stranger": "Someone else wrote in %s to %s. It didn't answer.",

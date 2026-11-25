@@ -472,7 +472,8 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 						if a.button(c, a.L.T("partners.remove.keep"), btnText, t.ControlSM, t.Surface) {
 							ps.removing = ""
 						}
-						if a.button(c, a.L.T("partners.remove.go"), btnSecondary, t.ControlSM, t.Surface) {
+						// D583: the confirmation is the shared dangerText, as every ask in place (D289).
+						if a.dangerText(c, "partner-remove-go:"+id, a.L.T("partners.remove.go"), p.Name) {
 							ps.removing = ""
 							a.send(protocol.PartnerRemove{T: "partner_remove", ID: id, ClientID: fmt.Sprintf("pr-%d", time.Now().UnixNano())})
 						}
@@ -516,7 +517,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 								}
 								a.thinksLine(c, p)
 							}
-							if many && p.ID == shown {
+							if many && p.ID == shown && ps.editing != id { // D583: not under the fields while open
 								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
 							}
 						})
@@ -547,6 +548,15 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
 								save()
 							}
+							// D583: 移除 rests with the rest of 改一下, the shared quiet destructive
+							// action (D289) at the far end, asking in place. At rest a row has
+							// only what a person does often: 换到 and 改一下.
+							if id != protocol.DefaultPartner {
+								ui.Box(c).Grow(1)
+								if a.quietDanger(c, "partner-remove:"+id, a.L.T("partners.remove"), p.Name) {
+									ps.removing, ps.editing = id, ""
+								}
+							}
 							return
 						}
 						if p.ID != shown && a.button(c, a.L.T("partners.switch", p.Name), btnSecondary, t.ControlSM, t.Surface) {
@@ -554,9 +564,6 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 						}
 						if a.button(c, a.L.T("partners.change"), btnText, t.ControlSM, t.Surface) {
 							ps.editing, ps.editName, ps.editAbout, ps.removing = id, p.Name, p.About, ""
-						}
-						if id != protocol.DefaultPartner && a.button(c, a.L.T("partners.remove"), btnText, t.ControlSM, t.Surface) {
-							ps.removing, ps.editing = id, ""
 						}
 					})
 					ui.Column(c).Padding(0, 0, 0, 52).Children(func() { a.saidLineAt(c, "fig:"+id, 0) })

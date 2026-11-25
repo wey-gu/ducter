@@ -184,7 +184,7 @@ The first time another partner writes to you in a chat app, it says how to talk 
 
 ## Another account, or disconnect
 
-In **Settings › Chat apps**, **Use another account** forgets your account (the bot stays; link
+In **Settings › Chat apps**, **Switch account** forgets your account (the bot stays; link
 the same one or another any time). **Disconnect** forgets the bot's key too, so it asks first, in place, and your partner
 confirms it under the card; your conversation stays in Ducter. To connect the same Telegram bot
 again, send BotFather `/mybots`, pick your bot, then **API Token**, and paste that key. If anyone

@@ -133,7 +133,9 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		}
 		a.group(c, "peers-head", "", "", func() {
 			// D470: the switch is the page's first group; the partner's sentence above says how things stand.
-			title, line, tone := a.L.T("peers.switch", name), "", sideMuted
+			// D583: the picture above names who they are; the title says 它们, the switch's
+			// accessible name stays whole.
+			title, line, tone := a.L.T("peers.switch.title", name), "", sideMuted
 			if !on {
 				line = a.L.T("peers.switch.off", name)
 			}

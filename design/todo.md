@@ -20,10 +20,11 @@ line.
 ## Settings, after D582 (`settings.md` "Flow and craft (D582)")
 
 - [ ] **The author's review of `.shots/settings-r2/`** (the five crops named in D582's report first).
-- [ ] **Agent messaging says 接上 Nowledge Mem 的 agent three times on its first screen** (the head, the
-  picture's label, the switch's title). A copy pass with the picture's label (D501's exception); trigger:
-  the next pass on Agent messaging.
-- [ ] **The phone in the iOS Simulator for D582's Partner rows** (open and closed, large text).
+- [ ] **The phone in the iOS Simulator for D582's Partner rows** (open and closed, large text), with D583's
+  移除 inside the open row.
+- [ ] **The author's review of `.shots/settings-r3/`** (D583; the five crops named in its report first).
+- [ ] **The Mac's keepClauses under a long Chinese run** (D583 fixed the web's lone 「。」 under keep-all; the Mac
+  breaks anywhere, so it has not shown one). Trigger: a lone punctuation mark seen in a Mac shot.
 
 ## The site, after D558 (`site.md`, research/227)
 

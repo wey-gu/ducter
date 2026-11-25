@@ -59,10 +59,13 @@ test("the preview never breaks a clause's last word", async () => {
   const { keepClauses } = await import("../src/format.ts");
   const s = "早上好。值得说的三条，第一条：ducter.ai 的域名后天到期，还没续费。";
   const kept = keepClauses(s);
-  expect(kept.replaceAll("⁠", "")).toBe(s);
-  expect(kept).toContain("到⁠期，");
-  expect(kept).toContain("还⁠没⁠续⁠费。");
-  expect(kept).toContain("后\u2060天\u2060到\u2060期，");
+  expect(kept.replaceAll("⁠", "").replaceAll("\u200b", "")).toBe(s);
+  expect(kept).toContain("到⁠期⁠，");
+  expect(kept).toContain("还⁠没⁠续⁠费⁠。");
+  expect(kept).toContain("后\u2060天\u2060到\u2060期\u2060，");
+  // D583: a clause's punctuation stays with its last character, never alone on a line.
+  // Settings is keep-all (D561): a long run's one break is before its kept tail, so the tail moves down whole.
+  expect(keepClauses("这个工作区的管理员可能看得到你在这儿说的话。")).toEndWith("这\u200b儿\u2060说\u2060的\u2060话\u2060。");
   expect(kept).not.toContain("名\u2060后");
   expect(keepClauses("Two ways to fix CI.")).toBe("Two ways to fix\u00a0CI.");
   const v = src("settings-delight.tsx");

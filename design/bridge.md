@@ -119,7 +119,7 @@ a computer nobody looks at, and Mem's list can't say which is which (both were l
 
 | The home | The row (Settings › 和你的其他 agent 通信) | The tap runs |
 |---|---|---|
-| another home holds it | **{name} 现在在 {home} 上收你别的 AI 发来的消息，这台不用再收。** · **改由这台收**, asking in place: **改由这台收？{home} 上就不再收了，{name} 只在这台上收你别的 AI 发来的消息。** | connect here, then `bridge connections revoke` the other's |
+| another home holds it | **{name} 现在在 {home} 上收你的其他 agent 发来的消息，这台不用再收。** · **改由这台收**, asking in place: **改由这台收？{home} 上就不再收了，{name} 只在这台上收你的其他 agent 发来的消息。** | connect here, then `bridge connections revoke` the other's |
 | connected here and elsewhere (from before D324) | under the head: **{name} 也在 {home} 上收** (an old label: **另一台电脑**) · **两台都在收，你别的 AI 发来的消息会被先查收的那台拿走，可能落到你不看的那边。只留一台就好。** · **只留这台**, asking in place | revoke the other's |
 | Mem won't end that one from here (another login's) | the same row: **{home} 上的连接只能在那台上断开：在那台的 Ducter 里打开 设置 › 和你的其他 agent 通信，把开关关掉。**, no button | nothing |
 
@@ -239,7 +239,7 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
   misreading (other people's AI), and "连上的 AI agent" read as the partner's own brains next to Partner's line.
 - **What the pane says (D350).** The lede names the thing: any agent of the person's connected to Nowledge Mem (Claude
   Code, Codex, Grok Build: the plugins that carry Bridge, research/66 §10) messages the partner through Nowledge Bridge,
-  both ways; the switch is **让接上 Nowledge Mem 的 agent 能找到{name}**. A sender is named by its Mem agent name, else
+  both ways; the switch is **让接上 Nowledge Mem 的 agent 能找到{name}** (D583: that is its accessible name; on screen the picture's label says 接上 Nowledge Mem 的 agent once, the switch's title **让它们能找到{name}**, the lede **你的其他 agent 能和我互相发消息。**). A sender is named by its Mem agent name, else
   the tool it runs in (`bridge_msg.host`, when Mem says), else **一个没留名字的 agent**, with a drawn agent for its tile.
 - **Connect without a tap, on the person's own home only** (`packages/core/src/bridge-auto.ts`, D340). Mem signed
   in with exactly one personal place (bridge-link's `ready`), the switch on, agents of their own: the home connects

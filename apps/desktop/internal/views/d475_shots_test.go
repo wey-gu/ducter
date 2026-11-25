@@ -39,6 +39,12 @@ func TestD475Shots(t *testing.T) {
 	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	h.app.LocaleFixed, h.app.L = true, i18n.New(lang)
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+	// D583: DUCTER_SHOTS_SCALE=2 writes the shots at 2x, for the crops a review looks at first.
+	sc := float32(1)
+	if os.Getenv("DUCTER_SHOTS_SCALE") == "2" {
+		h.tt.SetScale(2)
+		sc = 2
+	}
 	paper := "light"
 	if os.Getenv("DUCTER_SHOTS_DARK") != "" {
 		h.tt.SetDark(true)
@@ -90,11 +96,11 @@ func TestD475Shots(t *testing.T) {
 					bottom = r.Y + r.H
 				}
 			}
-			if b := img.Bounds(); bottom > 0 && int(bottom)+120 < b.Dy() {
+			if b := img.Bounds(); bottom > 0 && int(bottom*sc)+120 < b.Dy() {
 				if sub, ok := img.(interface {
 					SubImage(r image.Rectangle) image.Image
 				}); ok {
-					img = sub.SubImage(image.Rect(0, 0, b.Dx(), max(860, int(bottom)+120)))
+					img = sub.SubImage(image.Rect(0, 0, b.Dx(), max(int(860*sc), int(bottom*sc)+120)))
 				}
 			}
 			f, err := os.Create(filepath.Join(dir, name+".png"))

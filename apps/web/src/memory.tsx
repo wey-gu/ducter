@@ -719,7 +719,8 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
       <Group class="mem-g" label="Nowledge Mem">
         <GHead tile={<MemTile faded />} name="Nowledge Mem" line={line} />
         {/* D552: what Nowledge Mem is, before any step, in every phase (a fresh user meets the steps cold). */}
-        <GRow title={t("mem.app.learn")} line={t("mem.app.what")}>
+        {/* D583: act-under, so on a phone its words keep the width (they stood in a 150-wide column). */}
+        <GRow cls="act-under" title={t("mem.app.learn")} line={t("mem.app.what")}>
           <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
         </GRow>
         {phase !== "missing" && <MemSteps phase={phase} b={b} />}
@@ -1306,7 +1307,7 @@ export function PeersPage() {
   const head = phase !== "getting" && phase !== "none" && (
     <section class="set mem-sec">
       <Group class="mem-g" label={t("settings.tab.peers")}>
-        <GHead tile={<CoinsTile faded={!on} />} name={t("peers.switch", name)} line={on ? undefined : t("peers.switch.off", name)}>
+        <GHead tile={<CoinsTile faded={!on} />} name={t("peers.switch.title", name)} line={on ? undefined : t("peers.switch.off", name)}>
           <Switch label={t("peers.switch", name)} on={on} onChange={flip} />
         </GHead>
         <GFoot note={on ? t("peers.switch.on", name) : t("peers.off.kept")} />

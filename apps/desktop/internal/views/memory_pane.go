@@ -199,7 +199,17 @@ func (a *App) memFix(id, title string) {
 // memRow is one memory, tapped open in place: where it came from as its
 // line, the age at the right; open, 改 (its words, written to Mem) and 忘掉
 // (asks first).
-func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
+// memBare (D582): a list with no other tool's row has no tile column.
+func memBare(ms []protocol.MemItem) bool {
+	for _, m := range ms {
+		if m.By == "tool" && m.From != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *App) memRow(c *ui.Context, m protocol.MemItem, bare bool) {
 	t := a.T
 	ps := &a.memPage
 	open := ps.open == m.ID
@@ -251,7 +261,7 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
 	if s := a.agoLong(m.At); s != "" {
 		age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 	}
-	if a.openRow(c, "memi:"+m.ID, tile, autospace(m.Title), line, t.InkMuted, open, age) {
+	if a.openRowOn(c, "memi:"+m.ID, tile, bare, autospace(m.Title), line, t.InkMuted, open, age) {
 		if open {
 			ps.open = ""
 		} else {
@@ -351,7 +361,7 @@ func (a *App) memAbout(c *ui.Context) {
 				a.tileRow(c, "mem-find-none", a.pebbleTile(c), a.L.T("mem.find.none", q), "", nil)
 			default:
 				for _, x := range f.Items {
-					a.memRow(c, x)
+					a.memRow(c, x, memBare(f.Items))
 				}
 			}
 		})
@@ -373,7 +383,7 @@ func (a *App) memAbout(c *ui.Context) {
 		}
 		a.group(c, "mem-kind:"+g.Kind, title, "", func() {
 			for _, x := range g.Items {
-				a.memRow(c, x)
+				a.memRow(c, x, memBare(g.Items))
 			}
 		})
 	}
@@ -488,6 +498,8 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 				a.openLink(memSite)
 			}
 		})
+		// D566, D582: after how much Mem holds, as on the web.
+		a.memFilesRow(c)
 		// D459: one story with 和你的其他 agent 通信: the same Mem is how the person's other
 		// agents reach the partner, said here once with the way over.
 		for _, tab := range a.visibleTabs() {
@@ -499,7 +511,6 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 				})
 			}
 		}
-		a.memFilesRow(c) // D566
 		if u := memUpdate(b); u != nil {
 			a.memUpdateRow(c, u, b)
 		}
@@ -537,7 +548,13 @@ func (a *App) memFilesRow(c *ui.Context) {
 		tr := m.FileTrouble
 		help = a.L.T("memfile.trouble", tr.Name, a.keepWhy(tr.Why))
 	}
-	if v, ch := a.toggleRow(c, "memfiles", a.L.T("memfile.row"), help, st.MemFiles); ch {
+	// D582: a row of the group's own shape (the text edge its siblings keep), not a
+	// toggleRow, which sat 52 left of every other row in the card.
+	v, ch := st.MemFiles, false
+	a.tileRow(c, "memfiles", nil, a.L.T("memfile.row"), help, func() {
+		ch = a.switchControl(c, "memfiles", a.L.T("memfile.row"), &v)
+	})
+	if ch {
 		st.MemFiles = v
 		a.SetSettings(protocol.SettingsPatch{MemFiles: &v})
 		if v {

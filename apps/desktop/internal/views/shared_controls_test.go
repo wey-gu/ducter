@@ -32,7 +32,7 @@ var sharedControls = map[string]bool{
 	// D185: a card's property that opens a list, and the list's rows (New task)
 	"pill": true, "menuRow": true, "menuRowEl": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed
-	"addRow": true, "quietDanger": true, "openRow": true,
+	"addRow": true, "quietDanger": true, "openRow": true, "openRowOn": true,
 	// D296: a row that goes elsewhere with its tile
 	"tileLinkRow": true,
 	// D398: a card's foot that folds what can wait, and an optional step as a row

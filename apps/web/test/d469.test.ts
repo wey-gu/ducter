@@ -61,6 +61,14 @@ describe("Settings' brief (D469)", () => {
     expect(lines.map((l) => l.page)).toEqual(["devices", "partner", "accounts", "memory"]);
   });
 
+  test("D582: 能看的 waits for the accounts, never 还没有 over ones on their way", async () => {
+    const { A, h } = await setup();
+    A.connections = undefined;
+    expect(h.homeLines().map((l) => l.key)).toEqual(["lives", "thinks", "mem"]);
+    A.connections = [] as any;
+    expect(h.homeLines().find((l) => l.key === "reads")?.text).toBe("还没有。连上邮箱和日历，我替你留意");
+  });
+
   test("needs in the Mac's order, each to the page with its fix", async () => {
     const { A, h } = await setup();
     A.agents = [agent("codex", { loggedIn: false })] as any;

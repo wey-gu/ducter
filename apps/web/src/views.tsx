@@ -2959,11 +2959,15 @@ function NameRow() {
         </>
       ) : (
         <>
+          {/* D582: 改名字 beside the name, as on the Mac: at the right edge it took a column and
+              squeezed where it lives and what it thinks with into four short lines on a phone. */}
           <span class="grow">
-            <h2>{sp.name}</h2>
+            <span class="partner-name">
+              <h2>{sp.name}</h2>
+              {A.settings && <Btn kind="text" size="sm" label={t("partner.rename")} onClick={() => (setDraft(sp.name), setEditing(true))} />}
+            </span>
             {lede && <small>{keepClauses(lede)}</small>}
           </span>
-          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(sp.name), setEditing(true))} />}
         </>
       )}
       </div>

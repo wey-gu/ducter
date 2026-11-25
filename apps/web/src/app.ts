@@ -1157,6 +1157,9 @@ class AppState {
     this.lend = undefined;
     this.sheet = { kind: "settings", page };
     if (this.S.welcomed) this.askLoadout();
+    // D582: the list's 能看的 says what is read: ask for the accounts with the page, not only when
+    // Accounts is opened (it said 还没有 over six watched ones until then).
+    if (!this.connections) this.askConnections();
     this.changed();
   }
 

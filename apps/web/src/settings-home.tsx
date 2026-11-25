@@ -277,7 +277,8 @@ export function homeLines(): HomeLine[] {
     const th = speakerThinks(); // D568: the brief speaks as the partner you are talking with
     if (th) out.push({ key: "thinks", label: t("home.l.thinks"), text: th, page: "partner" });
   }
-  out.push({ key: "reads", label: t("home.l.reads"), text: homeReads(), page: "accounts" });
+  // D582: not said before the accounts are known (never 还没有 over accounts still on their way).
+  if (A.connections) out.push({ key: "reads", label: t("home.l.reads"), text: homeReads(), page: "accounts" });
   const mem = homeMem();
   if (mem) out.push({ key: "mem", label: t("home.l.mem"), text: mem, page: "memory" });
   const reach = homeReach();

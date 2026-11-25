@@ -260,9 +260,12 @@ describe("D568: every figure is the one its name says", () => {
           expect(head?.textContent).toContain(mara.name);
           expect(head?.textContent.replace(/[\u00a0\u2060\u202f]/g, " ")).toContain("Claude Code");
           expect(head?.textContent).not.toContain("Codex");
-          // Each partner's row has the six figures, the default's too.
+          // D582: each partner's row rests as its figure, the default's too; the six open behind 改一下.
           const picks = root.all().filter((e) => e.attrs.class?.split(" ").includes("fig-pick"));
-          expect(picks.length).toBe(ps.length);
+          expect(picks.length).toBe(0);
+          const rows = root.all().filter((e) => e.attrs.class?.split(" ").includes("partner-row"));
+          expect(rows.length).toBe(ps.length);
+          for (const r of rows) expect(r.textContent).toContain(lang === "zh" ? "改一下" : "Change");
         }
         if (page === "") {
           // The list's 伙伴 row and the brief wear 小玛, and the brief says what 小玛 thinks with.
@@ -279,12 +282,13 @@ describe("D568: every figure is the one its name says", () => {
       for (const page of ["list", "partner", "memory"]) expect(Number(counts.find((c) => c.startsWith(`${page}=`))?.split("=")[1])).toBeGreaterThan(0);
     });
 
-  test("one partner gets its row and the picker, and wears its figure", async () => {
+  test("one partner gets its row (the picker behind 改一下, D582), and wears its figure", async () => {
     const A = await rig("zh", [{ id: "default", name: "Ducter", look: "sand", figure: "bun", asks: 0 }] as never, "default");
     expect(A.speakerFor().wear).toEqual({ figure: "bun", look: "sand" });
     expect(A.shownWear()).toEqual({ figure: "bun", look: "sand" });
     const { root, done } = await draw("partner");
-    expect(root.all().filter((e) => e.attrs.class?.split(" ").includes("fig-pick")).length).toBe(1);
+    expect(root.all().filter((e) => e.attrs.class?.split(" ").includes("fig-pick")).length).toBe(0);
+    expect(root.all().filter((e) => e.attrs.class?.split(" ").includes("partner-row")).length).toBe(1);
     const head = root.all().find((e) => e.attrs.class === "partner-head");
     const fig = head?.all().find((e) => e.attrs.class?.split(" ").includes("avatar"));
     expect(fig?.attrs["data-figure"]).toBe("bun");

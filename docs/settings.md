@@ -199,10 +199,11 @@ that partner's shape and colour, and an opened task says which partner gave it t
 - **Pass something on.** Say it to the partner you're talking to ("tell Home to remind me about the
   vaccine on Saturday"). It goes into that partner's conversation as your words, with **Passed on
   by …** over them, and that partner answers there. Nothing else of the conversation goes along.
-- **Change or remove one.** In **Your partners**, pick another figure under its name (**How it
-  looks**) or another colour at any time, and it tells you it's still itself. Your first partner
-  can change its figure too, even when it is your only one; **Change** renames it
-  and edits what it looks after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
+- **Change or remove one.** In **Your partners**, each partner shows as the figure it has. Press
+  **Change** under its name to rename it, edit what it looks after, or pick another figure (**How
+  it looks**) or colour; a new figure or colour takes at once, and it tells you it's still itself.
+  **Save** closes it again. Your first partner can change its figure too, even when it is your only
+  one; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
 - **Give one its own AI.** Under each partner's name a line says what it thinks with; one you
   haven't set says **Thinks with the same as** your first partner. **Change** on its row shows
   **Thinks with**: keep **Same as …**, or pick another signed-in AI agent, then its model and

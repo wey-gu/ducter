@@ -297,8 +297,9 @@ can do or what its states mean.
   small steps, and greets the person there by the name they gave it (its first screen, D497). Reduce
   Motion: no breath, blink, hop or walk; the chosen one still stands raised.
 - **Changing later:** Settings › 伙伴, each partner's row (the default's too, and the only one's,
-  D568), a 3 × 2 picker above its colours, each
-  figure shown in that partner's colour; free, at once, any time. The partner answers in its new
+  D568): the row rests as the figure it has; **改一下 / Change** opens it in place (D582) with
+  **它的样子 / How it looks**, a 3 × 2 picker above its colours, each figure shown in that partner's
+  colour; free, at once, any time. The partner answers in its new
   shape: its small figure where the said line's pebble pops, and **好，我现在是{figure}了，还是我。/
   There: I'm {figure} now. Still me.** (settings.md, D296).
 - **Not taken** (research/230): the star (reads as a rating, and its big eyes turn every state into

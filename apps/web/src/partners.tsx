@@ -464,18 +464,25 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
           {shown && (A.partners?.length ?? 0) > 1 ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
-      {/* D565: its figure above its colours, free to change any time; it says one line in its new shape. */}
-      <FigurePick
-        value={p.figure ?? "pebble"}
-        look={p.look}
-        onPick={(figure) => {
-          if (figure === (p.figure ?? "pebble")) return;
-          A.setPartner(p.id, { figure });
-          say(`fig:${p.id}`, t("said.figure", t(`partners.figure.${figure}`)), "fig:", { src: figArt("idle", { figure, look: p.look }), look: p.look });
-        }}
-      />
-      <Said k={`fig:${p.id}`} />
-      <LookPick value={p.look} figure={p.figure} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+      {/* D582: the six figures and the colours rest behind 改一下 / Change, with the name, what it
+          looks after and what it thinks with: the row itself shows the figure it has. Open on every
+          row they made the page four screens long. A figure or a colour still takes at once. */}
+      {editing && (
+        <div class="partner-edit">
+          <span class="small">{t("partners.figure")}</span>
+          <FigurePick
+            value={p.figure ?? "pebble"}
+            look={p.look}
+            onPick={(figure) => {
+              if (figure === (p.figure ?? "pebble")) return;
+              A.setPartner(p.id, { figure });
+              say(`fig:${p.id}`, t("said.figure", t(`partners.figure.${figure}`)), "fig:", { src: figArt("idle", { figure, look: p.look }), look: p.look });
+            }}
+          />
+          <span class="small">{t("partners.look")}</span>
+          <LookPick value={p.look} figure={p.figure} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+        </div>
+      )}
       {editing && <ThinksPick p={p} />}
       <span class="partner-acts">
         {editing ? (
@@ -488,6 +495,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
           </>
         )}
       </span>
+      <Said k={`fig:${p.id}`} />
     </div>
   );
 }

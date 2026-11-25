@@ -11,7 +11,7 @@
 // D470: 和你的其他 agent 通信 says who reaches whom as a picture per agent with each broken way's fix, the
 // exchanges as a thread per agent with what came of each, who may ask what, and the one switch first.
 import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
-import type { ComponentChildren } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile, toolBrand } from "./brand.tsx";
@@ -156,13 +156,16 @@ function MemHead() {
 type Noted = NonNullable<typeof A.mem>["noted"][number];
 
 /** A memory's row, tapped open in place: where it came from and when, 改 (its words, written to Mem), 忘掉 (asks). */
-function MemRow({ m, open, onOpen }: { m: MemItem; open: boolean; onOpen: (id: string) => void }) {
+/** D582: a list with no tool's row (`bare`) has no tile column: its titles sit on the text edge. */
+const bareList = (ms: MemItem[]) => !ms.some((m) => m.by === "tool" && m.from);
+
+function MemRow({ m, open, onOpen, bare }: { m: MemItem; open: boolean; onOpen: (id: string) => void; bare?: boolean }) {
   const [mode, setMode] = useState<"" | "fix" | "ask">("");
   const [words, setWords] = useState(m.title);
   const src = bySource(m);
   // D459: a row speaks only when it differs (D399): what the person told it is said once in the
   // section's note; only another tool's row carries a mark (its coin), never a dot on every row.
-  const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : <span class="g-tile" aria-hidden="true" />;
+  const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : bare ? null : <span class="g-tile" aria-hidden="true" />;
   if (open && mode === "ask")
     return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (setMode(""), onOpen(""), A.memForget(m.id), say("mem-about", t("said.mem.forget", m.title)))} />;
   if (open && mode === "fix") {
@@ -179,7 +182,7 @@ function MemRow({ m, open, onOpen }: { m: MemItem; open: boolean; onOpen: (id: s
   }
   return (
     <>
-      <button type="button" class={`chat-row tiled mem-item${open ? " open" : ""}`} aria-expanded={open} onClick={() => onOpen(open ? "" : m.id)}>
+      <button type="button" class={`chat-row${tile ? " tiled" : ""} mem-item${open ? " open" : ""}`} aria-expanded={open} onClick={() => onOpen(open ? "" : m.id)}>
         {tile}
         <span class="grow">
           <b dir="auto">{m.title}</b>
@@ -261,7 +264,7 @@ function MemAbout() {
           ) : !found.items.length ? (
             <GRow tile={<PebbleTile />} title={t("mem.find.none", A.memQuery)} />
           ) : (
-            found.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} />)
+            found.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} bare={bareList(found.items)} />)
           )}
         </Group>
       ) : !groups.length ? (
@@ -269,11 +272,14 @@ function MemAbout() {
           <GRow tile={<PebbleTile />} title={t("mem.about.empty")} line={t("mem.hero.empty.body")} />
         </Group>
       ) : (
+        // D582: a kind is titled above its card, as every group (and the Mac); never a caption inside it.
         groups.map((gr) => (
-          <Group key={gr.kind} class="mem-g" label={t(`mem.kind.${gr.kind}`)}>
-            {!(groups.length === 1 && gr.kind === "other") && <div class="g-cap">{t(`mem.kind.${gr.kind}`)}</div>}
-            {gr.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} />)}
-          </Group>
+          <Fragment key={gr.kind}>
+            {!(groups.length === 1 && gr.kind === "other") && <h3 class="mem-kind">{t(`mem.kind.${gr.kind}`)}</h3>}
+            <Group class="mem-g" label={t(`mem.kind.${gr.kind}`)}>
+              {gr.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} bare={bareList(gr.items)} />)}
+            </Group>
+          </Fragment>
         ))
       )}
       {/* D459: a forget or a fix is answered once, in the partner's word, under what it changed. */}
@@ -591,13 +597,14 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
       <MemHealthHead b={b} />
       {where && <GRow title={t("mem.app.kept.title")} line={where} />}
       {mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
-      <GRow title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
+      {/* D582: the way to Mem goes under the count on a phone (it squeezed the count to four lines). */}
+      <GRow cls="act-under" title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
         <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
       </GRow>
       <MemFilesRow />
       {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
       {peersPageShown() && (
-        <GRow title={t("mem.peers.row", A.settings!.name)}>
+        <GRow cls="act-under" title={t("mem.peers.row", A.settings!.name)}>
           <Btn kind="text" size="sm" chev label={t("mem.peers.go")} onClick={() => A.openSettings("peers")} />
         </GRow>
       )}

@@ -588,7 +588,7 @@ A new control is added to the set (and to this table) before it is used.
 | A system notice above the composer (the app speaking: a long outage of the link to the home, D532; see "Notices") | `notice`, `aboveComposer` (`components.go`) | `Notice` |
 | A group's add row: a drawn ＋ in the tile column, title, one line (D273) | `addRow` (`settings_rows.go`) | `AddRow` |
 | A destructive action before it is confirmed (停用 OOMOL, 断开 Tuwa, 断开 Telegram; D289): quiet text, the failed ink only under the pointer; it asks in place, and the confirmation is `dangerText` | `quietDanger` (`settings_rows.go`; the ask is `confirmRow`) | `DangerButton` with `quiet` |
-| A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
+| A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289); in a list with no mark to draw, no tile column (D582) | `openRow`, `openRowOn` (`settings_rows.go`) | `OpenRow`; a `chat-row` with no tile |
 | A row that goes elsewhere with its tile in the tile column (AI accounts → Devices with the agents' coins; D296) | `tileLinkRow` (`settings_rows.go`) | the phone's Settings list rows |
 | The one switch alone at a row's right edge, its words the row's own (Memory's head row, D295; 用我的声音打, D296) | `switchControl` inside the row's control | `Switch` |
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |

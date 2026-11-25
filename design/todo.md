@@ -17,6 +17,14 @@ line.
 - [ ] **A true keep-all on the Mac** (D564's alternative): MyGo's `keepWordsWhole` for Chinese, without
   Korean glyphs. Trigger: a Chinese run over ten characters seen broken mid-word in a walk.
 
+## Settings, after D582 (`settings.md` "Flow and craft (D582)")
+
+- [ ] **The author's review of `.shots/settings-r2/`** (the five crops named in D582's report first).
+- [ ] **Agent messaging says 接上 Nowledge Mem 的 agent three times on its first screen** (the head, the
+  picture's label, the switch's title). A copy pass with the picture's label (D501's exception); trigger:
+  the next pass on Agent messaging.
+- [ ] **The phone in the iOS Simulator for D582's Partner rows** (open and closed, large text).
+
 ## The site, after D558 (`site.md`, research/227)
 
 - [ ] **A recorded live demo under the hero** (research/227 rec 3; needs its own D). The real web

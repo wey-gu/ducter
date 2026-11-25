@@ -805,6 +805,27 @@ and the web at 390 and 1000, zh and en, light and dark (`.shots/settings-polish/
 
 The audit, ranked, and what was left are in D561.
 
+## Flow and craft (D582)
+
+The author's standing ask once more, after a week of features landed in Settings (figures D565/D568, Agent
+messaging D560/D576, Memory D563/D569, Save to Mem D566/D572/D575, chat apps D571/D580). This pass looked
+at flow and visual craft, not words: every pane on the Mac at 1150 (`TestD475Shots` against
+`demo-settings-real.ts` with `DEMO_PARTNERS=1`, and `demo-d569.ts` for a connected Memory) and the web at 390
+and 1000, first screen and full, zh and en, light and dark (`.shots/settings-r2/{before,after}`, 2x crops in
+`after/crops/`). The question at each first screen: does it say what this is and whether it is OK?
+
+| # | Pane | Found | Now |
+|---|---|---|---|
+| 1 | 伙伴 / Partner | Every row held the six figures and the colours open: four partners made the group about 1,300 points at 1150, two and a half phone screens; **想事情用** below the fold. On a phone 改名字 squeezed the head's line to four short lines | A row rests as its figure, name, what it looks after and thinks with, and **换到 / 改一下 / 移除**. **改一下** opens the row in place: the fields, **它的样子** over the six, **它的颜色** over the colours, what it thinks with, **好**; D290's enter. The figure's word sits under the row's actions, so it stays after **好**. The head's 改名字 beside the name on the web, as on the Mac |
+| 2 | 概览 / Overview (web) | **能看的** said **还没有** over six watched accounts until Accounts was opened | The accounts are asked with Settings; the line waits for them |
+| 3 | 记忆 / Memory | **你喜欢的做法** beside an empty tile column (a third edge); the web titled the kind inside its card | A list with nothing to draw has no tile column (`openRowOn` `bare`; web `MemRow` without a tile), a tool's row brings it back for its list; the kind titled above its card on both |
+| 4 | 记忆 / Memory, Nowledge Mem | The count squeezed to four lines by its way at 390; the Mac's files row 52 left of its card's rows, and in another place than the web's | The ways under their words on a phone; the files row the card's own shape, right after the count, on both |
+
+Kept: Memory's order (the switch, what it knows, Mem's asks, Mem itself) and its fact rows; Notifications,
+Accounts, To-do sources, Passwords & cards, Look and sound, Where it runs, About. Left: Agent messaging saying
+**接上 Nowledge Mem 的 agent** three times on its first screen (a copy pass of its own, `todo.md`); Chat apps'
+quiet actions on a phone (D475's); a lone **改一下** keeping its text button's padding.
+
 ## Not done
 
 - D475's own: Chat apps' quiet

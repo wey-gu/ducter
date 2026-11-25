@@ -129,14 +129,29 @@ func TestD568PickerForEveryone(t *testing.T) {
 	ps := d568Partners(lang)
 	app, sent := d568App(t, lang, ps, "p4")
 	_, tt := figsOf(t, app, TabPartner)
-	if n := countAccess(tt, ui.RoleRadioGroup, app.L.T("partners.figure")); n != len(ps) {
-		t.Fatalf("want a figure picker in each of %d rows (the default's too), found %d", len(ps), n)
+	// D582: every row rests as its figure; 改一下 opens the six on that row, the default's too.
+	if n := countAccess(tt, ui.RoleRadioGroup, app.L.T("partners.figure")); n != 0 {
+		t.Fatalf("want no figure picker open at rest, found %d", n)
+	}
+	if n := countAccess(tt, ui.RoleButton, app.L.T("partners.change")); n < len(ps) {
+		t.Fatalf("want 改一下 on each of %d rows (the default's too), found %d", len(ps), n)
+	}
+	if err := tt.Click(app.L.T("partners.change")); err != nil {
+		t.Fatal(err)
+	}
+	d513Frames(tt)
+	if n := countAccess(tt, ui.RoleRadioGroup, app.L.T("partners.figure")); n != 1 {
+		t.Fatalf("改一下 should open one row's figures, found %d", n)
 	}
 
 	one := []protocol.PartnerInfo{{ID: "default", Name: "Ducter", Look: "sand", Figure: "bun"}}
 	app, sent = d568App(t, lang, one, "default")
 	figs, tt := figsOf(t, app, TabPartner)
 	label := app.L.T("partners.figure.label", app.L.T("partners.figure.cloud"), app.L.T("partners.figure.air.cloud"))
+	if err := tt.Click(app.L.T("partners.change")); err != nil {
+		t.Fatal(err)
+	}
+	d513Frames(tt)
 	if _, ok := tt.Find(label); !ok {
 		t.Fatalf("one partner: no figure picker: %q", tt.Texts())
 	}

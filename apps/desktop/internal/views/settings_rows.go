@@ -357,6 +357,13 @@ func (a *App) addRow(c *ui.Context, key, title, line string) bool {
 // button; a control (a switch) may stand at the right edge apart from it.
 // It reports a click on the button.
 func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string, lineInk ui.Color, open bool, control func()) bool {
+	return a.openRowOn(c, key, tile, false, title, line, lineInk, open, control)
+}
+
+// openRowOn is openRow; bare (D582) draws no tile column, so a list with no
+// mark to draw (Memory's 你喜欢的做法) keeps its titles on the text edge, as
+// a headRow with no tile does (D501).
+func (a *App) openRowOn(c *ui.Context, key string, tile func(), bare bool, title, line string, lineInk ui.Color, open bool, control func()) bool {
 	t := a.T
 	a.sep(c)
 	clicked := false
@@ -365,7 +372,9 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title + ", " + line).Expanded(open).Focusable()
 		a.rowHover(c, b, groundNeutral(), false) // D529
 		b.Children(func() {
-			a.tileCol(c, tile)
+			if !bare || tile != nil {
+				a.tileCol(c, tile)
+			}
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
 				ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 					uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).SingleLine().Shrink(1).MinWidth(0)

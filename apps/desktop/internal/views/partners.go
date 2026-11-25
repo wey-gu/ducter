@@ -522,19 +522,24 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 						})
 					})
 					// D565: its figure above its colours, free to change any
-					// time; it says one line in its new shape.
-					ui.Column(c).Gap(t.S2).Padding(0, 0, 0, 52).Children(func() {
-						was := firstNonEmpty(p.Figure, "pebble")
-						if f := a.figurePick(c, id, was, p.Look, false); f != "" && f != was {
-							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Figure: f})
-							a.sayAs("fig:"+id, a.L.T("said.figure", a.L.T("partners.figure."+f)), theme.Wear(p.Look, f))
-						}
-						a.saidLineAt(c, "fig:"+id, 0)
-						if l := a.lookPick(c, id, p.Look, p.Figure); l != "" && l != p.Look {
-							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
-						}
-					})
+					// time; it says one line in its new shape. D582: they rest
+					// behind 改一下 with the name (the row shows the figure it
+					// has); open on every row they made the pane four screens long.
 					if ps.editing == id {
+						edit := ui.Column(c.Key("partner-edit:"+id)).Gap(t.S2).Padding(0, 0, 0, 52)
+						a.enter(c, edit)
+						edit.Children(func() {
+							uiText(c, a.L.T("partners.figure")).FontSize(t.SM).TextColor(t.InkMuted)
+							was := firstNonEmpty(p.Figure, "pebble")
+							if f := a.figurePick(c, id, was, p.Look, false); f != "" && f != was {
+								a.send(protocol.PartnerSet{T: "partner_set", ID: id, Figure: f})
+								a.sayAs("fig:"+id, a.L.T("said.figure", a.L.T("partners.figure."+f)), theme.Wear(p.Look, f))
+							}
+							uiText(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
+							if l := a.lookPick(c, id, p.Look, p.Figure); l != "" && l != p.Look {
+								a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
+							}
+						})
 						a.thinksPick(c, p)
 					}
 					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 52).Children(func() {
@@ -554,6 +559,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 							ps.removing, ps.editing = id, ""
 						}
 					})
+					ui.Column(c).Padding(0, 0, 0, 52).Children(func() { a.saidLineAt(c, "fig:"+id, 0) })
 				})
 			}
 		}

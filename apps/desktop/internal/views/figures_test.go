@@ -67,7 +67,8 @@ func TestD565FigureArt(t *testing.T) {
 }
 
 // TestD565Picker: Settings › 伙伴 shows each partner's figure above its
-// colours; a click sends the new figure and the partner says one line in it.
+// colours behind 改一下 (D582); a click sends the new figure and the partner
+// says one line in it.
 func TestD565Picker(t *testing.T) {
 	app, sent := iaApp(t, i18n.ZH)
 	app.LocaleFixed = true
@@ -78,8 +79,16 @@ func TestD565Picker(t *testing.T) {
 	tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	d513Frames(tt)
 	label := app.L.T("partners.figure.label", app.L.T("partners.figure.sprout"), app.L.T("partners.figure.air.sprout"))
+	// D582: the six rest behind 改一下; the row shows the figure it has.
+	if _, ok := tt.Find(label); ok {
+		t.Fatalf("the figure picker shows before 改一下: %q", tt.Texts())
+	}
+	if err := tt.Click(app.L.T("partners.change")); err != nil {
+		t.Fatal(err)
+	}
+	d513Frames(tt)
 	if _, ok := tt.Find(label); !ok {
-		t.Fatalf("no figure picker: %q", tt.Texts())
+		t.Fatalf("no figure picker after 改一下: %q", tt.Texts())
 	}
 	*sent = nil
 	if err := tt.Click(label); err != nil {

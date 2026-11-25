@@ -110,6 +110,28 @@ export interface BridgeOp {
   inReplyTo?: string;
   body?: string;
   space?: string; // D334: the Space whose context's outbox listed it
+  /** D555: whether the recipient opened what this op sent, where Mem gives a read receipt (nmem 0.10.123+). */
+  read?: OpRead;
+}
+
+/**
+ * D555 (research/226): nmem 0.10.123 shows, "where the server provides read receipts", on `outbox` and
+ * `inspect` the message an op sent and how many recipients opened it. The JSON's place is INFERRED from
+ * the binary (`read_receipt` with `receipt_available`, `read_state` unread | partially_read | read,
+ * `read_recipients`, `receipt_observed_at_us`): read only when Mem says a receipt is available, so a
+ * shape that differs reads as nothing, never as a false "read". `ducter check run mem-shapes` records it.
+ */
+export type OpRead = { state: "read" | "partly" | "unread"; count?: number; at?: number };
+export function receiptOf(o: any): OpRead | undefined {
+  const r = o?.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o?.receipt && typeof o.receipt === "object" ? o.receipt : o;
+  if (!r || typeof r !== "object" || r.receipt_available !== true) return undefined;
+  const s = typeof r.read_state === "string" ? r.read_state : "";
+  const state = s === "read" ? "read" : s === "partially_read" ? "partly" : s === "unread" ? "unread" : undefined;
+  const rr = r.read_recipients ?? r.read_count;
+  const count = Array.isArray(rr) ? rr.length : typeof rr === "number" && rr >= 0 ? rr : undefined;
+  if (!state && count === undefined) return undefined;
+  const at = typeof r.receipt_observed_at_us === "number" && r.receipt_observed_at_us > 0 ? Math.floor(r.receipt_observed_at_us / 1000) : undefined;
+  return { state: state ?? (count! > 0 ? "read" : "unread"), ...(count !== undefined ? { count } : {}), ...(at ? { at } : {}) };
 }
 
 /**
@@ -695,7 +717,8 @@ export function opOf(o: any): BridgeOp | undefined {
   const body = str(o?.body) ?? str(o?.text) ?? str(o?.original?.body);
   // D418: nmem 0.10.121's outbox lists `{operation, phase}` only (VERIFIED on hel 2026-11-20); inspect has the rest.
   const bare = !messageId && !inReplyTo && !body;
-  return { operation, state: opState(o?.state ?? o?.status ?? o?.phase), ...(messageId ? { messageId } : {}), ...(inReplyTo ? { inReplyTo } : {}), ...(body ? { body } : {}), ...(bare ? { bare: true as const } : {}) };
+  const read = receiptOf(o);
+  return { operation, state: opState(o?.state ?? o?.status ?? o?.phase), ...(messageId ? { messageId } : {}), ...(inReplyTo ? { inReplyTo } : {}), ...(body ? { body } : {}), ...(bare ? { bare: true as const } : {}), ...(read ? { read } : {}) };
 }
 
 /** The operation selector in a send/reply answer, even a failed one (stdout or stderr JSON). */

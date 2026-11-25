@@ -99,7 +99,7 @@ const PebbleTile = () => (
 const MemTile = ({ faded }: { faded?: boolean }) => <BrandTile name="nowledge_mem" faded={faded} />;
 
 // D314: Claude (the app) is Anthropic's starburst and ChatGPT OpenAI's knot, the same marks as the coins.
-const TOOL_COINS: Record<string, string> = { "Claude Code": "claude-code", Claude: "claude-code", Codex: "codex", ChatGPT: "codex", pi: "pi" };
+const TOOL_COINS: Record<string, string> = { "Claude Code": "claude-code", Claude: "claude-code", Codex: "codex", ChatGPT: "codex", pi: "pi", Antigravity: "antigravity" }; // D555: Antigravity has its own row
 
 /** Another AI tool's mark: its clay coin when Ducter has one, else its own mark on a white clay tile (D314), else its first letter on a sunken pebble. */
 const ToolTile = ({ from }: { from: string }) => {
@@ -886,8 +886,8 @@ export function peersReaching(): string[] {
 /**
  * D489: 你的 agent / Your agents, one literal row per agent: its coin, its name, what it can do with the
  * partner said as what the person gets (never a diagram), and when it last came. An agent whose answers
- * can't reach it carries its one-tap offer under the row (HearBack); pi and Antigravity, whose own Mem
- * plugins carry no Bridge (Mem's to add), share one quiet row, never drawn as a fault.
+ * can't reach it carries its one-tap offer under the row (HearBack); pi, whose own Mem plugin carries no
+ * Bridge (Mem's to add), keeps one quiet row, never drawn as a fault (D555: Antigravity has its own row now).
  */
 function AgentRow({ r }: { r: ReachRow }) {
   const st = standing(r);

@@ -6,7 +6,7 @@ import { BRIDGE_CONNECTION_FILE, pipxCmd, seenAtOf } from "@ducter/core/src/brid
 import { findNmem } from "@ducter/core/src/mem-cli.ts";
 import { popplerCmd } from "@ducter/core/src/pkg-line.ts";
 import { foundOf } from "@ducter/core/src/mem-glance.ts";
-import { contactsOf, mailboxesOf, refsIn, resourceOf } from "@ducter/partner/src/bridge.ts";
+import { contactsOf, inboxRefused, mailboxesOf, receiptOf, refsIn, resourceOf, stuckSpaceIn } from "@ducter/partner/src/bridge.ts";
 import { readFreeLimit, type FreeProvider, WIDER_KINDS } from "@ducter/protocol";
 import { askHome, type Check, type Ctx, dayOf, doNow, fieldsOf, jsonOf, type LoggedEvent, type Observed, opt, type Step, type StepDone, yesNo } from "./kit.ts";
 import { payControls } from "./pay-page.ts";
@@ -194,6 +194,33 @@ export function activityVerdict(s: Observed): { outcome: "pass" | "not-yet" | "f
   return { outcome: "not-yet", note: "last_seen_at_ms is there but null: Mem hasn't seen these connections yet" };
 }
 
+/**
+ * D555: `bridge outbox`'s ops as shapes: how many, their fields, which carry a read receipt of any
+ * form (`read_receipt`, `receipt_available`, `read_state`, `read_recipients`) and how many of those
+ * Ducter's own reader (receiptOf) reads. Ids and bodies are never kept, only field names and counts.
+ */
+export function receiptShapes(j: any): Observed {
+  const list: any[] = Array.isArray(j?.operations) ? j.operations : Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : [];
+  const RECEIPT = ["read_receipt", "receipt_available", "read_state", "read_recipients", "receipt"];
+  const withField = list.filter((o) => o && typeof o === "object" && RECEIPT.some((k) => k in o));
+  return {
+    ops: list.length,
+    fields: fieldsOf(list),
+    receiptField: withField.length,
+    receiptFields: fieldsOf(withField.map((o) => (o.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o.receipt && typeof o.receipt === "object" ? o.receipt : o))),
+    read: list.filter((o) => receiptOf(o)).length,
+    states: [...new Set(list.map((o) => receiptOf(o)?.state).filter(Boolean))].join(","),
+  };
+}
+
+/** D555: the identity inbox's `spaces[]` as shapes: each Space's status and error code, how many are stuck (D369). */
+export function inboxSpaceShapes(j: any): Observed & { stuck: number } {
+  const spaces: any[] = Array.isArray(j?.spaces) ? j.spaces : [];
+  const states = spaces.map((s) => `${typeof s?.status === "string" ? s.status : "?"}${typeof s?.error_code === "string" ? `:${s.error_code}` : ""}`);
+  const stuck = spaces.filter((s) => typeof s?.error_code === "string" && /^cloud_mailbox_\w*_unreconciled$/.test(s.error_code)).length;
+  return { spaces: spaces.length, states: [...new Set(states)].join(","), stuck, messages: Array.isArray(j?.messages) ? j.messages.length : 0, refused: inboxRefused(j) ?? null, stuckSpace: !!stuckSpaceIn(j) };
+}
+
 /** D449: the 429 as pi would pass it (the body's words), read by Ducter's own reader. */
 export function limitShapes(provider: FreeProvider, status: number, headers: Record<string, string>, body: string, now: number): Observed & { ok: boolean } {
   const read = readFreeLimit(body, now);
@@ -263,8 +290,8 @@ const nmem = async (c: Ctx, args: string[], ms = 60_000) => {
 
 const memShapes: Check = {
   name: "mem-shapes",
-  decisions: ["D433", "D444", "D458"],
-  title: "Mem's real answers have the shapes Ducter reads (contacts, activity, search, a resource, a message's references)",
+  decisions: ["D433", "D444", "D458", "D555"],
+  title: "Mem's real answers have the shapes Ducter reads (contacts, activity, read receipts, inbox Spaces, search, a resource, a message's references)",
   needs: ["Nowledge Mem signed in on this computer (nmem)", "optional: a nowledgemem:// link from a Bridge message", "optional: a saved `nmem --json bridge open <id>` you ran yourself"],
   where: "the author's Mac or hel, wherever Mem is",
   minutes: 3,
@@ -362,6 +389,40 @@ const memShapes: Check = {
         const refs = refsIn(j, body);
         const where = ["references", "knowledge_references"].flatMap((k) => [k in j ? k : "", m !== j && k in m ? `message.${k}` : ""]).filter(Boolean);
         return { outcome: refs.length ? "pass" : where.length ? "fail" : "not-yet", observed: { refs: refs.length, kinds: refs.map((r) => r.kind), where }, ...(refs.length ? {} : { note: where.length ? "references present but none read" : "this message carries no references" }) };
+      },
+    },
+    {
+      id: "receipts",
+      title: "bridge outbox: a sent message's read receipt, where D555 reads it (nmem 0.10.123+)",
+      optional: true,
+      by: "auto",
+      async run(c) {
+        // Read only: outbox lists what the home's connection sent; it opens, sends and resumes nothing.
+        const ctx = connectionOf(c)?.context;
+        if (typeof ctx !== "string" || !ctx) return { outcome: "skip", note: "this home has no Bridge connection, so no outbox to read" };
+        const r = await nmem(c, ["--agent-context", ctx, "bridge", "outbox"], 120_000);
+        const j = r && r.code === 0 ? jsonOf(r.out) : undefined;
+        if (!j) return { outcome: "fail", note: `bridge outbox failed or gave no JSON (exit ${r?.code ?? "none"})` };
+        const s = receiptShapes(j);
+        if (!s.ops) return { outcome: "not-yet", observed: s, note: "nothing in the outbox yet: send one message through the partner first" };
+        if (!s.receiptField) return { outcome: "not-yet", observed: s, note: "no op carries a read receipt: Mem's server may not give them yet" };
+        return { outcome: s.read ? "pass" : "fail", observed: s, ...(s.read ? {} : { note: "a receipt is there but not where Ducter reads it (receiptOf): fix the parse from these fields" }) };
+      },
+    },
+    {
+      id: "inbox-spaces",
+      title: "bridge inbox: each Space's state (does the personal Space still say …_unreconciled?)",
+      optional: true,
+      by: "auto",
+      async run(c) {
+        // Read only: `inbox` lists and never acknowledges; nothing is opened (opening records a read).
+        const ctx = connectionOf(c)?.context;
+        if (typeof ctx !== "string" || !ctx) return { outcome: "skip", note: "this home has no Bridge connection" };
+        const r = await nmem(c, ["--agent-context", ctx, "bridge", "inbox"], 120_000);
+        const j = r ? jsonOf(r.out) : undefined;
+        if (!j) return { outcome: "fail", note: `bridge inbox gave no JSON (exit ${r?.code ?? "none"})` };
+        const s = inboxSpaceShapes(j);
+        return { outcome: s.stuck ? "fail" : "pass", observed: s, ...(s.stuck ? { note: `${s.stuck} Space(s) still say a cloud_mailbox_*_unreconciled code` } : {}) };
       },
     },
   ],

@@ -218,10 +218,18 @@ export function recentHandoffs(
   return out;
 }
 
-/** D433: the tools whose Nowledge Mem plugin carries Bridge today (research/66 §10, research/183): they can reach the partner. */
-export const BRIDGE_TOOLS = ["claude-code", "codex"] as const;
-/** D433: tools the person may run whose Mem plugin has no Bridge yet: they share the memory but can't pass a message. */
-export const NO_BRIDGE_TOOLS = ["pi", "antigravity"] as const;
+/**
+ * D433: the tools whose Nowledge Mem plugin carries Bridge today (research/66 §10, research/183): they can reach
+ * the partner. D555 (research/226): Antigravity's since its plugin 0.1.4 (`/nmem-bridge-chat`). Mem's own plugin
+ * check doesn't list Antigravity, so its row says yes only from Mem's contact list or an exchange.
+ */
+export const BRIDGE_TOOLS = ["claude-code", "codex", "antigravity"] as const;
+/**
+ * D433: tools the person may run whose Mem plugin has no Bridge yet: they share the memory but can't pass a message.
+ * D555: pi's plugin 0.8.19 only reminds a session set up by hand to check an approved mailbox at start; by default
+ * its sessions still can't.
+ */
+export const NO_BRIDGE_TOOLS = ["pi"] as const;
 export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi", antigravity: "Antigravity" };
 
 /**
@@ -386,7 +394,7 @@ export function reachSplit(rows: readonly ReachRow[]): { both: ReachRow[]; oneWa
   const oneWay: ReachRow[] = [];
   const notYet: ReachRow[] = [];
   for (const r of rows) {
-    if (!(BRIDGE_TOOLS as readonly string[]).includes(r.harness)) continue; // pi, Antigravity: Mem's to add
+    if (!(BRIDGE_TOOLS as readonly string[]).includes(r.harness)) continue; // pi: Mem's to add
     const w = reachWays(r);
     if (w.to === "yes" && w.back === "no") oneWay.push(r);
     else if (w.to === "yes") both.push(r);

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.58 - 2026-11-25
+
+<!-- whats-new
+zh: Antigravity 也能找你的伙伴了；任务不再多开信箱
+en: Antigravity can reach your partner too; tasks no longer open extra mailboxes
+-->
+
+**Agent messaging**
+- Antigravity, whose Nowledge Mem plugin now carries Bridge, shows in Settings › Agent messaging
+  as one of your agents that can hand work to your partner.
+- Tasks Ducter starts no longer open a mailbox of their own in Nowledge Mem, so your list of
+  connected agents stays the ones you use yourself.
+
 ## 0.1.57 - 2026-11-25
 
 <!-- whats-new

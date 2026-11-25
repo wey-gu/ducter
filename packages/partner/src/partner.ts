@@ -4938,8 +4938,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   // ---------- D448: tasks Ducter carries messages for (design/bridge.md) ----------
-  // A task on an agent whose Mem plugin has no Bridge (pi, Antigravity, DeepSeek Harness) can't
-  // reach the person's other agents by itself. Ducter is in the middle, as it is for Mem's steps
+  // A task on an agent whose Mem plugin has no Bridge (pi, DeepSeek Harness; D555: Antigravity's
+  // has since 0.1.4, but a task never sets up a mailbox of its own, D494) can't reach the person's
+  // other agents by itself. Ducter is in the middle, as it is for Mem's steps
   // (D417): agent_message puts the task's words in front of the person (a card naming the task,
   // the recipient and the words; Go sends it under the partner's identity with the task named),
   // and an answer to it comes back into the task like a follow-up, never waking the partner.

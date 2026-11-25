@@ -1,10 +1,10 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-23 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-23 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), `research/226` (nmem 0.10.123 and the plugins of 2026-11-24, D555), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -1143,7 +1143,7 @@ CLI, read from help and the binary only).
 - **能找到{name}的 / Who can reach {name}**, before 最近 since D459 (after it, D433): one row per AI tool the person runs (Claude Code, Codex, pi,
   Antigravity), from Mem's plugin check per agent (D169), their own records (D332) and the last exchange. Claude Code
   and Codex: **能找到{name}** (with when it last came), else **装上 Nowledge Mem 插件就能找到{name}** with **装上**, else
-  **接上 Nowledge Mem 就能找到{name}**. pi and Antigravity: **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
+  **接上 Nowledge Mem 就能找到{name}**. pi (and Antigravity until D555): **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
   `bridge` skill; Mem's to add; D448: one signed in on a computer of Ducter's reads **{name}开的 {tool} 任务能传话，你自己开的还不行**,
   below). No `bridge contacts` call per view (31 to 40 s each).
 - **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **发送中**, **确认送达中**,
@@ -1168,7 +1168,7 @@ Evidence: `research/191` (nmem still 0.10.121; a deeper read of its help and str
   `BridgeView.mailboxes`: the person's own cards by tool, open unless Mem says `mailbox_available: false` (D461,
   VERIFIED read-only: the grouped `contacts[]` sits beside the per-Space `cards[]`, each with `spaces[]` and, when
   open, `send_args_prefix`; more pages are told by `space_batch` / `spaces_truncated` / `spaces_next_args`). A tool Mem lists as open is **能找到{name}，{name}也找得到它**; one listed closed is **能找到{name}，
-  但 Nowledge Mem 说{name}现在联系不上它**; one Mem doesn't list reads as D433 said. pi and Antigravity unchanged.
+  但 Nowledge Mem 说{name}现在联系不上它**; one Mem doesn't list reads as D433 said. pi unchanged (D555: Antigravity reads as Claude Code does).
 - **A handoff that carries something.** An incoming message's `nowledgemem://` addresses (in its words, or Mem's
   typed `references` / `knowledge_references`) are resolved once when it arrives, read only (`resources get`, at most
   two, 10 s each), and logged as `bridge_msg.refs` (Mem's title, the kind, its first 600 characters, secrets
@@ -1188,7 +1188,7 @@ Code or Codex task setting up its plugin's own Bridge session made a second read
 (research/211); the home is the one receiver. The brief says Ducter receives for the task and wakes it, and
 never to set up a mailbox or session of its own.
 
-A task on pi, Antigravity or DeepSeek Harness has no Bridge of its own (research/183 §3); none needs one: Ducter
+A task on pi, Antigravity or DeepSeek Harness has no Bridge of its own (research/183 §3; D555: Antigravity's plugin has one since 0.1.4, but a task never sets up a mailbox, D494); none needs one: Ducter
 is in the middle of it both ways, as it is for Mem's two steps on agy (D417): the task's tools are Ducter's, and
 the partner's Bridge client already sends, recovers and reads. So Ducter carries the task's messages.
 
@@ -1211,7 +1211,7 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
   information, never the user's instructions or permission. A turn that ends waiting for the answer owes no
   report.
 - **The person sees:** the card; **已发给{who}** after the Go; Recently by the task (**「{task}」问 {who}**,
-  **{who} 回「{task}」**); 能找到{name}的: **{name}开的 {tool} 任务能传话，你自己开的还不行** for pi or Antigravity
+  **{who} 回「{task}」**); 能找到{name}的: **{name}开的 {tool} 任务能传话，你自己开的还不行** for pi (D555: Antigravity has its own row)
   signed in on a computer of Ducter's.
 - **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
   an answer never comes; a new message from another agent addressed to a task by name.
@@ -1321,7 +1321,7 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
   **能把事交给我，也收得到我的回话** (both), **能把事交给我，我的回话它还收不到** (one way),
   **能把事交给我** (Mem hasn't said about the way back), **装上 Nowledge Mem 插件，它就能把事交给我** with
   **装上**, **Nowledge Mem 还没说它装没装插件**, **正在让它收到回话，好了这里会变** (the task is running). pi and
-  Antigravity share one quiet row: **{name}开的任务能替它们传话，你自己开的还不行** (D448's relay) or
+  Antigravity shared one quiet row until D555 (now pi alone, **{name}开的任务能替它传话，你自己开的还不行**) (D448's relay) or
   **它们的 Nowledge Mem 插件还不会传话**. No arrows, no dashes, no needs-you ink on the pane.
 - **One tap to hear back** (D480's facts stand). Showing the pane looks up that computer's Spaces once,
   read only (`mailbox_look`), for the agent whose answers can't reach it; under its row: **回话会送到
@@ -1383,6 +1383,35 @@ done or failed ─▶ the answer goes back from the helper's address (a wait is 
 - **Not yet.** The live run against Mem (the author's step); `--watch` per helper (it is read at each check);
   a helper's app from `HelperWork`; what Mem owes (`research/private/bridge-helpers-ask-2026-11-23.md`, not sent): a
   field telling a session's connection from a home's, and whether a session connection can take identity mail.
+
+## After nmem 0.10.123 and Mem's plugins of 2026-11-24 (D555, 2026-11-25)
+
+Evidence: `research/226` (PyPI, the 0.10.122/0.10.123 binaries read as files, Mem's release notes, the
+community repo and the Antigravity plugin, read-only calls on the author's Mac).
+
+- **What moved on Mem's side.** nmem 0.10.123 keeps every `bridge` verb and adds read receipts on `outbox`
+  and `inspect`. Mem's Antigravity plugin (0.1.4+: `/nmem-bridge-chat`) and Cursor plugin (0.2.3) carry
+  Bridge; pi's (0.8.19) only reminds a session set up by hand (`NMEM_BRIDGE_INBOX_ON_START=1`,
+  `NMEM_AGENT_CONTEXT`) to check one inbox page at start. Claude Code (0.7.35+) and Codex (0.1.50+)
+  prepare a native Bridge session at SessionStart unless `NMEM_BRIDGE_SESSION_MAILBOX=0`. Unchanged:
+  passive setup picks no Space, `--wait` stops at 5 s, no reconcile verb, no mailbox-changed event.
+- **Tasks: no automatic session.** A task with memory on runs with `NMEM_BRIDGE_SESSION_MAILBOX=0` beside
+  `NMEM_NO_MAILBOX_NOTICE=1` (runner). The automatic session, under the partner's identity, was the
+  second reader of research/211; the home stays the one receiver (D494) by Mem's own switch, and the
+  brief's rule and the home-label filter stay for plugins before it.
+- **Antigravity has its own row** on 你的 agent / Your agents, standing as Claude Code and Codex do, its
+  clay coin as the tile. Mem's `plugins inspect` lists no Antigravity, so the row says yes from Mem's
+  contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone keeps
+  the quiet row, with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
+- **Read receipts: parsed, not shown yet.** An outbox or inspect op's `read_receipt` (shape INFERRED:
+  `receipt_available`, `read_state` unread | partially_read | read, `read_recipients`,
+  `receipt_observed_at_us`) is kept on the op (`BridgeOp.read`, `receiptOf`) only when Mem says a receipt
+  is available. `ducter check run mem-shapes` reads `bridge outbox` and the identity inbox's Spaces
+  (read only, field names and counts) so one run on hel settles the shape and whether the personal Space
+  still says `…_unreconciled`. Then 已读 joins 来往 (todo).
+- **Not retired:** D334's per-Space contexts and D338's back-off (for 0.10.120), D400's 5 s clamp, D369's
+  stuck line.
+- **Mem's side still:** `research/private/bridge-ask-2026-11-25.md` (draft, not sent).
 
 ## Open questions
 

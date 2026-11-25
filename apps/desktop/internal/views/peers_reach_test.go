@@ -31,7 +31,8 @@ func TestReachRows(t *testing.T) {
 		{ID: "local", Name: "Mac", Home: true, Harnesses: []protocol.DeviceHarness{h("codex", "installed"), h("claude-code", "absent"), h("antigravity", "")}},
 	}
 	got := reachRows(devs, nil, nil)
-	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", "local"}, {"pi", "relay", ""}, {"antigravity", "relay", ""}} // D448: signed in where Ducter runs tasks
+	// D555: Antigravity's plugin carries Bridge and Mem's plugin check doesn't list it (unknown); D448: pi signed in where Ducter runs tasks.
+	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", "local"}, {"antigravity", "unknown", ""}, {"pi", "relay", ""}}
 	if len(got) != len(want) {
 		t.Fatalf("rows %+v", got)
 	}
@@ -47,9 +48,13 @@ func TestReachRows(t *testing.T) {
 	if r := reachRows(nil, []string{"codex"}, nil); len(r) != 1 || r[0].Can != "unknown" {
 		t.Fatalf("unknown %+v", r)
 	}
-	// D448: an Antigravity known only from the person's own records (not signed in where Ducter runs tasks) still can't.
-	if r := reachRows(nil, []string{"antigravity"}, nil); len(r) != 1 || r[0].Can != "none" {
+	// D448: a pi known only from the person's own records (not signed in where Ducter runs tasks) still can't.
+	if r := reachRows(nil, []string{"pi"}, nil); len(r) != 1 || r[0].Can != "none" {
 		t.Fatalf("own records only %+v", r)
+	}
+	// D555: Antigravity as Claude Code and Codex: yes once Mem lists its mailbox open.
+	if r := reachRows(nil, []string{"antigravity"}, nil, protocol.BridgeMailbox{Harness: "antigravity", Open: true}); len(r) != 1 || r[0].Can != "yes" || r[0].Box != "open" {
+		t.Fatalf("antigravity %+v", r)
 	}
 	if len(reachRows(nil, nil, nil)) != 0 {
 		t.Fatal("nothing run, no rows")

@@ -352,7 +352,9 @@ line.
 - **Mem's side of the one tap (D489).** `research/private/bridge-feedback-2026-11-23.md`: a nameable personal
   Space, a consented enable by a trusted local app, Bridge in the pi and Antigravity plugins, identity-scoped
   contexts, a watch that delivers in seconds, a mailbox-changed event. Trigger: the author sends it and Mem ships
-  any of them; then drop the offer (or its look) where Mem makes it unneeded.
+  any of them; then drop the offer (or its look) where Mem makes it unneeded. D555 (research/226, nmem 0.10.123):
+  only Bridge in Antigravity's plugin shipped (adopted); pi has an opt-in reminder only; the rest unchanged, asked
+  again in `research/private/bridge-ask-2026-11-25.md` (not sent).
 - **The pane's row says "done" the moment the mailbox opens.** Trigger: Mem emits a mailbox-changed event (item 6);
   until then the row turns at the next contact read (D444).
 
@@ -774,13 +776,21 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       on the list; `last_seen_at_ms` per connection.
 - [ ] A real `last_seen_at_ms` number (null on both of the partner's connections on 2026-11-22). Trigger: Mem fills it,
       or Mem says when it does.
-- [ ] **已读 / Read** on Recently once Mem says which verb returns a sent message's `read_recipients`. Trigger: Mem
-      answers research/183 §4 item 2.
+- [ ] **已读 / Read** on 来往 for a sent message. D555: Mem named the verbs (nmem 0.10.123: `outbox` and `inspect`
+      show how many recipients opened it); Ducter parses `read_receipt` (`receiptOf`, only when `receipt_available`)
+      but shows nothing until the shape is seen. Trigger: `ducter check run mem-shapes` on hel passes its `receipts`
+      step (or Mem confirms the JSON, private ask item 1); then read the outbox when the pane wants it (as D444's
+      contacts) and say **已读 / Read** beside a sent message, both clients, with shots.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
-- [ ] pi and Antigravity (and Cursor) can talk to the partner once Mem's plugins carry `bridge`. Trigger: Mem ships it
-      (research/183 §4 item 3); then they move to Claude Code's rows. (D448: the tasks Ducter runs on them already
-      pass messages through Ducter; this item is the person's own sessions outside Ducter.)
+- [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
+      research/226). Cursor (0.2.3) carries it too, but is no agent Ducter runs: no row.
+- [ ] pi can talk to the partner once Mem's pi plugin carries a `bridge` skill (0.8.19 has only an opt-in start-up
+      reminder for a session set up by hand). Trigger: a pi plugin with Bridge; then it moves to the agent rows.
+- [ ] Antigravity's plugin and its version per computer (Mem's `plugins inspect` lists no Antigravity, so its row
+      says "Mem hasn't said" until it writes). Read its manifest (`~/.gemini/config/plugins/...`, research/172) on the
+      home and through a worker op, or take Mem's host once `plugins inspect` lists it (private ask item 2).
+      Trigger: the author asks why the row says so, or Mem lists it.
 
 ## Tasks Ducter carries messages for (D448, `bridge.md` "Tasks Ducter carries messages for")
 
@@ -819,7 +829,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       Trigger: the next partner eval run.
 - [ ] **Mem's side** (`research/private/bridge-helpers-ask-2026-11-23.md`, a draft, not sent): a field that tells a
       native session's connection from a home's (Ducter reads its own label meanwhile), and whether a session
-      connection can take identity mail. Trigger: the author sends it.
+      connection can take identity mail. Trigger: the author sends it. D555: the cause is switchable now (Claude
+      Code 0.7.35+ / Codex 0.1.50+ prepare a session unless `NMEM_BRIDGE_SESSION_MAILBOX=0`, which tasks set); the
+      field is asked again (`bridge-ask-2026-11-25.md` item 8). Check on hel that a new task makes no `codex` /
+      `claude-code` connection (`bridge connections list`, read only) once it runs a build with D555.
 - [ ] **来往 / Back and forth says which helper took it**: a message to a helper shows today as **它找我，我开了任务「…」**
       under the sender's thread; it should say **交给「{helper}」的** (seen in the D494 shots). Trigger: the
       author's first real hand-over.

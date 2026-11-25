@@ -38,7 +38,7 @@ describe("each agent said as what the person gets (D489)", () => {
     expect(standing(row("codex", "install", { device: "mac" }))).toBe("install");
     expect(standing(row("codex", "unknown"))).toBe("unknown");
     expect(standing(row("pi", "relay"))).toBe("relay");
-    expect(standing(row("antigravity", "none"))).toBe("none");
+    expect(standing(row("pi", "none"))).toBe("none");
   });
   test("both clients draw no link diagram and keep the pane's head out of the needs-you ink", () => {
     for (const f of ["src/memory.tsx", "../desktop/internal/views/peers_d470.go"]) expect(read(f), f).not.toMatch(/stroke-dasharray|lr-line|drawLinkWay|peers\.way\./);

@@ -414,7 +414,7 @@ func groupThousands(n int) string {
 // its own mark on the white clay tile (D314), else its first letter on a
 // sunken pebble.
 func (a *App) toolTile(c *ui.Context, from string) func() {
-	art := map[string]string{"Claude Code": "coin_claude_code", "Claude": "coin_claude_code", "Codex": "coin_codex", "ChatGPT": "coin_codex", "pi": "coin_pi"}[from]
+	art := map[string]string{"Claude Code": "coin_claude_code", "Claude": "coin_claude_code", "Codex": "coin_codex", "ChatGPT": "coin_codex", "pi": "coin_pi", "Antigravity": "coin_antigravity"}[from]
 	if art != "" && theme.Clay(art) != nil {
 		return a.clayTile(c, art, false)
 	}

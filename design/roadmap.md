@@ -67,6 +67,21 @@ heard of a subagent.
   The owed checks of D425–D459 are one command each since D463 (`ducter check list`, then
   `run <name>`; `design/build-and-run.md` "Live checks"); none has run for real yet.
 - **Nowledge Bridge live trial** (your terminal agents reaching your partner, against Mem Cloud):
+  - 2026-11-25 (D555, research/226): Mem's command line 0.10.123 adds read receipts; Mem's Antigravity
+    plugin can now pass messages (it has its own row in Settings), pi's can't yet; Ducter's tasks no
+    longer open a mailbox of their own. Ready to run, in this order, on the computer that receives
+    your partner's messages (hel), after it runs a build with D555:
+    1. Read only, any time: `nmem --version` (0.10.123 or later), then `ducter check run mem-shapes`.
+       Its `receipts` step reads your partner's outbox and its `inbox-spaces` step says whether a
+       Space still reports `cloud_mailbox_own_source_unreconciled` (nothing opened or sent).
+    2. Read only, after any task: `nmem --json bridge connections list --space-id <Only me> --agent-id
+       ducter` lists no new `codex` / `claude-code` connection made by a task.
+    3. Writes to Mem, your Go: `bun run bridge:live -- --connected` (dry), then `-- --connected --real`
+       (S1, S2, S3, X1 as the trial's own throwaway identity; about 15 minutes, removed after).
+    4. Writes to Mem, your Go: in Antigravity on the Mac, `/nmem-bridge-chat` to send your partner one
+       short test (its plugin may ask to enable its mailbox once in a Space; "Only me" is the one your
+       partner reads); the Antigravity row then says it hands work over, and step 1's `receipts` shows
+       whether the reply was opened.
   - Last full run (2026-11-16): handing work over (S1) 5 of 6 checks, asking an agent (S2) 4 of 5,
     following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3. The misses: a card
     once named you in the third person (model wording), and an answer that Mem didn't yet link to the

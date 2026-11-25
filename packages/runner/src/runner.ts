@@ -1769,7 +1769,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (memoryOn()) {
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
       // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.
-      if (spec.env) spec.env = { ...spec.env, NMEM_NO_MAILBOX_NOTICE: "1" };
+      // D555: and the plugin never prepares a native Bridge session for the task (Claude Code
+      // 0.7.35+ and Codex 0.1.50+ do at SessionStart unless told 0): that session, under the
+      // partner's identity, was the second reader research/211 found. The home is the one
+      // receiver (D494); older plugins ignore the variable.
+      if (spec.env) spec.env = { ...spec.env, NMEM_NO_MAILBOX_NOTICE: "1", NMEM_BRIDGE_SESSION_MAILBOX: "0" };
       // D393: elsewhere, Mem is carried from the home: that computer's nmem (the person's own plugin
       // there, or the copy carried below) talks to the home's relay with a key for this task alone,
       // so nothing there needs a Mem sign-in and no Mem secret reaches it. A worker rewrites the

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.74 - 2026-11-25
+
+<!-- whats-new
+zh: 你自己的 pi 也能和伙伴来回传话了
+en: Your own pi can now hand your partner work and read its answers
+-->
+
+**Your agents**
+- pi joins Claude Code and Codex: with its Nowledge Mem plugin at 0.8.20 or newer, your own pi can
+  hand your partner work and read its answers when you ask it to look. An older plugin shows
+  "Let it talk with me", which updates it.
+
+**Under the hood**
+- Your partner's checks are steadier: lengths are counted by code, and a change that seems to make
+  your partner worse is tried again before it counts.
+
 ## 0.1.73 - 2026-11-25
 
 <!-- whats-new

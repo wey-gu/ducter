@@ -113,7 +113,7 @@ export interface AppMeta {
   live?: AppLive;
   /**
    * D562: where this home serves the app's own icon and Home Screen manifest, worked out on every
-   * list (never kept): `/app-icon/<id>/<key>/` + `icon-<size>.png`, `mac-<size>.png`, `manifest.webmanifest`.
+   * list (never kept): `/app-icon/<id>/<key>/` + `icon-<size>.png` (a Home Screen's and the Dock's), `manifest.webmanifest`.
    */
   home?: string;
 }

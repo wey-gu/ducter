@@ -2707,11 +2707,11 @@ export function startCore(opts: CoreOptions = {}): Core {
       }
       // D562: an app's own icon and Home Screen manifest, by its key (a Home Screen, a manifest
       // fetch and the Mac's Dock send no token). Only its name, mark and clay: nothing it keeps.
-      const icon = /^\/app-icon\/(a[0-9a-f]{1,15})\/([A-Za-z0-9_-]{22})\/(?:(icon|mac)-(\d{2,4})\.png|manifest\.webmanifest)$/.exec(url.pathname);
+      const icon = /^\/app-icon\/(a[0-9a-f]{1,15})\/([A-Za-z0-9_-]{22})\/(?:(icon)-(\d{2,4})\.png|manifest\.webmanifest)$/.exec(url.pathname);
       if (icon && (req.method === "GET" || req.method === "HEAD")) {
         const m = apps.byIconKey(icon[1]!, icon[2]!);
         if (!m) return new Response("gone", { status: 404, headers: { "cache-control": "no-store" } });
-        const res = appIconResponse(m, icon[3] as "icon" | "mac" | undefined, Number(icon[4] ?? 0), url.pathname.replace(/[^/]*$/, ""));
+        const res = appIconResponse(m, !!icon[3], Number(icon[4] ?? 0), url.pathname.replace(/[^/]*$/, ""));
         return req.method === "HEAD" ? new Response(null, { status: res.status, headers: res.headers }) : res;
       }
       // D206: a picture's bytes, by its key (an <img> sends no token); everything else about it is behind the gate.

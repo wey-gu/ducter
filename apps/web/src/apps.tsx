@@ -9,7 +9,7 @@ import { APP_GLYPH_STROKE, APP_GLYPHS, APP_SANDBOX, appIcon, appState, appShowRe
 import { A } from "./app.ts";
 import { ComposerBox } from "./composer.tsx";
 import { Btn } from "./controls.tsx";
-import { stamp, when } from "./format.ts";
+import { keepClauses, stamp, when } from "./format.ts";
 import { url } from "./media.tsx";
 import { Menu, MenuItem, MenuSep } from "./menu.tsx";
 
@@ -633,9 +633,10 @@ function AppHomeSheet({ m, close }: { m: AppMeta; close: () => void }) {
         <span class="app-home-name">{m.name}</span>
       </span>
       <span class="app-home-words">
-        <b class="app-home-h">{t("app.home.h", m.name)}</b>
-        <span class="app-home-how">{how}</span>
-        <span class="app-home-after">{t("app.home.after", partner)}</span>
+        {/* D562: Chinese words kept whole (never 「放到主」 over 「屏幕」), and a date in the name never split at its dash or slash (「11/20–」 over 「21」). */}
+        <b class="app-home-h">{keepClauses(t("app.home.h", m.name.replace(/\s*[–/-]\s*/g, (x) => `\u2060${x}\u2060`)))}</b>
+        <span class="app-home-how">{keepClauses(how)}</span>
+        <span class="app-home-after">{keepClauses(t("app.home.after", partner))}</span>
       </span>
       <span class="app-home-acts">
         {prompt && (

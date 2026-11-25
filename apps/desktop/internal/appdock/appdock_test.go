@@ -65,7 +65,7 @@ func TestKeepWritesABundleThatOpensTheApp(t *testing.T) {
 	if string(icns[:4]) != "icns" || int(binary.BigEndian.Uint32(icns[4:8])) != len(icns) || !bytes.Contains(icns, []byte("ic10")) {
 		t.Errorf("icns %q", icns[:16])
 	}
-	if len(*asked) != 7 || (*asked)[0] != "/app-icon/a1b2c3/k/mac-16.png" {
+	if len(*asked) != 6 || (*asked)[0] != "/app-icon/a1b2c3/k/icon-32.png" || bytes.Contains(icns, []byte("icp4")) {
 		t.Errorf("fetched %v", *asked)
 	}
 	got := s.List()["a1b2c3"]

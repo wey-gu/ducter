@@ -378,8 +378,9 @@ the 「⋯」 they already use. The evidence and Anthropic's "Install as app" ar
   铺满整个屏幕；你让{name}改过的，它也跟着变。/ It opens straight into this app, full screen, and keeps every change
   you ask {name} for.** and **好 / Done**.
 - **The icon** is the app's mark pressed into its clay (D422's glyph a touch bolder, so it reads at 16), drawn by
-  the home (`packages/core/src/app-icon.ts`): `icon-<size>.png`, the whole square (a Home Screen masks it),
-  and `mac-<size>.png`, the macOS grid with the clay's ledge. Served at `AppMeta.home` without the device token
+  the home (`packages/core/src/app-icon.ts`): `icon-<size>.png`, the whole square, which every system masks
+  itself (a Home Screen; macOS 27 puts it in its own squircle at every size, where an icon on the old macOS
+  grid got a grey plate at 128; research/229 §4). Served at `AppMeta.home` without the device token
   (a Home Screen and the Dock send none) under a key, an HMAC of the id with the home's own secret
   (`apps/.icon-key`); it says the name, mark and clay, nothing the app keeps.
 - **Updates** follow as before: both open the app as it is now on the home. With the home away, the Home

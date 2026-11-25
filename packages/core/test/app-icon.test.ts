@@ -23,20 +23,18 @@ test("a path's arcs, curves and lines flatten inside the 20 grid", () => {
   expect(lines[0]!.some(([x, y]) => Math.hypot(x - 16, y - 8.5) > 1.45 && Math.hypot(x - 16, y - 8.5) < 1.55 && x > 16.5 && y < 8)).toBe(true);
 });
 
-test("the icon: clay all over for a Home Screen, the macOS grid with a clear margin for the Dock, the ink in the middle", () => {
+test("the icon: clay all over (every system masks it, the Dock too), the ink in the middle", () => {
   const n = 128;
-  const full = drawAppIcon("suitcase", "clay", n, "full");
+  const full = drawAppIcon("suitcase", "clay", n);
   const at = (px: Uint8Array, x: number, y: number) => [...px.subarray((y * n + x) * 4, (y * n + x) * 4 + 4)];
   expect(at(full, 0, 0)[3]).toBe(255);
   expect(at(full, 2, 64)[0]).toBeGreaterThan(200); // clay at the edge
-  const mac = drawAppIcon("suitcase", "clay", n, "mac");
-  expect(at(mac, 0, 0)[3]).toBe(0); // the grid's margin
-  expect(at(mac, 64, 30)[3]).toBe(255);
+  expect(at(full, n - 1, n - 1)[3]).toBe(255); // no margin at any corner
   // Somewhere on the mark the ink is dark.
   let darkest = 255;
   for (let x = 30; x < 98; x++) darkest = Math.min(darkest, at(full, x, 64)[0]!);
   expect(darkest).toBeLessThan(90);
-  const png = appIconPng("suitcase", "clay", 64, "full");
+  const png = appIconPng("suitcase", "clay", 64);
   expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
   // Its IDAT inflates to 64 rows of 64 RGBA pixels and a filter byte each.
   const idat = png.indexOf(0x49, 33); // "I" of IDAT
@@ -59,10 +57,10 @@ test("served under a key only this home makes: the manifest opens straight into 
   expect(openApps({ dataDir: dir() }).iconKey(m.id)).toBeUndefined();
   // The kept meta carries no path (worked out on every list).
   expect(apps.get(m.id)!.home).toBeUndefined();
-  const res = appIconResponse(m, undefined, 0, m.home!);
+  const res = appIconResponse(m, false, 0, m.home!);
   const man = (await res.json()) as Record<string, unknown>;
   expect(man).toMatchObject({ id: `/app?app=${m.id}`, name: "北京出差 11/20–21", start_url: `/app?app=${m.id}#app=${m.id}`, display: "standalone", scope: "/" });
   expect(JSON.stringify(man)).not.toContain("662");
-  expect((await appIconResponse(m, "icon", 180, m.home!).arrayBuffer()).byteLength).toBeGreaterThan(500);
-  expect(appIconResponse(m, "mac", 300, m.home!).status).toBe(404);
+  expect((await appIconResponse(m, true, 180, m.home!).arrayBuffer()).byteLength).toBeGreaterThan(500);
+  expect(appIconResponse(m, true, 300, m.home!).status).toBe(404);
 });

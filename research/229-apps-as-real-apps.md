@@ -106,8 +106,14 @@ is the tile's own mark and clay, not a new metaphor (§5).
   Mach-O, so nothing to sign and nothing Gatekeeper or the hardened runtime checks (INFERRED from the
   files being made locally with no quarantine attribute; VERIFIED that the probe ran unsigned).
 - Its icon: the home draws the app's mark pressed into its clay as PNGs at 16–1024 (`app-icon.ts`); the
-  Mac writes them into an `.icns` (PNG members `icp4`…`ic10`). macOS 27 draws the bundle's icon itself
-  inside its own squircle with its rim (`NSWorkspace.icon(forFile:)`, VERIFIED, `after/icons/mac-system-rendered-256-light-dark.png`).
+  Mac writes them into an `.icns` (PNG members `ic11`…`ic10`, 32 to 1024). macOS 27 draws the bundle's
+  icon itself inside its own squircle with its rim (`NSWorkspace.icon(forFile:)`, VERIFIED at 32, 64, 128
+  and 256, `after/icons/mac-system-rendered-every-size-{light,dark}.png`). Two things the renders caught
+  (VERIFIED): an icon drawn on the old macOS grid (a body with margins, its own shadow) was put on a grey
+  plate at 128 while 256 looked right, so the Dock icon is the full square, which macOS masks at every
+  size; and `icp4`/`icp5` members holding PNGs were read as raw pixels (noise at 32), so they are left out
+  and macOS scales from `ic11`/`ic12`. `after/icons/dock-64pt-2x-{light,dark}.png` is built from the
+  system's own 128-pixel renders.
 - The Dock: `defaults export com.apple.dock`, PlistBuddy adds a `file-tile` to `persistent-apps` (or
   moves a renamed one in place), `defaults import`, `killall Dock` (VERIFIED on a copy with the real
   PlistBuddy in `appdock_test.go`; the live Dock was never touched in this work). The Dock restarts for

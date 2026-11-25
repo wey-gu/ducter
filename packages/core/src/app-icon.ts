@@ -1,10 +1,9 @@
 // D562: an app's own icon, for a Home Screen (the web and the phone) and the Mac's Dock: its mark
 // (APP_GLYPHS, the 20-grid strokes the tile draws) pressed into its clay (the person's muted tint),
-// drawn here as a PNG so every device shows the same picture with nothing to install. Two shapes:
-// "full", the whole square in clay (iOS and Android mask it themselves), and "mac", the clay body on
-// the macOS icon grid (824 of 1024, centred) standing on its ledge with a soft shadow, as Ducter's
-// own icon does. Pure TypeScript: a path flattened to segments, strokes drawn by their distance
-// (round ends and joins, as the tile's), a superellipse body, and a PNG written with node:zlib.
+// drawn here as a PNG so every device shows the same picture with nothing to install: the whole
+// square in clay, which every system masks itself (iOS, Android, and macOS 27 in its own squircle).
+// Pure TypeScript: a path flattened to segments, strokes drawn by their distance (round ends and
+// joins, as the tile's), and a PNG written with node:zlib.
 import { deflateSync } from "node:zlib";
 import { APP_GLYPH_STROKE, APP_GLYPHS, appIcon, appTint, type AppIcon, type AppMeta, type AppTint } from "@ducter/protocol";
 
@@ -117,11 +116,6 @@ function distanceField(lines: Pt[][], size: number, s: number, ox: number, oy: n
   return d;
 }
 
-/** A superellipse (n = 5, near Apple's continuous corners): its signed distance, roughly, in pixels. */
-function squircle(px: number, py: number, cx: number, cy: number, half: number): number {
-  const u = Math.abs(px - cx) / half, v = Math.abs(py - cy) / half;
-  return (Math.pow(Math.pow(u, 5) + Math.pow(v, 5), 1 / 5) - 1) * half;
-}
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -164,28 +158,21 @@ function crc32(b: Uint8Array): number {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-export type AppIconShape = "full" | "mac";
-
 /**
- * The app's icon as RGBA pixels, size × size. "full": the clay fills the square, the mark at 54% of
- * it (inside Android's maskable circle). "mac": the macOS grid, a body of 824/1024 with the clay's ledge
- * under it and a soft shadow, the mark at 52% of the body.
+ * The app's icon as RGBA pixels, size × size: the clay fills the whole square, a shade deeper at the
+ * bottom, the mark at 54% of it (inside Android's maskable circle). Every system masks it itself: iOS
+ * and Android round it, and macOS 27 draws a full square inside its own squircle with its rim at every
+ * size, while an icon on the old macOS grid (a body with margins, its own shadow) was put on a grey
+ * plate at 128 (research/229 §4).
  */
-export function drawAppIcon(icon: AppIcon, tint: AppTint, size: number, shape: AppIconShape): Uint8Array {
+export function drawAppIcon(icon: AppIcon, tint: AppTint, size: number): Uint8Array {
   const px = new Uint8Array(size * size * 4);
   const [tr, tg, tb] = APP_TINT_RGB[tint] ?? APP_TINT_RGB.clay;
-  const mac = shape === "mac";
-  const body = mac ? size * (824 / 1024) : size;
-  const half = body / 2;
-  const cx = size / 2, cy = mac ? size / 2 - size * 0.012 : size / 2;
-  const ledge = mac ? body * 0.03 : 0;
-  // The clay a shade deeper at the bottom (an object, not a flat swatch); its ledge darker still.
-  const shade = (k: number): [number, number, number] => [tr * k, tg * k, tb * k];
-  const ledgeRgb: [number, number, number] = [tr * 0.62 + INK[0] * 0.14, tg * 0.62 + INK[1] * 0.14, tb * 0.62 + INK[2] * 0.14].map((v) => Math.min(255, v / 0.76)) as [number, number, number];
-  // The mark: the 20-grid path, its strokes 1.6 wide; a light edge above, a ledge below, the ink between.
+  const c = size / 2;
+  // The mark: the 20-grid path; a light edge above, a ledge below, the ink between.
   const lines = flattenPath(APP_GLYPHS[icon] ?? APP_GLYPHS.window);
-  const gs = (body * (mac ? 0.52 : 0.54)) / 20;
-  const gx = cx - 10 * gs, gy = cy - 10 * gs;
+  const gs = (size * 0.54) / 20;
+  const gx = c - 10 * gs, gy = c - 10 * gs;
   // A touch bolder than the tile (1.15x), so the mark still reads at 16 and 32 in the Dock.
   const r = (APP_GLYPH_STROKE * 1.15 * gs) / 2;
   const ink = distanceField(lines, size, gs, gx, gy, r + 2);
@@ -195,55 +182,34 @@ export function drawAppIcon(icon: AppIcon, tint: AppTint, size: number, shape: A
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       const at = y * size + x;
-      const fx = x + 0.5, fy = y + 0.5;
-      let a = 0, R = 0, G = 0, B = 0;
+      const k = 1.035 - 0.07 * ((y + 0.5) / size);
+      let R = Math.min(255, tr * k), G = Math.min(255, tg * k), B = Math.min(255, tb * k);
       const over = (cr: number, cg: number, cb: number, ca: number) => {
-        // "source over" in straight alpha.
-        const na = ca + a * (1 - ca);
-        if (na <= 0) return;
-        R = (cr * ca + R * a * (1 - ca)) / na;
-        G = (cg * ca + G * a * (1 - ca)) / na;
-        B = (cb * ca + B * a * (1 - ca)) / na;
-        a = na;
+        R = cr * ca + R * (1 - ca);
+        G = cg * ca + G * (1 - ca);
+        B = cb * ca + B * (1 - ca);
       };
-      if (mac) {
-        // A soft shadow, then the ledge, then the body.
-        const sd = squircle(fx, fy, cx, cy + body * 0.035, half);
-        const sh = clamp01(1 - (sd + size * 0.004) / (size * 0.028)) * 0.26;
-        if (sh > 0) over(40, 26, 14, sh);
-        const ld = squircle(fx, fy, cx, cy + ledge, half);
-        const la = clamp01(0.5 - ld);
-        if (la > 0) over(ledgeRgb[0], ledgeRgb[1], ledgeRgb[2], la);
-      }
-      const bd = mac ? squircle(fx, fy, cx, cy, half) : -1;
-      const ba = mac ? clamp01(0.5 - bd) : 1;
-      if (ba > 0) {
-        const k = 1.035 - 0.07 * clamp01((fy - (cy - half)) / body);
-        const [br, bg, bb] = shade(k);
-        over(Math.min(255, br), Math.min(255, bg), Math.min(255, bb), ba);
-        // The mark, pressed in (only inside the body).
-        const cov = (dist: number) => clamp01(r - dist + 0.5) * ba;
-        const l = cov(low[at]!), h = cov(hi[at]!), n = cov(ink[at]!);
-        if (l > 0) over(lowRgb[0], lowRgb[1], lowRgb[2], l);
-        if (h > 0) over(255, 250, 244, h * 0.85);
-        if (n > 0) over(INK[0], INK[1], INK[2], n);
-      }
+      const cov = (dist: number) => clamp01(r - dist + 0.5);
+      const l = cov(low[at]!), h = cov(hi[at]!), n = cov(ink[at]!);
+      if (l > 0) over(lowRgb[0], lowRgb[1], lowRgb[2], l);
+      if (h > 0) over(255, 250, 244, h * 0.85);
+      if (n > 0) over(INK[0], INK[1], INK[2], n);
       px[at * 4] = Math.round(R);
       px[at * 4 + 1] = Math.round(G);
       px[at * 4 + 2] = Math.round(B);
-      px[at * 4 + 3] = Math.round(a * 255);
+      px[at * 4 + 3] = 255;
     }
   return px;
 }
 
 const cache = new Map<string, Uint8Array>();
 
-/** The icon as a PNG (kept, a few dozen at most: by mark, clay, size and shape). */
-export function appIconPng(icon: AppIcon, tint: AppTint, size: number, shape: AppIconShape): Uint8Array {
-  const key = `${icon}:${tint}:${size}:${shape}`;
+/** The icon as a PNG (kept, a few dozen at most: by mark, clay and size). */
+export function appIconPng(icon: AppIcon, tint: AppTint, size: number): Uint8Array {
+  const key = `${icon}:${tint}:${size}`;
   let png = cache.get(key);
   if (!png) {
-    png = encodePng(drawAppIcon(icon, tint, size, shape), size, size);
+    png = encodePng(drawAppIcon(icon, tint, size), size, size);
     if (cache.size > 64) cache.delete(cache.keys().next().value!);
     cache.set(key, png);
   }
@@ -255,16 +221,16 @@ export const APP_ICON_SIZES = [16, 32, 64, 128, 180, 192, 256, 512, 1024] as con
 
 /**
  * D562: what the home answers at `/app-icon/<id>/<key>/…` (`base` is that folder): `icon-<size>.png`
- * (the full square, for a Home Screen), `mac-<size>.png` (the Dock's), or the Home Screen manifest,
+ * (a Home Screen's and the Dock's), or the Home Screen manifest,
  * which opens straight into the app (`/app?app=<id>`), standalone, as its own app (its own `id`).
  */
-export function appIconResponse(m: Pick<AppMeta, "id" | "name" | "icon" | "tint" | "kind" | "ask">, shape: "icon" | "mac" | undefined, size: number, base: string): Response {
+export function appIconResponse(m: Pick<AppMeta, "id" | "name" | "icon" | "tint" | "kind" | "ask">, png: boolean, size: number, base: string): Response {
   const headers = { "cache-control": "no-cache", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer" };
   const mark = appIcon(m);
   const tint = appTint(m);
-  if (shape) {
+  if (png) {
     if (!(APP_ICON_SIZES as readonly number[]).includes(size)) return new Response("no such size", { status: 404, headers });
-    return new Response(appIconPng(mark, tint, size, shape === "mac" ? "mac" : "full"), { headers: { ...headers, "content-type": "image/png" } });
+    return new Response(appIconPng(mark, tint, size), { headers: { ...headers, "content-type": "image/png" } });
   }
   const [r, g, b] = APP_TINT_RGB[tint];
   const hex = (n: number) => n.toString(16).padStart(2, "0");

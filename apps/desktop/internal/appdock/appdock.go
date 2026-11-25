@@ -282,11 +282,13 @@ func script(id, bundleID string) string {
 	return "#!/bin/sh\n# Ducter: opens this small app in Ducter (D562). Made by Ducter; removed from its 「⋯」.\nexec /usr/bin/open -b " + b + " \"ducter://app/" + id + "\"\n"
 }
 
-// The icon's sizes, as the home draws them, and each one's place in an .icns.
+// The icon's sizes, as the home draws them, and each one's place in an .icns. The full square at
+// each (macOS 27 masks it into its squircle at every size); no icp4/icp5, which macOS read as raw
+// pixels from a PNG (research/229 §4), so 16 and 32 come from ic11 and ic12.
 var icnsTypes = []struct {
 	kind string
 	size int
-}{{"icp4", 16}, {"icp5", 32}, {"ic11", 32}, {"ic12", 64}, {"ic07", 128}, {"ic08", 256}, {"ic13", 256}, {"ic09", 512}, {"ic14", 512}, {"ic10", 1024}}
+}{{"ic11", 32}, {"ic12", 64}, {"ic07", 128}, {"ic08", 256}, {"ic13", 256}, {"ic09", 512}, {"ic14", 512}, {"ic10", 1024}}
 
 // icon gets the app's Dock icon from the home at every size and writes it as an .icns (PNG members).
 func (s *Stubs) icon(home string) ([]byte, error) {
@@ -295,7 +297,7 @@ func (s *Stubs) icon(home string) ([]byte, error) {
 		if pngs[t.size] != nil {
 			continue
 		}
-		b, err := s.Fetch(home + "mac-" + strconv.Itoa(t.size) + ".png")
+		b, err := s.Fetch(home + "icon-" + strconv.Itoa(t.size) + ".png")
 		if err != nil {
 			return nil, fmt.Errorf("the icon (%d): %w", t.size, err)
 		}

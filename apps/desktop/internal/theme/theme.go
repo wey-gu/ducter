@@ -379,7 +379,7 @@ func Pebble() *Tokens {
 		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
-		Looks:    map[string]ui.Color{"sand": hex("#F1DCC0"), "sage": hex("#D3E6CB"), "sky": hex("#CFE2F3"), "plum": hex("#EAD5EA"), "apricot": hex("#FFD9B8")},
+		Looks:    map[string]ui.Color{"sand": hex("#F1DCC0"), "sage": hex("#D3E6CB"), "sky": hex("#CFE2F3"), "plum": hex("#EAD5EA"), "apricot": hex("#FFD9B8"), "butter": hex("#F6E3B4")},
 		LookRim:  hex("#2B2118").Alpha(0.08),
 		ClayMark: hex("#9C6B45"),
 		// D526: a step deeper than the orange of the person's bubble (2.3:1 on

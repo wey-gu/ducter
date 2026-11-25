@@ -167,16 +167,20 @@ At the top is your partner, its name and one line: where it lives and what it th
 
 You can have up to four partners: one for work and one for home, say, or one for each person in
 the family. With one partner, **Your partners** is the last group on the Partner page; once you have
-more, it comes first. Each has its own name, colour, conversation and memory, and none of them sees the
+more, it comes first. Each has its own name, look, colour, conversation and memory, and none of them sees the
 others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
 counts for all of them. On hand shows every partner's tasks, whichever partner you're talking to:
 each task, routine and standing job carries the small figure of the partner that started it, in
-that partner's colour, and an opened task says which partner gave it the work.
+that partner's shape and colour, and an opened task says which partner gave it the work.
 
 - **Make one.** Tell your partner ("make me another partner for things at home, call it Home"), or
-  open **Settings › Partner › Your partners › Add a partner** and give it a name, **What it looks
-  after** and a colour.
-- **Talk to one.** Each partner is the same little clay figure in its own colour. Once you have
+  open **Settings › Partner › Your partners › Add a partner**: first meet the six clay figures and
+  pick how it looks (**Pebble**, **Bun**, **Sprout**, **Cloud**, **Cube** or **Bean**; any of them
+  can do the same things), then give it a name, **What it looks after** and a colour. It walks into
+  its own conversation and says hello by the name you gave it. A partner you make by asking gets the
+  first figure nobody has.
+- **Talk to one.** Each partner is a little clay figure in its own shape and colour; your first
+  partner is the Pebble unless you change it. Once you have
   more than one, **Your partners** lists them the way a messaging app lists its chats: each with
   its figure, its name, the last thing said, and a number when something of theirs waits on you.
   On a computer the list sits at the left of the conversation (a narrower window keeps each
@@ -193,8 +197,9 @@ that partner's colour, and an opened task says which partner gave it the work.
 - **Pass something on.** Say it to the partner you're talking to ("tell Home to remind me about the
   vaccine on Saturday"). It goes into that partner's conversation as your words, with **Passed on
   by …** over them, and that partner answers there. Nothing else of the conversation goes along.
-- **Change or remove one.** In **Your partners**, **Change** renames it and edits what it looks
-  after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
+- **Change or remove one.** In **Your partners**, pick another figure under its name (**How it
+  looks**) or another colour at any time, and it tells you it's still itself; **Change** renames it
+  and edits what it looks after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
 - **Give one its own AI.** Under each partner's name a line says what it thinks with; one you
   haven't set says **Thinks with the same as** your first partner. **Change** on its row shows
   **Thinks with**: keep **Same as …**, or pick another signed-in AI agent, then its model and

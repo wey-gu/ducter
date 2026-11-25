@@ -1,1 +1,1 @@
-A small puffy sky-blue clay cloud with a soft cream underside, nothing on it.
+A small chunky clay checks mark as a 3D object: a soft rounded cream clay tablet standing upright, with three round clay lights set in a row on its face, the first two mint green, the third butter yellow (still running), like a row of checks on a build. No letters, no numbers, no cloud. (D565: redrawn from a cloud, which the Cloud partner now is.)

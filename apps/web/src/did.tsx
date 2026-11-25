@@ -7,6 +7,7 @@ import type { DidItem, DidKind, ServerFrame } from "@ducter/protocol";
 import { DID_GLYPH_STROKE, DID_KINDS, DID_OUTWARD, DID_TINTS, didGlyph } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A } from "./app.ts";
+import { figArt } from "./partners.tsx";
 import { Btn, Facts } from "./controls.tsx";
 import { clock, day } from "./format.ts";
 
@@ -228,7 +229,7 @@ function EmptyDay({ items }: { items: DidItem[] }) {
   const rest = DID_KINDS.filter((k) => !DID_OUTWARD.includes(k)).map((k) => [k, items.filter((i) => i.kind === k).length] as const).filter(([, n]) => n > 0);
   return (
     <div class="did-empty">
-      <img src="app/art/idle.webp" alt="" draggable={false} />
+      <img src={figArt("idle", A.shownWear())} alt="" draggable={false} />
       <p>{t("did.empty")}</p>
       <Facts class="did-facts center" items={rest.length ? rest.map(([k, n]) => t(`did.n.${k}`, n)) : [t("did.empty.else")]} />
     </div>

@@ -16,7 +16,7 @@ import { wideNow } from "./fold.ts";
 import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
-import { A } from "./app.ts";
+import { A, type Wear } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
 import { Btn, Chev, Facts, MoreButton } from "./controls.tsx";
 import { openPast } from "./past.tsx";
@@ -35,7 +35,7 @@ import type { PileView } from "@ducter/protocol";
 import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, lookedAt, statusOf, urgentOf, type Status } from "./seen.ts";
-import { OtherAsk, PartnerMark } from "./partners.tsx";
+import { figArt, OtherAsk, PartnerMark } from "./partners.tsx";
 import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
@@ -973,7 +973,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
           )}
           {pr && !active && <span class="pr">{pr}</span>}
           {state && <b class={`st ${a === "needs_you" ? "needs" : a === "failed" ? "failed" : ""}`}>{stateLabel(a)}</b>}
-          {place && <StatusFace s={place} failed={a === "failed"} handing={handing} />}
+          {place && <StatusFace s={place} failed={a === "failed"} handing={handing} wear={A.wearOf(task.card?.persona)} />}
           {!active && !quiet && <span class="time">{timeOf(task)}</span>}
         </span>
         <span class={`l2${s.tone ? ` ${s.tone}` : ""}`}>
@@ -1285,14 +1285,14 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
 /** D244: a row's status place: the partner's own clay face at 24, still (no breathing in a row).
  *  Needs you raises its flag, working reads, a new result smiles (a failed one raises the flag).
  *  The handover plays once: the reading face sinks and fades as the done face pops up. */
-export function StatusFace({ s, failed, handing, title: label }: { s: Status; failed?: boolean; handing?: boolean; title?: string }) {
+export function StatusFace({ s, failed, handing, title: label, wear }: { s: Status; failed?: boolean; handing?: boolean; title?: string; /** D565: its task's owner's figure */ wear?: Wear }) {
   if (!s) return null;
   const art = s === "needs" || (s === "new" && failed) ? "needsyou" : s === "working" ? "working" : "done";
   const words = label ?? (s === "new" ? t("onhand.new") : s === "needs" ? t("lane.needs_you") : t("lane.working"));
   return (
     <span key={`${s}${handing ? "-h" : ""}`} class={`sface s-${s}${handing ? " handing" : ""}`} role="img" aria-label={words} title={words}>
-      {handing && <img class="from" src="app/art/working.webp" alt="" draggable={false} />}
-      <img class="to" src={`app/art/${art}.webp`} alt="" draggable={false} />
+      {handing && <img class="from" src={figArt("working", wear)} alt="" draggable={false} />}
+      <img class="to" src={figArt(art, wear)} alt="" draggable={false} />
     </span>
   );
 }

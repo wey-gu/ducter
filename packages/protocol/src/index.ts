@@ -1575,9 +1575,9 @@ export type ClientFrame =
   // (name, look); partner_set renames one or changes its look (the default's name is settings_set's).
   // Switching is a new hello with persona: the socket then shows that partner's conversation.
   | { t: "partners" }
-  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; /** D565 */ figure?: import("./partners.ts").PartnerFigure; about?: string; clientId?: string }
   // D536: brain, what another partner thinks with (null: the same as the default partner's, Settings.brain).
-  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; brain?: Brain | null; clientId?: string }
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; /** D565 */ figure?: import("./partners.ts").PartnerFigure; about?: string; brain?: Brain | null; clientId?: string }
   // D486: removes another partner (never the default): its conversation stays in the Log, unread;
   // its tasks and routines become the default's; a device showing it shows the default's.
   | { t: "partner_remove"; id: string; clientId?: string }

@@ -597,6 +597,7 @@ A new control is added to the set (and to this table) before it is used.
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
 | The other partners' faces, a stack of up to three 24-pt discs in their clays with what waits in them on a `CountPebble`, the way up to (or back to a hidden) list of partners (D541, D545) | `othersStack` (`shared.go`) | `PartnersBack` |
+| A partner's figure (D565): the six as a 3 × 2 grid of chips, each the figure in the partner's colour with its name under it, the chosen one ringed and a touch taller; and the meeting, the six on a sunken stage breathing and blinking, the chosen raised and hopping, its name and manner beneath | `figurePick`, `meetStage` (`figures.go`) | `FigurePick`, `Meet` (`partners.tsx`) |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |
 | A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
@@ -1299,6 +1300,21 @@ Flip, Razr, Magic V Flip, Find N Flip, MIX Flip) open into a phone and stay one.
   `fixtures/did-glyphs.json`; Past tasks' glyphs). A thing with no faithful mark (a website in
   Autofill, an unknown tool) keeps its first letter on a sunken pebble. Sources and usage notes:
   `design/art/LOGOS.md`.
+- **The partners' figures (D565):** six figures of one clay family (pebble, bun, sprout, cloud,
+  cube, bean; personas.md "Figures"): each the pebble's six poses and its blink, generated with the
+  pebble's own pose as the reference beside the figure's idle (`gemini-3.1-flash-image`, curated by
+  hand, raw renders in `.shots/figure-cast-build/`), cut out (`tools/cut.swift`) to 1024 masters
+  `design/art/assets/alpha/<figure>_<pose>.png`. `tools/art/figures.py` makes every size from them:
+  the Mac's crops (`theme/art/fig/crop`, 128 and 256) and squares (`theme/art/fig`, 160 and 400, each
+  figure on the pebble's stage for that pose), the closed idle and its lid boxes (`theme.figureLids`,
+  `figureSquare`), the web's frames (`static/art/fig`, 360 long, the crease baked into the closed one)
+  and `packages/core/src/web-figures.ts`. The state faces follow one spec (Pebble's): needs you is
+  small level brows, done ^ ^, napping a closed arc. A figure's part the colour never turns (the
+  sprout's leaves) is its own layer (`*_leaf`); the web gets the sprout ready in each colour.
+  Clients draw a figure by its **wear** (its figure and colour: `theme.Wear`, the web's `figArt`).
+- **CI's wait (D565):** `wait_ci` is a cream clay tablet with a row of three check lights (two
+  green, one still yellow), no longer a cloud: the Cloud partner's waiting figure sits on the same
+  groove, and two clouds read as one thing.
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

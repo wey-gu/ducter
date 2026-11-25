@@ -10,9 +10,10 @@
 // name and is changed with it; another partner is removed in two taps (its conversation stays).
 // A partner can also be made, renamed or handed the person's words from the conversation.
 import { useState } from "preact/hooks";
-import { DEFAULT_PARTNER, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_LOOKS, PARTNER_NAME_MAX, nextLook, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, FIGURE_LOOK, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_FIGURES, PARTNER_LOOKS, PARTNER_NAME_MAX, lookForFigure, nextFigure, type PartnerFigure, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
-import { A } from "./app.ts";
+import { A, type Wear } from "./app.ts";
+import { say, Said } from "./set-grid.tsx";
 import { Coin } from "./coin.tsx";
 import { AddRow, Btn, Chev, CountPebble, Facts, Field, IconBtn } from "./controls.tsx";
 import { phoneNow } from "./wide.ts";
@@ -93,11 +94,72 @@ function ThinksPick({ p }: { p: PartnerInfo }) {
 
 /** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
  *  "stone" stays for the code (D309's disc); nothing on screen says it. */
-export function Stone({ look, size }: { look: PartnerLook; size: number }) {
+export function Stone({ look, size, figure }: { look: PartnerLook; size: number; /** D565 */ figure?: PartnerFigure }) {
   return (
     <span class="stone" data-look={look} style={{ width: size, height: size }} aria-hidden="true">
-      <img src="app/art/idle.webp" alt="" draggable={false} />
+      <img src={figArt("idle", { figure, look })} alt="" draggable={false} />
     </span>
+  );
+}
+
+/** D565: a pose's frame of a partner's figure. The pebble's is the art as it always was; the others
+ *  are under art/fig/ (tools/art/figures.py), tinted by --clay as the pebble is, except the sprout,
+ *  whose frames come ready in each clay so its leaves stay green. No wear: the pebble as drawn. */
+export function figArt(pose: string, w?: Wear): string {
+  const f = w?.figure;
+  if (!f || f === "pebble" || !PARTNER_FIGURES.includes(f)) return `app/art/${pose}.webp`;
+  if (f === "sprout" && w?.look && w.look !== "sand") return `app/art/fig/sprout-${w.look}_${pose}.webp`;
+  return `app/art/fig/${f}_${pose}.webp`;
+}
+
+/** D565: the six figures as a 3 × 2 grid (as on the Mac), each figure standing in
+ *  the clay given (a partner's own, so the person sees what they'd get) or in its own suggested clay
+ *  (`own`, when a partner is being made); the chosen one ringed and a touch taller. */
+function FigurePick({ value, look, onPick, own }: { value: PartnerFigure; look?: PartnerLook; onPick: (f: PartnerFigure) => void; own?: boolean }) {
+  return (
+    <span class="fig-pick" role="radiogroup" aria-label={t("partners.figure")}>
+      {PARTNER_FIGURES.map((f) => {
+        const name = t(`partners.figure.${f}`);
+        return (
+          <button key={f} type="button" class={`fig-chip${f === value ? " on" : ""}`} role="radio" aria-checked={f === value} aria-label={t("partners.figure.label", name, t(`partners.figure.air.${f}`))} onClick={() => onPick(f)}>
+            <Stone look={own ? FIGURE_LOOK[f] : (look ?? "sand")} figure={f} size={40} />
+            <span class="fig-name">{name}</span>
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/** D565: the moment a partner is made: the six stand on the paper, breathing and blinking out of step,
+ *  the chosen one raised; a tap hops it forward, its name and its air beneath. Reduce Motion stills it. */
+function Meet({ value, look, onPick }: { value: PartnerFigure; look: PartnerLook; onPick: (f: PartnerFigure) => void }) {
+  return (
+    <div class="meet">
+      <p class="small meet-note">{t("partners.meet")}</p>
+      <span class="meet-stage" role="radiogroup" aria-label={t("partners.figure")}>
+        {PARTNER_FIGURES.map((f, i) => {
+          const on = f === value;
+          const clay = on ? look : FIGURE_LOOK[f];
+          return (
+            <button key={f} type="button" class={`meet-fig${on ? " on" : ""}`} role="radio" aria-checked={on} aria-label={t("partners.figure.label", t(`partners.figure.${f}`), t(`partners.figure.air.${f}`))} onClick={() => onPick(f)}>
+              <span class="pl-face" data-look={clay} style={{ "--d": `${-(i * 1.3 + 0.3)}s` } as Record<string, string>}>
+                <span key={on ? `${f}-on` : f} class={on ? "meet-hop" : ""}>
+                  <span class="stone pl-breathe" aria-hidden="true">
+                    <img src={figArt("idle", { figure: f, look: clay })} alt="" draggable={false} />
+                    <img class="shut" src={figArt("idle_closed", { figure: f, look: clay })} alt="" draggable={false} />
+                  </span>
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </span>
+      <p key={value} class="meet-who" aria-live="polite">
+        <b>{t(`partners.figure.${value}`)}</b>
+        <span>{t(`partners.figure.air.${value}`)}</span>
+      </p>
+    </div>
   );
 }
 
@@ -114,7 +176,7 @@ export function PartnerMark({ persona }: { persona: string | undefined }) {
   if (!p) return null;
   return (
     <span class="partner-mark" role="img" aria-label={p.name} title={p.name}>
-      <Stone look={p.look} size={18} />
+      <Stone look={p.look} figure={p.figure} size={18} />
     </span>
   );
 }
@@ -125,7 +187,7 @@ export function OtherAsk({ a }: { a: PartnerAsk }) {
   if (!p) return null;
   return (
     <button class="other-ask" data-look={p.look} data-ask={a.decisionId} onClick={() => A.switchPartner(a.persona)} title={t("partners.switch", p.name)}>
-      <Stone look={p.look} size={32} />
+      <Stone look={p.look} figure={p.figure} size={32} />
       <span class="ask-words">
         <span class="who">{t("partners.asks.from", p.name)}</span>
         <span class="q">{a.question}</span>
@@ -166,8 +228,8 @@ function RailFace({ p, i, size, needs, hop }: { p: PartnerInfo; i: number; size:
     <span class="pl-face" data-look={p.look} style={{ "--d": `${-(i * 1.7 + 0.4)}s` } as Record<string, string>}>
       <span key={hop} class={hop ? "pl-hop on" : "pl-hop"}>
         <span class="stone pl-breathe" style={{ width: size, height: size }} aria-hidden="true">
-          <img src="app/art/idle.webp" alt="" draggable={false} />
-          <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
+          <img src={figArt("idle", p)} alt="" draggable={false} />
+          <img class="shut" src={figArt("idle_closed", p)} alt="" draggable={false} />
         </span>
       </span>
       {needs > 0 && <CountPebble n={needs} />}
@@ -266,7 +328,7 @@ export function PartnersBack() {
       <span class="pb-faces" aria-hidden="true">
         {others.slice(0, 3).map((p) => (
           <span key={p.id} class="pb-face stone" data-look={p.look}>
-            <img src="app/art/idle.webp" alt="" draggable={false} />
+            <img src={figArt("idle", p)} alt="" draggable={false} />
           </span>
         ))}
         {elsewhere > 0 && <CountPebble n={elsewhere} />}
@@ -310,12 +372,12 @@ export function partnerKey(e: KeyboardEvent) {
 
 const errorWord = (e: string | undefined) => (e ? t(`partners.error.${e}`) : "");
 
-function LookPick({ value, onPick, label }: { value: PartnerLook; onPick: (l: PartnerLook) => void; label: string }) {
+function LookPick({ value, onPick, label, figure }: { value: PartnerLook; onPick: (l: PartnerLook) => void; label: string; /** D565: the figure each clay is shown on */ figure?: PartnerFigure }) {
   return (
     <span class="look-pick" role="radiogroup" aria-label={label}>
       {PARTNER_LOOKS.map((l) => (
         <button key={l} class={`look-chip${l === value ? " on" : ""}`} role="radio" aria-checked={l === value} aria-label={t(`partners.look.${l}`)} title={t(`partners.look.${l}`)} data-look={l} onClick={() => onPick(l)}>
-          <Stone look={l} size={24} />
+          <Stone look={l} figure={figure} size={24} />
         </button>
       ))}
     </span>
@@ -327,7 +389,7 @@ export function PassedFrom({ from }: { from: string }) {
   const p = A.partners?.find((x) => x.id === from);
   return (
     <button type="button" class="user-app-from passed-from" disabled={!p} onClick={() => p && A.switchPartner(p.id)} title={p ? t("partners.switch", p.name) : undefined}>
-      {p && <Stone look={p.look} size={14} />}
+      {p && <Stone look={p.look} figure={p.figure} size={14} />}
       <span>{p ? t("partners.passed", p.name) : t("partners.passed.gone")}</span>
     </button>
   );
@@ -357,7 +419,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
     return (
       <div class="set-row partner-row partner-removing" role="group" aria-label={t("partners.remove.ask", p.name)}>
         <span class="partner-top">
-          <Stone look={p.look} size={40} />
+          <Stone look={p.look} figure={p.figure} size={40} />
           <span class="grow partner-words">
             <b>{t("partners.remove.ask", p.name)}</b>
             <small>{t("partners.remove.what", A.defaultName())}</small>
@@ -372,7 +434,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
   return (
     <div class="set-row partner-row">
       <span class="partner-top">
-        <Stone look={p.look} size={40} />
+        <Stone look={p.look} figure={p.figure} size={40} />
         <span class="grow partner-words">
           {editing ? (
             <>
@@ -389,7 +451,18 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
           {shown ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
-      <LookPick value={p.look} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
+      {/* D565: its figure above its colours, free to change any time; it says one line in its new shape. */}
+      <FigurePick
+        value={p.figure ?? "pebble"}
+        look={p.look}
+        onPick={(figure) => {
+          if (figure === (p.figure ?? "pebble")) return;
+          A.setPartner(p.id, { figure });
+          say(`fig:${p.id}`, t("said.figure", t(`partners.figure.${figure}`)), "fig:", { src: figArt("idle", { figure, look: p.look }), look: p.look });
+        }}
+      />
+      <Said k={`fig:${p.id}`} />
+      <LookPick value={p.look} figure={p.figure} label={t("partners.look")} onPick={(look) => A.setPartner(p.id, { look })} />
       {editing && <ThinksPick p={p} />}
       <span class="partner-acts">
         {editing ? (
@@ -409,10 +482,19 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
 function AddForm({ done }: { done: () => void }) {
   const [name, setName] = useState("");
   const [about, setAbout] = useState("");
-  const [look, setLook] = useState<PartnerLook>(nextLook((A.partners ?? []).map((p) => p.look)));
+  // D565: the first figure nobody has, in its own clay unless taken; a picked figure brings its own
+  // clay along until the person picks a colour themselves.
+  const taken = A.partners ?? [];
+  const [figure, setFigure] = useState<PartnerFigure>(() => nextFigure(taken.map((p) => p.figure ?? "pebble")));
+  const [look, setLook] = useState<PartnerLook>(() => lookForFigure(figure, taken.map((p) => p.look)));
+  const [ownLook, setOwnLook] = useState(false);
+  const pickFigure = (f: PartnerFigure) => {
+    setFigure(f);
+    if (!ownLook) setLook(lookForFigure(f, taken.map((p) => p.look)));
+  };
   const ask = A.partnerAsk?.kind === "add" ? A.partnerAsk : undefined;
   const go = () => {
-    A.addPartner(name, look, about);
+    A.addPartner(name, look, about, figure);
     setName("");
     setAbout("");
   };
@@ -422,8 +504,8 @@ function AddForm({ done }: { done: () => void }) {
   };
   return (
     <div class="set-item partner-add">
+      <Meet value={figure} look={look} onPick={pickFigure} />
       <span class="partner-add-head">
-        <Stone look={look} size={48} />
         <label class="acct-field grow">
           <span class="small">{t("partners.add.name")}</span>
           <Field value={name} label={t("partners.add.name")} maxLength={PARTNER_NAME_MAX} placeholder={t("partners.add.placeholder")} autoFocus onInput={setName} onKeyDown={addKeys} />
@@ -434,7 +516,7 @@ function AddForm({ done }: { done: () => void }) {
         <Field value={about} label={t("partners.about")} maxLength={PARTNER_ABOUT_MAX} placeholder={t("partners.about.placeholder")} onInput={setAbout} onKeyDown={addKeys} />
       </label>
       <span class="small">{t("partners.look")}</span>
-      <LookPick value={look} label={t("partners.look")} onPick={setLook} />
+      <LookPick value={look} figure={figure} label={t("partners.look")} onPick={(l) => (setLook(l), setOwnLook(true))} />
       {ask?.error && (
         <p class="small partner-error" role="alert">
           {errorWord(ask.error)}

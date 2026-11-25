@@ -14,7 +14,7 @@ import (
 // character and downscaled: @160 for avatars up to 80 DIPs, @400 for the
 // hero. Regenerate from the 1024px masters, never upscale these.
 //
-//go:embed art/*.png art/clay/*.png art/crop/*.png
+//go:embed art/*.png art/clay/*.png art/crop/*.png art/fig/*.png art/fig/crop/*.png
 var artFS embed.FS
 
 // Presence is what the partner's character shows.
@@ -41,11 +41,17 @@ var (
 // Art returns the character in a presence, at the smallest size of at
 // least px pixels (160 or 400), or nil if it is missing.
 func Art(p Presence, px float32) *ui.Bitmap {
+	return ArtAs(shownLook(), p, px)
+}
+
+// ArtAs is Art in a given partner's wear (its figure and clay, D565).
+func ArtAs(wear string, p Presence, px float32) *ui.Bitmap {
 	size := 160
 	if px > 160 {
 		size = 400
 	}
-	return loadAs(fmt.Sprintf("art/ducter_%s@%d.png", p, size), shownLook())
+	fig, _ := splitWear(wear)
+	return loadAs(squarePath(fig, p, size), wear)
 }
 
 // Face is the character in a presence cut to its own outline (no square
@@ -54,11 +60,7 @@ func Art(p Presence, px float32) *ui.Bitmap {
 // and an opened task's state face (D76). The eyelids of FaceLids sit on
 // the idle one.
 func Face(p Presence, px float32) *ui.Bitmap {
-	size := 128
-	if px > 128 {
-		size = 256
-	}
-	return loadAs(fmt.Sprintf("art/crop/ducter_%s@%d.png", p, size), shownLook())
+	return FaceAs(shownLook(), p, px)
 }
 
 // Lid is an eyelid's box over the idle face's eye (the eye and its
@@ -78,11 +80,7 @@ var FaceLids = [2]Lid{
 // render, each eye filled from the clay round it (tools/art/eyes.py), the
 // size Face(Idle, px) picks.
 func FaceClosed(px float32) *ui.Bitmap {
-	size := 128
-	if px > 128 {
-		size = 256
-	}
-	return loadAs(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size), shownLook())
+	return FaceClosedAs(shownLook(), px)
 }
 
 // FaceClosedAs is FaceClosed in a given partner's clay (D517: each face in
@@ -92,7 +90,8 @@ func FaceClosedAs(look string, px float32) *ui.Bitmap {
 	if px > 128 {
 		size = 256
 	}
-	return loadAs(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size), look)
+	fig, _ := splitWear(look)
+	return loadAs(facePath(fig, "idle_closed", size), look)
 }
 
 // ArtClosed is the square idle art with its eyes closed, the size
@@ -102,7 +101,9 @@ func ArtClosed(px float32) *ui.Bitmap {
 	if px > 160 {
 		size = 400
 	}
-	return loadAs(fmt.Sprintf("art/ducter_idle_closed@%d.png", size), shownLook())
+	wear := shownLook()
+	fig, _ := splitWear(wear)
+	return loadAs(squarePath(fig, "idle_closed", size), wear)
 }
 
 // IdleSquareContent is where the cropped idle art sits in the square

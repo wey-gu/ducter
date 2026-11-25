@@ -1,6 +1,6 @@
 # A second partner (伙伴们 / Your partners)
 
-D309, D312, D486, D497, D513, D516, D536. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
+D309, D312, D486, D497, D513, D516, D536, D565. Scenario A5. How more than one partner lives on one home: who wants it, what is shared and
 what is kept apart, how attention adds up, how the person switches, and what the first slice
 built. Builds on D18 (a persona is one Mem identity), D24 (attention aggregates per person,
 conversations separate), D31 (projects and devices are the user's) and principle 17.
@@ -235,10 +235,59 @@ initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles
   the blink) is recoloured alike, so the figure keeps its life (D77). The page's own figure is the
   shown partner's; a mark elsewhere (the list of partners, On hand's rows, cards and asks, an opened
   task's mark and its rail, a wait's figure, passed words, Settings) is its partner's (D546). Words for the colours: **陶土 / Clay**, **青苔 / Sage**, **天蓝 / Sky**,
-  **梅子 / Plum**, **珊瑚 / Coral**; the picker shows the figure in each. D309's stone (the face on a
-  pale disc) is retired. A clay character per partner stays the later upgrade, owed through the
-  metaphor process with real art (todo).
-- Looks are tokens, never colours. A new partner gets the first look nobody has.
+  **梅子 / Plum**, **珊瑚 / Coral**, and (D565) **奶黄 / Butter**; the picker shows the partner's
+  own figure in each. D309's stone (the face on a pale disc) is retired.
+- Looks are tokens, never colours. A new partner gets its figure's own colour, else the first look
+  nobody has.
+
+## Figures (D565, research/228, research/230)
+
+**Who, and what they feel.** The consumer making a second partner for the family: before, "the new
+one is my partner in green", a skin; after, "this is 小云, the soft one", a someone, and at a 24-point
+task mark, "that one's 小云's". The heavy developer with a work and a home partner tells them apart
+across the room. The fresh user never meets any of it: one partner is the pebble, as always.
+Value: 惊喜 at the meeting, 赏心悦目 in the lineup, 放心 because a shape never changes what a partner
+can do or what its states mean.
+
+- **Six figures, one clay family.** **小石子 / Pebble** (the default's, the figure Ducter always had),
+  **包子 / Bun**, **芽芽 / Sprout**, **云朵 / Cloud**, **方糖 / Cube**, **豆豆 / Bean**. One construction
+  (the clay, the top-left light, the blush, the small smile, the nubby feet and stubby arms, the
+  sky-blue notebook); the outline is each one's own, the eyes second, the colour third. Our
+  signature is clay, not plush: the material and its craft are what set the cast apart.
+- **The states are everyone's, drawn to one face spec** (Pebble's): idle looks out; working glances
+  at the open notebook; waiting sits on the bench shading its eyes; needs you raises **small, level,
+  arched brows** (never slanted) and holds the flag still; done is **^ ^** hugging the notebook;
+  napping is a **closed arc** under the knitted wrap; the blink closes the eyes. Generated faces
+  drift, so every figure's six poses were checked against this spec and re-rendered until they held.
+- **How each carries itself** (a manner, never a skill): 稳稳的，暖暖的 / Steady and warm; 软乎乎，
+  热乎乎 / Soft and cosy; 好奇，有朝气 / Curious and fresh; 慢悠悠，不慌不忙 / Easy and unhurried; 方方
+  正正，有条不紊 / Neat and orderly; 安安静静，好脾气 / Quiet and easygoing. Every figure can do the
+  same things, and the meeting says so.
+- **Shape and colour are chosen apart.** A partner has a `figure` beside its `look` (partners.json,
+  `PartnerInfo.figure`; absent is the pebble). Each figure has a suggested colour (`FIGURE_LOOK`:
+  pebble sand, bun butter, sprout coral, cloud sky, cube plum, bean sage). A new partner arrives as
+  the first figure nobody has, in its own colour unless another partner has it, by words or by the
+  form. The default and every partner made before D565 stay the pebble. A client that doesn't know a
+  figure draws the pebble, in the partner's colour. With one partner the figure is the art as drawn,
+  as its colour is (D497).
+- **Where it shows:** everywhere the partner's figure showed (D497, D546): the list of partners, the
+  bar, the page's own figure, the opened task's mark and its rail, On hand's rows and cards, a
+  wait's figure, a goal's worker, passed words, Settings. Each in the pose its state asks for, on the
+  Mac and the web alike. The sprout's leaves stay green in every colour: on the Mac a second layer
+  laid back over after the colour turn, on the web frames ready in each colour.
+- **The meeting** (Settings' 再加一个伙伴 / Add a partner): the form opens on the six standing on the
+  paper, breathing and blinking out of step, the suggested one raised; a tap hops it forward, its name
+  and its manner beneath. Picking a figure brings its colour along until the person picks a colour
+  themselves. On 加上 / Add the one met walks into its own conversation, in from the side with two
+  small steps, and greets the person there by the name they gave it (its first screen, D497). Reduce
+  Motion: no breath, blink, hop or walk; the chosen one still stands raised.
+- **Changing later:** Settings › 伙伴, each partner's row, a 3 × 2 picker above its colours, each
+  figure shown in that partner's colour; free, at once, any time. The partner answers in its new
+  shape: its small figure where the said line's pebble pops, and **好，我现在是{figure}了，还是我。/
+  There: I'm {figure} now. Still me.** (settings.md, D296).
+- **Not taken** (research/230): the star (reads as a rating, and its big eyes turn every state into
+  alarm), the drop (a tear or a flame, and the pebble's eyes), any animal (a species and a pet).
+  Chat apps' icons (Slack's face, D531) stay the pebble in the partner's colour (todo).
 - At most four partners on a home (the default and three).
 
 ## Partners know each other, and hand over (D486)
@@ -361,6 +410,6 @@ iMessage have one identity, and a bot per partner on Telegram is an upgrade for 
    follows the one-thread rules instead of the partner the Mac shows.
 5. **The CLI** talks to the default partner only.
 6. **iPhone and Android shells** show the web client, so they inherit it; not checked on a device.
-7. **Human raters** for D497's recoloured figure (the LLM proxies are done, research/215); the
-   clay-character upgrade (a new figure per partner) through the metaphor process.
+7. **Human raters** for D497's recoloured figure and D565's six figures (the LLM proxies are done,
+   research/215, research/230), and a person's copyright check of the cast.
 8. **A live run** with two real partner sessions on one home.

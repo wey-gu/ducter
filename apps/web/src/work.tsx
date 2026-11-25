@@ -8,7 +8,7 @@ import { detect, inLanguage, scriptOfLang, words as byLang } from "@ducter/proto
 import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { PartnerMark } from "./partners.tsx";
+import { figArt, PartnerMark } from "./partners.tsx";
 import { cjkPad, clock, day, harnessName, md, when } from "./format.ts";
 import { Btn, Toggle } from "./controls.tsx";
 
@@ -91,7 +91,7 @@ export function Groove({ w, big }: { w: WaiterView; big?: boolean }) {
         <span class="groove" />
         <span class="gone" style={{ width: pct }} />
         <span class="who" style={{ left: pct }}>
-          <img src="app/art/waiting.webp" alt="" draggable={false} />
+          <img src={figArt("waiting", A.wearOf(waitOwner(w)))} alt="" draggable={false} />
         </span>
         <span class="end" />
       </span>

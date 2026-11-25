@@ -453,6 +453,9 @@ const saidFor = 4 * time.Second
 type saidWord struct {
 	text string
 	at   time.Time
+	// wear: the partner itself speaking after a change to it (D565): its
+	// figure in its clay stands where the pebble pops in.
+	wear string
 }
 
 // say keeps the partner's word for a change, for saidLine to show.
@@ -460,7 +463,15 @@ func (a *App) say(key, text string) {
 	if a.settings.said == nil {
 		a.settings.said = map[string]saidWord{}
 	}
-	a.settings.said[key] = saidWord{text, a.Now()}
+	a.settings.said[key] = saidWord{text: text, at: a.Now()}
+}
+
+// sayAs is say, said by a partner in its own figure (D565).
+func (a *App) sayAs(key, text, wear string) {
+	a.say(key, text)
+	w := a.settings.said[key]
+	w.wear = wear
+	a.settings.said[key] = w
 }
 
 // saidLine is the partner's one word after a change you made (D296): a
@@ -509,6 +520,9 @@ func (a *App) saidLineAt(c *ui.Context, key string, pad float32) {
 		dot := ui.Box(c.Key("said-dot:"+key)).Size(12, 12).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
 			clayDot(p, r.X+r.W/2, r.Y+r.H/2, 4.5, t.Done.Ink, t.Done.Ink.Mix(t.Ink, 0.35), t.Done.Surface)
 		})
+		if w.wear != "" {
+			dot = ui.Box(c.Key("said-face:" + key)).Shrink(0).AccessHidden(true).Children(func() { a.stone(c, "said-"+key, w.wear, 18) })
+		}
 		if !c.Preferences().ReduceMotion {
 			pop := t.Bouncy
 			dot.Transition(ui.ElementTransition{Animation: &pop, Enter: &ui.Motion{Scale: 0.2}})

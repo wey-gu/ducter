@@ -353,7 +353,7 @@ export function takeSuggestions(asks: MemCheckItem[]) {
 
 /**
  * D465, D569: what Nowledge Mem couldn't settle by itself (two memories that disagree, a rule it
- * learned) is its own bookkeeping, never a needs-you: one quiet row, 「Nowledge Mem 有 n 处拿不准」
+ * learned) is its own bookkeeping, never a needs-you: one quiet row, 「Nowledge Mem 有 n 处拿不定」
  * with 看看; open, each ask with the partner's suggestion as its default and its reason, every answer
  * still one tap, and Take the suggestions for all of them. The rest stays in Mem, said once, never
  * counted. Nothing waiting: no section at all.

@@ -3,7 +3,7 @@ package views
 // D465: Settings › 记忆's asks from Nowledge Mem: two memories Mem found may
 // disagree, a rule it learned from how the person works; the rest stays in
 // Mem, said once, never counted. D569: Mem's own bookkeeping, never a needs-you:
-// one quiet row, 「Nowledge Mem 有 n 处拿不准」 with 看看; open, each ask with the
+// one quiet row, 「Nowledge Mem 有 n 处拿不定」 with 看看; open, each ask with the
 // partner's suggestion (the model's judgement over Mem's facts, core
 // mem-check.ts) as its default and its reason, every answer still one tap, and
 // 按建议都处理 / Take the suggestions for all of them. And 「你的 AI 都照着做的」 / "What all your

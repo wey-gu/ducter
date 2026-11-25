@@ -18,7 +18,7 @@ describe("Nowledge Mem would like to check (D465)", () => {
         expect(w).not.toMatch(/ · |件|->|→|=>/);
       }
     }
-    expect(memoryWords.zh["mem.check.title"]).toBe("Nowledge Mem 拿不准的地方");
+    expect(memoryWords.zh["mem.check.title"]).toBe("Nowledge Mem 拿不定的地方");
     expect(memoryWords.en["mem.rules.title"]).toBe("What all your AI tools follow");
   });
 
@@ -29,7 +29,7 @@ describe("Nowledge Mem would like to check (D465)", () => {
     // D569: the suggestion is the secondary clay per ask; the group's one primary takes them all.
     expect(src).toContain('kind={a === it.suggest ? "secondary" : "text"}');
     expect(src).toContain('<Btn kind="primary" size="sm" label={t("mem.check.take")}');
-    expect(memoryWords.zh["mem.check.unsure"]).toBe("Nowledge Mem 有 %d\u00a0处拿不准");
+    expect(memoryWords.zh["mem.check.unsure"]).toBe("Nowledge Mem 有 %d\u00a0处拿不定");
     expect(memoryWords.zh["mem.check.take"]).toBe("按建议都处理");
     expect(memoryWords.en["mem.check.take"]).toBe("Take the suggestions");
     const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");

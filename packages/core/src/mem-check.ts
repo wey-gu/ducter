@@ -105,9 +105,12 @@ const MEANS: Record<MemCheckAnswer, string> = {
   not: "leave this rule off",
 };
 
+/** D569: the language the reason is written in, by its tag (D292: a table, never a branch). */
+const LANGUAGE_NAME: Partial<Record<string, string>> = { zh: "Simplified Chinese", en: "English" };
+
 /** D569: the prompt the cheap model judges every shown ask from, the facts fenced as data. */
 export function advicePrompt(asks: AskFacts[], lang: LangTag): string {
-  const language = lang === "zh" ? "Simplified Chinese" : "English";
+  const language = LANGUAGE_NAME[lang] ?? lang;
   const used = (["newer", "older", "both", "use", "not"] as const).filter((a) => asks.some((x) => x.answers.includes(a)));
   return [
     "You help a person keep their memory tidy. Their memory app, Nowledge Mem, flagged the items below and could not settle them by itself.",

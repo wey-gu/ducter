@@ -499,7 +499,7 @@ Settings › 记忆 now carries the few that change what the partner and every o
   Only titles, days and a rule's words travel; a memory's contents never leave Mem.
 - **Never a needs-you (D569).** These are Mem's own bookkeeping, low stakes, and Mem settles them by itself
   after a month: they never count on the Overview, in 等你 or in a pane's head.
-- **What is shown**, after 我知道的关于你 / What I know about you: one quiet row, **Nowledge Mem 有 n 处拿不准 /
+- **What is shown**, after 我知道的关于你 / What I know about you: one quiet row, **Nowledge Mem 有 n 处拿不定 /
   Nowledge Mem isn't sure about n things**, **不急，不回它也会照原样留着。/ No rush: left alone, it keeps them as
   they are.**, and **看看 / Look**. Open, at most 3 contradictions (newest first: the two titles, earlier first)
   and 2 learned draft rules (title and words), each with the suggestion said (**我的建议：后记的对 / I'd say: The

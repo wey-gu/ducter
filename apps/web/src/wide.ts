@@ -111,7 +111,8 @@ export function escUp(e: KeyboardEvent) {
  *  closes it alone; the place under it never moves on the same key. */
 export function layerUp(): boolean {
   if (A.sheet || A.live || A.viewer || A.fileView || A.fileLink) return true;
-  return typeof document !== "undefined" && !!document.querySelector?.('[role="menu"]');
+  // Reads menu.tsx's open menu (it builds none).
+  return typeof document !== "undefined" && !!document.querySelector?.("[role=menu]");
 }
 
 /** D573: Back, the one step a phone's Back gesture (and a browser's Back inside the page) takes:

@@ -79,9 +79,11 @@ describe("D573", () => {
     A.sheet = null;
     expect(backOne()).toBe(true);
     expect(A.route.name).toBe("onhand");
+    const had = A.upInPlace;
     A.upInPlace = undefined;
     expect(backOne()).toBe(true);
     expect(A.route.name).toBe("conv");
     expect(backOne()).toBe(false);
+    A.upInPlace = had;
   });
 });

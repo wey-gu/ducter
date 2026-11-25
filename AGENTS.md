@@ -208,9 +208,12 @@ Speed never excuses that. Every change a person can see clears this bar before i
   committing.
 - **A persona or partner-tool change carries a fresh eval result (D175).** Changing
   `packages/partner/src/persona.ts` or any partner tool's name or description means running
-  `bun run eval:partner --model haiku` (about $1) and committing its results file and
-  `packages/partner/eval/results/LATEST.json` in the same change. `tool-budget.test.ts` fails
-  until you do. Add a scenario when the change adds behaviour the eval doesn't cover.
+  `bun run eval:partner --model haiku --against latest` (about $1; D574: code counts lines and
+  sentences, and scenarios that disagree with the last run are run twice more before they count)
+  and committing its results file and `packages/partner/eval/results/LATEST.json` in the same
+  change; LATEST.json's `file` must name a results file that exists. `tool-budget.test.ts` fails
+  until you do. Read the result's Regressions, not the total: a single run's total moves by ten
+  or more on the same code. Add a scenario when the change adds behaviour the eval doesn't cover.
 
 ## Prototype rules
 

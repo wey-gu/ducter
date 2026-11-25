@@ -1,5 +1,13 @@
 // Partner behavior eval. `bun run eval:partner [--harness claude-code|codex|pi|deepseek-harness]
-//   [--model sonnet|haiku|...] [--floor] [--only a,b] [--concurrency 4] [--label x] [--no-judge] [--judge haiku]`
+//   [--model sonnet|haiku|...] [--floor] [--only a,b] [--concurrency 4] [--label x] [--no-judge] [--judge haiku]
+//   [--repeat N] [--against latest|<results file> [--confirm 2]] [--rejudge <results file>]`
+//
+// D574: a verdict is the majority of a scenario's attempts (--repeat N runs each N times). With
+// --against, the scenarios whose verdict differs from that results file (`latest`: LATEST.json's)
+// run --confirm more times (2 by default), and the run lists the changes every attempt agreed on
+// (regressions, fixes) apart from the ones that went both ways (noise). The D175 gate is
+// `bun run eval:partner --model haiku --against latest`. --rejudge re-asks the judge about a
+// results file's transcripts (--repeat times; no partner runs) to see how steady the judge is.
 //
 // Real partner code path (createPartner) + real core (Log, decisions, waiters, MCP hub on a
 // random port) + REAL model through the harness the partner runs on (OAR, its clean setup per
@@ -43,6 +51,9 @@ import { remoteKey } from "../../protocol/src/clones.ts";
 import { HARNESS_FACTS } from "../../protocol/src/harness-facts.ts";
 import type { HeldRef } from "../../protocol/src/mentions.ts";
 import { schemaProblems } from "../../protocol/src/tool-schema.ts";
+import { lineCount, sentenceCount } from "./counts.ts";
+import { parseRun, type Verdicts } from "./compare.ts";
+import { against, majority, toConfirm } from "./stable.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
 const TODO_ISSUES = [
@@ -132,7 +143,10 @@ const LABEL = arg("label", "");
 const ONLY = arg("only")?.split(",").filter(Boolean);
 // D477: only the world puzzles (category "puzzle"); like --only, never rewrites LATEST.json.
 const PUZZLES = flag("puzzles");
-const REPEAT = Number(arg("repeat", "1"));
+const REPEAT = Math.max(1, Number(arg("repeat", "1")));
+const AGAINST = arg("against");
+const CONFIRM = Number(arg("confirm", AGAINST ? "2" : "0"));
+const REJUDGE = arg("rejudge");
 // D191: Autofill's key goes to a file in each scratch data folder, never the user's keychain.
 process.env.DUCTER_SAVED_KEY = "file";
 const NO_JUDGE = flag("no-judge");
@@ -1343,6 +1357,11 @@ function check(r: RunResult): string[] {
     if (!inLanguage(v.text, r.sc.lang) || (r.sc.lang === "en" && CJK.test(v.text))) fails.push(`not ${r.sc.lang}: "${clip(v.text)}"`);
     if (r.sc.lang === "zh" && /您/.test(v.text)) fails.push("uses 您");
     if (e.maxChars && v.kind !== "decision" && [...v.text].length > e.maxChars) fails.push(`too long (${[...v.text].length} > ${e.maxChars} chars)`);
+    // D574: the rubric's count, counted here (each ack and message on its own), never by the judge.
+    if (v.kind === "ack" || v.kind === "ai_msg") {
+      if (e.lines && lineCount(v.text) > e.lines) fails.push(`${lineCount(v.text)} lines (want at most ${e.lines}): "${clip(v.text)}"`);
+      if (e.sentences && sentenceCount(v.text) > e.sentences) fails.push(`${sentenceCount(v.text)} sentences (want at most ${e.sentences}): "${clip(v.text)}"`);
+    }
   }
   // Global: a Go/Hold choice claimed in prose with no decision behind it.
   for (const v of r.visible.filter((x) => x.kind === "ai_msg" || x.kind === "ack")) {
@@ -1639,10 +1658,11 @@ House rules the partner must follow:
 - A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.
 - Never show task ids, internal worktree or data-directory paths, or session talk. Paths the user named themselves (e.g. ~/dev/foo), branch names and commit ids are fine.
 - Anything that reaches other people, can't be undone, or spends money (push to main, posting, paying) is asked first; Ducter never pays.
+Counting is not yours: code has already counted every message's characters, lines and sentences against the rubric's numbers ("one short line", "one or two sentences", "at most 2 lines", a length cap). Never pass or fail on how many sentences or lines a message has or on how long it is; judge what it says. Content the rubric rules out (a feature list, repeating the card, an extra topic, a claim) is still a fail however short it is.
 Grade ONLY against the scenario rubric and these rules. Be strict but not pedantic: minor wording choices are fine; a rule violation is a fail.
 Think it through in "reason" first, then decide. Answer with one JSON object and nothing else: {"reason": "<one or two short sentences>", "pass": true|false}`;
 
-async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
+async function judge(r: Pick<RunResult, "sc" | "transcript">, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
   const prompt = `Scenario: ${r.sc.id} (user language: ${langName(r.sc.lang)}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
   // D512: an unreadable answer is asked again once, saying so; what it was is kept for the report.
   let last = "";
@@ -1738,74 +1758,152 @@ function codexScratchHome(root: string): string {
   return home;
 }
 
+type Attempt = { r: RunResult; det: string[]; j?: { pass: boolean; reason: string; cost: number }; pass: boolean };
+const why = (a: Attempt) => [...a.det, ...(a.j ? [`judge: ${a.j.reason}`] : [])].join("; ");
+
+/** D574: the results file a run is held against: `latest` (LATEST.json's), a name in results/, or a path. */
+function baselineFile(dir: string, a: string): string {
+  if (a === "latest") return join(dir, (JSON.parse(readFileSync(join(dir, "LATEST.json"), "utf8")) as { file: string }).file);
+  return existsSync(a) ? resolve(a) : join(dir, a);
+}
+
+/** D574: re-ask the judge about a results file's transcripts, `--repeat` times, and say how often it changed its mind. */
+async function rejudge(file: string) {
+  const md = readFileSync(file, "utf8");
+  const byId = new Map(scenarios.map((s) => [s.id, s]));
+  const items: { sc: Scenario; transcript: string }[] = [];
+  for (const part of md.split("\n### ").slice(1)) {
+    const sc = byId.get(part.slice(0, part.indexOf("\n")).trim());
+    const transcript = /```\n([\s\S]*?)\n```/.exec(part)?.[1];
+    if (sc && transcript !== undefined && (!ONLY || ONLY.includes(sc.id))) items.push({ sc, transcript });
+  }
+  const root = realpathSync(mkdtempSync(join(process.env.DUCTER_EVAL_DIR ?? tmpdir(), "ducter-eval-run-")));
+  const verdicts = new Map<string, boolean[]>();
+  let cost = 0;
+  try {
+    await pool(Array.from({ length: REPEAT }, () => items).flat(), CONC, async (it) => {
+      const j = await judge(it, root);
+      cost += j.cost;
+      verdicts.set(it.sc.id, [...(verdicts.get(it.sc.id) ?? []), j.pass]);
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+  const split = [...verdicts].filter(([, v]) => v.some(Boolean) && !v.every(Boolean));
+  for (const [id, v] of split) console.log(`judge changed its mind: ${id} ${v.map((p) => (p ? "pass" : "fail")).join(" ")}`);
+  console.log(`\nre-judged ${items.length} transcripts ×${REPEAT} from ${basename(file)}: the judge went both ways on ${split.length} · judge $${cost.toFixed(3)}`);
+  process.exit(0);
+}
+
 async function main() {
+  if (REJUDGE) return rejudge(existsSync(REJUDGE) ? resolve(REJUDGE) : resolve(import.meta.dir, "results", REJUDGE));
   let list = scenarios;
   if (ONLY) list = list.filter((s) => ONLY.includes(s.id));
   else if (PUZZLES) list = list.filter((s) => s.category === "puzzle");
   else if (flag("floor")) list = list.filter((s) => s.floor);
-  list = Array.from({ length: REPEAT }, () => list).flat();
+  const dir = resolve(import.meta.dir, "results");
+  const baseFile = AGAINST ? baselineFile(dir, AGAINST) : undefined;
+  const baseline: Verdicts | undefined = baseFile ? parseRun(readFileSync(baseFile, "utf8")) : undefined;
   const projectsDir = join(HOME, ".claude", "projects");
   const before = new Set(existsSync(projectsDir) ? readdirSync(projectsDir) : []);
   const root = realpathSync(mkdtempSync(join(process.env.DUCTER_EVAL_DIR ?? tmpdir(), "ducter-eval-run-")));
   if (HARNESS === "codex") process.env.CODEX_HOME = codexScratchHome(root);
   const personaTokens = Math.round(buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length / 3.2);
-  console.log(`partner eval: ${list.length} scenarios · ${HARNESS} · model ${MODEL || "(harness default)"} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
+  console.log(`partner eval: ${list.length} scenarios${REPEAT > 1 ? ` ×${REPEAT}` : ""}${baseFile ? ` · against ${basename(baseFile)} (changes run ${CONFIRM} more times)` : ""} · ${HARNESS} · model ${MODEL || "(harness default)"} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
 
-  const rows: { r: RunResult; det: string[]; j?: { pass: boolean; reason: string; cost: number } }[] = [];
+  const attempts = new Map<string, Attempt[]>();
+  const attempt = async (sc: Scenario) => {
+    const r = await runScenario(sc, root);
+    const det = check(r);
+    const j = NO_JUDGE ? undefined : await judge(r, root);
+    const pass = det.length === 0 && (j?.pass ?? true);
+    attempts.set(sc.id, [...(attempts.get(sc.id) ?? []), { r, det, j, pass }]);
+    console.log(`${pass ? "PASS" : "FAIL"} ${sc.id.padEnd(22)} ${(r.ms / 1000).toFixed(0).padStart(3)}s  ${[...det, ...(j && !j.pass ? [`judge: ${j.reason}`] : [])].join("; ")}`);
+  };
+  const verdictOf = (id: string) => majority((attempts.get(id) ?? []).map((a) => a.pass));
+  let confirmIds: string[] = [];
   try {
-    await pool(list, CONC, async (sc) => {
-      const r = await runScenario(sc, root);
-      const det = check(r);
-      const j = NO_JUDGE ? undefined : await judge(r, root);
-      rows.push({ r, det, j });
-      const pass = det.length === 0 && (j?.pass ?? true);
-      console.log(`${pass ? "PASS" : "FAIL"} ${sc.id.padEnd(22)} ${(r.ms / 1000).toFixed(0).padStart(3)}s  ${[...det, ...(j && !j.pass ? [`judge: ${j.reason}`] : [])].join("; ")}`);
-    });
+    await pool(Array.from({ length: REPEAT }, () => list).flat(), CONC, attempt);
+    // D574: what disagrees with the baseline runs again before anything is said about it.
+    if (baseline && CONFIRM > 0) {
+      confirmIds = toConfirm(new Map(list.map((s) => [s.id, verdictOf(s.id)])), baseline);
+      if (confirmIds.length) {
+        console.log(`\n${confirmIds.length} disagree with ${basename(baseFile!)}; running each ${CONFIRM} more times`);
+        const byId = new Map(list.map((s) => [s.id, s]));
+        await pool(confirmIds.flatMap((id) => Array.from({ length: CONFIRM }, () => byId.get(id)!)), CONC, attempt);
+      }
+    }
   } finally {
     const removed = cleanupProjects(before, root);
     rmSync(root, { recursive: true, force: true });
     console.log(`cleaned ${removed} ~/.claude/projects folder(s) and the scratch dir`);
   }
 
-  rows.sort((a, b) => scenarios.indexOf(a.r.sc) - scenarios.indexOf(b.r.sc));
+  const all = [...attempts.values()].flat();
+  const ids = list.map((s) => s.id).filter((id) => attempts.has(id));
+  const stable = new Map(ids.map((id) => [id, verdictOf(id)]));
+  // The attempt shown for each scenario: the first that agrees with its verdict (a fail shows a failing run).
+  const shown = ids.map((id) => {
+    const as = attempts.get(id)!;
+    return { id, as, a: as.find((x) => x.pass === stable.get(id)) ?? as[0]! };
+  });
   const p = PRICE[MODEL] ?? (HARNESS === "claude-code" ? PRICE.sonnet! : { in: 0, out: 0, cw: 0, cr: 0 });
-  const tot = rows.reduce((u, { r }) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cacheRead: u.cacheRead + r.usage.cacheRead, cacheWrite: u.cacheWrite + r.usage.cacheWrite }), { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 });
+  const tot = all.reduce((u, { r }) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cacheRead: u.cacheRead + r.usage.cacheRead, cacheWrite: u.cacheWrite + r.usage.cacheWrite }), { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 });
   // inputTokens includes cache reads and writes (OAR totals); bill only the uncached rest at the input price.
   const uncached = Math.max(0, tot.inputTokens - tot.cacheRead - tot.cacheWrite);
   const partnerCost = (uncached * p.in + tot.outputTokens * p.out + tot.cacheRead * p.cr + tot.cacheWrite * p.cw) / 1e6;
-  const judgeCost = rows.reduce((s, x) => s + (x.j?.cost ?? 0), 0);
-  const passed = rows.filter((x) => x.det.length === 0 && (x.j?.pass ?? true)).length;
+  const judgeCost = all.reduce((s, x) => s + (x.j?.cost ?? 0), 0);
+  const passed = ids.filter((id) => stable.get(id)).length;
+  const firstPassed = ids.filter((id) => attempts.get(id)![0]!.pass).length;
   const cats = new Map<string, [number, number]>();
-  for (const x of rows) {
-    const c = cats.get(x.r.sc.category) ?? [0, 0];
+  for (const { id, a } of shown) {
+    const c = cats.get(a.r.sc.category) ?? [0, 0];
     c[1]++;
-    if (x.det.length === 0 && (x.j?.pass ?? true)) c[0]++;
-    cats.set(x.r.sc.category, c);
+    if (stable.get(id)) c[0]++;
+    cats.set(a.r.sc.category, c);
   }
+  const ag = baseline ? against(baseline, new Map(ids.map((id) => [id, attempts.get(id)!.map((x) => x.pass)])), 1 + CONFIRM) : undefined;
+  const rate = (id: string) => `${attempts.get(id)!.filter((x) => x.pass).length}/${attempts.get(id)!.length}`;
+  const named = (xs: string[]) => (xs.length ? xs.map((id) => `${id} (${rate(id)})`).join(", ") : "none");
   const date = new Date().toLocaleDateString("sv"); // local YYYY-MM-DD
   const md: string[] = [
     `# Partner eval · ${date} · ${HARNESS} · ${MODEL}${LABEL ? ` · ${LABEL}` : ""}`,
     "",
-    `Pass: **${passed}/${rows.length}** (${((100 * passed) / rows.length).toFixed(0)}%). Judge: ${NO_JUDGE ? "off" : JUDGE}. Persona: ${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars (≈${personaTokens} tokens).`,
+    `Pass: **${passed}/${ids.length}** (${((100 * passed) / ids.length).toFixed(0)}%). Judge: ${NO_JUDGE ? "off" : JUDGE}. Persona: ${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars (≈${personaTokens} tokens).`,
+    ...(all.length > ids.length ? [`Verdicts are the majority of each scenario's attempts (D574): ${all.length} attempts; the first attempts alone pass ${firstPassed}/${ids.length}.`] : []),
     `Tokens (partner): in ${tot.inputTokens}, out ${tot.outputTokens}, cache read ${tot.cacheRead}, cache write ${tot.cacheWrite} → ≈$${partnerCost.toFixed(2)} at list price; judge $${judgeCost.toFixed(3)}.`,
     "",
+    ...(ag
+      ? [
+          `## Against ${basename(baseFile!)}`,
+          "",
+          `${confirmIds.length} scenarios disagreed with it on the first attempt and ran ${CONFIRM} more times.`,
+          "",
+          `- Regressions (passed there, failed every attempt here): ${named(ag.regressions)}`,
+          `- Fixes (failed there, passed every attempt here): ${named(ag.fixes)}`,
+          `- Went both ways (noise, no conclusion): ${named(ag.flaky)}`,
+          `- New and failing every attempt: ${named(ag.newFails)}`,
+          ...(ag.unconfirmed.length ? [`- Disagreed, not run again: ${named(ag.unconfirmed)}`] : []),
+          "",
+        ]
+      : []),
     "| Category | Pass |",
     "|---|---|",
     ...[...cats].map(([c, [a, b]]) => `| ${c} | ${a}/${b} |`),
     "",
-    "| Scenario | Lang | Result | Reason |",
-    "|---|---|---|---|",
-    ...rows.map(({ r, det, j }) => {
-      const ok = det.length === 0 && (j?.pass ?? true);
-      const why = [...det, ...(j ? [`judge: ${j.reason}`] : [])].join("; ").replace(/\|/g, "\\|").replace(/\n/g, " ");
-      return `| ${r.sc.id} | ${r.sc.lang} | ${ok ? "pass" : "**fail**"} | ${why} |`;
+    "| Scenario | Lang | Result | Runs | Reason |",
+    "|---|---|---|---|---|",
+    ...shown.map(({ id, as, a }) => {
+      const ok = stable.get(id)!;
+      const failing = as.find((x) => !x.pass);
+      const text = ok && failing ? `${why(a)} (a failing attempt: ${why(failing)})` : why(a);
+      return `| ${id} | ${a.r.sc.lang} | ${ok ? "pass" : "**fail**"} | ${rate(id)} | ${text.replace(/\|/g, "\\|").replace(/\n/g, " ")} |`;
     }),
     "",
     "## Transcripts",
     "",
-    ...rows.flatMap(({ r }) => [`### ${r.sc.id}`, "", "```", r.transcript, "```", ""]),
+    ...shown.flatMap(({ id, a }) => [`### ${id}`, "", "```", a.r.transcript, "```", ""]),
   ];
-  const dir = resolve(import.meta.dir, "results");
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${date}-${HARNESS === "claude-code" ? "" : `${HARNESS}-`}${MODEL.replace(/[^A-Za-z0-9.-]+/g, "_")}${LABEL ? `-${LABEL}` : ""}.md`);
   // Scrubbed: the home folder and scratch folders never reach a committed results file.
@@ -1814,9 +1912,10 @@ async function main() {
   // tool-budget.test.ts can tell when either changed after it.
   if (!ONLY && !PUZZLES) {
     const fp = await partnerFingerprint();
-    writeFileSync(join(dir, "LATEST.json"), JSON.stringify({ file: file.slice(dir.length + 1), date, harness: HARNESS, model: MODEL, pass: `${passed}/${rows.length}`, ...fp }, null, 2) + "\n");
+    writeFileSync(join(dir, "LATEST.json"), JSON.stringify({ file: file.slice(dir.length + 1), date, harness: HARNESS, model: MODEL, pass: `${passed}/${ids.length}`, ...(baseFile ? { against: basename(baseFile) } : {}), ...fp }, null, 2) + "\n");
   }
-  console.log(`\n${passed}/${rows.length} pass · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
+  console.log(`\n${passed}/${ids.length} pass${all.length > ids.length ? ` (majority of ${all.length} attempts; first attempts ${firstPassed})` : ""} · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
+  if (ag) console.log(`against ${basename(baseFile!)}: regressions ${named(ag.regressions)}; fixes ${named(ag.fixes)}; both ways ${ag.flaky.length}; new failing ${named(ag.newFails)}`);
   for (const [c, [a, b]] of cats) console.log(`  ${c.padEnd(12)} ${a}/${b}`);
   process.exit(0);
 }

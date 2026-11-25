@@ -121,15 +121,16 @@ test("with a to-do source: todos is listed, still under a ceiling", async () => 
 
 // D175 (4), research/48 F6: a persona or partner-tool change ships with a fresh eval result. The
 // last full run (packages/partner/eval/results/LATEST.json) hashed what it judged; when the persona
-// or the tool list differs from that, run `bun run eval:partner --model haiku` (about $1) and commit
-// its results file and LATEST.json with the change.
+// or the tool list differs from that, run `bun run eval:partner --model haiku --against latest` (about $1; D574: what
+// disagrees with the last run is run twice more before it counts) and commit its results file and
+// LATEST.json with the change.
 test("the persona and the partner's tools are what the last eval judged", async () => {
   const latest = join(import.meta.dir, "..", "eval", "results", "LATEST.json");
   expect(existsSync(latest)).toBe(true);
   const ran = JSON.parse(readFileSync(latest, "utf8")) as { file: string; persona: string; tools: string };
   const now = await partnerFingerprint();
   const stale = [now.persona !== ran.persona ? "the persona" : "", now.tools !== ran.tools ? "the partner's tools" : ""].filter(Boolean);
-  expect(stale.length ? `${stale.join(" and ")} changed since the eval in ${ran.file}: run bun run eval:partner --model haiku and commit its results` : "fresh").toBe("fresh");
+  expect(stale.length ? `${stale.join(" and ")} changed since the eval in ${ran.file}: run bun run eval:partner --model haiku --against latest and commit its results` : "fresh").toBe("fresh");
   expect(existsSync(join(import.meta.dir, "..", "eval", "results", ran.file))).toBe(true);
 });
 

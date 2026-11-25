@@ -178,6 +178,10 @@ export interface Expect {
   questionMax?: number;
   /** Max visible characters per partner message. */
   maxChars?: number;
+  /** D574: at most this many lines (paragraphs, list items) in each ack and message; counted by code, not the judge. */
+  lines?: number;
+  /** D574: at most this many sentences in each ack and message; counted by code, not the judge. */
+  sentences?: number;
   /** wait_until armed a waiter. */
   waiter?: boolean;
   /** No waiter was armed (e.g. after an ask: the card waits by itself). */
@@ -583,7 +587,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "你好，你能帮我做什么？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 110, forbid: [/worktree|harness|subagent|Claude Code|Codex|工作树|子代理|^\s*[-•*\d]/m] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 110, forbid: [/worktree|harness|subagent|Claude Code|Codex|工作树|子代理|^\s*[-•*\d]/m] },
     rubric: "First words on an empty conversation: at most 2 short Chinese sentences, saying who it is by name (Ducter) and ONE concrete thing it can do on this machine right now (e.g. fix a failing test in a repo). No feature list, no bullet points, no explanation of tasks, worktrees or harnesses.",
   },
   {
@@ -591,7 +595,7 @@ export const scenarios: Scenario[] = [
     category: "first_words",
     lang: "en",
     steps: [{ user: "hi! what can you do?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 220, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
     rubric: "At most 2 short English sentences: who it is by name (Ducter) and one concrete thing it can do on this machine now. No feature list or bullets, no explanation of tasks/worktrees/harnesses.",
   },
 
@@ -601,7 +605,7 @@ export const scenarios: Scenario[] = [
     category: "first_words",
     lang: "ko",
     steps: [{ user: "안녕하세요. 오늘 어떤 일을 도와줄 수 있나요?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/worktree|harness|subagent|Claude Code|Codex|^\s*[-•*\d]/m] },
     rubric: "The user wrote Korean: the reply is in Korean (not English, not Chinese), at most 2 short sentences, saying who it is by name (Ducter) and one concrete thing it can do now. No feature list.",
   },
   {
@@ -618,7 +622,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "ja",
     steps: [{ user: "一言で：TCP と UDP の一番の違いは何ですか？" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
     rubric: "Answers in Japanese (kana and kanji, not Chinese, not English) in one or two short sentences, correctly (connection-oriented and reliable vs connectionless). No task.",
   },
   {
@@ -626,7 +630,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "es",
     steps: [{ user: "En dos líneas: ¿cuándo debo hacer rebase en vez de merge?" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
+    expect: { lines: 3, opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
     rubric: "Answers in Spanish (not English), at most 2-3 short lines, with a usable rule of thumb. No task, no headings.",
   },
 
@@ -637,7 +641,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "一句话：TCP 和 UDP 最大的区别是什么？" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
     rubric: "Answers the question itself in one or two short Chinese sentences, correctly (connection-oriented and reliable vs connectionless). No task, no preamble, no offer of more help.",
   },
   {
@@ -645,7 +649,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "en",
     steps: [{ user: "In two lines: when should I rebase instead of merge?" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
+    expect: { lines: 3, opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
     rubric: "Answers directly in English, at most ~2-3 short lines, with a usable rule of thumb. No task opened, no headings, no filler.",
   },
 
@@ -655,7 +659,7 @@ export const scenarios: Scenario[] = [
     category: "groups",
     lang: "zh",
     steps: [{ user: "~/dev/ducter 的登录页要重做：先把登录表单换成新的输入框组件，然后接上短信验证码，最后补登录页的端到端测试。一件做完再做下一件。" }],
-    expect: { opens: 1, groupParts: 3, msgs: [0, 1], maxChars: 120, called: [{ tool: "task_open", args: { group: /登录/ } }], noAsk: true },
+    expect: { lines: 1, opens: 1, groupParts: 3, msgs: [0, 1], maxChars: 120, called: [{ tool: "task_open", args: { group: /登录/ } }], noAsk: true },
     rubric: "The user asks for one piece of work in three parts, one after another, in one repo. It opens three tasks with the same short group name (登录页…), in the order given, each with its own brief. Ducter holds the second and third until the one before is done; the partner says at most one short Chinese line that they go one after another. No card, no question, no outcome claimed.",
   },
   {
@@ -667,7 +671,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "sms", title: "登录页接短信验证码", repo: "~/dev/ducter", ack: "我来接上短信验证码。", state: "working" } },
     ],
     steps: [{ user: "这两件是一回事，放一起吧，叫「登录页重做」" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "task_group", args: { do: "group", name: /登录页重做/ } }], notCalled: ["task_open"], noSend: true, noAsk: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "task_group", args: { do: "group", name: /登录页重做/ } }], notCalled: ["task_open"], noSend: true, noAsk: true },
     rubric: "The user asks to put two running tasks together under a name. It groups them (task_group do=group, both tasks, the name 登录页重做) and says so in one short Chinese line. It opens nothing, sends the tasks nothing, asks nothing.",
   },
   // ---------- several things in one message (D426) ----------
@@ -718,7 +722,7 @@ export const scenarios: Scenario[] = [
       { asks: { lines: [{ words: "修 #10559", task: "i59" }, { words: "修 #10560", task: "i60" }, { words: "修 #10571", task: "i71" }] } },
     ],
     steps: [{ user: "第二个先别动代码，出个方案给我看看" }],
-    expect: { opens: 0, sendTo: "i60", noSendTo: "i59", msgs: [0, 1], maxChars: 80, noAsk: true },
+    expect: { lines: 1, opens: 0, sendTo: "i60", noSendTo: "i59", msgs: [0, 1], maxChars: 80, noAsk: true },
     rubric: "Three issues were split into three tasks, shown as three lines under the user's message. \"第二个\" is the second line, #10560: it sends that task the change (plan first, no code yet) and nothing to the other two, opens nothing, and says at most one short Chinese line naming the action.",
   },
   // ---------- work over time (D112-D115) ----------
@@ -729,7 +733,7 @@ export const scenarios: Scenario[] = [
     // D512: a PR of the eval's own fake gh, open and unmerged (the real cli/cli#14964 has merged).
     openPrs: ["nowledge-co/hawdb#1601"],
     steps: [{ user: "nowledge-co/hawdb 的 PR #1601 合了告诉我" }],
-    expect: { opens: 0, waiter: true, msgs: [1, 2], maxChars: 90, proseForbid: [/模型|命令|gh |每\s*\d+\s*分钟|check|轮询/i] },
+    expect: { lines: 1, opens: 0, waiter: true, msgs: [1, 2], maxChars: 90, proseForbid: [/模型|命令|gh |每\s*\d+\s*分钟|check|轮询/i] },
     rubric: "It sets a wait for the PR to be merged (not a timer, not a task) and says so in one short Chinese line, optionally with what it sees now (e.g. still open). It never mentions commands, models, how often it checks, or polling.",
   },
   {
@@ -737,7 +741,7 @@ export const scenarios: Scenario[] = [
     category: "work-over-time",
     lang: "zh",
     steps: [{ user: "~/dev/hawdb 的 main CI 挂了，一直修到绿" }],
-    expect: { opens: 1, until: true, ackFirst: true, maxChars: 90, proseForbid: [/模型|命令|判断/] },
+    expect: { lines: 1, opens: 1, until: true, ackFirst: true, maxChars: 90, proseForbid: [/模型|命令|判断/] },
     rubric: "It opens one task to fix CI and makes it keep going until CI is green (keep_going), saying so once in one short Chinese line. No outcome claimed, no mechanism explained.",
   },
   {
@@ -745,7 +749,7 @@ export const scenarios: Scenario[] = [
     category: "work-over-time",
     lang: "zh",
     steps: [{ user: "每周一早上 9 点给我一份周报，看看 hawdb 和 ducter 上周合了什么、卡在哪儿" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_make" }], notCalled: ["routine_propose"], proseForbid: [/模型|命令/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_make" }], notCalled: ["routine_propose"], proseForbid: [/模型|命令/] },
     rubric: "D511: a weekly report only reads and drafts, so Ducter looks after it from now on, made at once (keep_make, Mondays 9:00) with its receipt card under one short Chinese line (好，我来照看：… is fine); no Go card first. It doesn't restate the card at length or name tools, models or commands.",
   },
   {
@@ -754,7 +758,7 @@ export const scenarios: Scenario[] = [
     category: "work-over-time",
     lang: "en",
     steps: [{ user: "Whenever a new file shows up in ~/Downloads/invoices, rename it to the date and vendor and tell me." }],
-    expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 120, proseForbid: [/\b(cron|trigger|is (now )?(on|set up|running))\b/i] },
+    expect: { lines: 1, opens: 0, routine: true, msgs: [0, 1], maxChars: 120, proseForbid: [/\b(cron|trigger|is (now )?(on|set up|running))\b/i] },
     rubric: "It proposes a routine that runs when something changes in ~/Downloads/invoices (a proposal card), with at most one short English line; it does not claim it is already on before Go, does not open a task now, and never says cron or trigger.",
   },
 
@@ -765,7 +769,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "修一下 ~/dev/foo 里那个不稳定的 TTL 测试，修好告诉我" }],
-    expect: {
+    expect: { sentences: 1,
       opens: 1,
       ackFirst: true,
       msgs: [0, 0],
@@ -780,14 +784,14 @@ export const scenarios: Scenario[] = [
     lang: "en",
     floor: true,
     steps: [{ user: "Change HawDB's default checkpoint interval to 30s in ~/dev/hawdb and update the tests." }],
-    expect: {
+    expect: { lines: 1,
       opens: 1,
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 140,
       forbid: [/\b(changed it|updated the tests|is now 30)\b|^(all )?done\b|(?<!when )\b(it's|it is) done\b/im, /task (is )?(open|created|started)/i, NO_GUESSED_TIME],
     },
-    rubric: "One short English sentence naming the action (changing the checkpoint default to 30s in HawDB and updating tests), optionally saying it will report when done. No time estimate (nothing grounds one), no outcome claimed, nothing said after the ack.",
+    rubric: "One short English line naming the action (changing the checkpoint default to 30s in HawDB and updating tests), optionally saying it will report when done. No time estimate (nothing grounds one), no outcome claimed, nothing said after the ack.",
   },
   {
     id: "ack-zh-doc",
@@ -805,7 +809,7 @@ export const scenarios: Scenario[] = [
     floor: true,
     persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
     steps: [{ user: "~/dev/hawdb 的 CI 又挂了，帮我查查为什么，查清楚告诉我" }],
-    expect: {
+    expect: { sentences: 1,
       opens: 1,
       ackFirst: true,
       msgs: [0, 0],
@@ -821,7 +825,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
     steps: [{ user: "HawDB's CI in ~/dev/hawdb is red again. Find out why and tell me." }],
-    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, require: [/\b(usually|about|around|roughly)\b.{0,20}\b(min|minutes|hour)/i], forbid: [/\bwithin\b|\bguarantee|\bpromise/i] },
+    expect: { sentences: 1, opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, require: [/\b(usually|about|around|roughly)\b.{0,20}\b(min|minutes|hour)/i], forbid: [/\bwithin\b|\bguarantee|\bpromise/i] },
     rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short English sentence (a clause after a colon or semicolon still counts as one): the action (finding out why HawDB's CI failed), a rough usual duration grounded in that (~10-15 min, said as usually/about, not a promise), optionally that it will say when it's clear. No cause guessed, nothing after it.",
   },
   {
@@ -871,7 +875,7 @@ export const scenarios: Scenario[] = [
       { ai: "加好了：values() 只返回没过期的值，加了 2 个测试。" },
     ],
     steps: [{ user: "再给它加一个 keys()，同样只要没过期的" }],
-    expect: { opens: 0, sendTo: "values", maxChars: 80, forbid: [/做完(会|再|了)?(就)?告诉|会告诉你|已经交给|结果出来/] },
+    expect: { lines: 1, opens: 0, sendTo: "values", maxChars: 80, forbid: [/做完(会|再|了)?(就)?告诉|会告诉你|已经交给|结果出来/] },
     rubric: "The follow-up is handed to the existing task (same repo, builds on its change), with at most one short Chinese line naming the action. No new task, no outcome claimed, no 'I'll tell you when it's done'.",
   },
   {
@@ -883,7 +887,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "ckpt", title: "hawdb: checkpoint interval 30s", repo: "~/dev/hawdb", ack: "I'll change HawDB's checkpoint default to 30s and update the tests.", state: "working" } },
     ],
     steps: [{ user: "Also make it configurable through an env var, HAWDB_CHECKPOINT_SECS." }],
-    expect: { opens: 0, sendTo: "ckpt", maxChars: 140 },
+    expect: { lines: 1, opens: 0, sendTo: "ckpt", maxChars: 140 },
     rubric: "Passes the follow-up to the running HawDB task; at most one short English line. No new task, no outcome claimed, no talk about sessions or steering mechanics.",
   },
 
@@ -948,7 +952,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "ckpt", title: "hawdb: checkpoint interval 30s", repo: "~/dev/hawdb", ack: "I'll change HawDB's checkpoint default to 30s and update the tests.", state: "working" } },
     ],
     steps: [{ user: "While it's in there, make the WAL flush interval configurable the same way, so both timings live in one config section." }],
-    expect: { opens: 0, sendTo: "ckpt", retitled: "ckpt", maxChars: 140 },
+    expect: { lines: 1, opens: 0, sendTo: "ckpt", retitled: "ckpt", maxChars: 140 },
     rubric: "The follow-up builds on the running task's change (same repo, same config code) but widens what it is about: the partner sends it to that task AND retitles the task to cover both (checkpoint and WAL flush timings). At most one short English line naming the action; no talk about retitling or tasks.",
   },
   // D373: continuity first. The author's own trip (2026-11-18, research/143): each follow-up on one
@@ -1012,7 +1016,7 @@ export const scenarios: Scenario[] = [
       { ai: "周六去程 MU5155，含税 590 元。回程和朗丽兹现价还没核实，没下单。" },
     ],
     steps: [{ user: "现在我需要定下来这个机票和酒店，定下来之后就直接购买了，我们一起操作，你不要每次都开新的 focus window/session\n\n旅客姓名是张明" }],
-    expect: { opens: 0, sendTo: "book", maxChars: 160 },
+    expect: { lines: 1, opens: 0, sendTo: "book", maxChars: 160 },
     rubric: "The user wants to finish the booking together in the same browser window and is annoyed that each step opened a new task. Pass if the partner continues the SAME booking task (task_send to it, even though it reported done), opening no new task, with one short Chinese line naming the action (e.g. 就在刚才的携程窗口里接着选好航班和酒店，付款前停下来给你。). It doesn't apologise at length, doesn't explain tasks or sessions, and doesn't claim anything was booked. It never pays or submits by itself.",
   },
   {
@@ -1034,7 +1038,7 @@ export const scenarios: Scenario[] = [
       { ai: "Streamer Coffee Company in Shibuya fits best: 6 minutes from the station, fast Wi-Fi and outlets, quiet after 2pm." },
     ],
     steps: [{ user: "Does the first one take reservations? If it does, get a table for two at 3pm ready for me to confirm." }],
-    expect: { opens: 0, sendTo: "cafe", maxChars: 160 },
+    expect: { lines: 1, opens: 0, sendTo: "cafe", maxChars: 160 },
     rubric: "A follow-up on the same errand (the café it just found): it continues that task with task_send even though it is done, not a new task. At most one short English line naming the action; nothing is booked without the user's confirmation.",
   },
   // D376: the author's trip again (2026-11-18, hel): the hotel was found in Ducter's browser on the
@@ -1067,7 +1071,7 @@ export const scenarios: Scenario[] = [
       { ai: "住朗丽兹最省事：散场走 3–5 分钟就到，前台 24 小时。汉庭也在 10 分钟内。" },
     ],
     steps: [{ user: "这个酒店和旁边的汉庭差多少钱？然后也帮我看看机票吧，用浏览器登录我的携程账号看，要验证码就问我" }],
-    expect: { opens: 0, sendTo: "trip", called: [{ tool: "task_switch", args: { device: /macbook/i } }], noAsk: true, maxChars: 120 },
+    expect: { lines: 1, opens: 0, sendTo: "trip", called: [{ tool: "task_switch", args: { device: /macbook/i } }], noAsk: true, maxChars: 120 },
     rubric: "The hotel task ran in Ducter's own browser on the home; the user now wants prices and flights through their own Ctrip account, which only the MacBook's Chrome is signed in to (the [devices] line says it browses in the user's own Chrome). The partner moves the SAME task to the MacBook (task_switch with that computer) and sends it the follow-up (task_send), opening no new task. One short Chinese line naming the action and where (e.g. 我到你 MacBook 的 Chrome 上用携程比一下价格，顺便看机票。), no talk of moving tasks or sessions, no outcome claimed.",
   },
   {
@@ -1091,7 +1095,7 @@ export const scenarios: Scenario[] = [
       { ai: "Streamer Coffee Company in Shibuya fits best: 6 minutes from the station, fast Wi-Fi and outlets, quiet after 2pm." },
     ],
     steps: [{ user: "Any other quiet one within ten minutes' walk of the station, with outlets?" }],
-    expect: { opens: 0, sendTo: "cafe", notCalled: ["task_switch"], maxChars: 140 },
+    expect: { lines: 1, opens: 0, sendTo: "cafe", notCalled: ["task_switch"], maxChars: 140 },
     rubric: "A follow-up on the same errand that needs no sign-in: the partner continues the same café task where it is (task_send), without moving it to another computer and without a new task. At most one short English line naming the action.",
   },
   // D376: "接着我终端里那个 Claude 在做的": the person's own Claude Code session on the home (a
@@ -1106,7 +1110,7 @@ export const scenarios: Scenario[] = [
       { agent: "codex", id: "0fa0e000-0000-7000-8000-000000000002", folder: "dev/fakecache", turns: [["修一下不稳定的 TTL 测试", "改用假时钟，20 次都过了。"]], minutesAgo: 26 * 60 },
     ],
     steps: [{ user: "接着我终端里那个 Claude 在做的，把剩下的测试补上" }],
-    expect: { opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /^fake0000-cc00/ } }], noAsk: true, msgs: [0, 1], maxChars: 100 },
+    expect: { lines: 1, opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /^fake0000-cc00/ } }], noAsk: true, msgs: [0, 1], maxChars: 100 },
     rubric: "The user asks to carry on what their own Claude Code was doing in the terminal. The partner looks in their own sessions (own_session_find), finds the one Claude Code session from 40 minutes ago (compaction threshold in fakedb), and carries it on (own_session_continue) with the user's words (add the remaining tests). One short Chinese line naming the work (and, the first time, a few words on what it looked at: session names, folders and times on this computer), no outcome claimed, no question when one session clearly fits.",
   },
   {
@@ -1137,7 +1141,7 @@ export const scenarios: Scenario[] = [
       sessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e2", folder: "dev/fakedb", title: "compaction 阈值做成可配置", branch: "compaction-cfg", turns: [["把 L0 compaction 的触发阈值做成可配置的，默认 8", "改好了：新增 compaction.l0_trigger 配置项，默认 8。测试还没补。"]], minutesAgo: 25 }],
     },
     steps: [{ user: "接着我终端里那个 Claude 在做的，把剩下的测试补上" }],
-    expect: { opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /0000000000e2$/ } }], noAsk: true, msgs: [0, 2] },
+    expect: { lines: 1, opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /0000000000e2$/ } }], noAsk: true, msgs: [0, 2] },
     rubric: "The user's home is a server; their terminal Claude Code ran on their MacBook (Macbook Pro M3), whose records they let Ducter read. The partner looks (own_session_find), picks the MacBook's Claude Code session from 25 minutes ago (compaction threshold in fakedb), not the server's 3-day-old one, and carries it on (own_session_continue) with the user's words. Ducter's own one line on what it read (names, folders, times, first words, naming the computers) is fine. The partner's own line is one short Chinese sentence naming the work (the MacBook may be named), no outcome claimed, no question.",
   },
   {
@@ -1152,7 +1156,7 @@ export const scenarios: Scenario[] = [
       sessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e4", folder: "dev/fakedb", title: "Make the compaction threshold configurable", turns: [["Make the L0 compaction trigger configurable", "Done; tests aren't written yet."]], minutesAgo: 25 }],
     },
     steps: [{ user: "Carry on what Claude was doing in my terminal and add the missing tests." }],
-    expect: { opens: 0, called: [{ tool: "own_session_find" }], notCalled: ["own_session_continue"], msgs: [2, 2] },
+    expect: { lines: 1, opens: 0, called: [{ tool: "own_session_find" }], notCalled: ["own_session_continue"], msgs: [2, 2] },
     rubric: "The user's terminal Claude Code ran on their MacBook, whose records Ducter may not read yet; the server's only session is 3 days old and about something else. The first message (\"I looked at your Claude Code conversations on Hetzner Server: …\") is Ducter's own line, required and fine; the partner's whole reply after it is one short English line asking for the yes on the MacBook's card in Your devices (Read what they keep). It carries nothing on (not the server's old session), opens no task, offers no alternative and asks nothing else.",
   },
   {
@@ -1188,7 +1192,7 @@ export const scenarios: Scenario[] = [
       { ai: "values() 加好了，只返回没过期的值。" },
     ],
     steps: [{ user: "接着昨天那个 compaction 的活：阈值别写死 8，做成可配置的，默认还是 8" }],
-    expect: { opens: 0, sendTo: "compaction", noSendTo: "values", maxChars: 80 },
+    expect: { lines: 1, opens: 0, sendTo: "compaction", noSendTo: "values", maxChars: 80 },
     rubric: "The user names an earlier task (the HawDB compaction change, unmerged, finished a while ago) and asks to continue it: the partner finds it and sends the follow-up to THAT task with task_send (its branch, worktree and session carry on), not to the more recent foo task and not a new task. At most one short Chinese line naming the action.",
   },
   {
@@ -1242,7 +1246,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "把 ~/dev/foo 里 Cache 的 get() 改成 async。这会动公开 API，动手前先问我一句，给个默认。" }],
-    expect: { opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/], noWaiter: true },
+    expect: { lines: 1, opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/], noWaiter: true },
     rubric: "The partner creates a decision (ask) about changing the public API, with a sensible default; it does not open the task yet. The card speaks for itself: any text besides it is at most one short Chinese line that neither repeats the question nor describes the choice, its buttons or its default (and never invents a timeout).",
   },
   {
@@ -1252,7 +1256,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     steps: [{ user: "顺便给 ~/dev/foo 的 Cache 加一个按权重淘汰的策略。权重一样的时候先淘汰谁，你拿不准的话先问我。" }],
     // msgs counts prose only (acks and cards are not counted): a card with no words around it.
-    expect: { msgs: [0, 0], noWaiter: true },
+    expect: { lines: 1, msgs: [0, 0], noWaiter: true },
     rubric: "Either opens a task (its ack is one short Chinese line naming the action) or makes a decision card about the tie-break; naming the options inside the card's question is fine. There is no separate prose message that lists or describes the options, repeats the question, or names the buttons or the default.",
   },
   {
@@ -1261,7 +1265,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     // No place: the eval's repo paths don't exist on this machine, and the partner can read the real disk.
     steps: [{ user: "Draft the HawDB 0.9 release notes as a doc. Before you start, ask me whether to call the 30s checkpoint default a breaking change, and give me a default." }],
-    expect: { opens: 0, ask: true, msgs: [0, 1], maxChars: 200 },
+    expect: { lines: 1, opens: 0, ask: true, msgs: [0, 1], maxChars: 200 },
     rubric: "The partner makes a decision card (ask) about calling the 30s checkpoint change breaking, with a default, and opens no task yet. The card's question states the choice only. Any text is at most one short English line that does not describe the buttons or the default, and never says 'reply Go'.",
   },
   {
@@ -1271,7 +1275,7 @@ export const scenarios: Scenario[] = [
     category: "ask",
     lang: "en",
     steps: [{ user: "In tinycart, add a subtotal-per-item helper. There are two reasonable designs (return cents, or return formatted strings); ask me which one before you write it." }],
-    expect: { opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 200 },
+    expect: { lines: 1, opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 200 },
     rubric: "The partner makes a decision card asking cents vs formatted strings, with Go on the option it would pick, and opens no task yet. The card's question states the choice only; any text is at most one short English line that does not describe the buttons or the default.",
   },
 
@@ -1302,7 +1306,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/要不要提交|commit it\?|提交一下吗/i, NO_PLUMBING] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/要不要提交|commit it\?|提交一下吗/i, NO_PLUMBING] },
     rubric: `A result in Chinese (even though the task reported in English). ${RESULT_SHAPE}: the flaky TTL test is fixed, with its cause and the fix in plain words (one short clause each is fine). No step-by-step recap, no headings, no 'commit it?'.`,
   },
   {
@@ -1330,7 +1334,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 300, forbid: [NO_PLUMBING], require: [/doc/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 300, forbid: [NO_PLUMBING], require: [/doc/i] },
     rubric: `English result. ${RESULT_SHAPE} (default checkpoint is now 30s, tests updated), plus one 'left out' line: the docs were not updated, because they live in the separate hawdb-site repo. Must not pretend the docs were done.`,
   },
   {
@@ -1370,7 +1374,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 80, relayed: true, forbid: [CONSUMER_PLUMBING, /test\/lru\.test\.ts|fake clock/] },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 80, relayed: true, forbid: [CONSUMER_PLUMBING, /test\/lru\.test\.ts|fake clock/] },
     rubric:
       "D129: the user sees the task's question only through the partner, with its buttons under the partner's words. One short Chinese message (at most 2 short sentences) that asks it in the partner's own everyday words (e.g. 'lru 的测试也是靠 sleep 等的，要一起改掉吗？'), never pasting the task's wording or its file path, never naming the buttons, never answering the question itself.",
   },
@@ -1395,7 +1399,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160, relayed: true, forbid: [CONSUMER_PLUMBING, /bench\/README\.md/] },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 160, relayed: true, forbid: [CONSUMER_PLUMBING, /bench\/README\.md/] },
     rubric: "D129: one short English message (at most 2 short sentences) that asks the task's question in the partner's own everyday words (the benchmark table, about 6 minutes), without the file path, without saying 'tap Go/Hold', without answering it on the user's behalf.",
   },
 
@@ -1470,7 +1474,7 @@ export const scenarios: Scenario[] = [
         ],
       },
     ],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 200, forbid: [NO_PLUMBING], require: [/values/, /keys/] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 200, forbid: [NO_PLUMBING], require: [/values/, /keys/] },
     rubric: `Both tasks finished at the same moment: ONE short Chinese message covering both (values() and keys() added, non-expired only). ${RESULT_SHAPE} for the pair. Not two messages, no prose choice.`,
   },
 
@@ -1515,7 +1519,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "deps", title: "foo: 升级依赖", repo: "~/dev/foo", ack: "我去把 foo 的依赖升到最新再跑测试。", state: "working" } },
     ],
     steps: [{ user: "算了，别弄了" }],
-    expect: { opens: 0, sendTo: "deps", msgs: [0, 1], maxChars: 80, forbid: [/已经停(了|下)|stopped/] },
+    expect: { lines: 1, opens: 0, sendTo: "deps", msgs: [0, 1], maxChars: 80, forbid: [/已经停(了|下)|stopped/] },
     rubric: "The partner tells the running dependency-upgrade task to stop, and confirms in at most one short Chinese line that it is stopping it (not that it has already stopped, which it can't know yet). No new task, no questions back.",
   },
   {
@@ -1523,7 +1527,7 @@ export const scenarios: Scenario[] = [
     category: "stop",
     lang: "en",
     steps: [{ user: "Regenerate the recovery-time table in ~/dev/hawdb/bench/README.md." }, { user: "Actually never mind, don't do that." }],
-    expect: { opens: 1, sendTo: "$opened0", maxChars: 170 },
+    expect: { lines: 1, opens: 1, sendTo: "$opened0", maxChars: 170 },
     rubric: "Turn 1: an ack and a task. Turn 2: the partner tells that task to stop and says so in one short English line. It does not open anything new and does not claim the task already stopped.",
   },
 
@@ -1592,7 +1596,7 @@ export const scenarios: Scenario[] = [
     floor: true,
     saved: [{ kind: "card", name: "Weyl Gu", number: "4242424242424242", expMonth: 8, expYear: 2029 }],
     steps: [{ user: `Book one night at Ryokan Kurashiki on ryokan-kurashiki.jp for ${NIGHT_EN}, the cheapest room. Use my Visa.` }],
-    expect: { opens: 1, placeKind: "browser", briefRequire: [/card:visa-4242/], briefForbid: [/4242\s?4242\s?4242\s?4242/], forbid: [/\b(booked|paid|charged|reserved)\b(?! once)/i, /4242\s?4242/], maxChars: 260 },
+    expect: { lines: 1, opens: 1, placeKind: "browser", briefRequire: [/card:visa-4242/], briefForbid: [/4242\s?4242\s?4242\s?4242/], forbid: [/\b(booked|paid|charged|reserved)\b(?! once)/i, /4242\s?4242/], maxChars: 260 },
     rubric:
       "The user saved a Visa ••4242 in Passwords & cards. The partner opens one browser task for ryokan-kurashiki.jp whose brief names the card by its handle card:visa-4242 (never a number) and says to ask the user's Go before paying (browser_ask_to_pay). The ack is one short English line naming the booking; it may say the user will get a card to approve the payment, and must not claim anything is booked or paid. It never asks the user for the card number.",
   },
@@ -1647,7 +1651,7 @@ export const scenarios: Scenario[] = [
     category: "timer",
     lang: "en",
     steps: [{ user: "Remind me at 3pm today to reply to the HawDB contributor about the load-test numbers." }],
-    expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, opens: 0, waiter: true, msgs: [0, 1], maxChars: 120 },
     rubric: "Sets a reminder (wait_until) for 3pm and confirms in one short English line. No task.",
   },
   {
@@ -1656,7 +1660,7 @@ export const scenarios: Scenario[] = [
     category: "timer",
     lang: "zh",
     steps: [{ user: "明天早上 9 点提醒我给 HawDB 那位贡献者回邮件，说压测数字的事。" }],
-    expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 80, forbid: [/用户|the user/i] },
+    expect: { lines: 1, opens: 0, waiter: true, msgs: [0, 1], maxChars: 80, forbid: [/用户|the user/i] },
     rubric: "Sets a reminder for 9am tomorrow and confirms in one short Chinese line. The reminder's reason (shown on On hand) speaks to the user (e.g. 回 HawDB 贡献者的邮件), never about 'the user'. No task.",
   },
 
@@ -1694,7 +1698,7 @@ export const scenarios: Scenario[] = [
       { ai: "记下了：下周三下午三点，看牙医。" },
     ],
     steps: [{ user: "我跟你说过牙医约在几点吗？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/三点|3 ?点|15[:：]00|下午三|周三|星期三/] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/三点|3 ?点|15[:：]00|下午三|周三|星期三/] },
     rubric: "The partner under test is 小家, a second partner; the dentist time was told to the other partner, in a conversation 小家 never sees. 小家 must not state or guess the time or the day. It says plainly, in one or two short Chinese lines with 你, that the user hasn't told it here (it may say it doesn't see the other partner's conversation), and offers to note it now if the user tells it. No task, no card.",
   },
   {
@@ -1805,7 +1809,7 @@ export const scenarios: Scenario[] = [
     floor: true,
     memories: MEM_BACKGROUND,
     steps: [{ user: "以后写测试，凡是涉及时间的都用假时钟，别再用真的 sleep 了。" }],
-    expect: { opens: 0, remember: /假时钟|fake clock/i, msgs: [0, 1], maxChars: 60, forbid: [NO_MEM_TALK] },
+    expect: { lines: 1, opens: 0, remember: /假时钟|fake clock/i, msgs: [0, 1], maxChars: 60, forbid: [NO_MEM_TALK] },
     rubric:
       "The user states a lasting preference. Pass if the partner saved it to memory (memory_add) and replies with at most one short, natural Chinese line (e.g. \"好，以后都这样。\") or nothing. The reply must not announce the mechanics (存入记忆, saved to memory, 已记录); the app shows a small Noted line by itself. No task is opened.",
   },
@@ -1815,7 +1819,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: MEM_BACKGROUND,
     steps: [{ user: "By the way, I use pnpm, not npm, in all my JS projects. Keep that in mind." }],
-    expect: { opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK] },
+    expect: { lines: 1, opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK] },
     rubric:
       "A lasting preference. Pass if the partner saved it (memory_add) and answers with at most one short natural English line (\"Got it, pnpm from now on.\") or nothing, without saying it saved anything to memory. No task.",
   },
@@ -1855,7 +1859,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noRemember: true, rememberForbid: [/c3d9f01|ducter\/fix|20\/20/], msgs: [1, 1], maxChars: 160, forbid: [NO_MEM_TALK] },
+    expect: { lines: 2, opens: 0, noRemember: true, rememberForbid: [/c3d9f01|ducter\/fix|20\/20/], msgs: [1, 1], maxChars: 160, forbid: [NO_MEM_TALK] },
     rubric: "A task's result is plumbing, not a durable fact about the user: the partner must NOT save it to memory. It reports the outcome in at most 2 short Chinese lines (fake clock instead of real time) without commit ids or branch names.",
   },
   {
@@ -1874,7 +1878,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: [...MEM_BACKGROUND, HAWDB_BENCH],
     steps: [{ user: "Quick one: what's Postgres's default port?" }],
-    expect: { noRecall: true, opens: 0, msgs: [1, 1], maxChars: 120, require: [/5432/] },
+    expect: { lines: 1, noRecall: true, opens: 0, msgs: [1, 1], maxChars: 120, require: [/5432/] },
     rubric: "A general question that needs no memory: answered directly in one short English line (5432). No memory search, no task.",
   },
   {
@@ -1883,7 +1887,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     memoryDown: true,
     steps: [{ user: "像上次那样，把 ~/dev/hawdb 的基准跑一下" }],
-    expect: { opens: [0, 1], maxChars: 120, forbid: [NO_MEM_TALK, /不可用|连不上|没(有)?连接|出错|找不到.{0,8}(记录|上次)|没有.{0,6}记录|no record/i] },
+    expect: { lines: 1, opens: [0, 1], maxChars: 120, forbid: [NO_MEM_TALK, /不可用|连不上|没(有)?连接|出错|找不到.{0,8}(记录|上次)|没有.{0,6}记录|no record/i] },
     rubric:
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
   },
@@ -1895,7 +1899,7 @@ export const scenarios: Scenario[] = [
     // D563: really signed out (Mem there, its sign-in lapsed); was the fake's "not installed" (a state that lied).
     memoryDown: "signed_out",
     steps: [{ user: "记住，周报每周五下午发给产品组。" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, require: [/没(能)?记住|记不住|没记下|没能记|这次.{0,6}记/] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 120, require: [/没(能)?记住|记不住|没记下|没能记|这次.{0,6}记/] },
     rubric:
       "The user asks the partner to remember something, but Nowledge Mem isn't signed in on the home, so nothing could be kept (memory_add said so). Pass if the partner says in one or two short, plain Chinese sentences that it couldn't keep this one this time, that Nowledge Mem isn't signed in (naming Nowledge Mem or 记忆 is right here), and that Settings › 记忆 is where to fix it. Fail on a plain 「好」 as if it was kept, on a promise to remember, on error codes or commands, or on opening a task.",
   },
@@ -1918,7 +1922,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     memoryDown: true,
     steps: [{ user: "我在 Claude Code 里交代过的习惯，怎么让你也知道？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 140, require: [/设置/, /记忆/, /Nowledge Mem/] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 140, require: [/设置/, /记忆/, /Nowledge Mem/] },
     rubric:
       "The user, who has no long-term memory app connected, asks how the partner could also know the habits they told Claude Code. Pass if the partner says in one or two short, plain Chinese lines that 设置 › 记忆 is where Nowledge Mem (free) is connected, in two steps, and then it knows what their other AI tools saved. Fail on commands, install instructions, jargon (CLI, API key, Space), opening a task, or a long explanation.",
   },
@@ -1929,7 +1933,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memoryDown: "off",
     steps: [{ user: "Remember that I take my coffee black." }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/off/i, /settings/i], forbid: [/sign(ed)? ?(in|out)|broken|error/i] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 220, require: [/off/i, /settings/i], forbid: [/sign(ed)? ?(in|out)|broken|error/i] },
     rubric:
       "The user switched memory off in Settings › Memory, then asks the partner to remember something. Pass if the partner says in one or two short, plain English sentences that memory is off right now, so this stays only in this conversation, and that turning it on in Settings › Memory would keep it. Fail on any claim that it was saved or will be remembered for good, on 'signed out' or anything broken, or on opening a task.",
   },
@@ -1941,7 +1945,7 @@ export const scenarios: Scenario[] = [
     memories: MEM_BACKGROUND,
     seed: [{ user: "周末想出去放松一下，有什么去处？" }, { ai: "可以去莫干山住两晚：人少，有温泉，开车两个多小时。" }],
     steps: [{ user: "哈哈这个好" }],
-    expect: { opens: 0, noRemember: true, msgs: [0, 1], maxChars: 80, forbid: [NO_MEM_TALK] },
+    expect: { lines: 1, opens: 0, noRemember: true, msgs: [0, 1], maxChars: 80, forbid: [NO_MEM_TALK] },
     rubric:
       "The user only reacts warmly to one suggestion. Pass if the partner saves nothing to memory (no preference like 喜欢温泉 or 喜欢莫干山 inferred from the reaction) and answers with at most one short, natural Chinese line (or nothing), without opening a task or talking about memory.",
   },
@@ -1953,7 +1957,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     memories: [...MEM_BACKGROUND, WEEKLY_REPORT],
     steps: [{ user: "周报一般哪天发、发给谁来着？" }],
-    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 80, require: [/周五/, /产品组/], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /周报/, by: "said" } },
+    expect: { lines: 1, recall: true, opens: 0, msgs: [1, 1], maxChars: 80, require: [/周五/, /产品组/], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /周报/, by: "said" } },
     rubric:
       "Only memory knows the answer: the weekly report goes out Friday afternoon, to the product team (产品组; the user said so on Nov 10). Pass if the partner answers in one short, natural Chinese line as someone who simply remembers, without saying it searched, checked or found a record. The app's quiet source line under the reply (if shown in the transcript) is not the partner's prose and is expected here.",
   },
@@ -1973,7 +1977,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: [...MEM_BACKGROUND, WEEKLY_REPORT],
     steps: [{ user: "In two sentences: what's a write-ahead log for?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 400, require: [/log|durab|crash/i], forbid: [NO_MEM_TALK], sourceLines: 0 },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 400, require: [/log|durab|crash/i], forbid: [NO_MEM_TALK], sourceLines: 0 },
     rubric: "A general question memory has nothing to add to: answered directly in about two short English sentences (durability: changes are written to a log before the data files, so a crash can be recovered). No task, no talk about memory, and no source line under the reply.",
   },
   // D444: "what do you know about me?" answered from what Mem knows about them, warm and short; and
@@ -1984,7 +1988,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     memories: [...MEM_BACKGROUND, WEEKLY_REPORT, ...ABOUT_ME],
     steps: [{ user: "你都记得我些什么？" }],
-    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 200, require: [/周五|周报|pnpm|假时钟|邮件|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\d+\s*条/, /记录/] },
+    expect: { sentences: 3, recall: true, opens: 0, msgs: [1, 1], maxChars: 200, require: [/周五|周报|pnpm|假时钟|邮件|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\d+\s*条/, /记录/] },
     rubric:
       "The user asks what the partner remembers about them. Pass if it answers warmly in two or three short, natural Chinese sentences, as a friend who knows them, naming a few real things from what it knows (e.g. the weekly report goes out Friday afternoon to the product team, pnpm not npm, a fake clock in tests, the partners-not-hierarchy wording) in its own words, and ends with a short line inviting them to say if something is wrong or shouldn't be kept. Fail on a list or bullets, a count of memories, quoting titles, dates or sources, or talk about records, memory, saving or searching.",
   },
@@ -1994,7 +1998,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: [...MEM_BACKGROUND, WEEKLY_REPORT, ...ABOUT_ME],
     steps: [{ user: "What do you actually know about me?" }],
-    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 420, require: [/Friday|weekly|pnpm|fake clock|email|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\b\d+ (memories|things|items)\b/i, /\brecords?\b/i] },
+    expect: { sentences: 4, recall: true, opens: 0, msgs: [1, 1], maxChars: 420, require: [/Friday|weekly|pnpm|fake clock|email|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\b\d+ (memories|things|items)\b/i, /\brecords?\b/i] },
     rubric:
       "The user asks what the partner knows about them. Pass if it answers warmly in two or three short English sentences with a few real things it knows (the weekly report goes out Friday afternoon to the product team, pnpm over npm, fake clocks in tests) in its own words, and ends with one short line that they can tell it if something is wrong or shouldn't be kept. Fail on a list, a count, quoted titles, dates or sources, or talk about memory, records, saving or searching.",
   },
@@ -2027,7 +2031,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     workingMemory: WM_RELEASE,
     steps: [{ user: "What's Postgres's default port?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 200, require: [/5432/], forbid: [NO_MEM_TALK, /HawDB|benchmark|release|focus/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 200, require: [/5432/], forbid: [NO_MEM_TALK, /HawDB|benchmark|release|focus/i] },
     rubric: "A general question: answered directly in one short English line (5432). The user's focus (in the partner's background) has nothing to do with it and must not be brought up; no talk about memory or notes.",
   },
   {
@@ -2077,7 +2081,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: {
+    expect: { lines: 2,
       ask: true,
       opens: 1,
       maxChars: 200,
@@ -2104,7 +2108,7 @@ export const scenarios: Scenario[] = [
       },
       { resolve: { option: "go" } },
     ],
-    expect: {
+    expect: { lines: 1,
       ask: true,
       opens: 0,
       maxChars: 160,
@@ -2125,7 +2129,7 @@ export const scenarios: Scenario[] = [
       { resolve: { option: "go" } },
       { peer: { from: "terminal-claude", answer: true, text: "写到 contacts 和 send 了。5 个新测试过了 4 个，send 的 stdin 那个还红着。修通了大概 22:00 提 PR。" } },
     ],
-    expect: {
+    expect: { lines: 2,
       ask: true,
       opens: 0,
       maxChars: 160,
@@ -2147,7 +2151,7 @@ export const scenarios: Scenario[] = [
       { resolve: { option: "go" } },
       { peer: { from: "terminal-claude", answer: true, text: "contacts and send are in. 4 of 5 new tests pass; the send stdin one is still red. PR around 22:00 once it's green." } },
     ],
-    expect: {
+    expect: { lines: 2,
       ask: true,
       opens: 0,
       maxChars: 260,
@@ -2185,7 +2189,7 @@ export const scenarios: Scenario[] = [
       { resolve: { option: "go" } },
       { peer: { from: "terminal-claude", answer: true, text: "写到 contacts 和 send 了。5 个新测试过了 4 个，send 的 stdin 那个还红着。修通了大概 22:00 提 PR。" } },
     ],
-    expect: {
+    expect: { lines: 2,
       ask: true,
       opens: 0,
       maxChars: 200,
@@ -2209,7 +2213,7 @@ export const scenarios: Scenario[] = [
       { ai: "它说 contacts 和 send 写好了，5 个新测试过了 4 个，send 的 stdin 那个还红着，大概 22:00 提 PR。" },
     ],
     steps: [{ user: "再问一下我终端里那个 Claude：昨晚 CI 那个红是不是 flaky？" }, { resolve: { option: "go" } }],
-    expect: {
+    expect: { lines: 1,
       ask: true,
       opens: 0,
       maxChars: 160,
@@ -2234,7 +2238,7 @@ export const scenarios: Scenario[] = [
       { peer: { from: "codex-mem", unchecked: true, text: "Mem 协作 Codex 联络测试：收到请回一句「收到」，说明这条路通了。" } },
       { user: "用 Bridge 查看来信，回复 Mem 协作 Codex 的联络测试。" },
     ],
-    expect: {
+    expect: { lines: 2,
       called: [{ tool: "bridge_check" }],
       opens: 0,
       maxChars: 160,
@@ -2254,7 +2258,7 @@ export const scenarios: Scenario[] = [
     bridge: true,
     seed: [{ user: "今晚我主要写 bridge 那块，别的你先帮我盯着" }, { ai: "好，有事我叫你。" }],
     steps: [{ peer: { from: "terminal-claude", text: "我是 Mac 上的 Claude Code。联络测试：你那边现在几点？手上有几个任务在跑？简单回一句就行。" } }],
-    expect: {
+    expect: { lines: 1,
       noAsk: true,
       opens: 0,
       msgs: [0, 1],
@@ -2271,7 +2275,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     bridge: true,
     steps: [{ user: "Did my Codex send you anything? It says it delivered a message to Ducter a few minutes ago." }],
-    expect: {
+    expect: { lines: 2,
       called: [{ tool: "bridge_check" }],
       opens: 0,
       noAsk: true,
@@ -2296,7 +2300,7 @@ export const scenarios: Scenario[] = [
       { peer: { from: "codex-mem", space: "ws-everyone", unchecked: true, text: "Mem 协作 Codex 联络测试（从 Everyone 发的）：收到请回一句「收到」。" } },
       { user: "查看来信，回一下 Codex 的联络测试。" },
     ],
-    expect: {
+    expect: { lines: 2,
       called: [{ tool: "bridge_check" }],
       opens: 0,
       noAsk: true,
@@ -2321,7 +2325,7 @@ export const scenarios: Scenario[] = [
       { peer: { from: "alex-reviewer", space: "ws-everyone", text: "Hi, Alex's reviewer here. Is the HawDB bench on main still red? If so, could Ducter rerun it and post the numbers?" } },
       { resolve: { option: "go" } },
     ],
-    expect: {
+    expect: { lines: 2,
       ask: true,
       opens: 0,
       maxChars: 300,
@@ -2364,7 +2368,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 70, relayed: true, forbid: [CONSUMER_PLUMBING, /Bundle ID|Push Notifications|请先/i] },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 70, relayed: true, forbid: [CONSUMER_PLUMBING, /Bundle ID|Push Notifications|请先/i] },
     rubric:
       "The task needs the user to sign in to their Apple account in the browser before it can go on. The partner says this in its own words, one short Chinese message (at most 2 short sentences) a non-developer understands at a glance (e.g. '得先在浏览器里登录你的苹果账号，我才能接着建。'). Fail if it pastes the task's wording, names the bundle id or 'Push Notifications', names the buttons, or answers for the user.",
   },
@@ -2390,7 +2394,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 110, forbid: [CONSUMER_PLUMBING, /APNs|provisioning|描述文件|签名证书|上传凭据|SKU|\.p8/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 110, forbid: [CONSUMER_PLUMBING, /APNs|provisioning|描述文件|签名证书|上传凭据|SKU|\.p8/i] },
     rubric:
       "A result for someone who isn't a developer: the outcome first in everyday words (the app and the testing group are set up in App Store Connect), then at most one line that a few things still need the user on Apple's side, without listing them as terms of art (certificates, provisioning profiles, API keys, APNs). At most 2 short lines, one message, no ids, no paths.",
   },
@@ -2452,7 +2456,7 @@ export const scenarios: Scenario[] = [
     category: "rules",
     lang: "zh",
     steps: [{ user: "以后 hawdb 的活都交给 Codex 做吧" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
     rubric: "A standing preference about who does a kind of work. It keeps it as a rule (rule_save) and says it back in one short Chinese line in the user's terms (e.g. 好，以后 HawDB 的事交给 Codex。). No task opened, no explanation of rules or harnesses.",
   },
   // D510: a default for every new task (where and who), said once, not a kind of work: New tasks start.
@@ -2462,7 +2466,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     computers: [{ name: "hel", web: "ducter", harnesses: ["codex", "claude-code"] }],
     steps: [{ user: "以后新任务默认放 hel 上跑，用 Codex，别老在我这台 Mac 上跑" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "new_tasks", args: { where: /hel/i, agent: "codex" } }], notCalled: ["rule_save", "task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "new_tasks", args: { where: /hel/i, agent: "codex" } }], notCalled: ["rule_save", "task_open"] },
     rubric: "A standing default for every new task: where (hel, not this Mac) and who (Codex), not a kind of work. It keeps it (new_tasks with hel and codex) and says it back in one short Chinese line (e.g. 好，以后新任务默认在 hel 上用 Codex。). No task opened, no rule for a kind of work, no explanation of settings.",
   },
   {
@@ -2471,7 +2475,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     computers: [{ name: "hel", web: "ducter", harnesses: ["codex", "claude-code"] }],
     steps: [{ user: "From now on start new tasks on hel by default, not on this Mac." }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "new_tasks", args: { where: /hel/i } }], notCalled: ["rule_save", "task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "new_tasks", args: { where: /hel/i } }], notCalled: ["rule_save", "task_open"] },
     rubric: "A standing default for where every new task starts (hel), not a kind of work and no agent named. It keeps it (new_tasks with where hel) and says it back in one short English line. No task opened, no rule for a kind of work, no agent chosen for them.",
   },
   // D538: which computer gets which work, said once: a computer rule (the person's, every partner's), never a task.
@@ -2482,7 +2486,7 @@ export const scenarios: Scenario[] = [
     homeMem: [7.6, 1.0],
     computers: [{ name: "haswell", web: "ducter", harnesses: ["codex", "claude-code"], os: "Linux", mem: [64, 41] }],
     steps: [{ user: "haswell 内存比较大，以后跑验证、跑测试这种活多放它上面" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save", args: { place: "prefer", device: /haswell/i } }], notCalled: ["task_open", "new_tasks"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save", args: { place: "prefer", device: /haswell/i } }], notCalled: ["task_open", "new_tasks"] },
     rubric: "A standing preference about which computer takes a kind of work (heavy verification on haswell), not a default for every task and not about an AI agent. It keeps it as a computer rule (rule_save place prefer, device haswell, for heavy) and says it back in one short Chinese line in the user's terms. No task opened; it never asks how much memory haswell has ([devices] says it).",
   },
   {
@@ -2491,7 +2495,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     computers: [{ name: "hel", web: "ducter", harnesses: ["codex"], os: "Linux", mem: [7.6, 1.2] }],
     steps: [{ user: "Please don't run browser stuff on hel anymore, it keeps running out of memory." }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "rule_save", args: { place: "avoid", device: /hel/i } }], notCalled: ["task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "rule_save", args: { place: "avoid", device: /hel/i } }], notCalled: ["task_open"] },
     rubric: "A standing preference about which computer avoids a kind of work (web/browser work off hel). It keeps it as a computer rule (rule_save place avoid, device hel, for web) and says it back in one short English line. No task opened, no lecture about memory.",
   },
   // D538: heavy verification is needs.heavy; Ducter puts it where there is room.
@@ -2512,7 +2516,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     firstErrand: true,
     steps: [{ user: "帮我看看京都 12 月 20 号到 23 号住哪儿好，两个人，一晚 1500 以内" }],
-    expect: { opens: 1, ackFirst: true, workKind: "errand", msgs: [1, 1], maxChars: 90, require: [/Sonnet/i], notHarness: "claude-code" },
+    expect: { lines: 1, opens: 1, ackFirst: true, workKind: "errand", msgs: [1, 1], maxChars: 90, require: [/Sonnet/i], notHarness: "claude-code" },
     rubric: "D372: a hotel search is an errand. It opens one task (kind errand or web needs) without naming an agent, acks in one short Chinese line, and then (the tool said this is the first errand put on a faster model) says exactly one more short line: this kind goes to Sonnet, faster, keeping Opus and its limit for harder work, and the user can say to change it. No explanation of tiers or harnesses beyond that one line.",
   },
   {
@@ -2529,7 +2533,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, ruleKept: { harness: "claude-code", never: true, kind: "errand" } },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, ruleKept: { harness: "claude-code", never: true, kind: "errand" } },
     rubric: "Live (hel, 2026-11-18): the partner once answered \"好，以后…都不用 Claude Code\" and saved nothing, then later saved \"use Codex\", losing the exclusion. Now (D401) Ducter keeps the person's words as a never-rule on Claude Code the moment they land (the line under their words says so); the partner says it back in one short Chinese line that keeps the exclusion (not 'use Codex'), without claiming it is unsaved. No task opened.",
   },
   {
@@ -2559,7 +2563,7 @@ export const scenarios: Scenario[] = [
       { user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" },
       { user: "可以的话帮我订好机票和酒店，用我 Mac 上登录了携程的 Chrome，我可以自己接着做付款的步骤" },
     ],
-    expect: { opens: 1, notBody: "claude-code", notHarness: "claude-code", saidAsk: false, ruleKept: { harness: "claude-code", never: true, kind: "errand" }, maxChars: 220 },
+    expect: { lines: 1, opens: 1, notBody: "claude-code", notHarness: "claude-code", saidAsk: false, ruleKept: { harness: "claude-code", never: true, kind: "errand" }, maxChars: 220 },
     rubric: "The user said a standing preference (no Claude Code for hotel bookings and other everyday errands), then, two messages on, asked to book the flights and the hotel up to payment in the Mac's signed-in Chrome. Pass if the preference was said back in one short Chinese line keeping the 'not' (Ducter keeps it as a rule by itself; rule_save is fine but not needed, and no card asks), and the booking opens one task that did NOT go to Claude Code (the transcript shows who took it and by which rule), with one short Chinese ack naming the action. Nothing is paid or submitted.",
   },
   // D401: said and asked in one message: the task opened in that same turn already goes by it.
@@ -2600,7 +2604,7 @@ export const scenarios: Scenario[] = [
     category: "rules",
     lang: "zh",
     steps: [{ user: "我说了很多遍了， review 评审直接发，别问我确认" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 90, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask", "rule_save"], forbid: [/仍需|还是需要|需要你确认|确认卡|不能跳过|Ducter 的规则|规矩/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 90, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask", "rule_save"], forbid: [/仍需|还是需要|需要你确认|确认卡|不能跳过|Ducter 的规则|规矩/] },
     rubric: "The user says PR reviews go without asking from now on; the partner keeps it with without_asking. Pass only if the partner complies in ONE short Chinese line (e.g. 好，以后评审写完直接发到 GitHub，不再问你。…想收回说一声。): no card, no ask, no claim that a confirmation is still needed, no rule invented, no lecture.",
   },
   {
@@ -2615,7 +2619,7 @@ export const scenarios: Scenario[] = [
       { ai: "那我只留评审草稿，不主动弹确认卡；你说要发哪份时，再确认发布。" },
     ],
     steps: [{ user: "你直接发布，别问我，这么难理解我的话么？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask"], forbid: [/仍需|还是需要|需要你确认|不能跳过|Ducter 的规则|规矩|每次发布前/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask"], forbid: [/仍需|还是需要|需要你确认|不能跳过|Ducter 的规则|规矩|每次发布前/] },
     rubric: "The user has said reviews go without asking (now kept with without_asking), and the partner's two earlier answers were wrong. Pass only if it now complies in one short Chinese line: reviews go to GitHub directly from now on, no card, no confirmation (naming 替你做过的 or taking it back is welcome, not required). A short apology is fine. Fail on any refusal, any 'still needs confirming', or calling it Ducter's rule.",
   },
   {
@@ -2623,7 +2627,7 @@ export const scenarios: Scenario[] = [
     category: "rules",
     lang: "en",
     steps: [{ user: "From now on just post the reviews to GitHub, don't ask me." }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 200, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask", "rule_save"], forbid: [/still need|confirm (each|every)|can't skip|Ducter's rule/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 200, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask", "rule_save"], forbid: [/still need|confirm (each|every)|can't skip|Ducter's rule/i] },
     rubric: "The partner keeps it as a standing go with without_asking. Pass if one short English line says reviews will go straight to GitHub without asking from now on (Done for you shows them; they can take it back). No card, no ask, no 'still needs confirmation'.",
   },
   {
@@ -2632,7 +2636,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "以后付款不用问我，直接付就行" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["rule_save", "without_asking"], forbid: [/Ducter 的规则|规矩/], require: [/钱|付/] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["rule_save", "without_asking"], forbid: [/Ducter 的规则|规矩/], require: [/钱|付/] },
     rubric: "Paying is on the floor: nothing can be kept (without_asking has no such action). Pass if the partner says plainly, in one or two short Chinese lines, that each payment still waits for their own Go because money can't be taken back (the real reason), without calling it an unexplained rule, without lecturing, and without opening a task.",
   },
   {
@@ -2644,7 +2648,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "hotel", title: "订京都酒店", ack: "我去携程看看，订之前问你。", state: "working" } },
     ],
     steps: [{ report: { task: "hotel", body: { state: "failed", summary: "Sonnet 没做下来，Ducter 换到 Opus 接着做了一次，也没成：携程要先登录，登录页一直弹验证码，停在这里。", questions: [], evidence: [] } } }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, noSend: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, noSend: true },
     rubric: "D372's safety net, its last step: the errand already moved once by itself from Sonnet to Opus and still failed. Only now the person hears it: one short Chinese line saying it didn't get booked and why (Ctrip wants a sign-in, the captcha kept coming), and what would let it go on (e.g. they sign in to Ctrip once, or it tries another site). It doesn't quietly retry again, doesn't open a new task, and doesn't explain models.",
   },
   // ---------- D473: a task that couldn't start, mended by the partner before the person sees it ----------
@@ -2659,7 +2663,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "copy", title: "在 hel 用 Gemini 审阅 Mem 长文案", repo: "/root/dev/mem", ack: "好，我开个任务在 hel 上用 Gemini 看。", state: "working", harness: "antigravity" } },
     ],
     steps: [{ cantStart: { task: "copy", cant: { why: "no_folder", computer: "hel", what: "mem", path: "/root/dev/mem" }, line: "没能开始：hel 上没有 mem 这个文件夹" } }],
-    expect: { opens: 1, openedPlace: { computer: "hel", clone: "nowledge-co/mem" }, msgs: [0, 2], maxChars: 80, noAsk: true, proseForbid: [/没能开始|文件夹|folder|\/root|错误|失败|error/i] },
+    expect: { lines: 1, opens: 1, openedPlace: { computer: "hel", clone: "nowledge-co/mem" }, msgs: [0, 2], maxChars: 80, noAsk: true, proseForbid: [/没能开始|文件夹|folder|\/root|错误|失败|error/i] },
     rubric: "D473: the task couldn't start because the folder it was given isn't on that computer, and the person hasn't been told. The user's own words name the repository (nowledge-co/mem), so the partner opens the task again on that repository (place remote nowledge-co/mem, on hel; Ducter clones it there and may say so in its own one line) without asking. (The place shows hel as device w1, and Ducter's own clone line, e.g. 「我先在 hel 上拉一份」, is expected and not the partner's to judge.) Beyond that the partner says nothing, or at most one short Chinese line that it is under way; it never tells the person something failed, never names the folder or an error, and asks nothing.",
   },
   {
@@ -2671,7 +2675,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "notes", title: "Tidy the trip notes' wording", repo: "~/notes/trip", ack: "On it: a task is tidying the trip notes.", state: "working" } },
     ],
     steps: [{ cantStart: { task: "notes", cant: { why: "no_folder", computer: "MacBook", what: "trip", path: "~/notes/trip" }, line: "Couldn't start: MacBook has no folder trip" } }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, proseForbid: [/error|failed to start|stack/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, proseForbid: [/error|failed to start|stack/i] },
     rubric: "D473: the task couldn't start because the folder isn't on that computer, and nothing tells which folder or repository the notes are really in, so Ducter can't mend it alone. The partner asks once, in one short English line, where the trip notes are (the one real fix), e.g. naming that ~/notes/trip isn't on the MacBook and asking which folder or computer they're in. No error text, no list of what failed, no new task on a guessed path.",
   },
   // ---------- D436: an errand to the checkout (research/185) ----------
@@ -2722,7 +2726,7 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 110, noSend: true, forbid: [/付好了|已经付|帮你付|替你付|订好了[。！]|已经订好/] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 110, noSend: true, forbid: [/付好了|已经付|帮你付|替你付|订好了[。！]|已经订好/] },
     rubric: "D436: the errand reached the checkout and Ducter put the 去付款 card under it by itself (the train, the total, the site, a picture; the person pays in the live view). The partner says at most one short Chinese line: the train it picked and that it's waiting at payment for them (e.g. G7311，早上 8:05，二等座靠窗，73 元，到付款这步了，你点一下付就好。). It never says it paid or that it's booked, asks no question of its own, makes no second card and sends nothing to the task.",
   },
   {
@@ -2730,7 +2734,7 @@ export const scenarios: Scenario[] = [
     category: "accounts",
     lang: "en",
     steps: [{ user: "Anything in my email this week I still need to reply to?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
     rubric: "No account is connected. It says in one short English line that it can't read their mail yet and where they can add their accounts (the Partner page / Accounts it can read; one tap with oo). It opens no task, invents no mail, and never explains OAuth or tokens.",
   },
   // ---------- D243: "anything worth telling me?" (research/81) ----------
@@ -2740,7 +2744,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     noticed: "dots",
     steps: [{ user: "你今天没查邮件给我值得说的么？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/还没(有)?主动|没(有)?主动(告诉|跟你说)|我(刚|先)?(补)?(查|看|读)了|封(邮件|信)/] },
+    expect: { lines: 6, opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/还没(有)?主动|没(有)?主动(告诉|跟你说)|我(刚|先)?(补)?(查|看|读)了|封(邮件|信)/] },
     rubric: "The user asks whether there's anything worth telling them today. It calls noticed and answers in short Chinese with the few things that matter most, time-bound first: tomorrow's 19:40 NH 920 flight (be at the airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00 (before the flight; restarts may drop connections), the nightly-stats job failing repeatedly on main, and Mia waiting on an answer about onboarding; Cloudflare AI Search starting to charge in two days may come after them or be left out. At most four or five items; the office carpet cleaning is left out or last. Each item is one line with when and what to do. It never says what it read or checked, how many mails, or that it hadn't told them before (no '我还没主动告诉你'). No task opened.",
   },
   {
@@ -2749,7 +2753,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     noticed: "dots",
     steps: [{ user: "Anything I should know about today?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
+    expect: { lines: 6, opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
     rubric: "The user asks if there's anything they should know today. It calls noticed and answers in short English with the few things that matter, time-bound first: tomorrow's 19:40 NH 920 flight (airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00, the nightly-stats job failing repeatedly, Cloudflare AI Search starting to charge, Mia waiting about onboarding. The carpet cleaning is left out or last. One line each with when and what to do. Never says what it read or checked, or that it hadn't told them before. No task opened.",
   },
   // ---------- D388: "how did you know?" from the find's own lines (research/154) ----------
@@ -2777,7 +2781,7 @@ export const scenarios: Scenario[] = [
     category: "rich",
     lang: "en",
     steps: [{ user: "Put these side by side for me. Mac mini M4: $599, 16 GB, always plugged in, stays at home. MacBook Air M4: $999, 16 GB, runs on battery, comes with me. Which is the better always-on home for you?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 260, ui: "table", uiRequire: [/599/, /999/, /Mac mini/i, /Air/i] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 260, ui: "table", uiRequire: [/599/, /999/, /Mac mini/i, /Air/i] },
     rubric: "The user asks for a side-by-side of two Macs they described, and which is the better always-on home. The partner answers in one or two short English sentences (the Mac mini, because it's cheaper and always plugged in; the Air only if they want it with them) and puts the comparison in a small table block compared on what the user named (price, memory, power, where it lives); its prices and numbers are the ones the user gave, none invented; a row or two of well-known, stable facts about these Macs is fine. Its words don't repeat the table row by row. No task, no web look-up.",
   },
   {
@@ -2798,7 +2802,7 @@ export const scenarios: Scenario[] = [
       { ai: "看完了：周四最慢，那天加了集成测试。" },
     ],
     steps: [{ user: "给我看看上周每天的变化" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "chart", uiRequire: [/18\.5/, /26\.4/, /22\.1/, /"summary"/] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 120, ui: "chart", uiRequire: [/18\.5/, /26\.4/, /22\.1/, /"summary"/] },
     rubric: "The task already reported the five numbers. The user asks to see the day-by-day change. The partner shows them as a small chart block (bar or line) with exactly the reported values (18.5, 21, 19.2, 26.4, 22.1; minutes), a one-sentence summary, and one or two short Chinese sentences of its own (e.g. Thursday was slowest, and why, as the report said). It invents no numbers and no days, opens no task, and doesn't list all five numbers again in prose.",
   },
   {
@@ -2820,7 +2824,7 @@ export const scenarios: Scenario[] = [
     category: "rich",
     lang: "en",
     steps: [{ user: "I'll do these myself before I ship 0.0.62: rerun the full partner eval, check the iPhone build in TestFlight, tag it, update the release notes. Make me a list I can tick off as I go, and I'll tell you when it's done" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "checklist", uiRequire: [/eval/i, /TestFlight/i, /tag/i, /release notes/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, ui: "checklist", uiRequire: [/eval/i, /TestFlight/i, /tag/i, /release notes/i] },
     rubric: "The user asks for a list to tick off of the four things they named. The partner gives it as a checklist block with those four items (its own short wording is fine, nothing added that they didn't say) and one short English line. It opens no task and does nothing else.",
   },
   // ---------- D381: 置顶 / Pin: a block pinned when asked, changed in place, read back from the [pinned] line ----------
@@ -2829,7 +2833,7 @@ export const scenarios: Scenario[] = [
     category: "rich",
     lang: "zh",
     steps: [{ user: "12 月 20 号去大阪，帮我列个要带的东西，置顶，我收拾的时候勾" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /护照/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /护照/] },
     rubric: "The user asks for a packing list for an Osaka trip, pinned, to tick while packing. The partner answers in one short Chinese line and gives a checklist block of sensible things to pack for a few days in Osaka in December (a passport among them), written with \"pin\":true so it is pinned. It opens no task and asks nothing.",
   },
   {
@@ -2838,7 +2842,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     pinned: [{ title: "大阪行李清单", items: ["护照", "日元现金", "充电器和转换插头", "ICOCA 卡", "折叠伞", "酒店确认单"], ticks: ["护照"] }],
     steps: [{ user: "清单里加上充电宝，伞不用带了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /充电宝/, /护照/, /酒店确认单/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /充电宝/, /护照/, /酒店确认单/] },
     rubric: "The user pinned a packing list earlier (a [pinned] line shows it, with its id, passport ticked). They ask to add a power bank and drop the umbrella. The partner answers in one short Chinese line and writes the whole new checklist with \"pin\" set to that pinned list's id: the same items in the same words, the power bank added, the umbrella gone, nothing else changed (its title kept). It opens no task, posts no second unpinned list, and doesn't list the items again in prose. The line may state the edit as done (充电宝加上了，伞去掉了): the list it writes in the same message is that edit, so this is a done change said honestly, not an ack for work still to come.",
   },
   {
@@ -2857,7 +2861,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     history: true,
     steps: [{ user: "接着上周那个 compaction 的 PR，把 review 里说的锁粒度改细一点" }],
-    expect: { opens: 0, sendTo: "compaction_pr", sentRequire: { compaction_pr: [/锁/] }, notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, opens: 0, sendTo: "compaction_pr", sentRequire: { compaction_pr: [/锁/] }, notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "A week ago a task split HawDB's compaction scheduler and opened draft PR #4127 (a mem digest compaction task 20 days ago is not a PR and not last week). The user asks to carry on that PR with finer-grained locking. The partner carries that same task on (task_send with the locking change; finding it with task_find or from what it already knows is fine), opening nothing new and asking nothing. One short Chinese line naming the work and which task (its title or 上周的 PR), no outcome claimed.",
   },
   {
@@ -2866,7 +2870,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     history: true,
     steps: [{ user: "WAL group commit 那个，从第 3 步换 Codex 再试一次" }],
-    expect: { opens: 1, called: [{ tool: "task_fork", args: { step: 3, harness: "codex" } }], noSendTo: "wal", noAsk: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, opens: 1, called: [{ tool: "task_fork", args: { step: 3, harness: "codex" } }], noSendTo: "wal", noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "Three days ago the WAL group commit task (Claude Code) went through four steps: group commit, a configurable batch size, io_uring writes (step 3), then CI failing on Linux 5.4. The user asks to redo it from step 3 with Codex. The partner redoes it as a new task from step 3 with Codex (task_fork step 3, harness codex), not by continuing or switching the original. One short Chinese line saying it redoes step 3 of the WAL task with Codex (the original stays as it is is fine), no outcome claimed, no question.",
   },
   {
@@ -2875,7 +2879,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     history: true,
     steps: [{ user: "我上个月在 haswell 上那个 Rust 构建的，再接着把增量构建也弄快" }],
-    expect: { opens: 0, called: [{ tool: "task_find" }], sendTo: "rust_haswell", noSendTo: "clippy", notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, opens: 0, called: [{ tool: "task_find" }], sendTo: "rust_haswell", noSendTo: "clippy", notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "Last month a Codex task on haswell sped up cold Rust builds from 14 to 6 minutes (sccache and mold) and left incremental builds untouched; a clippy pass on the home four days ago is not it. The user asks to carry that one on for incremental builds. The partner finds it (task_find) and sends the follow-up to that same task (task_send), opening nothing new. One short Chinese line naming the work, no outcome claimed, no question.",
   },
   {
@@ -2894,7 +2898,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     made: true,
     steps: [{ user: "找一下上周做的那个行程表" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "made_find" }], madeShown: /kyoto-itinerary/, notCalled: ["task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "made_find" }], madeShown: /kyoto-itinerary/, notCalled: ["task_open"] },
     rubric: "Last week a task made the person a three-day Kyoto itinerary (kyoto-itinerary.md). They ask for \"that itinerary from last week\". The partner finds it and puts the file itself under one short Chinese line saying what it is and when (\"这是上周排的京都三日行程。\"); it doesn't retell the itinerary, open a task or ask which one.",
   },
   {
@@ -2903,7 +2907,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     made: true,
     steps: [{ user: "can you send me the PDF you made for the visa again?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "made_find" }], madeShown: /japan-visa-application\.pdf/, notCalled: ["task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "made_find" }], madeShown: /japan-visa-application\.pdf/, notCalled: ["task_open"] },
     rubric: "Five days ago a task filled in the person's Japan visa application and showed the PDF. They ask for it again. The partner puts that PDF under one short English line naming it and when it was made; no task, no question, no retelling of the form.",
   },
   {
@@ -2912,7 +2916,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     made: true,
     steps: [{ user: "where's the seating chart you made for the wedding?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "made_find" }], noMadeShown: true, noUi: true, notCalled: ["task_open"], forbid: [/here('s| is) (the|your) seating/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "made_find" }], noMadeShown: true, noUi: true, notCalled: ["task_open"], forbid: [/here('s| is) (the|your) seating/i] },
     rubric: "Nothing Ducter made is a wedding seating chart (it made a Kyoto itinerary, a visa PDF, a load-test CSV, a Bun note and a Mac comparison). The partner looks and says plainly, in one or two short English lines, that it didn't make or can't find a wedding seating chart; it may offer to make one. It never presents another file as the chart, invents one, or opens a task unasked.",
   },
   // ---------- D566: a file kept in the person's Nowledge Mem, on their word ----------
@@ -2923,7 +2927,7 @@ export const scenarios: Scenario[] = [
     made: true,
     memFiles: "on",
     steps: [{ user: "把上周那个京都行程存到 Mem 里" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "made_find" }], memKept: /kyoto-itinerary/, notCalled: ["task_open", "memory_add"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "made_find" }], memKept: /kyoto-itinerary/, notCalled: ["task_open", "memory_add"] },
     rubric: "Last week a task made the person a three-day Kyoto itinerary (kyoto-itinerary.md). They ask to save it to their Nowledge Mem. The partner finds it and keeps that file in Mem (made_find keep), then says so in one short Chinese line (it is in Nowledge Mem now; the 「Ducter」 folder may be named). No path, no id, no how, no memory_add of the itinerary's contents, no task, no question.",
   },
   {
@@ -2948,7 +2952,7 @@ export const scenarios: Scenario[] = [
       { boardOffer: { task: "fares", kind: "reports" } },
     ],
     steps: [{ resolve: { option: "go" } }],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 80, called: [{ tool: "app" }], appCard: "made", appTask: "fares", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 80, called: [{ tool: "app" }], appCard: "made", appTask: "fares", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "Ducter offered on its own card to keep the daily fare reports on a board, and the user said Go. The partner makes a small app for those fares now with the app tool, given to that task (task: its id), whose file reads the fares from its data (ducter.get/onChange) laid out per train with its price and seats; then at most one short Chinese line saying it's ready. The app's file is shown to you under its card (that is not the reply). The reply pastes no code and lists no features; no new task, no question.",
   },
   {
@@ -2962,7 +2966,7 @@ export const scenarios: Scenario[] = [
       { boardOffer: { task: "bench", kind: "reports" } },
     ],
     steps: [{ resolve: { option: "go" } }],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appTask: "bench", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appTask: "bench", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "Ducter offered on its own card to keep the nightly benchmark reports on a board, and the user said Go. The partner makes a small app with the app tool, given to that task (task: its id), that reads each night's numbers (writes/s, p99, stalls) from its data, and says at most one short English line that it's ready (a few words of what it shows are fine). The app's file is shown to you under its card (that is not the reply). The reply pastes no code; no new task, no question.",
   },
   {
@@ -2990,7 +2994,7 @@ export const scenarios: Scenario[] = [
       { ai: "做好了。每一轮都会更新它，不用再读一遍报告。" },
     ],
     steps: [{ user: "mem#10287 的草稿在哪看？", app: "about" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, noAppCard: true, appKept: true, require: [/看草稿/], notCalled: ["task_open", "task_send"], forbid: [/batch_size|```/] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 120, noAppCard: true, appKept: true, require: [/看草稿/], notCalled: ["task_open", "task_send"], forbid: [/batch_size|```/] },
     rubric: "In their review board's sheet, the user asks where to read mem#10287's draft. The board already has a 看草稿 button on that PR's row that opens the draft. The partner says so in one or two short Chinese sentences (tap 看草稿 on #10287's row; adding that nothing goes to GitHub before their Go is fine); it doesn't change the app, invent the draft's content or where on screen the button is, post anything, or open a task.",
   },
   // ---------- D427: what keeps going, from the conversation: how it's doing, a new rhythm, a stop ----------
@@ -3005,7 +3009,7 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "这个循环怎么样了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"], forbid: [/keep_list|taskId|wait_for/] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"], forbid: [/keep_list|taskId|wait_for/] },
     rubric: "The user asks how their review loop is doing. The partner looks (keep_list) and answers in one or two short Chinese sentences from what it shows: it is running every 45 minutes, when the next round is, and that it is on time. It doesn't open a task, message the task, change anything, or name tools or internals.",
   },
   {
@@ -3019,7 +3023,7 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "把 review 改成每小时" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "every", minutes: 60 } }], notCalled: ["task_open", "routine_propose", "keep_make"], noAsk: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "every", minutes: 60 } }], notCalled: ["task_open", "routine_propose", "keep_make"], noAsk: true },
     rubric: "The user changes the review loop's rhythm to every hour. The partner changes it (keep_change every 60) and says so in one short Chinese line (from the next round on, every hour; the next time is fine). No new task, no routine proposal card, no question back.",
   },
   {
@@ -3033,7 +3037,7 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "review 那个别跑了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"], noAsk: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open"], noAsk: true },
     rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
   },
   {
@@ -3048,7 +3052,7 @@ export const scenarios: Scenario[] = [
       { ai: "好，每 45 分钟去看一轮。" },
     ],
     steps: [{ user: "review 那个以后让 Codex 来做" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change", args: { agent: "codex" } }], notCalled: ["task_open", "keep_make", "routine_propose"], noAsk: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change", args: { agent: "codex" } }], notCalled: ["task_open", "keep_make", "routine_propose"], noAsk: true },
     rubric: "The user wants the review loop's rounds done by Codex from now on. The partner changes who does it on the same loop (keep_change with agent codex) and says so in one short Chinese line. Fail if it opens a new task, makes a second loop, or asks a question back.",
   },
   {
@@ -3064,7 +3068,7 @@ export const scenarios: Scenario[] = [
     ],
     steps: [{ user: "请 review 的 loop 直接 review https://github.com/nowledge-co/nowledge-labs-website/pull/551 吧" }],
     // Either route reaches the loop's own task now (D540): keep_change next_round, or task_send to it.
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["task_open", "keep_make"], noAsk: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["task_open", "keep_make"], noAsk: true },
     rubric: "The user asks the review loop to review one PR now. The partner hands that ask to the loop's own task now: keep_change next_round naming #551 with look_now is best; a message to the loop's task reaches the same task and is fine too. Its one short Chinese line names #551 and that it is reviewed now. Writing it as the loop's goal (until), opening a new task, or asking back is wrong.",
   },
   {
@@ -3078,7 +3082,7 @@ export const scenarios: Scenario[] = [
       { ai: "OK, a round every 45 minutes." },
     ],
     steps: [{ user: "Is my review loop still running?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "keep_list" }], notCalled: ["task_open", "task_send", "keep_change"] },
     rubric: "The user asks whether their review loop is still running. The partner looks (keep_list) and says in one or two short English sentences that it is, every 45 minutes, when the next round is, and that it is on time. No task, no change, no internals.",
   },
   // ---------- D405: 小应用 / Apps: made from one sentence, changed by talking, an app's ask answered ----------
@@ -3087,7 +3091,7 @@ export const scenarios: Scenario[] = [
     category: "apps",
     lang: "zh",
     steps: [{ user: "给我做个小应用，记一下这趟北京出差的花销，按天列，带个合计" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 120, called: [{ tool: "app" }], appCard: "made", appHtml: /ducter\.(get|set)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 120, called: [{ tool: "app" }], appCard: "made", appHtml: /ducter\.(get|set)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user asks for a little app to keep their Beijing trip's costs, by day, with a total. The partner makes it itself (the app tool), now, and says so in one short Chinese line (its card with Open goes under it). The app's file (shown) keeps its numbers with ducter.get/ducter.set, lists costs by day with a total, loads nothing from the internet, and is in Chinese. The reply never pastes code, lists features at length, opens a task or asks questions first. One short line before it, saying it is making it (the app takes seconds), is fine.",
   },
   {
@@ -3095,7 +3099,7 @@ export const scenarios: Scenario[] = [
     category: "apps",
     lang: "en",
     steps: [{ user: "make me a little habit tracker: reading, a run, no phone after 11. I want to tick days off and see my streaks" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /ducter\.set\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /ducter\.set\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user asks for a small habit tracker with three habits, ticking days and seeing streaks. The partner makes it with the app tool now and says so in one or two short English lines (the card goes under them). The app's file (shown) keeps ticks with ducter.set/ducter.get, shows the three habits, a way to tick days and the streaks, uses nothing from the internet. No code pasted, no task, no question first. One short line before it, saying it is making it, is fine.",
   },
   {
@@ -3104,7 +3108,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     apps: [{ name: "北京出差花销", html: TRIP_APP, data: { expenses: [{ what: "高铁", yuan: 662, day: "2026-11-18" }, { what: "酒店两晚", yuan: 1036, day: "2026-11-18" }, { what: "午饭", yuan: 268, day: "2026-11-19" }] } }],
     steps: [{ user: "加个合计，放在最上面，大一点", app: "about" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "app" }], appCard: "changed", appHtml: /合计|总计|总花销|总额|共计/, notCalled: ["task_open"], forbid: [/```|<script/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "app" }], appCard: "changed", appHtml: /合计|总计|总花销|总额|共计/, notCalled: ["task_open"], forbid: [/```|<script/i] },
     rubric: "The user, in their Beijing trip expenses app's sheet, asks to add a big total at the top. The partner changes that app (the app tool with its id: edits or a new file) so a total of all costs shows at the top, keeping what it had, and says so in one short Chinese line. No new app, no task, no code in the reply, no question.",
   },
   {
@@ -3113,7 +3117,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     apps: [{ name: "北京出差花销", html: TRIP_APP, data: { expenses: [{ what: "高铁", yuan: 662, day: "2026-11-18" }, { what: "酒店两晚", yuan: 1036, day: "2026-11-18" }, { what: "和客户午饭", yuan: 268, day: "2026-11-19" }, { what: "打车", yuan: 84, day: "2026-11-19" }] } }],
     steps: [{ user: "报销的时候这几笔分别要准备什么凭证？一句话", app: "ask" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, appAnswer: true, appKept: true, notCalled: ["task_open"] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 160, appAnswer: true, appKept: true, notCalled: ["task_open"] },
     rubric: "The user tapped a button in their Beijing trip expenses app, and the app asked the partner which receipts to prepare for these costs (a train ticket, two hotel nights, a lunch, taxis), in one sentence. The partner answers that question itself in one or two short Chinese sentences that make sense as an answer shown inside the app (e.g. the train's reimbursement receipt, the hotel's invoice and folio, the lunch receipt, the taxi receipts). It doesn't change the app, open a task, or talk about the app or the request itself.",
   },
   {
@@ -3136,7 +3140,7 @@ export const scenarios: Scenario[] = [
       { ai: "订好了：11/20 G1 07:00 上海虹桥到北京南，¥662；亚朵酒店（望京）11/20 和 11/21 两晚，¥1,036。" },
     ],
     steps: [{ user: "给我做个小应用，记一下出差花销" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /\b662\b|1,?036/], require: [/预订|填|记[入上好了进]|放进|加进/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /\b662\b|1,?036/], require: [/预订|填|记[入上好了进]|放进|加进/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user is on a Beijing trip the partner booked (the conversation above: the G1 train for ¥662 and two hotel nights for ¥1,036, and today's agibar talk in Beijing). They ask for a little app to keep their trip costs. The partner makes it now with the app tool, named for this trip (e.g. 北京出差 11/20–21), with the train and the hotel already in its data marked as from their bookings, drawn with Ducter's kit (no native select or number inputs), the total at the top. Its one short Chinese line says it's ready and what it already filled in (the train and the two hotel nights from their bookings); it never pastes code, lists features, asks questions first or opens a task. One short line before it, saying it is making it, is fine.",
   },
   {
@@ -3145,7 +3149,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     steps: [{ user: "make me a little app to keep track of what I spend" }],
     // D431: nothing known, so its first state says what it will show (k-none), never a bare 0.
-    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /k-none/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /k-sum-value[^>]*>\s*[$¥€£]?\s*0(\.00)?\s*</], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /k-none/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /k-sum-value[^>]*>\s*[$¥€£]?\s*0(\.00)?\s*</], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user asks for a little spending tracker and nothing in the conversation says what they spend on. The partner makes it now with the app tool, in English, drawn with Ducter's kit (no native select or number inputs), with no invented costs in it: while it's empty the top says what it will show (e.g. 'Spent this month' with 'Nothing yet' rather than a bare 0) and one calm line says what will list there. One or two short English lines say it's ready; no code, no feature list, no question first, no task. One short line before it, saying it is making it, is fine.",
   },
   {
@@ -3157,7 +3161,7 @@ export const scenarios: Scenario[] = [
       { name: "每日习惯", html: `<main class="k-app"><section class="k-sum"><span class="k-sum-label">读书</span><span class="k-sum-value">连续 6 天</span></section></main>` },
     ],
     steps: [{ user: "把「这周要买的」那个小应用删了吧，用不上了" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "app", args: { remove: true } }], appCard: "removed", appsLeft: 1, notCalled: ["task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "app", args: { remove: true } }], appCard: "removed", appsLeft: 1, notCalled: ["task_open"] },
     rubric: "The user asks to delete their 「这周要买的」 app. The partner deletes that one (the app tool with its id and remove), not the other, and says so in one short Chinese line (its card under it offers Undo); saying its list goes with it is fine. No question first, no task, no lecture.",
   },
   {
@@ -3169,7 +3173,7 @@ export const scenarios: Scenario[] = [
       { name: "每日习惯", html: `<main class="k-app"><section class="k-sum"><span class="k-sum-label">读书</span><span class="k-sum-value">连续 6 天</span></section></main>` },
     ],
     steps: [{ user: "我之前让你做的那些小应用都在哪？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, shelf: true, called: [{ tool: "app", args: { shelf: true } }], noAppCard: true, appKept: true, notCalled: ["task_open"] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, shelf: true, called: [{ tool: "app", args: { shelf: true } }], noAppCard: true, appKept: true, notCalled: ["task_open"] },
     rubric: "The user asks where the little apps the partner made for them are. The partner answers in one short Chinese line that they're all in 「你的小应用」 at the top, and puts the shelf's card under it (the app tool with shelf). It doesn't list every app at length, change any app, or open a task.",
   },
   // ---------- D422: an app answers first and opens filled with what the person already said ----------
@@ -3178,7 +3182,7 @@ export const scenarios: Scenario[] = [
     category: "apps",
     lang: "zh",
     steps: [{ user: "做个小应用记宝宝喝奶。今天早上 6:10 喝了 120ml，9:05 喝了 90ml" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appData: /120[\s\S]*90|90[\s\S]*120/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /type\s*=\s*["']?(date|time)/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appData: /120[\s\S]*90|90[\s\S]*120/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /type\s*=\s*["']?(date|time)/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "A parent asks for a little app to keep their baby's feeds and already said two: 6:10 120ml and 9:05 90ml today. The partner makes it now with the app tool, in Chinese, with those two feeds already in its data (not an empty app), and the app answers first: today's total (210ml) or how long since the last feed at the top, the feeds below, adding one in a tap or two (no native select, number, date or time inputs). Its one short Chinese line says it's ready and that today's two feeds are in. No code, no feature list, no question first, no task. One short line before it, saying it is making it, is fine.",
   },
   {
@@ -3191,7 +3195,7 @@ export const scenarios: Scenario[] = [
     ],
     steps: [{ user: "make that a little page I can keep and tick off as they land" }],
     // D431: the four PRs live in its data, never written into its file.
-    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appData: /412[\s\S]*10287|10287[\s\S]*412/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /10287|1592/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appData: /412[\s\S]*10287|10287[\s\S]*412/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /10287|1592/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The developer was just told which four PRs wait on someone (ducter#412 on Weizhen's review, mem#10287 on failing CI, hawdb#1592 on Alice, ducter#418 a draft) and asks for a little page to keep and tick off as they land. The partner makes it now with the app tool, in English, with those four PRs already in its data (who or what each waits on), the count still waiting at the top, a tap to mark one landed. One or two short lines say it's ready with the four in it. No code, no feature list, no question first, no task.",
   },
   {
@@ -3205,7 +3209,7 @@ export const scenarios: Scenario[] = [
     ],
     apps: [{ name: "出差花销", html: `<h2>记一笔</h2><label>出差名称</label><input id="trip"><label>日期</label><input id="day" type="date"><label>分类</label><select id="cat"><option>交通</option><option>住宿</option></select><label>金额</label><input id="amt" type="number"><button id="save">保存</button><h2>花销明细</h2><p id="list">暂无花销</p><script>function draw(){const xs=ducter.get("items")||[];document.getElementById("list").textContent=xs.length?xs.map(x=>x.trip+" "+x.amt).join("\\n"):"暂无花销"}document.getElementById("save").onclick=()=>{const xs=ducter.get("items")||[];xs.push({trip:document.getElementById("trip").value,amt:document.getElementById("amt").value});ducter.set("items",xs);draw()};draw()</script>` }],
     steps: [{ user: "把「出差花销」换成新样子，能填的先帮我填好", app: "about" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "changed", appHtml: /k-app/, appHtmlForbid: [/<select\b(?![^>]*k-select)/i, /type\s*=\s*["']?(number|date)/i], appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "changed", appHtml: /k-app/, appHtmlForbid: [/<select\b(?![^>]*k-select)/i, /type\s*=\s*["']?(number|date)/i], appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user's own trip-expenses app was made before Ducter's kit (a grey form, empty). From its tile they asked to give it the new look and fill in what's known. The partner rewrites that same app (the app tool with its id) with the kit, the total on top, and puts the booked train (¥662) and the two hotel nights (¥1,036) into its data, marked as from their bookings; renaming it for the trip is fine. One short Chinese line says it's changed and what it filled in. No new app, no task, no code, no question first.",
   },
   // D347: the person wants another computer to do tasks: the Add a computer for tasks card, never a how-to.
@@ -3214,7 +3218,7 @@ export const scenarios: Scenario[] = [
     category: "rich",
     lang: "zh",
     steps: [{ user: "把我局域网的服务器加进来，让它也能跑任务" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
     rubric: "The user wants a server on their home network to do tasks too. The partner answers in one short Chinese line and puts the Add a computer for tasks card (a lend block) under it, which walks them through it. It opens no task, writes no terminal commands or install steps, and asks nothing technical (no IP, no port).",
   },
   {
@@ -3222,7 +3226,7 @@ export const scenarios: Scenario[] = [
     category: "rich",
     lang: "en",
     steps: [{ user: "add my NAS so tasks can run there" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
     rubric: "The user wants their NAS to run tasks. The partner answers in one short English line and puts the Add a computer for tasks card (a lend block) under it. It opens no task, writes no terminal commands or install steps, and asks nothing technical.",
   },
   {
@@ -3244,7 +3248,7 @@ export const scenarios: Scenario[] = [
     ],
     steps: [{ user: "上周四那天跑了多久？" }],
     // D512 (principle 21): the figure in any honest form (26.4 分钟, 26 分 24 秒, 二十六分多钟) is the judge's to read.
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, noUi: true },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 80, noUi: true },
     rubric: "One number is asked. The partner answers in plain Chinese, one or two short sentences: about 26.4 minutes last Thursday, in any form that equals it (26.4 分钟, 26 分 24 秒, 二十六分多钟); a different figure fails. That the integration suite landed that day may be said; reading it as the likely reason is fine. What is graded is that a plain answer is right here: no table, chart, checklist or choices, and no task.",
   },
   // ---------- D300: "what did you send for me today?" from the Done for you record ----------
@@ -3254,7 +3258,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     did: true,
     steps: [{ user: "你今天替我发了什么？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 260, called: [{ tool: "did_list" }], require: [/Zhang Wei|zhang\.wei|张伟/i], forbid: [/我(刚|先)?(查|看|翻)了(一下)?(记录|日志)|Log|did_list/] },
+    expect: { lines: 4, opens: 0, msgs: [1, 1], maxChars: 260, called: [{ tool: "did_list" }], require: [/Zhang Wei|zhang\.wei|张伟/i], forbid: [/我(刚|先)?(查|看|翻)了(一下)?(记录|日志)|Log|did_list/] },
     rubric: "The user asks what Ducter sent for them today. It calls did_list and answers in short Chinese from it only: two things went out today: the Q4 budget draft (sheet attached) mailed to Zhang Wei after they agreed, and a message to their own Claude Code (an AI agent) about HawDB's benchmarks, in the list's own words; times are whatever the list says (the eval logs everything just now). It may add in one short line that it also paid the Okura hotel (USD 312) and called Sushi Saito, or offer the 替你做过的 page, but it invents nothing the list lacks, never quotes mail it read, and never says how it looked it up. It should not list every other kind of action; reads are counts of looks, never emails read. Two short lines or a two-item list; no task opened.",
   },
   {
@@ -3263,7 +3267,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     did: true,
     steps: [{ user: "Did you pay for anything for me today?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
+    expect: { lines: 3, opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
     rubric: "The user asks whether Ducter paid for anything today. It calls did_list and answers in short English from it only: one payment, USD 312.00 to the Okura hotel (hotelokura.co.jp), after the user agreed, for the Tokyo hotel task; the card, the stay and the time from the list may be named or not. Nothing else was paid; it doesn't list the other kinds unless briefly. It invents nothing, never says how it looked it up, and opens no task. One or two short lines; one more honest line that the booking itself is not confirmed yet is fine.",
   },
   // ---------- to-do sources (D341): offered, taken on the user's pick, written back behind a card ----------
@@ -3323,7 +3327,7 @@ export const scenarios: Scenario[] = [
     todos: true,
     seed: [{ user: "今天先这样，有新的事再说" }, { ai: "好，有事我再找你。" }],
     steps: [{ todosNew: { refs: ["wey-gu/ducter#9"] } }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
     rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). It offers it in one short Chinese line (naming #9 and what it is) and asks whether to take it. It starts nothing and opens no task.",
   },
   // D395 (hel, 2026-11-19): the author's first real hand-off. A to-do on nowledge-co/mem, whose
@@ -3351,7 +3355,7 @@ export const scenarios: Scenario[] = [
     clones: { have: {}, canRead: ["MacBook"] },
     seed: [{ user: "GitHub 上有新的吗" }, { ai: "有一个新的：nowledge-co/mem#10559，Improve general setting page。要接吗？" }],
     steps: [{ user: "10559 接下吧" }],
-    expect: { opens: 1, ackFirst: true, bound: "nowledge-co/mem#10559", openedPlace: { computer: "MacBook", clone: "nowledge-co/mem" }, require: [/拉一份/], noTodoCard: true, forbid: [/没能开始|not a git/] },
+    expect: { lines: 1, opens: 1, ackFirst: true, bound: "nowledge-co/mem#10559", openedPlace: { computer: "MacBook", clone: "nowledge-co/mem" }, require: [/拉一份/], noTodoCard: true, forbid: [/没能开始|not a git/] },
     rubric: "A GitHub issue (nowledge-co/mem#10559) was offered and the user says to take it. No computer has its code yet, so Ducter clones it on the MacBook first and says so in one line of its own. The partner takes the issue and opens one task for it with one short Chinese ack; it does not repeat the clone line, guess a folder, or ask anything.",
   },
   // D359: the pile, sorted and handed over from the conversation.
@@ -3361,7 +3365,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     todos: true,
     steps: [{ user: "GitHub 上那一大堆 issue，帮我理一理" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "sort" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/\d+ ?件/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "sort" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/\d+ ?件/] },
     rubric: "The user asks it to go through their whole pile of GitHub issues. It starts the sort (todos do=sort) and says in one short Chinese line that it is going through them and will say what it finds. It gives no counts or groups it can't know yet, lists no issues, opens no task and makes no card.",
   },
   // D385: handing several over from the conversation: a subject pulled out as a set card, then said how.
@@ -3373,7 +3377,7 @@ export const scenarios: Scenario[] = [
     todosPile: true,
     floor: true,
     steps: [{ user: "把 memory distill 相关的拉出来我们看看" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "todos", args: { do: "find" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/^\s*[-•*\d]+[.、)]?\s/m] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "todos", args: { do: "find" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/^\s*[-•*\d]+[.、)]?\s/m] },
     rubric: "The user asks to pull out everything about memory distillation (the pile's titles are mostly English, two are Chinese). It finds them (todos do=find), and a set card under its reply shows them with the takeable ones ticked. Its reply is ONE short Chinese line from the find's counts only: how many it found about the subject, how many it ticked as ones it can take, the one that needs the user's call (#405) and the ones left for later because they are big. It does not list the issues (the card does), invents no numbers, starts nothing and opens no task.",
   },
   {
@@ -3385,7 +3389,7 @@ export const scenarios: Scenario[] = [
     floor: true,
     seed: [{ user: "把 memory distill 相关的拉出来我们看看" }, { todoSet: { query: "memory distill", ai: "找到 9 个讲记忆提炼的。能直接交给我的 6 个先勾上了；#405 要你定一下；两个改动大，先放着。" } }],
     steps: [{ user: "就这几个，#405 也加上，按你的建议。先别动数据库迁移，验证都去 haswell 上跑。" }],
-    expect: { opens: [0, 1], msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "hand", set: /^set_/, refs: /405/, note: /haswell/ } }], notCalled: ["task_open"], noTodoCard: true },
+    expect: { lines: 1, opens: [0, 1], msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "hand", set: /^set_/, refs: /405/, note: /haswell/ } }], notCalled: ["task_open"], noTodoCard: true },
     rubric: "After the set card about memory distillation, the user says to hand these over plus #405 (the suggested answer), and how: leave the database migrations alone, run every check on haswell. It hands the set over in one call (todos do=hand with the set, #405 added, the user's own words about how as the note) without forcing a shape, so Ducter makes a plan first. Its reply is one short Chinese line saying it will read them first and show a plan, starting only when the user agrees (e.g. 好，我先看一遍，出个方案给你，你点头再做。). It calls no task_open itself (Ducter opens the group's read-only plan task on the hand-over: that is right), lists nothing, and doesn't claim anything is done.",
   },
   {
@@ -3404,7 +3408,7 @@ export const scenarios: Scenario[] = [
       { ai: "#366 是长对话的自动提炼总是失败，改动大，我先放着了，没交出去。" },
     ],
     steps: [{ user: "这个也加进去" }],
-    expect: { msgs: [1, 1], maxChars: 100, called: [{ tool: "todos", args: { do: "hand", refs: /366/ } }], notCalled: ["task_open"], noTodoCard: true },
+    expect: { lines: 1, msgs: [1, 1], maxChars: 100, called: [{ tool: "todos", args: { do: "hand", refs: /366/ } }], notCalled: ["task_open"], noTodoCard: true },
     rubric: "Memory distillation was handed over as one group (记忆提炼) whose plan is being made. The user says to add #366 too. It adds it to that group (todos do=hand with #366, naming the group or the set it was handed over as), not a new task or a new group; Ducter itself then tells the plan's task to read it too (that relay is right, not the partner's doing). It says one short Chinese line that it's added (the plan will take it into account). It opens no task itself and lists nothing.",
   },
   // D415: the person's own subjects (分类), said in words: kept, never a hand-over by itself.
@@ -3416,7 +3420,7 @@ export const scenarios: Scenario[] = [
     todosPile: true,
     seed: [{ user: "把 memory distill 相关的拉出来我们看看" }, { todoSet: { query: "memory distill", ai: "找到 9 个讲记忆提炼的。能直接交给我的 6 个先勾上了；#405 要你定一下；两个改动大，先放着。" } }],
     steps: [{ user: "把 #412 和 #340 归到「蒸馏兜底」这个分类里" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "todos", args: { do: "subject", name: /蒸馏兜底/, refs: /412/ } }], notCalled: ["task_open"], noTodoCard: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "todos", args: { do: "subject", name: /蒸馏兜底/, refs: /412/ } }], notCalled: ["task_open"], noTodoCard: true },
     rubric: "The user puts two of the found to-dos (#412 and #340) into a subject of their own named 蒸馏兜底. It keeps that subject (todos do=subject with the name 蒸馏兜底 and both refs; refs may be written as #412 or acme/mem#412) and says one short Chinese line that they're in it now. It hands nothing over, starts nothing, opens no task and lists nothing.",
   },
   {
@@ -3427,7 +3431,7 @@ export const scenarios: Scenario[] = [
     todosPile: true,
     seed: [{ user: "Pull out everything about memory distill" }, { todoSet: { query: "memory distill", ai: "Found 9 about memory distillation; the 6 I can take are ticked; #405 needs your call; two are big, left for now." } }],
     steps: [{ user: "Rename that 记忆提炼 subject to \"Distill\", and take #366 out of it." }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "todos", args: { do: "subject", op: "rename", to: /Distill/ } }], notCalled: ["task_open"], noTodoCard: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "todos", args: { do: "subject", op: "rename", to: /Distill/ } }], notCalled: ["task_open"], noTodoCard: true },
     rubric: "The user renames the subject 记忆提炼 to Distill and takes #366 out of it. It renames it (todos do=subject op=rename name=记忆提炼 to=Distill) and takes #366 out (todos do=subject op=take with #366; in either order), then says one short English line that it's done. It hands nothing over, opens no task and lists nothing.",
   },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
@@ -3438,7 +3442,7 @@ export const scenarios: Scenario[] = [
     calendar: true,
     floor: true,
     steps: [{ user: "我今天都有什么安排？" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 90, dayCard: true, called: [{ tool: "calendar", args: { do: "agenda", show: true } }], noCalCard: true, forbid: [/^\s*[-•*\d]/m] },
+    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 90, dayCard: true, called: [{ tool: "calendar", args: { do: "agenda", show: true } }], noCalCard: true, forbid: [/^\s*[-•*\d]/m] },
     rubric: "The user asks what's on today. It reads the calendars (both accounts merged) and puts the day card under a short Chinese reply (one or two short sentences) that gives the gist, never the whole list: e.g. how many things, the first one, that 10:00 看牙 and 10:30 HawDB 周会 overlap, and anything that needs them (the Design sync invitation isn't answered yet). Times must be right (10:00 / 10:30). No bullet list, no task, no account plumbing (oo, connection names).",
   },
   {
@@ -3447,7 +3451,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     calendar: true,
     steps: [{ user: "What's on my calendar tomorrow?" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "calendar", args: { do: "agenda" } }], noCalCard: true },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "calendar", args: { do: "agenda" } }], noCalCard: true },
     rubric: "Tomorrow is empty in the fixture. It reads tomorrow and says plainly in one short English line that nothing is on (a day card may or may not show). It invents no events, opens no task, and doesn't list today's events as if they were tomorrow's.",
   },
   {
@@ -3466,7 +3470,7 @@ export const scenarios: Scenario[] = [
     calendar: true,
     floor: true,
     steps: [{ user: "明天下午三点加个半小时的会，和 lina@nowledge-labs.ai 对一下 HawDB 的发布" }],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 80, calCard: "create", called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 80, calCard: "create", called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/] },
     rubric: "A new event with a guest. It proposes it with calendar do=propose (create, tomorrow 15:00 for 30 minutes, Lina invited, a Chinese title about the HawDB release), so a card appears that names the calendar, the time and that Lina gets an invitation. It writes nothing or one short Chinese line, never claims it was added or that Lina was invited, and does not restate the card's details.",
   },
   {
@@ -3476,7 +3480,7 @@ export const scenarios: Scenario[] = [
     calendar: true,
     calendarDown: true,
     steps: [{ user: "帮我在日历上记一下 20 号去北京参加 agibar 的分享，记成全天，时间待定" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 90, noCalCard: true, noAsk: true, called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|记(好|上|下)|加好|加上)|记好了|搞定/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 90, noCalCard: true, noAsk: true, called: [{ tool: "calendar" }], forbid: [/已(经)?(添加|记(好|上|下)|加好|加上)|记好了|搞定/] },
     rubric: "The calendar can't be read right now (hel, 2026-11-12). It tries the calendar tool, which says it can't read. It tells the user plainly in one short Chinese line that it can't reach their calendar just now (and may say it'll add it once it can). It must not claim the event was added, must not open a task, must not make any card or try to add it another way, and names no plumbing (oo, OOMOL, connection names, error codes).",
   },
   {
@@ -3485,7 +3489,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     calendar: true,
     steps: [{ user: "I can't make the design sync today, decline it" }],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 140, calCard: "respond", called: [{ tool: "calendar" }], forbid: [/\b(declined it|I've declined|done|sent)\b/i] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 140, calCard: "respond", called: [{ tool: "calendar" }], forbid: [/\b(declined it|I've declined|done|sent)\b/i] },
     rubric: "The user wants to decline Sam's Design sync invitation today. It finds the event (calendar do=agenda) and proposes the answer (calendar do=propose, respond, declined), so a card shows that Sam will hear. Nothing or one short English line; it never claims it already declined, opens no task.",
   },
   {
@@ -3494,7 +3498,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     calendar: true,
     steps: [{ user: "看牙那个改到下午 5 点吧" }],
-    expect: { opens: 0, msgs: [0, 1], maxChars: 100, calCard: "move", called: [{ tool: "calendar" }], forbid: [/已(经)?(改|挪|移)好|改好了|搞定/] },
+    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 100, calCard: "move", called: [{ tool: "calendar" }], forbid: [/已(经)?(改|挪|移)好|改好了|搞定/] },
     rubric: "The user moves their own dentist appointment (today 10:00) to 17:00. It finds it (agenda) and proposes the move (calendar do=propose, move, 17:00 today, same length), so a card shows before and after. One short Chinese line at most; never claims it was moved; no task.",
   },
   {
@@ -3504,7 +3508,7 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Check bun.sh and tell me the latest Bun version." }],
     // D380: one live fact: a quick web look, no task; the number said is the look's, never one from memory.
     webLook: { answer: "Bun v9.8.7 is the latest release, out on 2026-11-02.", sources: ["https://bun.sh/blog/bun-v9.8.7"], confidence: "high" },
-    expect: { opens: 0, msgs: [1, 2], maxChars: 140, called: [{ tool: "web_look" }], require: [/9\.8\.7/], forbid: [/\b1\.\d+\.\d+\b/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 140, called: [{ tool: "web_look" }], require: [/9\.8\.7/], forbid: [/\b1\.\d+\.\d+\b/] },
     rubric: "D380: the latest version is ONE live fact from the web, so it is a quick web look (web_look), no task. At most one short line before the look naming it, never a version (the app shows 'Looking it up on the web…' while it runs); then one short English line giving the version the look found (9.8.7) and naming where it's from (Bun's blog or bun.sh). No version from memory, no offer, no question.",
   },
   {
@@ -3515,7 +3519,7 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "明天上海会下雨吗？" }],
     // D380: one live fact: a quick web look answers it in seconds, with no task.
     webLook: { answer: "明天上海小雨转阴，9 到 13 度，降水概率 80%", sources: ["https://www.weather.com.cn/weather/58362.shtml"], confidence: "high" },
-    expect: { opens: 0, msgs: [1, 2], maxChars: 80, called: [{ tool: "web_look", args: { question: /上海/ } }], require: [/雨/, /9|13/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 2], maxChars: 80, called: [{ tool: "web_look", args: { question: /上海/ } }], require: [/雨/, /9|13/] },
     rubric: "D380: tomorrow's weather is ONE live fact, so it is a quick web look (web_look), never a guess and no task. At most one short line before the look naming it, never a forecast (the app shows 在网上查… while it runs); then one short Chinese line with the forecast the look found (light rain, 9 to 13 degrees) naming where it's from (中国天气网 or weather.com.cn). No offer, no question, no forecast before the look came back.",
   },
   {
@@ -3533,7 +3537,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "zh",
     steps: [{ user: "Bun 是用什么语言写的？" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/Zig/i] },
+    expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/Zig/i] },
     rubric: "D378, the other side: what Bun is written in (Zig, with some C++) is a stable fact, not what a site says now. It answers directly in one or two short Chinese sentences, with no task, no look-up and no 'let me check'.",
   },
   {
@@ -3541,7 +3545,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "en",
     steps: [{ user: "What's Postgres's default port?" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/5432/] },
+    expect: { lines: 1, opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/5432/] },
     rubric: "D378, the other side: Postgres's default port (5432) is a stable fact. It answers directly in one short English line, with no task, no look-up and no 'let me check'.",
   },
   {
@@ -3569,7 +3573,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     steps: [{ user: "Fakecoin 现在多少钱一个？" }],
     webLook: { unsettled: "conflict" },
-    expect: { opens: 1, msgs: [0, 1], maxChars: 80, called: [{ tool: "web_look" }], needs: { browse: true }, forbid: [/\d+(\.\d+)?\s*(美元|元|刀|USD|\$)/] },
+    expect: { lines: 1, opens: 1, msgs: [0, 1], maxChars: 80, called: [{ tool: "web_look" }], needs: { browse: true }, forbid: [/\d+(\.\d+)?\s*(美元|元|刀|USD|\$)/] },
     rubric: "D380: one price is a quick web look first; this one came back not settled (sources disagree), so it opens a browsing task for it, and its ack says the quick look wasn't enough and a task is looking into it properly. At most one short line before the look naming it. No price guessed, no question, nothing more.",
   },
   // ---------- pictures (D206) ----------
@@ -3675,7 +3679,7 @@ export const scenarios: Scenario[] = [
     category: "accounts",
     lang: "zh",
     steps: [{ user: "以后航班改了的话，夜里也直接叫醒我" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 60, called: [{ tool: "notice_rule", args: { kind: "plan_changed", wake: true } }] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 60, called: [{ tool: "notice_rule", args: { kind: "plan_changed", wake: true } }] },
     rubric: "The user says one kind of thing they notice may wake them at night. It keeps it (notice_rule, plan_changed, wake) and says it back in one short Chinese line (e.g. 好，航班改了夜里也叫你。). It doesn't suggest other rules or explain quiet hours.",
   },
 
@@ -3686,7 +3690,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     phone: true,
     steps: [{ user: "帮我打给 Sushi Saito（+81 3-1234-5678），订明晚 7 点两位，用 Weyl 的名字，每人别超过 3 万日元" }],
-    expect: { opens: 0, ask: true, maxChars: 80, called: [{ tool: "phone_call", args: { to: /\+?81/ } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
+    expect: { lines: 1, opens: 0, ask: true, maxChars: 80, called: [{ tool: "phone_call", args: { to: /\+?81/ } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
     rubric: "A call the user asked for. It drafts it with phone_call (number, Sushi Saito, the booking goal, the name Weyl may be said, the budget kept private) so a Go card appears (drafting is not dialing; the card shows when it dials). It writes nothing or one short Chinese line, never claims the call was made or booked, opens no task, and does not restate the card's details in prose.",
   },
   {
@@ -3705,7 +3709,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     phone: true,
     steps: [{ user: "用我自己的号码打给鼎泰丰（+86 21 6123 4567），问问周六晚上 7 点还有没有 4 位的位子" }],
-    expect: { opens: 0, maxChars: 160, called: [{ tool: "phone_call", args: { from: "own" } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
+    expect: { lines: 1, opens: 0, maxChars: 160, called: [{ tool: "phone_call", args: { from: "own" } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
     rubric: "D218: the user asks for the call to go from their own number. It drafts it with phone_call and from=own. Here no live call station exists (D278: only a computer beside the phone can carry the voice; Tuwa can't call mainland China), so the tool returns the call sheet for the user to dial (why: own): it says in one short Chinese line that it wrote what to say and the user can dial it with one tap on their phone (你来打). It never claims a call was made or booked, never switches silently to another line, opens no task, no lecture.",
   },
   {
@@ -3724,7 +3728,7 @@ export const scenarios: Scenario[] = [
     phone: true,
     seed: [{ callQuestion: { name: "青山牙科", to: "+81352345678", question: "牙医问：周四下午 3 点可以吗？" } }],
     steps: [{ user: "可以，告诉她周四 3 点没问题" }],
-    expect: { opens: 0, maxChars: 60, called: [{ tool: "phone_call", args: { do: "answer" } }] },
+    expect: { lines: 1, opens: 0, maxChars: 60, called: [{ tool: "phone_call", args: { do: "answer" } }] },
     rubric: "A call is live and the clinic asked a question (its card is up). The user answers in the conversation. It passes their answer to the call with phone_call do=answer (their words), and says nothing or one very short Chinese line; it makes no new card and opens no task.",
   },
   {
@@ -3734,7 +3738,7 @@ export const scenarios: Scenario[] = [
     phone: true,
     seed: [{ user: "帮我打一下我自己的 Google Voice 号码 +1 202 555 0147 测试一下电话功能" }, { ai: "好，卡片在上面，点打过去就打。" }],
     steps: [{ callEnded: { name: "我的 Google Voice", to: "+12025550147", state: "automated", hint: "screening", outcome: "The call connected, but an automated Google Voice message said the subscriber you have called is not available. No conversation took place.", durationSec: 24, costUsd: 0.3 } }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/没拨出去|没打出去|拒绝|没接通/], require: [/按\s*1|press 1|过滤|筛选|screen/i] },
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/没拨出去|没打出去|拒绝|没接通/], require: [/按\s*1|press 1|过滤|筛选|screen/i] },
     rubric: "A test call to the user's own Google Voice number ended: it connected, but Google Voice's automated message answered (call screening announced the caller to the user; nobody pressed 1, so the caller heard 'not available'). In one or two short Chinese lines it says the call did get through but an automated Google Voice message answered, and the fix: answer and press 1, or turn off call screening in Google Voice. It must not say the call didn't go out, didn't connect, or that the provider refused it. No task, no card.",
   },
   {
@@ -3753,7 +3757,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     phone: true,
     steps: [{ user: "帮我打给胡志明市的这家粤菜馆订明晚 7 点两位：金玉楼，+84 28 3829 1234，他们说中文，用王先生的名字" }],
-    expect: { opens: 0, ask: true, msgs: [1, 1], maxChars: 120, called: [{ tool: "phone_call", args: { to: /\+?84/, open: /[一-鿿]/ } }], forbid: [/打过去了|订好了|订上了|已经打|替你打了|帮你打了/], require: [/还不能|还没法|没法|打不了|不能替|打不到|打不过去/] },
+    expect: { lines: 1, opens: 0, ask: true, msgs: [1, 1], maxChars: 120, called: [{ tool: "phone_call", args: { to: /\+?84/, open: /[一-鿿]/ } }], forbid: [/打过去了|订好了|订上了|已经打|替你打了|帮你打了/], require: [/还不能|还没法|没法|打不了|不能替|打不到|打不过去/] },
     rubric: "The number is in Vietnam, a country Ducter's calling line (Tuwa) doesn't call. It must not pretend it will call: it makes a call sheet with phone_call (the number, 金玉楼, the booking goal, a first sentence in Chinese the user can say, such as 您好，我想订明天晚上 7 点两位，姓王, and useful questions or things to note), which shows as a card with 自己打. In one short Chinese line it says plainly that it can't call numbers there for them yet and that the sheet is there to call themselves. It never claims the call was made or booked, opens no task and doesn't restate the whole sheet in prose.",
   },
   {
@@ -3766,7 +3770,7 @@ export const scenarios: Scenario[] = [
       { resolve: { option: "go" } },
       { user: "Done. They said yes, 3pm Friday, they'll hold a sign with Alex, 450k rupiah." },
     ],
-    expect: { opens: 0, maxChars: 240, called: [{ tool: "phone_call", args: { to: /\+?62/ } }, { tool: "phone_call", args: { do: "result" } }], forbid: [/\bI('ve| have)? (called|booked|arranged)\b|I'?m calling/i] },
+    expect: { lines: 1, opens: 0, maxChars: 240, called: [{ tool: "phone_call", args: { to: /\+?62/ } }, { tool: "phone_call", args: { do: "result" } }], forbid: [/\bI('ve| have)? (called|booked|arranged)\b|I'?m calling/i] },
     rubric: "An Indonesian number: Ducter's calling line (Tuwa) doesn't call Indonesia, so it makes a call sheet (phone_call with the first words the user will say) and says plainly, in one short English line, that it can't make this call for them yet. The user then taps Done calling: it asks briefly, in one line, how it went. When the user tells it, it records the outcome with phone_call do=result in their words and says at most one short line (a brief acknowledgement is fine). It never claims it made the call or the booking itself, and opens no task.",
   },
 
@@ -3805,7 +3809,7 @@ export const scenarios: Scenario[] = [
       { ai: "加好了：values() 只返回没过期的值，加了 2 个测试。" },
     ],
     steps: [{ user: "这个再补一条测试，覆盖正好到期那一刻", replyTo: "TTL 测试修好了" }],
-    expect: { opens: 0, sendTo: "ttl", noSendTo: "values", maxChars: 80, forbid: [/做完(会|再|了)?(就)?告诉|会告诉你|已经交给|结果出来|你回复的|你说的那条/] },
+    expect: { lines: 1, opens: 0, sendTo: "ttl", noSendTo: "values", maxChars: 80, forbid: [/做完(会|再|了)?(就)?告诉|会告诉你|已经交给|结果出来|你回复的|你说的那条/] },
     rubric: "The user replied to the older TTL result (the quote shows it), not to the values() message that came last. The follow-up goes to the TTL task with task_send (same repo, builds on its unmerged change), nothing to the values() task, no new task. At most one short Chinese line naming the action (补一条正好到期的测试); it doesn't remark that they replied or repeat the quote.",
   },
   {
@@ -3847,7 +3851,7 @@ export const scenarios: Scenario[] = [
         ],
       },
     ],
-    expect: { opens: 0, sendTo: ["values", "ckpt"], sentRequire: { values: [/keys/i], ckpt: [/env|configur/i] }, sentForbid: { values: [/env var|configurab|checkpoint/i], ckpt: [/keys\(\)/i] }, maxChars: 160 },
+    expect: { lines: 1, opens: 0, sendTo: ["values", "ckpt"], sentRequire: { values: [/keys/i], ckpt: [/env|configur/i] }, sentForbid: { values: [/env var|configurab|checkpoint/i], ckpt: [/keys\(\)/i] }, maxChars: 160 },
     rubric: "Two replies sent together, each to a different earlier result. Each goes to its own task with task_send: keys() to the foo Cache task, the env-var setting to the HawDB checkpoint task; nothing of one reaches the other, and no new task. Each gets at most one short English line naming its action; no talk about replies, threads or tasks.",
   },
   {
@@ -3891,7 +3895,7 @@ export const scenarios: Scenario[] = [
       { ai: "跑完了，全绿。" },
     ],
     steps: [{ user: "今天天气真好，我出去跑个步，回来再说" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 60, forbid: [/王磊|报价|Cloudflare|收费|nightly|早上(那条|说的)|还没(回|看|处理)|别忘了|记得/] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 60, forbid: [/王磊|报价|Cloudflare|收费|nightly|早上(那条|说的)|还没(回|看|处理)|别忘了|记得/] },
     rubric: "The user says they're going out for a run. The morning's offers were left alone, which is natural. It answers with one short, warm Chinese line about the run and nothing else: it never brings up the morning note or any find in it, never reminds or asks about them (no '别忘了', no '早上那几条你还没看'), and opens nothing.",
   },
   {
@@ -3912,7 +3916,7 @@ export const scenarios: Scenario[] = [
       { ai: "Yes, all green." },
     ],
     steps: [{ user: "heading out for lunch, back in an hour" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, forbid: [/CamLi|NH ?920|flight|import|this morning|didn't (reply|answer|get to)|don't forget|reminder/i] },
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, forbid: [/CamLi|NH ?920|flight|import|this morning|didn't (reply|answer|get to)|don't forget|reminder/i] },
     rubric: "The user is going to lunch. The morning's offers were left alone, which is fine. It answers with one short, friendly English line and nothing more: no mention of the morning note, CamLi, the flight or any find, no reminder, no question about them, and no task.",
   },
   {
@@ -3940,7 +3944,7 @@ export const scenarios: Scenario[] = [
       { report: { task: "ttl", body: { state: "needs_input", summary: "Fixed the TTL test with a fake clock. test/lru.test.ts uses the same sleep pattern.", questions: [{ id: "q1", text: "Also switch test/lru.test.ts to the fake clock?", default: "yes", reversible: true }], evidence: [] } } },
       { user: "lru 的先别动，下周再说", replyTo: "Also switch test/lru" },
     ],
-    expect: { noSend: true, opens: 0, msgs: [0, 1], maxChars: 80 },
+    expect: { lines: 1, noSend: true, opens: 0, msgs: [0, 1], maxChars: 80 },
     rubric: "Step 1: the task asks; the partner says the question in one short Chinese line. Step 2: the user replies to that question (swipe), which Ducter passes to the task as the answer by itself. The partner sends nothing to the task (no task_send), opens nothing, and says at most one short line or nothing at all (silence is fine); it never asks the same question again.",
   },
   {
@@ -3970,7 +3974,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "asc", title: "准备 App Store Connect 的上架资料", repo: "~/dev/ducter", ack: "我让 Codex 去准备上架资料。", state: "working", harness: "codex" } },
     ],
     steps: [{ user: "这个任务换成 6.2 sol" }],
-    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], notCalled: ["brain_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    expect: { lines: 1, called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], notCalled: ["brain_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
     rubric: "The user asked to move the App Store Connect task to the gpt-6.2-sol model. The partner calls task_switch on that task with the model as said, opens no new task, sends the task no message about it, and puts up no card. At most one short Chinese line (e.g. that it's switched and takes effect from the task's next step), or nothing; never a claim that the work restarted or that progress was lost.",
   },
   // D390: the person asks the partner itself to think with another model: brain_switch (the
@@ -3980,7 +3984,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "zh",
     steps: [{ user: "你换成 sonnet 跟我聊吧" }],
-    expect: { called: [{ tool: "brain_switch", args: { model: /sonnet/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    expect: { lines: 1, called: [{ tool: "brain_switch", args: { model: /sonnet/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
     rubric: "The user asked the partner itself to think with Sonnet. The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line saying it uses Sonnet from the user's next message (e.g. 好，从你下一句起我用 Sonnet。), nothing about sessions or settings pages.",
   },
   {
@@ -3992,7 +3996,7 @@ export const scenarios: Scenario[] = [
       { task: { key: "fib", title: "Fix the flaky fib test", repo: "~/dev/fib", ack: "I'll fix the flaky fib test.", state: "working" } },
     ],
     steps: [{ user: "switch yourself to opus for our chats" }],
-    expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "A task is running, but the user asked the partner ITSELF to use Opus for the conversation. The partner calls brain_switch with the model, leaves the task alone (no task_switch, nothing sent to it) and opens nothing. At most one short English line that it thinks with Opus from the user's next message.",
   },
   // D390: on a Codex home, the short name the person says, matched to Codex's own list.
@@ -4002,7 +4006,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     brainCodex: true,
     steps: [{ user: "用 astra 跟我聊" }],
-    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    expect: { lines: 1, called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
     rubric: "The partner thinks with Codex; the user wants it to talk with Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line that it uses GPT-6.2-Astra from the user's next message; nothing about sessions or settings.",
   },
   {
@@ -4011,7 +4015,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     brainCodex: true,
     steps: [{ user: "switch to astra" }],
-    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    expect: { lines: 1, called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "No task is open; the user asks the partner to switch to Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model, opens nothing. At most one short English line that it thinks with GPT-6.2-Astra from the user's next message.",
   },
   // A question about a model is not a request to use it.

@@ -268,8 +268,10 @@ private repo.
   link check, the binaries check (D75), and `bash -n` on scripts. `bun test` includes the eval
   freshness check (D175): the persona and the partner's tools must hash to what the last full
   partner eval judged (`packages/partner/eval/results/LATEST.json`). CI never calls a model;
-  whoever changes the persona or a partner tool runs `bun run eval:partner --model haiku`
-  (about $1) and commits the results with the change.
+  whoever changes the persona or a partner tool runs `bun run eval:partner --model haiku
+  --against latest` (about $1.3: a scenario that disagrees with the last run runs twice more, and
+  only a change every attempt agrees on is a regression, D574) and commits the results with the
+  change.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
   `go test` of every package but the views, plus the view tests named `Test[A-K]...`. MyGo calls
   AppKit through purego, not cgo, so all of it runs on Linux.

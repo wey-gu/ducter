@@ -1,8 +1,8 @@
 // The Bridge live trial, end to end with real models on both sides (design/bridge.md "Try it live"):
 //
-//   bun run bridge:live                 # over the FAKE Bridge CLI (fake-bridge-nmem.ts): s1 s2 s3 x1 j6
+//   bun run bridge:live                 # over the FAKE Bridge CLI (fake-bridge-nmem.ts): s1 s2 s3 x1 t1 j6
 //   bun run bridge:live -- --connected  # REAL nmem 0.10.118+, DRY: read-only preflight, prints what --real does
-//   bun run bridge:live -- --real       # S1, S2, S3 and an X1 round trip, for real, as the trial's own identity
+//   bun run bridge:live -- --real       # S1, S2, S3, an X1 round trip and T1, for real, as the trial's own identity
 //   bun run bridge:live -- --cleanup    # removes what a crashed --real run left (its ledgers under --out)
 //
 // D324: --real never uses the person's live partner (`ducter`, or any partner's `ducter-<id>`) or its
@@ -15,7 +15,7 @@
 // trial's exact identity and to send to nothing else.
 //
 //   options: --peer-config-dir DIR (NMEM_CLI_CONFIG_DIR for the terminal side, if it needs its own)
-//            --model haiku · --peer-model haiku · --only s1,s2,s3,x1,j6 · --out DIR
+//            --model haiku · --peer-model haiku · --only s1,s2,s3,x1,t1,j6 · --out DIR
 //            --space-id ID (the "Only me" place; default: the one personal place setup lists)
 //            --older N (the fake only: older messages already in the peer's mailbox, default 25, D367)
 //
@@ -24,6 +24,9 @@
 // - The other agent: a real `claude -p` session Ducter didn't start, in its own scratch folder,
 //   allowed only `nmem` through Bash. It plays the user's Claude Code in a terminal.
 // - The user's taps and the task's report are scripted. S3 moves a shared clock forward 2 h.
+// - D559: T1 is D448 end to end: a task on pi (no Bridge of its own) calls agent_message (scripted, as the
+//   task would), the person's Go on its one card sends it as the trial, the terminal answers, and the
+//   answer goes into the task by code. It is held, never sent, unless it goes to this run's terminal.
 // - D367: the peer's own Claude Code mailbox is the person's real one, with older mail from other days.
 //   The peer runs `nmem` through bridge-peer-guard.ts: it opens and replies only to what this run's
 //   Ducter sent, sends only to this run's Ducter, and pages the inbox (`--cursor`); nothing of the
@@ -41,6 +44,7 @@ import type { Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { createNmemBridge, createPartner } from "../src/index.ts";
+import { whoForTask } from "../src/bridge-relay.ts";
 import { foldOut, whoForUser } from "../src/bridge-out.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import { createTrial, peerInboxBlocked, refMessage, removeTrial, trialId, trialLedgers, type TrialIdentity } from "./bridge-trial.ts";
@@ -63,7 +67,7 @@ const PEER_CONFIG = arg("peer-config-dir");
 let PERSONA_AGENT = LIVE ? "" : "Ducter";
 let trial: TrialIdentity | undefined; // D324: made by the preflight, removed in the end
 const OUT = resolve(arg("out", join(homedir(), "dev", "ducter-evidence", "bridge"))!);
-const ONLY = arg("only", LIVE ? "s1,s2,s3,x1" : "s1,s2,s3,x1,j6")!.split(",");
+const ONLY = arg("only", LIVE ? "s1,s2,s3,x1,t1" : "s1,s2,s3,x1,t1,j6")!.split(",");
 let dryReady = false; // --connected without --real: the preflight passed (exit 0, nothing run)
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
 
@@ -194,7 +198,7 @@ async function preflightConnected(): Promise<boolean> {
         `  1. bind the peer's own Claude Code session: nmem ${prep.join(" ")}, and read its inbox once (read-only); a mailbox Mem must sort out stops the run here (D369)`,
         `  2. make the trial's own identity: nmem agents enroll ${trialId()} --name "Ducter trial" --source-app ducter-trial (a ledger under ${OUT} first)`,
         `  3. connect it in this place: nmem bridge connections connect --space-id ${space} --agent-id <it> --context <it>, and check it is the only reader`,
-        `  4. run ${ONLY.join(", ")}`,
+        `  4. run ${ONLY.join(", ")}${ONLY.includes("t1") ? " (t1: a task's message goes only as a reply on a message this run's terminal sent; any other recipient is held, never sent)" : ""}`,
         "  5. remove what it made: revoke the connection, clear the context, delete the identity (a crashed run: --cleanup)",
         "Your own partner's identity and mailbox are never used.",
       ].join("\n"),
@@ -318,24 +322,29 @@ const guarded = () => guardCalls().filter((c) => c.refused).length;
 // ---------- Ducter: real core + partner, fake task runner, a clock S3 can move ----------
 let offset = 0;
 const clock = { now: () => Date.now() + offset, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
+// D559: the agent a task opens on (t1: pi, whose Mem plugin has no Bridge, so Ducter carries its messages).
+let taskHarness = "claude-code";
 function fakeRunner(core: Core, harness: Runner["harness"]) {
-  const opened: { taskId: string; title: string; brief: string }[] = [];
+  const opened: { taskId: string; title: string; brief: string; harness: string }[] = [];
+  // D559: what Ducter said into a task (an answer another agent gave it comes this way, by code).
+  const sent: { taskId: string; text: string; from?: string }[] = [];
   const runner: Runner = {
     harness,
     async openTask(input) {
       const taskId = shortId();
-      opened.push({ taskId, title: input.title, brief: input.brief });
-      core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place: { kind: "none" }, harness: "claude-code", brief: input.brief } });
+      opened.push({ taskId, title: input.title, brief: input.brief, harness: taskHarness });
+      core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place: { kind: "none" }, harness: taskHarness, brief: input.brief } });
       core.tasks.setState(taskId, "working", "hot");
       return core.tasks.get(taskId) as TaskCard;
     },
-    async send() {
+    async send(taskId, text, _mode, from) {
+      sent.push({ taskId, text, ...(from ? { from } : {}) });
       return { delivered: "steered" };
     },
     async interrupt() {},
     async drop() {},
   };
-  return { runner, opened };
+  return { runner, opened, sent };
 }
 
 // Real nmem calls take seconds: a Go's send, or the code's reply, may still be on its way when the
@@ -397,6 +406,7 @@ async function main() {
   const saidSince = (from: number) => core.log.read({ stream: "channel", fromSeq: from + 1, kinds: ["ai_msg"], limit: 100 }).filter((e) => e.origin === "partner").map((e) => (e.body as Bodies["ai_msg"]).text);
   const user = (text: string) => partner.onTrigger(core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));
   const FOLLOW = /还没回|看过你/;
+  const REPLY = "reply:"; // partner.ts: a contact that is a reply on an agent's own message
 
   if (ONLY.includes("s1")) {
     say(`\n## S1 · "Ducter, take this one": the terminal hands work to the partner; the result comes back\n`);
@@ -521,6 +531,92 @@ async function main() {
     const answer = await peer("Check your Bridge inbox (every page) and open Ducter's newest message. What did Weyl decide? Tell him in one line what you'll do.");
     say(`  [terminal] ${answer}`);
     check("x1", "the terminal session opened the answer", !/peer failed/.test(answer) && !!back?.messageId && peerOpened([back.messageId]));
+  }
+
+  if (ONLY.includes("t1")) {
+    say(`\n## T1 · A task Ducter runs on pi (no Bridge of its own) asks the terminal something; the answer lands in the task (D448)\n`);
+    // The terminal hands the work over (as S1), so the task's agent is one that wrote to Ducter this run: the
+    // only address Ducter has for a native Claude Code session (research/66 §7: `contacts` finds none by name).
+    taskHarness = "pi";
+    const t1From = core.log.head();
+    const opened0 = fr.opened.length;
+    const ins0 = new Set(ins().map((b) => b.messageId));
+    say(`[${stamp()}] terminal (real ${PEER_MODEL}): Weyl says "让 Ducter 开个 pi 任务，把 live.test.ts 里 macOS 专用的 open 断言改成跨平台的；要问什么让它直接问我这边"`);
+    say(`  [terminal] ${await peer("Weyl just said to you: \"让 Ducter 开个 pi 任务，把 packages/runner/test/live.test.ts 里 macOS 专用的 open 断言改成跨平台的；要问什么让它直接问我这边\". Find Ducter with bridge contacts and send it one self-contained request (say the task should run on pi, and that it may ask you, this terminal session, through Bridge). Then tell Weyl in one line what you did.")}`);
+    say(`[${stamp()}] Ducter checks its inbox`);
+    await partner.checkBridge();
+    await settle(partner);
+    seq = show(core, seq);
+    const handed = openCard();
+    if (handed && !handed.relay) {
+      say(`[${stamp()}] Weyl taps ${handed.goLabel}`);
+      core.decisions.decide(handed.decisionId, "go");
+      await settle(partner);
+      seq = show(core, seq);
+    }
+    const task = fr.opened.slice(opened0)[0];
+    const asker = ins().find((b) => !ins0.has(b.messageId) && !b.state);
+    check("t1", "the terminal's request opened a task on pi", !!task && task.harness === "pi" && !!asker);
+    taskHarness = "claude-code";
+    if (task && asker) {
+      // (scripted) the task, mid-work, needs the terminal's answer: it calls agent_message, as pi would.
+      const Q = "我要改 packages/runner/test/live.test.ts 里的 open 断言（改成按平台跳过）。你的 bridge 分支动过这个文件吗？会冲突的话我先等你合并。";
+      const to = whoForTask(asker);
+      say(`[${stamp()}] (scripted) the task on pi calls agent_message {to: "${to}"}`);
+      const ask = async (who: string) => (await core.mcp.call({ role: "task", taskId: task.taskId }, "agent_message", { to: who, text: Q })) as { ok?: boolean; choices?: { to: string; who: string }[]; note?: string };
+      let r = await ask(to);
+      // Several fit (Mem's list may hold the person's other Claude Codes): the task takes the one that wrote,
+      // by the handle the tool gave it (a reply on the terminal's own message).
+      const mine = r.choices?.find((c) => c.to === `${REPLY}${asker.messageId}`);
+      if (!r.ok && mine) {
+        say(`  (several fit: ${r.choices!.map((c) => c.who).join(", ")}; the task takes the one that wrote)`);
+        r = await ask(mine.to);
+      }
+      say(`  [task] ${r.ok ? "ok" : "not ok"}: ${r.note ?? JSON.stringify(r).slice(0, 200)}`);
+      await settle(partner);
+      seq = show(core, seq);
+      const cards = core.log.read({ stream: "channel", kinds: ["decision"], limit: 200 }).map((e) => e.body as Bodies["decision"]).filter((d) => d.taskId === task.taskId && !!d.relay);
+      const card = cards[0];
+      check("t1", "one send card, naming the task and its words, not naming Weyl", cards.length === 1 && !!card && card.question.includes(Q.slice(0, 20)) && !/Weyl/.test(card.question));
+      const pending = card && outs().find((b) => b.decisionId === card.decisionId && b.state === "pending");
+      // D324: the run never sends to an agent of the person's but this run's terminal: a reply on a message it
+      // sent to this run's throwaway identity. Anything else is held, never sent.
+      const toPeer = !!pending?.contact && pending.contact === `${REPLY}${asker.messageId}`;
+      check("t1", "the card goes to this run's terminal session, by a reply on its own message (D324)", toPeer);
+      if (card) {
+        say(`[${stamp()}] Weyl ${toPeer ? `taps ${card.goLabel}` : "holds it (not this run's terminal)"}`);
+        core.decisions.decide(card.decisionId, toPeer ? "go" : "hold");
+        await settle(partner);
+        seq = show(core, seq);
+      }
+      const byCard = () => outs().filter((b) => b.decisionId === card?.decisionId);
+      const sent = byCard().find((b) => b.state === "sent" && b.by === "task");
+      const ledgerCopies = LIVE ? 1 : ledger().filter((m) => m.from === CTX && m.body.includes(Q)).length;
+      check("t1", "Ducter sent it as the trial, once, with the task named", !!sent?.messageId && byCard().filter((b) => b.state === "sending").length === 1 && ledgerCopies === 1 && !!sent.head && !/Weyl/.test(`${sent.head}\n${sent.text}`));
+      const went = core.log.read({ stream: `task:${task.taskId}`, kinds: ["task_event"], limit: 200 }).some((e) => /through Nowledge Mem/.test((e.body as Bodies["task_event"]).text ?? ""));
+      check("t1", "the task's own transcript says it went", went);
+      if (sent) {
+        say(`[${stamp()}] the terminal session, at its next turn boundary, sees mail`);
+        say(`  (${await peerMailbox()})`);
+        say(`  [terminal] ${await peer("You have Bridge mail from Ducter: one of its tasks asks you something. Check your inbox (every page), open Ducter's newest message, and reply to that message once with `reply`. What you know about your own work: your bridge branch changes only packages/partner/src/bridge.ts and packages/partner/test/bridge.test.ts; it never touched packages/runner/test/live.test.ts, so the task can change that file now without a conflict.")}`);
+        say(`[${stamp()}] Ducter checks its inbox`);
+        const from = core.log.head();
+        const intoTask0 = fr.sent.length;
+        const cards0 = core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 }).length;
+        await partner.checkBridge();
+        await settle(partner);
+        seq = show(core, seq);
+        const answers = ins().filter((b) => b.inReplyTo === sent.messageId);
+        check("t1", "the answer came back as a reply to the task's message (Mem links it)", answers.length >= 1);
+        const into = fr.sent.slice(intoTask0).filter((s) => s.taskId === task.taskId && s.from === "ducter" && /answered your message/.test(s.text) && s.text.includes("<peer_message>"));
+        check("t1", "it was delivered into the task, by code", answers.some((b) => b.state === "task" && b.taskId === task.taskId) && into.length === 1);
+        if (into[0]) say(`  [into the task] ${into[0].text.split("\n")[0]}`);
+        // Not a second report: the answer was the task's, so the partner says nothing and asks nothing of it.
+        const quiet = saidSince(from).length === 0 && !answers.some((b) => !b.state) && core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 }).length === cards0;
+        check("t1", "the partner didn't report it again (no line, no card, not handed to the partner)", quiet);
+      }
+      check("t1", "nothing in the conversation names Weyl in the third person", !core.log.read({ stream: "channel", fromSeq: t1From + 1, kinds: ["ai_msg", "decision"], limit: 2000 }).some((e) => /Weyl/.test(e.kind === "decision" ? (e.body as Bodies["decision"]).question : (e.body as Bodies["ai_msg"]).text)));
+    }
   }
 
   if (ONLY.includes("j6") && !LIVE) {

@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once), D557 (the live trial passed; on by default; the real shapes read); still open: J-Q1–3, J-Q8 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -828,7 +828,7 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 **D324 (2026-11-17): the trial is its own identity.** `bun run bridge:live -- --connected` is a read-only dry run
 (the version, the one personal place) that prints what `--real` does. `--real` makes the run's own
 `ducter-trial-<stamp>-<hex>` (a ledger under the evidence folder first, `agents enroll`, `connections connect`, a
-check that it is the only reader), tells the peer that exact contact, runs S1, S2, S3, X1, and removes what it
+check that it is the only reader), tells the peer that exact contact, runs S1, S2, S3, X1 and T1, and removes what it
 made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what a crashed run left. The person's
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Mem
 connects a freshly enrolled identity at once, and `connections revoke` + `agents delete` remove it (VERIFIED
@@ -839,6 +839,18 @@ Mac (nmem 0.10.123, Mem Cloud, haiku both sides, 426 s, one task opened): prefli
 answer linked to our question), S3 3/3, X1 3/3, "✓ Mem marks an original as one"; the trial's identity removed.
 That met the gate below: D170 (9) is applied (Bridge on by default, D557) and D249 (5)'s rule keeps only nmem
 before 0.10.120. The history of the earlier runs follows.
+
+**T1, a task Ducter carries messages for (D559, D448): built, fake 9/9, dry preflight READY; `--real` is the
+author's.** The terminal hands over a task (as S1) that opens on pi, which has no Bridge of its own; the task
+(scripted) calls `agent_message` to the agent that handed it over; one card, 发送, Ducter sends it as the trial with
+the task named; the terminal replies; the answer goes into the task by code, and the partner says nothing of it.
+The task's message goes only as a reply on the terminal's own message to the trial (`contacts` finds no native
+session by name, research/66 §7); a card addressed to anything else is held, never sent. The run:
+
+```sh
+bun run bridge:live -- --connected --only t1          # read-only preflight
+bun run bridge:live -- --connected --real --only t1   # T1 alone (a few minutes); without --only: S1–X1 and T1
+```
 
 **Status 2026-11-20, after the second live run (D412, research/161 §10): 10/17, the rest fixed, ready to rerun.**
 The rerun with D409 (nmem 0.10.121, Mem Cloud, haiku both sides, 868 s) worked end to end on Mem: the terminal's
@@ -1227,6 +1239,8 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
 - **The person sees:** the card; **已发给{who}** after the Go; Recently by the task (**「{task}」问 {who}**,
   **{who} 回「{task}」**); 能找到{name}的: **{name}开的 {tool} 任务能传话，你自己开的还不行** for pi (D555: Antigravity has its own row)
   signed in on a computer of Ducter's.
+- **The live trial** (D559): T1 in `bun run bridge:live` runs this end to end, a task on pi asking the terminal
+  that handed it over ("Try it live"); passed over the fake Bridge, the real run is the author's.
 - **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
   an answer never comes; a new message from another agent addressed to a task by name.
 

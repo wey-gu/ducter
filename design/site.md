@@ -6,18 +6,22 @@ user docs rendered from `docs/` at `/docs`. What it says was audited in
 
 ## Pages
 
-- **`/`** (D326, D414) answers a visitor's questions in their order, each section with a real screen
-  of the app where it shows the product: the hero (D414's line, a personal AI for builders on your own computers or servers,
-  [positioning.md](positioning.md), its paragraph as the lede, **Get started**, the trust line, the
-  real morning note and a finished errand), **For what you build: a whole team of AI agents** (On hand on a
-  Mac with 18 tasks, `many`), **For the rest of your day: a partner that looks out for you** (looks
-  out for you, does the work, runs errands), **It only asks when it matters**
-  (On hand on a phone), **On your computers, with the AI you already pay for** (the Isles, still
-  drawn), **Reach it from anywhere** (Mac, iPhone and iPad, Android, a server; iMessage, WeChat,
-  Telegram, Slack), **It remembers you** (Memory), **Nothing goes out without your OK** (Done for
-  you, and what it never does), **Open source, and yours** with a Get started card, then the film.
-  How it's built is not on the page: it's the README's "Under the hood", linked from the footer as
-  **How it's built**.
+- **`/`** (D326, D414, D558) answers a visitor's questions in their order, each section with a real
+  screen of the app or the app's clay art where it shows the product: the hero (D558's promise as
+  the `<h1>`, D414's line as its quiet line, a two-line lede, **Get started** and **See how it
+  goes**, the trust line, the real morning note and a finished errand), **How it goes** (one real job
+  in three steps, on the hero's paper), **For what you build: a whole team of AI agents** (On hand
+  on a Mac with 18 tasks, `many`), **Ducter is for you if** with **Before / With Ducter**, **For the
+  rest of your day: a partner that looks out for you**, **On your computers, and as far as you let
+  it reach** (the Isles, still drawn, then **Everything it can reach**: twelve cards into the docs),
+  **It only asks when it matters** (On hand on a phone), **Reach it from anywhere** (Mac, iPhone and
+  iPad, Android, a server; iMessage, WeChat, Telegram, Slack), **It remembers you** (Memory),
+  **Nothing goes out without your OK** (Done for you, and what it never does), **Open source, and
+  yours** with a Get started card, **Questions people ask** (folds, the same words as the page's
+  `FAQPage` data, `src/lib/faq.ts`), then the film. How it's built is not on the page: it's the
+  README's "Under the hood", linked from the footer as **How it's built**.
+- **`/llms.txt`** (D558): what Ducter is, then every docs page by the docs' own groups with its
+  description, then the landing's questions; built from the same sources (`src/pages/llms.txt.ts`).
 - **`/start`** (D326), **Get started**: the nav's and the home page's main action. One question,
   **Where should Ducter live?** (This Mac / A server I have / Not sure), as radio cards; the chosen
   path alone shows below (CSS `:has`, so it works without JavaScript; without `:has` all three show
@@ -105,7 +109,7 @@ when the screens they show change, then redraw the share image (below).
   goes bilingual, with `/download`'s mainland-China note (D78's type is already in the CSS).
 - **A mirror for mainland China.** Releases come only from GitHub; `install.sh` has no mirror. If
   one is set up, `install.sh` and `/download` say so together.
-- **The share image with D414's line** was redrawn (`og.png?v=5`, layout A) but not re-rated:
+- **The share image with D558's promise** was redrawn (`og.png?v=6`, layout A) but not re-rated:
   the line is longer (five lines at 74 px), so the thumbnail test of 2026-11-18 should be run again.
 - **Docs search.** Twenty-odd pages, no search; Pagefind at build time is the cheap option.
 - **From the real Mac app** (D326): the hero in the Mac window, and a Devices picture to replace the
@@ -190,7 +194,7 @@ page had their elements), which still held joined strings.
 
 ## The share image (D346)
 
-`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=5` (D414's line) so X and Slack fetch it
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=6` (D558's promise) so X and Slack fetch it
 again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
 first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
 it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
@@ -256,3 +260,23 @@ the bands re-alternated (many deep, what plain, asks deep, devices plain, where 
 trust ink, open deep). The hero's `<h1>` is a step smaller (`clamp(40px, 4.9vw, 68px)`). Shots:
 `.shots/positioning/` (hero at 1440 and 390, light and dark, en and a zh rendering of the designed
 words; the builder section at 1440 and 390; full pages).
+
+## 2026-11-25: the first thirty seconds (D558)
+
+The author: 「仔细深思学习给我们的官网 readme 好好打磨一下吧……我们能连各种东西有浏览器 phone 啥的是不是也要提一下」.
+The reasoning and the words are in decisions.md (D558) and [positioning.md](positioning.md); the
+evidence is [research/227](../research/227-similar-project-framing.md).
+
+- **Who lands, and the first thirty seconds.** The developer from GitHub knows the category from
+  D414's line but sees no job go through; the consumer and the fresh visitor read "builders" and
+  "servers" and decide it isn't theirs before anything says what changes for them. Now the promise
+  comes first, one real job follows in three steps right under the hero, then a list to recognise
+  yourself in and the pain before the features.
+- **The bands** re-alternate around the new sections: hero and How it goes plain, many deep, fit
+  plain, what deep, devices plain, asks deep, where plain, memory deep, trust ink, open plain,
+  questions deep, the final plain.
+- **The cards** (How it goes, Everything it can reach) and the folds reuse the site's card and the
+  changelog's fold; the drawn check is the page's own. The reach cards lift on hover and press in
+  70 ms, and are links (the whole card) to the page that says how.
+- **Shots:** `.shots/site-polish/` (every page at 390, 768, 1024 and 1440, light and dark, with 2x
+  crops of the new sections and the before of the hero).

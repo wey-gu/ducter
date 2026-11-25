@@ -1,16 +1,14 @@
 <h1 align="center">Ducter</h1>
 
 <p align="center">
-  <b>A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters.</b>
+  <b>Hand it ten things. Hear back only what needs you.</b>
 </p>
 
 <p align="center">
-  Ducter is a personal AI you run yourself, on your Mac or a server you own, and on any computer
-  you lend it. You talk to one partner, from your phone, your desk or the chat app you already use.
-  When you build, it hands the work to as many AI agents as it needs (Claude Code, Codex, pi and
-  DeepSeek Harness), side by side on the plans you already pay for, and any task is yours to open
-  and steer. Finished work comes back with how it was checked. In between it minds your mail and
-  calendar, runs errands, and stays quiet until something needs you. Free and open source.
+  A personal AI for builders, on your own computers or servers.<br>
+  You talk to one partner. It hands the work to the AI agents you already pay for,<br>
+  like Claude Code or Codex, and brings it back with how it was checked.<br>
+  Free and open source.
 </p>
 
 <p align="center">
@@ -19,9 +17,9 @@
 </p>
 
 <p align="center">
-  <a href="https://ducter.ai">ducter.ai</a> ·
-  <a href="https://ducter.ai/start">Get started</a> ·
-  <a href="https://ducter.ai/download">Download</a> ·
+  <a href="https://ducter.ai">ducter.ai</a>&emsp;
+  <a href="https://ducter.ai/start">Get started</a>&emsp;
+  <a href="https://ducter.ai/download">Download</a>&emsp;
   <a href="https://ducter.ai/docs">Docs</a>
 </p>
 
@@ -32,58 +30,77 @@
 > **Early preview.** Everything below runs today on a Mac and on a Linux server; the iPhone app is
 > in public beta. Expect rough edges and breaking changes. See the [changelog](CHANGELOG.md).
 
-## Why Ducter
+**Install on a Mac** (Apple silicon) with one line, or see [every way to get it](#get-ducter):
 
-Ducter is two things held as one partner: AI agents for what you build, and a personal AI for the
-rest of your day, both on your own computers or servers.
+```sh
+curl -fsSL https://ducter.ai/install.sh | sh
+```
 
-**AI agents for what you build, without the babysitting**
-
-- **Many at once, one conversation.** You write *"Fix the flaky compaction test in HawDB and tell
-  me when it's done"*, then three more things. Each becomes a task on Claude Code, Codex, pi or
-  DeepSeek Harness, signed in as you, with your own skills and settings. No Ducter account, no
-  API key to start.
-- **Quiet until it matters.** Done comes with proof, a question comes with a default it will
-  take if you don't answer, and on a quiet day you hear nothing. Reply to a task's result and
-  that task carries on.
-- **Every task is open to you.** On hand shows them all; open one to see every step, its diff
-  and its browser, steer it, or hand it to another agent mid-way. Coding work gets its own
-  worktree and branch, and merging is your call.
-- **On your computers or servers.** It lives on your Mac, or on a Linux server you own, at home
-  or in the cloud, so it keeps working while your laptop sleeps. Lend it more computers, or your
-  Android phone for a while, and say where a task should run.
-
-**A personal AI for the rest of your day**
-
-- **One partner, everywhere you are.** The same conversation on your Mac, your phone, iMessage,
-  WeChat, Telegram or Slack. It keeps an eye on your mail and calendar if you say yes, and each
-  morning brings you at most three things that need you, each with a next step.
-- **It remembers you, and you can see what it knows.** With [Nowledge Mem](https://mem.nowledge.co)
-  (optional), the AI tools you use elsewhere share that memory too.
-- **Open source and self-hosted.** Hosted agent workbenches come and go, and the best personal
-  AIs are closed. Ducter is Apache 2.0 and runs where you put it, so nobody can wind it down
-  for you ([why it exists](motivation.md)).
-- **Ready the first time.** One line installs it; it sets up what's missing and greets you with
-  things to start from your own folders and accounts.
-
-## Where you use it
+## How it goes
 
 | | |
 |---|---|
-| **Mac** | The desktop app, for a Mac with Apple silicon (M1 or later). Ducter can live here and run tasks here. |
-| **Linux server** | x64 or arm64, at home or in the cloud. Runs as a service and stays on. |
-| **iPhone and iPad** | One app, in public beta on [TestFlight](https://testflight.apple.com/join/Z4GvWt7t). On a wide iPad, On hand stands beside the conversation. |
-| **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
-| **Terminal** | The `ducter` command, on the Mac or the server. |
+| **1. You say it** | *"Fix the flaky compaction test in HawDB, and tell me when it's done."* Then three more things. |
+| **2. It hands it off** | Each becomes a task on Claude Code or Codex, signed in as you, on its own branch, on your Mac or your server. While they work, you hear nothing. |
+| **3. You decide** | *"Fixed: 50 of 50 runs pass, and so do the 412 workspace tests."* You read how it knows, and tap **Merge into main**. Nothing lands without you. |
 
-Away from home, a phone reaches Ducter in one of three ways: over your Tailscale network, at a
-server's own domain, or at a Mac at home set up **From outside** with your domain on Cloudflare
-([Your phone](docs/phone.md)).
+Any task is yours to open: every step, its changes and its browser. Steer it in your own words, or
+hand it to another AI agent mid-way. A task can also wait for a CI run, keep going until the tests
+pass, or come back every Monday at 9 ([Waiting and routines](docs/waiting-and-routines.md)).
+
+## What it can reach
+
+Only what you turn on. Anything that sends, pays, calls or can't be taken back waits for your Go.
+
+<table>
+  <tr>
+    <td width="50%"><img src="apps/site/public/art/server_awake-240.webp" width="44" align="left" alt=""><b>Your computers and servers.</b> It lives on your Mac or a Linux server you own; add more computers with one line (<a href="docs/add-a-computer.md">Add a computer</a>).</td>
+    <td width="50%"><img src="apps/site/public/art/coin_claude_code-96.webp" width="44" align="left" alt=""><b>The AI agents you have.</b> Claude Code, Codex, pi and DeepSeek Harness, signed in as you. Antigravity too, when you ask for it by name.</td>
+  </tr>
+  <tr>
+    <td><img src="apps/site/public/art/ab_web-160.webp" width="44" align="left" alt=""><b>A real browser.</b> Its own Chrome window. Watch it from your phone and take a turn when a page needs you (<a href="docs/devices.md#browsing-the-web">Browsing the web</a>).</td>
+    <td><img src="apps/site/public/art/ab_computer-160.webp" width="44" align="left" alt=""><b>Your Mac's apps.</b> It exports the Keynote deck or answers the mail in your Mac's own apps, with Stop in reach (<a href="docs/devices.md#tasks-in-your-macs-apps">Use the computer</a>).</td>
+  </tr>
+  <tr>
+    <td><img src="apps/site/public/art/ab_phone-160.webp" width="44" align="left" alt=""><b>A phone of its own, or yours.</b> An Android phone that runs on your Mac, or your own Android phone, borrowed for a while (<a href="docs/devices.md#ducters-phone">Use a phone</a>).</td>
+    <td><img src="apps/site/public/art/ab_call-160.webp" width="44" align="left" alt=""><b>Phone calls.</b> It rings a restaurant, a clinic or a shop for you, only after you tap Call (<a href="docs/calls.md">Phone calls</a>).</td>
+  </tr>
+  <tr>
+    <td><img src="apps/site/public/art/wait_mail-128.webp" width="44" align="left" alt=""><b>Your mail and calendar.</b> Say yes once; each morning, at most three things that need you (<a href="docs/accounts.md">Accounts it can read</a>).</td>
+    <td><img src="apps/site/public/art/set_chats-128.webp" width="44" align="left" alt=""><b>Your chat apps.</b> The same conversation in iMessage, WeChat, Telegram or Slack (<a href="docs/chat-apps.md">Chat apps</a>).</td>
+  </tr>
+  <tr>
+    <td><img src="apps/site/public/art/nowledge_mem-128.webp" width="44" align="left" alt=""><b>One memory, and your other agents.</b> With <a href="https://mem.nowledge.co">Nowledge Mem</a>, one memory across your AI tools, and the agents you open yourself can hand it work.</td>
+    <td><img src="apps/site/public/art/tablet-128.webp" width="44" align="left" alt=""><b>Small apps, from one sentence.</b> A trip expense tracker or a habit tracker, on every device, changed by asking (<a href="docs/apps.md">Your own small apps</a>).</td>
+  </tr>
+  <tr>
+    <td><img src="apps/site/public/art/set_autofill-128.webp" width="44" align="left" alt=""><b>Errands, to the checkout.</b> It books and buys with your saved sign-ins and cards, filled in without being seen; paying is your own tap (<a href="docs/buying-and-booking.md">Buying and booking</a>).</td>
+    <td><img src="apps/site/public/art/phone-240.webp" width="44" align="left" alt=""><b>Share from your phone.</b> A page, a photo or a PDF, from any app's Share. On Android today; on iPhone, coming soon (<a href="docs/pictures.md#share-from-another-app">Share</a>).</td>
+  </tr>
+</table>
+
+## Ducter is for you if
+
+- You run several Claude Code or Codex sessions and lose track of which one is waiting on you.
+- You want the work to carry on while your laptop sleeps, on a computer you own.
+- You already pay for an AI plan, and want no second bill and no new account.
+- You'd rather answer from your phone, or from the chat app you already use.
+- You'd like the same partner to watch your mail and calendar, and flag the one thing that can't wait.
+- You want to read every line of the software that holds your keys and your mail.
+
+| Before | With Ducter |
+|---|---|
+| Ten terminal tabs, and no idea which one is waiting on you. | One conversation. **On hand** shows every task, and what needs you comes to the top with what it would do. |
+| Your laptop closes, and the agent stops. | Ducter can live on a server you own, and keeps working while your Mac sleeps. |
+| A question sits unanswered while you're away. | Every question comes with the answer it would take. **Go** is one tap, from your phone. |
+| You explain your project again in every session. | Your partner remembers, and you can see what it knows. |
+| "Done", with nothing to show for it. | Finished work comes with **How I know**: the tests that ran, the checks, the changes. |
+| The one mail that matters hides in your inbox. | It reads the pile for you, and brings up that one with a next step. |
 
 ## Get Ducter
 
 You need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or
-[Codex](https://github.com/openai/codex) signed in with your own account; if neither is there,
+[Codex](https://github.com/openai/codex) signed in with your own account; if you have neither,
 the Mac app installs one and walks you through signing in.
 
 **On a Mac** (Apple silicon), paste this into Terminal. It installs the signed app and the
@@ -119,6 +136,20 @@ for a server). [Get started](https://ducter.ai/start) walks you through either p
 Building from source, the walkthroughs and every command: [Install](docs/install.md) and
 [Getting started](docs/getting-started.md).
 
+## Where you use it
+
+| | |
+|---|---|
+| **Mac** | The desktop app, for a Mac with Apple silicon (M1 or later). Ducter can live here and run tasks here. |
+| **Linux server** | x64 or arm64, at home or in the cloud. Runs as a service and stays on. |
+| **iPhone and iPad** | One app, in public beta on [TestFlight](https://testflight.apple.com/join/Z4GvWt7t). On a wide iPad, On hand stands beside the conversation. |
+| **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
+| **Terminal** | The `ducter` command, on the Mac or the server. |
+
+Away from home, a phone reaches Ducter in one of three ways: over your Tailscale network, at a
+server's own domain, or at a Mac at home set up **From outside** with your domain on Cloudflare
+([Your phone](docs/phone.md)).
+
 ## What it looks like
 
 <table>
@@ -132,7 +163,7 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   </tr>
   <tr>
     <!-- devices.webp predates the 0.0.8 device cards; retake it from the app, don't redraw it. -->
-    <td><img src=".github/readme/devices.webp" alt="Your devices: this Mac as a clay island with Ducter, Claude Code and Codex on it, and what it can do around it"></td>
+    <td><img src=".github/readme/devices.webp" alt="Your devices: this Mac with Ducter, Claude Code and Codex on it, and what it can do around it"></td>
     <td><img src=".github/readme/partner.webp" alt="Partner: the AI agents on this Mac, what Ducter thinks with (Claude Code, Opus), and who does the tasks"></td>
   </tr>
   <tr>
@@ -141,35 +172,10 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   </tr>
 </table>
 
-## What you can hand it
+## Why open source
 
-- **Coding work.** Each task gets its own git worktree and `ducter/…` branch; merging is your call.
-- **Reviews and write-ups.** "Review this week's open PRs." "Write the v0.4 release notes."
-- **Things that take time.** Wait for a CI run, keep trying until the tests pass, or run every
-  Monday at 9 ([Waiting and routines](docs/waiting-and-routines.md)).
-- **The web.** It browses in its own Chrome; watch it from your phone and take a turn when a page
-  needs you ([Your devices](docs/devices.md)).
-- **Your Mac's apps, and a phone of its own.** With **Use the computer** on a Mac, a task exports
-  the Keynote deck or answers the mail in that Mac's apps, in the background, with **Stop** in
-  reach; password managers, banks and System Settings stay out of reach. **Use a phone** gives it
-  an Android phone of its own, running on a Mac with Apple silicon, for apps that live only on a
-  phone. Anything that sends, pays or deletes waits for your Go
-  ([Your devices](docs/devices.md#tasks-in-your-macs-apps)).
-- **Errands.** Book and buy with your saved sign-ins and cards, filled in without being seen, and
-  every payment waits for your OK ([Passwords & cards](docs/passwords-and-cards.md)). A task that needs a key (a
-  deploy key, an API key) asks you with a card, never in the chat, and the key stays on your own
-  computer. Calls through Tuwa, after you tap Call ([Phone calls](docs/calls.md); needs a Tuwa
-  account).
-- **Your mail and calendar.** Say yes once, and it tells you only what needs you: a first look
-  over the last two weeks, then a morning message with at most three things, and right away only
-  when waiting would cost you ([Accounts it can read](docs/accounts.md)).
-- **Where you already chat.** Talk to the same partner from Telegram or Slack through a bot of
-  your own, from WeChat through its own ClawBot, or from Messages on your iPhone through your Mac
-  ([Chat apps](docs/chat-apps.md), [iMessage](docs/imessage.md)).
-- **What you did before.** Find any earlier task by what it did or what you said, star it, and
-  carry on with it; pause and resume what runs on its own ([Past tasks](docs/past-tasks.md)).
-- **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
-  partner and its tasks share one memory with the AI tools you use elsewhere.
+Hosted agent workbenches come and go, and the best personal AIs are closed. Ducter is Apache 2.0
+and runs where you put it, so nobody can wind it down for you ([why it exists](motivation.md)).
 
 ## Under the hood
 
@@ -197,7 +203,7 @@ flowchart LR
     log[("The Log<br/>local SQLite")]
     partner <--> log
   end
-  partner -->|task| t1["Claude Code, Codex, pi, DeepSeek Harness<br/>own worktree and branch, here or on a computer you lend it"]
+  partner -->|task| t1["Claude Code, Codex, pi, DeepSeek Harness<br/>own worktree and branch, here or on another computer you added"]
   partner <-.->|memory, optional| mem[("Nowledge Mem")]
 ```
 

@@ -34,7 +34,8 @@ are, with **Didn't send** and **Retry**. Nothing you typed is lost.
 ## Share from another app
 
 On your phone, anything you can share goes to your partner without saving it first: a page in
-Safari, a photo, a post, a PDF in Files.
+your browser, a photo, a post, a PDF. This works in the Android app today; on iPhone and iPad
+it comes with a later beta (coming soon).
 
 1. Tap **Share** in that app and pick **Ducter** (the first time, you may need to find it under
    **More** and move it up the row).
@@ -140,4 +141,4 @@ for my manager", "a 5-slide pitch deck", "put the visa papers into one PDF".
   up somewhere else (a browser's history, a message) soon opens nothing. Your devices get fresh
   links by themselves.
 - Files you send stay on the computer Ducter runs on, behind the same kind of link as pictures.
-- Sharing into Ducter from other apps, and video, are coming soon.
+- Video is coming soon.

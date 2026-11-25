@@ -7,6 +7,9 @@ export const agents = {
   today: ["Claude Code", "Codex", "pi", "DeepSeek Harness"],
   /** Carry tasks but not yet the partner (none since D177: all four can be the partner). */
   tasks: [] as string[],
+  /** Take tasks only when the person names them (offered last; its sign-in warns about the
+   *  provider's terms), so the site says them apart: "when you ask for it by name". */
+  byName: ["Antigravity"],
   soon: [] as string[],
 };
 

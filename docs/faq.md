@@ -11,6 +11,13 @@ order: 9
 A personal AI on your own computers: you talk to one partner, it hands the work to an AI agent
 you already use, and it comes back when the work is done, with how it checked.
 
+### Why one partner rather than a team of agents?
+
+Because then you'd be the one managing a team. With one partner you say what you want once; it
+hands each piece to as many AI agents as it needs, each a task you can open, and brings back only
+what needs you. You still see who did what: every task shows its AI agent, its steps and its
+changes. See [How Ducter fits together](concepts.md#why-one-partner-not-a-team).
+
 ### Does it cost anything?
 
 Ducter itself is free and open source (Apache 2.0). The AI work runs on your AI agent's plan,

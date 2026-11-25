@@ -25,6 +25,8 @@ type glimpse struct {
 	lines         []string
 	page          *ui.Bitmap
 	pages         int
+	title         string     // D567: a report's title, its lines its words
+	rows          [][]string // a table's first rows
 }
 
 // glimpseLines is how many first lines a code card shows.
@@ -33,7 +35,8 @@ const glimpseLines = 7
 // cardWidth is a file card's width in points.
 const cardWidth = 352
 
-// glimpseKindOf is what a card shows above its line: "pdf", "code" or "".
+// glimpseKindOf is what a card shows above its line: "pdf", "doc" (a
+// report's rendered start, D567), "table" (its first rows), "code" or "".
 func glimpseKindOf(ref protocol.MediaRef) string {
 	if ref.Pages != nil { // D439: an Office file shown with its PDF
 		return "pdf"
@@ -42,7 +45,12 @@ func glimpseKindOf(ref protocol.MediaRef) string {
 	case protocol.FamPDF:
 		return "pdf"
 	case protocol.FamCode, protocol.FamText, protocol.FamSheet:
-		if k := ref.FileView(); k == protocol.FileText || k == protocol.FileMarkdown || k == protocol.FileTable {
+		switch ref.FileView() {
+		case protocol.FileMarkdown:
+			return "doc"
+		case protocol.FileTable:
+			return "table"
+		case protocol.FileText:
 			return "code"
 		}
 	}
@@ -68,9 +76,25 @@ func (a *App) glimpseOf(ref protocol.MediaRef) *glimpse {
 	home := a.Media.Home()
 	var lines []string
 	var page *ui.Bitmap
+	var title string
+	var rows [][]string
 	pages := 0
 	a.later(func() {
 		switch kind {
+		case "doc", "table":
+			data, err := home.FetchHead(context.Background(), ref.Path(), 4096)
+			if err != nil {
+				return
+			}
+			text, _ := protocol.ViewText(data, ref.Bytes)
+			if kind == "doc" {
+				title, lines = protocol.DocGlimpse(text, 3)
+				return
+			}
+			rows, _ = protocol.ParseTable(text, protocol.TableSep(ref.Name), 5)
+			for i, r := range rows {
+				rows[i] = r[:min(len(r), 4)]
+			}
 		case "code":
 			data, err := home.FetchHead(context.Background(), ref.Path(), 4096)
 			if err != nil {
@@ -104,7 +128,7 @@ func (a *App) glimpseOf(ref protocol.MediaRef) *glimpse {
 		}
 	}, func() {
 		g.loading, g.done = false, true
-		g.lines, g.page, g.pages = lines, page, pages
+		g.lines, g.page, g.pages, g.title, g.rows = lines, page, pages, title, rows
 	})
 	return g
 }
@@ -200,7 +224,7 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 	name := firstNonEmpty(ref.Name, a.L.T("media.file"))
 	g := a.glimpseOf(*ref)
 	kind := glimpseKindOf(*ref)
-	if g.done && g.page == nil && len(g.lines) == 0 {
+	if g.done && g.page == nil && len(g.lines) == 0 && g.title == "" && len(g.rows) == 0 {
 		kind = "" // a glimpse that couldn't be made leaves the card plain
 	}
 	card := ui.Column(c.Key("file:" + ref.ID)).Width(cardWidth).MaxWidth(cardWidth).Shrink(1).
@@ -235,13 +259,66 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 					}
 					return
 				}
+				// A line longer than the card fades out at its right edge, as
+				// the glimpse fades at its foot: never cut with "…" (D567).
+				fade := ui.LinearGradient{Angle: 90, Stops: []ui.GradientStop{{Color: ui.RGB(0, 0, 0), At: 0}, {Color: ui.RGB(0, 0, 0), At: 0.9}, {Color: ui.Transparent, At: 1}}}
 				for i, l := range g.lines {
 					col := t.InkSoft
 					if i >= glimpseLines-2 {
 						col = t.InkSoft.Alpha(0.55 - 0.2*float32(i-(glimpseLines-2)))
 					}
-					uiText(c, l+" ").Font(t.Mono).FontSize(11.5).TextColor(col).SingleLine().MinWidth(0)
+					uiText(c, l+" ").Font(t.Mono).FontSize(11.5).TextColor(col).SingleLine().Ellipsis(" ").MinWidth(0).AlignSelf(ui.Stretch).MaskLinearGradient(fade)
 				}
+			})
+		case "doc":
+			// D567: a report's start as it reads: the top of the viewer's own
+			// paper on the sunken ground (as a PDF's first page sits), its
+			// title in the heading face, a line or two of its words, fading
+			// at the paper's foot. Never its marks, never monospace.
+			ui.Box(c.Key("pv")).Height(112).Background(t.Sunken).Padding(12, 18, 0, 18).Clip().Children(func() {
+				ui.Column(c).Fill().Background(t.Bg).Radius(6, 6, 0, 0).Shadow(0, 0, 0, 1, t.LineSoft).Padding(12, 16, 0, 16).Gap(5).Clip().Children(func() {
+					if !g.done {
+						ui.Box(c).Height(12).Width((cardWidth-68)*0.7).Radius(4).Background(t.LineSoft).Margin(2, 0, 4, 0)
+						for _, w := range []float32{0.88, 0.64} {
+							ui.Box(c).Height(8).Width((cardWidth-68)*w).Radius(4).Background(t.LineSoft).Margin(3, 0, 3, 0)
+						}
+						return
+					}
+					if g.title != "" {
+						uiText(c, g.title).Font(t.Display).FontSize(t.MD).FontWeight(800).LineHeight(1.3).TextColor(t.Ink).MaxLines(2).Shrink(0)
+					}
+					for _, l := range g.lines {
+						uiText(c, l).FontSize(t.XS).LineHeight(1.55).TextColor(t.InkSoft).MaxLines(2).Shrink(0)
+					}
+				})
+				ui.Box(c).Absolute().Left(18).Right(18).Bottom(0).Height(26).
+					LinearGradient(ui.LinearGradient{From: t.Bg.Alpha(0), To: t.Bg, Angle: 180})
+			})
+		case "table":
+			// A table's first rows, its head in ink.
+			ui.Column(c.Key("pv")).Height(99).Background(t.Sunken).Padding(8, 10, 0, 10).Clip().Children(func() {
+				n := 1
+				for _, r := range g.rows {
+					n = max(n, len(r))
+				}
+				w := (cardWidth - 20) / float32(n)
+				for i, r := range g.rows {
+					ui.Row(c).BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft).Children(func() {
+						for k := 0; k < n; k++ {
+							s := ""
+							if k < len(r) {
+								s = r[k]
+							}
+							weight, col := 400, t.InkSoft
+							if i == 0 {
+								weight, col = 800, t.Ink
+							}
+							uiText(c, s).FontSize(t.XS).FontWeight(weight).TextColor(col).SingleLine().Width(w).Padding(3, 6).Shrink(0)
+						}
+					})
+				}
+				ui.Box(c).Absolute().Left(0).Right(0).Bottom(0).Height(33).
+					LinearGradient(ui.LinearGradient{From: t.Sunken.Alpha(0), To: t.Sunken, Angle: 180})
 			})
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2+2, t.S3+2, t.S2+2, t.S3).Children(func() {

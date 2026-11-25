@@ -41,8 +41,8 @@ test("a report renders as a document: headings, tables, quotes, task lists, nest
   expect(h).toContain("<h1>Investigation: the flaky TTL test</h1>");
   expect(h).toContain("<h2>What I found</h2>");
   expect(h).toContain("<strong>waited on real time</strong>");
-  expect(h).toContain('<th style="text-align:center">Result</th>');
-  expect(h).toContain('<td style="text-align:right">0.98 s</td>');
+  expect(h).toContain('<th style="text-align:center"><div class="c">Result</div></th>');
+  expect(h).toContain('<td style="text-align:right"><div class="c">0.98 s</div></td>');
   expect(h).toContain("<blockquote><p>The machine was busy,<br>so the timer fired early.</p></blockquote>");
   expect(h).toContain('<li class="md-task done"><span class="md-check on" aria-hidden="true"></span>Reproduced it</li>');
   expect(h).toMatch(/Fixed upstream<ul><li>nested note<\/li><\/ul><\/li>/);
@@ -54,6 +54,16 @@ test("a report renders as a document: headings, tables, quotes, task lists, nest
   expect(h).toContain('<span class="md-pic">a chart</span>');
   expect(h).not.toContain("<script>");
   expect(h).toContain("&lt;script&gt;");
+});
+
+// D567: a wide table scrolls on its own (focusable for the keys); its first column stays while the
+// rest scroll when it names the rows, never when it holds numbers or the table is two columns.
+test("a wide table: its own scroller, a sticky first column when it names the rows", () => {
+  const named = markdownDoc("| Product | Free | Starter |\n|---|---|---:|\n| **Mem0** | Hobby | $19 |\n| Zep | Free | $25 |");
+  expect(named).toContain('<div class="md-table key" tabindex="0">');
+  const numbered = markdownDoc("| Run | Pass | Cost |\n|---|---|---|\n| 1 | yes | 0.1 |\n| 2 | no | 0.2 |");
+  expect(numbered).toContain('<div class="md-table" tabindex="0">');
+  expect(markdownDoc("| a | b |\n|---|---|\n| x | y |\n| z | w |")).toContain('<div class="md-table" tabindex="0">');
 });
 
 test("a setext heading, an ordered list that starts later, and a link", () => {

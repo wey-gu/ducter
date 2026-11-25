@@ -102,9 +102,14 @@ function blocks(lines: string[]): string {
       const body: string[][] = [];
       for (i += 2; i < lines.length && lines[i]!.includes("|") && lines[i]!.trim(); i++) body.push(cells(lines[i]!));
       i--;
-      const td = (tag: string, c: string, k: number) => `<${tag}${align[k] ? ` style="text-align:${align[k]}"` : ""}>${inlineDoc(c)}</${tag}>`;
+      // D567: each cell's words in a box as wide as they need, up to a sensible measure, so a wide
+      // table scrolls on its own rather than crushing its columns; the first column stays while
+      // the rest scroll when it names the rows (words, not numbers).
+      const td = (tag: string, c: string, k: number) => `<${tag}${align[k] ? ` style="text-align:${align[k]}"` : ""}><div class="c">${inlineDoc(c)}</div></${tag}>`;
+      const plain = (c: string) => c.replace(/[*_`~]/g, "").trim();
+      const key = head.length > 2 && body.length > 1 && body.every((r) => plain(r[0] ?? "") && !/^[-+]?[\d.,%$€¥£\s/]+$/.test(plain(r[0] ?? "")));
       out.push(
-        `<div class="md-table"><table><thead><tr>${head.map((c, k) => td("th", c, k)).join("")}</tr></thead><tbody>${body
+        `<div class="md-table${key ? " key" : ""}" tabindex="0"><table><thead><tr>${head.map((c, k) => td("th", c, k)).join("")}</tr></thead><tbody>${body
           .map((r) => `<tr>${head.map((_, k) => td("td", r[k] ?? "", k)).join("")}</tr>`)
           .join("")}</tbody></table></div>`,
       );

@@ -641,6 +641,18 @@ func (a *App) iconButton(c *ui.Context, label string, size float32, kind btnKind
 	return b.Clicked()
 }
 
+// iconButtonTip is iconButton whose tooltip says more than its name (its
+// key: D567's 铺满（⌘Return）), kept by key so a toggle that renames itself
+// keeps the focus.
+func (a *App) iconButtonTip(c *ui.Context, key, label, tip string, size float32, kind btnKind, draw func(fg ui.Color) func(p *ui.Painter, r ui.Rect)) bool {
+	t := a.T
+	b := ui.Box(c.Key("icon:"+key)).Size(size, size).Radius(a.buttonRadius(size)).Label(label).Tooltip(tip).
+		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, kind, size, t.Surface)
+	b.Draw(draw(fg))
+	return b.Clicked()
+}
+
 // ---------- notices ----------
 
 // noticeTone is what a notice is about.

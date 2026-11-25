@@ -33,6 +33,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"github.com/egoist/mygo/ui/markdown/parser"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/media"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -52,10 +53,24 @@ type fileViewState struct {
 	cut     bool
 	source  bool // a Markdown or table file shown as its text
 	st      *editor.State
-	table   string // a table file as a Markdown table
-	more    bool   // the table has more rows than it shows
+	more    bool // the table has more rows than it shows
 	md      *markdown.Options
 	n       int // which load is current (a Retry starts another)
+
+	// D567: wide content. fill: the sheet takes the window. A report's
+	// tables: their places as they scroll, its measure and the sheet's
+	// whole width (the last frame's), the options a cell's words are drawn
+	// with. A table file: its rows, its columns' widths, which hold
+	// numbers, whether the first names the rows, where it is scrolled.
+	fill                bool
+	tables              map[int]*wideTableState
+	docMeasure, docFull float32
+	mdCell              *markdown.Options
+	rows                [][]string
+	csvW                []float32
+	csvNum              []bool
+	csvKey              bool
+	csvScroll           ui.ScrollState
 
 	// A PDF (D242): its pages, the bitmaps drawn now and at what width.
 	pdf       *media.PDF
@@ -105,6 +120,7 @@ func (a *App) OpenFile(ref protocol.MediaRef, from ui.Rect) {
 		office := ref
 		fv.ref, fv.office = pages, &office
 	}
+	fv.fill = a.filled(fileKind(fv.ref))
 	a.fileView = fv
 	a.loadFile(fv)
 }
@@ -266,9 +282,67 @@ func (a *App) loadFile(fv *fileViewState) {
 		}
 		fv.text, fv.cut = protocol.ViewText(data, fv.ref.Bytes)
 		if fileKind(fv.ref) == protocol.FileTable {
-			fv.table, fv.more = tableMarkdown(fv.text, fv.ref.Name)
+			fv.rows, fv.more = protocol.ParseTable(fv.text, protocol.TableSep(fv.ref.Name), protocol.FileViewRows)
+			fv.csvW = nil
 		}
 	})
+}
+
+// D567: 铺满 / Fill the window, remembered per kind of file: a report opens
+// filled after the person chose it once, a PDF keeps its own choice.
+
+// filled: the person last chose to read this kind filling the window.
+func (a *App) filled(kind string) bool {
+	if kind == protocol.FileNone {
+		return false
+	}
+	if a.Local != nil {
+		return a.Local.FileFill(kind)
+	}
+	return a.med().filled[kind]
+}
+
+// toggleFill gives the viewer the whole window, or gives it back, and
+// remembers the choice for this kind.
+func (a *App) toggleFill(fv *fileViewState) {
+	kind := fileKind(fv.ref)
+	if kind == protocol.FileNone || fv.link != "" {
+		return
+	}
+	fv.fill = !fv.fill
+	if a.Local != nil {
+		a.Local.SetFileFill(kind, fv.fill)
+	} else {
+		m := a.med()
+		if m.filled == nil {
+			m.filled = map[string]bool{}
+		}
+		m.filled[kind] = fv.fill
+	}
+}
+
+// drawFill is 铺满's mark: corners going out; filled, corners coming in.
+func drawFill(on bool) func(fg ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(fg ui.Color) func(p *ui.Painter, r ui.Rect) {
+		return func(p *ui.Painter, r ui.Rect) {
+			s := min(r.W, r.H) / 44 // the glyph as large as the head's magnifier
+			ox, oy := r.X+(r.W-20*s)/2, r.Y+(r.H-20*s)/2
+			pt := func(x, y float32) (float32, float32) { return ox + x*s, oy + y*s }
+			var path ui.Path
+			if on {
+				path.MoveTo(pt(8, 3.5)).LineTo(pt(8, 8)).LineTo(pt(3.5, 8))
+				path.MoveTo(pt(12, 3.5)).LineTo(pt(12, 8)).LineTo(pt(16.5, 8))
+				path.MoveTo(pt(8, 16.5)).LineTo(pt(8, 12)).LineTo(pt(3.5, 12))
+				path.MoveTo(pt(12, 16.5)).LineTo(pt(12, 12)).LineTo(pt(16.5, 12))
+			} else {
+				path.MoveTo(pt(3.5, 8)).LineTo(pt(3.5, 3.5)).LineTo(pt(8, 3.5))
+				path.MoveTo(pt(16.5, 8)).LineTo(pt(16.5, 3.5)).LineTo(pt(12, 3.5))
+				path.MoveTo(pt(3.5, 12)).LineTo(pt(3.5, 16.5)).LineTo(pt(8, 16.5))
+				path.MoveTo(pt(16.5, 12)).LineTo(pt(16.5, 16.5)).LineTo(pt(12, 16.5))
+			}
+			p.StrokePath(&path, 2.4*s, fg)
+		}
+	}
 }
 
 // loadPDF fetches the whole PDF and parses it on this Mac; pages are drawn
@@ -315,67 +389,6 @@ func (fv *fileViewState) closeFile() {
 		fv.pdf.Close()
 		fv.pdf, fv.pages = nil, nil
 	}
-}
-
-// tableMarkdown is a table file as a Markdown table (numbers lined up on
-// the right), drawn by the same view as a report's tables.
-func tableMarkdown(text, name string) (string, bool) {
-	rows, more := protocol.ParseTable(text, protocol.TableSep(name), protocol.FileViewRows)
-	if len(rows) == 0 {
-		return "", more
-	}
-	cols := 0
-	for _, r := range rows {
-		cols = max(cols, len(r))
-	}
-	cell := func(r []string, k int) string {
-		if k >= len(r) {
-			return ""
-		}
-		s := strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(r[k])
-		if strings.TrimSpace(s) == "" {
-			return " "
-		}
-		return s
-	}
-	num := func(k int) bool {
-		seen := false
-		for _, r := range rows[1:] {
-			s := strings.TrimSpace(cell(r, k))
-			if s == "" {
-				continue
-			}
-			for _, ch := range s {
-				if !strings.ContainsRune("0123456789.,-%", ch) {
-					return false
-				}
-			}
-			seen = true
-		}
-		return seen
-	}
-	var b strings.Builder
-	line := func(r []string) {
-		b.WriteString("|")
-		for k := 0; k < cols; k++ {
-			b.WriteString(" " + cell(r, k) + " |")
-		}
-		b.WriteString("\n")
-	}
-	line(rows[0])
-	b.WriteString("|")
-	for k := 0; k < cols; k++ {
-		if num(k) {
-			b.WriteString("---:|")
-		} else {
-			b.WriteString("---|")
-		}
-	}
-	b.WriteString("\n")
-	for _, r := range rows[1:] {
-		line(r)
-	}
-	return b.String(), more
 }
 
 // fileBytes fetches the whole file (Save a copy, Copy of a long text, Open on this Mac).
@@ -436,6 +449,9 @@ func (a *App) fileViewer(c *ui.Context) {
 	// while finding, is find's.
 	clickedOut := false
 	findKeys := func() {
+		if c.Shortcut(ui.Cmd, ui.KeyEnter) { // D567: 铺满 / Fill the window
+			a.toggleFill(fv)
+		}
 		if !fileFindable(fv) {
 			return
 		}
@@ -453,6 +469,9 @@ func (a *App) fileViewer(c *ui.Context) {
 		w, h = 1100, 800
 	}
 	pw, ph := min(w-2*t.S6, 860), max(320, min(h-2*t.S5, 980))
+	if fv.fill { // D567: the whole window, its edges a little in
+		pw, ph = w-2*t.S4, h-2*t.S4
+	}
 	kind := fileKind(fv.ref)
 	name := fileSaveName(fv.ref)
 	if fv.link != "" {
@@ -520,7 +539,10 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 			ui.Box(c).Size(42, 42).Draw(drawFileKind(t.InkSoft, kind))
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
+			// D567: a double click on the title fills the window, as on a window's own.
+			if uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name).DoubleClicked() {
+				a.toggleFill(fv)
+			}
 			meta := []string{strings.ToUpper(strings.TrimPrefix(fileExt(name), ".")), protocol.SizeWords(fv.ref.Bytes)}
 			if fv.text != "" && kind != protocol.FileTable {
 				meta = append(meta, a.L.T("file.lines", strings.Count(fv.text, "\n")+1))
@@ -555,6 +577,16 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 			}
 			if a.button(c, label, btnText, t.ControlSM, t.Surface) {
 				fv.source = !fv.source
+			}
+		}
+		if kind != protocol.FileNone {
+			label := a.L.T("file.fill")
+			tip := a.L.T("file.fill.key", "⌘Return")
+			if fv.fill {
+				label, tip = a.L.T("file.unfill"), a.L.T("file.unfill.key", "⌘Return")
+			}
+			if a.iconButtonTip(c, "fv-fill", label, tip, t.ControlMD, btnText, drawFill(fv.fill)) {
+				a.toggleFill(fv)
 			}
 		}
 		cl := ui.Box(c.Key("fv-close")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD / 2).Role(ui.RoleButton).Shrink(0).
@@ -630,19 +662,31 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 		})
 		return
 	}
+	if kind == protocol.FileTable { // D567: the table itself, filling the sheet
+		ui.Column(c.Key("fv-table")).Fill().Children(func() {
+			ui.Box(c).Grow(1).MinHeight(0).Children(func() { a.csvTable(c, fv) })
+		})
+		return
+	}
 	if fv.md == nil {
 		th := a.markdownTheme(t.MD+1, a.leading(1.6))
 		th.Headings[0].Size, th.Headings[1].Size, th.Headings[2].Size = 1.75, 1.3, 1.12
-		fv.md = &markdown.Options{Theme: th, CodeBlock: a.codeBlock}
+		fv.md = &markdown.Options{Theme: th, CodeBlock: a.codeBlock,
+			// D567: a wide table, read whole.
+			Block: func(c *ui.Context, d *parser.Document, i int) bool { return a.mdTableBlock(c, fv, d, i) }}
+		cell := a.markdownTheme(a.tableCellSize(), 1.45)
+		fv.mdCell = &markdown.Options{Theme: cell, ShareSelection: true}
 	}
-	src := fv.text
-	if kind == protocol.FileTable {
-		src = fv.table
+	pad := t.S5 + 4
+	sc := ui.Scroll(c.Key("fv-doc")).Fill()
+	if b := sc.Bounds(); b.W > 0 { // the last frame's: the measure, and the room a wide table may take
+		fv.docFull = b.W - 2*pad
+		fv.docMeasure = min(680, fv.docFull)
 	}
-	ui.Scroll(c.Key("fv-doc")).Fill().Children(func() {
-		ui.Row(c).Justify(ui.Center).Padding(t.S5+4, t.S5+4, t.S6+8, t.S5+4).Children(func() {
+	sc.Children(func() {
+		ui.Row(c).Justify(ui.Center).Padding(pad, pad, t.S6+8, pad).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(680).MinWidth(0).Gap(t.S4).Children(func() {
-				markdown.View(c, src, fv.md)
+				markdown.View(c, fv.text, fv.md)
 				cutNote()
 			})
 		})

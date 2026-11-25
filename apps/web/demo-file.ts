@@ -131,6 +131,28 @@ log.append({
 } as never);
 core.tasks.setState(id, "done", "warm");
 
+// D567 (DEMO_WIDE=1): what is wide or long: a competitive-analysis report with a 9-column pricing
+// table, long URLs and wide code blocks; a 200-column CSV; a long code file; a long PDF (DEMO_PDF).
+if (process.env.DEMO_WIDE) {
+  const files = new URL("./demo-files/", import.meta.url);
+  const wide = [
+    put(zh ? "Mem 对比.md" : "mem-compare.md", readFileSync(new URL(zh ? "compare.zh.md" : "compare.en.md", files), "utf8")),
+    put("eval-nightly.csv", readFileSync(new URL("eval-nightly.csv", files), "utf8")),
+    put("fileview.tsx", readFileSync(new URL("./src/fileview.tsx", import.meta.url), "utf8")),
+    pdf,
+  ];
+  const w = "t_wide";
+  log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "看看 Nowledge Mem 在记忆这一类里站在哪儿" : "Where does Nowledge Mem stand among memory layers?" } } as never);
+  log.append({ stream: `task:${w}`, origin: "partner", kind: "task_open", body: { taskId: w, title: zh ? "Mem 对比" : "Mem compared", project: "", place: { kind: "none" }, harness: "claude-code", brief: "" } } as never);
+  log.append({
+    stream: "channel",
+    origin: "partner",
+    kind: "ai_msg",
+    body: { text: zh ? "五家的定价页我都读了，能对上的放进了一张表，对不上的写在表下面。" : "I read the five pricing pages and put what lines up into one table; the rest is under it.", media: wide },
+  } as never);
+  core.tasks.setState(w, "done", "warm");
+}
+
 console.log(`[demo] http://127.0.0.1:${core.port}/app`);
 process.on("SIGINT", async () => {
   await core.stop();

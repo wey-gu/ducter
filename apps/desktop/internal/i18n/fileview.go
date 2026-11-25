@@ -38,6 +38,11 @@ var zhFile = Table{
 	"file.find.prev":        "上一个",
 	"file.find.next":        "下一个",
 	"code.block":            "代码",
+	// D567: the viewer takes the whole window, and gives it back.
+	"file.fill":       "铺满",
+	"file.fill.key":   "铺满（%s）",
+	"file.unfill":     "还原大小",
+	"file.unfill.key": "还原大小（%s）",
 }
 
 var enFile = Table{
@@ -73,6 +78,10 @@ var enFile = Table{
 	"file.find.prev":        "Previous",
 	"file.find.next":        "Next",
 	"code.block":            "Code",
+	"file.fill":             "Fill the window",
+	"file.fill.key":         "Fill the window (%s)",
+	"file.unfill":           "Restore size",
+	"file.unfill.key":       "Restore size (%s)",
 }
 
 func init() {

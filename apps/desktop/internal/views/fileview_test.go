@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -232,8 +233,35 @@ func TestFileViewer(t *testing.T) {
 	if fv := app.fileView; !fv.cut || len(fv.text) > protocol.FileViewBytes || strings.HasSuffix(fv.text, "\n") {
 		t.Errorf("the long file: cut %v, %d bytes", fv.cut, len(fv.text))
 	}
-	if md, more := tableMarkdown(evalCSV, "eval.csv"); more || !strings.Contains(md, "|---|---|---:|---|---:|") || !strings.Contains(md, "| save a copy, not a link |") {
-		t.Errorf("the table:\n%s", md)
+	app.fileView = nil
+	tt.Frame()
+	// D567: a table file is its table: numbers on the right, the first
+	// column (it names the rows) staying while the rest scroll.
+	app.OpenFile(refs[1], ui.Rect{})
+	tt.Frame()
+	tt.Frame()
+	fv = app.fileView
+	if len(fv.rows) != 8 || fv.rows[7][0] != "save a copy, not a link" {
+		t.Errorf("the table's rows: %q", fv.rows)
+	}
+	if want := []bool{false, false, true, false, true}; !reflect.DeepEqual(fv.csvNum, want) || !fv.csvKey {
+		t.Errorf("the table's columns: numbers %v, key %v", fv.csvNum, fv.csvKey)
+	}
+	if got := texts(tt); !strings.Contains(got, "reply-older-result") || !strings.Contains(got, "cost_usd") {
+		t.Errorf("the table drawn: %s", got)
+	}
+	// D567: 铺满 / Fill the window (⌘Return), remembered for its kind.
+	small := app.fileView
+	tt.Key(ui.Cmd, ui.KeyEnter)
+	tt.Frame()
+	if !small.fill || !app.filled(protocol.FileTable) || app.filled(protocol.FileMarkdown) {
+		t.Errorf("fill: %v, remembered table %v, markdown %v", small.fill, app.filled(protocol.FileTable), app.filled(protocol.FileMarkdown))
+	}
+	app.fileView = nil
+	tt.Frame()
+	app.OpenFile(refs[1], ui.Rect{})
+	if !app.fileView.fill {
+		t.Errorf("a table opened again didn't open filled")
 	}
 }
 

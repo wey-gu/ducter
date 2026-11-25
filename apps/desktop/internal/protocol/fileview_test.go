@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"encoding/json"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -83,5 +85,31 @@ func TestFileView(t *testing.T) {
 	}
 	if rows, more := ParseTable("a\nb\nc\nd", ',', 2); len(rows) != 2 || !more {
 		t.Errorf("cap: %q %v", rows, more)
+	}
+}
+
+// D567: a Markdown file's card shows its rendered start, as the web's
+// docGlimpse does: the same cases (packages/protocol/test/doc-glimpse.json).
+func TestDocGlimpse(t *testing.T) {
+	b, err := os.ReadFile("../../../../packages/protocol/test/doc-glimpse.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		About, Text, Title string
+		Lines              []string
+	}
+	if err := json.Unmarshal(b, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range cases {
+		title, lines := DocGlimpse(c.Text, 3)
+		if title != c.Title || !reflect.DeepEqual(lines, c.Lines) {
+			t.Errorf("%s:\n got %q %q\nwant %q %q", c.About, title, lines, c.Title, c.Lines)
+		}
+	}
+	_, lines := DocGlimpse("# T\n\n"+strings.Repeat("字", 300)+"\n\nb\n\nc\n\nd", 3)
+	if len([]rune(lines[0])) != 200 || len(lines) != 3 {
+		t.Errorf("cut: %d runes, %d lines", len([]rune(lines[0])), len(lines))
 	}
 }

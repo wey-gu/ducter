@@ -1,6 +1,6 @@
 // D239: which viewer a file a task showed opens in, and how much of it the viewer reads.
 import { expect, test } from "bun:test";
-import { fileView, parseTable, tableSep, viewText } from "../src/media.ts";
+import { docGlimpse, fileView, parseTable, tableSep, viewText } from "../src/media.ts";
 
 test("each kind opens in the viewer that suits it; what can't be shown says so", () => {
   expect(fileView({ type: "text/markdown", name: "investigation.md" })).toBe("markdown");
@@ -36,4 +36,15 @@ test("CSV: quotes, doubled quotes and line breaks inside a cell; rows past the c
   const many = Array.from({ length: 10 }, (_, i) => `r${i},${i}`).join("\n");
   expect(parseTable(many, ",", 4)).toEqual({ rows: [["r0", "0"], ["r1", "1"], ["r2", "2"], ["r3", "3"]], more: true });
   expect(parseTable("a\tb\n1\t2", "\t").rows).toEqual([["a", "b"], ["1", "2"]]);
+});
+
+// D567: a Markdown file's card shows its rendered start, never its marks. The cases are shared with
+// the Mac's DocGlimpse (apps/desktop/internal/protocol/fileview_test.go).
+test("a Markdown glimpse: the title as a heading, the first words with no marks", async () => {
+  const cases = (await import("./doc-glimpse.json")).default as { about: string; text: string; title: string; lines: string[] }[];
+  for (const c of cases) expect({ about: c.about, ...docGlimpse(c.text) }).toEqual({ about: c.about, title: c.title, lines: c.lines });
+  // A long line is cut to 200 characters; at most `max` lines.
+  const long = docGlimpse(`# T\n\n${"字".repeat(300)}\n\nb\n\nc\n\nd`);
+  expect([...long.lines[0]!].length).toBe(200);
+  expect(long.lines.length).toBe(3);
 });

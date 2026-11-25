@@ -1952,6 +1952,15 @@ note and a `Dn`) before it is built.
       for 90 days. Trigger: the media folder passes 2 GB on any home.
 - [ ] **Mac viewer: pinch and grow-from-tile.** The Mac opens with a scale and fade and zooms by
       double-click only; HEIC from Finder is skipped (Go reads none). Trigger: the author's review.
+- [ ] **Wide tables in the conversation and a task's words (D567).** The file viewer reads a wide
+      table whole (breaks out, scrolls on its own, edges fade, the naming column stays); a table in
+      a chat bubble or an agent's turn still uses the narrow default. Trigger: a partner reply with
+      a table wider than the bubble that the author points at.
+- [ ] **A PDF drawn larger when filled (D567).** 铺满 gives a PDF the window but its pages keep
+      the reading width (41.25 rem / 720 pt). Trigger: someone fills a PDF to read small print.
+- [ ] **A CSV cell longer than its column on the Mac (D567).** The Mac's table file draws one line
+      per row (rows built only in view) and cuts a long cell; the web wraps it. Trigger: a table
+      file whose cells are sentences.
 
 ## Folders that aren't repos (D142)
 

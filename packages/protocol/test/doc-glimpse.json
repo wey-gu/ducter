@@ -1,0 +1,26 @@
+[
+  {
+    "about": "the author's report: a title, a bold date, a rule, then the words",
+    "text": "# Nowledge Mem：对比 Mem0、Zep、Letta 和 Supermemory\n\n**2026-11-25**\n\n---\n\n你让我看看 Nowledge Mem 在「给 AI 的记忆」这一类里站在哪儿。我读了五家的定价页。\n\n## 一眼看完\n\n| 产品 | 免费档 |\n|---|---|\n| Mem0 | Hobby |\n",
+    "title": "Nowledge Mem：对比 Mem0、Zep、Letta 和 Supermemory",
+    "lines": ["2026-11-25", "你让我看看 Nowledge Mem 在「给 AI 的记忆」这一类里站在哪儿。我读了五家的定价页。", "一眼看完"]
+  },
+  {
+    "about": "front matter, links, code, emphasis and a list item lose their marks",
+    "text": "---\ntitle: x\n---\n# Investigation: why *opening* a file opened a link\n\n**In short:** the card called `OpenURL(home)` and [the browser](https://example.com/a_b) showed it.\n\n- [x] Files open _inside_ Ducter\n",
+    "title": "Investigation: why opening a file opened a link",
+    "lines": ["In short: the card called OpenURL(home) and the browser showed it.", "Files open inside Ducter"]
+  },
+  {
+    "about": "no heading first: no title; a fence and a quote; identifiers keep their underscores",
+    "text": "```bash\ncurl -X POST https://api.example.com\n```\n\n> The key fetches only this one file.\n\nSet user_id and MEM0_API_KEY first.\n",
+    "title": "",
+    "lines": ["The key fetches only this one file.", "Set user_id and MEM0_API_KEY first."]
+  },
+  {
+    "about": "a setext heading, a picture as its words, an escape undone",
+    "text": "Weekly notes\n============\n\n![the board](./board.png) shows 3 \\* 4 cards <br> today.\n",
+    "title": "Weekly notes",
+    "lines": ["the board shows 3 * 4 cards today."]
+  }
+]

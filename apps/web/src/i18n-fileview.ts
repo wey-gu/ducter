@@ -37,6 +37,11 @@ export const fileWords: { zh: Record<string, string>; en: Record<string, string>
     "file.find.none": "没找到",
     "file.find.prev": "上一个",
     "file.find.next": "下一个",
+    // D567: the viewer takes the whole window, and gives it back.
+    "file.fill": "铺满",
+    "file.fill.key": "铺满（%s）",
+    "file.unfill": "还原大小",
+    "file.unfill.key": "还原大小（%s）",
     // D439: an Office file read as its pages (the PDF shown with it); what the page check still found.
     "file.savePdf": "存 PDF",
     "doc.lead": "看过每一页",
@@ -75,6 +80,10 @@ export const fileWords: { zh: Record<string, string>; en: Record<string, string>
     "file.find.none": "No matches",
     "file.find.prev": "Previous",
     "file.find.next": "Next",
+    "file.fill": "Fill the window",
+    "file.fill.key": "Fill the window (%s)",
+    "file.unfill": "Restore size",
+    "file.unfill.key": "Restore size (%s)",
     "file.savePdf": "Save the PDF",
     "doc.lead": "Every page checked",
   },

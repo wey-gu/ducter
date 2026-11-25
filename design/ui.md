@@ -595,7 +595,7 @@ A new control is added to the set (and to this table) before it is used.
 | One line of words someone types (a partner's name, what it looks after; D536): 44 tall, a hairline that becomes the one accent ring while typing, never a second focus ring outside it | `lineField` (`components.go`) | `Field` |
 | One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
 | A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
-| A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521) | `iconButton` (`components.go`), kind text | `IconBtn` |
+| A drawn glyph alone as a button, its name the tooltip and the label (a tray row's 停下 / Stop; D521); a tooltip that adds its key, a toggle's state (the file viewer's 铺满 / Fill the window, ⌘Return; D567) | `iconButton`, `iconButtonTip` (`components.go`), kind text | `IconBtn` (`tip`, `pressed`, `cls`) |
 | The other partners' faces, a stack of up to three 24-pt discs in their clays with what waits in them on a `CountPebble`, the way up to (or back to a hidden) list of partners (D541, D545) | `othersStack` (`shared.go`) | `PartnersBack` |
 | One dense row of a quiet tray: a drawn mark, its words on one line, its facts at the right edge (a state word, a time in mono), a chevron when it opens, an action slot apart at the far right (the opened task's 后台 / In the background; D521) | `trayRow` (`shared.go`) | `TrayRow` |
 | A key drawn in its cap and what it does, in the small muted type (the working composer's 「↩ 插一句」, 「⌥↩ 等它做完再说」; D530) | `keyHint`, `keycap` (`palette.go`) | `KeyHint` |

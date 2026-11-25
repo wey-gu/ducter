@@ -95,8 +95,15 @@ A file a task made (a report, a table, a script) shows as one line with its name
 and it opens right there in Ducter:
 
 - **A report** in Markdown is laid out like a document, with its headings, tables and lists.
-  **Show source** shows the text as it was written.
-- **A table** (CSV) shows as a table.
+  Its card already shows how it starts: the title and its first lines. **Show source** shows the
+  text as it was written.
+- **A wide table** in a report spreads to the whole width it has, and if it is wider still you
+  scroll it sideways on its own: the first column (the names of the rows) stays where it is, and
+  the edge fades where there is more to see.
+- **A table** (CSV) shows as a table: its header row and first column stay while you scroll.
+- **Fill the window** (the corners button at the top, ⌘Return / Ctrl+Enter, or a double click on the
+  name) gives the file the whole window; do it again to go back. Ducter remembers it for that kind
+  of file, so the next report opens the same way. On a phone a file already fills the screen.
 - **Code and text** show with their colours and line numbers.
 - **A PDF** shows its pages, one under the other; the top says how many there are.
 - **Find** (the magnifier, or ⌘F / Ctrl+F) looks for words in a report, a table or code: every

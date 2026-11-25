@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.80 - 2026-11-26
+
+<!-- whats-new
+zh: 设置里一件事只说一遍，按钮在手机上排得下
+en: Settings says each thing once, and its buttons fit on a phone
+-->
+
+**Settings**
+- Agent messaging says once that your other agents and your partner can message each other.
+- A partner's row shows Switch and Change; Remove now sits inside Change, apart from Save, and asks
+  once in place.
+- On a phone, a chat app's Switch account and Disconnect share one line, and Chinese text no
+  longer leaves a lone comma or full stop on a line of its own.
+
 ## 0.1.79 - 2026-11-26
 
 <!-- whats-new

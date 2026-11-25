@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.63 - 2026-11-25
+
+<!-- whats-new
+zh: 小应用能放进程序坞、加到主屏幕，用起来更顺
+en: Keep a small app in the Dock or on your Home Screen; smoother all round
+-->
+
+**Your apps, like your other apps**
+- On the Mac, "Keep in the Dock" from an app's menu gives it its own icon in the Dock, Spotlight and
+  Launchpad, and opens straight into it.
+- On the phone and the web, "Add to Home Screen" puts it on your Home Screen, full screen, and it
+  follows every change you ask for.
+
+**Smoother apps**
+- The Mac app window uses the same box to ask for a change as everywhere else.
+- After you change it back, an app says "Changed back", not "Changed".
+- "Change it back" sits beside the change it undoes, so a long name stays whole.
+- Your apps fills every column on the Mac, and names wrap instead of breaking mid-word on the phone.
+
 ## 0.1.62 - 2026-11-25
 
 <!-- whats-new

@@ -77,8 +77,10 @@ esac`;
 
   test("the tool a sender runs in is read only by a known host id", () => {
     expect(hostOf({ sender: { host: "claude-code" } })).toBe("Claude Code");
-    expect(hostOf({ sender: { agent: { host: "codex" } } })).toBe("Codex");
-    expect(hostOf({ source_app: "grok" })).toBe("Grok Build");
+    expect(hostOf({ sender: { host: "codex" } })).toBe("Codex");
+    // D557: Mem says it on `sender.host` only (VERIFIED 2026-11-25); the guessed places read nothing.
+    expect(hostOf({ sender: { agent: { host: "codex" } } })).toBeUndefined();
+    expect(hostOf({ source_app: "grok" })).toBeUndefined();
     expect(hostOf({ sender: { host: "x-7f3a" } })).toBeUndefined();
     expect(hostOf({})).toBeUndefined();
   });

@@ -45,6 +45,17 @@
 // (JSON lines, never acknowledges) is the long-poll when offered. The plain-text "Select your approved
 // Agent Context…" is `not_configured`; "Identity inbox cursor no longer matches…" restarts the read
 // from page one. Contacts take the grouped default (one card per identity) first, `--all-spaces` after.
+//
+// D557 (nmem 0.10.123 against Mem Cloud, VERIFIED 2026-11-25 in the live trial that passed every check,
+// research/226 §4): an identity-inbox entry is `{message, reference, sequence, space_id, state,
+// eligible, mine, read, in_reply_to, created_at_us, expires_at_ms, open_args, reply_args_prefix,
+// sender}`; `open` is `{message, body, reply_to, in_reply_to, sender, space_id, created_at_us,
+// outgoing, status_observed_at_us, outcome_unknown}`; `sender` is `{actor_id, member: "Member <id>",
+// agent, agent_id, host?}` (`host` only on a native session: "claude-code", its `agent` the generic
+// "Bridge agent"); `in_reply_to` is null on an original and the parent's id on an answer. So a
+// sender's tool is read from `sender.host` alone, a message's time from `created_at_us`, and on nmem
+// 0.10.120 or later every message is in the linked shape (D249 (5)'s maybe-answered rule keeps only
+// older CLIs). The other fallbacks above stay for nmem 0.10.118 and 0.10.119, which still run.
 import type { BridgePlace, BridgeWhere } from "../../protocol/src/internal.ts";
 import { nmemEnv } from "./memory.ts";
 import { ownAgentSelf } from "../../protocol/src/peer-self.ts";
@@ -319,11 +330,12 @@ const HOSTS: Record<string, string> = {
 };
 
 /**
- * The tool a sender runs in, when Mem says (read tolerantly: no released shape is VERIFIED to carry it;
- * a native session's sender is `--host codex|claude-code` on Mem's side). Only a known tool, by its name.
+ * The tool a sender runs in, when Mem says. D557: `sender.host` is where Mem says it (VERIFIED, nmem
+ * 0.10.123, 2026-11-25: "claude-code" on a native session's message); the guessed places are gone.
+ * Only a known tool, by its name.
  */
 export function hostOf(m: any): string | undefined {
-  const h = str(m?.sender?.host) ?? str(m?.sender?.agent?.host) ?? str(m?.agent?.host) ?? str(m?.host) ?? str(m?.sender?.source_app) ?? str(m?.source_app);
+  const h = str(m?.sender?.host);
   return h ? HOSTS[h.toLowerCase()] : undefined;
 }
 
@@ -751,6 +763,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const wide = !!opts.wide;
   // D400: wide also when this nmem's plain `inbox` is the identity inbox (0.10.121), whatever the connection said.
   let wideNow = wide;
+  // D557: this nmem asks for Mem's linked shape (0.10.120+), so every message it opens is an original or an answer.
+  let linksNow = false;
   const home = places[0]!;
   /** The context that reads (and answers in) a Space; the home's own when it isn't one the home reads. */
   const ctxFor = (space?: string): string => (wideNow || !space ? home.context : (places.find((p) => p.spaceId === space)?.context ?? home.context));
@@ -885,6 +899,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const v = await run(["--version"], { whole: true });
       if ("missing" in v || v.code !== 0) return undefined;
       const version = (v.out || v.err).trim();
+      linksNow = linksReplies(version);
       if (!shapeBy.has(version)) {
         const h = await run(["inbox", "--help"]);
         shapeBy.set(version, "missing" in h || h.code !== 0 ? undefined : inboxShapeIn(`${h.out}\n${h.err}`));
@@ -1049,14 +1064,17 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           // D418: nmem 0.10.121's `open` carries no time; its entry's `expires_at_ms` is 7 days after the send
           // (VERIFIED, research/161 §9), so a message read late still says when it was sent.
           const exp = typeof e0 === "object" && typeof e0?.expires_at_ms === "number" ? e0.expires_at_ms : undefined;
-          const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at) ?? (typeof e0 === "object" ? str(e0?.sent_at) ?? str(e0?.created_at) : undefined) ?? (exp ? new Date(exp - MEM_TTL_MS).toISOString() : undefined);
+          // D557: nmem 0.10.123's `open` and entry carry `created_at_us` (VERIFIED 2026-11-25), read first.
+          const us = typeof b?.created_at_us === "number" ? b.created_at_us : typeof e0 === "object" && typeof e0?.created_at_us === "number" ? e0.created_at_us : undefined;
+          const sentAt = (us ? new Date(Math.floor(us / 1000)).toISOString() : undefined) ?? str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at) ?? (typeof e0 === "object" ? str(e0?.sent_at) ?? str(e0?.created_at) : undefined) ?? (exp ? new Date(exp - MEM_TTL_MS).toISOString() : undefined);
           // nmem 0.10.118's `open` (VERIFIED): `{message, body, reply_to, outgoing}`, where `reply_to` is
           // the handle `reply` takes, the message's own id. Only a different one names a parent.
           const handle = str(b?.reply_to);
           const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? (handle && handle !== id ? handle : undefined);
           // D364: `in_reply_to: null` is Mem's linked shape saying this is an original, not an answer
-          // (nmem 0.10.120+; 0.10.119 never sends the key on an original).
-          const linked = !inReplyTo && ((!!b && typeof b === "object" && b.in_reply_to === null) || (!!b?.message && typeof b.message === "object" && b.message.in_reply_to === null));
+          // (nmem 0.10.120+; 0.10.119 never sends the key on an original). D557: on nmem 0.10.120 or later
+          // every message is in that shape (VERIFIED live 2026-11-25), so one without a parent is an original.
+          const linked = !inReplyTo && (linksNow || (!!b && typeof b === "object" && b.in_reply_to === null) || (!!b?.message && typeof b.message === "object" && b.message.in_reply_to === null) || (typeof e0 === "object" && e0?.in_reply_to === null));
           const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
           const agent = agentOf(who);
           const sp = spaceIn(typeof entry(id) === "object" ? { ...entry(id), ...who } : who, pl);
@@ -1289,10 +1307,23 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
 }
 
 /**
+ * D557: whether an nmem (its `--version` line) asks Mem for the linked shape (0.10.120+, #10278), where
+ * an answer names its question and an original says so. A pre-release counts; an unreadable one doesn't.
+ */
+export function linksReplies(version: string): boolean {
+  const m = /(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if (!m) return false;
+  const [a, b, c] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return a > 0 || b > 10 || (b === 10 && c >= 120);
+}
+
+/**
  * The Agent Context Bridge runs with, or undefined when it is off (D205). `connected`: the context
  * the user's connection in Settings › 伙伴 saved (core's bridge link), which turns Bridge on by
- * itself. DUCTER_BRIDGE=1 forces it on (tests, the fake, a context made by hand) and needs
- * DUCTER_BRIDGE_CONTEXT; DUCTER_BRIDGE=0 forces it off; DUCTER_BRIDGE_CONTEXT overrides the name.
+ * itself. D557: that is the default (D170 (9) met by the live trial of 2026-11-25): the person's own
+ * home connects by itself once Mem is ready (core's bridge-auto, D332), with no flag. DUCTER_BRIDGE=0
+ * is the off switch for the whole home; DUCTER_BRIDGE=1 pins a context made by hand (tests, the fake)
+ * and needs DUCTER_BRIDGE_CONTEXT; DUCTER_BRIDGE_CONTEXT overrides the name.
  * Never a guessed identity or Space: with neither, it is off.
  */
 export function bridgeContextFor(env: Record<string, string | undefined>, connected?: string): string | undefined {

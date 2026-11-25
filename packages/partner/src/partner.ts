@@ -125,8 +125,8 @@ export interface PartnerOptions {
   memory?: MemoryClient; // default: the nmem CLI (DUCTER_MEMORY=off: none); tests inject a fake
   /** D329: how often the outbox tries Mem again (default 5 min; 0: only on a call that works). */
   outboxEveryMs?: number;
-  // Nowledge Bridge requests from other agents (design/bridge.md). Default: DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT,
-  // otherwise off (null). Tests inject a fake.
+  // Nowledge Bridge requests from other agents (design/bridge.md). Default (D557): on with the home's own
+  // connection (D332), DUCTER_BRIDGE=1 + DUCTER_BRIDGE_CONTEXT pins one, DUCTER_BRIDGE=0 is off. Tests inject a fake.
   bridge?: BridgeClient | null;
   /** D494: a helper's own client, by its context (tests inject a fake; default the home's nmem, Mem's identity inbox). */
   helperBridge?: (context: string) => BridgeClient;
@@ -768,8 +768,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (r.ok) core.settings.setMemState("connected");
     else if (r.reason === "not_configured") core.settings.setMemState("missing");
   };
-  // D205: with no client given, Bridge is on when the user connected the persona in Settings ›
-  // 伙伴 (core.bridgeLink) or DUCTER_BRIDGE=1 forces it; it turns on and off without a restart.
+  // D205, D557: with no client given, Bridge is on when the home is connected (by itself once Mem is
+  // ready, D332, or by the switch; core.bridgeLink) or DUCTER_BRIDGE=1 forces it; DUCTER_BRIDGE=0 is
+  // off. It turns on and off without a restart.
   const bridgeAuto = opts.bridge === undefined;
   // D334: and reads every Space the identity is reachable in (core.bridgeLink.places).
   let bridge: BridgeClient | null = bridgeAuto ? bridgeFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.()) : (opts.bridge ?? null);

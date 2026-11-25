@@ -241,6 +241,9 @@ marking anything read.
 **B8 · No pinned JSON schema for `inbox` and `open`** (sender, body, `in_reply_to`, created time). Ducter's
 correlation of an answer to its question (S2) and its dedupe both rest on field names guessed from help. Still
 open from private/31 §7. Please publish a schema version in the output.
+*2026-11-25 (D557, research/226 §4):* the fields are now seen live on nmem 0.10.123 (VERIFIED): `sender`
+`{actor_id, member, agent, agent_id, host?}`, `in_reply_to`, `created_at_us`; Ducter reads them as seen. Still
+no schema version in the output.
 
 **B9 · No generic host for an always-on app.** `--host` accepts only `codex|claude-code`. Ducter's partner is a
 re-cut cache, so binding a native entry to it would go stale. Please state "the Agent mailbox is the supported

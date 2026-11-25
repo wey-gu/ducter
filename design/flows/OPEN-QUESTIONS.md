@@ -27,15 +27,16 @@ J-Q2 to J-Q7, J-Q9 to J-Q13 and J-Q15 are answered (D105–D111, D163, D164, D17
   recorded in Ducter's Log, and no Memory is written.
 - *Default:* accept; revisit for Team (J3).
 
-**J-Q14. The live trial (needs Mem, then you).**
+**J-Q14. The live trial (needs Mem, then you).** *Answered 2026-11-25 (D557): `bun run bridge:live -- --real`
+passed every check (research/226 §4); Bridge is on by default. The text below is the history.*
 - *Status (2026-11-10, research/37 §8, D171):* the persona's mailbox goes in Only me. Binding it was refused by Mem
   (`cloud_session_authority_unavailable`, B15); nothing was kept, enabled or sent.
 - *Steps:* Mem grants this connection authority to act as `ducter`; `nmem agents context select-cloud --name ducter
   --agent-id ducter --space-id <Only me>`; `nmem --agent-context ducter bridge setup`, then `--enable`; an identity
   with its own key for the other side (a dedicated test identity); `bun run bridge:live -- --real --context ducter
   --peer-context <it>`.
-- *Default:* I run the trial when the binding exists. `DUCTER_BRIDGE` stays off by default until it passes
-  (D170 (9) has the criteria).
+- *Default (then):* I run the trial when the binding exists; Bridge on by default once it passes (D170 (9);
+  met, D557).
 
 ## Answered on 2026-11-10 (Bridge, the author's "go go go")
 

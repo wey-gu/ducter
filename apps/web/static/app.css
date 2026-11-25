@@ -451,6 +451,22 @@ a {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
+/* D578: a sheet takes the focus itself as it opens (focus-trap.ts) and draws no ring for it. */
+[aria-modal="true"]:focus,
+[role="alertdialog"]:focus {
+  outline: none;
+}
+/* D578: a task's row is a link (middle-click, ⌘-click open it in a tab); it looks as it did. */
+a.task-link {
+  color: inherit;
+  text-decoration: none;
+  -webkit-touch-callout: none;
+}
+/* A row's ring sits inside it, so a card that clips its corners never cuts the ring. */
+.ocard a.task-link:focus-visible,
+.trow a.task-link:focus-visible {
+  outline-offset: -3px;
+}
 .sr {
   position: absolute;
   width: 1px;

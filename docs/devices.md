@@ -451,6 +451,10 @@ The window is only a view. Ducter is the one doing the work, so:
 - **⌘[** and **⌘]** go back and forward through what you looked at, as in a browser; a two-finger
   swipe does the same. **⌘+**, **⌘−** and **⌘0** make the window's text larger, smaller or normal,
   and Ducter remembers it. Every key is in **Help › Keyboard Shortcuts** (⌘/).
+- **In a browser**, Back closes a sheet or a picture you opened and keeps you where you were, Tab
+  stays inside an open sheet, and a task in On hand opens in a new tab with ⌘-click (Ctrl-click)
+  or a middle-click. **On an iPhone**, swipe from the left edge to go back one step, and tap the
+  top of the screen to go to the top of what you're reading.
 - **Ducter starts again when you log in**, and restarts by itself if it ever crashes.
 
 On a Linux server, Ducter runs as a service: it starts with the server and keeps going while

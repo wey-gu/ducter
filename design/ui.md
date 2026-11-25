@@ -620,6 +620,7 @@ A new control is added to the set (and to this table) before it is used.
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
 | A rule row changed in place (a Keep's 怎么做, D533): its name XS 700 muted with a quiet 改 / Change at its right while it may change, its value lines; open, the control in its slot, then 保存 (primary, first, on the left) and 取消; the open control takes the keys, Enter saves, Escape cancels; an error under the control in the failed ink | `editRow` (`edit.go`) | `EditRow` |
 | A whole number with its unit word after it ([45] 分钟一轮, [10] 个一天; D533): on D536's one-line field, digits only, tabular figures, 88 wide; the caller checks its range and says it in the failed ink | `numberField` (`edit.go`) | `NumberField` |
+| A task's row as a link (D578): the row's own look, an `<a href="#task=…">`, so middle-click, ⌘-click and Copy Link open it in a tab; a plain click opens it in place; On hand's ⌘-click and Shift-click still pick; Space opens it as Enter does | — (the Mac has no tabs) | `TaskLink` (`.task-link`) |
 
 **Deny by default (D519).** The guards cover every view file, never a list: Mac
 `TestSharedControlsEverywhere` walks every `.go` file in `views` but the files that define the set
@@ -772,7 +773,7 @@ yet) and promises said every time (the checkout's) are not this pattern. Names a
 What every hand already knows is a contract (research/233). Every change a person can see is
 checked against this list, and a new window, sheet or key joins it. The guards: `TestStandardMenuBar`
 and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW` (views), the web's
-`d573-conventions.test.ts`.
+`d573-conventions.test.ts`; D578's `TestFileOnMac` (views) and `d578-conventions.test.ts`.
 
 **Mac**
 - The standard menu bar, in order: the app menu (About, Check for Updates, Settings… ⌘,, Services,
@@ -791,12 +792,23 @@ and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW
   window open brings the main window back.
 - ↩ sends, ⇧↩ breaks the line, ⌘↩ sends too; the same in every composer.
 - Messages are selectable and copyable; rows and messages have the right-click clay menu (D421).
+- A file is a file (D578): a file card's right-click has Open, Save a copy and, when the file is on
+  this Mac, 在访达中显示 / Show in Finder (the viewer's bar too); a card, and the viewer's file mark
+  as a proxy icon, drag the file out to Finder or another app (`fileonmac.go`, `TestFileOnMac`).
+- Spelling: not yet. MyGo's text input has no spell checker and its `TextRanges` style only colour
+  and weight (todo).
 - Reduce Motion, Dark Mode switching live, VoiceOver labels on every control (D161).
 
 **Web**
 - One key, one step: Esc closes the top layer only (a sheet, the live view, a viewer, an open menu
   hold the place still); ⌘/Ctrl+K finds; ⌘/Ctrl+↩ sends or starts.
 - The browser's Back with a layer up closes it and keeps the place; otherwise it goes up a level.
+  A sheet, the live view or a viewer is a history entry of its own (D578, `layer-history.ts`), so
+  Back from the tab's first page closes it and stays in Ducter; closed any other way, its entry goes.
+- Every modal sheet and dialog (`aria-modal`) keeps Tab inside it and gives the focus back to what
+  opened it (D578, `focus-trap.ts`, one watcher; never a text field on a touch screen).
+- A task's row is a link (`TaskLink`, D578): middle-click and ⌘-click open it in a tab; On hand's
+  board keeps ⌘-click and Shift-click to pick.
 - External links open in a new tab with noopener; ⌘F is the browser's except in the file viewer.
 - The tab title says what waits: 「(3) Ducter」.
 
@@ -804,6 +816,8 @@ and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW
 - Android Back closes the top layer first, then goes up a level, then leaves (`ducterBack`).
 - iOS: the keyboard never covers the composer; long-press opens the message's menu; the share
   sheet shares. Edge-to-edge insets on Android (`--safe-*`).
+- iOS: one back gesture on the left edge, the page's own (WebKit's history swipe is off, D578); a
+  tap on the status bar moves the view being read to its top (a relay view, `ducterTop`).
 
 
 v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:

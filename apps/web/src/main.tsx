@@ -24,6 +24,9 @@ import { nthKey, walkKey } from "./onhand.tsx";
 import { keysKey } from "./keymap.tsx";
 import { markSeen } from "./seen.ts";
 import { edgeSwipe, navBusy, popMove } from "./nav.ts";
+import { layerHistory } from "./layer-history.ts";
+import { installFocusTrap } from "./focus-trap.ts";
+import { scrollToTop } from "./scroll-top.ts";
 import { wideNow } from "./fold.ts";
 import { applyDensity, applyPaper, densityKey } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
@@ -399,6 +402,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   // D573: the Android app's Back asks the page first: the layer on top closes, else the place goes
   // up; false at the top, where Back leaves the app.
   (globalThis as { ducterBack?: () => boolean }).ducterBack = backOne;
+  // D578: the iPhone app relays a tap on the status bar: the view being read goes to its top.
+  (globalThis as { ducterTop?: () => boolean }).ducterTop = () => scrollToTop();
   // D573: the tab says what waits for the person.
   const title = () => {
     const t = tabTitle(A.needsCount());
@@ -416,13 +421,22 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", partnerKey); // D497: ⌥⌘1–⌥⌘4
   addEventListener("keydown", keysKey);
   addEventListener("keydown", densityKey); // D457
+  installFocusTrap(); // D578: Tab stays in the sheet on top; its opener has the focus back after
   // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a
   // hashchange that follows a pop lands after the move has its old picture.
   // D573: Back with a sheet, a viewer or a menu over the place closes that first and keeps the place
   // (its address is put back), as a phone's Back does.
   let shown = location.hash;
   A.onChange(() => void (shown = location.hash));
+  // D578: a sheet, the live view or a viewer is a history entry of its own, so Back closes it and
+  // stays in Ducter even from the tab's first page; a menu (no entry) is still closed by Back below.
+  const layers = layerHistory(history, () => location.href, () => !!(A.sheet || A.live || A.viewer || A.fileView || A.fileLink));
+  A.onChange(() => layers.sync());
+  layers.sync();
   addEventListener("popstate", (e) => {
+    const k = layers.pop(e.state);
+    if (k === "ours" || k === "stale") return;
+    if (k === "close") return void backOne();
     if (layerUp()) {
       history.pushState(null, "", shown || location.pathname);
       backOne();

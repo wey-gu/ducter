@@ -49,6 +49,10 @@ type fakeHome struct {
 	pastedFiles []string
 	// names are the names the uploads came with.
 	names []string
+	// D578: dir, when set, is the Downloads a Save writes into for real;
+	// revealed are the paths shown in Finder.
+	dir      string
+	revealed []string
 }
 
 func newFakeHome(t *testing.T) *fakeHome {
@@ -121,14 +125,19 @@ func (h *fakeHome) PickFiles(string) ([]string, error)  { return nil, nil }
 func (h *fakeHome) PastedImage() ([]byte, string, bool) { return h.paste, "Pasted.png", h.paste != nil }
 func (h *fakeHome) PastedFiles() []string               { return h.pastedFiles }
 func (h *fakeHome) CopyImage(b []byte) error            { h.copied = append(h.copied, b); return nil }
-func (h *fakeHome) Save(n string, _ []byte) (string, error) {
+func (h *fakeHome) Save(n string, b []byte) (string, error) {
 	h.saved = append(h.saved, n)
+	if h.dir != "" {
+		p := filepath.Join(h.dir, n)
+		return p, os.WriteFile(p, b, 0o600)
+	}
 	return n, nil
 }
 func (h *fakeHome) OpenLocal(n string, _ []byte) error {
 	h.opened = append(h.opened, n)
 	return nil
 }
+func (h *fakeHome) Reveal(p string) { h.revealed = append(h.revealed, p) }
 
 // ---------- realistic pictures ----------
 

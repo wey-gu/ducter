@@ -418,7 +418,8 @@ func fileSaveName(ref protocol.MediaRef) string {
 
 func (a *App) saveFileCopy(ref protocol.MediaRef) {
 	a.fileBytes(ref, func(data []byte) {
-		if _, err := a.Media.Save(fileSaveName(ref), data); err == nil {
+		if p, err := a.Media.Save(fileSaveName(ref), data); err == nil {
+			a.noteOnMac(ref.ID, p) // D578: Show in Finder finds this copy
 			a.toast(a.L.T("media.saved"))
 		}
 	})
@@ -535,9 +536,17 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 	t := a.T
 	ui.Row(c.Key("fv-head")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3+2, t.S3, t.S3, t.S4+2).Background(t.Surface).
 		BorderWidth(0, 0, 1, 0).BorderColor(t.Line).Children(func() {
-		ui.Box(c).Size(42, 42).Radius(t.RadiusSM).Background(t.Sunken).Shrink(0).Children(func() {
+		// D578: the file's mark is its proxy, as a document window's is: it drags the file out.
+		mark := ui.Box(c.Key("fv-mark")).Size(42, 42).Radius(t.RadiusSM).Background(t.Sunken).Shrink(0).Children(func() {
 			ui.Box(c).Size(42, 42).Draw(drawFileKind(t.InkSoft, kind))
 		})
+		if fv.link == "" && fv.ref.ID != "" {
+			ref := fv.ref
+			if fv.office != nil {
+				ref = *fv.office // the file itself, never the PDF it reads as
+			}
+			a.fileDrag(mark, ref)
+		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 			// D567: a double click on the title fills the window, as on a window's own.
 			if uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name).DoubleClicked() {
@@ -761,6 +770,16 @@ func (a *App) fileBarRow(c *ui.Context, fv *fileViewState, kind string) {
 			}
 		}
 		ui.Spacer(c)
+		// D578: the file is on this Mac (a copy saved, the file sent from here): Finder shows it.
+		onMac := fv.ref // an Office file: the file itself if it is here, else its PDF
+		if fv.office != nil && a.fileOnMac(*fv.office) != "" {
+			onMac = *fv.office
+		}
+		if fv.link == "" && a.fileOnMac(onMac) != "" {
+			if a.button(c, a.L.T("file.reveal"), btnText, t.ControlSM, t.Surface) {
+				a.revealFile(onMac)
+			}
+		}
 		if kind != protocol.FileNone && fv.text != "" {
 			if a.button(c, a.L.T("media.copy"), btnText, t.ControlSM, t.Surface) {
 				if fv.cut {

@@ -18,7 +18,7 @@ import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A, type Wear } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
-import { Btn, Chev, Facts, MoreButton } from "./controls.tsx";
+import { Btn, Chev, Facts, MoreButton, TaskLink } from "./controls.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
@@ -952,14 +952,12 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
-  const onClick = (e: MouseEvent) => {
-    if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
-    if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
-    openRow(task.id, room);
-  };
+  // D578: a real link (a Keep's own work in the rail links to the Keep's page, which it opens); on
+  // the board ⌘-click and Shift-click still pick.
+  const kept = room === "rail" ? keepOfTask(task.id) : undefined;
   return (
     <div class={`trow${quiet ? " quiet" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${opened ? " opened" : ""}${arrived ? " arrived" : ""}${unseen ? " unseen" : ""} a-${a}`} data-row={task.id} data-look={A.lookOf(task.card?.persona)}>
-      <button class="tmain" onClick={onClick} title={title(task)} aria-current={opened ? "page" : undefined}>
+      <TaskLink class="tmain" id={task.id} full={room === "full" || room === "rail"} href={kept ? `#keep=${encodeURIComponent(kept)}` : undefined} title={title(task)} current={opened} onPick={(e) => pickClick(e, task.id, room)} onOpen={() => openRow(task.id, room)}>
         {arrived && <span class="pop-bub" aria-hidden="true" />}
         <span class="l1">
           {w && <WaitBubble w={w} />}
@@ -991,11 +989,20 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
         </span>
         {u && !finished(task) && room !== "rail" && <Goal u={u} />}
         {w && (w.check || w.event) && room !== "rail" && <Groove w={w} />}
-      </button>
+      </TaskLink>
       {acts}
     </div>
   );
 });
+
+/** D578: On hand's board takes ⌘-click (or Ctrl-click) and Shift-click on a row to pick (D216), so
+ *  those never open a tab there; anywhere else they are the link's own. */
+export function pickClick(e: MouseEvent, taskId: string, room: Room): boolean {
+  if (room !== "full" || e.button !== 0) return false;
+  if (e.metaKey || e.ctrlKey) return toggle(taskId), true;
+  if (e.shiftKey) return extend(taskId), true;
+  return false;
+}
 
 /** D542: what a row's tap opens. In the rail a Keep's own work (its rounds' task) is the Keep: its
  *  row opens the Keep's page, never the round's task; any other row opens its task, at the whole
@@ -1082,9 +1089,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const stacked = room === "phone" || room === "side";
   // D471 round 2: stacked, the row says its project too (a quiet second line, never ahead of the task).
   const meta = stacked && lensOf(task) !== OTHER && !whereMeta(task).includes(lensOf(task)) ? [lensOf(task), ...whereMeta(task)] : whereMeta(task);
-  const onClick = (e: MouseEvent) => {
-    if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
-    if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
+  const open = () => {
     L.focus = task.id;
     A.go({ name: "task", id: task.id, full: room === "full" });
   };
@@ -1149,7 +1154,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
       data-row={task.id}
       data-look={A.lookOf(task.card?.persona)}
     >
-      <button class="omain" onClick={onClick} title={about}>
+      <TaskLink class="omain" id={task.id} full={room === "full"} title={about} onPick={(e) => pickClick(e, task.id, room)} onOpen={open}>
         <StateMark k={k} frac={next?.frac ?? 0} beat={latestOf(task)?.seq} still={stepQuiet || rest} />
         <span class="otx">
           <span class="o1">
@@ -1236,7 +1241,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         </span>
         {/* D471: the heartbeat has its own column, so every row's time stands on one edge. */}
         {!stacked && <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
-      </button>
+      </TaskLink>
       {/* D471: what to do has its own column, so every row's first button starts at one x. */}
       <span class="ocol">
       {stuck ? (
@@ -1434,7 +1439,7 @@ function HelperSheet({ h, room }: { h: HelperWork; room: Room }) {
       ))}
       {loose.map((x) => (
         <div key={x.taskId} class="ocard hitem">
-          <button class="omain" onClick={() => A.go({ name: "task", id: x.taskId, full: room === "full" })} title={x.title}>
+          <TaskLink class="omain" id={x.taskId} full={room === "full"} title={x.title} onOpen={() => A.go({ name: "task", id: x.taskId, full: room === "full" })}>
             <StateMark k={x.at === "you" || x.at === "ready" ? "needs" : "waiting"} />
             <span class="otx">
               <span class="o1">
@@ -1458,7 +1463,7 @@ function HelperSheet({ h, room }: { h: HelperWork; room: Room }) {
               )}
             </span>
             {!stacked && <span class="obeat still" />}
-          </button>
+          </TaskLink>
           <span class="ocol" />
         </div>
       ))}
@@ -1930,9 +1935,9 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
                 <MemberMark k={k} />
               )}
               {task ? (
-                <button class="gtitle" title={title(task)} onClick={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
+                <TaskLink class="gtitle" id={task.id} full={room === "full"} title={title(task)} onOpen={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
                   {partWords(r)}
-                </button>
+                </TaskLink>
               ) : (
                 <span class="gtitle is-held">{r.kind === "held" ? partWords(r) : ""}</span>
               )}

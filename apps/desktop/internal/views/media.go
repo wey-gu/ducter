@@ -48,6 +48,9 @@ type MediaHands interface {
 	// temporary folder and opens it in its app (D239: a kind Ducter can't
 	// show; never the home's address).
 	OpenLocal(name string, data []byte) error
+	// Reveal shows a file on this Mac selected in a Finder window (D578:
+	// Show in Finder).
+	Reveal(path string)
 }
 
 // attach is one picture in a composer's tray, or of a message on its way;
@@ -61,6 +64,8 @@ type attach struct {
 	progress float64
 	ref      *protocol.MediaRef
 	err      error
+	// path is where the file was read on this Mac (a file sent as it is), or "".
+	path string
 }
 
 func (x *attach) ready() bool  { return x.ref != nil }
@@ -96,6 +101,12 @@ type mediaState struct {
 	// filled stands in for this Mac's local prefs (D567: the kinds read
 	// filling the window) when there are none (tests).
 	filled map[string]bool
+	// D578 (fileonmac.go): where files are on this Mac when there are no
+	// local prefs (tests), the last look at each, and the copies fetched
+	// for a drag out.
+	onMac     map[string]string
+	onMacSeen map[string]onMacSeen
+	copies    map[string]*fileCopy
 }
 
 type taskWait struct {
@@ -167,7 +178,7 @@ func (a *App) AddPictureFiles(tray string, paths []string) {
 		if pictureExt(p) {
 			a.AddPicture(tray, data, filepath.Base(p))
 		} else {
-			a.AddFile(tray, data, filepath.Base(p))
+			a.addFileFrom(tray, data, filepath.Base(p), p)
 		}
 	}
 }
@@ -179,7 +190,11 @@ func (a *App) tooBigLine() string {
 
 // AddFile adds a file that isn't a picture to a tray; it starts going up at
 // once, as it is (D259).
-func (a *App) AddFile(tray string, data []byte, name string) {
+func (a *App) AddFile(tray string, data []byte, name string) { a.addFileFrom(tray, data, name, "") }
+
+// addFileFrom is AddFile for a file read from path on this Mac (D578: once
+// it lands, its card offers Show in Finder for that file).
+func (a *App) addFileFrom(tray string, data []byte, name, path string) {
 	m := a.med()
 	if len(m.trays[tray]) >= protocol.MediaPerMessage {
 		m.note[tray] = a.L.T("media.tooMany")
@@ -193,7 +208,7 @@ func (a *App) AddFile(tray string, data []byte, name string) {
 		name = a.L.T("media.file")
 	}
 	m.n++
-	x := &attach{key: fmt.Sprintf("a%d", m.n), name: name, file: data}
+	x := &attach{key: fmt.Sprintf("a%d", m.n), name: name, file: data, path: path}
 	m.trays[tray] = append(m.trays[tray], x)
 	delete(m.note, tray)
 	a.upload(x)
@@ -273,6 +288,9 @@ func (a *App) upload(x *attach) {
 			return
 		}
 		x.ref, x.progress = &ref, 1
+		if x.file != nil && x.path != "" {
+			a.noteOnMac(ref.ID, x.path) // D578: the same bytes, so the same file
+		}
 		a.flushMediaSends()
 	})
 }

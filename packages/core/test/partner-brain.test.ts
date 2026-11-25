@@ -181,3 +181,16 @@ test("[partners] says what this partner thinks with and whose setting it is, and
   const dobby = renderPartners({ me: "p3", list }, { harness: "codex", model: "gpt-6.2-astra" });
   expect(dobby).toContain("(the same as Ducter's)");
 });
+
+test("D571: [partners] says how the user talks to another one, the chat app's way when the words came from one", () => {
+  const list = [
+    { id: "default", name: "Ducter", asks: 0 },
+    { id: "p4", name: "小玛", asks: 0 },
+  ];
+  const app = renderPartners({ me: "default", list });
+  expect(app).toContain("a tap on it in their list of partners");
+  expect(app).not.toContain("This message came from");
+  const slack = renderPartners({ me: "default", list }, undefined, "slack");
+  expect(slack).toContain('This message came from Slack: there the user talks to one by starting a message with its name ("小玛，…"');
+  expect(slack).toContain("do=pass their words; it says hello right where they wrote, in this same chat or thread.");
+});

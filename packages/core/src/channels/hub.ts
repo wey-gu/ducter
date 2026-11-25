@@ -33,7 +33,7 @@ import { cutPoints } from "./format.ts";
 import { createOutbox, type Outbox } from "./outbox.ts";
 import { ChannelError, type BotInfo, type Channel, type InMessage, type InTap, type OutButton, type Trouble } from "./port.ts";
 import { createSlack, faceUrl, isSlackAppToken, isSlackBotToken, slackAppLink, slackManifest } from "./slack.ts";
-import { openChannelStore, type ChannelRec, type ChannelStore } from "./store.ts";
+import { openChannelStore, THREADS_KEPT, type ChannelRec, type ChannelStore, type ChannelThread } from "./store.ts";
 import { createTelegram, isTelegramToken } from "./telegram.ts";
 import { createWechat, wechatLogin, WECHAT_API, type WechatLogin } from "./wechat.ts";
 import { qrRows } from "../devices.ts";
@@ -254,8 +254,9 @@ export function createChannels(deps: ChannelDeps): Channels {
   /** Another partner's name, when the one thread carries more than one (the default is the bot's own). */
   const otherName = (id: string) => (many() && id !== DEFAULT_PARTNER ? partnerList().find((p) => p.id === id)?.name : undefined);
   /** A partner's words as they read in the one thread: another partner's lead with its name. */
-  const labelled = (kind: ChannelKind, id: string, text: string): string => {
-    holdThread(kind, id);
+  const labelled = (kind: ChannelKind, id: string, text: string, hold = true): string => {
+    // D571: words in a channel thread hold that thread only, never the DM's.
+    if (hold) holdThread(kind, id);
     const name = shows(kind) ? undefined : otherName(id);
     return name ? fill(w().as, { name, text }) : text;
   };
@@ -267,7 +268,17 @@ export function createChannels(deps: ChannelDeps): Channels {
     store.patch(kind, { hinted: [...hinted, id] });
     return `\n\n${fill(w().hint, { name })}`;
   };
-  const voiced = (kind: ChannelKind, id: string, text: string): string => labelled(kind, id, text) + hintOf(kind, id);
+  const voiced = (kind: ChannelKind, id: string, text: string, hold = true): string => labelled(kind, id, text, hold) + hintOf(kind, id);
+
+  // ---------- D571: the channel threads a partner answers in ----------
+
+  /** The thread, when a partner answers in it: the person's words there are for it, no @ needed. */
+  const threadOf = (kind: ChannelKind, chat: string, ts: string): ChannelThread | undefined => store.get(kind)?.threads?.find((t) => t.chat === chat && t.ts === ts);
+  /** Remembers the thread (newest last), with the partner it is with now. */
+  const keepThread = (kind: ChannelKind, chat: string, ts: string, withId: string) => {
+    const rest = (store.get(kind)?.threads ?? []).filter((t) => !(t.chat === chat && t.ts === ts));
+    store.patch(kind, { threads: [...rest, { chat, ts, with: withId, at: new Date(clock.now()).toISOString() }].slice(-THREADS_KEPT) });
+  };
 
   // ---------- what is up ----------
 
@@ -684,7 +695,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     const acc = linkedOf(r.kind);
     if (!acc) return;
     const at = r.chat ? { chat: r.chat, ...(r.thread ? { replyTo: r.thread } : {}) } : {};
-    const run = () => void say(r.kind, voiced(r.kind, who, b.text), { seq, who, ...at });
+    const run = () => void say(r.kind, voiced(r.kind, who, b.text, !r.thread), { seq, who, ...at });
     if (r.mode === "own") own(run);
     else run();
     const job: Job = { kind: r.kind, who, chat: r.chat ?? acc.chat, ...(r.thread ? { thread: r.thread } : {}), title: b.text };
@@ -729,7 +740,10 @@ export function createChannels(deps: ChannelDeps): Channels {
             const t = lastUser;
             if (t?.via && clock.now() - t.at < TURN_MS) {
               users.set(e.seq, { seq: e.seq, via: t.via, at: clock.now() });
-              withOf.set(t.via, { id: whoseOf(e.stream), at: clock.now() });
+              // D571: passed during a turn in a channel thread: it answers in that thread, which is with it now.
+              const at = mentionOf.get(t.seq);
+              if (at) mentionOf.set(e.seq, at), keepThread(t.via, at.chat, at.thread, whoseOf(e.stream));
+              else withOf.set(t.via, { id: whoseOf(e.stream), at: clock.now() });
             }
             return;
           }
@@ -754,7 +768,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           // A late answer quotes the message it answers, so it never reads as about the last one.
           const quoted = r.mode === "own" && b.replyTo !== undefined ? svcOf.get(b.replyTo) : undefined;
           const run = () => {
-            if (b.text.trim()) void say(r.kind, voiced(r.kind, whoseOf(e.stream), b.text), { seq: e.seq, who: whoseOf(e.stream), ...(r.chat ? { chat: r.chat, ...(r.thread ? { replyTo: r.thread } : {}) } : quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
+            if (b.text.trim()) void say(r.kind, voiced(r.kind, whoseOf(e.stream), b.text, !r.thread), { seq: e.seq, who: whoseOf(e.stream), ...(r.chat ? { chat: r.chat, ...(r.thread ? { replyTo: r.thread } : {}) } : quoted && quoted.kind === r.kind ? { replyTo: quoted.id } : {}) });
             sendMedia(r.kind, b.media);
           };
           if (r.mode === "own") own(run);
@@ -814,9 +828,12 @@ export function createChannels(deps: ChannelDeps): Channels {
     const rec = store.get(kind);
     if (!rec) return;
     // Groups and channels are never the person's window: silence. D531: an @-mention of the bot
-    // in a Slack channel it was added to is, for the linked person only.
-    if (!m.direct && !m.mention) return note(kind, "ignored: not a direct message");
+    // in a Slack channel it was added to is, for the linked person only. D571: so is a reply in a
+    // thread a partner answers in, without an @ (a teammate's there: silence, no stranger line).
+    const thread = !m.direct && !m.mention && m.replyTo ? threadOf(kind, m.chat, m.replyTo) : undefined;
+    if (!m.direct && !m.mention && !thread) return note(kind, m.replyTo && !m.direct ? "ignored: a thread it doesn't answer in" : "ignored: not a direct message");
     const acc = rec.linked;
+    if (thread && (!acc || m.from.id !== acc.id)) return note(kind, "ignored: a thread reply, not from the linked person");
     if (m.mention && (!acc || m.from.id !== acc.id)) {
       // Anyone else's mention gets nothing, in the channel or anywhere (the bot is one person's).
       note(kind, acc ? "ignored: a mention, not from the linked person" : "ignored: a mention before an account is linked");
@@ -833,7 +850,8 @@ export function createChannels(deps: ChannelDeps): Channels {
       return;
     }
     if (m.from.id !== acc.id) return note(kind, "ignored: not the linked person"), stranger(kind);
-    if (!m.mention && m.chat !== acc.chat) store.patch(kind, { linked: { ...acc, chat: m.chat } });
+    const channel = !!m.mention || !!thread;
+    if (!channel && m.chat !== acc.chat) store.patch(kind, { linked: { ...acc, chat: m.chat } });
     // D301: the person's words open the window again.
     if (live.get(kind)?.ch.caps.replyWindowMs) {
       store.patch(kind, { heardAt: new Date(clock.now()).toISOString(), sentSince: 0 });
@@ -863,12 +881,18 @@ export function createChannels(deps: ChannelDeps): Channels {
       }
     }
     if (!text && !media.length) return;
-    const replySeq = m.replyTo ? seqOf.get(`${kind}:${m.chat}:${m.replyTo}`) : undefined;
+    // D571: in a channel thread the words carry on the thread, not a reply to its first message.
+    const replySeq = m.replyTo && !channel ? seqOf.get(`${kind}:${m.chat}:${m.replyTo}`) : undefined;
+    const threadTs = channel ? (m.replyTo ?? m.id) : undefined;
+    const known = threadTs ? (thread ?? threadOf(kind, m.chat, threadTs)) : undefined;
     const reply: ReplyWant | undefined = replySeq !== undefined ? { seq: replySeq } : undefined;
     // D516: which partner the words are for: the one whose message they reply to, else the one
     // named at their start, else the one the person is talking with here, else the default.
     let to = DEFAULT_PARTNER;
-    if (many()) {
+    if (many() && threadTs) {
+      // D571: a channel thread is its own: a name at the start, else the partner it is with, else the default.
+      to = (m.forwarded ? undefined : addressed(text)) ?? (known && partnerList().some((p) => p.id === known.with) ? known.with : DEFAULT_PARTNER);
+    } else if (many()) {
       const replied = replySeq !== undefined ? log.read({ fromSeq: replySeq, limit: 1 })[0] : undefined;
       const cur = withOf.get(kind);
       to = (replied?.seq === replySeq && replied ? whoseOf(replied.stream) : undefined) ?? (m.forwarded ? undefined : addressed(text)) ?? (cur && clock.now() - cur.at < TURN_MS ? cur.id : DEFAULT_PARTNER);
@@ -880,8 +904,9 @@ export function createChannels(deps: ChannelDeps): Channels {
       seqOf.set(clientId, e.seq);
       svcOf.set(e.seq, { kind, chat: m.chat, id: m.id });
       // D531: its answer goes in a thread under the mention (or in the thread it was made in).
-      if (m.mention) mentionOf.set(e.seq, { chat: m.chat, thread: m.replyTo ?? m.id });
-      note(kind, m.mention ? "taken: a mention from the linked person" : "taken: a message from the linked person");
+      // D571: and the thread is one it answers in from now on: the person's replies there need no @.
+      if (threadTs) mentionOf.set(e.seq, { chat: m.chat, thread: threadTs }), keepThread(kind, m.chat, threadTs, to);
+      note(kind, m.mention ? "taken: a mention from the linked person" : thread ? "taken: a thread reply from the linked person" : "taken: a message from the linked person");
     } finally {
       fromChat--;
     }

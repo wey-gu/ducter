@@ -24,7 +24,9 @@ export const faceUrl = (look: string) => `${FACE_BASE}/${/^[a-z]+$/.test(look) ?
 /** D531: the scope that lets a message carry its own name and picture. */
 export const SLACK_CUSTOMIZE = "chat:write.customize";
 /** D531: what the current manifest adds to an older app; one missing means a reinstall. */
-export const SLACK_NEWER_SCOPES = [SLACK_CUSTOMIZE, "app_mentions:read"];
+export const SLACK_NEWER_SCOPES = [SLACK_CUSTOMIZE, "app_mentions:read", "channels:history", "groups:history"];
+/** D571: what a thread it answers in needs: the channel's messages (public and private), read only there. */
+export const SLACK_THREAD_SCOPES = ["channels:history", "groups:history"];
 /** D531: opens the app's messages in Slack (the desktop app when there is one, else the browser). */
 export const slackAppLink = (appId: string, teamId?: string) => `https://slack.com/app_redirect?app=${encodeURIComponent(appId)}${teamId ? `&team=${encodeURIComponent(teamId)}` : ""}`;
 
@@ -37,7 +39,10 @@ export const isSlackAppToken = (t: string) => /^xapp-[A-Za-z0-9-]{20,}$/.test(t.
  * with the partner needs (no channel reads, no user scopes). D531: chat:write.customize, so each
  * message carries its partner's own name and face; Socket Mode on and token rotation off, so the
  * person never has to touch either (rotation can't be turned off once on). app_mention with
- * app_mentions:read, so the person can @ the partner in a channel it was added to.
+ * app_mentions:read, so the person can @ the partner in a channel it was added to. D571:
+ * message.channels / message.groups with channels:history / groups:history, so the person's replies
+ * in a thread the partner answered in reach it without an @ (Slack sends a channel's messages only
+ * with these; the hub takes only the linked person's, only in such a thread).
  */
 export function slackManifest(name: string): string {
   const n = name.trim().slice(0, 35) || "Ducter";
@@ -48,9 +53,9 @@ export function slackManifest(name: string): string {
         app_home: { home_tab_enabled: false, messages_tab_enabled: true, messages_tab_read_only_enabled: false },
         bot_user: { display_name: n, always_online: true },
       },
-      oauth_config: { scopes: { bot: ["app_mentions:read", "chat:write", SLACK_CUSTOMIZE, "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"] } },
+      oauth_config: { scopes: { bot: ["app_mentions:read", "channels:history", "chat:write", SLACK_CUSTOMIZE, "groups:history", "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"] } },
       settings: {
-        event_subscriptions: { bot_events: ["app_mention", "message.im"] },
+        event_subscriptions: { bot_events: ["app_mention", "message.channels", "message.groups", "message.im"] },
         interactivity: { is_enabled: true },
         org_deploy_enabled: false,
         socket_mode_enabled: true,
@@ -182,12 +187,19 @@ export function createSlack(o: SlackOpts): Channel {
     const mention = ev.type === "app_mention";
     const where = mention ? "a mention" : `a message (${ev.channel_type ?? "?"})`;
     if (ev.type !== "message" && !mention) return note(`ignored: event ${ev.type}`);
+    // D571: a channel's own messages come only for threads. Its top-level talk (and its edits) is
+    // none of the partner's and is dropped without a line: a busy channel would fill the journal.
+    const shared = !mention && (ev.channel_type === "channel" || ev.channel_type === "group");
+    const threaded = !!ev.thread_ts && ev.thread_ts !== ev.ts;
+    if (shared && !threaded) return;
     if (ev.bot_id) return note(`ignored: ${where} from a bot`);
     if (ev.subtype && ev.subtype !== "file_share" && ev.subtype !== "thread_broadcast") return note(`ignored: ${where} of subtype ${ev.subtype}`);
     if (!ev.user || !ev.channel || !ev.ts || ev.user === me?.id) return note(`ignored: ${where} with no sender, or its own`);
     // A mention in the DM also comes as message.im: the DM's own copy is the one taken.
     if (mention && ev.channel.startsWith("D")) return note("ignored: a mention in a DM (taken as the DM message)");
-    note(`received: ${where}`);
+    // D571: a thread message that @-mentions the bot comes as app_mention too: that copy is the one taken.
+    if (shared && me && (ev.text ?? "").includes(`<@${me.id}`)) return note(`ignored: ${where} in a thread with an @ (taken as the mention)`);
+    note(`received: ${where}${shared ? " in a thread" : ""}`);
     const base: Omit<InMessage, "id" | "text"> = {
       chat: ev.channel,
       from: { id: ev.user, name: names.get(ev.user) ?? ev.user },

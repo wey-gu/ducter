@@ -36,7 +36,22 @@ export interface ChannelRec {
   sentSince?: number;
   /** D516: the other partners already told how to talk to them in this chat app (once each). */
   hinted?: string[];
+  /**
+   * D571, Slack: the channel threads a partner answers in (an @-mention started or joined them):
+   * the person's words there are for it without an @. `with` is the partner the thread is with now.
+   * The newest THREADS_KEPT.
+   */
+  threads?: ChannelThread[];
 }
+
+export interface ChannelThread {
+  chat: string;
+  ts: string;
+  with: string;
+  at: string;
+}
+/** D571: how many channel threads a chat app remembers (the oldest drop off). */
+export const THREADS_KEPT = 200;
 
 interface File {
   telegram?: ChannelRec;

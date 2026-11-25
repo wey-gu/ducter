@@ -22,7 +22,7 @@ export function registerPartnerTool(mcp: CoreMcpHub, deps: { log: LogStore; part
   const description =
     "The user's partners (the [partners] line lists the others and what each looks after). " +
     `do=make: the user asks for another partner ("再给我做一个管家里事的伙伴"): name (theirs, or a short warm one you pick when they gave none) and about (what it looks after, their words); at most ${PARTNERS_MAX} partners. ` +
-    "do=pass: the user's words are for another partner (they name it, or ask you to tell it): to = its name, text = what they want, in their words. It lands in that partner's own conversation and it answers there; nothing else of yours goes along. When a request only falls in another partner's care, offer to pass it in one short line instead. " +
+    "do=pass: the user's words are for another partner (they name it, ask you to tell it, or to switch to it): to = its name, text = what they want, in their words. It lands in that partner's own conversation and it answers there; nothing else of yours goes along. When a request only falls in another partner's care, offer to pass it in one short line instead. " +
     "do=set: rename one (to, name) or change what it looks after (to, about), on the user's word. After any of these say one short line; never claim the other partner's answer.";
   mcp.register(
     "partner",
@@ -65,7 +65,7 @@ export function registerPartnerTool(mcp: CoreMcpHub, deps: { log: LogStore; part
         const text = String(a.text ?? "").trim();
         if (!text) return { ok: false, error: "Nothing to pass: text is the user's words for it." };
         log.append({ stream: channelOf(target.id), origin: "user", kind: "user_msg", persona: target.id, body: { text: [...text].slice(0, PASS_MAX).join(""), passed: { from: me } } });
-        return { ok: true, passed: target.name, next: `It is in ${target.name}'s own conversation; ${target.name} answers there (the user sees the dot on its stone). Say so in one short line, nothing more; you won't see its answer.` };
+        return { ok: true, passed: target.name, next: `It is in ${target.name}'s own conversation; ${target.name} answers there, and right here when they wrote from a chat app (the user sees the dot on its stone). Say so in one short line, nothing more; you won't see its answer.` };
       }
       return { ok: false, error: "do is make, pass or set." };
     },

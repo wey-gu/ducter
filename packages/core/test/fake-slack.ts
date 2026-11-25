@@ -135,8 +135,11 @@ export function fakeSlack(o: { botToken?: string; appToken?: string; scopes?: st
       envelope("events_api", { event: { type: "app_mention", channel, user, text: `<@UBOT> ${text}`, ts: t, event_ts: t, ...extra } });
       return t;
     },
-    inChannel(user: string, text: string) {
-      envelope("events_api", { event: { type: "message", channel: "C1", channel_type: "channel", user, text, ts: nextTs() } });
+    /** A message in a channel the bot is in (message.channels); D571: with thread_ts, a reply in that thread. */
+    inChannel(user: string, text: string, extra: Record<string, unknown> = {}, channel = "C1") {
+      const t = nextTs();
+      envelope("events_api", { event: { type: "message", channel, channel_type: "channel", user, text, ts: t, ...extra } });
+      return t;
     },
     taps(user: string, messageTs: string, value: string) {
       return envelope("interactive", { type: "block_actions", user: { id: user }, channel: { id: `D${user}` }, container: { message_ts: messageTs }, trigger_id: `tr${env}`, actions: [{ action_id: "ducter_0", value }] });

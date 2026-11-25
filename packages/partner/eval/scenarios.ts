@@ -116,7 +116,8 @@ export type Step =
   // "about" = the user typed it in that app's sheet.
   // refs (D534): what the user picked with @ or / in the composer: a seeded task by key, or one of
   // their skills or Ducter's actions by name (the home resolves them as mentions.ts does).
-  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[] }
+  // via (D571): the words came from that chat app (the [partners] line then says how to talk to another there).
+  | { user: string; images?: string[]; replyTo?: string; app?: "ask" | "about"; refs?: EvalRef[]; via?: "telegram" | "slack" | "wechat" }
   // D236: several messages sent at once (e.g. two replies to two things), before the partner answers.
   | { users: UserSay[] }
   // told (D340): what the user typed straight into that task's own box before this report, oldest first.

@@ -115,16 +115,18 @@ test("the manifest makes a bot user with DM-only scopes and Socket Mode, never a
   expect(m.settings.socket_mode_enabled).toBe(true);
   expect(m.settings.interactivity.is_enabled).toBe(true);
   expect(m.oauth_config.scopes.user).toBeUndefined();
-  expect(m.oauth_config.scopes.bot).not.toContain("channels:history");
   // D531: each partner's own name and face; nothing for the person to turn on or off.
   expect(m.oauth_config.scopes.bot).toContain("chat:write.customize");
   expect(m.settings.token_rotation_enabled).toBe(false);
   // D531: the person can @ the partner in a channel it was added to.
   expect(m.oauth_config.scopes.bot).toContain("app_mentions:read");
-  expect(m.settings.event_subscriptions.bot_events).toEqual(["app_mention", "message.im"]);
+  // D571: and its replies in a thread the partner answered in reach it without an @.
+  expect(m.oauth_config.scopes.bot).toContain("channels:history");
+  expect(m.oauth_config.scopes.bot).toContain("groups:history");
+  expect(m.settings.event_subscriptions.bot_events).toEqual(["app_mention", "message.channels", "message.groups", "message.im"]);
 });
 
-const SCOPES = ["app_mentions:read", "chat:write", "chat:write.customize", "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"];
+const SCOPES = ["app_mentions:read", "channels:history", "groups:history", "chat:write", "chat:write.customize", "im:history", "im:read", "im:write", "users:read", "files:read", "files:write"];
 const PARTNERS = [
   { id: "default", name: "Ducter" },
   { id: "home", name: "小家" },
@@ -222,4 +224,81 @@ test("D531: an app without app_mentions:read is asked to reinstall, even with it
   const { hub, sl } = rig;
   expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
   expect(slackView()).toMatchObject({ state: "unlinked", reinstall: true });
+});
+
+// D571: live on hel, a reply in the thread Ducter answered in never reached it (no @, no event).
+test("D571: once it answered in a channel thread, the linked person's replies there reach it without an @", async () => {
+  rig = channelRig({ zh: false, slackScopes: SCOPES });
+  const { hub, sl } = rig;
+  await rig.linked("slack");
+  const t = sl.mentions("UWEY", "C0TIME", "hi");
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  rig.say("Hi, I'm Ducter.", u.seq);
+  await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "Hi, I'm Ducter."));
+  // In the thread, no @: the person's words, answered in that thread.
+  const r = sl.inChannel("UWEY", "can you switch roles?", { thread_ts: t }, "C0TIME");
+  const f = await waitFor(() => rig!.userMsgs()[1]);
+  expect(f).toMatchObject({ text: "can you switch roles?", via: "slack", clientId: `slack:C0TIME:${r}` });
+  expect(f.reply).toBeUndefined();
+  rig.say("Start with “Mia,” to talk to Mia.", f.seq);
+  expect(await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).startsWith("Start with")))).toMatchObject({ channel: "C0TIME", thread_ts: t });
+  // The same reply with an @ comes twice from Slack (app_mention and message.channels): taken once.
+  const n = rig.userMsgs().length;
+  const both = sl.mentions("UWEY", "C0TIME", "and once more", { thread_ts: t });
+  sl.inChannel("UWEY", "<@UBOT> and once more", { thread_ts: t, ts: both }, "C0TIME");
+  await waitFor(() => rig!.userMsgs().length > n);
+  // Not for it: a teammate in that thread (no stranger line either), the person's own top-level talk,
+  // and a thread it never answered in.
+  sl.inChannel("UTEAMMATE", "nice", { thread_ts: t }, "C0TIME");
+  sl.inChannel("UWEY", "lunch?", {}, "C0TIME");
+  sl.inChannel("UWEY", "in someone else's thread", { thread_ts: "1700000000.000001" }, "C0TIME");
+  await new Promise((res) => setTimeout(res, 150));
+  await hub.idle();
+  expect(rig.userMsgs().length).toBe(n + 1);
+  expect(slackView().strangerAt).toBeUndefined();
+  // The DM stays the person's window.
+  sl.says("UWEY", "here?");
+  const d = await waitFor(() => rig!.userMsgs()[n + 1]);
+  rig.say("Here.", d.seq);
+  expect(await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "Here."))).toMatchObject({ channel: "DUWEY" });
+});
+
+test("D571: an app without channels:history is asked to reinstall (its thread replies can't reach it)", async () => {
+  rig = channelRig({ slackScopes: SCOPES.filter((x) => x !== "channels:history") });
+  const { hub, sl } = rig;
+  expect((await hub.connect("slack", { botToken: sl.botToken, appToken: sl.appToken })).ok).toBe(true);
+  expect(slackView()).toMatchObject({ state: "unlinked", reinstall: true });
+});
+
+test("D571: switching to another partner in a thread: passed on, it says hello in that thread, and the thread is with it", async () => {
+  const MANY = [
+    { id: "default", name: "Ducter" },
+    { id: "p4", name: "小玛" },
+  ];
+  rig = channelRig({ slackScopes: SCOPES, partners: MANY, looks: { default: "sand", p4: "sage" } });
+  const { sl, log } = rig;
+  await rig.linked("slack");
+  const t = sl.mentions("UWEY", "C0TIME", "hi");
+  const u = await waitFor(() => rig!.userMsgs()[0]);
+  rig.say("嗨，我是 Ducter。", u.seq);
+  await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "嗨，我是 Ducter。"));
+  // The person asks, in the thread, no @, to switch. The default partner judges it and passes it on (D486).
+  sl.inChannel("UWEY", "切换到小玛", { thread_ts: t }, "C0TIME");
+  const ask = await waitFor(() => rig!.userMsgs()[1]);
+  const passed = log.append({ stream: "channel:p4", origin: "user", kind: "user_msg", persona: "p4", body: { text: "切换到小玛", passed: { from: "default" } } });
+  rig.say("好，小玛来了。", ask.seq);
+  log.append({ stream: "channel:p4", origin: "partner", kind: "ai_msg", persona: "p4", body: { text: "嗨，我是小玛。想聊增长还是投放？", replyTo: passed.seq } });
+  const hello = await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).includes("我是小玛")));
+  // In that thread, under 小玛's own name and face.
+  expect(hello).toMatchObject({ channel: "C0TIME", thread_ts: t, username: "小玛", icon_url: faceUrl("sage") });
+  // The person's next words in that thread are 小玛's, with no name in front.
+  sl.inChannel("UWEY", "下周的投放怎么排？", { thread_ts: t }, "C0TIME");
+  const next = await waitFor(() => log.read({ stream: "channel:p4", kinds: ["user_msg"], limit: 5 }).find((e) => (e.body as { text: string }).text === "下周的投放怎么排？"));
+  expect((next.body as { via?: string }).via).toBe("slack");
+  // The DM is still with the default: a thread never takes it.
+  sl.says("UWEY", "DM 里呢？");
+  await waitFor(() => rig!.userMsgs().find((m) => m.text === "DM 里呢？"));
+  // And "Ducter，…" in the thread brings it back there.
+  sl.inChannel("UWEY", "Ducter，你回来", { thread_ts: t }, "C0TIME");
+  await waitFor(() => rig!.userMsgs().find((m) => m.text === "Ducter，你回来"));
 });

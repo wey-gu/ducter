@@ -1201,6 +1201,7 @@ function describeStep(st: Step): string {
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
   if ("user" in st && st.app === "ask") return `the user tapped a button in their own app (the first one listed in [apps]), and the app asked the partner through ducter.ask: ${st.user}`;
   if ("user" in st && st.app === "about") return `user types in the sheet of their app (the first one listed in [apps]), about it: ${st.user}`;
+  if ("user" in st && st.via) return `user says, in ${{ telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[st.via]} (a chat app the partner answers in): ${st.user}`;
   if ("user" in st && st.refs?.length) return `user says: ${st.user} (picked in the composer: ${st.refs.map((r) => ("task" in r ? `@ the task "${r.task}"` : "skill" in r ? `/ their skill ${r.skill}` : `/ Ducter's action ${r.action}`)).join(", ")})`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
@@ -1257,7 +1258,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       if ("skill" in r) return { kind: "skill", id: r.skill, label: r.skill, ...(r.about ? { about: r.about } : {}) };
       return { kind: "action", id: r.action, label: r.label };
     });
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}) });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}), ...(st.via ? { via: st.via } : {}) });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {

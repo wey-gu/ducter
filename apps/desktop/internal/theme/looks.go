@@ -9,11 +9,11 @@ package theme
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"math"
+	"strings"
 	"sync/atomic"
 
 	"github.com/egoist/mygo/ui"
@@ -31,12 +31,14 @@ var LookClay = map[string]ClayTint{
 	"sky":     {175, 0.85},
 	"plum":    {255, 0.7},
 	"apricot": {-28, 1},
+	"butter":  {22, 1}, // D565: the bun's suggested clay
 }
 
 // LookTone is c in a look's clay (D526): the same hue turn and saturation
 // the look gives the art, so a partner's small mark is the colour of its
 // figure. The default's sand leaves c as it is.
 func LookTone(c ui.Color, look string) ui.Color {
+	_, look = splitWear(look) // D565: a wear's colour is its look's
 	if plain(look) {
 		return c
 	}
@@ -68,17 +70,22 @@ func plain(look string) bool {
 	return !ok || (t.Hue == 0 && t.Sat == 1)
 }
 
-// FaceAs is Face in a given partner's clay (an On hand mark, a switch).
+// FaceAs is Face in a given partner's wear: its figure in its clay (an
+// On hand mark, a switch; D565).
 func FaceAs(look string, p Presence, px float32) *ui.Bitmap {
 	size := 128
 	if px > 128 {
 		size = 256
 	}
-	return loadAs(fmt.Sprintf("art/crop/ducter_%s@%d.png", p, size), look)
+	fig, _ := splitWear(look)
+	return loadAs(facePath(fig, p, size), look)
 }
 
-// loadAs loads an art file in a look, recoloured once and kept.
-func loadAs(name, look string) *ui.Bitmap {
+// loadAs loads an art file in a wear's look, recoloured once and kept. A
+// figure whose part the look never tints (the sprout's leaves) has that
+// part laid back over in its own colour (name_leaf.png, D565).
+func loadAs(name, wear string) *ui.Bitmap {
+	fig, look := splitWear(wear)
 	if plain(look) {
 		return load(name)
 	}
@@ -94,7 +101,11 @@ func loadAs(name, look string) *ui.Bitmap {
 	if err == nil {
 		var img image.Image
 		if img, err = png.Decode(bytes.NewReader(data)); err == nil {
-			b = ui.NewBitmap(recolour(img, LookClay[look]))
+			out := recolour(img, LookClay[look])
+			if figureLeaves[fig] {
+				overLeaves(out, strings.TrimSuffix(name, ".png"))
+			}
+			b = ui.NewBitmap(out)
 		}
 	}
 	if err != nil || b == nil {
@@ -104,6 +115,27 @@ func loadAs(name, look string) *ui.Bitmap {
 	artCache[key] = b
 	artMu.Unlock()
 	return b
+}
+
+// overLeaves lays a figure's untinted part (base_leaf@N.png beside
+// base@N.png) back over its recoloured art, where there is one.
+func overLeaves(out *image.NRGBA, base string) {
+	at := strings.LastIndexByte(base, '@')
+	if at < 0 {
+		return
+	}
+	data, err := artFS.ReadFile(base[:at] + "_leaf" + base[at:] + ".png")
+	if err != nil {
+		data, err = artFS.ReadFile(strings.Replace(base[:at], "_idle_closed", "_idle", 1) + "_leaf" + base[at:] + ".png")
+	}
+	if err != nil {
+		return
+	}
+	leaf, err := png.Decode(bytes.NewReader(data))
+	if err != nil || leaf.Bounds() != out.Bounds() {
+		return
+	}
+	draw.Draw(out, out.Bounds(), leaf, out.Bounds().Min, draw.Over)
 }
 
 // clayMatrix is hue-rotate(h) then saturate(s), as the Filter Effects spec

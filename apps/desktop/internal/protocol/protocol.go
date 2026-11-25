@@ -1772,7 +1772,9 @@ type PartnerInfo struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Look string `json:"look"`
-	Asks int    `json:"asks"`
+	// Figure is its shape (D565): "" or "pebble" is the pebble.
+	Figure string `json:"figure,omitempty"`
+	Asks   int    `json:"asks"`
 	// About is what it looks after, in the person's words (D486); "" when not said.
 	About string `json:"about,omitempty"`
 	// Last is the last thing said in its conversation, for the list of
@@ -1795,7 +1797,14 @@ type PartnerLast struct {
 const PartnerAboutMax = 120
 
 // PartnerLooks are the looks, in the order the pickers show them.
-var PartnerLooks = []string{"sand", "sage", "sky", "plum", "apricot"}
+var PartnerLooks = []string{"sand", "sage", "sky", "plum", "apricot", "butter"}
+
+// PartnerFigures are the figures (D565), in the order the pickers show
+// them: the pebble first, the default's.
+var PartnerFigures = []string{"pebble", "bun", "sprout", "cloud", "cube", "bean"}
+
+// FigureLook is each figure's suggested clay (FIGURE_LOOK on the web).
+var FigureLook = map[string]string{"pebble": "sand", "bun": "butter", "sprout": "apricot", "cloud": "sky", "cube": "plum", "bean": "sage"}
 
 // DefaultPartner is the partner every home starts with.
 const DefaultPartner = "default"
@@ -1810,6 +1819,7 @@ type PartnerAdd struct {
 	T        string `json:"t"` // "partner_add"
 	Name     string `json:"name"`
 	Look     string `json:"look,omitempty"`
+	Figure   string `json:"figure,omitempty"` // D565
 	About    string `json:"about,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
 }
@@ -1817,11 +1827,12 @@ type PartnerAdd struct {
 // PartnerSet renames a partner, changes its look or what it looks after
 // (D309, D486). About is a pointer so "" clears it.
 type PartnerSet struct {
-	T     string  `json:"t"` // "partner_set"
-	ID    string  `json:"id"`
-	Name  string  `json:"name,omitempty"`
-	Look  string  `json:"look,omitempty"`
-	About *string `json:"about,omitempty"`
+	T      string  `json:"t"` // "partner_set"
+	ID     string  `json:"id"`
+	Name   string  `json:"name,omitempty"`
+	Look   string  `json:"look,omitempty"`
+	Figure string  `json:"figure,omitempty"` // D565
+	About  *string `json:"about,omitempty"`
 	// Brain is D536's own 想事情用: a Brain, or SameBrain (JSON null) for
 	// the default partner's again; nil leaves it.
 	Brain    any    `json:"brain,omitempty"`

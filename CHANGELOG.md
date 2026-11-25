@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.69 - 2026-11-25
+
+<!-- whats-new
+zh: 六个伙伴形象真的来了；每个形象、颜色和名字都对得上
+en: The six partner figures, for real, and every figure matches its name
+-->
+
+**Your partners, each its own shape (it missed 0.1.66)**
+- 0.1.66 said the six figures had arrived, but its build left them out. They are here now: Pebble,
+  Bun, Sprout, Cloud, Cube and Bean, picked in Settings › Partners on every partner's row, the
+  default one too, and in the meeting moment when you make a new partner.
+
+**Who is speaking, always clear**
+- Settings speaks as the partner you're with, in its own name, shape and colour. Ducter itself (the
+  About card, updates) is always the orange Pebble. A figure never wears one partner's colour next
+  to another's name.
+
+**Fixes**
+- After you tap Go, your partner no longer says the same line twice.
+
 ## 0.1.68 - 2026-11-25
 
 <!-- whats-new

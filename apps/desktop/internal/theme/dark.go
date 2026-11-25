@@ -62,7 +62,7 @@ func PebbleDark() *Tokens {
 	// The clay art is cut out (transparent round the figure); it sits on a
 	// warm raised ground, a lamp-lit table rather than a hole in the page.
 	t.Clay = hex("#2A221B")
-	t.Looks = map[string]ui.Color{"sand": hex("#4A3A2A"), "sage": hex("#30452F"), "sky": hex("#263D53"), "plum": hex("#45304A"), "apricot": hex("#573622")}
+	t.Looks = map[string]ui.Color{"sand": hex("#4A3A2A"), "sage": hex("#30452F"), "sky": hex("#263D53"), "plum": hex("#45304A"), "apricot": hex("#573622"), "butter": hex("#4E4122")}
 	t.LookRim = hex("#F6EBDD").Alpha(0.08)
 	t.ClayMark = hex("#C9A07C")
 	t.Locator = LocatorTokens{You: hex("#FF8A3D"), Ask: hex("#FF9F5E"), Done: hex("#5FCB82"), Failed: hex("#EE7593"),

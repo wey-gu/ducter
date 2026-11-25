@@ -145,7 +145,7 @@ function MemHead() {
   const pinned = !on && !!s.memoryPinned;
   return (
     <Group class="mem-g" label={t("settings.tab.memory")}>
-      <GHead tile={<NotebookTile />} name={on ? t("mem.hero.on", s.name) : t("mem.hero.off", s.name)} line={!on ? t("mem.off.line") : n ? t("mem.week.count", String(n)) : t("mem.week.none")} tone={on && n ? "done" : undefined}>
+      <GHead tile={<NotebookTile />} name={on ? t("mem.hero.on", A.speakerFor().name) : t("mem.hero.off", A.speakerFor().name)} line={!on ? t("mem.off.line") : n ? t("mem.week.count", String(n)) : t("mem.week.none")} tone={on && n ? "done" : undefined}>
         <Switch label={t("partner.memory.switch")} on={on} disabled={pinned} onChange={(memory) => A.setSettings({ memory })} />
       </GHead>
       <GFoot note={on ? t("mem.switch.note") : pinned ? t("mem.pinned") : t("partner.memory.off")}>{on && n > 0 && <Btn kind="text" size="sm" chev label={t("mem.head.check")} onClick={() => A.openLearned()} />}</GFoot>

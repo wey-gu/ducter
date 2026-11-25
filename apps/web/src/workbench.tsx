@@ -17,6 +17,7 @@ import { WB_HEAVY } from "@ducter/protocol/src/workbench.ts";
 import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { A, morph } from "./app.ts";
+import { figArt } from "./partners.tsx";
 import { Btn, Facts } from "./controls.tsx";
 import { spoken } from "./format.ts";
 import { hlLines, escHtml } from "./hl.ts";
@@ -491,7 +492,7 @@ function Launcher({ task, sheet }: { task: Task; sheet?: boolean }) {
   const body = (
     <div class="bench-launcher">
       <div class="launch-hello">
-        <img src="app/art/waiting.webp" alt="" draggable={false} />
+        <img src={figArt("waiting", A.wearOf(task.card?.persona))} alt="" draggable={false} />
         <h3 class="wb-h">{t("wb.launcher")}</h3>
       </div>
       <ul class="tiles">

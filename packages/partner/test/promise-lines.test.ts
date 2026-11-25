@@ -49,6 +49,26 @@ test("a [[later]] with no tool at all: one correction round, and its call takes 
   expect(said(fc)).toEqual(["ack: 我去查你家附近下周二上午能约的洗牙，查清楚了告诉你。"]);
 });
 
+test("D570: the correction's call says the held line; the same line written again after it is not said twice", async () => {
+  // Live on hel (0.1.67): after Go on a task's question, "好，授权码出来了我马上给你。[[later]]", the
+  // correction, wait_until on the task (its line went out as the ack), then the same line again: twice, 0.8 s apart.
+  const line = "好，授权码出来了我马上给你。";
+  const { fc, fr, partner, user } = setup(async (_i, s, n) => {
+    if (n === 0) s.say(`${line}[[later]]`);
+    if (n === 1) {
+      s.emit({ role: "tool", tool: { name: "mcp__ducter__wait_until", input: { taskId: "ceahf6vk", reason: "等 GitHub 授权码出来给你" } }, raw: { kind: "tool_call_started", callId: "w1" } });
+      const out = await fc.callTool("wait_until", { taskId: "ceahf6vk", reason: "等 GitHub 授权码出来给你" });
+      s.emit({ role: "tool", tool: { name: "mcp__ducter__wait_until", output: JSON.stringify(out), ok: true } });
+      s.say(`${line}[[later]]`);
+    }
+    s.end();
+  });
+  user("去授权");
+  await partner.idle();
+  expect(fr.sessions[0]!.inputs).toHaveLength(2);
+  expect(said(fc)).toEqual([`ai_msg: ${line}`]);
+});
+
 test("the correction's OK: the line needed no tool and goes out as it was", async () => {
   const { fc, fr, partner, user } = setup(async (_i, s, n) => {
     s.say(n === 0 ? "I'll be here when you're back. [[later]]" : "OK");

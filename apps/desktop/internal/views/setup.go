@@ -231,8 +231,13 @@ func (a *App) needsName(r local.Report) bool {
 	return !asked
 }
 
-// personaName is the name before the server says it.
-func (a *App) personaName() string {
+// personaName is the shown partner's name (D568: speakerFor's, so a
+// pane's words and its figure are one partner's).
+func (a *App) personaName() string { return a.speakerFor(speakShown).Name }
+
+// welcomeName is the name the welcome said, else the name before the
+// server says it.
+func (a *App) welcomeName() string {
 	if a.S.Welcomed && a.S.PersonaName != "" {
 		return a.S.PersonaName
 	}

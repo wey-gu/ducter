@@ -35,7 +35,13 @@ import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, keepTaskDrafts, readDraft, readTaskDrafts } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
 import { switchPlace } from "./conv-place.ts";
-import { DEFAULT_PARTNER, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { DEFAULT_PARTNER, type PartnerFigure, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+/** D565: how a partner's figure is drawn: its figure (absent: the pebble) in its clay (absent: as drawn). */
+export type Wear = { figure?: PartnerFigure; look?: PartnerLook };
+/** D568: who a figure stands for (A.speakerFor). */
+export type Speaker = { id?: string; name: string; wear: Wear; brand?: true };
+/** D568: the product itself, for A.speakerFor. */
+export const SPEAK_BRAND = "brand";
 import { spokenPeers } from "./mem-view.ts";
 
 /** D543: a Map whose every change is kept a moment later (the task drafts, kept on this device). */
@@ -2191,6 +2197,8 @@ class AppState {
   /** D546: the partner that owns an object (a task's card.persona, a Keep's, a group's, a routine's):
    *  absent or no longer a partner reads as the default. Undefined with one partner. */
   ownerOf(persona?: string): PartnerInfo | undefined {
+    // D568: with one partner, that one (it may have been given its own figure).
+    if (this.partners?.length === 1) return this.partners[0];
     if (!this.manyPartners()) return undefined;
     return this.partners!.find((p) => p.id === persona) ?? this.partners!.find((p) => p.id === DEFAULT_PARTNER);
   }
@@ -2200,6 +2208,42 @@ class AppState {
   lookOf(persona?: string): PartnerLook | undefined {
     return this.ownerOf(persona)?.look;
   }
+
+  /** D565: the owner's figure and clay for an object's art (an opened task's mark, a row's face, a
+   *  wait's figure): undefined with one partner, so the art is the pebble as drawn. */
+  wearOf(persona?: string): Wear | undefined {
+    const p = this.ownerOf(persona);
+    return p && { figure: p.figure, look: p.look };
+  }
+
+  /** D565: the page's own figure: the shown partner's figure and clay (D568: speakerFor's, with one partner too). */
+  shownWear(): Wear | undefined {
+    return this.partners?.length ? this.speakerFor().wear : undefined;
+  }
+
+  /**
+   * D568: whom a figure, a clay and a name stand for, the one resolver (the Mac's speakerFor):
+   * "brand" is the product (the brand pebble, as drawn, and the name Ducter: an update's or the
+   * app's own mark, never a partner's); "" is the partner you are talking with (a page that says
+   * 「我…」 speaks as it: its name, figure and clay, with one partner too); an id is that partner (its
+   * row, an object it owns). A figure never wears one partner's clay beside another partner's name.
+   */
+  speakerFor(who: string = ""): Speaker {
+    if (who === SPEAK_BRAND) return { name: "Ducter", wear: { look: "sand" }, brand: true };
+    const id = who || this.S.persona || this.partnerShown || DEFAULT_PARTNER;
+    const p = this.partners?.find((x) => x.id === id) ?? (who ? this.partners?.find((x) => x.id === DEFAULT_PARTNER) : undefined);
+    if (p) return { id: p.id, name: p.name, wear: { figure: p.figure, look: p.look } };
+    return { id: DEFAULT_PARTNER, name: this.S.personaName || this.defaultName() || "Ducter", wear: {} };
+  }
+
+  /** D568: what a partner thinks with, as its own words say it: its own agent when it has one (D536), else the default's. */
+  speakerBrain(sp: Speaker): Brain | undefined {
+    const p = sp.id && sp.id !== DEFAULT_PARTNER ? this.partners?.find((x) => x.id === sp.id) : undefined;
+    return p?.brain ?? undefined;
+  }
+
+  /** D565: a partner made here a moment ago, walking into its conversation (its id and when). */
+  meet?: { id: string; at: number };
 
   /** D546: the owner's name for an object's words (「小玛交给它的事」); with one partner the one
    *  partner's own name, whatever it was given. */
@@ -2211,6 +2255,7 @@ class AppState {
   partnersAsked = false;
 
   private applyPartners(f: Extract<ServerFrame, { t: "partners" }>) {
+    const before = new Set((this.partners ?? []).map((p) => p.id));
     this.partners = f.partners;
     if (this.partnersAsked) (this.partnersAsked = false), (this.partnersOpen = this.manyPartners() && !wideNow());
     // D513: back to one partner (another removed): no list stands in for the conversation.
@@ -2220,7 +2265,19 @@ class AppState {
       if (f.error) ask.error = f.error;
       else {
         this.partnerAsk = undefined;
-        if (ask.kind === "add" && ask.name) (this.partnerAddedAt = Date.now()), this.toast(this.L.t("partners.added", ask.name));
+        if (ask.kind === "add" && ask.name) {
+          this.partnerAddedAt = Date.now();
+          // D565: the one just met walks into its own conversation, where it greets the person by the
+          // name they gave it (its first screen); no toast over it.
+          const made = f.partners.find((p) => !before.has(p.id) && p.name === ask.name);
+          if (made) {
+            this.meet = { id: made.id, at: Date.now() };
+            this.partnersOpen = false;
+            this.sheet = null;
+            this.route = { name: "conv" };
+            this.switchPartner(made.id);
+          } else this.toast(this.L.t("partners.added", ask.name));
+        }
       }
     }
     // The partner this page asked for is gone (or never was): the home showed the default's.
@@ -2363,10 +2420,10 @@ class AppState {
   }
 
   /** D309: 再加一个伙伴 / Add a partner; D486: with what it looks after. */
-  addPartner(name: string, look: PartnerLook, about = "") {
+  addPartner(name: string, look: PartnerLook, about = "", figure?: PartnerFigure) {
     const cid = `pa-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "add", name: name.trim() };
-    this.send({ t: "partner_add", name, look, ...(about.trim() ? { about: about.trim() } : {}), clientId: cid });
+    this.send({ t: "partner_add", name, look, ...(figure ? { figure } : {}), ...(about.trim() ? { about: about.trim() } : {}), clientId: cid });
     this.changed();
   }
 
@@ -2380,7 +2437,7 @@ class AppState {
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string; /** D536: null: the same as the default partner's. */ brain?: Brain | null }) {
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; /** D565 */ figure?: PartnerFigure; about?: string; /** D536: null: the same as the default partner's. */ brain?: Brain | null }) {
     if (id === DEFAULT_PARTNER && patch.name) {
       this.setSettings({ name: patch.name });
       const { name: _n, ...rest } = patch;

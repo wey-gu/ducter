@@ -24,7 +24,7 @@ import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
 import { AliveLine } from "./alive.tsx";
 import { aliveFace, aliveMotion, aliveSub, aliveWords } from "@ducter/protocol/src/alive.ts";
-import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
+import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage, type Wear } from "./app.ts";
 import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
@@ -57,7 +57,7 @@ import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
-import { homeThinks, PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
+import { homeThinks, PaneSays, PlacesMap, SetBrief, speakerThinks } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
@@ -74,7 +74,8 @@ const PrMark = () => (
     <path d="M4 5.1v5.8M12 10.9V6.5c0-1.1-.9-2-2-2H7.5" />
   </svg>
 );
-import { PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
+import { figArt, PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle, Stone } from "./partners.tsx";
+import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -173,20 +174,25 @@ function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
 
 /** The clay partner: the face for its state (or the one given), breathing; the idle face blinks.
  *  Faces cross-fade on a change, standing on the box's bottom edge. */
-export function Avatar({ size, state, still, who }: { size: number; state?: Face; still?: boolean; /** D546: the owner's name when the face is a partner's object's (an opened task); else the shown partner. */ who?: string }) {
+export function Avatar({ size, state, still, who, wear }: { size: number; state?: Face; still?: boolean; /** D546: the owner's name when the face is a partner's object's (an opened task); else the shown partner. */ who?: string; /** D565: the owner's figure and clay; else the shown partner's. */ wear?: Wear }) {
   const p = state ?? A.presence();
+  // D568: who it is comes from one place: the given owner's, else the partner you are talking with.
+  const sp = wear ? undefined : A.speakerFor();
+  const w = wear ?? sp?.wear ?? {};
+  // D565: a partner met a moment ago walks into its own conversation (app.css .walk-in).
+  const walking = !wear && !!A.meet && A.meet.id === A.shownPartner()?.id && Date.now() - A.meet.at < 1600;
   const ref = useRef<HTMLSpanElement>(null);
   useBlink(ref, !still);
   return (
-    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], who ?? A.S.personaName)}>
+    <span ref={ref} class={`avatar${still ? "" : " breathe"}${walking ? " walk-in" : ""}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], who ?? sp?.name ?? A.S.personaName)} data-look={w.look ?? "sand"} data-figure={w.figure ?? "pebble"} data-who={who ?? sp?.name ?? A.S.personaName}>
       {ART.map((n) =>
         n === "idle" ? (
           <span key={n} class={`idle${n === p ? " on" : ""}`}>
-            <img src="app/art/idle.webp" alt="" draggable={false} />
-            <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
+            <img src={figArt("idle", w)} alt="" draggable={false} />
+            <img class="shut" src={figArt("idle_closed", w)} alt="" draggable={false} />
           </span>
         ) : (
-          <img key={n} class={n === p ? "on" : ""} src={`app/art/${n}.webp`} alt="" draggable={false} />
+          <img key={n} class={n === p ? "on" : ""} src={figArt(n, w)} alt="" draggable={false} />
         ),
       )}
     </span>
@@ -2766,7 +2772,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           {/* D542: the partner's mark at the title's size, inline before it, never a poster beside the
               page (what it waits for is the wait line's words). */}
           <span class="face">
-            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} />
+            <Avatar size={28} state={faceOf(a)} still={stillFace(a)} who={A.nameOf(task.card?.persona)} wear={A.wearOf(task.card?.persona) ?? {}} />
           </span>
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
@@ -2897,6 +2903,9 @@ const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 /** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The
  *  Settings list's hero says the same, never an agent when none can be used. */
 function partnerLede(): string {
+  // D568: the partner you are talking with, thinking with its own agent when it has one.
+  const own = A.speakerBrain(A.speakerFor());
+  if (own) return A.homeName ? t("partner.header", A.homeName, harnessName(own.harness)) : "";
   const brain = A.brainNow ?? A.settings?.brain;
   // D435: its own agent held: who thinks meanwhile, or when it answers again.
   const held = brainHeld();
@@ -2906,6 +2915,8 @@ function partnerLede(): string {
 
 /** D469 round 2: the Partner page's head in its own voice (partner.say): where it runs and what it thinks with; held or with nothing to think with, D435's and D322's lines. */
 function partnerHead(): string {
+  const own = A.speakerBrain(A.speakerFor());
+  if (own && A.homeName) return t("partner.say", A.homeName, speakerThinks());
   const brain = A.brainNow ?? A.settings?.brain;
   if (!A.homeName || !brain || brainHeld() || noBrain()) return partnerLede();
   return t("partner.say", A.homeName, homeThinks() || harnessName(brain.harness));
@@ -2914,17 +2925,20 @@ function partnerHead(): string {
 function NameRow() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  // D568: the page speaks as the partner you are talking with: its name, its figure, its clay; the
+  // name it renames is that partner's.
+  const sp = A.speakerFor();
   const save = () => {
     const n = draft.trim();
     // D404: a new name is a moment worth one line in the partner's voice, under the name.
-    if (n && n !== A.defaultName()) A.setSettings({ name: n }), say("rename", t("said.rename", n));
+    if (n && n !== sp.name) A.setPartner(sp.id ?? DEFAULT_PARTNER, { name: n }), say("rename", t("said.rename", n));
     setEditing(false);
   };
   const lede = partnerHead();
   return (
     <>
       <div class="partner-head">
-      <Avatar size={56} />
+      <Avatar size={56} wear={sp.wear} who={sp.name} />
       {editing ? (
         <>
           <input
@@ -2946,10 +2960,10 @@ function NameRow() {
       ) : (
         <>
           <span class="grow">
-            <h2>{A.defaultName()}</h2>
+            <h2>{sp.name}</h2>
             {lede && <small>{keepClauses(lede)}</small>}
           </span>
-          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.defaultName()), setEditing(true))} />}
+          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(sp.name), setEditing(true))} />}
         </>
       )}
       </div>
@@ -3500,6 +3514,11 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
 /** A section's art: its clay picture, or for 和你的其他 agent 通信 two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
   if (art === "notebook") return <Notebook size={size} />;
+  // D568: 伙伴's row is the partner you are talking with, as the page it opens is.
+  if (art === "idle") {
+    const sp = A.speakerFor();
+    return <Stone look={sp.wear.look ?? "sand"} figure={sp.wear.figure} size={size} who={sp.name} />;
+  }
   if (art === "coins")
     return (
       <span class="set-coins" style={{ width: size, height: size }} aria-hidden="true">
@@ -3525,7 +3544,7 @@ function updatesWaiting(): string {
 }
 
 /** Settings (D150): the same sections as the Mac's rail, as a list; a tap pushes its page. */
-function SettingsSheet() {
+export function SettingsSheet() {
   useEffect(() => {
     if (!A.settings && A.S.welcomed) A.send({ t: "settings" });
   }, []);

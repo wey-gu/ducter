@@ -66,7 +66,9 @@ stay quiet from 23:00 to 08:00 and tell you everything after.**), quiet hours of
 / Got it: I'll find you whenever something comes up.**), the default wait (**好，你没回的话，1 小时后我按
 默认做。/ Got it: if you don't answer, I'll go with the default after 1 hour.**), a service's watch
 switch (**好，Slack bot 我自己留意着。/ Got it: I'll keep an eye on Slack bot myself.** · **好，
-Slack bot 你问起来我再看。/ Got it: I'll look at Slack bot only when you ask.**). It is a 12-point
+Slack bot 你问起来我再看。/ Got it: I'll look at Slack bot only when you ask.**), a partner's new
+figure (D565: **好，我现在是{figure}了，还是我。/ There: I'm {figure} now. Still me.**, said by that
+partner, its small figure in its new shape where the pebble pops in). It is a 12-point
 clay pebble on the done ink that pops in on Bouncy's spring (web `--t-pop` on `--spring-soft`)
 and the line in the soft ink rising 4 on Across's spring, under the group on the text edge; it
 goes after 4 s. Reduced motion: it appears and goes without moving. Never a toast; never for a

@@ -36,6 +36,18 @@ const dataDir = process.env.DUCTER_DATA_DIR;
 if (!dataDir) throw new Error("set DUCTER_DATA_DIR to a scratch folder");
 mkdirSync(dataDir, { recursive: true });
 const scratch = mkdtempSync(join(tmpdir(), "ducter-demo-settings-"));
+// D568, DEMO_PARTNERS=1: the author's four partners as hel had them at 0.1.67 (Ducter, 多比 in sky,
+// 小新 in plum, 小玛 in coral thinking with Claude Code), 小玛 given the sprout; open the window on
+// 小玛 (the page's #p=p4/settings, the Mac's switch) to walk Settings as he did.
+if (process.env.DEMO_PARTNERS) {
+  const at = "2026-11-20T08:00:00.000Z";
+  const others = [
+    { id: "p2", name: zh ? "多比" : "Dobby", look: "sky", createdAt: at },
+    { id: "p3", name: zh ? "小新" : "Sunny", look: "plum", createdAt: at },
+    { id: "p4", name: zh ? "小玛" : "Mara", look: "apricot", figure: "sprout", createdAt: at, brain: { harness: "claude-code", model: "opus" } },
+  ];
+  writeFileSync(join(dataDir, "partners.json"), JSON.stringify({ defaultLook: "sand", others }, null, 2));
+}
 
 // Codex's own list (six, as 0.169.1 lists them).
 const E = ["low", "medium", "high", "xhigh", "max", "ultra"];
@@ -181,7 +193,8 @@ const core = startCore({
   work: { connectionFetch: (u, i) => fetch(to(u), i) },
   taskSources: { ghRun: gh.run, ghEnv: {}, home, quietMs: 0, pollMs: 3_600_000, ask: demoAsk(zh, 50) },
   channels: { gapMs: 0, sleep: async () => {}, make: (kind, rec) => stubChannel(kind, rec.bot ?? { id: "b", name: "Ducter" }) },
-  update: { fetch: async () => new Response(JSON.stringify({ tag_name: needs ? "v0.0.94" : "v0.0.93", body: "" })), how: "self", version: "0.0.93", homeName: "Hetzner Server", autoEveryMs: 0, run: () => new Promise(() => {}) },
+  // D568: DEMO_VERSION=0.1.67 is the author's home as he reported it.
+  update: { fetch: async () => new Response(JSON.stringify({ tag_name: needs ? "v0.0.94" : `v${process.env.DEMO_VERSION ?? "0.0.93"}`, body: "" })), how: "self", version: process.env.DEMO_VERSION ?? "0.0.93", homeName: "Hetzner Server", autoEveryMs: 0, run: () => new Promise(() => {}) },
   agents: { fetch: none as never, sys: { fetch: none as never, run: () => new Promise(() => {}), freeBytes: () => undefined, sleep: (ms: number) => Bun.sleep(ms), now: () => Date.now() }, autoEveryMs: 0 },
 } as never);
 core.setRunner(stubRunner(core));

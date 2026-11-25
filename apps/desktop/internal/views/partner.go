@@ -128,12 +128,15 @@ func (a *App) partnerHero(c *ui.Context) {
 		shown = theme.Napping
 	}
 	// D469: the partner says where it runs and what it thinks with, in its own voice.
-	line := a.L.T("partner.say", a.homeName(), a.homeThinks())
-	if a.noBrain() {
+	// D568: the pane speaks as the partner you are talking with: its name, its figure,
+	// what it thinks with (its own agent when it has one).
+	sp := a.speakerFor(speakShown)
+	line := a.L.T("partner.say", a.homeName(), a.speakerThinks(sp))
+	if a.noBrain() && !a.ownBrain(sp) {
 		line = a.L.T("partner.header.none", a.homeName())
 	}
 	// D435: its own agent held: who thinks meanwhile, or when it answers again.
-	if h := a.brainHeld(); h != nil {
+	if h := a.brainHeld(); h != nil && !a.ownBrain(sp) {
 		switch {
 		case !h.Waits:
 			line = a.L.T("partner.header.held", a.homeName(), harnessName(a.brain().Harness))
@@ -144,7 +147,7 @@ func (a *App) partnerHero(c *ui.Context) {
 		}
 	}
 	ui.Row(c.Key("partner-hero")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-		a.avatar(c, shown, 64)
+		a.speakerAvatar(c, sp, shown, 64)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 			a.partnerName(c)
 			uiText(c, line).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
@@ -163,9 +166,10 @@ func facekey(p theme.Presence) string {
 func (a *App) partnerName(c *ui.Context) {
 	t := a.T
 	ps := &a.partner
+	sp := a.speakerFor(speakShown)
 	if !ps.editing {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			a.heading(c, a.defaultName(), t.XXL).SingleLine().Shrink(1).MinWidth(0)
+			a.heading(c, sp.Name, t.XXL).SingleLine().Shrink(1).MinWidth(0)
 			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Bg) {
 				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
@@ -175,17 +179,20 @@ func (a *App) partnerName(c *ui.Context) {
 	}
 	save := func() {
 		name := strings.TrimSpace(ps.nameDraft)
-		if name != "" && name != a.defaultName() {
-			a.SetSettings(protocol.SettingsPatch{Name: &name})
-			a.say("rename", a.L.T("said.rename", name))
-			if a.shownPartnerID() == protocol.DefaultPartner {
-				a.S.PersonaName = name // shown at once; the settings frame confirms it
+		if name != "" && name != sp.Name {
+			// D568: the name renamed is the one the head shows: the shown partner's.
+			if sp.ID == "" || sp.ID == protocol.DefaultPartner {
+				a.SetSettings(protocol.SettingsPatch{Name: &name})
+			} else {
+				a.send(protocol.PartnerSet{T: "partner_set", ID: sp.ID, Name: name})
 			}
+			a.say("rename", a.L.T("said.rename", name))
+			a.S.PersonaName = name // shown at once; the settings or partners frame confirms it
 		}
 		ps.editing = false
 	}
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder(a.defaultName()).Label(a.L.T("partner.rename")).
+		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder(sp.Name).Label(a.L.T("partner.rename")).
 			FontSize(t.XL).FontWeight(800).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
 			Width(260).OnSubmit(save)
 		if !ps.focused {

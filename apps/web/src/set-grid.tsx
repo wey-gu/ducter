@@ -113,14 +113,16 @@ export function SecHead(p: { title: string }) {
 // ---------- D296: the partner's one word after a change ----------
 
 const SAID_MS = 4000;
-const saidWords = new Map<string, { text: string; at: number }>();
+const saidWords = new Map<string, { text: string; at: number; face?: SaidFace }>();
+/** D565: the partner itself speaking after a change to it: its figure (a frame and its clay) in place of the pebble. */
+export type SaidFace = { src: string; look?: string };
 const saidListeners = new Set<() => void>();
 
 /** Keep the partner's word for a change you made, for <Said> to show. The Mac's `say`. */
-export function say(key: string, text: string, replaces?: string) {
+export function say(key: string, text: string, replaces?: string, face?: SaidFace) {
   // One line per place: a newer word under another row of the same group replaces it.
   if (replaces) for (const k of [...saidWords.keys()]) if (k.startsWith(replaces)) saidWords.delete(k);
-  saidWords.set(key, { text, at: Date.now() });
+  saidWords.set(key, { text, at: Date.now(), ...(face ? { face } : {}) });
   for (const f of saidListeners) f();
 }
 
@@ -146,7 +148,13 @@ export function Said(p: { k: string; in?: boolean }) {
   if (!w || left <= 0) return null;
   return (
     <div class={p.in ? "said said-line in" : "said said-line"} role="status" key={w.at}>
-      <span class="said-dot" aria-hidden="true" />
+      {w.face ? (
+        <span class="stone said-face" data-look={w.face.look} aria-hidden="true">
+          <img src={w.face.src} alt="" draggable={false} />
+        </span>
+      ) : (
+        <span class="said-dot" aria-hidden="true" />
+      )}
       <span>{w.text}</span>
     </div>
   );

@@ -27,6 +27,8 @@ var sharedControls = map[string]bool{
 	"appTile": true,
 	// D545: the other partners' faces with what waits in them, the way back to a hidden list
 	"othersStack": true,
+	// D565: a partner's figure: the 3 × 2 picker and the six met when one is made (figures.go)
+	"figurePick": true, "meetStage": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
 	"pill": true, "menuRow": true, "menuRowEl": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed

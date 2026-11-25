@@ -37,6 +37,10 @@ import { switchPlace } from "./conv-place.ts";
 import { DEFAULT_PARTNER, type PartnerFigure, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 /** D565: how a partner's figure is drawn: its figure (absent: the pebble) in its clay (absent: as drawn). */
 export type Wear = { figure?: PartnerFigure; look?: PartnerLook };
+/** D568: who a figure stands for (A.speakerFor). */
+export type Speaker = { id?: string; name: string; wear: Wear; brand?: true };
+/** D568: the product itself, for A.speakerFor. */
+export const SPEAK_BRAND = "brand";
 import { spokenPeers } from "./mem-view.ts";
 
 /** D543: a Map whose every change is kept a moment later (the task drafts, kept on this device). */
@@ -2190,6 +2194,8 @@ class AppState {
   /** D546: the partner that owns an object (a task's card.persona, a Keep's, a group's, a routine's):
    *  absent or no longer a partner reads as the default. Undefined with one partner. */
   ownerOf(persona?: string): PartnerInfo | undefined {
+    // D568: with one partner, that one (it may have been given its own figure).
+    if (this.partners?.length === 1) return this.partners[0];
     if (!this.manyPartners()) return undefined;
     return this.partners!.find((p) => p.id === persona) ?? this.partners!.find((p) => p.id === DEFAULT_PARTNER);
   }
@@ -2207,10 +2213,30 @@ class AppState {
     return p && { figure: p.figure, look: p.look };
   }
 
-  /** D565: the page's own figure: the shown partner's figure and clay (undefined with one partner). */
+  /** D565: the page's own figure: the shown partner's figure and clay (D568: speakerFor's, with one partner too). */
   shownWear(): Wear | undefined {
-    const p = this.shownPartner();
-    return p && { figure: p.figure, look: p.look };
+    return this.partners?.length ? this.speakerFor().wear : undefined;
+  }
+
+  /**
+   * D568: whom a figure, a clay and a name stand for, the one resolver (the Mac's speakerFor):
+   * "brand" is the product (the brand pebble, as drawn, and the name Ducter: an update's or the
+   * app's own mark, never a partner's); "" is the partner you are talking with (a page that says
+   * 「我…」 speaks as it: its name, figure and clay, with one partner too); an id is that partner (its
+   * row, an object it owns). A figure never wears one partner's clay beside another partner's name.
+   */
+  speakerFor(who: string = ""): Speaker {
+    if (who === SPEAK_BRAND) return { name: "Ducter", wear: { look: "sand" }, brand: true };
+    const id = who || this.S.persona || this.partnerShown || DEFAULT_PARTNER;
+    const p = this.partners?.find((x) => x.id === id) ?? (who ? this.partners?.find((x) => x.id === DEFAULT_PARTNER) : undefined);
+    if (p) return { id: p.id, name: p.name, wear: { figure: p.figure, look: p.look } };
+    return { id: DEFAULT_PARTNER, name: this.S.personaName || this.defaultName() || "Ducter", wear: {} };
+  }
+
+  /** D568: what a partner thinks with, as its own words say it: its own agent when it has one (D536), else the default's. */
+  speakerBrain(sp: Speaker): Brain | undefined {
+    const p = sp.id && sp.id !== DEFAULT_PARTNER ? this.partners?.find((x) => x.id === sp.id) : undefined;
+    return p?.brain ?? undefined;
   }
 
   /** D565: a partner made here a moment ago, walking into its conversation (its id and when). */

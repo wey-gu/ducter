@@ -57,7 +57,7 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find str
 			a.avatar(c, face, 52)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
+					uiText(c, a.personaName()).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
 					uiText(c, a.L.T("notify.pv.now")).FontSize(t.XS).TextColor(soft).Shrink(0)
 				})
 				uiText(c, keepClauses(a.L.T("notify.pv.ask"))).FontSize(t.MD).LineHeight(a.leading(1.45)).TextColor(ink)
@@ -83,7 +83,7 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find str
 				a.avatar(c, theme.Idle, 36)
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						uiText(c, a.S.PersonaName).FontSize(t.XS).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
+						uiText(c, a.personaName()).FontSize(t.XS).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
 						uiText(c, when).FontSize(t.XS).TextColor(soft).Shrink(0)
 					})
 					uiText(c, keepClauses(a.L.T("notify.pv.find."+find))).FontSize(t.SM).LineHeight(a.leading(1.45)).TextColor(ink)

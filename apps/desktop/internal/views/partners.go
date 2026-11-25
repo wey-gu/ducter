@@ -61,14 +61,9 @@ func (a *App) shownPartnerID() string {
 	return protocol.DefaultPartner
 }
 
-// shownLook is the shown partner's look, "" with one partner (D497: the
-// figure is then the art as drawn, whatever look the default was given).
-func (a *App) shownLook() string {
-	if p := a.shownPartner(); p != nil {
-		return a.wearOf(p)
-	}
-	return ""
-}
+// shownLook is the shown partner's wear (D568: speakerFor's; with one
+// partner too, since it may have been given its own figure).
+func (a *App) shownLook() string { return a.speakerFor(speakShown).Wear }
 
 // wearOf is how a partner's figure is drawn (D565): its figure in its
 // clay, the token theme's art functions take (theme.Wear).
@@ -131,6 +126,9 @@ func (a *App) needsAcross(b store.Board) int {
 
 // ownerLook is the clay an owned object's figure is in: "" with one partner.
 func (a *App) ownerLook(persona string) string {
+	if len(a.S.Partners) == 1 {
+		return a.wearOf(&a.S.Partners[0]) // D568: the one partner's own figure
+	}
 	if !a.manyPartners() {
 		return ""
 	}
@@ -263,6 +261,12 @@ func (a *App) PartnerFor() string { return a.Local.Partner() }
 // stone is a partner's face: the clay figure in its own clay (D497; it
 // was the face on a coloured disc, D309), still, standing on the box's
 // bottom edge. The name "stone" stays for the code; nothing on screen says it.
+// stoneOf is stone for whom speakerFor resolved, noted for the identity test (D568).
+func (a *App) stoneOf(c *ui.Context, key string, sp speaker, size float32) ui.Element {
+	a.noteFig("stone:"+key, sp.Wear, sp.Name, sp.Brand)
+	return a.stone(c, key, sp.Wear, size)
+}
+
 func (a *App) stone(c *ui.Context, key, look string, size float32) ui.Element {
 	box := ui.Box(c.Key("stone:"+key)).Size(size, size).AlignItems(ui.Center).Justify(ui.End).Shrink(0).AccessHidden(true)
 	box.Draw(func(pt *ui.Painter, r ui.Rect) {
@@ -453,13 +457,14 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 		note = a.L.T("partners.help")
 	}
 	a.group(c, "partners", a.L.T("partners.title"), note, func() {
-		if many {
+		// D568: one partner has its row too, so it can be given its own figure.
+		{
 			for _, p := range a.S.Partners {
 				a.sep(c)
 				id, p := p.ID, p
 				if ps.removing == id {
 					ui.Row(c.Key("partner-removing:"+id)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Role(ui.RoleGroup).Label(a.L.T("partners.remove.ask", p.Name)).Children(func() {
-						a.stone(c, "row-"+id, a.wearOf(&p), 40)
+						a.stoneOf(c, "row-"+id, a.speakerFor(id), 40)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 							uiText(c, a.L.T("partners.remove.ask", p.Name)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 							uiText(c, a.L.T("partners.remove.what", a.defaultName())).FontSize(t.SM).TextColor(t.InkMuted)
@@ -497,7 +502,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 				// buttons the width and squeezed the words on a phone.
 				ui.Column(c.Key("partner-row:"+id)).Gap(t.S2).Padding(t.S3, t.S5).Children(func() {
 					ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
-						a.stone(c, "row-"+id, a.wearOf(&p), 40)
+						a.stoneOf(c, "row-"+id, a.speakerFor(id), 40)
 						ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 							if ps.editing == id {
 								// D536: the shared field, both at the control height (the line used
@@ -511,7 +516,7 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 								}
 								a.thinksLine(c, p)
 							}
-							if p.ID == shown {
+							if many && p.ID == shown {
 								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
 							}
 						})

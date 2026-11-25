@@ -1300,6 +1300,10 @@ Flip, Razr, Magic V Flip, Find N Flip, MIX Flip) open into a phone and stay one.
   `fixtures/did-glyphs.json`; Past tasks' glyphs). A thing with no faithful mark (a website in
   Autofill, an unknown tool) keeps its first letter on a sunken pebble. Sources and usage notes:
   `design/art/LOGOS.md`.
+- **Whose figure (D568):** a figure is the product's (the brand pebble as drawn: About, the app
+  icon, the update pebble), the partner you talk with (a pane that says 「我」), or a given partner
+  (its row, what it owns), from one resolver per client (`speakerFor`); never one partner's clay
+  beside another's name (personas.md "Whose figure").
 - **The partners' figures (D565):** six figures of one clay family (pebble, bun, sprout, cloud,
   cube, bean; personas.md "Figures"): each the pebble's six poses and its blink, generated with the
   pebble's own pose as the reference beside the figure's idle (`gemini-3.1-flash-image`, curated by

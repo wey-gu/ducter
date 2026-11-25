@@ -107,9 +107,9 @@ function ThinksPick({ p }: { p: PartnerInfo }) {
 
 /** D497: a partner's face: the idle clay figure in its own clay (app.css .stone, --clay). The name
  *  "stone" stays for the code (D309's disc); nothing on screen says it. */
-export function Stone({ look, size, figure }: { look: PartnerLook; size: number; /** D565 */ figure?: PartnerFigure }) {
+export function Stone({ look, size, figure, who }: { look: PartnerLook; size: number; /** D565 */ figure?: PartnerFigure; /** D568: whom it stands for, for the identity test */ who?: string }) {
   return (
-    <span class="stone" data-look={look} style={{ width: size, height: size }} aria-hidden="true">
+    <span class="stone" data-look={look} data-figure={figure ?? "pebble"} data-who={who} style={{ width: size, height: size }} aria-hidden="true">
       <img src={figArt("idle", { figure, look })} alt="" draggable={false} />
     </span>
   );
@@ -432,7 +432,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
     return (
       <div class="set-row partner-row partner-removing" role="group" aria-label={t("partners.remove.ask", p.name)}>
         <span class="partner-top">
-          <Stone look={p.look} figure={p.figure} size={40} />
+          <Stone look={p.look} figure={p.figure} size={40} who={p.name} />
           <span class="grow partner-words">
             <b>{t("partners.remove.ask", p.name)}</b>
             <small>{t("partners.remove.what", A.defaultName())}</small>
@@ -447,7 +447,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
   return (
     <div class="set-row partner-row">
       <span class="partner-top">
-        <Stone look={p.look} figure={p.figure} size={40} />
+        <Stone look={p.look} figure={p.figure} size={40} who={p.name} />
         <span class="grow partner-words">
           {editing ? (
             <>
@@ -461,7 +461,7 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
               <ThinksLine p={p} />
             </>
           )}
-          {shown ? <small>{t("partners.talking")}</small> : null}
+          {shown && (A.partners?.length ?? 0) > 1 ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
       {/* D565: its figure above its colours, free to change any time; it says one line in its new shape. */}
@@ -562,7 +562,8 @@ export function PartnersSection({ at }: { at: "top" | "foot" }) {
       {/* D289: a group's note sits under its heading, never under the card. */}
       <p class="g-note">{many ? t("partners.help") : t("partners.say")}</p>
       <div class="set-card">
-        {many && ps.map((p) => <PartnerRow key={p.id} p={p} />)}
+        {/* D568: one partner has its row too, so it can be given its own figure. */}
+        {ps.map((p) => <PartnerRow key={p.id} p={p} />)}
         {open ? <AddForm done={() => setAdding(false)} /> : !full && <AddRow label={t("partners.add")} help={t("partners.add.help")} onClick={() => ((A.partnerAsk = undefined), setAdding(true))} />}
       </div>
     </section>

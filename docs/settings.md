@@ -198,7 +198,8 @@ that partner's shape and colour, and an opened task says which partner gave it t
   vaccine on Saturday"). It goes into that partner's conversation as your words, with **Passed on
   by …** over them, and that partner answers there. Nothing else of the conversation goes along.
 - **Change or remove one.** In **Your partners**, pick another figure under its name (**How it
-  looks**) or another colour at any time, and it tells you it's still itself; **Change** renames it
+  looks**) or another colour at any time, and it tells you it's still itself. Your first partner
+  can change its figure too, even when it is your only one; **Change** renames it
   and edits what it looks after; **Remove** asks once. Its conversation is kept, and your first partner takes over its tasks.
 - **Give one its own AI.** Under each partner's name a line says what it thinks with; one you
   haven't set says **Thinks with the same as** your first partner. **Change** on its row shows

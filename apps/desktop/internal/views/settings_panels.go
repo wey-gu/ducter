@@ -597,9 +597,11 @@ func (a *App) aboutPanel(c *ui.Context) {
 	}
 	ui.Row(c.Key("about-hero")).Gap(t.S5).AlignItems(ui.Center).Padding(t.S4, t.S6).Radius(t.RadiusXL).Background(t.Clay).
 		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		a.avatar(c, pose, 112)
+		// D568: the product's own card: the brand pebble and the product's name, never a partner's.
+		brand := a.speakerFor(speakBrand)
+		a.speakerAvatar(c, brand, pose, 112)
 		ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-			a.heading(c, "Ducter", t.Title)
+			a.heading(c, brand.Name, t.Title)
 			uiText(c, a.L.T("settings.about.version", a.versionText())).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Selectable()
 			uiText(c, a.L.T("settings.about.made")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			// D475: the partner says how its versions stand, as every pane's head does.

@@ -67,7 +67,7 @@ function App() {
   }, [lang]);
   const r = A.route;
   // D497: the page's clay figure is in the shown partner's own clay (app.css --clay); one partner: as drawn.
-  const clay = A.shownPartner()?.look ?? "";
+  const clay = (A.partners?.length ? A.speakerFor().wear.look : undefined) ?? ""; // D568
   if (typeof document !== "undefined" && (document.documentElement.dataset.clay ?? "") !== clay) document.documentElement.dataset.clay = clay;
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.

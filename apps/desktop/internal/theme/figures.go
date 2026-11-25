@@ -15,6 +15,10 @@ import (
 	"strings"
 )
 
+// BrandWear is the product's own figure (D568): the pebble as drawn, in the
+// brand clay, never the shown partner's (the About card).
+const BrandWear = "sand"
+
 // Figures are the figures with art of their own (the pebble's is the
 // default art).
 var Figures = []string{"bun", "sprout", "cloud", "cube", "bean"}

@@ -71,7 +71,7 @@ A family that needs privacy from each other needs separate homes.
   it**, **告诉{name} / Told {name}**, **{name} 提醒了它一句 / {name} gave it a note**, a Keep's
   **{name} 看守中 / {name} is looking after**, a routine's **已暂停：{name} 停下的**. The owner is
   the object's `persona` (absent, or a partner since removed: the default). With one partner
-  nothing changes: the art as drawn, and the name the default partner's own (which may not be
+  its own figure and colour (D568), and the name the default partner's own (which may not be
   Ducter). The shown partner's clay is only for the page's own figure (the bar, On hand's head, an
   empty page) and its own conversation's questions. No 只看{name}的 filter on On hand: the marks
   already say whose, and the bar's count opens the shown partner's own (D546, todo).
@@ -240,6 +240,21 @@ initial on a pebble 0 of 3, an accessory 0 of 3: read as one helper in two roles
 - Looks are tokens, never colours. A new partner gets its figure's own colour, else the first look
   nobody has.
 
+## Whose figure (D568)
+
+Every figure, clay and name on a screen stands for one of three, resolved in one place on each
+client (`speakerFor` on the Mac, `A.speakerFor` on the web):
+
+| Identity | Where | Figure, clay, name |
+|---|---|---|
+| The product | About's card; the app icon; the update pebble; the pebble on a device's screen | the brand pebble as drawn, "Ducter"; never a partner's |
+| The partner you talk with | the conversation's bar and empty page; Settings: Overview's brief, every pane's head (「我…」), Partner's head and its rename, Memory's 「{name} 记得你」, the rail's 伙伴 mark, Devices' thinks-with badge | its own name, figure and clay; what it thinks with is its own agent when it has one |
+| A given partner | its row in 伙伴们 (with its picker); whatever it owns (D546) | that partner's |
+
+A figure never wears one partner's clay beside another partner's name. Each client has a test that
+draws every Settings pane with the window on a non-default partner of another clay and figure and
+checks each figure against the name beside it (`speaker_test.go`, `identity-d568.test.tsx`).
+
 ## Figures (D565, research/228, research/230)
 
 **Who, and what they feel.** The consumer making a second partner for the family: before, "the new
@@ -268,8 +283,8 @@ can do or what its states mean.
   pebble sand, bun butter, sprout coral, cloud sky, cube plum, bean sage). A new partner arrives as
   the first figure nobody has, in its own colour unless another partner has it, by words or by the
   form. The default and every partner made before D565 stay the pebble. A client that doesn't know a
-  figure draws the pebble, in the partner's colour. With one partner the figure is the art as drawn,
-  as its colour is (D497).
+  figure draws the pebble, in the partner's colour. With one partner it wears what it was given
+  (D568).
 - **Where it shows:** everywhere the partner's figure showed (D497, D546): the list of partners, the
   bar, the page's own figure, the opened task's mark and its rail, On hand's rows and cards, a
   wait's figure, a goal's worker, passed words, Settings. Each in the pose its state asks for, on the
@@ -281,7 +296,8 @@ can do or what its states mean.
   themselves. On 加上 / Add the one met walks into its own conversation, in from the side with two
   small steps, and greets the person there by the name they gave it (its first screen, D497). Reduce
   Motion: no breath, blink, hop or walk; the chosen one still stands raised.
-- **Changing later:** Settings › 伙伴, each partner's row, a 3 × 2 picker above its colours, each
+- **Changing later:** Settings › 伙伴, each partner's row (the default's too, and the only one's,
+  D568), a 3 × 2 picker above its colours, each
   figure shown in that partner's colour; free, at once, any time. The partner answers in its new
   shape: its small figure where the said line's pebble pops, and **好，我现在是{figure}了，还是我。/
   There: I'm {figure} now. Still me.** (settings.md, D296).

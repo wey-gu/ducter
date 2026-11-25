@@ -79,7 +79,8 @@ describe("D546: the owner, not the shown partner", () => {
     expect(A.nameOf("default")).toBe("阿福");
     expect(A.nameOf(undefined)).toBe("阿福");
     const one = await rig([{ id: "default", name: "阿福", look: "sky", asks: 0 }], "default");
-    expect(one.lookOf("default")).toBeUndefined();
+    // D568 (was D497's "the art as drawn"): the one partner wears what it was given.
+    expect(one.lookOf("default")).toBe("sky");
     expect(one.nameOf("default")).toBe("阿福");
   });
 

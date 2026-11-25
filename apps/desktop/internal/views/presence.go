@@ -54,7 +54,14 @@ func (a *App) watching() bool {
 // presences (at once under reduced motion). No bouncing: it is company,
 // not a mascot.
 func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
-	a.avatarAs(c, theme.ShownWear(), a.S.PersonaName, p, size)
+	a.speakerAvatar(c, a.speakerFor(speakShown), p, size)
+}
+
+// speakerAvatar is avatar for whom speakerFor resolved (D568): the
+// product's pebble, the shown partner or a given one.
+func (a *App) speakerAvatar(c *ui.Context, sp speaker, p theme.Presence, size float32) {
+	a.noteFig("avatar", sp.Wear, sp.Name, sp.Brand)
+	a.avatarAs(c, sp.Wear, sp.Name, p, size)
 }
 
 // avatarAs is avatar for a given partner: its figure in its clay, its name

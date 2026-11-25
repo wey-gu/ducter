@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.66 - 2026-11-25
+
+<!-- whats-new
+zh: 六个陶土伙伴可选：小石子、包子、芽芽、云朵、方糖、豆豆
+en: Six clay partners to choose from: Pebble, Bun, Sprout, Cloud, Cube and Bean
+-->
+
+**Your partners, each its own shape**
+- A new partner can be Pebble, Bun, Sprout, Cloud, Cube or Bean. Each is its own little clay
+  figure, with its own suggested colour. All of them do exactly the same things.
+- Making a partner is a small meeting: the six stand on the paper, breathing and blinking. Tap one
+  and it hops forward. Add it, and it walks into its own conversation and says hello.
+- Change a partner's shape any time in Settings › Partners. It tells you, in its new shape, that
+  it is still itself.
+- Your existing partners keep their look until you change it.
+- The CI wait on On hand is now a little clay board of check lights.
+
 ## 0.1.65 - 2026-11-25
 
 <!-- whats-new

@@ -97,13 +97,13 @@ func TestLoopLine(t *testing.T) {
 			t.Fatalf("%s: facts %+v %v", lang, f, ok)
 		}
 		round := L.T("loop.round", 302)
-		if !tt.HasText(round) || !tt.HasText(L.T("keep.section")) {
+		if !hasText(tt, round) || !hasText(tt, L.T("keep.section")) {
 			t.Errorf("%s: at the end, no line: %q", lang, tt.Texts())
 		}
 		app.taskList("t_loop").ScrollTo(0, ui.Start)
 		tt.Frame()
 		tt.Frame()
-		if tt.HasText(round) {
+		if hasText(tt, round) {
 			f0, l0 := app.taskList("t_loop").Visible()
 			t.Errorf("%s: the line stays with the head in view (%d..%d)", lang, f0, l0)
 		}
@@ -204,7 +204,7 @@ func TestQuietRounds(t *testing.T) {
 		tt.Frame()
 	}
 	fold := app.L.T("loop.quiet", 2, clock(quietRuns(task.Events)[3].from), clock(quietRuns(task.Events)[3].to))
-	if !tt.HasText(fold) {
+	if !hasText(tt, fold) {
 		t.Errorf("no fold row %q: %q", fold, tt.Texts())
 	}
 	if err := tt.Click(fold); err != nil {

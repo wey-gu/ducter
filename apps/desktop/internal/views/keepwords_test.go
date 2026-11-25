@@ -44,8 +44,31 @@ func TestKeepClauses(t *testing.T) {
 			t.Fatalf("%q not kept in %q", want, got)
 		}
 	}
-	if strings.Contains(got, "名"+j+"后") {
-		t.Fatalf("a long run lost a break it should keep: %q", got)
+	// D564: a clause up to keepAllRun is whole, as keep-all on the web: 的域名后天到期 never breaks.
+	if !strings.Contains(got, "的"+j+"域"+j+"名"+j+"后"+j+"天"+j+"到"+j+"期，") {
+		t.Fatalf("a short clause not kept whole: %q", got)
+	}
+	// A longer run keeps its breaks but for its last four.
+	long := keepClauses("我会把上个月的账单和收据都整理成一张表。")
+	if strings.Contains(long, "我"+j+"会") || !strings.Contains(long, "一"+j+"张"+j+"表。") {
+		t.Fatalf("a long run: %q", long)
+	}
+	// D561: a short Latin token keeps its hyphens; D564: a text kept twice is kept once.
+	if got := keepClauses("用 GPT-6.2-Sol 来做"); !strings.Contains(got, "GPT"+j+"-"+j+"6.2"+j+"-"+j+"Sol") {
+		t.Fatalf("token not kept: %q", got)
+	}
+	for _, s := range []string{s, "Two ways to fix CI.", "在 ~/dev/ducter 里，用 hawdb-net 跑"} {
+		if once := keepClauses(s); keepClauses(once) != once {
+			t.Fatalf("not idempotent: %q then %q", once, keepClauses(once))
+		}
+	}
+	// D564: a title (no stop) keeps its Latin breaks: never "When I / notice something".
+	if got := keepClauses("When I notice something"); got != "When I notice something" {
+		t.Fatalf("a title was joined: %q", got)
+	}
+	// D564: hasText and the accessible name read a kept text as said.
+	if asSaid(keepClauses("Start it again to use it.")) != "Start it again to use it." {
+		t.Fatal("asSaid kept a no-break space")
 	}
 	if got := keepClauses("Two ways to fix CI."); got != "Two ways to fix\u00a0CI." {
 		t.Fatalf("latin changed: %q", got)

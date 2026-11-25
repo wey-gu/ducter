@@ -33,12 +33,12 @@ func TestDevcardTrim(t *testing.T) {
 		lendFrame(tt)
 		persona := app.personaName()
 		for _, want := range []string{L.T("wmem.carried", "Hetzner Server"), L.T("worker.g", persona), L.T("chip.worker")} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Fatalf("%s: the card misses %q: %q", lang, want, tt.Texts())
 			}
 		}
 		// The paragraph on which agents use it went with the old one on where it comes from.
-		if tt.HasText(app.memReadyWords(app.S.Device("dev_mac"))) {
+		if hasText(tt, app.memReadyWords(app.S.Device("dev_mac"))) {
 			t.Errorf("%s: the carried card still lists the agents", lang)
 		}
 		// The role once: the chip says 帮 Ducter 做事, the line under the name only that it is free.
@@ -51,23 +51,23 @@ func TestDevcardTrim(t *testing.T) {
 		if n > 1 { // the chip itself is one
 			t.Errorf("%s: 帮…做事 said as a line beside its chip", lang)
 		}
-		if !tt.HasText(L.T("list.state.ready")) {
+		if !hasText(tt, L.T("list.state.ready")) {
 			t.Errorf("%s: no 待命 under the name: %q", lang, tt.Texts())
 		}
 		// haswell has no chip, so its line keeps the role.
 		app.devState().sel = "haswell"
 		lendFrame(tt)
-		if !tt.HasText(L.T("card.status.does")) || !tt.HasText(L.T("worker.g", persona)) {
+		if !hasText(tt, L.T("card.status.does")) || !hasText(tt, L.T("worker.g", persona)) {
 			t.Errorf("%s: haswell's card: %q", lang, tt.Texts())
 		}
 		app.devState().sel = "local"
 		lendFrame(tt)
-		if !tt.HasText(L.T("home.g", persona)) {
+		if !hasText(tt, L.T("home.g", persona)) {
 			t.Errorf("%s: the home doesn't say where the conversation is kept: %q", lang, tt.Texts())
 		}
 		app.devState().sel, app.devState().selClient = "", "pix"
 		lendFrame(tt)
-		if !tt.HasText(L.T("handset.g")) {
+		if !hasText(tt, L.T("handset.g")) {
 			t.Errorf("%s: the lent phone's sentence: %q", lang, tt.Texts())
 		}
 	}

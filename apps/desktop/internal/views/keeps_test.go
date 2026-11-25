@@ -35,10 +35,10 @@ func TestKeepRoundsNotInDoneToday(t *testing.T) {
 	app.Route = RouteOnHand
 	tt := ui.NewTesterWith(app.View, 1280, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if tt.HasText("12 月 20 日上海飞东京的机票的票价") {
+	if hasText(tt, "12 月 20 日上海飞东京的机票的票价") {
 		t.Errorf("the round is a row on On hand: %q", tt.Texts())
 	}
-	if !tt.HasText("看守中") || !tt.HasText("改签确认") {
+	if !hasText(tt, "看守中") || !hasText(tt, "改签确认") {
 		t.Errorf("On hand lost its own rows: %q", tt.Texts())
 	}
 }

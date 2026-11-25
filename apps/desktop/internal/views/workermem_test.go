@@ -261,7 +261,7 @@ func TestMemCarriedCard(t *testing.T) {
 	if _, ok := tt.Find("和 Hetzner Server 用同一份记忆，不用设置"); !ok {
 		t.Fatalf("no carried line: %q", tt.Texts())
 	}
-	if tt.HasText("这里的任务也记得你") {
+	if hasText(tt, "这里的任务也记得你") {
 		t.Fatal("the old subtitle is back")
 	}
 	if _, ok := tt.Find("装好了，还差登录"); ok {

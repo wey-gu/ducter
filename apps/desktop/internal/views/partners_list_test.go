@@ -46,7 +46,7 @@ func TestD513PartnerList(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1400, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 		d513Frames(tt)
-		if app.partnerRailShown() || tt.HasText(app.L.T("partners.title")) {
+		if app.partnerRailShown() || hasText(tt, app.L.T("partners.title")) {
 			t.Fatalf("%s: one partner shows a list", lang)
 		}
 		app.Receive(protocol.ServerFrame{T: "partners", Shown: "default", Partners: d513Partners(lang)})
@@ -56,11 +56,11 @@ func TestD513PartnerList(t *testing.T) {
 		}
 		ps := d513Partners(lang)
 		for _, p := range ps {
-			if !tt.HasText(p.Name) {
+			if !hasText(tt, p.Name) {
 				t.Errorf("%s 1400: %s has no row", lang, p.Name)
 			}
 		}
-		if !tt.HasText(app.L.T("partners.you", ps[1].Last.Text)) || !tt.HasText(app.L.T("partners.about.shown", ps[2].About)) {
+		if !hasText(tt, app.L.T("partners.you", ps[1].Last.Text)) || !hasText(tt, app.L.T("partners.about.shown", ps[2].About)) {
 			t.Errorf("%s 1400: the last lines (the person's own marked, else what it looks after): %q", lang, tt.Texts())
 		}
 		for _, b := range paneGeometry(tt, 1400) {
@@ -68,7 +68,7 @@ func TestD513PartnerList(t *testing.T) {
 		}
 		tt.SetSize(1000, 900)
 		d513Frames(tt)
-		if tt.HasText(app.L.T("partners.you", ps[1].Last.Text)) {
+		if hasText(tt, app.L.T("partners.you", ps[1].Last.Text)) {
 			t.Errorf("%s 1000: the slim list keeps the figures only", lang)
 		}
 		if app.partnerRailW() > 100 {

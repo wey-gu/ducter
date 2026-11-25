@@ -33,7 +33,7 @@ func TestChatsPanel(t *testing.T) {
 		{Kind: "slack", State: "off"},
 	})
 	// D365: Slack, never connected, rests as its row with Set up and its note; Set up opens the steps.
-	if tt.HasText("Copy the app manifest") || !tt.HasText("Set up") || !tt.HasText("This workspace's admins may be able to see what's said here.") {
+	if hasText(tt, "Copy the app manifest") || !hasText(tt, "Set up") || !hasText(tt, "This workspace's admins may be able to see what's said here.") {
 		t.Errorf("Slack isn't resting: %q", tt.Texts())
 	}
 	if err := tt.Click("Set up"); err != nil {
@@ -41,7 +41,7 @@ func TestChatsPanel(t *testing.T) {
 	}
 	tt.Frame()
 	for _, want := range []string{"Chat apps", "Waiting for you at @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Use another account", "Disconnect Telegram"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
@@ -73,7 +73,7 @@ func TestChatsCode(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, want := range []string{"在 Telegram 里打开", "K7QM-4XPA"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}

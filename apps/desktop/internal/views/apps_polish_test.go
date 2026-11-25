@@ -140,9 +140,9 @@ func TestKeepAnAppInTheDock(t *testing.T) {
 		t.Fatalf("not kept: %v", d.kept)
 	}
 	said := app.L.T("app.dock.done", "北京出差 11/20–21")
-	if app.fileToast != said && !tt.HasText(said) {
+	if app.fileToast != said && !hasText(tt, said) {
 		tt.Frame()
-		if !tt.HasText(said) {
+		if !hasText(tt, said) {
 			t.Errorf("no toast %q in %q", said, tt.Texts())
 		}
 	}
@@ -150,7 +150,7 @@ func TestKeepAnAppInTheDock(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("从程序坞拿掉") || tt.HasText("放到程序坞") {
+	if !hasText(tt, "从程序坞拿掉") || hasText(tt, "放到程序坞") {
 		t.Errorf("menu after keeping %q", tt.Texts())
 	}
 }

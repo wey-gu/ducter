@@ -40,20 +40,20 @@ func TestMemoryNotedLine(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		// D444: fresh (nothing said since), shown under the reply with 别记这个.
-		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("memory.undo")) {
+		if !hasText(tt, tc.want) || !hasText(tt, app.L.T("memory.undo")) {
 			t.Errorf("%s: no %q with Don't keep this in %q", tc.lang, tc.want, tt.Texts())
 		}
 		// Once the person spoke again, folded into Details, with Forget.
 		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev(4, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "ok"})}})
 		tt.Frame()
-		if tt.HasText(tc.want) {
+		if hasText(tt, tc.want) {
 			t.Errorf("%s: %q still shows outside Details after the person spoke", tc.lang, tc.want)
 		}
 		if err := tt.Click(app.L.T("details.show")); err != nil {
 			t.Fatalf("%s: %v in %q", tc.lang, err, tt.Texts())
 		}
 		tt.Frame()
-		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("partner.memory.forget")) {
+		if !hasText(tt, tc.want) || !hasText(tt, app.L.T("partner.memory.forget")) {
 			t.Errorf("%s: no %q with Forget in Details in %q", tc.lang, tc.want, tt.Texts())
 		}
 	}

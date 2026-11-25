@@ -276,7 +276,7 @@ func TestAppearanceFollows(t *testing.T) {
 	app2.openTab(TabLook)
 	tt2.Frame()
 	for _, s := range []string{"Light and dark", "Follow the system", "Light", "Dark"} {
-		if !tt2.HasText(s) {
+		if !hasText(tt2, s) {
 			t.Fatalf("no %q in Look and sound: %q", s, tt2.Texts())
 		}
 	}

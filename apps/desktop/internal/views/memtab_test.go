@@ -123,7 +123,7 @@ func TestMemoryTab(t *testing.T) {
 		for _, w := range []string{L.T("mem.hero.on", app.personaName()), L.T("mem.update.newer", "0.10.121"), L.T("mem.update.newer.body", "hel", "0.10.118"), L.T("mem.badge.newer"),
 			L.T("mem.about.title"), L.T("mem.kind.preference"), L.T("mem.kind.decision"), L.T("mem.by.tool", "Codex"), L.T("mem.tools.title"), L.T("mem.tools.count", "53"),
 			L.T("mem.all.count", "10,980"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.where", "hel"), L.T("mem.week.count", "5"), L.T("mem.head.check")} {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
@@ -135,7 +135,7 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("更新 sent %v", (*sent)[n:])
 		}
 		tt.Frame()
-		if !tt.HasText(L.T("bridge.mem.updating", "hel")) {
+		if !hasText(tt, L.T("bridge.mem.updating", "hel")) {
 			t.Fatalf("no updating line after the tap: %q", tt.Texts())
 		}
 		n = len(*sent)
@@ -146,14 +146,14 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if !tt.HasText(L.T("mem.item.wrong")) {
+		if !hasText(tt, L.T("mem.item.wrong")) {
 			t.Fatalf("the row didn't open: %q", tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), first.Title)); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if len(*sent) != n || !tt.HasText(L.T("mem.item.forget.ask", first.Title)) {
+		if len(*sent) != n || !hasText(tt, L.T("mem.item.forget.ask", first.Title)) {
 			t.Fatalf("忘掉 didn't ask first: %v %q", (*sent)[n:], tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("partner.memory.forget"), first.Title)); err != nil {
@@ -169,7 +169,7 @@ func TestMemoryTab(t *testing.T) {
 			}
 		}
 		// D459: the forget is answered in the partner's one word.
-		if !tt.HasText(L.T("said.mem.forget", first.Title)) {
+		if !hasText(tt, L.T("said.mem.forget", first.Title)) {
 			t.Fatalf("no word after the forget: %q", tt.Texts())
 		}
 		// 改 writes the words back by id.

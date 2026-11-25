@@ -57,10 +57,10 @@ func TestOffersInTheNote(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1300, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText("先等等") {
+	if hasText(tt, "先等等") {
 		t.Errorf("an offer shows Hold: %q", tt.Texts())
 	}
-	if !tt.HasText(offerRows[2].zh) || tt.HasText(offerRows[3].zh) || !tt.HasText("还有几条") {
+	if !hasText(tt, offerRows[2].zh) || hasText(tt, offerRows[3].zh) || !hasText(tt, "还有几条") {
 		t.Errorf("want three shown and 还有几条, got %q", tt.Texts())
 	}
 	if len(app.partnerDecisions()) != 0 || len(app.S.OpenDecisions()) != 0 {
@@ -71,7 +71,7 @@ func TestOffersInTheNote(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText(offerRows[4].zh) || !tt.HasText("收起") {
+	if !hasText(tt, offerRows[4].zh) || !hasText(tt, "收起") {
 		t.Errorf("the fold didn't open: %q", tt.Texts())
 	}
 	// D464: the offers it brought into view are counted as opened (the home logs each once).
@@ -101,7 +101,7 @@ func TestOffersInTheNote(t *testing.T) {
 		ev("channel", protocol.KindFindState, protocol.FindState{FindID: "fo1", Kind: "waiting_on_you", State: "passed"}),
 	}})
 	tt.Frame()
-	if !tt.HasText(offerRows[1].zh) || tt.HasText("已跳过") || tt.HasText("好，"+offerRows[1].go1zh) {
+	if !hasText(tt, offerRows[1].zh) || hasText(tt, "已跳过") || hasText(tt, "好，"+offerRows[1].go1zh) {
 		t.Errorf("a faded offer: %q", tt.Texts())
 	}
 }

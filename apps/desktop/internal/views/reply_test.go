@@ -266,7 +266,7 @@ func TestReplyEscCancels(t *testing.T) {
 	if app.rp.replying != nil {
 		t.Fatalf("Esc didn't put the reply away")
 	}
-	if !tt.HasText(app.L.T("composer.label", "Ducter")) || tt.HasText(app.replyLabel("you")) {
+	if !hasText(tt, app.L.T("composer.label", "Ducter")) || hasText(tt, app.replyLabel("you")) {
 		t.Errorf("the placeholder didn't come back: %q", texts(tt))
 	}
 	// The drawn × does the same.

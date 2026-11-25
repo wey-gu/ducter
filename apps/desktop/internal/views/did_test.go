@@ -87,7 +87,7 @@ func TestDidRendersAndAsks(t *testing.T) {
 		"发消息给妈妈", "周三前可以改回去", "在 Notion 里删了东西", "没人接", "任务「准备 Q4 预算」", "你点了好 9:12", "之前允许过", "Ducter 的浏览器",
 		"在 Wey's MacBook Pro 上", "用 Tuwa 的号码", "通过 Gmail", "Ducter 的手机", "用你自己的号码", "例行「早上看邮件」", "没人回，按默认做了",
 		"发了 2", "付了 1 笔", "打了 1 个", "更早的", "这里记的是经过 Ducter 的事；任务在电脑上直接跑的命令不在这里。"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -121,7 +121,7 @@ func TestDidRendersAndAsks(t *testing.T) {
 	// Nothing found offers All, which clears both.
 	app.Receive(didResult(nil, items, q.ID))
 	tt.Frame()
-	if !tt.HasText("没有找到") {
+	if !hasText(tt, "没有找到") {
 		t.Fatalf("no Nothing found in %q", tt.Texts())
 	}
 	// Esc clears the words, then the filter, then goes back.
@@ -162,7 +162,7 @@ func TestDidUndoOnlyWhereItExists(t *testing.T) {
 			n++
 		}
 	}
-	if n != 1 || !tt.HasText("Can be undone until Wed") {
+	if n != 1 || !hasText(tt, "Can be undone until Wed") {
 		t.Fatalf("%d Undo in %q", n, tt.Texts())
 	}
 	if err := tt.Click("Undo, Changed 14 files"); err != nil {
@@ -178,7 +178,7 @@ func TestDidUndoOnlyWhereItExists(t *testing.T) {
 	app.did.undoing = nil
 	app.Receive(didResult(items, items, ""))
 	tt.Frame()
-	if tt.HasText("Undo") {
+	if hasText(tt, "Undo") {
 		t.Errorf("an expired Undo shows")
 	}
 	// Open the task goes there; Esc comes back.
@@ -206,14 +206,14 @@ func TestDidEmptyDay(t *testing.T) {
 			want = []string{"Nothing sent, paid or called for you today.", "Looked at 2 accounts", "1 change"}
 		}
 		for _, w := range want {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
 		// Nothing at all: still today, and Nothing else either.
 		app.Receive(didResult(nil, nil, ""))
 		tt.Frame()
-		if w := pastWord(lang, "其他也没有", "Nothing else either"); !tt.HasText(w) {
+		if w := pastWord(lang, "其他也没有", "Nothing else either"); !hasText(tt, w) {
 			t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 		}
 	}

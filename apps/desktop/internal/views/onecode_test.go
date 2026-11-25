@@ -24,7 +24,7 @@ func TestPairCardBothWays(t *testing.T) {
 			h.app.Receive(protocol.ServerFrame{T: "pair_code", Code: "K7QM-4XPA", Address: "https://ducter.example.com", QR: []string{"1"}, ExpiresAt: time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
 			h.settle(200 * time.Millisecond)
 			for _, want := range []string{L.T("pair.scan"), L.T("pair.computer", h.app.S.PersonaName), "ducter worker https://ducter.example.com --code K7QM-4XPA", L.T("pair.waiting")} {
-				if !h.tt.HasText(want) {
+				if !hasText(h.tt, want) {
 					t.Fatalf("missing %q in %q", want, h.tt.Texts())
 				}
 			}
@@ -80,7 +80,7 @@ func TestOneCodeLive(t *testing.T) {
 	h.wait = 0
 	h.tt.Advance(time.Second)
 	h.tt.Frame()
-	if !h.tt.HasText(L.T("card.status.does")) {
+	if !hasText(h.tt, L.T("card.status.does")) {
 		t.Fatalf("card: %q", h.tt.Texts())
 	}
 	t.Logf("joined: %s (%s, %s)", dv.Name, dv.ID, dv.State)
@@ -105,7 +105,7 @@ func TestOtherComputerCard(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
 			does := L.T("list.state.ready")
-			if !h.tt.HasText(does) {
+			if !hasText(h.tt, does) {
 				t.Fatalf("subtitle: %q", h.tt.Texts())
 			}
 			h.click(spoken(L, "ducter-worker", does))
@@ -116,14 +116,14 @@ func TestOtherComputerCard(t *testing.T) {
 			h.click(L.T("device.rename.ok"))
 			h.until("refused", func() bool { return h.app.dev.rename.failed == "name_taken" })
 			h.settle(100 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.rename.name_taken", "MacBook-Pro")) {
+			if !hasText(h.tt, L.T("device.rename.name_taken", "MacBook-Pro")) {
 				t.Fatalf("taken: %q", h.tt.Texts())
 			}
 			h.app.dev.rename.draft = "Build box"
 			h.click(L.T("device.rename.ok"))
 			h.until("renamed", func() bool { d := h.app.S.Device("a3f9c2d1e0"); return d != nil && d.Name == "Build box" })
 			h.settle(200 * time.Millisecond)
-			if h.app.dev.rename.device != "" || !h.tt.HasText("Build box") {
+			if h.app.dev.rename.device != "" || !hasText(h.tt, "Build box") {
 				t.Fatalf("after rename: %+v %q", h.app.dev.rename, h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("one-code-%s-card", lang))
@@ -138,7 +138,7 @@ func TestOtherComputerCard(t *testing.T) {
 			})
 			h.until("asleep", func() bool { return h.app.S.Device("a3f9c2d1e0").State == protocol.DeviceAsleep })
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.state.asleep")) || h.tt.HasText(spoken(L, L.T("device.other"), does)) {
+			if !hasText(h.tt, L.T("device.state.asleep")) || hasText(h.tt, spoken(L, L.T("device.other"), does)) {
 				t.Fatalf("asleep subtitle: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("one-code-%s-card-asleep", lang))

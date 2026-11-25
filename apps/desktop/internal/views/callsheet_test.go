@@ -47,12 +47,12 @@ func TestCallSheet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	for _, w := range []string{"+84 28 3829 1234", "开场白", "您好，我想订明天晚上 7 点的位子，两位，姓王。", "要问的", "不要透露", "需要记下", "复制号码", "暂不拨打", "通话结束"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the sheet lacks %q: %q", w, tt.Texts())
 		}
 	}
 	for _, w := range []string{"打过去", "Tuwa 的号码", "Ducter 的声音", "大约"} {
-		if tt.HasText(w) {
+		if hasText(tt, w) {
 			t.Errorf("a call sheet shows the Go card's %q: %q", w, tt.Texts())
 		}
 	}
@@ -60,7 +60,7 @@ func TestCallSheet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("已复制") {
+	if !hasText(tt, "已复制") {
 		t.Errorf("Copy number didn't say so: %q", tt.Texts())
 	}
 	if err := tt.Click("通话结束"); err != nil {
@@ -74,7 +74,7 @@ func TestCallSheet(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Calls: []protocol.CallBody{{CallID: "call_s", State: "done", Plan: pl, Outcome: "订上了：明晚 7 点两位，靠窗"}}}})
 	app.Route = RouteOnHand
 	tt.Frame()
-	if !tt.HasText("已打给金玉楼") || !tt.HasText("订上了：明晚 7 点两位，靠窗") {
+	if !hasText(tt, "已打给金玉楼") || !hasText(tt, "订上了：明晚 7 点两位，靠窗") {
 		t.Errorf("the row: %q", tt.Texts())
 	}
 }

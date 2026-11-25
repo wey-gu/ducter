@@ -53,7 +53,7 @@ func TestIMessageConnectShowsTheCodeAndThePermissions(t *testing.T) {
 	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateOff, Automation: true, Disk: true})
 	_, tt := imessageApp(t, i18n.ZH, br)
 	for _, want := range []string{"iMessage", "小鸭自己的 Apple ID（推荐）", "给自己发信息", "连上"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Fatalf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -70,7 +70,7 @@ func TestIMessageConnectShowsTheCodeAndThePermissions(t *testing.T) {
 		t.Fatalf("enabled %v", br.enabled)
 	}
 	for _, want := range []string{"用你的手机给自己发这串数字：", "482913", "完全磁盘访问权限", "自动化 › 信息"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -80,12 +80,12 @@ func TestIMessageConnectShowsTheCodeAndThePermissions(t *testing.T) {
 func TestIMessageStatesInWords(t *testing.T) {
 	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateNeedsDisk, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: false})
 	app, tt := imessageApp(t, i18n.EN, br)
-	if !tt.HasText("Allow") || !tt.HasText("One permission to go") {
+	if !hasText(tt, "Allow") || !hasText(tt, "One permission to go") {
 		t.Fatalf("needs disk: %q", tt.Texts())
 	}
 	br.set(imessage.Status{State: imessage.StateOn, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true, Stranger: time.Now()})
 	tt.Frame()
-	if !tt.HasText("Waiting for you at +8613800000000") || !tt.HasText("Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
+	if !hasText(tt, "Waiting for you at +8613800000000") || !hasText(tt, "Someone else wrote to 小鸭 in iMessage. It didn't answer, and kept nothing of theirs.") {
 		t.Fatalf("on: %q", tt.Texts())
 	}
 	br.set(imessage.Status{State: imessage.StateOwnID, Mode: imessage.ModePartner, Handle: "+8613800000000", Automation: true, Disk: true})
@@ -104,7 +104,7 @@ func TestIMessageStatesInWords(t *testing.T) {
 func TestIMessageOnChatApps(t *testing.T) {
 	br := (&fakeIMessage{}).set(imessage.Status{State: imessage.StateOff, Automation: true, Disk: true})
 	app, tt := imessageApp(t, i18n.ZH, br)
-	if !tt.HasText("iMessage") || !tt.HasText("经过这台 Mac 收发，这台 Mac 要开着。") {
+	if !hasText(tt, "iMessage") || !hasText(tt, "经过这台 Mac 收发，这台 Mac 要开着。") {
 		t.Fatalf("no iMessage on Chat apps: %q", tt.Texts())
 	}
 	n := 0
@@ -119,7 +119,7 @@ func TestIMessageOnChatApps(t *testing.T) {
 	app.openTab(TabNotify)
 	tt.Frame()
 	tt.Frame()
-	if tt.HasText("iMessage") {
+	if hasText(tt, "iMessage") {
 		t.Errorf("iMessage still on Notifications: %q", tt.Texts())
 	}
 }

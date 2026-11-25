@@ -55,7 +55,7 @@ func TestCheckingSitsBesideTheNightSwitch(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if tt.HasText("检查更新") {
+	if hasText(tt, "检查更新") {
 		t.Error("Check now stays while it asks")
 	}
 	checking, ok := tt.Find("正在检查…")
@@ -74,24 +74,24 @@ func TestFailedSaysWhyOnTapAndNeverOnTheTarget(t *testing.T) {
 				Phase: "failed", From: "0.0.6", To: "0.0.7", Reason: "health", RolledBack: true, Detail: "0.0.7 didn't answer within 180 s"}}
 	}
 	_, tt, _ := versionsApp(t, failed("0.0.7"))
-	if tt.HasText("没能更新") || tt.HasText("没能更新，已经换回 0.0.6") {
+	if hasText(tt, "没能更新") || hasText(tt, "没能更新，已经换回 0.0.6") {
 		t.Fatalf("on 0.0.7, it says it didn't update: %q", tt.Texts())
 	}
 
 	_, tt, sent := versionsApp(t, failed("0.0.6"))
 	line := "没能更新，已经换回 0.0.6"
-	if !tt.HasText(line) {
+	if !hasText(tt, line) {
 		t.Fatalf("no %q in %q", line, tt.Texts())
 	}
 	why := "新版本重启后三分钟里都没应答，所以换回了原来的。可以再试一次。"
-	if tt.HasText(why) {
+	if hasText(tt, why) {
 		t.Fatal("the why shows before the tap")
 	}
 	if err := tt.Click(line + ", hel"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText(why) || !tt.HasText("0.0.7 didn't answer within 180 s") {
+	if !hasText(tt, why) || !hasText(tt, "0.0.7 didn't answer within 180 s") {
 		t.Fatalf("tapped: no why in %q", tt.Texts())
 	}
 	*sent = nil

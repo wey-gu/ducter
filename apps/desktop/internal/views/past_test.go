@@ -119,7 +119,7 @@ func TestPastSearchesAsYouType(t *testing.T) {
 	app.Receive(pastResult(pastItems(pastSeeds()), q.ID))
 	tt := ui.NewTesterWith(app.View, 1280, 820, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("订京都的酒店") || !tt.HasText("标了星的") {
+	if !hasText(tt, "订京都的酒店") || !hasText(tt, "标了星的") {
 		t.Fatalf("the list %q", tt.Texts())
 	}
 	n := len(*sent)
@@ -146,7 +146,7 @@ func TestPastSearchesAsYouType(t *testing.T) {
 	app.Receive(pastResult(pastFlaky(), q.ID))
 	tt.Frame()
 	for _, want := range []string{"你说过", "文件", "分支", "标签", "原名"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no hit label %q in %q", want, tt.Texts())
 		}
 	}
@@ -231,7 +231,7 @@ func TestPastKeys(t *testing.T) {
 	if !app.nt.open || app.pastFromID() != first {
 		t.Fatalf("⇧⌘Enter: open %v from %q", app.nt.open, app.pastFromID())
 	}
-	if !tt.HasText("With what “The fake-clock flake” found") {
+	if !hasText(tt, "With what “The fake-clock flake” found") {
 		t.Errorf("no chip in %q", tt.Texts())
 	}
 	app.nt.words = "Now fix the other race in TestFlushRace"

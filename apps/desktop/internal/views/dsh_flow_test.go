@@ -39,7 +39,7 @@ func TestDshSignInRow(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	for _, s := range []string{"已经在 Wey's MacBook Pro 上打开了 DeepSeek Harness。在那里登录你的 DeepSeek 账号，这里会自己变成可以用了。", "在 DeepSeek 上生成一个"} {
-		if !tt.HasText(s) {
+		if !hasText(tt, s) {
 			t.Fatalf("missing %q", s)
 		}
 	}

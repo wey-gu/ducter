@@ -99,7 +99,7 @@ func TestAboutComputer(t *testing.T) {
 						"edit":    {L.T("about.more"), L.T("about.less"), L.T("about.w.heavy"), L.T("about.w.web"), L.T("about.w.all"), L.T("about.keep"), L.T("about.cancel")},
 					}[st]
 					for _, s := range want {
-						if !tt.HasText(s) {
+						if !hasText(tt, s) {
 							t.Fatalf("%s %s %d %s: missing %q in %q", lang, paper, w, st, s, tt.Texts())
 						}
 					}

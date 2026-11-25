@@ -133,7 +133,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	for _, want := range []string{"等你", "进行中", "等下一次", "已暂停", "每天早上看一眼 hawdb 的 CI"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
@@ -171,7 +171,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 		t.Fatalf("sent %#v", a)
 	}
 	tt.Frame()
-	if !tt.HasText("暂停到明天 8:00") {
+	if !hasText(tt, "暂停到明天 8:00") {
 		t.Errorf("the card did not settle as paused: %q", tt.Texts())
 	}
 	if err := tt.Click("恢复，每天早上看一眼 hawdb 的 CI"); err != nil {

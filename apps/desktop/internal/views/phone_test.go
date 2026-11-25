@@ -101,13 +101,13 @@ func TestPhoneFlow(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "connection_result", Reason: "signing_in"})
 	app.Receive(protocol.ServerFrame{T: "connection_signin", SignIn: &protocol.SignInView{URL: protocol.TuwaMCP, Name: "Tuwa", State: "waiting", UserCode: "WXYZ-2345", VerifyURLComplete: "https://api.tuwa.ai/oauth/device?user_code=WXYZ-2345", ExpiresAt: time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339), QR: fakeQR(25)}})
 	tt.Frame()
-	if !tt.HasText("WXYZ-2345") || !tt.HasText("在手机上登录 Tuwa") || tt.HasText("在等你在手机上登录。") {
+	if !hasText(tt, "WXYZ-2345") || !hasText(tt, "在手机上登录 Tuwa") || hasText(tt, "在等你在手机上登录。") {
 		t.Fatalf("the sign-in panel: %q", tt.Texts())
 	}
 	app.Receive(protocol.ServerFrame{T: "connection_signin", SignIn: &protocol.SignInView{URL: protocol.TuwaMCP, Name: "Tuwa", State: "done", ID: "c2"}})
 	app.Receive(phoneConnFrame(false))
 	tt.Frame()
-	if !tt.HasText("Tuwa") || !tt.HasText("能打电话了") || !tt.HasText("今天打了 1 通，花了 $1.60") {
+	if !hasText(tt, "Tuwa") || !hasText(tt, "能打电话了") || !hasText(tt, "今天打了 1 通，花了 $1.60") {
 		t.Fatalf("the phone card: %q", tt.Texts())
 	}
 	if err := tt.Click("$20"); err != nil {
@@ -125,11 +125,11 @@ func TestPhoneFlow(t *testing.T) {
 	}})
 	tt.Frame()
 	for _, w := range []string{"+81 3 1234 5678", "可以说", "不透露", "Ducter 的声音", "Tuwa 的号码", "约 4 分钟，花 $1.60 左右", "暂不拨打"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the Go card lacks %q: %q", w, tt.Texts())
 		}
 	}
-	if tt.HasText("不再问") || tt.HasText("后你没回") {
+	if hasText(tt, "不再问") || hasText(tt, "后你没回") {
 		t.Errorf("a call's card has a default or a don't-ask-again: %q", tt.Texts())
 	}
 	if err := tt.Click("拨打"); err != nil {
@@ -145,7 +145,7 @@ func TestPhoneFlow(t *testing.T) {
 		protocol.NewEvent(2, time.Now().UTC().Format(time.RFC3339), "default", "channel", "system", protocol.KindDecision, protocol.Decision{DecisionID: "d2", Question: "7 点半可以吗？", GoLabel: "yes", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "question", YesNo: true}}),
 	}})
 	tt.Frame()
-	if !tt.HasText("Sushi Saito 那边在问") || !tt.HasText("电话那头在等；90 秒没回，就说回头再打。") {
+	if !hasText(tt, "Sushi Saito 那边在问") || !hasText(tt, "电话那头在等；90 秒没回，就说回头再打。") {
 		t.Fatalf("the question card: %q", tt.Texts())
 	}
 	if err := tt.Click("可以"); err != nil {
@@ -200,7 +200,7 @@ func TestCallD208(t *testing.T) {
 	}})
 	tt.Frame()
 	for _, w := range []string{"对方那边现在 20:03，我排到了对方的 09:00。", "立即拨打", "到时拨打", "不能做", "别说酒店名字", "Tuwa 的原话（英文）"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("the waiting Go card lacks %q: %q", w, tt.Texts())
 		}
 	}
@@ -209,7 +209,7 @@ func TestCallD208(t *testing.T) {
 	}
 	tt.Frame()
 	for _, w := range []string{"范围", "one question only", "从", "a Tuwa number", "什么时候（UTC）"} {
-		if !tt.HasText(w) {
+		if !hasText(tt, w) {
 			t.Errorf("Tuwa's wording lacks %q: %q", w, tt.Texts())
 		}
 	}
@@ -220,7 +220,7 @@ func TestCallD208(t *testing.T) {
 	if c, ok := (*sent)[len(*sent)-1].(protocol.CallNow); !ok || c.CallID != "call_1" {
 		t.Fatalf("Call now sent %#v", (*sent)[len(*sent)-1])
 	}
-	if !tt.HasText("好，现在就打。") || strings.Contains(strings.Join(tt.Texts(), "|"), "|现在就打|") {
+	if !hasText(tt, "好，现在就打。") || strings.Contains(strings.Join(tt.Texts(), "|"), "|现在就打|") {
 		t.Errorf("after Call now: %q", tt.Texts())
 	}
 
@@ -232,7 +232,7 @@ func TestCallD208(t *testing.T) {
 		protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339), "default", "channel", "partner", protocol.KindDecision, protocol.Decision{DecisionID: "d1", Question: "打给 Aya？", GoLabel: "到时拨打", DefaultOption: "hold", Call: &protocol.CallAsk{CallID: "call_1", Kind: "go", Plan: waitPlan(true, "late", false)}}),
 	}})
 	tt2.Frame()
-	if !tt2.HasText("对方那边现在 21:30，太晚了，排到了对方的 09:00。") || tt2.HasText("立即拨打") {
+	if !hasText(tt2, "对方那边现在 21:30，太晚了，排到了对方的 09:00。") || hasText(tt2, "立即拨打") {
 		t.Errorf("too late: %q", tt2.Texts())
 	}
 

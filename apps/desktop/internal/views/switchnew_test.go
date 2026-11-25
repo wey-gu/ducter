@@ -40,7 +40,7 @@ func TestSwitchInPlaceNewCodexModels(t *testing.T) {
 		app.lo.switchFor = "t_asc"
 		tt.Frame()
 		for _, s := range []string{"GPT-6.2-Sol", "GPT-6.2-Astra", "GPT-6.1 Terra", L.T("switch.tune.note", "Codex")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the switch sheet: %q", lang, s, tt.Texts())
 			}
 		}
@@ -54,7 +54,7 @@ func TestSwitchInPlaceNewCodexModels(t *testing.T) {
 		// On a model the row leaves out (gpt-5.6-luna, ninth): still a chip, and chosen.
 		app.S.Tasks["t_asc"].Card.Model = "gpt-5.6-luna"
 		tt.Frame()
-		if !tt.HasText(modelLabel(app.trayHarness("codex"), "gpt-5.6-luna")) {
+		if !hasText(tt, modelLabel(app.trayHarness("codex"), "gpt-5.6-luna")) {
 			t.Fatalf("%s: the model it's on is missing: %q", lang, tt.Texts())
 		}
 	}

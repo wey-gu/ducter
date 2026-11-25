@@ -135,7 +135,7 @@ func followApp(t *testing.T, lang i18n.Lang) (*App, *ui.Tester) {
 func TestConversationKeepsYourPlace(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt := followApp(t, lang)
-		if app.fl.divider != 9 || !tt.HasText(app.L.T("conv.divider")) {
+		if app.fl.divider != 9 || !hasText(tt, app.L.T("conv.divider")) {
 			t.Fatalf("%s: no New messages line (divider %d): %q", lang, app.fl.divider, texts(tt))
 		}
 		replyShot(t, tt, fmt.Sprintf("../conversation-ux/mac-%s-01-open", lang))
@@ -147,7 +147,7 @@ func TestConversationKeepsYourPlace(t *testing.T) {
 		if app.list.AtEnd() {
 			t.Fatalf("%s: still at the end after scrolling up", lang)
 		}
-		if !tt.HasText(app.L.T("jump.latest")) && !hasLabel(tt, app.L.T("jump.latest")) {
+		if !hasText(tt, app.L.T("jump.latest")) && !hasLabel(tt, app.L.T("jump.latest")) {
 			t.Logf("%s: the round way back is labelled only for the reader (no text): ok", lang)
 		}
 		// Two of the partner's messages come.
@@ -159,7 +159,7 @@ func TestConversationKeepsYourPlace(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		chip := app.L.T("conv.new.n", "2")
-		if app.fl.fresh != 2 || !tt.HasText(chip) {
+		if app.fl.fresh != 2 || !hasText(tt, chip) {
 			t.Fatalf("%s: the pebble doesn't count the news (fresh %d): %q", lang, app.fl.fresh, texts(tt))
 		}
 		if app.S.ReadUpTo > 8 || containsRead(app) {
@@ -172,7 +172,7 @@ func TestConversationKeepsYourPlace(t *testing.T) {
 		for range 4 {
 			tt.Frame()
 		}
-		if !app.list.AtEnd() || tt.HasText(chip) {
+		if !app.list.AtEnd() || hasText(tt, chip) {
 			t.Fatalf("%s: the pebble didn't land on the news", lang)
 		}
 		replyShot(t, tt, fmt.Sprintf("../conversation-ux/mac-%s-03-landed", lang))

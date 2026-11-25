@@ -34,12 +34,12 @@ func TestPartnerModelsFromCodexLiveList(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		for _, want := range []string{tc.title, "GPT-6.2-Sol", "GPT-6.2-Astra", tc.line} {
-			if !tt.HasText(want) {
+			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}
 		}
 		for _, not := range []string{"GPT-6.2-Sol 想得最深。", "GPT-6.2-Sol thinks the deepest.", "GPT-6.2-Astra 回得更快。", "用它自己默认的模型"} {
-			if tt.HasText(not) {
+			if hasText(tt, not) {
 				t.Errorf("%s: %q on the pane", tc.lang, not)
 			}
 		}
@@ -58,7 +58,7 @@ func TestPartnerModelsFromCodexLiveList(t *testing.T) {
 			t.Fatalf("%s: the brain sent is %+v, want codex gpt-6.2-astra", tc.lang, got)
 		}
 		tt.Frame()
-		if !tt.HasText(tc.said) {
+		if !hasText(tt, tc.said) {
 			t.Errorf("%s: no %q in %q", tc.lang, tc.said, tt.Texts())
 		}
 	}

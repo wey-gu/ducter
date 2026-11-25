@@ -27,11 +27,11 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 	}
 	tt.Frame()
 	for _, want := range []string{"한국어", "Español", "日本語", "Other language…"} {
-		if !tt.HasText(want) {
+		if !hasText(tt, want) {
 			t.Errorf("the list lacks %q: %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("Svenska") {
+	if hasText(tt, "Svenska") {
 		t.Errorf("a language from the rest shows before Other language…")
 	}
 	scrollTo := func(anchor, label string) {
@@ -48,7 +48,7 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 		t.Fatalf("can't reach %q in the list: %q", label, tt.Texts())
 	}
 	scrollTo("Español", "Other language…")
-	if !tt.HasText("Svenska") {
+	if !hasText(tt, "Svenska") {
 		t.Fatalf("Other language… shows no rest: %q", tt.Texts())
 	}
 	scrollTo("Nederlands", "Svenska")
@@ -58,7 +58,7 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 	}
 	tt.Frame()
 	// D424: the picker says it; no line under the row repeats it.
-	if !tt.HasText("Svenska") || tt.HasText("Svenska 回") || tt.HasText("answers in Svenska") {
+	if !hasText(tt, "Svenska") || hasText(tt, "Svenska 回") || hasText(tt, "answers in Svenska") {
 		t.Errorf("a saved language from the rest doesn't show by its name: %q", tt.Texts())
 	}
 }

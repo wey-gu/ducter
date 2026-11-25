@@ -71,7 +71,7 @@ func TestD325Composer(t *testing.T) {
 		L := i18n.New(lang)
 		app, tt, sent := d325Task(t, lang, "claude-code", true)
 		for _, w := range []string{L.T("held.head"), L.T("held.now"), L.T("delivery.steer.read"), L.T("delivery.steer.wait")} {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
@@ -114,7 +114,7 @@ func TestD325Composer(t *testing.T) {
 			t.Errorf("%s: sent %v", lang, ops)
 		}
 		tt.Frame()
-		if tt.HasText(L.T("held.now")) {
+		if hasText(tt, L.T("held.now")) {
 			t.Errorf("%s: the chips stay after the queue emptied", lang)
 		}
 	}
@@ -130,12 +130,12 @@ func TestD325NoSteer(t *testing.T) {
 		_, tt, _ := d325Task(t, lang, "pi", true)
 		// D542: said over its held words and in the words' place, never in a row under the box.
 		for _, w := range []string{L.T("held.head.nosteer", "pi")} {
-			if !tt.HasText(w) {
+			if !hasText(tt, w) {
 				t.Errorf("%s: no %q in %q", lang, w, tt.Texts())
 			}
 		}
 		for _, w := range []string{L.T("send.steer"), L.T("held.now")} {
-			if tt.HasText(w) {
+			if hasText(tt, w) {
 				t.Errorf("%s: %q shows for an agent that can't steer", lang, w)
 			}
 		}

@@ -97,10 +97,10 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	line := "想起了你 11 月 10 日说的"
-	if !tt.HasText(line) || !tt.HasText("想起了 11 月 15 日 Claude Code 记下的") {
+	if !hasText(tt, line) || !hasText(tt, "想起了 11 月 15 日 Claude Code 记下的") {
 		t.Fatalf("no source lines: %q", tt.Texts())
 	}
-	if tt.HasText("它想起的这条") {
+	if hasText(tt, "它想起的这条") {
 		t.Fatalf("the card is open before a tap")
 	}
 	if err := tt.Click(line); err != nil {
@@ -108,7 +108,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 	}
 	tt.Frame()
 	for _, s := range []string{"我想起的这条", "你跟我说的", "11 月 10 日", "这次的回答用到了它。", "在 Nowledge Mem 里打开"} {
-		if !tt.HasText(s) {
+		if !hasText(tt, s) {
 			t.Errorf("the card lacks %q", s)
 		}
 	}
@@ -116,7 +116,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if !tt.HasText("忘掉「周报每周五下午发，发给 Nowledge 全组」？我以后不会再想起。") {
+	if !hasText(tt, "忘掉「周报每周五下午发，发给 Nowledge 全组」？我以后不会再想起。") {
 		t.Fatalf("Forget doesn't ask first: %q", tt.Texts())
 	}
 	*sent = nil
@@ -127,7 +127,7 @@ func TestRecallLineOpensItsCardAndForgets(t *testing.T) {
 	if len(*sent) != 1 || (*sent)[0] != (protocol.MemoryForget{T: "memory_forget", Seq: 4}) {
 		t.Errorf("forget sent %#v", *sent)
 	}
-	if tt.HasText(line) {
+	if hasText(tt, line) {
 		t.Errorf("a forgotten line still shows")
 	}
 }
@@ -136,7 +136,7 @@ func TestLearnedListConfirmsAndCorrects(t *testing.T) {
 	app, sent := recallApp(t, i18n.EN)
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("3 things I noted about you this week") { // D482: one quiet link at the note's foot
+	if !hasText(tt, "3 things I noted about you this week") { // D482: one quiet link at the note's foot
 		t.Fatalf("no offer under the note: %q", tt.Texts())
 	}
 	if err := tt.Click("3 things I noted about you this week"); err != nil {
@@ -148,10 +148,10 @@ func TestLearnedListConfirmsAndCorrects(t *testing.T) {
 		t.Fatalf("the week's rows: %#v", rows)
 	}
 	noted := notedSeedWords[i18n.EN]
-	if !tt.HasText("What I learned this week") || !tt.HasText(noted[0]) || tt.HasText(noted[3]) {
+	if !hasText(tt, "What I learned this week") || !hasText(tt, noted[0]) || hasText(tt, noted[3]) {
 		t.Fatalf("the list: %q", tt.Texts())
 	}
-	if !tt.HasText("Checked") {
+	if !hasText(tt, "Checked") {
 		t.Errorf("a confirmed row doesn't say so")
 	}
 	*sent = nil
@@ -167,7 +167,7 @@ func TestLearnedListConfirmsAndCorrects(t *testing.T) {
 	}
 	app.Receive(protocol.ServerFrame{T: "settings", Mem: app.S.Mem, Corrected: &protocol.Forgot{Seq: 103, How: "mem"}})
 	tt.Frame()
-	if !tt.HasText("Fixed, in Nowledge Mem too.") || !tt.HasText("English mail replies: short, plain, first names") || !tt.HasText("You fixed it") {
+	if !hasText(tt, "Fixed, in Nowledge Mem too.") || !hasText(tt, "English mail replies: short, plain, first names") || !hasText(tt, "You fixed it") {
 		t.Errorf("after the fix: %q", tt.Texts())
 	}
 }

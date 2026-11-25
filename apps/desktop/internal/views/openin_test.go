@@ -58,7 +58,7 @@ func TestOpenInMenu(t *testing.T) {
 		// terminal (D201), each group in the order found (the one used last first).
 		_, tt, calls := open(lang, "", repo, nil)
 		// D530: the place is the header's; the transcript never prints the raw path.
-		if tt.HasText(tildePath(wt)) {
+		if hasText(tt, tildePath(wt)) {
 			t.Errorf("%s: the raw path shows: %q", lang, tt.Texts())
 		}
 		newTaskShot(t, tt, "open-in-"+string(lang))
@@ -99,7 +99,7 @@ func TestOpenInMenu(t *testing.T) {
 		if _, ok := tt.Find(about); ok {
 			t.Errorf("%s: %s shows for a remote place", lang, about)
 		}
-		if tt.HasText(tildePath(wt)) {
+		if hasText(tt, tildePath(wt)) {
 			t.Errorf("%s: a remote place's raw path shows: %q", lang, tt.Texts())
 		}
 

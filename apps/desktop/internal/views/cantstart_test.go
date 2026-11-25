@@ -41,11 +41,11 @@ func TestCantStartSaysWhyAndOffersTheFix(t *testing.T) {
 			t.Fatalf("%s: the cause isn't said as %q: %q", lang, want, all)
 		}
 		for _, label := range []string{L.T("cant.on", "MacBook"), L.T("cant.clone_to", "Hetzner Server")} {
-			if !tt.HasText(label) {
+			if !hasText(tt, label) {
 				t.Errorf("%s: no %q in %q", lang, label, all)
 			}
 		}
-		if tt.HasText(L.T("task.action.retry")) {
+		if hasText(tt, L.T("task.action.retry")) {
 			t.Errorf("%s: 再试一次 offered beside a fix: %q", lang, all)
 		}
 		if strings.Contains(all, "/root/dev/mem") {

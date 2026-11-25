@@ -131,7 +131,7 @@ func TestFirstWordsAskForAKeyWhenNothingCanThink(t *testing.T) {
 		tt.SetScale(2)
 		tt.Frame()
 		title := map[i18n.Lang]string{i18n.ZH: "贴一个 API 密钥，我就能开始", i18n.EN: "Paste an API key and I can start"}[lang]
-		if !tt.HasText(title) {
+		if !hasText(tt, title) {
 			t.Fatalf("%s: no key card in %q", lang, tt.Texts())
 		}
 		app.kp.key = "sk-0123456789abcdef0123456789abcdef"
@@ -149,7 +149,7 @@ func TestFirstWordsAskForAKeyWhenNothingCanThink(t *testing.T) {
 		say := &protocol.Words{ZH: "密钥是对的，但 DeepSeek 的账户里没有余额了。充一点值，再检查一次。", EN: "The key is right, but your DeepSeek account has no balance left. Top it up, then check again."}
 		app.Receive(protocol.ServerFrame{T: "key_add_result", ClientID: k.ClientID, KeyResult: &protocol.KeyResult{OK: false, Provider: "deepseek", Reason: "no_balance", Say: say}})
 		tt.Frame()
-		if !tt.HasText(autospace(app.words(*say))) {
+		if !hasText(tt, autospace(app.words(*say))) {
 			t.Errorf("%s: no result words in %q", lang, tt.Texts())
 		}
 		shotTester(t, tt, "key-card-no-balance-"+string(lang))
@@ -161,7 +161,7 @@ func TestFirstWordsAskForAKeyWhenNothingCanThink(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "key_add_result", ClientID: k.ClientID, KeyResult: &protocol.KeyResult{OK: true, Provider: "deepseek", Harness: "pi", Say: good}})
 		app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first"}})
 		tt.Frame()
-		if !tt.HasText(autospace(app.words(*good))) {
+		if !hasText(tt, autospace(app.words(*good))) {
 			t.Errorf("%s: no good words in %q", lang, tt.Texts())
 		}
 		if app.kp.key != "" {

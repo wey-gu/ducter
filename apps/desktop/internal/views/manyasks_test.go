@@ -82,7 +82,7 @@ func TestManyAsksUnderTheMessage(t *testing.T) {
 			tt.Frame()
 			tt.Frame()
 			for _, l := range k.lines {
-				if !tt.HasText(l.Words) || !tt.HasText(l.Note) {
+				if !hasText(tt, l.Words) || !hasText(tt, l.Note) {
 					t.Errorf("%s %d: no line %q / %q in %q", lang, w, l.Words, l.Note, tt.Texts())
 				}
 				// Nothing squeezed: each line's words stand on at most two lines.
@@ -91,18 +91,18 @@ func TestManyAsksUnderTheMessage(t *testing.T) {
 				}
 			}
 			count := map[i18n.Lang]string{i18n.ZH: "好了 3 个，还有 1 个", i18n.EN: "3 done, 1 to go"}[lang]
-			if !tt.HasText(count) {
+			if !hasText(tt, count) {
 				t.Errorf("%s: no count %q in %q", lang, count, tt.Texts())
 			}
 			// Who does it is not in the conversation until a hover.
-			if tt.HasText("Codex") {
+			if hasText(tt, "Codex") {
 				t.Errorf("%s: the agent shows in the conversation without a hover", lang)
 			}
 			b, _ := tt.Find(k.lines[1].Words)
 			tt.Move(b.X+b.W/2, b.Y+b.H/2)
 			tt.Frame()
 			tt.Frame()
-			if !tt.HasText("Codex") {
+			if !hasText(tt, "Codex") {
 				t.Errorf("%s: hovering a line doesn't say who does it: %q", lang, tt.Texts())
 			}
 			tt.Move(5, 5)
@@ -112,7 +112,7 @@ func TestManyAsksUnderTheMessage(t *testing.T) {
 	app := manyAsksApp(t, i18n.ZH, manyAsksCase(i18n.ZH).lines[:1], false)
 	tt := ui.NewTesterWith(app.View, 1000, 800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if tt.HasText("下周日历上没有别的安排") {
+	if hasText(tt, "下周日历上没有别的安排") {
 		t.Errorf("one line under a message shows")
 	}
 	// Three lines: the marks say it; no count.

@@ -78,7 +78,7 @@ func TestD549AgentRowWontRunAsRoot(t *testing.T) {
 		if lang == i18n.EN {
 			word, why = "Won't run as root", "for safety Claude Code won't run that way"
 		}
-		if !tt.HasText(word) || !tt.HasText(why) {
+		if !hasText(tt, word) || !hasText(tt, why) {
 			t.Errorf("%s: the row doesn't say %q with why", lang, word)
 		}
 		for _, no := range []string{"登录", "Sign in", "用它做事", "Use it for tasks"} {
@@ -101,13 +101,13 @@ func TestD549CardSaysWhyWithTheSwitchNeverRetry(t *testing.T) {
 		if lang == i18n.EN {
 			line, sw, retry = "Couldn't start: Claude Code won't run as root on Hetzner Server", "Switch who does it", "Try again"
 		}
-		if !tt.HasText(line) || !tt.HasText(rootSaid) {
+		if !hasText(tt, line) || !hasText(tt, rootSaid) {
 			t.Errorf("%s: the page doesn't say %q with Claude Code's own line", lang, line)
 		}
 		if strings.Contains(strings.Join(tt.Texts(), "\n"), "exited as it started") {
 			t.Errorf("%s: Ducter's English lead is shown before the agent's line", lang)
 		}
-		if !tt.HasText(sw) {
+		if !hasText(tt, sw) {
 			t.Errorf("%s: no %q fix", lang, sw)
 		}
 		// Once, and in order: the title, the meta line, then the failure block.

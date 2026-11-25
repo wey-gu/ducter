@@ -82,7 +82,7 @@ func TestPileOnAnEmptyBoard(t *testing.T) {
 	app.Route = RouteOnHand
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	todoFrames(tt, 2)
-	if !tt.HasText(app.L.T("onhand.empty", app.S.PersonaName)) {
+	if !hasText(tt, app.L.T("onhand.empty", app.S.PersonaName)) {
 		t.Fatalf("not an empty board: %q", tt.Texts())
 	}
 	if _, ok := lastSent[protocol.SourcesReq](*sent); !ok {
@@ -90,7 +90,7 @@ func TestPileOnAnEmptyBoard(t *testing.T) {
 	}
 	app.Receive(pileFrame(i18n.ZH, 557, 0, 0, 0))
 	todoFrames(tt, 3)
-	if tt.HasText(app.L.T("onhand.empty", app.S.PersonaName)) || !tt.HasText("557") {
+	if hasText(tt, app.L.T("onhand.empty", app.S.PersonaName)) || !hasText(tt, "557") {
 		t.Fatalf("the pile is missing from an empty board: %q", tt.Texts())
 	}
 }

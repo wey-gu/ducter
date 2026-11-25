@@ -124,7 +124,7 @@ func TestCharacterSheet(t *testing.T) {
 		has := func(tt *ui.Tester, want ...string) {
 			t.Helper()
 			for _, w := range want {
-				if !tt.HasText(w) {
+				if !hasText(tt, w) {
 					t.Fatalf("%s: missing %q in %q", lang, w, tt.Texts())
 				}
 			}
@@ -132,7 +132,7 @@ func TestCharacterSheet(t *testing.T) {
 		hasNot := func(tt *ui.Tester, not ...string) {
 			t.Helper()
 			for _, w := range not {
-				if tt.HasText(w) {
+				if hasText(tt, w) {
 					t.Fatalf("%s: %q should not show by default", lang, w)
 				}
 			}

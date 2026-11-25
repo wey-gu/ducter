@@ -62,37 +62,39 @@ func TestMemPluginLines(t *testing.T) {
 			}
 			// The card itself says nothing about it: the line is in each coin's detail (D161).
 			h.settle(200 * time.Millisecond)
-			if h.tt.HasText(L.T("memp.installed", "0.7.34")) {
+			if hasText(h.tt, L.T("memp.installed", "0.7.34")) {
 				t.Fatalf("Mem line on the card itself: %q", h.tt.Texts())
 			}
 			coin("local", "claude-code")
-			if !h.tt.HasText(L.T("memp.installed", "0.7.34")) || h.tt.HasText(spoken(L, L.T("memp.btn.install"), spoken(L, "Claude Code", "Nowledge Mem"))) {
+			if !hasText(h.tt, L.T("memp.installed", "0.7.34")) || hasText(h.tt, spoken(L, L.T("memp.btn.install"), spoken(L, "Claude Code", "Nowledge Mem"))) {
 				t.Fatalf("claude coin: %q", h.tt.Texts())
 			}
 			shot("coin-installed")
 			coin("local", "codex")
-			if !h.tt.HasText(L.T("memp.review.multiple")) {
+			if !hasText(h.tt, L.T("memp.review.multiple")) {
 				t.Fatalf("codex coin: %q", h.tt.Texts())
 			}
 			shot("coin-review")
 
 			// 装上 asks in place first: what changes, and where.
 			coin("local", "pi")
-			if !h.tt.HasText(L.T("memp.absent")) {
+			if !hasText(h.tt, L.T("memp.absent")) {
 				t.Fatalf("pi coin: %q", h.tt.Texts())
 			}
 			shot("coin-absent")
 			h.click(spoken(L, L.T("memp.btn.install"), spoken(L, "pi", "Nowledge Mem")))
-			h.until("ask", func() bool { return h.tt.HasText(L.T("memp.means", "pi", "hel")) })
+			h.until("ask", func() bool { return hasText(h.tt, L.T("memp.means", "pi", "hel")) })
 			shot("coin-ask")
 			h.click(spoken(L, L.T("memp.ok"), spoken(L, "pi", "Nowledge Mem")))
-			h.until("installed", func() bool { return h.tt.HasText(L.T("memp.installed", "0.7.34")) && !h.tt.HasText(L.T("memp.absent")) })
+			h.until("installed", func() bool {
+				return hasText(h.tt, L.T("memp.installed", "0.7.34")) && !hasText(h.tt, L.T("memp.absent"))
+			})
 			shot("coin-installed-after")
 
 			// A computer that is away: the line alone.
 			d.sel = "a3f9c2d1e0"
 			coin("a3f9c2d1e0", "claude-code")
-			if !h.tt.HasText(L.T("memp.absent")) || h.tt.HasText(spoken(L, L.T("memp.btn.install"), spoken(L, "Claude Code", "Nowledge Mem"))) {
+			if !hasText(h.tt, L.T("memp.absent")) || hasText(h.tt, spoken(L, L.T("memp.btn.install"), spoken(L, "Claude Code", "Nowledge Mem"))) {
 				t.Fatalf("away coin: %q", h.tt.Texts())
 			}
 			shot("coin-away")
@@ -113,7 +115,7 @@ func TestMemPluginCard(t *testing.T) {
 			}})
 			h.app.Route = RouteConversation
 			want := L.T("memp.card.question", "Codex", "Mac mini")
-			h.until("card", func() bool { return h.tt.HasText(want) })
+			h.until("card", func() bool { return hasText(h.tt, want) })
 			for _, b := range []string{L.T("memp.card.go"), L.T("memp.card.hold")} {
 				found := false
 				for _, s := range h.tt.Texts() {

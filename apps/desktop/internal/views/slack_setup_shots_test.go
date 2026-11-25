@@ -62,7 +62,7 @@ func TestSlackSetupWalk(t *testing.T) {
 		L := i18n.New(lang)
 		_, tt, _ := slackSetupApp(t, lang, false, 1400, 1600, "steps")
 		for _, k := range []string{"chats.sl.step2", "chats.sl.step3", "chats.sl.step3.skip", "chats.sl.step4", "chats.sl.face"} {
-			if !tt.HasText(L.T(k)) {
+			if !hasText(tt, L.T(k)) {
 				t.Errorf("%s: steps miss %s", lang, k)
 			}
 		}
@@ -72,12 +72,12 @@ func TestSlackSetupWalk(t *testing.T) {
 		}
 		_, tt, _ = slackSetupApp(t, lang, false, 1400, 1200, "code")
 		for _, s := range []string{"ZH5J-ZRVD", L.T("chats.sl.open.dm"), L.T("chats.sl.find", "Ducter")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Errorf("%s: the code misses %q", lang, s)
 			}
 		}
 		_, tt, _ = slackSetupApp(t, lang, false, 1400, 1200, "reinstall")
-		if !tt.HasText(L.T("chats.sl.re.title")) {
+		if !hasText(tt, L.T("chats.sl.re.title")) {
 			t.Errorf("%s: no reinstall line", lang)
 		}
 	}

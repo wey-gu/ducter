@@ -84,7 +84,7 @@ func TestFirstAnswerWaysToAKey(t *testing.T) {
 				name := "mac-" + region + "-" + string(lang) + "-" + paper
 				first := routes[0]
 				for _, want := range []string{app.L.T("key.route.none"), autospace(app.words(first.Line)), autospace(app.words(first.Steps[1]))} {
-					if !tt.HasText(want) {
+					if !hasText(tt, want) {
 						t.Fatalf("%s: no %q in %q", name, want, tt.Texts())
 					}
 				}
@@ -101,7 +101,7 @@ func TestFirstAnswerWaysToAKey(t *testing.T) {
 					t.Fatal(err)
 				}
 				tt.Frame()
-				if !tt.HasText(autospace(app.words(routes[1].Steps[0]))) {
+				if !hasText(tt, autospace(app.words(routes[1].Steps[0]))) {
 					t.Errorf("%s: the other way isn't shown: %q", name, tt.Texts())
 				}
 				app.kp.route = 0
@@ -116,7 +116,7 @@ func TestFirstAnswerWaysToAKey(t *testing.T) {
 				prep := &protocol.Words{ZH: "这把 Kimi 的密钥能用。我在这台电脑上装好用它要的东西，一两分钟就好；想问什么，现在就可以发给我。", EN: "That Kimi key works. I'm setting up what I need to use it on this computer, a minute or two. You can send me your question now."}
 				app.Receive(protocol.ServerFrame{T: "key_add_result", ClientID: k.ClientID, KeyResult: &protocol.KeyResult{OK: true, Provider: "moonshot-cn", Harness: "pi", Preparing: true, Say: prep}})
 				tt.Frame()
-				if !tt.HasText(autospace(app.words(*prep))) || !tt.HasText(app.L.T("key.paste.preparing")) {
+				if !hasText(tt, autospace(app.words(*prep))) || !hasText(tt, app.L.T("key.paste.preparing")) {
 					t.Fatalf("%s: preparing not shown: %q", name, tt.Texts())
 				}
 				if app.kp.pending == "" {
@@ -127,10 +127,10 @@ func TestFirstAnswerWaysToAKey(t *testing.T) {
 				app.Receive(protocol.ServerFrame{T: "key_add_result", ClientID: k.ClientID, KeyResult: &protocol.KeyResult{OK: true, Provider: "moonshot-cn", Harness: "pi", Say: good}})
 				app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first"}})
 				tt.Frame()
-				if !tt.HasText(autospace(app.words(*good))) {
+				if !hasText(tt, autospace(app.words(*good))) {
 					t.Errorf("%s: no good words: %q", name, tt.Texts())
 				}
-				if tt.HasText(app.L.T("key.route.none")) {
+				if hasText(tt, app.L.T("key.route.none")) {
 					t.Errorf("%s: the ways stay after it can think", name)
 				}
 				shotTester(t, tt, name+"-works")

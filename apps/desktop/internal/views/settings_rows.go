@@ -28,10 +28,10 @@ func (a *App) sectionHead(c *ui.Context, title, note string) {
 	}
 	ui.Column(c).Gap(2).Padding(0, t.S5).Children(func() {
 		if title != "" {
-			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
+			uiText(c, keepClauses(title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
 		}
 		if note != "" {
-			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}
 	})
 }
@@ -39,7 +39,7 @@ func (a *App) sectionHead(c *ui.Context, title, note string) {
 // paperNote is a note on the paper after a section's group, on the text edge.
 func (a *App) paperNote(c *ui.Context, text string) {
 	t := a.T
-	uiText(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S5)
+	uiText(c, keepClauses(text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S5)
 }
 
 // tileCol is a row's 40 tile column: the tile, or nothing, so the words
@@ -65,13 +65,13 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 			a.tileCol(c, tile)
 		}
 		a.wordsThenControl(c, func() {
-			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
+			uiText(c, keepClauses(name)).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
 			if line != "" {
 				w := 600
 				if tone == sideMuted {
 					w = 500
 				}
-				uiText(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+				uiText(c, keepClauses(line)).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 			}
 		}, control)
 	})
@@ -86,10 +86,10 @@ func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string
 		a.tileCol(c, tile)
 		a.wordsThenControl(c, func() {
 			if title != "" {
-				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+				uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			}
 			if line != "" {
-				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		}, control)
 	})
@@ -139,7 +139,7 @@ func (a *App) choiceRow(c *ui.Context, key string, col bool, tile func(), title,
 		a.pickCol(c, key, col, tile)
 		ui.Row(c.Key("pwords:" + key)).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Transition(a.pickMove(c)).Children(func() {
 			a.wordsThenControl(c, func() {
-				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+				uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 				if line != "" {
 					uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				}
@@ -154,7 +154,7 @@ func (a *App) pickFoot(c *ui.Context, key, note string, col bool) {
 	a.sep(c)
 	ui.Row(c.Key("foot:"+key)).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
 		a.pickCol(c, key+":foot", col, nil)
-		uiText(c.Key("pwords:"+key+":foot"), note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0).Transition(a.pickMove(c))
+		uiText(c.Key("pwords:"+key+":foot"), keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0).Transition(a.pickMove(c))
 	})
 }
 
@@ -240,11 +240,11 @@ func (a *App) footRow(c *ui.Context, key, note string, actions func()) {
 	ui.Row(c.Key("foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
 		if actions == nil {
-			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+			uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 			return
 		}
 		a.wordsThenControl(c, func() {
-			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}, actions)
 	})
 }
@@ -343,9 +343,9 @@ func (a *App) addRow(c *ui.Context, key, title, line string) bool {
 	b.Children(func() {
 		a.tileCol(c, func() { a.glyph(c, 18, drawPlus(t.InkSoft)) })
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 	})
@@ -368,7 +368,7 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 			a.tileCol(c, tile)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
 				ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).SingleLine().Shrink(1).MinWidth(0)
 					a.glyph(c, 12, drawChevron(t.InkMuted, open))
 				})
 				if line != "" {
@@ -426,9 +426,9 @@ func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line st
 	b.Children(func() {
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		mark := drawChevron(t.InkMuted, false)

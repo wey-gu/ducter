@@ -78,7 +78,7 @@ func TestReconnectShots(t *testing.T) {
 				a.Linked(client.Disconnected, client.ErrRefused)
 				a.Linked(client.Connecting, nil)
 				h.tt.Frame()
-				if !h.tt.HasText(a.L.T("conn.reconnecting", "hel")) {
+				if !hasText(h.tt, a.L.T("conn.reconnecting", "hel")) {
 					t.Errorf("%s: no quiet line: %q", sz, h.tt.Texts())
 				}
 				shoot(h.tt, "1-reconnecting"+sz)
@@ -86,7 +86,7 @@ func TestReconnectShots(t *testing.T) {
 				now = now.Add(LongOutage + 15*time.Second)
 				a.Linked(client.Disconnected, client.ErrRefused)
 				h.tt.Frame()
-				if !h.tt.HasText(a.L.T("conn.lost.title", "hel")) {
+				if !hasText(h.tt, a.L.T("conn.lost.title", "hel")) {
 					t.Errorf("%s: no long-outage notice: %q", sz, h.tt.Texts())
 				}
 				shoot(h.tt, "2-long-outage"+sz)

@@ -28,7 +28,7 @@ func TestSwitchInPlace(t *testing.T) {
 		app.lo.switchFor = "t_newtask"
 		tt.Frame()
 		for _, s := range []string{L.T("newtask.model"), "Sonnet 5.5", L.T("newtask.effort"), L.T("switch.tune.note", "Claude Code")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in the switch sheet: %q", lang, s, tt.Texts())
 			}
 		}

@@ -68,7 +68,7 @@ func TestOutsideSection(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		for _, s := range []string{L.T("past.out.title"), L.T("past.out.sub", L.T("first.here")), out[0].Title, out[0].Ask, "fix/raft-snapshot", "Codex", L.T("past.out.gone")} {
-			if !tt.HasText(s) {
+			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q: %q", lang, s, tt.Texts())
 			}
 		}
@@ -91,7 +91,7 @@ func TestOutsideSection(t *testing.T) {
 		}
 		app.Receive(protocol.ServerFrame{T: "outside_adopted", Past: &protocol.PastFrame{T: "outside_adopted", Agent: "codex", ID: out[1].ID, OK: false, Message: "Its folder ~/x isn't there any more."}})
 		tt.Frame()
-		if !tt.HasText("Its folder ~/x isn't there any more.") {
+		if !hasText(tt, "Its folder ~/x isn't there any more.") {
 			t.Fatalf("%s: the refusal isn't said: %q", lang, tt.Texts())
 		}
 		// A gone folder never asks the home.
@@ -103,8 +103,8 @@ func TestOutsideSection(t *testing.T) {
 		// Hidden for good: the cards go, and the line says so with Show again.
 		app.Receive(protocol.ServerFrame{T: "outside_hidden", Past: &protocol.PastFrame{T: "outside_hidden", Agent: "claude-code", Hidden: true}})
 		tt.Frame()
-		if tt.HasText(out[0].Title) || !tt.HasText(L.T("past.out.hidden", "Claude Code")) || !tt.HasText(L.T("past.out.show")) {
-			t.Fatalf("%s: hidden (title %v, line %v, show %v) %q", lang, tt.HasText(out[0].Title), tt.HasText(L.T("past.out.hidden", "Claude Code")), tt.HasText(L.T("past.out.show")), tt.Texts())
+		if hasText(tt, out[0].Title) || !hasText(tt, L.T("past.out.hidden", "Claude Code")) || !hasText(tt, L.T("past.out.show")) {
+			t.Fatalf("%s: hidden (title %v, line %v, show %v) %q", lang, hasText(tt, out[0].Title), hasText(tt, L.T("past.out.hidden", "Claude Code")), hasText(tt, L.T("past.out.show")), tt.Texts())
 		}
 		click(t, tt, L.T("past.out.show"))
 		if h, _ := lastPast[protocol.OutsideHide](*sent); h.Agent != "claude-code" || h.Hidden {

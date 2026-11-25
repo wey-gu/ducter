@@ -145,7 +145,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	noRelayWait(t)
 	h := newHarness(t, i18n.ZH)
 	s := h.app.S
-	if !h.tt.HasText("Ducter") || !h.tt.HasText("手头") {
+	if !hasText(h.tt, "Ducter") || !hasText(h.tt, "手头") {
 		t.Fatalf("header: %q", h.tt.Texts())
 	}
 
@@ -156,7 +156,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 	h.until("the decision", func() bool { return s.PendingDecision("t-ci-1") != nil && s.LatestLiving() != nil })
 	for _, want := range []string{"帮我看下 HawDB #1592 的 CI 为什么挂了", "你不在的时候", "好，rebase", "先不用", "回复…", "不回的话，"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("conversation lacks %q: %q", want, h.tt.Texts())
 		}
 	}
@@ -167,7 +167,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatal("On hand did not open")
 	}
 	for _, want := range []string{"等你", "在做", "在等", "今天做完", "原则英译", "周报草稿"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("On hand lacks %q", want)
 		}
 	}
@@ -188,12 +188,12 @@ func TestScenarioEndToEnd(t *testing.T) {
 	// One column (D152): who and where under the headline, what it was
 	// asked, what it did, the changes as files; no Details table.
 	for _, want := range []string{"Codex", "GPT-5", "hawdb", "ducter/fix-ci", "在 MacBook 上", "换谁来做", "改动"} { // D157: two computers, so where is said apart; D291: each fact its own element
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
 		}
 	}
 	for _, not := range []string{"细节", "谁在做", "在哪儿做"} {
-		if h.tt.HasText(not) {
+		if hasText(h.tt, not) {
 			t.Errorf("task view still has %q", not)
 		}
 	}
@@ -209,9 +209,9 @@ func TestScenarioEndToEnd(t *testing.T) {
 		sd := s.Task("t-ci-1").Sends[0]
 		return sd.Delivered != "" && sd.Seq != 0
 	})
-	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
+	h.until("its answer", func() bool { return hasText(h.tt, "收到，按你说的来。") })
 	// D210: queued only until it answers; then the receipt goes.
-	if h.tt.HasText("它忙完手上的事就会看到") {
+	if hasText(h.tt, "它忙完手上的事就会看到") {
 		t.Errorf("the queued receipt stayed after the answer: %q", h.tt.Texts())
 	}
 	h.shot("task-sent")
@@ -239,7 +239,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 	h.shot("task-done")
 	h.click("对话")
-	h.until("result", func() bool { return h.tt.HasText("CI 修好了。") })
+	h.until("result", func() bool { return hasText(h.tt, "CI 修好了。") })
 	// Acting read the first living message, which froze; the next one was
 	// revised in place (progress → done) rather than duplicated.
 	n := 0
@@ -256,12 +256,12 @@ func TestScenarioEndToEnd(t *testing.T) {
 
 func TestEnglishRenders(t *testing.T) {
 	h := newHarness(t, i18n.EN)
-	if !h.tt.HasText("On hand") {
+	if !hasText(h.tt, "On hand") {
 		t.Fatalf("texts %q", h.tt.Texts())
 	}
 	h.click("On hand")
 	for _, want := range []string{"Needs you", "Working", "Waiting", "Done today"} {
-		if !h.tt.HasText(want) {
+		if !hasText(h.tt, want) {
 			t.Errorf("On hand lacks %q", want)
 		}
 	}

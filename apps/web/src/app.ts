@@ -1,6 +1,7 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
 import { onFileOpenFrame } from "./filelink-ask.ts";
+import { onMemFileFrame } from "./mem-keep-state.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
@@ -984,6 +985,8 @@ class AppState {
     if (f.t === "wb") return onWbFrame(f as Parameters<typeof onWbFrame>[0]);
     // D356: a linked file the viewer asked for (fileview.tsx).
     if (f.t === "file_open") return onFileOpenFrame(f as Parameters<typeof onFileOpenFrame>[0]);
+    // D566: a file kept in Nowledge Mem, or why not (mem-keep-state.ts).
+    if (f.t === "mem_file_save") return onMemFileFrame(f as Parameters<typeof onMemFileFrame>[0]);
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), (this.ownPhone = f.ownPhone), this.changed();
     if (f.t === "own_phone_result") return (this.ownAnswer = f.reason ?? "phone"), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());

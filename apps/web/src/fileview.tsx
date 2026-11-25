@@ -21,6 +21,7 @@ import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { title } from "./store.ts";
 import { Facts } from "./controls.tsx";
 import { FileBadge } from "./filecard.tsx";
+import { MemKeepAction } from "./mem-keep.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -581,6 +582,8 @@ export function FileViewer() {
               <span class="lbl">{t("file.savePdf")}</span>
             </button>
           )}
+          {/* D566: keep it in the person's Nowledge Mem (mem-keep.tsx), beside Save a copy. */}
+          <MemKeepAction m={m} />
           {kind !== "none" && !(kind === "pdf" && pdfFailed && !asPdf) && (
             <button type="button" class="btn secondary" onClick={() => void saveCopy(m)}>
               <span class="lbl">{t("file.save")}</span>

@@ -303,6 +303,9 @@ export interface Expect {
     noPass?: boolean;
     /** D486: a partner was made with this name (and what it looks after matches). */
     made?: { name: string; about?: RegExp };
+    /** D566: a file whose name matches was kept in the (fake) Nowledge Mem; or nothing was. */
+    memKept?: RegExp;
+    noMemKept?: true;
   };
 }
 
@@ -376,6 +379,8 @@ export interface Scenario {
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D383: what Ducter made over the last weeks (eval/seed-made.ts): the Kyoto itinerary (9 days ago), the visa PDF (5), a HawDB load-test CSV (20), a Bun note on the home (12), the Mac table (3). */
   made?: true;
+  /** D566: the person's Nowledge Mem for keeping files, a fake (eval/fake-artifacts-nmem.ts): signed in, or its sign-in lapsed. */
+  memFiles?: "on" | "signed_out";
   /** D391: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
   history?: true;
   /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
@@ -2908,6 +2913,27 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "where's the seating chart you made for the wedding?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "made_find" }], noMadeShown: true, noUi: true, notCalled: ["task_open"], forbid: [/here('s| is) (the|your) seating/i] },
     rubric: "Nothing Ducter made is a wedding seating chart (it made a Kyoto itinerary, a visa PDF, a load-test CSV, a Bun note and a Mac comparison). The partner looks and says plainly, in one or two short English lines, that it didn't make or can't find a wedding seating chart; it may offer to make one. It never presents another file as the chart, invents one, or opens a task unasked.",
+  },
+  // ---------- D566: a file kept in the person's Nowledge Mem, on their word ----------
+  {
+    id: "mem-keep-itinerary-zh",
+    category: "made",
+    lang: "zh",
+    made: true,
+    memFiles: "on",
+    steps: [{ user: "把上周那个京都行程存到 Mem 里" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "made_find" }], memKept: /kyoto-itinerary/, notCalled: ["task_open", "memory_add"] },
+    rubric: "Last week a task made the person a three-day Kyoto itinerary (kyoto-itinerary.md). They ask to save it to their Nowledge Mem. The partner finds it and keeps that file in Mem (made_find keep), then says so in one short Chinese line (it is in Nowledge Mem now; the 「Ducter」 folder may be named). No path, no id, no how, no memory_add of the itinerary's contents, no task, no question.",
+  },
+  {
+    id: "mem-keep-signed-out-en",
+    category: "made",
+    lang: "en",
+    made: true,
+    memFiles: "signed_out",
+    steps: [{ user: "save the visa PDF you made into my Nowledge Mem" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 240, called: [{ tool: "made_find" }], noMemKept: true, notCalled: ["task_open"], forbid: [/\b(it'?s|it is) (now )?(saved|in your)|\bsaved it\b|\bdone\b/i] },
+    rubric: "Five days ago a task made the person's Japan visa application PDF. They ask to save it into their Nowledge Mem, but Mem's sign-in has lapsed, so it can't be kept. The partner tries (made_find keep) and says plainly, once, that it couldn't be saved because the Nowledge Mem sign-in has lapsed, that signing in again in Settings › Memory fixes it, and (optionally) that the file is still here. It never says or suggests the PDF was saved, opens no task, asks nothing.",
   },
   // ---------- D407: a routine fills a small app: the board offer, a silent round, a draft found on the board ----------
   {

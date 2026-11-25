@@ -24444,3 +24444,34 @@ html.kb #app {
 @media (max-width: 640px) {
   .app-home { left: 12px; right: 12px; width: auto; top: auto; bottom: calc(var(--safe-bottom, 0px) + 96px); }
 }
+
+/* D566: a file kept in Nowledge Mem: one quiet line under its card (mem-keep.tsx), on the card's
+   own left edge; the text button's padding hangs into the gutter so its words line up with the card's. */
+.fc-keep {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(100%, 20.625rem);
+}
+.fc-keep > .filecard { width: 100%; }
+.memkeep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--s2);
+  min-height: 36px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  animation: pop-in var(--t-med) var(--spring);
+}
+.fc-keep > .memkeep > .btn.text:first-child { margin-inline-start: -10px; }
+.memkeep .mk-done { color: var(--done-ink); font-weight: 600; }
+.memkeep .mk-fail { color: var(--failed-ink); text-wrap: pretty; }
+.fc-keep > .memkeep > .mk-done:first-child,
+.fc-keep > .memkeep > .mk-fail:first-child { padding-inline-start: 2px; }
+.memkeep .mk-open { font-size: var(--sm); }
+.fv-bar .memkeep { min-height: 0; animation: none; }
+.chat-row.mem-files.bad small { color: var(--failed-ink); }
+@media (prefers-reduced-motion: reduce) {
+  .memkeep { animation: none; }
+}

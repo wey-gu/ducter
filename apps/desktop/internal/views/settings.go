@@ -508,7 +508,7 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 // said once at the top, never left under the last card.
 func (a *App) ledeNote(c *ui.Context, key, text string) {
 	t := a.T
-	uiText(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
+	uiText(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0).Padding(0, t.S5)
 }
 
 // how is the quiet tap that keeps an explanation reachable without showing it (D424): 怎么做到的 /
@@ -554,7 +554,7 @@ func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, contr
 
 // ledeHow is how under a pane's lede note (D424): the note stays one short line.
 func (a *App) ledeHow(c *ui.Context, key, about, detail string) {
-	ui.Column(c.Key("ledehow:"+key)).Margin(-a.T.S4, 0, 0, 0).Children(func() {
+	ui.Column(c.Key("ledehow:"+key)).Margin(-a.T.S4, 0, 0, 0).Padding(0, a.T.S5).Children(func() {
 		a.how(c, key, about, detail)
 	})
 }

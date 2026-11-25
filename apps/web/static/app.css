@@ -21639,6 +21639,9 @@ html[data-text-size="large"] .brand-mark > svg {
 .set-invite > .grow { flex: 1; min-width: 0; }
 /* D500: a row's line never leaves one character alone on its last line (说。, 听。, 改。 on a phone). */
 .set-page small, .set-page .small, .set-page .g-note, .pane-says .ps-say { text-wrap: pretty; }
+/* D561: a Chinese line in Settings breaks only at its punctuation or a space, never inside a word (想 / 事情,
+   服 / 务器, 随 / 时说 at 390); a run too long for its line still wraps (break-word). Latin is unchanged. */
+.set-page, .pane-says { word-break: keep-all; overflow-wrap: break-word; }
 /* D501: 你的设备 / Your devices: a hairline between devices from the name's edge to the row's end, as every
    other list in Settings (D500 noted it); a pressed row's ground covers it. */
 .plist > .li-row + .li-row { position: relative; }

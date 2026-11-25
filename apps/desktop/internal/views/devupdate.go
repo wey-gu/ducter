@@ -647,7 +647,7 @@ func (a *App) versionsCheck(c *ui.Context, dv *protocol.DeviceView) func() {
 // under 这台 Mac.
 func (a *App) versionSub(dv *protocol.DeviceView) string {
 	if dv.Home {
-		return a.L.T("settings.versions.home", a.S.PersonaName)
+		return a.L.T("list.state.home")
 	}
 	return a.L.T("settings.versions.worker")
 }

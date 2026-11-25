@@ -776,6 +776,28 @@ offer with one agent and two; web 390 and 1024 over CDP; zh and en, light and da
   for "automatic" is a new concept visual (the metaphor process) standing in every default view, which
   most people never change, to save one 52 move they cause themselves and see happen.
 
+## Read whole (D561)
+
+The author's standing ask once more, after D560 reworked Agent messaging. Every pane shot against
+`demo-settings-real.ts` on the Mac at 1000, 1150 and 1400 (`TestD475Shots`, with Memory and Agent messaging)
+and the web at 390 and 1000, zh and en, light and dark (`.shots/settings-polish/{before,after}`, 2x crops in
+`crops/`). What a person met most was not a shape but a sentence torn in two. The rules it leaves:
+
+- **A Chinese line breaks only between words.** On the web every Settings page breaks a Chinese line only at its
+  punctuation or a space (`word-break: keep-all` on `.set-page` and `.pane-says`; a clause too long for its line
+  still wraps). A short Latin token keeps its hyphens (`keepTokens`: GPT-6.2-Sol). On the Mac 发现了就说's line goes through
+  `keepClauses`, which now keeps a clause of up to six characters whole (**急的随时说**) and a longer one's last
+  four; the other shared rows wait for a test lookup by accessible name (`todo.md`).
+- **A pane's note under its lede sits on the group headings' edge** (Mac `ledeNote`, `ledeHow`), as on the web.
+- **Two rows never say one sentence.** New tasks start's 谁来做 while automatic says **按上面「做事的」来挑。**, not
+  做事的's own note again.
+- **Plain words, in the partner's voice:** About's home row **我在这台上运行**; the preview **发现了什么，会这样告诉你**;
+  the phone's Chat apps row **在你常用的聊天软件里也能找我** (true before any is set up); To-do sources' hint
+  **写成「用户名/仓库名」，几个用逗号隔开**; the own number's line ends with its consequence (**…是服务器，接不了。**);
+  Memory's list line **我记得的关于你的事，和帮我记的 Nowledge Mem**; an accessible name never reads **。，**.
+
+The audit, ranked, and what was left are in D561.
+
 ## Not done
 
 - D475's own: Chat apps' quiet

@@ -283,7 +283,7 @@ func keepWords(s string) string {
 const clausePunct = "，。；：？！、"
 
 // keepClauses is keepWords for a sentence (D556): short Chinese runs stay whole as there,
-// and in a longer run the last four characters before a clause's punctuation (or the end)
+// a clause of up to six before its punctuation (or the end) whole (D561: 「急的随时说」), and in a longer run the last four characters before a clause's punctuation (or the end)
 // stay together, as keepTail's four (D493), so a clause never ends its line mid-word: never
 // 「…后天到」 with 「期，」 next, 「…才用得」 with 「上。」. A long run still wraps anywhere
 // else. A sentence ending in Latin keeps its last two words together (never "running." alone).
@@ -299,7 +299,7 @@ func keepClauses(s string) string {
 			end := j == len(rs) || strings.ContainsRune(clausePunct, rs[j])
 			for k := i; k < j; k++ {
 				b.WriteRune(rs[k])
-				if k < j-1 && (j-i <= 4 || end && k >= j-4) {
+				if k < j-1 && (j-i <= 4 || end && (j-i <= 6 || k >= j-4)) {
 					b.WriteRune(wordJoiner)
 				}
 			}

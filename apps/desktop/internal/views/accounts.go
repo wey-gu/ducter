@@ -92,7 +92,7 @@ func (a *App) proactiveSection(c *ui.Context, key string, day bool) {
 		head = a.L.T("proactive.group")
 	}
 	a.group(c, "proactive:"+key, head, "", func() {
-		a.row(c, "proactive:"+key, a.L.T("proactive.title"), a.L.T(note), func() {
+		a.row(c, "proactive:"+key, a.L.T("proactive.title"), keepClauses(a.L.T(note)), func() { // D561: never 急的随 / 时说
 			if i := a.choices(c, "proactive-"+key, a.L.T("proactive.title"), labels, sel); i >= 0 {
 				st.Proactive = protocol.ProactiveModes[i]
 				a.SetSettings(protocol.SettingsPatch{Proactive: st.Proactive})

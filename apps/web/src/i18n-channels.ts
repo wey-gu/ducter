@@ -5,7 +5,7 @@
 export const channelWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     "settings.tab.chats": "聊天软件",
-    "settings.list.chats": "在微信、Telegram、Slack 和 iMessage 里也能说话",
+    "settings.list.chats": "在你常用的聊天软件里也能找我",
     "chats.lede": "在你常用的聊天软件里也能找 %s，还是同一段对话。",
     "chats.goes": "付款、密码这类事不会发到这里。",
     "chats.goes.how": "我自己来找你时，只发到你最后说话的地方，每条只说一次，也守你的免打扰时间。",
@@ -99,7 +99,7 @@ export const channelWords: { zh: Record<string, string>; en: Record<string, stri
   },
   en: {
     "settings.tab.chats": "Chat apps",
-    "settings.list.chats": "Talk in WeChat, Telegram, Slack and iMessage too",
+    "settings.list.chats": "Reach me from the chat apps you already use",
     "chats.lede": "Reach %s from the chat apps you already use. It's still one conversation.",
     "chats.goes": "Payments and passwords never come here.",
     "chats.goes.how": "When I come to you on my own, I go only to where you last spoke, once, and keep your quiet hours.",

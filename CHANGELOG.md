@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.62 - 2026-11-25
+
+<!-- whats-new
+zh: 设置每一页读得完整，说法更像人话
+en: Settings reads whole on every page, in plainer words
+-->
+
+**Settings**
+- Chinese words no longer break across two lines on the phone, and short clauses stay together.
+- Each page's small note lines up with its groups on the Mac.
+- Plainer words in several places: how notices look, the chat apps line, the repository hint, a
+  call from your own number on a server, and the memory line.
+- Your partner's page no longer says the same thing twice.
+- Screen readers hear the sentences without stray commas.
+
 ## 0.1.61 - 2026-11-25
 
 <!-- whats-new

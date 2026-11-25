@@ -83,7 +83,7 @@ func TestD565Picker(t *testing.T) {
 	if !ok {
 		t.Errorf("no partner_set with the figure: %+v", *sent)
 	}
-	if !tt.HasText(app.L.T("said.figure", app.L.T("partners.figure.sprout"))) {
+	if !hasText(tt, app.L.T("said.figure", app.L.T("partners.figure.sprout"))) {
 		t.Errorf("the partner says nothing after the change: %q", tt.Texts())
 	}
 	for _, b := range paneGeometry(tt, 1150) {

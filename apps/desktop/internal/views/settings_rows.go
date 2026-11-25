@@ -141,7 +141,7 @@ func (a *App) choiceRow(c *ui.Context, key string, col bool, tile func(), title,
 			a.wordsThenControl(c, func() {
 				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 				if line != "" {
-					uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				}
 			}, control)
 		})

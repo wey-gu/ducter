@@ -131,9 +131,9 @@ export function deviceLabel(L: Strings, d: string | undefined): string {
 
 /**
  * D556, as the Mac's keepClauses: a sentence's Chinese words kept whole where a break reads worst.
- * A run of up to four characters stays together, and in a longer run the last two before a clause's
- * punctuation (or the end), its last word: never 「…后天到」 with 「期，还没续费。」 on the next line.
- * Word joiners (U+2060), which every browser honours; a long run still wraps anywhere else.
+ * A run of up to four characters stays together, and in a longer run the last four before a clause's
+ * punctuation (or the end): never 「…后天到」 with 「期，」 next. Word joiners (U+2060), which every
+ * browser honours; a long run still wraps anywhere else. Latin keeps its last two words together.
  */
 export function keepClauses(s: string): string {
   const rs = [...s];
@@ -147,9 +147,11 @@ export function keepClauses(s: string): string {
       continue;
     }
     const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
-    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && k === j - 2)) ? "\u2060" : "");
+    for (let k = i; k < j; k++) out += rs[k] + (k < j - 1 && (j - i <= 4 || (end && k >= j - 4)) ? "\u2060" : "");
     i = j;
   }
+  // Latin: the last two words together (a no-break space), never one word alone on the last line.
+  if (rs.length > 1 && !han(rs[rs.length - 1]) && !han(rs[rs.length - 2])) out = out.replace(/ (\S+)$/, "\u00a0$1");
   return out;
 }
 

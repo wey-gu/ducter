@@ -529,7 +529,7 @@ func (a *App) updateSection(c *ui.Context) {
 			// D556: 检查更新 sits in this last row beside the switch, both about getting the new
 			// version, so every version above ends on the card's one right edge.
 			check := a.versionsCheck(c, home)
-			a.explainedRow(c, "autoupdate", a.L.T("settings.versions.night"), a.nightNote(), a.L.T("settings.versions.night.how"), func() {
+			a.explainedRow(c, "autoupdate", a.L.T("settings.versions.night"), keepClauses(a.nightNote()), a.L.T("settings.versions.night.how"), func() {
 				if check != nil {
 					check()
 				}

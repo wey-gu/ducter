@@ -39,15 +39,15 @@ func TestKeepClauses(t *testing.T) {
 		t.Fatalf("text changed: %q", got)
 	}
 	j := string(wordJoiner)
-	for _, want := range []string{"到" + j + "期，", "还" + j + "没" + j + "续" + j + "费。", "早" + j + "上" + j + "好。"} {
+	for _, want := range []string{"后" + j + "天" + j + "到" + j + "期，", "还" + j + "没" + j + "续" + j + "费。", "早" + j + "上" + j + "好。"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("%q not kept in %q", want, got)
 		}
 	}
-	if strings.Contains(got, "后"+j+"天") {
+	if strings.Contains(got, "名"+j+"后") {
 		t.Fatalf("a long run lost a break it should keep: %q", got)
 	}
-	if got := keepClauses("Two ways to fix CI."); got != "Two ways to fix CI." {
+	if got := keepClauses("Two ways to fix CI."); got != "Two ways to fix\u00a0CI." {
 		t.Fatalf("latin changed: %q", got)
 	}
 }

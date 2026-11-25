@@ -758,9 +758,9 @@ offer with one agent and two; web 390 and 1024 over CDP; zh and en, light and da
   on the device card and its chip, the list, Overview, Where it runs and About's versions card, Mac and web.
   A computer serves the person; whichever partner is shown, 我 would be false for the others' tasks.
 - **The preview's sentences keep their words (Mac and web):** `keepClauses` (Mac `type.go`, web `format.ts`):
-  keepWords' short runs whole, and in a longer run a clause's last two characters together, so the morning
-  note reads **…的域名后天 / 到期，还没续费。**, never **…后天到 / 期，**. Memory's offer to connect an agent
-  uses it too (**…才用 / 得上。**, never **上。** alone).
+  keepWords' short runs whole, a longer run's last four characters before a clause's end together (as keepTail, D493), and Latin's last two words, so the morning
+  note never reads **…后天到 / 期，**. Memory's offer to connect an agent, New tasks start's lines and the night switch's
+  note use it too (never **上。** or **running.** alone).
 - **Memory's offer takes the count:** one agent **…你自己用它时也记得你…只改它自己的设置**, two or more
   **…它们…**; en **it / its** and **them / their** (`mem.health.plugin.why.one`).
 - **New tasks start without an empty column:** while both are **自动** there is no tile column; the words of

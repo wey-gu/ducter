@@ -62,8 +62,9 @@ test("the preview never breaks a clause's last word", async () => {
   expect(kept.replaceAll("⁠", "")).toBe(s);
   expect(kept).toContain("到⁠期，");
   expect(kept).toContain("还⁠没⁠续⁠费。");
-  expect(kept).not.toContain("后⁠天");
-  expect(keepClauses("Two ways to fix CI.")).toBe("Two ways to fix CI.");
+  expect(kept).toContain("后\u2060天\u2060到\u2060期，");
+  expect(kept).not.toContain("名\u2060后");
+  expect(keepClauses("Two ways to fix CI.")).toBe("Two ways to fix\u00a0CI.");
   const v = src("settings-delight.tsx");
   for (const k of ['t("notify.pv.ask")', "t(`notify.pv.find.${find}`)", "under)"]) expect(v).toContain(`keepClauses(${k}`);
 });

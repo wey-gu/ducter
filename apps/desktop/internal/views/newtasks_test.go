@@ -72,7 +72,7 @@ func TestD510NewTasksGroup(t *testing.T) {
 			t.Fatalf("%s: sent %+v, want where dev_hel", tc.lang, got)
 		}
 		tt.Frame()
-		for _, want := range []string{tc.on, tc.said} {
+		for _, want := range []string{unjoin(keepClauses(tc.on)), tc.said} { // D556: the line keeps its last words
 			if !tt.HasText(want) {
 				t.Errorf("%s: no %q in %q", tc.lang, want, tt.Texts())
 			}

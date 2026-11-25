@@ -97,6 +97,9 @@ type state struct {
 	ReadBack   bool   `json:"readBack,omitempty"`
 	// D442: TalkAsked is set once 放手说 / Talk hands-free's first card was answered.
 	TalkAsked bool `json:"talkAsked,omitempty"`
+	// D567: FileFill holds the kinds of file (markdown, table, text, pdf)
+	// the person last chose to read filling the window.
+	FileFill map[string]bool `json:"fileFill,omitempty"`
 	// D438: the mini window. FloatOpen brings it back at the next launch;
 	// FloatOffered is set once it came by itself (it never does again).
 	FloatOpen    bool `json:"floatOpen,omitempty"`
@@ -641,5 +644,20 @@ func (l *Local) SetReadBack(on bool) {
 		return
 	}
 	l.st.ReadBack = on
+	l.save()
+}
+
+// FileFill reports whether this kind of file opens filling the window (D567).
+func (l *Local) FileFill(kind string) bool { return l != nil && l.st.FileFill[kind] }
+
+// SetFileFill remembers the person's last choice for this kind.
+func (l *Local) SetFileFill(kind string, on bool) {
+	if l == nil || l.st.FileFill[kind] == on {
+		return
+	}
+	if l.st.FileFill == nil {
+		l.st.FileFill = map[string]bool{}
+	}
+	l.st.FileFill[kind] = on
 	l.save()
 }

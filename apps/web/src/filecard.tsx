@@ -4,7 +4,7 @@
 // glimpse of it: a PDF's first page on white paper, code's first lines in its colours, a table's
 // first rows, a video's frame with its length, a sound's waveform that plays right in the card.
 // Each glimpse is made once, only when the card comes near the screen, and kept by the file's id.
-import { durationWords, fileBadge, fileFamily, fileView, pagesRef, parseTable, sizeWords, tableSep, viewText, type FileFamily, type MediaRef } from "@ducter/protocol";
+import { docGlimpse, durationWords, fileBadge, fileFamily, fileView, pagesRef, parseTable, sizeWords, tableSep, viewText, type FileFamily, type MediaRef } from "@ducter/protocol";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -74,6 +74,7 @@ export function FileBadge({ m, size = 36 }: { m: Pick<MediaRef, "type" | "name">
 type Glimpse =
   | { kind: "pdf"; page: FirstPage }
   | { kind: "code"; lines: string[] }
+  | { kind: "doc"; title: string; lines: string[] }
   | { kind: "table"; rows: string[][] }
   | { kind: "audio"; peaks: number[]; seconds: number; url: string }
   | { kind: "none" };
@@ -118,6 +119,8 @@ export function glimpseKind(m: Pick<MediaRef, "type" | "name">): Glimpse["kind"]
   if (fam === "audio") return "audio";
   if (fam === "video") return "video";
   if (fam === "sheet" && fileView({ type: m.type, name: m.name }) === "table") return "table";
+  // D567: a Markdown file shows its rendered start (a title, a line or two), never its marks.
+  if (fileView({ type: m.type, name: m.name }) === "markdown") return "doc";
   if ((fam === "code" || fam === "text") && fileView({ type: m.type, name: m.name }) !== "none") return "code";
   return "none";
 }
@@ -136,9 +139,13 @@ function makeGlimpse(src: Source, width: number): Promise<Glimpse> {
         const page = await pdfFirstPage(src.id, src.all, width);
         return page ? { kind: "pdf", page } : { kind: "none" };
       }
-      if (kind === "code" || kind === "table") {
+      if (kind === "code" || kind === "table" || kind === "doc") {
         const bytes = await src.head(4096);
         const { text } = viewText(bytes, src.m.bytes);
+        if (kind === "doc") {
+          const d = docGlimpse(text);
+          return d.title || d.lines.length ? { kind: "doc", ...d } : { kind: "none" };
+        }
         if (kind === "table") return { kind: "table", rows: parseTable(text, tableSep(src.m.name), 5).rows.map((r) => r.slice(0, 4)) };
         const name = src.m.name ?? (src.m.type === "application/json" ? "x.json" : "x.txt");
         const lines = text.split("\n").slice(0, GLIMPSE_LINES).join("\n");
@@ -232,6 +239,34 @@ function CodeGlimpse({ g }: { g?: Glimpse }) {
           ))}
         </pre>
       )}
+    </div>
+  );
+}
+
+/** D567: a report's start as it reads: its title in the heading face, a line or two of its words. */
+function DocGlimpse({ g }: { g?: Glimpse }) {
+  const d = g?.kind === "doc" ? g : undefined;
+  return (
+    <div class="fc-pv doc" aria-hidden="true">
+      <div class={`fc-sheet${d ? " in" : ""}`}>
+        {d ? (
+          <>
+            {d.title && <span class="fc-dt">{d.title}</span>}
+            {d.lines.map((l, i) => (
+              <span key={i} class="fc-dl">
+                {l}
+              </span>
+            ))}
+          </>
+        ) : (
+          <>
+            <span class="fc-dt ghost" />
+            {[88, 64].map((w, i) => (
+              <span key={i} class="fc-dl ghost" style={{ width: `${w}%` }} />
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -382,6 +417,7 @@ export function FileCard({ m, pic, flight }: { m?: MediaRef; pic?: Pic; flight?:
     >
       {kind === "pdf" && <PdfGlimpse g={g} />}
       {kind === "code" && <CodeGlimpse g={g} />}
+      {kind === "doc" && <DocGlimpse g={g} />}
       {kind === "table" && <TableGlimpse g={g} />}
       {kind === "video" && m && <VideoGlimpse m={m} onLength={setLen} />}
       {kind === "audio" && <AudioGlimpse g={g} />}

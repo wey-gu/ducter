@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -159,4 +160,115 @@ func FindAll(text, q string, max int) [][2]int {
 		at += i + len(needle)
 	}
 	return out
+}
+
+// D567: a Markdown file's card shows its rendered start (docPlain and
+// docGlimpse in packages/protocol/src/media.ts; the cases in
+// packages/protocol/test/doc-glimpse.json are both sides').
+var (
+	reDocPic    = regexp.MustCompile(`!\[([^\]\n]*)\]\([^)\n]*\)`)
+	reDocLink   = regexp.MustCompile(`\[([^\]\n]+)\]\([^)\n]*\)`)
+	reDocRef    = regexp.MustCompile(`\[([^\]\n]+)\]\[[^\]\n]*\]`)
+	reDocAuto   = regexp.MustCompile(`<(https?:[^>\s]+)>`)
+	reDocTag    = regexp.MustCompile(`</?[A-Za-z][^>\n]*>`)
+	reDocCode   = regexp.MustCompile("`+([^`\n]+?)`+")
+	reDocStrong = regexp.MustCompile(`\*\*|__|~~`)
+	reDocEm     = regexp.MustCompile(`(^|[\s(（「“])[*_]([^*_\s](?:[^*_\n]*[^*_\s])?)[*_]([\s.,;:!?，。；：！？)）」”]|$)`)
+	reDocEsc    = regexp.MustCompile("\\\\([\\\\`*_{}\\[\\]()#+\\-.!|>~])")
+	reDocHead   = regexp.MustCompile(`^#{1,6}\s+(.*?)\s*#*$`)
+	reDocSetext = regexp.MustCompile(`^(=+|-+)$`)
+	reDocFence  = regexp.MustCompile("^(`{3,}|~{3,})")
+	reDocDef    = regexp.MustCompile(`^\[[^\]]+\]:\s`)
+	reDocQuote  = regexp.MustCompile(`^(>\s?)+`)
+	reDocItem   = regexp.MustCompile(`^([-*+]|\d+[.)])\s+`)
+	reDocTask   = regexp.MustCompile(`^\[[ xX]\]\s+`)
+)
+
+// DocPlain is Markdown's words with every mark removed: a link or a
+// picture as its words, code, emphasis and tags as their text, escapes
+// undone, runs of space as one.
+func DocPlain(s string) string {
+	s = reDocPic.ReplaceAllString(s, "$1")
+	s = reDocLink.ReplaceAllString(s, "$1")
+	s = reDocRef.ReplaceAllString(s, "$1")
+	s = reDocAuto.ReplaceAllString(s, "$1")
+	s = reDocTag.ReplaceAllString(s, "")
+	s = reDocCode.ReplaceAllString(s, "$1")
+	s = reDocStrong.ReplaceAllString(s, "")
+	s = reDocEm.ReplaceAllString(s, "$1$2$3")
+	s = reDocEsc.ReplaceAllString(s, "$1")
+	return strings.Join(strings.Fields(s), " ")
+}
+
+// docGlimpseChars is how many characters a glimpse keeps of a line.
+const docGlimpseChars = 200
+
+// isDocRule: a thematic break (---, ***, ___, spaced or not).
+func isDocRule(t string) bool {
+	s := strings.ReplaceAll(strings.ReplaceAll(t, " ", ""), "\t", "")
+	if len(s) < 3 || !strings.ContainsRune("-*_", rune(s[0])) {
+		return false
+	}
+	return strings.Count(s, s[:1]) == len(s)
+}
+
+// DocGlimpse is a Markdown file's start for its card: its title (the first
+// heading, when the document starts with one) and its first lines of text
+// with every mark removed (never #, **, ---, a table or a fence), at most
+// max of them.
+func DocGlimpse(text string, max int) (title string, lines []string) {
+	ls := strings.Split(strings.ReplaceAll(strings.ReplaceAll(text, "\r\n", "\n"), "\r", "\n"), "\n")
+	i := 0
+	if strings.TrimSpace(ls[0]) == "---" {
+		for k := 1; k < len(ls); k++ {
+			if t := strings.TrimSpace(ls[k]); t == "---" || t == "..." {
+				i = k + 1
+				break
+			}
+		}
+	}
+	add := func(s string, heading bool) {
+		p := DocPlain(s)
+		if r := []rune(p); len(r) > docGlimpseChars {
+			p = string(r[:docGlimpseChars])
+		}
+		if p == "" {
+			return
+		}
+		if heading && title == "" && len(lines) == 0 {
+			title = p
+		} else {
+			lines = append(lines, p)
+		}
+	}
+	fence := ""
+	for ; i < len(ls) && len(lines) < max; i++ {
+		t := strings.TrimSpace(ls[i])
+		if fence != "" {
+			if strings.HasPrefix(t, fence) {
+				fence = ""
+			}
+			continue
+		}
+		if reDocFence.MatchString(t) {
+			fence = t[:3]
+			continue
+		}
+		if t == "" || isDocRule(t) || strings.HasPrefix(t, "|") || strings.HasPrefix(t, "<!--") || reDocDef.MatchString(t) {
+			continue
+		}
+		if h := reDocHead.FindStringSubmatch(t); h != nil {
+			add(h[1], true)
+			continue
+		}
+		if i+1 < len(ls) && reDocSetext.MatchString(strings.TrimSpace(ls[i+1])) {
+			add(t, true)
+			i++
+			continue
+		}
+		t = reDocQuote.ReplaceAllString(t, "")
+		t = reDocItem.ReplaceAllString(t, "")
+		add(reDocTask.ReplaceAllString(t, ""), false)
+	}
+	return title, lines
 }

@@ -800,9 +800,10 @@ export function NumberField(p: { value: string; label: string; unit: string; aut
 /** D521: a drawn glyph alone as a button (a row's 停下 / Stop): its name the tooltip and the label,
  *  the hit area the row's height (28, 44 on a phone), the glyph in the muted ink, warming under the
  *  pointer (danger: the failed ink). The Mac's `iconButton`. */
-export function IconBtn(p: { label: string; about?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
+export function IconBtn(p: { label: string; about?: string; tip?: string; pressed?: boolean; cls?: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ComponentChildren }) {
+  // tip: the tooltip when it says more than the name (its key, D567's 铺满 ⌘Return); pressed: a toggle's state.
   return (
-    <button type="button" class={`icon-btn${p.danger ? " danger" : ""}`} title={p.label} aria-label={p.about ? spoken(A.L, p.label, p.about) : p.label} disabled={p.disabled} onClick={p.onClick}>
+    <button type="button" class={`icon-btn${p.danger ? " danger" : ""}${p.cls ? ` ${p.cls}` : ""}`} title={p.tip ?? p.label} aria-label={p.about ? spoken(A.L, p.label, p.about) : p.label} aria-pressed={p.pressed} disabled={p.disabled} onClick={p.onClick}>
       {p.children}
     </button>
   );

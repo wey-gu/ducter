@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.67 - 2026-11-25
+
+<!-- whats-new
+zh: 宽表格看得全，预览能铺满，卡片显示排好版的开头
+en: Wide tables read in full, the viewer fills the window, cards show a real start
+-->
+
+**Reading what a task made**
+- A wide table in a report spreads to the whole viewer and scrolls on its own, with its first
+  column held in place, so nothing is cut off and the page never slides sideways.
+- Tables from a CSV keep their header row and first column in view, with columns sized to fit.
+- Fill the window from the viewer's title bar, with ⌘Return, or by double-clicking the title. It
+  remembers, per kind of file, for next time.
+- A report's card shows its title and first lines, laid out, instead of raw Markdown.
+
 ## 0.1.66 - 2026-11-25
 
 <!-- whats-new

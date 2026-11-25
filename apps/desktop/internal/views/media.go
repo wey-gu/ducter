@@ -93,6 +93,9 @@ type mediaState struct {
 	tileAt map[string]ui.Rect
 	// glimpses are the file cards' glimpses, per id (D286).
 	glimpses map[string]*glimpse
+	// filled stands in for this Mac's local prefs (D567: the kinds read
+	// filling the window) when there are none (tests).
+	filled map[string]bool
 }
 
 type taskWait struct {

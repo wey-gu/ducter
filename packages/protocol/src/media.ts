@@ -325,6 +325,79 @@ export function parseTable(text: string, sep = ",", max = FILE_VIEW_ROWS): { row
 }
 
 /**
+ * D567: the words of a Markdown mark removed: a link or a picture as its words, code, emphasis and
+ * tags as their text, escapes undone, runs of space as one. `DocPlain` in the Mac's protocol.
+ */
+export function docPlain(s: string): string {
+  return s
+    .replace(/!\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
+    .replace(/\[([^\]\n]+)\]\([^)\n]*\)/g, "$1")
+    .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/g, "$1")
+    .replace(/<(https?:[^>\s]+)>/g, "$1")
+    .replace(/<\/?[A-Za-z][^>\n]*>/g, "")
+    .replace(/`+([^`\n]+?)`+/g, "$1")
+    .replace(/\*\*|__|~~/g, "")
+    .replace(/(^|[\s(（「“])[*_]([^*_\s](?:[^*_\n]*[^*_\s])?)[*_]([\s.,;:!?，。；：！？)）」”]|$)/g, "$1$2$3")
+    .replace(/\\([\\`*_{}[\]()#+\-.!|>~])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** How many characters a glimpse keeps of a line. */
+const DOC_GLIMPSE_CHARS = 200;
+
+/**
+ * D567: the rendered start of a Markdown file for its card: its title (the first heading, when the
+ * document starts with one) and its first lines of text with every mark removed (never `#`, `**`,
+ * `---`, a table or a fence). Front matter, rules, tables, code, comments and blank lines are
+ * passed over; a list item or a quote is its words. `DocGlimpse` in the Mac's protocol.
+ */
+export function docGlimpse(text: string, max = 3): { title: string; lines: string[] } {
+  const ls = text.replace(/\r\n?/g, "\n").split("\n");
+  let i = 0;
+  if (ls[0]?.trim() === "---") {
+    const end = ls.findIndex((l, k) => k > 0 && (l.trim() === "---" || l.trim() === "..."));
+    if (end > 0) i = end + 1;
+  }
+  let title = "";
+  const lines: string[] = [];
+  const cut = (s: string) => ([...s].length > DOC_GLIMPSE_CHARS ? [...s].slice(0, DOC_GLIMPSE_CHARS).join("") : s);
+  const add = (s: string, heading: boolean) => {
+    const p = cut(docPlain(s));
+    if (!p) return;
+    if (heading && !title && !lines.length) title = p;
+    else lines.push(p);
+  };
+  let fence = "";
+  for (; i < ls.length && lines.length < max; i++) {
+    const t = ls[i]!.trim();
+    if (fence) {
+      if (t.startsWith(fence)) fence = "";
+      continue;
+    }
+    if (/^(`{3,}|~{3,})/.test(t)) {
+      fence = t.slice(0, 3);
+      continue;
+    }
+    if (!t || /^([-*_])(\s*\1){2,}$/.test(t) || t.startsWith("|") || t.startsWith("<!--") || /^\[[^\]]+\]:\s/.test(t)) continue;
+    const h = /^#{1,6}\s+(.*?)\s*#*$/.exec(t);
+    if (h) {
+      add(h[1]!, true);
+      continue;
+    }
+    // A line underlined with === or --- is a heading (setext).
+    const next = ls[i + 1]?.trim() ?? "";
+    if (/^(=+|-+)$/.test(next)) {
+      add(t, true);
+      i++;
+      continue;
+    }
+    add(t.replace(/^(>\s?)+/, "").replace(/^([-*+]|\d+[.)])\s+/, "").replace(/^\[[ xX]\]\s+/, ""), false);
+  }
+  return { title, lines };
+}
+
+/**
  * D259: a file's kind in words an agent reads ("Markdown", "PDF", "Word document"), from its type
  * and name: the line that names a file the user sent says what it is before anything opens it.
  */

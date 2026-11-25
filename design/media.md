@@ -203,8 +203,10 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   the family's colour and says the extension (PDF, TS, DOCX, ZIP, M4A, MP4), the family's mark on
   it (`fileFamily`, `fileBadge`: pdf, code, text, doc, sheet, slides, archive, audio, video,
   picture, other). Above its line, a glimpse where the file has one: a PDF's first page on white
-  paper (the line adds **{n} 页**), code's and text's first lines in their colours, a table's first
-  rows, a video's frame with its length, a sound's waveform that plays in the card (**播放 /
+  paper (the line adds **{n} 页**), a report's start as it reads (D567: the top of the viewer's paper,
+  its title in the heading face, a line or two of its words with every Markdown mark removed, never
+  monospace), code's and text's first lines in their colours (fading at the card's edge, never
+  "…"), a table's first rows, a video's frame with its length, a sound's waveform that plays in the card (**播放 /
   Play**, **暂停 / Pause**; a tap on the wave seeks). A glimpse is made once, when the card comes
   within a screen, one PDF at a time, and kept by the file's id; one that can't be made leaves the
   card plain. A file on its way makes it from this device's copy. The Mac draws the PDF page and
@@ -273,6 +275,20 @@ is read where it was handed over.
 - **The Mac's read-only views (D242).** The code view has no current line (no caret to stand on);
   a report's code blocks carry Ducter's own **拷贝 / Copy** (**已拷贝**), not MyGo's "Copy code", in
   the file viewer and the conversation alike.
+- **Wide content (D567).** A report's table is as wide as its words need (each column up to 22 em,
+  a naming column 13), out past the reading measure to the sheet's whole width, centred on the
+  words; wider still it scrolls sideways on its own (the Mac: the system's scroller), never the
+  page, and its edges fade where more is out of view. A first column that names the rows (more than
+  two columns, its cells words, not numbers) stays while the rest scroll, a ledge at its edge once
+  something is under it. Code blocks break out and fade the same way. A table file fills the sheet:
+  header row and naming column stay, each column as wide as its first 200 rows (4 to 32
+  characters), numbers on the right; the Mac builds only the rows in view (`csvTable`; a report's
+  tables are `mdTableBlock`, MyGo's Markdown `Block` hook, in the file viewer only).
+- **铺满 / Fill the window (D567).** The head's drawn button (tooltip **铺满（⌘Return）**, **还原大小** once
+  filled), ⌘Return / Ctrl+Enter, or a double click on the title: the sheet takes the window, 16 pt in
+  from its edges, and gives it back. Remembered per kind of file on this device (web
+  `localStorage`, the Mac's local prefs), so a report opens filled once the person chose it. A phone's
+  sheet is already the whole screen: no button.
 - **Bounded:** 1 MB of a text (`FILE_VIEW_BYTES`), read as a stream and stopped there, cut at a
   whole line, said at the foot; 2000 table rows. Copy of a cut file fetches all of it first.
 - **Save a copy** writes on this device: Downloads on the Mac (**已存到「下载」**), the share sheet

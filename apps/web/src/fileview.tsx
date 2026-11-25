@@ -19,7 +19,7 @@ import { findAll, rangeOf, textMap } from "./fileview-find.ts";
 import { PdfBody } from "./fileview-pdf.tsx";
 import { mediaFetch, mediaUrl } from "./media-fresh.ts";
 import { title } from "./store.ts";
-import { Facts } from "./controls.tsx";
+import { Facts, IconBtn } from "./controls.tsx";
 import { FileBadge } from "./filecard.tsx";
 import { MemKeepAction } from "./mem-keep.tsx";
 
@@ -238,6 +238,58 @@ const Lens = () => (
   </svg>
 );
 
+/** D567: 铺满 / Fill the window: corners going out; back to its size: corners coming in. */
+const FillMark = ({ on }: { on: boolean }) => (
+  <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d={on ? "M8 3.5V8H3.5M12 3.5V8h4.5M8 16.5V12H3.5M12 16.5V12h4.5" : "M3.5 8V3.5H8M16.5 8V3.5H12M3.5 12v4.5H8M16.5 12v4.5H12"} />
+  </svg>
+);
+
+// ---------- D567: the whole window, remembered per kind ----------
+
+const FILL_KEY = "ducter.fileview.fill";
+/** The kinds the person last chose to read filling the window (a report opens filled after they chose it once). */
+function filled(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(FILL_KEY) ?? "{}") as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+function rememberFill(kind: string, on: boolean) {
+  try {
+    localStorage.setItem(FILL_KEY, JSON.stringify({ ...filled(), [kind]: on }));
+  } catch {}
+}
+/** A phone's sheet is the whole screen already: nothing to fill. */
+const fullAlready = () => typeof matchMedia !== "undefined" && matchMedia("(max-width: 699px), (max-height: 639px)").matches;
+
+/**
+ * D567: a wide table or code block scrolls on its own; its edges fade where more of it is out of
+ * view (the start's fade gives way to the sticky first column's ledge). Kept true as it scrolls and
+ * as the sheet changes size.
+ */
+function useEdges(root: { current: HTMLElement | null }, deps: unknown[]) {
+  useEffect(() => {
+    const box = root.current;
+    if (!box) return;
+    const wide = [...box.querySelectorAll<HTMLElement>(".md-table, pre, .fv-table")];
+    const mark = (el: HTMLElement) => {
+      const max = el.scrollWidth - el.clientWidth;
+      el.classList.toggle("fade-s", el.scrollLeft > 1);
+      el.classList.toggle("fade-e", max > 1 && el.scrollLeft < max - 1);
+    };
+    const on = (e: Event) => mark(e.currentTarget as HTMLElement);
+    for (const el of wide) mark(el), el.addEventListener("scroll", on, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => wide.forEach(mark)) : undefined;
+    ro?.observe(box);
+    return () => {
+      for (const el of wide) el.removeEventListener("scroll", on);
+      ro?.disconnect();
+    };
+  }, deps);
+}
+
 const Chevron = ({ up }: { up?: boolean }) => (
   <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d={up ? "M5.5 12.5L10 8l4.5 4.5" : "M5.5 7.5L10 12l4.5-4.5"} />
@@ -278,10 +330,28 @@ function TableBody({ text, name }: { text: string; name: string }) {
   const num = (s: string) => /^-?[\d.,]+%?$/.test(s.trim()) && s.trim() !== "";
   // A column of numbers lines up on the right, its heading with it.
   const numCol = Array.from({ length: cols }, (_, k) => body.length > 0 && body.every((r) => !r[k] || num(r[k]!)) && body.some((r) => r[k]));
+  // D567: each column as wide as what it holds (its first 200 rows; a wide character counts two),
+  // between 4 and 32 characters, longer words wrapping inside; the first column stays while the rest
+  // scroll when it names the rows (words, not numbers).
+  const widths = useMemo(() => {
+    const len = (s: string) => {
+      let n = 0;
+      for (const ch of s) n += ch.charCodeAt(0) > 0x2e7f ? 2 : 1;
+      return n;
+    };
+    // The heading row is bold: a little wider for the same letters.
+    return Array.from({ length: cols }, (_, k) => Math.min(32, Math.max(4, ...rows.slice(0, 200).map((r, i) => Math.ceil(len((r[k] ?? "").split("\n")[0]!) * (i === 0 ? 1.15 : 1))))));
+  }, [rows, cols]);
+  const key = cols > 2 && !numCol[0];
   return (
     <>
-      <div class="fv-table" role="region" aria-label={name} tabIndex={0}>
-        <table>
+      <div class={`fv-table${key ? " key" : ""}`} role="region" aria-label={name} tabIndex={0}>
+        <table style={{ width: `calc(${widths.reduce((a, b) => a + b, 0)}ch + ${cols * 25}px)` }}>
+          <colgroup>
+            {widths.map((w, k) => (
+              <col key={k} style={{ width: `calc(${w}ch + 25px)` }} />
+            ))}
+          </colgroup>
           {head && (
             <thead>
               <tr>
@@ -346,6 +416,26 @@ export function FileViewer() {
   const kind = asPdf ? "pdf" : fileView(m);
   const got = useFile(m, again);
   const name = fileName(m);
+  // D567: 铺满 / Fill the window, as the person last chose for this kind of file.
+  const [fill, setFill] = useState(() => kind !== "none" && !!filled()[kind]);
+  const fillFrom = useRef<DOMRect | null>(null);
+  const toggleFill = () => {
+    if (kind === "none" || fullAlready()) return;
+    fillFrom.current = sheet.current?.getBoundingClientRect() ?? null;
+    setFill((f) => (rememberFill(kind, !f), !f));
+  };
+  // The sheet moves from its size to the window's (and back) as one piece.
+  useLayoutEffect(() => {
+    const el = sheet.current;
+    const from = fillFrom.current;
+    fillFrom.current = null;
+    if (!el || !from || reduced()) return;
+    const r = el.getBoundingClientRect();
+    el.animate(
+      [{ transform: `translate(${from.left - r.left}px, ${from.top - r.top}px) scale(${from.width / r.width}, ${from.height / r.height})` }, { transform: "none" }],
+      { duration: 240, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    );
+  }, [fill]);
 
   const close = () => {
     if (closing) return;
@@ -396,6 +486,7 @@ export function FileViewer() {
     const k = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "f" && findable) return void (e.preventDefault(), e.stopPropagation(), openFind());
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "g" && finding.current) return void (e.preventDefault(), step(e.shiftKey ? -1 : 1));
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !e.isComposing) return void (e.preventDefault(), e.stopPropagation(), toggleFill());
       // Esc closes the find field first, then the file.
       if (e.key === "Escape" && finding.current) return void (e.preventDefault(), e.stopPropagation(), (finding.current = false), setFind(null));
       if (e.key === "Escape") e.preventDefault(), e.stopPropagation(), close();
@@ -436,6 +527,8 @@ export function FileViewer() {
     if (box && box.width && (box.right > view.right - 24 || box.left < view.left + 56)) root.scrollLeft += box.left - view.left - view.width / 3;
     return clear;
   }, [find?.q, find?.at, text0, source]);
+
+  useEdges(bodyEl, [text0, source, fill, got.state]);
 
   // On a phone the sheet's head pulls down to close it, as the picture viewer swipes down.
   const pull = useRef<{ y: number; t: number } | null>(null);
@@ -509,11 +602,11 @@ export function FileViewer() {
   return (
     <div class={`fileview${closing ? " closing" : ""}`} role="dialog" aria-modal="true" aria-label={name}>
       <div class="scrim" onClick={close} style={{ opacity: Math.max(0, 1 - drag / 400) }} />
-      <article class={`fv-sheet fv-k-${kind}${source ? " fv-src" : ""}`} ref={sheet} style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}>
+      <article class={`fv-sheet fv-k-${kind}${source ? " fv-src" : ""}${fill ? " fill" : ""}`} ref={sheet} style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}>
         <header class="fv-head" onPointerDown={onDown as any} onPointerMove={onMove as any} onPointerUp={onUp} onPointerCancel={onUp}>
           <span class="fv-grab" aria-hidden="true" />
           <FileBadge m={m} size={24} />
-          <div class="fv-title">
+          <div class="fv-title" onDblClick={toggleFill}>
             <span class="nm" title={name}>
               {name}
             </span>
@@ -528,6 +621,11 @@ export function FileViewer() {
             <button type="button" class="btn text sm fv-toggle" aria-pressed={source} onClick={() => setSource((s) => !s)}>
               <span class="lbl">{source ? t("file.formatted") : t("file.source")}</span>
             </button>
+          )}
+          {kind !== "none" && (
+            <IconBtn cls="fv-fill" label={t(fill ? "file.unfill" : "file.fill")} tip={t(fill ? "file.unfill.key" : "file.fill.key", /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘Return" : "Ctrl+Enter")} pressed={fill} onClick={toggleFill}>
+              <FillMark on={fill} />
+            </IconBtn>
           )}
           <button type="button" class="btn text icon fv-x" aria-label={t("media.close")} onClick={close}>
             <Cross />

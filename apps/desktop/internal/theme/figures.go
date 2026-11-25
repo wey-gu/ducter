@@ -77,26 +77,6 @@ func squarePath(figure string, p Presence, size int) string {
 	return fmt.Sprintf("art/fig/%s_%s@%d.png", figure, p, size)
 }
 
-// figureLids are each figure's idle eyelids, as fractions of its cropped
-// idle art (FaceLids is the pebble's). Printed by tools/art/figures.py.
-var figureLids = map[string][2]Lid{
-	"bun":    {{X: 0.2223, Y: 0.3129, W: 0.2820, H: 0.3056}, {X: 0.5270, Y: 0.3129, W: 0.2820, H: 0.3056}},
-	"sprout": {{X: 0.3230, Y: 0.4535, W: 0.1926, H: 0.2180}, {X: 0.5694, Y: 0.4514, W: 0.1839, H: 0.2184}},
-	"cloud":  {{X: 0.2998, Y: 0.3726, W: 0.1855, H: 0.2257}, {X: 0.5359, Y: 0.3699, W: 0.1781, H: 0.2262}},
-	"cube":   {{X: 0.4131, Y: 0.2840, W: 0.1855, H: 0.3004}, {X: 0.6648, Y: 0.2728, W: 0.1781, H: 0.2921}},
-	"bean":   {{X: 0.3180, Y: 0.2703, W: 0.2224, H: 0.1703}, {X: 0.5783, Y: 0.2717, W: 0.1946, H: 0.1637}},
-}
-
-// figureSquare is where each figure's cropped idle sits in its square art
-// (IdleSquareContent is the pebble's). Printed by tools/art/figures.py.
-var figureSquare = map[string]struct{ X, Y, W, H float32 }{
-	"bun":    {X: 0.1700, Y: 0.2225, W: 0.6275, H: 0.5700},
-	"sprout": {X: 0.2425, Y: 0.2225, W: 0.4850, H: 0.5700},
-	"cloud":  {X: 0.1675, Y: 0.2825, W: 0.6350, H: 0.5100},
-	"cube":   {X: 0.1675, Y: 0.2275, W: 0.6350, H: 0.5650},
-	"bean":   {X: 0.2575, Y: 0.2225, W: 0.4550, H: 0.5700},
-}
-
 // LidsOf is the idle face's two eyelids of a wear's figure, as fractions
 // of its cropped idle art.
 func LidsOf(wear string) []Lid {
@@ -122,6 +102,19 @@ func SquareLidsOf(wear string) []Lid {
 		out[i] = Lid{X: sq.X + l.X*sq.W, Y: sq.Y + l.Y*sq.H, W: l.W * sq.W, H: l.H * sq.H}
 	}
 	return out
+}
+
+// OpticalOf is a wear's optical size (D565, figures_gen.go): a figure is
+// drawn fitted into the same square as the pebble, standing on its feet,
+// then scaled by this about them, so every figure reads as the same size.
+// The pebble's is 1.
+func OpticalOf(wear string) float32 {
+	if f, _ := splitWear(wear); f != "" {
+		if o, ok := figureOptical[f]; ok {
+			return o
+		}
+	}
+	return 1
 }
 
 // ShownWear is the wear the window's own figure is in (UseLook's).

@@ -97,11 +97,15 @@ func FaceClosedAs(look string, px float32) *ui.Bitmap {
 // ArtClosed is the square idle art with its eyes closed, the size
 // Art(Idle, px) picks.
 func ArtClosed(px float32) *ui.Bitmap {
+	return ArtClosedAs(shownLook(), px)
+}
+
+// ArtClosedAs is ArtClosed in a given partner's wear (D565).
+func ArtClosedAs(wear string, px float32) *ui.Bitmap {
 	size := 160
 	if px > 160 {
 		size = 400
 	}
-	wear := shownLook()
 	fig, _ := splitWear(wear)
 	return loadAs(squarePath(fig, "idle_closed", size), wear)
 }

@@ -37,14 +37,17 @@ func (a *App) lookForFigure(figure string) string {
 
 // figurePick is the six figures as a 3 × 2 grid, each standing in the
 // given clay (the partner's own, so the person sees what they'd get) or,
-// with own, in its suggested clay; the chosen one ringed and a touch
-// taller. It returns the figure clicked, or "".
+// with own, in its suggested clay, at one optical size; the chosen one as
+// the shared choices show theirs. It returns the figure clicked, or "".
 func (a *App) figurePick(c *ui.Context, key, value, look string, own bool) string {
 	t := a.T
 	hit := ""
-	ui.Column(c.Key("figs:" + key)).Gap(t.S1).Role(ui.RoleRadioGroup).Label(a.L.T("partners.figure")).Children(func() {
+	// The shared choices' clay (D76, D161): a sunken track, the chosen one a
+	// white surface standing on its 2-point base in ink 700, the others muted.
+	ui.Column(c.Key("figs:" + key)).Width(3*64 + 4*t.S1).Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).
+		Role(ui.RoleRadioGroup).Label(a.L.T("partners.figure")).Children(func() {
 		for row := 0; row < 2; row++ {
-			ui.Row(c.Key("figs-row:" + key + string(rune('0'+row)))).Gap(t.S2).Children(func() {
+			ui.Row(c.Key("figs-row:" + key + string(rune('0'+row)))).Gap(t.S1).Children(func() {
 				for _, f := range protocol.PartnerFigures[row*3 : row*3+3] {
 					on := f == value
 					name := a.L.T("partners.figure." + f)
@@ -52,38 +55,34 @@ func (a *App) figurePick(c *ui.Context, key, value, look string, own bool) strin
 					if own || clay == "" {
 						clay = protocol.FigureLook[f]
 					}
+					wear := theme.Wear(clay, f)
 					chip := ui.Column(c.Key("fig:"+key+":"+f)).Size(64, 72).Radius(t.RadiusSM).Padding(6, 0, 6, 0).Gap(2).AlignItems(ui.Center).Justify(ui.End).
 						Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(a.L.T("partners.figure.label", name, a.L.T("partners.figure.air."+f))).AccessSelected(on).Focusable()
-					if on {
-						chip.Border(2, t.InkSoft).Background(t.Surface)
-					} else if chip.Hovered() {
-						chip.Background(t.SurfaceSunken)
+					fg, weight := t.InkMuted, 500
+					switch {
+					case on:
+						chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+						fg, weight = t.Ink, 700
+					case chip.Pressed():
+						chip.Background(t.Ink.Alpha(0.08))
+					case chip.Hovered():
+						chip.Background(t.Ink.Alpha(0.04))
+						fg = t.InkSoft
 					}
 					chip.Children(func() {
-						lift := float32(0)
-						if on {
-							lift = 1
-						}
-						if !c.Preferences().ReduceMotion {
-							lift = chip.Spring("lift", lift, ui.SpringOptions{Duration: 360 * time.Millisecond, Bounce: 0.3})
-						}
 						ui.Box(c.Key("fs")).Size(40, 40).Shrink(0).AccessHidden(true).Draw(func(pt *ui.Painter, r ui.Rect) {
-							bmp := theme.FaceAs(theme.Wear(clay, f), theme.Idle, 80)
+							bmp := theme.FaceAs(wear, theme.Idle, 80)
 							if bmp == nil {
 								return
 							}
-							s := 1 + 0.06*lift
-							at := fitIn(bmp, ui.Rect{X: r.X + r.W*(1-s)/2, Y: r.Y, W: r.W * s, H: r.H * s})
-							at.Y = r.Y + r.H - at.H - 2*lift
-							pt.Image(bmp, at, ui.Contain)
+							box := ui.Rect{X: r.X + 2, Y: r.Y + 4, W: r.W - 4, H: r.H - 4}
+							at := fitIn(bmp, box)
+							at.Y = box.Y + box.H - at.H
+							pt.Image(bmp, figureIn(bmp, box, wear, at), ui.Contain)
 						})
-						tx := t.InkSoft
-						if on {
-							tx = t.Ink
-						}
-						uiText(c, name).FontSize(t.XS).FontWeight(600).TextColor(tx).SingleLine().AccessHidden(true)
+						uiText(c, name).FontSize(t.XS).FontWeight(weight).TextColor(fg).SingleLine().AccessHidden(true)
 					})
-					if chip.Clicked() {
+					if chip.Clicked() && !on {
 						hit = f
 					}
 				}
@@ -91,6 +90,20 @@ func (a *App) figurePick(c *ui.Context, key, value, look string, own bool) strin
 		}
 	})
 	return hit
+}
+
+// figureIn is where a partner's figure in wear stands in its box r (D565):
+// the pebble where its caller put it (pebble); another figure fitted into a
+// square as wide as r on r's bottom edge, centred, then scaled by its
+// optical size about its feet, so every figure reads as the same size.
+func figureIn(bmp *ui.Bitmap, r ui.Rect, wear string, pebble ui.Rect) ui.Rect {
+	if bmp == nil || theme.FigureOf(wear) == "pebble" {
+		return pebble
+	}
+	at := fitIn(bmp, ui.Rect{X: r.X, Y: r.Y + r.H - r.W, W: r.W, H: r.W})
+	o := theme.OpticalOf(wear)
+	w, h := at.W*o, at.H*o
+	return ui.Rect{X: at.X + at.W/2 - w/2, Y: pebble.Y + pebble.H - h, W: w, H: h}
 }
 
 // meetHop is how long the chosen figure's hop forward takes.
@@ -143,8 +156,11 @@ func (a *App) meetStage(c *ui.Context) {
 							pt.AnimationFrame()
 						}
 					}
-					at := fitIn(bmp, ui.Rect{X: r.X + r.W*(1-s)/2, Y: r.Y, W: r.W * s, H: r.H * s})
-					at.Y = r.Y + r.H - at.H + dy
+					box := ui.Rect{X: r.X + r.W*(1-s)/2, Y: r.Y + r.H*(1-s), W: r.W * s, H: r.H * s}
+					at := fitIn(bmp, box)
+					at.Y = r.Y + r.H - at.H
+					at = figureIn(bmp, box, wear, at) // D565: one optical size
+					at.Y += dy
 					var lids *blinkArt
 					if b := theme.FaceClosedAs(wear, 112); b != nil {
 						lids = &blinkArt{closed: b, lids: theme.LidsOf(wear)}

@@ -272,7 +272,7 @@ func (a *App) stone(c *ui.Context, key, look string, size float32) ui.Element {
 		}
 		at := fitIn(bmp, r)
 		at.Y = r.Y + r.H - at.H
-		pt.Image(bmp, at, ui.Contain)
+		pt.Image(bmp, figureIn(bmp, r, look, at), ui.Contain)
 	})
 	return box
 }

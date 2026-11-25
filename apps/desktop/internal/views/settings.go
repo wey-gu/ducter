@@ -391,7 +391,7 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		}
 		bmp = theme.Clay(art)
 	case TabPartner:
-		bmp = theme.Face(theme.Idle, size*2)
+		bmp = theme.FaceAs(a.ownerLook(protocol.DefaultPartner), theme.Idle, size*2) // D565: the default partner's pane
 	case TabMemory:
 		box.Draw(a.drawNotebook())
 		return

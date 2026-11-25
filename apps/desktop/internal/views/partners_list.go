@@ -350,9 +350,10 @@ func (a *App) railFace(c *ui.Context, p protocol.PartnerInfo, on bool, needs int
 				pt.AnimationFrame()
 			}
 		}
-		at := ui.Rect{X: r.X + (r.W-fw)/2, Y: r.Y + r.H - fh + dy - 2*lift, W: fw, H: fh}
-		at = fitIn(bmp, at)
+		box := ui.Rect{X: r.X + (r.W-fw)/2, Y: r.Y + r.H - fh + dy - 2*lift, W: fw, H: fh}
+		at := fitIn(bmp, box)
 		at.Y = r.Y + r.H - at.H + dy - 2*lift
+		at = figureIn(bmp, box, look, at) // D565: every figure the same optical size
 		var lids *blinkArt
 		if b := theme.FaceClosedAs(look, fs*2); b != nil {
 			lids = &blinkArt{closed: b, lids: theme.LidsOf(look)}

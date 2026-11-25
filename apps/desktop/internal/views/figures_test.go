@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,6 +48,17 @@ func TestD565FigureArt(t *testing.T) {
 					t.Errorf("%s: a lid off its art: %+v", f, lid)
 				}
 			}
+		}
+	}
+	// One optical table for both clients (tools/art/figures.py writes both): the web's matches.
+	ts, err := os.ReadFile("../../../../packages/protocol/src/figures-gen.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range theme.Figures {
+		o := theme.OpticalOf(theme.Wear("sand", f))
+		if o < 0.85 || o > 1.12 || !strings.Contains(string(ts), fmt.Sprintf("  %s: %v,", f, o)) {
+			t.Errorf("%s: optical %v not the web's", f, o)
 		}
 	}
 	if theme.Wear("sky", "star") != "sky" || theme.FigureOf(theme.Wear("sky", "bun")) != "bun" {
@@ -126,6 +138,7 @@ func TestD565FigureShots(t *testing.T) {
 				app, _ := iaApp(t, lang)
 				app.LocaleFixed = true
 				app.Receive(protocol.ServerFrame{T: "partners", Shown: "default", Partners: d565Partners(lang)})
+				app.SwitchPartner("p3") // shown: the cloud; the pane is still the default's (D565)
 				app.Receive(settingsFrame())
 				app.openTab(TabPartner)
 				tt := tester(app, width, 1500, true)

@@ -13,6 +13,7 @@ import { useState } from "preact/hooks";
 import { DEFAULT_PARTNER, FIGURE_LOOK, LOOK_CLAY, PARTNER_ABOUT_MAX, PARTNER_FIGURES, PARTNER_LOOKS, PARTNER_NAME_MAX, lookForFigure, nextFigure, type PartnerFigure, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
 import type { Brain, HarnessId, PartnerAsk } from "@ducter/protocol";
 import { A, type Wear } from "./app.ts";
+import { FIGURE_OPTICAL } from "@ducter/protocol/src/figures-gen.ts";
 import { say, Said } from "./set-grid.tsx";
 import { Coin } from "./coin.tsx";
 import { AddRow, Btn, Chev, CountPebble, Facts, Field, IconBtn } from "./controls.tsx";
@@ -21,6 +22,18 @@ import { currentSplit } from "./fold.ts";
 import { harnessName, modelName } from "./format.ts";
 import { Select } from "./menu.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
+
+// D565: each figure's optical size (tools/art/figures.py's one table): every figure is fitted into the
+// same square and stands on its feet (app.css .stone, .avatar, .sface), then is scaled by this about its
+// feet, so a tall bean and a wide cloud read as the same size as the pebble, wherever a figure shows.
+if (typeof document !== "undefined" && !document.querySelector("style[data-figures]")) {
+  const st = document.createElement("style");
+  st.dataset.figures = "";
+  st.textContent = Object.entries(FIGURE_OPTICAL)
+    .map(([f, o]) => `img[src*="art/fig/${f}_"], img[src*="art/fig/${f}-"] { scale: ${o}; transform-origin: 50% 100%; }`)
+    .join("\n");
+  document.head.append(st);
+}
 
 /** D536: the models the home offers an agent to think with (settings.brainOptions, else brainNow's own). */
 function brainModels(harness: string) {

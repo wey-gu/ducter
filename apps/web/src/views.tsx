@@ -75,6 +75,7 @@ const PrMark = () => (
   </svg>
 );
 import { figArt, PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle } from "./partners.tsx";
+import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -2926,8 +2927,9 @@ function NameRow() {
   const lede = partnerHead();
   return (
     <>
-      <div class="partner-head">
-      <Avatar size={56} />
+      {/* D565: the page is the default partner's: its own figure and clay, whoever is shown. */}
+      <div class="partner-head" data-look={A.lookOf(DEFAULT_PARTNER)}>
+      <Avatar size={56} wear={A.wearOf(DEFAULT_PARTNER) ?? {}} who={A.defaultName()} />
       {editing ? (
         <>
           <input

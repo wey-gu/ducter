@@ -762,12 +762,14 @@ a {
   object-position: 50% 100%;
 }
 .avatar .idle {
-  aspect-ratio: 360 / 324;
+  aspect-ratio: 1;
 }
 .avatar .idle img {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
 }
 .breathe {
   transform-origin: 50% 100%;
@@ -14339,8 +14341,12 @@ img[src$="art/done.webp"], img[src$="art/napping.webp"], img[src$="art/waiting.w
   justify-content: center;
 }
 .stone img {
+  /* D565: every figure fitted into the same square, standing on its feet (a tall bean never overruns
+     its box); a figure's optical size then scales it about its feet (partners.tsx, FIGURE_OPTICAL). */
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
   pointer-events: none;
   filter: var(--clay, none);
 }
@@ -24452,11 +24458,16 @@ html.kb #app {
 img[src*="art/fig/"] { filter: var(--clay, none); }
 img[src*="art/fig/sprout"] { filter: none !important; }
 /* The six as a 3 × 2 grid above the colours, as on the Mac. */
+/* The shared choices' clay (D76, D161, .seg): a sunken track; the chosen one a white surface standing
+   on its 2-px base, its name in ink 700; the others muted. The same on the Mac (figurePick). */
 .fig-pick {
   display: grid;
   grid-template-columns: repeat(3, 64px);
-  gap: var(--s1) var(--s2);
-  padding: 2px 0;
+  gap: 4px;
+  padding: 4px;
+  width: max-content;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
 }
 .partners-set .partner-row > .fig-pick,
 .partners-set .partner-row > .said-line { margin-inline-start: 52px; }
@@ -24470,16 +24481,15 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   padding: 6px 0 4px;
   border-radius: var(--r-sm);
   background: none;
-  color: var(--ink-soft);
+  color: var(--ink-muted);
   font-size: var(--xs);
-  font-weight: 600;
-  transition: background 160ms var(--ease), transform 70ms var(--ease);
+  font-weight: 500;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
-.fig-chip .stone { transform-origin: 50% 100%; transition: transform 360ms var(--spring); }
-@media (hover: hover) { .fig-chip:hover { background: var(--surface-sunken, var(--sunken)); } }
-.fig-chip:active { transform: scale(0.97); }
-.fig-chip.on { background: var(--surface); box-shadow: 0 0 0 2px var(--ink-soft); color: var(--ink); }
-.fig-chip.on .stone { transform: translateY(-2px) scale(1.06); }
+.fig-chip .stone { width: 36px; height: 36px; }
+@media (hover: hover) { .fig-chip:not(.on):hover { background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink-soft); } }
+.fig-chip:not(.on):active { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.fig-chip.on { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); color: var(--ink); font-weight: 700; }
 .fig-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fig-name { line-height: 1.2; white-space: nowrap; }
 /* The meeting: the six on the paper, breathing and blinking out of step; the chosen raised, a tap
@@ -24538,6 +24548,6 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   100% { transform: translateX(0) translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fig-chip, .fig-chip .stone, .meet-fig, .meet-fig .pl-face > span { transition: none; }
+  .fig-chip, .meet-fig, .meet-fig .pl-face > span { transition: none; }
   .meet-fig .meet-hop, .meet-who, .said-line .said-face, .avatar.walk-in { animation: none; }
 }

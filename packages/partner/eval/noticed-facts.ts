@@ -13,6 +13,18 @@ function tomorrowAt(hh: number, mm: number, now = Date.now()): Date {
   return d;
 }
 
+/**
+ * D581: how far to move the clock so dots' day reads 17:00 here (today), whatever hour it is. The
+ * facts are dated around now, and tomorrow's 19:40 flight is said only within COMING_MS (36 h): a
+ * run before 07:40 left it out of noticed, so the answer couldn't hold it, and the verdict hung on
+ * the hour the run started.
+ */
+export function dotsShift(now = Date.now()): number {
+  const d = new Date(now);
+  d.setHours(17, 0, 0, 0);
+  return d.getTime() - now;
+}
+
 export function writeDotsFacts(dataDir: string, now = Date.now()) {
   const iso = (d: Date | number) => new Date(d).toISOString();
   const ref = (id: string, service = "gmail") => ({ connectionId: "conn_oo", service, account: "wey@example.com", id });

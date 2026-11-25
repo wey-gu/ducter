@@ -33,7 +33,7 @@ import { neverPick, saidPick } from "../../core/src/loadout.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
 import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
-import { writeAgibarFacts, writeDotsFacts } from "./noticed-facts.ts";
+import { dotsShift, writeAgibarFacts, writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner } from "../src/index.ts";
@@ -611,8 +611,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     writeFileSync(join(ph, "installed.json"), JSON.stringify({ packages: [{ path: "emulator", version: "stand-in" }], licenses: [], at: new Date().toISOString() }));
   }
-  // D243: what Ducter noted by itself on dots' day (synthetic facts around now).
-  if (sc.noticed === "dots") writeDotsFacts(dataDir);
+  // D243: what Ducter noted by itself on dots' day (synthetic facts around now). D581: dots' day is
+  // at 17:00 here, whatever hour the run starts (the core's clock below is moved with it): run
+  // before 07:40, tomorrow's 19:40 flight was more than COMING_MS away, so noticed rightly left it out.
+  const shift = sc.noticed === "dots" ? dotsShift() : 0;
+  if (sc.noticed === "dots") writeDotsFacts(dataDir, Date.now() + shift);
   // D388: one plan, three sources (the calendar, a weekly report, the event page).
   if (sc.noticed === "agibar") writeAgibarFacts(dataDir);
   // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
@@ -653,7 +656,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   // D383: the core's clock can be set back while what was made weeks ago is logged (seed-made.ts).
   const back = { ms: 0 };
-  const clock = { ...realClock, now: () => Date.now() - back.ms };
+  const clock = { ...realClock, now: () => Date.now() + shift - back.ms };
   // D391: a redo opens a repo task on fake repos: git answers as a checkout with main (never the machine's own repos).
   const fakeGit = async (cwd: string, args: string[]) => (args.includes("--show-toplevel") ? { ok: true, out: cwd } : args[0] === "for-each-ref" || args[0] === "branch" ? { ok: true, out: "main" } : args[0] === "symbolic-ref" ? { ok: true, out: "origin/main" } : { ok: true, out: "" });
   // D390: a home with Codex and Claude Code signed in, Codex listing its own models (never this machine's).
@@ -976,6 +979,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     persistState: false,
     fs: placeFs,
     turnTimeoutMs: 180_000,
+    ...(shift ? { now: () => clock.now() } : {}), // D581: the partner's clock is dots' day too
     memory: memWrapped,
     // The eval's mailbox starts empty by construction: no start mark (B14), so a peer step can't race it.
     ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0, bridgeStartMark: false } : { bridge: null }),

@@ -59,7 +59,7 @@ test("no line once the task is half a day old, dropped, or about another convers
 
 test("merged work says new work is a new task", () => {
   expect(followsLine({ taskId: "t1", title: "foo: values()", attention: "done", agoMin: 5, merged: true })).toBe('  (just before this: task t1 "foo: values()", done 5 min ago; its work was merged: new work is a new task)');
-  expect(followsLine({ taskId: "t1", title: "x", attention: "working", agoMin: 0 })).toBe('  (just before this: task t1 "x", still working)');
+  expect(followsLine({ taskId: "t1", title: "x", attention: "working", agoMin: 0 })).toBe('  (just before this: task t1 "x", still working; a follow-up\'s line says the change itself, never the task)');
 });
 
 test("a follow-up to a finished task: its line is the task's ack, the task moves under it, its result closes it", async () => {

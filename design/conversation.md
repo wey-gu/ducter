@@ -167,7 +167,9 @@ to where the person last spoke.
   failed, in its own session and place (the same errand or goal, building on what it found or
   changed, needing its sign-ins, files or branch); errands as well as code. Each user line names
   the task the talk was on just before it (`(just before this: task …)`, the last task opened,
-  finished or continued in the conversation, within 12 h); the first `task_open` of a turn whose
+  finished or continued in the conversation, within 12 h), and adds that a follow-up's line says
+  the change itself, never the task (D581); `task_send`'s answer says the same for a line after
+  the call, and that a widened task is retitled; the first `task_open` of a turn whose
   message follows a finished task is asked back once. Separate work, work after a merge, or a
   new one the user asks for ("开个新的") opens a new task; a task is retitled when its job
   widens (D67). A task taken up again goes back under the follow-up's own line (its ack and a

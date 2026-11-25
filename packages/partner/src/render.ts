@@ -319,8 +319,10 @@ export function followsLine(f: Follows): string {
   const who = [f.harness, f.where].filter(Boolean).join(", ");
   const head = `  (just before this: task ${f.taskId} "${clip(f.title, 80)}", ${state}${state === "still working" ? "" : ` ${agoWords(f.agoMin)}`}${who ? `, ${who}` : ""}`;
   if (f.merged) return `${head}; its work was merged: new work is a new task)`;
-  if (state === "still working" || state === "waiting for the user") return `${head})`;
-  return `${head}. More of that work goes there with task_send, even done; separate work, or a new one asked for: task_open)`;
+  // D581: a follow-up's line said the task ("I'll pass it to the running HawDB task"), echoing this line's "task ckpt".
+  const say = "; a follow-up's line says the change itself, never the task";
+  if (state === "still working" || state === "waiting for the user") return `${head}${say})`;
+  return `${head}. More of that work goes there with task_send, even done; separate work, or a new one asked for: task_open${say})`;
 }
 
 /** D236: who said the message a reply answers, and what it was, as the head of the user's line. */

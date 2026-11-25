@@ -649,6 +649,13 @@ const whereOf = (w: unknown): { where?: { on?: string; only?: boolean; not?: str
   return { where: { ...(on ? { on } : {}), ...(on && x.only === true ? { only: true } : {}), ...(not.length ? { not } : {}) } };
 };
 const GROUP_NOTE = "Task opened as a part of its group. Open the group's remaining parts now (task_open, the same group), then your turn is done: one short line at most, no checking on them.";
+/**
+ * D581: task_send's note, by whether the turn's line went out before the call. After the call haiku
+ * wrote a report of the hand-off ("The running task has the change, and I'll tell you when it's
+ * done") and often never retitled a task the follow-up widened.
+ */
+const SENT_SAID = "Sent. Your line before this call was the reply: no words about the hand-off after it (no \"I've sent it\", no \"I'll tell you when it's done\"). A follow-up that widens what the task is about: task_retitle it.";
+const SENT_UNSAID = "Sent. A line you still owe names the change itself in the user's terms (\"I'll also …\" / \"我接着…\"), never the task, the hand-off or when it's done. A follow-up that widens what the task is about: task_retitle it.";
 const HELD_NOTE = "Held in line: Ducter opens it when the part before it in the same place is done, from that part's branch. Open any remaining parts the same way, then end your turn; say at most one short line that they go one after another.";
 /** D360: what the partner reaches of core's groups (core/src/task-groups.ts). */
 type TaskGroupsPort = {
@@ -2861,7 +2868,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         // D479: a finished task goes back to work where it was: said as a fact, so nothing else is claimed.
         const back = was && FINISHED.has(was) ? core.tasks.get(args.taskId)?.place : undefined;
-        return { ok: true, ...r, ...(back ? { backTo: openedLine(back) } : {}) };
+        return { ok: true, ...r, ...(back ? { backTo: openedLine(back) } : {}), note: t?.acked ? SENT_SAID : SENT_UNSAID };
       } catch (err) {
         // A follow-up that never reached the task: its line goes back to how the task stands.
         const j = turn?.continued?.has(args.taskId) ? jobs.get(args.taskId) : undefined;

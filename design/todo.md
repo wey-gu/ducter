@@ -3602,3 +3602,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
   conversation with a sheet open stays in the app. Trigger: the next web keyboard pass.
 - [ ] **Web: task rows as real links** (middle-click, ⌘-click opens a new tab; On hand's ⌘-click multi-select kept).
   Trigger: a person opens tasks in tabs.
+
+## Partner eval after D574 (stable verdicts)
+
+- [ ] **The six confirmed regressions** (failed every attempt on the same code that passed in 0.1.71's run): continue-trip-zh, bridge-own-status-zh, noticed-anything-en, noticed-how-zh, subject-rename-en, call-quiet-hours-en. Read their transcripts; fix the persona or tool facts where the cause is ours. Trigger: the next partner change.
+- [ ] **The judge's own flips.** Re-judging one run three times flips 35 scenarios with the new prompt (22 with the old). Try a stricter rubric format (yes/no per point) or a stronger judge model for the flagged ones, measured with `--rejudge`. Trigger: before the next persona overhaul.
+- [ ] **AGENTS.md's D175 line** still names the plain command; the author changes it to `--against latest` (agents don't edit AGENTS.md).

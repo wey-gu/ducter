@@ -1877,7 +1877,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (devices) deltas.push(devices);
     // D486: the person's other partners, while there are any (one partner: no line).
     // D536: with what each thinks (its own setting, else the first partner's, the default).
-    const partnersLine = renderPartners(core.partnersNow?.(), partnerRun());
+    // D571: the chat app this turn's words came from, so "can you switch?" gets the way that works there.
+    const chatVia = (lastUser?.body as Bodies["user_msg"] | undefined)?.via;
+    const partnersLine = renderPartners(core.partnersNow?.(), partnerRun(), chatVia === "telegram" || chatVia === "slack" || chatVia === "wechat" ? chatVia : undefined);
     if (partnersLine) deltas.push(partnersLine);
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
@@ -6239,6 +6241,8 @@ export function renderPartners(
   now: { me: string; list: readonly { id: string; name: string; about?: string; asks: number; brain?: { harness: string; model?: string; effort?: string } }[] } | undefined,
   /** D536: what this partner runs on now. */
   run?: { harness: string; model?: string; effort?: string },
+  /** D571: the chat app the user's message came from, when it did. */
+  chat?: "telegram" | "slack" | "wechat",
 ): string {
   if (!now || now.list.length < 2) return "";
   const me = now.list.find((p) => p.id === now.me);
@@ -6250,7 +6254,13 @@ export function renderPartners(
   const first = now.list[0]!;
   const one = (p: (typeof others)[number]) => `${p.name}${p.about ? ` (looks after: "${clipAbout(p.about)}")` : ""}${p.brain ? `, thinks with ${brainWords(p.brain)}` : ""}${p.asks ? `, ${p.asks === 1 ? "1 question of its own waits" : `${p.asks} questions of its own wait`} for the user` : ""}`;
   const mine = run ? ` You think with ${brainWords(run)}${me.brain ? " (your own setting)" : me.id === first.id ? " (the default the others without their own follow)" : ` (the same as ${first.name}'s)`}.` : "";
-  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}.${mine} The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass; what one thinks with: brain_switch.`;
+  // D571: how the user talks to one, the true way where they are (a chat app: its name first, D516).
+  const ex = others[0]!.name;
+  const app = chat ? { telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[chat] : undefined;
+  const how = app
+    ? ` This message came from ${app}: there the user talks to one by starting a message with its name ("${ex}，…" / "${ex}, …"), and the chat (in Slack, the thread) is with it from then on; asked whether you can switch, say that in one line. Asked to switch to one or bring it in now: do=pass their words; it says hello right where they wrote, in this same chat or thread.`
+    : ` The user talks to one with a tap on it in their list of partners, or in a chat app by starting a message with its name ("${ex}，…").`;
+  return `[partners] You are ${me.name}${me.about ? `, looking after: "${clipAbout(me.about)}"` : ""}.${mine} The user's other partners: ${others.map(one).join("; ")}. Each keeps its own conversation, tasks and memory; you never see theirs. Words the user means for one of them: the partner tool, do=pass; what one thinks with: brain_switch.${how}`;
 }
 
 export function renderPins(pins: readonly PinView[]): string {

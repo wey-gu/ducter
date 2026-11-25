@@ -219,7 +219,9 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
   (WeChat) or one Apple ID (iMessage), and it is the default partner's. Another partner's words lead
   with its name: **小家：… / Home: …** (`as` in the hub's words); the default's carry none.
 - **Who the person's words are for** (`inbound`, in order):
-  1. a reply to a partner's message (Telegram's reply, a Slack thread under it): that partner;
+  1. a reply to a partner's message (Telegram's reply, a Slack thread under it in the DM): that
+     partner; in a Slack channel thread (§12) the thread's own: its name at the start, else the
+     partner the thread is with, else the default;
   2. a partner's name at the start, exact (case folded), after an optional `@`, then a space,
      punctuation or nothing (**小家，…**, **@多比 …**, **Ducter, …**); 「小家里的灯」 is no address;
      the longest name wins;
@@ -275,14 +277,14 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
 - **Faces.** With `chat:write.customize` each message carries `username` (the partner's name) and
   `icon_url` (`https://ducter.ai/faces/<look>.png`, one 512 PNG per D497 look, on the site because a
   home is often unreachable from Slack). The D516 name in front is dropped in Slack then.
-- **@ in a channel.** Event `app_mention` (scope `app_mentions:read`). The linked person's mention, the
+- **@ in a channel.** Event `app_mention` (scope `app_mentions:read`); its thread then needs no @ (§12). The linked person's mention, the
   bot's own `<@…>` taken out, is logged as their words `via: "slack"`; its answer, ack and status line
   go in a thread under the mention (`thread_ts`: the thread it was in, else the mention); cards,
   files and late results go to the DM. A mention in a DM is taken from `message.im` only. Anyone else's
   mention: nothing, and the once-a-day stranger line in Settings. Teammates in that channel read the
   thread: the linked line says so (**…频道里的人都看得到。**), beside the workspace-admins note.
 - **An older app.** Slack lists a bot token's scopes in `x-oauth-scopes` on every answer: missing
-  `chat:write.customize` or `app_mentions:read` puts `reinstall` on the view, and the group shows
+  `chat:write.customize`, `app_mentions:read`, `channels:history` or `groups:history` (D571) puts `reinstall` on the view, and the group shows
   **Slack 里的 App 要更新一下 / Your Slack app needs an update** with the steps and 拷贝 App 配置.
   Without the header, a `missing_scope` on the first post with a face does the same (never a refused
   token); posts go plainly meanwhile. A reinstall is seen on the next answer.
@@ -292,3 +294,35 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
 - **Not verified:** a real workspace: Slack's importer reading this manifest, `app_redirect` opening
   the Messages tab, `icon_url` fetched from ducter.ai, whether Slack answers `missing_scope` or
   quietly drops a username without the scope, `x-oauth-scopes` on Socket Mode tokens' calls.
+
+## 12. A thread it answers in; switching partner (D571)
+
+**Built 2026-11-25, checked against the fake Slack and the partner eval only**; the author's app on
+hel needs the new manifest before it is seen live.
+
+- **The moment (hel, 2026-11-25).** 「@Ducter hi」 in a channel, answered in a thread; the author's
+  reply in that thread, no @, never reached the home (Slack sent nothing: the app had no channel
+  events). His resend with an @ asked 「你能切换 role 么？比如 小玛」 and was told it couldn't, and to
+  write 「转给小玛：……」: untrue in a chat app, where 「小玛，…」 talks to 小玛 (§10).
+- **The rule.** A DM: everything. A channel: an @-mention, and then everything the linked person
+  writes in a thread a partner answers in, without an @. A teammate in that thread, the channel's
+  top-level talk and threads it never answered in: nothing (no stranger line, and top-level talk
+  not even a journal line).
+- **The app.** The manifest adds `channels:history`, `groups:history` and the events
+  `message.channels`, `message.groups`. A thread reply with an @ arrives twice; the `app_mention`
+  copy is taken. An app without the scopes shows §11's **Slack 里的 App 要更新一下**, whose line
+  says why: **频道里 @ 我，或在我回过的那条下面接着说（不用再 @），我都收得到。** Events can't be read back
+  from Slack; replacing the manifest whole changes both.
+- **Threads kept** in `channels.json` `threads` (chat, thread ts, `with`: the partner it is with; the
+  newest 200), so a restart keeps them. A channel thread's words carry on the thread: no D236 reply
+  to its first message. A thread never takes the DM's partner (`withOf`), nor the DM a thread's.
+- **Switching.** The `[partners]` line says how the user talks to another partner where they are:
+  in Ducter's apps a tap on it, in a chat app its name first; when the turn came from Telegram,
+  Slack or WeChat it says so, that the chat (in Slack, the thread) is then with that partner, to say
+  that in one line when asked whether it can switch (**开头写「小玛，」就是跟小玛说**), and to pass the
+  words (D486) when asked to switch or bring one in. Passed during a channel-thread turn, the other
+  partner answers in that thread under its own name and face, and the thread is with it. The model
+  judges what was asked; no phrase decides it.
+- **Not verified:** a real workspace sending `message.channels` for thread replies over Socket
+  Mode; Slack's install screen for the two read scopes; naive people finding 「小玛，」 from the one
+  line.

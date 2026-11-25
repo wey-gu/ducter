@@ -61,17 +61,19 @@ under its own name and face.
 
 Add your partner to a channel: type `/invite @` and its name there, or mention it and let Slack add it. Then
 **@ it there** and it answers you in a thread under your message, so the channel stays quiet.
-Everyone in that channel can read the thread. It only answers you: if a teammate mentions it,
-it doesn't reply, and Settings tells you once that someone tried. Questions that need your
+**Keep talking in that thread without the @:** everything you write there is for your partner.
+Elsewhere in the channel it only hears you when you @ it. Everyone in that channel can read the
+thread. It only answers you: if a teammate mentions it or writes in its thread, it doesn't reply,
+and Settings tells you once when someone mentioned it. Questions that need your
 decision, files and later results still come to your direct messages.
 
 ### Your Slack app needs an update
 
-If you set Slack up before your partner could use its own face or answer in channels, Settings
-says **Your Slack app needs an update**. Press **Copy the app manifest**, open your app at
+If you set Slack up before your partner could use its own face, answer in channels or hear your
+replies in its threads, Settings says **Your Slack app needs an update**. Press **Copy the app manifest**, open your app at
 [api.slack.com/apps](https://api.slack.com/apps), go to **App Manifest**, replace everything there
 with what you copied, choose **Save Changes**, then **Reinstall** when Slack asks. Your partner
-keeps working in the meantime, just without its face.
+keeps working in the meantime; until then a reply in its thread only reaches it with an @.
 
 ## Connect WeChat
 
@@ -146,6 +148,10 @@ same chat, each with its name in front: **小家：…** / **Home: …**.
   about the rent on Saturday". "@Home …" works too.
 - **Reply to one of its messages** (Telegram's Reply, or a Slack thread under it) and that
   partner answers.
+- **Or just ask to switch:** "让小家来" or "can I talk to Home?" and your partner brings it in;
+  it says hello right there, and the chat (in a Slack channel, that thread) is with it.
+- **In a Slack channel thread,** the thread stays with the partner you last talked to there,
+  until you start with another one's name.
 - **Keep talking and it stays with you.** Once you've started with a partner, what you say next
   goes to it too, until you name someone else or leave the chat quiet for 15 minutes. Then it's
   your first partner again.

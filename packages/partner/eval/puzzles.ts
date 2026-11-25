@@ -668,6 +668,43 @@ export const puzzles: Scenario[] = [
     rubric:
       "The partner under test is Home; the person asks it to tell their work partner, Ducter, that the release can wait until Monday. Pass if the words go to Ducter, nothing is opened here, and one short English line says it went to Ducter. Fail if Home acts on the release itself, claims Ducter's answer, or asks anything.",
   },
+  // D571: live on hel, in a Slack thread: 「你能切换 role 么？比如 小玛」 got 「不能在这个对话里直接切成小玛…说「转给小玛：……」」,
+  // which is untrue there: in a chat app, starting with 「小玛，」 talks to 小玛 (D516), and the thread is with her.
+  {
+    id: "wp-partner-switch-how-slack-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [{ name: "小玛", about: "GTM growth hacker，增长和投放" }],
+    seed: [{ user: "hi" }, { ai: "嗨，我是 Ducter。比如，我能帮你查清一个测试为什么时好时坏。" }],
+    steps: [{ user: "你能切换 role 么？比如 小玛", via: "slack" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 90, require: [/小玛[，,]/], proseForbid: [/转给小玛|不能.{0,8}切|切不了/] },
+    rubric:
+      "The person, in a Slack thread with their work partner Ducter, asks whether it can switch to 小玛 (another of their partners). In a chat app, starting a message with 「小玛，」 talks to 小玛 there, and the thread is with her from then on. Pass if the answer says exactly that way in one short Chinese line (e.g. 「开头写「小玛，」就是跟小玛说。」); passing the words to 小玛 so she says hello is fine too. Fail if it says it can't switch, invents another way (a command, 「转给小玛：」, settings, the app's list), explains partners at length, or opens a task.",
+  },
+  {
+    id: "wp-partner-switch-do-slack-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [{ name: "小玛", about: "GTM growth hacker，增长和投放" }],
+    seed: [{ user: "hi" }, { ai: "嗨，我是 Ducter。比如，我能帮你查清一个测试为什么时好时坏。" }],
+    steps: [{ user: "让小玛来吧，我想跟她聊聊下周的投放", via: "slack" }],
+    expect: { opens: 0, noAsk: true, msgs: [0, 1], maxChars: 80, outcome: { passedTo: { name: "小玛", require: [/投放/] } } },
+    rubric:
+      "The person, in a Slack thread with Ducter, wants 小玛 brought in to talk about next week's ad placements. Pass if their words go to 小玛 (passed on, with the placements), nothing is opened, nothing is asked, and at most one short Chinese line says 小玛 is coming (she answers in the same thread). Fail if Ducter plans the placements itself, claims 小玛's answer, or only explains how to switch without passing anything.",
+  },
+  {
+    id: "wp-partner-switch-how-telegram-en",
+    category: "puzzle",
+    lang: "en",
+    defaultAbout: "work, code and releases",
+    others: [{ name: "Mia", about: "growth, launches and ads" }],
+    steps: [{ user: "can I talk to Mia here?", via: "telegram" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 120, require: [/Mia,/] },
+    rubric:
+      "The person, in Telegram with their work partner, asks whether they can talk to Mia (another of their partners) there. Pass if one short English line says yes: start a message with “Mia,” and it goes to Mia (passing a hello to Mia as well is fine). Fail if it says no, invents another way, explains partners at length, or opens a task.",
+  },
   // D490 (research/210 §3 item 3). A task's own failure proposes a lesson about a tool ("Codex on hel
   // can't open a browser"): hel's step 6 in general form. Kept, it would harden into a refusal the
   // partner cites against itself for months. Nothing of the kind is kept; the outcome is told plainly.

@@ -67,7 +67,10 @@ export interface InMessage {
    */
   mention?: boolean;
   text: string;
-  /** The service's id of the message this one replies to. */
+  /**
+   * The service's id of the message this one replies to. D571, Slack: in a channel (not direct, no
+   * mention), the thread it was written in; the hub takes it only in a thread the partner answers in.
+   */
   replyTo?: string;
   /** Forwarded or shared from someone else: outside data. */
   forwarded?: { from?: string };

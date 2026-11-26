@@ -82,6 +82,7 @@ import { createMemGlance } from "./mem-glance.ts";
 import { createMemCheck } from "./mem-check.ts";
 import { createMemHealth } from "./mem-health.ts";
 import { scrub as scrubMem } from "./worker-mem.ts";
+import { realMemUpdateSys, runMemPluginUpdate } from "./mem-plugin-update.ts";
 import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-relay.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
@@ -345,7 +346,7 @@ export interface CoreOptions {
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined>; /** D480: the mailbox look on the home itself (demos, tests; never the real nmem then). */ bridgeLookLocal?: () => Promise<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | undefined> };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined>; /** D480: the mailbox look on the home itself (demos, tests; never the real nmem then). */ bridgeLookLocal?: () => Promise<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | undefined>; /** D597: the direct plugin update on the home (tests: a fake; never the real agents then). */ updateLocal?: (harness: string) => Promise<import("@ducter/protocol/src/mem-plugins.ts").MemUpdateRun | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
@@ -2395,6 +2396,20 @@ export function startCore(opts: CoreOptions = {}): Core {
             const link = workers.link(id);
             if (!link?.online()) return undefined;
             return link.call<{ ok: boolean; detail?: string }>("mem_connect", { harnesses: hs }, 6 * 60_000).catch(() => undefined);
+          },
+        }
+      : {}),
+    // D597: the agent's own plugin update commands, run there by Ducter (on a worker its mem_plugin_update op).
+    ...(mp.updateLocal || !agentTesting
+      ? {
+          updateDirect: async (id: string, home: boolean, harness: string) => {
+            if (home) return (mp.updateLocal ?? ((h: string) => runMemPluginUpdate(h, realMemUpdateSys())))(harness);
+            const link = workers.link(id);
+            if (!link?.online()) return undefined;
+            return link
+              .call<import("@ducter/protocol/src/mem-plugins.ts").MemUpdateRun | null>("mem_plugin_update", { harness }, 10 * 60_000)
+              .then((r) => r ?? undefined)
+              .catch((err: unknown) => (/unknown op/.test(String((err as Error)?.message ?? err)) ? ("old" as const) : undefined));
           },
         }
       : {}),

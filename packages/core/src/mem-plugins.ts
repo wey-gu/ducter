@@ -28,11 +28,20 @@
 // task hands on (the mend's task_open `replaces`, D479/D549) stays that setup, so the check runs when
 // the work really ends, and the notices clear then. An update that took says so on its line
 // (已更新到 0.7.38) until the next check.
+//
+// D597: 更新 / Update is no longer a task first. Where the agent's own plugin commands are known
+// (Claude Code, Codex, pi: harness-facts memUpdate), Ducter runs them on that computer itself
+// (mem-plugin-update.ts; a worker's `mem_plugin_update` op), reads the version back with Mem's
+// inspect, and the line says 已更新到 0.7.39. Only when a command failed or the version didn't move
+// does a task open, handed every command that ran and its output, and the line says so. A worker
+// from before D597 (no op) gets the task as before. No doctor is read on the way: an update needs
+// no Mem credential, and another agent's doctor line is never this one's blocker.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MEM_BRIDGE_SKILL, MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
-import { MEM_HOSTS, withAvailable, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
+import { MEM_HOSTS, MEM_PLUGIN_UPDATE, withAvailable, type MemBridgeLook, type MemUpdateRun, type MemUpdateStep } from "@ducter/protocol/src/mem-plugins.ts";
+import { updateTook } from "./mem-plugin-update.ts";
 
 type Plugins = Record<string, MemPluginView>;
 
@@ -68,6 +77,12 @@ export interface MemPluginsDeps {
    * undefined: away, or no nmem there.
    */
   bridgeLook?: (deviceId: string, home: boolean) => Promise<MemBridgeLook | "old" | undefined>;
+  /**
+   * D597: the agent's own plugin update commands, run on that computer (mem-plugin-update.ts): on
+   * the home here, on a worker its `mem_plugin_update` op. "old": a worker from before D597;
+   * undefined: away, or no commands for this agent. Absent: every update is a task (D466).
+   */
+  updateDirect?: (deviceId: string, home: boolean, harness: string) => Promise<MemUpdateRun | "old" | undefined>;
   now?: () => number;
   /** How often every awake device is checked again (default a day; 0 = only on events). */
   everyMs?: number;
@@ -123,7 +138,7 @@ const ENDED_MS = 30 * 60 * 1000;
  * D560: D470's mailbox task is gone: it enabled the login's own mailbox, which an agent's sessions don't
  * read; the agent's plugin (Claude Code 0.7.35+, Codex 0.1.50+) gets each session ready by itself.
  */
-export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" };
+export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string; ran?: { steps: MemUpdateStep[]; version?: string } } | { kind: "tidy"; versions?: string[] } | { kind: "review" };
 
 // The card's and the task's own words (D292: zh and en; any other language falls back, ko → en).
 const W = {
@@ -147,14 +162,20 @@ const W = {
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
 
 /** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer (D466: or updates it, or leaves one copy). */
-export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; tried?: { tool: string; said?: string }; what?: MemSetupKind }): string {
+export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; harness?: string; tried?: { tool: string; said?: string }; what?: MemSetupKind }): string {
   const lang = `Write your report in ${langName(o.lang)}.`;
   const what = o.what ?? { kind: "install" };
   // D375: Mem's own command went first and didn't put it in: say so, so the guide's other route is taken.
   const tried = o.tried ? `\nNowledge Mem's own \`nmem connect --tool ${o.tried.tool} --on-conflict abort\` ran first and didn't put it in${o.tried.said ? ` (its last line: ${o.tried.said})` : ""}. If ${o.agent} already has another memory integration, say which and ask the user before changing anything.\n` : "";
+  // D597: Ducter ran the agent's own update commands first and they didn't take: every one, as it ran.
+  const ran =
+    what.kind === "update" && what.ran
+      ? `\nDucter already ran ${o.agent}'s own update commands on this computer, in this order, and the update didn't take:\n${what.ran.steps.map((s) => `- \`${s.cmd}\` exited ${s.code}${s.tail ? `:\n${s.tail.split("\n").map((l) => `    ${l}`).join("\n")}` : ""}`).join("\n")}\nAfter them Nowledge Mem's \`plugins inspect\` reads ${what.ran.version ?? "no version"}. Take over from there: find why from this output, fix that one thing, and finish the update. Don't start over from the guide's install steps.\n`
+      : "";
+  const own = what.kind === "update" && MEM_PLUGIN_UPDATE[o.harness ?? ""]?.length ? `\n   ${o.agent}'s own plugin update commands are the ones Mem's community repo documents: ${MEM_PLUGIN_UPDATE[o.harness!]!.map((a) => `\`${a.join(" ")}\``).join(", then ")}.` : "";
   const head =
     what.kind === "update"
-      ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. ${MEM_BRIDGE_SKILL[o.host] ? `Its version ${MEM_BRIDGE_SKILL[o.host]} or newer is published (Nowledge Mem's \`plugins check\` doesn't list ${o.agent}; the guide's update step for it is the way).` : "Nowledge Mem's own `nmem --json plugins check` says a newer one is out."}`
+      ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. ${MEM_BRIDGE_SKILL[o.host] ? `Its version ${MEM_BRIDGE_SKILL[o.host]} or newer is published (Nowledge Mem's \`plugins check\` doesn't list ${o.agent}; the guide's update step for it is the way).` : "Nowledge Mem's own `nmem --json plugins check` says a newer one is out."}${ran}`
       : what.kind === "tidy"
         ? `Nowledge Mem's own check finds the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) more than once${what.versions?.length ? ` (versions ${what.versions.join(", ")})` : ""}, so which one ${o.agent} loads is unclear. Leave exactly one: the current one, set up the way the guide installs it. The user tapped Keep one for this.`
         : what.kind === "review"
@@ -165,11 +186,12 @@ export function memSetupBrief(o: { agent: string; host: string; device: string; 
   const done = what.kind === "update" ?"updated and the check says the newer version" : what.kind === "tidy" ? "one copy left and the check says so" : what.kind === "review" ? "set up and the check says so" : "installed and the check says so";
   return `${head}
 ${tried}
-1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md (it is for installing and updating) and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.${tidy}
+1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md (it is for installing and updating) and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.${own}${tidy}
 2. It changes only ${o.agent}'s own plugin or MCP setup and Nowledge Mem's own config on this computer. Nothing of Ducter's. Back up a file before editing it by hand, as the guide says.
-3. Never guess a server address, an API key or a workspace, and never print a key. If Nowledge Mem isn't connected on this computer (\`nmem doctor\` fails), stop and ask the user for a connect link (report_to_main, state "needs_input", with no default).
-4. When it is done, run \`nmem --json plugins inspect --host ${o.host}\` and report what it says. Say plainly that ${o.agent} has to be restarted (a new session) before it uses it.
-5. If a step fails, try its fix once, then stop and report the exact error.
+3. Only ${o.agent} on this computer is this task's. Of \`nmem doctor\`'s lines, only \`credential home\`, \`server reachable\`, \`api key\` and ${o.agent}'s own row are about it; another tool's row failing (another agent's MCP address, say) is not: don't fix it, don't stop for it, name it in one line at the end of your report. Inside this task nmem may reach Nowledge Mem through Ducter's relay, so the address it shows can differ from the one a tool's config names: that is the same Mem, not a mismatch.${what.kind === "update" ? " Updating a plugin needs no Mem credential at all." : ""}
+4. Never ask the user for a connect link, a server address, an API key or a workspace, in any state, and never print one: Ducter supplies its own Nowledge Mem connection. If what you need truly can't be done without signing Nowledge Mem in on this computer, stop with state "failed" and say in one line that Settings › Memory signs it in. If the user pastes one anyway, don't use it.
+5. When it is done, run \`nmem --json plugins inspect --host ${o.host}\` and report what it says. Say plainly that ${o.agent} has to be restarted (a new session) before it uses it.
+6. If a step fails, try its fix once, then stop and report the exact error.
 
 ${lang} Done means: ${done}, or a clear reason why not.`;
 }
@@ -212,6 +234,9 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   const opening = new Map<string, Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>>();
   const ended = new Map<string, { device: string; harness: string; from?: string; at: number }>();
   const updated = new Map<string, string>();
+  // D597: pairs whose direct update didn't take: a task took over (said while it runs), or none could.
+  const handed = new Set<string>();
+  const stuck = new Set<string>();
   // One Mem command at a time per computer: two would write Mem's config side by side.
   const queue = new Map<string, Promise<unknown>>();
   const inTurn = <T>(id: string, fn: () => Promise<T>): Promise<T> => {
@@ -232,6 +257,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!keepFresh) {
       for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
       for (const k of [...updated.keys()]) if (k.startsWith(`${id}:`)) updated.delete(k);
+      for (const k of [...stuck]) if (k.startsWith(`${id}:`)) stuck.delete(k);
     }
     settleOffers(id, got);
     await offers(id, got);
@@ -392,7 +418,36 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       })();
       return { ok: true };
     }
-    return openSetup(dev, harness, host, undefined, setupKind(lineOf(dev.id, harness)));
+    const kind = setupKind(lineOf(dev.id, harness));
+    // D597: an update by the agent's own commands first, run there by Ducter; a task only when it didn't take.
+    if (kind.kind === "update" && d.updateDirect && MEM_PLUGIN_UPDATE[harness]?.length) {
+      direct.add(key);
+      stuck.delete(key);
+      changed();
+      void (async () => {
+        const r = await inTurn(dev.id, async () => {
+          const r = await d.updateDirect!(dev.id, dev.home, harness).catch(() => undefined);
+          await checkOne(dev.id, dev.home, true).catch(() => {});
+          return r;
+        });
+        const now = seen.get(dev.id)?.[harness]?.version;
+        direct.delete(key);
+        if (r && r !== "old" && updateTook(kind.from, now, kind.to)) {
+          updated.set(key, now!);
+          return changed();
+        }
+        // Didn't take (a command failed, or the version didn't move): a task, told every command and what it said.
+        // A worker from before D597 ("old") or one that went away: the task as before, nothing to tell.
+        const what: MemSetupKind = r && r !== "old" ? { ...kind, ran: { steps: r.steps, ...(now ? { version: now } : {}) } } : kind;
+        const got = await openSetup(dev, harness, host, undefined, what).catch(() => undefined);
+        if (got?.ok) {
+          if (r && r !== "old") handed.add(key);
+        } else stuck.add(key);
+        changed();
+      })();
+      return { ok: true };
+    }
+    return openSetup(dev, harness, host, undefined, kind);
   }
 
   /** D466: what the tap asks for, from the line the person saw. */
@@ -416,7 +471,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       const card = await runner.openTask({
         persona: d.persona.id,
         title: fill(title, { device: dev.name, agent }),
-        brief: memSetupBrief({ agent, host, device: dev.name, lang, what, ...(tried ? { tried } : {}) }),
+        brief: memSetupBrief({ agent, host, device: dev.name, lang, harness, what, ...(tried ? { tried } : {}) }),
         place: dev.home ? { kind: "none" } : { kind: "none", device: dev.id },
         harness: body.harness,
         language: lang,
@@ -474,6 +529,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     const s = saved.setups[b.taskId];
     if (!s || !FINISHED.has(b.attention)) return;
     if (b.attention !== "blocked") {
+      handed.delete(`${s.device}:${s.harness}`);
       delete saved.setups[b.taskId];
       save();
       const t = now();
@@ -516,7 +572,8 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
         // D552: busy from the tap: Mem's own command running, or the setup task still being opened.
         const busy = direct.has(key) || (!task && opening.has(key));
         const done = updated.get(key);
-        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(busy ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}), ...(done && !task && !busy ? { updated: true as const } : {}) } };
+        // D597: the direct update handed to a task (said while it runs), or stuck with no task to take it.
+        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(busy ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}), ...(done && !task && !busy ? { updated: true as const } : {}), ...(task && handed.has(key) ? { handed: true as const } : {}), ...(stuck.has(key) && !task && !busy ? { stuck: true as const } : {}) } };
       });
     },
     check,

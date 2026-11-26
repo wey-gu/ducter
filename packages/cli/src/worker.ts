@@ -20,6 +20,7 @@ import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses, s
 import { agentSignature, captureLoginPath, saveLoginPath, widenAgentPath } from "@ducter/core/src/agent-path.ts";
 import { createAgentSetup, realAgentSetupSys, type AgentSetup } from "@ducter/core/src/agent-setup.ts";
 import { createWorkerMem, realWorkerMemSys } from "@ducter/core/src/worker-mem.ts";
+import { realMemUpdateSys, runMemPluginUpdate } from "@ducter/core/src/mem-plugin-update.ts";
 import { createWorkerRecords } from "@ducter/core/src/worker-records.ts";
 import { createLocalAgents } from "@ducter/core/src/local-agents/index.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
@@ -315,7 +316,7 @@ export async function cmdWorker(o: {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, keys: keptKeys, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, keys: keptKeys, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []), mem_plugin_update: async (a: { harness?: unknown }) => (typeof a?.harness === "string" ? ((await runMemPluginUpdate(a.harness, realMemUpdateSys())) ?? null) : null) }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {

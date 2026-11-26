@@ -21,6 +21,39 @@ export const MEM_HOSTS: Readonly<Record<string, string>> = Object.fromEntries(fa
  * Every agent Mem has a plugin for has them, so "memory off" holds on every one (research/48 M3):
  * the adapter (runner/oar.ts) turns them off the way harness-facts says.
  */
+/** D597: the commands that update each agent's Mem plugin directly (harness-facts memUpdate); an agent without them updates by a task. */
+export const MEM_PLUGIN_UPDATE: Readonly<Record<string, readonly (readonly string[])[]>> = Object.fromEntries(
+  Object.values(HARNESS_FACTS).flatMap((f) => (f.memUpdate ? [[f.harness, f.memUpdate.value] as const] : [])),
+);
+
+/** D597: one command of a direct update as it ran: what ran, its exit code (-1: it didn't start or ran out of time), its last lines, scrubbed. */
+export interface MemUpdateStep {
+  cmd: string;
+  code: number;
+  tail: string;
+}
+
+/** D597: a direct update's run on one computer: every command it ran, in order (it stops at the first that fails). */
+export interface MemUpdateRun {
+  ok: boolean;
+  steps: MemUpdateStep[];
+}
+
+/**
+ * D597: a Nowledge Mem connect link, token or key in words the person typed to a task, hidden
+ * before they are kept: Ducter supplies its own Mem connection, so a reply box is never where one
+ * goes (haswell, 2026-11-26: a pasted connect prompt reached the task and the Log). Only Mem's own
+ * shapes: `nmem_ct_…`/`nmem_ck_…`, a link carrying `nmem_connect=` or `nmem_api_key=` or a
+ * `/connect?key=`/`token=`, and the value after `--api-key` (a `<placeholder>` stays).
+ */
+export function hideMemSecrets(text: string): { text: string; hid: boolean } {
+  const out = text
+    .replace(/https?:\/\/\S*(?:nmem_connect=|nmem_api_key=|\/connect\?(?:key|token)=)\S*/gi, "<link>")
+    .replace(/\bnmem_[a-z]{2}_[A-Za-z0-9_\-]{6,}/g, "nmem_…")
+    .replace(/(--api-key[=\s]+)(?!<)("[^"]*"|'[^']*'|\S+)/g, "$1…");
+  return { text: out, hid: out !== text };
+}
+
 export const MEM_PLUGIN_IDS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(facts.map(([h, m]) => [h, m.ids]));
 
 /** One host's entry in the inspect answer (schema_version 1). Fields we don't read are ignored. */

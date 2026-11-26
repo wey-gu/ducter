@@ -331,6 +331,8 @@ export function memWords(L: Strings, m: MemPluginView, agent = "", harness = "")
   // D466: an open task says what it is doing: updating (to which version), keeping one, else installing.
   // D552: from the tap on (busy), and its button stays where it was, saying so (更新中…), never gone.
   if (m.taskId || m.busy) {
+    // D597: the direct update didn't take and a task finishes it: said in one plain line.
+    if (m.handed && m.state === "update") return { line: L.t("memp.handed"), busy: L.t("memp.btn.updating") };
     if (m.state === "update") return { line: m.available ? L.t("memp.setting.update.to", m.available) : L.t("memp.setting.update"), busy: L.t("memp.btn.updating") };
     if (m.state === "review" && m.why === "multiple") return { line: L.t("memp.setting.tidy"), busy: L.t("memp.btn.tidying") };
     if (m.state === "review") return { line: L.t("memp.setting"), busy: L.t("memp.btn.reviewing") };
@@ -339,6 +341,8 @@ export function memWords(L: Strings, m: MemPluginView, agent = "", harness = "")
   }
   // D552: an update that took, until the next check.
   if (m.updated && m.version) return { line: L.t("memp.updated", m.version, agent) };
+  // D597: it didn't take and nothing could pick it up: one line, and 更新 stays.
+  if (m.stuck && m.state === "update") return { line: L.t("memp.stuck"), action: L.t("memp.btn.update") };
   if (m.fresh && m.state !== "absent") return { line: L.t("memp.fresh", agent) };
   switch (m.state) {
     case "installed":

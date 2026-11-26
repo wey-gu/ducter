@@ -108,6 +108,13 @@ export interface HarnessFacts {
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
   memPlugin?: Fact<MemPluginFact>;
   /**
+   * D597: the commands that update the person's own Mem plugin for this agent, run in order by
+   * Ducter itself (core mem-plugin-update.ts), each argv as written; `{codexHooks}` is the newest
+   * installed copy's `scripts/install_hooks.py`. The version is read back with Mem's own
+   * `plugins inspect` after. Absent: no documented command, so an update is a task (D466).
+   */
+  memUpdate?: Fact<string[][]>;
+  /**
    * D417: an agent with no way to load Mem's plugin for one session: Ducter runs the plugin's two
    * lifecycle steps itself with Mem's own CLI (contextApp: `nmem context --source-app`;
    * threadFrom: `nmem t save --from`), unless the person's own Mem plugin is there (plugin: its
@@ -450,6 +457,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { host: "claude-code", ids: ["nowledge-mem@nowledge-community"], off: "settings", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; enabledPlugins in the --settings JSON (runner/test/memory.test.ts)" },
     },
+    memUpdate: {
+      value: [
+        ["claude", "plugin", "marketplace", "update", "nowledge-community"],
+        ["claude", "plugin", "update", "nowledge-mem@nowledge-community"],
+      ],
+      evidence: { kind: "DOCUMENTED", source: "nowledge-co/community nowledge-mem-claude-code-plugin/README.md \"Update\" (788484c, read 2026-11-26); `claude plugin update --help` and `claude plugin marketplace update --help` (2.1.332); research/238" },
+    },
     channels: {
       value: {
         npm: "@anthropic-ai/claude-code",
@@ -573,6 +587,14 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         why: "ids and the bare -c plugin path are DOCUMENTED (https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; research/38 §1 for the bare id). Not proven: the setup guide adds 'its hooks script' as well; if that lands in the user's own hooks rather than the plugin's, turning the plugin off may leave its SessionStart hook running. Live check owed (design/todo.md).",
       },
     },
+    memUpdate: {
+      value: [
+        ["codex", "plugin", "marketplace", "upgrade", "nowledge-community"],
+        ["codex", "plugin", "add", "nowledge-mem@nowledge-community"],
+        ["python3", "{codexHooks}"],
+      ],
+      evidence: { kind: "DOCUMENTED", source: "nowledge-co/community nowledge-mem-codex-plugin/README.md \"Update\" (788484c, read 2026-11-26): refresh the marketplace, `plugin add` again, then the bundled scripts/install_hooks.py; `codex plugin marketplace upgrade --help` (0.172.0); research/238. The README's remove-and-re-add of the marketplace (a full clone that times out) is the route a task takes when this one fails" },
+    },
     channels: {
       value: {
         npm: "@openai/codex",
@@ -639,6 +661,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     memPlugin: {
       value: { host: "pi", ids: ["npm:nowledge-mem-pi"], off: "flag", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3 (`pi install npm:nowledge-mem-pi`); `pi --help`: --no-extensions disables extension discovery, explicit -e paths still load (research/03 §4.1)" },
+    },
+    memUpdate: {
+      value: [["pi", "update", "npm:nowledge-mem-pi"]],
+      evidence: { kind: "DOCUMENTED", source: "`pi update --help`: `pi update <source>  Update one package` (read 2026-11-26); the package README's bare `pi update` now updates pi itself only; research/238" },
     },
     channels: {
       value: {

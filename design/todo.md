@@ -896,7 +896,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       contacts) and say **已读 / Read** beside a sent message, both clients, with shots. D557 (the 2026-11-25 live
       pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
       "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
-      so the trigger stands.
+      so the trigger stands. D595: Mem confirmed the JSON (top-level fields, integer counts; VERIFIED on 0.10.124,
+      research/237) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
@@ -912,7 +913,16 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] Antigravity's plugin and its version per computer (Mem's `plugins inspect` lists no Antigravity, so its row
       says "Mem hasn't said" until it writes). Read its manifest (`~/.gemini/config/plugins/...`, research/172) on the
       home and through a worker op, or take Mem's host once `plugins inspect` lists it (private ask item 2).
-      Trigger: the author asks why the row says so, or Mem lists it.
+      Trigger: the author asks why the row says so, or Mem lists it. D595: 0.10.124 lists it (`google-antigravity`,
+      aliases agy, antigravity; per workspace manifest). Not taken yet: as a Mem plugin host it would also bring
+      install offers and turning the plugin off in agy tasks, unchecked for agy. Trigger now: an agy task whose
+      memory-off path is checked, then a `memPlugin` fact for it (or an inspect-only read for the row).
+- [ ] `bridge contact-status --watch` in place of re-reading `connections list` every few minutes (D595, #11292).
+      Trigger: Mem's card command stops answering HTTP 400 (`cloud_agent_recipients_request_invalid`) after its
+      Cloud deploy; then a read-only live check of one contact first.
+- [ ] Mem's side after D595 (research/237): a default Space for `artifacts folders mk`, an error code on `--json`
+      failures (the stderr match, D563, stays until then), a mailbox-changed line for one's own contacts, a wait past
+      5 s, a pi and Codex version on `plugins check`. Trigger: Mem ships any; then drop the fallback it replaces.
 
 ## Tasks Ducter carries messages for (D448, `bridge.md` "Tasks Ducter carries messages for")
 

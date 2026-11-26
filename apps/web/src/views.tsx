@@ -1003,6 +1003,23 @@ function wordsDueIn(task: Task): number {
   return Number.isNaN(at) ? 0 : Math.max(0, at + WORDS_MS - Date.now());
 }
 
+/** D584: nothing to show yet; draws again once its time has passed. */
+function Wake({ ms }: { ms: number }) {
+  useEffect(() => {
+    const h = setTimeout(() => A.changed(), ms + 50);
+    return () => clearTimeout(h);
+  }, [ms > 0]);
+  return null;
+}
+
+/** D584: whether an earlier item of the same living message already holds the one waiting presence. */
+function wordsHeldBefore(news: LivingItem[], i: number): boolean {
+  return news.slice(0, i).some((it) => {
+    const task = A.S.tasks.get(it.taskId);
+    return !!task && wordsDueIn(task) > 0;
+  });
+}
+
 /** D549: the task couldn't start and its own fixes hold 换谁来做: the meta line leaves its link out (shown once). */
 function cantSwitches(task: Task): boolean {
   const c = attention(task) === "failed" ? cantOf(task) : undefined;
@@ -1012,7 +1029,7 @@ function cantSwitches(task: Task): boolean {
 /** A living item the partner didn't report itself, said as one sentence (D104): a task that
  *  didn't work, or one that came back. Work under way and waits are not said; the header and
  *  On hand carry them (with Details shown, they show as lines). */
-function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
+function News({ it, k, owns, held }: { it: LivingItem; k: string; owns: boolean; held?: boolean }) {
   const task = A.S.tasks.get(it.taskId);
   const wait = task ? wordsDueIn(task) : 0;
   useEffect(() => {
@@ -1021,8 +1038,9 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
     return () => clearTimeout(h);
   }, [wait > 0]);
   // The partner is putting the result into its own words (D124): its waiting presence holds the
-  // place, not a template line that its message replaces a minute later.
-  if (wait > 0) return <Presence kind="result" />;
+  // place, not a template line that its message replaces a minute later. D584: several results
+  // at once share one presence (the first holds it; the others wait unseen behind it).
+  if (wait > 0) return held ? null : <Presence kind="result" />;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
   // D549: a task that couldn't start says why without the card's own lead (没能开始：), which
@@ -1240,14 +1258,18 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
   const head = all ? waiting : waiting.slice(0, 1);
   const rest = waiting.length - head.length;
   const defaults = waiting.filter((x) => x.d.reversible).length;
-  const news = items.filter((it) => it.kind === "failed" || it.kind === "done");
+  // D584: what is said comes first; the results still being put into words wait last, as one presence
+  // where the partner's words will land.
+  const due = (it: LivingItem) => { const task = A.S.tasks.get(it.taskId); return task && wordsDueIn(task) > 0 ? 1 : 0; };
+  const news = items.filter((it) => it.kind === "failed" || it.kind === "done").sort((a, b) => due(a) - due(b));
+  const wordsHeld = news.some((it) => due(it) === 1);
   const lines = shown ? items.filter((it) => it.kind === "progress" || it.kind === "blocked") : [];
   if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
       {away && <div class="when"><Facts items={[t("living.away"), clockOf(e.ev.ts)]} /></div>}
       {news.map((it, i) => (
-        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
+        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} held={wordsHeldBefore(news, i)} />
       ))}
       {lines.length > 0 && (
         <div class="det lines">
@@ -1259,9 +1281,11 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
       {answered.map(({ it, d }) => (
         <Ask key={d.decisionId} d={d} taskId={it.taskId} />
       ))}
-      {head.map(({ it, d }) => (
-        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
-      ))}
+      {head.map(({ it, d }) =>
+        // D584: a task's question still being put into words waits behind the one presence already
+        // there (a result on its way), never a second figure under the first.
+        wordsHeld && relayDueIn(d) > 0 ? <Wake key={d.decisionId} ms={relayDueIn(d)} /> : <Ask key={d.decisionId} d={d} taskId={it.taskId} />,
+      )}
       {(rest > 0 || (head.length >= 2 && defaults >= 2)) && (
         <div class="qrow gather">
           {rest > 0 && (
@@ -2047,9 +2071,17 @@ function NotifyAsk() {
     );
   if (A.push !== "off" || !A.me.push.publicKey || (inApp() && !A.me.push.apns)) return null;
   return (
-    <div class="ask">
-      <div class="q">{t("notify.ask")}</div>
-      <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
+    // D584: the Mac's ask row (asks.go askRow): the partner's face, the question at the body's size
+    // in its weight, the note under it; never a headline at the end of the conversation.
+    <div class="ask notify-ask" role="status">
+      <div class="ask-head">
+        <Avatar size={48} state="needsyou" still />
+        <div class="notify-words">
+          <div class="q">{t("notify.ask")}</div>
+          {/* D584: the quiet hours are one thing: never broken at their dash (23:00– / 08:00). */}
+          <div class="note">{t("notify.ask.note", "23:00", "08:00").replace("–", "\u2060–\u2060")}</div>
+        </div>
+      </div>
       <div class="btns">
         {/* Primary first, on the left (ui.md Buttons). */}
         <Btn

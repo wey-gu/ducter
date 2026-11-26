@@ -517,6 +517,14 @@ or Hold on such a card does nothing but bring this window the home's answer.
 - Shown: what didn't work (and successes the partner didn't report) as sentences first, then
   the asks, one at a time with the soonest default leading; blocked and progress items are not
   shown unless Details in the conversation is Shown.
+- **A routine's round is silent (D584, `standing-work.md` "How it reports").** A round that went
+  well or is under way is never a template line here; its lantern and its page carry it, and what it
+  found worth saying the partner says in its own words. Rounds that didn't work are one line per
+  routine, its newest. A routine the person asked to hear every time (a digest, `reports: "every"`)
+  keeps its rounds.
+- **One presence for words on their way (D584).** While the partner is putting finished results
+  into words (D124's two minutes), the message shows one waiting presence however many there are,
+  after what is already said, where its words will land; never a stack of the same line.
 - A default applies on its own only if the action is reversible.
 
 **Honesty rules**

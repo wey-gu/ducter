@@ -1970,6 +1970,42 @@ a.task-link {
   color: var(--ink-muted);
   line-height: 1.5;
 }
+/* D584: the notification ask in the Mac's ask row: the partner's face, the question at the body's
+   size and weight 700 (not a headline), the note under it, the buttons under both. */
+.ask.notify-ask {
+  padding: var(--s3) var(--s4) var(--s4) var(--s3);
+  gap: var(--s3);
+}
+.notify-ask .ask-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.notify-ask .ask-head > :first-child {
+  flex-shrink: 0;
+}
+.notify-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ask.notify-ask .q,
+:lang(zh) .ask.notify-ask .q {
+  font-family: inherit;
+  font-size: var(--md);
+  font-weight: 700;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+.notify-ask .btns {
+  padding-left: calc(48px + var(--s3));
+}
+@media (max-width: 600px) {
+  .notify-ask .btns {
+    padding-left: 0;
+  }
+}
 .hint {
   font-size: var(--sm);
   color: var(--ink-muted);
@@ -21469,9 +21505,11 @@ html[data-text-size="large"] .brand-mark > svg {
 .bubble.note .fsrc-row .fsays { font-size: var(--sm); color: var(--ink-soft); overflow-wrap: anywhere; }
 .bubble.note .ffeel { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; margin: 0 -10px -6px; }
 .bubble.note .ffeel .small { padding: 0 10px; }
-.bubble.note .note-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; margin: 4px 0 -6px; padding-top: 6px; border-top: 1px solid var(--line); }
-.bubble.note .note-foot > :first-child { margin-inline-start: -10px; }
-.bubble.note .note-foot .did-morning { margin: 0; }
+/* D584: every link of the foot sits back by its own padding, so a second one that wraps starts on
+   the same left edge as the first (the gap gives that padding back between two on one line). */
+.bubble.note .note-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; margin: 4px 0 -6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.bubble.note .note-foot > * { margin-inline-start: -10px; }
+.bubble.note .note-foot .did-morning { margin: 0 0 0 -10px; }
 .bubble.note > .fmore { margin: 2px -10px -4px; font-size: var(--sm); font-weight: 600; color: var(--ink-soft); }
 
 /* ---------- D484: the opened task on a phone: its own actions in the bar, Share, 这个任务, a

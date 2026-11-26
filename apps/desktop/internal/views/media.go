@@ -912,6 +912,16 @@ func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 	})
 }
 
+// attachLead is the composer's leading control, or nil where nothing can be
+// attached (D584): then the words keep the inset clear of the round edge
+// instead of starting where a missing button would have stood.
+func (a *App) attachLead(c *ui.Context, tray string) func() {
+	if a.Media == nil {
+		return nil
+	}
+	return func() { a.addPicturesButton(c, tray) }
+}
+
 // addPicturesButton is the composer's 添加文件或图片 / Add files or pictures:
 // the attach mark (D273), since D259 it takes any file.
 func (a *App) addPicturesButton(c *ui.Context, tray string) {

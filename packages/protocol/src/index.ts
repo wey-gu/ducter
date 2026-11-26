@@ -1030,7 +1030,7 @@ export interface TaskCard {
   openedAt: string;
   updatedAt: string;
   until?: UntilView; // D113
-  fromRoutine?: { routineId: string; name: string }; // a routine's run (D114)
+  fromRoutine?: { routineId: string; name: string; reports?: "every" | "on_change" | "needs_you" }; // a routine's run (D114); D584: how its runs report
   openedBy?: "you"; // D128: the user opened it themselves; absent = the partner did
   changes?: DiffStat; // D128: repo tasks, once counted (cached; refreshed after each turn)
   folder?: FolderSummary; // D142: non-git folder tasks, once counted (cached like changes)

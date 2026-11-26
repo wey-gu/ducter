@@ -1048,7 +1048,7 @@ func (a *App) composer(c *ui.Context) {
 					a.composerReply(c) // D236: what this replies to, pressed into the card
 					a.picTray(c, "conv")
 				},
-				lead:  func() { a.addPicturesButton(c, "conv") },
+				lead:  a.attachLead(c, "conv"),
 				tools: func() { a.micButton(c) }, // D305: hold to talk
 				keys: func(k ui.TextKey) bool {
 					if a.pictureKeys("conv", k) {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.81 - 2026-11-26
+
+<!-- whats-new
+zh: 一轮跑得好的例行任务不再刷屏；等待只显示一个
+en: A routine round that went well stays quiet; one waiting line, not a stack
+-->
+
+**The conversation**
+- A routine's round that went fine no longer adds a line to the conversation; one that didn't
+  shows only its latest. A routine you asked to report every time still does.
+- While several tasks finish at once, one "looking at what it did…" line shows, not a stack.
+- On the web, Ducter's own question about notifications is one quiet row, as on the Mac.
+
+**On hand**
+- A row or preview says its state once, beside its time.
+
 ## 0.1.80 - 2026-11-26
 
 <!-- whats-new

@@ -550,7 +550,7 @@ test("a routine: proposal card, Go, it fires as a fresh task, the run closes fro
   await flush();
   const runs = kinds(s.log, "routine_run") as Bodies["routine_run"][];
   expect(runs[0]).toMatchObject({ state: "started", taskId: "run1", scheduledFor: "2026-11-16T01:00:00.000Z" });
-  expect(s.tasks.get("run1")!.fromRoutine).toEqual({ routineId: v.routineId, name: "周报" });
+  expect(s.tasks.get("run1")!.fromRoutine).toEqual({ routineId: v.routineId, name: "周报", reports: "every" });
   expect(s.opened[0]).toContain("read only");
   // The real order on Claude Code (research/108 B3): report_to_main inside the turn, then the turn's usage.
   report(s.log, "run1", { state: "done", summary: "周报写好了。" });

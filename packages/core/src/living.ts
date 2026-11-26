@@ -25,6 +25,11 @@ export function itemsFor(c: TaskCard, decisions: Decisions, pending: string[]): 
     return open.map((id) => ({ ...base, kind: "decision" as const, text: decisions.get(id)!.question, decisionId: id, ...(backAt && c.pendingDecisionId === id ? { back: backAt } : {}) }));
   }
   if (live.length) return [];
+  // D584: a routine's round that went well or is under way is a silent round (standing-work.md
+  // "How it reports"): its lantern and its page carry it, never a template line here. What the
+  // round found worth saying the partner says in its own words; a round that didn't work stays, and
+  // so does every round of a routine the person asked to hear each time (a digest: reports "every").
+  if (c.fromRoutine && c.fromRoutine.reports !== "every" && c.attention !== "failed" && c.attention !== "blocked") return [];
   switch (c.attention) {
     case "blocked":
       return [{ ...base, kind: "blocked", text: r?.state === "blocked" ? r.summary : c.reason ?? "Waiting" }];
@@ -77,7 +82,16 @@ export function createLiving(opts: { log: LogStore; tasks: CoreRegistry; decisio
   const compute = (stream: string): LivingItem[] => {
     const now = clock.now();
     const items: LivingItem[] = [];
+    // D584: one routine's rounds that didn't work are one line, its newest: three mornings of
+    // "Gmail needs signing in again" are one thing to fix.
+    const newestRound = new Map<string, TaskCard>();
     for (const c of tasks.list()) {
+      if (!c.fromRoutine || c.attention !== "failed") continue;
+      const was = newestRound.get(c.fromRoutine.routineId);
+      if (!was || Date.parse(c.updatedAt) >= Date.parse(was.updatedAt)) newestRound.set(c.fromRoutine.routineId, c);
+    }
+    for (const c of tasks.list()) {
+      if (c.fromRoutine && c.attention === "failed" && newestRound.get(c.fromRoutine.routineId)?.taskId !== c.taskId) continue;
       if (c.attention === "dropped" || c.attention === "superseded") continue;
       if (streamOf(c) !== stream) continue;
       const pending = tasks.pendingDecisions(c.taskId);

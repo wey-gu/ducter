@@ -571,7 +571,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						}
 						a.picTray(c, tray)
 					},
-					lead: func() { a.addPicturesButton(c, tray) },
+					lead: a.attachLead(c, tray),
 					tools: func() {
 						// D542: the model and effort, and the context ring (D288), in
 						// the composer's own row before Stop and Send: no row under it.

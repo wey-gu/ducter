@@ -127,6 +127,10 @@ runs next. **Pause** stops one;
 only you can **Resume** it. Ducter pauses a routine by itself if three runs in a row don't work
 or you haven't read its last three reports, and after 30 days it asks whether to keep it.
 
+A run that goes fine stays quiet in the conversation: Ducter tells you only what the run found that
+you asked to hear about. A routine you asked to report every time, like the weekly report, still
+tells you each run. A run that doesn't work is said once, however many in a row didn't.
+
 Each run uses a little of your AI allowance. If one run uses much more than usual, Ducter stops
 it and asks you.
 

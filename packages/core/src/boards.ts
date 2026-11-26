@@ -5,7 +5,7 @@
 // given an app writes its data with the app_data tool (data only, never the file). Ducter offers
 // once, after BOARD_OFFER_AFTER rounds of the same shape: 要不要把这些做成一个看板？ behind Go.
 import { randomBytes } from "node:crypto";
-import { APP_TASK_KEYS_PER_CALL, BOARD_OFFER_AFTER, type AppMeta, type Bodies, type ReviewBoard } from "@ducter/protocol";
+import { APP_TASK_KEYS_PER_CALL, BOARD_OFFER_AFTER, appTasks, type AppMeta, type AppTask, type Bodies, type ReviewBoard } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { jsonText } from "@ducter/protocol/src/tool-schema.ts";
 import type { AppsStore } from "./apps.ts";
@@ -26,6 +26,10 @@ export interface BoardsDeps {
   repeats: (taskId: string) => boolean;
   /** Is this task a review routine (sees review_report)? */
   isReview: (taskId: string) => boolean;
+  /** D612: the Keep a task's rounds belong to, when the app follows a Keep. */
+  keepOf: (taskId: string) => AppTask | undefined;
+  /** D612: the tasks a Keep's rounds run in now (told how to fill its app). */
+  tasksOfKeep: (keepId: string) => AppTask[];
   /** Says something to a task (its next turn reads it). */
   tell: (taskId: string, text: string) => void;
 }
@@ -52,8 +56,10 @@ export interface Boards {
   afterRound(taskId: string): void;
   /** The app a task keeps current (the Ongoing card opens it). */
   appOf(taskId: string): AppMeta | undefined;
-  /** Make the review board for a task now (Go on the offer, or the partner's app tool without a file). */
+  /** Make the review board for a task now (Go on the offer, or the partner's app tool without a file). One per person: a second review task's work joins it. */
   makeReviewBoard(taskId: string): { ok: true; app: AppMeta } | { ok: false; error: string };
+  /** D612: what a round of this task should write into the app it was given (a task's or its Keep's), or "". */
+  appNote(taskId: string): string;
   /**
    * A round's done report from a task that keeps one of the person's apps current wakes nobody: the
    * app is the news (D394's silence at the source). A question, a block or a failure still does.
@@ -65,18 +71,38 @@ export interface Boards {
 
 export function createBoards(d: BoardsDeps): Boards {
   const reports = new Map<string, number>();
-  const write = (taskId: string) => {
+  // D612: a board shows only the work of the task(s) it follows, never the global pile: merge
+  // the rounds of the tasks written on this one app (a second review task joined the same board).
+  const merge = (apps: AppMeta[]): ReviewBoard | undefined => {
     const pile = d.pile();
-    if (!pile) return;
+    if (!pile) return undefined;
+    const boards = apps.flatMap((a) => appTasks(a)).map((t) => pile.board(t.id)).filter((b): b is ReviewBoard => !!b);
+    if (!boards.length) return undefined;
+    const prs = new Map<string, ReviewBoard["prs"][number]>();
+    for (const b of boards.sort((a, c) => a.at.localeCompare(c.at))) for (const p of b.prs) prs.set(p.ref, p);
+    const rows = [...prs.values()];
+    return {
+      at: boards.map((b) => b.at).sort().at(-1)!,
+      waiting: rows.length,
+      again: rows.filter((p) => p.changed).length,
+      same: rows.filter((p) => !p.changed).length,
+      drafted: rows.filter((p) => p.draft === "drafted").length,
+      prs: rows.sort((a, b) => Number(b.draft === "drafted") - Number(a.draft === "drafted") || Number(b.changed) - Number(a.changed) || a.ref.localeCompare(b.ref)),
+    };
+  };
+  const write = (taskId: string) => {
     for (const a of d.apps.byTask(taskId)) {
       if (a.kind !== "reviews") continue;
-      const b = pile.board(taskId);
+      const b = merge([a]);
       if (b) d.apps.put(a.id, "board", b, "task");
     }
   };
   const appOf = (taskId: string) => d.apps.byTask(taskId).find((a) => a.persona === d.persona()) ?? d.apps.byTask(taskId)[0];
   const offer = (taskId: string, kind: "reviews" | "reports") => {
     if (d.apps.offered(taskId) || appOf(taskId)) return undefined;
+    // D612: only a review task is offered a reviews board; one board per purpose, so with one
+    // already there the offer is nothing (the task's work joins it when asked, never a second board).
+    if (kind === "reviews" && (!d.isReview(taskId) || d.apps.list(d.persona()).some((a) => a.kind === "reviews"))) return undefined;
     const title = d.title(taskId);
     if (!title) return undefined;
     d.apps.markOffered(taskId);
@@ -94,13 +120,31 @@ export function createBoards(d: BoardsDeps): Boards {
     return body.decisionId;
   };
   const makeReviewBoard = (taskId: string): { ok: true; app: AppMeta } | { ok: false; error: string } => {
-    const had = d.apps.byTask(taskId).find((a) => a.kind === "reviews");
-    if (had) return { ok: true, app: had };
+    if (!d.isReview(taskId)) return { ok: false, error: "This task isn't a review task: a review board is only for a task whose job is reviewing other people's PRs. A task's own PR is followed by the Babysitter or the hand-off, not a board." };
     const title = d.title(taskId);
     if (!title) return { ok: false, error: `unknown task ${taskId}` };
+    // D612: one board per purpose: the person's existing review board takes this task's work.
+    const had = d.apps.list(d.persona()).find((a) => a.kind === "reviews");
+    if (had) {
+      const task: AppTask = { id: taskId, title };
+      d.apps.addTask(had.id, task);
+      write(taskId);
+      return { ok: true, app: d.apps.get(had.id) ?? had };
+    }
     const r = d.apps.make(d.persona(), { name: REVIEW_BOARD_NAME[d.lang()], html: REVIEW_BOARD_HTML, task: { id: taskId, title }, kind: "reviews" });
     if (r.ok) write(taskId);
     return r;
+  };
+  const appNote = (taskId: string): string => {
+    const keep = d.keepOf(taskId);
+    const apps = [...d.apps.byTask(taskId), ...(keep ? d.apps.byKeep(keep.id) : [])].filter((a) => !a.kind);
+    if (!apps.length) return "";
+    return apps
+      .map((a) => {
+        const keys = [...new Set([...(d.apps.html(a.id) ?? "").matchAll(/ducter\.get\(\s*["'`]([^"'`]{1,64})["'`]/g)].map((x) => x[1]!))].slice(0, 12);
+        return `[Ducter] The person keeps this work's rounds in their small app "${a.name}" (app ${a.id}). Each round, write what stands now into it with app_data (app ${a.id}, set {key: value}; null removes a key)${keys.length ? `; the app reads the keys ${keys.join(", ")}` : ""}. Write whole values, once a round; a round that only updated it needs no report_to_main.`;
+      })
+      .join("\n");
   };
   // The offer's answer. Reviews: the board is made now, its card under one line. Reports: the
   // partner wakes on the answer and makes the app (render.ts tells it how).
@@ -116,9 +160,17 @@ export function createBoards(d: BoardsDeps): Boards {
   });
   // A task given an app (made for it, or given later) hears how to fill it, once.
   d.apps.onChange((c) => {
-    if (c.kind !== "give" || !c.task) return;
+    if (c.kind !== "give" || (!c.task && !c.keep)) return;
     const a = d.apps.get(c.id);
     if (!a) return;
+    if (!c.task) {
+      // D612: an app given to a Keep: every task its rounds run in hears how to fill it.
+      for (const t of c.keep ? d.tasksOfKeep(c.keep.id) : []) {
+        const text = appNote(t.id);
+        if (text) d.tell(t.id, text);
+      }
+      return;
+    }
     if (a.kind === "reviews") {
       d.tell(c.task.id, `[Ducter] The person now keeps your rounds on their small app "${a.name}": Ducter fills it from each review_report (every PR waiting on them, with its title and ci state), so keep calling review_report once a round and say nothing else between rounds.`);
       return;
@@ -144,14 +196,18 @@ export function createBoards(d: BoardsDeps): Boards {
     wakes(e) {
       if (e.kind !== "report") return true;
       const b = e.body as Bodies["report"];
-      return !(b.state === "done" && !b.questions?.length && d.apps.byTask(b.taskId).length > 0);
+      const keep = d.keepOf(b.taskId);
+      const follows = d.apps.byTask(b.taskId).length > 0 || (!!keep && d.apps.byKeep(keep.id).length > 0);
+      return !(b.state === "done" && !b.questions?.length && follows);
     },
     afterRound(taskId) {
+      if (!d.isReview(taskId)) return;
       const pile = d.pile();
       if (pile && pile.rounds(taskId) >= BOARD_OFFER_AFTER) offer(taskId, "reviews");
     },
     appOf,
     makeReviewBoard,
+    appNote,
     offer,
   };
 }

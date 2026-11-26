@@ -15,10 +15,11 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL,MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, appTasks, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL,MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
+import { outwardOf } from "@ducter/protocol/src/outward.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, plainAsk, type Decisions } from "./decisions.ts";
@@ -26,7 +27,7 @@ import { createLiving, type Living } from "./living.ts";
 import { openLog, type SqliteLog } from "./log.ts";
 import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
-import { createRegistry, type CoreRegistry } from "./registry.ts";
+import { createRegistry, isActive, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createTidied, holdOf } from "./tidied.ts";
 import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
@@ -190,7 +191,6 @@ const REVIEW_ASKS = {
 const REVIEW_ASKS_MAX = 20;
 
 /** D394: what a review task's round says (review_report). */
-const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
 const REVIEW_ROUND_SCHEMA = {
   type: "object",
   properties: {
@@ -1047,8 +1047,19 @@ export function startCore(opts: CoreOptions = {}): Core {
     pile: () => taskSourcesRef?.pile,
     repeats: (id) => work.waiters.views().some((w) => w.taskId === id && w.wakes === "task" && w.state === "armed" && !w.limit),
     isReview: (id) => isReview(id),
+    keepOf: (id) => {
+      const k = keepsRef?.ofTask(id);
+      return k ? { id: k.id, title: k.name } : undefined;
+    },
+    tasksOfKeep: (keepId) =>
+      (keepsRef?.sheets(persona.id).find((k) => k.id === keepId)?.taskIds ?? []).map((taskId) => ({ id: taskId, title: tasks.get(taskId)?.title ?? taskId })),
     tell: (id, text) => void runner?.send(id, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${id} about its app:`, (e as Error).message)),
   });
+  // D612: the apps this task may fill: its own, or one its Keep's rounds fill.
+  const appFor = (taskId: string) => {
+    const keep = keepsRef?.ofTask(taskId);
+    return [...apps.byTask(taskId), ...(keep ? apps.byKeep(keep.id) : [])].filter((m) => !m.kind);
+  };
   // D407: a task given an app writes its data (never its file), once a round.
   mcp.registerWhen(
     "task",
@@ -1068,7 +1079,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const r = apps.fill(String(a.app ?? ""), ctx.taskId, set);
       return r.ok ? `Kept: ${r.keys.join(", ")}. Every device with the app open shows it now. Now wait_for the next round and end your turn.` : r.error;
     },
-    (ctx) => !!ctx.taskId && apps.byTask(ctx.taskId).some((m) => !m.kind),
+    (ctx) => !!ctx.taskId && appFor(ctx.taskId).length > 0,
   );
   // D276: 聊天软件 / Chat apps: the person's own Telegram bot and Slack app, more windows on this
   // one conversation (channels/hub.ts). Their quiet hours and "notifications off" are push's.
@@ -1861,6 +1872,25 @@ export function startCore(opts: CoreOptions = {}): Core {
   if (opts.keeps?.rulesAsk) keeps.setRulesAsk(opts.keeps.rulesAsk);
   // D533: a round of a Keep the person changed hears its rules as they are now.
   work.setKeepRules((of) => keeps.rulesFor(of));
+  // D612: an app a Keep's rounds fill: each round's task may write it with app_data, and hears how once.
+  apps.taskKeep((taskId) => {
+    const k = keeps.ofTask(taskId);
+    return k ? { id: k.id, title: k.name } : undefined;
+  });
+  work.setAppNote((taskId) => boards.appNote(taskId));
+  // D612: a task that opens under an app its Keep fills hears how to write it (a helper's task
+  // arrives after the app was made; a loop's round hears it again in its wake).
+  const appTold = new Set<string>();
+  log.subscribe((e) => {
+    if (e.kind !== "task_open") return;
+    const id = (e.body as Bodies["task_open"]).taskId;
+    if (appTold.has(id) || !appFor(id).length) return;
+    appTold.add(id);
+    setTimeout(() => {
+      const text = boards.appNote(id);
+      if (text) void runner?.send(id, text, undefined, "ducter").catch((err) => console.warn(`[core] couldn't tell ${id} about its Keep's app:`, (err as Error).message));
+    }, 0);
+  });
   // D593: a round whose context was compacted hears the Keep again first.
   api.keepNow = (taskId) => keeps.standingFor(taskId);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
@@ -1872,13 +1902,28 @@ export function startCore(opts: CoreOptions = {}): Core {
   // person's words about it are in and the partner hasn't answered yet.
   apps.keptBy((taskId) => {
     const it = ongoing.list(persona.id).find((i) => i.id === taskId || i.taskId === taskId);
-    if (!it) return undefined;
+    if (!it) {
+      // D612: the task it followed ended: the app says 已停止更新, 截至 {last}, never a promise.
+      const c = tasks.get(taskId);
+      if (!c) return { task: taskId, title: taskId, state: "ended", of: { kind: "task", id: taskId } };
+      if (!isActive(c.attention)) return { task: taskId, title: c.title, state: "ended", last: c.updatedAt, of: { kind: "task", id: taskId } };
+      return undefined;
+    }
     const runs = [...it.runs].reverse();
     const lastRun = runs.find((r) => r.state !== "running" && r.state !== "skipped");
     const lastGood = runs.find((r) => r.state === "done" || r.state === "met" || r.state === "looked");
     const state = it.state === "running" ? "running" : it.state === "paused" ? "paused" : lastRun?.state === "failed" ? "failed" : "resting";
     const why = state === "failed" ? lastRun?.line : state === "paused" ? it.pauseWhy : undefined;
     return { task: taskId, title: it.title, state, of: { kind: it.kind, id: it.id }, ...(lastGood ? { last: lastGood.at } : {}), ...(it.nextAt && state !== "paused" ? { next: it.nextAt } : {}), ...(why ? { why: why.slice(0, 140) } : {}) };
+  });
+  // D612: an app given to a Keep follows its rounds; one whose Keep ended says so.
+  apps.keptKeepBy((keepId) => {
+    const k = keepsRef?.get(keepId);
+    if (!k) return { keep: keepId, title: keepId, state: "ended", of: { kind: "keep", id: keepId } };
+    if (k.life === "done" || k.life === "stopped") return { keep: keepId, title: k.title, state: "ended", ...(k.endedAt ? { last: k.endedAt } : {}), of: { kind: "keep", id: keepId } };
+    const s = keepsRef?.sheets(persona.id).find((x) => x.id === keepId);
+    const state = s?.running ? "running" : k.life === "paused" ? "paused" : "resting";
+    return { keep: keepId, title: k.title, state, ...(s?.line?.at ? { last: s.line.at } : {}), ...(s?.nextAt && state === "resting" ? { next: s.nextAt } : {}), of: { kind: "keep", id: keepId } };
   });
   log.subscribe((e) => {
     if (e.kind === "user_msg" && e.origin === "user") {
@@ -2634,19 +2679,36 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     (ctx) => !!ctx.taskId && !!taskSourcesRef?.handover?.isPlanTask(ctx.taskId),
   );
-  // D394: a task that reviews pull requests every so often reports each round here: every request
-  // waiting on the person, and the drafts for those it reviewed again. The drafts become those
-  // PRs' pre-reads (the sheet that shows them on the phone and the Mac) and one card asks to post
-  // them all; the task never posts on its own. Seen only by a task whose brief is about reviewing,
-  // with GitHub connected as a to-do source.
+  // D612: a task is a review task only when the partner said so once at task_open (needs.reviews,
+  // judged from the brief), never by counting review_report calls or matching words in the brief. Code
+  // guards it: a task that opens its own PR is never a review task. The tools and the board offer read
+  // this one flag.
   const reviewTasks = new Map<string, boolean>();
+  /** Tasks seen opening a PR of their own (`gh pr create`, read by its grammar, never by words). */
+  const ownPr = new Set<string>();
+  const noteOwnPr = (e: LogEvent) => {
+    if (e.kind !== "task_event") return;
+    const b = e.body as Bodies["task_event"];
+    if (b.role !== "tool" || !b.tool) return;
+    const input = b.tool.input as { command?: unknown; cmd?: unknown; argv?: unknown; script?: unknown } | undefined;
+    const cmds = [input?.command, input?.cmd, input?.script, Array.isArray(input?.argv) ? input.argv.join(" ") : undefined].filter((x): x is string => typeof x === "string" && !!x.trim());
+    if (cmds.some((cmd) => outwardOf(cmd).some((a) => a.kind === "pr_create"))) ownPr.add(b.taskId);
+  };
+  log.subscribe(noteOwnPr);
   const isReviewTask = (taskId: string) => {
-    if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
+    if (ownPr.has(taskId) || work.owned.of(taskId).length > 0) return false;
     const known = reviewTasks.get(taskId);
     if (known !== undefined) return known;
+    if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
     const opens = log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 20 });
-    const text = opens.map((e) => `${(e.body as Bodies["task_open"]).title ?? ""} ${(e.body as Bodies["task_open"]).brief ?? ""}`).join(" ");
-    const yes = REVIEW_WORDS.test(text);
+    // D612: the partner's one judgment at open, recorded on the task; never what its words look like.
+    // A task in rounds that already has a review board keeps its review work from before this field
+    // existed (its Keep would otherwise lose review_report mid-life); no words are read for it.
+    const legacy =
+      !opens.some((e) => (e.body as Bodies["task_open"]).needs !== undefined) &&
+      log.read({ stream: `task:${taskId}`, kinds: ["task_loop"], limit: 1 }).length > 0 &&
+      apps.list(persona.id).some((a) => a.kind === "reviews" && appTasks(a).some((t) => t.id === taskId));
+    const yes = opens.some((e) => (e.body as Bodies["task_open"]).needs?.reviews === true) || legacy;
     reviewTasks.set(taskId, yes);
     return yes;
   };

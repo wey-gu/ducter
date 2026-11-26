@@ -19,6 +19,7 @@ import { Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
 import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
+import { UsageWeek } from "./usage-week.tsx";
 import { Avatar } from "./views.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -510,6 +511,7 @@ export function PlacesMap({ go }: { go: (p: SettingsPage) => void }) {
           </div>
         </section>
       )}
+      <UsageWeek />
       <p class="set-foot">
         <Avatar size={28} state="idle" still />
         <span>{t("home.foot")}</span>
@@ -584,6 +586,7 @@ function PhonePlaces({ places, accts, memOn, go }: { places: MapPlace[]; accts: 
           </div>
         </section>
       )}
+      <UsageWeek />
       <p class="set-foot">
         <Avatar size={28} state="idle" still />
         <span>{t("home.foot")}</span>

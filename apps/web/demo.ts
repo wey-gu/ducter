@@ -242,6 +242,8 @@ if (process.env.DEMO_STEER === "1") await (await import("./demo-steer.ts")).seed
 
 // D297: DEMO_LIMIT=1 adds tasks resting on their agent's usage limit (three share one reset).
 if (process.env.DEMO_LIMIT === "1") await (await import("./demo-limits.ts")).seedLimits(core, zh);
+// D591: DEMO_USAGE=1 adds a week of counted work (Overview's 这周的额度用在了哪儿, the limit card's line).
+if (process.env.DEMO_USAGE === "1") (await import("./demo-usage.ts")).seedUsage(core, zh);
 
 // D285: DEMO_PAST=1 adds ~40 earlier tasks for 做过的事 / Past tasks.
 if (process.env.DEMO_PAST === "1") {

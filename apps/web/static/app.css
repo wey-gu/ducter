@@ -24856,3 +24856,61 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 @media (max-width: 699px), (max-height: 639px) {
   .fv-trouble { padding-inline: max(18px, calc(var(--safe-left) + 6px)) max(18px, calc(var(--safe-right) + 6px)); }
 }
+/* D591: 这周的额度用在了哪儿 / Where this week's allowance went, on Settings › Overview: one quiet
+   tray of the shared TrayRows (the background tray's look), the agents' shares as facts on top, the
+   tasks that used most each opening its task, the rest behind 更多 / More. The limit card's line
+   under its reset. */
+.usage-tray {
+  padding: var(--s1);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: var(--sm);
+  min-width: 0;
+}
+.usage-agents {
+  padding: var(--s2) var(--s3) var(--s1);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.usage-tray .tray-main {
+  min-height: 40px;
+}
+.usage-tray .tray-row.fold .tray-words {
+  color: var(--ink-muted);
+}
+.usage-more {
+  padding-bottom: var(--s1);
+}
+.usage-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: var(--s2) var(--s3) 0;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.usage-facts p {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--s3);
+}
+.usage-k {
+  color: var(--ink-muted);
+}
+.usage-facts .usage-note {
+  color: var(--ink-muted);
+  font-size: var(--xs);
+  line-height: 1.5;
+}
+.watch .usage-why {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 599px) {
+  .usage-tray .tray-main {
+    min-height: 44px;
+  }
+}

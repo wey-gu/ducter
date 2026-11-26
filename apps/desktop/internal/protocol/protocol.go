@@ -3270,6 +3270,8 @@ type ServerFrame struct {
 	AppsF *AppsFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
 	DidFor *DidFrame `json:"-"`
+	// D591: usage_days_result's report (usage.go), decoded on its own.
+	UsageFor *UsageReport `json:"-"`
 	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
 	MemFound *MemFound `json:"-"`
 	// MemAnswered is mem_answered (D465), decoded on its own (its answer is a word, not a WbAnswer).
@@ -3537,6 +3539,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeOngoing(data, f)
 	case "made_result":
 		return decodeMade(data, f)
+	case "usage_days_result":
+		return decodeUsage(data, f)
 	case "did_result":
 		return decodeDid(data, f)
 	case "mem_found":

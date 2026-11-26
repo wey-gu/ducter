@@ -815,9 +815,10 @@ export function IconBtn(p: { label: string; about?: string; tip?: string; presse
  * its words cut with an ellipsis (the whole in the tooltip), its facts at the right edge in mono
  * (a time, a state), an optional chevron when it opens (open: what it holds, under it), and an
  * optional action apart at its far right (an IconBtn). head: the tray's own head row (stronger
- * words). The Mac's `trayRow`.
+ * words). goes (D591): the row goes elsewhere (a task), its chevron pointing on, never expanded. The
+ * Mac's `trayRow`.
  */
-export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words: string; head?: boolean; tone?: string; side?: ComponentChildren; open?: boolean; onClick?: () => void; act?: ComponentChildren; children?: ComponentChildren }) {
+export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words: string; head?: boolean; tone?: string; side?: ComponentChildren; open?: boolean; goes?: boolean; onClick?: () => void; act?: ComponentChildren; children?: ComponentChildren }) {
   const inner = (
     <>
       {p.mark && (
@@ -829,7 +830,7 @@ export function TrayRow(p: { mark?: ComponentChildren; markAbout?: string; words
         {p.words}
       </span>
       {p.side && <span class="tray-side">{p.side}</span>}
-      {p.onClick && p.open !== undefined && <Chev open={p.open} cls="tray-chev" />}
+      {p.onClick && (p.open !== undefined || p.goes) && <Chev open={!!p.open} cls="tray-chev" />}
     </>
   );
   return (

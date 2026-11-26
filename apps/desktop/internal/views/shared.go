@@ -444,9 +444,12 @@ func chipGround(t *theme.Tokens) ui.Color {
 // line cut with an ellipsis, its facts at the right edge (a state word, a
 // time in mono), a chevron when it opens (open non-nil), and an action slot
 // apart at its far right (act; reserve keeps the slot empty so the columns
-// line up). head: the tray's own head row (stronger words).
+// line up). head: the tray's own head row (stronger words). goes (D591):
+// the row goes elsewhere (a task), named by these words; pressable, its
+// chevron pointing on, never open.
 type trayLine struct {
 	key, words, markAbout string
+	goes                  string
 	mark                  func(ui.Color) func(*ui.Painter, ui.Rect)
 	markInk               ui.Color
 	head                  bool
@@ -466,11 +469,14 @@ func (a *App) trayRow(c *ui.Context, r trayLine) bool {
 		main := ui.Row(c.Key("trm")).Gap(t.S2).AlignItems(ui.Center).Grow(1).Shrink(1).MinWidth(0).
 			MinHeight(t.ControlSM).Padding(0, t.S3).Radius(t.RadiusSM)
 		hover := false
-		if r.open != nil {
+		if r.open != nil || r.goes != "" {
 			name := r.words
-			if *r.open {
+			switch {
+			case r.goes != "":
+				name = spoken(a.L, r.goes, r.state, r.time)
+			case *r.open:
 				name = spoken(a.L, r.words, a.L.T("bg.hide"))
-			} else {
+			default:
 				name = spoken(a.L, r.words, a.L.T("bg.show"))
 			}
 			main.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable()
@@ -511,12 +517,12 @@ func (a *App) trayRow(c *ui.Context, r trayLine) bool {
 			if r.time != "" {
 				uiText(c, r.time).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
 			}
-			if r.open != nil {
+			if r.open != nil || r.goes != "" {
 				ci := t.InkMuted
 				if hover {
 					ci = t.Ink
 				}
-				a.glyph(c, 12, drawChevron(ci, *r.open))
+				a.glyph(c, 12, drawChevron(ci, r.open != nil && *r.open))
 			}
 		})
 		if r.act != nil || r.reserve {

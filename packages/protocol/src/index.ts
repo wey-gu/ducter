@@ -862,14 +862,27 @@ export interface Bodies {
   partner_session: {
     // D435: brain_held, the partner's own agent (harness) is held until held.until; brain_back,
     // a turn on it went through again (or the person chose another agent), and the hold is over.
-    event: "recut" | "harness_compacted" | "brain_held" | "brain_back";
+    // D591: turn_used, one partner turn's tokens (`turn`, on the model it ran on), so `ducter usage`
+    // counts the partner's own replies too.
+    event: "recut" | "harness_compacted" | "brain_held" | "brain_back" | "turn_used";
     harness: string;
+    model?: string;
+    turn?: TurnTokens;
     held?: { why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; since: string; source?: string; said?: string; told?: string; /** D449 */ free?: import("./free-budget.ts").FreeProvider };
     sessionId?: string;
     contextTokens?: number; // what the context held, by the harness's count when it gave one
     digested?: boolean; // recut: onto digests (true) or onto the window and pointers only (false)
     outcome?: string; // harness_compacted: the harness's own outcome and trigger
     trigger?: string;
+  };
+  // D591: one of Ducter's own looks (a judge, a second look, a read of an account, a Keep's round
+  // check, a branch name): one short tool-less turn on an agent, with what it used. On the "looks"
+  // stream, never shown; `ducter usage` counts it. `what` is the look's kind (its folder name).
+  look_used: {
+    harness: string;
+    model?: string;
+    turn: TurnTokens;
+    what: string;
   };
   // A call into one of the user's connections (D96, design/connectors.md): their OpenConnector or
   // another MCP server, reached only through Ducter's broker. Reads run and are recorded here;

@@ -74,7 +74,7 @@ const writes = (b: Boot) => b.core.log.read({ stream: "channel", kinds: ["source
 async function rounds(b: Boot) {
   await b.ts.add("github");
   await b.ts.look();
-  b.core.log.append({ stream: "task:swj3zc4w", origin: "partner", kind: "task_open", body: { taskId: "swj3zc4w", title: "持续评审 nowledge-co 的 PR", project: "", place: { kind: "none", device: "local" }, harness: "codex", brief: BRIEF } });
+  b.core.log.append({ stream: "task:swj3zc4w", origin: "partner", kind: "task_open", body: { taskId: "swj3zc4w", title: "持续评审 nowledge-co 的 PR", project: "", place: { kind: "none", device: "local" }, harness: "codex", brief: BRIEF, needs: { reviews: true } } });
   b.core.tasks.setState("swj3zc4w", "working", "hot");
   b.core.standing.hear("tool:30746", grant, new Date(NOW).toISOString(), 30746);
   await b.core.mcp.call({ role: "task", taskId: "swj3zc4w" } as never, "wait_for", { reason: "45 分钟后复查 nowledge-co 评审请求", afterMinutes: 45 });

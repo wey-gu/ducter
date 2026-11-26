@@ -28,7 +28,7 @@ await core.taskSources.look();
 
 const log = core.log;
 const id = "swj3zc4w";
-log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: zh ? "看 nowledge-co 里请我 review 的 PR" : "Review my requests in nowledge-co", project: "mem", place: { kind: "none" }, harness: "codex", brief: zh ? "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。" : "Every 45 minutes, review the PRs in nowledge-co that request my review.", language: zh ? "zh" : "en" } } as never);
+log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: zh ? "看 nowledge-co 里请我 review 的 PR" : "Review my requests in nowledge-co", project: "mem", place: { kind: "none" }, harness: "codex", brief: zh ? "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。" : "Every 45 minutes, review the PRs in nowledge-co that request my review.", needs: { reviews: true }, language: zh ? "zh" : "en" } } as never);
 core.tasks.setState(id, "working", "hot");
 const say = (origin: "user" | "partner", text: string) => log.append({ stream: "channel", origin, kind: origin === "user" ? "user_msg" : "ai_msg", body: { text } } as never);
 const note = (path: string, line: number, text: string) => ({ kind: "problem", path, line, text });

@@ -98,8 +98,17 @@ export interface AppMeta {
   back?: true;
   /** D407: the routine task that keeps it current (its rounds write the data). */
   task?: AppTask;
+  /** D612: every task whose work a reviews board shows (a second review task adds its work to the one board; `task` is the first). */
+  tasks?: AppTask[];
+  /** D612: the Keep whose rounds fill it (a task per round writes app_data; a board or any app may follow a Keep). */
+  keep?: AppTask;
   /** D407: made by Ducter from a template: "reviews" = 审查看板 / Review board (its data is the review task's rounds, written by the home). */
   kind?: "reviews";
+  /**
+   * D612: it shows a task's or a Keep's work but is not given to it: a snapshot, never kept
+   * current. The app says 截至 {time} and the partner says it is a snapshot.
+   */
+  snapshot?: true;
   /** D410: the one line the app says of itself (ducter.summary, or the partner's when it made or filled it): "3 笔，合计 ¥1,698". */
   summary?: string;
   /** D410: its mark and its clay tint on the shelf (the partner's pick; else the window and a tint from its id). */
@@ -124,8 +133,10 @@ export interface AppMeta {
  * answered) and the app itself (its page threw; it was made before the kit). Absent: nothing to say.
  */
 export interface AppLive {
-  /** A repeating task keeps it current: which, how it stands, when it last updated it and when it will next. */
-  kept?: { task: string; title: string; state: "running" | "resting" | "paused" | "failed"; last?: string; next?: string; why?: string; of: { kind: "routine" | "task"; id: string } };
+  /** A repeating task keeps it current: which, how it stands, when it last updated it and when it will next. `ended`: the task or Keep it follows has ended (the app says 已停止更新, 截至 {last}). */
+  kept?: { task?: string; keep?: string; title: string; state: "running" | "resting" | "paused" | "failed" | "ended"; last?: string; next?: string; why?: string; of: { kind: "routine" | "task" | "keep"; id: string } };
+  /** D612: it shows work it does not follow (a snapshot); the time its numbers are from. */
+  snapshot?: { at: string };
   /** The person asked the partner to change it and the answer hasn't come yet (since when). */
   changing?: { since: string };
   /** Its page threw when it ran: the first words of the error (fixes: ask the partner, or go back a version). */
@@ -141,7 +152,7 @@ export interface AppLive {
  * changed now; its page broke; its task failed or is paused or running; it still has the old look;
  * a task will update it next; else nothing (plain: when it last changed). The Mac's StateOf is the same.
  */
-export type AppState = "changing" | "broke" | "kept_failed" | "kept_paused" | "kept_running" | "old" | "kept_next" | "plain";
+export type AppState = "changing" | "broke" | "kept_failed" | "kept_paused" | "kept_running" | "kept_ended" | "old" | "kept_next" | "plain";
 export function appState(m: Pick<AppMeta, "live">): AppState {
   const l = m.live;
   if (l?.changing) return "changing";
@@ -149,10 +160,18 @@ export function appState(m: Pick<AppMeta, "live">): AppState {
   if (l?.kept?.state === "failed") return "kept_failed";
   if (l?.kept?.state === "paused") return "kept_paused";
   if (l?.kept?.state === "running") return "kept_running";
+  if (l?.kept?.state === "ended") return "kept_ended";
   if (l?.old) return "old";
   if (l?.kept) return "kept_next";
   return "plain";
 }
+
+/** D612: every task an app follows (a board may show more than one review task's work). */
+export const appTasks = (m: Pick<AppMeta, "task" | "tasks">): AppTask[] => {
+  const all = [...(m.task ? [m.task] : []), ...(m.tasks ?? [])];
+  const seen = new Set<string>();
+  return all.filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
+};
 
 /** D422: a file's look problems only (the lint's kit rules): an app made before the kit has some. */
 export function appKitIssues(html: string): string[] {

@@ -312,22 +312,42 @@ days (research/166 §2); the consumer whose morning fare check says the same thi
 fresh user, who meets it only when a routine of theirs repeats. **Felt:** before, the same paragraphs
 re-read; after, one page always current on every device and a quiet conversation between rounds.
 
-- **Data only.** An app can name the task that keeps it current (`AppMeta.task`). That task gets the
+- **Data only.** An app can name the task that keeps it current (`AppMeta.task`) or the Keep whose
+  rounds fill it (`AppMeta.keep`; every task a Keep's rounds run in may write it). That task gets the
   **`app_data`** tool: `{ app, set: {key: whole JSON value, null removes} }`, at most 40 keys a call,
   the app's 500,000 characters in all, 60 writes an hour. It never touches the file; the look is the
   person's (they change it by talking, as any app). It hears once, when given the app, which keys the
-  app reads and to write once a round.
+  app reads and to write once a round (a Keep's rounds hear it in their wake).
 - **The review board reuses the review report.** **审查看板 / Review board** is Ducter's own template
   (`core/src/review-board.ts`): its one key `board` is written by the home from D394's `review_report`
   (which now also carries each PR's `title` and `ci`) and from the drafts' state, after every round,
   every Go on the round card and every draft sent from its sheet. The review task never writes it;
-  the Ongoing card's line and the board read the same state.
-- **The offer, once.** After a review task's third round, or another repeating task's third done
-  report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**, **做成看板 /
-  Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it. Go on
-  reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
+  the Ongoing card's line and the board read the same state. **It shows only its own work:** the
+  rows are the `review_report`s of the task(s) that board follows, never the global review pile.
+- **Only a review task is offered a review board.** The partner decides once, at `task_open`, by
+  reading the brief, and records it as `needs.reviews`; code never counts `review_report` calls or
+  matches words. A task whose job is fixing code (its own PR goes to the Babysitter or the hand-off)
+  never gets `review_report`, the reviews offer or a board. Code guards it: a task that opens a PR of
+  its own (`gh pr create`, read by the command's grammar) is never a review task. An existing task in
+  rounds that already has a review board keeps its review work, so a running review Keep is not cut
+  off mid-life.
+- **The offer, once, per purpose.** After a review task's third round, or another repeating task's
+  third done report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**,
+  **做成看板 / Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it.
+  Go on reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
   other reports wakes the partner, who makes the app with the `app` tool and `task`. Never asked again.
   Asked in words ("把这些做成看板"), the partner does the same; a review task with no file gets the board.
+  **One board per purpose:** with a review board already there, the offer is nothing and a second is
+  never made; asking for another review task's board adds that task's work to the one board
+  (`AppMeta.tasks`), never a second 「审查看板」. For partner-made apps, the `[apps]` line carries each
+  app's `kind`, its task/Keep and its line, and the partner judges whether the ask duplicates one:
+  it then changes or extends that app instead of making another. Code dedupes the exact kind + task.
+- **A snapshot says so.** An app about a task's or a Keep's work that is not given to it is a
+  snapshot: `AppMeta.snapshot`, the app says **截至 {time}**, and the partner's line says plainly it
+  is a snapshot, not kept current. It never promises an update nothing will make.
+- **A stopped app says so.** When the task or Keep an app follows ends, the app says **已停止更新**
+  and **截至 {time}** as two separate elements (D291, never joined), on its tile and in its window,
+  and the `[apps]` line says so to the partner.
 - **Silent rounds.** A done report with no question from a task that keeps an app wakes nobody; a
   question, a block or a failure does. D394's round card stays the one thing that asks.
 - **Where it shows.** The Ongoing card: **打开「{name}」 / Open “{name}”**. The app's sheet: **「{task}」每一轮都会更新它

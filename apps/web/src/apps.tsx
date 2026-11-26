@@ -209,15 +209,19 @@ function sayAbout(m: AppMeta, text: string) {
 export function stateAction(m: AppMeta): { label: string; run: () => void } | undefined {
   const partner = A.defaultName() || "Ducter";
   const k = m.live?.kept;
+  const ongoing = (action: "run_now" | "resume") => {
+    if (k?.of.kind === "keep") return A.send({ t: "keep_action", id: k.of.id, action: action === "run_now" ? "look_now" : "resume" });
+    if (k) A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action });
+  };
   switch (appState(m)) {
     case "broke":
       return { label: t("app.live.fix", partner), run: () => sayAbout(m, t("app.live.fix.say", m.name, m.live?.broke?.text ?? "")) };
     case "old":
       return { label: t("app.live.renew"), run: () => sayAbout(m, t("app.live.renew.say", m.name)) };
     case "kept_failed":
-      return k ? { label: t("app.kept.retry"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "run_now" }) } : undefined;
+      return k ? { label: t("app.kept.retry"), run: () => ongoing("run_now") } : undefined;
     case "kept_paused":
-      return k ? { label: t("app.kept.resume"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "resume" }) } : undefined;
+      return k ? { label: t("app.kept.resume"), run: () => ongoing("resume") } : undefined;
     default:
       return undefined;
   }
@@ -238,6 +242,7 @@ export function StateLine({ m }: { m: AppMeta }) {
     : s === "kept_failed" ? t("app.kept.failed", k!.title)
     : s === "kept_paused" ? t("app.kept.paused", k!.title)
     : s === "kept_running" ? t("app.kept.running", k!.title)
+    : s === "kept_ended" ? t("app.kept.ended")
     : s === "old" ? t("app.live.old")
     : s === "kept_next" ? (k!.next ? t("app.kept.next", k!.title, when(A.L, k!.next)) : t("app.kept", k!.title))
     : m.task ? t("app.kept", m.task.title) : ""; // a home from before D422 sends no state: a task still keeps it
@@ -245,7 +250,14 @@ export function StateLine({ m }: { m: AppMeta }) {
     <span class={`app-state s-${s}`}>
       {s === "changing" && <span class="app-state-track" aria-hidden="true" />}
       {words && <span class="app-state-words">{words}</span>}
-      {(s === "plain" || s === "kept_next" || s === "old") && <span class="app-state-when">{t("app.updated", stamp(A.L, k?.last ?? m.updated))}</span>}
+      {s === "kept_ended" && <span class="app-state-when">{t("app.kept.asof", stamp(A.L, k?.last ?? m.updated))}</span>}
+      {m.live?.snapshot && (
+        <>
+          <span class="app-state-words">{t("app.snapshot")}</span>
+          <span class="app-state-when">{t("app.snapshot.asof", stamp(A.L, m.live.snapshot.at))}</span>
+        </>
+      )}
+      {!m.live?.snapshot && (s === "plain" || s === "kept_next" || s === "old") && <span class="app-state-when">{t("app.updated", stamp(A.L, k?.last ?? m.updated))}</span>}
     </span>
   );
 }

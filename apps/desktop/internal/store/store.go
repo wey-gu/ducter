@@ -1714,7 +1714,7 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 }
 
 // OpenAsk is the one predicate behind the needs-you count and every list
-// (D618): an offer (D453) never needs the person, a question put off with
+// (D608): an offer (D453) never needs the person, a question put off with
 // 晚点再问我 (D382) is not open now, and neither is one whose default has come
 // due. A Go default applies only on a reversible card; a Hold default applies
 // even when it is not reversible (the morning's picks). The TypeScript side is

@@ -1537,7 +1537,7 @@ a.task-link {
   font-weight: var(--ask-weight);
   line-height: 1.4;
   letter-spacing: 0;
-  /* D618: a long path or hash in an ask's words wraps instead of running past the card. */
+  /* D607: a long path or hash in an ask's words wraps instead of running past the card. */
   overflow-wrap: anywhere;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
@@ -25220,7 +25220,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
-  /* D618: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
+  /* D607: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
   overflow-wrap: anywhere;
 }
 /* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
@@ -25266,7 +25266,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   font-family: var(--mono);
   font-size: 0.88em;
   font-weight: 600;
-  /* D618: a long command wraps inside its chip (the bubble's code rule says nowrap). */
+  /* D607: a long command wraps inside its chip (the bubble's code rule says nowrap). */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25314,7 +25314,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink);
   -webkit-user-select: all;
   user-select: all;
-  /* D618: a one-time code wraps in its own well; Copy keeps its place at the right. */
+  /* D607: a one-time code wraps in its own well; Copy keeps its place at the right. */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25327,7 +25327,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
-/* D618: a code block in an ask's words scrolls in its own box, never widens the card. */
+/* D607: a code block in an ask's words scrolls in its own box, never widens the card. */
 .ask-said pre,
 .decision pre,
 .partner pre {

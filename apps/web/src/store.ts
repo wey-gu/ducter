@@ -1062,7 +1062,7 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      // D618: the count and every list read one predicate (protocol's open-asks.ts): an offer
+      // D608: the count and every list read one predicate (protocol's open-asks.ts): an offer
       // (D453), a question put off (D382) and one whose default is already due are not open here.
       .filter((d) => askOpen(d, { resolved: !!d.resolved, pending: d.pending, later: d.later }))
       .filter((d) => {

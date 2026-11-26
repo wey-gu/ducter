@@ -1,6 +1,6 @@
 package store
 
-// D618: the Mac's open predicate reads the same fixture as the protocol and the web, so the
+// D608: the Mac's open predicate reads the same fixture as the protocol and the web, so the
 // needs-you count and every list agree across clients. A picks offer past its time is settled by
 // the home and is not counted here either.
 

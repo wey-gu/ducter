@@ -86,7 +86,7 @@ export const channelWords: { zh: Record<string, string>; en: Record<string, stri
     "chats.wx.scan.phone": "只有这台手机的话，先截个图，再在「扫一扫」里从相册选它。",
     "chats.wx.verify": "微信里显示的数字",
     "chats.wx.verify.go": "填好了",
-    "chats.wx.cancel": "不连了",
+    "chats.wx.cancel": "取消",
     "chats.wx.expired": "二维码过期了。扫了没反应的话，可能你的微信还没开放 ClawBot。",
     "chats.wx.unavailable": "微信暂停了这次扫码，过一会儿再试。",
     "chats.wx.cant.key": "微信要你重新扫一次码。",

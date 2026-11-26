@@ -216,7 +216,7 @@ export interface KeepPage extends KeepSheet {
   agent?: string;
 }
 
-/** What 暂停 / Pause, 恢复 / Resume, 现在看一次 / Look now and 停下 / Stop do to a Keep. */
+/** What 暂停 / Pause, 恢复 / Resume, 立即运行 / Run now and 结束看守 / End (D592) do to a Keep. */
 export type KeepAction = { action: "pause"; until?: string } | { action: "resume" } | { action: "look_now" } | { action: "stop" };
 
 /** D511: the receipt card under the partner's words when a Keep was made (the first-made moment). */

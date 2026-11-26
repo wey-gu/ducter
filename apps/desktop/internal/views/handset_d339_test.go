@@ -80,7 +80,7 @@ func TestD339PausedLoanLivesInTheTaskNotTheTitleBar(t *testing.T) {
 		t.Fatalf("drawn in the title bar (y %v, %v; bar %v)", line.Y, why.Y, ChromeH)
 	}
 	// Stop sits with it, in the task's head.
-	if stop, ok := tt.Find("停下"); !ok || stop.Y < ChromeH {
+	if stop, ok := tt.Find("停止"); !ok || stop.Y < ChromeH {
 		t.Fatalf("Stop: %v %v", stop, ok)
 	}
 	// The head says where it works, and 看它上网 isn't offered: it never opened a page in Ducter's browser.

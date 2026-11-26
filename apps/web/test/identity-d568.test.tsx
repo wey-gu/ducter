@@ -260,12 +260,12 @@ describe("D568: every figure is the one its name says", () => {
           expect(head?.textContent).toContain(mara.name);
           expect(head?.textContent.replace(/[\u00a0\u2060\u202f]/g, " ")).toContain("Claude Code");
           expect(head?.textContent).not.toContain("Codex");
-          // D582: each partner's row rests as its figure, the default's too; the six open behind 改一下.
+          // D582: each partner's row rests as its figure, the default's too; the six open behind 修改.
           const picks = root.all().filter((e) => e.attrs.class?.split(" ").includes("fig-pick"));
           expect(picks.length).toBe(0);
           const rows = root.all().filter((e) => e.attrs.class?.split(" ").includes("partner-row"));
           expect(rows.length).toBe(ps.length);
-          for (const r of rows) expect(r.textContent).toContain(lang === "zh" ? "改一下" : "Change");
+          for (const r of rows) expect(r.textContent).toContain(lang === "zh" ? "修改" : "Change");
         }
         if (page === "") {
           // The list's 伙伴 row and the brief wear 小玛, and the brief says what 小玛 thinks with.
@@ -282,7 +282,7 @@ describe("D568: every figure is the one its name says", () => {
       for (const page of ["list", "partner", "memory"]) expect(Number(counts.find((c) => c.startsWith(`${page}=`))?.split("=")[1])).toBeGreaterThan(0);
     });
 
-  test("one partner gets its row (the picker behind 改一下, D582), and wears its figure", async () => {
+  test("one partner gets its row (the picker behind 修改, D582), and wears its figure", async () => {
     const A = await rig("zh", [{ id: "default", name: "Ducter", look: "sand", figure: "bun", asks: 0 }] as never, "default");
     expect(A.speakerFor().wear).toEqual({ figure: "bun", look: "sand" });
     expect(A.shownWear()).toEqual({ figure: "bun", look: "sand" });

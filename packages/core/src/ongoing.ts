@@ -2,7 +2,7 @@
 // Two kinds: a routine (D114: on a schedule or a condition, each firing a run) and a task resting
 // on its own wait (D267/D279: it looks again every so often). One set of gestures for both:
 //   暂停 / Pause (no new runs or looks; until a time, or until resumed), 恢复 / Resume,
-//   现在跑一次 / Run now (a routine's run, or a task's look now), 改时间 / Change when (a time
+//   立即运行 / Run now (a routine's run, or a task's look now), 改时间 / Change when (a time
 //   routine), 不再跑 / End.
 // Routines keep their own pause (routines.ts). A task's pause is Ducter's here: its armed waits
 // end (by the user) and are kept in <dataDir>/paused.json, and come back as they were on resume.

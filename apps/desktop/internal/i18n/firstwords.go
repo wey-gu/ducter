@@ -10,7 +10,7 @@ var zhFirstWords = Table{
 	"first.from":               "只看了每段对话的名字、文件夹、时间，和你在里面说的第一句与最后一句；不看代码和文件，密钥一律遮住。只在 %s 上读，除了你和你用的 AI，谁也看不到。",
 	"first.from.and":           " 和 ",
 	"first.here":               "这台电脑",
-	"first.stop":               "别再看了",
+	"first.stop":               "不再读取",
 	"first.stopped":            "好，以后不再看这些记录，看到的也忘了。",
 	"first.again":              "还是看吧",
 	"first.how":                "怎么知道的",

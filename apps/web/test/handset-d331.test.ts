@@ -9,7 +9,7 @@ describe("where the loan stands (D331)", () => {
   test("the words exist in both languages, and none says the card is still asking after a Go", () => {
     for (const lang of ["zh", "en"] as const) for (const k of KEYS) expect(TABLES[lang][k], `${lang} ${k}`).toBeTruthy();
     expect(TABLES.zh["handset.wait.unlock"]).toBe("借给它了：解锁你的 %s 就开始");
-    expect(TABLES.zh["handset.withdraw"]).toBe("不借了");
+    expect(TABLES.zh["handset.withdraw"]).toBe("取消借用");
     expect(TABLES.en["handset.paused.asking"]).toBe("Asking on your %s: keep lending it?");
     // A lock no longer gives it back, so "locked" is not a reason it isn't answering.
     expect(TABLES.zh["handset.quiet"]).not.toContain("锁");

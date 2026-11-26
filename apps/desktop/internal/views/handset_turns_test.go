@@ -9,11 +9,11 @@ import (
 )
 
 // D280: Android's prompt to allow a recording is the person's turn, said on
-// the Mac in their language, with only 不录了 / Skip recording.
+// the Mac in their language, with only 跳过录制 / Skip recording.
 func TestHandsetRecordCardWords(t *testing.T) {
 	d := &store.DecisionState{Decision: protocol.Decision{Question: "在 Pixel Fold · Ducter 上点「立即开始」，它才能录屏", Handset: &protocol.HandsetAsk{Kind: "record", Device: "p1", Name: "Pixel Fold · Ducter", Until: "2026-11-16T20:16:00Z"}}}
 	zh, _ := iaApp(t, i18n.ZH)
-	if q, h := zh.questionOf(d), zh.holdLabel(d); q != "在 Pixel Fold 上点「立即开始」，它才能录屏" || h != "不录了" {
+	if q, h := zh.questionOf(d), zh.holdLabel(d); q != "在 Pixel Fold 上点「立即开始」，它才能录屏" || h != "跳过录制" {
 		t.Errorf("zh %q / %q", q, h)
 	}
 	en, _ := iaApp(t, i18n.EN)

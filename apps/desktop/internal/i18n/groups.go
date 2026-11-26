@@ -13,7 +13,7 @@ var zhGroups = Table{
 	"group.held.on":              "排着，在 %s 上做",
 	"group.more.tasks":           "还有 %d 个",
 	"group.menu":                 "这个分组",
-	"group.rename":               "改名",
+	"group.rename":               "重命名",
 	"group.rename.keys":          "回车保存，Esc 取消",
 	"group.toSide":               "改成同时做",
 	"group.toLine":               "改成一个做完接下一个",

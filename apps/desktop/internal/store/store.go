@@ -631,6 +631,10 @@ type Store struct {
 	// never show in the conversation (its follow-ups with no card, the
 	// answers that went into it), for 最近 / Recently.
 	TaskPeers []*Entry
+	// BridgeReceipts (D619) is the latest read receipt Mem gave for a
+	// sent message, by "op:<opId>" and "msg:<messageId>": 已送达 / 已读 /
+	// 「{n}/{m} 已读」 beside the time, and nothing when none is available.
+	BridgeReceipts map[string]*protocol.BridgeReceipt
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -1319,6 +1323,20 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	if err != nil || body == nil {
 		return
 	}
+	if br, ok := body.(*protocol.BridgeRead); ok {
+		// D619: one quiet receipt for a message already shown; no line of its own.
+		if s.BridgeReceipts == nil {
+			s.BridgeReceipts = map[string]*protocol.BridgeReceipt{}
+		}
+		if br.OpID != "" {
+			s.BridgeReceipts["op:"+br.OpID] = &br.Receipt
+		}
+		if br.MessageID != "" {
+			s.BridgeReceipts["msg:"+br.MessageID] = &br.Receipt
+		}
+		s.bySeq[ev.Seq] = nil
+		return
+	}
 	if taskID := taskOf(ev, body); taskID != "" {
 		t := s.task(taskID)
 		if !t.seqs[ev.Seq] {
@@ -1645,6 +1663,45 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	default:
 		s.bySeq[ev.Seq] = nil
 	}
+}
+
+// ReceiptOf is what Mem last said about who opened one sent message (D619): the receipt by
+// its op, else by its message id; nil when Mem has none (unknown, never unread).
+func (s *Store) ReceiptOf(opID, messageID string) *protocol.BridgeReceipt {
+	if opID != "" {
+		if r := s.BridgeReceipts["op:"+opID]; r != nil {
+			return r
+		}
+	}
+	if messageID != "" {
+		if r := s.BridgeReceipts["msg:"+messageID]; r != nil {
+			return r
+		}
+	}
+	return nil
+}
+
+// TaskReceipt is the receipt of the newest message a task sent through Bridge (D619), for a
+// helper's round whose task answered a sender: nil when none of its messages has one.
+func (s *Store) TaskReceipt(taskID string) *protocol.BridgeReceipt {
+	if taskID == "" {
+		return nil
+	}
+	var best *protocol.BridgeReceipt
+	var bestSeq int64
+	scan := func(es []*Entry) {
+		for _, e := range es {
+			if e.Peer == nil || e.Peer.Direction != "out" || e.Peer.TaskID != taskID || e.Event.Seq <= bestSeq {
+				continue
+			}
+			if r := s.ReceiptOf(e.Peer.OpID, e.Peer.MessageID); r != nil {
+				best, bestSeq = r, e.Event.Seq
+			}
+		}
+	}
+	scan(s.Channel)
+	scan(s.TaskPeers)
+	return best
 }
 
 // firstN is s's first n bytes (a timestamp's date).

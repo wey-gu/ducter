@@ -136,7 +136,7 @@ export interface BridgeOp {
  * seen. Without one, `receipt_available: false` and `read_state: "unknown"`: a missing count is never a
  * zero. The nested `read_receipt` (the binary's older protocol, D555's guess) is read only as a fallback.
  */
-export type OpRead = { state: "read" | "partly" | "unread"; count?: number; at?: number };
+export type OpRead = { state: "read" | "partly" | "unread"; count?: number; /** D619: people it went to, when Mem says (several readers read as 2/5). */ total?: number; at?: number };
 export function receiptOf(o: any): OpRead | undefined {
   const nested = o?.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o?.receipt && typeof o.receipt === "object" ? o.receipt : undefined;
   const r = o && typeof o === "object" && "receipt_available" in o ? o : nested;
@@ -145,9 +145,15 @@ export function receiptOf(o: any): OpRead | undefined {
   const state = s === "read" ? "read" : s === "partially_read" ? "partly" : s === "unread" ? "unread" : undefined;
   const rr = r.read_recipients ?? r.read_count;
   const count = Number.isInteger(rr) && rr >= 0 ? (rr as number) : Array.isArray(rr) ? rr.length : undefined;
+  const rt = r.recipients;
+  const total = Number.isInteger(rt) && rt >= 0 ? (rt as number) : Array.isArray(rt) ? rt.length : undefined;
   if (!state && count === undefined) return undefined;
+  // D619: Mem's integer `recipients` says how many people it went to, so several readers read as
+  // 2/5. A count with a larger total is partly read even if an older shape only said "read".
+  const partly = count !== undefined && total !== undefined && count > 0 && count < total;
+  const derived = partly ? "partly" : state;
   const at = typeof r.receipt_observed_at_us === "number" && r.receipt_observed_at_us > 0 ? Math.floor(r.receipt_observed_at_us / 1000) : undefined;
-  return { state: state ?? (count! > 0 ? "read" : "unread"), ...(count !== undefined ? { count } : {}), ...(at ? { at } : {}) };
+  return { state: derived ?? (count! > 0 ? "read" : "unread"), ...(count !== undefined ? { count } : {}), ...(total !== undefined ? { total } : {}), ...(at ? { at } : {}) };
 }
 
 /**
@@ -167,12 +173,13 @@ export interface BridgeClient {
   /**
    * New messages in the persona's inbox, with bodies, skipping ids the caller already has.
    * `reads`: the read status of our own sent messages, when the inbox reports it.
+   * `receipts` (D619): the same rows with Mem's counts, for the quiet state beside a sent message.
    */
   /**
    * `receives` (D604): the Spaces this mailbox was read in on this check, by id and label: Mem's
    * identity inbox lists each Space it read (`spaces[]`, `status: "observed"`), or each place read.
    */
-  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean>; stuckIn?: { code: string; space: string }; receives?: { id: string; label: string }[] }>>;
+  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean>; receipts?: Record<string, OpRead>; stuckIn?: { code: string; space: string }; receives?: { id: string; label: string }[] }>>;
   /**
    * The handles in the inbox, without opening any (nothing is marked read). Used once, when Bridge
    * is first on for a persona: what is already there is not a request to it (B14, D170).
@@ -557,12 +564,17 @@ export function mergeInboxPages(a: any, b: any): any {
   return out;
 }
 
-/** Read status of our own sent messages, from the inbox's outgoing refresh (when present). */
-export function outgoingReads(j: any): Record<string, boolean> | undefined {
+/** The inboxes' `outgoing[]` rows (top level, or D409's one list per Space), when present. */
+function outgoingList(j: any): any[] | undefined {
   const top = Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.sent) ? j.sent : undefined;
   // D409: nmem 0.10.121 (VERIFIED 2026-11-20): `spaces[].outgoing`, one list per Space, none at the top.
   const per = Array.isArray(j?.spaces) ? j.spaces.filter((x: any) => Array.isArray(x?.outgoing)).flatMap((x: any) => x.outgoing) : [];
-  const list = top || per.length ? [...(top ?? []), ...per] : undefined;
+  return top || per.length ? [...(top ?? []), ...per] : undefined;
+}
+
+/** Read status of our own sent messages, from the inbox's outgoing refresh (when present). */
+export function outgoingReads(j: any): Record<string, boolean> | undefined {
+  const list = outgoingList(j);
   if (!list) return undefined;
   const out: Record<string, boolean> = {};
   for (const m of list) {
@@ -575,6 +587,32 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
     out[id] = Number.isInteger(n) ? n > 0 : m?.read === true || !!str(m?.read_at) || /^(read|partially_read|opened)$/i.test(str(m?.state) ?? str(m?.status) ?? "");
   }
   return out;
+}
+
+/**
+ * D619: the inbox's own word on who opened our sent messages, counts and all: the live source for
+ * 已送达 / 已读 / 「{n}/{m} 已读」, read on the check Ducter already runs. Only rows Mem says something
+ * about are in it; a row with no receipt is absent (unknown), never `{ count: 0 }`.
+ */
+export function outgoingReceipts(j: any): Record<string, OpRead> | undefined {
+  const list = outgoingList(j);
+  if (!list) return undefined;
+  const out: Record<string, OpRead> = {};
+  for (const m of list) {
+    const id = str(m?.message) ?? str(m?.message_id) ?? str(m?.id);
+    if (!id) continue;
+    const rr = m?.read_recipients;
+    const count = Number.isInteger(rr) && rr >= 0 ? (rr as number) : Array.isArray(rr) ? rr.length : undefined;
+    const rt = m?.recipients;
+    const total = Number.isInteger(rt) && rt >= 0 ? (rt as number) : Array.isArray(rt) ? rt.length : undefined;
+    const word = str(m?.read_state) ?? str(m?.status) ?? str(m?.state) ?? "";
+    // D595: the integer count first; the words whole ("unread" is never a read, "delivered" is 0 read).
+    const said = /^(read|opened)$/i.test(word) ? "read" : /^(partially_read|partial)$/i.test(word) ? "partly" : /^(unread|delivered)$/i.test(word) ? "unread" : undefined;
+    const state = count !== undefined ? (count > 0 ? (total !== undefined && count < total ? "partly" : "read") : "unread") : said;
+    if (!state) continue; // no receipt: nothing is said, never a zero
+    out[id] = { state, ...(count !== undefined ? { count } : {}), ...(total !== undefined ? { total } : {}) };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /**
@@ -1039,6 +1077,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     async check(known) {
       const messages: BridgeMessage[] = [];
       let reads: Record<string, boolean> | undefined;
+      let receipts: Record<string, OpRead> | undefined;
       let stuckIn: { code: string; space: string } | undefined;
       let answered = false;
       let lastFail: BridgeFailure | undefined;
@@ -1156,9 +1195,11 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         }
         const rd = outgoingReads(j);
         if (rd) reads = { ...(reads ?? {}), ...rd };
+        const rc = outgoingReceipts(j);
+        if (rc) receipts = { ...(receipts ?? {}), ...rc };
       }
       if (!answered && lastFail) return lastFail;
-      return { ok: true, messages, ...(reads ? { reads } : {}), ...(stuckIn ? { stuckIn } : {}), ...(receives.length ? { receives } : {}) };
+      return { ok: true, messages, ...(reads ? { reads } : {}), ...(receipts ? { receipts } : {}), ...(stuckIn ? { stuckIn } : {}), ...(receives.length ? { receives } : {}) };
     },
     async inboxIds() {
       const ids: string[] = [];

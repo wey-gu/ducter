@@ -934,6 +934,10 @@ func (a *App) keepRounds(c *ui.Context, k *protocol.KeepPage, w float32) {
 				if bold {
 					e.FontWeight(700)
 				}
+				// D619: a round whose task answered a sender over Bridge says who has read it.
+				if rc := a.receiptText(a.S.TaskReceipt(r.TaskID)); rc != "" {
+					uiText(c.Key("rc"), rc).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				}
 				if r.Report != "" {
 					chev := 1
 					if open {

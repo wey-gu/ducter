@@ -12,7 +12,7 @@ import { createPortal } from "preact/compat";
 import { A } from "./app.ts";
 import { Btn, Chev, DangerButton, EditRow, Facts, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
-import { clock, colTime, harnessName, spoken, when } from "./format.ts";
+import { clock, colTime, harnessName, receiptWords, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
 import { healthLine, rhythm } from "./past.tsx";
@@ -381,6 +381,8 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
       </div>
     );
   const more = !!r.report;
+  // D619: a round whose task answered a sender over Bridge says quietly who has read it; nothing when Mem has no receipt.
+  const receipt = receiptWords(A.S.receiptOfTask(r.taskId), A.L);
   return (
     <div class={`kp-rd${open ? " open" : ""}`}>
       <TimeCol at={r.at} text={colTime(A.L, r.at)} />
@@ -396,6 +398,7 @@ function Round({ r, k, open, onToggle }: { r: KeepRound; k: KeepPage; open: bool
       </span>
       <span class="end">
         <span class={`out o-${r.spoke}${r.state === "failed" ? " failed" : ""}`}>{outWords(r)}</span>
+        {receipt && <small class="receipt">{receipt}</small>}
         {more && <Btn kind="text" size="sm" chev expanded={open} label={t("keep.round.details")} onClick={onToggle} />}
       </span>
     </div>

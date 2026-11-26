@@ -29,7 +29,7 @@ import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, receiptWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -1667,9 +1667,13 @@ function PeerLine({ b, ts, seq }: { b: Bodies["bridge_msg"]; ts: string; seq?: n
   const ping = b.state === "ping" && seq !== undefined ? A.S.pings.get(seq) : undefined;
   // D444: what it handed over from Nowledge Mem, each its own element, by Mem's title.
   const refs = b.direction === "in" && !b.state ? (b.refs ?? []) : [];
+  // D619: what Mem said about the person's readers, quiet after the line; nothing when it has no receipt.
+  const receipt = b.direction === "out" && b.state === "sent" ? receiptWords(A.S.receiptOf(b), A.L) : "";
   return (
     <div class={ping || refs.length ? "peerline wrap" : "peerline"} role="status">
       <span>{peerLineText(refs.length ? { ...b, text: withRefTitles(b.text, refs) } : b, ts, n, ping)}</span>
+      {receipt && <span class="peer-sep" aria-hidden="true" />}
+      {receipt && <span class="peer-receipt">{receipt}</span>}
       {refs.filter((r) => !(r.uri && r.title && b.text.includes(r.uri))).map((r, i) => (
         <span key={i} class="peer-ref">
           {refWords(r)}

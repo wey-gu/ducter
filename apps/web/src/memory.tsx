@@ -18,7 +18,7 @@ import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
-import { ago, harnessName, keepClauses, spoken } from "./format.ts";
+import { ago, harnessName, keepClauses, receiptWords, spoken } from "./format.ts";
 import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
@@ -1124,6 +1124,8 @@ function PeersThread({ th, p }: { th: Thread; p: PeersSettings }) {
       {th.items.map((x) => {
         const l = exLine(x);
         const w = exWhen(x);
+        // D619: what Mem said about the message this row shows, quiet under its time; nothing when it has no receipt.
+        const receipt = x.outcome.kind === "notsent" ? "" : receiptWords(A.S.receiptOf(x.sent), A.L);
         return (
           <button type="button" key={x.seq} class="chat-row mem-item ex-item" onClick={() => openExchange(x)}>
             <span class="grow">
@@ -1132,7 +1134,10 @@ function PeersThread({ th, p }: { th: Thread; p: PeersSettings }) {
                 {l.text}
               </small>
             </span>
-            <span class={`g-state${w.bad ? " tone-bad" : ""}`}>{w.text}</span>
+            <span class={`g-state${w.bad ? " tone-bad" : ""}`}>
+              <span>{w.text}</span>
+              {receipt && <small class="receipt">{receipt}</small>}
+            </span>
           </button>
         );
       })}

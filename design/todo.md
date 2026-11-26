@@ -977,15 +977,11 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       on the list; `last_seen_at_ms` per connection.
 - [ ] A real `last_seen_at_ms` number (null on both of the partner's connections on 2026-11-22). Trigger: Mem fills it,
       or Mem says when it does.
-- [ ] **已读 / Read** on 来往 for a sent message. D555: Mem named the verbs (nmem 0.10.123: `outbox` and `inspect`
-      show how many recipients opened it); Ducter parses `read_receipt` (`receiptOf`, only when `receipt_available`)
-      but shows nothing until the shape is seen. Trigger: `ducter check run mem-shapes` on hel passes its `receipts`
-      step (or Mem confirms the JSON, private ask item 1); then read the outbox when the pane wants it (as D444's
-      contacts) and say **已读 / Read** beside a sent message, both clients, with shots. D557 (the 2026-11-25 live
-      pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
-      "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
-      so the trigger stands. D595: Mem confirmed the JSON (top-level fields, integer counts; VERIFIED on 0.10.124,
-      research/237) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
+- [x] **已读 / Read** on 来往 for a sent message. Done as D619: **已送达 / Delivered**, **已读 / Read**
+      and **「{n}/{m} 已读」** beside every sent message's time (the conversation's relay line, a task's
+      `agent_message` row, a helper's rounds, Settings › Agent 通信's 来往), both clients and a helper's Keep,
+      live on the inbox check Ducter already runs; nothing when Mem has no receipt (D595's contract, research/237),
+      never a made-up unread. Shots `.shots/bridge-read/`.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,

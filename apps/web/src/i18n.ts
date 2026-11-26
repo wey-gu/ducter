@@ -255,6 +255,10 @@ const zh: Record<string, string> = {
   "peer.in.other": "%s 发来请求「%s」",
   "peer.replied": "已回复 %s",
   "peer.sent": "已发给 %s",
+  // D619: a sent message's receipt beside its time, quiet; nothing when Mem has none.
+  "bridge.receipt.delivered": "已送达",
+  "bridge.receipt.read": "已读",
+  "bridge.receipt.partly": "%d/%d 已读",
   "peer.someone": "一个没留名字的 agent",
   "peer.in.host": "%s 里的 agent",
   // D418: one of the person's own agents: by its own words, else that it is theirs.
@@ -1316,6 +1320,10 @@ const en: Record<string, string> = {
   "peer.in.other": "%s sent a request: “%s”",
   "peer.replied": "Replied to %s",
   "peer.sent": "Sent to %s",
+  // D619: a sent message's receipt beside its time, quiet; nothing when Mem has none.
+  "bridge.receipt.delivered": "Delivered",
+  "bridge.receipt.read": "Read",
+  "bridge.receipt.partly": "%d/%d read",
   "peer.someone": "an unnamed agent",
   "peer.in.host": "an agent in %s",
   "peer.yours": "your %s",

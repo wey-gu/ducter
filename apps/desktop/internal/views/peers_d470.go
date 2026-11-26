@@ -94,12 +94,14 @@ type exOutcome struct {
 
 // exItem is one exchange in a thread: what was asked, which way (in, asked, taskasked), what came of it.
 type exItem struct {
-	Seq     int64
-	At      string
-	Way     string
-	Words   string
-	TaskID  string
-	Outcome exOutcome
+	Seq    int64
+	At     string
+	Way    string
+	Words  string
+	TaskID string
+	// D619: the message this row shows that Ducter sent (a reply, a claim or the question).
+	OpID, MessageID string
+	Outcome         exOutcome
 }
 
 // exThread is one agent's exchanges, newest first.
@@ -223,7 +225,17 @@ func exchangeThreads(feed []*store.Entry, outOps map[string]*store.Entry, decisi
 					}
 				}
 			}
+			var sent *protocol.BridgeMsg
+			switch {
+			case claim != nil:
+				sent = claim
+			case reply != nil:
+				sent = reply
+			}
 			item = exItem{Seq: e.Event.Seq, At: e.Event.TS, Way: "in", Words: words, TaskID: p.TaskID, Outcome: oc}
+			if sent != nil {
+				item.OpID, item.MessageID = sent.OpID, sent.MessageID
+			}
 		} else {
 			if p.InReplyTo != "" || p.State == "pending" || p.State == "held" || p.State == "followed" {
 				continue
@@ -238,7 +250,7 @@ func exchangeThreads(feed []*store.Entry, outOps map[string]*store.Entry, decisi
 			if p.By == "task" {
 				way = "taskasked"
 			}
-			item = exItem{Seq: e.Event.Seq, At: e.Event.TS, Way: way, Words: words, TaskID: p.TaskID, Outcome: oc}
+			item = exItem{Seq: e.Event.Seq, At: e.Event.TS, Way: way, Words: words, TaskID: p.TaskID, OpID: p.OpID, MessageID: p.MessageID, Outcome: oc}
 		}
 		name, host := peerCalled(p)
 		key := name
@@ -695,8 +707,20 @@ func (a *App) exRow(c *ui.Context, x exItem) {
 			uiText(c, keepWords(autospace(x.Words))).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).MaxLines(2)
 			uiText(c, keepWords(autospace(line))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(ink).MaxLines(2)
 		})
-		if when != "" {
-			uiText(c, when).FontSize(t.SM).FontWeight(600).TextColor(whenInk).SingleLine().Shrink(0)
+		// D619: the receipt sits under the time, small and quiet; nothing when Mem has none.
+		receipt := ""
+		if x.Outcome.Kind != "notsent" {
+			receipt = a.receiptText(a.S.ReceiptOf(x.OpID, x.MessageID))
+		}
+		if when != "" || receipt != "" {
+			ui.Column(c.Key("when")).Gap(2).AlignItems(ui.End).Shrink(0).Children(func() {
+				if when != "" {
+					uiText(c.Key("at"), when).FontSize(t.SM).FontWeight(600).TextColor(whenInk).SingleLine()
+				}
+				if receipt != "" {
+					uiText(c.Key("rc"), receipt).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				}
+			})
 		}
 	})
 	if b.Clicked() {

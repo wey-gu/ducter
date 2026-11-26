@@ -64,7 +64,7 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
-import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
+import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult, type OpRead } from "./bridge.ts";
 import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, isHelperWork, type Helper } from "../../protocol/src/helpers.ts";
 import { helperQuestions } from "../../protocol/src/handoff.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
@@ -5535,6 +5535,32 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
    * quiet hours. Bridge wakes nobody, so the line reports silence; it never says "reminded".
    */
   let lastReads: Record<string, boolean> = {};
+  // D619: the receipts Mem has already reported, by op, so the check appends one bridge_read per
+  // change and never the same state twice (a restart reads them back from the Log). The check that
+  // brings arrivals is the only reader: no second loop asks Mem again.
+  const receiptSeen = new Map<string, string>();
+  let receiptSeeded = false;
+  const receiptPrint = (r: OpRead) => `${r.state}|${r.count ?? ""}|${r.total ?? ""}`;
+  function noteReceipts(rs: Record<string, OpRead> | undefined) {
+    if (!rs) return;
+    if (!receiptSeeded) {
+      receiptSeeded = true;
+      for (const e of core.log.read({ stream: "channel", kinds: ["bridge_read"], limit: 5000 })) {
+        const b = e.body as Bodies["bridge_read"];
+        if (b?.opId) receiptSeen.set(b.opId, receiptPrint(b.receipt));
+      }
+    }
+    const byMessage = new Map<string, string>();
+    for (const o of foldOut(loggedBridge()).values()) if (o.last.messageId) byMessage.set(o.last.messageId, o.opId);
+    for (const [messageId, receipt] of Object.entries(rs)) {
+      const opId = byMessage.get(messageId);
+      if (!opId) continue;
+      const print = receiptPrint(receipt);
+      if (receiptSeen.get(opId) === print) continue;
+      receiptSeen.set(opId, print);
+      core.log.append({ stream: "channel", origin: "system", kind: "bridge_read", body: { opId, messageId, receipt } });
+    }
+  }
   function followThrough() {
     if (!bridge || closed) return;
     const t = now();
@@ -5721,6 +5747,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         void b0.mailboxes!().then((x) => x.ok && core.bridgeLink?.setMailboxes?.(x.list)).catch(onError);
       }
       if (r.reads) lastReads = { ...lastReads, ...r.reads };
+      if (r.receipts) for (const [id, rc] of Object.entries(r.receipts)) lastReads[id] = rc.count !== undefined ? rc.count > 0 : rc.state !== "unread";
+      noteReceipts(r.receipts);
       // D494: mail to the person's helpers, read with each one's own context (Mem's identity inbox).
       const helperMail: (BridgeMessage & { helper: string })[] = [];
       for (const h of core.helpers?.listening() ?? []) {
@@ -5728,6 +5756,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (hr?.ok) for (const m of hr.messages) helperMail.push({ ...m, helper: h.id });
         // D604: where it receives, as Mem's identity inbox read it just now: a fact for [helpers] and its sheet.
         if (hr?.ok && hr.receives?.length) core.helpers?.setSpaces?.(h.id, hr.receives);
+        if (hr?.ok) noteReceipts(hr.receipts); // D619: a helper's replies carry receipts too
       }
       let n = 0;
       // D418: the very first message any agent sent this persona carries the one-time note (a client's

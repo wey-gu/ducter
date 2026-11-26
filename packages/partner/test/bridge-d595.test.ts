@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNmemBridge, outgoingReads, receiptOf } from "../src/bridge.ts";
+import { createNmemBridge, outgoingReads, outgoingReceipts, receiptOf } from "../src/bridge.ts";
 
 const AT_US = Date.parse("2026-11-26T02:00:00Z") * 1000;
 
@@ -17,9 +17,9 @@ describe("D595: read receipts as Mem's contract says (nmem 0.10.124)", () => {
   test("an outbox op's top-level fields", () => {
     // The 0.10.124 outbox row as seen live (field names and types; values made up).
     const op = { operation: "bo1:a", phase: "settled", delivery_state: "delivered", status: "read", message: "m-1", reply_to: "m-1", body_sha256: "x", receipt_available: true, read_state: "read", read_recipients: 1, recipients: 1, receipt_observed_at_us: AT_US };
-    expect(receiptOf(op)).toEqual({ state: "read", count: 1, at: Math.floor(AT_US / 1000) });
-    expect(receiptOf({ ...op, read_state: "partially_read", read_recipients: 1, recipients: 3 })).toEqual({ state: "partly", count: 1, at: Math.floor(AT_US / 1000) });
-    expect(receiptOf({ ...op, read_state: "unread", read_recipients: 0 })).toEqual({ state: "unread", count: 0, at: Math.floor(AT_US / 1000) });
+    expect(receiptOf(op)).toEqual({ state: "read", count: 1, total: 1, at: Math.floor(AT_US / 1000) });
+    expect(receiptOf({ ...op, read_state: "partially_read", read_recipients: 1, recipients: 3 })).toEqual({ state: "partly", count: 1, total: 3, at: Math.floor(AT_US / 1000) });
+    expect(receiptOf({ ...op, read_state: "unread", read_recipients: 0 })).toEqual({ state: "unread", count: 0, total: 1, at: Math.floor(AT_US / 1000) });
   });
 
   test("no receipt: unknown, never a zero", () => {
@@ -41,6 +41,16 @@ describe("D595: read receipts as Mem's contract says (nmem 0.10.124)", () => {
     };
     // e: the count says no one opened it, whatever the word.
     expect(outgoingReads(j)).toEqual({ a: true, b: false, c: false, d: true, e: false });
+    // D619: the same rows with counts, for 已送达 / 已读 / 「{n}/{m} 已读」; no receipt is absent.
+    expect(outgoingReceipts(j)).toEqual({
+      a: { state: "read", count: 1, total: 1 },
+      b: { state: "unread", count: 0, total: 1 },
+      c: { state: "unread" },
+      d: { state: "partly" },
+      e: { state: "unread", count: 0 },
+    });
+    expect(outgoingReceipts({ messages: [] })).toBeUndefined();
+    expect(outgoingReceipts({ outgoing: [{ message: "f", status: "queued" }] })).toBeUndefined();
   });
 });
 

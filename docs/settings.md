@@ -361,8 +361,12 @@ Your partner speaks first at the top of the page, saying how things stand now, f
 **Codex and I talk both ways; Claude Code is one step away.** When one of your agents can hand your
 partner work but your partner's answers can't get back to it yet, the same step waits for you on
 Settings' **Overview**. The picture at the top shows who they are: agents connected to Nowledge
-Mem. Then comes the one switch, **Let them reach {name}**, and under it what it gives you: they can hand {name} work and ask it things, {name} asks
-them for you, and anything that needs your call shows up in your conversation.
+Mem. Then comes the one switch, **Let them reach {name}**, and under it what it gives you: they can
+hand {name} work and ask it things, {name} asks them for you, and anything that needs your call shows
+up in your conversation. A message {name} sends one of them for you says quietly beside its time
+whether it arrived and whether it has been read: **Delivered** while nobody has opened it, **Read**
+once someone has, and **2/5 read** in a Space with several people. When Nowledge Mem has no read
+receipt for it, nothing is shown rather than a guess.
 
 **Your agents** lists each AI tool you use, one row each: its mark, its name, and what it can do with
 your partner, in plain words, with when it last came at the right:

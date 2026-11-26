@@ -118,6 +118,7 @@ const (
 	KindMemoryNoted      = "memory_noted"
 	KindMemoryRecalled   = "memory_recalled"
 	KindBridgeMsg        = "bridge_msg"
+	KindBridgeRead       = "bridge_read"
 )
 
 type UserMsg struct {
@@ -964,6 +965,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Waiter{}
 	case KindBridgeMsg:
 		v = &BridgeMsg{}
+	case KindBridgeRead:
+		v = &BridgeRead{}
 	case KindBodySelected:
 		v = &BodySelected{}
 	case KindFinds:
@@ -1022,6 +1025,23 @@ type BridgeMsg struct {
 	// answer to it, delivered into that task.
 	By   string `json:"by,omitempty"`
 	Head string `json:"head,omitempty"`
+}
+
+// BridgeReceipt is what Nowledge Mem last said about who opened a message Ducter sent on the
+// person's behalf (D619). Present only when Mem says a receipt is available: a missing one
+// is unknown, never unread, and a missing count is never zero.
+type BridgeReceipt struct {
+	State string `json:"state"` // read | partly | unread
+	Count *int   `json:"count,omitempty"`
+	Total *int   `json:"total,omitempty"`
+}
+
+// BridgeRead is one message's latest receipt, read on the inbox check Ducter already runs
+// (D619). Clients keep the latest by OpID and MessageID and show it quietly beside the time.
+type BridgeRead struct {
+	OpID      string        `json:"opId"`
+	MessageID string        `json:"messageId,omitempty"`
+	Receipt   BridgeReceipt `json:"receipt"`
 }
 
 // BridgeRef is one thing a message handed over from Nowledge Mem (D444):

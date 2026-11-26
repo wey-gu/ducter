@@ -452,7 +452,9 @@ export type ExOutcome =
   | { kind: "waiting" }
   | { kind: "notsent"; state: OutState };
 /** D470: one exchange in a thread: what was asked (its words), which way, and what came of it. */
-export type Exchange = { seq: number; at: string; way: "in" | "asked" | "taskasked"; words: string; taskId?: string; outcome: ExOutcome };
+export type Exchange = { seq: number; at: string; way: "in" | "asked" | "taskasked"; words: string; taskId?: string; outcome: ExOutcome;
+  /** D619: the message this row shows that Ducter sent (a reply, a claim or the question itself). */
+  sent?: { opId?: string; messageId?: string } };
 /** D470: the exchanges with one agent, newest first, and who it is. */
 export type Thread = { key: string; agent: string; host?: string; mine?: boolean; role?: string; selfNamed?: boolean; at: string; items: Exchange[] };
 
@@ -510,10 +512,12 @@ export function exchangeThreads(
       const reply = outs[outs.length - 1];
       const card = p.messageId ? asked.get(p.messageId) : undefined;
       let outcome: ExOutcome = { kind: "none" };
-      if (claim?.taskId) outcome = { kind: "task", taskId: claim.taskId };
+      let sent: Exchange["sent"];
+      if (claim?.taskId) (outcome = { kind: "task", taskId: claim.taskId }), (sent = { ...(claim.opId ? { opId: claim.opId } : {}), ...(claim.messageId ? { messageId: claim.messageId } : {}) });
       else if (reply) {
         const st = outState(reply.state);
         outcome = { kind: "replied", words: oneLine(reply.text), ...(st ? { state: st } : {}) };
+        sent = { ...(reply.opId ? { opId: reply.opId } : {}), ...(reply.messageId ? { messageId: reply.messageId } : {}) };
       } else if (card) outcome = card.resolved ? { kind: card.resolved.option === "go" ? "go" : "held" } : { kind: "card" };
       else {
         // The partner spoke to the person about it before the person's next word: it waits on them.
@@ -526,13 +530,13 @@ export function exchangeThreads(
           }
         }
       }
-      item = { seq: e.ev.seq, at: e.ev.ts, way: "in", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome };
+      item = { seq: e.ev.seq, at: e.ev.ts, way: "in", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome, ...(sent ? { sent } : {}) };
     } else {
       if (p.inReplyTo || p.state === "pending" || p.state === "held" || p.state === "followed") continue;
       const st = outState(p.state);
       const ans = p.messageId ? insTo.get(p.messageId) : undefined;
       const outcome: ExOutcome = st && st !== "sending" ? { kind: "notsent", state: st } : ans ? { kind: "answered", words: oneLine(ans.text) } : { kind: "waiting" };
-      item = { seq: e.ev.seq, at: e.ev.ts, way: p.by === "task" ? "taskasked" : "asked", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome };
+      item = { seq: e.ev.seq, at: e.ev.ts, way: p.by === "task" ? "taskasked" : "asked", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome, ...((p.opId || p.messageId) ? { sent: { ...(p.opId ? { opId: p.opId } : {}), ...(p.messageId ? { messageId: p.messageId } : {}) } } : {}) };
     }
     const who = peerCalled(p, p.direction);
     const key = who.name ?? (who.host ? `host:${who.host}` : "someone");

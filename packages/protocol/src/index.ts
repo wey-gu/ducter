@@ -386,6 +386,19 @@ export interface ChatThread {
 export const THREAD_MESSAGES = 20;
 export const THREAD_CHARS = 4_000;
 
+/**
+ * D619: what Nowledge Mem last said about who opened a message Ducter sent on the person's
+ * behalf. Present only when Mem says a receipt is available: a missing one is "unknown", never
+ * "unread", and a missing count is never read as zero.
+ */
+export interface BridgeReceipt {
+  state: "read" | "partly" | "unread";
+  /** People who opened it, when Mem says (integer; 0 is a real zero). */
+  count?: number;
+  /** People it went to, when Mem says; several readers read as 2/5. */
+  total?: number;
+}
+
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
   // reply (D236): the one message this answers, with its quote.
@@ -904,6 +917,15 @@ export interface Bodies {
     // answer (the line still names what came).
     // text: its first words as Mem gave them (clipped, secrets redacted), for the partner only.
     refs?: { uri?: string; title: string; kind: "memory" | "artifact" | "thread" | "plan" | "other"; text?: string; read?: false }[];
+  };
+  // D619: the latest read receipt Mem gave for one message Ducter sent on the person's behalf
+  // (bridge_msg out), read on the inbox check Ducter already runs. One per op, appended only when the
+  // receipt changed; clients keep the latest by opId/messageId and show it beside the time. Never
+  // appended when Mem has no receipt: no receipt is unknown, not unread.
+  bridge_read: {
+    opId: string;
+    messageId?: string;
+    receipt: BridgeReceipt;
   };
   // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
   // "recut": Ducter started a fresh session from the projection because the live context grew

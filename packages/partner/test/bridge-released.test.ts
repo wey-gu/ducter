@@ -43,6 +43,7 @@ esac`;
         { messageId: "m-b", from: "another agent", mine: true, text: "Done at 22:00", inReplyTo: "m-o" },
       ],
       reads: { "m-o": true },
+      receipts: { "m-o": { state: "read", count: 1, total: 1 } },
     });
   });
 

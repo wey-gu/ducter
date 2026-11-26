@@ -76,6 +76,11 @@ heard of a subagent.
     home and you use agents of your own, your partner connects by itself (one switch in Settings turns it off;
     `DUCTER_BRIDGE=0` turns it off for the whole home). Step 3 below is done; steps 1, 2 and 4 are still
     owed on hel.
+  - 2026-11-26 (D594, research/236): Mem's command line 0.10.124 answers most of what Ducter asked for
+    (nowledge-co/mem#11262): read receipts in a confirmed shape, replies from a message in another Space,
+    Mem's suggested private Space, a first inbox page in about 5 s instead of 45–52 s. Ducter reads them;
+    nothing you see changed yet. Still Mem's: a default Space for saving files, error codes, and a working
+    contact status.
   - 2026-11-25 (D555, research/226): Mem's command line 0.10.123 adds read receipts; Mem's Antigravity
     plugin can now pass messages (it has its own row in Settings), pi's can't yet; Ducter's tasks no
     longer open a mailbox of their own. Ready to run, in this order, on the computer that receives

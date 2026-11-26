@@ -1439,15 +1439,12 @@ community repo and the Antigravity plugin, read-only calls on the author's Mac).
   clay coin as the tile. Mem's `plugins inspect` lists no Antigravity, so the row says yes from Mem's
   contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone kept
   the quiet row (until D576, below), with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
-- **Read receipts: parsed, not shown yet.** An outbox or inspect op's `read_receipt` (shape INFERRED:
-  `receipt_available`, `read_state` unread | partially_read | read, `read_recipients`,
-  `receipt_observed_at_us`) is kept on the op (`BridgeOp.read`, `receiptOf`) only when Mem says a receipt
-  is available. `ducter check run mem-shapes` reads `bridge outbox` and the identity inbox's Spaces
-  (read only, field names and counts) so one run on hel settles the shape and whether the personal Space
-  still says `…_unreconciled`. Then 已读 joins 来往 (todo).
+- **Read receipts: parsed, not shown yet.** An outbox or inspect op's receipt is kept on the op
+  (`BridgeOp.read`, `receiptOf`) only when Mem says one is available. D594 (below) reads it as Mem's
+  contract places it; showing 已读 joins 来往 later (todo).
 - **Not retired:** D334's per-Space contexts and D338's back-off (for 0.10.120), D400's 5 s clamp, D369's
   stuck line.
-- **Mem's side still:** `research/private/bridge-ask-2026-11-25.md` (draft, not sent).
+- **Mem's side still:** filed as nowledge-co/mem#11262; what shipped is D594 (below).
 
 ## Replies to your agents, from Mem's facts (D560, 2026-11-25)
 
@@ -1516,6 +1513,37 @@ standing(pi)  = ask   能把事交给我；你让它看看，就收得到我的�
   button's words; a pi on 0.8.20+ is whole and not said. Tasks on pi still run with `--no-extensions` and relay
   through the partner (D448), unchanged.
 - **Not yet:** a fact that pi heard back (todo).
+
+## After nmem 0.10.124: Mem's answers to our asks (D594, 2026-11-26)
+
+Evidence: `research/236` (nowledge-co/mem#11262, its PRs, read-only calls on the author's Mac with nmem
+0.10.124). Of the nine asks, five shipped whole, three in part or another shape, and one (session kind) was
+answered by saying no inventory row is ever a session.
+
+```
+ask                          Mem 0.10.124                                    Ducter
+receipts' JSON               top-level receipt_available, read_state,        receiptOf: top level first, nested
+                             integer read_recipients / recipients            read_receipt only for an older nmem
+outgoing[] snapshot          integer read_recipients                         the count first; "unread" never a read
+reply from another Space     open carries reply_args_prefix (#11277)         open's own first, the entry's after
+personal Space on setup      recommended: true on the personal candidate     a save's personal Space (after D575's
+                                                                             write target); setup still chooses nothing
+Library default Space        none for folders mk                             D575 unchanged: write target, else ask
+Antigravity in inspect       host google-antigravity (per workspace)         not read yet (todo)
+session vs home              connection_kind: agent_role on every row        D560's client_label stands
+contact-status               verb ships; its card's command answers 400      not adopted (todo)
+first inbox page             5.2 s here (was 45-52 s); --wait still 5 s      no change needed
+error codes on --json        none (exit 1, stderr only)                      D563/D590's stderr match stays
+pi                           0.8.20's bridge skill                           D576 unchanged
+```
+
+- **No version gate in code.** Each new field is read when it is there and the older shape otherwise, so an
+  nmem before 0.10.124 reads as it did; nothing assumes the installed version.
+- **Nothing a person sees changed.** 已读 / Read beside a sent message is unblocked and owed with shots (todo).
+- **Mem's side still** (a Bridge-ready note in research/236 §2's terms): a default Space for
+  `artifacts folders mk`; an error code on `--json` failures (a lapsed key reads only from stderr);
+  `contact-status` answering live; a mailbox-changed line for one's own contacts on `inbox --watch`; a wait
+  past 5 s; a plugin version for pi and Codex on `plugins check`.
 
 ## Open questions
 

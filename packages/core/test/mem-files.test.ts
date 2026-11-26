@@ -372,3 +372,22 @@ test("Mem's facts, read: the write target, the Spaces, and where that puts a fil
   expect(placeFrom(undefined, "off")).toBe("off");
   expect(whyOf({ code: 1, out: "", err: "error: Pass --space (or --parent) to choose where the folder goes." })).toEqual({ why: "no_space", message: "Pass --space (or --parent) to choose where the folder goes." });
 });
+
+// D594: nmem 0.10.124's passive `bridge setup` marks the one personal candidate Mem attests as its write
+// default `recommended: true` (#11283; VERIFIED read-only 2026-11-26, 8 candidates, one recommended).
+// It is taken first; an older nmem without the field reads as before (the kind).
+test("Mem's recommended personal Space is the personal one; without it, the kind", () => {
+  const setup = (cands: object[]) => JSON.stringify({ state: "selection_needed", candidates: cands });
+  const everyone = { id: "all", label: "Everyone", kind: "commons", readers: 10, write_default: false };
+  const desk = { id: "personal-old", label: "Desktop", kind: "personal", readers: 1, write_default: false };
+  const mine = { id: "personal-m", label: "Only me", kind: "personal", readers: 1, write_default: true, recommended: true };
+  const now = spacesFrom(setup([everyone, desk, mine]));
+  expect(now).toContainEqual({ id: "personal-m", label: "Only me", kind: "personal", readers: 1, recommended: true });
+  expect(placeFrom(undefined, now)).toEqual({ personal: "personal-m" });
+  expect(placeFrom({ id: "all", reason: "key_write_space" }, now)).toEqual({ shared: { id: "all", label: "Everyone", kind: "commons", readers: 10 }, personal: "personal-m" });
+  // 0.10.123: no `recommended` anywhere: the first personal, as D575 read it.
+  const old = spacesFrom(setup([everyone, desk, { ...mine, recommended: undefined }]));
+  expect(placeFrom(undefined, old)).toEqual({ personal: "personal-old" });
+  // A recommended Space that isn't personal is never taken as the person's own.
+  expect(placeFrom(undefined, spacesFrom(setup([{ ...everyone, recommended: true }])))).toBe("none");
+});

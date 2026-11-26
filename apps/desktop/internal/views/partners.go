@@ -517,9 +517,6 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 								}
 								a.thinksLine(c, p)
 							}
-							if many && p.ID == shown && ps.editing != id { // D583: not under the fields while open
-								uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
-							}
 						})
 					})
 					// D565: its figure above its colours, free to change any
@@ -558,6 +555,11 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 								}
 							}
 							return
+						}
+						// D589: the one you're talking with says so where the others have 换到, as
+						// the shared state word: every row's actions start on one edge, one height.
+						if many && p.ID == shown {
+							a.tag(c, "talking:"+id, a.L.T("partners.talking"), tagOn)
 						}
 						if p.ID != shown && a.button(c, a.L.T("partners.switch", p.Name), btnSecondary, t.ControlSM, t.Surface) {
 							a.SwitchPartner(id)

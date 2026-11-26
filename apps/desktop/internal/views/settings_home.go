@@ -449,7 +449,9 @@ func (a *App) homePanel(c *ui.Context) {
 							for _, n := range needs {
 								n := n
 								ui.Row(c.Key("n:" + n.key)).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-									uiText(c.Key("t"), keepClauses(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
+									// D589: the words take the line, so every need's way sits at one right edge, a
+									// column of buttons, not one after each sentence's end.
+									uiText(c.Key("t"), keepClauses(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Grow(1).Shrink(1).MinWidth(0)
 									a.needFix(c, n)
 								})
 								if n.dv != nil && a.devState().card.memAsk == "need:"+n.dv.ID+":"+n.h.Harness {

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.85 - 2026-11-26
+
+<!-- whats-new
+zh: ducter usage 看是什么用掉了额度；设置页逐页打磨
+en: ducter usage shows what used your allowance; every Settings pane polished
+-->
+
+**What tasks used**
+- `ducter usage` shows the last week's tokens by AI agent and model, by who started the task, the
+  five tasks that used most, and day by day. `--days` and `--json` work too. It says plainly what
+  isn't counted yet.
+
+**Settings**
+- Overview's ways in line up in one column at the right.
+- The partner you're talking to says so as a tag, beside its Change.
+- A phone number never breaks across lines; on the phone, Connect Tuwa drops below its words when
+  they'd be squeezed.
+- Where it runs no longer shows a card that only repeats "This Mac".
+
 ## 0.1.84 - 2026-11-26
 
 <!-- whats-new

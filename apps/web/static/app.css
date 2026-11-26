@@ -12420,6 +12420,15 @@ button.chip-file {
   .chat-row .grow {
     flex: 1 1 11rem;
   }
+  /* D589: a group's head row by the same rule: 连接 Tuwa beside 用 Tuwa 打 squeezed its words to a
+     five-line strip on a phone. A head's switch never drops (D296). */
+  .chat-head:not(:has(> .switch.bare)) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .chat-head:not(:has(> .switch.bare)) > .grow {
+    flex: 1 1 11rem;
+  }
 }
 
 /* ---------- D279: a task resting on its own wait: the ring, its looks, the moment ---------- */
@@ -20629,6 +20638,12 @@ html[data-text-size="large"] .brand-mark > svg {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--ink);
+}
+/* D589: the words take the line, so every need's way sits at one right edge: a column of buttons,
+   never one after each sentence's end. */
+.set-brief .sb-need > .sb-words {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .set-brief .sb-text {
   appearance: none;

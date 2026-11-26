@@ -60,6 +60,14 @@ line.
 - [ ] **The Mac's keepClauses under a long Chinese run** (D583 fixed the web's lone 「。」 under keep-all; the Mac
   breaks anywhere, so it has not shown one). Trigger: a lone punctuation mark seen in a Mac shot.
 
+## Settings, after D589 (`settings.md` "Every pane, end to end (D589)")
+
+- [ ] **The author's review of `.shots/settings-r5/`** (the five crops named in D589's report first).
+- [ ] **The Mac's rail growing 和你的其他 agent 通信 under the person.** In the shot harness the row came only from
+  the third pane on. Trigger: seen in the real app (a rail row arriving while Settings is open).
+- [ ] **The Mac's sign-ins and keys say 已存 / •••••• as the web's do** (Passwords & cards). Trigger: that pane's
+  next pass.
+
 ## The site, after D558 (`site.md`, research/227)
 
 - [ ] **A recorded live demo under the hero** (research/227 rec 3; needs its own D). The real web

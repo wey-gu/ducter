@@ -172,7 +172,12 @@ func (a *App) autofillPanel(c *ui.Context) {
 				if read != "" {
 					read += a.L.T("acct.sep") // D291: a list, said as one
 				}
-				read += d.Value
+				v := d.Value
+				if d.Key == "phone" {
+					// D589: a phone number is one word: it never breaks at its spaces (+86 / 138…).
+					v = strings.ReplaceAll(v, " ", "\u00a0")
+				}
+				read += v
 			} else {
 				if kept != "" {
 					kept += a.L.T("acct.sep")

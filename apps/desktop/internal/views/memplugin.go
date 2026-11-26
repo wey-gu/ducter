@@ -38,6 +38,9 @@ func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, a
 	// and its button stays where it was, saying so (更新中…), never gone.
 	if m.TaskID != "" || m.Busy {
 		switch {
+		case m.Handed && m.State == "update":
+			// D597: the direct update didn't take and a task finishes it.
+			return a.L.T("memp.handed"), "", a.L.T("memp.btn.updating")
 		case m.State == "update":
 			if m.Available != "" {
 				return a.L.T("memp.setting.update.to", m.Available), "", a.L.T("memp.btn.updating")
@@ -57,6 +60,10 @@ func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, a
 	// D552: an update that took, until the next check.
 	if m.Updated && m.Version != "" {
 		return a.L.T("memp.updated", m.Version, harnessName(harness)), "", ""
+	}
+	// D597: it didn't take and nothing could pick it up: one line, and 更新 stays.
+	if m.Stuck && m.State == "update" {
+		return a.L.T("memp.stuck"), a.L.T("memp.btn.update"), ""
 	}
 	if m.Fresh && m.State != "absent" {
 		return a.L.T("memp.fresh", harnessName(harness)), "", ""
@@ -118,7 +125,7 @@ func (a *App) memLine(dv *protocol.DeviceView, h protocol.DeviceHarness) *protoc
 		return m
 	}
 	// The home's own word (its task, its busy, or the line moved on) ends this window's.
-	if m.TaskID != "" || m.Busy || m.Updated || m.Fresh || m.State == "installed" {
+	if m.TaskID != "" || m.Busy || m.Updated || m.Fresh || m.Stuck || m.State == "installed" {
 		delete(a.memSent, key)
 		return m
 	}

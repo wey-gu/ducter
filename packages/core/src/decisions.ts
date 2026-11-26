@@ -2,6 +2,7 @@
 // forwarded to the task through the onDecision hook (main.ts wires it to runner.send).
 import type { Attention, Bodies, EvidenceRef, LogEvent, Question, StandingAction } from "@ducter/protocol";
 import { STEP_WORDS } from "@ducter/protocol/src/standing.ts";
+import { hideMemSecrets } from "@ducter/protocol/src/mem-plugins.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { CoreRegistry } from "./registry.ts";
@@ -546,7 +547,7 @@ export function createDecisions(opts: {
           stream: "channel",
           origin: by,
           kind: "decision_resolved",
-          body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user", ...(by === "user" ? { inTask: true as const } : {}) },
+          body: { decisionId: id, option: "reply", text: hideMemSecrets(text.slice(0, 2000)).text, by: "user", ...(by === "user" ? { inTask: true as const } : {}) },
         });
       }
     },
@@ -566,7 +567,8 @@ export function createDecisions(opts: {
       // D539: a copy card's Go is the person's tap on that card, after the copy ran (key-copy.ts): never another path.
       if (option === "go" && all.get(decisionId)!.copyKey && !extra?.copied) throw new Error("a copy card is answered on the card itself");
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
-      if (text) body.text = text;
+      // D597: a Mem connect link or key typed into a reply never reaches the task or the Log.
+      if (text) body.text = hideMemSecrets(text).text;
       if (extra?.delivered) body.delivered = true;
       if (extra?.msgSeq) body.msgSeq = extra.msgSeq;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });

@@ -90,6 +90,13 @@ export interface HarnessInfo {
    */
   pickOnly?: true;
   /**
+   * D594: run the way an editor runs it, and only that way: it works when the person asks (their
+   * own words, or a task the partner opened from them), never by itself. No wait or timer wakes
+   * it, no routine or Keep runs it, Ducter never reads its account's quota, and nothing of
+   * Ducter's looks where it keeps its sign-in (Google's terms for a personal sign-in, research/236).
+   */
+  directOnly?: true;
+  /**
    * D416: it can't hold a task that reads web pages to Ducter's rules (its own setup can't be
    * left out of a session, D241), so browsing work never goes to it (block no_web).
    */
@@ -199,6 +206,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     install: "curl -fsSL https://antigravity.google/cli/install.sh | bash",
     signIn: "agy acp --login (a Google sign-in: open the link anywhere, paste the code back)",
     pickOnly: true,
+    directOnly: true,
     noWebTasks: true,
     signOut: true,
   },
@@ -214,6 +222,20 @@ export const PARTNER_FALLBACK: readonly HarnessId[] = ["claude-code", "codex", "
 export function harnessName(id: string): string {
   return isHarnessId(id) ? HARNESSES[id].name : id;
 }
+
+/** D594: an agent that works only when the person asks (HarnessInfo.directOnly). */
+export function directOnly(id: string | undefined): boolean {
+  return !!id && isHarnessId(id) && !!HARNESSES[id].directOnly;
+}
+
+/**
+ * D594: why a wait, a timer, a routine or a Keep can't run on such an agent: one plain line in each
+ * language, said to the task or the partner that asked (and through them to the person).
+ */
+export const DIRECT_ONLY_WHY = {
+  zh: "{agent} 只在你发话时干活：它不会自己等、定时醒来或按时重复（Google 对个人账号登录的条款）。这件事交给别的 AI，或者到时候你再叫它。",
+  en: "{agent} works only when you ask: it doesn't wait, wake on a timer or repeat on a schedule by itself (Google's terms for a personal sign-in). Give this to another AI, or ask it again when the time comes.",
+};
 
 /** Provider keys pi reads from the environment (its own docs); any one makes pi usable. */
 export const PI_PROVIDER_ENV = [

@@ -184,10 +184,9 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     join(env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "models.json"),
     // D371: DeepSeek Harness's own (its desktop app's 登录 or a key saved there lands here).
     dshCredentialsFile(env, home),
-    // D416: agy at its official place (found even off PATH), its sign-in token where it keeps one
-    // as a file, and the desktop app (so "the app, not its command line" changes when either does).
+    // D416: agy at its official place (found even off PATH) and the desktop app (so "the app, not
+    // its command line" changes when either does). D594: never where agy keeps its sign-in.
     join(home, ...ANTIGRAVITY.bin),
-    join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1)),
     join("/Applications", ANTIGRAVITY.app),
     join(o.dataDir, "keys.env"),
   ].map((f) => `${f}@${mtime(f) ?? ""}`);

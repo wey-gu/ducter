@@ -209,6 +209,8 @@ export interface TaskSources {
   taskOf(ref: string): TaskCard | undefined;
   /** A write-back for a bound task: runs under the standing go, else one Go card (the partner drafts the words). */
   propose(p: { taskId?: string; ref?: string; text?: string; close?: boolean; lang?: "zh" | "en" }): Promise<ProposeResult>;
+  /** D593: the pull requests waiting for the person's review as each source's last look saw them (a round in a review Keep is handed them). */
+  reviewAsks(): { items: SourceItem[]; at?: string };
   /** Look now (every source, then the bound to-dos). */
   look(): Promise<void>;
   /** Core handles its own cards' Go and Hold; the partner wakes only for a reply. */
@@ -769,6 +771,13 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   };
 
   api = {
+    reviewAsks() {
+      const ok = st.sources.map((s) => status.get(s.id)).filter((x) => x?.state === "ok" && x.glance);
+      const seen = new Set<string>();
+      const items = ok.flatMap((x) => x!.glance!.review).filter((i) => !seen.has(i.ref) && (seen.add(i.ref), true));
+      const at = ok.map((x) => x!.at ?? "").sort().at(-1);
+      return { items, ...(at ? { at } : {}) };
+    },
     view() {
       const from = st.sources.map((s) => status.get(s.id)).filter((x) => x?.state === "ok" && x.glance).map((x) => x!.glance!);
       const live = (ref: string) => {

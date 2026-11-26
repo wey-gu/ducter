@@ -104,7 +104,8 @@ test("hel's #551: the one-off ask and the standing permission both reach the rou
   const wake = b.woke[0]!.text;
   expect(wake).toContain("这是循环里的一轮");
   // The steer, first thing in its own line, in the person's words.
-  expect(wake).toContain(`这一轮先做对方刚交代的：「${STEER}」`);
+  // D593: inside the Keep's own words, as this round's only.
+  expect(wake).toContain(`这一轮对方交代先做（只限这一轮）：「${STEER}」`);
   // The standing permission as a fact, with where, their words and the one means.
   expect(wake).toContain("对方说过 PR 评审不用问、直接发（nowledge-co 下的 PR");
   expect(wake).toContain(SAID);

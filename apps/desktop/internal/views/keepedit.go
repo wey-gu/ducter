@@ -159,6 +159,9 @@ func (a *App) keepEditSentence(by string, e protocol.KeepEdit) string {
 	}
 	shown := e.Field == "speaks" || e.Field == "until" || e.Field == "limits" || e.Field == "where" || e.Field == "agent"
 	switch {
+	case e.Field == "said" && e.To != "":
+		// D593: words added from now on are said as what was added.
+		return a.L.T("keep.edit.added", who, e.To)
 	case e.Field == "said":
 		return a.L.T("keep.edit.said", who)
 	case (e.From != "" || shown) && (e.To != "" || shown):

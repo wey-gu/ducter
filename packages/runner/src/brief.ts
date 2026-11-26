@@ -367,12 +367,14 @@ export const SAVE_BEFORE_COMPACT =
   "Your context is nearly full and will be compacted soon. Call `checkpoint` now with where the work stands, what is done and what comes next (files, commits, open questions), then carry on with the task.";
 
 /** D135: the next input after a compaction: the brief again and the latest saved progress. */
-export function afterCompaction(brief: string | null, progress: string | undefined): string {
+export function afterCompaction(brief: string | null, progress: string | undefined, keep?: string): string {
   const b = brief?.trim() ? `<brief>\n${brief.trim()}\n</brief>` : "(The brief is in your instructions.)";
   const p = progress?.trim()
     ? `Latest saved progress (your last checkpoint):\n${progress.trim()}`
     : "No progress was saved before it: check git status, git log and the files to see where the work stands.";
-  return `Your context was just compacted: what came before is now a summary. Here again are the task and where it stood, so nothing is lost.\n\n${b}\n\n${p}\n\nCarry on with the brief from there; don't start over. Keep calling checkpoint after each meaningful step.`;
+  // D593: a task in rounds hears what the person asks now first, above the brief it started from.
+  const k = keep?.trim() ? `${keep.trim()}\n\n` : "";
+  return `Your context was just compacted: what came before is now a summary. Here again are the task and where it stood, so nothing is lost.\n\n${k}${b}\n\n${p}\n\nCarry on ${k ? "from there, as the person asks now (above)" : "with the brief from there"}; don't start over. Keep calling checkpoint after each meaningful step.`;
 }
 
 /** D142: appended to the held first turn once the user answered whether the task may change a
@@ -498,6 +500,15 @@ export function startedAfresh(progress: string[]): string {
 export function freshRound(progress: string[]): string {
   const where = progress.length ? `\n\nWhere it stood (your latest saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
   return `This is the next round of work that repeats. To keep each round small, it runs in a new session on the same task and place: what earlier rounds found is in your saved progress below and in the files you keep in your working place. Read those first, do this round from there (don't redo what is unchanged), call checkpoint with where it stands, then wait_for the next round.${where}`;
+}
+
+/**
+ * D593: the same round's fresh session when its wake opens with what the person asks now: the wake
+ * goes first and this after it, so the agent's own notes never sit above the person's words.
+ */
+export function freshRoundAfter(progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (your latest saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `This round runs in a new session on the same task and place, to keep each round small. What earlier rounds found is in your saved progress below and in the files you keep in your working place: they are your own notes. Where they differ from what the person asks now (above), or list work it doesn't ask for, what they ask holds: leave that work out, and leave it out of your next checkpoint. Don't redo what is unchanged; call checkpoint with where it stands, then wait_for the next round.${where}`;
 }
 
 /**

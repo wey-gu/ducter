@@ -68,6 +68,8 @@ export interface WorkOptions {
   loopsWhere?: import("./loops.ts").LoopWhere;
   /** D540: what a round's wake carries besides its own lines (the person's one-off ask for it, what they allowed without asking), in that language. */
   roundNote?: (taskId: string, lang: import("@ducter/protocol").LangTag) => string | undefined;
+  /** D593: the Keep a task in rounds is, as it stands now (the person's words verbatim, its end, the round's own ask): the first thing every round hears. */
+  standing?: (taskId: string, lang: import("@ducter/protocol").LangTag) => { title: string; text: string } | undefined;
 }
 
 const expand = (p: string) => (p.startsWith("~/") ? homedir() + p.slice(1) : p === "~" ? homedir() : p);
@@ -111,6 +113,9 @@ const W = {
     roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
     // D528: the person's clock, not the server's: a round's times are said in it.
     roundNow: "对方那里现在是 {now}。写给对方的时间都按对方的时区，或者说「45 分钟后」，不写 UTC。",
+    // D593: a Keep's round: its end is in the standing words above; the task's own reason is its note.
+    roundKeep: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有上面「整件事做到」那一条成立时才报 done。下一轮到时 Ducter 会叫你。",
+    memo: "上一轮你给自己记下要查的：「{reason}」。那是你的笔记，只做其中上面要求的部分。",
   },
   en: {
     time: 'It\'s time: "{reason}". Carry on.',
@@ -124,6 +129,8 @@ const W = {
     round: "This is one round of your rounds: when it is done, report_to_main with state progress, never done; Ducter wakes you for the next one.",
     roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds. Ducter wakes you for the next one.',
     roundNow: 'It is {now} where the person is. Write every time they read in their time zone, or as "in 45 minutes"; never UTC.',
+    roundKeep: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once the "ends when" line above holds. Ducter wakes you for the next one.',
+    memo: 'Last round you noted to check: "{reason}". That is your note: do only the part of it the above asks for.',
   },
 };
 const wordsOf = (reason: string) => words(W, langOfText(reason));
@@ -274,9 +281,19 @@ export function createWork(o: WorkOptions): Work {
       const loop = !w.limit ? loops.get(w.taskId) : undefined;
       // D540: the person's one-off ask for this round and what they allowed without asking come with it.
       const note = loop?.state === "on" ? o.roundNote?.(w.taskId, langOfText(w.reason)) : undefined;
+      // D593: a Keep's round hears the Keep first, verbatim, every round (taken after the note: the
+      // round's own ask is in it); the task's own reason comes after it, as its note, never as the ask.
+      const standing = loop?.state === "on" && !w.limit ? o.standing?.(w.taskId, langOfText(w.reason)) : undefined;
       // D533: the person changed how it is looked after: this round hears its rules as they are now.
-      const rulesNow = loop?.state === "on" ? keepRules?.({ taskId: w.taskId }) : undefined;
-      const said = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${fill(c.roundNow, { now: localTime((o.clock ?? realClock).now()) })}${rulesNow ? `\n\n${rulesNow}` : ""}${note ? `\n\n${note}` : ""}` : wake;
+      const rulesNow = loop?.state === "on" && !standing ? keepRules?.({ taskId: w.taskId }) : undefined;
+      const now = fill(c.roundNow, { now: localTime((o.clock ?? realClock).now()) });
+      const said =
+        loop?.state !== "on"
+          ? wake
+          : standing
+            ? // Its first line names the Keep (the transcript and the keeper read it as a wake), then the Keep itself.
+              `${timer ? fill(c.time, { reason: standing.title }) : wake}\n\n${standing.text}\n\n${loop.until ? c.roundKeep : c.round}\n${now}${timer ? `\n\n${fill(c.memo, { reason: w.reason })}` : ""}${note ? `\n\n${note}` : ""}`
+            : `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${now}${rulesNow ? `\n\n${rulesNow}` : ""}${note ? `\n\n${note}` : ""}`;
       const text = w.limit ? said : withPRs(w.taskId, said);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.

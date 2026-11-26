@@ -178,6 +178,13 @@ const REVIEW_GO = {
   },
 };
 
+/** D593: the review requests the to-do sources saw, handed to a review round. */
+const REVIEW_ASKS = {
+  zh: { line: "待办来源 {at} 看到这些 PR 在等对方评审：{refs}。这一轮逐个核对，最新提交上还没有对方评审的都要评审。", sep: "、" },
+  en: { line: "At {at} the to-do sources saw these PRs waiting for the person's review: {refs}. Go through each this round: review every one whose latest commit has no review of theirs yet.", sep: ", " },
+};
+const REVIEW_ASKS_MAX = 20;
+
 /** D394: what a review task's round says (review_report). */
 const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
 const REVIEW_ROUND_SCHEMA = {
@@ -706,9 +713,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     // for a review task, the standing permission to post reviews with its means.
     roundNote: (taskId, l) => {
       const ask = keepsRef?.takeNext(taskId);
-      const lines = [ask ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l)].filter(Boolean);
+      // D593: a Keep's round hears its ask inside the Keep's own words (standing), not twice.
+      const kept = !!keepsRef?.standingFor(taskId, l);
+      const lines = [ask && !kept ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l), reviewAsksLine(taskId, l)].filter(Boolean);
       return lines.length ? lines.join("\n\n") : undefined;
     },
+    standing: (taskId, l) => ((text, k) => (text && k ? { title: k.name, text } : undefined))(keepsRef?.standingFor(taskId, l), keepsRef?.ofTask(taskId)),
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
       nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
@@ -992,6 +1002,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
   let isReview: (taskId: string) => boolean = () => false;
   /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
+  function reviewAsksLine(taskId: string, l: LangTag): string {
+    if (!isReview(taskId)) return "";
+    const r = taskSourcesRef?.reviewAsks?.();
+    if (!r?.items.length) return "";
+    const w = words(REVIEW_ASKS, l);
+    const at = r.at ? new Intl.DateTimeFormat(l.startsWith("zh") ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, ...(zone() ? { timeZone: zone() } : {}) }).format(new Date(r.at)) : "";
+    return fill(w.line, { at, refs: r.items.slice(0, REVIEW_ASKS_MAX).map((i) => i.url ?? i.ref).join(w.sep) });
+  }
   function reviewGoLine(taskId: string, l: LangTag): string {
     if (!isReview(taskId)) return "";
     const s = standing.list().find((x) => x.action === "pr_review" && !x.taskId);
@@ -1812,6 +1830,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   if (opts.keeps?.rulesAsk) keeps.setRulesAsk(opts.keeps.rulesAsk);
   // D533: a round of a Keep the person changed hears its rules as they are now.
   work.setKeepRules((of) => keeps.rulesFor(of));
+  // D593: a round whose context was compacted hears the Keep again first.
+  api.keepNow = (taskId) => keeps.standingFor(taskId);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
   registerKeepTools(mcp, keeps, () => persona.id, (name) => (name === "local" || name === computers.homeName() ? "local" : ((computers.workers?.() ?? []).find((w) => w.name === name || w.id === name)?.id ?? (computers.nameOf(name) ? name : undefined))));
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.

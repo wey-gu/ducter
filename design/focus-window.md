@@ -175,6 +175,19 @@ partner is told only when no reset is known and nobody else can take it. The par
 are read the same way (D435, `system.md` "The brain held"): the next signed-in agent answers, or
 the message waits for the reset.
 
+**What tasks used (D588, research/235 #2).** The meter above is one task's; nothing added the tasks
+up, so a limit that ran out never said which work spent it, and a paid key never said how much it
+had used. `ducter usage [--days 7] [--json]` counts it from the Log alone (protocol `usageReport`,
+core `usage-days.ts`): each turn end's `turn` (else the difference of the session's running totals,
+the meter's own rule, `turnTokensOf`), attributed to the task's agent and model at that turn (its
+`task_open`, then each `body_selected`), to who opened it (`origin: "you"` is the person; everything
+else is the partner's, routines and Keeps included), and to the person's own day (the asking
+computer's offset). Totals, by agent and model, by who, the five tasks that weigh most (cache reads
+at a tenth, as the judge budget counts them) and day by day; read only, no store of its own, no
+model call. It says what it leaves out: the partner's own turns (they never reach a task stream),
+Ducter's own looks (judges, second looks, the proactive reads) and money. The next slices are in
+`todo.md` "What tasks used".
+
 ## Choosing a body (principle 14)
 
 `fw_candidates(TaskSpec)` is deterministic:

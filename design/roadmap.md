@@ -28,6 +28,8 @@ heard of a subagent.
   evidence.
 - Open a task yourself (⌘N, or `ducter task`), group On hand by project, merge with one tap.
 - Keep going until a goal is met, wait for something to happen, or run a routine on a schedule.
+- See what tasks used over the last days, by AI agent and by task, in the command line
+  (`ducter usage`, D588); in the apps and from your partner next.
 - AI agents use their own browser and computer use first, in a window of their own; Ducter's
   browser is the fallback.
 
@@ -113,8 +115,10 @@ heard of a subagent.
 - **The AI tools you use elsewhere reach you through Ducter** (draft): a terminal Claude Code or Codex sends
   its questions for you to your partner and gets your answer back; work from your own agents can
   start without asking once you say so; a team's agents can reach your partner when you let them.
-- **Quota awareness.** Keep a reserve for your partner, prefer the account with the most limit
-  left, and fall back gracefully when one runs low.
+- **Quota awareness.** Built with fakes (D297, D435, D503): a task waits for its agent's reset or
+  hands over, the partner's own turns fall over to another agent, and the same model can run through
+  another account elsewhere. Still to do: a reserve kept for your partner, a live limit hit, and
+  saying what used the limit up in the apps (D588 counts it in `ducter usage` today).
 - **Remote access without a domain.** Built for a server: your own Cloudflare tunnel
   (`ducter anywhere`, D228) and Tailscale (`ducter tailscale`, D265). Still to do: a live
   tailnet check of pairing, push and reconnect from a phone, and a status probe per address

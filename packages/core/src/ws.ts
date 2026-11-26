@@ -183,6 +183,8 @@ export interface WsDeps {
   week?: (weeks?: number) => import("@ducter/protocol").WeekReport;
   /** D473: `ducter repairs`: failures and self-repairs counted from the Log. */
   repairs?: (weeks?: number) => import("@ducter/protocol").RepairReport;
+  /** D588: `ducter usage`: what the tasks used over the last days, counted from the Log. */
+  usage?: (o: { days?: number; tzOffsetMin?: number; top?: number }) => import("@ducter/protocol").UsageReport;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
@@ -1920,6 +1922,18 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "repairs_week_result", report: deps.repairs(weeks) });
         } catch (err) {
           send(ws, { t: "repairs_week_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
+      case "usage_days": {
+        // D588: read-only, from the Log; answered on this socket only.
+        if (!deps.usage) throw new Error("not available");
+        const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+        const days = n(f.days), tz = n(f.tz), top = n(f.top);
+        try {
+          send(ws, { t: "usage_days_result", report: deps.usage({ ...(days !== undefined ? { days } : {}), ...(tz !== undefined ? { tzOffsetMin: tz } : {}), ...(top !== undefined ? { top } : {}) }) });
+        } catch (err) {
+          send(ws, { t: "usage_days_result", error: (err as Error).message.slice(0, 200) });
         }
         return;
       }

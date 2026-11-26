@@ -20,6 +20,7 @@ import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./
 import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
 import { cmdProactive } from "./proactive-cmd.ts";
 import { cmdRepairs } from "./repairs-cmd.ts";
+import { cmdUsage } from "./usage-cmd.ts";
 import { cmdWorktrees } from "./worktrees-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { cmdAnywhere } from "./anywhere-cmd.ts";
@@ -78,6 +79,7 @@ export function helpText(t: T): string {
     cmd("browser", t("help.browser")),
     cmd("proactive", t("help.proactive")),
     cmd("repairs", t("help.repairs")),
+    cmd("usage", t("help.usageCmd")),
     cmd("worktrees", t("help.worktrees")),
     cmd("service", t("help.service")),
     cmd("anywhere", t("help.anywhere")),
@@ -731,6 +733,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "repairs":
       // D473: how self-repair did, week by week, counted from the home's Log.
       return cmdRepairs({ t, target: ctx.target, json: args.json, ...(args.weeks ? { weeks: args.weeks } : {}) });
+    case "usage":
+      // D588: what tasks used, counted from the home's Log.
+      return cmdUsage({ t, target: ctx.target, json: args.json, ...(args.days ? { days: args.days } : {}) });
     case "worktrees":
       // D514: the working copies, what is tidied when and what stays; --plan is the same list (nothing changes either way).
       return cmdWorktrees({ t, target: ctx.target, json: args.json, lang: detectLocale(), rest: args.rest ?? [] });

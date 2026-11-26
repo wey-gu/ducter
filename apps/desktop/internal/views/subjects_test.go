@@ -78,7 +78,7 @@ func TestOwnSubjectChipFirstAndNewSubject(t *testing.T) {
 func TestSubjectBarRenameRemoveTake(t *testing.T) {
 	app, sent, tt := handApp(t, i18n.ZH, 1400, 1100, "")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"改名", "去掉这个分类", "移出", "归到分类…"} {
+	for _, want := range []string{"重命名", "去掉这个分类", "移出", "归到分类…"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -99,7 +99,7 @@ func TestSubjectBarRenameRemoveTake(t *testing.T) {
 		}
 	}
 	// 改名: into another one there is merges.
-	if err := tt.Click(spoken(app.L, "改名", "记忆提炼")); err != nil {
+	if err := tt.Click(spoken(app.L, "重命名", "记忆提炼")); err != nil {
 		t.Fatal(err)
 	}
 	todoFrames(tt, 1)

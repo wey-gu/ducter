@@ -19,7 +19,7 @@ var zhComputerUse = Table{
 	"computeruse.remove":             "移除",
 	"computeruse.using":              "「%s」正在用 %s",
 	"computeruse.using.0":            "「%s」正在用这台 Mac 上的应用",
-	"computeruse.stop":               "停下",
+	"computeruse.stop":               "停止",
 	"computeruse.task":               "正在用 %s 上的 %s",
 	"computeruse.task.0":             "正在用 %s 上的应用",
 	"computeruse.user.done":          "好了",

@@ -46,11 +46,11 @@
     <string name="home_older_dismiss">知道了</string>
     <!-- D238：用这台手机（术语表：design/product-model.md）。 -->
     <string name="handset_service_summary">让 Ducter 的任务用这台手机上的应用，只在你借给它的时候</string>
-    <string name="handset_service_description">任务想用这台手机、你同意以后，Ducter 读前面那个应用的屏幕，替它点、滑、打字。顶上有一颗小胶囊告诉你它在用，带「停下」。发送、付款、删除这类事先等你点 Go；银行、钱包、密码和验证器应用它碰不到，密码框从不读、不填。任务之间它是关着的：你借给它之前，它什么都不读。</string>
+    <string name="handset_service_description">任务想用这台手机、你同意以后，Ducter 读前面那个应用的屏幕，替它点、滑、打字。顶上有一颗小胶囊告诉你它在用，带「停止」。发送、付款、删除这类事先等你点 Go；银行、钱包、密码和验证器应用它碰不到，密码框从不读、不填。任务之间它是关着的：你借给它之前，它什么都不读。</string>
     <string name="handset_pill">%1$s 正在用这台手机</string>
     <string name="handset_pill_you">轮到你了</string>
     <string name="handset_pill_you_line">做完以后，在卡片上点「好了」</string>
-    <string name="handset_stop">停下</string>
+    <string name="handset_stop">停止</string>
     <string name="handset_stop_about">让正在用这台手机的任务停下</string>
     <!-- D278: 你来打 / You call: 通话时在通知里看通话单 (Dial.kt). -->
     <string name="sheet_channel">通话单</string>
@@ -62,7 +62,7 @@
     <string name="sheet_dont">不要透露</string>
     <string name="sheet_note">需要记下</string>
     <string name="notify_loan_channel">在用这台手机</string>
-    <string name="notify_loan_channel_about">任务借用这台手机时一直显示，带「停下」。</string>
+    <string name="notify_loan_channel_about">任务借用这台手机时一直显示，带「停止」。</string>
     <!-- D255: Ducter 自己录下借出去的手机的屏幕；借出去时用它自己的连接。 -->
     <string name="handset_recording">在录屏</string>
     <!-- D280: 安卓的录屏确认只在手机上出现：轮到你了。 -->

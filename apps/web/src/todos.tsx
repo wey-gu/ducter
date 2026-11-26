@@ -374,7 +374,8 @@ export function TodoSourcesSettings() {
       {f.sources.map((v) => (
         <SourceCard key={v.id} v={v} />
       ))}
-      <SecHead title={t("todos.add.title")} />
+      {/* D589: 还能加上 ("can also add") over nothing added read as if some were. */}
+      <SecHead title={t(f.sources.length ? "todos.add.title" : "todos.add.first")} />
       {/* D365: with nothing added, the add group says so under its heading (never a card holding one line). */}
       {!f.sources.length && <p class="g-note">{t("todos.empty")}</p>}
       <section class="set-card chat-app todo-add">

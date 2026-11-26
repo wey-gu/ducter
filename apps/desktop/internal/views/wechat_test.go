@@ -60,7 +60,7 @@ func TestWechatConnect(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "channels", Channels: []protocol.ChannelView{tg, sl, {Kind: "wechat", State: "scan", Scan: fakeScan("wait")}}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"等你用微信扫码", "不连了"} {
+	for _, want := range []string{"等你用微信扫码", "取消，微信"} {
 		if !hasText(tt, want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
@@ -71,7 +71,7 @@ func TestWechatConnect(t *testing.T) {
 	if !hasText(tt, "微信里显示的数字") {
 		t.Errorf("no field for WeChat's number: %q", tt.Texts())
 	}
-	if err := tt.Click("不连了"); err != nil {
+	if err := tt.Click("取消，微信"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

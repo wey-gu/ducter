@@ -111,7 +111,7 @@ var zhOwn = Table{
 	"own.busy":                "你的手机正在通话，Ducter 等你打完再打。",
 	"own.forget":              "不用我的号码打了",
 	"own.forget.ask":          "Ducter 会忘掉这部手机、声卡和 Key。",
-	"own.forget.go":           "不用了",
+	"own.forget.go":           "停止使用",
 }
 
 var enOwn = Table{

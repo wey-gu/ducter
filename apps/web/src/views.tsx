@@ -2876,7 +2876,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
             <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch && !cantSwitches(task) ? () => A.openSwitch(task.id) : undefined} />
-            {/* D600: 结束任务 asks in place, one line under the meta line. */}
+            {/* D602: 结束任务 asks in place, one line under the meta line. */}
             <EndAsk task={task} />
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}

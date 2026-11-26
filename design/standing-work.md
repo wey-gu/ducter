@@ -266,7 +266,7 @@ the side column after the rounds.
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
 5. **手上的 / What it holds** (D519: a Keep in rounds holds the PRs its task keeps open, each named by its own title;
    the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
-   approved; D508's words), **打开 PR ›**, and its task one tap away. D600: an item is released when its task
+   approved; D508's words), **打开 PR ›**, and its task one tap away. D602: an item is released when its task
    ends (done with no PR going on, or dropped) or when its task lets the PR go (`let_go`: a duplicate, not needed;
    or the person's 结束任务); while its task still works, a let-go PR reads **重复草稿，可关** or **不再跟了，可关**,
    never the CI it no longer waits on.

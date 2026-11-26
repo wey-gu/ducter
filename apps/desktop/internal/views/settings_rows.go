@@ -267,7 +267,7 @@ func (a *App) confirmRow(c *ui.Context, key, ask, keep, goLabel, about string) (
 	return k, g
 }
 
-// confirmLine is confirmRow outside a settings group (D600: 结束任务 under a
+// confirmLine is confirmRow outside a settings group (D602: 结束任务 under a
 // task's head): the question, then the quiet Keep and the action in the
 // failed ink, on one line with no rule and no tile column.
 func (a *App) confirmLine(c *ui.Context, key, ask, keep, goLabel, about string) (bool, bool) {

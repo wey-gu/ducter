@@ -1273,7 +1273,7 @@ func (a *App) taskHeadCompact(c *ui.Context, task *store.Task, m *taskMemo) {
 		// D542: the line under the title on the page's own left edge, as the web's.
 		ui.Column(c.Key("headmeta")).Gap(t.S2).MinWidth(0).Children(func() {
 			a.taskStanding(c, task)
-			// D600: 结束任务 asks in place, one line under the meta line.
+			// D602: 结束任务 asks in place, one line under the meta line.
 			a.endAsk(c, task)
 			// D549: the title, its meta line, then why it couldn't start and the fix.
 			if k := task.Cant(); finished(task) && task.Attention() == protocol.Failed && k != nil {

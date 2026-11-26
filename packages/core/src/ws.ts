@@ -1217,7 +1217,7 @@ export function createWsHandler(deps: WsDeps) {
               return result(true);
             }
             case "end": {
-              // D600: 结束任务 / End task, on a finished task an open PR still holds on the board: it
+              // D602: 结束任务 / End task, on a finished task an open PR still holds on the board: it
               // lets each PR go (Ducter stops following it; it stays open on GitHub, closing it there is
               // the person's), so the task is done as it is and its Keep's item goes. Never a close.
               if (card.attention !== "done" && card.attention !== "done_claimed") return result(false, "Only a finished task is ended here; Cancel task puts down one that isn't.");

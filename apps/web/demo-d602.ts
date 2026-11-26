@@ -1,10 +1,10 @@
-// D600: a finished task an open PR still held, as on hel (2026-11-26): 「跟进 Bridge 试用指引 PR #11166」,
+// D602: a finished task an open PR still held, as on hel (2026-11-26): 「跟进 Bridge 试用指引 PR #11166」,
 // handed to the PR Babysitter, its PR #11166 merged, then a draft #11179 opened from its branch: a
 // duplicate whose one check fails. It stood under 在等 for two days and the helper's Keep held
 // 「#11179 … CI 未通过」. Beside it the babysitter's other work (#11030 at work on lint). Open the task
 // (/app#task=5ykh7m6y), its ⋯ has 结束任务 / End task and its line asks in place; after it, the task is
 // done and the Keep (/app#keep=<id>) holds only #11030. Never this machine's gh, oo or Mem.
-//   DUCTER_PORT=7600 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-d600.ts
+//   DUCTER_PORT=7600 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-d602.ts
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,7 +14,7 @@ import type { Bodies, OwnedSeen, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const w = (z: string, e: string) => (zh ? z : e);
-const dataDir = process.env.DUCTER_DATA_DIR || join(mkdtempSync(join(tmpdir(), "ducter-demo-d600-")), "data");
+const dataDir = process.env.DUCTER_DATA_DIR || join(mkdtempSync(join(tmpdir(), "ducter-demo-d602-")), "data");
 mkdirSync(dataDir, { recursive: true });
 const persona = { id: "default", name: "Ducter", identity: "" };
 const now = Date.now();
@@ -106,7 +106,7 @@ await mid.stop();
 const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", work, keeps: { endAsk } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
-console.log(`[demo] D600 at http://127.0.0.1:${core.port}/app#task=${ID} (data: ${dataDir})`);
+console.log(`[demo] D602 at http://127.0.0.1:${core.port}/app#task=${ID} (data: ${dataDir})`);
 for (const x of ids) console.log(`[demo] keep ${x}`);
 process.on("SIGINT", async () => {
   await core.stop();

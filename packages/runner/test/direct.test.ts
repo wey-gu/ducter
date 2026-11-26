@@ -244,10 +244,10 @@ describe("D585: words sent while it works", () => {
   });
 });
 
-// D600: 「这个任务是什么情况，能关闭么」 typed in a finished task that an open duplicate draft still held
+// D602: 「这个任务是什么情况，能关闭么」 typed in a finished task that an open duplicate draft still held
 // (hel 5ykh7m6y): the agent answered 「可以关闭」 and nothing ended. Now it ends the task itself from the
 // same turn: done, letting the duplicate go, or dropped when the work is unfinished and they asked.
-describe("D600: asked in the task to close it", () => {
+describe("D602: asked in the task to close it", () => {
   const PR = "nowledge-co/mem#11179";
   const owned = () =>
     core.log.append({
@@ -269,7 +269,7 @@ describe("D600: asked in the task to close it", () => {
       },
     );
     owned();
-    await runner.send(ID, "这个任务是什么情况，能关闭么", undefined, "user", "d600-1");
+    await runner.send(ID, "这个任务是什么情况，能关闭么", undefined, "user", "d602-1");
     await waitFor(() => turnsEnded() >= 2, "its answer turn");
     await Bun.sleep(60);
     expect(inputs[1]).toBe(`这个任务是什么情况，能关闭么\n\n${DIRECT_NOTE}`);
@@ -289,7 +289,7 @@ describe("D600: asked in the task to close it", () => {
         t.say("好，放下了。");
       },
     );
-    await runner.send(ID, "别跟了，关掉这个任务吧", undefined, "user", "d600-2");
+    await runner.send(ID, "别跟了，关掉这个任务吧", undefined, "user", "d602-2");
     await waitFor(() => attention() === "dropped", "dropped");
     await waitFor(() => core.tasks.get(ID)?.residency === "parked", "its session closed");
     const st = core.events.filter((e) => e.kind === "task_state" && (e.body as Bodies["task_state"]).attention === "dropped").map((e) => e.body as Bodies["task_state"]);

@@ -162,14 +162,14 @@ func (a *App) moreMenu(c *ui.Context, task *store.Task) {
 	a.menuButton(c, b, func(m *ui.Menu) { a.dropItem(c, m, task) })
 }
 
-// endable (D600): a finished task an open PR still holds on the board:
+// endable (D602): a finished task an open PR still holds on the board:
 // 结束任务 / End task lets those PRs go (they stay open on GitHub).
 func endable(task *store.Task) bool {
 	att := task.Attention()
 	return (att == protocol.Done || att == protocol.DoneClaimed) && task.Card != nil && len(store.PRsCarried(task.Card.PRs)) > 0
 }
 
-// endAsk is 结束任务's one line under the head (D600): what ending it lets
+// endAsk is 结束任务's one line under the head (D602): what ending it lets
 // go, Not now and End task.
 func (a *App) endAsk(c *ui.Context, task *store.Task) {
 	if a.ending != task.ID || !endable(task) {
@@ -193,7 +193,7 @@ func (a *App) endAsk(c *ui.Context, task *store.Task) {
 // cancelled (D213, D268): it drops the task, undoable from its toast for
 // UndoWindow. Past that, the menu says so, greyed.
 func (a *App) dropItem(c *ui.Context, m *ui.Menu, task *store.Task) {
-	// D600: finished, an open PR still holding it: End task, asked in place.
+	// D602: finished, an open PR still holding it: End task, asked in place.
 	if endable(task) {
 		if m.Item(a.L.T("task.action.end")).Chosen() {
 			a.ending = task.ID

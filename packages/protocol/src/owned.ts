@@ -14,7 +14,7 @@ export function prIdentity(ref: string): string | undefined {
 type LogLike = Pick<LogStore, "read" | "append">;
 
 /**
- * D600: a task lets one of its PRs go: it is not where the task's work goes on (a duplicate of work
+ * D602: a task lets one of its PRs go: it is not where the task's work goes on (a duplicate of work
  * that landed elsewhere, no longer needed, or the person ended the task). Written as the PR's next
  * `owned_news` (no news, the same cursor, `letGo` set), so the card, its Keep and Ducter's looks all
  * read it from one place. Only a PR the task owns and that is still open is let go: "let go" when it

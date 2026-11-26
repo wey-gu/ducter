@@ -1777,7 +1777,7 @@ export function TaskFoot({ task }: { task: Task; blocks?: Block[] }) {
   );
 }
 
-/** D600: 结束任务's one line, asked in place under the task's head: what ending it lets go, and Go. */
+/** D602: 结束任务's one line, asked in place under the task's head: what ending it lets go, and Go. */
 export function EndAsk({ task }: { task: Task }) {
   if (A.ending !== task.id || !endable(task)) return null;
   const prs = prsCarried(task.card?.prs);
@@ -1789,7 +1789,7 @@ export function EndAsk({ task }: { task: Task }) {
   );
 }
 
-/** The task's More menu in its header (D268): Cancel task, while it can still be cancelled; D600:
+/** The task's More menu in its header (D268): Cancel task, while it can still be cancelled; D602:
  *  End task, when it is finished and an open PR still holds it. */
 export function TaskMore({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);

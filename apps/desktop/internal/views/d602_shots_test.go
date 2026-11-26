@@ -11,17 +11,17 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D600: 结束任务 / End task on a finished task an open duplicate draft still
-// held, at 1150 light and dark, against apps/web/demo-d600.ts (a fresh one:
+// D602: 结束任务 / End task on a finished task an open duplicate draft still
+// held, at 1150 light and dark, against apps/web/demo-d602.ts (a fresh one:
 // the shots end its task):
 //
-//	DUCTER_PORT=7601 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-d600.ts
-//	DUCTER_D600_URL=ws://127.0.0.1:7601/ws DUCTER_D600_KEEP=<keep id> DUCTER_SHELL_LANG=zh \
-//	  DUCTER_SHOTS_DIR=<repo>/.shots/close-task/mac go test ./internal/views -run D600Shots
-func TestD600Shots(t *testing.T) {
-	url := os.Getenv("DUCTER_D600_URL")
+//	DUCTER_PORT=7601 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-d602.ts
+//	DUCTER_D602_URL=ws://127.0.0.1:7601/ws DUCTER_D602_KEEP=<keep id> DUCTER_SHELL_LANG=zh \
+//	  DUCTER_SHOTS_DIR=<repo>/.shots/close-task/mac go test ./internal/views -run D602Shots
+func TestD602Shots(t *testing.T) {
+	url := os.Getenv("DUCTER_D602_URL")
 	if url == "" {
-		t.Skip("DUCTER_D600_URL not set")
+		t.Skip("DUCTER_D602_URL not set")
 	}
 	lang := i18n.ZH
 	if os.Getenv("DUCTER_SHELL_LANG") == "en" {
@@ -40,7 +40,7 @@ func TestD600Shots(t *testing.T) {
 	const id = "5ykh7m6y"
 	h.until("the task", func() bool { return h.app.S.Task(id) != nil })
 	h.tt.SetSize(1150, 900)
-	keep := os.Getenv("DUCTER_D600_KEEP")
+	keep := os.Getenv("DUCTER_D602_KEEP")
 	if keep != "" {
 		h.app.openKeep(keep)
 		settle()

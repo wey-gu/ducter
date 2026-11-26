@@ -346,7 +346,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
         const c = tasks.get(taskId);
         if (!c || GONE.has(c.attention)) continue;
         for (const [pr, seen] of m) {
-          if ((seen.state && seen.state !== "open") || seen.letGo) continue; // D600: let go: never looked at again
+          if ((seen.state && seen.state !== "open") || seen.letGo) continue; // D602: let go: never looked at again
           let got: { lines: string[]; next: OwnedSeen };
           try {
             got = await lookAt(taskId, pr, seen);
@@ -356,7 +356,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
             continue;
           }
           if (stopped) return;
-          if (m.get(pr)?.letGo) continue; // D600: let go while it was being read
+          if (m.get(pr)?.letGo) continue; // D602: let go while it was being read
           const others = pending.get(taskId)?.get(pr) ?? [];
           const lines = [...got.lines, ...others];
           if (!seen.head && !lines.length) {
@@ -394,7 +394,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
 
   const onEvent = (e: LogEvent) => {
     if (e.kind === "owned_news") {
-      // D600: a PR the task (or the person, ending it) let go is never looked at again.
+      // D602: a PR the task (or the person, ending it) let go is never looked at again.
       const b = e.body as Bodies["owned_news"];
       const m = owns.get(b.taskId);
       if (b.seen.letGo && m?.has(b.pr)) m.set(b.pr, b.seen);

@@ -3905,10 +3905,10 @@ class AppState {
     for (const d of this.defaultable()) this.decide(d.decisionId, d.defaultOption === "go" ? "go" : "hold");
   }
 
-  /** D600: the task whose 结束任务 asks in place (its one line under the head), or none. */
+  /** D602: the task whose 结束任务 asks in place (its one line under the head), or none. */
   ending?: string;
 
-  /** D600: 结束任务 / End task: a finished task an open PR still holds lets each one go (it stays open on GitHub). */
+  /** D602: 结束任务 / End task: a finished task an open PR still holds lets each one go (it stays open on GitHub). */
   endTask(id: string) {
     this.ending = undefined;
     this.send({ t: "task_action", taskId: id, action: "end" });

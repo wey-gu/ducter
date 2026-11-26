@@ -8,7 +8,7 @@ import { DEVICE_CODE_MINUTES, deviceFlowIn } from "@ducter/protocol/src/device-s
 
 const SUMMARY_MAX = 600;
 const STATES = ["progress", "needs_input", "blocked", "done", "failed"] as const;
-/** D600: the tool's states: a report's, and dropped (put down at the person's word; never a report). */
+/** D602: the tool's states: a report's, and dropped (put down at the person's word; never a report). */
 const TOOL_STATES = [...STATES, "dropped"] as const;
 const LET_GO_WHY = ["duplicate", "unneeded"] as const;
 const EVIDENCE_KINDS = ["ci", "diff", "file", "url", "log", "test"] as const;
@@ -178,7 +178,7 @@ export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
       if (f) q.deviceSignIn = { service: f.service, url: f.url, ...(f.code ? { code: f.code } : {}), until: new Date(Date.now() + DEVICE_CODE_MINUTES * 60_000).toISOString(), cli: f.cli };
     }
   const remember = normalizeRemember(args?.remember);
-  // D600: the PRs it lets go, by identity, each once.
+  // D602: the PRs it lets go, by identity, each once.
   const letGo: NonNullable<Bodies["report"]["letGo"]> = [];
   for (const x of Array.isArray(args?.let_go) ? args.let_go.slice(0, 10) : []) {
     const pr = prIdentity(String(x?.pr ?? ""));
@@ -329,12 +329,12 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         return `Not sent yet: this summary reads as your own notes (${runs}), and the user reads it as it is. Call report_to_main again with the same state, written for them in their language: the result in one plain sentence, then at most a few short lines, ordinary spacing, numbers with their units, and none of your own counters, round numbers or ids.`;
       }
       const persona = core.tasks.get(ctx.taskId)?.persona;
-      // D600: what it lets go is let go now, whatever the report's state (each PR's next owned_news).
+      // D602: what it lets go is let go now, whatever the report's state (each PR's next owned_news).
       const at = new Date().toISOString();
       const notOwned = (body.letGo ?? []).filter((x) => letGoPr(core.log, ctx.taskId!, x.pr, x.why, at, persona) === "not owned").map((x) => x.pr);
       const notLetGo = notOwned.length ? ` Not let go (Ducter doesn't watch it for you): ${notOwned.join(", ")}.` : "";
       if (args?.state === "dropped") {
-        // D600: only the person puts a task down unfinished (code guards it; the model judges that they
+        // D602: only the person puts a task down unfinished (code guards it; the model judges that they
         // asked): in a turn they opened with their own words in this task's box.
         if (!directTurn.is(core, ctx.taskId)) {
           return `Not dropped: only the user puts a task down unfinished, from this task's own box. If the work can't go on, report "failed" and say why; if it needs their decision, "needs_input".${notLetGo}`;

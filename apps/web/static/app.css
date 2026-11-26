@@ -25165,7 +25165,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   }
 }
 
-/* D600: 结束任务 asks in place under the opened task's meta line: the shared confirm line (GConfirm), on the
+/* D602: 结束任务 asks in place under the opened task's meta line: the shared confirm line (GConfirm), on the
    head's own left edge (no tile column), its question in ink. */
 .end-ask {
   margin-top: var(--s2);

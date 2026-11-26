@@ -186,7 +186,7 @@ function TaskSheet({ task, canSwitch, onClose }: { task: Task; canSwitch: boolea
             <span>{t("task.action.drop")}</span>
           </button>
         )}
-        {/* D600: a finished task an open PR still holds: its one line asks under the head. */}
+        {/* D602: a finished task an open PR still holds: its one line asks under the head. */}
         {!droppable && endable(task) && (
           <button class="ts-row" onClick={then(() => ((A.ending = task.id), A.changed()))}>
             <span>{t("task.action.end")}</span>

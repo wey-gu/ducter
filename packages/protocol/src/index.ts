@@ -621,7 +621,7 @@ export interface Bodies {
     /** D585: set by Ducter (never the task): made in a turn the person opened with their own words in
      *  the task. They read it there; a progress one stays out of the living message. */
     direct?: true;
-    /** D600: the PRs it let go in this report (each one it owns): not where its work goes on. */
+    /** D602: the PRs it let go in this report (each one it owns): not where its work goes on. */
     letGo?: { pr: string; why: "duplicate" | "unneeded" }[];
   };
   /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
@@ -3469,13 +3469,13 @@ export interface OwnedSeen {
   failedTold?: string[];
   /** D496: where the PR stands at the last look, told with every piece of news and every wake. */
   standing?: OwnedStanding;
-  /** D600: the task let it go: it is not where the task's work goes on (a duplicate, no longer
+  /** D602: the task let it go: it is not where the task's work goes on (a duplicate, no longer
    *  needed, or the person ended the task). Ducter stops watching it, it no longer holds the task
    *  open or a Keep's item, and it stays open on GitHub until someone closes it there. */
   letGo?: PrLetGo;
 }
 
-/** D600: why a task let one of its PRs go, and when. The model judges duplicate and unneeded (its
+/** D602: why a task let one of its PRs go, and when. The model judges duplicate and unneeded (its
  *  report_to_main `let_go`); ended is the person's 结束任务 / End task. */
 export interface PrLetGo {
   why: "duplicate" | "unneeded" | "ended";

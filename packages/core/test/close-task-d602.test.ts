@@ -1,4 +1,4 @@
-// D600: a finished task an open PR still held (hel, 2026-11-26: 「跟进 Bridge 试用…」 done, its PR #11166
+// D602: a finished task an open PR still held (hel, 2026-11-26: 「跟进 Bridge 试用…」 done, its PR #11166
 // merged, the duplicate draft #11179 open with a failing check) sat under 在等 for two days, and the
 // helper's Keep held 「#11179 … CI 未通过」 for ever. A PR the task lets go (its report's let_go, or
 // the person's 结束任务 / End task) holds nothing open: the task is done as it is, its Keep's item
@@ -47,7 +47,7 @@ function heldTask(core: Core, attention: "done" | "working" = "done") {
 
 const items = (core: Core) => helperItems("nowledge-mem-pr-babysitter", { tasksOf: () => [[ID, "nowledge-mem-pr-babysitter"]], card: (t) => core.tasks.get(t) });
 
-describe("D600: a PR let go holds nothing open", () => {
+describe("D602: a PR let go holds nothing open", () => {
   test("before: the done task stands in 在等 under its PR, and the Keep holds it as CI failed", () => {
     const core = boot();
     heldTask(core);

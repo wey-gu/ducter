@@ -171,7 +171,7 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
 export function doneTodayOf(tasks: Task[], now = Date.now()): number {
   return countDoneToday(tasks.map((t) => ({ attention: attention(t), at: [t.card?.updatedAt, t.events.at(-1)?.ts].filter(Boolean).sort().at(-1), prOpen: !!prGoesOn(t.card?.prs) })), now); // D508
 }
-/** D600: a finished task an open PR still holds on the board: 结束任务 / End task lets those PRs go. */
+/** D602: a finished task an open PR still holds on the board: 结束任务 / End task lets those PRs go. */
 export function endable(t: Task): boolean {
   const a = attention(t);
   return (a === "done" || a === "done_claimed") && prsCarried(t.card?.prs).length > 0;

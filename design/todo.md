@@ -9,7 +9,7 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
-## Ending a task held by its PR, after D600 (`focus-window.md` "How a task is shown")
+## Ending a task held by its PR, after D602 (`focus-window.md` "How a task is shown")
 
 - **Open draft PR on a task whose work went into a PR it took over** (the origin of hel's #11179):
   not offered when a PR it owns, open or merged, already holds the branch's head. Trigger: the

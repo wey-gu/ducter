@@ -359,7 +359,7 @@ What the window writes is what the user reads when they open the task, in one co
   the conversation and gets no fresh look (D437), since they read it as it came; one that carries
   an ask (merge it?) is its own ask card, asked in the task's words with no partner relay
   (`decision.direct`), and is still read once by another AI. A direct failure, block or question
-  goes to the partner as before; asked there to close, end or drop the task (D600), the agent ends
+  goes to the partner as before; asked there to close, end or drop the task (D602), the agent ends
   it in that turn: finished work is `done` with `let_go` for each open PR the work no longer goes on
   in (a duplicate, not needed), unfinished work is `dropped` with its reason (accepted only in such
   a turn; a `task_state`, never a report; the runner drops it as Cancel task does once the turn

@@ -153,11 +153,11 @@ var zhOnhand = Table{
 	"onhand.prs.merged":       "已合并",
 	"onhand.prs.closed":       "已关闭，未合并",
 	"onhand.prs.open":         "PR 开着",
-	// D600: a PR the task let go: it holds nothing open, and says what it is.
+	// D602: a PR the task let go: it holds nothing open, and says what it is.
 	"onhand.prs.duplicate":       "重复的 PR，可关",
 	"onhand.prs.duplicate.draft": "重复草稿，可关",
 	"onhand.prs.let_go":          "不再跟了，可关",
-	// D600: 结束任务 in the opened task's ⋯; its one line asks in place.
+	// D602: 结束任务 in the opened task's ⋯; its one line asks in place.
 	"task.action.end":      "结束任务",
 	"task.end.ask":         "我不再跟 PR #%s，它在 GitHub 上还开着。",
 	"task.end.ask.many":    "我不再跟这 %d 个 PR，它们在 GitHub 上还开着。",

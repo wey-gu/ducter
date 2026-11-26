@@ -15,7 +15,7 @@ export interface TaskPR {
   /** When this was last read. */
   at: string;
   standing?: OwnedStanding;
-  /** D600: the task let it go (a duplicate, not needed, or the task was ended): it no longer holds
+  /** D602: the task let it go (a duplicate, not needed, or the task was ended): it no longer holds
    *  the task open, and it is not watched again. */
   letGo?: PrLetGo;
 }
@@ -25,7 +25,7 @@ export interface TaskPR {
  * checks: CI is still running; failing: a check failed; review: waiting for a reviewer;
  * changes: a reviewer asked for changes; conflict: it conflicts with its base; draft: still a
  * draft; ready: approved and nothing left but the merge; merged; closed (without merging);
- * open: open, nothing read yet. D600: duplicate: the task judged it a duplicate of work that landed
+ * open: open, nothing read yet. D602: duplicate: the task judged it a duplicate of work that landed
  * elsewhere, so it can be closed; let_go: still open, but the task let it go (not needed, or the
  * task was ended), so it can be closed too. Neither holds the task open.
  */
@@ -40,7 +40,7 @@ export interface PrSaid {
   failed?: string[];
   /** The checks on the head: how many passed of how many, how many still run. */
   checks?: { passed: number; total: number; pending: number };
-  /** D600: duplicate: it is still a draft (重复草稿). */
+  /** D602: duplicate: it is still a draft (重复草稿). */
   draft?: true;
 }
 
@@ -51,7 +51,7 @@ export function prSaid(p: Pick<TaskPR, "state" | "standing" | "letGo">): PrSaid 
   if (p.state === "merged") return { phase: "merged" };
   if (p.state === "closed") return { phase: "closed" };
   const st = p.standing;
-  // D600: let go, it says only that: its CI and its reviews are no longer anyone's to wait on.
+  // D602: let go, it says only that: its CI and its reviews are no longer anyone's to wait on.
   if (p.letGo) return p.letGo.why === "duplicate" ? { phase: "duplicate", ...(st?.draft ? { draft: true as const } : {}) } : { phase: "let_go" };
   if (!st) return { phase: "open" };
   const c = st.checks;
@@ -82,14 +82,14 @@ export function prStands(phase: PrPhase): "needs" | "waiting" | "done" {
 }
 
 /** The PR a task's row speaks of: an open one it still carries (the newest read), else an open one
- *  it let go (D600), else the newest. */
+ *  it let go (D602), else the newest. */
 export function prOf(prs: readonly TaskPR[] | undefined): TaskPR | undefined {
   if (!prs?.length) return undefined;
   const newest = [...prs].sort((a, b) => b.at.localeCompare(a.at));
   return newest.find((p) => p.state === "open" && !p.letGo) ?? newest.find((p) => p.state === "open") ?? newest[0];
 }
 
-/** D600: the open PRs a task still carries (not let go): what ending it lets go. */
+/** D602: the open PRs a task still carries (not let go): what ending it lets go. */
 export function prsCarried(prs: readonly TaskPR[] | undefined): TaskPR[] {
   return (prs ?? []).filter((p) => p.state === "open" && !p.letGo);
 }

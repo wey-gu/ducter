@@ -890,7 +890,7 @@ export const scenarios: Scenario[] = [
     rubric: "The follow-up is handed to the existing task (same repo, builds on its change), with at most one short Chinese line naming the action. No new task, no outcome claimed, no 'I'll tell you when it's done'.",
   },
   {
-    // D600 (hel 5ykh7m6y): a finished task an open duplicate draft still holds. Asked to close it,
+    // D602 (hel 5ykh7m6y): a finished task an open duplicate draft still holds. Asked to close it,
     // the partner hands the ask to that task (its agent ends itself and lets the draft go); it never
     // closes the PR on GitHub itself, and never opens a new task for it.
     id: "close-task-duplicate-zh",

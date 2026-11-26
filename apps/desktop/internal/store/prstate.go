@@ -25,7 +25,7 @@ const (
 	PRMerged   = "merged"
 	PRClosed   = "closed"
 	PROpen     = "open"
-	// D600: the task let it go: a duplicate, or not needed / the task ended.
+	// D602: the task let it go: a duplicate, or not needed / the task ended.
 	PRDuplicate = "duplicate"
 	PRLetGo     = "let_go"
 )
@@ -55,7 +55,7 @@ func SayPR(p protocol.TaskPR) PRSaid {
 		return PRSaid{Phase: PRClosed}
 	}
 	st := p.Standing
-	// D600: let go, it says only that: its CI and reviews are no one's to wait on.
+	// D602: let go, it says only that: its CI and reviews are no one's to wait on.
 	if p.LetGo != nil {
 		if p.LetGo.Why == "duplicate" {
 			return PRSaid{Phase: PRDuplicate, Draft: st != nil && st.Draft}
@@ -115,7 +115,7 @@ func PRStands(phase string) string {
 }
 
 // PROf is the PR a task's row speaks of: an open one it still carries (the
-// newest read), else an open one it let go (D600), else the newest.
+// newest read), else an open one it let go (D602), else the newest.
 func PROf(prs []protocol.TaskPR) *protocol.TaskPR {
 	if len(prs) == 0 {
 		return nil
@@ -153,7 +153,7 @@ func (t *Task) PRGoesOn() (*protocol.TaskPR, PRSaid, string) {
 	return pr, said, stands
 }
 
-// PRsCarried (D600) is the open PRs a task still carries (not let go):
+// PRsCarried (D602) is the open PRs a task still carries (not let go):
 // what 结束任务 / End task lets go.
 func PRsCarried(prs []protocol.TaskPR) []protocol.TaskPR {
 	var out []protocol.TaskPR

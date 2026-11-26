@@ -353,7 +353,7 @@ type App struct {
 	// dropped is the task just dropped, undoable until undoUntil.
 	dropped   string
 	undoUntil time.Time
-	// ending (D600) is the task whose 结束任务 asks in place under its head.
+	// ending (D602) is the task whose 结束任务 asks in place under its head.
 	ending string
 	// dev is Your devices and abilities' own state.
 	dev devicesState
@@ -1028,7 +1028,7 @@ func (a *App) DropTask(id string) {
 	a.send(protocol.TaskAction{T: "task_action", TaskID: id, Action: "drop"})
 }
 
-// EndTask (D600) is 结束任务 / End task on a finished task an open PR still
+// EndTask (D602) is 结束任务 / End task on a finished task an open PR still
 // holds: each PR is let go (Ducter stops following it; it stays open on
 // GitHub), so the task is done as it is.
 func (a *App) EndTask(id string) {

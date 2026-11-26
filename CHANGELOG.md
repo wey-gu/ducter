@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.93 - 2026-11-27
+
+<!-- whats-new
+zh: 交出去的活有主人、有状态；Mac 上文件夹叫 ~/Ducter
+en: Handed-off work always has an owner; on a Mac the folder is ~/Ducter
+-->
+
+**Handing work to a helper**
+- A hand-off is one record, whatever door it came through, and a resend merges into it. The task
+  that handed it shows one line that follows it: handed over, taken, done, returned or not taken.
+- A helper's page groups what it holds: waiting to be taken first (with who gave it and when,
+  Take it now and Stop following), then working, then returned and not taken.
+
+**The Ducter folder**
+- On a Mac a new one is ~/Ducter. Settings › Where it runs has a row per computer to rename it or
+  choose another place; projects and working copies move with it, and git follows.
+
+**iPad**
+- The rails' top lines meet, every full-screen view has its way back (and the edge swipe), and
+  coming back to the app never shows an empty shell.
+
 ## 0.1.92 - 2026-11-27
 
 <!-- whats-new

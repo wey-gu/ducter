@@ -47,7 +47,7 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >=
 export function contextMeter(events: readonly LogEvent[]): ContextMeter {
   const m: ContextMeter = { level: "calm", compactions: 0 };
   // The session's running totals at the previous turn end (a turn without `turn` is their difference).
-  let prev: { input: number; output: number; cached: number } | undefined;
+  let prev: RunningTokens | undefined;
   const add = (t: TurnTokens) => {
     const s = m.total ?? { input: 0, output: 0 };
     m.total = { input: s.input + t.input, output: s.output + t.output, ...(t.cached !== undefined || s.cached !== undefined ? { cached: (s.cached ?? 0) + (t.cached ?? 0) } : {}) };
@@ -90,15 +90,9 @@ export function contextMeter(events: readonly LogEvent[]): ContextMeter {
     frame(u);
     const n = num(u.contextTokens);
     if (n !== undefined) m.tokens = n;
-    const now = { input: u.inputTokens ?? 0, output: u.outputTokens ?? 0, cached: u.cacheRead ?? 0 };
-    let turn: TurnTokens | undefined = u.turn;
-    if (!turn && (u.inputTokens !== undefined || u.outputTokens !== undefined)) {
-      // A running total that went down is a new session's (a resume, a switch): its own first turn.
-      const fresh = !prev || now.input < prev.input || now.output < prev.output;
-      const base = fresh ? { input: 0, output: 0, cached: 0 } : prev!;
-      turn = { input: now.input - base.input, output: now.output - base.output, ...(u.cacheRead !== undefined ? { cached: Math.max(0, now.cached - base.cached) } : {}) };
-    }
-    if (u.inputTokens !== undefined || u.outputTokens !== undefined) prev = now;
+    const step = turnTokensOf(u, prev);
+    prev = step.prev;
+    const turn = step.turn;
     if (turn) {
       m.turn = turn;
       add(turn);
@@ -108,6 +102,26 @@ export function contextMeter(events: readonly LogEvent[]): ContextMeter {
   const point = m.compactAt ?? (m.window ? Math.round(m.window * 0.8) : undefined);
   if (m.tokens !== undefined && point && m.tokens >= saveBeforeAt(point)) m.level = "near";
   return m;
+}
+
+/** A session's running totals at a turn end (what `turnTokensOf` carries from one turn to the next). */
+export type RunningTokens = { input: number; output: number; cached: number };
+
+/**
+ * One turn's tokens from a turn end's usage: the runner's own `turn` when it set one (every turn
+ * since D288), else the difference from the session's previous running totals (a total that went
+ * down is a new session's: a resume, a switch, its own first turn). D588's usage count shares it.
+ */
+export function turnTokensOf(u: Usage, prev: RunningTokens | undefined): { turn?: TurnTokens; prev: RunningTokens | undefined } {
+  const has = u.inputTokens !== undefined || u.outputTokens !== undefined;
+  const now = { input: u.inputTokens ?? 0, output: u.outputTokens ?? 0, cached: u.cacheRead ?? 0 };
+  let turn: TurnTokens | undefined = u.turn;
+  if (!turn && has) {
+    const fresh = !prev || now.input < prev.input || now.output < prev.output;
+    const base = fresh ? { input: 0, output: 0, cached: 0 } : prev!;
+    turn = { input: now.input - base.input, output: now.output - base.output, ...(u.cacheRead !== undefined ? { cached: Math.max(0, now.cached - base.cached) } : {}) };
+  }
+  return { ...(turn ? { turn } : {}), prev: has ? now : prev };
 }
 
 /** A token count as people read it: 812, 4.2k, 120k, 1.2M. */

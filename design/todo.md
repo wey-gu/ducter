@@ -9,6 +9,25 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## What tasks used, after D588 (`focus-window.md` "What tasks used", research/235 #2)
+
+- [ ] **The line in the apps.** Settings › Overview and the limit card in the opened task's context
+  say the week's top line (what used the most of this agent's limit) with one tap to the list, in
+  the Mac app and the web; shared controls, shots both themes and languages (the UI bar). Trigger:
+  the author has run `ducter usage` on hel and the numbers read right.
+- [ ] **The partner can answer "what used my limit / my key".** One fact in the `[devices]` world
+  line (D478) or a read tool; a persona or tool change, so a D175 eval with a scenario for it.
+  Trigger: the line in the apps.
+- [ ] **The partner's own turns and Ducter's own looks counted.** The partner logs its turn usage on
+  the partner stream (today only `contextTokens` is read, `partner.ts`); judges, second looks
+  (D437) and proactive reads (`cross.ts` already budgets tokens) log theirs as `ducter_look`
+  usage. Trigger: with the line in the apps, so its total is the whole truth.
+- [ ] **Money, for a key paid by use.** Price a paid key's tokens from the provider's own list
+  (cached input at its own price), never a subscription's. Trigger: a person on a paid key (D440)
+  asks, or the line in the apps ships.
+- [ ] **Run it on hel.** `ducter usage --days 14` on the author's home, read only; check a
+  300-round loop and a big refactor land in the order the author expects. Trigger: next release.
+
 ## Talking to a task in its box, after D585 (`focus-window.md` "How a task is shown")
 
 - [ ] **A live reply, token by token.** The agent's words show when each message ends (the
@@ -40,6 +59,14 @@ line.
 - [ ] **The author's review of `.shots/settings-r3/`** (D583; the five crops named in its report first).
 - [ ] **The Mac's keepClauses under a long Chinese run** (D583 fixed the web's lone 「。」 under keep-all; the Mac
   breaks anywhere, so it has not shown one). Trigger: a lone punctuation mark seen in a Mac shot.
+
+## Settings, after D589 (`settings.md` "Every pane, end to end (D589)")
+
+- [ ] **The author's review of `.shots/settings-r5/`** (the five crops named in D589's report first).
+- [ ] **The Mac's rail growing 和你的其他 agent 通信 under the person.** In the shot harness the row came only from
+  the third pane on. Trigger: seen in the real app (a rail row arriving while Settings is open).
+- [ ] **The Mac's sign-ins and keys say 已存 / •••••• as the web's do** (Passwords & cards). Trigger: that pane's
+  next pass.
 
 ## The site, after D558 (`site.md`, research/227)
 

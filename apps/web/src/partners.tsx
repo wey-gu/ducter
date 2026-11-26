@@ -16,7 +16,7 @@ import { A, type Wear } from "./app.ts";
 import { FIGURE_OPTICAL } from "@ducter/protocol/src/figures-gen.ts";
 import { say, Said } from "./set-grid.tsx";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, Chev, CountPebble, DangerButton, Facts, Field, IconBtn } from "./controls.tsx";
+import { AddRow, Btn, Chev, CountPebble, DangerButton, Facts, Field, IconBtn, Tag } from "./controls.tsx";
 import { phoneNow } from "./wide.ts";
 import { currentSplit } from "./fold.ts";
 import { harnessName, modelName } from "./format.ts";
@@ -461,7 +461,6 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
               <ThinksLine p={p} />
             </>
           )}
-          {shown && !editing && (A.partners?.length ?? 0) > 1 ? <small>{t("partners.talking")}</small> : null}
         </span>
       </span>
       {/* D582: the six figures and the colours rest behind 改一下 / Change, with the name, what it
@@ -498,6 +497,9 @@ function PartnerRow({ p }: { p: PartnerInfo }) {
           </>
         ) : (
           <>
+            {/* D589: the one you're talking with says so where the others have 换到, as the shared
+                state word: every row's actions start on one edge, at one height. */}
+            {shown && (A.partners?.length ?? 0) > 1 && <Tag text={t("partners.talking")} tone="on" />}
             {!shown && <Btn kind="secondary" size="sm" label={t("partners.switch", p.name)} onClick={() => A.openPartner(p.id)} />}
             <Btn kind="text" size="sm" label={t("partners.change")} about={p.name} onClick={() => (setDraft(p.name), setAboutDraft(p.about ?? ""), setEditing(true))} />
           </>

@@ -778,7 +778,7 @@ export function KeepRail() {
   const ks = A.S.onHand?.keeps ?? [];
   return (
     <aside class="kp-rail" aria-label={t("keep.section")}>
-      {/* D535: no back link here: the way back is the header's breadcrumb (对话 / 手头的事 / the Keep). */}
+      {/* D535: no back link here: the way back is the header's breadcrumb (对话 / 任务 / the Keep). */}
       <SectionHead label={t("keep.section")} />
       {ks.map((k) => {
         const facts = keepFacts(k).filter((f) => f.tone === "needs");
@@ -823,7 +823,7 @@ export function KeepPageView({ room }: { room: string }) {
   ];
   return (
     <div class={`kp-page${wide ? " wide" : ""}`}>
-      {/* D535: the way back is the header's (‹ 手头的事 beside the conversation and on a phone). */}
+      {/* D535: the way back is the header's (‹ 任务 beside the conversation and on a phone). */}
       <div class="kp-main">
         <header class="kp-ph">
           <KeepMark life={k.life} size={64} beat={beatNow(k)} />

@@ -88,7 +88,7 @@ describe("D507: the partner's word when the address stands, and what a helper ke
   });
 
   test("the words name the helper and, for a refusal, what to do and where", () => {
-    expect(helperSaidWords("zh", { name: "Nowledge Mem PR Babysitter" }, "ready")).toBe("Nowledge Mem PR Babysitter 好了：你的 agent 在 Nowledge Mem 里按这个名字找到它，就能把活交给它。交给它的每件活都会出现在手头的事里，挂在它名下。");
+    expect(helperSaidWords("zh", { name: "Nowledge Mem PR Babysitter" }, "ready")).toBe("Nowledge Mem PR Babysitter 好了：你的 agent 在 Nowledge Mem 里按这个名字找到它，就能把活交给它。交给它的每件活都会出现在任务里，挂在它名下。");
     expect(helperSaidWords("en", { name: "B" }, "refused")).toContain("Tell me another name");
     expect(helperSaidWords("zh", { name: "B" }, "refused")).toContain("设置 › Agent 通信");
   });

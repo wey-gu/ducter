@@ -56,7 +56,7 @@ describe("a task in rounds keeps who it is (D544)", () => {
     expect(f.keep).toBe("kp_review");
     expect(f.words[0]).toBe("看守中");
     expect(f.words.some((w) => w.startsWith("下一轮"))).toBe(true);
-    expect(f.needs).toBe("1 个在等你");
+    expect(f.needs).toBe("1 个待你处理");
     expect(f.round).toBeUndefined();
     k.K.pages.set("kp_review", { rounds: Array.from({ length: 302 }, () => ({})) } as never);
     expect(l.loopFacts(task("t_review"))!.round).toBe(302);

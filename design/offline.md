@@ -32,7 +32,7 @@ that looks open but is dead: a phone that moved networks), stalls (TCP retrying)
 | a message sent while down, then the page reloaded while down | the browser's own error page; the message lost | the kept page from the shell in 0.3 s, the message shown pending again, delivered once when back |
 | 1 s down / 1 s up, ten times | 20 dials; the header flicked ten times | 20 dials (each reset is one); the header never changed |
 | a reload on slow 3G with the last screen kept | the conversation in about 1 s | the same (1.3 s) |
-| a card's Go tapped while down, then a reload | the Go lost; the card asked again | the Go kept and applied when back (3 等你 to 2, the task started) |
+| a card's Go tapped while down, then a reload | the Go lost; the card asked again | the Go kept and applied when back (3 待你处理 to 2, the task started) |
 | a task's draft, and the opened task, after a reload while down | the draft lost (memory only); the task empty until the home answered (by the code) | the draft kept; the task's steps read from its kept window |
 | the iPhone app's cold start from its cache, home unreachable | `reach: false` at 0.8 s: the app's full-screen can't-reach screen over a readable page | no `reach: false`; the kept screen stays, the line from 2.9 s |
 | the app back to the front on a half-open socket | 56 s before it dialled again | 4.6 s |

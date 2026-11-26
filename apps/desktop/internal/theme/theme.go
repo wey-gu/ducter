@@ -123,6 +123,12 @@ type Tokens struct {
 	Title       float32 // screen titles and a task's outcome, 34
 	Hero        float32 // hero numbers, 56
 	MonoSM      float32 // code in cards and transcripts, 13
+	// AskSize and AskWeight are an ask card's question (On hand's, an opened
+	// task's, a call's), in the reading face (D586): one step under D287's
+	// 20/800 heading, so a page of them is calm and the head's one sentence
+	// is what stands out. 18/600 (PingFang Semibold; Latin takes the face's nearest).
+	AskSize   float32
+	AskWeight int
 
 	// space: one 4-point scale, S1 4 … S7 48. Gaps inside a group are
 	// S2–S3, between groups S4–S5, between a screen's sections S6–S7.
@@ -405,6 +411,8 @@ func Pebble() *Tokens {
 		Title:       34,
 		Hero:        56,
 		MonoSM:      13,
+		AskSize:     18,
+		AskWeight:   600,
 
 		S1: 4, S2: 8, S3: 12, S4: 16, S5: 24, S6: 32, S7: 48,
 

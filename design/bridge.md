@@ -338,7 +338,7 @@ stays parked as X5.
 
 **The idea in one line.** Ducter stops being only the place where the user talks to *its* agents. It becomes the
 one place where **all** of the user's AI tools reach the user: they hand it work, they ask it for the user's call,
-and it asks them. The partner stays the single attention point (principle 7): one conversation, one 等你 / Needs
+and it asks them. The partner stays the single attention point (principle 7): one conversation, one 待你处理 / Needs
 you lane, silence when nothing matters. Nothing leaves without the user's Go, and each sender gets exactly the
 trust the user gave it.
 
@@ -363,7 +363,7 @@ Users: **D** heavy multi-agent developer · **C** consumer personal-AI user · *
 
 | # | Scenario | Who | V | E | T | B | M | Σ |
 |---|---|---|---|---|---|---|---|---|
-| **X1** | **"有事问 Ducter": your other agents' questions for you come through the partner.** A terminal Claude Code or Codex that needs the user's call while they're away sends it to the partner; it lands as one decision card in the conversation and in 等你 / Needs you, and the user's answer goes back by code | D | 5 | 5 | 4 | 3 | 5 | **22** |
+| **X1** | **"有事问 Ducter": your other agents' questions for you come through the partner.** A terminal Claude Code or Codex that needs the user's call while they're away sends it to the partner; it lands as one decision card in the conversation and in 待你处理 / Needs you, and the user's answer goes back by code | D | 5 | 5 | 4 | 3 | 5 | **22** |
 | **X2** | **"直接接": a standing go per sender.** After the user has said 好 twice to work from the same own agent, the partner offers once to take that agent's requests without asking, within limits (S1 with a learned rule, J-Q2) | D | 4 | 4 | 4 | 4 | 5 | **21** |
 | **X3** | **A teammate's agent asks your partner (J3), with trust per sender.** Opt in per team; the partner answers only what is already shared there or what the user approves; a teammate can never open a task, and each sender has a daily quota | D | 5 | 4 | 3 | 3 | 4 | **19** |
 | X4 | The partner suggests whom to ask ("这个你的 Codex 知道，问它？"): S2 without the user naming the agent | D | 3 | 4 | 4 | 4 | 3 | 18 |
@@ -410,7 +410,7 @@ Why the others wait:
     **回复… / Reply…**;
   - the default caption **没回就让它先等着 / If you don't answer, it keeps waiting** (the safe default, below);
   - the asker's own suggestion marked **它建议 / It suggests** on that option, never pre-selected.
-- *On hand:* the same card in **等你 / Needs you**, with the coin and **你的 terminal-claude · <where it works>**
+- *On hand:* the same card in **待你处理 / Needs you**, with the coin and **你的 terminal-claude · <where it works>**
   where a task card has its short title (the place comes from the agent's own description, when it gives one).
 - *After the tap:* the quiet line **已回复 你的 terminal-claude / Replied to your terminal-claude** (J-Q5's string).
   The card leaves Needs you. Nothing else is said: silence means success.
@@ -511,7 +511,7 @@ decision cards; their rules live with the learned rules.
 | Where | What the user sees |
 |---|---|
 | The conversation | a quiet line **terminal-claude 发来请求：「<gist>」** for work; for a question, the card itself: the coin and **你的 terminal-claude 问你 · ~/dev/ducter** above the partner's bubble, then **回复…** · its second option · its first (or suggested) option, **它建议「…」** and **没回就让它先等着。**; after the tap, **已回复 你的 terminal-claude** |
-| On hand · 等你 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
+| On hand · 待你处理 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
 | Phone and lock screen | the same card; the notification is **小鸭 · 你的 terminal-claude 问你**, the question and the waiting line, no Go/Hold actions (its options are its own) |
 | X2's offer | after two Go's: **以后你的 terminal-claude 发来的活，直接接？** · **直接接** · **还是先问我**; then its work shows up in 在做 / Working with no card, the brief starting **你的 terminal-claude 让我做的** |
 | Settings › 和你的其他 agent 通信 (D332) | what came and went lately, 试试看, one switch; only an agent the person stopped listening to shows (**已不再听 X** · **恢复**). X2's rule is learned and changed by saying it, never a setting |
@@ -1223,7 +1223,7 @@ task (pi / agy, Bridge on, not a browser)
   agent_message {to, text}  ── Ducter finds the one meant: an agent that answered this task, the one that
                                handed it over (D559: a reply on its own message), one that wrote lately,
                                else Mem's own list (bridge contacts <to>); several → handles back
-  first message to an agent → card in the conversation, tied to the task (On hand: 等你)
+  first message to an agent → card in the conversation, tied to the task (On hand: 待你处理)
       「{task}」想发给{who}：「{words}」 · 发送 · default hold · not reversible
       Log: bridge_msg{out, by: task, taskId, head, state pending, decisionId}  (before the card)
   Go → deliver (D106): "Ducter 的任务「{title}」：\n{words}" under the partner's identity
@@ -1268,7 +1268,7 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
 
 - **The head is the partner**: **{agents} 和我能互相找到。** / **还差一步，我们就能互相找到。** / **你的 agent
   还找不到我：它们得先装上 Nowledge Mem 插件。** / **开关关着，你的 agent 现在找不到我。**; a one-way link (Mem lists
-  the agent's mailbox closed) is what needs you, in the needs-you ink, and a 等你 on Overview with its button.
+  the agent's mailbox closed) is what needs you, in the needs-you ink, and a 待你处理 on Overview with its button.
 - **The switch first**, named by what it does; no count.
 - **谁能找到谁 / Who reaches whom**: one row per agent (chosen over a hub, a clay metaphor, sentences and a
   matrix; rubric in D470): its coin, the two ways drawn (solid with a head; dashed while not; fainter while
@@ -1276,7 +1276,7 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
   pose (flag on a half-broken link, done when both ways work). Under a link that isn't whole: why, and the fix
   Ducter can start: **打开它的信箱** (D480: its Nowledge Mem Space picked in place first, below; then one setup task on that computer, `mem_plugin_install` with `what: "mailbox"` and that `space`:
   the agent's own plugin runs Mem's passive `nmem bridge setup` in its own agent context, `--enable` only when Mem
-  asks for it; never Ducter's connection) or **装上** (D169). A missing plugin is an offer, never a 等你.
+  asks for it; never Ducter's connection) or **装上** (D169). A missing plugin is an offer, never a 待你处理.
 - **来往 / Back and forth**: a thread per agent from what the clients hold (no new protocol): each request's
   outcome (a task, the partner's answer, a card waiting, told the person, the person's go or hold, nothing
   yet), each question the partner (or its task) sent with its answer or the wait. Before the first one, an
@@ -1315,7 +1315,7 @@ server); Bridge lives in it. Claude Code on the author's Mac can't get answers o
 open.
 
 - **In place, not a task's question.** **打开它的信箱 / Open its mailbox** opens a choice under the agent's
-  link row (and Overview's 等你 goes there): **在哪个 Nowledge Mem 空间打开它的信箱？ / Which Nowledge Mem
+  link row (and Overview's 待你处理 goes there): **在哪个 Nowledge Mem 空间打开它的信箱？ / Which Nowledge Mem
   Space should its mailbox open in?** Core asks that computer's own Mem, read only (`mailbox_look`: the home
   runs `nmem --json status` and the passive `bridge setup` itself; a worker its new `mem_bridge_look` op), and
   answers the Spaces as Mem lists them. The person's tap on **在「只有你」打开 / Open in Only you** is the Go; the
@@ -1367,7 +1367,7 @@ stone at a different size per row; each way labelled twice; the pane's purpose u
   person picks first (the first Space is never a silent default). Mem picks no Space; neither does Ducter.
 - **The head** says it once, as the partner, in its plain ink: **Codex 和我能来回传话，Claude Code 还差一步。**
   (**{both} 和我能来回传话。**, **{tool} 能把事交给我，还差一步就能收到我的回话。**, **{tool} 能把事交给我。**).
-  Both ways only where Mem said so. The one-way agent is still Overview's 等你, its button **让它收到回话**.
+  Both ways only where Mem said so. The one-way agent is still Overview's 待你处理, its button **让它收到回话**.
 - **What the pane is for**, under the switch: **它们能把事交给{name}，也能问{name}事情；{name}也替你去问它们。
   要你定的，都会出现在你们的对话里。**
 - **Mem's side** (what would make the one tap disappear): `research/private/bridge-feedback-2026-11-23.md`.

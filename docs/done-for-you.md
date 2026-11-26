@@ -12,7 +12,7 @@ lists every one of them, day by day, so you can always see what happened out the
 
 ## Opening it
 
-- At the end of **On hand**: **替你做过的 ›**.
+- At the end of **Tasks**: **替你做过的 ›**.
 - Under the partner's morning note: the same line.
 - On the Mac: the menu **替你做过的… / Done for You…**, or ⌘⇧Y.
 - Or just ask your partner: "你今天替我发了什么？", "Did you pay for anything today?". It answers

@@ -20,7 +20,7 @@ func (a *App) onHand(c *ui.Context) {
 	a.placeBar(c, "onhand", RouteOnHand, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		// D535: on a Keep's page the breadcrumb is the way back, at every
-		// width: 对话 / 手头的事 / {the Keep}, 手头的事 closing the page.
+		// width: 对话 / 任务 / {the Keep}, 任务 closing the page.
 		if title, ok := a.keepCrumb(); ok {
 			a.crumbDo(c, a.L.T("onhand.title"), a.closeKeep)
 			a.chromeTitle(c, title)
@@ -512,7 +512,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			q = rep.Questions[0].Text
 		}
 		if q != "" {
-			a.heading(c, keepTail(autospace(q)), t.LG).LineHeight(1.4).MaxLines(4).Tooltip(q)
+			a.askQuestion(c, keepTail(autospace(q))).MaxLines(4).Tooltip(q)
 		}
 		if d != nil {
 			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
@@ -813,7 +813,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 				uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			})
 		}
-		a.heading(c, keepTail(autospace(a.questionOf(d))), t.LG).LineHeight(1.4).MaxLines(4)
+		a.askQuestion(c, keepTail(autospace(a.questionOf(d)))).MaxLines(4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}

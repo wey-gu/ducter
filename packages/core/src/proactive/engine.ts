@@ -46,7 +46,7 @@ const OWN = {
     saidUser: (q: string) => `你说的：「${q}」`,
     saidMe: (q: string) => `我说的：「${q}」`,
     today: (at: string, reason: string, more: number) => zhSpace(`今天 ${at}：${reason}${more ? `，还有 ${more} 个` : ""}。`),
-    waiting: (n: number, days: number) => zhSpace(`还有 ${n} 个等你定，最早的是${days <= 1 ? "昨天" : `${days} 天前`}的。`),
+    waiting: (n: number, days: number) => zhSpace(`还有 ${n} 个待你处理，最早的是${days <= 1 ? "昨天" : `${days} 天前`}的。`),
   },
   en: {
     gap: " ",

@@ -28,7 +28,7 @@
 "menu.newtask" = "新建";
 "menu.settings" = "设置…";
 "menu.conversation" = "对话";
-"menu.onhand" = "手头的事";
+"menu.onhand" = "任务";
 "menu.devices" = "你的设备";
 "menu.partner" = "伙伴";
 "menu.composer" = "跟 %@ 说";

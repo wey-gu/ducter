@@ -1,4 +1,4 @@
-// D548 (the author on 0.1.50, a phone with several partners): from On hand, 对话 and ‹ 对话 landed on
+// D548 (the author on 0.1.50, a phone with several partners): from Tasks, 对话 and ‹ 对话 landed on
 // the list of partners instead of the conversation he came from. Every way into the conversation
 // is the last shown partner's conversation; the list opens only from its own control (the others'
 // faces, the edge swipe: showPartners) or #partners. With one partner there is no list at all.
@@ -57,7 +57,7 @@ const at = (A: Awaited<ReturnType<typeof page>>) => (A.route.name === "conv" && 
 
 describe("D548: every way into the conversation is the conversation", () => {
   for (const n of [1, 4] as const) {
-    test(`${n} partner(s): from On hand, 对话 (the places, ⌘1) and ‹ 对话 (back) land on the conversation`, async () => {
+    test(`${n} partner(s): from Tasks, 对话 (the places, ⌘1) and ‹ 对话 (back) land on the conversation`, async () => {
       const A = await page(n);
       if (n === 4) A.showPartners(); // the list was open before On hand (the case the author hit)
       expect(at(A)).toBe(n === 4 ? "list" : "conv");

@@ -187,7 +187,7 @@ describe("the opened task's head and composer (D542)", () => {
     const { A } = await import("../src/app.ts");
     const v = await import("../src/views.tsx");
     A.L = strings("zh");
-    expect(["working", "needs_you", "blocked", "done", "done_claimed", "failed"].map((a) => v.tagLabel(a as never))).toEqual(["进行中", "等你", "等待中", "已完成", "已完成", "没完成"]);
+    expect(["working", "needs_you", "blocked", "done", "done_claimed", "failed"].map((a) => v.tagLabel(a as never))).toEqual(["进行中", "待你处理", "等待中", "已完成", "已完成", "没完成"]);
     expect(v.stateLabel("working")).toBe("在做");
     A.L = strings("en");
     expect(["working", "blocked", "done", "failed"].map((a) => v.tagLabel(a as never))).toEqual(["Working", "Waiting", "Done", "Didn't work"]);

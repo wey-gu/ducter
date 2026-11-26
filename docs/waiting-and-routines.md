@@ -8,7 +8,7 @@ order: 6
 
 Some work is about time: something you are waiting for, a fix that takes a few tries, a report
 you want every Monday. You say it the way you would say it to a colleague. Ducter answers once,
-in one line, and the rest shows on **On hand**.
+in one line, and the rest shows in **Tasks**.
 
 ## "Tell me when …"
 
@@ -16,7 +16,7 @@ in one line, and the rest shows on **On hand**.
 > Tell me when the domain renewal email arrives.
 
 Ducter takes a look right away and tells you where things stand ("Two checks are still
-running; I'll tell you when it's all green"). Then it waits quietly. On **On hand** the wait
+running; I'll tell you when it's all green"). Then it waits quietly. In **Tasks** the wait
 sits under **Waiting**, with the thing it waits for beside Ducter on its little bench. If it
 has a deadline, a groove runs from when it started to the deadline, with Ducter at "now".
 
@@ -71,7 +71,7 @@ which computer and which AI agent run it. **⋯ › How often** sets it (every 1
 to every 4 hours). You can ask too: "how is my loop doing?" (one line back: how often, the next round, on time or not), "make the review every hour",
 "pause it until tomorrow", "stop it".
 
-You can also change it yourself, on its own page (open it from On hand › Looking after). Under
+You can also change it yourself, on its own page (open it from Tasks › Looking after). Under
 **How it runs**, each rule has **Change** beside its name: how often it wakes (a number of minutes,
 or every day or weekdays at a time), when it ends, when it speaks (when there's news, only when you
 need to decide, or after every round), its limit (for one your agents hand work to, how many pieces
@@ -108,7 +108,7 @@ waits for the next morning.
 
 > main's CI is red; keep fixing until it's green.
 
-Ducter starts a task and keeps at it, one try after another. On **On hand** the task shows how
+Ducter starts a task and keeps at it, one try after another. In **Tasks** the task shows how
 close it is: when the goal is a set of checks, a row of little lights that turn green as they
 pass ("4 of 6 lights on", and which try it's on), or as the things to fix get fixed ("12 of 16 done");
 otherwise it says how the latest try went. It stops when it works, after 20 tries, or when a
@@ -122,7 +122,7 @@ Ducter answers with a card: when (with the next date on a little calendar), what
 will tell you, what it may touch and what it costs. Nothing starts until you press **Go:
 Start**.
 
-Your routines sit at the bottom of **On hand**, each with a little desk calendar showing when it
+Your routines sit at the bottom of **Tasks**, each with a little desk calendar showing when it
 runs next. **Pause** stops one;
 only you can **Resume** it. Ducter pauses a routine by itself if three runs in a row don't work
 or you haven't read its last three reports, and after 30 days it asks whether to keep it.
@@ -164,7 +164,7 @@ Claude Code, Codex and the other AI agents have usage limits that reset after a 
 week. When a task's agent reaches its limit, the task doesn't stop: it waits on its own and
 carries on, in the same session, once the limit is back. You'll see **额度 3:12 恢复 / Limit
 resets 3:12** on its card, and a ring that fills toward that time. Several tasks on the same
-account wait together and are shown under one line in On hand. If Ducter restarts meanwhile,
+account wait together and are shown under one line in Tasks. If Ducter restarts meanwhile,
 they still carry on at the reset.
 
 A limit belongs to one account. If the same AI agent is signed in to a different account on another
@@ -204,7 +204,7 @@ You can set up all of this yourself, without the conversation. Open **New task**
 write what to do, and tap **When it starts** under your words:
 
 - **At a time**: today, tomorrow or the day after, at the time you type. It starts by itself
-  then, with your words as you wrote them. On **On hand** it waits with its date on the little
+  then, with your words as you wrote them. In **Tasks** it waits with its date on the little
   calendar; **Don't do it** calls it off.
 - **On a schedule**: every day, weekdays, one day a week, or every few hours. Each time it starts
   a fresh task with your words. It sits with your routines (or, **By project**, in its folder's

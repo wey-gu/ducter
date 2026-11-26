@@ -81,7 +81,7 @@ components and tokens; a value not in the scales below needs a token first.
 
 | Scale | Values | Use |
 |---|---|---|
-| type | (11, only the reply imprint's who-line, D236) · 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · both bubbles and the composer (D129) · a decision on a phone · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
+| type | (11, only the reply imprint's who-line, D236) · 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · both bubbles and the composer (D129) · an ask card's question (D586: the reading face at 18/600, tokens `AskSize`/`AskWeight`, `--ask-*`) · card titles · section titles · screen titles and a task's outcome · hero numbers |
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
@@ -429,11 +429,11 @@ Mac (`placeBar`, `placeNav` in `views/chrome.go`) and the web (`Top`, `Places` i
 |---|---|---|
 | Left: where you are | **D548, a phone up to 560 wide: one line.** The others' stack (two figures at most, the number on it, no chevron) when there are others; the shown partner's name (14/600, one line) over its one count line (D535's door alone when something waits, else its first fact, never two lines); no large face (a 24 one before the name with one partner); the places' one button at the right; every target 44. **One type size in the bar (D270): 14/600.** The conversation: the partner, two ways in: the face (44) and the name (14/600 ink) open its page, the counts line under it (12 muted, keeping its height while empty) is its own quiet link to On hand, narrowed to what it names when it names one thing; each tints on its own under the pointer. Elsewhere the crumbs (14/600 muted text buttons, `/` faint) and the current one at the same size and weight in full ink, not a button; no line under it (an opened task's agent · state · where is said once, in its head). A page's own large heading lives in its content, never in the bar. A phone's inner page: **‹ 对话 / ‹ Conversation** | `crumb`, `chromeTitle` · `.back`, `.level`, `.trail`, `.here` |
 | Right, first: this place's own actions | 新建 / New task (On hand); an opened task's working copy, workbench and ⋯; 铺满 / Full screen | **at most one worded clay button per bar** (D270): the place's primary action (新建), the bar button (secondary clay, 36, a drawn glyph before the word). Every other action is a quiet text or icon button with no ledge until hovered; a view toggle that is open stays pressed in (sunken, no ledge). Spacing alone parts these from the places: no hairline |
-| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web; on a phone, up to 600 wide, the pebble with the count, its words the tooltip and accessible name, so the counts under the partner's name keep their line, each count never broken inside, D446); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 手头的事 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop), its own piece under the marks that slides to the place shown (D290), and does nothing; the others lie flat and tint on hover. **D548: on a phone up to 560 wide** the places are one 44-pt button (a drawn grid of nine dots, `PlacesMenu`) opening the one clay menu (D421): 更新 first while one waits (an accent dot on the button), then 手头的事, 小应用, 设备, 设置, each with its mark, the place shown checked | `placeSegments`, `knob` · `PlaceSeg`, `PlacesMenu` |
+| Right, last: the way to the other places | **更新 / Update** only while something waits to update (the accent pebble with its arrow; *n 项更新 / n updates*; 正在更新 while 全部更新 runs; it opens 更新和关于 on the Mac, 你的设备 on the web; on a phone, up to 600 wide, the pebble with the count, its words the tooltip and accessible name, so the counts under the partner's name keep their line, each count never broken inside, D446); then the places as **one segmented control** (D264, D270): a small sunk track (34) holding three drawn marks, each about 28 square: **设备 · 任务 · 设置** in that order (a laptop and phone; three things in hand; the gear). **Always the marks alone, at every width**; tooltips and accessible names give the words. The place shown is **the knob** (the card's white raised on a 2-pt clay ledge and a soft drop), its own piece under the marks that slides to the place shown (D290), and does nothing; the others lie flat and tint on hover. **D548: on a phone up to 560 wide** the places are one 44-pt button (a drawn grid of nine dots, `PlacesMenu`) opening the one clay menu (D421): 更新 first while one waits (an accent dot on the button), then 任务, 小应用, 设备, 设置, each with its mark, the place shown checked | `placeSegments`, `knob` · `PlaceSeg`, `PlacesMenu` |
 
 One way to the places per screen: wide (the panes side by side) it is in the conversation's bar,
-whose 手头的事 is dropped because On hand stands beside it (D176); the side pane's bar holds only
-its own actions. A phone has room for **手头的事** (from the conversation) and Settings' drawn
+whose 任务 is dropped because On hand stands beside it (D176); the side pane's bar holds only
+its own actions. A phone has room for **任务** (from the conversation) and Settings' drawn
 gear, in the same track; 设备 is Settings' first page there (deliberate, see
 "Mac and phone" below). A Mac window under 1060 pt cuts an opened task's branch to 18 characters
 so the task's name keeps room. The partner's face and name are a second way into Settings › 伙伴
@@ -612,9 +612,9 @@ A new control is added to the set (and to this table) before it is used.
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
 | The locator: a long transcript's rail at its right edge and its card, one drawn mark per landmark, the same mark in the card's row (D526) | `locator` (`taskpage.go`), `markOf`, `drawMark` (`locmarks.go`) | `Locator`, `Mark`, `markOf`, `railMarks` (`transcript.tsx`) |
 | A count of what needs you on a figure or a back button (D517): a clay pebble 18 tall, radius 8, the needs-you surface and ink on the needs-you ledge, a 1.5-pt ring of the ground it sits on | `countPebble` (`components.go`) | `CountPebble` (`.pl-n`) |
-| A needs-you count as a door (D535): a pebble with a pointer's room round it that lifts a point under the pointer; the bar's 「n 个等你」 as a quiet text button in the needs-you ink; the line over the composer as a clay pill 30 tall in the needs-you surface on its 2-pt ledge, its words 13/700 and the drawn chevron, sinking 2 pt pressed. A tap opens the next item that waits | `pebbleDoor`, `countDoor`, `needsDoor` (`components.go`) | `CountPebble` in a door row, `CountDoor`, `NeedsDoor` (`.sum-needs`, `.needs-door`) |
+| A needs-you count as a door (D535): a pebble with a pointer's room round it that lifts a point under the pointer; the bar's 「n 个待你处理」 as a quiet text button in the needs-you ink; the line over the composer as a clay pill 30 tall in the needs-you surface on its 2-pt ledge, its words 13/700 and the drawn chevron, sinking 2 pt pressed. A tap opens the next item that waits | `pebbleDoor`, `countDoor`, `needsDoor` (`components.go`) | `CountPebble` in a door row, `CountDoor`, `NeedsDoor` (`.sum-needs`, `.needs-door`) |
 | **The composer**: words for the partner or a task with the round accent send (the conversation, an opened task, a Keep's talk box, a small app's ask, a call's reply; D519). One card (`Surface`, `RadiusXL`, `Raised`), words growing to five lines then scrolling inside (the cap from their own line height), the caret in the accent, one 2-pt accent ring on the card on focus with a pointer (none on a phone); the placeholder the longest of its list that fits one line, never cut. D547: every button in its row (attach, the mic, Stop, Send) one size (44, the Mac's `ControlMD`), round, `S2` from the card's edge, on one bottom line, the words' single line centred on their centre, so as the words grow only the card's top moves; attach and the mic quiet (under 420 wide the mic steps aside while there are words), Stop the secondary clay kept 20 from Send; the pictures picked inside the card above the words; an opened task's card tiered at every width (the words their own line, under them attach, the model chip, the meter, then Stop and Send at the right edge). After this turn is the send's alternate in its menu (right-click, a long press on a phone). The send in three states: empty (sunken and flat, its arrow muted, not pressable), ready (the raised accent, a small pop as it becomes so), sending (pressed into its ledge, the words greyed, until the home has them) | `composerBox`, `sendButton`, `roundButton` (`composer.go`) | `ComposerBox`, `SendButton`, `AutoText` (`composer.tsx`) |
-| A section's name over its card (等你, 手上的, 每一轮, 怎么做; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
+| A section's name over its card (待你处理, 手上的, 每一轮, 怎么做; D519): XS 600 muted, a heading | `secHead` (`composer.go`) | `SectionHead` |
 | A small state word on its tint (照看中, 1 件在等你, 11 月 22 日起; D519): on (done), needs, plain (sunken); D542: working, waiting, failed for an opened task's state | `tag` (`composer.go`) | `Tag` |
 | A slim clay pill on the reading measure, a 24 mark then its facts (the lead in ink, one in the needs ink, the rest muted), the whole one action (D544: a task in rounds' line under the bar: 看守中, 1 个在等你, 下一轮 18:49, 第 302 轮) | `factPill` (`shared.go`) | `FactPill` |
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
@@ -774,7 +774,7 @@ yet) and promises said every time (the checkout's) are not this pattern. Names a
 
 What Ducter itself asks at the conversation's end (to notify this computer, to connect a phone) is
 one row on the surface: the partner's face at 48 in its needs-you pose, held still; the question at
-the body's size (15) and 700, never the 20/800 of a task's question; the note under it in `ink-muted`
+the body's size (15) and 700, never the 18/600 of an ask card's question (D586); the note under it in `ink-muted`
 at 13; the buttons under both, on the words' edge (a phone: under the face). Mac `askRow`
 (`asks.go`), web `.ask.notify-ask`. A question the person has to answer for work is a decision card;
 this is the app asking about itself, and says so by being smaller.
@@ -840,7 +840,7 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | Place | Reach it | What it is for |
 |---|---|---|
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
-| 手头的事 / On hand | ⌘2, 手头的事 at the end of every bar (D262) | Every task and what waits for you |
+| 任务 / Tasks | ⌘2, 任务 at the end of every bar (D262) | Every task and what waits for you |
 | 设备 / Devices | ⌘3, 设备 (the clay device) at the end of every bar | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
 | 伙伴 / Partner | ⌘4, the partner's own face and name | Settings' first tab (D150), below |
 | 设置 / Settings | ⌘, Settings… in the app menu and the menu bar extra, and **设置** at the end of every bar (D262) | One place for everything you can set (D150), below; an update waiting is **更新** in every bar |
@@ -865,7 +865,7 @@ what it shows (128–520), top edge kept; its place and whether it was open are 
 it sits at the top right of the screen, 16 in and 12 under the menu bar, under the menu bar's own
 partner. Its head moves it: the clay partner at 44 (its presence face; while the person waits on a
 reply, the waiting line's figure and loop, D425), then the name (13/700, `InkMuted`), the count
-pill **{n} 个等你** (`NeedsYou.Surface`, a 7-pt `NeedsYou.Dot`, 12/700 `NeedsYou.Ink`; only while
+pill **{n} 个待你处理** (`NeedsYou.Surface`, a 7-pt `NeedsYou.Dot`, 12/700 `NeedsYou.Ink`; only while
 something needs the person; the window's only accent) and **收起** (a ControlSM text icon button);
 under them one line at 15/1.45, at most two lines, held and cross-faded like the waiting line (the
 partner's words and a question in `Ink`, the rest `InkSoft`). Under the head the field: a `Surface`
@@ -1029,7 +1029,7 @@ upright, a wide window) it is two panes: the conversation on the left at its 720
 a 1pt `line` hairline the side pane (40% of the width, 400–560: the width On hand and the opened
 task were drawn for) showing On hand, or the task opened from it. The side pane's header names
 the level (14/600, the bar's one size, D270) with the bar button **＋ 新建** (D262); an opened task's crumb there is
-**‹ 手头的事 / On hand**. The conversation's header drops its On hand button; the face lives
+**‹ 任务 / Tasks**. The conversation's header drops its On hand button; the face lives
 only in the conversation's header. Sheets from 700 × 640 stand centered as a card (radius 24 all
 round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
 Screens: `.shots/ipad/`.
@@ -1042,7 +1042,7 @@ Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On 
 the whole screen is the Mac's On hand: a 60-high header on the chrome's hairline with the crumbs
 (14/600 muted, `/` faint, the current one 14/600 ink; D270) and **新建** (the bar button, `NavBtn`, D262), then
 the one list (D216, below) on one 760 reading column. An opened task at the whole screen keeps its page on
-the 720 measure under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot
+the 720 measure under the crumbs **对话 / 任务 / {task}**; **暂停 / 取消任务** are in its foot
 (D210, D213, D212); from 1120 CSS px On hand stands beside it as a rail (`clamp(300px, 22vw,
 340px)`, D244), and all three (rail, task, workbench) from 1560; narrower with the workbench open,
 the workbench takes the rail's place (task | workbench, Lody's two-slot rule). The move between
@@ -1072,7 +1072,7 @@ time, and that row does not recede. **The handover:** a row seen working that tu
 result plays once: the reading face sinks 5pt and fades as the done face pops from 0.55 on a
 back-out curve (about 560 ms); under reduced motion a cross-fade only. **Folded groups:** By
 project's groups fold from their name (a drawn chevron); a folded group carries its most urgent
-task's face, its counts on hover (**1 个等你 · 2 个在做 · 3 个新结果**).
+task's face, its counts on hover (**1 个待你处理 · 2 个在做 · 3 个新结果**).
 
 **On hand is one list (D216).** The phone, the pane beside the conversation, the whole screen and
 the rail draw the same rows (`apps/web/src/onhand.tsx`, `apps/desktop/internal/views/onhandlist.go`).
@@ -1118,13 +1118,13 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
 
 1. **The conversation** (default). One partner, no machinery: its words, and one quiet row
    (Merge into main, Details) under a message with something behind it (D104). The header line
-   says in words what needs you and what is being worked on, and **手头的事 / On hand** is a plain
+   says in words what needs you and what is being worked on, and **任务 / Tasks** is a plain
    button. The ask due soonest carries Go / Hold / Reply in one small row, so most days the user
    never leaves this view.
-2. **手头的事 / On hand** (overview for decisions, all personas).
+2. **任务 / Tasks** (overview for decisions, all personas).
    - The top is one quiet line, **接下来 / Next**, only when more than one thing is coming
      (defaults taking effect, waits coming due; D127). The sections' names carry the counts.
-   - Below it is one list (D216): **等你 / Needs you** (wide decision cards read at one glance,
+   - Below it is one list (D216): **待你处理 / Needs you** (wide decision cards read at one glance,
      D127: the task's short title with the drawn chevron (no coin, D213), one question, the default as a small
      timer and one caption, Reply… · Hold · a short Go), then **在做 / Working**, **在等 / Waiting**
      and **今天做完 / Done today**, each one card of two-line rows saying what the task is doing
@@ -1137,12 +1137,12 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    - Routines appear as one card each, with the next firing time.
 3. **An opened task** (conductor depth; D74, D90). One centered column on the reading measure
    (D268: 640 pt on the Mac, 40 em on the web, head, transcript, changes and composer alike), read top to bottom; the window's header is the breadcrumb and the title only.
-   D535: the breadcrumb is the one way back at every level (a Keep's page: 对话 / 手头的事 / {the Keep}), Esc
+   D535: the breadcrumb is the one way back at every level (a Keep's page: 对话 / 任务 / {the Keep}), Esc
    goes up one level, every needs-you count opens its next item; the table is `on-hand.md` "Navigation".
    1. **The head is one block** (D90; D542: the partner's mark at 28 inline before the title, on
       the reading column's left edge, at every width and density; never the 96 face beside the
       page), then one quiet meta line under the title (D152): the state in the shared `Tag` on its
-      state's tint, in D525's register (进行中, 等你, 等待中, 已完成, 没完成; D542; never link blue), the task's one clock once finished ("用了 18 分钟 / took 18
+      state's tint, in D525's register (进行中, 待你处理, 等待中, 已完成, 没完成; D542; never link blue), the task's one clock once finished ("用了 18 分钟 / took 18
       min"; while it works the clock ticks on the working line, D268), the agent (D542: the model and effort only when the composer's chip doesn't show them; no coin, D213), where
       (the project, a folder, "在 hel 上 / on hel" for another machine; nothing for no
       place; D542: never the branch, which is the bar's own button), and **换谁来做 / Switch who does it** as the shared quiet link with its chevron; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a

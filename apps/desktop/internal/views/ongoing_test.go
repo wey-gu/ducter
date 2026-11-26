@@ -96,7 +96,7 @@ func TestOngoingStateLines(t *testing.T) {
 			"r_weekly": "暂停到周一 10:00",
 			"r_mail":   "已暂停：连着 3 次没成",
 			"r_deps":   "进行中",
-			"r_bench":  "等你",
+			"r_bench":  "待你处理",
 			"t_flight": "每 6 小时看一次 | 下次明天 17:00",
 		}},
 		{i18n.EN, map[string]string{
@@ -132,7 +132,7 @@ func TestOngoingPauseMenu(t *testing.T) {
 	app.Receive(ongoingFrame(ongoingFixture(i18n.ZH)))
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"等你", "进行中", "等下一次", "已暂停", "每天早上看一眼 hawdb 的 CI"} {
+	for _, want := range []string{"待你处理", "进行中", "等下一次", "已暂停", "每天早上看一眼 hawdb 的 CI"} {
 		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

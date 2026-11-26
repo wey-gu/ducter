@@ -335,7 +335,7 @@ export async function cmdAnswer(c: TalkCtx): Promise<number> {
   const k = await conn(c);
   if (!k) return 1;
   try {
-    // Partner-level asks from the recent conversation; each task's open one from On hand (older than the replay too).
+    // Partner-level asks from the recent conversation; each task's open one from Tasks (older than the replay too).
     const open = new Map(openDecisions(k.replayed).map((d) => [d.decisionId, d]));
     for (const x of k.onHand.tasks) if (x.pendingDecision) open.set(x.pendingDecision.decisionId, x.pendingDecision);
     const all = [...open.values()];

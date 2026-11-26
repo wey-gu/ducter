@@ -30,9 +30,9 @@ var zhGroups = Table{
 	"group.go":                   "不管它，往下做",
 	"group.drop":                 "后面的不做了",
 	"group.retry":                "再试一次",
-	// D454: 移走 / Remove a finished card or group from On hand.
+	// D454: 移走 / Remove a finished card or group from Tasks.
 	"away.remove":       "移走",
-	"away.remove.about": "从手头的事移走「%s」",
+	"away.remove.about": "从任务里移走「%s」",
 	"away.more":         "「%s」还能做的",
 	"away.retry":        "再试一次",
 	"away.why":          "看看为什么",
@@ -65,7 +65,7 @@ var enGroups = Table{
 	"group.drop":                 "Drop the rest",
 	"group.retry":                "Try it again",
 	"away.remove":                "Remove",
-	"away.remove.about":          "Remove “%s” from On hand",
+	"away.remove.about":          "Remove “%s” from Tasks",
 	"away.more":                  "More for “%s”",
 	"away.retry":                 "Try again",
 	"away.why":                   "See why",

@@ -218,7 +218,7 @@ func (h *hub) seed() {
 		return now.Add(-back)
 	}
 	ch := "channel"
-	h.emitAt(past(90), ch, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "晚上好。手头有三个任务在转：**原则英译**在写，**周报草稿**在等数据，**Mem #8762** 已经确认恢复了。有事直接说就行。"}, 0)
+	h.emitAt(past(90), ch, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "晚上好。有三个任务在转：**原则英译**在写，**周报草稿**在等数据，**Mem #8762** 已经确认恢复了。有事直接说就行。"}, 0)
 
 	open := func(at time.Time, id, title, project, harness, model, reason string, place protocol.Place) {
 		h.emitAt(at, protocol.TaskStream(id), protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: id, Title: title, Project: project, Place: place,
@@ -268,7 +268,7 @@ func (h *hub) seed() {
 	state(past(12), "t-deps", protocol.NeedsYou, protocol.Warm, "")
 
 	// The partner's own ask, of no task, with no default: it waits.
-	h.emitAt(past(5), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-brief", Question: "以后每天早上 9 点给你一份手头的简报，要吗？",
+	h.emitAt(past(5), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-brief", Question: "以后每天早上 9 点给你一份任务简报，要吗？",
 		GoLabel: "每天发", DefaultOption: "hold", Reversible: false}, 0)
 }
 

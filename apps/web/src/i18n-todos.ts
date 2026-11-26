@@ -98,7 +98,7 @@ export const todoWords: { zh: Record<string, string>; en: Record<string, string>
     "onhand.todos.none": "没有找到。",
     "onhand.todos.limited": "GitHub 让我们慢一点。过一分钟再试。",
     "onhand.todos.filters": "只看",
-    "todos.see": "在手头的事里看",
+    "todos.see": "在任务里看",
     // On hand's lens
     "todos.lens": "来自",
     // the write-back card
@@ -278,7 +278,7 @@ export const todoWords: { zh: Record<string, string>; en: Record<string, string>
     "onhand.todos.none": "Nothing found.",
     "onhand.todos.limited": "GitHub asked us to slow down. Try again in a minute.",
     "onhand.todos.filters": "Only",
-    "todos.see": "See them in On hand",
+    "todos.see": "See them in Tasks",
     "todos.lens": "From",
     "todos.card.says": "It will post",
     "todos.reviews.read": "Read draft",

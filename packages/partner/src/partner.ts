@@ -2483,7 +2483,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           description: "What the user said about computers for it (\"只在 hel 上，不要用 Mac\": on hel, only, not the Mac), names as in [devices]; held on this and any task replacing it.",
           properties: { on: { type: "string" }, only: { type: "boolean" }, not: { type: "array", items: { type: "string" } } },
         },
-        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; the old one is set aside, or leaves On hand when finished)." },
+        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; the old one is set aside, or leaves Tasks when finished)." },
         effort: { type: "string", enum: ["high", "low"], description: "How hard its agent thinks, when the user said so: high for carefully / thoroughly (仔细, 认真), low for a quick look; else omit." },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
@@ -2614,7 +2614,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const replacedFact = () => {
         if (!replaces) return {};
         const a = core.tasks.get(replaces)?.attention;
-        const what = a === "superseded" ? "set aside: this one carries its work" : a && ["queued", "working", "needs_you", "blocked"].includes(a) ? "still at work and left as it was; task_stop it if this one takes its place" : "off On hand: this one carries its work";
+        const what = a === "superseded" ? "set aside: this one carries its work" : a && ["queued", "working", "needs_you", "blocked"].includes(a) ? "still at work and left as it was; task_stop it if this one takes its place" : "out of Tasks: this one carries its work";
         return { replaced: `${replaces} (${what})` };
       };
       if (core.places) {
@@ -3610,7 +3610,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_group",
-    "Group tasks the user says belong together (\"把这几件放一起\"): one card on On hand. rename: a new name; ungroup: take it apart (the tasks stay). Parts opened with task_open's group join by themselves.",
+    "Group tasks the user says belong together (\"把这几件放一起\"): one card in Tasks. rename: a new name; ungroup: take it apart (the tasks stay). Parts opened with task_open's group join by themselves.",
     {
       type: "object",
       properties: {
@@ -3630,7 +3630,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const unknown = ids.filter((id) => !core.tasks.get(id));
         if (unknown.length) return { ok: false, error: `unknown task ${unknown.join(", ")}` };
         const r = await groups.frame({ t: "task_group", op: "make", taskIds: ids, ...(name ? { name } : {}) });
-        return r.ok ? { ok: true, group: r.group?.name, note: "Grouped on On hand. Say it in one short line." } : r;
+        return r.ok ? { ok: true, group: r.group?.name, note: "Grouped in Tasks. Say it in one short line." } : r;
       }
       const g = ids.map((id) => groups.of(id)).find(Boolean);
       if (!g) return { ok: false, error: "That task isn't in a group." };
@@ -3657,7 +3657,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         at: { type: "string", description: "ISO 8601 time" },
         taskId: { type: "string" },
         decisionId: { type: "string", description: "Only if this wait is about a question you asked: it is cancelled when the user answers" },
-        reason: { type: "string", description: "Shown to the user on On hand: short, in their language, addressed to them (提醒你回邮件 / Remind you to reply to the email)" },
+        reason: { type: "string", description: "Shown to the user in Tasks: short, in their language, addressed to them (提醒你回邮件 / Remind you to reply to the email)" },
       },
       required: ["reason"],
     },
@@ -4469,7 +4469,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (op === "remove" && given.length) return { ok: false, error: "op=remove drops the whole subject. To take some to-dos out of it, use op=take with those refs. Nothing changed." };
           const r = todos.pile.subject({ op: op === "put" && !refs.length ? "make" : op, name, ...(s_(a.to) ? { to: s_(a.to) } : {}), refs });
           if (!r.ok) return { ok: false, error: r.error ?? "Couldn't change that subject." };
-          return { ok: true, ...(r.name ? { subject: r.name } : {}), ...(r.n !== undefined ? { inIt: r.n } : {}), ...(r.out !== undefined ? { tookOut: r.out } : {}), note: "Kept: it shows as a chip on On hand's to-dos and finds by its name; a sort never moves what the user placed. Say it in one short line (e.g. \"好，归到「通用设置」了，现在 3 个。\"); start nothing." };
+          return { ok: true, ...(r.name ? { subject: r.name } : {}), ...(r.n !== undefined ? { inIt: r.n } : {}), ...(r.out !== undefined ? { tookOut: r.out } : {}), note: "Kept: it shows as a chip on Tasks' to-dos and finds by its name; a sort never moves what the user placed. Say it in one short line (e.g. \"好，归到「通用设置」了，现在 3 个。\"); start nothing." };
         }
         if (what === "hand") {
           // Rule 2's line comes before the call: what was said already is this hand-over's reply.
@@ -4525,13 +4525,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
                   ? planning ? "Added; the plan being made reads them too (Ducter told it)." : "Added to the group's line."
                   : planning
                     ? "A plan is being made first (it reads them and the code, changes nothing); its card comes by itself and nothing starts until the user says go. Say it like \"好，我先看一遍，出个方案给你，你点头再做。\""
-                    : "They show on On hand as one group; no list."
+                    : "They show in Tasks as one group; no list."
               } Your line before this call is the whole reply: end your turn now and add nothing (only if you wrote none, one short line).`,
             };
           }
           const r = await todos.pile.hand(refs);
           if (r.error && !r.started) return { ok: false, error: r.error };
-          return { ok: true, handed: r.queued, startedNow: r.started, note: "They show on On hand; say it in one short line, no list." };
+          return { ok: true, handed: r.queued, startedNow: r.started, note: "They show in Tasks; say it in one short line, no list." };
         }
         return { ok: false, error: "do is list, take, write, sort, find, hand or subject." };
       },

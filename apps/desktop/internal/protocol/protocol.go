@@ -1183,7 +1183,7 @@ type OnHand struct {
 	// Groups (D360): tasks that are one piece of work, with the parts
 	// still held in line.
 	Groups []TaskGroup `json:"groups,omitempty"`
-	// Away (D454) are the tasks the person removed from On hand (移走):
+	// Away (D454) are the tasks the person removed from Tasks (移走):
 	// a window that also builds its board from the stream leaves them out.
 	Away []string `json:"away,omitempty"`
 	// OpenAsks (D481) are every question still open at the home, as of
@@ -3750,7 +3750,7 @@ type TaskNew struct {
 	From     string       `json:"from,omitempty"`  // D285: New task from this: that task's id
 	// Item (D341): the to-do picked from 待办来源, bound to the task.
 	Item *SourceItemRef `json:"item,omitempty"`
-	// Handed (D357): handed over from On hand (交给{name}): no place was
+	// Handed (D357): handed over from Tasks (交给{name}): no place was
 	// picked, so the home finds the repository's own folder.
 	Handed bool `json:"handed,omitempty"`
 }

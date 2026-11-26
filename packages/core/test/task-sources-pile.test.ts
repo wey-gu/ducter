@@ -112,8 +112,8 @@ test("the prompt fences the to-dos as untrusted, carries no secrets, and asks fo
 });
 
 test("the sentence says code's counts, leaves out empty groups, and says what it hasn't read closely", () => {
-  expect(sentenceOf("zh", { app: "GitHub", n: 557, groups: { do: 41, decide: 23, close: 18, later: 475 }, unread: 0 })).toBe("GitHub 上的 557 个里，可以交给我做的 41 个，要你拿主意的 23 个，也许可以关掉的 18 个（关之前给你过目），可以先放着的 475 个。都放在手头的事里了。");
-  expect(sentenceOf("en", { app: "GitHub", n: 2000, groups: { do: 12, decide: 0, close: 3, later: 585 }, unread: 1400 })).toBe("Of the 2000 open on GitHub: 12 you could hand to me, 3 you might close (you see each one first), 585 can wait; 1400 I haven't looked at closely yet. It's all in On hand.");
+  expect(sentenceOf("zh", { app: "GitHub", n: 557, groups: { do: 41, decide: 23, close: 18, later: 475 }, unread: 0 })).toBe("GitHub 上的 557 个里，可以交给我做的 41 个，要你拿主意的 23 个，也许可以关掉的 18 个（关之前给你过目），可以先放着的 475 个。都放在任务里了。");
+  expect(sentenceOf("en", { app: "GitHub", n: 2000, groups: { do: 12, decide: 0, close: 3, later: 585 }, unread: 1400 })).toBe("Of the 2000 open on GitHub: 12 you could hand to me, 3 you might close (you see each one first), 585 can wait; 1400 I haven't looked at closely yet. It's all in Tasks.");
 });
 
 test("a sort still running when the home stops is dropped quietly: nothing written, nothing warned", async () => {

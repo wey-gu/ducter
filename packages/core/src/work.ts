@@ -463,7 +463,7 @@ export function createWork(o: WorkOptions): Work {
     judge: { type: "string", description: "Only when code can't decide: a yes/no question a cheap model answers over what the check or event fetched (是不是域名续费的提醒邮件？). Rate-limited, only on change." },
     everyMinutes: { type: "number", description: "How often to look (default 5, at least 1). CI ≈ 2–5, mail ≈ 5, a page ≈ 15–60" },
     untilISO: { type: "string", description: "Stop waiting at this time (ISO); default a day for a task's wait, a week otherwise. Then, or when a look can't be read, whoever waits is told what the looks saw and decides" },
-    unmetSays: { type: "string", description: "With check.failWhen: what happened if it can no longer come true, plain, in the user's language (有一项检查挂了 / a check failed). Shown on On hand after 没等到 / Didn't happen" },
+    unmetSays: { type: "string", description: "With check.failWhen: what happened if it can no longer come true, plain, in the user's language (有一项检查挂了 / a check failed). Shown in Tasks after 没等到 / Didn't happen" },
   };
   mcp.register(
     "partner",
@@ -492,7 +492,7 @@ export function createWork(o: WorkOptions): Work {
   mcp.register(
     "partner",
     "wait_cancel",
-    "Stop a wait you set: the user said never mind, or you can see it can no longer come true (a check failed, the PR was closed); then give unmet, so On hand keeps it for the day with Keep waiting.",
+    "Stop a wait you set: the user said never mind, or you can see it can no longer come true (a check failed, the PR was closed); then give unmet, so Tasks keeps it for the day with Keep waiting.",
     { type: "object", properties: { waiterId: { type: "string" }, unmet: { type: "string", description: "Only when it can't come true: why, plain, in the user's language (有一项检查挂了 / a check failed)" } }, required: ["waiterId"] },
     async (a: { waiterId: string; unmet?: string }) => ({ ok: waiters.cancel(String(a.waiterId), { by: "partner", ...(a.unmet ? { unmet: String(a.unmet) } : {}) }) }),
   );

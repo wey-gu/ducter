@@ -104,7 +104,7 @@ decide (`packages/protocol/src/destructive.ts`), it waits on Hold, with no time.
 **Ask me later (D382, research/151).** An ask can be put off to a time: **晚点再问我 / Ask me
 later** on the default's own line opens the times as chips (今晚 20:00 · 明早 {end of quiet hours} ·
 下周一 · 选个时间…) and one line, **到时再问你。在那之前，什么都不做。** Put off, the card says
-**{time} 再问你** with **现在就定 / Decide now**, leaves 等你 and the living message, and its
+**{time} 再问你** with **现在就定 / Decide now**, leaves 待你处理 and the living message, and its
 countdown stops; at its time it is back once (**你说晚点再问，现在来问你。**) and pushed by the usual rules (in
 quiet hours with the morning's one notice). No default runs on it until it is seen: its countdown
 starts, with its first length, at the first read past its return on any client.
@@ -482,7 +482,7 @@ wakes. Nothing to learn: it is how a messaging app already behaves.
 **One source of truth.** The home's Decisions holds which questions are open. Every On hand
 snapshot carries `openAsks` (their ids and the Log seq it is as of). Every surface on a client
 derives from its one store: the card in the conversation (and its sheet), On hand's rows and the
-等你 count (the Dock badge, the menu bar), a partner's own asks, the opened task's page. A client
+待你处理 count (the Dock badge, the menu bar), a partner's own asks, the opened task's page. A client
 closes any question it holds open that isn't in `openAsks` and was asked at or before its `asOf`
 (shown 在别处答过了 / Answered somewhere else), and asks the home (`asks_get`) for the events of those
 and of any open one it doesn't hold; the home's own resolution then replaces the stand-in. A
@@ -525,6 +525,13 @@ or Hold on such a card does nothing but bring this window the home's answer.
 - **One presence for words on their way (D584).** While the partner is putting finished results
   into words (D124's two minutes), the message shows one waiting presence however many there are,
   after what is already said, where its words will land; never a stack of the same line.
+- **One count, said once (D586).** The message shows one ask, the one whose default comes soonest;
+  the others never get a line or a number of their own here (D104's 还有 n 个等你定 is retired: beside
+  the bar's count and D535's line over the composer it read as a third number that disagreed). What
+  stays is **n 个都按默认 / Go on all n defaults** when two or more of its asks have one. Everything
+  else that waits goes through D535's one line, **有 n 个待你处理 › / n waiting on you ›**, whose n is
+  the bar's n (both from the one needs-you list). Details in the conversation Shown still lists them
+  all.
 - A default applies on its own only if the action is reversible.
 
 **Honesty rules**

@@ -91,7 +91,7 @@ func TestD535KeepPageNavigation(t *testing.T) {
 	}
 }
 
-// D535 (1): a needs-you count is a door. The conversation's 「n 个等你」, a
+// D535 (1): a needs-you count is a door. The conversation's 「n 个待你处理」, a
 // partner's pebble and the line over the composer open the next item, in
 // 等你's order, and step on; after the last, the first again.
 func TestD535CountIsADoor(t *testing.T) {

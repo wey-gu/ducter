@@ -82,7 +82,7 @@ func (a *App) crumb(c *ui.Context, label string, to Route) {
 }
 
 // crumbDo is a step of the breadcrumb that goes up inside a place (D535:
-// 手头的事 over a Keep's page closes the page): the same button as crumb.
+// 任务 over a Keep's page closes the page): the same button as crumb.
 func (a *App) crumbDo(c *ui.Context, label string, do func()) {
 	t := a.T
 	l := uiText(c.Key("crumb:"+label), label).FontSize(barText).FontWeight(600).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
@@ -146,7 +146,7 @@ func (a *App) placeBar(c *ui.Context, key string, here Route, left, actions func
 func (a *App) compactBar() bool { return a.winW > 0 && a.winW < 1060 }
 
 // placeNav is the way to the other places: 更新 while something waits to
-// be updated, then 设备 · 手头的事 · 设置, the place shown chosen.
+// be updated, then 设备 · 任务 · 设置, the place shown chosen.
 func (a *App) placeNav(c *ui.Context, here Route) {
 	if n, running := a.updatesWaiting(); n > 0 || running {
 		label := a.L.T("nav.update")

@@ -61,7 +61,7 @@ one tap away · 惊喜 the partner visibly working the moment you send.
      wording moves to Details (**它的原话：… / In its words: …**). Until the words come (up to
      60 s, while connected) the place shows the waiting presence, **在看它想问你什么… / Reading
      what it's asking…**; past that, or offline, the task's wording stands in.
-   - Work under way and waits are not said: the header line ("2 个等你 · 在做 1 个") and On hand
+   - Work under way and waits are not said: the header line ("2 个待你处理 · 在做 1 个") and On hand
      carry them. The count of asks shows only in the header.
 5. **Time lines** like a messaging app: before the first message and wherever 15 minutes passed.
    **Pictures (D206):** the user's stand above their words; what a task showed stands under the

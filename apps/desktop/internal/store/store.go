@@ -510,7 +510,7 @@ type Store struct {
 	asksAsked  map[string]bool
 	asksWanted []string
 	OnHand     *protocol.OnHand
-	// AwayNow (D454) are the tasks and groups removed from On hand in this
+	// AwayNow (D454) are the tasks and groups removed from Tasks in this
 	// window, before the home's next On hand says so.
 	AwayNow map[string]bool
 	// Waiters are the waiters known, by id (from waiter events and the

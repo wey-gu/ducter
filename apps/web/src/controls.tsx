@@ -216,7 +216,7 @@ export function NeedsDoor(p: { words: string; about: string; onClick: () => void
   );
 }
 
-/** D535: 「n 个等你」 in the conversation's bar (the Mac's countDoor): the count's own words in the
+/** D535: 「n 个待你处理」 in the conversation's bar (the Mac's countDoor): the count's own words in the
  *  needs-you ink, a quiet button of the bar, the door to the next item. */
 export function CountDoor(p: { words: string; about: string; onClick: () => void }) {
   return (
@@ -1032,7 +1032,7 @@ export function TaskLink(p: { id: string; full?: boolean; href?: string; class?:
   );
 }
 
-/** The bar's way back (‹ 对话, ‹ 手头的事): the one drawn back mark, 18. */
+/** The bar's way back (‹ 对话, ‹ 任务): the one drawn back mark, 18. */
 export const BackGlyph = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
     <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />

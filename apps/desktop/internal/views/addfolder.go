@@ -1,6 +1,6 @@
 package views
 
-// D455: 添加文件夹 / Add a folder, from On hand's project column. One
+// D455: 添加文件夹 / Add a folder, from Tasks's project column. One
 // sheet: the computer first (the home, each reachable worker, this Mac
 // when it is one of them), the one the latest work was on already
 // chosen; then the folder there, three ways: 选已有的文件夹 / Choose a

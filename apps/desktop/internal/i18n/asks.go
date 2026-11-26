@@ -6,7 +6,7 @@ package i18n
 
 var zhAsks = Table{
 	"asks.count":  "好了 %d 个，还有 %d 个",
-	"asks.needs":  "等你定一下",
+	"asks.needs":  "待你处理",
 	"asks.failed": "没做成",
 	"asks.reply":  "回复这一条",
 }

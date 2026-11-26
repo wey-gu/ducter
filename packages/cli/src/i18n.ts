@@ -1,5 +1,5 @@
 // CLI strings, zh + en designed together. Keys are stable; copy follows the glossary
-// (design/product-model.md): partner, task, On hand / 手头的事, Needs you / 等你.
+// (design/product-model.md): partner, task, Tasks / 任务 (builders: On hand), Needs you / 待你处理.
 
 import { negotiate, words, type LangTag } from "@ducter/protocol";
 
@@ -971,7 +971,7 @@ const zh: Record<MsgKey, string> = {
 
   "status.notRunning": "端口 {port} 上没有运行 Ducter。启动：{up}",
   "status.header": "{name} · 在 {url} 运行",
-  "status.needsYou": "等你",
+  "status.needsYou": "待你处理",
   "status.working": "在做",
   "status.waiting": "在等",
   "status.toMerge": "做完了，等你合进去",
@@ -982,7 +982,7 @@ const zh: Record<MsgKey, string> = {
   "merge.failed": "连不上端口 {port} 上的 Ducter，没能合进去。",
   "status.doneToday": "今天做完",
   "status.doneLine": "今天做完 {n} 个",
-  "status.decisions": "等你",
+  "status.decisions": "待你处理",
   "status.default": "默认：{time} {option}",
   "status.noTasks": "还没有任务，一切安静。",
   "status.go": "好",
@@ -1063,15 +1063,15 @@ const zh: Record<MsgKey, string> = {
   "tail.answered": "回答了：{option}",
   "tail.byDefault": "按默认",
   "tail.following": "在跟着看。Ctrl-C 停。",
-  "tail.none": "手头的事里没有对得上「{name}」的。",
+  "tail.none": "任务里没有对得上「{name}」的。",
   "tail.report.progress": "进展",
-  "tail.report.needs_input": "等你",
+  "tail.report.needs_input": "待你处理",
   "tail.report.blocked": "在等",
   "tail.report.done": "做完了",
   "tail.report.failed": "没做成",
   "tail.state.queued": "还没开始",
   "tail.state.working": "在做",
-  "tail.state.needs_you": "等你",
+  "tail.state.needs_you": "待你处理",
   "tail.state.blocked": "在等",
   "tail.state.done_claimed": "做完了 · 在检查",
   "tail.state.done": "做完了",
@@ -1646,7 +1646,7 @@ const zh: Record<MsgKey, string> = {
   "update.row.current": "已经是最新的",
   "update.phase.downloading": "在下载 {v}…",
   "update.phase.verifying": "在核对 {v}…",
-  "update.phase.waiting": "等手头的事停下…",
+  "update.phase.waiting": "等正在做的任务停下…",
   "update.phase.restarting": "在重启…",
   "update.phase.done": "已更新到 {v}",
   "update.phase.failed": "没能更新",
@@ -1675,7 +1675,7 @@ const zh: Record<MsgKey, string> = {
   "update.swapped": "{v} 装好了。重启 Ducter 就用上了。",
   "update.nothing": "已经是最新的（{v}）。",
   "update.needsYes": "更新会让 Ducter 重启一下。加上 --yes 就不再问。",
-  "update.confirm": "把 {names} 更新到 {v}？手头的事会停一下再接着做。[y/N] ",
+  "update.confirm": "把 {names} 更新到 {v}？正在做的任务会停一下再接着做。[y/N] ",
   "update.cancelled": "什么都没动。",
   "update.all.none": "都已经是最新的。",
   "update.all.list": "要更新 {n} 项，按这个顺序（先 Ducter 的家，再其他电脑，最后是各台电脑上的 AI）：",

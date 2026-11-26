@@ -29,7 +29,7 @@
 "menu.newtask" = "New task";
 "menu.settings" = "Settings…";
 "menu.conversation" = "Conversation";
-"menu.onhand" = "On hand";
+"menu.onhand" = "Tasks";
 "menu.devices" = "Your devices";
 "menu.partner" = "Partner";
 "menu.composer" = "Talk to %@";

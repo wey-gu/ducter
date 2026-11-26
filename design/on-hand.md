@@ -1,4 +1,4 @@
-# On hand (手头的事): the conductor surface
+# On hand (任务): the conductor surface
 
 How On hand lets one person take in 3 or 50 tasks at a glance and step into any of them. Decided
 in D216 (one list), D244 (the rail beside an opened task), D261 (projects as a lens, the strip,
@@ -69,13 +69,13 @@ task in {name}** where the bare ＋ stood.
 1. D287, D471: **the partner** at the head, always: its clay figure (72; 56 in the side pane and on
    the phone) in the pose for the whole (its flag when anything needs you > reading while anything
    works > on its bench while all waits > smiling when what is left came back done > idle), and
-   D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700): **有 n 个要你定。**
+   D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700): **有 n 个待你处理。**
    when anything needs you (when all of it stopped or didn't work out, **有一个停下了，要你看一眼。 / One
-   has stopped and needs a look.**, several **有 n 个停下了，要你看一眼。**); else **没有要你定的，我在做。**
-   while anything works; else, when all waits, **没有要你定的。最早 9:06 回来。** (one wait: **在等的那个
+   has stopped and needs a look.**, several **有 n 个停下了，要你看一眼。**); else **没有待你处理的，我在做。**
+   while anything works; else, when all waits, **没有待你处理的。最早 9:06 回来。** (one wait: **在等的那个
    9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else **今天就这些，都做完了。** or
    **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays the menu bar's.
-   D471: nothing more under it. D467's lines (刚才, 等你 with the first two stuck tasks, 接下来) named
+   D471: nothing more under it. D467's lines (刚才, 待你处理 with the first two stuck tasks, 接下来) named
    tasks the rows named again, and on the author's real board the two disagreed; every task is now its
    own row, said once. D584: a row whose story is only the state's own word (**在做 / 做完了**, a task
    that said nothing yet) has no second line: its time (**在做 3 分钟了 / 7:52 做完**) says it.
@@ -102,23 +102,28 @@ task in {name}** where the bare ＋ stood.
    much); the filter it gave is gone, Find and the lens narrow. Under the line, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
 3. D467 round 4, D471: no forecast line; each wait's row says when it is back.
-4. **One count (D517).** 等你's items are the person's one count: the Dock badge, the menu bar,
+4. **One count (D517).** 待你处理's items are the person's one count: the Dock badge, the menu bar,
    each partner's number in the list of partners, the conversation's line and the head all count
-   them, and each is drawn under 等你 with its action (a group with such a part stands there too).
+   them, and each is drawn under 待你处理 with its action (a group with such a part stands there too).
    A question leaves when answered; a stop, a failure or a PR to merge leaves once opened on this
    device after it last changed, then stands with the rest (a stop in 在等, a failure with that
    day's finished, a PR in 在等), its action kept. Offers and questions put off never count.
-   Sections by attention (D467): 等你, 在做, 在等, D507's **你的帮手 / Your helpers**, D498's **一直在跑的 / Ongoing**, 今天做完. 等你 answers in place (decision cards),
+   **The asks are calm (D586).** An ask card's question (On hand's, and the same shared card in an
+   opened task and on a call) is the reading face at 18/600 (tokens `AskSize`/`AskWeight` on the
+   Mac, `--ask-face`/`--ask-size`/`--ask-weight` on the web), one step under D287's 20/800 heading:
+   nine of them in the needs-you wash read as a list to work through, and the partner's one line at
+   the head is what stands out. The card itself (wash, ledge, radius, buttons) is unchanged.
+   Sections by attention (D467): 待你处理, 在做, 在等, D507's **你的帮手 / Your helpers**, D498's **一直在跑的 / Ongoing**, 今天做完. 待你处理 answers in place (decision cards),
    then what **stopped** (a wait nothing brings back on its own: no waiter of any kind, not a
    question put off, not a computer that will come back, quiet for 30 minutes or more) with
    **接着做 / Continue** and **放下 / Put down** always shown and **上次有动静是 {ago}**, then what
    didn't work out with **再试一次 / Try again** and D454's × and ⋯. 在做 cards. 在等: fresh cards, task-less
    waits, then the quiet ones; D382: a question put off with **晚点再问我 / Ask me later** stands
-   here, out of 等你 and its count, its line **{time} 再问你：{question} / Asking again {time}:
+   here, out of 待你处理 and its count, its line **{time} 再问你：{question} / Asking again {time}:
    {question}** with **现在就定 / Decide now** (on hover on a wide screen; the opened card always),
-   until its time puts it back in 等你 (no default runs on it there until it is seen). 今天做完 (D467:
+   until its time puts it back in 待你处理 (no default runs on it there until it is seen). 今天做完 (D467:
    finished on today's date, a done still being checked too; D508: never one whose PR is open, which
-   stands under its PR, ready in 等你 and the rest in 在等): new results, then the seen ones;
+   stands under its PR, ready in 待你处理 and the rest in 在等): new results, then the seen ones;
    what finished before today folds under **还有 n 个是昨天做完的 / n more done yesterday**, closed by
    default. Its count is D310's one number. One reading
    column (760; 840 beside the peek). D467 (rev.), D471: a section's name is a quiet label (12/700,
@@ -155,18 +160,18 @@ detail, on hover and in the task.
 | Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it |
 | Quiet (working) | D498: no progress line. After ten minutes with no step, under the living line, **上一步 {ago} / last step {ago}** in the quiet ink (a fact; the partner judges a stall, D481). The living line is D498's `saidOf`: this turn's latest line in a sentence (the agent's words, a step that said what it was for, or the unworded steps as one gist, **跑了 3 条命令，看了 2 个文件**), never a bare command; a failed step the task went past keeps the quiet ink. The client asks once for a working task's history |
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**): D508: the PR Ducter watches for it first, else the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
-| Under its PR (D508) | A finished task whose PR is open is not done: its living line is where the PR stands (`pr-state.ts`), the phase in the state's ink and its facts each its own element: **在等 CI 跑完**, **CI 没过** (**没过的：{names}**), **在等评审** (**等 {who} 看**), **{who} 要求修改**, **和 {base} 有冲突**, **还是草稿**, **可以合了** (**{who} 通过了评审**), CI as **CI 过了 {n}/{m}** or **CI 都过了**; its mark the waiting ring at rest (ready: the flag); its right edge when it last moved. Ready stands in 等你 with **到 GitHub 合并 / Merge on GitHub**; every other open phase in 在等; merged or closed in 今天做完 (**已合并** beside its +a −d). Never 合进 {base} or 开草稿 PR while a PR holds the branch |
+| Under its PR (D508) | A finished task whose PR is open is not done: its living line is where the PR stands (`pr-state.ts`), the phase in the state's ink and its facts each its own element: **在等 CI 跑完**, **CI 没过** (**没过的：{names}**), **在等评审** (**等 {who} 看**), **{who} 要求修改**, **和 {base} 有冲突**, **还是草稿**, **可以合了** (**{who} 通过了评审**), CI as **CI 过了 {n}/{m}** or **CI 都过了**; its mark the waiting ring at rest (ready: the flag); its right edge when it last moved. Ready stands in 待你处理 with **到 GitHub 合并 / Merge on GitHub**; every other open phase in 在等; merged or closed in 今天做完 (**已合并** beside its +a −d). Never 合进 {base} or 开草稿 PR while a PR holds the branch |
 | Right end | The heartbeat in words (**在做 12 分钟**: D498, this turn's time; a task in rounds **这一轮 7 分钟** or **下一轮 14:30**; **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover, in a slot of its own inside the row (D508: never over the time, never past the sheet's edge), Pause, D454's × and ⋯ (D529: always laid out, faded in, Tab reaches them; on a row with its own action only its ⋯, last in that group); a branch with no PR has 合进 {base} and 开草稿 PR in that ⋯ |
 
 A new result pops once the first time it is drawn (D313). A group (D360) is the same card with its
 name at the head and a **track** of its parts under it (done, at work, needing you, didn't work, in
 line); D498: a part at work has the board's pebble and its living line.
 
-> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 看守中 / Looking after (a Keep), with its own page; see `standing-work.md`. On hand's **看守中 / Looking after** takes the place of the two sections below when the home sends `OnHand.keeps` (every home from 0.1.34): each Keep one sheet, its tasks under it, what waits for the person in 等你 once with the Keep's name, a tap opening its page. What follows is kept for an older home's clients.
+> D511 (built 2026-11-24, phases 1–3 of `standing-work.md` §11): helpers, routines and tasks in rounds are one object, 看守中 / Looking after (a Keep), with its own page; see `standing-work.md`. On hand's **看守中 / Looking after** takes the place of the two sections below when the home sends `OnHand.keeps` (every home from 0.1.34): each Keep one sheet, its tasks under it, what waits for the person in 待你处理 once with the Keep's name, a tap opening its page. What follows is kept for an older home's clients.
 
 **一直在跑的 / Ongoing (D498, D427).** A task in rounds (the home's `rounds` on its card), at work on a
 round or resting till the next, is a row here, never under 在做 or 在等; one that asks or stopped stays
-in 等你. Its mark between rounds is Ongoing's drawn repeat (at work, the pebble); beside its project
+in 待你处理. Its mark between rounds is Ongoing's drawn repeat (at work, the pebble); beside its project
 **每 {n} 一轮 / A round every {n}**; its line between rounds the last round's facts, each its own
 element (health when it isn't on time, D427's words in the waiting ink; else a review's standing,
 D394's **8 个请求在等你：3 个有新提交已复审，5 个没变**; else the round's own line); at its right
@@ -184,9 +189,9 @@ reads at a glance (**还没有活交过来 / Nothing handed over yet** with **�
 by the mark's width (38 wide, 36 stacked; Mac 46) on the same sheet, the work it keeps, each the board's own row
 (what waits for the person first): a task until it ends, and a finished one while its PR is open, its line
 D508's (where the PR stands, "Under its PR" above: **评审中**, **可合并** with **到 GitHub 合并**, never 做完;
-a PR ready to merge waits for the person, so the sheet stands in 等你); a merge or a close lets it go to 今天做完 with the helper's
+a PR ready to merge waits for the person, so the sheet stands in 待你处理); a merge or a close lets it go to 今天做完 with the helper's
 name among its where-facts (as anywhere else it stands: beside an opened task, in Find, under a project lens).
-**Where:** like a group (D360), at the head of 等你 when something on it waits for the person (the sheet on the
+**Where:** like a group (D360), at the head of 待你处理 when something on it waits for the person (the sheet on the
 needs-you ledge), else under **你的帮手 / Your helpers** after 在等. Both clients read the home's one model of
 it (`OnHand.helpers`, `HelperWork`), which a helper's small app will read too.
 
@@ -209,7 +214,7 @@ Owed: a live picture inside the peek (a second live stream per client).
 
 | Fold | What goes in | Line | Opens |
 |---|---|---|---|
-| Quiet waits | A waiting task that still looks on its own, whose card and looks haven't changed for 24 h (D467: one with nothing to bring it back has stopped and stands in 等你) | 还有 n 个，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
+| Quiet waits | A waiting task that still looks on its own, whose card and looks haven't changed for 24 h (D467: one with nothing to bring it back has stopped and stands in 待你处理) | 还有 n 个，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
 | Seen results | Done today that isn't a new result, missed waits, ended calls | 还有 n 个，你都看过了 / n more you've seen | Tap (kept per device), Find, or 今天做完 in the strip |
 | Yesterday (D467) | Finished before today, still in the home's day window | 还有 n 个是昨天做完的 / n more done yesterday | Tap (this session), Find; from one |
 
@@ -247,11 +252,11 @@ D471: a group draws only the parts whose tasks are on the board (one removed or 
 the author's board it drew a lone order number); with one part left it is that task's own row.
 D535: a hand-over's group (D385) stands by one rule on every client (`handGroupStand` in
 `packages/protocol`, its Go port `HandStand`, one fixture): its plan or review waiting for the person in
-等你 as its card; with tasks on the board, by its most urgent one; with only parts held in line, in 在做,
+待你处理 as its card; with tasks on the board, by its most urgent one; with only parts held in line, in 在做,
 each part saying where it waits; with nothing on the board and nothing in line, nowhere.
 
 Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
-section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs
+section of their most urgent part; a stopped line stands in 待你处理 and counts as one thing that needs
 you. The partner makes a group when it splits a request (`task_open` `group`) or when the person says
 "把这几件放一起" (`task_group`); on the web the selection bar offers **放进一个分组 / Put in a group**.
 Nothing is filed by hand first. A group shows from two parts; counts stay per task; while finding,
@@ -339,26 +344,26 @@ Three zoom levels, one header shape at each (D262, D270), one way back. The Mac 
 
 | Level | Where it lives | In | Out | The header says |
 |---|---|---|---|---|
-| **The conversation** | The window's default; with two or more partners the list of them at its left (a phone: the level above it) | ⌘1, 对话 in any breadcrumb, Esc from On hand | the places' marks, a count's door, a task's line | the partner's face and name, then its counts (「n 个等你」 its own door, the rest a link to On hand) |
-| **手头的事 / On hand** | The overview: the partner's line, 等你, 在做, 在等, 看守中, 今天做完; the project column from 1100 (a row of names narrower) | ⌘2, the places' On hand mark, the counts line, a count's door, 手头的事 in a breadcrumb | 对话, Esc, a row or a sheet | 对话 / 手头的事 (Mac and web whole screen); beside the conversation its own name; on a phone ‹ 对话 |
-| **A Keep's page** | In On hand's place; the other Keeps as one list at its left from 1100 (Mac) or at the whole screen (web), under the shared section head, the open one the knob | its sheet on On hand, the rail, a deep link (its card in the conversation, Settings' helper row, ⌘K, a push, `#keep=`) | the breadcrumb's 手头的事, Esc, ‹ 手头的事 | 对话 / 手头的事 / {the Keep} at every width (web beside the conversation and phone: ‹ 手头的事); never a back link inside the page or its column |
-| **An opened task** | Its own page; beside it On hand's rail where there is room (D244) | a row, a card's 打开任务, ⌘O / ⌘K, a door's item opened, a push | 手头的事 or 对话 in the breadcrumb, Esc (back where it was opened from, D244) | 对话 / 手头的事 / {the task} (web beside the conversation: ‹ 手头的事; a phone ‹ 对话) |
+| **The conversation** | The window's default; with two or more partners the list of them at its left (a phone: the level above it) | ⌘1, 对话 in any breadcrumb, Esc from On hand | the places' marks, a count's door, a task's line | the partner's face and name, then its counts (「n 个待你处理」 its own door, the rest a link to On hand) |
+| **任务 / Tasks** | The overview: the partner's line, 待你处理, 在做, 在等, 看守中, 今天做完; the project column from 1100 (a row of names narrower) | ⌘2, the places' On hand mark, the counts line, a count's door, 任务 in a breadcrumb | 对话, Esc, a row or a sheet | 对话 / 任务 (Mac and web whole screen); beside the conversation its own name; on a phone ‹ 对话 |
+| **A Keep's page** | In On hand's place; the other Keeps as one list at its left from 1100 (Mac) or at the whole screen (web), under the shared section head, the open one the knob | its sheet on On hand, the rail, a deep link (its card in the conversation, Settings' helper row, ⌘K, a push, `#keep=`) | the breadcrumb's 任务, Esc, ‹ 任务 | 对话 / 任务 / {the Keep} at every width (web beside the conversation and phone: ‹ 任务); never a back link inside the page or its column |
+| **An opened task** | Its own page; beside it On hand's rail where there is room (D244) | a row, a card's 打开任务, ⌘O / ⌘K, a door's item opened, a push | 任务 or 对话 in the breadcrumb, Esc (back where it was opened from, D244) | 对话 / 任务 / {the task} (web beside the conversation: ‹ 任务; a phone ‹ 对话) |
 
 **What persists between visits.** On hand always opens on its overview: a Keep's page lives only while
 On hand is shown, and leaving On hand closes it (a deep link opens it straight). The project lens is
-kept per device (D261). Find, the 等你 filter and the selection are let go on Esc and when a count's
+kept per device (D261). Find, the 待你处理 filter and the selection are let go on Esc and when a count's
 door opens. The conversation keeps its place (D254) and each partner its own. An opened task keeps
 its draft and the rail its lens.
 
 **Every count leads to its items.** The person's one count (D517) is a door wherever it shows: the
-conversation's 「n 个等你」, a partner's pebble in the list (and that partner's row while shown), the
-mini window's count and the line pinned over the composer, **有 n 个等你定 ›**, while something it
-counts is out of view. A tap opens the next item in 等你's order (a stopped line, the partner's own
+conversation's 「n 个待你处理」, a partner's pebble in the list (and that partner's row while shown), the
+mini window's count and the line pinned over the composer, **有 n 个待你处理 ›**, while something it
+counts is out of view. A tap opens the next item in 待你处理's order (a stopped line, the partner's own
 questions, another partner's, then the tasks): the partner's own question in the conversation,
 scrolled to with a needs-you wash that deepens once; anything else On hand's overview with the item
 focused, scrolled to the middle, its tint or edge deepening once (Reduce Motion: the colour only).
 The next tap steps on; after the last, the first. The Dock badge and the menu bar's count open the
-window; the menu bar's own list names each item. On hand's head line is a sentence, not a door: 等你
+window; the menu bar's own list names each item. On hand's head line is a sentence, not a door: 待你处理
 under it is the list.
 
 **The breadcrumb is the one way back.** Every crumb but the last goes there and is a button; the last
@@ -396,8 +401,8 @@ en, light and dark; before and after in `.shots/d315/` (`mac-before-author-*`, `
 
 | Element | Heavy developer | Consumer | Fresh user | What was wrong |
 |---|---|---|---|---|
-| The head sentence 「现在没有要你定的。4 个在等：最早 9:06 回来，2 个一天多没有动静；今天做完 1 个。」 | reads it once, then skips it: the strip says the same numbers | a paragraph to parse before a glance | long, bold, and the first thing; feels like a status report, not a partner | Hierarchy: a 40-character bold sentence is the loudest thing on the page and says nothing the strip and sections don't. Redundancy: every count three times (sentence, strip, section head). Wording: a report, not the partner's voice. |
-| The strip 「0 等你 0 在做 4 在等 1 今天做完」 | the zeros are noise to skip | "0 等你" in faint grey reads as disabled, or as something missing | four labels to learn on day one | Zero states drawn as faint cells take half the track; with one state there the strip filters nothing. |
+| The head sentence 「现在没有待你处理的。4 个在等：最早 9:06 回来，2 个一天多没有动静；今天做完 1 个。」 | reads it once, then skips it: the strip says the same numbers | a paragraph to parse before a glance | long, bold, and the first thing; feels like a status report, not a partner | Hierarchy: a 40-character bold sentence is the loudest thing on the page and says nothing the strip and sections don't. Redundancy: every count three times (sentence, strip, section head). Wording: a report, not the partner's voice. |
+| The strip 「0 待你处理 0 在做 4 在等 1 今天做完」 | the zeros are noise to skip | "0 待你处理" in faint grey reads as disabled, or as something missing | four labels to learn on day one | Zero states drawn as faint cells take half the track; with one state there the strip filters nothing. |
 | 在等 cards | good: coin, title, ring, time | 放心: says when it's back | clear | The title cut at one line ("你能帮我准备好能 review nowledge-co 这…") lost the part that says what it is. Two cards side by side of different heights. |
 | 一天多没有动静 rows | "is anything stuck?" with no way to act from here | grey rows read as broken, or as hers to fix, with no next step | doesn't know what to do | A different language from the cards above (flat rows, receded ink), no action: the board raised a worry and offered nothing. |
 | 「Hetzner Server」 on every row and card | noise: every task runs there | a word they don't know repeated | same | Where was said for every task, though it only matters when it differs. 其他 / Other said on every errand says nothing. |
@@ -445,8 +450,8 @@ web's cheer swelling from rest (D313's todo).
 
 ### Proposed, not built
 
-- The conversation's header says 「1 个等你　在做 2 个」: two word orders side by side. One order
-  (「1 个等你　2 个在做」) needs the header keys on both clients and their tests.
+- The conversation's header says 「1 个待你处理　在做 2 个」: two word orders side by side. One order
+  (「1 个待你处理　2 个在做」) needs the header keys on both clients and their tests.
 - 今天做完's section counts the rows (a done only claimed included) while the strip counts D310's
   Done today: one task can show 「今天做完 1」 over a strip without it. Either the section says its
   claimed ones apart, or D310 counts what is listed.

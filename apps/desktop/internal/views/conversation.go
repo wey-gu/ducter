@@ -121,7 +121,7 @@ func (a *App) conversation(c *ui.Context) {
 	t := a.T
 	rows := a.rows()
 	a.noteRows(rows)     // D236: for the jump and the answer tab
-	a.takePlanJump(c)    // D385: 看方案 from On hand
+	a.takePlanJump(c)    // D385: 看方案 from Tasks
 	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
 	a.pinStrip(c) // D381: what is pinned, under the bar
@@ -220,7 +220,7 @@ func (a *App) conversation(c *ui.Context) {
 			a.cliOfferLine(c)
 		}
 		a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
-		a.doorLine(c, rows)             // D535: 有 n 个等你定 ›, while what waits is out of view
+		a.doorLine(c, rows)             // D535: 有 n 个待你处理 ›, while what waits is out of view
 		a.composer(c)
 	})
 	a.readWhenSeen(c)
@@ -343,7 +343,7 @@ func (a *App) header(c *ui.Context) {
 						if len(parts) == 0 {
 							parts = []string{words}
 						}
-						// D535: 「n 个等你」 is a door of its own: it opens the next
+						// D535: 「n 个待你处理」 is a door of its own: it opens the next
 						// item that waits (the question here, or On hand's row
 						// focused); the rest of the line opens On hand.
 						needs := ""
@@ -398,7 +398,7 @@ func (a *App) header(c *ui.Context) {
 }
 
 // WaitingCount is how many things wait for the person (the header's
-// "等你"), for the Dock badge while the window is closed.
+// "待你处理"), for the Dock badge while the window is closed.
 func (a *App) WaitingCount() int {
 	if !a.S.Welcomed {
 		return 0
@@ -916,7 +916,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		return
 	}
 	question := a.questionOf(d)
-	a.heading(c, keepTail(autospace(question)), t.XL).LineHeight(1.35)
+	a.askQuestion(c, keepTail(autospace(question)))
 	if d.Look != nil && d.Resolved == nil {
 		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
 	}

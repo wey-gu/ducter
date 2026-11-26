@@ -1994,7 +1994,7 @@ export function createWsHandler(deps: WsDeps) {
         if (already && isActive(already.attention)) return send(ws, { t: "task_new_result", ok: true, ...(id ? { clientId: id } : {}), taskId: already.taskId, card: already });
         const full = pick && ts ? await ts.item(pick.ref, pick.source).catch(() => undefined) : undefined;
         const srcBrief = pick ? briefOf(full ?? pick) : undefined;
-        // D357: handed over from On hand (no place given): the repository's own folder when there is one.
+        // D357: handed over from Tasks (no place given): the repository's own folder when there is one.
         // D395: the one resolver task_open uses: the computer with its code (or a clone there first).
         const handedTo = async () => {
           const r = pick?.where ? await core.places?.preflight({ place: { kind: "none" }, remote: pick.where, texts: [pick.title ?? ""], userTexts: [] }).catch(() => undefined) : undefined;
@@ -2159,20 +2159,20 @@ export function createWsHandler(deps: WsDeps) {
         if (!r.ok) return send(ws, { t: "error", message: r.error });
         return;
       }
-      // D454: 移走 / Remove a finished card or group from On hand (back: 撤销 / Undo).
+      // D454: 移走 / Remove a finished card or group from Tasks (back: 撤销 / Undo).
       case "onhand_away": {
         const away = deps.onHandAway;
         if (!away) throw new Error("removing isn't available here");
         const atWork = (id: string) => ["queued", "working", "needs_you", "blocked"].includes(tasks.get(id)?.attention ?? "");
         const ids = (Array.isArray(f.taskIds) ? f.taskIds : []).filter((id): id is string => typeof id === "string" && !!tasks.get(id));
-        if (!f.back && ids.some(atWork)) return send(ws, { t: "error", message: "It's still at work; it leaves On hand once it's finished." });
+        if (!f.back && ids.some(atWork)) return send(ws, { t: "error", message: "It's still at work; it leaves Tasks once it's finished." });
         let groupIds: string[] = [];
         if (typeof f.groupId === "string" && f.groupId) {
           const groups = deps.taskGroups?.();
           const g = groups?.get(f.groupId);
           if (g) {
             const members = g.members.flatMap((m) => ("taskId" in m ? [m.taskId] : []));
-            if (!f.back && members.some(atWork)) return send(ws, { t: "error", message: "Part of it is still at work; it leaves On hand once it's finished." });
+            if (!f.back && members.some(atWork)) return send(ws, { t: "error", message: "Part of it is still at work; it leaves Tasks once it's finished." });
             // What waits in line after a stopped part is dropped with it (nothing of it ever started).
             if (!f.back && g.members.some((m) => "key" in m)) await groups!.frame({ t: "task_group", op: "drop_rest", groupId: g.id });
             ids.push(...members.filter((id) => !ids.includes(id)));

@@ -65,7 +65,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	if want := []string{"https://ducter.example.com AAAA-AAAA", "https://ducter.example.com K7QM-4XPA"}; strings.Join(tries, "|") != strings.Join(want, "|") {
 		t.Errorf("tries %q", tries)
 	}
-	if hasText(h.tt, "连接到你的 Ducter") || !hasText(h.tt, "手头") {
+	if hasText(h.tt, "连接到你的 Ducter") || !hasText(h.tt, "任务") {
 		t.Errorf("still on the connect card: %q", h.tt.Texts())
 	}
 }

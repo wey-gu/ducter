@@ -1,4 +1,4 @@
-// The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
+// The phone's screens: the conversation (default), 任务 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
@@ -1254,9 +1254,9 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
     .filter((x): x is { it: LivingItem; d: DecisionState } => !!x.d);
   const answered = asks.filter((x) => !openAsk(x.d));
   const waiting = asks.filter((x) => openAsk(x.d)).sort((a, b) => dueAt(a.d) - dueAt(b.d) || a.d.seq - b.d.seq);
-  const all = shown || A.moreAsks.has(e.firstSeq);
-  const head = all ? waiting : waiting.slice(0, 1);
-  const rest = waiting.length - head.length;
+  // D586: the conversation asks one thing at a time; the others wait behind D535's one line over
+  // the composer, never a second count here (the bar's, the line's and this one disagreed).
+  const head = shown ? waiting : waiting.slice(0, 1);
   const defaults = waiting.filter((x) => x.d.reversible).length;
   // D584: what is said comes first; the results still being put into words wait last, as one presence
   // where the partner's words will land.
@@ -1286,15 +1286,11 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
         // there (a result on its way), never a second figure under the first.
         wordsHeld && relayDueIn(d) > 0 ? <Wake key={d.decisionId} ms={relayDueIn(d)} /> : <Ask key={d.decisionId} d={d} taskId={it.taskId} />,
       )}
-      {(rest > 0 || (head.length >= 2 && defaults >= 2)) && (
+      {/* D586: what stays is 「n 个都按默认」, one act on all of them, under an ask that is shown
+          (never alone under a presence still putting the ask into words). */}
+      {defaults >= 2 && head.some(({ d }) => !(wordsHeld && relayDueIn(d) > 0)) && (
         <div class="qrow gather">
-          {rest > 0 && (
-            <button class="tb" aria-expanded="false" onClick={() => (A.moreAsks.add(e.firstSeq), A.changed())}>
-              {t("living.more", rest)}
-              <Chev />
-            </button>
-          )}
-          {defaults >= 2 && <button class="tb" onClick={() => A.goOnAllDefaults()}>{t("decision.goall", A.defaultable().length)}</button>}
+          <button class="tb" onClick={() => A.goOnAllDefaults()}>{t("decision.goall", A.defaultable().length)}</button>
         </div>
       )}
     </section>
@@ -1730,7 +1726,7 @@ function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: bool
           // Side by side, an opened task goes back to On hand: the conversation never left.
           // D262: the crumb is the place it goes back to, in one word, as on the Mac (‹ 对话).
           // D535: inside On hand (a Keep's page) it goes up one level, beside the conversation and
-          // on a phone alike, as an opened task's does: ‹ 手头的事.
+          // on a phone alike, as an opened task's does: ‹ 任务.
           <button class="back" aria-label={up ? up.label : wide ? t("nav.onhand") : back} onClick={() => (up ? up.go() : wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
             <Back />
             {up ? up.label : wide ? t("nav.onhand") : t("nav.conversation")}
@@ -1785,7 +1781,7 @@ function Counts() {
         {s.words || " "}
       </div>
     );
-  // D535: 「n 个等你」 is a door of its own (the next item that waits); the rest opens On hand.
+  // D535: 「n 个待你处理」 is a door of its own (the next item that waits); the rest opens On hand.
   const rest = (s.parts ?? []).filter((p) => p !== s.needs);
   const toOnHand = () => ((OnHandState.filter = s.needs ? 0 : s.filter), (OnHandState.focus = ""), A.go({ name: "onhand" }));
   if (s.needs)
@@ -2212,7 +2208,7 @@ function ConvBody() {
   );
 }
 
-/** D535: 「有 n 个等你定 ›」, pinned over the composer while something the conversation's count
+/** D535: 「有 n 个待你处理 ›」, pinned over the composer while something the conversation's count
  *  counts is out of view (a task's item always is: it lives in On hand; the partner's own question
  *  while its card is scrolled away). A tap is the count's door. */
 function DoorLine({ scroller }: { scroller: preact.RefObject<HTMLElement> }) {

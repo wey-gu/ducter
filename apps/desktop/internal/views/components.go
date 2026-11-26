@@ -299,7 +299,7 @@ func (a *App) pebbleDoor(c *ui.Context, key string, n int, ground ui.Color) (ui.
 	return hit, hit.Clicked()
 }
 
-// countDoor is 「n 个等你」 in the conversation's bar: the count's own words
+// countDoor is 「n 个待你处理」 in the conversation's bar: the count's own words
 // in the needs-you ink, a text button of the bar (the crumbs' tint under
 // the pointer), the door to the next item; it says whether it was pressed.
 func (a *App) countDoor(c *ui.Context, words string, tint ui.Color) bool {

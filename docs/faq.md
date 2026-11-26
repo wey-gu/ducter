@@ -117,7 +117,7 @@ until you change them).
 
 ### Can I see what a task is doing?
 
-Any time. **On hand** shows every task; open one to read *What it did*, see its changes, and
+Any time. **Tasks** shows every task; open one to read *What it did*, see its changes, and
 write to it directly while it works.
 
 ### Can I edit a task's code myself?
@@ -134,7 +134,7 @@ you used last first. It shows when that copy is on the Mac you're using.
 
 ### Can I start a task myself, without asking Ducter?
 
-Yes. Press **⌘N** in the Mac app, or **New task** at the top of **On hand** (on the phone, the
+Yes. Press **⌘N** in the Mac app, or **New task** at the top of **Tasks** (on the phone, the
 **＋**). Write what to do first; it gets your words as you wrote them. Under the words, one row
 says where it works (a folder, and for a repo the branch it starts from, or **No folder**), who
 does it (the one marked **Suggested** is already picked, and the one you pick is remembered for
@@ -153,7 +153,7 @@ hours), **When something happens** (it opens now and waits for what you write, l
 CI passes") or **Keep going until…** (it tries again until what you write holds). See
 [Waiting, keep going, routines](waiting-and-routines.md).
 
-On the Mac, **On hand** can also group tasks **By project**: each folder you work in is a
+On the Mac, **Tasks** can also group tasks **By project**: each folder you work in is a
 project, with each task's branch, what it waits for or which try it is on, and how many lines it
 changed; what starts later or repeats there sits in the same group. The **+** on a project
 starts a new task there.
@@ -214,12 +214,12 @@ computer's Ducter folder. Only folders inside a computer's home folder are shown
 in them. When your folders are on more than one computer, the list says which computer each one
 is on.
 
-You can also add a folder from **On hand**: **＋ Add a folder** under the projects (on a phone, the
+You can also add a folder from **Tasks**: **＋ Add a folder** under the projects (on a phone, the
 **＋** at the end of the project names). It asks which computer first, already on the one your
 latest work was on, then shows that computer's own folders: the ones you used recently first,
 each repository with where it comes from (like `github.com/you/app`). Type a name to narrow the
 list, or type a path like `~/code/app` to go straight there. Inside a repository, Ducter adds the
-whole repository. The same repository on two of your computers is one project, and On hand shows
+whole repository. The same repository on two of your computers is one project, and Tasks shows
 both computers under its name.
 
 To let Ducter look outside a computer's home folder (say your code is in `/srv/code`), set

@@ -277,7 +277,7 @@ func TestFailedRowMoreJoinsItsActions(t *testing.T) {
 	if cy, my := retry.Y+retry.H/2, more.Y+more.H/2; cy-my > 2 || my-cy > 2 {
 		t.Fatalf("⋯ is not on the actions' line: %v vs %v", more, retry)
 	}
-	if hasText(tt, "从手头的事移走「改进 Mem 常规设置页」") {
+	if hasText(tt, "从任务里移走「改进 Mem 常规设置页」") {
 		t.Fatal("the failed row stacks a × beside its fixes: its ⋯ holds the remove")
 	}
 }

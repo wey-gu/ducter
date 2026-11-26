@@ -1016,7 +1016,7 @@ func (a *App) pastOpen(it *protocol.PastItem) {
 }
 
 // pastContinue is 接着做 / Continue (with another agent when harness is set):
-// the same task goes back to work, and opens. Still on hand: it opens.
+// the same task goes back to work, and opens. Still going: it opens.
 func (a *App) pastContinue(it *protocol.PastItem, harness string) {
 	if !pastActive(it.Attention) || harness != "" {
 		a.send(protocol.PastContinue{T: "past_continue", TaskID: it.TaskID, Harness: harness})

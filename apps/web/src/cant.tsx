@@ -90,7 +90,7 @@ export function doCantFix(taskId: string, c: CantStart, f: CantFix, toggle?: () 
     case "update":
       return A.openSettings("devices");
     case "switch":
-      // The switch list lives on the opened task: from On hand's brief, the task opens with it.
+      // The switch list lives on the opened task: from Tasks's brief, the task opens with it.
       if (A.switchFor !== taskId) A.openSwitch(taskId);
       return A.openTaskPage(taskId);
     case "why":

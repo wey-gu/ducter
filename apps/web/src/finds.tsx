@@ -62,7 +62,7 @@ function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text:
   );
 }
 
-/** D403: 看草稿 / See the draft, from On hand: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
+/** D403: 看草稿 / See the draft, from Tasks: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
 export function seeDraft(findId: string) {
   if (A.route.name !== "conv") A.go({ name: "conv" });
   const find = (n: number) => {

@@ -42,7 +42,7 @@ func TestNotifyPreviewFollowsTheChoices(t *testing.T) {
 	}
 	app.S.Settings.Notify = false
 	tt.Frame()
-	if !hasText(tt, "不弹出来：它在「手头的事」里等你。") {
+	if !hasText(tt, "不弹出来：它在「任务」里等你。") {
 		t.Errorf("notifications off, the preview doesn't say where it waits: %q", tt.Texts())
 	}
 	_ = sent

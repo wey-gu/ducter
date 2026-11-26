@@ -113,7 +113,7 @@ describe("Settings' brief (D469)", () => {
     expect(h.paneSay("partner")).toBe("");
     A.L = strings("en");
     // D475: the state, not the page's purpose (notifications off here).
-    expect(h.paneSay("notify")).toBe("Notifications are off: what needs you waits in On hand.");
+    expect(h.paneSay("notify")).toBe("Notifications are off: what needs you waits in Tasks.");
   });
 
   test("the computers say what each is to the partner", async () => {

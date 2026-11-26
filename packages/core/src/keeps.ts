@@ -46,7 +46,7 @@ const W = {
   zh: {
     arrives: "有活就接",
     holds: "「{title}」有活就接，手上 {n} 个。",
-    holdsYou: "「{title}」有活就接，手上 {n} 个，{you} 个在等你。",
+    holdsYou: "「{title}」有活就接，手上 {n} 个，{you} 个待你处理。",
     idle: "「{title}」有活就接，现在手上没有。",
     paused: "「{title}」暂停了。",
     pausedUntil: "「{title}」暂停了，{until} 恢复。",

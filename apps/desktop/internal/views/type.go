@@ -232,6 +232,14 @@ func headTracking(text string, size float32) float32 {
 	return 0
 }
 
+// askQuestion is an ask card's question (D586): the reading face at the
+// theme's AskSize/AskWeight, one step under a heading, so a page of asks is
+// calm and the one sentence above them stands out.
+func (a *App) askQuestion(c *ui.Context, text string) ui.Element {
+	return uiText(c, text).Font(a.T.Body).FontSize(a.T.AskSize).FontWeight(a.T.AskWeight).
+		LineHeight(1.45)
+}
+
 // heading is a title at size (20, 28 or 34) in the heading face, 800.
 func (a *App) heading(c *ui.Context, text string, size float32) ui.Element {
 	lh := float32(1.2)

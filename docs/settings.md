@@ -7,13 +7,13 @@ order: 4
 # Your partner and settings
 
 Everything you can change is in one place, **Settings**. Every screen has three small pictures
-at the top right: **Devices** (a laptop and a phone), **On hand** (three things in hand) and
+at the top right: **Devices** (a laptop and a phone), **Tasks** (three things in hand) and
 **Settings** (the gear), so you can get there from wherever you are; point at one to see its name.
-On a phone they share one button at the top right (a small grid of dots): tap it for **On hand**,
+On a phone they share one button at the top right (a small grid of dots): tap it for **Tasks**,
 **Your apps**, **Devices** and **Settings**.
 **⌘,** and **Ducter › Settings…** open Settings too. **⌘4**, **View › Partner** and clicking your
 partner's face or name at the top of the conversation open it on **Partner**. The line under the
-name (like "Working on 2") opens **On hand** at what it says.
+name (like "Working on 2") opens **Tasks** at what it says.
 
 When there is something to update (Ducter on one of your computers, or an AI agent), an
 **Update** button appears at the top right of every screen, with how many there are (on a phone,
@@ -170,8 +170,8 @@ At the top is your partner, its name and one line: where it lives and what it th
 You can have up to four partners: one for work and one for home, say, or one for each person in
 the family. With one partner, **Your partners** is the last group on the Partner page; once you have
 more, it comes first. Each has its own name, look, colour, conversation and memory, and none of them sees the
-others' conversations. Your computers, accounts and **On hand** are shared, and **Needs you**
-counts for all of them. On hand shows every partner's tasks, whichever partner you're talking to:
+others' conversations. Your computers, accounts and **Tasks** are shared, and **Needs you**
+counts for all of them. Tasks shows every partner's tasks, whichever partner you're talking to:
 each task, routine and standing job carries the small figure of the partner that started it, in
 that partner's shape and colour, and an opened task says which partner gave it the work.
 
@@ -373,15 +373,15 @@ your partner, in plain words, with when it last came at the right:
   a card in your conversation shows which task, who it's for and the words, with **Send**; nothing goes
   before you tap it, and the answer goes back into the task.
 
-**Your helpers** lists each helper's address, with **Open** to its page under **On hand › Looking after**. A helper is a name of yours in Nowledge Mem that your
+**Your helpers** lists each helper's address, with **Open** to its page under **Tasks › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull
 request, and it watches the checks and the reviews, fixes and pushes what it may, and tells the agent
 that sent it when the work can merge. Ask your partner for one in a sentence ("make a helper my agents
 hand PRs to, and watch them until they can merge"). Nothing on any of your computers has to keep
 listening for it: the computer Ducter runs on receives its messages and starts the work, and your
 partner tells you once when its name is ready (or, if Nowledge Mem doesn't take the name, what to do).
-Its work shows on **On hand**, under the helper. Each row shows what it takes, whether
-your agents can reach it yet, and how much it has on hand; **Stop** closes it (work on hand still
+Its work shows in **Tasks**, under the helper. Each row shows what it takes, whether
+your agents can reach it yet, and how much it is working on; **Stop** closes it (work it already took still
 finishes) and **Take work again** reopens it.
 
 Your partner listens on the computer Ducter runs on, for all your computers: a task on another
@@ -452,7 +452,7 @@ what it notices until you ask. The preview changes as you change anything on the
 notifications off it shows where the question waits instead.
 
 - **Notifications** turns the nudges on this Mac and your connected phones on or off. With them
-  off, anything that needs you waits in the conversation and in On hand.
+  off, anything that needs you waits in the conversation and in Tasks.
 - **Quiet hours** holds notifications between two times, 23:00 to 08:00 at first. Click either time
   under **Hours** to pick another, on the hour or the half hour. When the
   quiet hours end, you hear about everything that came up during them.
@@ -549,7 +549,7 @@ behind the intro's sound.
 ## The menu bar
 
 - **Ducter:** About, the update line, Settings…, Stop Ducter, Quit.
-- **View:** Conversation ⌘1, On hand ⌘2, Devices ⌘3, Partner ⌘4 (Settings, on Partner).
+- **View:** Conversation ⌘1, Tasks ⌘2, Devices ⌘3, Partner ⌘4 (Settings, on Partner).
 - **Help:** Ducter docs, Report a problem….
 
 Your partner also sits in the macOS menu bar, with a small dot when something needs you. Click it

@@ -1,4 +1,4 @@
-// D454: 移走 / Remove a finished card or group from On hand, through the home's socket: it leaves On
+// D454: 移走 / Remove a finished card or group from Tasks, through the home's socket: it leaves On
 // hand on every window and after a restart, 撤销 puts it back, one at work is refused, and 再试一次
 // on a group's part that didn't work out brings the part (and its group) back.
 import { afterEach, expect, test } from "bun:test";

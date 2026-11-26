@@ -884,7 +884,7 @@ checkout. `manual`: a worker that sent no `how` (before 0.0.4).
 
 **A Mac from any client (D187).** A Ducter that lives in Ducter.app (a worker whose hello says
 `asksApp`, or a Mac home) updates when any client taps 更新: the card carries `fromHere` and
-says **{Mac} 上的 Ducter 会下载、核对，等手头的事停好再重启。** The Ducter there asks the app
+says **{Mac} 上的 Ducter 会下载、核对，等任务停好再重启。** The Ducter there asks the app
 through the data folder they share (`core/src/app-update.ts`, `desktop/internal/update/asks.go`):
 `updates/app-ask.json` (`{id, to, step: get | restart}`) from this side; `updates/app.json`
 (`{pid, current, state, version, progress, reason, canRestart, asked, at}`) from the app, on

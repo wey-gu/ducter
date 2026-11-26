@@ -30,7 +30,7 @@ Shared status-line keys (used by all flows):
 |---|---|---|
 | `job.status.working` | 在做 · {doing} | Working · {doing} |
 | `job.status.waiting` | 在等 · {reason} | Waiting · {reason} |
-| `job.status.needs_you` | 等你 · {question} | Needs you · {question} |
+| `job.status.needs_you` | 待你处理 · {question} | Needs you · {question} |
 | `job.status.done_checking` | 做完了 · 在检查 | Done · checking |
 | `job.status.failed` | 没成 · {reason} | Didn't work · {reason} |
 | `job.status.dropped` | 放下了 | Dropped |

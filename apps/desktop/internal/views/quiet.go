@@ -510,8 +510,8 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 
 // livingQuiet is the living message without its card: a small divider
 // when the person was away, what didn't work or came back as sentences,
-// then the asks: the one whose default comes soonest with its buttons, the
-// rest gathered in one line until it is answered or opened.
+// then the asks: the one whose default comes soonest with its buttons; the
+// others are behind D535's line over the composer (D586).
 func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 	t := a.T
 	items := a.livingItems(e)
@@ -556,11 +556,12 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		return task != nil && a.wordsDueIn(task) > 0
 	}
 	sort.SliceStable(news, func(i, j int) bool { return !due(news[i]) && due(news[j]) })
+	// D586: the conversation asks one thing at a time; the others wait behind D535's one line
+	// over the composer, never a second count here (the bar's, the line's and this one disagreed).
 	head := waiting
-	if !shown && !a.open["asks:"+itoa(e.FirstSeq)] && len(waiting) > 1 {
+	if !shown && len(waiting) > 1 {
 		head = waiting[:1]
 	}
-	rest := len(waiting) - len(head)
 	defaults := 0
 	for _, w := range waiting {
 		if w.d.Reversible {
@@ -594,6 +595,7 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		for _, x := range answered {
 			a.ask(c, x.d, x.it.TaskID)
 		}
+		asked := false
 		for _, x := range head {
 			// D584: a task's question still being put into words waits behind the one presence
 			// already there, never a second figure under the first.
@@ -604,13 +606,13 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 				}
 			}
 			a.ask(c, x.d, x.it.TaskID)
+			asked = true
 		}
-		if rest > 0 || (len(head) >= 2 && defaults >= 2) {
+		// D586: what stays is 「n 个都按默认」, one act on all of them, under an ask that is shown
+		// (never alone under a presence still putting the ask into words).
+		if defaults >= 2 && asked {
 			ui.Row(c.Key("gather")).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
-				if rest > 0 && a.quietButton(c, "more", a.L.T("living.more", rest), "", false, 1) {
-					a.open["asks:"+itoa(e.FirstSeq)] = true
-				}
-				if defaults >= 2 && a.quietButton(c, "goall", a.L.T("decision.goall", len(a.defaultable())), "", false, 0) {
+				if a.quietButton(c, "goall", a.L.T("decision.goall", len(a.defaultable())), "", false, 0) {
 					a.GoOnAllDefaults()
 				}
 			})

@@ -940,7 +940,7 @@ const iosDevice: Check = {
     },
     yesNo("keyboard", "A sheet's field with the keyboard up", "Open New task and type in its field: do the field and its buttons stay in view, the page not jumping under the status bar?"),
     yesNo("composer", "The composer with the keyboard up", "Type in the conversation: does the composer sit on the keyboard with the last message visible?"),
-    yesNo("type-large", "Accessibility Large: no clipped words", "Set Larger Text to an Accessibility size: are words whole (no clipping or overlap) on the conversation, On hand and Settings?"),
+    yesNo("type-large", "Accessibility Large: no clipped words", "Set Larger Text to an Accessibility size: are words whole (no clipping or overlap) on the conversation, Tasks and Settings?"),
     yesNo("waiting", "The waiting line moves smoothly", "Ask something that takes a while: does the waiting line move smoothly, no stutter, never over the card under it?"),
     yesNo("apps", "Your apps and an open app sheet", "Open Your apps and one app: do the shelf and the sheet look right?", { optional: true }),
     yesNo("menu", "A long-press menu", "Long-press a message: does the menu open in place and read right?"),

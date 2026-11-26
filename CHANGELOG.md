@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.92 - 2026-11-27
+
+<!-- whats-new
+zh: 任务说一句就能结束；重复的看板和过时的数字不再出现
+en: End a task by asking; no duplicate boards, stale counts or phantom diffs
+-->
+
+**Ending things**
+- Ask a task to close and it ends, saying what happens to its open PRs. A duplicate or unneeded
+  PR stops holding the task and its helper: it reads "duplicate draft, can close".
+- End task in a task's ⋯ and right-click menu, and Stop following on a helper's item, each
+  asking once in place.
+
+**Small apps**
+- A review board is only for a task that reviews others' PRs, there's only ever one, and it shows
+  its own work. An app can follow a helper and be filled each round; a snapshot says so, and an
+  app whose task ended says it stopped updating.
+
+**Helpers and teammates**
+- Typing a reply on a sender's card no longer mutes it; a muted sender's mail is read again once
+  you let it in. Your partner knows which Spaces your helper receives in.
+
+**Fixes**
+- The needs-you count and every list agree; an offer whose default time passed settles itself.
+- A task's changes count only its own work, not upstream changes pulled into its branch.
+- A long link, path or command never runs off a question card on a phone.
+
 ## 0.1.91 - 2026-11-26
 
 <!-- whats-new

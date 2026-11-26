@@ -7,6 +7,7 @@ import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
+import { askOpen } from "@ducter/protocol/src/open-asks.ts";
 import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -1061,8 +1062,9 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      // D453: an offer never needs the person: it lives in its note only (no On hand, no count, no talk card).
-      .filter((d) => !d.resolved && !d.pending && !d.later && d.question && !d.offer)
+      // D-PENDING: the count and every list read one predicate (protocol's open-asks.ts): an offer
+      // (D453), a question put off (D382) and one whose default is already due are not open here.
+      .filter((d) => askOpen(d, { resolved: !!d.resolved, pending: d.pending, later: d.later }))
       .filter((d) => {
         const t = d.taskId ? this.tasks.get(d.taskId) : undefined;
         return !t || laneOf(attention(t)) !== LANE.hidden;

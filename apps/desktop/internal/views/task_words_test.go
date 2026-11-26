@@ -173,7 +173,7 @@ func TestResultRowOnceAfterTheRewrite(t *testing.T) {
 	if n := count(tt, "合进 main"); n != 1 {
 		t.Errorf("合进 main shows %d times, want once: %q", n, texts(tt))
 	}
-	if err := tt.Click("看细节"); err == nil {
+	if err := tt.Click("详情"); err == nil {
 		tt.Frame()
 	}
 	all := texts(tt)

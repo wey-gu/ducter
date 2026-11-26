@@ -18,7 +18,7 @@ import (
 )
 
 // D298: the partner's first words in the conversation (the clay partner
-// over them, what they offer, where they were read, 别再看了), and a key
+// over them, what they offer, where they were read, 不再读取), and a key
 // pasted in the first run and in the conversation.
 //
 //	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=../../../../.shots/d298/mac go test ./internal/views -run FirstWords
@@ -73,7 +73,7 @@ func TestFirstWordsInTheConversation(t *testing.T) {
 		tt.Advance(3 * time.Second) // the wave is over
 		tt.Frame()
 		w := map[i18n.Lang][]string{
-			i18n.ZH: {"我看了看这台电脑上你的", "hawdb", "周五下午提醒我交水电费", "别再看了", "只在这台电脑上读"},
+			i18n.ZH: {"我看了看这台电脑上你的", "hawdb", "周五下午提醒我交水电费", "不再读取", "只在这台电脑上读"},
 			i18n.EN: {"Want to pick one of these up?", "hawdb", "Remind me on Friday", "Stop looking", "no one but you and the AI you use"},
 		}[lang]
 		all := strings.Join(tt.Texts(), "\n")
@@ -101,8 +101,8 @@ func TestFirstWordsInTheConversation(t *testing.T) {
 		if !strings.Contains(app.draft, "hawdb") || said() != before {
 			t.Errorf("%s: draft %q, sent %d new messages", lang, app.draft, said()-before)
 		}
-		// 别再看了: said to the home, and what came from the records goes.
-		stop := map[i18n.Lang]string{i18n.ZH: "别再看了", i18n.EN: "Stop looking"}[lang]
+		// 不再读取: said to the home, and what came from the records goes.
+		stop := map[i18n.Lang]string{i18n.ZH: "不再读取", i18n.EN: "Stop looking"}[lang]
 		if err := tt.Click(stop); err != nil {
 			t.Fatal(err)
 		}

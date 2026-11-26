@@ -124,7 +124,7 @@ func TestCoinTileHoldsItsName(t *testing.T) {
 func TestServerSignInFlow(t *testing.T) {
 	until := helNow.Add(15 * time.Minute).UnixMilli()
 	app, tt, sent := helApp(t, i18n.ZH, false, protocol.DeviceHarness{Login: &protocol.AgentLoginState{State: "waiting", URL: claudeURL, Paste: true, Until: until}})
-	for _, s := range []string{"打开链接，用 Claude 账号登录：", "把页面给你的码粘贴到这里：", "等你在页面上登录…", "还剩 15 分钟", "确认登录", "打开链接", "不登录了", "正在登录"} {
+	for _, s := range []string{"打开链接，用 Claude 账号登录：", "把页面给你的码粘贴到这里：", "等你在页面上登录…", "还剩 15 分钟", "确认登录", "打开链接", "取消", "正在登录"} {
 		if !hasText(tt, s) {
 			t.Errorf("waiting: no %q", s)
 		}

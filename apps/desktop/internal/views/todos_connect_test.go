@@ -67,15 +67,15 @@ func TestTodosConnectGitHub(t *testing.T) {
 	app.Receive(ghFrame(cid, "no_gh", func(r *protocol.ServerFrame) { r.GhInstall = releasePlan }))
 	todoFrames(tt, 2)
 	offer := app.L.T("newtask.gh.install.release", "Lin's MacBook Pro", "~/.ducter/tools/bin")
-	if !hasText(tt, offer) || !hasText(tt, "装上 gh") {
+	if !hasText(tt, offer) || !hasText(tt, "安装 gh") {
 		t.Fatalf("no install offer: %q", tt.Texts())
 	}
-	if err := tt.Click("装上 gh，GitHub"); err != nil {
+	if err := tt.Click("安装 gh，GitHub"); err != nil {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	f, _ = lastSent[protocol.GitLogin](*sent)
 	if f.Action != "install" || f.For != "todos" {
-		t.Fatalf("装上 gh sends %+v", f)
+		t.Fatalf("安装 gh sends %+v", f)
 	}
 	cid = f.ClientID
 	p := 41.0

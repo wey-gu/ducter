@@ -111,6 +111,19 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 	})
 }
 
+// openWell makes a sunken well the button that opens its editor (D592: a
+// Keep's 你的原话, as editRow makes a rule's row): the pointer, its name for
+// a reader, the keys, the one row hover deepening within the well. It
+// returns the chevron's ink (Faint at rest, muted when revealed) and a click.
+func (a *App) openWell(c *ui.Context, well ui.Element, label string) (ui.Color, bool) {
+	well.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
+	ink := a.T.Faint
+	if a.rowHover(c, well, groundWell(), false) {
+		ink = a.T.InkMuted
+	}
+	return ink, well.Clicked()
+}
+
 // fieldKeys is Enter and Esc on a field: Enter keeps it, Esc puts it back.
 func fieldKeys(onEnter, onEsc func()) func(k ui.TextKey) bool {
 	return func(k ui.TextKey) bool {

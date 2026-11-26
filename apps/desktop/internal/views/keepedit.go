@@ -666,11 +666,8 @@ func (a *App) keepSaid(c *ui.Context, k *protocol.KeepPage, w float32) {
 	card := ui.Column(c.Key("said")).Width(w).Gap(2).Padding(10, 14, 12, 14).Radius(t.RadiusMD).Background(t.SurfaceSunken)
 	ink := t.Faint
 	if opens {
-		card.Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("keep.said.edit.about"), k.Said)).Focusable()
-		if a.rowHover(c, card, groundWell(), false) {
-			ink = t.InkMuted
-		}
-		if card.Clicked() {
+		var clicked bool
+		if ink, clicked = a.openWell(c, card, spoken(a.L, a.L.T("keep.said.edit.about"), k.Said)); clicked {
 			e.words, e.said, e.reading, e.proposal = true, k.Said, false, nil
 			opens = false
 		}

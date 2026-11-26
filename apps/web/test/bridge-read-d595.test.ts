@@ -1,4 +1,4 @@
-// D-PENDING: a sent Bridge message's read state on the web: 已送达 / Delivered, 已读 / Read, or
+// D621: a sent Bridge message's read state on the web: 已送达 / Delivered, 已读 / Read, or
 // 「{n}/{m} 已读」 in a Space with several readers; nothing when Mem has no receipt. The state comes
 // from a `bridge_read` event, read by the inbox check Ducter already runs, and joins the line it is
 // about by its op or message id. No receipt is unknown, never a made-up "unread".
@@ -12,7 +12,7 @@ import { Store } from "../src/store.ts";
 const zh = strings("zh");
 const en = strings("en");
 
-describe("D-PENDING: a sent message's receipt", () => {
+describe("D621: a sent message's receipt", () => {
   test("0 readers reads Delivered, 1 reads Read, several read n/m; no receipt says nothing", () => {
     expect(receiptWords(undefined, zh)).toBe("");
     expect(receiptWords({ state: "unread", count: 0, total: 1 }, zh)).toBe("已送达");

@@ -1,4 +1,4 @@
-// D-PENDING: one home for the pictures of 已送达 / 已读 / 「{n}/{m} 已读」 beside a message Ducter sent
+// D621: one home for the pictures of 已送达 / 已读 / 「{n}/{m} 已读」 beside a message Ducter sent
 // on the person's behalf: Settings › Agent 通信's 来往, the conversation's relay line, a task's own
 // `agent_message` row, and a helper's rounds on its Keep page. No nmem runs and nothing reaches Mem.
 //   DUCTER_PORT=7630 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-bridge-read.ts
@@ -124,7 +124,7 @@ if (!core.tasks.get("t_helper_round")) {
   core.tasks.setState("t_helper_round", "done", "parked");
 }
 
-console.log(`[demo] D-PENDING receipts at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);
+console.log(`[demo] D621 receipts at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);
 console.log(`[demo] keep ${keepId}`);
 console.log(`[demo] task t_send ${w("重跑 PR #412 的 benchmark", "Rerun the benchmark for PR #412")}`);
 process.on("SIGINT", async () => {

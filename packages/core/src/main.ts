@@ -127,7 +127,9 @@ export async function main(mods: BootModules = {}) {
     // D204: the projects in this computer's Ducter folder are offered on the New task card (core.ts).
     core = startCore({ persona, firstWords: {} });
   } catch (err) {
-    console.error(`[ducter] failed to start core (is port ${process.env.DUCTER_PORT || 7777} in use?):`, (err as Error).message);
+    // A received home's own reason is not a port clash (D621); say it alone.
+    const received = /received from another computer/.test((err as Error).message);
+    console.error(`[ducter] failed to start core${received ? "" : ` (is port ${process.env.DUCTER_PORT || 7777} in use?)`}:`, (err as Error).message);
     process.exit(1);
   }
   // D141: the persona's Mem identity, bound on an earlier start; named on every Mem call.

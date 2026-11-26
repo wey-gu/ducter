@@ -16,7 +16,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D-PENDING: the doorbell row on a Keep's page, off, on and open (the URL with Copy and curl),
+// D621: the doorbell row on a Keep's page, off, on and open (the URL with Copy and curl),
 // and the ring's round, at 1150 and 1400, zh and en, light and dark, with a 2x crop of the rules
 // card. A renderer run, no live home:
 //

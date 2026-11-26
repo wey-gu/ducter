@@ -1,4 +1,4 @@
-// D-PENDING: a Keep's doorbell row and a ring's round line, drawn by the real web components.
+// D621: a Keep's doorbell row and a ring's round line, drawn by the real web components.
 // The caller's label is shown as text, never as markup (the only untrusted text on the page), and
 // the URL appears only while the row is open, with Copy and a curl example.
 import { afterAll, describe, expect, test } from "bun:test";
@@ -259,7 +259,7 @@ async function draw(k: KeepPage) {
   return { root, A, K, redraw: () => render(h(KeepPageView, { room: "full" }), root as never), done: () => render(null, root as never) };
 }
 
-describe("D-PENDING: the doorbell on a Keep's page", () => {
+describe("D621: the doorbell on a Keep's page", () => {
   test("a ring's round shows the caller's label as text, never as markup", async () => {
     const { root, done } = await draw(page());
     expect(root.textContent).toContain("门铃：「<img src=x onerror=alert(1)>」");

@@ -138,6 +138,26 @@ describe("ducter move --plan", () => {
     expect(ids(p.risks)).toContain("autofill");
   });
 
+  test("agent sign-ins with one reason are one line, GitHub its own (en and zh)", () => {
+    writeFileSync(join(dataDir, "keys.env"), "");
+    const agents = [
+      { name: "Claude Code", signedIn: true },
+      { name: "Codex", signedIn: true },
+      { name: "Antigravity", signedIn: true },
+      { name: "Kimi Code CLI", signedIn: true },
+    ];
+    const out = formatMovePlan(plan({ agents, to: "hel" }), en);
+    expect(out).toContain("Sign in to Claude Code, Codex, Antigravity and Kimi Code CLI");
+    expect((out.match(/their sign-ins are their own/g) ?? []).length).toBe(1);
+    expect(out).toContain("Sign in to GitHub");
+    const pz = planMove({ dataDir, t: zh, computer: "Wey's MacBook Pro", platform: "darwin", now: NOW, home, env: {}, agents, github: true, to: "hel" });
+    if (!pz.ok) throw new Error("no home");
+    const z = formatMovePlan(pz, zh);
+    expect(z).toContain("登录 Claude Code、Codex、Antigravity、Kimi Code CLI");
+    expect((z.match(/各自的登录/g) ?? []).length).toBe(1);
+    expect(z).toContain("登录 GitHub");
+  });
+
   test("--to a computer that already does tasks: known, its system read from its pairing", () => {
     const p = plan({ to: "hel" });
     expect(p.to).toEqual({ name: "hel", os: "linux", known: true, assumed: false });

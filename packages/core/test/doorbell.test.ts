@@ -1,4 +1,4 @@
-// D-PENDING: a Keep's doorbell. A CI job, a webhook, a cron on another server or a phone shortcut
+// D621: a Keep's doorbell. A CI job, a webhook, a cron on another server or a phone shortcut
 // POSTs to a secret URL and the Keep looks now. The event is only a doorbell: its body is never read
 // (never in the ring, the round's report or the model's wake line), at most the caller's "about"
 // label is kept for the person, many rings a minute are one round, a wrong token is the same 404 as
@@ -94,7 +94,7 @@ async function endRound(b: Boot) {
 
 const urlOf = (b: Boot, url: string) => `http://127.0.0.1:${b.core.port}${new URL(url, "http://home").pathname}`;
 
-describe("D-PENDING: a ring wakes the Keep and is recorded as a round", () => {
+describe("D621: a ring wakes the Keep and is recorded as a round", () => {
   test("a ring, its label on the round, and its body nowhere", async () => {
     const b = boot();
     const k = await openLoop(b);
@@ -244,7 +244,7 @@ describe("D-PENDING: a ring wakes the Keep and is recorded as a round", () => {
   });
 });
 
-describe("D-PENDING: the partner and the page", () => {
+describe("D621: the partner and the page", () => {
   test("keep_change turns it on without the URL in its answer; the page reveals it once", async () => {
     const b = boot();
     const k = await openLoop(b);

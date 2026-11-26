@@ -1,4 +1,4 @@
-// D-PENDING: a sent message's read state, read on the inbox check Ducter already runs and logged as
+// D621: a sent message's read state, read on the inbox check Ducter already runs and logged as
 // one `bridge_read` per change, never once per check. No receipt is unknown: nothing is logged, and
 // no count is invented. Fakes only; nothing here reaches Mem.
 import { describe, expect, test } from "bun:test";
@@ -41,7 +41,7 @@ function setup() {
   return { ctl, fc, partner, sent, reads };
 }
 
-describe("D-PENDING: a sent message's receipt, on the check that is already running", () => {
+describe("D621: a sent message's receipt, on the check that is already running", () => {
   test("delivered, then read: one quiet event per change, never a duplicate", async () => {
     const { ctl, partner, sent, reads } = setup();
     sent("m-1", "bo1");

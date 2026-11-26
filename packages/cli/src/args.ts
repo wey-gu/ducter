@@ -43,6 +43,9 @@ export interface Args {
   noWeb?: boolean; // proactive replay --no-web (D388): no web look for an open question
   weeks?: number; // proactive week --weeks <n> (D464): how many weeks back, 1–12
   plan?: boolean; // move --plan (D504): only the plan, nothing changed; move --to <computer> reuses `to`
+  bundle?: string; // move --bundle <file>: one encrypted archive of what moves
+  receive?: string; // move --receive <file>: import a bundle into an empty data folder
+  passphraseStdin?: boolean; // move --bundle/--receive: read the passphrase from stdin, never an argument
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout" | "err.badCount"; vars: Record<string, string> } };
@@ -192,6 +195,16 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--plan":
         args.plan = true;
         continue;
+      case "--passphrase-stdin":
+        args.passphraseStdin = true;
+        continue;
+      case "--bundle":
+      case "--receive": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args[a.slice(2) as "bundle" | "receive"] = v.trim();
+        continue;
+      }
       case "--agents":
         args.agents = true;
         continue;

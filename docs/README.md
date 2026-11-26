@@ -77,8 +77,9 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   in your Mac's apps, and Ducter's own phone for apps.
 - **[Add a computer](add-a-computer.md):** lend a server at home, a NAS, a cloud machine or
   another Mac to your Ducter with one line, so tasks can run there.
-- **[Move Ducter to another computer](move.md):** see first what moving Ducter to a new Mac or
-  a server would carry over, what you'd sign in to again and what follows by itself.
+- **[Move Ducter to another computer](move.md):** see what moving Ducter to a new Mac or a
+  server would carry over, make one encrypted bundle of it, receive it on the new computer, and
+  know what to sign in to again; the switch-over is coming soon.
 - **[Your phone](phone.md):** connect your iPhone, iPad or Android phone, get a nudge when
   something needs you, keep your nights quiet, and let a task borrow your Android phone.
 - **[iMessage](imessage.md):** text your partner from Messages on your iPhone, through a Mac,

@@ -667,6 +667,25 @@ line.
   Trigger: the first such reply on hel. Done as D443 (exactly one plain question open; else words to
   the partner as before). Owed: seeing it live on hel.
 
+## Antigravity and the agents' terms (D594, research/236)
+
+- [ ] **Antigravity on a Gemini API key, Enterprise or Vertex.** The FAQ's compliant way for a
+  third-party agent; it would let Antigravity wait and run rounds again. agy reads a key only with
+  `modelProvider: "gemini"` in its own settings, so it needs a Ducter-owned `GEMINI_HOME` per key
+  (no sign-in of the person's in it) and OAR passing it. Trigger: the author asks for unattended
+  Gemini work, or OAR supports agy's key mode.
+- [ ] **Relax or tighten D594 on Google's word.** If Google says appended instructions or client
+  tools are out for a personal sign-in, drop the brief append, Mem's bundle and Ducter's MCP for
+  agy; if it says supervised waits are fine, let them back. Trigger: a Google staff answer or a
+  terms change.
+- [ ] **pi on a subscription sign-in.** pi's own login can hold a Claude subscription or a Google
+  Antigravity / Gemini CLI sign-in, and Ducter counts any credential in `~/.pi/agent/auth.json` as
+  signed in; driving pi on those is what Anthropic and Google forbid. Say it on pi's card and keep
+  such a pi to API keys. Trigger: the next pi change, or before pi is offered to a fresh user.
+- [ ] **The Claude Code sign-in token in keys.env.** Anthropic: developers may not "store, or
+  intermediate Claude.ai credentials or session tokens". It is the person's own token on their own
+  Ducter, but copied to a worker it is closer to that line. Trigger: the next key-copy change.
+
 ## Antigravity, live (D416, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the

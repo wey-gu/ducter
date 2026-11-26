@@ -72,11 +72,14 @@ offered last, unchecked: Ducter puts its command line, `agy`, where Google's own
 (`~/.local/bin`, about 85 MB), checked against Google's release list. The Antigravity desktop app
 alone doesn't count: it carries no command line, and the card says so with an **Install**. To sign
 in, tap **Sign in**, open the Google link on any device, and paste back the code that page gives
-you (or the address it ends on); on a server nothing opens there. Google's terms say using
-third-party software to access Antigravity can get an account suspended, so the card says that
-before you sign in: it's your call. **Sign out** on its card signs it out again with its own
-sign-out. Ducter only gives it a task when you name it ("让 Antigravity 来做"), or when nothing
-else can, and never a task on web pages.
+you (or the address it ends on); on a server nothing opens there. Google's terms limit other
+apps using a personal Google account with Antigravity, and an account can be suspended, so the
+card says that before you sign in: it's your call. To keep to the way an editor uses it,
+Antigravity works only when you ask: it never waits for something and carries on by itself, never
+runs on a schedule, and Ducter never checks its quota or looks where it keeps its sign-in. Work
+that has to wait or repeat goes to another AI. **Sign out** on its card signs it out again with
+its own sign-out. Ducter only gives it a task when you name it ("让 Antigravity 来做"), or when
+nothing else can, and never a task on web pages.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem

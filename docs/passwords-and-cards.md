@@ -95,7 +95,7 @@ page and a one-time code for you to enter there (GitHub's, for example). You get
 >
 > Open GitHub's page and enter this code. I'll see when you're signed in, so no need to tell me.
 >
-> **8694-B656** · Copy
+> **8694-B656**  **Copy**
 
 Tap **Open GitHub**: it copies the code and opens the page in your browser (Safari on an iPhone), so
 you only paste it there and confirm. **Copy** copies the code by itself. You don't reply: once

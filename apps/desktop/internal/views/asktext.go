@@ -172,7 +172,7 @@ func (a *App) askText(c *ui.Context, key, text string, size float32, weight int,
 		uiText(c, text).Font(a.T.Body).FontSize(size).FontWeight(weight).LineHeight(leadingFor(text, 1.45)).TextColor(col).Selectable()
 		return
 	}
-	ui.Column(c.Key("ask-text:"+key)).MinWidth(0).Children(func() {
+	ui.Column(c.Key("ask-text:" + key)).MinWidth(0).Children(func() {
 		markdown.View(c, askMarkdown(unjoin(text), weight >= 600), a.askOptions(size, weight, leadingFor(text, 1.45)))
 	})
 }
@@ -234,7 +234,7 @@ func (a *App) deviceSignInButtons(c *ui.Context, d *store.DecisionState, st deci
 	until, _ := time.Parse(time.RFC3339Nano, s.Until)
 	out := !until.IsZero() && !now.Before(until)
 	about := a.decisionAbout(d)
-	ui.Column(c.Key("dsi:"+d.DecisionID)).Gap(t.S3).Children(func() {
+	ui.Column(c.Key("dsi:" + d.DecisionID)).Gap(t.S3).Children(func() {
 		line := a.L.T("dsi.expired")
 		if !out {
 			if s.Code != "" {
@@ -313,7 +313,7 @@ func (a *App) partnerAskWords(c *ui.Context, key, text string) {
 	t := a.T
 	a.partnerBubble(c, a.takeJoin(), func() {
 		a.askCopied(c)
-		ui.Column(c.Key("ask-bubble:"+key)).MinWidth(0).Children(func() {
+		ui.Column(c.Key("ask-bubble:" + key)).MinWidth(0).Children(func() {
 			markdown.View(c, askMarkdown(mdSpace(text), false), a.askOptions(t.PartnerSize, 400, leadingFor(text, 1.5)))
 		})
 	})

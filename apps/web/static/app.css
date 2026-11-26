@@ -24464,18 +24464,37 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
    the words take their own line, the whole measure, and the buttons the line under them, Stop and
    Send at the right edge; the same shape from a phone to a wide window, as on the Mac.
    Under 420 the model chip keeps its name short; under 340 the chip is its level alone (its card
-   names the model); the meter keeps its figure, so its ring never reads as a spinner (D530). */
+   names the model) and the meter its ring alone (its label carries the share; no figure to squeeze
+   the chip, issue 218). */
 .composer.tiered .words {
   flex: 1 0 100%;
   order: -1;
   padding-inline: 12px 6px;
 }
+/* The chip's content never counts when the row breaks: a zero basis lets it take the room that is
+   left and truncate its name there, instead of pushing Send onto a line under the box (issue 218). */
+.composer.tiered {
+  column-gap: var(--s2);
+}
+.composer.tiered .ctune {
+  flex: 1 1 0;
+  max-width: max-content;
+}
 .composer.tiered .stop,
 .composer.tiered .send-anchor {
   margin-left: auto;
 }
+/* Stop and Send are one pair at the edge, kept the design's 20 from each other: the row's S2 gap
+   plus S3. Send keeps the edge on its own when there is no Stop. */
 .composer.tiered .stop + .send-anchor {
-  margin-left: 16px;
+  margin-left: var(--s3);
+}
+.composer .ctune-m {
+  min-width: 0;
+  max-width: 100%;
+}
+.composer .ctune-chip {
+  max-width: min(220px, 100%);
 }
 @container composer (max-width: 420px) {
   .composer .ctune-chip .m {
@@ -24484,6 +24503,10 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 }
 @container composer (max-width: 340px) {
   .composer .ctune-chip .m {
+    display: none;
+  }
+  /* The narrowest cards drop the meter's number before its ring: a figure would squeeze the chip. */
+  .composer .ctx-btn .pct {
     display: none;
   }
 }

@@ -227,6 +227,11 @@ func (a *App) runPanel(c *ui.Context) {
 			remote = true
 		}
 		showWhere = !(remote && !a.canWork() && a.UseLocal == nil && a.Pair == nil)
+		// D589: on a home on this Mac that this window didn't start, the group would be the place's
+		// name alone, over the places map naming it again: it shows only with something to do here.
+		if !remote && !a.askStopHere && a.Pair == nil {
+			showWhere = false
+		}
 	}
 	// D365: no group title: the page's title already says it, and the computer is the first row.
 	if showWhere {

@@ -439,11 +439,12 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 		}
 	}
 	// D365: with nothing added, the group says so under its heading (never a card holding one line).
-	note := ""
+	note, head := "", a.L.T("todos.add.title")
 	if len(v.Sources) == 0 {
-		note = a.L.T("todos.empty")
+		// D589: 还能加上 ("can also add") over nothing added read as if some were.
+		note, head = a.L.T("todos.empty"), a.L.T("todos.add.first")
 	}
-	a.group(c, "todos-add", a.L.T("todos.add.title"), note, func() {
+	a.group(c, "todos-add", head, note, func() {
 		// D345: GitHub is always offered while it isn't added; 连上 signs the
 		// home in (putting gh there first when it isn't) in place, under it.
 		if !hasGitHub {

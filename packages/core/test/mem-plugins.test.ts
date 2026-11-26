@@ -269,10 +269,10 @@ test("Go on the card opens the same task; Hold does nothing", async () => {
   expect(s.opened[0]).toMatchObject({ harness: "pi", place: { kind: "none" } });
 });
 
-test("the setup brief: Mem's guide is the only source of steps, never guess a key, verify with the check", () => {
+test("the setup brief: Mem's guide is the only source of steps, never ask for a link or key, verify with the check (D597)", () => {
   const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "hel", lang: "en" });
   expect(b).toContain("only source of the steps");
-  expect(b).toContain("Never guess a server address, an API key");
+  expect(b).toContain("Never ask the user for a connect link, a server address, an API key");
   expect(b).toContain("Nothing of Ducter's");
   expect(b).toContain("has to be restarted");
 });

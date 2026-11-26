@@ -2479,6 +2479,10 @@ export interface MemPluginView {
   fresh?: true;
   /** D552: a setup task just updated it (installed, at `version`): said until the next check. */
   updated?: true;
+  /** D597: Ducter's direct update didn't take, so a task finishes it (`taskId`): said while that task runs. */
+  handed?: true;
+  /** D597: the direct update didn't take and no task could pick it up: said while a newer one is still out (until the next tap), and 更新 stays. */
+  stuck?: true;
   checkedAt?: string; // ISO
 }
 

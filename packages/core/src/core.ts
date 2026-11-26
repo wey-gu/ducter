@@ -2683,6 +2683,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   // "verified" (the model judges); code guards the rest: a kept pr_open go covers this task, its own
   // branch (never the base or the default branch, never --force), one PR a task, never a merge.
   const prOpenGo = (taskId: string) => standing.covers("pr_open", { taskId, ...whereOf(taskId) });
+  /** D598: what a PR handed to a helper on this home says (D292: a table per language). */
+  const HAND_WORDS = {
+    zh: { ask: "请接手 {pr}：这个任务的改动已验证，按你自己的要求跟到底（独立评审，需要就修或请原任务返工，通过后按仓库流程批准）。", head: "{name} 的任务「{title}」：" },
+    en: { ask: "Please take {pr}: this task's work is verified; own it to the end by your own rules (an independent review, fix or send rework back to the task, then approve the way the repository does).", head: '{name}\'s task "{title}":' },
+  };
   /**
    * D596's one seam for handing an opened PR to the person's helper (a Keep of theirs), D598's
    * mechanism: the PR is written at the helper's address on this home (`bridge_msg` in, `local`,
@@ -2694,9 +2699,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const handToKeep = (keepId: string, item: { taskId: string; pr: string; said: string }): { taken: boolean; handed: boolean } => {
     const k = keepsRef?.get(keepId);
     if (!k || k.life !== "on") return { taken: false, handed: false };
-    const zh = langNow().startsWith("zh");
+    const w = words(HAND_WORDS, langNow());
     const title = tasks.get(item.taskId)?.title ?? "";
-    const text = zh ? `请接手 ${item.pr}：这个任务的改动已验证，按你自己的要求跟到底（独立评审，需要就修或请原任务返工，通过后按仓库流程批准）。` : `Please take ${item.pr}: this task's work is verified; own it to the end by your own rules (an independent review, fix or send rework back to the task, then approve the way the repository does).`;
+    const text = fill(w.ask, { pr: item.pr });
     if (k.from.kind === "helper") {
       const helper = k.from.helperId;
       const sent = new Set<string>();
@@ -2707,7 +2712,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       // Handed already by this task (its open_pr ran once): taken once a claim answers that hand-off.
       const before = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).map((e) => e.body as Bodies["bridge_msg"]).filter((b) => b.direction === "in" && b.local && b.helper === helper && b.fromTask === item.taskId);
       if (before.length) return { taken: before.some((b) => sent.has(b.messageId)), handed: true };
-      const head = zh ? `${persona.name} 的任务「${title}」：` : `${persona.name}'s task "${title}":`;
+      const head = fill(w.head, { name: persona.name, title });
       log.append({ ...(k.persona ? { persona: k.persona } : {}), stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper, text, from: persona.name, fromTask: item.taskId, head }) } as never);
       return { taken: false, handed: true };
     }

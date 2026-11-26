@@ -461,6 +461,15 @@ line.
   on one computer, Cloud on another). Then from what Mem reports (account or member, backend), the home's relay
   resolved to its upstream; never from API URLs.
 
+## Mem, the D590 walk's leftovers
+
+- [ ] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
+  with each note's source. Trigger: a person asks why a task knew something, or a task acts on a stale note.
+- [ ] **「你都记得我些什么？」's answer leads to the whole list**: one quiet line to Settings › Memory under it, set by a
+  mark the partner adds. Trigger: the next persona change (it needs one more line and its eval).
+- [ ] **One fix at Memory's head while Mem is signed out**: an agent plugin's update then waits under the sign-in, not
+  beside it. Trigger: D589's Settings pass lands.
+
 ## What Mem would like checked (D465, research/202)
 
 - [ ] **One live answer per kind.** On the author's Mem from the Memory page: one contradiction (Mem's

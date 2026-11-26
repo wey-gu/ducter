@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.87 - 2026-11-26
+
+<!-- whats-new
+zh: Mem 连不上时伙伴会直说，不再装作忘了
+en: When Nowledge Mem can't be reached, your partner says so instead of forgetting
+-->
+
+**Memory**
+- When Nowledge Mem's sign-in has run out, it isn't answering, or memory is off, your partner says
+  it can't look back right now and where to fix it, instead of asking you again as if it forgot.
+  With no Mem at all, nothing changes.
+- Settings says the whole cost of a lapsed sign-in: what you told it before can't be found either.
+- A note waiting for Mem reads as one line, "goes into Nowledge Mem once it's back", and only
+  says "noted" once it's in.
+
 ## 0.1.86 - 2026-11-26
 
 <!-- whats-new

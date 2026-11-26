@@ -2334,6 +2334,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return `NOT SAVED: the user switched memory off in Settings › Memory, so nothing goes into their long-term memory (${r.message}). If they asked you to remember this, your whole reply is one plain line that memory is off right now, so this stays only in this conversation, and that turning it on in Settings › Memory keeps things like it, e.g. "记忆现在关着，这条只在我们这段对话里；想一直记着，去 设置 › 记忆 打开就好。". ${never} Never say anything is broken or signed out. If they didn't ask, say nothing about memory.`;
     return `NOT SAVED: nothing was kept, here or anywhere, and nothing will be kept later by itself (${r.message}). If the user asked you to remember this, your whole reply is one plain line that you couldn't keep it this time because Nowledge Mem's sign-in on the home has lapsed, and that Settings › Memory is where to sign in again, e.g. "这条这次没记住：Nowledge Mem 的登录失效了，去 设置 › 记忆 重新登录一下就好。". ${never} If they didn't ask, say nothing about memory.`;
   };
+  // D590: a recall that found no Mem to read says why, so the partner never pretends to have forgotten
+  // what the person told it while their memory is only out of reach: no Mem on the home stays silent (the
+  // colleague who forgot, D169); off, signed out or not answering is said once, only when the person is
+  // counting on something they told it before. The model judges that; code gives the fact.
+  const recallUnavailable = (r: { reason?: string; message?: string; why?: MemWhy }): string => {
+    const why = r.reason === "unavailable" ? "away" : (r.why ?? (/\boff\b/i.test(r.message ?? "") ? "off" : /installed/i.test(r.message ?? "") ? "missing" : "signed_out"));
+    if (why === "missing") return UNAVAILABLE;
+    const relyOn = "Only if the user is asking about, or counting on, something they told you before (\"我之前说过的…\", \"as I told you\", the usual way, a person or decision from earlier), don't act as if you forgot:";
+    const rest = "then ask for what you need in the same short message. Otherwise carry on as usual and say nothing about memory. Never error text, codes or commands, and never say you searched.";
+    if (why === "off")
+      return `Their long-term memory is switched off (their own choice, in Settings › Memory), so what they told you before can't be looked up. ${relyOn} say in a few words that memory is off right now so you can't look back (e.g. "记忆现在关着，我翻不到之前的。"), ${rest} Never say anything is broken.`;
+    if (why === "signed_out")
+      return `NOT FORGOTTEN, OUT OF REACH: their long-term memory (Nowledge Mem) holds what they told you before, but its sign-in on the home has lapsed, so it can't be read right now. ${relyOn} say in one short line that you can't read what you noted right now because Nowledge Mem's sign-in has lapsed and Settings › Memory signs in again (e.g. "我这会儿翻不到之前记的：Nowledge Mem 的登录失效了，去 设置 › 记忆 重新登录就好。"), ${rest}`;
+    return `NOT FORGOTTEN, OUT OF REACH: their long-term memory (Nowledge Mem) holds what they told you before, but it didn't answer just now. ${relyOn} say in one short line that you can't reach what you noted right now (e.g. "我这会儿翻不到之前记的，Nowledge Mem 没回应。" / "I can't reach my notes right now; Nowledge Mem isn't answering."), ${rest}`;
+  };
   const UNAVAILABLE = "Memory isn't available right now. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line (\"上次用的什么参数？\" / \"Which settings did we use?\"). Never say you couldn't find a record, or that memory or anything is unavailable, unless the user asks about memory.";
 
   // ---------- MCP tools (role "partner") ----------
@@ -3862,7 +3877,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D433: each conversation a short ref too ("c1"); the reply may name the one it leaned on.
       const threadRefs = t ? (t.recalledThreads ??= new Map()) : new Map<string, ThreadHit>();
       const conversations = th?.ok ? threadsForModel(th.threads, threadRefs) : [];
-      if (!r.ok && !conversations.length) return knownNow ? { ok: true, results: [], ...aboutThem, ...budget } : { ok: false, available: false, note: UNAVAILABLE };
+      if (!r.ok && !conversations.length) return knownNow ? { ok: true, results: [], ...aboutThem, ...budget } : { ok: false, available: false, note: recallUnavailable(r as { reason?: string; message?: string; why?: MemWhy }) };
       const talks = conversations.length ? { conversations, conversationsNote: THREADS_NOTE } : {};
       if (!r.ok || !r.hits.length)
         return conversations.length

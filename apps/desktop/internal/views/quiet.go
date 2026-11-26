@@ -270,8 +270,8 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 }
 
 // notedLine is one 记下了 / Noted line (D329): taken back, only 不记了;
-// otherwise what it noted, what it replaced and whether it still waits for
-// Mem, each its own element (D291), then 撤销 while the person hasn't
+// otherwise what it noted (or, waiting for Mem, that it goes in once Mem is
+// back, D590), what it replaced, each its own element (D291), then 撤销 while the person hasn't
 // spoken since, Forget after.
 func (a *App) notedLine(c *ui.Context, n noted) {
 	t := a.T
@@ -280,12 +280,15 @@ func (a *App) notedLine(c *ui.Context, n noted) {
 			uiText(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 			return
 		}
-		uiText(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		// D590: one that waits for Mem says so with its title, one element, so a wrap
+		// never leaves "Noted" on one line and "once Mem is back" on the next.
+		if a.notedWaiting(n.seq) {
+			uiText(c.Key("waiting"), a.L.T("memory.waiting", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		} else {
+			uiText(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		}
 		if n.replaced != "" {
 			uiText(c.Key("replaced"), a.L.T("memory.replaced", n.replaced)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
-		}
-		if a.notedWaiting(n.seq) {
-			uiText(c.Key("waiting"), a.L.T("memory.waiting")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		}
 		if a.S.UndoFailed == n.seq {
 			uiText(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)

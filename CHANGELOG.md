@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.90 - 2026-11-26
+
+<!-- whats-new
+zh: 登录要输码时：一键打开、码一点就复制、登好自己接着做
+en: Signing in with a code: one tap opens it, one copies the code, done by itself
+-->
+
+**Signing in with a code**
+- When a task needs a sign-in with a one-time code (GitHub's gh, Codex, Claude Code, gcloud, az,
+  wrangler), its card shows the code large with Copy and an Open button that copies it first.
+  It notices by itself when you're signed in and carries on: no "reply when done". An expired code
+  offers a new one.
+
+**Any question card**
+- Links open in your browser, and commands or codes in it are one tap to copy. A card's text can be
+  selected.
+
 ## 0.1.89 - 2026-11-26
 
 <!-- whats-new

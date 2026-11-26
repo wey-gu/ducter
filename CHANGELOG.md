@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.94 - 2026-11-27
+
+<!-- whats-new
+zh: 任务里看得到带进来的记忆，错了一下就能改；设置页再打磨
+en: See which memories a task was given and fix a wrong one; Settings polished
+-->
+
+**Memory**
+- An opened task shows which of your memories it was given, under what you asked it to do. Each
+  opens in Settings › Memory, and This is wrong asks your partner to fix it.
+
+**Settings**
+- The Mac shows saved sign-ins and keys as saved; a source's choices line up in one column; on a
+  phone a picker moves under its words when they'd be squeezed; actions at a card's foot line up
+  with its switches; names and paths no longer break in the middle.
+
 ## 0.1.93 - 2026-11-27
 
 <!-- whats-new

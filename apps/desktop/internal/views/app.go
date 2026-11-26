@@ -234,6 +234,9 @@ type App struct {
 	bgRefused  map[string]time.Time
 	heldFocus  bool
 	replyOpen  map[string]bool
+	// decideSent are the decisions this window answered, oldest first, so a
+	// refusal can put the right card back (the error frame names no decision).
+	decideSent []string
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
 	laterOpen  map[string]bool
@@ -949,11 +952,30 @@ func (a *App) sendLeftDraft(d *store.DecisionState, text string) {
 // Decide answers a decision.
 func (a *App) Decide(id, option, text string) {
 	if d := a.S.Decisions[id]; d != nil {
+		if d.Key != nil && option == "go" {
+			return // D233: a key card's Go carries the key (keyButtons); a plain Go is refused
+		}
 		d.Pending, d.AnsweredAt = option, a.Now()
+		a.decideSent = append(a.decideSent, id)
 	}
 	a.replyOpen[id] = false
 	a.markRead()
 	a.send(protocol.Decide{T: "decide", DecisionID: id, Option: option, Text: text})
+}
+
+// decideRefused puts back the oldest answer the home refused: the error frame
+// says only "decide: ..." (the frame's kind, not the card), and answers come
+// back in the order they went. A pending answer that was refused must not hide
+// its card everywhere until something else resolves it.
+func (a *App) decideRefused() {
+	for len(a.decideSent) > 0 {
+		id := a.decideSent[0]
+		a.decideSent = a.decideSent[1:]
+		if d := a.S.Decisions[id]; d != nil && d.Resolved == nil && d.Pending != "" {
+			d.Pending, d.AnsweredAt = "", time.Time{}
+			return
+		}
+	}
 }
 
 // OpenTask shows a task at full depth, asking for its history.
@@ -1233,6 +1255,11 @@ func (a *App) Receive(f protocol.ServerFrame) {
 			if ids := a.S.TakeAsksWanted(); len(ids) > 0 {
 				a.send(protocol.AsksGet{T: "asks_get", IDs: ids})
 			}
+		}
+	case "error":
+		// A decide the home refused answers nothing: put its card back.
+		if strings.HasPrefix(f.Message, "decide:") {
+			a.decideRefused()
 		}
 	}
 	a.Applied(f)

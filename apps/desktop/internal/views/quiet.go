@@ -497,6 +497,13 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.underBubble(c, func() { a.phoneButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}
+		if !genericAsk(d) {
+			// D233: a key (and Pay, Fill, a handset's record ask, a draft) is a
+			// card of its own here too, never a generic Go: a key's Go carries
+			// the key, so a plain Go would be refused and leave the card hidden.
+			a.underBubble(c, func() { a.decisionButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
 		if !openAsk(d) {
 			a.answeredLine(c, d)
 			return

@@ -963,10 +963,15 @@ func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, h
 		ui.Row(c.Key("decide:" + id)).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
 			if lead != nil {
 				lead()
-			} else if a.buttonFor(c, a.goLabel(d), about, btnPrimary, height, bg) {
-				a.Decide(id, "go", "")
+				ui.Box(c).Width(t.S2).Shrink(0)
+			} else if d.Key == nil {
+				// D233: a key card's Go is its own, carrying the key; a plain Go
+				// here could only be refused by the home and hide the card.
+				if a.buttonFor(c, a.goLabel(d), about, btnPrimary, height, bg) {
+					a.Decide(id, "go", "")
+				}
+				ui.Box(c).Width(t.S2).Shrink(0)
 			}
-			ui.Box(c).Width(t.S2).Shrink(0)
 			if d.Asker != nil && d.Asker.Other != "" {
 				// X1 (D170): the asking agent's second option, answered in its own
 				// words (a reply), never Hold.

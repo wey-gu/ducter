@@ -79,15 +79,24 @@ func TestHarnessFourNamesAndLogin(t *testing.T) {
 	}
 }
 
-// D600: an unknown agent still gets the generic coin (no art was made for these four yet), so the
-// picker can list them without a missing image.
-func TestHarnessFourCoinsAreGeneric(t *testing.T) {
-	for _, h := range []string{"cursor", "devin", "kimi", "opencode"} {
-		if coinKnown(h) {
-			t.Errorf("%s has a coin art that doesn't exist", h)
+// D600: each of the four has its own coin now (D183's pipeline), so the picker draws the agent's
+// mark instead of the generic token.
+func TestHarnessFourCoins(t *testing.T) {
+	want := map[string]string{
+		"cursor":   "coin_cursor",
+		"devin":    "coin_devin",
+		"kimi":     "coin_kimi",
+		"opencode": "coin_opencode",
+	}
+	for h, art := range want {
+		if !coinKnown(h) {
+			t.Errorf("%s should have its own coin", h)
 		}
-		if got := coinArt(h, false); got != "token_ink" {
-			t.Errorf("coinArt(%q) = %q", h, got)
+		if got := coinArt(h, false); got != art {
+			t.Errorf("coinArt(%q) = %q, want %q", h, got, art)
+		}
+		if got := coinArt(h, true); got != art+"_off" {
+			t.Errorf("coinArt(%q, off) = %q, want %q", h, got, art+"_off")
 		}
 	}
 }

@@ -53,6 +53,10 @@ const jobs = [
   ["coin_pi", clay("coin_pi"), [96, 192]],
   ["coin_deepseek_harness", clay("coin_deepseek_harness"), [96, 192]],
   ["coin_antigravity", clay("coin_antigravity"), [96, 192]],
+  ["coin_cursor", clay("coin_cursor"), [96, 192]],
+  ["coin_devin", clay("coin_devin"), [96, 192]],
+  ["coin_kimi", clay("coin_kimi"), [96, 192]],
+  ["coin_opencode", clay("coin_opencode"), [96, 192]],
   // What a wait waits for (On hand): a cloud for a CI run.
   ["wait_ci", clay("wait_ci"), [64, 128]],
   // What it can reach (D558): the objects the app already draws for each kind of thing.

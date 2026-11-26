@@ -13,6 +13,10 @@ that the owner endorses or partners with Ducter.
 | DeepSeek Harness | DeepSeek's whale, `#4D6BFE` | LobeHub icons, `deepseek-color.svg` (the same whale as `deepseek-ai`'s GitHub avatar) |
 | pi | pi's four-block logo (salmon, teal, butter) | pi's press kit, <https://pi.dev/logo.svg> |
 | Antigravity (D416) | Google Antigravity's arch, its yellow-green, coral and blue blend into pale-blue feet | OAR 0.124 `assets/brands/antigravity.svg` (LobeHub lobe-icons `antigravity-color`), rendered with `rsvg-convert`; picked from two renders (the other added a hole the mark doesn't have; both in `.shots/antigravity/coin-raw/`) |
+| Cursor (D600) | Cursor's hexagon with its three-armed Y opening, in ink | `apps/web/src/brand/cursor.svg` (the repo's file, its header naming LobeHub icons 1.75.0 `cursor.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.75.0/icons/cursor.svg>), rendered with `rsvg-convert`; picked from two renders (the other opened the mark into a funnel and lost the Y; both in `.shots/agent-coins/new/`) |
+| Devin CLI (D600) | Cognition's Devin mark, three interlocking hexagonal links in blue, green and cyan | LobeHub icons **1.106.0**, `devin-color.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.106.0/icons/devin-color.svg>, rendered with `rsvg-convert` (1.75.0 has no Devin mark); picked from two renders (the other lost the dumbbell waists; both in `.shots/agent-coins/new/`) |
+| Kimi Code CLI (D600) | Moonshot AI's Kimi mark, the K and its blue speech bubble | LobeHub icons **1.75.0**, `kimi-color.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.75.0/icons/kimi-color.svg>, rendered with `rsvg-convert`; picked from two renders (the other curled the K into a hook and gave the bubble no tail; both in `.shots/agent-coins/new/`) |
+| OpenCode (D600) | OpenCode's mark, the tall rectangular frame with its window | LobeHub icons **1.106.0**, `opencode.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.106.0/icons/opencode.svg>, rendered with `rsvg-convert` (1.75.0 has no OpenCode mark); picked from two renders (the other came out a thin, tilted frame; both in `.shots/agent-coins/new/`) |
 
 ## What the earlier rule was, and what changed
 
@@ -28,7 +32,8 @@ token (`token_ink`) with the name beside it, a one-line change in each client's 
 ## How to make or remake a coin
 
 1. Put the owner's mark, rendered flat on white at 512 px, in `design/art/assets/marks/`
-   (gitignored) as `claude.png`, `codex.png`, `deepseek.png`, `pi.png`, `antigravity.png`.
+   (gitignored) as `claude.png`, `codex.png`, `deepseek.png`, `pi.png`, `antigravity.png`,
+   `cursor.png`, `devin.png`, `kimi.png`, `opencode.png`.
 2. Generate from `design/art/assets/batch_coins.json` (style `prompts/_style_coins.md`, one
    prompt per coin, the mark as the first reference, the clay token and the clay character for
    the style); keep the raw renders in `.shots/` and pick by putting them side by side at 20–96

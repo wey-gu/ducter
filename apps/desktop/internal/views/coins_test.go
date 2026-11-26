@@ -18,6 +18,11 @@ func TestCoinArt(t *testing.T) {
 		{"pi", true, "coin_pi_off"},
 		{"deepseek-harness", true, "coin_deepseek_harness_off"},
 		{"deepseek-harness", false, "coin_deepseek_harness"},
+		{"cursor", false, "coin_cursor"},
+		{"devin", true, "coin_devin_off"},
+		{"kimi", false, "coin_kimi"},
+		{"opencode", false, "coin_opencode"},
+		{"opencode", true, "coin_opencode_off"},
 		{"someone-new", false, "token_ink"},
 	}
 	for _, c := range cases {
@@ -31,6 +36,12 @@ func TestCoinArt(t *testing.T) {
 			if theme.Clay(art) == nil {
 				t.Errorf("no clay art %q", art)
 			}
+		}
+	}
+	// The dark casts whose clay would vanish on the dark ground (D213).
+	for _, id := range []string{"codex", "cursor", "kimi", "opencode"} {
+		if theme.Clay("coin_"+id+"_dark") == nil {
+			t.Errorf("no dark clay art for coin_%s", id)
 		}
 	}
 	if coinMotionOf(protocol.Working) != coinWorking || coinMotionOf(protocol.NeedsYou) != coinWaiting || coinMotionOf(protocol.Done) != coinStill {

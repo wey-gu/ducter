@@ -3,5 +3,9 @@
  {"id": "coin_codex", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_codex.md"], "image": "raw/coin_codex.png", "ar": "1:1", "ref": ["marks/codex.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
  {"id": "coin_deepseek_harness", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_deepseek_harness.md"], "image": "raw/coin_deepseek_harness.png", "ar": "1:1", "ref": ["marks/deepseek.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
  {"id": "coin_pi", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_pi.md"], "image": "raw/coin_pi.png", "ar": "1:1", "ref": ["marks/pi.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
- {"id": "coin_antigravity", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_antigravity.md"], "image": "raw/coin_antigravity.png", "ar": "1:1", "ref": ["marks/antigravity.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]}
+ {"id": "coin_antigravity", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_antigravity.md"], "image": "raw/coin_antigravity.png", "ar": "1:1", "ref": ["marks/antigravity.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_cursor", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_cursor.md"], "image": "raw/coin_cursor.png", "ar": "1:1", "ref": ["marks/cursor.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_devin", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_devin.md"], "image": "raw/coin_devin.png", "ar": "1:1", "ref": ["marks/devin.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_kimi", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_kimi.md"], "image": "raw/coin_kimi.png", "ar": "1:1", "ref": ["marks/kimi.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_opencode", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_opencode.md"], "image": "raw/coin_opencode.png", "ar": "1:1", "ref": ["marks/opencode.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]}
 ]}

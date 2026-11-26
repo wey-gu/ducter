@@ -52,6 +52,10 @@ COINS = {
     "deepseek_harness": 0.92,
     "pi": 0.80,
     "antigravity": 0.90,
+    "cursor": 0.86,
+    "devin": 0.88,
+    "kimi": 0.90,
+    "opencode": 0.84,
 }
 
 # The unavailable coin's grey clay (the old coins' grey body).
@@ -60,8 +64,14 @@ OFF = "#B3ADA5"
 # A coin whose clay is near the dark theme's ground gets a dark-theme rendition (D213): the same
 # object re-cast in a pale clay, its form and light kept (lightness shifted, not inverted, so the
 # key light still falls from the top), the way the mark itself turns light on a dark page.
-# Codex's charcoal knot vanished on the dark ground; it becomes bone clay there.
-DARK = {"codex": "#DCD4C8"}
+# Codex's charcoal knot, Cursor's ink hexagon, Kimi's ink K and OpenCode's ink frame vanish on the
+# dark ground; each becomes bone clay there, its form and light kept.
+DARK = {
+    "codex": "#DCD4C8",
+    "cursor": "#DCD4C8",  # its charcoal hexagon vanishes on the dark ground, like Codex's knot
+    "kimi": "#DCD4C8",    # the K is ink black; the pale cast keeps the mark and its bubble
+    "opencode": "#DCD4C8",  # ink-black frame; pale cast on the dark ground
+}
 
 # The plain clay token an agent with no coin of its own gets (token_ink, made with the AI-account
 # tokens from batch_tokens.json) is ink clay, about 1.2:1 on the dark card: it gets the same dark

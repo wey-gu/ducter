@@ -60,6 +60,17 @@ import coinDeepseekHarness from "../../../apps/web/static/art/coin_deepseek_harn
 import coinDeepseekHarnessOff from "../../../apps/web/static/art/coin_deepseek_harness_off.webp" with { type: "file" };
 import coinAntigravity from "../../../apps/web/static/art/coin_antigravity.webp" with { type: "file" };
 import coinAntigravityOff from "../../../apps/web/static/art/coin_antigravity_off.webp" with { type: "file" };
+import coinCursor from "../../../apps/web/static/art/coin_cursor.webp" with { type: "file" };
+import coinCursorOff from "../../../apps/web/static/art/coin_cursor_off.webp" with { type: "file" };
+import coinCursorDark from "../../../apps/web/static/art/coin_cursor_dark.webp" with { type: "file" };
+import coinDevin from "../../../apps/web/static/art/coin_devin.webp" with { type: "file" };
+import coinDevinOff from "../../../apps/web/static/art/coin_devin_off.webp" with { type: "file" };
+import coinKimi from "../../../apps/web/static/art/coin_kimi.webp" with { type: "file" };
+import coinKimiOff from "../../../apps/web/static/art/coin_kimi_off.webp" with { type: "file" };
+import coinKimiDark from "../../../apps/web/static/art/coin_kimi_dark.webp" with { type: "file" };
+import coinOpencode from "../../../apps/web/static/art/coin_opencode.webp" with { type: "file" };
+import coinOpencodeOff from "../../../apps/web/static/art/coin_opencode_off.webp" with { type: "file" };
+import coinOpencodeDark from "../../../apps/web/static/art/coin_opencode_dark.webp" with { type: "file" };
 // Work over time (D112): Ducter waiting, and the clay things it waits for.
 import artWaiting from "../../../apps/web/static/art/waiting.webp" with { type: "file" };
 import waitPr from "../../../apps/web/static/art/wait_pr.webp" with { type: "file" };
@@ -140,6 +151,17 @@ const ASSETS: Record<string, [string, string]> = {
   "art/coin_deepseek_harness_off.webp": [coinDeepseekHarnessOff, "image/webp"],
   "art/coin_antigravity.webp": [coinAntigravity, "image/webp"],
   "art/coin_antigravity_off.webp": [coinAntigravityOff, "image/webp"],
+  "art/coin_cursor.webp": [coinCursor, "image/webp"],
+  "art/coin_cursor_off.webp": [coinCursorOff, "image/webp"],
+  "art/coin_cursor_dark.webp": [coinCursorDark, "image/webp"],
+  "art/coin_devin.webp": [coinDevin, "image/webp"],
+  "art/coin_devin_off.webp": [coinDevinOff, "image/webp"],
+  "art/coin_kimi.webp": [coinKimi, "image/webp"],
+  "art/coin_kimi_off.webp": [coinKimiOff, "image/webp"],
+  "art/coin_kimi_dark.webp": [coinKimiDark, "image/webp"],
+  "art/coin_opencode.webp": [coinOpencode, "image/webp"],
+  "art/coin_opencode_off.webp": [coinOpencodeOff, "image/webp"],
+  "art/coin_opencode_dark.webp": [coinOpencodeDark, "image/webp"],
   "art/waiting.webp": [artWaiting, "image/webp"],
   "art/wait_pr.webp": [waitPr, "image/webp"],
   "art/wait_ci.webp": [waitCi, "image/webp"],

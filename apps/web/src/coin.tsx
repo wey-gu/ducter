@@ -1,6 +1,7 @@
 // An AI agent's clay coin (tools/art/coins.py, D183): the agent's own mark sculpted as a small clay
-// object (Claude Code's starburst, Codex's cloud, DeepSeek's whale, pi's blocks); an unknown agent
-// gets the generic clay token. The agent's name and model are always text beside it; the coin
+// object (Claude Code's starburst, Codex's knot, DeepSeek's whale, pi's blocks, Antigravity's arch,
+// Cursor's hexagon, Devin's links, Kimi's K and bubble, OpenCode's frame); an unknown agent gets the
+// generic clay token. The agent's name and model are always text beside it; the coin
 // never says anything words don't.
 
 /** How a coin moves (D77: clay may move, status and words never): a gentle rock on its base while
@@ -13,11 +14,15 @@ const COINS: Record<string, string> = {
   pi: "pi",
   "deepseek-harness": "deepseek_harness",
   antigravity: "antigravity",
+  cursor: "cursor",
+  devin: "devin",
+  kimi: "kimi",
+  opencode: "opencode",
 };
 
 /** Coins whose clay would vanish on the dark ground have a dark-theme rendition (D213): the same
  *  object in a pale clay (tools/art/coins.py DARK). */
-const DARK = new Set(["codex"]);
+const DARK = new Set(["codex", "cursor", "kimi", "opencode"]);
 
 /** The coin's image for an agent; off: signed out or not installed (the same object in grey clay);
  *  dark: the dark theme's rendition, where there is one. A sculpted mark reads at every size it is

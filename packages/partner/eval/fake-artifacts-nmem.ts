@@ -116,7 +116,7 @@ if (cmd === "context") {
     : undefined;
   out({ schema_version: 1, bundle_kind: "context", active_space: { primary_space_id: wt?.space_id ?? null, read_scope: "all-readable", ...(wt ? { write_target: wt } : {}) }, warnings: [] });
 }
-// The VERIFIED passive setup shape (0.10.123, 2026-11-25): it creates and selects nothing.
+// The VERIFIED passive setup shape (0.10.123, 2026-11-25; 0.10.124 adds `recommended`): it creates and selects nothing.
 if (cmd === "bridge" && sub === "setup" && !argv.includes("--enable")) {
   if (spaces === "off") out({ state: "candidates_unavailable", detail: "Spaces are off.", candidates: [] });
   const team = [
@@ -124,7 +124,8 @@ if (cmd === "bridge" && sub === "setup" && !argv.includes("--enable")) {
     { id: "all", label: "Everyone", kind: "commons", readers: 10, write_default: spaces === "hel" },
     { id: "codex", label: "Codex", kind: "team", readers: 7, write_default: false },
   ];
-  const personal = { id: PERSONAL, label: "Only me", kind: "personal", readers: 1, write_default: spaces === "mac" };
+  // D595: 0.10.124 marks the personal write default `recommended` (#11283, VERIFIED on this Mac 2026-11-26).
+  const personal = { id: PERSONAL, label: "Only me", kind: "personal", readers: 1, write_default: spaces === "mac", ...(spaces === "mac" ? { recommended: true } : {}) };
   out({ state: "selection_needed", detail: "Choose the exact Space for Bridge. No identity, credential or mailbox was created.", note: "Name the Space explicitly by its id. Suggested entries are hints, not a choice. A write that names no Space lands in write_default.", candidates: spaces === "none" ? team.map((c) => ({ ...c, write_default: false })) : spaces === "commons" ? team.map((c) => ({ ...c, write_default: c.id === "all" })) : [...team.slice(0, 2), personal, team[2]] });
 }
 if (cmd !== "artifacts") fail(`the subcommand '${cmd}' wasn't recognized`, 2);

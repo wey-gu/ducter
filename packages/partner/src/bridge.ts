@@ -128,20 +128,23 @@ export interface BridgeOp {
 }
 
 /**
- * D555 (research/226): nmem 0.10.123 shows, "where the server provides read receipts", on `outbox` and
- * `inspect` the message an op sent and how many recipients opened it. The JSON's place is INFERRED from
- * the binary (`read_receipt` with `receipt_available`, `read_state` unread | partially_read | read,
- * `read_recipients`, `receipt_observed_at_us`): read only when Mem says a receipt is available, so a
- * shape that differs reads as nothing, never as a false "read". `ducter check run mem-shapes` records it.
+ * D555 (research/226), D595: whether the recipient opened what an op sent. The contract, from Mem's
+ * Bridge owner on nowledge-co/mem#11262 (2026-11-25) and VERIFIED read-only on nmem 0.10.124
+ * (2026-11-26): each `outbox.operations[]` row and `inspect`'s top-level object carry
+ * `receipt_available` and `read_state` (unread | partially_read | read) at the top; with a receipt,
+ * `read_recipients` and `recipients` are integers (people) and `receipt_observed_at_us` the time it was
+ * seen. Without one, `receipt_available: false` and `read_state: "unknown"`: a missing count is never a
+ * zero. The nested `read_receipt` (the binary's older protocol, D555's guess) is read only as a fallback.
  */
 export type OpRead = { state: "read" | "partly" | "unread"; count?: number; at?: number };
 export function receiptOf(o: any): OpRead | undefined {
-  const r = o?.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o?.receipt && typeof o.receipt === "object" ? o.receipt : o;
+  const nested = o?.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o?.receipt && typeof o.receipt === "object" ? o.receipt : undefined;
+  const r = o && typeof o === "object" && "receipt_available" in o ? o : nested;
   if (!r || typeof r !== "object" || r.receipt_available !== true) return undefined;
   const s = typeof r.read_state === "string" ? r.read_state : "";
   const state = s === "read" ? "read" : s === "partially_read" ? "partly" : s === "unread" ? "unread" : undefined;
   const rr = r.read_recipients ?? r.read_count;
-  const count = Array.isArray(rr) ? rr.length : typeof rr === "number" && rr >= 0 ? rr : undefined;
+  const count = Number.isInteger(rr) && rr >= 0 ? (rr as number) : Array.isArray(rr) ? rr.length : undefined;
   if (!state && count === undefined) return undefined;
   const at = typeof r.receipt_observed_at_us === "number" && r.receipt_observed_at_us > 0 ? Math.floor(r.receipt_observed_at_us / 1000) : undefined;
   return { state: state ?? (count! > 0 ? "read" : "unread"), ...(count !== undefined ? { count } : {}), ...(at ? { at } : {}) };
@@ -561,7 +564,11 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
   for (const m of list) {
     const id = str(m?.message) ?? str(m?.message_id) ?? str(m?.id);
     // nmem 0.10.118 (VERIFIED): `{message, status: "delivered"|"read", read_recipients, recipients}`.
-    if (id) out[id] = m?.read === true || !!str(m?.read_at) || /read|opened/i.test(str(m?.state) ?? str(m?.status) ?? "") || (typeof m?.read_recipients === "number" && m.read_recipients > 0);
+    // D595: `read_recipients` is an integer (Mem's contract, #11262; VERIFIED 0.10.124), read first; the
+    // words only when there is no count, and whole ("unread" is never a read).
+    if (!id) continue;
+    const n = m?.read_recipients;
+    out[id] = Number.isInteger(n) ? n > 0 : m?.read === true || !!str(m?.read_at) || /^(read|partially_read|opened)$/i.test(str(m?.state) ?? str(m?.status) ?? "");
   }
   return out;
 }
@@ -1065,8 +1072,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           // D400: Mem's own argv for this entry when it gives one (the identity inbox: the Context it came by).
           const e0 = entry(id);
           const openArgs = typeof e0 === "object" ? memArgv(e0?.open_args, "open") : undefined;
-          const replyArgs = typeof e0 === "object" ? memArgv(e0?.reply_args_prefix, "reply") : undefined;
-          if (replyArgs) replyBy.set(id, replyArgs);
+          const listed = typeof e0 === "object" ? memArgv(e0?.reply_args_prefix, "reply") : undefined;
+          if (listed) replyBy.set(id, listed);
           // `open` records this recipient's first read: Ducter has the body in its Log from here on.
           // nmem 0.10.121 (VERIFIED 2026-11-19): Mem's argv already ends in the entry's `reference` (`bm1:…`).
           const o = openArgs ? await readWhole(namesTarget(openArgs) ? openArgs : [...openArgs, id]) : await read(["open", id], pl.context);
@@ -1074,6 +1081,10 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           const b = parse(o.out);
           const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
           if (!body) continue;
+          // D595: nmem 0.10.124's `open` returns the same scoped reply argv as the entry (#11277 via #11288,
+          // VERIFIED read-only 2026-11-26): the opened message's own is taken first, the entry's for an older nmem.
+          const replyArgs = memArgv(b?.reply_args_prefix, "reply") ?? listed;
+          if (replyArgs) replyBy.set(id, replyArgs);
           // D418: nmem 0.10.121's `open` carries no time; its entry's `expires_at_ms` is 7 days after the send
           // (VERIFIED, research/161 §9), so a message read late still says when it was sent.
           const exp = typeof e0 === "object" && typeof e0?.expires_at_ms === "number" ? e0.expires_at_ms : undefined;

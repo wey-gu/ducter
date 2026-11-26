@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { docAsk, tailLines, lookStepOf, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { ADOPTED, APPS_HEADING, outsideOver, NUDGE, backgroundEnded, type BackgroundEnd, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
+import { ADOPTED, APPS_HEADING, outsideOver, NUDGE, backgroundEnded, type BackgroundEnd, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, freshRoundAfter, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, expandHome, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
@@ -234,6 +234,8 @@ interface TaskRt {
   roundFrom?: number;
   roundArmedAt?: number;
   freshRound?: boolean;
+  /** D593: the seed of a Keep's fresh round goes after its wake (what the person asks now comes first). */
+  seedAfter?: boolean;
   /** D394: the next session is a round's fresh start (its seed says so, not "couldn't be resumed"). */
   roundSeed?: boolean;
   /** D297: the account's limits as this session said them last (a limit hit reads its reset here). */
@@ -985,7 +987,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           ? outsideOver(harnessName(t.handedFrom), await carryOver(t))
           : handedOver(harnessName(t.handedFrom), progress.slice(-CARRY_CHECKPOINTS), await carryOver(t))
         : t.roundSeed
-          ? freshRound(progress.slice(-CARRY_CHECKPOINTS))
+          ? core.keepNow?.(t.id)
+            ? ((t.seedAfter = true), freshRoundAfter(progress.slice(-CARRY_CHECKPOINTS)))
+            : freshRound(progress.slice(-CARRY_CHECKPOINTS))
           : startedAfresh(progress);
     t.roundSeed = undefined;
     t.movedFrom = undefined;
@@ -1278,8 +1282,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const { brief, progress } = briefAndProgress(t);
     // The person's own Compact now: the brief again goes before their next words, never into
     // the compacting turn itself (steered in, it reads as "carry on" and the agent redoes the work).
-    if (t.compactTurn) t.prefix.push(afterCompaction(brief, progress));
-    else sayBeforeNextInput(t, afterCompaction(brief, progress));
+    const keep = core.keepNow?.(t.id);
+    if (t.compactTurn) t.prefix.push(afterCompaction(brief, progress, keep));
+    else sayBeforeNextInput(t, afterCompaction(brief, progress, keep));
   }
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
@@ -2682,7 +2687,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         else setState(t, "working", "hot");
         const said = before.text ? `${before.text}\n\n${text}` : text;
         const all = [...(before.media ?? []), ...(media ?? [])];
-        await sendTurn(t, compacting ? text : seed ? seedThen(seed, takeEdits(taskId, said)) : takeEdits(taskId, said), from, true, all.length ? all : undefined);
+        const after = t.seedAfter;
+        t.seedAfter = undefined;
+        await sendTurn(t, compacting ? text : seed ? (after ? `${takeEdits(taskId, said)}\n\n${seed}` : seedThen(seed, takeEdits(taskId, said))) : takeEdits(taskId, said), from, true, all.length ? all : undefined);
         return { delivered: "prompted" };
       }
       if (isBusy(t) && t.stopping) {

@@ -318,7 +318,6 @@ export const ANTIGRAVITY = {
   installPage: "https://antigravity.google/docs/cli",
   app: "Antigravity.app",
   appLinks: [".antigravity", "antigravity", "bin", "agy"],
-  token: [".gemini", "antigravity-cli", "antigravity-oauth-token"],
   /** agy's own note when a sign-in is needed (`agy models`, 1.5.5+). */
   signedOut: /please sign in/i,
 } as const;

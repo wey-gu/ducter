@@ -138,7 +138,16 @@ host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run 
   a Gemini account); resume in the same folder only (`ResumeCwdError`).
 - **Install / update / sign-in.** Google's manifest per platform, its sha512, the binary to
   `~/.local/bin/agy`; `agy update`; `agy acp --login` with a pasted code; `agy models` for the
-  status; `/usage` for the limits.
+  status, its answer only (D594: no token file read, checked or watched; no answer is not
+  signed in).
+- **Direct only (D594, research/236).** It works when the person asks (their words, or a task the
+  partner opened from them), the way an editor's agent panel runs it, never by itself:
+  `HARNESSES.antigravity.directOnly`. Its task can't arm `wait_for` (a check, an event or a time),
+  the partner can't park it on one, a routine is never set on or moved to it and never runs on it,
+  a usage limit stops it instead of waking it at the reset (another agent may still take it over),
+  and Ducter never reads its quota (OAR's `/usage` reader is not called). The brief appended to
+  its instructions and Ducter's MCP stay: a reference GUI client for coding agents does both
+  (research/236 §3).
 - **Tool schemas (D479, research/207).** agy hands Ducter's MCP tools to Gemini as
   `FunctionDeclaration.parameters`, an OpenAPI subset; a schema outside it fails the whole request
   (hel 2026-11-22, 1.5.14: `wait_for`'s array without `items`, every task at its first call). A

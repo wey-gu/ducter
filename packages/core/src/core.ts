@@ -39,12 +39,13 @@ import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
 import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
+import { registerUsageTool } from "./usage-tool.ts";
 import { recentFolders } from "./first-words.ts";
 import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
-import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
+import { createHarnessAsk, createHarnessJudge, type LookUsed } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { replayProactive } from "./proactive/replay.ts";
@@ -176,6 +177,13 @@ const REVIEW_GO = {
     sep: ", ",
   },
 };
+
+/** D593: the review requests the to-do sources saw, handed to a review round. */
+const REVIEW_ASKS = {
+  zh: { line: "待办来源 {at} 看到这些 PR 在等对方评审：{refs}。这一轮逐个核对，最新提交上还没有对方评审的都要评审。", sep: "、" },
+  en: { line: "At {at} the to-do sources saw these PRs waiting for the person's review: {refs}. Go through each this round: review every one whose latest commit has no review of theirs yet.", sep: ", " },
+};
+const REVIEW_ASKS_MAX = 20;
 
 /** D394: what a review task's round says (review_report). */
 const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
@@ -610,6 +618,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 
   const log = openLog({ path: join(dataDir, "ducter.db"), persona: persona.id, clock });
+  // D591: every one of Ducter's own looks (judges, second looks, reads, Keep checks) says what it used.
+  const lookUsed: LookUsed = (u) => void log.append({ stream: "looks", origin: "system", kind: "look_used", body: u });
   const tasks = createRegistry(log, clock, () => settings.get().quiet?.tz ?? opts.work?.defaultZone);
   let runner: Runner | undefined;
   let partner: Partner | undefined;
@@ -711,9 +721,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     // for a review task, the standing permission to post reviews with its means.
     roundNote: (taskId, l) => {
       const ask = keepsRef?.takeNext(taskId);
-      const lines = [ask ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l)].filter(Boolean);
+      // D593: a Keep's round hears its ask inside the Keep's own words (standing), not twice.
+      const kept = !!keepsRef?.standingFor(taskId, l);
+      const lines = [ask && !kept ? nextRoundLine(ask, l) : "", reviewGoLine(taskId, l), reviewAsksLine(taskId, l)].filter(Boolean);
       return lines.length ? lines.join("\n\n") : undefined;
     },
+    standing: (taskId, l) => ((text, k) => (text && k ? { title: k.name, text } : undefined))(keepsRef?.standingFor(taskId, l), keepsRef?.ofTask(taskId)),
     // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
     loopsWhere: {
       nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
@@ -997,6 +1010,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
   let isReview: (taskId: string) => boolean = () => false;
   /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
+  function reviewAsksLine(taskId: string, l: LangTag): string {
+    if (!isReview(taskId)) return "";
+    const r = taskSourcesRef?.reviewAsks?.();
+    if (!r?.items.length) return "";
+    const w = words(REVIEW_ASKS, l);
+    const at = r.at ? new Intl.DateTimeFormat(l.startsWith("zh") ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, ...(zone() ? { timeZone: zone() } : {}) }).format(new Date(r.at)) : "";
+    return fill(w.line, { at, refs: r.items.slice(0, REVIEW_ASKS_MAX).map((i) => i.url ?? i.ref).join(w.sep) });
+  }
   function reviewGoLine(taskId: string, l: LangTag): string {
     if (!isReview(taskId)) return "";
     const s = standing.list().find((x) => x.action === "pr_review" && !x.taskId);
@@ -1325,7 +1346,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     changed: () => settings.bridgeChanged(),
     // D569: the partner's suggestion for each ask, on its cheap model, judged from Mem's own facts.
-    advise: opts.memAdvise ?? (process.env.NODE_ENV === "test" ? undefined : async (prompt) => (await createHarnessAsk({ harness: () => runner?.harness, pick: () => brainInUse(), dataDir, cheap: true, dir: "judge", timeoutMs: 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt)).text),
+    advise: opts.memAdvise ?? (process.env.NODE_ENV === "test" ? undefined : async (prompt) => (await createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: () => brainInUse(), dataDir, cheap: true, dir: "judge", timeoutMs: 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt)).text),
     lang: () => langNow(),
   });
   settings.setCheck(() => memCheck.get(), (id, answer) => memCheck.answer(id, answer));
@@ -1381,7 +1402,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     tasks,
     rules: () => rules.list(),
     home: () => devicesView?.harnessesNow(),
-    ask: (who, prompt) => createHarnessAsk({ harness: () => runner?.harness, pick: () => who, dataDir, cheap: false, dir: "fresh-look", timeoutMs: 120_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt),
+    ask: (who, prompt) => createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: () => who, dataDir, cheap: false, dir: "fresh-look", timeoutMs: 120_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt),
     diff: async (id) => {
       const r = runner;
       return r?.workbench ? diffFromWorkbench((req) => r.workbench!(id, req)) : undefined;
@@ -1768,6 +1789,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D300: 替你做过的 / Done for you: every outward action, read from the Log and Autofill's uses.
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
+  // D591: "这周谁用掉了我的额度" from the conversation: D588's count, with each agent's limit as last read.
+  registerUsageTool(mcp, { report: (days, tz) => usageDays(log, { now: clock.now(), days, tzOffsetMin: tz, top: 5 }), limits: (h) => accountUsage.peek(h)?.usage, zone: callZone, now: () => clock.now() });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
@@ -1820,6 +1843,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   if (opts.keeps?.rulesAsk) keeps.setRulesAsk(opts.keeps.rulesAsk);
   // D533: a round of a Keep the person changed hears its rules as they are now.
   work.setKeepRules((of) => keeps.rulesFor(of));
+  // D593: a round whose context was compacted hears the Keep again first.
+  api.keepNow = (taskId) => keeps.standingFor(taskId);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
   registerKeepTools(mcp, keeps, () => persona.id, (name) => (name === "local" || name === computers.homeName() ? "local" : ((computers.workers?.() ?? []).find((w) => w.name === name || w.id === name)?.id ?? (computers.nameOf(name) ? name : undefined))));
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
@@ -2931,21 +2956,21 @@ export function startCore(opts: CoreOptions = {}): Core {
       void taskGroups.pump().catch((err) => console.warn("[core] the groups' line couldn't move:", (err as Error).message));
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
       if (!opts.work?.judge)
-        work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: brainInUse, dataDir }));
+        work.setJudge(createHarnessJudge({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir }));
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
-        keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
       // Not in tests (a fake agent would take it for a task's session): they pass a fake.
       if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
-        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D533: the person's edited words read once into the rules they change, shown as a diff before one Go.
       if (!opts.keeps?.rulesAsk)
-        keepsRef?.setRulesAsk(keepRulesAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-rules", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setRulesAsk(keepRulesAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-rules", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
       // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.
       if (!opts.branchAsk && process.env.NODE_ENV !== "test") {
-        const ask = createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "branch-name", timeoutMs: 20_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
+        const ask = createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "branch-name", timeoutMs: 20_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
         api.branchAsk = async (prompt: string) => (await ask(prompt)).text;
       }
       // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
@@ -2954,17 +2979,17 @@ export function startCore(opts: CoreOptions = {}): Core {
       const port = () => runner?.harness;
       const pick = brainInUse;
       proactive.setModels({
-        ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
-        ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
+        ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
+        ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
         // D403: a waiting-on-you find's reply, on the cheapest capable model (tool-less, its own folder).
-        ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
         // D458: the leads past the accounts, picked once a morning on the cheapest model (tool-less, its own folder).
-        ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
         // D502: cross-source findings in shadow, once a day on the cheapest model (tool-less, its own folder).
-        ...(opts.proactive?.cross ? {} : { cross: modelCross(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "cross", timeoutMs: 120_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.cross ? {} : { cross: modelCross(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "cross", timeoutMs: 120_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
       });
       // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
-      if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));
+      if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));
       // Answers that were resolved but never handed to their task before a restart (decisions.ts).
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);

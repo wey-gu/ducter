@@ -10,7 +10,7 @@
 // With no reset known, it tries again on its own (in 10 minutes for a throttle, else every hour,
 // at most a day), and the partner says it once when nobody else can take it (it matters then).
 // Hand it to {agent} now (`handoff`) and Stop waiting (`cancel`) are the card's two actions.
-import { fill, harnessName, LIMIT_RESET_GRACE_MS, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
+import { directOnly, fill, harnessName, LIMIT_RESET_GRACE_MS, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { AccountUsageBook } from "./account-usage.ts";
 import type { AgentLimit } from "./agent-limits.ts";
@@ -131,7 +131,7 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
     // D503: a used-up account is not a used-up model. The same agent and model signed in to another
     // account elsewhere takes the task at once, with nothing to choose: the task's own lines say it
     // once (its limit, then 换到 {computer} 接着做). A throttle passes by itself; a folder can't move.
-    if (hit.failure === "quota" && card.place.kind !== "folder") {
+    if (hit.failure === "quota" && card.place.kind !== "folder" && !directOnly(hit.harness)) {
       const route = await sameModel(hit.taskId, hit.harness, card.model, card.place.device);
       if (route) {
         const r = await o.loadout!.switchTask(hit.taskId, hit.harness, card.model, o.runner(), route.device, undefined, "limit").catch((err) => ({ ok: false, message: (err as Error).message }));
@@ -162,6 +162,12 @@ export function createLimitWaits(o: LimitDeps): LimitWaits {
     if (!known) {
       const shared = armedLimits().find((w) => w.limit!.harness === hit.harness && w.limit!.resetKnown && Date.parse(w.at ?? "") > now);
       if (shared) (at = Date.parse(shared.at!) - RESET_GRACE_MS), (known = true);
+    }
+    // D594: an agent that works only when the person asks is never woken at the reset by itself:
+    // the task stops and says so (another agent may still take it over: handTo above).
+    if (directOnly(hit.harness) && !to) {
+      o.tasks.setState(hit.taskId, "needs_you", card.residency, say(card.title, "stopped", hit.harness));
+      return;
     }
     if (!known && tries > MAX_UNKNOWN_TRIES) {
       o.tasks.setState(hit.taskId, "needs_you", card.residency, say(card.title, "gaveUp", hit.harness));

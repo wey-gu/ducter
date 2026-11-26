@@ -188,10 +188,11 @@ const WAKES: [RegExp, boolean, true?][] = [
   [/^(.+?) 的额度恢复了，接着做刚才没做完的。$/, true, true],
   [/^(.+?)'s usage limit has reset\. Carry on where you left off\.$/, true, true],
   // D429: a task in rounds hears one more line after its wake (a round ends with progress): kept off the hairline.
-  [/^到时间了：「([\s\S]+?)」。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$/, true],
-  [/^It's time: "([\s\S]+?)"\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$/, true],
-  [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$/, false],
-  [/^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$/, false],
+  // D593: a Keep's round hears the Keep itself next (「…」现在的要求 / What “…” asks now).
+  [/^到时间了：「([\s\S]+?)」。接着做。(?:\n\n(?:这是循环里的一轮|「[^」\n]+」现在的要求)[\s\S]*)?$/, true],
+  [/^It's time: "([\s\S]+?)"\. Carry on\.(?:\n\n(?:This is one round|What “[^”\n]+” asks now)[\s\S]*)?$/, true],
+  [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。(?:\n\n(?:这是循环里的一轮|「[^」\n]+」现在的要求)[\s\S]*)?$/, false],
+  [/^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.(?:\n\n(?:This is one round|What “[^”\n]+” asks now)[\s\S]*)?$/, false],
 ];
 
 /** A wake as Ducter sends it (D271): the wait's reason and whether it was a timer, or undefined. */

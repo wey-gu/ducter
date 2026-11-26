@@ -96,6 +96,10 @@ func (a *App) limitCard(c *ui.Context, w *protocol.Waiter) {
 				if back != "" {
 					uiText(c, back).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
 				}
+				// D591: what used most of this agent this week.
+				if why := a.usageWhy(l.Harness, w.TaskID); why != "" {
+					uiText(c, keepClauses(why)).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkMuted).FontFeatures("tnum")
+				}
 			})
 		})
 		ui.Row(c.Key("limitbtns")).Gap(t.S2).Children(func() {

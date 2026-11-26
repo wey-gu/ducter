@@ -1475,6 +1475,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // tool inputs and thinking the estimate cannot see.
     if (ev.usage?.contextTokens) contextTokens = ev.usage.contextTokens;
     if ((ev.raw as { kind?: string } | undefined)?.kind === "compaction_ended") onHarnessCompacted(ev.raw as { outcome?: string; trigger?: string });
+    // D591: what this turn used, on the agent and model it ran on, so `ducter usage` counts the partner's own replies.
+    if (ev.turnEnd && ev.usage?.turn && (ev.usage.turn.input > 0 || ev.usage.turn.output > 0)) logSession({ event: "turn_used", harness: liveHarness ?? partnerRun().harness, ...(liveModel ? { model: liveModel } : {}), turn: ev.usage.turn });
     if (!turn) return;
     // D435: what the turn's end and the session's limits say, for a turn that fails on the agent itself.
     if (ev.limits) turn.limitsSeen = turn.limitsSeen ? mergeLimits(turn.limitsSeen, ev.limits) : ev.limits;

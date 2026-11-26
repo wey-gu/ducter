@@ -20,7 +20,7 @@ const HOME = "/home/w";
 const OFFICIAL = join(HOME, ".local", "bin", "agy");
 
 /** A probe rig: which copies of agy answer what. */
-function probe(o: { onPath?: string; official?: boolean; versions?: Record<string, string | null>; models?: { code: number; out: string }; app?: boolean; dangling?: boolean; token?: boolean; env?: Record<string, string> }) {
+function probe(o: { onPath?: string; official?: boolean; versions?: Record<string, string | null>; models?: { code: number; out: string }; app?: boolean; dangling?: boolean; token?: boolean; env?: Record<string, string>; looked?: string[] }) {
   const runs: string[][] = [];
   return probeHarnesses({
     exec: async (argv) => {
@@ -38,14 +38,14 @@ function probe(o: { onPath?: string; official?: boolean; versions?: Record<strin
     dataDir: "/home/w/.ducter",
     read: () => undefined,
     only: ["antigravity"],
-    exists: (p) => (p === OFFICIAL && !!o.official) || (p === "/Applications/Antigravity.app" && !!o.app) || (p.endsWith("antigravity-oauth-token") && !!o.token),
+    exists: (p) => (o.looked?.push(p), false) || (p === OFFICIAL && !!o.official) || (p === "/Applications/Antigravity.app" && !!o.app) || (p.endsWith("antigravity-oauth-token") && !!o.token),
     dangling: () => !!o.dangling,
     realpath: (p) => p,
   }).then((hs) => ({ h: hs[0]!, runs }));
 }
 
 test("the registry: a task agent that is never the partner, picked not chosen, no web pages, OAR's floor", () => {
-  expect(HARNESSES.antigravity).toMatchObject({ name: "Antigravity", command: "agy", partner: false, task: true, steer: true, images: true, mcp: "stdio-bridge", pickOnly: true, noWebTasks: true });
+  expect(HARNESSES.antigravity).toMatchObject({ name: "Antigravity", command: "agy", partner: false, task: true, steer: true, images: true, mcp: "stdio-bridge", pickOnly: true, directOnly: true, noWebTasks: true });
   expect(HARNESS_FACTS.antigravity.verified.from).toBe("1.5.0");
   expect(ANTIGRAVITY.minVersion).toBe("1.5.0");
   expect(HARNESS_FACTS.antigravity.effort?.value.levels).toEqual(["low", "medium", "high"]);
@@ -74,11 +74,13 @@ test("probe: installed at or above 1.5.0 and signed in when `agy models` answers
   expect(runs.some((r) => r[1] === "models")).toBe(true);
 });
 
-test("probe: signed out when agy asks for a sign-in; no network falls back to its token file", async () => {
+test("probe: signed out when agy asks for a sign-in; no network is never read from its token file (D594)", async () => {
+  const looked: string[] = [];
   const out = await probe({ official: true, versions: { [OFFICIAL]: "1.5.13" }, models: { code: 1, out: "Please sign in to view available models\n" }, token: true });
   expect(out.h).toMatchObject({ installed: true, loggedIn: false });
-  const offline = await probe({ official: true, versions: { [OFFICIAL]: "1.5.13" }, models: { code: 1, out: "getaddrinfo ENOTFOUND" }, token: true });
-  expect(offline.h.loggedIn).toBe(true);
+  const offline = await probe({ official: true, versions: { [OFFICIAL]: "1.5.13" }, models: { code: 1, out: "getaddrinfo ENOTFOUND" }, token: true, looked });
+  expect(offline.h.loggedIn).toBe(false);
+  expect(looked.filter((p) => p.includes(".gemini"))).toEqual([]);
   const none = await probe({ official: true, versions: { [OFFICIAL]: "1.5.13" }, models: { code: 1, out: "getaddrinfo ENOTFOUND" } });
   expect(none.h.loggedIn).toBe(false);
 });
@@ -112,12 +114,14 @@ test("updates: its own installer's copy, read from Google's manifest for this pl
   expect(updatePlan("antigravity", { version: "1.5.11", how: "installer", path: OFFICIAL }, "1.5.13", { latest: "1.5.13" })).toEqual({ argv: [OFFICIAL, "update"], pinned: false });
 });
 
-test("the 5-second fingerprint moves when agy lands at its official place, signs in, or the app comes", () => {
+test("the 5-second fingerprint moves when agy lands at its official place or the app comes, never on its sign-in (D594)", () => {
   const base = { dataDir: "/home/w/.ducter", home: HOME, env: { HOME }, which: () => null };
-  const sig = (m: Record<string, number>) => agentSignature({ ...base, mtime: (p) => m[p] });
+  const seen: string[] = [];
+  const sig = (m: Record<string, number>) => agentSignature({ ...base, mtime: (p) => (seen.push(p), m[p]) });
   const a = sig({});
   expect(sig({ [OFFICIAL]: 1 })).not.toBe(a);
-  expect(sig({ [join(HOME, ".gemini", "antigravity-cli", "antigravity-oauth-token")]: 2 })).not.toBe(a);
+  expect(sig({ [join(HOME, ".gemini", "antigravity-cli", "antigravity-oauth-token")]: 2 })).toBe(a);
+  expect(seen.filter((p) => p.includes(".gemini"))).toEqual([]);
   expect(sig({ "/Applications/Antigravity.app": 3 })).not.toBe(a);
 });
 

@@ -76,6 +76,9 @@ export interface KeepBody {
   /** D540: a one-off ask for its next round only, in the person's words ("这一轮先审 #551"): the
    *  round's wake carries it first, then it is gone. Never its goal (`until`). */
   next?: { text: string; at: string };
+  /** D593: the one-off ask the round under way took from `next`: said again to that round if its
+   *  context is compacted, and gone at the next wake. Never carried into a second round. */
+  now?: { text: string; at: string };
 }
 
 /** One thing a Keep holds now: a task at work on it, with the PR it owns and where that PR stands. */
@@ -131,6 +134,9 @@ export interface KeepEdit {
   field: KeepField;
   from?: string;
   to?: string;
+  /** D593: from and to are only the part that changed of a long text, with a few words around it
+   *  ("…不巡查100gle分派、部署…" to "…不部署…"), never both full texts. */
+  cut?: true;
 }
 
 /** D533: one change: who made it and what changed; undo: it put back the change before it. */
@@ -330,6 +336,9 @@ export interface KeepChange {
   act?: KeepAction;
   /** D540: a one-off ask for its next round only (a task in rounds); empty clears it. */
   next?: string;
+  /** D593: a standing instruction from now on, in the person's words ("以后只发 /lgtm", "不用再看
+   *  100gle"): added to `said`, so every round hears it first. Never a one-off ask, never its end. */
+  also?: string;
 }
 
 /** D533: what a change did: each field from and to, and the change that puts it back (Undo). */

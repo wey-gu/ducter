@@ -387,6 +387,8 @@ export interface Scenario {
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D383: what Ducter made over the last weeks (eval/seed-made.ts): the Kyoto itinerary (9 days ago), the visa PDF (5), a HawDB load-test CSV (20), a Bun note on the home (12), the Mac table (3). */
   made?: true;
+  /** D591: a week of work with its counts (eval/seed-usage.ts): a Codex review loop, a big Claude Code refactor, a small fix, the partner's replies and Ducter's checks. */
+  usageWeek?: true;
   /** D566: the person's Nowledge Mem for keeping files, a fake (eval/fake-artifacts-nmem.ts): signed in, or its sign-in lapsed. */
   memFiles?: "on" | "signed_out";
   /** D391: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
@@ -3141,6 +3143,36 @@ export const scenarios: Scenario[] = [
     rubric: "The user asks the review loop to review one PR now. The partner hands that ask to the loop's own task now: keep_change next_round naming #551 with look_now is best; a message to the loop's task reaches the same task and is fine too. Its one short Chinese line names #551 and that it is reviewed now. Writing it as the loop's goal (until), opening a new task, or asking back is wrong.",
   },
   {
+    // D593: hel 2026-11-24 06:46 UTC: "only reviews, not 100gle" went into the Keep's goal (until), and was lost.
+    id: "loop-from-now-on-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "对了，这个 loop 只需要看 review，不用看 100gle 的工作哈" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change" }], notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user narrows what the review loop does, from now on: only reviews, no 100gle work. The partner keeps it on the same loop as a standing instruction (keep_change also, in their words) and says so in one short Chinese line. Writing it as the loop's end (until) is wrong: that is when the whole thing stops. Writing it as this round's ask (next_round) is wrong: it must hold every round. Opening a task or asking back is wrong.",
+  },
+  {
+    // D593: hel 2026-11-26 03:05 UTC: the /lgtm rule went into the one-round ask and was gone after one round.
+    id: "loop-standing-rule-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "让 review 的 loop 记住：以后 Mem 这种有 prow tide 的 repo，千万别自己 merge，只发 /lgtm" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "keep_change" }], notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user gives the review loop a rule for every round from now on: on Prow/Tide repos like Mem, never merge by hand, only /lgtm. The partner keeps it on the same loop as a standing instruction (keep_change also, in their words) and says so in one short Chinese line. Putting it in next_round (this round only) or until (when it ends) is wrong. Opening a task or asking back is wrong.",
+  },
+  {
     id: "loop-status-en",
     category: "routines",
     lang: "en",
@@ -3338,6 +3370,25 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Did you pay for anything for me today?" }],
     expect: { lines: 3, opens: 0, msgs: [1, 1], maxChars: 320, called: [{ tool: "did_list" }], require: [/312/, /Okura/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|did_list/i] },
     rubric: "The user asks whether Ducter paid for anything today. It calls did_list and answers in short English from it only: one payment, USD 312.00 to the Okura hotel (hotelokura.co.jp), after the user agreed, for the Tokyo hotel task; the card, the stay and the time from the list may be named or not. Nothing else was paid; it doesn't list the other kinds unless briefly. It invents nothing, never says how it looked it up, and opens no task. One or two short lines; one more honest line that the booking itself is not confirmed yet is fine.",
+  },
+  // ---------- D591: "what used my allowance this week?" from the Log's own count ----------
+  {
+    id: "usage-week-zh",
+    category: "accounts",
+    lang: "zh",
+    usageWeek: true,
+    steps: [{ user: "这周谁用掉了我的额度？" }],
+    expect: { lines: 4, opens: 0, msgs: [1, 1], maxChars: 260, called: [{ tool: "usage" }], require: [/store|分片/i, /551|review/i], forbid: [/我(刚|先)?(查|看|翻)了(一下)?(记录|日志)|Log|usage_days|token/i] },
+    rubric: "The user asks what used their allowance this week. It calls usage and answers in short Chinese from it only, by the work first: the most (about six in ten) was the big refactor 「把 store 拆成按用户分片」 the user opened, on Claude Code; next (about a third or more) the review loop on PR #551 that runs every 45 minutes, on Codex. Naming the agents is welcome but not required; shares are about right (55–65% and 35–40%; any rounding). The small fix, the partner's own replies and its checks are small: left out, or said in a few words. It never invents a price, never lists raw token counts unless asked, never says how it looked it up, never says 'partner' in English inside Chinese, and opens no task. One to three short lines; offering to slow the loop down is fine as a question, never done.",
+  },
+  {
+    id: "usage-week-en",
+    category: "accounts",
+    lang: "en",
+    usageWeek: true,
+    steps: [{ user: "What used up my allowance this week?" }],
+    expect: { lines: 4, opens: 0, msgs: [1, 1], maxChars: 420, called: [{ tool: "usage" }], require: [/shard|store/i, /PR #?551|review/i], forbid: [/I (just )?(checked|looked (it )?up) (the )?(log|record)|usage_days|\$\d/i] },
+    rubric: "The user asks what used up their allowance this week. It calls usage and answers in short English from it only, by the work first: the most (around 55–65%) was the big refactor 'Split the store into shards by user' the user started, on Claude Code; next (around 35–40%) the review loop on PR #551 that runs every 45 minutes, on Codex. Naming the agents is welcome but not required; rounded shares are fine. The small fix, the partner's own replies and its checks are small: left out, or said briefly. It invents no price or dollar amount, gives no raw token counts unless asked, never says how it looked it up, and opens no task. One to three short lines; offering to slow the loop down is fine as a question, never done.",
   },
   // ---------- to-do sources (D341): offered, taken on the user's pick, written back behind a card ----------
   {

@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DSH_KEY_ENV, HARNESS_IDS, harnessName, type AccountUsage, type HarnessId } from "@ducter/protocol";
+import { DSH_KEY_ENV, HARNESS_IDS, directOnly, harnessName, type AccountUsage, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, liveModels, modelForWindow, parseCodexCatalog, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
@@ -994,6 +994,9 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
     // account/rateLimits/read). Agents without a reader (pi, DeepSeek Harness) don't say.
     async accountUsage(harness) {
       if (!(HARNESS_IDS as readonly string[]).includes(harness)) return { why: "unsupported" };
+      // D594: Antigravity's quota is never read by Ducter (OAR's reader runs `agy -p "/usage"`,
+      // polling the account on its own): what a running session says (a limit hit) still counts.
+      if (directOnly(harness)) return { why: "unsupported" };
       try {
         const h = harness as HarnessId;
         const rt = await load(h);

@@ -430,6 +430,8 @@ type Store struct {
 	Mentions MentionsState
 	// Did is 替你做过的 / Done for you (D300, did.go).
 	Did DidState
+	// D591: the week's count (usage.go).
+	Usage UsageState
 	// KeepPages (D511) are the Keeps' pages this window read (keep_result),
 	// by id; KeepsVersion counts their changes.
 	KeepPages    map[string]*protocol.KeepPage
@@ -1051,6 +1053,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyPastSteps(f) // D391 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
+	case "usage_days_result":
+		s.applyUsage(f) // D591 (usage.go)
 	case "mem_answered":
 		// D465: Mem refused: the ask comes back with the settings frame, and a line says so.
 		if f.MemAnswered != nil {

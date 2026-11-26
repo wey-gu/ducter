@@ -487,6 +487,7 @@ func (a *App) homePanel(c *ui.Context) {
 	})
 	a.placesMap(c)
 	a.accountPlaces(c)
+	a.usageWeek(c) // D591: where this week's allowance went
 	// A calm last word: everything here can also be said.
 	ui.Row(c.Key("home-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S4, t.S2, 0, t.S2).Children(func() {
 		a.avatar(c, theme.Idle, 28)

@@ -292,5 +292,7 @@ if (process.env.DEMO_TASK) {
   ev({ role: "system", text: "", raw: { kind: "context", contextTokens: 60000, contextWindow: 272000 } });
   ev({ role: "tool", tool: { name: "shell", input: { command: ["bash", "-lc", "cargo test compaction_resumes_after_restart -- --nocapture"] }, ok: true, output: "" } });
 }
+// D591: DEMO_USAGE=1 adds a week of counted work (Overview's 这周的额度用在了哪儿).
+if (process.env.DEMO_USAGE === "1") (await import("./demo-usage.ts")).seedUsage(core as never, zh);
 await Bun.sleep(300);
 console.log(`[demo-settings-real] http://127.0.0.1:${core.port}/app · ${zh ? "zh" : "en"} · data ${dataDir}`);

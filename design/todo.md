@@ -11,17 +11,18 @@ line.
 
 ## What tasks used, after D588 (`focus-window.md` "What tasks used", research/235 #2)
 
-- [ ] **The line in the apps.** Settings › Overview and the limit card in the opened task's context
-  say the week's top line (what used the most of this agent's limit) with one tap to the list, in
-  the Mac app and the web; shared controls, shots both themes and languages (the UI bar). Trigger:
-  the author has run `ducter usage` on hel and the numbers read right.
-- [ ] **The partner can answer "what used my limit / my key".** One fact in the `[devices]` world
-  line (D478) or a read tool; a persona or tool change, so a D175 eval with a scenario for it.
-  Trigger: the line in the apps.
-- [ ] **The partner's own turns and Ducter's own looks counted.** The partner logs its turn usage on
-  the partner stream (today only `contextTokens` is read, `partner.ts`); judges, second looks
-  (D437) and proactive reads (`cross.ts` already budgets tokens) log theirs as `ducter_look`
-  usage. Trigger: with the line in the apps, so its total is the whole truth.
+- [x] **The line in the apps.** Overview's 这周的额度用在了哪儿 and the limit card's line, Mac and web
+  (D591).
+- [x] **The partner can answer "what used my limit / my key".** The read-only `usage` tool, with
+  its D175 scenarios (D591).
+- [x] **The partner's own turns and Ducter's own looks counted.** `partner_session` `turn_used` and
+  `look_used` (D591).
+- [ ] **A partner's turn on another computer.** A second partner or a brain held elsewhere logs on its
+  own stream (`partner:<id>`): counted; a worker's own judge (none today) would not be. Trigger: a
+  look that runs off the home.
+- [ ] **A week by limit window.** A limit is a 5-hour or a weekly window per account (D288); the tray
+  says the last 7 days. When an agent reports its window's start, say the share of that window
+  instead. Trigger: the author reads 62% while the agent says 82% used and asks why.
 - [ ] **Money, for a key paid by use.** Price a paid key's tokens from the provider's own list
   (cached input at its own price), never a subscription's. Trigger: a person on a paid key (D440)
   asks, or the line in the apps ships.
@@ -674,6 +675,25 @@ line.
   Trigger: the first such reply on hel. Done as D443 (exactly one plain question open; else words to
   the partner as before). Owed: seeing it live on hel.
 
+## Antigravity and the agents' terms (D594, research/236)
+
+- [ ] **Antigravity on a Gemini API key, Enterprise or Vertex.** The FAQ's compliant way for a
+  third-party agent; it would let Antigravity wait and run rounds again. agy reads a key only with
+  `modelProvider: "gemini"` in its own settings, so it needs a Ducter-owned `GEMINI_HOME` per key
+  (no sign-in of the person's in it) and OAR passing it. Trigger: the author asks for unattended
+  Gemini work, or OAR supports agy's key mode.
+- [ ] **Relax or tighten D594 on Google's word.** If Google says appended instructions or client
+  tools are out for a personal sign-in, drop the brief append, Mem's bundle and Ducter's MCP for
+  agy; if it says supervised waits are fine, let them back. Trigger: a Google staff answer or a
+  terms change.
+- [ ] **pi on a subscription sign-in.** pi's own login can hold a Claude subscription or a Google
+  Antigravity / Gemini CLI sign-in, and Ducter counts any credential in `~/.pi/agent/auth.json` as
+  signed in; driving pi on those is what Anthropic and Google forbid. Say it on pi's card and keep
+  such a pi to API keys. Trigger: the next pi change, or before pi is offered to a fresh user.
+- [ ] **The Claude Code sign-in token in keys.env.** Anthropic: developers may not "store, or
+  intermediate Claude.ai credentials or session tokens". It is the person's own token on their own
+  Ducter, but copied to a worker it is closer to that line. Trigger: the next key-copy change.
+
 ## Antigravity, live (D416, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the
@@ -884,7 +904,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       contacts) and say **已读 / Read** beside a sent message, both clients, with shots. D557 (the 2026-11-25 live
       pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
       "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
-      so the trigger stands.
+      so the trigger stands. D595: Mem confirmed the JSON (top-level fields, integer counts; VERIFIED on 0.10.124,
+      research/237) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
@@ -900,7 +921,16 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] Antigravity's plugin and its version per computer (Mem's `plugins inspect` lists no Antigravity, so its row
       says "Mem hasn't said" until it writes). Read its manifest (`~/.gemini/config/plugins/...`, research/172) on the
       home and through a worker op, or take Mem's host once `plugins inspect` lists it (private ask item 2).
-      Trigger: the author asks why the row says so, or Mem lists it.
+      Trigger: the author asks why the row says so, or Mem lists it. D595: 0.10.124 lists it (`google-antigravity`,
+      aliases agy, antigravity; per workspace manifest). Not taken yet: as a Mem plugin host it would also bring
+      install offers and turning the plugin off in agy tasks, unchecked for agy. Trigger now: an agy task whose
+      memory-off path is checked, then a `memPlugin` fact for it (or an inspect-only read for the row).
+- [ ] `bridge contact-status --watch` in place of re-reading `connections list` every few minutes (D595, #11292).
+      Trigger: Mem's card command stops answering HTTP 400 (`cloud_agent_recipients_request_invalid`) after its
+      Cloud deploy; then a read-only live check of one contact first.
+- [ ] Mem's side after D595 (research/237): a default Space for `artifacts folders mk`, an error code on `--json`
+      failures (the stderr match, D563, stays until then), a mailbox-changed line for one's own contacts, a wait past
+      5 s, a pi and Codex version on `plugins check`. Trigger: Mem ships any; then drop the fallback it replaces.
 
 ## Tasks Ducter carries messages for (D448, `bridge.md` "Tasks Ducter carries messages for")
 

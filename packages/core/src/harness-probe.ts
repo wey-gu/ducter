@@ -195,20 +195,16 @@ export async function pickAgy(o: { exec: ProbeExec; which: (cmd: string) => stri
 /**
  * D523: is this agy signed in, by its own `agy models`: in (it answers), out (it says "Please
  * sign in"), or unknown (anything else: no network to Google, a proxy it isn't given, a timeout).
- * `tokenFile`: its file-kept sign-in is there (a server's, or a Linux with no D-Bus session; a Mac
- * keeps it in the Keychain, so there is no file to fall back on there and a sign-in that ends in
- * unknown says it couldn't check rather than "signed out").
+ * D594: agy's own answer only. Ducter never looks at where agy keeps its sign-in (no token file
+ * read, checked or watched), so an answer that says nothing stays unknown.
  */
-export async function agyAuth(o: { exec: ProbeExec; bin: string; env?: Record<string, string | undefined>; home?: string; exists?: (p: string) => boolean; timeoutMs?: number }): Promise<{ state: "in" | "out" | "unknown"; tokenFile: boolean; said?: string }> {
-  const env = o.env ?? process.env;
-  const home = o.home ?? env.HOME ?? homedir();
+export async function agyAuth(o: { exec: ProbeExec; bin: string; timeoutMs?: number }): Promise<{ state: "in" | "out" | "unknown"; said?: string }> {
   const m = await o.exec([o.bin, "models"], o.timeoutMs ?? 30_000);
   const said = `${m.out}\n${m.err ?? ""}`;
-  const tokenFile = (o.exists ?? existsSync)(join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1)));
-  if (m.code === 0) return { state: "in", tokenFile };
-  if (ANTIGRAVITY.signedOut.test(said)) return { state: "out", tokenFile };
+  if (m.code === 0) return { state: "in" };
+  if (ANTIGRAVITY.signedOut.test(said)) return { state: "out" };
   const line = said.split("\n").map((l) => l.trim()).filter(Boolean).pop()?.slice(0, 160);
-  return { state: "unknown", tokenFile, ...(line ? { said: line } : {}) };
+  return { state: "unknown", ...(line ? { said: line } : {}) };
 }
 
 const danglingLink = (p: string) => {
@@ -319,9 +315,10 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const pick = await pickAgy({ exec: o.exec, which: o.which, env, home, exists });
     if (pick.bin) {
       // Signed in: agy's own `agy models` (a remote call; OAR's authStatus reads the same). It says
-      // "Please sign in" when it isn't; anything else (no network) can't tell (agyAuth).
-      const auth = await agyAuth({ exec: o.exec, bin: pick.bin, env, home, exists });
-      return { harness: "antigravity", installed: true, loggedIn: auth.state === "in" || (auth.state === "unknown" && auth.tokenFile) };
+      // "Please sign in" when it isn't; anything else (no network) can't tell (agyAuth), which
+      // D594 reads as not signed in here: no file of agy's stands in for its own answer.
+      const auth = await agyAuth({ exec: o.exec, bin: pick.bin });
+      return { harness: "antigravity", installed: true, loggedIn: auth.state === "in" };
     }
     let trouble: RawHarness["trouble"] = pick.trouble;
     if (!trouble) {
@@ -374,7 +371,7 @@ export async function signedInNow(h: string, o: HarnessProbeEnv): Promise<boolea
     const home = o.home ?? homedir();
     const pick = await pickAgy({ exec: o.exec, which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) });
     if (!pick.bin) return false;
-    const a = await agyAuth({ exec: o.exec, bin: pick.bin, env, home, ...(o.exists ? { exists: o.exists } : {}) });
+    const a = await agyAuth({ exec: o.exec, bin: pick.bin });
     return a.state === "in" ? true : a.state === "out" ? false : "unknown";
   }
   return (await probeHarnesses({ ...o, only: [h] }))[0]?.loggedIn ?? false;

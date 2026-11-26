@@ -93,7 +93,7 @@ func TestOverviewUsageWeekD591(t *testing.T) {
 			tt.Advance(150 * time.Millisecond)
 			tt.Frame()
 		}
-		for _, s := range []string{r.Tasks[3].Title, L.T("usage.talk"), L.T("usage.looks"), L.T("usage.models"), L.T("usage.note")} {
+		for _, s := range []string{r.Tasks[3].Title, L.T("usage.agent", L.T("usage.talk"), "9%"), L.T("usage.agent", L.T("usage.looks"), "4%"), L.T("usage.models"), L.T("usage.agent", "Opus", "58%"), L.T("usage.note")} {
 			if _, ok := tt.Find(s); !ok {
 				t.Fatalf("%s: more: no %q in %q", lang, s, tt.Texts())
 			}

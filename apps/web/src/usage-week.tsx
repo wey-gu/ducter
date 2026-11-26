@@ -9,6 +9,7 @@ import { harnessName, usageShare, usageWeight } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Facts, TrayRow } from "./controls.tsx";
+import { modelName } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const FRESH_MS = 60_000;
@@ -66,15 +67,14 @@ export function UsageWeek() {
             {rest.map((k) => (
               <TrayRow key={k.taskId} words={k.title} side={share(k.share)} goes onClick={() => A.openTaskPage(k.taskId)} />
             ))}
-            {r.talk.turns > 0 && <TrayRow words={t("usage.talk")} side={share(r.talk.share)} />}
-            {r.looks.turns > 0 && <TrayRow words={t("usage.looks")} side={share(r.looks.share)} />}
             <div class="usage-facts">
               {twice && (
                 <p>
                   <span class="usage-k">{t("usage.models")}</span>
-                  <Facts items={models.map((a) => t("usage.agent", a.model, usageShare(a.share)))} />
+                  <Facts items={models.map((a) => t("usage.agent", modelName(a.model!), usageShare(a.share)))} />
                 </p>
               )}
+              {(r.talk.turns > 0 || r.looks.turns > 0) && <Facts items={[r.talk.turns > 0 && t("usage.agent", t("usage.talk"), usageShare(r.talk.share)), r.looks.turns > 0 && t("usage.agent", t("usage.looks"), usageShare(r.looks.share))]} />}
               {(you > 0 || mine > 0) && <Facts items={[you > 0 && t("usage.agent", t("usage.you"), usageShare(you)), mine > 0 && t("usage.agent", t("usage.mine"), usageShare(mine))]} />}
               <p class="usage-note">{t("usage.note")}</p>
             </div>

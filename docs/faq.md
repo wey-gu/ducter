@@ -23,10 +23,13 @@ changes. See [How Ducter fits together](concepts.md#why-one-partner-not-a-team).
 Ducter itself is free and open source (Apache 2.0). The AI work runs on your AI agent's plan,
 so it counts against that plan's limits like any other session.
 
-To see what your tasks used, run `ducter usage` (add `--days 30` for a month): input and output
-in all, by AI agent and model, whether you or your partner started the work, the tasks that used
-the most, and day by day. Your partner's own replies aren't in it yet, and it doesn't put a price
-on anything. Seeing the same in the app, and asking your partner about it, is coming soon.
+To see what used your allowance this week, open Settings: the overview says how much each AI agent
+used and which tasks used the most, and a tap opens a task. When an agent's limit runs out, the
+task's card also says which task used most of it this week. You can ask your partner too ("这周谁用掉了
+我的额度？" or "what used my allowance this week?"). For the numbers themselves, run `ducter usage`
+(add `--days 30` for a month): input and output in all, by AI agent and model, whether you or your
+partner started the work, your partner's own replies and its own checks, the tasks that used the
+most, and day by day. Nothing is priced: it counts use, not money.
 
 ### Which AI agents does it work with?
 

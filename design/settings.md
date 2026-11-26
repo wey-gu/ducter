@@ -925,3 +925,28 @@ landed at Memory's top, and at the bottom haswell's row 「Nowledge Mem 0.7.37�
   (`memory.md` "What Mem would like checked").
 - **你喜欢的做法:** newest first stays; what was stale was Mem's data (no preference typed since 2026-09-24) and
   Ducter's own saves going in untyped; memory_add now says its kind (`memory.md`, research/232).
+
+## Where this week's allowance went (D591)
+
+*Who:* the heavy developer whose limit ran out midweek with a review loop and a big refactor both
+running; the consumer on one plan who wants to know why a task stopped; the fresh user, who never
+sees it until something was used. *Felt before:* the count existed (D588) only in a terminal.
+*After:* one glance on the page they already open says which work spent it, in the partner's voice.
+
+- **Where:** Overview, after **你的账号在哪儿** and before the partner's last word; the Mac and the web
+  alike, the phone's one column too. Nothing at all before the first counted turn, or while the home
+  hasn't answered (no waiting square: it is a footnote, not a pane).
+- **What:** the head **这周的额度用在了哪儿** on the text edge (the places' head); one quiet tray (D521's
+  tray: the sunken surface, the line-soft edge): the agents' shares as facts (**Claude Code 62%**
+  **Codex 35%**, up to three, none under 1%), then the three tasks that used most as tray rows, the
+  title cut at its end and its share at the right edge, each opening its task (`goes`: the chevron
+  points on). **更多 / More** folds the rest: the other two of the five, **我回你的消息** and **我做的检查**
+  with their shares, **按模型** only when one agent ran on two models, **你开的任务 n%** **我开的任务 n%**,
+  and the one honest note **只算用量，不算钱；缓存的输入便宜得多，按十分之一算。**
+- **Never:** token counts (the context meter and `ducter usage` keep them), a chart, a price, " · ".
+- **The count:** D588's, the last 7 days in this computer's own days, asked when Overview or a limit
+  card shows and at most once a minute (`usage_days`, top 5).
+- **The limit card** (an opened task resting on its agent's limit, D297) adds one muted line under
+  its reset: what used most of that agent this week, or that it was this task.
+
+Built on the Mac (`views/usage.go`) and the web (`usage-week.tsx`); shots in `.shots/d591/`.

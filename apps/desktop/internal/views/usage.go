@@ -75,17 +75,20 @@ func (a *App) usageWeek(c *ui.Context) {
 	ui.Column(c.Key("usage")).Gap(t.S3).Padding(t.S4, 0, 0, 0).Children(func() {
 		// A section head like the places' (sectionHead): the text edge, the soft ink.
 		uiText(c.Key("usage-label"), a.L.T("usage.head")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(0, t.S5).Role(ui.RoleHeading)
-		tray := ui.Column(c.Key("usage-tray")).Padding(t.S1, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Border(1, t.LineSoft).MinWidth(0)
+		tray := ui.Column(c.Key("usage-tray")).Padding(t.S1, t.S3).Radius(t.RadiusLG).Background(t.SurfaceSunken).Border(1, t.LineSoft).MinWidth(0)
 		tray.Children(func() {
 			if len(agents) > 0 {
-				ui.Row(c.Key("usage-agents")).Padding(t.S2, t.S3, t.S1, t.S3).MinWidth(0).Children(func() {
-					a.facts(c, t.SM, t.Ink, agents...)
+				// The lead: each agent's share its own element (D291), in the ink.
+				ui.Row(c.Key("usage-agents")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, t.S3, t.S1, t.S3).MinWidth(0).Children(func() {
+					for i, s := range agents {
+						uiText(c.Key(i), s).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").SingleLine()
+					}
 				})
 			}
 			for _, k := range tasks {
 				task(k)
 			}
-			if a.trayRow(c, trayLine{key: "fold", words: a.L.T("usage.more"), open: &more}) {
+			if a.trayRow(c, trayLine{key: "fold", words: a.L.T("usage.more"), open: &more, fold: true}) {
 				if a.open == nil {
 					a.open = map[string]bool{}
 				}
@@ -100,12 +103,6 @@ func (a *App) usageWeek(c *ui.Context) {
 				for _, k := range rest {
 					task(k)
 				}
-				if r.Talk.Turns > 0 {
-					a.trayRow(c, trayLine{key: "talk", words: a.L.T("usage.talk"), time: usageShare(r.Talk.Share)})
-				}
-				if r.Looks.Turns > 0 {
-					a.trayRow(c, trayLine{key: "looks", words: a.L.T("usage.looks"), time: usageShare(r.Looks.Share)})
-				}
 				ui.Box(c.Key("usage-rule")).Height(1).Background(t.LineSoft).Margin(t.S2, t.S3, t.S1, t.S3)
 				ui.Column(c.Key("usage-facts")).Gap(t.S1).Padding(t.S1, t.S3, t.S1, t.S3).MinWidth(0).Children(func() {
 					// By model only when one agent ran on two or more of them.
@@ -113,7 +110,7 @@ func (a *App) usageWeek(c *ui.Context) {
 					seen, twice := map[string]bool{}, false
 					for _, m := range r.Agents {
 						if m.Model != "" && m.Share >= 0.01 && len(models) < 4 {
-							models = append(models, a.L.T("usage.agent", m.Model, usageShare(m.Share)))
+							models = append(models, a.L.T("usage.agent", prettyModel(m.Model), usageShare(m.Share)))
 							twice = twice || seen[m.Harness]
 							seen[m.Harness] = true
 						}
@@ -131,6 +128,15 @@ func (a *App) usageWeek(c *ui.Context) {
 						}
 						return s.Weight() / whole
 					}
+					// What no task used, then the tasks by who started them: each its own element.
+					var own []string
+					if r.Talk.Turns > 0 {
+						own = append(own, a.L.T("usage.agent", a.L.T("usage.talk"), usageShare(r.Talk.Share)))
+					}
+					if r.Looks.Turns > 0 {
+						own = append(own, a.L.T("usage.agent", a.L.T("usage.looks"), usageShare(r.Looks.Share)))
+					}
+					a.facts(c, t.SM, t.InkSoft, own...)
 					var by []string
 					if you := of(r.By.You); you > 0 {
 						by = append(by, a.L.T("usage.agent", a.L.T("usage.you"), usageShare(you)))

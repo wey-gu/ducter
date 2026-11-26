@@ -446,10 +446,12 @@ func chipGround(t *theme.Tokens) ui.Color {
 // apart at its far right (act; reserve keeps the slot empty so the columns
 // line up). head: the tray's own head row (stronger words). goes (D591):
 // the row goes elsewhere (a task), named by these words; pressable, its
-// chevron pointing on, never open.
+// chevron pointing on, never open. fold: the row that folds the rest, its
+// words in the muted ink (the web's tone "fold").
 type trayLine struct {
 	key, words, markAbout string
 	goes                  string
+	fold                  bool
 	mark                  func(ui.Color) func(*ui.Painter, ui.Rect)
 	markInk               ui.Color
 	head                  bool
@@ -502,6 +504,9 @@ func (a *App) trayRow(c *ui.Context, r trayLine) bool {
 			ink, w := t.InkSoft, 500
 			if r.head {
 				w = 700
+			}
+			if r.fold {
+				ink = t.InkMuted
 			}
 			if hover {
 				ink = t.Ink

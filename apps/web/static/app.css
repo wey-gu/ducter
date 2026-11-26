@@ -24878,13 +24878,14 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .usage-tray {
   padding: var(--s1);
   border: 1px solid var(--line-soft);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
   background: var(--surface-sunken);
   font-size: var(--sm);
   min-width: 0;
 }
 .usage-agents {
   padding: var(--s2) var(--s3) var(--s1);
+  font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -24896,6 +24897,13 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 }
 .usage-more {
   padding-bottom: var(--s1);
+}
+/* The rows under More are tasks like the ones above it, not the fold's muted words. */
+.usage-tray .tray-row.fold .usage-more .tray-words {
+  color: var(--ink-soft);
+}
+.usage-tray .tray-row.fold .usage-more button.tray-main:hover .tray-words {
+  color: var(--ink);
 }
 .usage-facts {
   display: flex;
@@ -24922,6 +24930,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   line-height: 1.5;
 }
 .watch .usage-why {
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 599px) {

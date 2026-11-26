@@ -876,13 +876,7 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 // keepItemMore is a held item's quiet ⋯ on On hand's sheet (D602): 不用跟了
 // / Stop following asks in place on the Keep's page, and 打开任务.
 func (a *App) keepItemMore(c *ui.Context, keepID string, x protocol.KeepItem) {
-	t := a.T
-	label := a.L.T("away.more", x.Title)
-	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
-		Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
-	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
-	b.Draw(drawMore(fg))
-	a.menuButton(c, b, func(m *ui.Menu) { a.keepItemItems(m, keepID, x) })
+	a.rowMore(c, a.L.T("away.more", x.Title), func(m *ui.Menu) { a.keepItemItems(m, keepID, x) })
 }
 
 // keepItemItems fills a held item's menu (D602).

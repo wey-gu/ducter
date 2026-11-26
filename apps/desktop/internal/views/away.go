@@ -211,11 +211,17 @@ func (a *App) finishedActs(c *ui.Context, f finishedCard) {
 // actions (看看为什么, 再试一次) it joins that group, and its menu holds the
 // remove the × would (D529).
 func (a *App) finishedMore(c *ui.Context, f finishedCard) {
+	a.rowMore(c, a.L.T("away.more", f.name), func(m *ui.Menu) { a.finishedItems(c, m, f, true) })
+}
+
+// rowMore is a row's quiet ⋯ (the shared icon button at ControlSM, D529)
+// opening the clay menu build fills: a finished card's, a Keep's held
+// item's (D602).
+func (a *App) rowMore(c *ui.Context, label string, build func(m *ui.Menu)) {
 	t := a.T
-	label := a.L.T("away.more", f.name)
 	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
 		Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
-	a.menuButton(c, b, func(m *ui.Menu) { a.finishedItems(c, m, f, true) })
+	a.menuButton(c, b, build)
 }

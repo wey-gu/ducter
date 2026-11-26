@@ -30,7 +30,7 @@ import { copy } from "./conv-copy.ts";
 import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, stamp, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
-import { canFillNow, wideNow } from "./fold.ts";
+import { canFillNow, currentSplit, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, loadGlance, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
@@ -714,6 +714,8 @@ class AppState {
         if (s !== "connecting" && inApp() && (s === "connected" || !this.keptScreen())) tellReach(s === "connected");
         this.linkTick();
         this.changed();
+        // D-new: a socket coming back repaints an empty shell too (a page restored while it was down).
+        if (s === "connected") this.ensureShellSoon();
       },
     );
     // D532: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
@@ -723,9 +725,78 @@ class AppState {
     };
     this.conn.start();
     // D209: going to the background keeps the last screen at once (the app may not come back).
-    if (typeof document === "object") document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && this.keepGlance(true));
-    if (typeof addEventListener === "function") addEventListener("pagehide", () => this.keepGlance(true));
+    // D-new: coming back re-paints that last state and, when it is not all there, asks the home
+    // again for the frames a fresh open gets; a bfcache restore is a resume too.
+    if (typeof document === "object") document.addEventListener("visibilitychange", this.onVisibility);
+    if (typeof addEventListener === "function") {
+      addEventListener("pagehide", () => this.keepGlance(true));
+      addEventListener("pageshow", this.onPageShow);
+      addEventListener("focus", this.onFocus);
+    }
     void this.refreshPush();
+  }
+
+  /** Whether the page went to the background (so a visible turn is a resume). */
+  private away = false;
+
+  private onVisibility = () => {
+    if (typeof document !== "object") return;
+    if (document.visibilityState === "hidden") {
+      this.away = true;
+      this.keepGlance(true);
+    } else if (this.away) {
+      this.away = false;
+      this.resume("visible");
+    }
+  };
+
+  /** iOS restores a page from its back/forward cache without a visibilitychange: pageshow says so. */
+  private onPageShow = (e: PageTransitionEvent) => {
+    if (e.persisted) this.resume("pageshow");
+  };
+
+  /** A window coming to the front (a desktop browser, an iPad in Split View): repaint; one that
+   *  lost the page's state asks again. The socket proves itself on its own (conn.ts wake). */
+  private onFocus = () => {
+    if (typeof document !== "object" || document.visibilityState === "visible") this.resume("focus");
+  };
+
+  /** D-new: the page was in the background or came back from bfcache. Draw the last known state
+   *  first (never an empty shell), then ask the home for the same frames a fresh open gets when
+   *  the state is not all there; the hello carries the cursor, so nothing is applied twice. */
+  resume(why: "visible" | "pageshow" | "focus" = "visible") {
+    this.changed();
+    const bare = !this.S.welcomed || !this.S.persona || !this.partners?.length || !this.S.onHand;
+    if (bare && this.glanceDevice) {
+      const g = loadGlance(this.glanceDevice, undefined, savedPartner());
+      if (g) this.restore(g);
+    }
+    if (why !== "focus" || bare) {
+      this.conn?.rehello();
+      this.conn?.probe();
+    }
+    if (bare) this.changed();
+    // The page came back with no bar at all (iOS dropped what it drew while suspended): draw the
+    // whole page again from the state it still holds. A bar that is there is left alone.
+    this.ensureShellSoon();
+  }
+
+  /** D-new: after the state has had a frame to draw, a page with no bar (iOS dropped what it drew
+   *  while suspended) is mounted again from the state it holds. */
+  private ensureShellSoon() {
+    setTimeout(() => {
+      if (this.S.welcomed && !this.shellAlive()) this.onRepaint?.();
+    }, 0);
+  }
+
+  /** D-new: what a resume should find still drawn. A missing bar, or the partners beside the
+   *  conversation gone, is an empty shell. */
+  private shellAlive(): boolean {
+    if (typeof document !== "object") return true;
+    const top = document.querySelector("#app .top");
+    if (!top || !top.textContent?.trim()) return false;
+    const wantsList = this.route.name === "conv" && this.manyPartners() && this.railMode !== "hidden" && !this.partnersOpen && !currentSplit() && typeof innerWidth === "number" && innerWidth >= 700;
+    return !wantsList || !!document.querySelector("#app .pane.partners .pl-row");
   }
 
   async refreshPush() {
@@ -767,6 +838,10 @@ class AppState {
     this.S.welcomed = false; // nothing is sent before the home says welcome
     this.S.apply({ t: "events", events: g.events });
     if (g.onHand) this.S.apply({ t: "on_hand", onHand: g.onHand });
+    // D513: the sidebar is named in the same first frame as the conversation; the socket's hello
+    // refreshes it, but it is never an empty column while that answer is on its way.
+    if (g.partners?.length) this.partners = g.partners;
+    if (g.partnerShown) this.partnerShown = g.partnerShown;
     if (g.first) this.S.apply({ t: "first_screen", first: g.first });
     for (const ev of g.events) {
       this.kept.set(ev.seq, ev);
@@ -795,6 +870,8 @@ class AppState {
         headSeq: this.S.headSeq,
         events,
         ...(this.S.onHand ? { onHand: this.S.onHand } : {}),
+        ...(this.partners?.length ? { partners: this.partners } : {}),
+        ...(this.partnerShown ? { partnerShown: this.partnerShown } : {}),
         ...(this.S.first ? { first: this.S.first } : {}),
         ...(this.me ? { me: this.me } : {}),
         savedAt: Date.now(),
@@ -1242,6 +1319,8 @@ class AppState {
   leftOnHand?: () => void;
   /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
   upInPlace?: () => boolean;
+  /** D-new: main.tsx remounts the page from the last state when a resume finds an empty shell. */
+  onRepaint?: () => void;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;
   onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
@@ -2261,6 +2340,9 @@ class AppState {
 
   private applyPartners(f: Extract<ServerFrame, { t: "partners" }>) {
     const before = new Set((this.partners ?? []).map((p) => p.id));
+    // D513: a home always has at least its default partner. An empty snapshot (a socket answer
+    // mid-restart, a page resuming) never blanks a sidebar that already had names: keep the last.
+    if (!f.partners.length && this.partners?.length) return;
     this.partners = f.partners;
     if (this.partnersAsked) (this.partnersAsked = false), (this.partnersOpen = this.manyPartners() && !wideNow());
     // D513: back to one partner (another removed): no list stands in for the conversation.

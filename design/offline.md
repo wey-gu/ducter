@@ -94,6 +94,17 @@ writes that lived only in memory, the browser with no shell, a line that flicker
 11. **The first draw empties what Preact didn't make.** Every draw into `#app` goes through
     `paint()` (main.tsx); the first one, whichever it is, removes index.html's static boot ground,
     and `#app > .boot-wait.static:not(:only-child)` hides it in CSS whatever draws.
+12. **Coming back is a fresh look with the last screen already on it.** A visible
+    `visibilitychange`, a `pageshow` with `persisted` (iOS restores a page from its back/forward
+    cache without a visibility event) and a window `focus` paint the state the page holds at once,
+    then re-say hello so the welcome, the partners and the on-hand frame a fresh open gets come
+    again; the hello's cursor means nothing is applied twice. The kept screen now carries the
+    partners list and the one shown, so a process reload while the socket is down still paints the
+    named sidebar before any frame. A home's empty partners snapshot never blanks a list that
+    already had names. If the page comes back with nothing drawn (WebKit dropped the suspended
+    page's shell), `#app` is mounted again from that state (`main.tsx`'s app key), and a socket
+    reconnect does the same check: a bar that is there is left untouched, so a resume never loses
+    the scroll or the focus of a live page.
 
 ## What was not adopted, and why
 

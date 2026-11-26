@@ -87,6 +87,10 @@
      filter, the selected row): the card's white raised on a 2px clay ledge and a soft drop. */
   /* D452: the bar grows with the text to 1.5x and stops there, as iOS's own bars do: past it the name would run under the buttons. */
   --bar-text: min(0.875rem, 21px);
+  /* D262, D270: one bar height for every header — the conversation, the whole screen's crumbs, the
+     rail beside a task, the partners list, the workbench. It grows with the text to 1.5x too.
+     The safe area is added once, by the shared header rule below. */
+  --bar-h: min(3.75rem, 90px);
   --knob: 0 2px 0 var(--line), 0 3px 8px rgb(0 0 0 / 0.06);
   --ledge: 3px;
   --press-primary: #140d07;
@@ -680,11 +684,19 @@ a.task-link {
 }
 
 /* ---------- header ---------- */
+/* One height for every bar (D262, D270): the safe area is part of the box, never added again by a
+   header's own padding, so a sidebar's rule and the main area's rule land on the same line. The
+   content sits in the middle; a bordered bar keeps its 1px rule inside the token's height. */
+.top,
+.rail-head {
+  height: calc(var(--safe-top) + var(--bar-h));
+  box-sizing: border-box;
+}
 .top {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: calc(var(--safe-top) + 10px) 16px 10px;
+  padding: calc(var(--safe-top) + var(--s2)) 16px var(--s2);
   background: var(--bg);
   position: sticky;
   top: 0;
@@ -6407,8 +6419,7 @@ button.dev-name {
 /* The header: the crumbs (对话 / 手头的事, the counts beside), then the controls at its end, on
    the chrome's hairline. */
 .top.crumbs {
-  min-height: 60px;
-  padding: calc(var(--safe-top) + 8px) 24px 8px;
+  padding: calc(var(--safe-top) + var(--s2)) 24px calc(var(--s2) - 1px);
   border-bottom: 1px solid var(--line);
   gap: 16px;
 }
@@ -8522,8 +8533,7 @@ dl.call-summary dd { margin: 0; }
   padding-right: calc(var(--safe-right) + 16px);
 }
 .rail-head {
-  min-height: 60px;
-  padding: calc(var(--safe-top) + 8px) 20px 8px;
+  padding: calc(var(--safe-top) + var(--s2)) 20px calc(var(--s2) - 1px);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -8534,6 +8544,11 @@ dl.call-summary dd { margin: 0; }
   font-size: var(--bar-text);
   font-weight: 600;
   color: var(--ink-soft);
+  /* The rail's way back to Tasks: a 44 target with its drawn chevron, as the crumbs' own. */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
 }
 .rail-head .sum {
   font-size: var(--xs);
@@ -8805,6 +8820,15 @@ dl.call-summary dd { margin: 0; }
   min-height: 60px;
   padding: 8px 10px 8px 12px;
   border-bottom: 1px solid var(--line);
+}
+/* Beside the task (D214, D244) the workbench is a third bar: its rule meets the task's and the
+   rail's on the same line, safe area included. As a sheet it already stands under the page's
+   inset, so it takes none here. */
+.bench.as-column .bench-head {
+  height: calc(var(--safe-top) + var(--bar-h));
+  box-sizing: border-box;
+  padding-top: calc(var(--safe-top) + var(--s2));
+  padding-bottom: calc(var(--s2) - 1px);
 }
 .bench-tabs {
   flex: 1;
@@ -21852,7 +21876,7 @@ html[data-text-size="large"] .brand-mark > svg {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.pane.partners > .top { min-height: 64px; box-sizing: border-box; }
+.pane.partners > .top { box-sizing: border-box; }
 .pl-rows {
   --row: 64px;
   --gap: 4px;

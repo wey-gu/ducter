@@ -187,16 +187,17 @@ export function Rail() {
   // D261: the rail is the board narrowed by the same lens; its head says which.
   const groups = lensGroups();
   const lens = currentLens(groups);
+  // A home with one project has no lens to name, but the rail still needs a bar: without one the
+  // sidebar had no rule beside the task's and no way back to the board (the author's iPad).
+  const up = lens ? lensName(lens) : lensOn(groups) ? t("onhand.lens.all") : t("onhand.title");
   return (
     <aside class="rail" aria-label={t("nav.onhand")}>
-      {/* D270: the bar already says On hand; the rail names only its lens, when there is one. */}
-      {lensOn(groups) && (
-        <div class="rail-head">
-          <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
-            {lens ? lensName(lens) : t("onhand.lens.all")}
-          </button>
-        </div>
-      )}
+      <div class="rail-head">
+        <button class="crumb" onClick={() => A.go({ name: "onhand", full: true })}>
+          <BackGlyph />
+          {up}
+        </button>
+      </div>
       <div class="scroll rail-list">
         <OnHandList room="rail" />
       </div>

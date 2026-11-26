@@ -4373,3 +4373,9 @@ Superseded:
 - D410's foot under an app's window with its change line always there, and D422's foot line **只有你看得到，每台设备上都一样。** with **{time} 更新** under every open app: the composer comes up on 修改, ⌘L or /, and who sees it is in 「⋯」 (D603).
 - D431's **发给{name}了，改好会在这里刷新。** after a change asked from inside the app: the line under the app says **{name}正在弄你说的…** while it is made (D603).
 - D410's two-line first-open card that stayed until closed: one slim line that goes by itself (D603).
+
+## 2026-11-26: a finished task's done push is about ending, not archiving (D605; issue #177)
+
+| # | Decision | Source | Propagated to |
+|---|---|---|---|
+| D605 | **D605. A done or failed push says a task ended: it goes only when the task's attention changes to done or failed. A later residency-only change (parked → archived) says nothing, also after a restart; the previous attention comes from the Log, the task card's durable source, not the in-memory pushed set.** | Issue #177 | `packages/core/src/push.ts`, `packages/core/test/push.test.ts` |

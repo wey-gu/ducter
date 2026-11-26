@@ -218,19 +218,26 @@ describe("the pusher", () => {
     const r = await receiver();
     const sub: PushSub = { endpoint: "https://fcm.googleapis.com/fcm/send/1", keys: r.keys, deviceId: "phone", locale: "zh", platform: "ios", createdAt: "" };
     const sent: { url: string; body: Uint8Array }[] = [];
-    const pusher = createPusher({
-      log,
-      store,
-      clock,
-      personaName: () => "Ducter",
-      taskTitle: () => "修 fix-ci",
-      holdMs: 30_000,
-      coalesceMs: 15 * 60_000,
-      fetcher: async (url, init) => (sent.push({ url, body: init.body as Uint8Array }), new Response(null, { status: 201 })),
-      ...(o.channelUp ? { channelUp: o.channelUp } : {}),
-    });
+    const make = () =>
+      createPusher({
+        log,
+        store,
+        clock,
+        personaName: () => "Ducter",
+        taskTitle: () => "修 fix-ci",
+        holdMs: 30_000,
+        coalesceMs: 15 * 60_000,
+        fetcher: async (url, init) => (sent.push({ url, body: init.body as Uint8Array }), new Response(null, { status: 201 })),
+        ...(o.channelUp ? { channelUp: o.channelUp } : {}),
+      });
+    const pusher = make();
+    const restart = () => {
+      const next = make();
+      stops.push(() => next.stop());
+      return next;
+    };
     stops.push(() => pusher.stop(), () => log.close(), t.cleanup);
-    return { log, store, sub, sent, pusher, clock, r };
+    return { log, store, sub, sent, pusher, restart, clock, r };
   }
   const decision = (log: Awaited<ReturnType<typeof setup>>["log"], id: string) =>
     log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: id, taskId: "t1", question: "要 rebase 吗？", goLabel: "rebase", defaultOption: "go", reversible: true } });
@@ -348,6 +355,23 @@ describe("the pusher", () => {
     s.log.append({ stream: "task:t2", origin: "system", kind: "task_state", body: { taskId: "t2", attention: "done", residency: "warm" } });
     s.clock.advance(60_000);
     await s.pusher.idle();
+    expect(s.sent.length).toBe(1);
+  });
+
+  test("D-ISSUE177: a finished task's archive sends no second done push, also after a restart", async () => {
+    const s = await setup();
+    s.store.subscribe(s.sub);
+    s.store.setSettings({ done: true });
+    s.log.append({ stream: "task:t1", origin: "system", kind: "task_state", body: { taskId: "t1", attention: "done", residency: "warm" } });
+    s.clock.advance(60_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(1);
+    s.pusher.stop(); // a restart between the end and the tidy sweep
+    const restarted = s.restart();
+    s.log.append({ stream: "task:t1", origin: "system", kind: "task_state", body: { taskId: "t1", attention: "done", residency: "parked" } });
+    s.log.append({ stream: "task:t1", origin: "system", kind: "task_state", body: { taskId: "t1", attention: "done", residency: "archived" } });
+    s.clock.advance(60_000);
+    await restarted.idle();
     expect(s.sent.length).toBe(1);
   });
 

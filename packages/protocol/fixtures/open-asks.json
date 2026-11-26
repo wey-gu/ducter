@@ -1,0 +1,139 @@
+{
+  "about": "D-PENDING: the one predicate behind the needs-you count and every list. Read by packages/protocol/test/open-asks.test.ts, apps/web/test/open-asks.test.ts and apps/desktop/internal/store/open_asks_test.go, so the three agree.",
+  "now": "2026-11-23T10:00:00.000Z",
+  "cases": [
+    {
+      "name": "a plain question waits",
+      "decision": {
+        "decisionId": "d_plain",
+        "question": "要把它合进 main 吗？",
+        "goLabel": "合进去",
+        "defaultOption": "hold",
+        "reversible": true,
+        "defaultAt": "2026-11-23T10:30:00.000Z"
+      },
+      "open": true
+    },
+    {
+      "name": "a picks offer never needs the person",
+      "decision": {
+        "decisionId": "d_picks",
+        "question": "今天能替你清掉这 3 个。",
+        "goLabel": "交给Ducter",
+        "defaultOption": "hold",
+        "defaultAt": "2026-11-23T09:00:00.000Z",
+        "reversible": false,
+        "findId": "find_1",
+        "offer": true
+      },
+      "open": false
+    },
+    {
+      "name": "an older home's picks (before the offer flag) never needs the person either",
+      "decision": {
+        "decisionId": "d_picks_old",
+        "question": "昨天替你清掉了 1 个。今天能替你清掉这 3 个。",
+        "goLabel": "交给Ducter",
+        "defaultOption": "hold",
+        "defaultAt": "2026-11-23T09:00:00.000Z",
+        "reversible": false,
+        "findId": "find_0",
+        "src": {
+          "kind": "picks"
+        }
+      },
+      "open": false
+    },
+    {
+      "name": "a hold default applies itself when its time comes, even when not reversible",
+      "decision": {
+        "decisionId": "d_hold_due",
+        "question": "今天能替你清掉这 3 个。",
+        "goLabel": "交给Ducter",
+        "defaultOption": "hold",
+        "defaultAt": "2026-11-23T09:00:00.000Z",
+        "reversible": false,
+        "offer": true
+      },
+      "open": false
+    },
+    {
+      "name": "a hold default before its time is still open (when it is a question)",
+      "decision": {
+        "decisionId": "d_hold_future",
+        "question": "要现在跑一轮吗？",
+        "goLabel": "现在跑",
+        "defaultOption": "hold",
+        "defaultAt": "2026-11-23T11:00:00.000Z",
+        "reversible": false
+      },
+      "open": true
+    },
+    {
+      "name": "a reversible Go default past its time was settled by the home",
+      "decision": {
+        "decisionId": "d_go_due",
+        "question": "把这条旧分支关掉？",
+        "goLabel": "关掉",
+        "defaultOption": "go",
+        "defaultAt": "2026-11-23T09:00:00.000Z",
+        "reversible": true
+      },
+      "open": false
+    },
+    {
+      "name": "a non-reversible Go default never goes by itself, so it still waits",
+      "decision": {
+        "decisionId": "d_go_fixed",
+        "question": "删掉这个文件？",
+        "goLabel": "删掉",
+        "defaultOption": "go",
+        "defaultAt": "2026-11-23T09:00:00.000Z",
+        "reversible": false
+      },
+      "open": true
+    },
+    {
+      "name": "an answered question is not open",
+      "decision": {
+        "decisionId": "d_answered",
+        "question": "要现在跑一轮吗？",
+        "goLabel": "现在跑",
+        "defaultOption": "hold",
+        "reversible": true
+      },
+      "state": {
+        "resolved": true
+      },
+      "open": false
+    },
+    {
+      "name": "a question put off with 晚点再问我 is not open now",
+      "decision": {
+        "decisionId": "d_later",
+        "question": "要现在跑一轮吗？",
+        "goLabel": "现在跑",
+        "defaultOption": "hold",
+        "reversible": true
+      },
+      "state": {
+        "later": "2026-11-23T12:00:00.000Z"
+      },
+      "open": false
+    },
+    {
+      "name": "a decision the person acted on, before the home resolves it, is not counted twice",
+      "decision": {
+        "decisionId": "d_pending",
+        "question": "要现在跑一轮吗？",
+        "goLabel": "现在跑",
+        "defaultOption": "hold",
+        "reversible": true
+      },
+      "state": {
+        "pending": "go"
+      },
+      "open": false
+    }
+  ]
+}

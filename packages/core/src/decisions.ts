@@ -9,6 +9,7 @@ import type { CoreRegistry } from "./registry.ts";
 import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { laterable, laterRefusal } from "@ducter/protocol/src/later.ts";
+import { settlesByDefault } from "@ducter/protocol/src/open-asks.ts";
 import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { codeExpired, deviceNewCodeText, deviceSaidInText, deviceSignedInText } from "@ducter/protocol/src/device-signin.ts";
 
@@ -183,6 +184,8 @@ export function createDecisions(opts: {
   const wakes = new Map<string, unknown>();
   const restarted = new Map<string, string>();
   const askedTs = new Map<string, number>();
+  /** D-PENDING: whose conversation a decision is in, so one partner's picks never settle another's. */
+  const personaOf = new Map<string, string>();
   // D382: back at its time and not yet seen: the seq of its return. Its countdown waits for the
   // first read past that seq (the conversation seen on any client), then runs its first length.
   const unseen = new Map<string, number>();
@@ -220,25 +223,40 @@ export function createDecisions(opts: {
   const schedule = (d0: Bodies["decision"]) => {
     const r = restarted.get(d0.decisionId);
     const d = r ? { ...d0, defaultAt: r } : d0;
-    if (!d.reversible || !d.defaultAt) return;
+    // D-PENDING: a Hold default applies itself at its time even when the card is not reversible
+    // (the morning's picks are one); a Go default only on a reversible card (D340: nothing
+    // irreversible goes on its own).
+    if (!settlesByDefault(d)) return;
     if (laterAt.has(d.decisionId)) return; // D382: put off: its countdown waits until it is back
     if (unseen.has(d.decisionId)) return; // D382: back but not seen yet: no default on a card nobody saw
     // D340: a card whose Go deletes something never goes by itself, whoever made it.
     if (d.defaultOption === "go" && destructiveChoice(d.question, d.goLabel)) return;
-    const ms = Date.parse(d.defaultAt) - clock.now();
+    const ms = Date.parse(d.defaultAt!) - clock.now();
     const fire = () => {
       timers.delete(d.decisionId);
-      if (resolved.has(d.decisionId)) return;
-      if (dropped(d.taskId)) return; // no default for a dropped task; it waits for Undo
-
-      log.append({
-        stream: "channel",
-        origin: "system",
-        kind: "decision_resolved",
-        body: { decisionId: d.decisionId, option: d.defaultOption, by: "default" },
-      });
+      settleDefault(d);
     };
     timers.set(d.decisionId, clock.setTimeout(fire, Math.max(0, ms)));
+  };
+
+  /**
+   * D-PENDING: the default applies itself, marked as the default. A picks offer's note fades in
+   * the same breath (D453): it has no find record on the engine's side to fade itself by, so its
+   * Go would otherwise stay on screen after the home had settled it.
+   */
+  const settleDefault = (d: Bodies["decision"]): boolean => {
+    if (resolved.has(d.decisionId)) return false;
+    if (dropped(d.taskId)) return false; // no default for a dropped task; it waits for Undo
+    if (d.defaultOption === "go" && destructiveChoice(d.question, d.goLabel)) return false;
+    log.append({
+      stream: "channel",
+      origin: "system",
+      kind: "decision_resolved",
+      body: { decisionId: d.decisionId, option: d.defaultOption, by: "default" },
+    });
+    if (d.src?.kind === "picks" && d.findId)
+      log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId: d.findId, kind: "todos", state: "passed" } });
+    return true;
   };
 
   /** A task's language: what its brief was written for, else its question's own. */
@@ -450,6 +468,7 @@ export function createDecisions(opts: {
       all.set(d.decisionId, d);
       askedAt.set(d.decisionId, e.seq);
       askedTs.set(d.decisionId, Date.parse(e.ts));
+      personaOf.set(d.decisionId, e.persona);
     } else if (e.kind === "decision_later") {
       const b = e.body as Bodies["decision_later"];
       laterAt.set(b.decisionId, Date.parse(b.until));
@@ -507,7 +526,17 @@ export function createDecisions(opts: {
       const d = e.body as Bodies["decision"];
       all.set(d.decisionId, d);
       askedTs.set(d.decisionId, Date.parse(e.ts));
-      schedule(d);
+      personaOf.set(d.decisionId, e.persona);
+      // D-PENDING: a newer picks offer replaces yesterday's in the same conversation: one left
+      // unanswered is natural, never a card for the person (D453), and two open offers would make
+      // one count for a note nobody can answer any more.
+      if (d.src?.kind === "picks")
+        for (const old of [...all.values()])
+          if (old.decisionId !== d.decisionId && old.src?.kind === "picks" && !resolved.has(old.decisionId) && (personaOf.get(old.decisionId) ?? "") === e.persona) settleDefault(old);
+      // A card whose default is already due (a client's old offer replayed) settles now; otherwise
+      // its timer. On start this is the same work the boot pass does, and `resolved` makes it once.
+      if (settlesByDefault(d) && Date.parse(d.defaultAt!) <= clock.now()) settleDefault(d);
+      else schedule(d);
     } else if (e.kind === "decision_later") onLater(e.body as Bodies["decision_later"]);
     else if (e.kind === "decision_back") onBack(e.body as Bodies["decision_back"], e.seq);
     else if (e.kind === "decision_seen") {
@@ -526,6 +555,23 @@ export function createDecisions(opts: {
       if (b.role === "user" && b.from === "partner" && b.text) api.answeredByMessage(b.taskId, b.text, "partner");
     }
   });
+
+  // D-PENDING: a restart settles once what the clock passed while the home was down: every picks
+  // offer a newer one replaced, then a default-hold card at its defaultAt. (The replay armed their
+  // timers; this runs first, so each logs exactly one resolution, never one per start.)
+  const bootPicks = [...all.values()].filter((d) => d.src?.kind === "picks").sort((a, b) => (askedAt.get(a.decisionId) ?? 0) - (askedAt.get(b.decisionId) ?? 0));
+  const picksOf = new Map<string, Bodies["decision"][]>();
+  for (const d of bootPicks) {
+    const who = personaOf.get(d.decisionId) ?? "";
+    picksOf.set(who, [...(picksOf.get(who) ?? []), d]);
+  }
+  for (const list of picksOf.values()) {
+    const newest = list.at(-1)?.decisionId;
+    for (const d of list) if (d.decisionId !== newest && !resolved.has(d.decisionId)) settleDefault(d);
+  }
+  // A question put off when the home went down comes back first (the wake below), then its
+  // countdown; settling it here would swallow the person's 晚点再问我.
+  for (const d of [...all.values()]) if (!resolved.has(d.decisionId) && !laterAt.has(d.decisionId) && !unseen.has(d.decisionId) && settlesByDefault(d) && Date.parse(d.defaultAt!) <= clock.now()) settleDefault(d);
 
   // D382: put-off questions wait for their time again (one past it while down comes back now).
   queueMicrotask(() => {
@@ -590,7 +636,10 @@ export function createDecisions(opts: {
     },
     laterUntil: (id) => (resolved.has(id) ? undefined : laterAt.get(id)),
     takeUnforwarded: () => unforwarded.splice(0),
-    openIds: () => [...all.keys()].filter((id) => !resolved.has(id)),
+    // D-PENDING: open at the home still includes an offer a client may need to draw (its note's Go)
+    // and one put off for later; what it does not include is a default already due, which the home
+    // settles at that time (the count and every list read `askOpen`, which excludes offers too).
+    openIds: () => [...all.values()].filter((d) => !resolved.has(d.decisionId) && !(settlesByDefault(d) && Date.parse(d.defaultAt!) <= clock.now())).map((d) => d.decisionId),
     seqsOf: (id) => [...(seqs.get(id) ?? [])].sort((a, b) => a - b),
     resolution: (id) => answers.get(id),
     close(decisionId) {

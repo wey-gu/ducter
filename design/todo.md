@@ -9,6 +9,17 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Work handed to a helper, after D598 (`standing-work.md` "What is built")
+
+- [ ] **On hel:** the next PR a dev task hands to the Babysitter shows under 手上的事 with its round, the claim reaches the
+  dev task, and no stall line comes. Trigger: the first release with D598 on hel.
+- [ ] **D596's hand-off** (push, open the PR, hand it over without a card) calls `agent_message` to the helper's name
+  (or `keeps.change(id, { hand })`), never a Bridge send. Trigger: D596's branch.
+- [ ] **A piece handed and not taken yet as its own row** under 手上的事 (today it shows once a task has it; the stall
+  line covers a missed turn). Trigger: a person asks where a hand-off went inside the ten minutes.
+- [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
+  for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
+
 ## What tasks used, after D588 (`focus-window.md` "What tasks used", research/235 #2)
 
 - [x] **The line in the apps.** Overview's 这周的额度用在了哪儿 and the limit card's line, Mac and web

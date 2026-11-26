@@ -5239,7 +5239,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** D598: once per hand-off, after HELPER_TAKE_MS with no task of the helper's on it: one line, and the offer to run it directly. */
   function stalledHandoffs() {
-    if (closed) return;
+    if (closed || !core.helpers?.list().length) return;
     const t = now();
     for (const x of handoffs()) {
       if (x.taskId || x.stalled || t - x.at < HELPER_TAKE_MS || t - x.at > DAY_MS) continue;

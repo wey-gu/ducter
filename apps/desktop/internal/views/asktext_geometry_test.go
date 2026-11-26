@@ -1,6 +1,6 @@
 package views
 
-// D-PENDING: an ask's words can hold a 120-character URL, a long path or a long command. On the
+// D615: an ask's words can hold a 120-character URL, a long path or a long command. On the
 // web the card was wider than the phone; on the Mac the reading face already breaks a long token,
 // and this keeps it so at the widths the Mac is drawn for (1000, 1150, 1400), in the conversation
 // and on On hand, where an ask of the partner's fills the lane.

@@ -63,6 +63,11 @@ export interface Decisions {
    * whose moment passed): by "ended", never forwarded, no attention flip. False when it wasn't open.
    */
   close(decisionId: string): boolean;
+  /**
+   * D615: a board offer whose task no longer runs in rounds is taken back, not answered:
+   * decision_resolved hold, by "withdrawn", settled, forwarded to nobody. False when it wasn't open.
+   */
+  withdraw(decisionId: string): boolean;
   stop(): void;
 }
 
@@ -192,7 +197,7 @@ export function createDecisions(opts: {
   const wakes = new Map<string, unknown>();
   const restarted = new Map<string, string>();
   const askedTs = new Map<string, number>();
-  /** D-PENDING: whose conversation a decision is in, so one partner's picks never settle another's. */
+  /** D615: whose conversation a decision is in, so one partner's picks never settle another's. */
   const personaOf = new Map<string, string>();
   // D382: back at its time and not yet seen: the seq of its return. Its countdown waits for the
   // first read past that seq (the conversation seen on any client), then runs its first length.
@@ -231,7 +236,7 @@ export function createDecisions(opts: {
   const schedule = (d0: Bodies["decision"]) => {
     const r = restarted.get(d0.decisionId);
     const d = r ? { ...d0, defaultAt: r } : d0;
-    // D-PENDING: a Hold default applies itself at its time even when the card is not reversible
+    // D615: a Hold default applies itself at its time even when the card is not reversible
     // (the morning's picks are one); a Go default only on a reversible card (D340: nothing
     // irreversible goes on its own).
     if (!settlesByDefault(d)) return;
@@ -248,7 +253,7 @@ export function createDecisions(opts: {
   };
 
   /**
-   * D-PENDING: the default applies itself, marked as the default. A picks offer's note fades in
+   * D615: the default applies itself, marked as the default. A picks offer's note fades in
    * the same breath (D453): it has no find record on the engine's side to fade itself by, so its
    * Go would otherwise stay on screen after the home had settled it.
    */
@@ -366,6 +371,8 @@ export function createDecisions(opts: {
     // D481: closed by what happened (its task ended): nothing to forward, no card to move.
     // D599: a one-time-code sign-in that went through is closed by what happened too, and its task goes on.
     if (r.by === "ended" && !r.signedIn) return void silent.delete(r.decisionId);
+    // D615: a board offer taken back (its task doesn't run in rounds): no forward, no attention flip.
+    if (r.by === "withdrawn") return void silent.delete(r.decisionId);
     // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
     // partner (decision_resolved is a trigger); nothing to forward, no card to move.
     if (!d.taskId) return;
@@ -543,7 +550,7 @@ export function createDecisions(opts: {
       all.set(d.decisionId, d);
       askedTs.set(d.decisionId, Date.parse(e.ts));
       personaOf.set(d.decisionId, e.persona);
-      // D-PENDING: a newer picks offer replaces yesterday's in the same conversation: one left
+      // D615: a newer picks offer replaces yesterday's in the same conversation: one left
       // unanswered is natural, never a card for the person (D453), and two open offers would make
       // one count for a note nobody can answer any more.
       if (d.src?.kind === "picks")
@@ -572,7 +579,7 @@ export function createDecisions(opts: {
     }
   });
 
-  // D-PENDING: a restart settles once what the clock passed while the home was down: every picks
+  // D615: a restart settles once what the clock passed while the home was down: every picks
   // offer a newer one replaced, then a default-hold card at its defaultAt. (The replay armed their
   // timers; this runs first, so each logs exactly one resolution, never one per start.)
   const bootPicks = [...all.values()].filter((d) => d.src?.kind === "picks").sort((a, b) => (askedAt.get(a.decisionId) ?? 0) - (askedAt.get(b.decisionId) ?? 0));
@@ -654,7 +661,7 @@ export function createDecisions(opts: {
     },
     laterUntil: (id) => (resolved.has(id) ? undefined : laterAt.get(id)),
     takeUnforwarded: () => unforwarded.splice(0),
-    // D-PENDING: open at the home still includes an offer a client may need to draw (its note's Go)
+    // D615: open at the home still includes an offer a client may need to draw (its note's Go)
     // and one put off for later; what it does not include is a default already due, which the home
     // settles at that time (the count and every list read `askOpen`, which excludes offers too).
     openIds: () => [...all.values()].filter((d) => !resolved.has(d.decisionId) && !(settlesByDefault(d) && Date.parse(d.defaultAt!) <= clock.now())).map((d) => d.decisionId),
@@ -664,6 +671,12 @@ export function createDecisions(opts: {
       if (!all.has(decisionId) || resolved.has(decisionId)) return false;
       silent.add(decisionId);
       log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "hold", by: "ended", settled: true } });
+      return true;
+    },
+    withdraw(decisionId) {
+      if (!all.has(decisionId) || resolved.has(decisionId)) return false;
+      silent.add(decisionId);
+      log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId, option: "hold", by: "withdrawn", settled: true } });
       return true;
     },
     get: (id) => all.get(id),

@@ -1,4 +1,4 @@
-// D-PENDING: one predicate for "a question still waits on the person", read by the needs-you count
+// D615: one predicate for "a question still waits on the person", read by the needs-you count
 // and every list. The Mac reads the same fixture in store/open_asks_test.go.
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";

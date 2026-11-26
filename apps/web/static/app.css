@@ -1525,7 +1525,7 @@ a.task-link {
   font-weight: var(--ask-weight);
   line-height: 1.4;
   letter-spacing: 0;
-  /* D-PENDING: a long path or hash in an ask's words wraps instead of running past the card. */
+  /* D615: a long path or hash in an ask's words wraps instead of running past the card. */
   overflow-wrap: anywhere;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
@@ -25101,7 +25101,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
-  /* D-PENDING: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
+  /* D615: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
   overflow-wrap: anywhere;
 }
 /* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
@@ -25147,7 +25147,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   font-family: var(--mono);
   font-size: 0.88em;
   font-weight: 600;
-  /* D-PENDING: a long command wraps inside its chip (the bubble's code rule says nowrap). */
+  /* D615: a long command wraps inside its chip (the bubble's code rule says nowrap). */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25195,7 +25195,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink);
   -webkit-user-select: all;
   user-select: all;
-  /* D-PENDING: a one-time code wraps in its own well; Copy keeps its place at the right. */
+  /* D615: a one-time code wraps in its own well; Copy keeps its place at the right. */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25208,7 +25208,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
-/* D-PENDING: a code block in an ask's words scrolls in its own box, never widens the card. */
+/* D615: a code block in an ask's words scrolls in its own box, never widens the card. */
 .ask-said pre,
 .decision pre,
 .partner pre {

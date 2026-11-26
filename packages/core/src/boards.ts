@@ -4,6 +4,9 @@
 // the Ongoing card's line reads, never a second copy kept by the task); any other repeating task
 // given an app writes its data with the app_data tool (data only, never the file). Ducter offers
 // once, after BOARD_OFFER_AFTER rounds of the same shape: 要不要把这些做成一个看板？ behind Go.
+// D615: a board is only for work that comes back in rounds (a Keep, a loop, a routine); a
+// one-off task never gets an offer, whatever its report count, and an offer that no longer qualifies
+// is withdrawn (decision_resolved hold, by "withdrawn") rather than answered into an app.
 import { randomBytes } from "node:crypto";
 import { APP_TASK_KEYS_PER_CALL, BOARD_OFFER_AFTER, appTasks, type AppMeta, type AppTask, type Bodies, type ReviewBoard } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -22,8 +25,12 @@ export interface BoardsDeps {
   title: (taskId: string) => string | undefined;
   /** A review task's board data and round count (the pile; undefined before the to-do sources start). */
   pile: () => { board(taskId: string): ReviewBoard | undefined; rounds(taskId: string): number } | undefined;
-  /** The task looks again on its own timer (it repeats). */
-  repeats: (taskId: string) => boolean;
+  /** D615: the task belongs to work that comes back in rounds (a Keep's task, a loop, a routine run). */
+  runsInRounds: (taskId: string) => boolean;
+  /** D615: the board offers still open at the home. */
+  openOffers: () => Bodies["decision"][];
+  /** D615: take back an open offer (decision_resolved hold, by "withdrawn"). */
+  withdraw: (decisionId: string) => boolean;
   /** Is this task a review routine (sees review_report)? */
   isReview: (taskId: string) => boolean;
   /** D612: the Keep a task's rounds belong to, when the app follows a Keep. */
@@ -67,6 +74,8 @@ export interface Boards {
   wakes(e: import("@ducter/protocol").LogEvent): boolean;
   /** The offer, now (also how tests and the eval put it up). */
   offer(taskId: string, kind: "reviews" | "reports"): string | undefined;
+  /** D615: take back every open offer whose task doesn't run in rounds (on start and whenever the rule is read). */
+  sweep(): void;
 }
 
 export function createBoards(d: BoardsDeps): Boards {
@@ -98,8 +107,21 @@ export function createBoards(d: BoardsDeps): Boards {
     }
   };
   const appOf = (taskId: string) => d.apps.byTask(taskId).find((a) => a.persona === d.persona()) ?? d.apps.byTask(taskId)[0];
+  // D615: an offer made by an older version (or before its task stopped coming back) is taken
+  // back, never answered into an app: the offer is settled quietly, by "withdrawn", before it can
+  // be tapped. Read whenever the offer rule is evaluated, and once on start.
+  const sweep = () => {
+    for (const card of d.openOffers()) {
+      if (!card.board || d.runsInRounds(card.board.taskId)) continue;
+      d.withdraw(card.decisionId);
+    }
+  };
   const offer = (taskId: string, kind: "reviews" | "reports") => {
+    sweep();
     if (d.apps.offered(taskId) || appOf(taskId)) return undefined;
+    // D615: only work that comes back in rounds is offered a board, whatever its report count.
+    // A one-off task's own page, its PR and the hand-off say everything.
+    if (!d.runsInRounds(taskId)) return undefined;
     // D612: only a review task is offered a reviews board; one board per purpose, so with one
     // already there the offer is nothing (the task's work joins it when asked, never a second board).
     if (kind === "reviews" && (!d.isReview(taskId) || d.apps.list(d.persona()).some((a) => a.kind === "reviews"))) return undefined;
@@ -121,6 +143,9 @@ export function createBoards(d: BoardsDeps): Boards {
   };
   const makeReviewBoard = (taskId: string): { ok: true; app: AppMeta } | { ok: false; error: string } => {
     if (!d.isReview(taskId)) return { ok: false, error: "This task isn't a review task: a review board is only for a task whose job is reviewing other people's PRs. A task's own PR is followed by the Babysitter or the hand-off, not a board." };
+    // D615: a board is only for work that comes back in rounds. A one-off task's own page and
+    // PR say everything; an offer made before its task stopped coming back is not honoured.
+    if (!d.runsInRounds(taskId)) return { ok: false, error: "This task doesn't run in rounds: a board is for work that comes back (a Keep, a loop, a routine). Its own page, its PR and the hand-off say everything. If the person asked for a board in words, make it a snapshot (snapshot: true, no task) from what you know; otherwise say one plain line why and make nothing." };
     const title = d.title(taskId);
     if (!title) return { ok: false, error: `unknown task ${taskId}` };
     // D612: one board per purpose: the person's existing review board takes this task's work.
@@ -182,14 +207,16 @@ export function createBoards(d: BoardsDeps): Boards {
     );
   });
   // Another repeating task's reports: the same shape again and again (BOARD_OFFER_AFTER of them
-  // while it rests on its own timer) is the moment to offer, once.
+  // while it rests on its own timer) is the moment to offer, once. D615: the count alone never
+  // offers anything; the task must also belong to work that comes back in rounds.
   d.log.subscribe((e) => {
     if (e.kind !== "report") return;
     const b = e.body as Bodies["report"];
     if (b.state !== "done" || d.isReview(b.taskId)) return;
+    sweep();
     const n = (reports.get(b.taskId) ?? 0) + 1;
     reports.set(b.taskId, n);
-    if (n >= BOARD_OFFER_AFTER && d.repeats(b.taskId)) offer(b.taskId, "reports");
+    if (n >= BOARD_OFFER_AFTER) offer(b.taskId, "reports");
   });
   return {
     write,
@@ -202,6 +229,7 @@ export function createBoards(d: BoardsDeps): Boards {
     },
     afterRound(taskId) {
       if (!d.isReview(taskId)) return;
+      sweep();
       const pile = d.pile();
       if (pile && pile.rounds(taskId) >= BOARD_OFFER_AFTER) offer(taskId, "reviews");
     },
@@ -209,6 +237,7 @@ export function createBoards(d: BoardsDeps): Boards {
     makeReviewBoard,
     appNote,
     offer,
+    sweep,
   };
 }
 

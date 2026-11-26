@@ -41,7 +41,9 @@ function boot(zh = true) {
     core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief, ...(needs ? { needs } : {}) } });
     core.tasks.setState(taskId, "working", "hot");
   };
-  return { core, gh, told, open, ts: core.taskSources };
+  // D615: a board is only for work that comes back in rounds; a loop's own fact says so.
+  const loop = (taskId: string) => core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_loop", body: { taskId, state: "on", reason: "every round", since: new Date(NOW).toISOString() } });
+  return { core, gh, told, open, loop, ts: core.taskSources };
 }
 
 const decisions = (core: ReturnType<typeof startCore>) => core.log.read({ stream: "channel", kinds: ["decision"], limit: 200 }).map((e) => e.body as Bodies["decision"]);
@@ -73,10 +75,11 @@ async function ongoing(core: ReturnType<typeof startCore>): Promise<OngoingItem[
 const settle = () => new Promise((r) => setTimeout(r, 30));
 
 test("three rounds of review_report offer a board once; Go makes the review board from the template, filled and given to the task", async () => {
-  const { core, told, open, ts } = boot();
+  const { core, told, open, loop, ts } = boot();
   await ts.add("github");
   await ts.look();
   open("trev", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。", { reviews: true });
+  loop("trev");
   await call(core, "trev", "review_report", round());
   await call(core, "trev", "review_report", { prs: round().prs.map((p) => ({ ...p, changed: false, notes: [] })) });
   expect(offers(core)).toHaveLength(0);
@@ -110,10 +113,11 @@ test("three rounds of review_report offer a board once; Go makes the review boar
 });
 
 test("each round writes the board as the task saw it, and a Go on the round card shows as posted", async () => {
-  const { core, open, ts } = boot();
+  const { core, open, loop, ts } = boot();
   await ts.add("github");
   await ts.look();
   open("trev", "Review my requests in nowledge-co", "Every 45 minutes, review the PRs in nowledge-co that request my review.", { reviews: true });
+  loop("trev");
   await call(core, "trev", "review_report", round());
   const r = core.apps.list(core.persona.id);
   expect(r).toHaveLength(0);
@@ -166,8 +170,9 @@ test("app_data: a task given an app writes its data, nothing else; capped and ra
 });
 
 test("another repeating task: three done reports while it rests on its own timer offer a board once; Go is the partner's to make", async () => {
-  const { core, open } = boot();
+  const { core, open, loop } = boot();
   open("tfare", "上海高铁票价", "每天早上看一下周五北京到上海的高铁票价。");
+  loop("tfare");
   const report = (n: number) => core.log.append({ stream: "channel", origin: "task", kind: "report", body: { taskId: "tfare", state: "done", summary: `第 ${n} 轮：G1 553 元，G3 553 元，G5 626 元。`, questions: [], evidence: [] } });
   core.waiters.arm({ taskId: "tfare", wakes: "task", reason: "明早再看一次票价", at: new Date(Date.now() + 86_400_000).toISOString() } as never);
   report(1);

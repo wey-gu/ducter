@@ -343,6 +343,8 @@ export interface CoreApi {
   boards?: {
     makeReviewBoard(taskId: string): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
     isReview(taskId: string): boolean;
+    /** D615: the task belongs to work that comes back in rounds (a Keep, a loop, a routine). */
+    runsInRounds?(taskId: string): boolean;
     /** The offer, now (Ducter's own card; the eval seeds it this way). */
     offer(taskId: string, kind: "reviews" | "reports"): string | undefined;
   };

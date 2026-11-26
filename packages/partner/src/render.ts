@@ -540,6 +540,12 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
         if (b.option === "hold") return `[call card answered: not now${by}] "${d.question}": nothing was dialed; say nothing.`;
         return `[call card: the user replied instead] "${d.question}" · user: ${b.text ?? ""}. Nothing was dialed. If they changed something, phone_call again with the change (a new card); otherwise answer them.`;
       }
+      if (d?.board && b.option === "go")
+        return d.board.kind === "reviews"
+          ? `[the user said Go on keeping task ${d.board.taskId}'s review rounds on a board] Ducter's board path makes the review board itself (its card is up). Say nothing more when it is. If no card is up, Ducter couldn't make it (this task doesn't run in rounds, or isn't review work): say one plain line why, and never call the app tool to stand in.`
+          : `[the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool as the board's one path (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Never another app to stand in; if the tool refuses, make nothing and say one plain line why. Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
+      if (d?.board && b.by === "withdrawn") return `[the board offer for task ${d.board.taskId} was withdrawn: that task doesn't run in rounds, so nothing was made and nothing is needed. Say nothing.]`;
+      if (d?.board) return `[the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
       if (d?.memPlugin) {
         // D169: Ducter's own card; on Go it opens the setup task itself (it reports like any task).
         const what = b.option === "go" ? "Ducter opens the setup task itself; say nothing now" : b.option === "hold" ? "not now; never bring it up again" : "the user replied instead";
@@ -845,10 +851,14 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
       // D407: Go on the board offer: the review board is Ducter's (made, its card is up); other reports: you make it now.
+      // D615: a board Go is never stood in for by an `app`: reviews go only through Ducter's
+      // board path, and an offer that can't be honoured makes nothing and gets one plain line why.
       if (d?.board && b.option === "go")
         return d.board.kind === "reviews"
-          ? `[${t} the user said Go on keeping task ${d.board.taskId}'s review rounds on a board: Ducter made the review board (its card is up). Say nothing more.]`
-          : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool yourself (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
+          ? `[${t} the user said Go on keeping task ${d.board.taskId}'s review rounds on a board: Ducter's board path makes the review board itself (its card is up). Say nothing more when it is. If no card is up, Ducter couldn't make it (this task doesn't run in rounds, or isn't review work): say one plain line why, and never call the app tool to stand in.]`
+          : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool as the board's one path (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Never another app to stand in; if the tool refuses, make nothing and say one plain line why. Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
+      // D615: an offer an older version made for a one-off task was taken back, not answered.
+      if (d?.board && b.by === "withdrawn") return `[${t} the board offer for task ${d.board.taskId} was withdrawn: that task doesn't run in rounds, so nothing was made and nothing is needed. Say nothing.]`;
       if (d?.board) return `[${t} the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
       if (b.by === "ended") return `[${t} question closed: no longer needed (what it asked about ended)]${d ? ` "${clip(d.question, 120)}"` : ""}`;
       // D499: Ducter said Go for them, under what they said.

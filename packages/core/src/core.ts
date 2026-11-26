@@ -516,7 +516,8 @@ export function triggersPartner(e: LogEvent): boolean {
   // D481: a question closed by what happened (by "ended") wakes nobody.
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
   // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
+  // D615: a board offer taken back (by "withdrawn") wakes nobody: it was never answered.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said" && (e.body as Bodies["decision_resolved"]).by !== "withdrawn";
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
@@ -1021,6 +1022,17 @@ export function startCore(opts: CoreOptions = {}): Core {
   let taskSourcesRef: TaskSources | undefined;
   // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
   let isReview: (taskId: string) => boolean = () => false;
+  // D615: a board offer is for work that comes back in rounds, told by the home's own facts: a
+  // loop's `task_loop` events, or the Keep a task is a round/item of (a routine's run, a helper's
+  // task). A one-off dev fix is none of these, whatever its reports look like.
+  const runsInRounds = (taskId: string) => {
+    const loop = log.read({ stream: `task:${taskId}`, kinds: ["task_loop"], limit: 1 })[0]?.body as Bodies["task_loop"] | undefined;
+    if (loop && loop.state !== "ended") return true;
+    const k = keepsRef?.ofTask(taskId);
+    if (!k) return false;
+    const life = keepsRef?.get(k.id)?.life;
+    return life === "on" || life === "paused";
+  };
   /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
   function reviewAsksLine(taskId: string, l: LangTag): string {
     if (!isReview(taskId)) return "";
@@ -1045,7 +1057,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     lang: () => (langNow().startsWith("zh") ? "zh" : "en"),
     title: (id) => tasks.get(id)?.title,
     pile: () => taskSourcesRef?.pile,
-    repeats: (id) => work.waiters.views().some((w) => w.taskId === id && w.wakes === "task" && w.state === "armed" && !w.limit),
+    runsInRounds: (id) => runsInRounds(id),
+    openOffers: () => decisions.openIds().map((id) => decisions.get(id)).filter((d): d is Bodies["decision"] => !!d?.board),
+    withdraw: (id) => decisions.withdraw(id),
     isReview: (id) => isReview(id),
     keepOf: (id) => {
       const k = keepsRef?.ofTask(id);
@@ -1452,7 +1466,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), runsInRounds: (id: string) => runsInRounds(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2017,6 +2031,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   onHandChanged = ws.onHandChanged;
   wsUp = true;
   keeps.sync(); // D511: the migration, on every start (what is already a Keep is left as it is)
+  // D615: on start, after every mechanism has its Keep, an offer an older version made for a
+  // one-off task is taken back before it can be answered into an app; a Keep's task keeps its offer.
+  boards.sweep();
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
   api.activity = {

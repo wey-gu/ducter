@@ -42,8 +42,10 @@ function boot(seedHelpers = false) {
     core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief, ...(needs ? { needs } : {}) } });
     core.tasks.setState(taskId, "working", "hot");
   };
+  // D615: a board offer needs work that comes back in rounds; a loop's own fact says so.
+  const loop = (taskId: string) => core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_loop", body: { taskId, state: "on", reason: "every round", since: new Date(NOW).toISOString() } });
   const call = (taskId: string, tool: string, args: unknown) => core.mcp.call({ role: "task", taskId } as never, tool, args) as Promise<string>;
-  return { core, gh, told, open, call, dir: t.dir };
+  return { core, gh, told, open, loop, call, dir: t.dir };
 }
 const round = (ref: string, changed = true) => ({ prs: [{ ref, title: ref, head: "a1b2c3d", ci: "passing", changed, notes: changed ? [{ kind: "problem", path: "src/x.rs", line: 2, text: "x" }] : [] }] });
 
@@ -63,6 +65,7 @@ test("a dev task never gets review_report or a board offer; a review task does, 
   expect(b.core.boards!.offer("tdev", "reviews")).toBeUndefined();
   // A real review Keep: the tool, and after three rounds the one offer.
   b.open("trev", "Review nowledge-co requests", "Every 45 minutes, review the PRs that request my review.", { reviews: true });
+  b.loop("trev");
   expect(b.core.mcp.listed({ role: "task", taskId: "trev" } as never)).toContain("review_report");
   await b.call("trev", "review_report", round("nowledge-co/mem#1"));
   await b.call("trev", "review_report", round("nowledge-co/mem#1", false));
@@ -76,6 +79,8 @@ test("a board shows only its own task's rows; a second review task joins the one
   await b.core.taskSources.look();
   b.open("ta", "Review A", "Review the PRs waiting on me in A.", { reviews: true });
   b.open("tb", "Review B", "Review the PRs waiting on me in B.", { reviews: true });
+  b.loop("ta");
+  b.loop("tb");
   await b.call("ta", "review_report", round("nowledge-co/mem#1"));
   const made = b.core.boards!.makeReviewBoard("ta");
   expect(made.ok).toBe(true);

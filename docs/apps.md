@@ -105,11 +105,16 @@ conversation, whatever the app says.
 
 ## A board that keeps itself up to date
 
-Some things your partner does again and again: reviewing the pull requests waiting on you, checking
-train fares every morning, running a benchmark every night. After a few rounds that look the same,
-your partner asks once: **Keep these on a board?** Say **Make a board** and you get a small app that
-each round updates by itself, so there's nothing to read in the conversation between rounds. You can
-also just ask: "make these into a board".
+Some things your partner does again and again, in rounds: reviewing the pull requests waiting on
+you, checking train fares every morning, running a benchmark every night. When work like that has
+come back a few times, your partner asks once: **Keep these on a board?** Say **Make a board** and
+you get a small app that each round updates by itself, so there's nothing to read in the conversation
+between rounds. You can also just ask: "make these into a board".
+
+A one-off task never gets a board: a fix you asked for once has its own page, its pull request and
+the hand-off line, and that says everything. If you ask for a board about one-off work in words, your
+partner may make it, but it is a snapshot: it says **截至** the time it was read and won't change by
+itself.
 
 A review board is only for work whose job is reviewing other people's pull requests. A task that fixes
 code and opens its own pull request is followed by the Babysitter, not a board.

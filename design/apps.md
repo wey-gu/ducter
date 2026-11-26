@@ -351,11 +351,22 @@ re-read; after, one page always current on every device and a quiet conversation
   its own (`gh pr create`, read by the command's grammar) is never a review task. An existing task in
   rounds that already has a review board keeps its review work, so a running review Keep is not cut
   off mid-life.
+- **A board is for work that comes back in rounds.** The offer, both kinds, needs the task to belong
+  to a Keep, a loop or a routine, read from the home's own facts (its `task_loop` events, the Keep
+  that holds it, a routine run), never from a report count. A one-off task (a dev fix: its page, its
+  PR and the hand-off) is never offered one, however many reports it writes. The partner itself never
+  proposes or makes a dashboard/board app for a one-off task unless the person asks in words; if
+  asked, it may make one, saying plainly it is a snapshot (D612 rule 4). An offer that no longer
+  qualifies is withdrawn: on start and whenever the rule is read, it settles with
+  `decision_resolved` hold, by `"withdrawn"`, so an older version's card cannot be answered into an
+  app.
 - **The offer, once, per purpose.** After a review task's third round, or another repeating task's
-  third done report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**,
+  third done report, with no app yet and the task still in rounds, one card: **要不要把这些做成一个看板？ / Keep these on a board?**,
   **做成看板 / Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it.
   Go on reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
-  other reports wakes the partner, who makes the app with the `app` tool and `task`. Never asked again.
+  other reports wakes the partner, who makes the app with the `app` tool and `task` (the board's one
+  path, never another app standing in). If the offer can't be honoured, nothing is made and the
+  partner says one plain line why. Never asked again.
   Asked in words ("把这些做成看板"), the partner does the same; a review task with no file gets the board.
   **One board per purpose:** with a review board already there, the offer is nothing and a second is
   never made; asking for another review task's board adds that task's work to the one board

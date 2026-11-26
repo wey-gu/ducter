@@ -903,8 +903,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const r = await core.taskSources.handover!.hand({ refs: set.ticked, setId: set.setId, bySubject: true, ...(s.handSet.note ? { note: s.handSet.note } : {}), ...(s.handSet.subject ? { subject: s.handSet.subject } : {}) });
       if (!r.ok) throw new Error(`handSet: ${r.error}`);
     } else if ("board" in s) {
-      // D407: the review board, as Ducter makes it for a review task, with its rows.
-      const r = core.boards!.makeReviewBoard(idOf.get(s.board.task)!);
+      // D407: the review board, as Ducter makes it for a review task, with its rows. D615: the
+      // task runs in rounds (the scenario's review routine), so record that fact before making it.
+      const taskId = idOf.get(s.board.task)!;
+      core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_loop", body: { taskId, state: "on", reason: "its rounds", since: new Date().toISOString() } });
+      const r = core.boards!.makeReviewBoard(taskId);
       if (!r.ok) throw new Error(`board seed: ${r.error}`);
       for (const [k, v] of Object.entries(s.board.data)) core.apps.put(r.app.id, k, v, "app");
       appsSeeded.push({ id: r.app.id, html: core.apps.html(r.app.id) ?? "", name: r.app.name });
@@ -939,7 +942,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       core.settings.setPeers({ muted: [...core.settings.get().peers.muted, s.helperMuted.from] });
       core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: crypto.randomUUID(), from: s.helperMuted.from, helper: h.id, space: s.helperMuted.space, spaceLabel: s.helperMuted.spaceLabel, text: "", state: "muted" } });
     } else if ("boardOffer" in s) {
-      if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
+      // D615: a board offer exists only for work that comes back in rounds; the scenario's task
+      // is one (a daily fare check, a nightly benchmark), so record the repetition the rule reads.
+      const taskId = idOf.get(s.boardOffer.task)!;
+      core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_loop", body: { taskId, state: "on", reason: "its rounds", since: new Date().toISOString() } });
+      if (!core.boards!.offer(taskId, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
     } else if ("asks" in s) {
       // D426: the lines under the last seeded user message, each with its seeded task.
       for (const l of s.asks.lines) core.asks.add(lastUser, idOf.get(l.task)!, [l.words]);

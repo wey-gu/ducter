@@ -2658,6 +2658,15 @@ type DeviceView struct {
 	// Resources is what Ducter measured on this computer itself (D538): its
 	// memory, cores, disk and the kernel's out-of-memory stops.
 	Resources *DeviceResources `json:"resources,omitempty"`
+	// Folder (D611) is this computer's Ducter folder and why it is that path:
+	// env means DUCTER_FOLDER is set there and Settings can't move it.
+	Folder *DeviceFolder `json:"folder,omitempty"`
+}
+
+// DeviceFolder is a computer's Ducter folder (D611).
+type DeviceFolder struct {
+	Path string `json:"path"`
+	Why  string `json:"why,omitempty"` // env | chosen | data | default | fallback
 }
 
 // DeviceResources is a computer's own measurements, in bytes (D538,
@@ -3154,6 +3163,15 @@ type ServerFrame struct {
 	// D204: each computer's Ducter folder (where a clone there goes) or that
 	// it is too old to say (task_new_options).
 	DucterFolders []DucterFolderView `json:"ducterFolders,omitempty"`
+	// D611: folder_change_result: the computer's new folder and why, the old
+	// path (FolderFrom), what moved (Projects, Worktrees, Repaired), and the
+	// tasks that kept it from moving (FolderTasks; Reason tasks_running).
+	Folder      *DeviceFolder `json:"folder,omitempty"`
+	FolderFrom  string        `json:"from,omitempty"`
+	FolderTasks []FolderTask  `json:"tasks,omitempty"`
+	Projects    int           `json:"projects,omitempty"`
+	Worktrees   int           `json:"worktrees,omitempty"`
+	Repaired    int           `json:"repaired,omitempty"`
 	// D204: project_clone_result: the project was already there (same origin).
 	// D272: project_new_result too (a folder of that name was there).
 	Existed bool `json:"existed,omitempty"`
@@ -3684,6 +3702,24 @@ type DucterFolderView struct {
 	Device string `json:"device"`
 	Path   string `json:"path,omitempty"`
 	Old    bool   `json:"old,omitempty"`
+	Why    string `json:"why,omitempty"` // env | chosen
+}
+
+// FolderChangeReq moves that computer's Ducter folder to Path (D611): projects/
+// and worktrees/ go with it, git's worktree paths are repaired, and the choice
+// is kept. Device "" is the home's own. Answered with folder_change_result.
+type FolderChangeReq struct {
+	T        string `json:"t"` // "folder_change"
+	Path     string `json:"path"`
+	Device   string `json:"device,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// FolderTask is a task still working in a folder that was asked to move
+// (folder_change_result, Reason tasks_running).
+type FolderTask struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
 }
 
 // ProjectNew makes <Ducter folder>/projects/<Name> on that computer and

@@ -186,8 +186,16 @@ export function LinkBtn(p: { kind: "primary" | "secondary" | "text"; size?: "sm"
 
 /** D482: a page named in running words (a source under 怎么知道的): underlined words that wrap
  *  inside their column, never a one-line button past the card's edge; its chevron after them. */
-export function TextLink(p: { href: string; label: string; class?: string; about?: string }) {
+export function TextLink(p: { href?: string; label: string; class?: string; about?: string; onClick?: () => void }) {
   // D566: about, what a short link acts on ("Open": the file in Nowledge Mem), for its accessible name.
+  // D611: onClick makes it a link to somewhere in the app (a row in Settings), not a page elsewhere.
+  if (p.onClick)
+    return (
+      <button type="button" class={`tlink${p.class ? ` ${p.class}` : ""}`} aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined} onClick={p.onClick}>
+        {p.label}
+        <Chev cls="btn-chev" />
+      </button>
+    );
   return (
     <a class={`tlink${p.class ? ` ${p.class}` : ""}`} href={p.href} target="_blank" rel="noopener noreferrer" aria-label={p.about ? spoken(A.L, p.label, p.about) : undefined}>
       {p.label}
@@ -740,6 +748,10 @@ export function EditRow(p: {
   editable: boolean;
   open: boolean;
   busy?: boolean;
+  /** D611: the primary action's name when it isn't 保存 / Save (a path is 搬过去 / Move it). */
+  saveLabel?: string;
+  busyLabel?: string;
+  mono?: boolean;
   error?: string;
   onOpen: () => void;
   onSave: () => void;
@@ -756,7 +768,7 @@ export function EditRow(p: {
           <Chev />
         </span>
         {p.values.map((v) => (
-          <span key={v} class="v" aria-hidden="true">
+          <span key={v} class={`v${p.mono ? " mono" : ""}`} aria-hidden="true">
             {v}
           </span>
         ))}
@@ -781,7 +793,7 @@ export function EditRow(p: {
       </span>
       {!p.open &&
         p.values.map((v) => (
-          <span key={v} class="v">
+          <span key={v} class={`v${p.mono ? " mono" : ""}`}>
             {v}
           </span>
         ))}
@@ -803,7 +815,7 @@ export function EditRow(p: {
             </p>
           )}
           <span class="er-acts">
-            <Btn kind="primary" size="sm" label={p.busy ? t("keep.edit.saving") : t("keep.edit.save")} disabled={p.busy} onClick={p.onSave} />
+            <Btn kind="primary" size="sm" label={p.busy ? (p.busyLabel ?? t("keep.edit.saving")) : (p.saveLabel ?? t("keep.edit.save"))} disabled={p.busy} onClick={p.onSave} />
             <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
           </span>
         </>

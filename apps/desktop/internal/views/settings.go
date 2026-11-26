@@ -106,6 +106,9 @@ type settingsState struct {
 	// sound is the intro's sound while its preview plays.
 	sound     TitleSound
 	soundFrom int64
+	// folders (D611): each computer's Ducter folder row: its open editor, the move in flight,
+	// the tasks that kept it from moving, and the line a move left.
+	folders map[string]*folderRowState
 }
 
 type removeState struct {

@@ -97,20 +97,42 @@ the Mac's places only: the projects in the Mac's Ducter folder, **添加文件�
 Pro M3 上的文件夹。/ No folders on Macbook Pro M3 yet.** first (D203). A folder there (picked,
 found or cloned) picks the agent. For No folder it moves the computer, as D157.
 
-**The Ducter folder (D204).** Each computer has one visible folder of Ducter's own, `~/ducter`
-(like Conductor's `~/conductor`): `projects/<repo>` for the projects Ducter cloned there,
-`worktrees/<repo>/<branch slug>` for new tasks' working copies (the slug ASCII, D522; tasks from before keep theirs in
-`~/.ducter/worktrees`). Which folder: `$DUCTER_FOLDER` when set; a Ducter with a data folder of its
-own keeps it in `<dataDir>/ducter`; else the first of `~/ducter`, `~/ducter-work`, `~/ducter-work-2` …
+**The Ducter folder (D204, D611).** Each computer has one visible folder of Ducter's own:
+`~/Ducter` on a Mac (macOS's own convention for a person's folders) and `~/ducter` on Linux and the
+rest (like Conductor's `~/conductor`): `projects/<repo>` for the projects Ducter cloned there,
+`worktrees/<repo>/<branch slug>` for new tasks' working copies (the slug ASCII, D522; tasks from
+before keep theirs in `~/.ducter/worktrees`). Which folder: `$DUCTER_FOLDER` when set; the path the
+person chose on that computer (D611, kept in the home's `Settings.folderPaths` and in the computer's
+`folder.json`); a Ducter with a data folder of its own keeps it in `<dataDir>/ducter`; else the first
+of `~/Ducter`, `~/Ducter-work`, `~/Ducter-work-2` … on a Mac (`~/ducter`, `~/ducter-work`, … elsewhere)
 that carries Ducter's marker `.ducter-folder`, or else the first that is missing or holds nothing but
-`projects/` and `worktrees/`. A `~/ducter` that holds anything else (a clone of the ducter repo) is
-someone else's and never touched (`protocol/src/ducter-folder.ts`). Nothing guesses where people keep
-code: a computer's projects are the git repos directly in its `projects/` folder, read from their
-files (origin, default branch; no git process). A worker answers the home's `repos` op with
-`{folder, repos}`; the home reads its own. Kept 10 minutes per computer; the card waits at most 3 s
-(alongside the branches), a slower answer is there for the next card, and a computer away says
-none. They are listed after the folders tasks used and the projects added, as `found`; a found
-repo's branches are read when it is picked.
+`projects/` and `worktrees/`. A Mac still finds a marked `~/ducter`, so a folder from before D611 keeps
+working (APFS is usually case-insensitive: `~/ducter` and `~/Ducter` are then the same folder). A
+folder of that name that holds anything else (a clone of the ducter repo) is someone else's and never
+touched (`protocol/src/ducter-folder.ts`). Nothing guesses where people keep code: a computer's
+projects are the git repos directly in its `projects/` folder, read from their files (origin, default
+branch; no git process). A worker answers the home's `repos` op with `{folder, repos, why}`; the home
+reads its own. Kept 10 minutes per computer; the card waits at most 3 s (alongside the branches), a
+slower answer is there for the next card, and a computer away says none. They are listed after the
+folders tasks used and the projects added, as `found`; a found repo's branches are read when it is
+picked.
+
+**Where the folder lives (D611).** It is the computer's, so its row stands in Settings › 在哪儿运行 /
+Where it runs on that computer (`DeviceView.folder`): the shared rule row (D592's editRow) named
+**Ducter 文件夹 / Ducter folder**, its real path in mono, the whole row the button. Open, the sheet
+offers **改成 ~/Ducter / Change it to ~/Ducter** first on a Mac whose folder is still the lowercase
+`~/ducter` (one tap, a case-only rename done as two renames), **选一个位置… / Choose a location…**
+(macOS's own folder picker for this Mac; a path field for another computer), and **在访达中显示 /
+Show in Finder** for this Mac. With `DUCTER_FOLDER` set the row says **由 DUCTER_FOLDER 设定 / Set by
+DUCTER_FOLDER** and doesn't open. While it moves the row says **在搬… / Moving…**; refused because
+tasks are working there, it lists their titles and **等它们做完再搬 / Move it once they're done**;
+done, one plain line: **Ducter 文件夹搬到 {path} 了，{n} 个项目和 {m} 个工作副本一起搬过去。 / The
+Ducter folder moved to {path}, with {n} projects and {m} working copies.** The move carries
+`projects/` and `worktrees/`, runs `git worktree repair <path>` from each main repository and from
+each working copy, and records `folder_moved {from, to, device}` on the home, which place lookups
+apply as a prefix mapping; a worker does its move through its `moveFolder` op. A move across disks is
+refused (**要搬到另一块磁盘，先自己挪过去，再在这里选它**): copying a tree of repositories is never
+silent. The clone field's **会放在 {path}** line links to that row.
 
 **Adding a folder anywhere (D272).** A project is any folder on the computer that does the work;
 git is optional. After the folders used and added, the list has one **添加文件夹… / Add a folder…**
@@ -154,8 +176,9 @@ A project added on a second computer with the same origin joins the first one's 
 add panel, opens a field in
 place of the list: **从 Git 地址克隆到 {computer} / Clone from a Git address on {computer}**, the address
 (**https://…、git@…:主人/仓库，或 主人/仓库 / https://…, git@…:owner/repo, or owner/repo**), where it
-goes and with whose sign-in (**会放在 ~/ducter/projects，用 {computer} 自己的 git 登录克隆。**, the real
-path from that computer), **返回 / Back** and **克隆 / Clone**. That computer runs `git clone` into its
+goes and with whose sign-in (**会放在 ~/Ducter/projects，用 {computer} 自己的 git 登录克隆。**, the real
+path from that computer; the line links to that computer's folder row, D611), **返回 / Back** and
+**克隆 / Clone**. That computer runs `git clone` into its
 `projects/` (the same origin already there is simply that project; another repo of that name is
 `<repo>-2`), never prompting, at most 10 minutes; meanwhile **在克隆…大的仓库要几分钟。/ Cloning… A
 big repository takes a few minutes.** Done, it is added there and is the card's place (picking the

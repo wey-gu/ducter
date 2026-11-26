@@ -950,3 +950,40 @@ sees it until something was used. *Felt before:* the count existed (D588) only i
   its reset: what used most of that agent this week, or that it was this task.
 
 Built on the Mac (`views/usage.go`) and the web (`usage-week.tsx`); shots in `.shots/d591/`.
+
+## The Ducter folder, on each computer (D611)
+
+**Who.** The author, whose macOS home holds Desktop, Documents, Downloads and one lowercase
+`~/ducter`; every developer whose folder should say what it is; the fresh user who never sees a
+path until they look for it. **Feel before:** 别扭 (one lowercase folder among proper names), and
+"where does Ducter keep my work?" had no in-app answer. **After:** 放心: the folder is a rule row on
+its computer, with its real path everywhere.
+
+- **The row.** Each computer's Ducter folder is one shared rule row (D592's `editRow` / `EditRow`):
+  **Ducter 文件夹 / Ducter folder**, its real path in mono (`~/Ducter`), the whole row the button.
+  On the Mac it stands in Settings › 在哪儿运行 / Where it runs under the computer's name, and on
+  every computer's card in 你的设备 / Your devices; on the web, on each computer's sheet in Your
+  devices. With `DUCTER_FOLDER` set the row says **由 DUCTER_FOLDER 设定 / Set by DUCTER_FOLDER**,
+  has no chevron and doesn't open.
+- **The sheet** (the row open in place): **改成 ~/Ducter / Change it to ~/Ducter** first on a Mac
+  whose folder is still lowercase (one tap: a case-only rename, two renames on APFS),
+  **选一个位置… / Choose a location…** (macOS's own folder picker on this Mac; a path field for
+  another computer), **搬过去 / Move it there**, and **在访达中显示 / Show in Finder** for this Mac.
+- **States.** While it moves the row says **在搬… / Moving…**. Refused because tasks are working in
+  it (`tasks_running`), it lists their titles and **等它们做完再搬 / Move it once they're done**.
+  Other refusals are one plain line: another disk (**要搬到另一块磁盘，先自己挪过去，再在这里选它**),
+  a target holding things, a folder inside itself, Ducter's own data folder, a computer away or too
+  old. Done, one line under the row: **Ducter 文件夹搬到 {path} 了，{n} 个项目和 {m} 个工作副本
+  一起搬过去。 / The Ducter folder moved to {path}, with {n} projects and {m} working copies.**
+- **The wires.** `folder_change {path, device?, clientId}` →
+  `folder_change_result {ok, from?, path?, projects?, worktrees?, repaired?, tasks?, reason?}`.
+  `DeviceView.folder {path, why}` carries the real path; `DucterFolderView.why` says `env`/`chosen`.
+  A worker answers `moveFolder {path}`. A success also pushes a fresh settings frame (`folderPaths`)
+  and a devices frame.
+- **What a move does.** `projects/` and `worktrees/` move together; `git worktree repair <path>` runs
+  from each main repository and from each working copy, so both `.git/worktrees/<name>/gitdir` and
+  the worktree's `.git` file point at the new place. A `folder_moved {from, to, device}` Log event is
+  the prefix mapping every place lookup applies; `projects.json` follows. A cross-disk move is
+  refused rather than copied. The New task clone field's **会放在 {path}** line links here.
+- **Not chosen:** a field under Data (it belongs to a computer, not to the home's data), a lone
+  `改` beside the path (D592), copying a tree of repositories across disks.

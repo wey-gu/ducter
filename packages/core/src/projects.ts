@@ -19,6 +19,8 @@ export interface Projects {
   add(path: string, device?: string): Promise<ProjectAddResult>;
   /** The added project whose folder holds this place, if any. */
   of(place: Place): ProjectView | undefined;
+  /** D204: this computer's Ducter folder moved: project paths inside it follow (the Log's folder_moved maps tasks too). */
+  remap(from: string, to: string, device: string): void;
 }
 
 const pathOf = (p: Place) => (p.kind === "repo" ? p.repoPath : p.kind === "folder" ? p.path : "");
@@ -100,6 +102,29 @@ export function createProjects(opts: {
         const root = pathOf(x.place);
         return devOf(place) === devOf(x.place) && (p === root || p.startsWith(root + "/"));
       });
+    },
+    remap(from, to, device) {
+      const dev = device === "local" ? "local" : device;
+      const move = (p: string) => (p === from || p.startsWith(from + "/") ? to + p.slice(from.length) : p);
+      let touched = false;
+      const next = items.map((x) => {
+        if (devOf(x.place) !== dev) return x;
+        const path = pathOf(x.place);
+        const moved = move(path);
+        if (moved === path) return x;
+        touched = true;
+        const place: Place =
+          x.place.kind === "repo" ? { ...x.place, repoPath: moved } : x.place.kind === "folder" ? { ...x.place, path: moved } : x.place;
+        return { ...x, place };
+      });
+      if (!touched) return;
+      items = next;
+      try {
+        save();
+        opts.onChange?.();
+      } catch {
+        /* the move itself stands; the next open repairs the list */
+      }
     },
   };
 }

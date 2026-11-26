@@ -10,7 +10,7 @@ import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
 import { A, agentKey, browseNeedle, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Chev, Choice, CrumbStep, Facts, MenuRow, OptionRow, Pill, Seg } from "./controls.tsx";
+import { Btn, Chev, Choice, CrumbStep, Facts, MenuRow, OptionRow, Pill, Seg, TextLink } from "./controls.tsx";
 import { candFacts, candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
@@ -701,7 +701,9 @@ export function CloneField() {
         onInput={(e) => A.ntCloneInput((e.target as HTMLInputElement).value)}
         onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), A.ntCloneGo())}
       />
-      <div class="nt-empty small sub">{t("newtask.clone.where", into, name)}</div>
+      <div class="nt-empty small sub">
+        <TextLink class="fd-link" label={t("newtask.clone.where", into, name)} about={t("settings.folder.row")} onClick={() => A.openFolderRow(k.device)} />
+      </div>
       {k.signedIn ? (
         <div class="nt-empty small nt-gh-ok" role="status">
           <Check />

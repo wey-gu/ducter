@@ -667,6 +667,8 @@ type Store struct {
 	NewTaskResults []protocol.ServerFrame
 	// FolderBrowse is the last folder_browse answer (D203, Find a folder…).
 	FolderBrowse *protocol.ServerFrame
+	// FolderChange is the last folder_change answer (D611), until a row takes it.
+	FolderChange *protocol.ServerFrame
 	OpenRequests []string
 }
 
@@ -952,6 +954,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "folder_browse_result":
 		fc := f
 		s.FolderBrowse = &fc
+	case "folder_change_result":
+		fc := f
+		s.FolderChange = &fc
 	case "open_task":
 		if f.TaskID != "" {
 			s.OpenRequests = append(s.OpenRequests, f.TaskID)

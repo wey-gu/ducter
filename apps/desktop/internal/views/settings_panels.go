@@ -253,6 +253,9 @@ func (a *App) runPanel(c *ui.Context) {
 					remoteHome, place, art = true, a.deviceNameIn(home), deviceArt(home)
 				}
 				a.placeRow(c, art, place, line)
+				if home := a.homeDevice(); home != nil {
+					a.folderRuleRow(c, home, false) // D611: this computer's Ducter folder
+				}
 				if remoteHome && a.canWork() {
 					a.workBlock(c, "settings") // D155: Let this Mac do tasks for it
 				}
@@ -283,6 +286,9 @@ func (a *App) runPanel(c *ui.Context) {
 				art = "mini_asleep"
 			}
 			a.placeRow(c, art, a.L.T("settings.where.here"), line)
+			if home := a.homeDevice(); home != nil {
+				a.folderRuleRow(c, home, false) // D611: this computer's Ducter folder
+			}
 			if a.Backend.BackgroundBlocked() {
 				a.row(c, "allow", a.L.T("settings.run.allow"), "", func() {
 					if a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlSM, t.Surface) {

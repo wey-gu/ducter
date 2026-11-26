@@ -110,7 +110,7 @@ import { briefOf, createTaskSources, placeForRepo, type TaskSources, type TaskSo
 import { dayKey } from "./proactive/detect.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, changeDucterFolder, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { answerClones, remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
@@ -817,6 +817,18 @@ export function startCore(opts: CoreOptions = {}): Core {
         throw err;
       }
     },
+    // D204 (the person's choice): that worker moves its own Ducter folder, there.
+    async moveFolder(dev, path, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<import("@ducter/protocol/src/folder-move.ts").FolderMoveResult>("moveFolder", { path }, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return "offline";
+        if (isOldOp(err)) return "old";
+        throw err;
+      }
+    },
     // D204: 从 Git 地址加… on that worker: it clones into its own Ducter folder, with its own git.
     async clone(dev, address, ms) {
       const link = workersRef?.link(dev);
@@ -1499,8 +1511,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一个任务 / New task (D128): the one opening path the card and `ducter task` share.
   // D204: the home's own Ducter folder (~/ducter, or <dataDir>/ducter for a Ducter with a data
   // folder of its own) and the projects in it; clones go there with this computer's own git.
-  const homeFolder = () => ducterFolder({ dataDir }).path;
-  const found = createFoundRepos({ computers, home: opts.homeRepos ?? (() => ({ folder: homeFolder(), repos: projectRepos(realFs.real(join(homeFolder(), "projects"))) })) });
+  const homeFolderNow = () => ducterFolder({ dataDir });
+  const homeFolder = () => homeFolderNow().path;
+  const found = createFoundRepos({ computers, home: opts.homeRepos ?? (() => ({ folder: homeFolder(), why: homeFolderNow().why, repos: projectRepos(realFs.real(join(homeFolder(), "projects"))) })) });
   const cloneHome = opts.cloneHome ?? ((address: string) => cloneRepo(address, { dataDir }));
   // D272: a new folder in the home's own Ducter folder, and the home's own GitHub sign-in.
   const newFolderHome = opts.newFolderHome ?? ((name: string) => newProjectFolder(name, { dataDir }));
@@ -1893,6 +1906,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     newFolder: (device: string | undefined, name: string) => newFolderProject(newTaskDeps, device, name, (path, dev) => newTask.addProject(path, dev)),
     // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}.
     gitLogin: (device: string | undefined, action: GitLoginAction, token?: string) => gitLoginOn(newTaskDeps, device, action, token),
+    // D204 (the person's choice): move that computer's Ducter folder.
+    changeFolder: async (device: string | undefined, path: string) => {
+      const r = await changeDucterFolder(newTaskDeps, device, path);
+      if (r.ok) devicesView?.changed(); // the devices frame carries the new path (D611)
+      return r;
+    },
     ghInstall: (onState: (s: GitLoginState) => void) => ghInstallHome(newTaskDeps, onState),
   };
   // D214: the workbench, and the previews of the pages tasks serve (each on a port of its own,
@@ -2334,7 +2353,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   void lookHome();
   const homeLookTimer = homeProbe ? setInterval(lookHome, 15_000) : undefined;
   (homeLookTimer as { unref?: () => void } | undefined)?.unref?.();
-  devicesView = createDevicesView({ resources: () => homeLook, tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ resources: () => homeLook, tidied: (id) => tidiedCount.of(id), anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), folderOf: (id) => { if (id === "local") { const f = homeFolderNow(); return { path: f.path, why: f.why }; } const p = settings.get().folderPaths?.[id]; return p ? { path: p, why: "chosen" as const } : undefined; }, call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());

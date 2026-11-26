@@ -114,6 +114,8 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		// D398, D420: what a computer for tasks uses and never sees; on the home, where the conversation is kept.
 		a.workerGuard(c, dv)
 		a.ducterLine(c, dv)
+		// D611: this computer's Ducter folder, a rule row like every other (D592).
+		a.folderRuleRow(c, dv, false)
 		// D514: what Ducter tidied away here, one quiet line; nothing before the first.
 		if dv.Tidied != nil && dv.Tidied.Count > 0 {
 			a.statusLine(c, a.L.T("card.tidied", dv.Tidied.Count, tidySize(dv.Tidied.Bytes)), a.T.InkMuted, false)

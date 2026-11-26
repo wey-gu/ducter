@@ -599,6 +599,8 @@ export interface SettingsApi {
   setPeers?(peers: Partial<PeersSettings>): void;
   /** D369: Mem said the partner's mailbox needs sorting out on Mem's side (its code), or that is over (undefined). */
   setBridgeTrouble?(t: { code: string } | undefined): void;
+  /** D204: keeps the Ducter folder the person chose for a computer (the move itself is already done there). */
+  setFolder?(device: string, path: string): void;
 }
 
 // ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------

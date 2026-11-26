@@ -2311,8 +2311,9 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
       and `clone`; an older one shows "needs an update" on both cards), and a real clone from the
       phone onto the Mac (a private GitHub repo over https with the Mac's keychain, and over ssh with
       its agent): only faked git so far. Trigger: the author's next run with the Mac switched on.
-- [ ] **D204: the Ducter folder in Settings** (a field beside where it lives; today only
-      `DUCTER_FOLDER`). Trigger: the first person who wants it somewhere else and doesn't use a shell.
+- [x] **D204: the Ducter folder in Settings** — built in D611: a rule row on each computer's
+      Where it runs (web and Mac), macOS's `~/Ducter` one-tap rename, a picker or a path field, the
+      move with worktree repair and `folder_moved`; `DUCTER_FOLDER` stays read-only there.
 - [ ] **D204: clone progress** (git's own percentage in the field, from `--progress` on stderr,
       relayed by the worker). Today: a spinner and "a big repository takes a few minutes".
       Trigger: a clone that someone abandons because it looked stuck.

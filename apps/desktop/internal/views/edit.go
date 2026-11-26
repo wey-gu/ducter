@@ -24,9 +24,13 @@ type editRowOpts struct {
 	// under the label with 保存 and 取消.
 	can, open bool
 	saving    bool
+	// saveLabel / savingLabel name the primary action when it isn't 保存 (a path is 搬过去 / Move it).
+	saveLabel, savingLabel string
 	// err is said under the editor in the failed ink (a range, a refusal).
-	err                      string
-	about                    string
+	err   string
+	about string
+	// mono: the values are a path or a command, in the mono face (D611: a real path).
+	mono                     bool
 	last                     bool
 	editor                   func()
 	onOpen, onSave, onCancel func()
@@ -55,7 +59,14 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 	}
 	values := func() {
 		for j, v := range o.values {
-			uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+			text := keepWords(autospace(v))
+			if o.mono {
+				// D611: a real path wraps inside its box; zero-width breaks after each slash let
+				// a long path with no spaces stay whole and selectable without running past the edge.
+				uiText(c.Key(fmt.Sprint("v", j)), wrapPath(text)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Selectable()
+				continue
+			}
+			uiText(c.Key(fmt.Sprint("v", j)), text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
 		}
 		if o.muted != "" {
 			uiText(c.Key("m"), o.muted).FontSize(t.SM).TextColor(t.InkMuted)
@@ -96,10 +107,18 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 			}
 			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Margin(2, 0, 0, 0).Children(func() {
 				if o.saving {
-					uiText(c.Key("saving"), a.L.T("keep.edit.saving")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus)
+					label := a.L.T("keep.edit.saving")
+					if o.savingLabel != "" {
+						label = o.savingLabel
+					}
+					uiText(c.Key("saving"), label).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus)
 					return
 				}
-				if a.buttonFor(c, a.L.T("keep.edit.save"), o.about, btnPrimary, t.ControlSM, t.Surface) && o.onSave != nil {
+				save := a.L.T("keep.edit.save")
+				if o.saveLabel != "" {
+					save = o.saveLabel
+				}
+				if a.buttonFor(c, save, o.about, btnPrimary, t.ControlSM, t.Surface) && o.onSave != nil {
 					o.onSave()
 				}
 				ui.Box(c).Width(t.S1).Shrink(0)
@@ -167,4 +186,10 @@ func digitsOnly(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// wrapPath lets a path with no spaces wrap at its slashes: zero-width spaces after each one,
+// so the real path stays whole for selection and a reader while it never runs past its box.
+func wrapPath(p string) string {
+	return strings.ReplaceAll(p, "/", "/\u200B")
 }

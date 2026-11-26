@@ -3661,6 +3661,12 @@ export function SettingsSheet() {
   // D311: a device's card pushed inside 你的设备 brings its own ‹ 你的设备, the one way back shown.
   const [dev, setDev] = useState<string | null>(null);
   useEffect(() => setDev(null), [page]);
+  // D611: a New task clone line opens that computer's folder row (its card in Your devices).
+  useEffect(() => {
+    if (!A.folderFocus) return;
+    setDev(`dev:${A.folderFocus}`);
+    A.folderFocus = undefined;
+  }, [page, A.folderFocus]);
   const devPushed = page === "devices" && deviceCardShown(dev);
   return (
     <Sheet label={t("settings.title")}>

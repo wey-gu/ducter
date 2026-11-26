@@ -942,6 +942,10 @@ export interface Bodies {
   // went, on which computer, how big, why. On the task's stream, origin "system". Read by Past
   // tasks (工作副本已整理), the computer's card (整理过 n 个…) and `ducter worktrees`.
   copy_tidied: import("./tidy.ts").CopyTidiedBody;
+  // The person moved a computer's Ducter folder (settings › Where it runs): the old and new
+  // absolute paths, the computer ("local" for the home), and what went with it. Place lookups apply
+  // it as a prefix mapping, so a task opened before the move still resolves to its working copy.
+  folder_moved: { from: string; to: string; device: string; projects: number; worktrees: number };
 }
 
 export interface Usage {
@@ -1782,6 +1786,11 @@ export type ClientFrame =
   // "local": the home) makes <Ducter folder>/projects/<name> (one folder name, never a path) and
   // the home adds it as a project, git or not. Answered with project_new_result.
   | { t: "project_new"; name: string; device?: string; clientId?: string }
+  // The person chose where this computer's Ducter folder lives (settings › Where it runs): that
+  // computer (absent or "local": the home) moves projects/ and worktrees/ there when no task is
+  // running in it, repairs git's worktree paths, and keeps the choice. Answered with
+  // folder_change_result.
+  | { t: "folder_change"; path: string; device?: string; clientId?: string }
   // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}, through that computer's own
   // GitHub CLI. status: where it stands; start: a device-flow sign-in (answered with its code and
   // link, then, when it ends, signed in with the account, or why not); token: the fallback, a token
@@ -1918,6 +1927,8 @@ export interface DucterFolderView {
   device: string;
   path?: string;
   old?: true;
+  /** Why that path (env: DUCTER_FOLDER set there, so it can't be changed from here; chosen: the person's). */
+  why?: "env" | "chosen" | "data" | "default" | "fallback";
 }
 
 /** D272: where a computer stands with GitHub (git-login.ts), in words the clients put in their own language. */
@@ -1969,6 +1980,14 @@ export interface GitLoginState {
 
 /** D204: why a clone didn't happen, in a word the clients put in their own language. */
 export type CloneReason = "invalid" | "not_found" | "no_access" | "network" | "timeout" | "offline" | "old" | "failed";
+
+/**
+ * Why a computer's Ducter folder didn't move: a task is still running in it (tasks says which),
+ * DUCTER_FOLDER is set there (the env wins), it can't be reached or its Ducter is too old, the
+ * target already holds things, it is inside the folder or the folder is inside it, it would be
+ * Ducter's own data, another move is running, or the move failed.
+ */
+export type FolderChangeReason = "tasks_running" | "env" | "offline" | "old" | "exists" | "inside" | "data" | "cross_device" | "busy" | "invalid" | "not_dir" | "failed";
 
 /**
  * D202: one model an AI agent offers on one computer, as the New task card lists it: its own
@@ -2106,6 +2125,9 @@ export type ServerFrame =
   | { t: "project_clone_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: CloneReason; message?: string }
   // D272: the folder made (or the one already there of that name: existed), as the card's place; or why not.
   | { t: "project_new_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: "invalid" | "offline" | "old" | "failed"; message?: string }
+  // The Ducter folder moved (or why not): its old and new absolute paths, what went with it, and
+  // the tasks that kept it from moving (tasks_running; run it again when they are done).
+  | { t: "folder_change_result"; ok: boolean; clientId?: string; device?: string; from?: string; path?: string; projects?: number; worktrees?: number; repaired?: number; tasks?: { taskId: string; title: string }[]; reason?: FolderChangeReason; message?: string }
   // D272: where that computer stands with GitHub (git-login.ts): signed in as account, signed out,
   // no GitHub CLI, a sign-in waiting for code at url, or why it failed. Never a token.
   | ({ t: "git_login_state"; clientId?: string; device?: string; host: "github.com" } & GitLoginState)
@@ -2624,6 +2646,11 @@ export interface DeviceView {
    * never asked of the person. Absent from a worker before D538.
    */
   resources?: DeviceResources;
+  /**
+   * D204 (the person's choice): this computer's Ducter folder, with why it is that path. env means
+   * DUCTER_FOLDER is set there, so Settings can't move it; chosen is the path the person picked.
+   */
+  folder?: { path: string; why?: "env" | "chosen" | "data" | "default" | "fallback" };
 }
 
 /**
@@ -3067,6 +3094,12 @@ export interface Settings {
   chromeSites?: string[];
   /** D510: 新任务默认 / New tasks start: where and who every new task starts with unless its words, a rule or what it needs say otherwise. Absent (or a field absent): Ducter picks. */
   newTasks?: NewTasks;
+  /**
+   * The Ducter folder the person chose for each computer, by device id ("local" for the home).
+   * Kept on the home; the computer itself gets the path (and keeps it in its data folder), while
+   * DUCTER_FOLDER still wins there. Absent: the system's own name (~/Ducter on a Mac, ~/ducter elsewhere).
+   */
+  folderPaths?: Record<string, string>;
 }
 
 /**

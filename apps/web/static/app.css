@@ -22716,6 +22716,13 @@ html[data-text-size="large"] .brand-mark > svg {
   color: var(--ink);
   line-height: 1.5;
 }
+/* D611: a real path: mono, and it wraps at its slashes inside the row instead of running past the card. */
+.edit-row .v.mono {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .edit-row .v.m {
   color: var(--ink-muted);
 }
@@ -25163,4 +25170,53 @@ img[src*="art/fig/sprout"] { filter: none !important; }
     font-size: 1.5rem;
     letter-spacing: 0.06em;
   }
+}
+
+/* D611: a computer's Ducter folder row: the move in flight and the tasks that keep it from moving. */
+.fd-busy {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-muted);
+  font-size: var(--sm);
+}
+.fd-tasks p {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--sm);
+  line-height: 1.45;
+}
+.fd-tasks p.fd-wait {
+  color: var(--ink-muted);
+}
+.er-slot .field {
+  width: 100%;
+}
+
+/* D611: the New task clone field's 会放在 {path} line opens that computer's folder row; the
+   words wrap inside their column, with the drawn chevron after them (never a system link). */
+button.fd-link,
+.fd-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.fd-link:hover,
+.fd-link:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.fd-link .btn-chev {
+  flex: none;
 }

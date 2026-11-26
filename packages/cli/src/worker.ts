@@ -280,6 +280,12 @@ export async function cmdWorker(o: {
     abilities: await browse.abilities(),
     alwaysOn: browse.alwaysOn(kind),
     version: pkg.version,
+    // D204: where this computer's Ducter folder is (Settings › Where it runs reads it from the
+    // worker's hello; after a move the home's own folderPaths is newer).
+    folder: (() => {
+      const f = ducterFolder({ dataDir: o.dataDir });
+      return { path: f.path, why: f.why };
+    })(),
     harnesses: (rows = await probeHarnesses(t, o.dataDir, setup)),
     // D148: how this computer updates, and how its last update went (once, after its restart).
     how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),

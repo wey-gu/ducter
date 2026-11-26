@@ -132,7 +132,8 @@ write to it directly while it works.
 
 Yes. Each coding task works in its own copy of your project, a folder named after the project and
 its branch, a few plain English words for what the task does (such as
-`~/ducter/worktrees/hawdb/fix-flaky-test`, also for a task you wrote in Chinese, so the name types
+`~/Ducter/worktrees/hawdb/fix-flaky-test` on a Mac (`~/ducter/...` on Linux), also for a task you
+wrote in Chinese, so the name types
 and pastes cleanly everywhere); the opened task on the Mac shows the path. Tasks that already have a
 branch keep its name.
 Tasks started before this version keep theirs in `~/.ducter/worktrees`.
@@ -207,7 +208,8 @@ book draft. To make one, choose **Add a folder…** in the card's folder list (t
 each of your computers, saying which). It offers three ways, on that computer:
 
 - **New folder on …**: type a name (like *Invoices*). Ducter makes the folder in that computer's
-  Ducter folder (`~/ducter/projects`) and the card starts there. No Git needed.
+  Ducter folder (`~/Ducter/projects` on a Mac, `~/ducter/projects` on Linux) and the card starts
+  there. No Git needed.
 - **Choose a folder on …**: look through that computer's folders one level at a time, starting
   from its home folder (repositories first); go in, then **Use this folder**. On your Mac, for the
   Mac itself, this is Finder's own picker. If your Ducter runs on a server, the server's row
@@ -238,11 +240,12 @@ To let Ducter look outside a computer's home folder (say your code is in `/srv/c
 
 Yes. In the folder list choose **Add a folder…** for the computer you want it on, then **Clone
 from a Git address**, from your phone too, and paste its address: `https://github.com/owner/repo`, `git@github.com:owner/repo`
-or just `owner/repo` for GitHub. That computer clones it into `~/ducter/projects`, using its own
+or just `owner/repo` for GitHub. That computer clones it into its Ducter folder (`~/Ducter/projects`
+on a Mac, `~/ducter/projects` on Linux), using its own
 git sign-in (so a private repository works where you're signed in to git), and the card starts
 there. It shows **Cloning…** while it works (a big repository takes a few minutes, at most ten),
 and says plainly if the repository isn't there, that computer has no access to it, or it can't
-reach the address. If the same repository is already in `~/ducter/projects`, it simply uses it.
+reach the address. If the same repository is already in that folder, it simply uses it.
 
 ### How do I sign in to GitHub on my server?
 
@@ -279,9 +282,20 @@ and when, and why the others stay. To keep one whatever its age, star the task, 
 ### What does uninstalling remove?
 
 `ducter uninstall --all` (or **Remove everything** in the Mac app) removes Ducter's data and the
-tasks' working copies, in `~/ducter/worktrees` and in `~/.ducter`. It never removes
-`~/ducter/projects`: the projects Ducter cloned are yours, and the list it shows before removing
-anything says so.
+tasks' working copies, in the Ducter folder's `worktrees` (`~/Ducter/worktrees` on a Mac,
+`~/ducter/worktrees` on Linux) and in `~/.ducter`. It never removes its `projects`: the projects
+Ducter cloned are yours, and the list it shows before removing anything says so.
+
+### Can I choose where Ducter keeps its folder?
+
+Yes. Open **Settings › Where it runs** and tap **Ducter folder** on the computer whose folder you
+want to move. It shows the real path. On a Mac, if the folder is still the old lowercase
+`~/ducter`, the first choice is **Change it to ~/Ducter**. Otherwise choose **Choose a location…**
+(another computer asks for a path). Ducter moves `projects` and `worktrees` together, tells git
+where the working copies are now, and leaves one line saying how many projects and working copies
+moved. It won't move while a task is still working in the folder: it lists those tasks and offers
+to try again once they are done. If `DUCTER_FOLDER` is set on that computer, the row says **Set by
+DUCTER_FOLDER** and can't be changed there. A folder that is someone else's is never touched.
 
 ### Does it remember me?
 

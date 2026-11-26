@@ -1946,11 +1946,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const open = e.body as Bodies["task_open"];
     const card = core.tasks.get(open.taskId);
     if (!card || tasks.has(open.taskId)) continue;
-    const ops = opsFor(open.place);
+    // D204: the card's place is the one after any folder_moved (the Log's own task_open keeps the
+    // old path); the recovery works in the moved folder, not the one it was opened in.
+    const place = card.place;
+    const ops = opsFor(place);
     // A worker's cwd is on the worker; it was planned there and recorded in the place.
-    const cwd = ops.device ? remoteCwd(open.place) : cwdOf(open.place, open.taskId, core.dataDir);
+    const cwd = ops.device ? remoteCwd(place) : cwdOf(place, open.taskId, core.dataDir);
     // After a switch (D89) the card holds who does it now, not who it opened with.
-    const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model, effort: card.body.effort } : open;
+    const now = { ...(card.body ? { ...open, harness: card.body.harness, model: card.body.model, effort: card.body.effort } : open), place };
     if (!now.effort) delete now.effort;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     if (open.language) t.lang = open.language;

@@ -447,6 +447,11 @@ class AppState {
   /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
   devices?: DeviceView[];
+  /** D611: each computer's Ducter folder row: its editor, the move in flight, the tasks that kept it
+   *  and the line a move left. */
+  folderRows: Record<string, { open?: boolean; busy?: boolean; cid?: string; err?: string; done?: string; tasks?: { taskId: string; title: string }[]; typed?: string }> = {};
+  /** D611: the computer whose folder row to open after a New task clone line tapped it. */
+  folderFocus?: string;
   /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code) (names, last four, where used; never a secret). */
@@ -960,6 +965,7 @@ class AppState {
       }
       return this.changed();
     }
+    if (f.t === "folder_change_result") return this.folderChangeDone(f);
     if (f.t === "folder_browse_result") {
       const b = this.nt.browse;
       if (b && f.clientId === b.cid) (b.res = f), f.ok && f.path && ((b.path = f.path), (b.lastOk = f.path)), this.changed();
@@ -1529,6 +1535,97 @@ class AppState {
   ntAddBack() {
     if (this.sheet?.kind === "addfolder") return this.closeAddFolder();
     this.nt.list = this.nt.add ? "add" : "place";
+    this.changed();
+  }
+
+  /** D611: that computer's folder row state. */
+  folderRow(device: string) {
+    return (this.folderRows[device] ??= {});
+  }
+
+  /** D611: move that computer's Ducter folder to `to`; the row says 在搬… until the answer. */
+  folderMove(device: string, to: string) {
+    const st = this.folderRow(device);
+    if (st.busy) return;
+    const path = to.trim();
+    if (!path) return void ((st.err = this.L.t("settings.folder.err.invalid")), (st.tasks = undefined), (st.done = ""), this.changed());
+    this.nextClient++;
+    st.cid = `fd${Date.now()}-${this.nextClient}`;
+    st.busy = true;
+    st.err = "";
+    st.done = "";
+    st.tasks = undefined;
+    this.send({ t: "folder_change", path, clientId: st.cid, ...(this.ntDeviceArg(device) ? { device: this.ntDeviceArg(device) } : {}) });
+    this.changed();
+  }
+
+  /** D611: the home answered a move: the new path, the tasks still working there, or why not. */
+  folderChangeDone(f: Extract<ServerFrame, { t: "folder_change_result" }>) {
+    const dev = f.device || "local";
+    const hit = Object.entries(this.folderRows).find(([, st]) => st.cid && st.cid === f.clientId);
+    const st = hit?.[1] ?? this.folderRow(dev);
+    st.cid = undefined;
+    st.busy = false;
+    if (!f.ok) {
+      st.done = "";
+      if (f.reason === "tasks_running") {
+        st.tasks = f.tasks ?? [];
+        st.err = "";
+        st.open = true;
+      } else {
+        st.tasks = undefined;
+        st.err = this.folderWhy(f);
+      }
+      return void this.changed();
+    }
+    st.tasks = undefined;
+    st.err = "";
+    st.open = false;
+    if (f.path) {
+      st.done = this.L.t("settings.folder.done", tilde(f.path), f.projects ?? 0, f.worktrees ?? 0);
+      st.typed = f.path;
+    }
+    void this.changed();
+  }
+
+  /** D611: a refused move in the person's words. */
+  folderWhy(f: Extract<ServerFrame, { t: "folder_change_result" }>): string {
+    switch (f.reason) {
+      case "env":
+        return this.L.t("settings.folder.env");
+      case "exists":
+        return this.L.t("settings.folder.err.exists");
+      case "inside":
+        return this.L.t("settings.folder.err.inside");
+      case "data":
+        return this.L.t("settings.folder.err.data");
+      case "cross_device":
+        return this.L.t("settings.folder.err.cross");
+      case "offline":
+        return this.L.t("settings.folder.err.offline");
+      case "old":
+        return this.L.t("settings.folder.err.old");
+      case "invalid":
+      case "not_dir":
+        return this.L.t("settings.folder.err.invalid");
+      case "busy":
+        return this.L.t("settings.folder.err.busy");
+    }
+    return this.L.t("settings.folder.err.failed", (f.message ?? "").replace(/[. 。]+$/, ""));
+  }
+
+  /** D611: show a computer's folder row (the home's in Where it runs, a worker's on its card). */
+  openFolderRow(device: string) {
+    const d = (this.devices ?? []).find((x) => x.id === device || x.name === device);
+    const id = d ? d.id : "local";
+    this.folderFocus = id;
+    this.sheet = { kind: "settings", page: "devices" };
+    const st = this.folderRow(id);
+    st.open = true;
+    st.err = "";
+    st.tasks = undefined;
+    st.done = "";
+    if (d?.folder) st.typed = d.folder.path;
     this.changed();
   }
 

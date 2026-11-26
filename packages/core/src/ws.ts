@@ -237,6 +237,8 @@ export interface NewTaskFrames {
   clone?(device: string | undefined, address: string): Promise<Omit<Extract<ServerFrame, { t: "project_clone_result" }>, "t" | "clientId" | "device">>;
   /** D272: make a folder in that computer's Ducter folder and add it as a project. */
   newFolder?(device: string | undefined, name: string): Promise<Omit<Extract<ServerFrame, { t: "project_new_result" }>, "t" | "clientId" | "device">>;
+  /** D204: move that computer's Ducter folder to the path the person chose. */
+  changeFolder?(device: string | undefined, path: string): Promise<Omit<Extract<ServerFrame, { t: "folder_change_result" }>, "t" | "clientId" | "device">>;
   /** D272: a GitHub sign-in step on that computer (git-login.ts); wait: the end of the one in flight. */
   gitLogin?(device: string | undefined, action: "status" | "start" | "wait" | "token" | "cancel", token?: string): Promise<import("@ducter/protocol").GitLoginState>;
   /** D345: put gh on the home (each step through onState); ends signed_out when it is there, else why not. */
@@ -2078,6 +2080,18 @@ export function createWsHandler(deps: WsDeps) {
         const dev = device ? { device } : {};
         if (!deps.newTask?.newFolder) return send(ws, { t: "project_new_result", ok: false, ...cid, ...dev, reason: "failed", message: "Folders can't be made here." });
         send(ws, { t: "project_new_result", ...cid, ...dev, ...(await deps.newTask.newFolder(device, typeof f.name === "string" ? f.name : "")) });
+        return;
+      }
+      case "folder_change": {
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const dev = device ? { device } : {};
+        if (!deps.newTask?.changeFolder) return send(ws, { t: "folder_change_result", ok: false, ...cid, ...dev, reason: "failed", message: "Ducter's folder can't be changed here." });
+        const r = await deps.newTask.changeFolder(device, typeof f.path === "string" ? f.path : "");
+        send(ws, { t: "folder_change_result", ...cid, ...dev, ...r });
+        // The settings store's onChange pushes a fresh settings frame (folderPaths); On hand reads
+        // its task places again on the next snapshot.
+        if (r.ok) send(ws, { t: "on_hand", onHand: tasks.onHand() } as never);
         return;
       }
       case "git_login": {

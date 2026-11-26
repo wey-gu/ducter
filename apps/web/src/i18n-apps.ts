@@ -10,7 +10,6 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.opening": "正在打开…",
     "app.ask.ph": "让%s改这个小应用…",
     "app.ask.send": "发送",
-    "app.ask.sent": "发给%s了，改好会在这里刷新。",
     "app.ask.limit": "这个小应用这一小时问得太多了，过会儿再试。",
     "app.ask.busy": "它上一个问题还在等回答。",
     "app.ask.go": "这一步要你在和%s的对话里点「好」才会做。",
@@ -77,6 +76,11 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.home.after": "点它直接打开这个小应用，铺满整个屏幕；你让%s改过的，它也跟着变。",
     "app.home.add": "添加",
     "app.home.ok": "好",
+    // D603: the composer under an app is one gesture away, never a bar under every app.
+    "app.edit": "修改",
+    "app.first.shut": "关闭",
+    "app.replied": "%s在对话里回你了",
+    "app.replied.see": "查看",
   },
   en: {
     "app.made": "An app %s made for you. It stays in Your apps; open it any time.",
@@ -88,7 +92,6 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.opening": "Opening…",
     "app.ask.ph": "Ask %s to change it…",
     "app.ask.send": "Send",
-    "app.ask.sent": "Sent to %s. It refreshes here once it's changed.",
     "app.ask.limit": "This app asked too often this hour. Try again later.",
     "app.ask.busy": "Its last question is still waiting for an answer.",
     "app.ask.go": "This waits for your Go in your conversation with %s.",
@@ -153,5 +156,9 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.home.after": "It opens straight into this app, full screen, and keeps every change you ask %s for.",
     "app.home.add": "Add",
     "app.home.ok": "Done",
+    "app.edit": "Edit",
+    "app.first.shut": "Close",
+    "app.replied": "%s answered in your conversation",
+    "app.replied.see": "View",
   },
 };

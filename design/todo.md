@@ -14,9 +14,11 @@ line.
 - [ ] **A live reply, token by token.** The agent's words show when each message ends (the
   normalizer buffers text deltas). A short-lived frame of the words so far for an opened task,
   drawn as its live line. Trigger: a reply that takes more than a few seconds to write is watched.
-- [ ] **A done report from the person's own turn** still wakes the partner, which may say it again in
-  the conversation. Trigger: seen on a live home after D585 (the brief now asks the agent to report
-  only real state changes there).
+- [x] **A done report from the person's own turn** woke the partner, which said it again in the
+  conversation (D587: it wakes nobody, says no line and gets no look; an ask it carries is its card).
+- [ ] **D587 on a live home:** a conductor turn that ends in a done (and one with a merge ask) on
+  hel; read the Log for no partner turn and no living item after it. Trigger: the next live walk.
+- [ ] **The author's review of `.shots/d587/`** (one waiting line; the crops named in D587's report).
 - [ ] **你说：… under a card closed by words in the task**: the conversation still shows them; say
   instead that it was answered in the task. Trigger: the conversation's next pass (D584's owner).
 - [ ] **On a live home:** a colleague's conductor session (Codex, Claude Code, agy) against the new

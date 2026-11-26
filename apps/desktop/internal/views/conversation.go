@@ -25,6 +25,11 @@ type row struct {
 	pending *pendingMsg
 	// presence is the partner at work while the user waits (D104).
 	presence bool
+	// wait, on the presence row, is what it is waiting on when no reply is (D587): the partner
+	// putting a finished result ("result") or a task's question ("relay") into its own words,
+	// for every living message at once; waitFor is the soonest one's time left.
+	wait    string
+	waitFor time.Duration
 }
 
 func (a *App) rows() []row {
@@ -74,9 +79,24 @@ func (a *App) rows() []row {
 		}
 	}
 	kept := rows[:0]
+	var wait string
+	var waitFor time.Duration
+	hidden := map[int64]bool{}
 	for _, r := range rows {
 		if e := r.entry; e.Living != nil && len(a.livingItems(e)) == 0 {
 			continue
+		}
+		// D587: what the partner is still putting into words, in every living message, waits as
+		// one line at the conversation's end; a message holding nothing else is not drawn yet.
+		k, w, all := a.entryWait(r.entry)
+		if k != "" && (wait == "" || (k == "result" && wait == "relay")) {
+			wait = k
+		}
+		if w > 0 && (waitFor == 0 || w < waitFor) {
+			waitFor = w
+		}
+		if all {
+			hidden[r.entry.FirstSeq] = true
 		}
 		kept = append(kept, r)
 	}
@@ -100,6 +120,17 @@ func (a *App) rows() []row {
 			}
 		}
 	}
+	// D587: a message not drawn yet still holds its task's action row (none shows while the words
+	// are coming; it lands under them).
+	if len(hidden) > 0 {
+		kept = rows[:0]
+		for _, r := range rows {
+			if !hidden[r.entry.FirstSeq] {
+				kept = append(kept, r)
+			}
+		}
+		rows = kept
+	}
 	keep := a.pending[:0]
 	for i := range a.pending {
 		if !echoed[a.pending[i].clientID] {
@@ -110,8 +141,11 @@ func (a *App) rows() []row {
 	for i := range a.pending {
 		rows = append(rows, row{pending: &a.pending[i]})
 	}
+	// One figure at the end (D104, D587): the reply being thought of, else what is being put into words.
 	if a.thinking() {
 		rows = append(rows, row{presence: true})
+	} else if wait != "" {
+		rows = append(rows, row{presence: true, wait: wait, waitFor: waitFor})
 	}
 	return rows
 }
@@ -185,7 +219,11 @@ func (a *App) conversation(c *ui.Context) {
 						a.pendingRow(c, p)
 						return
 					}
-					if rows[i].presence {
+					if r := rows[i]; r.presence && r.wait != "" {
+						c.After(r.waitFor + 50*time.Millisecond)
+						a.waitingRow(c, "wait", a.L.T("activity."+r.wait), "")
+						return
+					} else if r.presence {
 						a.presenceRow(c)
 						return
 					}

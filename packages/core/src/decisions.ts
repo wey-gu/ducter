@@ -274,6 +274,8 @@ export function createDecisions(opts: {
           ...(q.handset ? { handset: q.handset, goLabel: "Go", defaultOption: "hold" as const } : {}),
           // D437: what another AI still found in what this Go sends: said on the card, plainly.
           ...(r.look?.left.length ? { look: { by: r.look.by, left: r.look.left } } : {}),
+          // D587: a direct done's own ask: nobody relays it, its card says it.
+          ...(r.direct && r.state === "done" ? { direct: true as const } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });

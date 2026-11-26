@@ -453,6 +453,10 @@ export interface Bodies {
     // conversation; never a Send there. A Go without the words never sends.
     draft?: { first: string };
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
+    // D587: asked by a done report made in a turn the person opened with their own words in the task
+    // (report.direct): they read it there, so the partner is not woken to relay it; clients show the
+    // task's own wording at once, with no wait for the partner's.
+    direct?: true;
     // D448: a task's message to another agent (who: as the person reads it). Go sends it; Ducter
     // tells the task what came of it, so nothing of the card is forwarded to the task.
     relay?: { who: string };

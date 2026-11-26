@@ -290,6 +290,9 @@ type Decision struct {
 	Loop *LoopAsk `json:"loop,omitempty"`
 	// Look (D437): what another AI still found in what this Go sends.
 	Look *DecisionLook `json:"look,omitempty"`
+	// Direct (D587): asked by a done made in a turn the person opened in the task; nobody relays
+	// it, so its own wording shows at once.
+	Direct bool `json:"direct,omitempty"`
 }
 
 // LoopAsk is the task a loop card is about, and the computer its Go moves it to.

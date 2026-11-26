@@ -64,7 +64,9 @@ status"). If there is still no report, the stall rule applies.
 conversation with U, answered under their words; ending with no report it is neither nudged nor a
 miss, and C puts the card back where it stood when they wrote (`done`, `done?`, `failed`,
 `blocked`, `needs-you`). A task that stood at `working` still owes its report on its own work.
-U's words closing its question (`inTask`) wake nobody and leave the card to the runner.
+U's words closing its question (`inTask`) wake nobody and leave the card to the runner. A `done`
+reported in U's turn (`direct`, D587) moves the card as any done does and wakes nobody; an ask it
+carries becomes its card at once (`needs-you`), in the task's own words.
 C never guesses `done`. **Resting on its own wait (D394):** a turn that armed a wait of the
 task's own (`wait_for`) and ends with it still armed owes no report: it is neither nudged nor a
 miss, so a repeating round that found nothing new stays silent instead of being pushed into a

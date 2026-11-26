@@ -378,9 +378,9 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool)
 		// The partner is putting the result into its own words (D124): its
 		// waiting presence holds the place, not a template line its message
 		// replaces a minute later.
+		// D587: the one waiting line at the conversation's end stands for it.
 		if wait := a.wordsDueIn(task); wait > 0 {
 			c.After(wait + 50*time.Millisecond)
-			a.waitingRow(c, "words:"+key, a.L.T("activity.result"), "")
 			return
 		}
 	}
@@ -411,9 +411,9 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		words = d.Said
 	}
 	if !inTask && openAsk(d) {
+		// D587: the one waiting line at the conversation's end stands for it.
 		if wait := a.relayDueIn(d); wait > 0 {
 			c.After(wait + 50*time.Millisecond)
-			a.waitingRow(c, "relay:"+d.DecisionID, a.L.T("activity.relay"), "")
 			return
 		}
 	}
@@ -523,6 +523,11 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 	var answered, waiting []askItem
 	var news, lines []protocol.LivingItem
 	for _, it := range items {
+		// D587: what the partner is still putting into words is not drawn here; the one waiting
+		// line at the conversation's end stands for all of it (rows).
+		if _, wait := a.itemWait(it); wait > 0 {
+			continue
+		}
 		switch it.Kind {
 		case "decision":
 			d := a.S.Decisions[it.DecisionID]
@@ -549,13 +554,6 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		return
 	}
 	sort.SliceStable(waiting, func(i, j int) bool { return dueAt(waiting[i].d).Before(dueAt(waiting[j].d)) })
-	// D584: what is said comes first; the results still being put into words wait last, as one
-	// presence where the partner's words will land.
-	due := func(it protocol.LivingItem) bool {
-		task := a.S.Task(it.TaskID)
-		return task != nil && a.wordsDueIn(task) > 0
-	}
-	sort.SliceStable(news, func(i, j int) bool { return !due(news[i]) && due(news[j]) })
 	head := waiting
 	if !shown && !a.open["asks:"+itoa(e.FirstSeq)] && len(waiting) > 1 {
 		head = waiting[:1]
@@ -571,17 +569,7 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		if away {
 			a.timeLine(c, a.L.T("living.away"), clockOf(e.Event.TS))
 		}
-		held := false // D584: several results at once share one waiting presence
 		for i, it := range news {
-			if task := a.S.Task(it.TaskID); task != nil {
-				if wait := a.wordsDueIn(task); wait > 0 {
-					if held {
-						c.After(wait + 50*time.Millisecond)
-						continue
-					}
-					held = true
-				}
-			}
 			a.news(c.Key(i), "l"+itoa(e.FirstSeq)+":"+it.TaskID, it, a.chipOwner[it.TaskID] == e.FirstSeq)
 		}
 		if len(lines) > 0 {
@@ -595,14 +583,6 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 			a.ask(c, x.d, x.it.TaskID)
 		}
 		for _, x := range head {
-			// D584: a task's question still being put into words waits behind the one presence
-			// already there, never a second figure under the first.
-			if held && openAsk(x.d) {
-				if wait := a.relayDueIn(x.d); wait > 0 {
-					c.After(wait + 50*time.Millisecond)
-					continue
-				}
-			}
 			a.ask(c, x.d, x.it.TaskID)
 		}
 		if rest > 0 || (len(head) >= 2 && defaults >= 2) {
@@ -730,3 +710,57 @@ func (a *App) lastUserAt() time.Time {
 // readingMeasure is the partner's line length: 36em at its 18pt voice,
 // about 36 Chinese characters or 68 Latin ones (D104).
 const readingMeasure = 36 * 18
+
+// itemWait says whether the partner is still putting a living item into its own words (D124,
+// D129): a finished task's result, or a task's open question, and for how long yet. Inside that
+// task's own page the question shows at once, as ask does.
+func (a *App) itemWait(it protocol.LivingItem) (kind string, wait time.Duration) {
+	switch it.Kind {
+	case "done", "failed":
+		if task := a.S.Task(it.TaskID); task != nil {
+			if w := a.wordsDueIn(task); w > 0 {
+				return "result", w
+			}
+		}
+	case "decision":
+		if d := a.S.Decisions[it.DecisionID]; d != nil && openAsk(d) && !(a.Route == RouteTask && a.TaskID == firstNonEmpty(it.TaskID, d.TaskID)) {
+			if w := a.relayDueIn(d); w > 0 {
+				return "relay", w
+			}
+		}
+	}
+	return "", 0
+}
+
+// entryWait is what of e the partner is still putting into words: the kind the waiting line
+// says (a result before a question), the soonest one's wait, and whether that is all e holds.
+func (a *App) entryWait(e *store.Entry) (kind string, wait time.Duration, all bool) {
+	consider := func(k string, w time.Duration) {
+		if w <= 0 {
+			return
+		}
+		if kind == "" || (k == "result" && kind == "relay") {
+			kind = k
+		}
+		if wait == 0 || w < wait {
+			wait = w
+		}
+	}
+	switch {
+	case e.Living != nil:
+		items := a.livingItems(e)
+		all = len(items) > 0
+		for _, it := range items {
+			k, w := a.itemWait(it)
+			consider(k, w)
+			all = all && w > 0
+		}
+	case e.Decision != nil:
+		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
+			k, w := a.itemWait(protocol.LivingItem{Kind: "decision", TaskID: d.TaskID, DecisionID: d.DecisionID})
+			consider(k, w)
+			all = w > 0
+		}
+	}
+	return kind, wait, all
+}

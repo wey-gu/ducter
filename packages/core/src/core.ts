@@ -487,6 +487,9 @@ export type PartnerFactory = (view: CoreApi, id: string, o: { dir: string; boot:
 
 export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
 
+/** D587: a done report made in a turn the person opened with their own words in the task. */
+export const directDone = (r: Bodies["report"]): boolean => r.state === "done" && !!r.direct;
+
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg") return true;
@@ -533,7 +536,9 @@ export function triggersPartner(e: LogEvent): boolean {
     if (r.news) return r.state === "active";
     return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
   }
-  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  // D587: a done made in a turn the person opened in the task (direct) wakes nobody: they read it
+  // there, the card says it, and an ask it carries is its own card.
+  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress" && !directDone(e.body as Bodies["report"]);
   // D473: a failure Ducter couldn't mend by itself goes to the partner to rethink, with what was tried.
   if (e.kind === "mend") return (e.body as Bodies["mend"]).rung === "rethink";
   // An incoming Bridge message wakes the partner, unless it was set aside or predates Bridge (D170).

@@ -522,9 +522,12 @@ or Hold on such a card does nothing but bring this window the home's answer.
   found worth saying the partner says in its own words. Rounds that didn't work are one line per
   routine, its newest. A routine the person asked to hear every time (a digest, `reports: "every"`)
   keeps its rounds.
-- **One presence for words on their way (D584).** While the partner is putting finished results
-  into words (D124's two minutes), the message shows one waiting presence however many there are,
-  after what is already said, where its words will land; never a stack of the same line.
+- **One presence for words on their way (D584, D587).** While the partner is putting finished
+  results into words (D124's two minutes) or a task's question (D129's minute), the conversation
+  shows one waiting presence however many there are and in however many living messages: at the
+  conversation's end, where its words will land, and none inside a message (a message that holds
+  nothing else is not drawn until its words come). A reply being thought of is that one figure
+  instead (D104): never two at once, never a stack of the same line.
 - A default applies on its own only if the action is reversible.
 
 **Honesty rules**

@@ -1003,21 +1003,57 @@ function wordsDueIn(task: Task): number {
   return Number.isNaN(at) ? 0 : Math.max(0, at + WORDS_MS - Date.now());
 }
 
-/** D584: nothing to show yet; draws again once its time has passed. */
+/** D584: nothing to show yet; draws again once its time has passed (D587: and again for the next
+ *  one, when the soonest of several has passed). */
 function Wake({ ms }: { ms: number }) {
+  const at = Math.ceil((Date.now() + ms) / 1000);
   useEffect(() => {
+    if (ms <= 0) return;
     const h = setTimeout(() => A.changed(), ms + 50);
     return () => clearTimeout(h);
-  }, [ms > 0]);
+  }, [at]);
   return null;
 }
 
-/** D584: whether an earlier item of the same living message already holds the one waiting presence. */
-function wordsHeldBefore(news: LivingItem[], i: number): boolean {
-  return news.slice(0, i).some((it) => {
+/** D587: what the partner is still putting into its own words: a finished task's result, or a
+ *  task's open question, with how long yet. */
+function itemWait(it: LivingItem): { kind?: "result" | "relay"; ms: number } {
+  if (it.kind === "done" || it.kind === "failed") {
     const task = A.S.tasks.get(it.taskId);
-    return !!task && wordsDueIn(task) > 0;
-  });
+    const ms = task ? wordsDueIn(task) : 0;
+    return ms > 0 ? { kind: "result", ms } : { ms: 0 };
+  }
+  if (it.kind === "decision") {
+    const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
+    const ms = d && openAsk(d) ? relayDueIn(d) : 0;
+    return ms > 0 ? { kind: "relay", ms } : { ms: 0 };
+  }
+  return { ms: 0 };
+}
+
+/** D587: every living message's words still on their way, as one waiting line for the whole
+ *  conversation: which it says (a result before a question), the soonest one's time left, and
+ *  the messages that hold nothing else (not drawn until their words come). */
+export function conversationWait(rows: Entry[], livingItems: (e: Entry) => LivingItem[]): { kind?: "result" | "relay"; ms: number; hidden: Set<number> } {
+  let kind: "result" | "relay" | undefined;
+  let ms = 0;
+  const hidden = new Set<number>();
+  for (const e of rows) {
+    const items = e.living ? livingItems(e) : e.decision ? [{ taskId: "", kind: "decision", text: "", decisionId: e.decision.decisionId } as LivingItem] : [];
+    if (!items.length) continue;
+    let all = true;
+    for (const it of items) {
+      const w = itemWait(it);
+      if (!w.kind) {
+        all = false;
+        continue;
+      }
+      if (!kind || (w.kind === "result" && kind === "relay")) kind = w.kind;
+      ms = ms ? Math.min(ms, w.ms) : w.ms;
+    }
+    if (all) hidden.add(e.firstSeq);
+  }
+  return { kind, ms, hidden };
 }
 
 /** D549: the task couldn't start and its own fixes hold 换谁来做: the meta line leaves its link out (shown once). */
@@ -1029,7 +1065,7 @@ function cantSwitches(task: Task): boolean {
 /** A living item the partner didn't report itself, said as one sentence (D104): a task that
  *  didn't work, or one that came back. Work under way and waits are not said; the header and
  *  On hand carry them (with Details shown, they show as lines). */
-function News({ it, k, owns, held }: { it: LivingItem; k: string; owns: boolean; held?: boolean }) {
+function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   const task = A.S.tasks.get(it.taskId);
   const wait = task ? wordsDueIn(task) : 0;
   useEffect(() => {
@@ -1037,10 +1073,10 @@ function News({ it, k, owns, held }: { it: LivingItem; k: string; owns: boolean;
     const h = setTimeout(() => A.changed(), wait + 50);
     return () => clearTimeout(h);
   }, [wait > 0]);
-  // The partner is putting the result into its own words (D124): its waiting presence holds the
-  // place, not a template line that its message replaces a minute later. D584: several results
-  // at once share one presence (the first holds it; the others wait unseen behind it).
-  if (wait > 0) return held ? null : <Presence kind="result" />;
+  // The partner is putting the result into its own words (D124): not a template line that its
+  // message replaces a minute later. D587: the one waiting line at the conversation's end stands
+  // for it, however many living messages wait.
+  if (wait > 0) return null;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
   // D549: a task that couldn't start says why without the card's own lead (没能开始：), which
@@ -1103,9 +1139,10 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
     const h = setTimeout(() => A.changed(), wait + 50);
     return () => clearTimeout(h);
   }, [wait > 0]);
-  // The partner is putting a task's question into its own words (D129): its waiting presence
-  // holds the place; the task's own wording never shows in the conversation first.
-  if (wait > 0) return <Presence kind="relay" />;
+  // The partner is putting a task's question into its own words (D129): the task's own wording
+  // never shows in the conversation first. D587: the one waiting line at the conversation's end
+  // stands for it.
+  if (wait > 0) return null;
   // D151: a sign-in ask opens the live view instead of Go.
   // D193: a call's Go card or a question from the line: the whole card, in the conversation too.
   if (d.call)
@@ -1236,7 +1273,8 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
 /** How long a task's question waits for the partner's own words before its own wording stands in. */
 const RELAY_MS = 60_000;
 function relayDueIn(d: DecisionState): number {
-  if (!d.taskId || d.said || A.status === "offline" || !d.askedAt) return 0;
+  // D587: a direct done's ask is never relayed: its own words show at once.
+  if (!d.taskId || d.said || d.direct || A.status === "offline" || !d.askedAt) return 0;
   const at = Date.parse(d.askedAt);
   return Number.isNaN(at) ? 0 : Math.max(0, at + RELAY_MS - Date.now());
 }
@@ -1244,10 +1282,12 @@ function relayDueIn(d: DecisionState): number {
 /** The living message without its card (D104): a small divider when the person was away, what
  *  didn't work or came back as sentences, then the asks: the one whose default comes soonest
  *  with its buttons, the rest gathered in one line until it is answered or opened. */
-function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOwner: Map<string, number> }) {
+function Living({ e, items: given, chipOwner }: { e: Entry; items: LivingItem[]; chipOwner: Map<string, number> }) {
   if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
   const away = A.livingAway.get(e.firstSeq)!;
   const shown = A.details === "shown";
+  // D587: what the partner is still putting into words is not drawn here (conversationWait).
+  const items = given.filter((it) => !itemWait(it).kind);
   const asks = items
     .filter((it) => it.kind === "decision")
     .map((it) => ({ it, d: it.decisionId ? A.S.decisions.get(it.decisionId) : undefined }))
@@ -1258,18 +1298,14 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
   const head = all ? waiting : waiting.slice(0, 1);
   const rest = waiting.length - head.length;
   const defaults = waiting.filter((x) => x.d.reversible).length;
-  // D584: what is said comes first; the results still being put into words wait last, as one presence
-  // where the partner's words will land.
-  const due = (it: LivingItem) => { const task = A.S.tasks.get(it.taskId); return task && wordsDueIn(task) > 0 ? 1 : 0; };
-  const news = items.filter((it) => it.kind === "failed" || it.kind === "done").sort((a, b) => due(a) - due(b));
-  const wordsHeld = news.some((it) => due(it) === 1);
+  const news = items.filter((it) => it.kind === "failed" || it.kind === "done");
   const lines = shown ? items.filter((it) => it.kind === "progress" || it.kind === "blocked") : [];
   if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
       {away && <div class="when"><Facts items={[t("living.away"), clockOf(e.ev.ts)]} /></div>}
       {news.map((it, i) => (
-        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} held={wordsHeldBefore(news, i)} />
+        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
       ))}
       {lines.length > 0 && (
         <div class="det lines">
@@ -1281,11 +1317,9 @@ function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOw
       {answered.map(({ it, d }) => (
         <Ask key={d.decisionId} d={d} taskId={it.taskId} />
       ))}
-      {head.map(({ it, d }) =>
-        // D584: a task's question still being put into words waits behind the one presence already
-        // there (a result on its way), never a second figure under the first.
-        wordsHeld && relayDueIn(d) > 0 ? <Wake key={d.decisionId} ms={relayDueIn(d)} /> : <Ask key={d.decisionId} d={d} taskId={it.taskId} />,
-      )}
+      {head.map(({ it, d }) => (
+        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
+      ))}
       {(rest > 0 || (head.length >= 2 && defaults >= 2)) && (
         <div class="qrow gather">
           {rest > 0 && (
@@ -2130,7 +2164,12 @@ export function Conversation() {
 }
 
 function ConvBody() {
-  const { rows, livingItems, chipOwner } = A.rows();
+  const all = A.rows();
+  const { livingItems, chipOwner } = all;
+  // D587: one waiting line for the whole conversation, at its end; a message holding only words on
+  // their way is not drawn until they come.
+  const waits = conversationWait(all.rows, livingItems);
+  const rows = waits.hidden.size ? all.rows.filter((e) => !waits.hidden.has(e.firstSeq)) : all.rows;
   const scroller = useRef<HTMLDivElement>(null);
   const dropping = useDropPaste(scroller, "");
   // D236: swipe right / long press / right click to reply; a selected part on a wide screen.
@@ -2197,7 +2236,9 @@ function ConvBody() {
             <span>{t("conn.queued")}</span>
           </div>
         )}
-        {A.thinking() && <Presence />}
+        {/* One figure at the end (D104, D587): the reply being thought of, else what is being put into words. */}
+        {A.thinking() ? <Presence /> : waits.kind && <Presence kind={waits.kind} />}
+        {waits.kind && <Wake ms={waits.ms} />}
         {/* D298: nothing can think and the first words aren't the opening: the key card here. */}
         {(A.S.first?.noBrain || keyJustAdded()) && !rows.some((r) => r.ai?.first) && <KeyCard />}
         <NotifyAsk />

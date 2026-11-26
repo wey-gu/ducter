@@ -447,7 +447,7 @@ const HEARD_MESSAGES = 60;
 const PLUMBING_RE = /\/worktrees\/|\.ducter\/|\bjob_[a-z0-9]{6,}|\bducter\/[a-z0-9][a-z0-9-]*|\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/i;
 
 /** Same rule as core's triggersPartner (principle 6). */
-function isTrigger(e: LogEvent): boolean {
+export function isTrigger(e: LogEvent): boolean {
   if (e.origin === "partner") return false;
   if (e.kind === "user_msg") return true;
   // D236: a question answered by a reply wakes it through the reply, which says so.
@@ -455,7 +455,8 @@ function isTrigger(e: LogEvent): boolean {
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
   // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
   if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
-  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  // D587: a done made in a turn the person opened in the task (direct) wakes nobody: they read it there.
+  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress" && !((e.body as Bodies["report"]).state === "done" && (e.body as Bodies["report"]).direct);
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];

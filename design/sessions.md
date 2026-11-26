@@ -52,8 +52,9 @@ Three ways back into a task, each with one meaning:
 as typed, never to the partner; its answer stands right under them in full (only its steps fold),
 whether it was working (a steer, seen at its next step), waiting, finished or asking. A question
 answered there leaves the task as it was (a finished one stays finished, nobody is nudged for a
-report), and the partner says nothing about the exchange unless the task then reports done, stuck
-or a decision (`focus-window.md` "How a task is shown").
+report), and the partner says nothing about the exchange unless the task then reports it is stuck
+or failed, or asks something outside a done; a done reported there (D587) only updates the card,
+and an ask it carries is its card (`focus-window.md` "How a task is shown").
 
 ## 从这一步开新任务 / New task from this step
 

@@ -348,7 +348,10 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         return "Already reported: this says the same as your last report, and the user hasn't written since, so nothing new was sent to them. End your turn now; any answer will arrive as a new message.";
       }
       // D437: a result that changed code, or something a Go would send, is read once by another AI first.
-      if (opts.freshLook?.take(ctx.taskId, body, docAgain)) {
+      // D587: never a plain done of a turn the person opened in the task: they read it as it came,
+      // and a look's message would be a turn they never asked for (one with an ask is still read).
+      const plainDirect = body.direct && body.state === "done" && !body.questions.some((q) => q.blocking) && !opts.freshLook?.waiting?.(ctx.taskId);
+      if (!plainDirect && opts.freshLook?.take(ctx.taskId, body, docAgain)) {
         const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
         return `${docAgain && opts.freshLook.heldWithDocWords ? opts.freshLook.heldWithDocWords : opts.freshLook.heldWords}${notShown}`;
       }

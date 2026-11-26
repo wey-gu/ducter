@@ -334,7 +334,11 @@ What the window writes is what the user reads when they open the task, in one co
   back to where it stood (Done, Done · checking, Didn't work, Waiting, Needs you; a task that stood
   at Working still owes its report). Their words closing its card are `inTask` (wakes nobody, moves
   nothing); a report made in their turn is `direct`, and a direct progress report stays out of the
-  living message;
+  living message. A direct **done** (D587) only updates the card: it wakes nobody, says no line in
+  the conversation and gets no fresh look (D437), since they read it as it came; one that carries
+  an ask (merge it?) is its own ask card, asked in the task's words with no partner relay
+  (`decision.direct`), and is still read once by another AI. A direct failure, block or question
+  goes to the partner as before;
 - a **message the user sends** (D325) carries a receipt only when it says something: **在发… /
   Sending…** or **没送到 / Didn't get through**, and for a steer what the agent did with it.
   **Idle**, Return sends it as the next turn. **While it works**, Return steers (`task_send`

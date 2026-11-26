@@ -351,3 +351,38 @@ test("D585: the person's own words in a task close its question without waking t
   const items = kinds(log, "living_msg").slice(before).flatMap((e) => (e.body as Bodies["living_msg"]).items);
   expect(items.some((i) => i.taskId === "t2")).toBe(false);
 });
+
+test("D587: a done made in the person's own turn in the task wakes nobody and says nothing in the conversation; an ask it carries is its card, said in its own words", async () => {
+  const { triggersPartner } = await import("../src/core.ts");
+  const { log, tasks } = setup();
+  openTask(log, "t1", "Review #551");
+  const before = kinds(log, "living_msg").length;
+  // The person asked in the task's box; the agent answered and reported done in that turn.
+  const done = report(log, "t1", { state: "done", summary: "Reviewed #551: two comments posted.", direct: true });
+  await tick();
+  expect(triggersPartner(done)).toBe(false);
+  // The card takes note: it is finished, as the task said.
+  expect(tasks.get("t1")!.attention).toBe("done_claimed");
+  const items = () => kinds(log, "living_msg").slice(before).flatMap((e) => (e.body as Bodies["living_msg"]).items);
+  expect(items().some((i) => i.taskId === "t1")).toBe(false);
+  // The same done from the task's own turn wakes the partner, which says it, as before.
+  expect(triggersPartner({ ...done, body: { ...(done.body as Bodies["report"]), direct: undefined } } as never)).toBe(true);
+  // Failed and needs_input from the person's turn still go to the partner (D585 (c)).
+  expect(triggersPartner({ ...done, body: { ...(done.body as Bodies["report"]), state: "failed" } } as never)).toBe(true);
+
+  // A done that needs their decision (merge it?): the ask card carries it, marked direct (nobody
+  // relays it), and still nobody is woken.
+  openTask(log, "t2", "Fix CI #1592");
+  const merge = report(log, "t2", { state: "done", summary: "CI is green.", direct: true, questions: [{ id: "q", text: "Merge #1592 now?", blocking: true, default: "merge", reversible: false }] });
+  await tick();
+  expect(triggersPartner(merge)).toBe(false);
+  const ask = kinds(log, "decision").at(-1)!.body as Bodies["decision"];
+  expect(ask).toMatchObject({ taskId: "t2", question: "Merge #1592 now?", direct: true });
+  expect(tasks.get("t2")!.attention).toBe("needs_you");
+  expect(items().filter((i) => i.taskId === "t2").map((i) => i.kind)).toContain("decision");
+  expect(items().some((i) => i.taskId === "t2" && i.kind === "done")).toBe(false);
+  // The same ask from the task's own turn is relayed by the partner, as before.
+  report(log, "t2", { state: "needs_input", summary: "Which branch?", questions: [{ id: "q2", text: "Which branch?", blocking: true, default: "main", reversible: true }] });
+  await tick();
+  expect((kinds(log, "decision").at(-1)!.body as Bodies["decision"]).direct).toBeUndefined();
+});

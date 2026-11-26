@@ -37,6 +37,8 @@ export function itemsFor(c: TaskCard, decisions: Decisions, pending: string[]): 
       return [{ ...base, kind: "failed", text: r?.summary ?? c.reason ?? "Failed" }];
     case "done":
     case "done_claimed": {
+      // D587: a done made in a turn the person opened in the task is read there: no line here.
+      if (r?.state === "done" && r.direct) return [];
       const item: LivingItem = { ...base, kind: "done", text: r?.summary ?? "Done" };
       if (r?.evidence.length) item.evidence = r.evidence;
       return [item];

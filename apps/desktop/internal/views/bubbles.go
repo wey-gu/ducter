@@ -132,7 +132,8 @@ var relayWait = 60 * time.Second
 // own words: while the partner is putting it into its own, its waiting
 // presence holds the place. Zero once late or offline.
 func (a *App) relayDueIn(d *store.DecisionState) time.Duration {
-	if d.TaskID == "" || d.Said != "" || a.Status != client.Connected {
+	// D587: a direct done's ask is never relayed: its own words show at once.
+	if d.TaskID == "" || d.Said != "" || d.Direct || a.Status != client.Connected {
 		return 0
 	}
 	at := store.ParseTime(d.AskedAt)

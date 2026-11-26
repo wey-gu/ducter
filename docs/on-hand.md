@@ -172,8 +172,10 @@ answer fold into one line you can open; what it says to you never folds away.
   question it answers leaves the task as it was: still done, still waiting for your answer, still
   waiting on its check.
 - **Your partner stays out of it.** What you and the task say to each other stays in the task; your
-  partner doesn't repeat it in your conversation. It still tells you when the task finishes, gets
-  stuck or needs a decision from you.
+  partner doesn't repeat it in your conversation. If the task finishes while you're talking to it,
+  you already see that in the task: its card says **Done**, and nothing more comes to your
+  conversation. If finishing needs your decision (to merge it, say), its question waits for you as
+  usual. Your partner still tells you when the task gets stuck or fails.
 
 ## On a Mac, an iPad with a keyboard, or a browser
 

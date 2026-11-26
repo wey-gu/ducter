@@ -137,6 +137,43 @@ describe("D585: a question typed in the task", () => {
   });
 });
 
+describe("D587: a done reported in the person's own turn", () => {
+  test("marked direct, logged as it came: another AI's look never takes it, so no message comes back to the task", async () => {
+    const took: string[] = [];
+    registerTaskTools(core, { freshLook: { take: (id) => (took.push(id), true), heldWords: "held", waiting: () => false } });
+    const { runner, inputs } = await taskThat(
+      async (t) => t.say("Started."),
+      async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => report("done", "Reviewed #551: two comments posted."))),
+    );
+    // Its own first turn said nothing: nudged, and its report is the look's (the old rule).
+    await waitFor(() => took.length === 1, "the look takes its own turn's report");
+    await waitFor(() => turnsEnded() >= 2, "nudge turn");
+    await runner.send(ID, "review #551 then", undefined, "user", "d1");
+    await waitFor(() => reports().some((r) => r.direct), "the done of the person's turn");
+    await waitFor(() => turnsEnded() >= 3, "the person's turn");
+    expect(took).toHaveLength(1);
+    expect(reports().at(-1)).toMatchObject({ state: "done", direct: true });
+    expect(inputs.filter((i) => i === NUDGE)).toHaveLength(1);
+    await runner.dispose();
+  });
+
+  test("one with an ask (merge it?) is still read once: what a Go would send keeps its look", async () => {
+    const took: Bodies["report"][] = [];
+    registerTaskTools(core, { freshLook: { take: (_id, body) => (took.push(body), false), heldWords: "held", waiting: () => false } });
+    const { runner } = await taskThat(
+      async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => report("done", "The mailbox is open."))),
+      async (t) =>
+        void (await t.tool("mcp__ducter__report_to_main", "{}", () =>
+          core.call("report_to_main", { state: "done", summary: "CI is green.", questions: [{ id: "q", text: "Merge #1592 now?", blocking: true, default: "merge", reversible: false }] }, ID),
+        )),
+    );
+    await runner.send(ID, "is CI green?", undefined, "user", "d2");
+    await waitFor(() => reports().length === 2, "its done with the ask");
+    expect(took.at(-1)).toMatchObject({ direct: true, state: "done" });
+    await runner.dispose();
+  });
+});
+
 describe("D585: words sent while it works", () => {
   test("steered into the running turn with the line; the turn is its own work and still owes its report", async () => {
     let release!: () => void;

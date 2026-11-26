@@ -9,6 +9,25 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## What tasks used, after D588 (`focus-window.md` "What tasks used", research/235 #2)
+
+- [ ] **The line in the apps.** Settings › Overview and the limit card in the opened task's context
+  say the week's top line (what used the most of this agent's limit) with one tap to the list, in
+  the Mac app and the web; shared controls, shots both themes and languages (the UI bar). Trigger:
+  the author has run `ducter usage` on hel and the numbers read right.
+- [ ] **The partner can answer "what used my limit / my key".** One fact in the `[devices]` world
+  line (D478) or a read tool; a persona or tool change, so a D175 eval with a scenario for it.
+  Trigger: the line in the apps.
+- [ ] **The partner's own turns and Ducter's own looks counted.** The partner logs its turn usage on
+  the partner stream (today only `contextTokens` is read, `partner.ts`); judges, second looks
+  (D437) and proactive reads (`cross.ts` already budgets tokens) log theirs as `ducter_look`
+  usage. Trigger: with the line in the apps, so its total is the whole truth.
+- [ ] **Money, for a key paid by use.** Price a paid key's tokens from the provider's own list
+  (cached input at its own price), never a subscription's. Trigger: a person on a paid key (D440)
+  asks, or the line in the apps ships.
+- [ ] **Run it on hel.** `ducter usage --days 14` on the author's home, read only; check a
+  300-round loop and a big refactor land in the order the author expects. Trigger: next release.
+
 ## Talking to a task in its box, after D585 (`focus-window.md` "How a task is shown")
 
 - [ ] **A live reply, token by token.** The agent's words show when each message ends (the

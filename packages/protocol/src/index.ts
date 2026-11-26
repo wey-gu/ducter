@@ -63,6 +63,7 @@ export * from "./handover.ts";
 export * from "./hand-group.ts";
 export * from "./standing.ts";
 export * from "./asks.ts";
+export * from "./usage.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
@@ -1694,6 +1695,8 @@ export type ClientFrame =
   | { t: "proactive_cross" }
   // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
   | { t: "repairs_week"; weeks?: number }
+  // D588: `ducter usage`: the tokens tasks used over the last `days` (1–31) in the person's days (`tz`: minutes east of UTC), counted from the Log; answered with usage_days_result.
+  | { t: "usage_days"; days?: number; tz?: number; top?: number }
   // D514: `ducter worktrees [--plan]`: every working copy Ducter made, what goes when and what stays and why; changes nothing. Answered with worktrees_plan_result.
   | { t: "worktrees_plan" }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
@@ -2060,6 +2063,8 @@ export type ServerFrame =
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
   | { t: "proactive_cross_result"; run?: import("./proactive.ts").ShadowRun; error?: string }
   | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
+  // D588: `ducter usage`: what the tasks used, answered on the asking socket only.
+  | { t: "usage_days_result"; report?: import("./usage.ts").UsageReport; error?: string }
   | { t: "worktrees_plan_result"; plan?: import("./tidy.ts").TidyPlan; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }

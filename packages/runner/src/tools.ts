@@ -284,7 +284,7 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
   core.mcp.register(
     "task",
     "report_to_main",
-    "Report to Ducter (the user's partner): when done, failed, blocked, or needing a decision. The only way to reach the user, except a reply to the user's own message in this task, which they read right under it.",
+    "Report to Ducter (the user's partner): when done, failed, blocked, or needing a decision. The only way to reach the user, except a reply to their own message in this task.",
     reportToMainSchema,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("report_to_main requires a task token");

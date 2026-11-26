@@ -341,6 +341,20 @@ func (a *App) brandTile(c *ui.Context, name string, faded bool) func() {
 			src = theme.FadedBrand(name, t)
 		}
 		if src == nil {
+			// D622: a product with no faithful mark yet (Feishu / Lark keeps its F) keeps a
+			// letter on the same white clay tile, never a blank one (todo.md's owed marks).
+			letter := "?"
+			if runes := []rune(strings.TrimSpace(name)); len(runes) > 0 {
+				letter = strings.ToUpper(string(runes[0]))
+			}
+			ink := t.Ink
+			if faded {
+				ink = t.InkMuted
+			}
+			ui.Row(c.Key("ltile:"+name)).Size(40, 40).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
+				Shadow(0, 2, 0, 0, t.Line).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+				uiText(c, letter).FontSize(t.LG).FontWeight(800).TextColor(ink).LineHeight(1)
+			})
 			return
 		}
 		if _, ok := src.(*ui.Bitmap); ok {

@@ -1,14 +1,15 @@
 package protocol
 
 // D276, 聊天软件 / Chat apps: the partner in the person's own Telegram bot
-// and Slack app, more windows on the one conversation. The same frames as
+// and Slack app, more windows on the one conversation. D622: Feishu /
+// Lark through the person's own self-built app. The same frames as
 // packages/protocol/src/channels.ts.
 
 // ChannelView is one chat app as Settings shows it. State: off | scan |
 // starting | unlinked | linked | cant_connect (Reason: token | blocked |
-// conflict | network; WeChat back at off: expired | unavailable).
+// conflict | network | setup; WeChat back at off: expired | unavailable).
 type ChannelView struct {
-	Kind       string         `json:"kind"` // telegram | slack | wechat
+	Kind       string         `json:"kind"` // telegram | slack | feishu | wechat
 	State      string         `json:"state"`
 	Bot        *ChannelBot    `json:"bot,omitempty"`
 	Linked     *ChannelLinked `json:"linked,omitempty"`
@@ -21,6 +22,9 @@ type ChannelView struct {
 	// D531, Slack: the app was made before the current manifest (its own
 	// name and face, @-mentions): Settings asks for a reinstall.
 	Reinstall bool `json:"reinstall,omitempty"`
+	// D622, Feishu: the open platform the app was made on (feishu.cn or
+	// larksuite.com).
+	Domain string `json:"domain,omitempty"`
 }
 
 // ChannelScan is WeChat's QR (D301): rows of "1"/"0", the same text as a
@@ -51,13 +55,17 @@ type ChannelsReq struct {
 }
 
 // ChannelConnectReq pastes the token(s) once (T "channel_connect"): Telegram's
-// Token from BotFather; Slack's BotToken (xoxb-) and AppToken (xapp-).
+// Token from BotFather; Slack's BotToken (xoxb-) and AppToken (xapp-);
+// Feishu's AppID and AppSecret, and the Domain it was made on (D622).
 type ChannelConnectReq struct {
-	T        string `json:"t"`
-	Kind     string `json:"kind"`
-	Token    string `json:"token,omitempty"`
-	BotToken string `json:"botToken,omitempty"`
-	AppToken string `json:"appToken,omitempty"`
+	T         string `json:"t"`
+	Kind      string `json:"kind"`
+	Token     string `json:"token,omitempty"`
+	BotToken  string `json:"botToken,omitempty"`
+	AppToken  string `json:"appToken,omitempty"`
+	AppID     string `json:"appId,omitempty"`
+	AppSecret string `json:"appSecret,omitempty"`
+	Domain    string `json:"domain,omitempty"`
 	// D301: WeChat takes no token; VerifyCode answers the number WeChat shows.
 	VerifyCode string `json:"verifyCode,omitempty"`
 }

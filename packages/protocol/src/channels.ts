@@ -3,10 +3,12 @@
 // sockets; the apps only connect, pair, see who is linked and unlink.
 // D301: WeChat through WeChat's own ClawBot (research/105): the person scans a QR with their own
 // WeChat, and that scan is the pairing; it answers inside 24 hours of their words, with no buttons.
+// D622: Feishu / Lark through the person's own self-built app (企业自建应用), receiving events
+// over the long connection (WebSocket, no public address). One card covers feishu.cn and larksuite.com.
 
 /** The chat apps a conversation can also be reached from. */
-export type ChannelKind = "telegram" | "slack" | "wechat";
-export const CHANNEL_KINDS: readonly ChannelKind[] = ["telegram", "slack", "wechat"];
+export type ChannelKind = "telegram" | "slack" | "feishu" | "wechat";
+export const CHANNEL_KINDS: readonly ChannelKind[] = ["telegram", "slack", "feishu", "wechat"];
 
 /**
  * One chat app as Settings shows it.
@@ -26,11 +28,13 @@ export interface ChannelView {
   linked?: { name: string; at: string };
   /**
    * cant_connect: token = the service refused the token; blocked = the person blocked the bot or
-   * left; conflict = another program reads this bot's messages; network = the service can't be reached.
+   * left; conflict = another program reads this bot's messages; network = the service can't be reached;
+   * setup = the app itself isn't ready (Feishu: a missing bot capability, permission, event or
+   * published version).
    * D301, WeChat back at off after a scan: expired = the QR ran out with no scan confirmed;
    * unavailable = WeChat stopped this scan (too many wrong numbers).
    */
-  reason?: "token" | "blocked" | "conflict" | "network" | "expired" | "unavailable";
+  reason?: "token" | "blocked" | "conflict" | "network" | "setup" | "expired" | "unavailable";
   /** Someone other than the linked account wrote to the bot (at most once a day; nothing is kept of it). */
   strangerAt?: string;
   /**
@@ -50,6 +54,8 @@ export interface ChannelView {
    * name and face there; Settings offers the new manifest and says to reinstall.
    */
   reinstall?: boolean;
+  /** D622, Feishu: the open platform the app was made on (feishu.cn or larksuite.com). */
+  domain?: "feishu" | "lark";
 }
 
 export type ChannelClientFrame =
@@ -57,7 +63,8 @@ export type ChannelClientFrame =
   | { t: "channels" }
   // Paste the token(s) once: Telegram's from BotFather; Slack's bot token (xoxb-) and app-level token (xapp-).
   // WeChat (D301): no token; it puts up a QR (a channels frame with scan), or answers WeChat's number (verifyCode).
-  | { t: "channel_connect"; kind: ChannelKind; token?: string; botToken?: string; appToken?: string; verifyCode?: string }
+  // Feishu (D622): the app's App ID and App Secret, and the open platform it was made on.
+  | { t: "channel_connect"; kind: ChannelKind; token?: string; botToken?: string; appToken?: string; appId?: string; appSecret?: string; domain?: "feishu" | "lark"; verifyCode?: string }
   // A one-time code (10 minutes, one use): Telegram as a t.me deep link, Slack as words to DM
   // (D531: with a link that opens the app's messages in Slack).
   | { t: "channel_code"; kind: ChannelKind }
@@ -78,4 +85,4 @@ export type ChannelServerFrame =
   // imessage (D323): the Macs whose Ducter carries iMessage now (a bridge that isn't off), by
   // computer name; here: the socket this frame goes to. Absent: no Mac carries it.
   | { t: "channels"; channels: ChannelView[]; slackManifest: string; imessage?: IMessageCarrier[] }
-  | { t: "channel_result"; kind: ChannelKind; op: "connect" | "code" | "unlink" | "forget"; ok: boolean; reason?: "token" | "network" | "busy" | "not_connected" | "expired" | "unavailable"; code?: string; link?: string; expiresAt?: string };
+  | { t: "channel_result"; kind: ChannelKind; op: "connect" | "code" | "unlink" | "forget"; ok: boolean; reason?: "token" | "network" | "setup" | "busy" | "not_connected" | "expired" | "unavailable"; code?: string; link?: string; expiresAt?: string };

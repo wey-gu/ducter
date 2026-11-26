@@ -121,6 +121,27 @@ second looks, the proactive reads) are not in task streams and are not counted; 
 priced. The next slices (a line in Settings › Overview and on the limit card, the partner able to
 answer "what ate my week", then the partner's own turns) are in `todo.md`.
 
+## 4. Built here: #5, Feishu / Lark (D622)
+
+The branch takes gap #5's first app: Feishu in China and Lark abroad as one card, the person's own
+**企业自建应用 / Custom App**, with events over the open platform's **long connection** (a
+WebSocket) and no public address. The official open API only: `tenant_access_token`,
+`bot/v3/info`, `POST /callback/ws/endpoint`, `im/v1/messages` send/reply, `PUT /im/v1/messages/:id`
+edit, and the protobuf `Frame` (seq 1, log 2, service 3, method 4, headers 5, payload 8) with a
+`{"code":200}` ack inside 3 s and a ping every `ClientConfig.PingInterval`.
+Sources: [sending a message](https://open.feishu.cn/document/server-docs/im-v1/message/create.md?lang=zh-CN),
+[editing a message](https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/update.md),
+[the bot's info](https://open.feishu.cn/document/client-docs/bot-v3/obtain-bot-info.md?lang=zh-CN),
+[opening a bot chat](https://open.feishu.cn/document/common-capabilities/applink-protocol/supported-protocol/open-a-bot)
+(DOCUMENTED), and the long-connection codec as the Go/Rust SDKs write it (VERIFIED in their source:
+the `Frame` fields, the ack, the split-packet headers; the endpoint body's `AppID`/`AppSecret`
+spelling is the one still inferred from the SDKs). The app asks for
+`im:message.p2p_msg:readonly`, `im:message:send_as_bot` and `im:message:update`, and the event
+`im.message.receive_v1`; only a direct chat is the person's window. No buttons, files, groups or
+threads in this slice; they are in `todo.md` with the live check on a real tenant (the branch has
+no tenant and never calls one). Built and checked against a fake open platform and long connection
+only (`packages/core/test/fake-feishu.ts` and `channels-feishu.test.ts`); zero live calls.
+
 ## Implications for Ducter
 
 1. Proof (#1) stays the first thing the author's server should run; nothing here replaces it.
@@ -132,8 +153,12 @@ answer "what ate my week", then the partner's own turns) are in `todo.md`.
    the spend line reaches the clients.
 5. `roadmap.md`'s "Quota awareness" under Next is stale after D503 and should move to Works today
    with "fakes only" (done in this change).
+6. Gap #5's first app is built with fakes (D622): Feishu / Lark is one card over both open
+   platforms, a direct-message window with the same pairing and stranger rules; the live tenant
+   check and the group/files/buttons slices stay in `todo.md`. DingTalk and WeCom are still open.
 
 **Summary.** Since research/218 most of its list closed in code (D502, D503, D505) or stays the
 author's (live checks, the errand, the bare Mac, the mic). Against the open agent app the clearest
 buildable gap is that nobody can see what the work used; Ducter has every turn's tokens in its Log
-and never adds them up. D588 adds them up in `ducter usage`.
+and never adds them up. D588 adds them up in `ducter usage`. Gap #5's first app, Feishu / Lark, is
+built here with fakes (D622).

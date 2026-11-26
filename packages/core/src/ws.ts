@@ -2757,10 +2757,18 @@ export function createWsHandler(deps: WsDeps) {
           ws.data.channels = true;
           return send(ws, channelsFrame(ws));
         }
-        const kind = f.kind === "slack" ? "slack" : f.kind === "telegram" ? "telegram" : f.kind === "wechat" ? "wechat" : undefined;
+        const kind = f.kind === "slack" ? "slack" : f.kind === "telegram" ? "telegram" : f.kind === "feishu" ? "feishu" : f.kind === "wechat" ? "wechat" : undefined;
         if (!kind) throw new Error("which chat app?");
         if (f.t === "channel_connect") {
-          const r = await ch.connect(kind, { token: f.token, botToken: f.botToken, appToken: f.appToken, ...(f.verifyCode ? { verifyCode: String(f.verifyCode) } : {}) });
+          const r = await ch.connect(kind, {
+            token: f.token,
+            botToken: f.botToken,
+            appToken: f.appToken,
+            ...(f.appId ? { appId: String(f.appId) } : {}),
+            ...(f.appSecret ? { appSecret: String(f.appSecret) } : {}),
+            ...(f.domain === "lark" || f.domain === "feishu" ? { domain: f.domain } : {}),
+            ...(f.verifyCode ? { verifyCode: String(f.verifyCode) } : {}),
+          });
           return send(ws, { t: "channel_result", kind, op: "connect", ok: r.ok, ...(r.reason ? { reason: r.reason } : {}) });
         }
         if (f.t === "channel_code") {

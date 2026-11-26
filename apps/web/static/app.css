@@ -12469,6 +12469,18 @@ button.chip-file {
 .chat-aside .btn.text + .btn.text {
   margin-inline-start: 0;
 }
+.chat-scopes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
+  max-width: 100%;
+}
+.chat-scopes .chat-chip {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .chat-chip {
   display: inline-block;
   padding: 3px var(--s2);
@@ -14147,6 +14159,10 @@ button.chip-file {
 .g-tile.faded img { filter: var(--faded-art); }
 /* D314: a product's own mark at 24 on the white clay tile; an app icon (Nowledge Mem) is the tile itself. */
 .g-tile .brand-mark { display: block; color: var(--ink); }
+/* D622: a product with no faithful mark yet (Feishu / Lark keeps its F) keeps a letter on
+   the same white clay tile, in the mark's place (D314's rule: a letter, never a blank tile). */
+.g-tile .brand-letter { display: grid; place-items: center; width: 100%; height: 100%; font-family: var(--head); font-size: var(--lg); font-weight: 800; line-height: 1; color: var(--ink); }
+.g-tile.brand.faded .brand-letter { color: var(--faded-ink); }
 .g-tile .brand-mark svg { display: block; width: 100%; height: 100%; }
 /* A faded drawn mark: its shape in the muted ink, its white holes the tile's ground (the Mac's theme.Silhouette). */
 .g-tile.brand.faded .brand-mark { color: var(--faded-ink); }

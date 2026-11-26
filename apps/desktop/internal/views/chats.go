@@ -10,8 +10,8 @@ import (
 )
 
 // 设置 › 聊天软件 / Settings › Chat apps (D276, design/channels.md §6): the
-// partner in the person's own Telegram bot and Slack app, more windows on
-// the one conversation. Paste the token(s) once, link the account with a
+// partner in the person's own Telegram bot, Slack app and Feishu / Lark
+// Custom App (D622, §14), more windows on the one conversation. Paste the token(s) once, link the account with a
 // one-time code, see who is linked, unlink. A token goes to the home once,
 // in channel_connect, and never comes back.
 //
@@ -27,12 +27,21 @@ const TabChats = "chats"
 
 // Where a setup's links go.
 const (
-	botFatherURL = "https://t.me/BotFather"
-	slackAppsURL = "https://api.slack.com/apps?new_app=1"
+	botFatherURL  = "https://t.me/BotFather"
+	slackAppsURL  = "https://api.slack.com/apps?new_app=1"
+	feishuAppsURL = "https://open.feishu.cn/app"
+	larkAppsURL   = "https://open.larksuite.com/app"
 )
+
+// D622: the exact names the Feishu / Lark app asks for; the web card shows the same three.
+var feishuScopes = []string{"im:message.p2p_msg:readonly", "im:message:send_as_bot", "im:message:update"}
+var feishuEvents = []string{"im.message.receive_v1"}
 
 type chatsState struct {
 	token, app map[string]string // what is typed into each card's fields
+	appID      map[string]string // D622, Feishu: App ID, App Secret and the open platform
+	secret     map[string]string
+	domain     map[string]string
 	busy       map[string]bool
 	bad        map[string]string // the last connect's refusal: token | network
 	code       map[string]protocol.ServerFrame
@@ -57,6 +66,9 @@ func (a *App) chatsInit() {
 	s := &a.chats
 	if s.token == nil {
 		s.token, s.app, s.busy, s.bad, s.code = map[string]string{}, map[string]string{}, map[string]bool{}, map[string]string{}, map[string]protocol.ServerFrame{}
+	}
+	if s.appID == nil {
+		s.appID, s.secret, s.domain = map[string]string{}, map[string]string{}, map[string]string{}
 	}
 	if s.open == nil {
 		s.open = map[string]bool{}
@@ -97,10 +109,7 @@ func (a *App) chatsPanel(c *ui.Context) {
 		for _, v := range a.chatOrder(f.Channels) {
 			// D404: the moment an app becomes linked is answered once, never on opening the pane.
 			if prev, seen := a.chats.was[v.Kind]; seen && prev != "linked" && v.State == "linked" {
-				who := chatNames[v.Kind]
-				if v.Kind == "wechat" {
-					who = a.L.T("chats.wechat")
-				}
+				who := a.chatName(v.Kind)
 				a.say("chat:"+v.Kind, a.L.T("said.chats.linked", who))
 			}
 			a.chats.was[v.Kind] = v.State
@@ -144,11 +153,23 @@ func (a *App) chatOrder(vs []protocol.ChannelView) []protocol.ChannelView {
 	return out
 }
 
+// chatName is a chat app's name in the person's language: Telegram and Slack are theirs; Feishu /
+// Lark is named by the language (D622); WeChat is 微信 in Chinese.
+func (a *App) chatName(kind string) string {
+	if kind == "feishu" {
+		return a.L.T("chats.feishu")
+	}
+	if kind == "wechat" {
+		return a.L.T("chats.wechat")
+	}
+	return chatNames[kind]
+}
+
 func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
-	name := chatNames[v.Kind]
+	name := a.chatName(v.Kind)
 	switch v.State {
 	case "linked":
-		return a.L.T("chats.state.linked", botLine(v)), sideDone
+		return a.L.T("chats.state.linked", a.botLine(v)), sideDone
 	case "unlinked":
 		return a.L.T("chats.state.unlinked"), sideInk
 	case "starting":
@@ -159,6 +180,8 @@ func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
 			return a.L.T("chats.cant.key", name), sideFailed
 		case "blocked", "conflict":
 			return a.L.T("chats.cant." + v.Reason), sideFailed
+		case "setup":
+			return a.L.T("chats.cant.setup"), sideFailed
 		}
 		return a.L.T("chats.cant.network", name), sideFailed
 	}
@@ -167,9 +190,9 @@ func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {
 
 // botLine is the partner's own bot there: @handle on Telegram, the
 // workspace on Slack, else its name.
-func botLine(v protocol.ChannelView) string {
+func (a *App) botLine(v protocol.ChannelView) string {
 	if v.Bot == nil {
-		return chatNames[v.Kind]
+		return a.chatName(v.Kind)
 	}
 	switch {
 	case v.Bot.Handle != "":
@@ -325,12 +348,15 @@ func (a *App) chatChip(c *ui.Context, text string, size float32) {
 
 // chatField is a real field: its label over it, a white input with a
 // hairline that turns ink while typing in it.
-func (a *App) chatField(c *ui.Context, key, label string, v *string, placeholder string) {
+func (a *App) chatField(c *ui.Context, key, label string, v *string, placeholder string, plain ...bool) {
 	t := a.T
 	ui.Column(c.Key("chat-field:" + key)).Gap(t.S1).MaxWidth(460).Children(func() {
 		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		in := ui.TextInput(c.Key("chat-input:"+key), v).Placeholder(placeholder).Label(label).Password().
+		in := ui.TextInput(c.Key("chat-input:"+key), v).Placeholder(placeholder).Label(label).
 			FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Surface)
+		if len(plain) == 0 || !plain[0] {
+			in.Password()
+		}
 		edge := t.Line2
 		if in.Focused() {
 			edge = t.InkSoft
@@ -341,10 +367,16 @@ func (a *App) chatField(c *ui.Context, key, label string, v *string, placeholder
 
 func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 	t := a.T
-	name := chatNames[v.Kind]
+	name := a.chatName(v.Kind)
 	who := "chats.tg.who"
 	if v.Kind == "slack" {
 		who = "chats.sl.who"
+	}
+	if v.Kind == "feishu" {
+		who = "chats.fs.who"
+		if v.Domain == "lark" {
+			who = "chats.fs.who.lark"
+		}
 	}
 	a.chatGroup(c, "chat-"+v.Kind, name, func() {
 		line, tone := a.chatState(v)
@@ -360,9 +392,9 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			}
 		}
 		switch {
-		case v.State == "off" || (v.State == "cant_connect" && v.Reason == "token"):
-			a.chatConnect(c, v.Kind, manifest)
-			a.chatFoot(c, "connect:"+v.Kind, a.L.T(who), func() { a.chatConnectButton(c, v.Kind) })
+		case v.State == "off" || (v.State == "cant_connect" && (v.Reason == "token" || (v.Kind == "feishu" && v.Reason == "setup"))):
+			note := a.chatConnect(c, v.Kind, manifest, who)
+			a.chatFoot(c, "connect:"+v.Kind, a.L.T(note), func() { a.chatConnectButton(c, v.Kind) })
 			return
 		}
 		if v.Reinstall {
@@ -376,11 +408,19 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			if v.Linked != nil {
 				person = v.Linked.Name
 			}
+			whoLine := a.L.T("chats.linked.who", person)
+			if v.Kind == "feishu" && person == "" {
+				// Feishu's message event carries no name and the app asks for no contact scope.
+				whoLine = a.L.T("chats.fs.linked")
+				if v.Domain == "lark" {
+					whoLine = a.L.T("chats.fs.linked.lark")
+				}
+			}
 			goes := a.L.T("chats.linked.goes", name)
 			if v.Kind == "slack" {
 				goes = a.L.T("chats.sl.linked.goes") // D531: @-mentions in a channel too
 			}
-			a.chatRow(c, "linked:"+v.Kind, a.L.T("chats.linked.who", person), goes, nil)
+			a.chatRow(c, "linked:"+v.Kind, whoLine, goes, nil)
 		}
 		// D289: a destructive action is quiet until hovered, and asks in place.
 		if a.chats.forgetting == v.Kind {
@@ -408,10 +448,20 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 	})
 }
 
-func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
+func (a *App) chatConnect(c *ui.Context, kind, manifest, who string) string {
 	t := a.T
 	s := &a.chats
 	tok, app := s.token[kind], s.app[kind]
+	fsID, fsSecret, fsDomain := s.appID[kind], s.secret[kind], s.domain[kind]
+	if fsDomain == "" {
+		fsDomain = "feishu"
+	}
+	if kind == "feishu" {
+		who = "chats.fs.who"
+		if fsDomain == "lark" {
+			who = "chats.fs.who.lark"
+		}
+	}
 	a.chatBody(c, "connect:"+kind, func() {
 		if kind == "telegram" {
 			a.chatStep(c, 1, a.L.T("chats.tg.step1"), func() {
@@ -426,6 +476,48 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 			a.chatStep(c, 2, a.L.T("chats.tg.step2", a.personaName()), nil)
 			a.chatStep(c, 3, a.L.T("chats.tg.step3"), func() {
 				a.chatField(c, "chat-tg", a.L.T("chats.tg.key"), &tok, "123456789:AA…")
+			})
+		} else if kind == "feishu" {
+			step1, openLabel, openURL := "chats.fs.step1", "chats.fs.open", feishuAppsURL
+			if fsDomain == "lark" {
+				step1, openLabel, openURL = "chats.fs.step1.lark", "chats.fs.open.lark", larkAppsURL
+			}
+			a.chatStep(c, 1, a.L.T(step1), func() {
+				a.note(c, a.L.T("chats.fs.domain"))
+				labels := []string{a.L.T("chats.fs.domain.feishu"), a.L.T("chats.fs.domain.lark")}
+				sel := 0
+				if fsDomain == "lark" {
+					sel = 1
+				}
+				if i := a.choices(c, "chat-fs-domain", a.L.T("chats.fs.domain"), labels, sel); i >= 0 {
+					if i == 1 {
+						fsDomain = "lark"
+					} else {
+						fsDomain = "feishu"
+					}
+				}
+				if a.quietLink(c, "feishu-console", a.L.T(openLabel), a.L.T(openLabel)) {
+					a.openLink(openURL)
+				}
+			})
+			a.chatStep(c, 2, a.L.T("chats.fs.step2"), func() {
+				ui.Column(c).Gap(t.S1).Children(func() {
+					for _, x := range feishuScopes {
+						a.chatChip(c, x, t.MonoSM)
+					}
+				})
+			})
+			a.chatStep(c, 3, a.L.T("chats.fs.step3"), func() {
+				ui.Column(c).Gap(t.S1).Children(func() {
+					for _, x := range feishuEvents {
+						a.chatChip(c, x, t.MonoSM)
+					}
+				})
+			})
+			a.chatStep(c, 4, a.L.T("chats.fs.step4"), nil)
+			a.chatStep(c, 5, a.L.T("chats.fs.step5"), func() {
+				a.chatField(c, "chat-fs-id", a.L.T("chats.fs.app"), &fsID, "cli_…", true)
+				a.chatField(c, "chat-fs-secret", a.L.T("chats.fs.secret"), &fsSecret, "…")
 			})
 		} else {
 			a.chatStep(c, 1, a.L.T("chats.sl.step1"), func() {
@@ -474,10 +566,15 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 			})
 		}
 		s.token[kind], s.app[kind] = tok, app
+		if kind == "feishu" {
+			s.appID[kind], s.secret[kind], s.domain[kind] = fsID, fsSecret, fsDomain
+		}
 		if r := s.bad[kind]; r != "" {
 			key := "chats.bad.network"
 			if r == "token" {
 				key = "chats.bad.key"
+			} else if r == "setup" {
+				key = "chats.bad.setup"
 			}
 			ui.Row(c).Gap(t.S3).Children(func() {
 				ui.Box(c).Width(40).Shrink(0)
@@ -485,6 +582,7 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 			})
 		}
 	})
+	return who
 }
 
 // chatConnectButton is the group's one primary: Connect, at the right
@@ -493,29 +591,45 @@ func (a *App) chatConnectButton(c *ui.Context, kind string) {
 	t := a.T
 	s := &a.chats
 	tok, app := s.token[kind], s.app[kind]
-	ready := tok != "" && (kind == "telegram" || app != "")
+	id, secret, domain := s.appID[kind], s.secret[kind], s.domain[kind]
+	if domain == "" {
+		domain = "feishu"
+	}
+	ready := false
+	switch kind {
+	case "telegram":
+		ready = tok != ""
+	case "slack":
+		ready = tok != "" && app != ""
+	case "feishu":
+		ready = id != "" && secret != ""
+	}
 	label := a.L.T("chats.connect")
 	if s.busy[kind] {
 		label = a.L.T("chats.connecting")
 	}
-	if a.buttonFor(c, label, chatNames[kind], btnPrimary, t.ControlMD, t.Surface) && ready && !s.busy[kind] {
+	if a.buttonFor(c, label, a.chatName(kind), btnPrimary, t.ControlMD, t.Surface) && ready && !s.busy[kind] {
 		req := protocol.ChannelConnectReq{T: "channel_connect", Kind: kind}
-		if kind == "telegram" {
+		switch kind {
+		case "telegram":
 			req.Token = tok
-		} else {
+		case "slack":
 			req.BotToken, req.AppToken = tok, app
+		case "feishu":
+			req.AppID, req.AppSecret, req.Domain = id, secret, domain
 		}
 		a.send(req)
 		s.busy[kind] = true
 		delete(s.bad, kind)
 		s.token[kind], s.app[kind] = "", ""
+		s.appID[kind], s.secret[kind] = "", ""
 	}
 }
 
 func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 	t := a.T
 	s := &a.chats
-	name := chatNames[v.Kind]
+	name := a.chatName(v.Kind)
 	code, ok := s.code[v.Kind]
 	live := false
 	if ok {
@@ -547,9 +661,16 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 					if v.Bot != nil && v.Bot.Name != "" {
 						bot = v.Bot.Name
 					}
-					uiText(c, a.L.T("chats.sl.code", bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
+					codeKey, findKey := "chats.sl.code", "chats.sl.find"
+					if v.Kind == "feishu" {
+						codeKey, findKey = "chats.fs.code", "chats.fs.find"
+						if v.Domain == "lark" {
+							codeKey, findKey = "chats.fs.code.lark", "chats.fs.find.lark"
+						}
+					}
+					uiText(c, a.L.T(codeKey, bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
 					uiText(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).LetterSpacing(1).Selectable()
-					a.note(c, a.L.T("chats.sl.find", bot)) // D531: where the app's messages are
+					a.note(c, a.L.T(findKey, bot)) // D531: where the app's messages are
 				}
 				uiText(c, a.L.T("chats.code.ttl")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
@@ -557,6 +678,11 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 				open := a.L.T("chats.tg.open")
 				if v.Kind == "slack" {
 					open = a.L.T("chats.sl.open.dm") // D531: Slack's app_redirect to the app's messages
+				} else if v.Kind == "feishu" {
+					open = a.L.T("chats.fs.open.dm")
+					if v.Domain == "lark" {
+						open = a.L.T("chats.fs.open.dm.lark")
+					}
 				}
 				if a.buttonFor(c, open, name, btnPrimary, t.ControlMD, t.Surface) {
 					a.openLink(code.Link)

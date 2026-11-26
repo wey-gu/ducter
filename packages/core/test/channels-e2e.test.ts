@@ -52,7 +52,8 @@ test("Settings connects and links Telegram; a turn there goes through the one co
   send({ t: "hello", client: "web" });
   send({ t: "channels" });
   const first = await waitFor(() => frames.find((f) => f.t === "channels") as Extract<ServerFrame, { t: "channels" }> | undefined);
-  expect(first.channels.map((c) => c.state)).toEqual(["off", "off", "off"]);
+  expect(first.channels.map((c) => c.kind)).toEqual(["telegram", "slack", "feishu", "wechat"]);
+  expect(first.channels.every((c) => c.state === "off")).toBe(true);
   expect(JSON.parse(first.slackManifest).features.bot_user.display_name).toBe("Ducter");
 
   send({ t: "channel_connect", kind: "telegram", token: tg.token });
@@ -113,10 +114,11 @@ test("D301: Settings puts up WeChat's QR over the socket; the scan links it; a m
   send({ t: "hello", client: "web" });
   send({ t: "channels" });
   send({ t: "channel_connect", kind: "wechat" });
-  const scan = await waitFor(() => frames.find((f) => f.t === "channels" && f.channels[2]!.state === "scan") as Extract<ServerFrame, { t: "channels" }> | undefined);
-  expect(scan.channels[2]!.scan!.qr.length).toBeGreaterThan(20);
+  const wxAt = (f: Extract<ServerFrame, { t: "channels" }>) => f.channels.find((c) => c.kind === "wechat")!;
+  const scan = await waitFor(() => frames.find((x) => x.t === "channels" && wxAt(x as Extract<ServerFrame, { t: "channels" }>).state === "scan") as Extract<ServerFrame, { t: "channels" }> | undefined);
+  expect(wxAt(scan).scan!.qr.length).toBeGreaterThan(20);
   wx.confirm();
-  await waitFor(() => frames.some((f) => f.t === "channels" && f.channels[2]!.state === "linked"));
+  await waitFor(() => frames.some((f) => f.t === "channels" && wxAt(f).state === "linked"));
   wx.says(SCANNER, "今天有什么要我做的？");
   await waitFor(() => wx.texts().includes("收到：今天有什么要我做的？"));
   await waitFor(() => frames.some((f) => f.t === "events" && f.events.some((e) => e.kind === "user_msg" && (e.body as Bodies["user_msg"]).via === "wechat")));

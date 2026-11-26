@@ -1,6 +1,7 @@
-// D276: the Channel port. A chat app (Telegram, Slack, WeChat D301) is a window on the one conversation, so an
-// adapter only moves words: inbound messages and taps up, outbound parts down. What goes where,
-// pairing, decisions and quiet hours live in hub.ts, once for every chat app.
+// D276: the Channel port. A chat app (Telegram, Slack, Feishu / Lark D622, WeChat D301) is a
+// window on the one conversation, so an adapter only moves words: inbound messages and taps up,
+// outbound parts down. What goes where, pairing, decisions and quiet hours live in hub.ts, once for
+// every chat app.
 import type { ChannelKind } from "@ducter/protocol";
 
 /** What a chat app can do; the hub shapes what it sends by these, never by the app's name. */
@@ -56,7 +57,10 @@ export interface InFile {
 export interface InMessage {
   /** The service's own message id (Telegram message_id, Slack ts). */
   id: string;
-  /** Where to answer: the private chat (Telegram) or the DM channel (Slack). */
+  /**
+   * Where to answer: the private chat (Telegram), the DM channel (Slack), or the person's open_id
+   * (Feishu, whose send API takes a person's open_id).
+   */
   chat: string;
   from: { id: string; name: string };
   /** A one-to-one chat with the bot (groups and channels are never the person's window). */
@@ -100,7 +104,7 @@ export interface BotInfo {
   reinstall?: boolean;
 }
 
-export type Trouble = "token" | "blocked" | "conflict" | "network";
+export type Trouble = "token" | "blocked" | "conflict" | "network" | "setup";
 
 export interface ChannelEvents {
   message(m: InMessage): Promise<void>;

@@ -448,6 +448,9 @@ const esc = (s: string) => s.replace(/</g, "\\u003c").split(LS).join("\\u2028").
  *   ducter.lang · ducter.dark · ducter.open({ draft: "owner/repo#n" }) (D407: the person's own draft
  *   sheet for that pull request opens over the app; nothing is sent) · ducter.summary(text) (D410:
  *   the one line its shelf tile shows, "3 笔，合计 ¥1,698"; said again on every change, sent once it settles).
+ * D603: the bridge also tells the window around it of the person's first touch in the app (`touch`:
+ * the first-open line has been seen) and of / or ⌘L pressed outside the app's own fields (`compose`:
+ * the composer to change it comes up), since the page has the keys while it is focused.
  * The kit (APP_KIT_CSS) comes before the app's own styles, so the app can still restyle anything.
  * "message": the iframe posts to its parent (the web and the phone). "fetch": the Mac's web view
  * posts to its own scheme (/bridge) and long-polls /events.
@@ -485,6 +488,10 @@ var a=document.querySelector("details.k-add[data-first]");if(a){a.removeAttribut
 mark();subs.push(mark);
 document.addEventListener("DOMContentLoaded",function(){booting=false;if(!first)return;var a=document.querySelector("details.k-add");if(a&&!a.open){a.open=true;a.setAttribute("data-first","");}});
 window.addEventListener("error",function(e){post({t:"error",text:String(e.message||"error").slice(0,300)});});
+var touched=false;function touch(){if(touched)return;touched=true;post({t:"touch"});}
+addEventListener("pointerdown",touch,true);
+addEventListener("keydown",function(e){var a=document.activeElement,f=a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+if(!f&&!e.altKey&&((e.key==="/"&&!e.metaKey&&!e.ctrlKey)||((e.metaKey||e.ctrlKey)&&!e.shiftKey&&(e.key==="l"||e.key==="L")))){e.preventDefault();post({t:"compose"});return;}touch();},true);
 post({t:"ready"});})();`;
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${appCsp(o.transport)}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><script>${bridge}</script><script>${APP_KIT_JS}</script></head><body>${a.html}</body></html>`;
 }

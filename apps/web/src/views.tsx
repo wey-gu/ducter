@@ -29,7 +29,7 @@ import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -324,6 +324,11 @@ function DefaultRow({ d, id, children }: { d: DecisionState; id?: string; childr
   );
 }
 
+/** D601: the second choice's words: 以后直接发 / Always post on a review round's card, else 以后这类直接做 / Always do this. */
+export function alwaysLabel(d: Pick<DecisionState, "always">): string {
+  return t(d.always?.action === "pr_review" ? "always.post" : "always.do");
+}
+
 /** The hold's words: what declining means for this kind of ask (D157, D222, D334…), else 先不用 / Not now. */
 function holdWords(d: DecisionState): string {
   const wa = d.where ? whereAsk(d.where) : undefined;
@@ -363,6 +368,8 @@ export function DecideRow({ d, about, sm, foot, dflt = true, lead }: { d: Decisi
   };
   return (
     <div class={`dk${replying ? " replying" : ""}`}>
+      {/* D601 (D61 GQ4): said go to this kind twice here: the offer leads, in one line. */}
+      {d.always?.often && !replying && <div class="dl dk-often">{t("always.often")}</div>}
       {replying ? (
         <div class="dk-reply">
           <AutoText
@@ -383,6 +390,8 @@ export function DecideRow({ d, about, sm, foot, dflt = true, lead }: { d: Decisi
         <div class="dk-acts" role="group" aria-describedby={lineId}>
           {/* D599: a card whose lead is not a Go (Open {service} on a one-time-code sign-in). */}
           {lead ?? <Btn kind="primary" size={size} label={d.asker ? d.goLabel : goLabel(d)} about={about} onClick={() => A.decide(id, "go")} />}
+          {/* D601: 以后这类直接做 / Always do this: Go now and from now on, beside Go; never the default. */}
+          {d.always && !lead && <Btn kind="secondary" size={size} label={alwaysLabel(d)} about={about} onClick={() => A.decideAlways(id)} />}
           {/* D493: the quiet ways wrap as one group: beside the Go, or under it with the first word's
               letters at the card's edge (never one word alone on a line, indented by its padding). */}
           <span class="dk-quiet">
@@ -428,6 +437,8 @@ function answeredWords(d: DecisionState): string {
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   // D499: Ducter said Go for them, under what they said.
   if (d.resolved?.by === "said") return t("decision.resolved.said");
+  // D601: Go, and Always do this.
+  if (opt === "go" && d.resolved?.always) return t("always.resolved", goLabel(d));
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
   return t("decision.resolved.go", goLabel(d));
@@ -3150,7 +3161,15 @@ function StandingList() {
               <span>{t(`standing.${x.action}`)}</span>
               {/* D424: "PRs that ask for your review" is what the title already means; the owners only when bounded. D499: one task's, by its name. */}
               {x.taskId ? <small>{t("standing.where.task", x.taskTitle ?? x.taskId)}</small> : x.orgs?.length ? <small>{t(x.action === "pr_review" ? "standing.where.orgs" : "standing.where.owners", x.orgs.join(sep))}</small> : null}
-              <small>{t("standing.said", x.text)}</small>
+              {/* D601: kept by a tap, said as a tap with its day; never as words they didn't say. */}
+              {x.by === "tap" ? (
+                <small class="tapped">
+                  <span>{t("standing.tapped", x.text)}</span>
+                  <span class="when">{day(A.L, x.createdAt)}</span>
+                </small>
+              ) : (
+                <small>{t("standing.said", x.text)}</small>
+              )}
             </span>
             <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
           </li>

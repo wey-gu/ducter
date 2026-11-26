@@ -108,6 +108,7 @@ func (a *App) copyKeyButtons(c *ui.Context, d *store.DecisionState, st decisionS
 		if a.buttonFor(c, goLabel, k.Env, btnPrimary, st.height, st.quietBg) {
 			if dd := a.S.Decisions[d.DecisionID]; dd != nil {
 				dd.Pending, dd.AnsweredAt = "go", a.Now()
+				a.decideSent = append(a.decideSent, d.DecisionID)
 			}
 			delete(a.S.KeyCopies, d.DecisionID)
 			a.markRead()

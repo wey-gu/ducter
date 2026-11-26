@@ -46,6 +46,14 @@ const HARNESS_CONFIG: Record<HarnessId, RegExp> = {
   "deepseek-harness": /^DSH_/,
   // D416: where agy is and keeps its state (OAR_ANTIGRAVITY_BIN, GEMINI_HOME) and its own AGY_* switches.
   antigravity: /^(?:OAR_ANTIGRAVITY_BIN$|GEMINI_HOME$|AGY_|ANTIGRAVITY_)/,
+  // D600: where the SDK may find Cursor's own non-secret switches; CURSOR_API_KEY is granted separately.
+  cursor: /^(?:OAR_CURSOR_BIN$|CURSOR_)/,
+  // D600: Devin's own bin override and non-secret switches; WINDSURF_API_KEY is granted separately.
+  devin: /^(?:OAR_DEVIN_BIN$|DEVIN_|WINDSURF_)/,
+  // D600: Kimi's own home, switches and install folder; its OAuth credential is not an env key.
+  kimi: /^(?:OAR_KIMI_BIN$|KIMI_|KIMI_CODE_)/,
+  // D600: OpenCode's own switches and bin override; OPENCODE_API_KEY is granted separately.
+  opencode: /^(?:OAR_OPENCODE_BIN$|OPENCODE_)/,
 };
 
 /** Whether a name a harness inherited may stay in its process (keys excepted: see grants). */

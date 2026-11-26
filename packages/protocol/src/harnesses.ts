@@ -3,7 +3,7 @@
 // it; only the runner turns it into OAR options (packages/runner/src/oar.ts).
 // Evidence: research/34-harness-adapters.md.
 
-export const HARNESS_IDS = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity"] as const;
+export const HARNESS_IDS = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode"] as const;
 export type HarnessId = (typeof HARNESS_IDS)[number];
 
 export function isHarnessId(s: unknown): s is HarnessId {
@@ -90,12 +90,14 @@ export interface HarnessInfo {
    */
   pickOnly?: true;
   /**
-   * D594: run the way an editor runs it, and only that way: it works when the person asks (their
-   * own words, or a task the partner opened from them), never by itself. No wait or timer wakes
-   * it, no routine or Keep runs it, Ducter never reads its account's quota, and nothing of
-   * Ducter's looks where it keeps its sign-in (Google's terms for a personal sign-in, research/236).
+   * D594/D600: run the way an editor runs it, and only that way: it works when the person asks
+   * (their own words, or a task the partner opened from them), never by itself. No wait or timer
+   * wakes it, no routine or Keep runs it, and Ducter never reads its account's quota. The reason
+   * and its source are on `directOnlyWhy`, beside the entry.
    */
   directOnly?: true;
+  /** D600: one plain line in each language, next to the entry, with the page it comes from. */
+  directOnlyWhy?: { zh: string; en: string; source: string };
   /**
    * D416: it can't hold a task that reads web pages to Ducter's rules (its own setup can't be
    * left out of a session, D241), so browsing work never goes to it (block no_web).
@@ -207,10 +209,133 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     signIn: "agy acp --login (a Google sign-in: open the link anywhere, paste the code back)",
     pickOnly: true,
     directOnly: true,
+    directOnlyWhy: {
+      zh: "{agent} 只在你发话时干活：它不会自己等、定时醒来或按时重复（Google 对个人账号登录的条款）。这件事交给别的 AI，或者到时候你再叫它。",
+      en: "{agent} works only when you ask: it doesn't wait, wake on a timer or repeat on a schedule by itself (Google's terms for a personal sign-in). Give this to another AI, or ask it again when the time comes.",
+      source: "https://antigravity.google/terms",
+    },
     noWebTasks: true,
     signOut: true,
   },
+  // D600: Cursor's own SDK, embedded by OAR 0.124 (runtimes/cursor). Tasks only: the SDK refuses
+  // tool denial and a replaced prompt, and @cursor/sdk is not bundled in this build yet, so no
+  // session runs here until it is (research/239). Cursor's OAuth apps cannot sign the CLI or SDK in.
+  cursor: {
+    id: "cursor",
+    name: "Cursor",
+    badge: "cu",
+    command: "agent",
+    partner: false,
+    task: true,
+    images: true,
+    steer: true,
+    isolation: "native",
+    systemPrompt: "none",
+    taskInstructions: "first-turn",
+    mcp: "http",
+    login: "account",
+    billing: "plan",
+    cheapModel: "composer-2.5",
+    modelForm: 'a Cursor catalog id or alias (e.g. composer-2.5, gpt-5.6-sol); "default" is Auto',
+    install: "curl https://cursor.com/install -fsS | bash",
+    signIn: "a cursor.com sign-in link (open it anywhere; it completes on its own), or CURSOR_API_KEY",
+    signOut: true,
+    noWebTasks: true,
+  },
+  // D600: Devin CLI over ACP (OAR 0.124 runtimes/devin). Tasks only: OAR refuses tool denial, a
+  // system prompt and leaving the person's setup out; no sign-out OAR can run (research/240).
+  devin: {
+    id: "devin",
+    name: "Devin CLI",
+    badge: "dv",
+    command: "devin",
+    partner: false,
+    task: true,
+    images: false,
+    steer: false,
+    isolation: "none",
+    systemPrompt: "none",
+    taskInstructions: "first-turn",
+    mcp: "stdio-bridge",
+    login: "account",
+    billing: "plan",
+    cheapModel: "swe-1-6-fast",
+    modelForm: "a model id from its own list (e.g. swe-1-6-fast)",
+    install: "curl -fsSL https://cli.devin.ai/install.sh | bash",
+    signIn: "devin auth login (a browser sign-in; or WINDSURF_API_KEY)",
+    noWebTasks: true,
+  },
+  // D600: Kimi Code CLI over ACP (OAR 0.124 runtimes/kimi). Tasks only, and only when asked:
+  // Kimi's community guidelines keep subscriptions to interactive use, so no wait, timer,
+  // routine or Keep runs on it (the source is on directOnlyWhy). OAR refuses tool denial, a
+  // prompt and leaving the person's setup out; it takes pictures and HTTP MCP (research/241).
+  kimi: {
+    id: "kimi",
+    name: "Kimi Code CLI",
+    badge: "km",
+    command: "kimi",
+    partner: false,
+    task: true,
+    images: true,
+    steer: false,
+    isolation: "none",
+    systemPrompt: "none",
+    taskInstructions: "first-turn",
+    mcp: "http",
+    login: "account",
+    billing: "plan",
+    cheapModel: "kimi-code/kimi-for-coding",
+    modelForm: "a model id from its own list (e.g. kimi-code/k3.1-pro, kimi-code/kimi-for-coding)",
+    install: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+    signIn: "kimi login (device code; --region global outside mainland China)",
+    signOut: true,
+    directOnly: true,
+    directOnlyWhy: {
+      zh: "{agent} 只在你发话时干活：Kimi Code 的订阅只限个人交互使用，Ducter 不会让它自己等、定时醒来，也不会把它排进例行任务或看守。这件事交给别的 AI，或者到时候你再叫它。",
+      en: "{agent} works only when you ask: Kimi Code subscriptions are for personal interactive use, so Ducter never lets it wait, wake on a timer or run in routines or Keeps. Give this to another AI, or ask it again when the time comes.",
+      source: "https://www.kimi.com/code/docs/en/kimi-code/community-guidelines.html",
+    },
+    noWebTasks: true,
+  },
+  // D600: OpenCode over ACP (OAR 0.124 runtimes/opencode). Tasks only and picked, never chosen:
+  // one sign-in route is a provider's consumer subscription OAuth, and Ducter cannot tell which
+  // provider is signed in, so it runs only when named (the source is on directOnlyWhy). OAR
+  // refuses tool denial and a clean setup; prompts, images, steer and HTTP MCP work (research/242).
+  opencode: {
+    id: "opencode",
+    name: "OpenCode",
+    badge: "oc",
+    command: "opencode",
+    partner: false,
+    task: true,
+    images: true,
+    steer: true,
+    draws: false,
+    isolation: "none",
+    systemPrompt: "replace",
+    taskInstructions: "append",
+    mcp: "http",
+    login: "provider-keys",
+    billing: "usage",
+    cheapModel: "opencode/big-pickle",
+    modelForm: "provider/model, with #variant for effort (e.g. anthropic/claude-sonnet-5-5#high)",
+    install: "curl -fsSL https://opencode.ai/v2/install | bash",
+    signIn: "opencode auth login (pick a provider: OAuth or API key)",
+    pickOnly: true,
+    directOnly: true,
+    directOnlyWhy: {
+      zh: "{agent} 只在你发话时干活：它能用某个模型服务商的订阅登录，而 Anthropic 不允许第三方程序用订阅额度代你请求，Ducter 也分不出你登的是哪一种。这件事交给别的 AI，或者到时候你再叫它。",
+      en: "{agent} works only when you ask: it can sign in with a model provider's consumer subscription, and Anthropic does not allow third-party apps to route plan credentials for you; Ducter cannot tell which one is signed in. Give this to another AI, or ask it again when the time comes.",
+      source: "https://code.claude.com/docs/en/legal-and-compliance",
+    },
+    noWebTasks: true,
+  },
 };
+
+/** D594/D600: the one-line why for an agent that works only when asked. */
+export function directOnlyWhy(id: string | undefined): { zh: string; en: string; source: string } | undefined {
+  return id && isHarnessId(id) && HARNESSES[id].directOnly ? HARNESSES[id].directOnlyWhy : undefined;
+}
 
 /**
  * D150/D177: what the partner thinks with when the user never chose and Claude Code (the default)
@@ -227,15 +352,6 @@ export function harnessName(id: string): string {
 export function directOnly(id: string | undefined): boolean {
   return !!id && isHarnessId(id) && !!HARNESSES[id].directOnly;
 }
-
-/**
- * D594: why a wait, a timer, a routine or a Keep can't run on such an agent: one plain line in each
- * language, said to the task or the partner that asked (and through them to the person).
- */
-export const DIRECT_ONLY_WHY = {
-  zh: "{agent} 只在你发话时干活：它不会自己等、定时醒来或按时重复（Google 对个人账号登录的条款）。这件事交给别的 AI，或者到时候你再叫它。",
-  en: "{agent} works only when you ask: it doesn't wait, wake on a timer or repeat on a schedule by itself (Google's terms for a personal sign-in). Give this to another AI, or ask it again when the time comes.",
-};
 
 /** Provider keys pi reads from the environment (its own docs); any one makes pi usable. */
 export const PI_PROVIDER_ENV = [
@@ -278,6 +394,14 @@ export const HARNESS_KEYS: Readonly<Record<HarnessId, readonly string[]>> = {
   "deepseek-harness": [DSH_KEY_ENV],
   // D416: agy's Gemini API provider reads it (OAR's local-provider fixture); a Google sign-in needs none.
   antigravity: ["GEMINI_API_KEY"],
+  // D600: Cursor's SDK reads only its own key (OAR access.js); a Cursor OAuth app cannot sign it in.
+  cursor: ["CURSOR_API_KEY"],
+  // D600: Devin reads WINDSURF_API_KEY (DEVIN_API_KEY is ignored); its browser sign-in uses no env key.
+  devin: ["WINDSURF_API_KEY"],
+  // D600: Kimi signs in with OAuth (OAR login.js), not a static key.
+  kimi: [],
+  // D600: OpenCode's own key only: its plugins run in-process and can read the child env (never a provider key).
+  opencode: ["OPENCODE_API_KEY"],
 };
 
 /** A device's view of one harness, completed from the table: may it be the partner, how is it paid. */

@@ -490,6 +490,27 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
     case "antigravity":
       rt = (await import("@botiverse/oar/runtimes/antigravity")).antigravityRuntime as unknown as Runtime;
       break;
+    // D600: Cursor rides on its own SDK, which the host hands over (OAR's optional peer). It is not
+    // bundled in this build; the loader is a variable so TypeScript doesn't require the package,
+    // and a missing SDK fails at the first call that needs it with a plain reason (research/239).
+    case "cursor": {
+      const specifier: string = "@cursor/sdk";
+      const sdk = () =>
+        import(specifier).catch(() => {
+          throw new Error("Cursor needs @cursor/sdk 1.4.1, which this Ducter build does not bundle (research/239)");
+        });
+      rt = (await import("@botiverse/oar/runtimes/cursor")).createCursorRuntime({ sdk }) as unknown as Runtime;
+      break;
+    }
+    case "devin":
+      rt = (await import("@botiverse/oar/runtimes/devin")).devinRuntime as unknown as Runtime;
+      break;
+    case "kimi":
+      rt = (await import("@botiverse/oar/runtimes/kimi")).kimiRuntime as unknown as Runtime;
+      break;
+    case "opencode":
+      rt = (await import("@botiverse/oar/runtimes/opencode")).opencodeRuntime as unknown as Runtime;
+      break;
   }
   if (rt) loaded.set(key, rt);
   return rt;
@@ -762,6 +783,31 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       if (systemPrompt) (appendSystemPrompt = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n")), (systemPrompt = undefined);
       break;
     }
+    case "devin": {
+      // D600: Devin's ACP documents credential-free MCP entries only, so Ducter's endpoint goes
+      // through the same stdio bridge Antigravity uses; a stdio entry carrying its own env is left
+      // out. Tool denial, a replaced prompt and userConfiguration are refused (OAR's own map), so
+      // the brief rides on the first message and no read-only or clean session comes here.
+      disallowed = [];
+      mcpServers = bridged(mcpServers, ctx.dataDir).filter((m) => !("env" in m && m.env && Object.keys(m.env).length));
+      break;
+    }
+    case "kimi":
+      // D600: Kimi's ACP refuses tool denial and a prompt replacement; its refused map moves both
+      // prompts to the first message. Its MCP is native HTTP, so the entries pass as they are.
+      disallowed = [];
+      break;
+    case "opencode":
+      // D600: OpenCode's ACP refuses tool denial and a clean setup; a prompt and appended
+      // instructions are its own channels (v2), so they pass, and its MCP is native HTTP.
+      disallowed = [];
+      break;
+    case "cursor":
+      // D600: Cursor's SDK refuses tool denial and both prompt channels; the refused map moves the
+      // prompt to the first message. Its MCP is native HTTP. The SDK also refuses SessionOptions.env
+      // in process, which Ducter always passes for D102: start() refuses it with a plain reason.
+      disallowed = [];
+      break;
   }
 
   if (spec.readOnly) {
@@ -870,6 +916,12 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const liveWindow = spec.model ? liveWindows.get(`${spec.harness} ${spec.model}`) : undefined;
       const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions, ...(liveWindow ? { liveWindow } : {}) });
+      // D600: a runtime that refuses SessionOptions.env cannot run under D102: Cursor's in-process
+      // SDK would inherit Ducter's whole environment instead. Refuse before the open, with its own
+      // words, rather than let OAR say "UnsupportedOptionError: env" (research/239 §4.1).
+      if ((rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions?.env && a.options.env && Object.keys(a.options.env).length) {
+        throw new Error(`${harnessName(spec.harness)} can't run here: its runtime refuses the environment Ducter must pass, and inheriting Ducter's own would break its key rules (research/239)`);
+      }
       // D333: a clean Codex session has no server of the person's that Codex itself still lists.
       let launchArgs = a.options.launchArgs;
       if (spec.harness === "codex" && a.clean && launchArgs) {

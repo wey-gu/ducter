@@ -80,6 +80,8 @@ export function userAgentDirs(o: { home?: string; env?: Record<string, string | 
     for (const v of fs.readdir(join(fnm, "node-versions")).sort(byVersionDesc)) dirs.push(join(fnm, "node-versions", v, "installation", "bin"));
   }
   dirs.push(join(home, ".volta", "bin"), join(home, ".asdf", "shims"), join(home, ".local", "share", "mise", "shims"), join(home, ".bun", "bin"), join(home, ".local", "share", "pnpm"));
+  // D600: agents whose own installer keeps them out of the usual bin folders.
+  dirs.push(join(home, ".kimi-code", "bin"), join(home, ".opencode", "bin"));
   dirs.push(join(home, ".linuxbrew", "bin"), "/home/linuxbrew/.linuxbrew/bin", "/opt/homebrew/bin", "/usr/local/bin");
   // A Mac app that carries its agent's command line inside itself and never puts it on PATH:
   // DeepSeek Harness.app (0.2.2-rc.3 keeps `dsh` in Resources/runtime/cli/bin), in /Applications
@@ -172,7 +174,8 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
         return undefined;
       }
     });
-  const cmds = ["claude", "codex", "pi", "dsh", "agy", "node"].map((c) => {
+  // D600: the four new commands too (agent is Cursor's CLI, not what Ducter runs; its SDK is its own).
+  const cmds = ["claude", "codex", "pi", "dsh", "agy", "agent", "devin", "kimi", "kimi-code", "opencode", "node"].map((c) => {
     const p = o.which(c);
     return `${c}=${p ?? ""}@${p ? (mtime(p) ?? "") : ""}`;
   });
@@ -188,6 +191,11 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     // its command line" changes when either does). D594: never where agy keeps its sign-in.
     join(home, ...ANTIGRAVITY.bin),
     join("/Applications", ANTIGRAVITY.app),
+    // D600: where the four keep their sign-ins (presence/mtime only, never read). Cursor's SDK and
+    // its CLI are separate stores; Kimi's OAuth file is what its ACP status reads.
+    join(home, ".cursor", "sdk", "auth.json"),
+    join(env.XDG_DATA_HOME || join(home, ".local", "share"), "opencode", "auth.json"),
+    join(env.KIMI_CODE_HOME || join(home, ".kimi-code"), "credentials", "kimi-code.json"),
     join(o.dataDir, "keys.env"),
   ].map((f) => `${f}@${mtime(f) ?? ""}`);
   return [...cmds, ...files].join("|");

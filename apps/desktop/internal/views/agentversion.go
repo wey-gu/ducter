@@ -56,6 +56,14 @@ func agentAppName(harness string) string {
 		return "Claude"
 	case "deepseek-harness":
 		return "DeepSeek Harness"
+	case "cursor":
+		return "Cursor"
+	case "devin":
+		return "Devin CLI"
+	case "kimi":
+		return "Kimi Code CLI"
+	case "opencode":
+		return "OpenCode"
 	}
 	return "Codex"
 }

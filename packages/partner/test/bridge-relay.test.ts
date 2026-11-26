@@ -99,7 +99,8 @@ describe("which tasks Ducter carries messages for", () => {
     expect(relaysBridge("claude-code", { kind: "none" })).toBe(true); // D494: the home receives for every task
     expect(relaysBridge("codex", { kind: "repo" })).toBe(true);
     expect(relaysBridge("pi", { kind: "browser" })).toBe(false);
-    expect(relaysBridge("cursor")).toBe(false);
+    expect(relaysBridge("cursor")).toBe(true); // D600: a work agent now, carried like the rest
+    expect(relaysBridge("no-such-agent")).toBe(false);
   });
   test("the brief's words: the card, the line that names the task, the answer's frame", () => {
     expect(relayQuestion("zh", "修 Linux CI", "你的 Codex", "live.test.ts 为什么跳过 open？")).toBe("「修 Linux CI」想发给你的 Codex：\n「live.test.ts 为什么跳过 open？」");

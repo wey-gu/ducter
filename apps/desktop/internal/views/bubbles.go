@@ -179,6 +179,8 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 		return a.L.T("decision.resolved.default")
 	case by == "said": // D499: Ducter said Go for them, under what they said
 		return a.L.T("decision.resolved.said")
+	case opt == "go" && d.Resolved != nil && d.Resolved.Always: // D601: Go, and Always do this
+		return a.L.T("always.resolved", a.goLabel(d))
 	case opt == "reply":
 		return a.L.T("decision.resolved.reply", text)
 	case opt == "hold" && d.Where != nil:

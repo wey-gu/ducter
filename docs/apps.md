@@ -52,6 +52,8 @@ you:
 - **Stop** a repeating task from updating it
 - **Delete** it: you're asked first, and what it keeps goes with it. **Undo** brings it back.
 
+Inside an open app, the end of its **⋯** also says who can see it and when it last changed.
+
 You can also just ask: "where are my apps?" or "open my trip expenses app". Apps are also listed in
 **Past tasks › Made for you**.
 
@@ -77,8 +79,9 @@ new version, with everything you put in. It needs your Ducter to be reachable, a
 
 ## Changing it
 
-Say what you want, in the conversation or in the line under the app ("Ask Ducter to change it…"),
-in the browser, on your phone or in the app's own window on your Mac:
+Say what you want in the conversation, or from the app itself: press **Edit** at the top of the app
+(or **⌘L**, or **/**) and a box slides up from the bottom ("Ask Ducter to change it…"). It works in the
+browser, on your phone and in the app's own window on your Mac. **Esc** puts the box away again.
 
 - "Add a total at the top"
 - "Make it green"

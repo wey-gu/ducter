@@ -50,6 +50,13 @@ export interface StandingStore {
   covers(action: StandingAction, at: { taskId: string; owner?: string; repo?: string }): StandingView | undefined;
   /** Keep a saying (grant: kept or widened; revoke: ended), once per saying key. What changed. */
   hear(key: string, s: StandingSaying, at: string, seq?: number): { kept?: StandingView; revoked?: StandingView[] } | undefined;
+  /**
+   * D601: kept by a tap on a card's 以后这类直接做 / Always do this: the action, where the card acted
+   * (its owners), the button's label as its text, by "tap". Said or tapped before for that action:
+   * widened to these owners too (one permission per action; their own words stay its words). quiet:
+   * no onGrant (the card's own Go does what waits on it now). Undefined for an action that can't stand.
+   */
+  tap(action: StandingAction, where: string[], at: string, label: string, opts?: { quiet?: boolean }): StandingView | undefined;
   /** 收回 / Take back, by id. */
   revoke(id: string): boolean;
   /** The first use of this permission: true once (the one line in the conversation), then false. */
@@ -131,6 +138,20 @@ export function openStanding(o: {
       const holds = (s: StandingView) => !s.orgs?.length || s.orgs.some((x) => (x.includes("/") ? !!repo && x === repo : !!owner && x === owner));
       const mine = st.items.find((s) => fits(s) && s.taskId === at.taskId && live(s));
       return mine ?? st.items.find((s) => s.action === action && !s.taskId && holds(s)) ?? st.items.find((s) => fits(s) && !s.taskId && holds(s));
+    },
+    tap(action, where, at, label, opts) {
+      if (!STANDING_ACTIONS.includes(action)) return undefined;
+      const orgs = [...new Set(where.map((x) => x.toLowerCase()).filter(Boolean))];
+      if (!orgs.length) return undefined; // a tap holds where the card acted, never everywhere
+      const had = st.items.find((x) => x.action === action && !x.taskId);
+      if (had && (!had.orgs?.length || orgs.every((o) => had.orgs!.includes(o)))) return had;
+      const kept: StandingView = had
+        ? { ...had, orgs: [...new Set([...(had.orgs ?? []), ...orgs])] }
+        : { id: `st_${randomBytes(5).toString("hex")}`, action, orgs, text: label.slice(0, 80), createdAt: at, by: "tap" };
+      st.items = [...st.items.filter((x) => x.id !== kept.id), kept];
+      changed();
+      if (!opts?.quiet) for (const fn of grants) fn(kept);
+      return kept;
     },
     hear(key, s, at, seq) {
       if (st.heard[key]) return undefined;

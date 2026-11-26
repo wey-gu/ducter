@@ -35,9 +35,10 @@ function fakeNmem(answer: (argv: string[]) => { code: number; out: string } = ()
   return { exec, calls };
 }
 
-test("the registry: only Antigravity has Mem's steps run by Ducter (Claude Code carries the plugin itself)", () => {
+test("the registry: only Antigravity and Cursor have Mem's steps run by Ducter (Claude Code carries the plugin itself)", () => {
   const withSteps = Object.values(HARNESS_FACTS).filter((f) => f.memSteps).map((f) => f.harness);
-  expect(withSteps).toEqual(["antigravity"]);
+  // D600: Cursor's Mem plugin does not load through OAR's SDK session, so D417's two steps stand in.
+  expect(withSteps).toEqual(["antigravity", "cursor"]);
   expect(HARNESS_FACTS.antigravity.memSteps!.value).toEqual({ contextApp: "google-antigravity", threadFrom: "antigravity", plugin: "nowledge-mem-google-antigravity" });
 });
 

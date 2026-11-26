@@ -1,5 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
+import { createAlways, type Always } from "./always.ts";
 import { createBackgroundIndex } from "./background.ts";
 import { createWbFrames } from "./workbench.ts";
 import { createMentions } from "./mentions.ts";
@@ -648,6 +649,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   /** D292: the conversation's language now (the setting, else what the person writes in, else English). */
   const langNow = (): LangTag => talkLang(settings, log) ?? "en";
   let workRef: Work | undefined; // set below: until loops hold their tries' done reports (D113)
+  let alwaysRef: Always | undefined; // D601: set below, once the standing store and the tasks' owners are
   const decisions = createDecisions({
     log,
     tasks,
@@ -658,6 +660,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     holds: (taskId) => Boolean(workRef?.untils.active(taskId)),
     rests: (taskId) => Boolean(workRef?.waiters.views().some((w) => w.taskId === taskId && w.state === "armed" && (w.check || w.event || w.watch || w.judge || w.wakes === "task"))),
     keeps: (taskId) => Boolean(workRef?.loops.keeps(taskId)),
+    dress: (d, step) => alwaysRef?.dress(d, step) ?? {},
     onDecision: async (taskId, text, r) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, forwardFrom(r)); // D284: a Go relayed is Ducter's words, a reply the person's
@@ -1073,6 +1076,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     dataDir,
     log,
     decisions,
+    always: (id) => alwaysRef?.tap(id) ?? { ok: false, error: "Open it in Ducter" },
     media: { put: (b, o) => media.put(b, o), path: (id) => media.path(id) },
     clock,
     quiet: () => push.settings().quiet,
@@ -1656,6 +1660,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     return pr ? { owner: pr.split("/")[0]!.toLowerCase(), repo: pr.split("#")[0]!.toLowerCase() } : undefined;
   };
   const whereOf = (taskId: string) => ((r) => (r ? { owner: r.owner, ...(r.repo ? { repo: r.repo } : {}) } : {}))(repoOfTask(taskId));
+  // D601: 以后这类直接做 / Always do this on a Go card whose step a standing permission can cover.
+  const always = (alwaysRef = createAlways({ log, standing, decisions: () => decisions, ownerOfTask, lang: () => langNow(), now: () => clock.now() }));
+  api.always = always;
   // D528: the person's zone for a task's brief (a server's own clock is often UTC).
   api.zone = () => zone();
   // D539: the keys a task holds, put in its session on the computer it runs on.
@@ -2553,7 +2560,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     platform: opts.platform ?? process.platform,
     computer: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} its to-do changed:`, (e as Error).message)),
-    standing: { allows: (ref) => standing.allows("pr_review", ref), firstUse: (id) => standing.firstUse(id), allowsComment: (ref) => standing.allows("issue_comment", ref) },
+    standing: { allows: (ref) => standing.allows("pr_review", ref), firstUse: (id) => standing.firstUse(id), allowsComment: (ref) => standing.allows("issue_comment", ref), dress: (b) => alwaysRef?.dress(b).always },
     stop: async (taskId) => {
       await runner?.drop(taskId).catch(() => {});
       const c = tasks.get(taskId);

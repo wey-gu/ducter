@@ -6,7 +6,7 @@
 > installed version is outside the verified range. Tags: VERIFIED (how, date, version),
 > DOCUMENTED (source), INFERRED.
 
-## Verified versions (2026-11-09; widened 2026-11-10, D175 (2), D177)
+## Verified versions (2026-11-09; widened 2026-11-10, D175 (2), D177; D600)
 
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
@@ -15,6 +15,10 @@
 | pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
 | Antigravity | 1.5.0–1.5.12, OAR's own range (D416; not run by Ducter) | none: the model's own (1M on a Gemini account) | none: agy's own | n/a |
 | DeepSeek Harness | 0.2.2-rc.1 (D177) | none: the model's window (1M for both official models) | profile layer `compaction-basic.thresholdRatio` (+ `retainTokens`), in a Ducter-owned home only; VERIFIED live | n/a |
+| Cursor | SDK 1.4.1 (D600; declared, not runnable in this build) | none: tokens only, no window | none: Cursor's own | n/a |
+| Devin CLI | 3000.12.57–3000.14.30821 (D600; not run by Ducter) | none: no window reported | none: Devin's own | n/a |
+| Kimi Code CLI | 2.3.3–2.6.3 (D600; not run by Ducter) | none: the model's own (`usage_update.size`) | none: Kimi's own | n/a |
+| OpenCode | 2.2.7–2.3.0 (D600; not run by Ducter) | none: `usage_update.used` / `.size` | none per session: its config `compaction.buffer`; about 85% of the window by default | n/a |
 
 ## Claude Code 2.1.319–2.1.322
 
@@ -89,6 +93,10 @@ unless the agent's own turn comes first.
 | pi | none of its own | unknown | `pi --help` |
 | DeepSeek Harness | jobs and subagents: OAR tasks | unknown | DOCUMENTED, OAR 0.124 source |
 | Antigravity | not reported by OAR | unknown | DOCUMENTED, OAR 0.124 source |
+| Cursor | local runs; not mapped by OAR | unknown | DOCUMENTED, OAR 0.124 source |
+| Devin CLI | subagents; no task mapping | unknown | INFERRED, OAR 0.124 source |
+| Kimi Code | main turn only (ACP) | unknown | INFERRED, OAR 0.124 source |
+| OpenCode | v2 subagents as OAR tasks | unknown | DOCUMENTED, OAR 0.124 source |
 
 A Codex folder task runs under `workspace-write` (D142), where Codex 0.172 refuses every MCP call
 not marked read-only ("approval policy is never"); the person's servers in `config.toml` get
@@ -155,6 +163,38 @@ host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run 
   task opens (OAR accepts only catalog ids). The verified range is still OAR's; 1.5.14 shows
   "Ducter hasn't verified this version", which only holds back the night-time update.
 
+## Cursor, Devin CLI, Kimi Code and OpenCode (D600, research/239–242): OAR 0.124's facts
+
+The four are tasks only: OAR refuses tool denial and leaving the person's setup out for each, so
+none can be the partner, a one-shot or a quick web look, and none takes web-reading work.
+Their entries and every fact live in `packages/protocol/src/{harnesses,harness-facts}.ts`.
+
+- **Cursor.** Its own `@cursor/sdk` runs the agent (OAR's `createCursorRuntime`, an optional peer
+  Ducter must bundle) in the host process or a Node child. It has pictures, steer, HTTP MCP, a
+  native clean session and Cursor's sign-in link or `CURSOR_API_KEY`. It refuses a system prompt,
+  so the brief rides on the first message. **Not runnable in this build:** the SDK is not bundled
+  and the in-process mode refuses `SessionOptions.env`, which Ducter always passes for D102, so
+  `runner/oar.ts` refuses the start with that reason rather than inherit Ducter's environment.
+  Its OAuth apps cannot sign the CLI/SDK in; no such route is offered.
+- **Devin CLI.** `devin acp` per session, pictures unverified, no steer, no tool denial, no clean
+  setup, a first-message brief, and Ducter's MCP over its stdio bridge (credential-free entries).
+  `devin auth login` runs in a terminal there; `WINDSURF_API_KEY` works unvalidated; OAR has no
+  sign-out. Its installer is its own script; Ducter doesn't install it.
+- **Kimi Code CLI.** `kimi acp` per session, pictures, HTTP MCP, skills (`/skill:<name>`), a
+  device-code login, a real sign-out, and `usage_update.size`. No steer, no prompt channel, no
+  tool denial, no clean setup. **Direct only:** Kimi's community guidelines keep subscriptions to
+  personal interactive use, so no wait, timer, routine or Keep runs it, and Ducter never reads its
+  quota. Windows is not offered (OAR verifies Linux and macOS).
+- **OpenCode.** `opencode acp` per session, pictures, steer (v1 always; v2 from 2.2.7), a native
+  prompt replacement and appended instructions (v2), HTTP MCP, skills (`@<name>`), compaction
+  events. No tool denial or clean setup. **Picked, never chosen, and direct only:** one sign-in
+  route is a provider's consumer subscription OAuth, and Ducter cannot tell which provider is
+  signed in; its card says not to use a Claude subscription sign-in. Ducter can install its npm
+  command line; v1 signs in from a terminal, v2's provider facade is not wired yet.
+
+Each is in the probe, `agent-path`'s fingerprint, the setup cards and the pickers. No live task
+or sign-in has run on any of them yet; `todo.md` carries the checks.
+
 ## Tool schemas, per model family (D479, research/207)
 
 Each agent names the model families it sends Ducter's tools to (`toolSchema` in
@@ -169,6 +209,10 @@ Ducter's tools are written inside all of them at once, never translated per agen
 | pi | anthropic, openai, gemini | INFERRED (any provider) |
 | DeepSeek Harness | openai | INFERRED |
 | Antigravity | gemini | VERIFIED, hel 2026-11-22 |
+| Cursor | anthropic, openai, gemini | INFERRED |
+| Devin CLI | anthropic, openai, gemini | INFERRED |
+| Kimi Code CLI | openai | DOCUMENTED |
+| OpenCode | anthropic, openai, gemini | INFERRED |
 
 | Family | What a schema must be |
 |---|---|

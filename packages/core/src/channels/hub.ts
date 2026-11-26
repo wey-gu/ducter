@@ -76,6 +76,10 @@ const HUB_WORDS = {
     openAt: "在 Ducter 里看看：{url}",
     as: "{name}：{text}",
     hint: "想直接跟{name}说，开头写「{name}，」就行。",
+    always: "以后这类直接做",
+    alwaysPost: "以后直接发",
+    often: "这类你已经点过两次了，以后直接做？",
+    alwaysSaid: "你点了「{label}」，以后这类直接做",
   },
   en: {
     linked: "Linked. Talk to me here any time.",
@@ -95,6 +99,10 @@ const HUB_WORDS = {
     openAt: "Open in Ducter: {url}",
     as: "{name}: {text}",
     hint: "To talk to {name} directly, start with “{name},”.",
+    always: "Always do this",
+    alwaysPost: "Always post",
+    often: "You've said go to this twice. Do it without asking from now on?",
+    alwaysSaid: "You tapped “{label}”: this kind goes without asking from now on",
   },
 };
 
@@ -116,6 +124,8 @@ export interface ChannelDeps {
   face?: (id: string) => { name: string; look: string } | undefined;
   /** The home's https address when it has one (D228), for 在 Ducter 里看看 / Open in Ducter. */
   openUrl?: () => string | undefined;
+  /** D601: 以后这类直接做 / Always do this tapped in a chat app (core's always.tap). */
+  always?: (decisionId: string) => { ok: boolean; error?: string };
   /** Tests: the adapters against fakes. */
   make?: (kind: ChannelKind, rec: ChannelRec, store: ChannelStore) => Channel;
   sleep?: (ms: number) => Promise<void>;
@@ -218,6 +228,9 @@ export function createChannels(deps: ChannelDeps): Channels {
     failed: (t: string) => fill(w().failed, { t }),
     reply: (label: string) => fill(w().reply, { label: label || w().goPlain }),
     openAt: (url: string) => fill(w().openAt, { url }),
+    always: (d: Bodies["decision"]) => (d.always?.action === "pr_review" ? w().alwaysPost : w().always),
+    often: () => w().often,
+    alwaysSaid: (label: string) => fill(w().alwaysSaid, { label }),
   };
 
   // ---------- D516: several partners in one thread ----------
@@ -645,7 +658,7 @@ export function createChannels(deps: ChannelDeps): Channels {
 
   // ---------- decisions ----------
 
-  const tapData = (option: "go" | "hold", id: string) => `${option === "go" ? "g" : "h"}:${id}`;
+  const tapData = (option: "go" | "hold" | "always", id: string) => `${option === "go" ? "g" : option === "always" ? "a" : "h"}:${id}`;
   const openButton = (decisionId?: string): OutButton[] => {
     const base = deps.openUrl?.();
     if (!base) return [];
@@ -679,10 +692,12 @@ export function createChannels(deps: ChannelDeps): Channels {
       // D493: the default quotes the Go button as it reads there; with no buttons (WeChat), the option.
       const buttoned = !!live.get(kind)?.ch.caps.buttons;
       card.words = labelled(kind, who, said);
+      // D601 (GQ4): the offer leads the card, in one line, when this kind was said go to twice.
+      if (d.always?.often) card.words = `${W.often()}\n\n${card.words}`;
       text = `${card.words}\n\n_${defaultLine(d, deps.lang(), clock.now(), buttoned && d.goLabel ? W.go(d.goLabel) : undefined)}_`;
       // No buttons there (WeChat): say which words answer it; the hub reads them (GO_WORDS).
       if (!buttoned) text += `\n\n${W.reply(d.goLabel)}`;
-      buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, { label: W.hold(), data: tapData("hold", d.decisionId) }];
+      buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, ...(d.always && deps.always ? [{ label: W.always(d), data: tapData("always", d.decisionId) }] : []), { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
     text += hintOf(kind, who);
     void say(kind, text, { buttons, seq, who }).then((ids) => {
@@ -695,6 +710,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   const endLine = (r: Bodies["decision_resolved"], d: Bodies["decision"] | undefined) => {
     if (r.by === "ended") return W.settled(); // D481: closed by what happened
     if (r.by === "default") return W.byDefault();
+    if (r.option === "go" && r.always && d) return W.alwaysSaid(W.always(d));
     if (r.option === "go") return W.said(W.go(d?.goLabel ?? ""));
     if (r.option === "hold") return W.said(W.hold());
     return W.said((r.text ?? "").slice(0, 120));
@@ -977,7 +993,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     const acc = store.get(kind)?.linked;
     const ch = live.get(kind)?.ch;
     if (!acc || t.from.id !== acc.id || !ch) return; // a tap from anyone else: nothing
-    const m = /^([gh]):(.+)$/.exec(t.data);
+    const m = /^([gha]):(.+)$/.exec(t.data);
     if (!m) return void ch.answerTap(t).catch(() => {});
     const id = m[2]!;
     const d = decisions.get(id);
@@ -988,7 +1004,17 @@ export function createChannels(deps: ChannelDeps): Channels {
       return;
     }
     try {
-      decideFromChat(kind, id, m[1] === "g" ? "go" : "hold");
+      if (m[1] === "a") {
+        // D601: Always do this, from the chat app: the same tap as on the card in Ducter.
+        fromChat++;
+        try {
+          const r = deps.always?.(id) ?? { ok: false, error: "Open it in Ducter" };
+          if (!r.ok) throw new Error(r.error ?? "Open it in Ducter");
+          store.setLastRoute(kind);
+        } finally {
+          fromChat--;
+        }
+      } else decideFromChat(kind, id, m[1] === "g" ? "go" : "hold");
       await ch.answerTap(t).catch(() => {});
     } catch (err) {
       await ch.answerTap(t, (err as Error).message.slice(0, 180)).catch(() => {});

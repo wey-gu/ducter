@@ -628,6 +628,7 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		if a.buttonFor(c, a.L.T("pay.go", amount), p.Site, btnPrimary, st.height, st.quietBg) && ready {
 			if d := a.S.Decisions[d.DecisionID]; d != nil {
 				d.Pending, d.AnsweredAt = "go", a.Now()
+				a.decideSent = append(a.decideSent, d.DecisionID)
 			}
 			a.markRead()
 			a.send(protocol.DecidePay{T: "decide", DecisionID: d.DecisionID, Option: "go", Cvc: code})

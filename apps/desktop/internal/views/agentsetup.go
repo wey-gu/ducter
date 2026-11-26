@@ -54,7 +54,7 @@ func agentRowLook(h protocol.DeviceHarness) string {
 }
 
 // installOrder is the order the lend sheet offers them in.
-var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity"}
+var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"}
 
 // agentTrouble is what the row says of an agent partly there (D416), and
 // what its one button does then: install, update (its own updater) or
@@ -221,8 +221,8 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				if awake && a.buttonFor(c, a.L.T("ag.signin"), name, btnPrimary, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "login", protocol.AgentSetupReq{Harness: h.Harness})
 				}
-			case look == "ready" && h.Harness == "antigravity":
-				// D416: its own sign-out (HarnessInfo.signOut: Antigravity only).
+			case look == "ready" && agentCanSignOut(h.Harness):
+				// D416/D600: its own sign-out (HarnessInfo.signOut: Antigravity, Cursor, Kimi).
 				if awake && a.buttonFor(c, a.L.T("ag.signout"), name, btnText, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "logout", protocol.AgentSetupReq{Harness: h.Harness})
 				}
@@ -243,8 +243,18 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		if (look == "install" || look == "queued") && h.Harness == "antigravity" && (h.Trouble == nil || h.Trouble.Kind != "too_old") {
 			uiText(c, a.L.T("ag.agy.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
-		if h.Harness == "antigravity" && (look == "signin" || (look == "login" && h.Login != nil && h.Login.State != "done")) {
-			uiText(c, a.L.T("ag.agy.terms")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		// D600: OpenCode's own installer line vs Ducter's folder, and where an agent Ducter doesn't
+		// install comes from (its own installer), with the terms before its sign-in.
+		if (look == "install" || look == "queued") && h.Harness == "opencode" {
+			uiText(c, a.L.T("ag.opencode.where")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		if look == "missing" || look == "signin" || (look == "login" && h.Login != nil && h.Login.State != "done") {
+			if k := manualWhereKey(h.Harness); k != "" {
+				uiText(c, a.L.T(k)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			}
+		}
+		if (look == "signin" || (look == "login" && h.Login != nil && h.Login.State != "done")) && termsKey(h.Harness) != "" {
+			uiText(c, a.L.T(termsKey(h.Harness))).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if look == "login" {
 			a.agentLoginPanel(c, dv, h)
@@ -269,7 +279,7 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 		}
 		switch l.State {
 		case "terminal":
-			line(a.L.T("ag.login.pi", a.deviceNameIn(dv)), t.Ink)
+			line(a.L.T(terminalKey(h.Harness), a.deviceNameIn(dv)), t.Ink)
 			return
 		case "starting":
 			a.loginLive(c, key, h.Harness, a.L.T("ag.login.starting"), 0)
@@ -393,8 +403,62 @@ func loginSteps(harness string) (open, code string) {
 		k = "codex"
 	case "antigravity":
 		k = "agy"
+	case "kimi":
+		k = "kimi"
 	}
 	return "ag.login." + k + ".1", "ag.login." + k + ".2"
+}
+
+// terminalKey is D600: the line a terminal-only sign-in says on that computer.
+func terminalKey(harness string) string {
+	switch harness {
+	case "devin":
+		return "ag.login.devin"
+	case "opencode":
+		return "ag.login.opencode"
+	case "cursor":
+		return "ag.login.cursor"
+	}
+	return "ag.login.pi"
+}
+
+// manualWhereKey is D600: where an agent Ducter doesn't install comes from.
+func manualWhereKey(harness string) string {
+	switch harness {
+	case "cursor":
+		return "ag.cursor.where"
+	case "devin":
+		return "ag.devin.where"
+	case "kimi":
+		return "ag.kimi.where"
+	}
+	return ""
+}
+
+// termsKey is D600: the terms line said before the person signs in with their own account or key.
+func termsKey(harness string) string {
+	switch harness {
+	case "antigravity":
+		return "ag.agy.terms"
+	case "cursor":
+		return "ag.cursor.terms"
+	case "devin":
+		return "ag.devin.terms"
+	case "kimi":
+		return "ag.kimi.terms"
+	case "opencode":
+		return "ag.opencode.terms"
+	}
+	return ""
+}
+
+// agentCanSignOut is D416/D600: the agent has its own sign-out Ducter can run.
+func agentCanSignOut(harness string) bool {
+	switch harness {
+	case "antigravity", "cursor", "kimi":
+		return true
+	}
+	return false
 }
 
 // minutesLeft is the minutes until until (ms since the epoch), rounded up,

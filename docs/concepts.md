@@ -15,7 +15,7 @@ you down to the computer the work runs on.
     a server you own, and it's the same partner wherever you open it.
     - Small things it does itself: an answer, a look at your calendar, a reply drafted.
     - Anything bigger becomes a **task**. Each task is done by an **AI agent** you're already
-      signed in to (Claude Code, Codex, pi or DeepSeek Harness), and it can run several side by
+      signed in to (Claude Code, Codex, pi, DeepSeek Harness, Antigravity, Devin CLI, Kimi Code CLI or OpenCode), and it can run several side by
       side.
       - Each task runs on one of **your devices**: the computer Ducter lives on, or another one you
         added. A coding task gets its own copy of your project and its own branch, so your own

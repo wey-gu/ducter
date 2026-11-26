@@ -26,7 +26,7 @@
 //   - A change watch that isn't sure of what it saw (all of it gone at once) asks before it runs.
 //   - The runner not wired yet (just after a restart): the firing waits a few seconds, not skipped.
 import type { Bodies, LangTag, LogEvent, Place, RoutineBody, RoutineTrigger, RoutineTrouble, RoutineView, WatchBaseline } from "@ducter/protocol";
-import { DIRECT_ONLY_WHY, directOnly, fill, harnessName, languageOfTexts, words } from "@ducter/protocol";
+import { directOnly, directOnlyWhy, fill, harnessName, languageOfTexts, words } from "@ducter/protocol";
 import { intlLocale, langOfText } from "./lang.ts";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -327,7 +327,7 @@ export function createRoutines(opts: {
     const lang = langOfText(r.name, r.brief);
     // D594: a run is never started on an agent that works only when the person asks (one set
     // before this, or by hand): the run fails with the one line, never moved to another agent.
-    if (directOnly(r.harness)) return void afterFailure(s, { runId, scheduledFor: at, attempt, acted: false, coalesced, tokens: 0 }, fill(words(DIRECT_ONLY_WHY, lang), { agent: harnessName(r.harness!) }), { noRetry: true });
+    if (directOnly(r.harness)) return void afterFailure(s, { runId, scheduledFor: at, attempt, acted: false, coalesced, tokens: 0 }, fill(words(directOnlyWhy(r.harness)!, lang), { agent: harnessName(r.harness!) }), { noRetry: true });
     const fmt = (ms: number, lang: LangTag) => new Date(ms).toLocaleString(intlLocale(lang), { timeZone: zoneOf(r), month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     const when = fmt(scheduledFor, lang);
     // D291: a run is named in one phrase ("11月16日 09:00的晨报" / "Morning brief for Nov 16, 09:00 AM"), never joined by a dot.
@@ -937,7 +937,7 @@ export function createRoutines(opts: {
       if (!name) throw new Error("a routine needs a short name");
       if (!input.brief?.trim()) throw new Error("say what it should do");
       // D594: nothing repeats on its own on an agent that works only when the person asks.
-      if (directOnly(input.harness)) throw new Error(fill(words(DIRECT_ONLY_WHY, langOfText(name, input.brief)), { agent: harnessName(input.harness!) }));
+      if (directOnly(input.harness)) throw new Error(fill(words(directOnlyWhy(input.harness)!, langOfText(name, input.brief)), { agent: harnessName(input.harness!) }));
       const t = input.trigger;
       const bad = validateTimeTrigger(t);
       if (bad) throw new Error(bad);

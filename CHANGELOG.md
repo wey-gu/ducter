@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.91 - 2026-11-26
+
+<!-- whats-new
+zh: 验证好的开发直接开 PR 交出去；以后这类直接做；Cursor 等四家
+en: Verified work opens its PR and is handed on; Always do this; four new AI agents
+-->
+
+**Fewer asks**
+- Say once that verified dev work can go straight to a PR and your helper, and from then on a
+  task that's done and verified pushes its branch, opens the PR and hands it on without a card.
+  Never merges.
+- A card for posting a review, commenting, rerunning CI, pushing a branch or opening a PR has a
+  second choice, Always do this: it goes now and won't ask again for that kind in that place.
+  After you've said go twice, the next card offers it. Settings lists them; take one back anytime.
+
+**Handing work to a helper**
+- Work handed to a helper on this computer lands in its hands at once and wakes it. Your partner
+  says it's handed over only once the helper takes it, and tells you if nobody has after 10 minutes.
+
+**New AI agents**
+- Cursor, Devin, Kimi Code and OpenCode can do tasks. Kimi Code and OpenCode work only when you
+  ask, as their terms require.
+
+**Apps**
+- An app's window keeps only the app: Edit (⌘L or /) brings up the box to change it.
+
+**Fixes**
+- Archiving a finished task no longer sends its "done" notification again.
+- On the Mac, a card asking for a key shows its field in the conversation too.
+- On a phone, the box under an opened task stays on one line.
+
 ## 0.1.90 - 2026-11-26
 
 <!-- whats-new

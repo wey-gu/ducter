@@ -366,6 +366,7 @@ func (a *App) taskTail(c *ui.Context, task *store.Task, m *taskMemo) {
 				})
 			}
 			a.endLine(c, task, m)
+			a.handoffNote(c, task)
 		})
 		// D530: where its files are lives in the header's place and in 看细节,
 		// never as a raw path in the transcript.
@@ -373,6 +374,42 @@ func (a *App) taskTail(c *ui.Context, task *store.Task, m *taskMemo) {
 		a.outsideActs(c, task)
 		a.waitFacts(c, task)
 	})
+}
+
+// D609: the one quiet line under the task's last report: given → taken → its outcome. No card,
+// no button: what the helper did with the work, in words.
+func (a *App) handoffNote(c *ui.Context, task *store.Task) {
+	if task.Card == nil || task.Card.Handoff == nil {
+		return
+	}
+	t := a.T
+	h := task.Card.Handoff
+	gist := strings.TrimSpace(h.Outcome)
+	if gist == "" {
+		gist = strings.TrimSpace(h.Why)
+	}
+	if gist == "" {
+		gist = strings.TrimSpace(h.Item.Title)
+	}
+	if gist == "" {
+		gist = h.Item.Ref
+	}
+	gist, _ = clipText(autospace(gist), 120)
+	key := "handoff.given"
+	args := []any{h.To}
+	switch h.State {
+	case "taken":
+		key = "handoff.taken"
+	case "done":
+		key, args = "handoff.done", []any{h.To, gist}
+	case "returned":
+		key, args = "handoff.returned", []any{h.To, gist}
+	case "declined":
+		key, args = "handoff.declined", []any{h.To, gist}
+	case "withdrawn":
+		key, args = "handoff.withdrawn", []any{h.To}
+	}
+	uiText(c.Key("handoff:"+h.ID), autospace(a.L.T(key, args...))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.6))
 }
 
 // endLine is the transcript's last line (D271), from state, never a guess:

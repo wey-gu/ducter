@@ -5,12 +5,12 @@
 // Keep's own page in the board's place (never Settings, never Bridge): its life, 你说的, 在等你,
 // 手上的, 每一轮 (silent rounds folded), a talk box, and 怎么做 with 暂停 and 停下. The receipt
 // card under the partner's words when one is made is here too.
-import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepChange, type KeepEdit, type KeepField, type KeepItem, type KeepPage, type KeepProposal, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
-import type { ComponentChildren } from "preact";
+import { cutAtWord, foldRounds, noOrphan, keepBeat, type HandoffLine, type KeepCard, type KeepChange, type KeepEdit, type KeepField, type KeepItem, type KeepPage, type KeepProposal, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
+import { Fragment, type ComponentChildren } from "preact";
 import { useRef, useState } from "preact/hooks";
 import { createPortal } from "preact/compat";
 import { A } from "./app.ts";
-import { Btn, Chev, DangerButton, EditRow, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
+import { Btn, Chev, DangerButton, EditRow, Facts, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
@@ -18,6 +18,7 @@ import { soon } from "./onhand.tsx";
 import { healthLine, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
 import { GConfirm } from "./set-grid.tsx";
+import { handoffGroups } from "./handoff.ts";
 import { finished } from "./store.ts";
 import { Menu, MenuItem, Select } from "./menu.tsx";
 import { PartnerMark } from "./partners.tsx";
@@ -460,42 +461,120 @@ function ReleaseAsk({ x }: { x: KeepItem }) {
   );
 }
 
+function ItemRow({ x }: { x: KeepItem }) {
+  const w = itemWords(x);
+  const facts = x.said ? prFacts(x.said) : [];
+  const checks = x.said?.checks;
+  return (
+    <div class="kp-item">
+      <i class={`kp-dot big ${x.at}`} aria-hidden="true" />
+      <span class="body">
+        <span class="t">
+          {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
+          <span>{noOrphan(x.title)}</span>
+        </span>
+        <span class={`st ${w.tone}`}>{w.text}</span>
+        {checks && checks.total > 0 && (
+          <span class="kp-checks" aria-label={facts.join(" ")}>
+            {Array.from({ length: Math.min(checks.total, 24) }, (_, j) => (
+              <i key={j} class={j < checks.passed ? "" : j < checks.passed + checks.pending ? "p" : "f"} />
+            ))}
+          </span>
+        )}
+        {x.said?.by && x.said.phase === "ready" && <span class="by">{t("onhand.prs.approved", x.said.by.join(t("onhand.prs.sep")))}</span>}
+      </span>
+      <span class="acts">
+        {x.pr && <Btn kind="text" size="sm" label={t("keep.item.pr")} onClick={() => window.open(`https://github.com/${x.pr!.replace("#", "/pull/")}`, "_blank", "noopener")} />}
+        <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => goTask(x.taskId)} />
+        {/* D602: 不用跟了 / Stop following, asked in place under the row. */}
+        <Btn kind="text" size="sm" label={t("keep.item.release")} about={x.title} onClick={() => ((K.release = x.pr ?? x.taskId), A.changed())} />
+      </span>
+      {K.release === (x.pr ?? x.taskId) && <ReleaseAsk x={x} />}
+    </div>
+  );
+}
+
+/** D616: 不用跟了 on a hand-off nobody took: the same confirm line as D602, and the record is
+ *  withdrawn; the sender hears it once. */
+function WithdrawAsk({ h, title }: { h: HandoffLine; title: string }) {
+  const ask = t("keep.handoff.release", h.to, title.length > 40 ? cutAtWord(title, 40) : title);
+  return (
+    <div class="kp-release">
+      <GConfirm ask={ask} keep={t("task.end.keep")} go={t("keep.item.release")} about={title} onKeep={() => ((K.release = ""), A.changed())} onGo={() => ((K.release = ""), A.send({ t: "handoff_withdraw", id: h.id }), A.changed())} />
+    </div>
+  );
+}
+
+/** D609: a hand-off's row in 手上的事. It is the task's own row once one has it; before that it
+ *  is the item and who gave it, and a returned or declined one carries why it came back. */
+function HandoffRow({ h, k }: { h: HandoffLine; k: KeepPage }) {
+  const item = h.taskId ? k.items.find((x) => x.taskId === h.taskId) : undefined;
+  if (item && h.state === "taken") return <ItemRow x={item} />;
+  const title = h.item.title?.trim() || h.item.ref;
+  const pr = h.item.kind === "pr" ? h.item.ref : "";
+  const rel: KeepItem = { taskId: h.taskId ?? h.id, title, at: "work", ...(pr ? { pr } : {}) };
+  const key = pr || h.taskId || h.id;
+  const waiting = h.state === "given" || h.state === "unclaimed";
+  const why = (h.why || h.outcome || "").trim();
+  return (
+    <div class="kp-item">
+      <i class={`kp-dot big ${waiting ? "rest" : "work"}`} aria-hidden="true" />
+      <span class="body">
+        <span class="t">
+          {pr && !title.includes(prNum(pr)) && <b>{prNum(pr)}</b>}
+          <span>{noOrphan(title)}</span>
+        </span>
+        {waiting ? (
+          <Facts items={[h.sender, when(A.L, h.givenAt)]} class="kp-handoff-facts" />
+        ) : (
+          why && <span class="st">{why}</span>
+        )}
+      </span>
+      <span class="acts">
+        {waiting && <Btn kind="text" size="sm" label={t("keep.handoff.take")} about={title} onClick={() => (A.send({ t: "handoff_take", id: h.id }), A.changed())} />}
+        {waiting && <Btn kind="text" size="sm" label={t("keep.item.release")} about={title} onClick={() => ((K.release = key), A.changed())} />}
+        {h.taskId && !waiting && <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => goTask(h.taskId!)} />}
+        {h.taskId && !waiting && (
+          <Btn kind="text" size="sm" label={t("keep.item.release")} about={title} onClick={() => ((K.release = key), A.changed())} />
+        )}
+      </span>
+      {waiting && K.release === key && <WithdrawAsk h={h} title={title} />}
+      {h.taskId && !waiting && K.release === key && <ReleaseAsk x={rel} />}
+    </div>
+  );
+}
+
+/** D609: 手上的事 grouped by state: 等接手 first (who gave it and when), then 在做, then 退回了
+ *  and 没接. One card holds every group, each group's head inside it; the card's hairline runs
+ *  between rows and before a group's head. Nothing is drawn for an empty group. */
+function HandoffGroups({ k }: { k: KeepPage }) {
+  const groups = handoffGroups(k.handoffs ?? [], k.items);
+  const any = groups.some((g) => g.rows.length || g.legacy.length);
+  if (!any) return <p class="kp-empty">{t("keep.holding.none")}</p>;
+  return (
+    <div class="kp-card kp-handoffs">
+      {groups.map((g) =>
+        g.rows.length || g.legacy.length ? (
+          <Fragment key={g.key}>
+            <SectionHead label={t(`keep.holding.${g.key}`)} />
+            {g.rows.map((h) => (
+              <HandoffRow key={h.id} h={h} k={k} />
+            ))}
+            {g.legacy.map((x) => <ItemRow key={x.pr ?? x.taskId} x={x} />)}
+          </Fragment>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 function Items({ k }: { k: KeepPage }) {
   if (!k.items.length) return <p class="kp-empty">{t("keep.holding.none")}</p>;
   return (
     <div class="kp-card">
-      {k.items.map((x) => {
-        const w = itemWords(x);
-        const facts = x.said ? prFacts(x.said) : [];
-        const checks = x.said?.checks;
-        return (
-          <div key={x.pr ?? x.taskId} class="kp-item">
-            <i class={`kp-dot big ${x.at}`} aria-hidden="true" />
-            <span class="body">
-              <span class="t">
-                {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
-                <span>{noOrphan(x.title)}</span>
-              </span>
-              <span class={`st ${w.tone}`}>{w.text}</span>
-              {checks && checks.total > 0 && (
-                <span class="kp-checks" aria-label={facts.join(" ")}>
-                  {Array.from({ length: Math.min(checks.total, 24) }, (_, j) => (
-                    <i key={j} class={j < checks.passed ? "" : j < checks.passed + checks.pending ? "p" : "f"} />
-                  ))}
-                </span>
-              )}
-              {x.said?.by && x.said.phase === "ready" && <span class="by">{t("onhand.prs.approved", x.said.by.join(t("onhand.prs.sep")))}</span>}
-            </span>
-            <span class="acts">
-              {x.pr && <Btn kind="text" size="sm" label={t("keep.item.pr")} onClick={() => window.open(`https://github.com/${x.pr!.replace("#", "/pull/")}`, "_blank", "noopener")} />}
-              <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => goTask(x.taskId)} />
-              {/* D602: 不用跟了 / Stop following, asked in place under the row. */}
-              <Btn kind="text" size="sm" label={t("keep.item.release")} about={x.title} onClick={() => ((K.release = x.pr ?? x.taskId), A.changed())} />
-            </span>
-            {K.release === (x.pr ?? x.taskId) && <ReleaseAsk x={x} />}
-          </div>
-        );
-      })}
+      {k.items.map((x) => (
+        <ItemRow key={x.pr ?? x.taskId} x={x} />
+      ))}
     </div>
   );
 }
@@ -916,8 +995,8 @@ export function KeepPageView({ room }: { room: string }) {
           </>
         )}
         {/* A Keep in rounds is its one task, never an item: it holds something only when that task keeps a PR open (D519). */}
-        {(k.run !== "same" || k.items.length > 0) && <SectionHead label={t("keep.holding")} />}
-        {(k.run !== "same" || k.items.length > 0) && <Items k={k} />}
+        {(k.run !== "same" || k.items.length > 0 || k.handoffs !== undefined) && <SectionHead label={t("keep.holding")} />}
+        {(k.run !== "same" || k.items.length > 0 || k.handoffs !== undefined) && (k.handoffs !== undefined ? <HandoffGroups k={k} /> : <Items k={k} />)}
         <SectionHead label={t("keep.rounds")} />
         <Rounds k={k} />
         {k.life !== "done" && k.life !== "stopped" && <Talk k={k} />}

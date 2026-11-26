@@ -220,6 +220,8 @@ export interface KeepPage extends KeepSheet {
   /** D533: the computer its rounds go to ("local": the home) and the agent, when one was named; absent: Ducter picks. */
   device?: string;
   agent?: string;
+  /** D609: every hand-off this Keep (a helper) has held, its states included: 手上的事 grouped by state. */
+  handoffs?: import("./handoff.ts").HandoffLine[];
 }
 
 /** What 暂停 / Pause, 恢复 / Resume, 立即运行 / Run now and 结束看守 / End (D592) do to a Keep. */

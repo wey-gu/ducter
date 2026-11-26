@@ -65,7 +65,8 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
 import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, helperSent, isHelperWork, localHandoff, type Helper } from "../../protocol/src/helpers.ts";
+import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, isHelperWork, type Helper } from "../../protocol/src/helpers.ts";
+import { helperQuestions } from "../../protocol/src/handoff.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type MemWhy, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
@@ -1922,7 +1923,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.helpers?.list() ?? [],
       (id) => helperWork(id),
       userLang() ?? NO_WORDS_YET,
-      (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })),
+      (id) => (core.handoffs?.ofHelper(id) ?? []).filter((h) => (h.state === "given" || h.state === "unclaimed") && !h.taskId && now() - Date.parse(h.at) < DAY_MS).map((h) => ({ gist: h.said.replace(/^.*[：:]\n/, ""), at: h.at, ...(h.from.task ? { fromTask: h.from.task } : {}), ...(h.state === "unclaimed" ? { stalled: true } : {}) })),
       (id) => helperUnread(id),
     );
     if (helpersLine) deltas.push(helpersLine);
@@ -2578,15 +2579,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D598: a hand-off on this home names the task that handed it: work only its author should redo goes back there through Ducter.
       const helperWho = (m: Bodies["bridge_msg"], helper: string) => (m.local && !m.fromTask ? said(userLang() ?? NO_WORDS_YET, "helperBriefYou", { helper }) : undefined);
       const fromLine = (m: Bodies["bridge_msg"]) => (m.fromTask ? `\n${said(userLang() ?? NO_WORDS_YET, "helperFromTask", { task: m.fromTask, title: core.tasks.get(m.fromTask)?.title ?? "" })}` : "");
+      // D609: a helper's task can hand work back with why (returned: it tried; declined: out of scope).
+      const handBackNote = (helper: string) => `If this is outside what ${helper} takes, or it cannot be done, report_to_main with state "blocked" and handoff {back: "declined" or "returned", why: "..."}: Ducter sends it back to whoever handed it over, with your reason.`;
       if (trustedFor && typeof raw?.brief === "string")
         raw = helperFor
-          ? { ...raw, forMessage: trustedFor.messageId, brief: `${helperWho(trustedFor, helperFor.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: trustedFor.agent, helper: helperFor.name })}${fromLine(trustedFor)}\n${helperFor.brief ? `${helperFor.brief}\n\n` : ""}${raw.brief}` }
+          ? { ...raw, forMessage: trustedFor.messageId, brief: `${helperWho(trustedFor, helperFor.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: trustedFor.agent, helper: helperFor.name })}${fromLine(trustedFor)}\n${helperFor.brief ? `${helperFor.brief}\n\n` : ""}${handBackNote(helperFor.name)}\n${raw.brief}` }
           : { ...raw, forMessage: trustedFor.messageId, brief: `${said(userLang() ?? NO_WORDS_YET, "trustedBrief", { agent: trustedFor.agent })}\n${raw.brief}` };
       else if (!trustedFor && typeof raw?.forMessage === "string" && typeof raw?.brief === "string") {
         // D598: the user handed it over through you (keep_change hand) or spoke in the same turn: still the helper's brief.
         const m0 = bridgeIn(raw.forMessage.trim());
         const h0 = m0?.helper ? core.helpers?.get(m0.helper) : undefined;
-        if (m0 && h0 && !raw.brief.includes(h0.brief || "\u0000")) raw = { ...raw, brief: `${helperWho(m0, h0.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: m0.agent ?? m0.from ?? "agent", helper: h0.name })}${fromLine(m0)}\n${h0.brief ? `${h0.brief}\n\n` : ""}${raw.brief}` };
+        if (m0 && h0 && !raw.brief.includes(h0.brief || "\u0000")) raw = { ...raw, brief: `${helperWho(m0, h0.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: m0.agent ?? m0.from ?? "agent", helper: h0.name })}${fromLine(m0)}\n${h0.brief ? `${h0.brief}\n\n` : ""}${handBackNote(h0.name)}\n${raw.brief}` };
       }
       const goFor =turn?.triggers.map((e) => (e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).option === "go" ? askedFor.get((e.body as Bodies["decision_resolved"]).decisionId) : undefined)).find(Boolean);
       const forMessage = bridge && typeof raw?.forMessage === "string" && raw.forMessage.trim() ? raw.forMessage.trim() : bridge ? goFor : undefined;
@@ -2903,11 +2906,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         linesUnder(t, args.taskId, sendWords);
         // D598: work handed to a helper, joined to the helper's task already on it: that task took it (its claim goes back).
         if (t) {
-          const sent = helperSent(loggedBridge());
+          const questions = helperQuestions(loggedBridge());
           for (const e of t.triggers) {
             const m = e.kind === "bridge_msg" ? (e.body as Bodies["bridge_msg"]) : undefined;
-            if (!m?.helper || !isHelperWork(m, sent) || !helperWork(m.helper).some((x) => x.taskId === args.taskId)) continue;
-            if (handoffs(m.helper).some((x) => x.m.messageId === m.messageId && x.taskId)) continue;
+            if (!m?.helper || !isHelperWork(m, questions) || !helperWork(m.helper).some((x) => x.taskId === args.taskId)) continue;
+            if (core.handoffs?.byMessage(m.messageId)?.taskId) continue;
             const title = core.tasks.get(args.taskId)?.title ?? "";
             await deliver({ ...peerOf(m), text: claimText(m.text, title), inReplyTo: m.messageId, taskId: args.taskId }, "reply").catch(onError);
           }
@@ -4867,6 +4870,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       inFlight.delete(op.opId);
     }
   }
+  // D609: a returned or declined hand-off is said back where it came from: to a task by the caller's
+  // tellTask, to another agent as a reply in the Space its message came from (D595's route kept on it).
+  core.handoffs?.setTellAgent(async (h, text) => {
+    if (!bridge || !h.from.messageId) return false;
+    const orig = bridgeIn(h.from.messageId);
+    if (!orig) return false;
+    await deliver({ ...peerOf(orig), text, inReplyTo: orig.messageId, ...(h.taskId ? { taskId: h.taskId } : {}) }, "reply");
+    return true;
+  });
   function scheduleRecovery(after?: number) {
     const base = opts.bridgeRecoverMs ?? 30_000;
     if (base <= 0 || recoverTimer || closed) return;
@@ -5024,7 +5036,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const title = core.tasks.get(r.taskId)?.title ?? jobs.get(r.taskId)?.title ?? "";
       const fixed = fixedOutcome(owed.text, title, r.state === "done");
       const text = redactSecrets(owed.helper && owed.mine && r.summary ? r.summary : owed.mine && said.length ? (said[said.length - 1]!.body as Bodies["ai_msg"]).text : fixed);
-      await deliver({ ...peerOf(owed), text, inReplyTo: owed.messageId, taskId: r.taskId }, "reply");
+      // D609: a returned or declined record already said its why back; the auto outcome must not say it twice.
+      const record = core.handoffs?.all().filter((h) => h.taskId === r.taskId).at(-1);
+      if (record && (record.state === "returned" || record.state === "declined")) continue;
+      const went = await deliver({ ...peerOf(owed), text, inReplyTo: owed.messageId, taskId: r.taskId }, "reply");
+      // D609: the outcome is the record's last step; the record is kept even when the reply didn't go.
+      if (owed.helper) await core.handoffs?.finishForTask(r.taskId, r.state === "done" ? "done" : "returned", { why: text, outcome: text, say: false });
+      if (went === "failed") continue;
       stats.bridgeOwedByCode = (stats.bridgeOwedByCode ?? 0) + 1;
     }
   }
@@ -5227,54 +5245,40 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   }
 
-  /**
-   * D598: the work handed to a helper, each with the task that took it (its claim went out naming it),
-   * newest last: what [helpers] says is handed and not taken yet, and what the stall line is about.
-   */
-  function handoffs(helper?: string): { m: Bodies["bridge_msg"]; at: number; taskId?: string; stalled: boolean }[] {
-    const evs = loggedBridge();
-    const sent = helperSent(evs);
-    const took = new Map<string, string>();
-    for (const e of evs) if (e.body.direction === "out" && e.body.helper && e.body.inReplyTo && e.body.taskId && !took.has(e.body.inReplyTo)) took.set(e.body.inReplyTo, e.body.taskId);
-    const told = new Set(core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 2000 }).map((e) => (e.body as Bodies["ai_msg"]).stalled).filter(Boolean));
-    const out: { m: Bodies["bridge_msg"]; at: number; taskId?: string; stalled: boolean }[] = [];
-    for (const e of evs) {
-      const b = e.body;
-      if (!isHelperWork(b, sent) || b.state || !b.mine || (helper && b.helper !== helper)) continue;
-      const t = took.get(b.messageId);
-      out.push({ m: b, at: Date.parse(e.ts), ...(t ? { taskId: t } : {}), stalled: told.has(b.messageId) });
-    }
-    return out;
-  }
-  /** D598: a task hands work to a helper on this home: its arrival is written here, and a partner turn opens it at once. */
+  /** D609: a task hands work to a helper on this home: one record, and its arrival wakes a partner turn. */
   function handLocal(card: TaskCard, h: Helper, text: string) {
-    const mine = handoffs(h.id).filter((x) => x.m.fromTask === card.taskId);
-    const last = mine[mine.length - 1];
-    const lastTask = last?.taskId ? core.tasks.get(last.taskId) : undefined;
-    // More words on work it already handed: to the helper's task on it, or kept until one takes it.
-    if (last && !last.taskId && now() - last.at < DAY_MS)
-      return { ok: false, handed: true, taken: false, note: `Your hand-off to "${h.name}" hasn't been taken by any of its tasks yet; nothing new was sent. You'll hear here when one takes it: send what's new then. Never report it as taken over before.` };
-    if (last?.taskId && lastTask && !FINISHED.has(lastTask.attention) && lastTask.attention !== "dropped") {
-      void toTask(last.taskId, `${relayHead(core.persona.name || "Ducter", card.title, text)}\n<peer_message>\n${text.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>`);
-      return { ok: true, sent: true, note: `Passed to "${h.name}"'s task ${last.taskId}, which has your hand-off. Carry on, or end your turn (no report needed).` };
+    const store = core.handoffs;
+    if (!store) return { ok: false, error: "Hand-offs aren't available on this home right now." };
+    const clean = redactSecrets(text);
+    const r = store.giveLocal({ helper: h, text: clean, fromTask: card.taskId, fromTaskTitle: card.title, fromName: core.persona.name || "Ducter", head: relayHead(core.persona.name || "Ducter", card.title, clean), ...(card.persona ? { persona: card.persona } : {}) });
+    const record = r.handoff;
+    if (!r.created) {
+      const lastTask = record.taskId ? core.tasks.get(record.taskId) : undefined;
+      // More words on work it already handed: to the helper's task on it.
+      if (record.taskId && lastTask && !FINISHED.has(lastTask.attention) && lastTask.attention !== "dropped") {
+        void toTask(record.taskId, `${relayHead(core.persona.name || "Ducter", card.title, clean)}\n<peer_message>\n${clean.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>`);
+        return { ok: true, sent: true, note: `Passed to "${h.name}"'s task ${record.taskId}, which has your hand-off. Carry on, or end your turn (no report needed).` };
+      }
+      return { ok: true, handed: true, taken: false, note: `The same item is already handed to "${h.name}" and no task has taken it yet; your new words were added to that one record, nothing new was sent. You'll hear here when one takes it. Until then it is handed, not taken: never report that "${h.name}" is on it.` };
     }
-    const e = core.log.append({ persona: card.persona, stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper: h.id, text: redactSecrets(text), from: core.persona.name || "Ducter", fromTask: card.taskId, head: relayHead(core.persona.name || "Ducter", card.title, text) }) });
-    api.onTrigger(e);
+    if (r.message) api.onTrigger(r.message as LogEvent);
     return { ok: true, handed: true, taken: false, note: `Handed to "${h.name}" on this home, with no card (the user made it for this work). One of its tasks takes it now; you'll hear here when one has, and its outcome when it's done. Until then it is handed, not taken: never report that "${h.name}" is on it. Carry on, or end your turn (no report needed).` };
   }
-  /** D598: once per hand-off, after HELPER_TAKE_MS with no task of the helper's on it: one line, and the offer to run it directly. */
+  /** D609: once per item, after HELPER_TAKE_MS with no task on it: one line, and the offer to run it directly. */
   function stalledHandoffs() {
     if (closed || !core.helpers?.list().length) return;
-    const t = now();
-    for (const x of handoffs()) {
-      if (x.taskId || x.stalled || t - x.at < HELPER_TAKE_MS || t - x.at > DAY_MS) continue;
-      const h = x.m.helper ? core.helpers?.get(x.m.helper) : undefined;
+    const store = core.handoffs;
+    if (!store) return;
+    for (const x of store.dueUnclaimed(now())) {
+      const h = core.helpers?.get(x.to.helper);
       if (!h) continue;
       const lang = userLang() ?? NO_WORDS_YET;
-      const gist = clipLine(x.m.text.replace(/^.*[：:]\n/, ""), 40);
+      const gist = clipLine(x.said.replace(/^.*[：:]\n/, ""), 40);
       const text = said(lang, "helperStalled", { helper: h.name, gist, min: String(Math.round(HELPER_TAKE_MS / 60_000)) });
-      core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, stalled: x.m.messageId } });
-      codeSaid.push(text);
+      if (store.unclaim(x.handoffId)) {
+        core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, stalled: x.handoffId } });
+        codeSaid.push(text);
+      }
     }
   }
   /** D494: a helper's work on hand: its tasks not ended, newest first (for the [helpers] line). */
@@ -5311,9 +5315,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** The one request in a peer-only turn whose sender the user lets start work without asking. */
   function trustedRequest(t: TurnState): (Bodies["bridge_msg"] & { agent: string }) | undefined {
-    // D598: work for a helper written on the helper's own earlier message is an original too.
-    const sent = helperSent(loggedBridge());
-    const ins = t.triggers.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in" && (!(e.body as Bodies["bridge_msg"]).inReplyTo || isHelperWork(e.body as Bodies["bridge_msg"], sent)));
+    // D609: work for a helper, classified by our outbox (a reply to its own task's question is an
+    // answer, never new work), never by whether Bridge threaded it under an old message.
+    const questions = helperQuestions(loggedBridge());
+    const ins = t.triggers.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in" && (!(e.body as Bodies["bridge_msg"]).inReplyTo || isHelperWork(e.body as Bodies["bridge_msg"], questions)));
     if (ins.length !== 1) return undefined;
     const m = ins[0]!.body as Bodies["bridge_msg"];
     // D494: work handed to an on helper by one of the person's own agents: making the helper was the go
@@ -5796,6 +5801,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           continue;
         }
         const e = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body });
+        // D609: mail to a helper is work unless it answers a question that helper asked; one record
+        // per item, keyed by sender + helper + ref, whichever Space it came in.
+        if (body.helper) core.handoffs?.givenAgent({ body: e.body, at: e.ts, ...(e.persona ? { persona: e.persona } : {}) });
         n++;
         api.onTrigger(e); // core forwards it too; onTrigger dedupes by seq
       }

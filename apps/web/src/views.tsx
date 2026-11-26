@@ -109,7 +109,7 @@ import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
-import { EndAsk, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
+import { EndAsk, HandoffNote, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   browsing,
@@ -2945,6 +2945,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         <TryStrip task={task} />
         <FolderChangesView task={task} />
         <WhatItDid task={task} blocks={blocks} />
+        {/* D609: the record's one line, under the last report; no card. */}
+        {task.card?.handoff && <HandoffNote h={task.card.handoff} />}
         <OutsideActs task={task} />
       </main>
       {full && <Locator task={task} scroller={scroller} />}

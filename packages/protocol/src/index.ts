@@ -30,6 +30,7 @@ export * from "./open-asks.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
+export * from "./handoff.ts";
 export * from "./keeps.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
@@ -752,6 +753,10 @@ export interface Bodies {
   task_loop: TaskLoopBody;
   // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
   keep: import("./keeps.ts").KeepBody;
+  // D609: a hand-off as one record with an owner, keyed by sender + receiver + item ref. One snapshot
+  // per step (given, taken, done, returned, declined, unclaimed), on stream channel; the latest per
+  // handoffId wins, and a second hand-off of the same item merges into the open one.
+  handoff: import("./handoff.ts").HandoffBody;
   // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
   // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
   keep_round: { keepId: string; round: string; line?: string; failed?: true };
@@ -1147,6 +1152,8 @@ export interface TaskCard {
   helper?: { id: string; name: string };
   /** D511: the Keep (照看) this task is a round or an item of, so a row anywhere says whose it is. */
   keep?: { id: string; name: string };
+  /** D609: the latest hand-off this task gave to a helper (its one line under the last report). */
+  handoff?: import("./handoff.ts").HandoffLine;
   /** D521: the work its agent runs beside its turn (background shells, subagents, watches, jobs):
    *  every one still running and the newest finished, folded from its Log (background.ts). */
   background?: import("./background.ts").TaskBackground;

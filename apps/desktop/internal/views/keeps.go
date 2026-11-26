@@ -570,14 +570,11 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 		a.oh.listW = prev
 	}
 	// A Keep in rounds is its one task, never an item: it holds something
-	// only when that task keeps a PR open (D519).
-	if k.Run != "same" || len(k.Items) > 0 {
+	// only when that task keeps a PR open (D519). A helper's page groups its
+	// hand-offs by state (D609).
+	if k.Run != "same" || len(k.Items) > 0 || k.Handoffs != nil {
 		a.keepH2(c, "holding", a.L.T("keep.holding"))
-		if len(k.Items) == 0 {
-			uiText(c.Key("holding-none"), a.L.T("keep.holding.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(14, 16).Radius(16).Background(t.SurfaceSunken).Width(w)
-		} else {
-			a.keepCard(c, "items", w, func() { a.keepItems(c, k, w) })
-		}
+		a.keepHandoffGroups(c, k, w)
 	}
 	a.keepH2(c, "rounds", a.L.T("keep.rounds"))
 	if len(k.Rounds) == 0 {
@@ -590,61 +587,229 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 	}
 }
 
-func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
+func (a *App) keepItemRow(c *ui.Context, x protocol.KeepItem, w float32, first bool) {
 	t := a.T
-	for i, x := range k.Items {
-		x := x
-		key := x.TaskID
-		if x.PR != "" {
-			key = x.PR
-		}
-		r := ui.Row(c.Key("it:"+key)).Width(w).Gap(12).Padding(14, 16).AlignItems(ui.Start)
-		if i > 0 {
-			r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
-		}
-		r.Children(func() {
-			ui.Box(c.Key("dw")).Size(24, 20).Shrink(0).Padding(5, 0, 0, 6).Children(func() { a.keepDot(c, x.At, 12) })
-			ui.Column(c.Key("b")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-				ui.Row(c.Key("t")).Gap(6).Wrap().Children(func() {
-					if n := keepPRNum(x.PR); n != "" && !strings.Contains(x.Title, n) {
-						uiText(c.Key("pr"), n).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
-					}
-					uiText(c.Key("title"), noOrphan(x.Title)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
-				})
-				text, ink := a.keepItemWords(x)
-				uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
-				if x.Said != nil && x.Said.Checks != nil && x.Said.Checks.Total > 0 {
-					ch := x.Said.Checks
-					ui.Row(c.Key("checks")).Gap(3).Wrap().Margin(6, 0, 0, 0).AccessHidden(true).Children(func() {
-						for j := 0; j < ch.Total && j < 24; j++ {
-							col := t.Done.Dot
-							if j >= ch.Passed+ch.Pending {
-								col = t.Failed.Dot
-							} else if j >= ch.Passed {
-								col = t.Waiting.Dot
-							}
-							ui.Box(c.Key(fmt.Sprint("c", j))).Size(10, 10).Radius(3).Background(col)
-						}
-					})
+	key := x.TaskID
+	if x.PR != "" {
+		key = x.PR
+	}
+	r := ui.Row(c.Key("it:"+key)).Width(w).Gap(12).Padding(14, 16).AlignItems(ui.Start)
+	if !first {
+		r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
+	}
+	r.Children(func() {
+		ui.Box(c.Key("dw")).Size(24, 20).Shrink(0).Padding(5, 0, 0, 6).Children(func() { a.keepDot(c, x.At, 12) })
+		ui.Column(c.Key("b")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Row(c.Key("t")).Gap(6).Wrap().Children(func() {
+				if n := keepPRNum(x.PR); n != "" && !strings.Contains(x.Title, n) {
+					uiText(c.Key("pr"), n).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 				}
-				if x.Said != nil && x.Said.Phase == "ready" && len(x.Said.By) > 0 {
-					uiText(c.Key("by"), a.L.T("onhand.prs.approved", strings.Join(x.Said.By, a.L.T("onhand.prs.sep")))).FontSize(t.XS).TextColor(t.InkMuted)
-				}
+				uiText(c.Key("title"), noOrphan(x.Title)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
 			})
-			ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {
-				if a.buttonFor(c, a.L.T("keep.item.task"), x.Title, btnText, t.ControlSM, t.Surface) {
-					a.OpenTask(x.TaskID)
+			text, ink := a.keepItemWords(x)
+			uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
+			if x.Said != nil && x.Said.Checks != nil && x.Said.Checks.Total > 0 {
+				ch := x.Said.Checks
+				ui.Row(c.Key("checks")).Gap(3).Wrap().Margin(6, 0, 0, 0).AccessHidden(true).Children(func() {
+					for j := 0; j < ch.Total && j < 24; j++ {
+						col := t.Done.Dot
+						if j >= ch.Passed+ch.Pending {
+							col = t.Failed.Dot
+						} else if j >= ch.Passed {
+							col = t.Waiting.Dot
+						}
+						ui.Box(c.Key(fmt.Sprint("c", j))).Size(10, 10).Radius(3).Background(col)
+					}
+				})
+			}
+			if x.Said != nil && x.Said.Phase == "ready" && len(x.Said.By) > 0 {
+				uiText(c.Key("by"), a.L.T("onhand.prs.approved", strings.Join(x.Said.By, a.L.T("onhand.prs.sep")))).FontSize(t.XS).TextColor(t.InkMuted)
+			}
+		})
+		ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {
+			if a.buttonFor(c, a.L.T("keep.item.task"), x.Title, btnText, t.ControlSM, t.Surface) {
+				a.OpenTask(x.TaskID)
+			}
+			// D602: 不用跟了 / Stop following, asked in place under the row.
+			if a.buttonFor(c, a.L.T("keep.item.release"), x.Title, btnText, t.ControlSM, t.Surface) {
+				a.oh.keep.release = key
+			}
+		})
+	})
+	if a.oh.keep.release == key {
+		a.keepRelease(c, x, key, w)
+	}
+}
+
+func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
+	for i, x := range k.Items {
+		a.keepItemRow(c, x, w, i == 0)
+	}
+}
+
+// D609: a hand-off's row in 手上的事: the task's own row once one has it; before that the item and
+// who gave it; a returned or declined one carries why it came back. D602's actions stay on every
+// row that has a task.
+func (a *App) keepHandoffRow(c *ui.Context, k *protocol.KeepPage, h protocol.HandoffLine, w float32, first bool) {
+	t := a.T
+	title := strings.TrimSpace(h.Item.Title)
+	if title == "" {
+		title = h.Item.Ref
+	}
+	waiting := h.State == "given" || h.State == "unclaimed"
+	key := h.TaskID
+	if key == "" {
+		key = h.Item.Ref
+	}
+	r := ui.Row(c.Key("ho:"+h.ID)).Width(w).Gap(12).Padding(14, 16).AlignItems(ui.Start)
+	if !first {
+		r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
+	}
+	r.Children(func() {
+		at := "work"
+		if waiting {
+			at = "rest"
+		}
+		ui.Box(c.Key("dw")).Size(24, 20).Shrink(0).Padding(5, 0, 0, 6).Children(func() { a.keepDot(c, at, 12) })
+		ui.Column(c.Key("b")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Row(c.Key("t")).Gap(6).Wrap().Children(func() {
+				if n := keepPRNum(h.Item.Ref); n != "" && !strings.Contains(title, n) {
+					uiText(c.Key("pr"), n).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
 				}
-				// D602: 不用跟了 / Stop following, asked in place under the row.
-				if a.buttonFor(c, a.L.T("keep.item.release"), x.Title, btnText, t.ControlSM, t.Surface) {
+				uiText(c.Key("title"), noOrphan(title)).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).LineHeight(a.leading(1.4)).Shrink(1)
+			})
+			if waiting {
+				a.facts(c, t.SM, t.InkMuted, h.Sender, a.when(store.ParseTime(h.GivenAt)))
+			} else {
+				why := strings.TrimSpace(h.Why)
+				if why == "" {
+					why = strings.TrimSpace(h.Outcome)
+				}
+				if why != "" {
+					words, _ := clipText(autospace(why), 240)
+					uiText(c.Key("st"), keepWords(words)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+				}
+			}
+		})
+		ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {
+			if waiting {
+				if a.buttonFor(c, a.L.T("keep.handoff.take"), title, btnText, t.ControlSM, t.Surface) {
+					a.send(protocol.HandoffReq{T: "handoff_take", ID: h.ID})
+				}
+				if a.buttonFor(c, a.L.T("keep.item.release"), title, btnText, t.ControlSM, t.Surface) {
 					a.oh.keep.release = key
 				}
-			})
+				return
+			}
+			if h.TaskID != "" && a.buttonFor(c, a.L.T("keep.item.task"), title, btnText, t.ControlSM, t.Surface) {
+				a.OpenTask(h.TaskID)
+			}
+			if h.TaskID != "" && a.buttonFor(c, a.L.T("keep.item.release"), title, btnText, t.ControlSM, t.Surface) {
+				a.oh.keep.release = key
+			}
 		})
-		if a.oh.keep.release == key {
-			a.keepRelease(c, x, key, w)
+	})
+	if waiting && a.oh.keep.release == key {
+		a.keepHandoffRelease(c, h, key, title, w)
+	} else if h.TaskID != "" && a.oh.keep.release == key {
+		x := protocol.KeepItem{TaskID: h.TaskID, Title: title, At: "work"}
+		if h.Item.Kind == "pr" {
+			x.PR = h.Item.Ref
+		}
+		a.keepRelease(c, x, key, w)
+	}
+}
+
+// keepHandoffRelease is 不用跟了's confirm on a hand-off nobody took: the same line as D602, with
+// the record withdrawn and said back to its sender once (D616).
+func (a *App) keepHandoffRelease(c *ui.Context, h protocol.HandoffLine, key, title string, w float32) {
+	ask := a.L.T("keep.handoff.release", h.To, shortTitle(title))
+	ui.Box(c.Key("hrel:"+key)).Width(w).Padding(0, 16, 14, 52).Children(func() {
+		keep, goOn := a.confirmLine(c, "hrelease:"+key, ask, a.L.T("task.end.keep"), a.L.T("keep.item.release"), title)
+		if keep {
+			a.oh.keep.release = ""
+		}
+		if goOn {
+			a.oh.keep.release = ""
+			a.send(protocol.HandoffReq{T: "handoff_withdraw", ID: h.ID})
+		}
+	})
+}
+
+// D609: 手上的事 grouped by state: 等接手 first (who gave it and when), then 在做, then 退回了
+// and 没接. Nothing is drawn for an empty group.
+func (a *App) keepHandoffGroups(c *ui.Context, k *protocol.KeepPage, w float32) {
+	t := a.T
+	hs := k.Handoffs
+	if hs == nil {
+		if len(k.Items) == 0 {
+			uiText(c.Key("holding-none"), a.L.T("keep.holding.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(14, 16).Radius(16).Background(t.SurfaceSunken).Width(w)
+			return
+		}
+		a.keepCard(c, "items", w, func() { a.keepItems(c, k, w) })
+		return
+	}
+	seen := map[string]bool{}
+	for _, h := range hs {
+		// A done record's task may still carry an open PR (D508/D602): it stays in 在做 as that item.
+		if h.TaskID != "" && h.State != "done" {
+			seen[h.TaskID] = true
 		}
 	}
+	var legacy []protocol.KeepItem
+	for _, x := range k.Items {
+		if !seen[x.TaskID] {
+			legacy = append(legacy, x)
+		}
+	}
+	groups := []struct {
+		key  string
+		rows []protocol.HandoffLine
+	}{
+		{"waiting", nil}, {"working", nil}, {"returned", nil}, {"declined", nil},
+	}
+	for _, h := range hs {
+		switch h.State {
+		case "given", "unclaimed":
+			groups[0].rows = append(groups[0].rows, h)
+		case "taken":
+			groups[1].rows = append(groups[1].rows, h)
+		case "returned":
+			groups[2].rows = append(groups[2].rows, h)
+		case "declined":
+			groups[3].rows = append(groups[3].rows, h)
+		}
+	}
+	any := len(legacy) > 0
+	for _, g := range groups {
+		if len(g.rows) > 0 {
+			any = true
+		}
+	}
+	if !any {
+		uiText(c.Key("holding-none"), a.L.T("keep.holding.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(14, 16).Radius(16).Background(t.SurfaceSunken).Width(w)
+		return
+	}
+	// D616: one card for 手上的事, its group heads inside it and the rows on the card's hairline.
+	a.keepCard(c, "handoffs", w, func() {
+		firstGroup := true
+		for _, g := range groups {
+			rows := g.rows
+			if len(rows) == 0 && !(g.key == "working" && len(legacy) > 0) {
+				continue
+			}
+			a.secHeadIn(c, g.key, a.L.T("keep.holding."+g.key), firstGroup)
+			firstGroup = false
+			for i, h := range rows {
+				a.keepHandoffRow(c, k, h, w, i == 0)
+			}
+			if g.key == "working" {
+				for i, x := range legacy {
+					a.keepItemRow(c, x, w, len(rows) == 0 && i == 0)
+				}
+			}
+		}
+	})
 }
 
 // keepRelease is 不用跟了's one line under a held item (D602): a finished

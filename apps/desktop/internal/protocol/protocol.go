@@ -1096,6 +1096,8 @@ type TaskCard struct {
 	Helper *TaskHelper `json:"helper,omitempty"`
 	// Keep (D511): the Keep this task is a round or an item of.
 	Keep *TaskKeep `json:"keep,omitempty"`
+	// D609: the latest hand-off it gave to a helper (one line under its last report).
+	Handoff *HandoffLine `json:"handoff,omitempty"`
 	// Background (D521): the work its agent runs beside its turn, every one
 	// still running and the newest finished, folded from its Log by core.
 	Background *TaskBackground `json:"background,omitempty"`

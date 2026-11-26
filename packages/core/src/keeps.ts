@@ -13,7 +13,9 @@
 //     to judge (principle 21); nothing here reads meaning from words.
 import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepChanged, KeepBody, KeepCard, KeepEdit, KeepField, KeepFrom, KeepItem, KeepPage, KeepProposal, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
 import { fill, prWakeOf, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX, type PrWake } from "@ducter/protocol";
-import { HELPER_DAILY, helperSent, isHelperWork, localHandoff } from "@ducter/protocol/src/helpers.ts";
+import { HELPER_DAILY, isHelperWork } from "@ducter/protocol/src/helpers.ts";
+import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
+import { handoffItem, handoffLine, type HandoffBody, type HandoffsApi } from "@ducter/protocol/src/handoff.ts";
 import { describeTrigger, validateTimeTrigger } from "./schedule.ts";
 import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -255,6 +257,15 @@ export function keepRulesAsk(ask: (prompt: string) => Promise<{ text: string }>)
 const newId = () => `kp_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
 const iso = (ms: number) => new Date(ms).toISOString();
 const firstLine = (s?: string) => (s ?? "").split("\n").map((l) => l.trim()).find(Boolean)?.slice(0, 200);
+/** D616: a hand-off arrival's line never ends on the head's colon: the clean head plus the item,
+ *  or just the item when the words have no head. */
+const arrivalDid = (text: string | undefined, lang: LangTag): string => {
+  const head = firstLine(text) ?? "";
+  const clean = head.replace(/[：:]\s*$/, "");
+  const item = handoffItem({ text });
+  if (clean !== head) return item.kind === "text" ? clean : `${clean}${lang.startsWith("zh") ? "交来" : " handed"} ${item.ref}`;
+  return clean || (item.kind === "text" ? item.title ?? "" : item.ref);
+};
 const keyOf = (f: KeepFrom) => (f.kind === "loop" ? `loop:${f.taskId}` : f.kind === "routine" ? `routine:${f.routineId}` : `helper:${f.helperId}`);
 const loopTask = (k: KeepBody) => (k.from.kind === "loop" ? k.from.taskId : undefined);
 const GONE = new Set(["dropped", "superseded"]);
@@ -285,6 +296,10 @@ export function createKeeps(o: {
   onChange?: () => void;
   /** D540: tell a task in rounds something now, while its round is under way (the runner's send). */
   tell?: (taskId: string, text: string) => Promise<boolean>;
+  /** D609: the one door a piece of work for a helper goes through (core's hand-off store). */
+  hand?: (a: { keep: KeepBody; helper: Helper; text: string; at?: string }) => { handoff: HandoffBody } | undefined;
+  /** D609: every hand-off record (a helper's page groups them by state). */
+  handoffs?: () => HandoffsApi | undefined;
 }): Keeps {
   const { log, tasks } = o;
   const clock = o.clock ?? realClock;
@@ -592,12 +607,12 @@ export function createKeeps(o: {
       const claims = new Map<string, string>();
       const ins: LogEvent[] = [];
       const mail = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 });
-      const sent = helperSent(mail); // D598: a reply on its own message is work handed to it too
+      const questions = helperQuestions(mail); // D609: only answers to its own tasks' questions are not work
       for (const e of mail) {
         const b = e.body as Bodies["bridge_msg"];
         if (b.helper !== f.helperId) continue;
         if (b.direction === "out" && b.inReplyTo && b.taskId && !claims.has(b.inReplyTo)) claims.set(b.inReplyTo, b.taskId);
-        if (isHelperWork(b, sent)) ins.push(e);
+        if (isHelperWork(b, questions)) ins.push(e);
       }
       const seen = new Set<string>();
       for (const e of ins) {
@@ -605,7 +620,7 @@ export function createKeeps(o: {
         const t = claims.get(b.messageId);
         const c = t ? tasks.get(t) : undefined;
         // An arrival says the piece of work it took: its task's title, or what was handed when no task took it.
-        out.push({ at: e.ts, woke: "arrival", ...(b.agent || b.from ? { wokeWhat: b.agent ?? b.from } : {}), ...(c ? { did: c.title } : { did: firstLine(b.text) }), ...(b.text?.trim() ? { report: b.text.trim().slice(0, REPORT_MAX) } : {}), spoke: "silent", state: "done", ...(t ? { taskId: t } : {}) });
+        out.push({ at: e.ts, woke: "arrival", ...(b.agent || b.from ? { wokeWhat: b.agent ?? b.from } : {}), ...(c ? { did: c.title.replace(/[：:]\s*$/, "") } : { did: arrivalDid(b.text, lang()) }), ...(b.text?.trim() ? { report: b.text.trim().slice(0, REPORT_MAX) } : {}), spoke: "silent", state: "done", ...(t ? { taskId: t } : {}) });
         if (t && !seen.has(t)) {
           seen.add(t);
           const p = c ? prOf(c.prs) : undefined;
@@ -978,7 +993,9 @@ export function createKeeps(o: {
       const text = c0.hand.trim().slice(0, 4000);
       if (!text) return { ok: false, error: "hand: the work, in the user's words (the PR or the thing, and what to do)." };
       if (k.life !== "on") return { ok: false, error: k.life === "paused" ? "It is paused: resume it first (action resume), or open a task for this yourself." : "It has ended; open a task for this yourself." };
-      log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper: f.helperId, text, from: words(W, lang()).handFrom }), ...(k.persona ? { persona: k.persona } : {}) } as never);
+      const h = o.helpers?.()?.get(f.helperId);
+      if (!h) return { ok: false, error: "That helper isn't here any more." };
+      o.hand?.({ keep: k, helper: h, text });
       o.onChange?.();
       return { ok: true, keep: k, edits: [] };
     }
@@ -1215,6 +1232,7 @@ export function createKeeps(o: {
         ...(og?.where ? { where: { ...(og.where.deviceName ? { deviceName: og.where.deviceName } : {}), ...(og.where.harness ? { harness: og.where.harness } : {}) } } : {}),
         decisions,
         ...(og?.app ? { app: og.app } : {}),
+        ...(k.from.kind === "helper" && k.life !== "done" && k.life !== "stopped" ? { handoffs: (o.handoffs?.()?.ofHelper(k.from.helperId) ?? []).map(handoffLine) } : {}),
       };
     },
     act,

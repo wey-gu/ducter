@@ -271,6 +271,8 @@ export interface CoreApi {
   bridgeLink?: BridgeLinkApi;
   /** D494: 帮手 / Helpers, the person's named addresses in Bridge that this home owns (core/src/helpers.ts). */
   helpers?: HelpersApi;
+  /** D609: a hand-off as one record with an owner (core/src/handoffs.ts); absent in tests and stubs. */
+  handoffs?: import("./handoff.ts").HandoffsApi;
   /** D511: 照看 / Looking after, every Keep on the home (core/src/keeps.ts); absent in tests and stubs. */
   keeps?: import("./keeps.ts").KeepsApi;
   /**

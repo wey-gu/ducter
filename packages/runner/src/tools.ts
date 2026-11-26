@@ -30,6 +30,15 @@ export const reportToMainSchema = {
       description: "Open PRs you own that your work no longer goes on in: Ducter stops watching them; they stay open on GitHub.",
       items: { type: "object", properties: { pr: { type: "string", description: "owner/repo#123" }, why: { type: "string", enum: LET_GO_WHY } }, required: ["pr", "why"] },
     },
+    handoff: {
+      type: "object",
+      description: "Only when this task was opened for work a helper (a Keep with an address) was handed, and the work is outside what it takes or cannot be done: Ducter sends it back to whoever handed it over, with why. returned = it tried and sends it back; declined = out of its scope. Leave it out for a normal report.",
+      properties: {
+        back: { type: "string", enum: ["returned", "declined"] },
+        why: { type: "string", description: "Why, in one or two plain sentences, for whoever handed the work over." },
+      },
+      required: ["back", "why"],
+    },
     // D349: the bar itself is in the brief (the task tools' budget is tight).
     summary: { type: "string", maxLength: SUMMARY_MAX, description: "For the user, result first. At most 600 characters." },
     questions: {
@@ -381,6 +390,14 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         if (checked?.length === body.evidence.length) body.evidence = checked;
       }
       const card = core.tasks.get(ctx.taskId);
+      // D609: a helper's task sends the work back with why (returned or declined) before the report:
+      // the sender hears it once, in its own place, and the auto outcome that follows is not a second word.
+      let backNote = "";
+      const back = args?.handoff as { back?: unknown; why?: unknown } | undefined;
+      if (back && (back.back === "returned" || back.back === "declined") && typeof back.why === "string" && back.why.trim()) {
+        const r = await core.handoffs?.finishForTask(ctx.taskId, back.back, { why: back.why.trim().slice(0, 600), say: true });
+        backNote = r ? " The work was handed back to whoever gave it to you, with your reason." : " There was no open hand-off to hand back; nothing was sent.";
+      }
       // D339: the same wait said again, with no word from the person since, is not a new report: on
       // hel a phone task said 在等 three times in a row after a Stop (once per note it was told).
       if (!docAgain && sameWaitAgain(core, ctx.taskId, body)) {
@@ -402,8 +419,8 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
       const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
       return body.state === "progress"
-        ? `Reported.${notShown}${notLetGo} Keep working.`
-        : `Reported.${notShown}${notLetGo} End your turn now; any answer will arrive as a new message.`;
+        ? `Reported.${notShown}${notLetGo}${backNote} Keep working.`
+        : `Reported.${notShown}${notLetGo}${backNote} End your turn now; any answer will arrive as a new message.`;
     },
   );
   core.mcp.register("task", "checkpoint", "Record where the work stands after a meaningful step.", checkpointSchema, async (args, ctx) => {

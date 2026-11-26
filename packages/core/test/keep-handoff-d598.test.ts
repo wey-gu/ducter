@@ -6,7 +6,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Bodies, TaskCard } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
-import { isHelperWork, helperSent, localHandoff, LOCAL_MSG } from "@ducter/protocol/src/helpers.ts";
+import { isHelperWork, localHandoff, LOCAL_MSG } from "@ducter/protocol/src/helpers.ts";
+import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 import { seedOld } from "./fixtures/keeps-old.ts";
@@ -36,14 +37,19 @@ function boot(dir: string) {
 const HELPER = "nowledge-mem-pr-babysitter";
 
 describe("D598: what counts as work handed to a helper", () => {
-  test("an original, a hand-off on this home, a reply on the helper's own message; never a reply on another's", () => {
-    const evs = [{ body: { direction: "out", messageId: "m2", inReplyTo: "m1", helper: HELPER, text: "Taken", taskId: "t1", state: "sent" } }];
-    const sent = helperSent(evs);
-    expect(isHelperWork({ direction: "in", messageId: "a", helper: HELPER }, sent)).toBe(true);
-    expect(isHelperWork({ direction: "in", messageId: "b", helper: HELPER, inReplyTo: "m2" }, sent)).toBe(true);
-    expect(isHelperWork({ direction: "in", messageId: "c", helper: HELPER, inReplyTo: "elsewhere" }, sent)).toBe(false);
-    expect(isHelperWork({ direction: "in", messageId: "d", helper: HELPER, state: "muted" }, sent)).toBe(false);
-    expect(isHelperWork({ direction: "in", messageId: "e" }, sent)).toBe(false);
+  test("an original, a hand-off on this home, a reply under any old message but the helper's own question", () => {
+    const evs = [
+      { body: { direction: "out", messageId: "m2", inReplyTo: "m1", helper: HELPER, text: "Taken", taskId: "t1", state: "sent" } },
+      { body: { direction: "out", messageId: "mq", helper: HELPER, text: "Which head?", taskId: "t1", by: "task", state: "sent" } },
+    ];
+    const asked = helperQuestions(evs);
+    expect(isHelperWork({ direction: "in", messageId: "a", helper: HELPER }, asked)).toBe(true);
+    // D609 replaces D598: a reply under the helper's own claim/outcome is new work, not an answer.
+    expect(isHelperWork({ direction: "in", messageId: "b", helper: HELPER, inReplyTo: "m2" }, asked)).toBe(true);
+    // Only a reply to a question one of its own tasks asked is an answer.
+    expect(isHelperWork({ direction: "in", messageId: "c", helper: HELPER, inReplyTo: "mq" }, asked)).toBe(false);
+    expect(isHelperWork({ direction: "in", messageId: "d", helper: HELPER, state: "muted" }, asked)).toBe(false);
+    expect(isHelperWork({ direction: "in", messageId: "e" }, asked)).toBe(false);
     const l = localHandoff({ id: "x", helper: HELPER, text: "接手 mem#11393", from: "Ducter", fromTask: "m2uifpyn", head: "Ducter 的任务「用 agy 处理 Mem #11390」：" });
     expect(l).toMatchObject({ direction: "in", messageId: `${LOCAL_MSG}x`, helper: HELPER, local: true, fromTask: "m2uifpyn", mine: true });
     expect(l.text).toBe("Ducter 的任务「用 agy 处理 Mem #11390」：\n接手 mem#11393");
@@ -57,13 +63,16 @@ describe("D598: what counts as work handed to a helper", () => {
     stops.push(() => core.stop());
     const keeps = core.keeps!;
     const h = keeps.all().find((k) => k.from.kind === "helper" && k.life === "on")!;
+    // D609's migration: the old bridge_msg hand-offs already in the Log are records now.
+    expect(core.handoffs.ofHelper(h.from.helperId).length).toBeGreaterThan(0);
     const arrivals = () => keeps.page(h.keepId)!.rounds.filter((r) => r.woke === "arrival");
     expect(arrivals()).toHaveLength(1); // #11030, an original
 
     // The task's hand-off came back as a reply on the helper's own claim (m2): work, so an arrival.
     core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm-11393", from: "Ducter", agent: "Ducter", mine: true, helper: HELPER, inReplyTo: "m2", text: "Ducter 的任务「用 agy 处理 Mem #11390 并准备 PR 交接」：\n请接手推进 PR https://github.com/nowledge-co/mem/pull/11393" } });
     expect(arrivals()).toHaveLength(2);
-    expect(arrivals()[0]).toMatchObject({ did: "Ducter 的任务「用 agy 处理 Mem #11390 并准备 PR 交接」：" });
+    // D616: never the head's dangling colon; the clean head and the item it is about.
+    expect(arrivals()[0]).toMatchObject({ did: "Ducter 的任务「用 agy 处理 Mem #11390 并准备 PR 交接」 handed nowledge-co/mem#11393" });
 
     // A rule from now on reaches each piece of work it holds, at once (the item at work: t_pr11030).
     const a = await keeps.change(h.keepId, { also: "Babysitter 负责到底：独立评审，OK 就 /lgtm，Prow/Tide 仓库绝不手动合并。" }, { by: "partner" });

@@ -6,7 +6,7 @@
 // turn folds under how long it worked; while it works, the working line ends the transcript.
 // @ducter/protocol's transcript.ts builds the turns (keys hidden there too) and steps.ts names the
 // steps, the same on every harness and on the Mac.
-import type { Place } from "@ducter/protocol";
+import type { HandoffLine, Place } from "@ducter/protocol";
 import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
 import { unwrapShell, type Step } from "@ducter/protocol/src/steps.ts";
 import { inTurn, lastSeq, latestVoice, quietRuns, serviceName, turnsOf, type Block, type Line, type StepRow, type Tally, type Turn } from "@ducter/protocol/src/transcript.ts";
@@ -28,6 +28,7 @@ import { openFileLink } from "./fileview.tsx";
 import { SourceChip } from "./todos.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
+import { handoffTaskWords } from "./handoff.ts";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { CopyButton } from "./copy-button.tsx";
@@ -731,6 +732,12 @@ function Saved({ task, b }: { task: Task; b: Extract<Block, { k: "saved" }> }) {
       </small>
     </div>
   );
+}
+
+/** D609: one quiet line under a task's last report: given → taken → its outcome. No card, no
+ *  button: what the helper did with the work, in words. */
+export function HandoffNote({ h }: { h: HandoffLine }) {
+  return <p class={`handoff-line ${h.state}`}>{handoffTaskWords(h, A.L)}</p>;
 }
 
 function BlockView({ task, b, live, took, times, last }: { task: Task; b: Block; live?: boolean; took?: string; times?: number; last?: boolean }) {

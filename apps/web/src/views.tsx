@@ -2078,7 +2078,8 @@ function NotifyAsk() {
         <Avatar size={48} state="needsyou" still />
         <div class="notify-words">
           <div class="q">{t("notify.ask")}</div>
-          <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
+          {/* D584: the quiet hours are one thing: never broken at their dash (23:00– / 08:00). */}
+          <div class="note">{t("notify.ask.note", "23:00", "08:00").replace("–", "\u2060–\u2060")}</div>
         </div>
       </div>
       <div class="btns">

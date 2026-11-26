@@ -46,6 +46,8 @@ export interface HarnessProbeEnv {
   exists?: (p: string) => boolean;
   /** D156: the pi that ships inside Ducter, when this Ducter runs one (its version); see bundledPiVersion. */
   piBundled?: () => string | undefined;
+  /** D600: Cursor's SDK that ships inside Ducter, when this Ducter has one (its version); see bundledCursorVersion. */
+  cursorBundled?: () => string | undefined;
   /** D416: a link that is there but points at nothing (default: the file system's). */
   dangling?: (p: string) => boolean;
   /** D549: the user id Ducter runs as here (default process.getuid; 0 is root). */
@@ -123,16 +125,65 @@ export function bundledPiVersion(): string | undefined {
   }
 }
 
-/** One agent's copy on this machine, or undefined when it isn't on PATH. */
-export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" | "which" | "env" | "realpath" | "exists" | "piBundled">): Promise<AgentInstall | undefined> {
+/**
+ * D600: where each agent's command may be, in the order its own installer or OAR puts it. A
+ * pinned override comes alone. The first four are the old paths; the four below them are this
+ * change's, including the places their installers use that aren't on a service's PATH.
+ */
+export function agentPaths(
+  h: HarnessId,
+  o: { which: (cmd: string) => string | null; env?: Record<string, string | undefined>; home?: string; exists?: (p: string) => boolean },
+): string[] {
+  const env = o.env ?? process.env;
+  const home = o.home ?? env.HOME ?? homedir();
+  const exists = o.exists ?? existsSync;
+  const add = (p: string | undefined | null) => (p && exists(p) ? p : undefined);
+  if (h === "antigravity") return agyPaths(o);
+  const pinned: string | undefined = { cursor: env.OAR_CURSOR_BIN, devin: env.OAR_DEVIN_BIN, kimi: env.OAR_KIMI_BIN, opencode: env.OAR_OPENCODE_BIN }[h as "cursor" | "devin" | "kimi" | "opencode"];
+  if (pinned) return [pinned];
+  const cmd = HARNESS_FACTS[h].version.command[0]!;
+  const onPath = o.which(cmd);
+  switch (h) {
+    case "devin":
+      return [...new Set([onPath, add(join(home, ".local", "bin", "devin"))].filter((p): p is string => !!p))];
+    case "kimi": {
+      const install = env.KIMI_INSTALL_DIR ? join(env.KIMI_INSTALL_DIR, "bin", "kimi") : undefined;
+      return [...new Set([onPath, add(install), add(join(home, ".kimi-code", "bin", "kimi")), o.which("kimi-code"), add(join(home, ".kimi-code", "bin", "kimi-code"))].filter((p): p is string => !!p))];
+    }
+    case "opencode":
+      return [...new Set([onPath, add(join(home, ".opencode", "bin", "opencode"))].filter((p): p is string => !!p))];
+    default:
+      return [...new Set([onPath].filter((p): p is string => !!p))];
+  }
+}
+
+/** D600: the Cursor SDK that ships inside Ducter (an optional peer OAR hands over), when it is there. */
+export function bundledCursorVersion(): string | undefined {
+  if (import.meta.url.includes("$bunfs") || import.meta.path.includes("$bunfs")) return undefined;
+  try {
+    const pkg = Bun.resolveSync("@cursor/sdk/package.json", join(import.meta.dir, "../../runner"));
+    const v = JSON.parse(readFileSync(pkg, "utf8"))?.version;
+    return typeof v === "string" ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** One agent's copy on this machine, or undefined when it isn't there. */
+export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" | "which" | "env" | "realpath" | "exists" | "piBundled" | "cursorBundled">): Promise<AgentInstall | undefined> {
   if (h === "pi") {
     const v = o.piBundled?.();
     if (v) return { version: v, how: "ducter" };
   }
+  // D600: Cursor is its SDK, not the person's `agent` CLI (a separate product and credential store).
+  if (h === "cursor") {
+    const v = (o.cursorBundled ?? bundledCursorVersion)();
+    return v ? { version: v, how: "ducter" } : undefined;
+  }
   const cmd = HARNESS_FACTS[h].version.command[0]!;
   // D523: agy's copy is the one that answers (an editor's launcher link may come first on PATH).
   const agy = h === "antigravity" ? await pickAgy(o) : undefined;
-  const path = h === "antigravity" ? (agy?.bin ?? agy?.oldBin ?? agyPaths(o)[0]) : (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || o.which(cmd);
+  const path = h === "antigravity" ? (agy?.bin ?? agy?.oldBin ?? agyPaths(o)[0]) : (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || agentPaths(h, o)[0] || o.which(cmd);
   if (!path) return undefined;
   const r = await o.exec([path, ...HARNESS_FACTS[h].version.command.slice(1)], 15_000);
   const version = r.code === 0 ? versionIn(r.out) : undefined;
@@ -330,12 +381,71 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     }
     return { harness: "antigravity", installed: false, loggedIn: false, ...(trouble ? { trouble } : {}), ...(pick.old ? { version: pick.old } : {}) };
   };
+  // D600: Cursor's SDK is what Ducter runs; its CLI is a different product with its own sign-in.
+  // No SDK in this build: not installed, never a row that offers a sign-in Ducter can't keep.
+  const cursor = async (): Promise<RawHarness> => {
+    const version = (o.cursorBundled ?? bundledCursorVersion)();
+    if (!version) return { harness: "cursor", installed: false, loggedIn: false };
+    // The SDK keeps its own sign-in in ~/.cursor/sdk/auth.json; a key in Ducter's file or the env
+    // also works, and its own status never reads or validates that key. Presence only, never the key.
+    const home = o.home ?? env.HOME ?? homedir();
+    const own = (o.exists ?? existsSync)(join(home, ".cursor", "sdk", "auth.json"));
+    return { harness: "cursor", installed: true, loggedIn: own || has("CURSOR_API_KEY"), version, how: "ducter" };
+  };
+  // D600: Devin's own auth status; WINDSURF_API_KEY is the one env key it reads (unvalidated there).
+  const devin = async (): Promise<RawHarness> => {
+    const bin = agentPaths("devin", { which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) })[0];
+    if (!bin) return { harness: "devin", installed: false, loggedIn: false };
+    const v = await o.exec([bin, "--version"], 15_000);
+    const installed = v.code === 0 && !!versionIn(v.out);
+    if (!installed) return { harness: "devin", installed: false, loggedIn: false };
+    if (has("WINDSURF_API_KEY")) return { harness: "devin", installed: true, loggedIn: true };
+    const r = await o.exec([bin, "auth", "status"], 20_000);
+    const said = `${r.out}\n${r.err ?? ""}`;
+    // It exits 0 in every state; "Not logged in." and a rejected stored credential are the nos.
+    const loggedIn = /^Logged in(?:\s+\(via [^)]+\))?\./m.test(said) && !/^Not logged in\./m.test(said) && !/Failed to fetch from server:\s*.*authentication required/i.test(said);
+    return { harness: "devin", installed: true, loggedIn };
+  };
+  // D600: Kimi has no command-line status Ducter can read (OAR asks ACP); its own OAuth file is
+  // checked for presence only, never read, and an OAuth sign-in has no env key.
+  const kimi = async (): Promise<RawHarness> => {
+    const bin = agentPaths("kimi", { which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) })[0];
+    if (!bin) return { harness: "kimi", installed: false, loggedIn: false };
+    const v = await o.exec([bin, "--version"], 15_000);
+    if (v.code !== 0 || !versionIn(v.out)) return { harness: "kimi", installed: false, loggedIn: false };
+    const codeHome = env.KIMI_CODE_HOME || join(home, ".kimi-code");
+    const own = (o.exists ?? existsSync)(join(codeHome, "credentials", "kimi-code.json"));
+    return { harness: "kimi", installed: true, loggedIn: own };
+  };
+  // D600: OpenCode reads stored provider credentials; `auth list --format json` names the providers
+  // without a secret, and a presence-only look at its auth file is the fallback when that fails.
+  const opencode = async (): Promise<RawHarness> => {
+    const bin = agentPaths("opencode", { which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) })[0];
+    if (!bin) return { harness: "opencode", installed: false, loggedIn: false };
+    const v = await o.exec([bin, "--version"], 15_000);
+    if (v.code !== 0 || !versionIn(v.out)) return { harness: "opencode", installed: false, loggedIn: false };
+    let loggedIn = has("OPENCODE_API_KEY");
+    if (!loggedIn) {
+      const r = await o.exec([bin, "auth", "list", "--format", "json"], 20_000);
+      const parsed = r.code === 0 ? parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1)) : undefined;
+      loggedIn = !!parsed && typeof parsed === "object" && Object.keys(parsed).length > 0;
+      if (!loggedIn) {
+        const data = env.XDG_DATA_HOME || join(home, ".local", "share");
+        loggedIn = (o.exists ?? existsSync)(join(data, "opencode", "auth.json"));
+      }
+    }
+    return { harness: "opencode", installed: true, loggedIn };
+  };
   const probes: [string, () => Promise<RawHarness>][] = [
     ["claude-code", claude],
     ["codex", codex],
     ["pi", pi],
     ["deepseek-harness", dsh],
     ["antigravity", agy],
+    ["cursor", cursor],
+    ["devin", devin],
+    ["kimi", kimi],
+    ["opencode", opencode],
   ];
   // D549 (research/225): an agent that refuses to run as root, on a computer where Ducter runs as
   // root, is there and may be signed in, but can't take a task here: said as trouble "root".

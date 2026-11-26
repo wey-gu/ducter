@@ -32,7 +32,7 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const [code, setCode] = useState("");
   if (!l) return null;
   const again = <Btn kind="secondary" size="sm" label={t("ag.retry")} about={harnessName(h.harness)} onClick={() => A.agentSetup(dv.id, "login", { harness: h.harness })} />;
-  if (l.state === "terminal") return <div class="ag-login"><p>{t("ag.login.pi", dv.name)}</p></div>;
+  if (l.state === "terminal") return <div class="ag-login"><p>{t(terminalKey(h.harness), dv.name)}</p></div>;
   if (l.state === "starting") return <div class="ag-login"><LiveLine harness={h.harness} text={t("ag.login.starting")} checking /></div>;
   if (l.state === "done") return <div class="ag-login"><p class="ok">{t("ag.login.done")}</p></div>;
   // D416: its own sign-out, running or refused.
@@ -124,8 +124,23 @@ export function loginTrouble(l: { state: string; reason?: string }): string {
 
 /** D518: each agent's two steps, in its own words. */
 export function loginSteps(harness: string): { open: string; code: string } {
-  const k = harness === "codex" ? "codex" : harness === "antigravity" ? "agy" : "claude";
+  const k = harness === "codex" ? "codex" : harness === "antigravity" ? "agy" : harness === "kimi" ? "kimi" : "claude";
   return { open: `ag.login.${k}.1`, code: `ag.login.${k}.2` };
+}
+
+/** D600: the line a terminal-only sign-in says on that computer (pi, Devin, OpenCode, Cursor). */
+export function terminalKey(harness: string): string {
+  return harness === "devin" ? "ag.login.devin" : harness === "opencode" ? "ag.login.opencode" : harness === "cursor" ? "ag.login.cursor" : "ag.login.pi";
+}
+
+/** D600: what the card says where an agent isn't there yet and Ducter can't install it (its own installer). */
+export function manualWhereKey(harness: string): string | undefined {
+  return harness === "cursor" ? "ag.cursor.where" : harness === "devin" ? "ag.devin.where" : harness === "kimi" ? "ag.kimi.where" : undefined;
+}
+
+/** D600: the terms line said before the person signs in with their own account or key. */
+export function termsKey(harness: string): string | undefined {
+  return harness === "antigravity" ? "ag.agy.terms" : harness === "cursor" ? "ag.cursor.terms" : harness === "devin" ? "ag.devin.terms" : harness === "kimi" ? "ag.kimi.terms" : harness === "opencode" ? "ag.opencode.terms" : undefined;
 }
 
 /** D518: minutes left until `until`, rounded up, never below 1. */
@@ -243,8 +258,11 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
       {/* D416: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "antigravity" && tr?.button !== "update" && <div class="ag-detail">{t("ag.agy.size")}</div>}
-      {/* D416: Google's own terms, said before the person signs in with their Google account. */}
-      {(look === "signin" || (look === "login" && h.login?.state !== "done")) && h.harness === "antigravity" && <div class="ag-detail">{t("ag.agy.terms")}</div>}
+      {/* D600: OpenCode's own installer line vs Ducter's folder. */}
+      {(look === "install" || look === "queued") && h.harness === "opencode" && <div class="ag-detail">{t("ag.opencode.where")}</div>}
+      {/* D600: where an agent Ducter doesn't install comes from, and the terms before its sign-in. */}
+      {(look === "missing" || look === "signin" || (look === "login" && h.login?.state !== "done")) && manualWhereKey(h.harness) && <div class="ag-detail">{t(manualWhereKey(h.harness)!)}</div>}
+      {(look === "signin" || (look === "login" && h.login?.state !== "done")) && termsKey(h.harness) && <div class="ag-detail">{t(termsKey(h.harness)!)}</div>}
       {look === "login" && <LoginPanel dv={dv} h={h} />}
     </div>
   );

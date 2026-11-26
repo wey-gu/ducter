@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { DeviceHarness } from "@ducter/protocol";
 import { agentRowLook, anyInstalling, anyReady, offerable } from "../src/agent-setup-view.ts";
-import { loginSteps, loginTrouble, minutesLeft, shortUrl } from "../src/agent-setup.tsx";
+import { loginSteps, loginTrouble, manualWhereKey, minutesLeft, shortUrl, terminalKey, termsKey } from "../src/agent-setup.tsx";
 import { agentSetupWords } from "../src/i18n-agentsetup.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
@@ -44,6 +44,9 @@ describe("a row's look", () => {
       { harness: "deepseek-harness", checked: false },
       { harness: "pi", checked: false },
     ]);
+    // D600: OpenCode can be installed by Ducter; Devin, Kimi and Cursor only by their own installers.
+    const four = [h("opencode", { installable: true }), h("devin", { installable: false }), h("kimi"), h("cursor")];
+    expect(offerable(four)).toEqual([{ harness: "opencode", checked: false }]);
     expect(anyReady(hs)).toBe(false);
     expect(anyReady([h("codex", { installed: true, loggedIn: true })])).toBe(true);
     expect(anyInstalling([h("pi", { setup: { phase: "queued" } })])).toBe(true);
@@ -74,6 +77,8 @@ test("a sign-in's steps, its trouble and its time left, in both languages", () =
   expect(loginSteps("claude-code")).toEqual({ open: "ag.login.claude.1", code: "ag.login.claude.2" });
   expect(loginSteps("codex")).toEqual({ open: "ag.login.codex.1", code: "ag.login.codex.2" });
   expect(loginSteps("antigravity")).toEqual({ open: "ag.login.agy.1", code: "ag.login.agy.2" });
+  // D600: Kimi's device code is entered on the page, so it is two steps like Codex and AGY.
+  expect(loginSteps("kimi")).toEqual({ open: "ag.login.kimi.1", code: "ag.login.kimi.2" });
   expect(loginTrouble({ state: "expired" })).toBe("ag.login.expired");
   expect(loginTrouble({ state: "failed", reason: "not_seen" })).toBe("ag.login.not_seen");
   expect(loginTrouble({ state: "failed", reason: "no_answer" })).toBe("ag.login.no_answer");
@@ -84,7 +89,7 @@ test("a sign-in's steps, its trouble and its time left, in both languages", () =
   expect(minutesLeft(15 * 60_000, 0)).toBe(15);
   expect(minutesLeft(61_000, 0)).toBe(2);
   expect(minutesLeft(0, 5000)).toBe(1);
-  const keys = ["ag.signing_in", "ag.login.wait.paste", "ag.login.wait.self", "ag.login.left", "ag.login.confirming", "ag.login.not_seen", "ag.login.no_answer", "ag.login.send", "ag.login.claude.1", "ag.login.claude.2", "ag.login.codex.1", "ag.login.codex.2", "ag.login.agy.1", "ag.login.agy.2"];
+  const keys = ["ag.signing_in", "ag.login.wait.paste", "ag.login.wait.self", "ag.login.left", "ag.login.confirming", "ag.login.not_seen", "ag.login.no_answer", "ag.login.send", "ag.login.claude.1", "ag.login.claude.2", "ag.login.codex.1", "ag.login.codex.2", "ag.login.agy.1", "ag.login.agy.2", "ag.login.kimi.1", "ag.login.kimi.2", "ag.login.devin", "ag.login.opencode", "ag.login.cursor", "ag.kimi.where", "ag.kimi.terms", "ag.opencode.where", "ag.opencode.terms", "ag.devin.where", "ag.devin.terms", "ag.cursor.where", "ag.cursor.terms"];
   for (const lang of ["zh", "en"] as const) for (const k of keys) expect(agentSetupWords[lang][k]).toBeTruthy();
   // 好了 / Done read as "I finished" beside the paste box; it sends the code.
   expect(agentSetupWords.zh["ag.login.send"]).toBe("确认登录");
@@ -92,6 +97,24 @@ test("a sign-in's steps, its trouble and its time left, in both languages", () =
   // The Mac's words are the same (apps/desktop/internal/i18n/agentsetup.go).
   const mac = readFileSync(new URL("../../desktop/internal/i18n/agentsetup.go", import.meta.url), "utf8");
   for (const lang of ["zh", "en"] as const) for (const k of keys) expect(mac).toMatch(new RegExp(`"${k.replace(/\./g, "\\.")}":\\s+${JSON.stringify(agentSetupWords[lang][k]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+});
+
+// D600: a terminal-only sign-in says each agent's own command, and the terms come before a sign-in
+// that uses the person's own account or key. Cursor is never offered its forbidden OAuth app.
+test("D600: the four new agents' terminal, manual-install and terms lines", () => {
+  expect(terminalKey("pi")).toBe("ag.login.pi");
+  expect(terminalKey("devin")).toBe("ag.login.devin");
+  expect(terminalKey("opencode")).toBe("ag.login.opencode");
+  expect(terminalKey("cursor")).toBe("ag.login.cursor");
+  expect(manualWhereKey("devin")).toBe("ag.devin.where");
+  expect(manualWhereKey("kimi")).toBe("ag.kimi.where");
+  expect(manualWhereKey("cursor")).toBe("ag.cursor.where");
+  expect(manualWhereKey("opencode")).toBeUndefined();
+  expect(termsKey("kimi")).toBe("ag.kimi.terms");
+  expect(termsKey("opencode")).toBe("ag.opencode.terms");
+  expect(agentSetupWords.en["ag.login.opencode"]).toContain("do not choose Claude's subscription");
+  expect(agentSetupWords.en["ag.cursor.terms"]).toContain("never route around");
+  expect(agentSetupWords.zh["ag.login.kimi.1"]).toContain("Kimi");
 });
 
 // D518: a tray tile holds its name with room on both sides; a long one grows it (never clipped).

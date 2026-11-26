@@ -943,7 +943,8 @@ One vocabulary on every tab:
   ink), `tileRow`, `openRow` (opens more under it; a switch apart at its right), `textBlock`
   (what a row opened, on the text column), `addRow`, `footRow` (the group's quiet note and quiet
   actions) and `confirmRow` (a destructive action asking in place; before that it is
-  `quietDanger`). Art lives small in the tile column or in an empty state, never as a hero
+  `quietDanger`); `confirmLine` is the same ask outside a group, with no rule and no tile column
+  (D602: 结束任务 under a task's meta line; web `GConfirm` in `.end-ask`). Art lives small in the tile column or in an empty state, never as a hero
   inside a group. **Accounts** (D289): 发现了就说 as a section; under 它能看的 one group per
   source (the connection, a row per app and account with whether Ducter reads it and its switch,
   the add row, the last line); 再连一个账号服务 as an add row; under 打电话 Tuwa, its offer and

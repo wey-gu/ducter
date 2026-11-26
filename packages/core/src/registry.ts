@@ -166,9 +166,10 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           else delete c.prs;
           return;
         }
-        const pr: TaskPR = { pr: b.pr, url: prUrl(b.pr), state: state ?? "open", at: e.ts, ...(b.seen.standing ? { standing: b.seen.standing } : {}) };
+        // D602: a PR the task let go keeps its row (it may still be open on GitHub) and holds nothing open.
+        const pr: TaskPR = { pr: b.pr, url: prUrl(b.pr), state: state ?? "open", at: e.ts, ...(b.seen.standing ? { standing: b.seen.standing } : {}), ...(b.seen.letGo ? { letGo: b.seen.letGo } : {}) };
         c.prs = [...rest, pr];
-        if (pr.state !== "open" && was?.state !== pr.state) c.updatedAt = e.ts;
+        if (pr.state !== "open" && was?.state !== pr.state) c.updatedAt = e.ts; // a let-go changes nothing about when its work ended (D602)
         break;
       }
       case "task_held": {

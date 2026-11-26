@@ -2,12 +2,15 @@
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
 import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, TASK_STEP_ACTIONS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
-import { prIdentity } from "@ducter/protocol/src/owned.ts";
+import { letGoPr, prIdentity } from "@ducter/protocol/src/owned.ts";
 import { directTurn } from "./direct.ts";
 import { DEVICE_CODE_MINUTES, deviceFlowIn } from "@ducter/protocol/src/device-signin.ts";
 
 const SUMMARY_MAX = 600;
 const STATES = ["progress", "needs_input", "blocked", "done", "failed"] as const;
+/** D602: the tool's states: a report's, and dropped (put down at the person's word; never a report). */
+const TOOL_STATES = [...STATES, "dropped"] as const;
+const LET_GO_WHY = ["duplicate", "unneeded"] as const;
 const EVIDENCE_KINDS = ["ci", "diff", "file", "url", "log", "test"] as const;
 
 const ATTENTION: Record<Bodies["report"]["state"], Attention> = {
@@ -21,7 +24,12 @@ const ATTENTION: Record<Bodies["report"]["state"], Attention> = {
 export const reportToMainSchema = {
   type: "object",
   properties: {
-    state: { type: "string", enum: STATES, description: "progress | needs_input | blocked | done | failed" },
+    state: { type: "string", enum: TOOL_STATES, description: "progress | needs_input | blocked | done | failed | dropped (the user asked in your box to stop it)" },
+    let_go: {
+      type: "array",
+      description: "Open PRs you own that your work no longer goes on in: Ducter stops watching them; they stay open on GitHub.",
+      items: { type: "object", properties: { pr: { type: "string", description: "owner/repo#123" }, why: { type: "string", enum: LET_GO_WHY } }, required: ["pr", "why"] },
+    },
     // D349: the bar itself is in the brief (the task tools' budget is tight).
     summary: { type: "string", maxLength: SUMMARY_MAX, description: "For the user, result first. At most 600 characters." },
     questions: {
@@ -173,11 +181,17 @@ export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
       if (f) q.deviceSignIn = { service: f.service, url: f.url, ...(f.code ? { code: f.code } : {}), until: new Date(Date.now() + DEVICE_CODE_MINUTES * 60_000).toISOString(), cli: f.cli };
     }
   const remember = normalizeRemember(args?.remember);
+  // D602: the PRs it lets go, by identity, each once.
+  const letGo: NonNullable<Bodies["report"]["letGo"]> = [];
+  for (const x of Array.isArray(args?.let_go) ? args.let_go.slice(0, 10) : []) {
+    const pr = prIdentity(String(x?.pr ?? ""));
+    if (pr && !letGo.some((y) => y.pr === pr)) letGo.push({ pr, why: (LET_GO_WHY as readonly string[]).includes(x?.why) ? x.why : "unneeded" });
+  }
   // D426: its word on each of the things asked, in the brief's order.
   const asks: AskReport[] = Array.isArray(args?.asks)
     ? args.asks.slice(0, ASKS_MAX).map((a: any) => ({ state: (STATES as readonly string[]).includes(a?.state) ? a.state : state, ...(a?.note ? { note: cut(String(a.note), ASK_NOTE_MAX) } : {}) }))
     : [];
-  return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}), ...(asks.length ? { asks } : {}) };
+  return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}), ...(asks.length ? { asks } : {}), ...(letGo.length ? { letGo } : {}) };
 }
 
 /** D206: the paths a report shows, cut to the limit; empty ones dropped. */
@@ -318,6 +332,20 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         return `Not sent yet: this summary reads as your own notes (${runs}), and the user reads it as it is. Call report_to_main again with the same state, written for them in their language: the result in one plain sentence, then at most a few short lines, ordinary spacing, numbers with their units, and none of your own counters, round numbers or ids.`;
       }
       const persona = core.tasks.get(ctx.taskId)?.persona;
+      // D602: what it lets go is let go now, whatever the report's state (each PR's next owned_news).
+      const at = new Date().toISOString();
+      const notOwned = (body.letGo ?? []).filter((x) => letGoPr(core.log, ctx.taskId!, x.pr, x.why, at, persona) === "not owned").map((x) => x.pr);
+      const notLetGo = notOwned.length ? ` Not let go (Ducter doesn't watch it for you): ${notOwned.join(", ")}.` : "";
+      if (args?.state === "dropped") {
+        // D602: only the person puts a task down unfinished (code guards it; the model judges that they
+        // asked): in a turn they opened with their own words in this task's box.
+        if (!directTurn.is(core, ctx.taskId)) {
+          return `Not dropped: only the user puts a task down unfinished, from this task's own box. If the work can't go on, report "failed" and say why; if it needs their decision, "needs_input".${notLetGo}`;
+        }
+        const card = core.tasks.get(ctx.taskId);
+        core.tasks.setState(ctx.taskId, "dropped", card?.residency ?? "hot", cut(body.summary, 300));
+        return `Dropped: the task is put down, as they asked. Tell them so in your reply, with what is left (an open PR stays open on GitHub), then end your turn.${notLetGo}`;
+      }
       if (body.state === "done" || body.state === "failed") {
         const branch = await branchOf(opts, ctx.taskId);
         if (branch) body.branch = branch;
@@ -374,8 +402,8 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
       const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
       return body.state === "progress"
-        ? `Reported.${notShown} Keep working.`
-        : `Reported.${notShown} End your turn now; any answer will arrive as a new message.`;
+        ? `Reported.${notShown}${notLetGo} Keep working.`
+        : `Reported.${notShown}${notLetGo} End your turn now; any answer will arrive as a new message.`;
     },
   );
   core.mcp.register("task", "checkpoint", "Record where the work stands after a meaningful step.", checkpointSchema, async (args, ctx) => {

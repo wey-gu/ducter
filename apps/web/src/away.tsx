@@ -23,12 +23,15 @@ export interface Finished {
   /** D508: a finished repo task with a branch and no PR: ⋯ offers 合进 {base} and 开草稿 PR (never
    *  on the row, where they pushed the time out). */
   integrate?: { base: string };
+  /** D602: a finished task an open PR still holds: ⋯ offers 结束任务 / End task, asked in place in the task. */
+  ends?: boolean;
 }
 
 /** What ⋯ offers on a finished card, in order (pure: the Mac's FinishedMenu says the same). */
-export function finishedMenu(f: Pick<Finished, "failedIds" | "openId" | "integrate">): ("retry" | "why" | "open" | "remove" | "merge" | "open_pr")[] {
+export function finishedMenu(f: Pick<Finished, "failedIds" | "openId" | "integrate" | "ends">): ("retry" | "why" | "open" | "remove" | "merge" | "open_pr" | "end")[] {
   if (f.failedIds.length) return ["retry", "why", "remove"];
   if (f.openId && f.integrate) return ["merge", "open_pr", "open", "remove"];
+  if (f.openId && f.ends) return ["end", "open", "remove"];
   return f.openId ? ["open", "remove"] : ["remove"];
 }
 
@@ -50,6 +53,7 @@ export function AwayX({ f }: { f: Finished }) {
 /** What a ⋯ item does. */
 export function runFinished(k: ReturnType<typeof finishedMenu>[number], f: Finished, full?: boolean) {
   if (k === "merge" || k === "open_pr") f.openId && A.taskAction(f.openId, k);
+  else if (k === "end") f.openId && ((A.ending = f.openId), A.go({ name: "task", id: f.openId, full: !!full }));
   else if (k === "retry") A.retry(f.failedIds);
   else if (k === "why" || k === "open") f.openId && A.go({ name: "task", id: f.openId, full: !!full });
   else putAway(f);
@@ -76,7 +80,7 @@ export function FinishedActs({ f, full, menuOnly }: { f: Finished; full?: boolea
                 runFinished(k, f, full);
               }}
             >
-              {k === "merge" ? t("result.merge", f.integrate?.base ?? "main") : k === "open_pr" ? t("result.pr") : t(`away.${k}`)}
+              {k === "merge" ? t("result.merge", f.integrate?.base ?? "main") : k === "open_pr" ? t("result.pr") : k === "end" ? t("task.action.end") : t(`away.${k}`)}
             </MenuItem>
           ))}
         </Menu>,

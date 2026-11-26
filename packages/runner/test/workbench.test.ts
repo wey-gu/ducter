@@ -6,8 +6,9 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Place } from "@ducter/protocol";
-import { cleanRel, portsSaid, langOf, type WbAnswer } from "@ducter/protocol/src/workbench.ts";
+import { cleanRel, portsSaid, langOf, WB_CHANGES_CAP, type WbAnswer } from "@ducter/protocol/src/workbench.ts";
 import { confine, parseLsofListen, versionOf, wbHost, wbOp, WbFail, type WbCtx } from "../src/workbench.ts";
+import { branchChanges } from "../src/integrate.ts";
 import { userEditsNote } from "../src/brief.ts";
 import { DIRECT_NOTE } from "../src/direct.ts";
 
@@ -20,6 +21,7 @@ const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", "-C", cwd, 
 function repo(): { root: string; place: Extract<Place, { kind: "repo" }> } {
   const root = join(dir, "app");
   Bun.spawnSync(["git", "init", "-q", "-b", "main", root]);
+  writeFileSync(join(root, ".gitignore"), "*.log\nignored/\n");
   writeFileSync(join(root, "index.html"), "<title>Hi</title>\n<p>one</p>\n");
   writeFileSync(join(root, "gone.txt"), "bye\n");
   mkdirSync(join(root, "src"));
@@ -129,6 +131,99 @@ test("a repo task's changes against its base, a file's diff, and putting one bac
   await op(ctx, { op: "revert", path: "gone.txt" });
   expect(readFileSync(join(root, "gone.txt"), "utf8")).toBe("bye\n");
   expect(await code(op(ctx, { op: "revert", path: "../x" }))).toBe("outside");
+});
+
+test("D214/D471: a branch that pulled origin/main lists only its own files, never the upstream a stale local main missed", async () => {
+  const root = join(dir, "app");
+  const remote = join(dir, "origin.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", remote]);
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", root]);
+  writeFileSync(join(root, "keep.txt"), "base\n");
+  sh(root, "add", ".");
+  sh(root, "commit", "-qm", "base");
+  sh(root, "remote", "add", "origin", remote);
+  sh(root, "push", "-q", "-u", "origin", "main");
+  const at = sh(root, "rev-parse", "HEAD").stdout.toString().trim();
+  // origin/main moves 20 commits ahead.
+  for (let i = 0; i < 20; i++) {
+    writeFileSync(join(root, `up-${String(i).padStart(2, "0")}.txt`), `up ${i}\n`);
+    sh(root, "add", ".");
+    sh(root, "commit", "-qm", `upstream ${i}`);
+  }
+  sh(root, "push", "-q", "origin", "main");
+  // The person's local main stays where it was.
+  sh(root, "reset", "-q", "--hard", at);
+  // The task pulls the remote's main in (as agents do), then changes 2 files.
+  sh(root, "switch", "-qc", "ducter/t1");
+  sh(root, "merge", "-q", "--no-edit", "origin/main");
+  writeFileSync(join(root, "mine-a.txt"), "a\n");
+  writeFileSync(join(root, "mine-b.txt"), "b\n");
+  sh(root, "add", ".");
+  sh(root, "commit", "-qm", "task work");
+  const place = { kind: "repo", repoPath: root, worktree: root, branch: "ducter/t1", baseBranch: "main" } as Extract<Place, { kind: "repo" }>;
+  const ctx = ctxOf(root, place);
+  // Against the stale local main this would be 22 files (20 upstream + the task's 2).
+  expect(sh(root, "diff", "--name-only", "main", "--").stdout.toString().trim().split("\n")).toHaveLength(22);
+  const c = await op<"changes">(ctx, { op: "changes" });
+  expect(c.files.map((f) => f.path)).toEqual(["mine-a.txt", "mine-b.txt"]);
+  expect(c.more).toBe(0);
+  // The per-file diff starts at the same fork point: an upstream-only file has no task change.
+  expect((await op<"diff">(ctx, { op: "diff", path: "up-00.txt" })).patch).toBe("");
+  const d = await op<"diff">(ctx, { op: "diff", path: "mine-a.txt" });
+  expect(d.patch).toContain("+a");
+  expect(d.patch).not.toContain("up-00");
+  // Revert too: restoring an upstream file must not undo the pull.
+  await op(ctx, { op: "revert", path: "up-00.txt" });
+  expect(readFileSync(join(root, "up-00.txt"), "utf8")).toBe("up 0\n");
+});
+
+test("D214/D471: a task whose PR was merged into origin/main shows no changes on the workbench or the board", async () => {
+  const root = join(dir, "app");
+  const remote = join(dir, "origin.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", remote]);
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", root]);
+  writeFileSync(join(root, "keep.txt"), "base\n");
+  sh(root, "add", ".");
+  sh(root, "commit", "-qm", "base");
+  sh(root, "remote", "add", "origin", remote);
+  sh(root, "push", "-q", "-u", "origin", "main");
+  sh(root, "switch", "-qc", "ducter/merged");
+  writeFileSync(join(root, "feature.txt"), "feature\n");
+  sh(root, "add", ".");
+  sh(root, "commit", "-qm", "feature");
+  sh(root, "push", "-q", "-u", "origin", "ducter/merged");
+  // Somewhere else, the PR is merged into main and pushed.
+  const up = join(dir, "upstream");
+  Bun.spawnSync(["git", "clone", "-q", remote, up]);
+  sh(up, "switch", "-q", "main");
+  sh(up, "merge", "-q", "--no-ff", "--no-edit", "origin/ducter/merged");
+  sh(up, "push", "-q", "origin", "main");
+  // This worktree learns of it the way it would: a fetch, its local main still behind.
+  sh(root, "fetch", "-q", "origin");
+  const place = { kind: "repo", repoPath: root, worktree: root, branch: "ducter/merged", baseBranch: "main" } as Extract<Place, { kind: "repo" }>;
+  const ctx = ctxOf(root, place);
+  expect(await branchChanges(place)).toEqual({ commits: 0, uncommitted: false, files: 0, adds: 0, dels: 0 });
+  const c = await op<"changes">(ctx, { op: "changes" });
+  expect(c.files).toEqual([]);
+  expect(c.more).toBe(0);
+  expect((await op<"diff">(ctx, { op: "diff", path: "feature.txt" })).patch).toBe("");
+});
+
+test("D214: untracked changes respect .gitignore and the list caps with more", async () => {
+  const { root, place } = repo();
+  const ctx = ctxOf(root, place);
+  writeFileSync(join(root, "ok.txt"), "ok\n");
+  writeFileSync(join(root, "debug.log"), "ignored\n");
+  mkdirSync(join(root, "ignored"));
+  writeFileSync(join(root, "ignored", "x.txt"), "ignored\n");
+  const c = await op<"changes">(ctx, { op: "changes" });
+  expect(c.files.map((f) => f.path)).toEqual(["ok.txt"]);
+  // One more untracked file than the cap, plus ok.txt.
+  for (let i = 0; i <= WB_CHANGES_CAP; i++) writeFileSync(join(root, `many-${String(i).padStart(4, "0")}.txt`), "x\n");
+  const big = await op<"changes">(ctx, { op: "changes" });
+  expect(big.files).toHaveLength(WB_CHANGES_CAP);
+  expect(big.more).toBe(2);
+  expect(big.files.every((f) => f.status === "added")).toBe(true);
 });
 
 test("a folder task: changes and diffs against the copy kept before it wrote (D142)", async () => {

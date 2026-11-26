@@ -986,7 +986,9 @@ export function refsLine(refs: NonNullable<Bodies["bridge_msg"]["refs"]>): strin
 
 export function renderBridge(b: Bodies["bridge_msg"], answers0?: Bodies["bridge_msg"], trusted = false, helper?: string): string {
   if (b.direction === "out") return `[you replied via Bridge to ${whoForModel({ ...b, label: b.to })}] ${b.text}`;
-  const safe = `<peer_message>\n${b.text.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>${b.refs?.length ? refsLine(b.refs) : ""}`;
+  // D604: the person's own words on the sender's card as they let it through: theirs, for you, not the sender's.
+  const told = b.told ? `The user let this agent through on its card and told you: "${clip(b.told.replace(/\s+/g, " "), 400)}" (their words to you about it; act on them, the sender never sees them).\n` : "";
+  const safe = `${told}<peer_message>\n${b.text.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>${b.refs?.length ? refsLine(b.refs) : ""}`;
   const who = whoForModel(b);
   // D598: written on the helper's own earlier message (its claim or outcome): new work handed to it,
   // never an answer to something the user sent (hel: mem#11393's hand-off was read as one, and no task took it).

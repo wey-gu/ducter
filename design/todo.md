@@ -9,6 +9,16 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Ending a task held by its PR, after D602 (`focus-window.md` "How a task is shown")
+
+- **Open draft PR on a task whose work went into a PR it took over** (the origin of hel's #11179):
+  not offered when a PR it owns, open or merged, already holds the branch's head. Trigger: the
+  next duplicate draft seen on a home.
+- **A let-go PR is never read again**, so its row keeps saying 可关 after it is closed or merged
+  on GitHub. Trigger: someone asks why a closed PR still says 可关.
+- **Undo for 结束任务** (the PR is still open; today the task is talked to again). Trigger: an
+  End task the person wanted back.
+
 ## Work handed to a helper, after D598 (`standing-work.md` "What is built")
 
 - [ ] **On hel:** the next PR a dev task hands to the Babysitter shows under 手上的事 with its round, the claim reaches the
@@ -19,6 +29,17 @@ line.
   line covers a missed turn). Trigger: a person asks where a hand-off went inside the ten minutes.
 - [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
   for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
+
+<<<<<<< HEAD
+=======
+## A helper's Spaces and a teammate's card, after D604 (`bridge.md` "Helpers")
+
+- [ ] **An unnamed sender is muted by its Space-wide label** ("AI agent (dev team)"), so 不理 to one unnamed agent
+  mutes every unnamed agent in that Space. Key `peers.muted` / `peers.allowed` by Mem's `sender.agent_id` when it
+  is there. Trigger: a second unnamed agent writes in a Space where one was told 不理.
+- [ ] **The Mac 别的 agent 怎么找到它 row** lets a Space's name break at a space (the web keeps each whole).
+  Trigger: the next Keep page pass on the Mac.
+>>>>>>> origin/d604-helper-spaces
 ## A sign-in with a one-time code, after D599 (`device-signin.md`)
 
 - **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.

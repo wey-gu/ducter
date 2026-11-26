@@ -119,6 +119,13 @@ today**. A pull request closed without merging says **Closed without merging**.
 A task with a pull request never offers **Merge into main** or **Open draft PR**: the pull request
 holds the work.
 
+When a finished task's pull request isn't needed any more (say it's a duplicate of work that
+already merged), end the task. Tell it in its own box, "can this be closed?", and it ends itself,
+saying what becomes of each open pull request. Or open the task, choose **⋯** › **End task**, and
+confirm on the line that appears. Ducter stops following that pull request, and the task leaves
+**Waiting**. The pull request stays open on GitHub and reads **Duplicate draft, can be closed** or
+**No longer followed, can be closed**. Nothing is closed on GitHub unless you ask for that. A finished task's **⋯** on **Tasks** offers **End task** too, and a pull request a helper you set up is following has **Stop following** under **⋯** and on its page.
+
 On a wide window, a task shows on the right as it works: the one you moved to with the arrow keys,
 or else the one at work. You see what it's doing now, its last few steps in plain sentences (several quick ones as one line,
 such as "Read 3 files, ran 2 commands"), and

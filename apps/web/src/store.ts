@@ -2,11 +2,12 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import { countDoneToday, endedUnmet, prGoesOn } from "@ducter/protocol";
+import { countDoneToday, endedUnmet, prGoesOn, prsCarried } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
+import { askOpen } from "@ducter/protocol/src/open-asks.ts";
 import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -170,6 +171,11 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
  *  (`isDoneToday`: finished well, on today's local day; failed and missed waits are their own). */
 export function doneTodayOf(tasks: Task[], now = Date.now()): number {
   return countDoneToday(tasks.map((t) => ({ attention: attention(t), at: [t.card?.updatedAt, t.events.at(-1)?.ts].filter(Boolean).sort().at(-1), prOpen: !!prGoesOn(t.card?.prs) })), now); // D508
+}
+/** D602: a finished task an open PR still holds on the board: 结束任务 / End task lets those PRs go. */
+export function endable(t: Task): boolean {
+  const a = attention(t);
+  return (a === "done" || a === "done_claimed") && prsCarried(t.card?.prs).length > 0;
 }
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 /** D395: why it couldn't start where it was to work, and what fixes it (the latest state's, else the card's). */
@@ -1056,8 +1062,9 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      // D453: an offer never needs the person: it lives in its note only (no On hand, no count, no talk card).
-      .filter((d) => !d.resolved && !d.pending && !d.later && d.question && !d.offer)
+      // D-PENDING: the count and every list read one predicate (protocol's open-asks.ts): an offer
+      // (D453), a question put off (D382) and one whose default is already due are not open here.
+      .filter((d) => askOpen(d, { resolved: !!d.resolved, pending: d.pending, later: d.later }))
       .filter((d) => {
         const t = d.taskId ? this.tasks.get(d.taskId) : undefined;
         return !t || laneOf(attention(t)) !== LANE.hidden;

@@ -64,7 +64,7 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
-import { bridgeFor, bridgeKeyFor, createNmemBridge, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
+import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
 import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, helperSent, isHelperWork, localHandoff, type Helper } from "../../protocol/src/helpers.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -81,7 +81,7 @@ import { destructiveChoice } from "../../protocol/src/destructive.ts";
 import { parseRich, RICH_LIMITS, wordsOnly, type RichUi } from "../../protocol/src/rich.ts";
 import { MADE_KINDS, type MadeItem, type MadeKind, type MadeQuery } from "../../protocol/src/made.ts";
 import { PINS_MAX, type PinView } from "../../protocol/src/pins.ts";
-import { APP_ICONS, appLint, type AppCard, type AppIcon, type AppMeta } from "../../protocol/src/apps.ts";
+import { APP_ICONS, appLint, appTasks, type AppCard, type AppIcon, type AppMeta } from "../../protocol/src/apps.ts";
 import type { KeepCard } from "../../protocol/src/keeps.ts";
 import type { PastForkInput, PastItem, PastQuery, PastStep } from "../../protocol/src/past.ts";
 
@@ -1918,7 +1918,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const keepsLine = renderKeeps(core.keeps?.sheets(core.persona.id) ?? []);
     if (keepsLine) deltas.push(keepsLine);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
-    const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET, (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })));
+    const helpersLine = renderHelpers(
+      core.helpers?.list() ?? [],
+      (id) => helperWork(id),
+      userLang() ?? NO_WORDS_YET,
+      (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })),
+      (id) => helperUnread(id),
+    );
     if (helpersLine) deltas.push(helpersLine);
     // D596: said before Ducter could keep it: once per home, the first turn after the upgrade, the
     // partner hears that the dev flow can now be kept, and judges whether the person already said it.
@@ -2505,6 +2511,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             heavy: { type: "boolean", description: "Heavy on memory (builds, tests, type checks, Playwright, a dev server, evals): goes where [devices] shows room" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
+            reviews: { type: "boolean", description: "Its whole job is reviewing other people's pull requests (a review loop/Keep: it reads the PRs waiting on the user and reports reviews). Set it from the brief once, now. Never for a task that fixes code, opens its own PR, or hands its PR to the Babysitter: those get no review_report and no board" },
             phone: { type: "string", enum: ["mine", "ducter", "any"], description: "It works in an app on a phone; which phone. mine: the user's own, with their apps, accounts and messages (用我的手机, 我的微信, their orders, \"on my Pixel\"). ducter: Ducter's own clean phone with none of their accounts (用你的手机 = yours, Ducter's; 在安卓上试我们的 App, install an APK, a fresh phone). any: either does (an app anyone can open, nothing of theirs). Unsure: mine. Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
         },
@@ -2836,7 +2843,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment. Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -3058,7 +3065,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     tools.register(
       "partner",
       "app",
-      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it, and then at once, with no card (they said it). It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call (never into the file; it reads them with ducter.get), items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch or URLs), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once: what will list there). Nothing known: the k-sum still says what it will show (<span class=\"k-sum-value k-none\">还没记</span>, never a 0; k-sum-sub what shows there); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. task: a repeating task that fills it each round; make the app as above (name and html) with task set (only a review task may leave html out: Ducter's own board).",
+      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it, and then at once, with no card (they said it). It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call (never into the file; it reads them with ducter.get), items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch or URLs), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once: what will list there). Nothing known: the k-sum still says what it will show (<span class=\"k-sum-value k-none\">还没记</span>, never a 0; k-sum-sub what shows there); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. Before making one, read [apps]: if one already shows the same thing (same purpose, same task or Keep), change or extend that app instead of making a second. task: a repeating task that fills it each round; keep: a Keep's id from [keeps] whose rounds fill it (a babysitter's work, a review loop); make the app as above (name and html) with task or keep set (only a review task may leave html out: Ducter's own board). snapshot: true when it shows a task's or a Keep's work that is NOT given to it: it says 截至 the time it was read, and your line says plainly it is a snapshot, not kept current.",
       {
         type: "object",
         properties: {
@@ -3074,9 +3081,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           shelf: { type: "boolean", description: "Where are my apps: their shelf under your line" },
           note: { type: "string", description: "What changed, in a few of their words" },
           task: { type: "string", description: "Its id from [tasks]" },
+          keep: { type: "string", description: "A Keep's id from [keeps] whose rounds fill it (never with task)" },
+          snapshot: { type: "boolean", description: "It shows a task's or Keep's work but is not given to it: a snapshot as of now, never kept current" },
         },
       },
-      async (a: { id?: unknown; name?: unknown; html?: unknown; edits?: unknown; data?: unknown; read?: unknown; note?: unknown; task?: unknown; icon?: unknown; summary?: unknown; remove?: unknown; shelf?: unknown }) => {
+      async (a: { id?: unknown; name?: unknown; html?: unknown; edits?: unknown; data?: unknown; read?: unknown; note?: unknown; task?: unknown; keep?: unknown; snapshot?: unknown; icon?: unknown; summary?: unknown; remove?: unknown; shelf?: unknown }) => {
         const t = turn;
         if (!t || bridgeOnly(t)) return { ok: false, error: "Only when the user asks, in this turn." };
         // D410: "我的小应用在哪": the shelf's card under one short line.
@@ -3120,6 +3129,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const task = taskId ? core.tasks.get(taskId) : undefined;
         if (taskId && !task) return { ok: false, error: `No task ${taskId}: use a task id from [tasks].` };
         if (task && !own(t)) return { ok: false, error: "Only the user's own words give an app to a task." };
+        // D612: an app about a Keep's work is given to that Keep, so its rounds fill it.
+        const keepId = typeof a.keep === "string" && a.keep.trim() ? a.keep.trim() : "";
+        const keep = keepId ? core.keeps?.get(keepId) : undefined;
+        if (keepId && !keep) return { ok: false, error: `No Keep ${keepId}: use an id from [keeps].` };
+        if (keep && task) return { ok: false, error: "Give the app to the task or the Keep, not both." };
+        if (keep && !own(t)) return { ok: false, error: "Only the user's own words give an app to a Keep." };
         if (task && !m && html === undefined) {
           if (!core.boards?.isReview(task.taskId)) return { ok: false, error: "A new app needs name and html: write them now, with task set, and it fills each round (only a review task gets Ducter's review board without html)." };
           const r = core.boards.makeReviewBoard(task.taskId);
@@ -3136,7 +3151,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!m) {
           if (html === undefined) return { ok: false, error: "A new app needs name and html." };
           const ask = [...t.triggers].reverse().find((e) => e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask);
-          const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}), ...(seed ? { data: seed } : {}), ...(summary ? { summary } : {}), ...(icon ? { icon } : {}) });
+          const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}), ...(keep ? { keep: { id: keep.keepId, title: keep.title } } : {}), ...(a.snapshot === true ? { snapshot: true as const } : {}), ...(seed ? { data: seed } : {}), ...(summary ? { summary } : {}), ...(icon ? { icon } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
           card(t, r.app, "made");
           // D422: its tile needs its mark and its line from the start (the shelf shows both).
@@ -3146,6 +3161,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         let changed: AppMeta | undefined;
         let lifted: string[] | undefined;
         if (task && m.task?.id !== task.taskId) apps.give?.(m.id, { id: task.taskId, title: task.title });
+        if (keep && m.keep?.id !== keep.keepId) apps.giveKeep?.(m.id, { id: keep.keepId, title: keep.title });
         if (writes) {
           const r = apps.change(m.id, { ...(html !== undefined ? { html } : {}), ...(edits?.length ? { edits } : {}), ...(typeof a.name === "string" ? { name: a.name } : {}), ...(note ? { note } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
@@ -3164,7 +3180,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         if (summary) apps.summarize?.(m.id, summary);
         if (icon && icon !== m.icon) apps.set?.(m.id, { icon });
-        if (!changed && !put.length && !task && !summary && !icon) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
+        if (!changed && !put.length && !task && !keep && !summary && !icon) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task, keep or read: true." };
         const lint = changed ? appLint(apps.html(m.id) ?? "") : [];
         return { ok: true, id: m.id, ...(changed ? { version: changed.version } : {}), ...(put.length ? { put } : {}), ...(lifted ? { inData: lifted } : {}), ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits. " : "") + after };
       },
@@ -5350,7 +5366,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const who = m.member && m.agent ? said(lang, "senderMemberAgent", { member: m.member, agent: m.agent }) : m.agent ? m.agent : m.host ? said(lang, "senderHost", { host: m.host }) : said(lang, "senderSomeone");
     const body: Bodies["decision"] = {
       decisionId: newId("d"),
-      question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: core.persona.name || "Ducter", gist }),
+      // D604: mail to one of the person's helpers names that helper (hel: 「…想找 Ducter」 for mail to the Babysitter).
+      question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: (m.helper ? core.helpers?.get(m.helper)?.name : undefined) || core.persona.name || "Ducter", gist }),
       goLabel: said(lang, "senderGo"),
       holdLabel: said(lang, "senderHold"),
       defaultOption: "hold",
@@ -5362,9 +5379,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   /**
    * 答应 / Let it: the sender's messages come through as questions from now on (D170's teammate
    * rules), and what it sent meanwhile is read now. 不理 / Ignore: it is muted, its messages logged
-   * and never read (恢复 in Settings, or "听 X 的", undoes it).
+   * and never read (恢复 in Settings, or "听 X 的", undoes it). D604: a card answered with words lets it
+   * through too (on hel the person wrote how to answer and the sender was muted): `told` rides on what it
+   * sent meanwhile, for the partner; only 不理 itself mutes.
    */
-  function letSender(from: string, go: boolean) {
+  function letSender(from: string, go: boolean, told?: string) {
     const cur = core.settings?.get().peers;
     if (!cur || !core.settings?.setPeers) return;
     if (!go) {
@@ -5379,7 +5398,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (b.direction !== "in" || b.state !== "held" || b.from !== from || read.has(b.messageId)) continue;
       read.add(b.messageId);
       const { state: _held, ...rest } = b;
-      const again = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: rest });
+      const words = told?.trim() ? redactSecrets(told.trim()).slice(0, 2000) : "";
+      const again = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { ...rest, ...(words ? { told: words } : {}) } });
       api.onTrigger(again);
     }
   }
@@ -5412,6 +5432,76 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         onError(err);
       }
     return mark;
+  }
+
+  /**
+   * D604: a message logged muted whose sender is heard again (恢复 in Settings, "听 X 的", or the repair
+   * below) and that was never logged otherwise: read again from Mem (it keeps mail 7 days), so what came
+   * while muted isn't lost. A message from before the switch went off stays as it was.
+   */
+  function mutedThenHeard(b: Bodies["bridge_msg"], peers: { reach?: string; muted: string[] } | undefined): boolean {
+    if (b.state !== "muted" || !peers || peers.reach === "off") return false;
+    const from = b.from ?? "";
+    if (peers.muted.includes(b.agent ?? from) || peers.muted.includes(from)) return false;
+    return !loggedBridge().some((e) => e.body.direction === "in" && e.body.messageId === b.messageId && e.body.state !== "muted");
+  }
+  /** D604: a teammate's agent whose card the person answered, and who isn't muted now: they let it through (Settings 恢复 after 不理). */
+  function heardAgain(from: string): boolean {
+    const peers = core.settings?.get().peers;
+    if (!peers || peers.muted.includes(from)) return false;
+    const card = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 }).find((e) => (e.body as Bodies["decision"]).sender?.from === from);
+    if (!card) return false;
+    const id = (card.body as Bodies["decision"]).decisionId;
+    return core.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 2000 }).some((e) => (e.body as Bodies["decision_resolved"]).decisionId === id && (e.body as Bodies["decision_resolved"]).by === "user");
+  }
+  /**
+   * D604, once per card: a sender card the person answered with their own words before D604 muted the
+   * sender (hel, 2026-11-25: 「你可以说一下…」 on dev team's agent; its hand-off of mem#11389 on 11-26
+   * was then logged muted and never read). Such a card is let through now, as it would be today.
+   */
+  const repairFile = join(cwd, "bridge-d604.json");
+  let repaired: Set<string> | undefined;
+  function repairReplyMutes() {
+    if (!core.settings?.setPeers) return;
+    if (!repaired) {
+      repaired = new Set();
+      if (persist)
+        try {
+          for (const id of JSON.parse(readFileSync(repairFile, "utf8"))?.done ?? []) repaired.add(String(id));
+        } catch {
+          /* first time */
+        }
+    }
+    const replies = core.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 2000 }).filter((e) => (e.body as Bodies["decision_resolved"]).option === "reply" && (e.body as Bodies["decision_resolved"]).by === "user");
+    let changed = false;
+    for (const e of replies) {
+      const b = e.body as Bodies["decision_resolved"];
+      if (repaired.has(b.decisionId)) continue;
+      const card = senderCardOf(b.decisionId);
+      if (!card) continue;
+      repaired.add(b.decisionId);
+      changed = true;
+      const peers = core.settings.get().peers;
+      if (peers?.muted.includes(card.sender!.from)) core.settings.setPeers({ muted: peers.muted.filter((x) => x !== card.sender!.from) });
+      letSender(card.sender!.from, true, b.text);
+    }
+    if (changed && persist)
+      try {
+        mkdirSync(cwd, { recursive: true });
+        writeFileSync(repairFile, JSON.stringify({ done: [...repaired] }));
+      } catch (err) {
+        onError(err);
+      }
+  }
+
+  /** D604: mail to a helper in the last 7 days that was logged muted or held and never read since. */
+  function helperUnread(id: string): { from: string; space?: string; at: string; why: "muted" | "held" }[] {
+    const evs = loggedBridge().filter((e) => e.body.direction === "in" && e.body.helper === id);
+    const read = new Set(evs.filter((e) => !e.body.state).map((e) => e.body.messageId));
+    const t = now();
+    return evs
+      .filter((e) => (e.body.state === "muted" || e.body.state === "held") && !read.has(e.body.messageId) && t - Date.parse(e.ts) < MEM_TTL_MS)
+      .map((e) => ({ from: e.body.from ?? "an agent", ...(e.body.spaceLabel ? { space: e.body.spaceLabel } : {}), at: e.ts, why: e.body.state as "muted" | "held" }));
   }
 
   /** D163: a sender over its daily quota is set aside: logged, never waking the partner. */
@@ -5601,6 +5691,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (bridgeChecking) return bridgeChecking; // one check at a time
     bridgeChecking = (async () => {
       lastCheck = now();
+      repairReplyMutes(); // D604: before the rules below are read
       const peers = core.settings?.get().peers;
       // Settings › 伙伴 谁都不行 (D205): no other agent reaches the partner, but what the user
       // sent through a card still gets its answer. So it checks only while one is outstanding.
@@ -5609,7 +5700,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await recoverOutbox().catch(onError);
       const start = await startMark();
       if (!start || closed) return 0;
-      const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in").map((e) => e.body.messageId), ...start.skip]);
+      const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in" && !mutedThenHeard(e.body, peers)).map((e) => e.body.messageId), ...start.skip]);
       const r = await bridge.check(known);
       if (!r.ok) setStuck(r.stuck ? r.code : undefined);
       if (!r.ok || closed) return 0;
@@ -5626,6 +5717,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       for (const h of core.helpers?.listening() ?? []) {
         const hr = await clientFor(h.id)?.check(known).catch(() => undefined);
         if (hr?.ok) for (const m of hr.messages) helperMail.push({ ...m, helper: h.id });
+        // D604: where it receives, as Mem's identity inbox read it just now: a fact for [helpers] and its sheet.
+        if (hr?.ok && hr.receives?.length) core.helpers?.setSpaces?.(h.id, hr.receives);
       }
       let n = 0;
       // D418: the very first message any agent sent this persona carries the one-time note (a client's
@@ -5657,7 +5750,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         // D334: a teammate's agent (not one of the person's own) the person hasn't let through yet:
         // what it sends is kept, held, and its first message is one card (答应 / 不理, default 不理).
-        if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from)) {
+        if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from) && !heardAgain(m.from)) {
           core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), ...(m.route ? { route: m.route } : {}), ...(first ? { first: true } : {}), state: "held" } });
           first = false;
           askSender(m);
@@ -6205,7 +6298,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (e.kind === "decision_resolved" && senderCardOf((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
         const from = senderCardOf(b.decisionId)!.sender!.from;
-        if (b.by === "user") letSender(from, b.option === "go");
+        // D604: only 不理 (hold) mutes; Go, or the person's own words on it, let it through.
+        if (b.by === "user") letSender(from, b.option !== "hold", b.option === "reply" ? b.text : undefined);
         return;
       }
       // D379: the ask to keep a saying as a rule: core keeps it on Go; Ducter's own bookkeeping, no partner turn.
@@ -6337,6 +6431,8 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     // D538: heavy on memory and cores, the partner's judgment from the words and the repository.
     ...(r.heavy === true ? { heavy: true } : {}),
     ...(r.draw === true ? { draw: true } : {}),
+    // D612: the partner's one judgment at task_open: this task's job is reviewing others' PRs.
+    ...(r.reviews === true ? { reviews: true } : {}),
     ...(r.buy === true ? { buy: true, browse: true } : {}), // D436: buying or booking is web work in Ducter's own browser
     // D251: which phone; true (before D251) and "any" are either.
     ...(r.phone === "mine" || r.phone === "ducter" ? { phone: r.phone } : r.phone === true || r.phone === "any" ? { phone: true } : {}),
@@ -6472,19 +6568,26 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
     return m < 60 ? `${m}m ago` : m < 48 * 60 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
   };
   const recent = (m: AppMeta) => Math.max(Date.parse(m.updated), m.opened ? Date.parse(m.opened) : 0);
-  const shown = [...apps].sort((a, b) => recent(b) - recent(a)).slice(0, APPS_SHOWN);
+  // D612: the apps that follow work (a task, a Keep, a reviews board) show first: the partner
+  // judges a duplicate ask from what actually keeps them current.
+  const follows = (m: AppMeta) => Number(!!m.task || !!m.keep || !!m.kind || !!m.tasks?.length);
+  const shown = [...apps].sort((a, b) => follows(b) - follows(a) || recent(b) - recent(a)).slice(0, APPS_SHOWN);
   const one = (m: AppMeta) => {
     const keys = Object.entries(data(m.id))
       .slice(0, 8)
       .map(([k, v]) => (Array.isArray(v) ? `${k} (${v.length})` : k))
       .join(", ");
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
-    // D407: kept current by a task's rounds (the review board: from its review_report; a row's 看草稿 opens that PR's draft).
-    const by = m.task ? `; task ${m.task.id} keeps it current each round${m.kind === "reviews" ? " (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens that draft)" : ""}` : "";
+    // D407/D612: what keeps it current, and what kind it is (so the partner can tell an ask
+    // that duplicates it before making a second; a review board names its task or Keep).
+    const ts = appTasks(m);
+    const taskBy = ts.length ? `; task ${ts.map((x) => x.id).join(", ")} keeps it current each round` : "";
+    const keepBy = m.keep ? `; Keep ${m.keep.id} "${m.keep.title}" fills it each round` : "";
+    const kind = m.kind === "reviews" ? "; kind reviews (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens it)" : "";
     // D422: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
     const l = m.live;
-    const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}${l?.inFile ? `; ${l.inFile} of its rows are written into its markup (when you next change it, move them into data and draw them from ducter.get)` : ""}`;
-    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
+    const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}${l?.kept?.state === "ended" ? "; it follows work that has ended (已停止更新 / no longer updating): say so, never promise an update" : ""}${l?.snapshot ? `; a snapshot as of ${l.snapshot.at} (it follows nothing: say it is a snapshot, not kept current)` : ""}${l?.inFile ? `; ${l.inFile} of its rows are written into its markup (when you next change it, move them into data and draw them from ducter.get)` : ""}`;
+    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${kind}${taskBy}${keepBy}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
   };
   const more = apps.length - shown.length;
   return [
@@ -6661,15 +6764,26 @@ export function renderAgentMail(facts: { harness: string; back: "next" | "old"; 
  * Nowledge Bridge), what it takes, whether its address works, and the work it has on hand, so mail to
  * it can join the task already on the same work. Facts only; what to do is the model's.
  */
-export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: string; title: string }[], lang: LangTag = "en", waiting: (id: string) => { gist: string; at: string; fromTask?: string; stalled?: boolean }[] = () => []): string {
+export function renderHelpers(
+  hs: Helper[],
+  work: (id: string) => { taskId: string; title: string }[],
+  lang: LangTag = "en",
+  waiting: (id: string) => { gist: string; at: string; fromTask?: string; stalled?: boolean }[] = () => [],
+  unread: (id: string) => { from: string; space?: string; at: string; why: "muted" | "held" }[] = () => [],
+): string {
   if (!hs.length) return "";
+  // D604: where it receives, as Mem's identity inbox read it (one identity, one card per Space), and mail
+  // to it that came and wasn't read (a sender the person said 不理 to, or one waiting on its card).
+  const spaces = (h: Helper) => (h.spaces?.length ? `receives in ${h.spaces.length === 1 ? "the Space" : `${h.spaces.length} Spaces, every one the user is in`}: ${h.spaces.map((x) => `"${x.label}"`).join(", ")} (one address, the same in each; it replies in the Space a message came from)` : "");
+  const unreadOf = (id: string) => unread(id).slice(-3).map((x) => `from ${x.from}${x.space ? ` in "${x.space}"` : ""} at ${x.at.slice(5, 10)} ${x.at.slice(11, 16)} UTC: it arrived at the helper's address and is still in Nowledge Mem, ${x.why === "muted" ? `not read because the user chose 不理 for that sender; listening to it again (peer_rule unmute "${x.from}", or 恢复 in ${paneName("peers", lang)}) reads this very message now, no resend needed` : "kept unread while its sender card waits for the user"}`);
   // D598: handed and not taken yet (no task of the helper's has it): a fact, so nobody says it is on it.
   const waits = (id: string) => waiting(id).slice(-3).map((x) => `"${clipLine(x.gist, 60)}" (${x.fromTask ? `from task ${x.fromTask}, ` : ""}handed ${x.at.slice(11, 16)} UTC, not taken by any of its tasks yet${x.stalled ? "; you offered to run it directly" : ""})`);
   const state = (h: Helper) => (h.state === "stopped" ? "stopped: its address is closed" : h.mem === "ready" ? "on, its address works" : h.mem === "refused" ? `its address was refused by Nowledge Mem (${clipLine(h.detail ?? "", 80)})` : `its address is still being made (${clipLine(h.detail ?? "waiting on Nowledge Mem", 80)})`);
   const one = (h: Helper) => {
     const w = work(h.id).slice(0, 5);
     const wt = waits(h.id);
-    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""}${wt.length ? `; handed, waiting to be taken: ${wt.join(", ")}` : ""})`;
+    const un = unreadOf(h.id);
+    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${h.state === "on" && spaces(h) ? `; ${spaces(h)}` : ""}${un.length ? `; mail to it not read: ${un.join(", ")}` : ""}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""}${wt.length ? `; handed, waiting to be taken: ${wt.join(", ")}` : ""})`;
   };
   return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. A helper is on a piece of work only once its task is in "on hand": before that, say it is handed over and waiting to be taken (交给了，等它接手), never that it took it or is on it, whatever a task's report says; asked about one still waiting, say so and offer to get it going (keep_change hand again, or a task for it now). It is shown in ${paneName("peers", lang)}.`;
 }

@@ -75,6 +75,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
+import { isHelperWork } from "@ducter/protocol/src/helpers.ts";
 import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
@@ -908,13 +909,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D511: 照看 / Looking after: every routine, task in rounds and helper is a Keep (keeps.ts).
   let keepsRef: Keeps | undefined;
   let wsUp = false;
-  const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[] };
+  const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[], sent: new Set<string>() };
   const indexHelper = (e: LogEvent) => {
     if (e.kind !== "bridge_msg") return;
     const b = e.body as Bodies["bridge_msg"];
     if (!b.helper) return;
+    if (b.direction === "out" && b.messageId) helperIndex.sent.add(b.messageId);
     if (b.direction === "out" && b.taskId) helperIndex.tasks.set(b.taskId, b.helper);
-    if (b.direction === "in" && !b.inReplyTo && (!b.state || b.state === "held")) helperIndex.ins.push({ helper: b.helper, at: Date.parse(e.ts) });
+    // D598: a reply on the helper's own message, or a hand-off on this home, is work it took in too.
+    if (isHelperWork(b, helperIndex.sent)) helperIndex.ins.push({ helper: b.helper, at: Date.parse(e.ts) });
   };
   for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) indexHelper(e);
   log.subscribe((e) => {

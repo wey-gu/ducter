@@ -65,7 +65,7 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
 import { bridgeFor, bridgeKeyFor, createNmemBridge, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { HELPER_DAILY, type Helper } from "../../protocol/src/helpers.ts";
+import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, helperSent, isHelperWork, localHandoff, type Helper } from "../../protocol/src/helpers.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type MemWhy, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
@@ -75,7 +75,7 @@ import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, setRenderZone, type RenderCtx } from "./render.ts";
-import { namesAgent, relayAnswer, relayHead, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
+import { namesAgent, relayAnswer, relayHead, relayLocal, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { destructiveChoice } from "../../protocol/src/destructive.ts";
 import { parseRich, RICH_LIMITS, wordsOnly, type RichUi } from "../../protocol/src/rich.ts";
@@ -130,6 +130,8 @@ export interface PartnerOptions {
   bridge?: BridgeClient | null;
   /** D494: a helper's own client, by its context (tests inject a fake; default the home's nmem, Mem's identity inbox). */
   helperBridge?: (context: string) => BridgeClient;
+  /** D598: how often a hand-off nobody took is looked at (tests: small). */
+  stallEveryMs?: number;
   /**
    * D335: the inbox check period while running, default 1 min (15 s while live with an own agent;
    * +10 s, 30 s, 1 min, 2 min after a send or reply; a long-poll instead when the CLI has `inbox
@@ -1910,7 +1912,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const keepsLine = renderKeeps(core.keeps?.sheets(core.persona.id) ?? []);
     if (keepsLine) deltas.push(keepsLine);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
-    const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET);
+    const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET, (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })));
     if (helpersLine) deltas.push(helpersLine);
     // D480: what isn't whole about the person's own agents' mail (closed mailboxes, another Mem server), every turn while so.
     const mail = renderAgentMail(core.agentMail?.() ?? [], userLang() ?? NO_WORDS_YET);
@@ -2557,10 +2559,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const trustedFor = bridgeOnly(turn) ? trustedRequest(turn!) : undefined;
       if (bridgeOnly(turn) && !trustedFor) return { ok: false, error: "This came from another agent through Bridge, not from the user. Ask the user first (ask: Go = what you would do, default hold) and end your turn; open the task when they say go." };
       const helperFor = trustedFor?.helper ? core.helpers?.get(trustedFor.helper) : undefined;
+      // D598: a hand-off on this home names the task that handed it: work only its author should redo goes back there through Ducter.
+      const helperWho = (m: Bodies["bridge_msg"], helper: string) => (m.local && !m.fromTask ? said(userLang() ?? NO_WORDS_YET, "helperBriefYou", { helper }) : undefined);
+      const fromLine = (m: Bodies["bridge_msg"]) => (m.fromTask ? `\n${said(userLang() ?? NO_WORDS_YET, "helperFromTask", { task: m.fromTask, title: core.tasks.get(m.fromTask)?.title ?? "" })}` : "");
       if (trustedFor && typeof raw?.brief === "string")
         raw = helperFor
-          ? { ...raw, forMessage: trustedFor.messageId, brief: `${said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: trustedFor.agent, helper: helperFor.name })}\n${helperFor.brief ? `${helperFor.brief}\n\n` : ""}${raw.brief}` }
+          ? { ...raw, forMessage: trustedFor.messageId, brief: `${helperWho(trustedFor, helperFor.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: trustedFor.agent, helper: helperFor.name })}${fromLine(trustedFor)}\n${helperFor.brief ? `${helperFor.brief}\n\n` : ""}${raw.brief}` }
           : { ...raw, forMessage: trustedFor.messageId, brief: `${said(userLang() ?? NO_WORDS_YET, "trustedBrief", { agent: trustedFor.agent })}\n${raw.brief}` };
+      else if (!trustedFor && typeof raw?.forMessage === "string" && typeof raw?.brief === "string") {
+        // D598: the user handed it over through you (keep_change hand) or spoke in the same turn: still the helper's brief.
+        const m0 = bridgeIn(raw.forMessage.trim());
+        const h0 = m0?.helper ? core.helpers?.get(m0.helper) : undefined;
+        if (m0 && h0 && !raw.brief.includes(h0.brief || "\u0000")) raw = { ...raw, brief: `${helperWho(m0, h0.name) ?? said(userLang() ?? NO_WORDS_YET, "helperBrief", { agent: m0.agent ?? m0.from ?? "agent", helper: h0.name })}${fromLine(m0)}\n${h0.brief ? `${h0.brief}\n\n` : ""}${raw.brief}` };
+      }
       const goFor =turn?.triggers.map((e) => (e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).option === "go" ? askedFor.get((e.body as Bodies["decision_resolved"]).decisionId) : undefined)).find(Boolean);
       const forMessage = bridge && typeof raw?.forMessage === "string" && raw.forMessage.trim() ? raw.forMessage.trim() : bridge ? goFor : undefined;
       const forOriginal = forMessage ? bridgeIn(forMessage) : undefined;
@@ -2874,6 +2885,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const sendWords = askList(args.asks);
         const r = await runner.send(args.taskId, redactSecrets(args.text, t?.userTexts ?? []) + asksBrief(sendWords), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
         linesUnder(t, args.taskId, sendWords);
+        // D598: work handed to a helper, joined to the helper's task already on it: that task took it (its claim goes back).
+        if (t) {
+          const sent = helperSent(loggedBridge());
+          for (const e of t.triggers) {
+            const m = e.kind === "bridge_msg" ? (e.body as Bodies["bridge_msg"]) : undefined;
+            if (!m?.helper || !isHelperWork(m, sent) || !helperWork(m.helper).some((x) => x.taskId === args.taskId)) continue;
+            if (handoffs(m.helper).some((x) => x.m.messageId === m.messageId && x.taskId)) continue;
+            const title = core.tasks.get(args.taskId)?.title ?? "";
+            await deliver({ ...peerOf(m), text: claimText(m.text, title), inReplyTo: m.messageId, taskId: args.taskId }, "reply").catch(onError);
+          }
+        }
         // D373: taken up again with no line before the call: its line still moves to this turn. After
         // a task_open asked back, the line it put up is this task's now.
         if (t?.redirectJob && !t.continued?.has(args.taskId)) {
@@ -4770,6 +4792,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return first?.opId === o.opId ? "claim" : "result";
   }
   async function deliver(base: OutBase, kind: "send" | "reply", quiet = false): Promise<OutState> {
+    // D598: the answer to a hand-off on this home never goes through Nowledge Mem: it goes into the
+    // task that handed it (at work or waiting on it; a finished one only has it in its transcript).
+    if (kind === "reply" && base.inReplyTo?.startsWith(LOCAL_MSG)) {
+      const orig = bridgeIn(base.inReplyTo);
+      const op = { ...base, opId: base.opId ?? newId("bo") };
+      logOut(op, "sending");
+      if (orig?.fromTask) {
+        const helperName = (base.helper && core.helpers?.get(base.helper)?.name) || base.to || "helper";
+        const words = relayLocal(helperName, orig.text, base.text);
+        const c = core.tasks.get(orig.fromTask);
+        if (c && !FINISHED.has(c.attention) && c.attention !== "dropped") await toTask(orig.fromTask, words);
+        else if (c) core.log.append({ persona: c.persona, stream: `task:${orig.fromTask}`, origin: "system", kind: "task_event", body: { taskId: orig.fromTask, role: "system", from: "ducter", text: words } });
+      }
+      logOut(op, "sent", { messageId: `${LOCAL_MSG}${crypto.randomUUID()}` });
+      return "sent";
+    }
     // D494: a reply to mail a helper got goes from the helper's own address.
     const via0 = clientFor(base.helper);
     if (!bridge || !via0) return "failed";
@@ -5164,6 +5202,56 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   }
 
+  /**
+   * D598: the work handed to a helper, each with the task that took it (its claim went out naming it),
+   * newest last: what [helpers] says is handed and not taken yet, and what the stall line is about.
+   */
+  function handoffs(helper?: string): { m: Bodies["bridge_msg"]; at: number; taskId?: string; stalled: boolean }[] {
+    const evs = loggedBridge();
+    const sent = helperSent(evs);
+    const took = new Map<string, string>();
+    for (const e of evs) if (e.body.direction === "out" && e.body.helper && e.body.inReplyTo && e.body.taskId && !took.has(e.body.inReplyTo)) took.set(e.body.inReplyTo, e.body.taskId);
+    const told = new Set(core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 2000 }).map((e) => (e.body as Bodies["ai_msg"]).stalled).filter(Boolean));
+    const out: { m: Bodies["bridge_msg"]; at: number; taskId?: string; stalled: boolean }[] = [];
+    for (const e of evs) {
+      const b = e.body;
+      if (!isHelperWork(b, sent) || b.state || !b.mine || (helper && b.helper !== helper)) continue;
+      const t = took.get(b.messageId);
+      out.push({ m: b, at: Date.parse(e.ts), ...(t ? { taskId: t } : {}), stalled: told.has(b.messageId) });
+    }
+    return out;
+  }
+  /** D598: a task hands work to a helper on this home: its arrival is written here, and a partner turn opens it at once. */
+  function handLocal(card: TaskCard, h: Helper, text: string) {
+    const mine = handoffs(h.id).filter((x) => x.m.fromTask === card.taskId);
+    const last = mine[mine.length - 1];
+    const lastTask = last?.taskId ? core.tasks.get(last.taskId) : undefined;
+    // More words on work it already handed: to the helper's task on it, or kept until one takes it.
+    if (last && !last.taskId && now() - last.at < DAY_MS)
+      return { ok: false, handed: true, taken: false, note: `Your hand-off to "${h.name}" hasn't been taken by any of its tasks yet; nothing new was sent. You'll hear here when one takes it: send what's new then. Never report it as taken over before.` };
+    if (last?.taskId && lastTask && !FINISHED.has(lastTask.attention) && lastTask.attention !== "dropped") {
+      void toTask(last.taskId, `${relayHead(core.persona.name || "Ducter", card.title, text)}\n<peer_message>\n${text.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>`);
+      return { ok: true, sent: true, note: `Passed to "${h.name}"'s task ${last.taskId}, which has your hand-off. Carry on, or end your turn (no report needed).` };
+    }
+    const e = core.log.append({ persona: card.persona, stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper: h.id, text: redactSecrets(text), from: core.persona.name || "Ducter", fromTask: card.taskId, head: relayHead(core.persona.name || "Ducter", card.title, text) }) });
+    api.onTrigger(e);
+    return { ok: true, handed: true, taken: false, note: `Handed to "${h.name}" on this home, with no card (the user made it for this work). One of its tasks takes it now; you'll hear here when one has, and its outcome when it's done. Until then it is handed, not taken: never report that "${h.name}" is on it. Carry on, or end your turn (no report needed).` };
+  }
+  /** D598: once per hand-off, after HELPER_TAKE_MS with no task of the helper's on it: one line, and the offer to run it directly. */
+  function stalledHandoffs() {
+    if (closed) return;
+    const t = now();
+    for (const x of handoffs()) {
+      if (x.taskId || x.stalled || t - x.at < HELPER_TAKE_MS || t - x.at > DAY_MS) continue;
+      const h = x.m.helper ? core.helpers?.get(x.m.helper) : undefined;
+      if (!h) continue;
+      const lang = userLang() ?? NO_WORDS_YET;
+      const gist = clipLine(x.m.text.replace(/^.*[：:]\n/, ""), 40);
+      const text = said(lang, "helperStalled", { helper: h.name, gist, min: String(Math.round(HELPER_TAKE_MS / 60_000)) });
+      core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, stalled: x.m.messageId } });
+      codeSaid.push(text);
+    }
+  }
   /** D494: a helper's work on hand: its tasks not ended, newest first (for the [helpers] line). */
   function helperWork(helper: string): { taskId: string; title: string }[] {
     const ids = new Set<string>();
@@ -5198,7 +5286,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** The one request in a peer-only turn whose sender the user lets start work without asking. */
   function trustedRequest(t: TurnState): (Bodies["bridge_msg"] & { agent: string }) | undefined {
-    const ins = t.triggers.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).inReplyTo);
+    // D598: work for a helper written on the helper's own earlier message is an original too.
+    const sent = helperSent(loggedBridge());
+    const ins = t.triggers.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in" && (!(e.body as Bodies["bridge_msg"]).inReplyTo || isHelperWork(e.body as Bodies["bridge_msg"], sent)));
     if (ins.length !== 1) return undefined;
     const m = ins[0]!.body as Bodies["bridge_msg"];
     // D494: work handed to an on helper by one of the person's own agents: making the helper was the go
@@ -5623,9 +5713,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const bridgeTool = (name: string, description: string, schema: object, handler: (args: any) => Promise<unknown>) =>
     tools.registerWhen ? tools.registerWhen("partner", name, description, schema, handler, () => !!bridge) : tools.register("partner", name, description, schema, handler);
   let bridgeStarted = false;
+  let stallTimer: ReturnType<typeof setInterval> | undefined;
   function startBridge(b0: BridgeClient) {
     if (bridgeStarted) return;
     bridgeStarted = true;
+    // D598: work handed to a helper that no task of its took in time is said once (a minute's look; nothing polls Mem).
+    stallTimer = setInterval(() => {
+      try {
+        stalledHandoffs();
+      } catch (err) {
+        onError(err);
+      }
+    }, opts.stallEveryMs ?? 60_000);
+    (stallTimer as { unref?: () => void }).unref?.();
     // D448: a task's own way to other agents, listed only for a task Ducter carries messages for.
     const relayTool = (name: string, description: string, schema: object, handler: (args: any, ctx: { taskId?: string }) => Promise<unknown>) =>
       tools.registerWhen ? tools.registerWhen("task", name, description, schema, handler, (ctx) => relayOn(ctx.taskId)) : tools.register("task", name, description, schema, handler);
@@ -5651,6 +5751,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const ops = [...foldOut(loggedBridge()).values()];
         if (ops.some((o) => o.last.by === "task" && o.last.taskId === card.taskId && o.state === "pending"))
           return { ok: false, note: "Your earlier message is still waiting for the user's OK; nothing new was sent. Carry on, or end your turn to wait (no report needed)." };
+        // D598: a helper on this very home is handed the work here, never through Nowledge Mem (on hel a
+        // hand-off through Mem came back as a reply on the helper's last outcome and no task took it).
+        const mineHelper = (core.helpers?.list() ?? []).filter((h) => h.state === "on" && namesAgent(to, { agent: h.name }));
+        if (mineHelper.length === 1) return handLocal(card, mineHelper[0]!, text);
         const pick = await relayPick(card.taskId, to);
         if (pick.many) return { ok: false, choices: pick.many.map((c) => ({ to: c.contact, who: whoForTask(c), ...(c.description ? { about: c.description.slice(0, 160) } : {}) })), note: "Several agents fit. Call agent_message again with `to` set to the handle of the one you mean; if you can't tell, ask the user in report_to_main." };
         const c = pick.one;
@@ -6127,6 +6231,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       stopWatchers();
       for (const id of [...afterSend.keys()]) answered(id);
       if (recoverTimer) clearTimeout(recoverTimer);
+      if (stallTimer) clearInterval(stallTimer);
       if (spineTimer) clearInterval(spineTimer);
       spine?.close(); // a digest being written is dropped; it is written again after a restart
       await api.idle().catch(() => {});
@@ -6536,14 +6641,17 @@ export function renderAgentMail(facts: { harness: string; back: "next" | "old"; 
  * Nowledge Bridge), what it takes, whether its address works, and the work it has on hand, so mail to
  * it can join the task already on the same work. Facts only; what to do is the model's.
  */
-export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: string; title: string }[], lang: LangTag = "en"): string {
+export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: string; title: string }[], lang: LangTag = "en", waiting: (id: string) => { gist: string; at: string; fromTask?: string; stalled?: boolean }[] = () => []): string {
   if (!hs.length) return "";
+  // D598: handed and not taken yet (no task of the helper's has it): a fact, so nobody says it is on it.
+  const waits = (id: string) => waiting(id).slice(-3).map((x) => `"${clipLine(x.gist, 60)}" (${x.fromTask ? `from task ${x.fromTask}, ` : ""}handed ${x.at.slice(11, 16)} UTC, not taken by any of its tasks yet${x.stalled ? "; you offered to run it directly" : ""})`);
   const state = (h: Helper) => (h.state === "stopped" ? "stopped: its address is closed" : h.mem === "ready" ? "on, its address works" : h.mem === "refused" ? `its address was refused by Nowledge Mem (${clipLine(h.detail ?? "", 80)})` : `its address is still being made (${clipLine(h.detail ?? "waiting on Nowledge Mem", 80)})`);
   const one = (h: Helper) => {
     const w = work(h.id).slice(0, 5);
-    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""})`;
+    const wt = waits(h.id);
+    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""}${wt.length ? `; handed, waiting to be taken: ${wt.join(", ")}` : ""})`;
   };
-  return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. It is shown in ${paneName("peers", lang)}.`;
+  return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. A helper is on a piece of work only once its task is in "on hand": before that, say it is handed over and waiting to be taken (交给了，等它接手), never that it took it or is on it, whatever a task's report says; asked about one still waiting, say so and offer to get it going (keep_change hand again, or a task for it now). It is shown in ${paneName("peers", lang)}.`;
 }
 /**
  * D533: what Ducter looks after for the person, every turn while there is any: each Keep by its id and

@@ -13,6 +13,11 @@ const W = {
     trustedBrief: "（你的 {agent} 让我做的；你说过它的活直接接。）",
     // D494: work handed to one of the person's helpers; its own brief follows.
     helperBrief: "（你的 {agent} 交给「{helper}」的；你开「{helper}」时就说好，交来的活直接接。）",
+    // D598: the task on this home that handed it over; rework only its author should do goes back there through Ducter.
+    helperBriefYou: "（你交给「{helper}」的；你开「{helper}」时就说好，交来的活直接接。）",
+    helperFromTask: "（是任务 {task}「{title}」交过来的。需要它返工的，在 report_to_main 里说清要它改什么，Ducter 会叫醒它。）",
+    // D598: work handed to a helper that none of its tasks took in time, said once, with the offer.
+    helperStalled: "交给「{helper}」的「{gist}」过了 {min} 分钟还没有任务接手。要我直接开一个任务来做吗？",
     // D372: the first errand Ducter's default put on a faster model, said once.
     kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
     // D435: the partner's own agent ran out (or fails): said once, by code, before the answer.
@@ -58,6 +63,9 @@ const W = {
     lookAck: "A quick look didn't settle it, so a task is checking properly: {title}",
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
     helperBrief: "(Your {agent} handed this to \"{helper}\"; making \"{helper}\" was your go for the work it takes.)",
+    helperBriefYou: "(You handed this to \"{helper}\"; making \"{helper}\" was your go for the work it takes.)",
+    helperFromTask: "(Task {task} \"{title}\" handed this over. If it needs rework only that task should do, say exactly what in report_to_main and Ducter wakes it.)",
+    helperStalled: "“{gist}”, handed to “{helper}”, hasn't been taken by any of its tasks in {min} minutes. Shall I open a task and do it directly?",
     kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
     heldQuota: "{from} is out of credit, so {to} is answering you for now. Back to {from} at {at}.",
     heldQuotaSoon: "{from} is out of credit, so {to} is answering you for now, until {from} is back.",

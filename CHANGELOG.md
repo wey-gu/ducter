@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.88 - 2026-11-26
+
+<!-- whats-new
+zh: 看守中只照现在的要求做；看得到额度用在哪儿
+en: Looking after follows what you ask now; see what used your allowance
+-->
+
+**Looking after**
+- What you say is kept by how long it holds: this round only, from now on, or what ends it for good.
+  A this-round note no longer becomes the goal.
+- Every round starts from what you ask now, word for word; its own earlier notes come after, marked
+  as notes.
+- A change shows only what changed. A review round gets the review requests waiting, and says so
+  when it already posted one.
+
+**What used your allowance**
+- Settings > Overview shows this week's share by AI agent and the tasks that used most; tap one to
+  open it. The limit card names what used most of it, and you can ask your partner.
+
+**Antigravity**
+- Antigravity works only when you talk to it: no timed wakes, waits, loops or Looking after rounds,
+  and Ducter no longer reads its usage or its sign-in files. Google's terms for personal sign-ins.
+
+**Nowledge Bridge**
+- Uses nmem 0.10.124's read receipts, reply arguments and recommended personal Space; older nmem
+  keeps working.
+
 ## 0.1.87 - 2026-11-26
 
 <!-- whats-new

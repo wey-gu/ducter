@@ -698,6 +698,12 @@ export function createPusher(opts: {
           return;
         }
         if ((s.attention !== "done" && s.attention !== "failed") || !opts.store.settings().done) return;
+        // D-ISSUE177: it ended when its attention became done or failed; the tidy sweep's archive
+        // (and every other residency-only move) leaves that attention where it was, so it says
+        // nothing. The previous state comes from the Log, the task card's durable source, so a
+        // restart between the end and the archive doesn't make the old end look new.
+        const before = opts.log.read({ stream: e.stream, kinds: ["task_state"], beforeSeq: e.seq, limit: 1 }).at(-1);
+        if (before && (before.body as Bodies["task_state"]).attention === s.attention) return;
         const who = opts.partnerOf?.(e);
         add({
           ...(who ? { who } : {}),

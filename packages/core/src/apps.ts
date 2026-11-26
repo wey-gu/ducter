@@ -19,6 +19,7 @@ import {
   appKitIssues,
   appLiftItems,
   appRowsInMarkup,
+  appTasks,
   type AppLive,
   appSummary,
   appTint,
@@ -32,7 +33,7 @@ import {
   type AppOpen,
 } from "@ducter/protocol";
 
-export type AppChange = { kind: "list" } | { kind: "data"; id: string; key: string; value: unknown; by: "app" | "partner" | "task" } | { kind: "give"; id: string; task?: AppTask };
+export type AppChange = { kind: "list" } | { kind: "data"; id: string; key: string; value: unknown; by: "app" | "partner" | "task" } | { kind: "give"; id: string; task?: AppTask; keep?: AppTask };
 
 export interface AppsStore {
   /** Newest change first, one partner's. */
@@ -42,7 +43,7 @@ export interface AppsStore {
   data(id: string): Record<string, unknown>;
   /** The document a client runs, with its data. */
   open(id: string, o: { transport: "message" | "fetch"; dark?: boolean; lang?: string }): AppOpen | undefined;
-  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"]; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta; lifted?: string[] } | { ok: false; error: string };
+  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; keep?: AppTask; kind?: AppMeta["kind"]; snapshot?: true; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta; lifted?: string[] } | { ok: false; error: string };
   /** D410: the shelf's 「⋯」: a new name, pinned or not, no task keeping it current any more. */
   set(id: string, c: { name?: string; pinned?: boolean; untask?: boolean; icon?: AppIcon }): { ok: true; app: AppMeta } | { ok: false; error: string };
   /** D410: the app's own line for its tile (ducter.summary, or the partner's). */
@@ -53,8 +54,18 @@ export interface AppsStore {
   removed(id: string): AppMeta | undefined;
   /** D407: the routine task that keeps this app current (undefined: none any more). */
   give(id: string, task: AppTask | undefined): boolean;
-  /** D407: the apps a task fills. */
+  /** D612: the Keep whose rounds fill it (undefined: none any more). */
+  giveKeep(id: string, keep: AppTask | undefined): boolean;
+  /** D612: a second review task's work joins the one board (never a second board). */
+  addTask(id: string, task: AppTask): boolean;
+  /** D407: the apps a task fills (a board may show several tasks' work). */
   byTask(taskId: string): AppMeta[];
+  /** D612: the apps a Keep's rounds fill. */
+  byKeep(keepId: string): AppMeta[];
+  /** D612: the Keep a task's round belongs to (a Keep's tasks fill its app). */
+  taskKeep(fn: (taskId: string) => AppTask | undefined): void;
+  /** D612: what a Keep is doing now, for an app it keeps (the same shape as a task). */
+  keptKeepBy(fn: (keepId: string) => AppLive["kept"] | undefined): void;
   /**
    * D407: a task's round written into an app it fills (app_data): keys set (null removes) in one
    * write, validated, capped (APP_TASK_KEYS_PER_CALL keys, APP_DATA_MAX in all) and rate-limited
@@ -221,10 +232,13 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
   const changing = new Map<string, number>();
   const looks = new Map<string, { version: number; old: boolean; rows: number }>();
   let kept: (taskId: string) => AppLive["kept"] | undefined = () => undefined;
+  let keptKeep: (keepId: string) => AppLive["kept"] | undefined = () => undefined;
+  let keepOfTask: (taskId: string) => AppTask | undefined = () => undefined;
   const liveOf = (m: AppMeta): AppLive | undefined => {
     const l: AppLive = {};
-    const k = m.task ? kept(m.task.id) : undefined;
+    const k = m.task ? kept(m.task.id) : m.keep ? keptKeep(m.keep.id) : undefined;
     if (k) l.kept = k;
+    if (m.snapshot && !m.task && !m.keep) l.snapshot = { at: m.updated };
     const since = changing.get(m.id);
     // A change nobody answered stops showing after 10 minutes (the partner failed quietly).
     if (since !== undefined && now().getTime() - since < 10 * 60_000) l.changing = { since: new Date(since).toISOString() };
@@ -298,6 +312,11 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     make(persona, a) {
       const name = appName(a.name);
       if (!name) return { ok: false, error: "an app needs a short name" };
+      // D612: one board per purpose: the same kind + task is the same app, never a second.
+      if (a.kind && a.task) {
+        const had = [...metas.values()].find((m) => m.persona === persona && m.kind === a.kind && appTasks(m).some((t) => t.id === a.task!.id));
+        if (had) return { ok: true, app: had };
+      }
       const bad = sizeOk(a.html);
       if (bad) return { ok: false, error: bad };
       if ([...metas.values()].filter((m) => m.persona === persona).length >= APPS_MAX) return { ok: false, error: `the user has ${APPS_MAX} apps already; change one of them instead` };
@@ -317,7 +336,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       const file = lift?.html ?? a.html;
       if (lift) seed = lift.data;
       const summary = a.summary ? appSummary(a.summary) : "";
-      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: file.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}), ...(summary ? { summary } : {}), ...(a.icon ? { icon: a.icon } : {}), tint: appTint({ id, ...(a.tint ? { tint: a.tint } : {}) }) };
+      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: file.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.keep ? { keep: { id: a.keep.id, title: appName(a.keep.title) || a.keep.id } } : {}), ...(a.kind ? { kind: a.kind } : {}), ...(a.snapshot ? { snapshot: true as const } : {}), ...(summary ? { summary } : {}), ...(a.icon ? { icon: a.icon } : {}), tint: appTint({ id, ...(a.tint ? { tint: a.tint } : {}) }) };
       write(join(dir(id), "index.html"), file);
       if (seed && Object.keys(seed).length) {
         write(join(dir(id), "data.json"), JSON.stringify(seed));
@@ -326,7 +345,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       metas.set(id, m);
       saveMeta(m);
       emit({ kind: "list" });
-      if (m.task) emit({ kind: "give", id, task: m.task });
+      if (m.task || m.keep) emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}), ...(m.keep ? { keep: m.keep } : {}) });
       return { ok: true, app: m, ...(lift ? { lifted: lift.keys } : {}) };
     },
     give(id, task) {
@@ -336,13 +355,40 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       else delete m.task;
       saveMeta(m);
       emit({ kind: "list" });
-      emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}) });
+      emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}), ...(m.keep ? { keep: m.keep } : {}) });
       return true;
     },
-    byTask: (taskId) => [...metas.values()].filter((m) => m.task?.id === taskId),
+    giveKeep(id, keep) {
+      const m = metas.get(id);
+      if (!m) return false;
+      if (keep) m.keep = { id: keep.id, title: appName(keep.title) || keep.id };
+      else delete m.keep;
+      saveMeta(m);
+      emit({ kind: "list" });
+      emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}), ...(m.keep ? { keep: m.keep } : {}) });
+      return true;
+    },
+    addTask(id, task) {
+      const m = metas.get(id);
+      if (!m) return false;
+      const t = { id: task.id, title: appName(task.title) || task.id };
+      const all = appTasks(m);
+      if (all.some((x) => x.id === t.id)) return true;
+      m.tasks = [...(m.tasks ?? []), t];
+      saveMeta(m);
+      emit({ kind: "list" });
+      emit({ kind: "give", id, task: t, ...(m.keep ? { keep: m.keep } : {}) });
+      return true;
+    },
+    byTask: (taskId) => [...metas.values()].filter((m) => appTasks(m).some((t) => t.id === taskId)),
+    byKeep: (keepId) => [...metas.values()].filter((m) => m.keep?.id === keepId),
+    taskKeep(fn) {
+      keepOfTask = fn;
+    },
     fill(id, taskId, set) {
       const m = metas.get(id);
-      if (!m || m.task?.id !== taskId) return { ok: false, error: "This app isn't one this task fills: use an id the task was given." };
+      const asKeep = m?.keep && keepOfTask(taskId)?.id === m.keep.id;
+      if (!m || (m.task?.id !== taskId && !asKeep)) return { ok: false, error: "This app isn't one this task fills: use an id the task was given." };
       if (m.kind) return { ok: false, error: "Ducter keeps this app's data from your review_report; nothing to write here." };
       const entries = set && typeof set === "object" && !Array.isArray(set) ? Object.entries(set) : [];
       if (!entries.length) return { ok: false, error: "set needs at least one key: {key: value} (null removes a key)." };
@@ -581,6 +627,9 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     },
     keptBy(fn) {
       kept = fn;
+    },
+    keptKeepBy(fn) {
+      keptKeep = fn;
     },
     liveMoved() {
       if ([...metas.values()].some((m) => m.task)) emit({ kind: "list" });

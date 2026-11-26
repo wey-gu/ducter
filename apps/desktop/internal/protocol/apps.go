@@ -28,7 +28,14 @@ type AppMeta struct {
 	// Task (D407): the routine task that keeps it current; Kind "reviews"
 	// is the review board Ducter made from its template.
 	Task *AppTask `json:"task,omitempty"`
-	Kind string   `json:"kind,omitempty"`
+	// D612: a reviews board may show more than one task's work; a
+	// Keep fills an app in its rounds (Keep is that app's Keep).
+	Tasks []AppTask `json:"tasks,omitempty"`
+	Keep  *AppTask  `json:"keep,omitempty"`
+	Kind  string    `json:"kind,omitempty"`
+	// D612: it shows a task's or Keep's work but is not given to it:
+	// a snapshot, said 截至 its time, never kept current.
+	Snapshot bool `json:"snapshot,omitempty"`
 	// D410: the app's own line for its shelf tile (ducter.summary), its
 	// mark and clay tint (else the window and a tint from its id), pinned.
 	Summary string `json:"summary,omitempty"`
@@ -117,6 +124,10 @@ type AppLive struct {
 	Changing *struct{}   `json:"changing,omitempty"`
 	Broke    *AppLiveErr `json:"broke,omitempty"`
 	Old      bool        `json:"old,omitempty"`
+	// D612: a snapshot's time (the app follows no task or Keep).
+	Snapshot *struct {
+		At string `json:"at"`
+	} `json:"snapshot,omitempty"`
 	// InFile: rows of the person's items written into its markup, not its
 	// data (D431; for the partner, no line of its own).
 	InFile int `json:"inFile,omitempty"`
@@ -125,8 +136,9 @@ type AppLive struct {
 // AppKept is the task that keeps an app current, as Ongoing has it.
 type AppKept struct {
 	Task  string `json:"task"`
+	Keep  string `json:"keep,omitempty"`
 	Title string `json:"title"`
-	State string `json:"state"` // running | resting | paused | failed
+	State string `json:"state"` // running | resting | paused | failed | ended
 	Last  string `json:"last,omitempty"`
 	Next  string `json:"next,omitempty"`
 	Why   string `json:"why,omitempty"`
@@ -158,6 +170,8 @@ func (m AppMeta) StateOf() string {
 		return "kept_paused"
 	case l.Kept != nil && l.Kept.State == "running":
 		return "kept_running"
+	case l.Kept != nil && l.Kept.State == "ended":
+		return "kept_ended"
 	case l.Old:
 		return "old"
 	case l.Kept != nil:

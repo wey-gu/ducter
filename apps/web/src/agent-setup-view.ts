@@ -43,7 +43,7 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
 
 /** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code; D371: DeepSeek Harness offered, not checked; D416: Antigravity last, not checked). */
 export function offerable(hs: readonly DeviceHarness[]): { harness: string; checked: boolean }[] {
-  const order = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity"];
+  const order = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"];
   return order
     .map((id) => hs.find((h) => h.harness === id))
     .filter((h): h is DeviceHarness => !!h && !h.installed && !!h.installable)

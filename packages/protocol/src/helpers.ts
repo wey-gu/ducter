@@ -17,6 +17,58 @@ export const HELPER_BRIEF_MAX = 2_000;
 /** Pieces of work one helper starts in a day without asking; the next asks the person (X2's cap, D170). */
 export const HELPER_DAILY = 10;
 
+/** D598: how long work handed to a helper may wait for one of its tasks to take it before the person hears so, once. */
+export const HELPER_TAKE_MS = 10 * 60_000;
+
+/** D598: a message id Ducter gave a hand-off on this home (never one of Mem's). */
+export const LOCAL_MSG = "local-";
+
+type HelperMailBody = { direction: "in" | "out"; messageId: string; helper?: string; inReplyTo?: string; state?: string };
+
+/**
+ * D598: the messages each helper sent (its claims and its outcomes), by id: an agent that writes again on
+ * one of them is handing the helper new work, not answering something the person asked.
+ */
+export function helperSent(evs: Iterable<{ body: unknown }>): Set<string> {
+  const out = new Set<string>();
+  for (const e of evs) {
+    const b = e.body as HelperMailBody;
+    if (b?.direction === "out" && b.helper && b.messageId) out.add(b.messageId);
+  }
+  return out;
+}
+
+/**
+ * D598: mail at a helper's address that is a piece of work handed to it: an original, a hand-off on this
+ * home, or a message written as a reply on the helper's own earlier message (hel, 2026-11-26: a task's
+ * hand-off of mem#11393 went as a reply on the babysitter's last outcome, for #11070, and was read as
+ * an answer, so no task took it). Not a held, muted or set-aside copy.
+ */
+export function isHelperWork(b: HelperMailBody, sent: Set<string>): boolean {
+  if (b.direction !== "in" || !b.helper) return false;
+  if (b.state && b.state !== "held") return false;
+  return !b.inReplyTo || sent.has(b.inReplyTo);
+}
+
+/**
+ * D598: a hand-off to a helper on this very home, as the Log keeps it: mail at its address that never
+ * went through Nowledge Mem. `fromTask`: the task that handed it (its claim and outcome go there);
+ * absent: the person handed it, through the partner.
+ */
+export function localHandoff(a: { id: string; helper: string; text: string; from: string; fromTask?: string; head?: string }) {
+  return {
+    direction: "in" as const,
+    messageId: `${LOCAL_MSG}${a.id}`,
+    from: a.from,
+    agent: a.from,
+    mine: true,
+    helper: a.helper,
+    local: true as const,
+    ...(a.fromTask ? { fromTask: a.fromTask } : {}),
+    text: a.head ? `${a.head}\n${a.text}` : a.text,
+  };
+}
+
 /** How a helper's Nowledge Mem address stands on the home. */
 export type HelperMem = "connecting" | "ready" | "waiting" | "refused";
 
@@ -43,6 +95,12 @@ export interface Helper {
   said?: "ready" | "refused";
   /** D533: pieces of work it starts in a day without asking, as the person set it on its Keep (absent: HELPER_DAILY). */
   daily?: number;
+  /**
+   * D604: the Spaces its mailbox was last read in, as Mem's identity inbox answered (`spaces[]` with
+   * `status: "observed"`), by id and the person's label for it. Absent: not read yet. One identity has
+   * one card in every Space the person is in, and its inbox reads them all (VERIFIED hel, nmem 0.10.123).
+   */
+  spaces?: { id: string; label: string }[];
 }
 
 /** A helper as Settings › Agent 通信 shows it. */
@@ -57,6 +115,8 @@ export interface HelperView {
   open: number;
   /** Work it took in the last 7 days. */
   week: number;
+  /** D604: the labels of the Spaces it receives in (Helper.spaces), once read. */
+  spaces?: string[];
 }
 
 /**

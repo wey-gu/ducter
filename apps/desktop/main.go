@@ -624,6 +624,13 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{ID: "new", Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
 			{ID: "open", Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
 			{ID: "findany", Label: l.T("pal.menu"), Accelerator: "CmdOrCtrl+K", Click: show(app.OpenSwitcher)}, // D391
+			// D603: in an app's own window, the composer to change it comes up (its page has the keys
+			// most of the time, so the key lives here).
+			{ID: "appedit", Label: l.T("menu.app.edit"), Accelerator: "CmdOrCtrl+L", Click: func(_ *mygo.MenuItem, w *mygo.Window) {
+				if id := appWindowID(w); id != "" && app.Win != nil {
+					app.Win.Update(func() { app.ComposeApp(id) })
+				}
+			}},
 			mygo.Separator(),
 			{ID: "close", Label: l.T("menu.close"), Accelerator: "CmdOrCtrl+W", Click: closeWin},
 		}},

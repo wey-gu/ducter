@@ -224,6 +224,9 @@ until it ships, Ducter handles it.
   `peers.muted`): 答应 reads what it sent meanwhile and lets it through as questions under X3's
   teammate rules (no work, answers only from what that Space shares, its reply back there); 不理 mutes
   it (恢复 in Settings, or "听 X 的"). No reach setting comes back: D332's one switch turns it all off.
+  D604: only 不理 mutes; a card answered with the person's own words lets the sender through, their words going to
+  the partner with what it sent (`told`), never to the sender. Heard again, what came while it was muted is read
+  from Mem (7 days). Mail to a helper names the helper on the card ({name}).
 
 ## Simple, by who (D332, 2026-11-17)
 
@@ -1408,6 +1411,10 @@ the task: fixes, pushes within the brief; its own waits on CI and reviews wake i
 done or failed ─▶ the answer goes back from the helper's address (a wait is not a result)
 ```
 
+- **Where it receives (D604).** One identity, one card in every Space the person is in; its identity inbox reads
+  them all. Each check keeps the Spaces it read (`receives`, observed only) on the helper; `[helpers]` says them,
+  and mail to it in the last 7 days that wasn't read (不理, or a card waiting), with why. The Keep's
+  别的 agent 怎么找到它 row lists them. A reply goes back in the Space the message came from (D595).
 - **Limits in code.** At most 6 helpers; a unique name; 10 pieces of work a day each without asking (the next
   asks); a teammate's agent writing to a helper gets its card as anywhere else; stopping ends its connection, so
   Mem tells senders its mailbox is closed, and work on hand finishes; a reply from a helper is recovered with its

@@ -9,7 +9,7 @@ import type { ShownAsk, ShownFile } from "./shown.ts";
 import type { BranchChanges, CopyFacts, FolderChanges, Place } from "@ducter/protocol";
 import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
-import type { ActionResult } from "./integrate.ts";
+import type { ActionResult, PrOptions } from "./integrate.ts";
 import { WbFail, type WbCall, type WbFetch, type WbFetched } from "./workbench.ts";
 import type { WbAnswer, WbError } from "@ducter/protocol/src/workbench.ts";
 import type { ResolvedPlace } from "./places.ts";
@@ -23,7 +23,7 @@ export interface PlaceOps {
   provision(r: ResolvedPlace): Promise<void>;
   harness: HarnessPort;
   merge(place: Place): Promise<ActionResult>;
-  openPr(place: Place): Promise<ActionResult>;
+  openPr(place: Place, pr?: PrOptions): Promise<ActionResult>;
   /** What the task branch holds that its base doesn't (undefined: can't tell). */
   changes(place: Place): Promise<BranchChanges | undefined>;
   /** After a merge: remove the clean worktree Ducter made, keep the branch (integrate.ts).
@@ -211,7 +211,7 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
     merge: (place) => guard(link.call<ActionResult>("merge", { place }, 5 * 60_000)),
     // An older worker doesn't know "push": the move says so instead of moving half.
     push: (place) => guard(link.call<ActionResult>("push", { place }, 5 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false, message: `${link.name} couldn't push the branch: ${(err as Error).message}` })),
-    openPr: (place) => guard(link.call<ActionResult>("openPr", { place }, 5 * 60_000)),
+    openPr: (place, pr) => guard(link.call<ActionResult>("openPr", { place, ...(pr ? { pr } : {}) }, 5 * 60_000)),
     // An older worker doesn't know "changes": unknown, never an error in a report.
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
     // An older worker doesn't know "archive": its worktree stays, as before.

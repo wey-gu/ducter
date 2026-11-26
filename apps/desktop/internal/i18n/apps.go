@@ -14,7 +14,6 @@ var zhApps = Table{
 	"app.opening":        "正在打开…",
 	"app.ask.ph":         "让%s改这个小应用…",
 	"app.ask.send":       "发送",
-	"app.ask.sent":       "发给%s了，改好会在这里刷新。",
 	"app.ask.limit":      "这个小应用这一小时问得太多了，过会儿再试。",
 	"app.ask.busy":       "它上一个问题还在等回答。",
 	"app.ask.go":         "这一步要你在和%s的对话里点「好」才会做。",
@@ -32,6 +31,10 @@ var zhApps = Table{
 	"app.kept.retry":     "现在再试一次",
 	"app.kept.paused":    "「%s」暂停了，先不会更新它",
 	"app.kept.resume":    "恢复",
+	"app.kept.ended":     "已停止更新",
+	"app.kept.asof":      "截至 %s",
+	"app.snapshot":       "快照",
+	"app.snapshot.asof":  "截至 %s",
 	"app.updated":        "%s 更新",
 	"app.asks":           "「%s」问",
 	"app.about":          "关于「%s」",
@@ -81,6 +84,12 @@ var zhApps = Table{
 	"app.dock.undone": "「%s」不在程序坞里了。",
 	"app.dock.fail":   "没放成：%s",
 	"pal.go.apps":     "小应用",
+	// D603: the composer under an app is one gesture away, never a bar under every app.
+	"app.edit":        "修改",
+	"app.first.shut":  "关闭",
+	"app.replied":     "%s在对话里回你了",
+	"app.replied.see": "查看",
+	"menu.app.edit":   "修改这个小应用…",
 }
 
 var enApps = Table{
@@ -94,7 +103,6 @@ var enApps = Table{
 	"app.opening":        "Opening…",
 	"app.ask.ph":         "Ask %s to change it…",
 	"app.ask.send":       "Send",
-	"app.ask.sent":       "Sent to %s. It refreshes here once it's changed.",
 	"app.ask.limit":      "This app asked too often this hour. Try again later.",
 	"app.ask.busy":       "Its last question is still waiting for an answer.",
 	"app.ask.go":         "This waits for your Go in your conversation with %s.",
@@ -112,6 +120,10 @@ var enApps = Table{
 	"app.kept.retry":     "Try again now",
 	"app.kept.paused":    "“%s” is paused, so it won't update for now",
 	"app.kept.resume":    "Resume",
+	"app.kept.ended":     "No longer updating",
+	"app.kept.asof":      "As of %s",
+	"app.snapshot":       "Snapshot",
+	"app.snapshot.asof":  "As of %s",
 	"app.updated":        "Updated %s",
 	"app.asks":           "“%s” asks",
 	"app.about":          "About “%s”",
@@ -160,6 +172,11 @@ var enApps = Table{
 	"app.dock.undone":  "“%s” is out of the Dock.",
 	"app.dock.fail":    "Couldn't add it: %s",
 	"pal.go.apps":      "Apps",
+	"app.edit":         "Edit",
+	"app.first.shut":   "Close",
+	"app.replied":      "%s answered in your conversation",
+	"app.replied.see":  "View",
+	"menu.app.edit":    "Edit This App…",
 }
 
 func init() {

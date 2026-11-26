@@ -218,7 +218,7 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	w := app.NewAppWin("a1b2c3")
 	tt := ui.NewTesterWith(app.AppWinView(w), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), unjoin(autospace(app.L.T("app.private")))} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), "修改"} {
 		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -226,6 +226,41 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	// D562: the head keeps the whole name; 改回去 is said beside a change that lands (below).
 	if hasText(tt, "改回去") {
 		t.Errorf("改回去 in the head: %q", tt.Texts())
+	}
+	// D603: at rest, no composer and no footer under the app.
+	if _, ok := tt.Find("发送"); ok || hasText(tt, unjoin(autospace(app.L.T("app.private")))) {
+		t.Errorf("a composer or a footer at rest: %q", tt.Texts())
+	}
+	// The first-open line goes by itself after a while.
+	tt.Advance(9 * time.Second)
+	tt.Frame()
+	if hasText(tt, unjoin(autospace(app.L.T("app.first", "Ducter")))) {
+		t.Errorf("first-open line still there: %q", tt.Texts())
+	}
+	// 修改 brings the composer up with the keys; Esc puts it away; ⌘L and / bring it back.
+	if err := tt.Click(spoken(app.L, "修改", "北京出差 11/20–21")); err != nil {
+		t.Fatalf("%v %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if _, ok := tt.Find("发送"); !ok || !w.compose {
+		t.Fatalf("no composer after 修改: %q", tt.Texts())
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if _, ok := tt.Find("发送"); ok {
+		t.Errorf("composer still up after Esc: %q", tt.Texts())
+	}
+	tt.Key(ui.Cmd, ui.KeyL)
+	tt.Frame()
+	if !w.compose {
+		t.Errorf("⌘L didn't bring the composer up")
+	}
+	w.compose = false
+	tt.Frame()
+	app.ComposeApp("a1b2c3") // the menu bar's 修改这个小应用…, or the app's own / through its bridge
+	tt.Frame()
+	if !w.compose {
+		t.Errorf("ComposeApp didn't bring the composer up")
 	}
 	// D519, D562: the ask is the conversation's composer.
 	w.said = "加一笔打车 84"
@@ -238,8 +273,9 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 		t.Errorf("send %#v", s)
 	}
 	tt.Frame()
-	if !hasText(tt, unjoin(autospace(app.L.T("app.ask.sent", "Ducter")))) {
-		t.Errorf("no sent line %q", tt.Texts())
+	// Sent: the composer goes down into the line that says it is being made.
+	if _, ok := tt.Find("发送"); ok || !hasText(tt, unjoin(autospace(app.L.T("app.live.changing", "Ducter")))) {
+		t.Errorf("no progress line %q", tt.Texts())
 	}
 	// The partner changed it: 改好了 with its words, the page runs again.
 	reloads := 0
@@ -263,6 +299,12 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	tt.Frame()
 	if !hasText(tt, "改回去了") || hasText(tt, "改好了") || hasText(tt, unjoin(autospace("加了打车 ¥84"))) {
 		t.Errorf("after the undo landed %q", tt.Texts())
+	}
+	// D603: the line goes by itself; 改回去 stays in 「⋯」.
+	tt.Advance(9 * time.Second)
+	tt.Frame()
+	if hasText(tt, "改回去了") {
+		t.Errorf("the change's line stayed: %q", tt.Texts())
 	}
 	// A second open of an app already opened has no first line.
 	w2 := app.NewAppWin("a4f5e6")

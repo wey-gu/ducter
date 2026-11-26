@@ -3951,6 +3951,23 @@ class AppState {
     this.changed();
   }
 
+  /**
+   * D601: 以后这类直接做 / Always do this: Go now, and the home keeps a standing permission where the
+   * card acted. Never kept for later in the outbox: a lasting choice is made with the link up.
+   */
+  decideAlways(id: string) {
+    const d = this.S.decisions.get(id);
+    if (!d?.always) return;
+    if (!this.linkUp()) return this.askAgainLater();
+    d.pending = "go";
+    this.replyOpen.delete(id);
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go", always: true });
+    this.changed();
+  }
+
   /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
   sendLeftDraft(d: DecisionState, text: string) {
     this.replyDraft.delete(d.decisionId);
@@ -3985,6 +4002,16 @@ class AppState {
 
   goOnAllDefaults() {
     for (const d of this.defaultable()) this.decide(d.decisionId, d.defaultOption === "go" ? "go" : "hold");
+  }
+
+  /** D602: the task whose 结束任务 asks in place (its one line under the head), or none. */
+  ending?: string;
+
+  /** D602: 结束任务 / End task: a finished task an open PR still holds lets each one go (it stays open on GitHub). */
+  endTask(id: string) {
+    this.ending = undefined;
+    this.send({ t: "task_action", taskId: id, action: "end" });
+    this.changed();
   }
 
   taskAction(id: string, action: "interrupt" | "drop" | "reopen" | "merge" | "open_pr") {

@@ -192,7 +192,7 @@ export interface KeepSheet {
   week: number;
   pausedUntil?: string;
   /** Its address in Bridge (a helper): a detail of the Keep, never its home. */
-  address?: { name: string; mem: HelperMem; detail?: string };
+  address?: { name: string; mem: HelperMem; detail?: string; /** D604: the Spaces it receives in, by label, once read. */ spaces?: string[] };
   since: string;
   endedAt?: string;
 }
@@ -339,6 +339,10 @@ export interface KeepChange {
   /** D593: a standing instruction from now on, in the person's words ("以后只发 /lgtm", "不用再看
    *  100gle"): added to `said`, so every round hears it first. Never a one-off ask, never its end. */
   also?: string;
+  /** D598: a piece of work handed to a Keep that takes work as it comes (a helper), in the person's
+   *  words ("把 mem#11393 交给 Babysitter"): written to its address on this home, so one of its tasks
+   *  takes it at once. Not an edit of its rules. */
+  hand?: string;
 }
 
 /** D533: what a change did: each field from and to, and the change that puts it back (Undo). */

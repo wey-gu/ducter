@@ -41,6 +41,17 @@ const helper = {
   link: { context: "ducter-helper-nowledge-mem-pr-babysitter-on-hetzner-server", connectionId: "c-demo", spaceId: SPACE },
   mem: "ready",
   said: "ready",
+  // D604: the Spaces its identity inbox read on hel (nmem 0.10.123, 2026-11-26), by the author's labels.
+  spaces: [
+    { id: SPACE, label: "Only me" },
+    { id: "all", label: "Everyone" },
+    { id: "dev-team", label: "dev team" },
+    { id: "codex", label: "Codex" },
+    { id: "nowledge-mem", label: "Nowledge Mem" },
+    { id: "nowledge-co/mem", label: "Nowledge Co/mem" },
+    { id: "default", label: "Before the team" },
+    { id: "userfiles", label: "userFiles" },
+  ],
 };
 writeFileSync(join(dataDir, "helpers.json"), JSON.stringify({ helpers: [helper] }, null, 2));
 
@@ -129,7 +140,7 @@ if (shape !== "idle") {
 // ---- the review loop: every 45 minutes since yesterday morning (D498), kept by Ducter ----
 const REVIEW = w("持续评审 nowledge-co，并处理 100gle 分给你的待办", "Keep reviewing nowledge-co and handle 100gle's to-dos for you");
 await at(-(26 * HOUR));
-log.append({ stream: "task:t_review", origin: "partner", kind: "task_open", body: { taskId: "t_review", title: REVIEW, project: "nowledge-co", place: { kind: "none" }, harness: "codex", model: "gpt-6-luna", brief: w("每 45 分钟 review 一轮 nowledge-co 分给我的 PR，并处理 100gle 分给我的待办；评审先写成草稿，发之前问我。", "Every 45 minutes, review the nowledge-co PRs that ask for me and handle 100gle's to-dos; draft the reviews and ask me before posting.") } });
+log.append({ stream: "task:t_review", origin: "partner", kind: "task_open", body: { taskId: "t_review", title: REVIEW, project: "nowledge-co", place: { kind: "none" }, harness: "codex", model: "gpt-6-luna", brief: w("每 45 分钟 review 一轮 nowledge-co 分给我的 PR，并处理 100gle 分给我的待办；评审先写成草稿，发之前问我。", "Every 45 minutes, review the nowledge-co PRs that ask for me and handle 100gle's to-dos; draft the reviews and ask me before posting."), needs: { reviews: true } } });
 log.append({ stream: "task:t_review", origin: "system", kind: "task_loop", body: { taskId: "t_review", state: "on", reason: REVIEW, everyMs: 45 * MIN, rhythmBy: "task", since: iso(-26 * HOUR), by: "brief" } });
 seed.tasks.setState("t_review", "blocked", "parked");
 report("t_review", { state: "done", summary: w("第一轮：9 个请求在等你，都看过了，写了 3 份评审草稿。", "First round: 9 requests waiting for you, all read; 3 review drafts written."), evidence: [] });

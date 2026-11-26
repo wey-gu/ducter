@@ -1,6 +1,6 @@
 // D135: the harness facts registry and the small-window settings built on it.
 import { expect, test } from "bun:test";
-import { HARNESS_IDS } from "../src/harnesses.ts";
+import { HARNESSES, HARNESS_IDS, HARNESS_KEYS, directOnly, directOnlyWhy } from "../src/harnesses.ts";
 import { claudeCompactPct, HARNESS_FACTS, modelForWindow, parseTokens, resolveWindows, saveBeforeAt, versionStanding, WINDOW_DEFAULTS, windowKnobs } from "../src/harness-facts.ts";
 
 test("every harness has facts, each with evidence", () => {
@@ -61,6 +61,36 @@ test("settings: defaults, env over the file, out-of-range values named and not u
   expect(parseTokens("1m")).toBe(1_000_000);
   expect(parseTokens("-5")).toBeUndefined();
   expect(saveBeforeAt(160_000)).toBe(140_000);
+});
+
+test("D600: Cursor, Devin CLI, Kimi Code and OpenCode are task agents with every fact checked", () => {
+  expect(HARNESS_IDS.slice(-4)).toEqual(["cursor", "devin", "kimi", "opencode"]);
+  for (const h of ["cursor", "devin", "kimi", "opencode"] as const) {
+    expect(HARNESSES[h].task).toBe(true);
+    expect(HARNESSES[h].partner).toBe(false);
+    const f = HARNESS_FACTS[h];
+    expect(f.harness).toBe(h);
+    for (const k of ["version", "verified", "models", "windowKnob", "compactAtKnob", "defaultCompactAt", "preCompactHook", "compactionEvents", "contextReport", "toolSearch", "resume", "browser", "nativeCommands", "channels", "noTools", "readOnly", "noWeb", "webLook", "toolSchema", "root", "background"] as const) expect(f[k]).toBeTruthy();
+  }
+  // The reports' fields, pinned: no build silently changes what the runner sends.
+  expect(HARNESSES.cursor).toMatchObject({ badge: "cu", command: "agent", images: true, steer: true, isolation: "native", systemPrompt: "none", taskInstructions: "first-turn", mcp: "http", login: "account", billing: "plan", cheapModel: "composer-2.5", signOut: true, noWebTasks: true });
+  expect(HARNESSES.devin).toMatchObject({ badge: "dv", command: "devin", images: false, steer: false, isolation: "none", systemPrompt: "none", taskInstructions: "first-turn", mcp: "stdio-bridge", login: "account", billing: "plan", cheapModel: "swe-1-6-fast", noWebTasks: true });
+  expect(HARNESSES.devin.signOut).toBeUndefined();
+  expect(HARNESSES.kimi).toMatchObject({ badge: "km", command: "kimi", images: true, steer: false, isolation: "none", systemPrompt: "none", taskInstructions: "first-turn", mcp: "http", login: "account", billing: "plan", directOnly: true, noWebTasks: true, signOut: true });
+  expect(HARNESSES.opencode).toMatchObject({ badge: "oc", command: "opencode", images: true, steer: true, draws: false, isolation: "none", systemPrompt: "replace", taskInstructions: "append", mcp: "http", login: "provider-keys", billing: "usage", pickOnly: true, directOnly: true, noWebTasks: true });
+  // D594/D600: only Kimi and OpenCode join Antigravity, each with its own reason and source.
+  expect(HARNESS_IDS.filter((h) => directOnly(h))).toEqual(["antigravity", "kimi", "opencode"]);
+  for (const h of ["antigravity", "kimi", "opencode"] as const) expect(directOnlyWhy(h)?.source).toMatch(/^https:\/\//);
+  // D600: Cursor's SDK key, Devin's one env key, Kimi's OAuth (no key), OpenCode's own key only.
+  expect(HARNESS_KEYS.cursor).toEqual(["CURSOR_API_KEY"]);
+  expect(HARNESS_KEYS.devin).toEqual(["WINDSURF_API_KEY"]);
+  expect(HARNESS_KEYS.kimi).toEqual([]);
+  expect(HARNESS_KEYS.opencode).toEqual(["OPENCODE_API_KEY"]);
+  // Windows is not offered for Kimi (OAR verifies linux and darwin only).
+  expect(versionStanding("kimi", "2.3.3")).toBe("verified");
+  expect(versionStanding("kimi", "2.6.4")).toBe("newer");
+  expect(versionStanding("opencode", "opencode 2.3.0")).toBe("verified");
+  expect(versionStanding("opencode", "1.18.30")).toBe("older");
 });
 
 test("versions against the verified range", () => {

@@ -5,7 +5,7 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
-import { DIRECT_ONLY_WHY, directOnly, fill, harnessName, words } from "@ducter/protocol";
+import { directOnly, directOnlyWhy, fill, harnessName, words } from "@ducter/protocol";
 import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
@@ -43,6 +43,8 @@ export interface Work {
   setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
   /** D533: a Keep's rules as they are now, told to each round of a task in rounds (or a routine's run) once the person changed them. */
   setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
+  /** D612: the small app a round of this task should fill (its own or its Keep's), or "". */
+  setAppNote(f: ((taskId: string) => string | undefined) | undefined): void;
   stop(): void;
 }
 
@@ -228,6 +230,7 @@ export function createWork(o: WorkOptions): Work {
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   let keepRules: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined;
+  let appNote: ((taskId: string) => string | undefined) | undefined;
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone, rules: (routineId) => keepRules?.({ routineId }) });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
   // D528: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
@@ -296,7 +299,8 @@ export function createWork(o: WorkOptions): Work {
             ? // Its first line names the Keep (the transcript and the keeper read it as a wake), then the Keep itself.
               `${timer ? fill(c.time, { reason: standing.title }) : wake}\n\n${standing.text}\n\n${loop.until ? c.roundKeep : c.round}\n${now}${timer ? `\n\n${fill(c.memo, { reason: w.reason })}` : ""}${note ? `\n\n${note}` : ""}`
             : `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}\n${now}${rulesNow ? `\n\n${rulesNow}` : ""}${note ? `\n\n${note}` : ""}`;
-      const text = w.limit ? said : withPRs(w.taskId, said);
+      const app = w.limit ? "" : appNote?.(w.taskId);
+      const text = w.limit ? said : withPRs(w.taskId, `${said}${app ? `\n\n${app}` : ""}`);
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
       if (!r) loops.wakeFailed(w.taskId, "the runner isn't up yet");
@@ -418,7 +422,7 @@ export function createWork(o: WorkOptions): Work {
     // D594: a task on an agent that works only when the person asks never rests on a wait that
     // wakes it by itself: the task ends its turn and reports, and the person asks again.
     const agent = taskId ? tasks.get(taskId)?.harness : undefined;
-    if (directOnly(agent)) return { ok: false, error: `${fill(words(DIRECT_ONLY_WHY, langOfText(reason)), { agent: harnessName(agent!) })} (Nothing was armed. ${ctx.role === "task" ? "End this turn with your report: say what is still to come and that the person can ask you again then." : "Say so to the person, or move the work to another agent."})` };
+    if (directOnly(agent)) return { ok: false, error: `${fill(words(directOnlyWhy(agent)!, langOfText(reason)), { agent: harnessName(agent!) })} (Nothing was armed. ${ctx.role === "task" ? "End this turn with your report: say what is still to come and that the person can ask you again then." : "Say so to the person, or move the work to another agent."})` };
     if (a.event) {
       try {
         const config = jsonArg(a.event.config, "event.config");
@@ -638,6 +642,7 @@ export function createWork(o: WorkOptions): Work {
     owned,
     look: (spec, taskId) => check(spec, { taskId }),
     setKeepRules: (f) => void (keepRules = f),
+    setAppNote: (f) => void (appNote = f),
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),

@@ -204,7 +204,7 @@ export function firstClause(s: string): string {
 }
 
 export function harnessName(h: string): string {
-  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness", antigravity: "Antigravity" }[h] ?? h;
+  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness", antigravity: "Antigravity", cursor: "Cursor", devin: "Devin CLI", kimi: "Kimi Code CLI", opencode: "OpenCode" }[h] ?? h;
 }
 
 /** The words each agent lists its models with, learned from its lists (the computers' accounts, the

@@ -375,7 +375,11 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 			}
 			a.shelf.renaming, a.shelf.name = id, name
 		}
-		if mn.Item(a.L.T("apps.m.change", a.appsPartner())).Chosen() {
+		change := mn.Item(a.L.T("apps.m.change", a.appsPartner()))
+		if inWindow {
+			change.Shortcut(ui.Cmd, ui.KeyL) // D603: the key that brings the composer up
+		}
+		if change.Chosen() {
 			a.openAppAsk(id)
 		}
 		if m.Back && mn.Item(a.L.T("app.back")).Chosen() {
@@ -409,13 +413,22 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 			}
 			a.shelf.asking = id
 		}
+		// D603: who sees it and when it changed, said here (and in the name's tooltip), never as a
+		// footer under the app: a line to read, not to choose.
+		if inWindow {
+			mn.Separator()
+			about := mn.Item(a.L.T("app.private")).Disabled(true)
+			if when := a.appWhen(m); when != "" {
+				about.Subtitle(when)
+			}
+		}
 	})
 }
 
 // openAppAsk opens the app with its edit box ready for words.
 func (a *App) openAppAsk(id string) {
 	if w := a.appWins[id]; w != nil {
-		w.focusAsk = true
+		w.compose, w.focusAsk, w.hadFocus = true, true, false
 	} else {
 		a.wantAsk = id
 	}

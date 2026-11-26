@@ -25,6 +25,9 @@ const (
 	PRMerged   = "merged"
 	PRClosed   = "closed"
 	PROpen     = "open"
+	// D602: the task let it go: a duplicate, or not needed / the task ended.
+	PRDuplicate = "duplicate"
+	PRLetGo     = "let_go"
 )
 
 // PRChecksSaid and PRSaid are the protocol's (a helper's item carries one).
@@ -52,6 +55,13 @@ func SayPR(p protocol.TaskPR) PRSaid {
 		return PRSaid{Phase: PRClosed}
 	}
 	st := p.Standing
+	// D602: let go, it says only that: its CI and reviews are no one's to wait on.
+	if p.LetGo != nil {
+		if p.LetGo.Why == "duplicate" {
+			return PRSaid{Phase: PRDuplicate, Draft: st != nil && st.Draft}
+		}
+		return PRSaid{Phase: PRLetGo}
+	}
 	if st == nil {
 		return PRSaid{Phase: PROpen}
 	}
@@ -98,20 +108,25 @@ func PRStands(phase string) string {
 	switch phase {
 	case PRReady:
 		return "needs"
-	case PRMerged, PRClosed:
+	case PRMerged, PRClosed, PRDuplicate, PRLetGo:
 		return "done"
 	}
 	return "waiting"
 }
 
-// PROf is the PR a task's row speaks of: an open one (the newest read),
-// else the newest.
+// PROf is the PR a task's row speaks of: an open one it still carries (the
+// newest read), else an open one it let go (D602), else the newest.
 func PROf(prs []protocol.TaskPR) *protocol.TaskPR {
 	if len(prs) == 0 {
 		return nil
 	}
 	s := append([]protocol.TaskPR(nil), prs...)
 	sort.SliceStable(s, func(i, j int) bool { return s[i].At > s[j].At })
+	for i := range s {
+		if s[i].State == "open" && s[i].LetGo == nil {
+			return &s[i]
+		}
+	}
 	for i := range s {
 		if s[i].State == "open" {
 			return &s[i]
@@ -136,4 +151,16 @@ func (t *Task) PRGoesOn() (*protocol.TaskPR, PRSaid, string) {
 		return nil, PRSaid{}, ""
 	}
 	return pr, said, stands
+}
+
+// PRsCarried (D602) is the open PRs a task still carries (not let go):
+// what 结束任务 / End task lets go.
+func PRsCarried(prs []protocol.TaskPR) []protocol.TaskPR {
+	var out []protocol.TaskPR
+	for _, p := range prs {
+		if p.State == "open" && p.LetGo == nil {
+			out = append(out, p)
+		}
+	}
+	return out
 }

@@ -229,6 +229,12 @@ func (b *AppBridge) Post(id string, body []byte) {
 		b.do(func() { b.a.send(protocol.AppPutReq{T: "app_put", ID: id, Key: m.Key, Value: m.Value}) })
 	case "ask":
 		b.do(func() { b.a.send(protocol.AppAskReq{T: "app_ask", ID: id, Text: m.Text, Ref: m.Ref}) })
+	case "compose":
+		// D603: / or ⌘L inside the app's page (not in one of its fields): the composer comes up.
+		b.do(func() { b.a.ComposeApp(id) })
+	case "touch":
+		// D603: the person's first touch in the page: the first-open line has been seen.
+		b.do(func() { b.a.AppTouched(id) })
 	case "summary":
 		// D410: ducter.summary, the one line its shelf tile shows.
 		b.do(func() { b.a.send(protocol.AppSummaryReq{T: "app_summary", ID: id, Text: m.Text}) })

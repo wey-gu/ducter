@@ -83,7 +83,8 @@ describe("a finished task stands under its PR (D508)", () => {
     (has as any).card.lastReport = { taskId: "haspr", state: "done", summary: "开了草稿 PR。", questions: [], evidence: [], branch: { commits: 2, uncommitted: false } };
     (none as any).card.lastReport = { taskId: "nopr", state: "done", summary: "改好了。", questions: [], evidence: [], branch: { commits: 2, uncommitted: false } };
     const { finishedMenu } = await import("../src/away.tsx");
-    expect(finishedMenu(o.finishedOf(has)!)).toEqual(["open", "remove"]);
+    // D602: its open PR holds it: ⋯ offers 结束任务 first.
+    expect(finishedMenu(o.finishedOf(has)!)).toEqual(["end", "open", "remove"]);
     const f = o.finishedOf(none)!;
     expect(finishedMenu(f)).toEqual(["merge", "open_pr", "open", "remove"]);
     expect(o.bulkOf(["haspr"]).merge).toEqual([]);

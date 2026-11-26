@@ -8,8 +8,10 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/lang"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -581,7 +583,15 @@ func (a *App) standingList(c *ui.Context) {
 					if where != "" {
 						uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 					}
-					uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					if x.By == "tap" {
+						// D601: kept by a tap, said as a tap with its day; never as words they didn't say.
+						ui.Row(c.Key("tapped:" + x.ID)).Gap(t.S2).Wrap().Children(func() {
+							uiText(c, a.L.T("standing.tapped", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+							uiText(c, i18n.Day(a.L.Lang, store.ParseTime(x.CreatedAt), a.Now())).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+						})
+					} else {
+						uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
 				})
 				if a.quietDanger(c, "standing:"+x.ID, a.L.T("standing.revoke"), title) {
 					a.send(protocol.StandingRevoke{T: "standing_revoke", ID: x.ID})

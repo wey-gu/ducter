@@ -9,7 +9,7 @@ import { TIDY_DROPPED_MS, TIDY_FINISHED_MS, copyVerdict, taskVerdict, type CopyF
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
+import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult, type PrOptions } from "./integrate.ts";
 import { branchRules, nameBranch } from "./branch-name.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
@@ -94,7 +94,7 @@ export interface RunnerExt extends Runner {
   reopen(taskId: string): Promise<{ delivered: Delivery }>;
   undrop(taskId: string): Promise<ActionResult>;
   merge(taskId: string): Promise<ActionResult>;
-  openPr(taskId: string): Promise<ActionResult>;
+  openPr(taskId: string, pr?: PrOptions): Promise<ActionResult>;
   /** What the task's branch holds that its base doesn't; undefined when not a repo task or unknown. */
   branchChanges(taskId: string): Promise<BranchChanges | undefined>;
   /** A done report's evidence with `check` set where it can be checked here (evidence.ts); a worker's task: unchecked. */
@@ -449,7 +449,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     harness,
     merge: (place) => mergeTaskBranch(place),
     push: (place) => pushForMove(place),
-    openPr: (place) => openDraftPr(place, { gh: opts.gh }),
+    openPr: (place, pr) => openDraftPr(place, { gh: opts.gh, ...pr }),
     changes: (place) => branchChanges(place),
     archive: (place, o) => archiveWorktree(place, core.dataDir, o),
     copyFacts: (place) => copyFacts(place, core.dataDir),
@@ -1459,6 +1459,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (t.bgDone?.length) {
       if ((HARNESS_FACTS[t.spec.harness as HarnessId]?.background.value.ownTurn ?? "unknown") !== "yes") t.prefix.push(backgroundEnded(t.bgDone));
       t.bgDone = undefined;
+    }
+    // D602: it put itself down at the person's word in its box (report_to_main "dropped"): its turn
+    // is over, so it is dropped as Cancel task drops it (the session closes, held words go, the
+    // copy is kept), after this turn's events settle.
+    if (!busy && !t.dropped && currentAttention(t) === "dropped") {
+      setTimeout(() => void runner.drop(t.id).catch((err) => logEvent(t, { role: "system", text: `drop failed: ${preview(String(err), 300)}` })), 0);
+      return;
     }
     // D325: the turn is over and the person held words for after it: they are the next turn
     // (not after a Stop, a failure or a limit: held, the person says them now or changes them).
@@ -3042,12 +3049,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return critical(taskId, { ok: false, message: criticalHold ?? "" }, () => keepFolderNow(taskId));
     },
 
-    async openPr(taskId) {
+    async openPr(taskId, pr) {
       const t = get(taskId);
       const card = core.tasks.get(taskId) ?? t.card;
-      const r = await t.ops.openPr(card.place);
+      const r = await t.ops.openPr(card.place, pr);
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
-      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: pr?.ready ? "pr" : "draft_pr", ref: r.ref } });
       // A failure stays on the task, not only in a toast that fades (fresh-user QA: no origin).
       else logEvent(t, { role: "system", from: "runner", text: r.message, raw: { failed: "draft_pr" } });
       return r;

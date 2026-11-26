@@ -44,8 +44,8 @@ function boot(zh = true) {
     drop: async () => {},
   };
   core.setRunner(runner as unknown as Runner);
-  const open = (taskId: string, title: string, brief: string) => {
-    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief } });
+  const open = (taskId: string, title: string, brief: string, needs?: { reviews?: boolean }) => {
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief, ...(needs ? { needs } : {}) } });
     core.tasks.setState(taskId, "working", "hot");
   };
   return { core, gh, told, open, ts: core.taskSources };
@@ -67,7 +67,7 @@ test("rounds: drafts land on those PRs, one card a round carries every unsent on
   const { core, gh, told, open, ts } = boot();
   await ts.add("github");
   await ts.look();
-  open("swj3zc4w", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR，按 mem 的 review skill 来。");
+  open("swj3zc4w", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR，按 mem 的 review skill 来。", { reviews: true });
   expect(core.mcp.listed({ role: "task", taskId: "swj3zc4w" } as never)).toContain("review_report");
 
   // Round 1: five wait; two moved and were reviewed again.
@@ -127,7 +127,7 @@ test("Hold posts nothing; the drafts stay; a task not about reviewing never sees
   const { core, gh, told, open, ts } = boot(false);
   await ts.add("github");
   await ts.look();
-  open("t2", "Review requests", "Every 45 minutes, review the PRs that request my review in nowledge-co.");
+  open("t2", "Review requests", "Every 45 minutes, review the PRs that request my review in nowledge-co.", { reviews: true });
   await call(core, "t2", { prs: [{ ref: "nowledge-co/mem#10287", changed: true, notes: [note("The batch size is read before it is checked.")] }] });
   const c = cards(core)[0]!;
   expect(c.question).toBe("1 PR review is written. Post it to GitHub?");
@@ -149,7 +149,7 @@ test("Ongoing: an unanswered round card puts the review task under 等你; Post 
   const { core, open, ts } = boot();
   await ts.add("github");
   await ts.look();
-  open("swj3zc4w", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。");
+  open("swj3zc4w", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。", { reviews: true });
   core.log.append({ stream: "channel", origin: "task", kind: "waiter", body: { waiterId: "w_next", taskId: "swj3zc4w", wakes: "task", reason: "再看一轮评审请求", state: "armed", at: new Date(Date.now() + 45 * 60_000).toISOString() } as Bodies["waiter"] });
   const frames: { t: string; id?: string; items?: { id: string; state: string; reviews?: { drafted: number } }[] }[] = [];
   const ws = new WebSocket(core.url);
@@ -194,7 +194,7 @@ test("a request that arrives between the first look and the final look is in tha
   const { core, open, ts } = boot();
   await ts.add("github");
   await ts.look();
-  open("swj3zc4w", "持续评审 nowledge-co 的 PR", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR，结束之前再看一次有没有新的请求。");
+  open("swj3zc4w", "持续评审 nowledge-co 的 PR", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR，结束之前再看一次有没有新的请求。", { reviews: true });
   const wake = (waiterId: string) => core.log.append({ stream: "channel", origin: "system", kind: "waiter", body: { waiterId, taskId: "swj3zc4w", wakes: "task", state: "fired", reason: "再看一轮评审", at: new Date(NOW).toISOString() } });
   const lines = () => core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 100 }).map((e) => (e.body as Bodies["ai_msg"]).text);
   const two = [

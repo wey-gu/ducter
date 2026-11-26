@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { HARNESSES, isHarnessId, type Bodies, type Brain, type LogEvent, type PartnerAsk } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_PARTNER, PARTNERS_MAX, channelOf, cleanAbout, isFigure, isLook, lookForFigure, nextFigure, partnerNameProblem, lastLine, type PartnerFigure, type PartnerInfo, type PartnerLast, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { askOpen } from "@ducter/protocol/src/open-asks.ts";
 
 export const PARTNERS_FILE = "partners.json";
 
@@ -124,8 +125,9 @@ export function openPartners(opts: {
     const open = new Map<string, PartnerAsk>();
     for (const e of opts.log.read({ stream, kinds: ["decision"], limit: 500 }) as LogEvent<"decision">[]) {
       const d = e.body as Bodies["decision"];
-      // D517: an offer never needs the person (D453): it lives in its note, as every client counts it.
-      if (!d.taskId && !d.offer) open.set(d.decisionId, { persona: id, decisionId: d.decisionId, question: d.question, at: e.ts });
+      // D517, D-PENDING: an offer never needs the person (D453), and neither does a default already
+      // due: the one shared predicate says so everywhere (open-asks.ts).
+      if (!d.taskId && askOpen(d, { now: now().getTime() })) open.set(d.decisionId, { persona: id, decisionId: d.decisionId, question: d.question, at: e.ts });
     }
     if (!open.size) return [];
     // D517: a question put off till later (晚点再问我, D382) needs the person again only at its time.

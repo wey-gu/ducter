@@ -40,7 +40,7 @@ await ts.look();
 const log = core.log;
 const id = "t_review";
 const title = zh ? "看 nowledge-co 里请我 review 的 PR" : "Review my requests in nowledge-co";
-log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "mem", place: { kind: "none" }, harness: "codex", brief: zh ? "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR，按 mem 的 review skill 来。" : "Every 45 minutes, review the PRs in nowledge-co that request my review or mention me, with mem's review skill.", language: zh ? "zh" : "en" } } as never);
+log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "mem", place: { kind: "none" }, harness: "codex", brief: zh ? "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR，按 mem 的 review skill 来。" : "Every 45 minutes, review the PRs in nowledge-co that request my review or mention me, with mem's review skill.", needs: { reviews: true }, language: zh ? "zh" : "en" } } as never);
 core.tasks.setState(id, "working", "hot");
 const say = (origin: "user" | "partner", text: string) => log.append({ stream: "channel", origin, kind: origin === "user" ? "user_msg" : "ai_msg", body: { text } } as never);
 say("user", zh ? "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" : "Every 45 minutes, look at the PRs in nowledge-co that want my review, and review them with mem's review skill.");

@@ -58,7 +58,7 @@ export const NODE_RELEASE = {
 };
 
 /** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D416: Antigravity's agy). */
-export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity"];
+export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity", "opencode"];
 /** Pre-checked on the lend sheet's 装上哪些 AI？ (pi's sign-in needs that computer's terminal). */
 export const SUGGESTED: readonly HarnessId[] = ["codex", "claude-code"];
 
@@ -157,8 +157,8 @@ const lastLine = (text: string) =>
 export function parseLogin(h: string, text: string): { url?: string; code?: string } {
   const plain = text.replace(ANSI, "");
   const urls = [...plain.matchAll(/https:\/\/[^\s"'<>]+/g)].map((m) => m[0].replace(/[).,]+$/, ""));
-  const url = h === "claude-code" ? urls.find((u) => /oauth|authorize|claude\.(ai|com)/.test(u)) : h === "antigravity" ? urls.find((u) => /^https:\/\/accounts\.google\.com\//.test(u)) : urls.find((u) => /auth\.openai\.com|chatgpt\.com|openai\.com/.test(u)) ?? urls[0];
-  const code = h === "codex" ? /\b([A-Z0-9]{4}-[A-Z0-9]{4,6})\b/.exec(plain.split(url ?? "\u0000").slice(1).join(" ") || plain)?.[1] : undefined;
+  const url = h === "claude-code" ? urls.find((u) => /oauth|authorize|claude\.(ai|com)/.test(u)) : h === "antigravity" ? urls.find((u) => /^https:\/\/accounts\.google\.com\//.test(u)) : h === "kimi" ? urls.find((u) => /kimi\.(com|moonshot)/.test(u)) ?? urls[0] : urls.find((u) => /auth\.openai\.com|chatgpt\.com|openai\.com/.test(u)) ?? urls[0];
+  const code = h === "codex" ? /\b([A-Z0-9]{4}-[A-Z0-9]{4,6})\b/.exec(plain.split(url ?? "\u0000").slice(1).join(" ") || plain)?.[1] : h === "kimi" ? /enter code:\s*([A-Z0-9-]+)/i.exec(plain)?.[1] : undefined;
   return { ...(url ? { url } : {}), ...(code ? { code } : {}) };
 }
 
@@ -497,7 +497,7 @@ export function createAgentSetup(o: {
         entry.view = { ...entry.view, state: "waiting", reason: "wrong_code" };
         return o.changed();
       }
-      if (got.url && entry.view.state === "starting" && (h !== "codex" || got.code)) {
+      if (got.url && entry.view.state === "starting" && ((h !== "codex" && h !== "kimi") || got.code)) {
         note(h, "its link is out; waiting for the person");
         entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}), until };
         o.changed();
@@ -602,6 +602,18 @@ export function createAgentSetup(o: {
       }
       if (h === "deepseek-harness") return dshLogin();
       if (h === "antigravity") return void agyLogin();
+      if (h === "kimi") {
+        const bin = sys.which("kimi") ?? (sys.exists?.(join(sys.home ?? homedir(), ".kimi-code", "bin", "kimi")) ? join(sys.home ?? homedir(), ".kimi-code", "bin", "kimi") : null);
+        if (!bin) return void (logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" }), o.changed());
+        // D600: no paste-back: the page takes this device code. A region override is passed only
+        // when the person set one (KIMI_REGION); the CLI's own default is mainland China.
+        const region = sys.env("kimi").KIMI_REGION;
+        return runLogin(h, [bin, "login", ...(region ? ["--region", region] : [])], sys.env("kimi"));
+      }
+      // D600: these three sign in from a terminal on that computer, with their own command; Cursor's
+      // SDK sign-in is not carried in this build (its CLI's login writes a different credential store).
+      const terminal = h === "devin" ? "devin auth login" : h === "opencode" ? "opencode auth login" : h === "cursor" ? "CURSOR_API_KEY" : undefined;
+      if (terminal) return void (logins.set(h, { view: { state: "terminal", command: terminal }, out: "" }), o.changed());
       const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
       const bin = argv ? sys.which(argv[0]!) : null;
       if (!argv || !bin) {

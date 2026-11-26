@@ -400,7 +400,7 @@ export interface Bodies {
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
   // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
   // this line in place of their folded quiet line, so it is said once.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard };
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -409,7 +409,20 @@ export interface Bodies {
   // The record answers "how did you know?".
   web_look: WebLook;
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
-  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
+  job_status: {
+    jobId: string;
+    text: string;
+    state: "running" | "done" | "failed";
+    taskId?: string;
+    act?: "merge" | "open_pr";
+    ref?: string;
+    /** D596: Ducter did it under a standing go the person said (不用问我的), not their tap: its id and their words. */
+    by?: "rule";
+    standing?: string;
+    said?: string;
+    /** D596: what the task ran that verified the work before its PR was opened (its own words, cut). */
+    checks?: string[];
+  };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
   // D426: what one message asked for, line by line, under it (asks.ts). Logged by core whenever a
   // line is added or its state changes; clients keep the latest per msgSeq, under that message.
@@ -807,6 +820,9 @@ export interface Bodies {
     sentAt?: string;
     taskId?: string;
     decisionId?: string;
+    /** D596: out, sent with no card under a standing go the person said (a PR handed to their helper): its id and their words. */
+    standing?: string;
+    said?: string;
     agent?: string;
     // The tool the sender runs in ("Claude Code"), when it has no name of its own: "an agent in Claude Code".
     host?: string;
@@ -834,6 +850,12 @@ export interface Bodies {
     // D494: sent to one of the person's helpers (in), or from one (out: its reply goes from the helper's
     // own address): the helper's id on the home (core/src/helpers.ts).
     helper?: string;
+    // D598, in: work handed to a helper on this very home by one of its own tasks (agent_message) or by
+    // the partner (keep_change hand): written here, never through Nowledge Mem (a round trip through
+    // Mem to the same home came back as a reply on the helper's own last message, and was read as an
+    // answer: hel, mem#11393). messageId starts "local-"; the claim and the outcome go into `fromTask`.
+    local?: true;
+    fromTask?: string;
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;

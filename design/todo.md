@@ -19,6 +19,17 @@ line.
 - **Undo for 结束任务** (the PR is still open; today the task is talked to again). Trigger: an
   End task the person wanted back.
 
+## Work handed to a helper, after D598 (`standing-work.md` "What is built")
+
+- [ ] **On hel:** the next PR a dev task hands to the Babysitter shows under 手上的事 with its round, the claim reaches the
+  dev task, and no stall line comes. Trigger: the first release with D598 on hel.
+- [ ] **D596's hand-off** (push, open the PR, hand it over without a card) calls `agent_message` to the helper's name
+  (or `keeps.change(id, { hand })`), never a Bridge send. Trigger: D596's branch.
+- [ ] **A piece handed and not taken yet as its own row** under 手上的事 (today it shows once a task has it; the stall
+  line covers a missed turn). Trigger: a person asks where a hand-off went inside the ten minutes.
+- [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
+  for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
+
 ## A sign-in with a one-time code, after D599 (`device-signin.md`)
 
 - **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.
@@ -402,6 +413,14 @@ line.
   scenarios rewritten to assert the partner's `rule_save` (and a world puzzle where the saying is
   only in memory), two full eval runs, then `said.ts`, `keepSaidOnGo`'s card, `saidPick` and the
   `said` port go.
+- **D596: what is still owed.** (1) A helper on the same home (not reached through Bridge) gets the
+  PR by the task's own message only when Bridge reaches it; joining the task to the local helper
+  directly (its `helperIndex`) is not built. Trigger: a home whose babysitter is its own helper asks.
+  (2) "Verified" is the task's judgement with its checks recorded; no code reads CI or a device
+  check before the PR (CI runs on the PR, the helper watches it). Trigger: a PR opened under the go
+  that the person says wasn't ready. (3) No pre-push hook guards a task's own `git push --force`;
+  the brief says never, and Ducter's own write never forces. Trigger: one seen in a Log.
+  (4) Not on hel or the Mac yet; the first verified task there is the live check.
 - **D499: what is still owed.** A step outside the four (`ci_rerun`, `pr_comment`, `branch_push`,
   `issue_comment`), e.g. editing the PR's title or labels, still asks; widen only with a write the
   answer can stand for. A go said about a task's repo in general ("mem 的 PR 这些都别问我") is kept by

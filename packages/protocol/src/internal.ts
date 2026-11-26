@@ -213,7 +213,9 @@ export interface CoreApi {
       seq?: number,
     ): { kept?: import("./standing.ts").StandingView; revoked?: import("./standing.ts").StandingView[] } | undefined;
     /** D499: the permission covering this step of this task, if any. */
-    covers?(action: import("./standing.ts").StandingAction, at: { taskId: string; owner?: string }): import("./standing.ts").StandingView | undefined;
+    covers?(action: import("./standing.ts").StandingAction, at: { taskId: string; owner?: string; repo?: string }): import("./standing.ts").StandingView | undefined;
+    /** D596: true the first time this key is asked on this home (kept in standing.json), then false. */
+    once?(key: string): boolean;
   };
   /**
    * D499: a task's open ask answered Go for the person under a kept permission (code checks the ask
@@ -883,7 +885,8 @@ export interface Runner {
   /** D514: every working copy Ducter made, what goes when and what stays and why (`ducter worktrees`); changes nothing. */
   tidyPlan?(): Promise<import("./tidy.ts").TidyPlan>;
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
-  openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  /** D596: pr: the title, body and ready-for-review of a PR opened under the person's standing go. */
+  openPr?(taskId: string, pr?: { title?: string; body?: string; ready?: boolean }): Promise<{ ok: boolean; message: string; ref?: string }>;
   // Optional (D89): move a task to another AI agent. A running task is handed off: its session
   // closes and the new one starts from the brief, the saved progress and the task's own history
   // condensed (D282), or resumes that agent's own earlier session on the task. The same agent

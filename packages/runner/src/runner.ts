@@ -9,7 +9,7 @@ import { TIDY_DROPPED_MS, TIDY_FINISHED_MS, copyVerdict, taskVerdict, type CopyF
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
+import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult, type PrOptions } from "./integrate.ts";
 import { branchRules, nameBranch } from "./branch-name.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
@@ -94,7 +94,7 @@ export interface RunnerExt extends Runner {
   reopen(taskId: string): Promise<{ delivered: Delivery }>;
   undrop(taskId: string): Promise<ActionResult>;
   merge(taskId: string): Promise<ActionResult>;
-  openPr(taskId: string): Promise<ActionResult>;
+  openPr(taskId: string, pr?: PrOptions): Promise<ActionResult>;
   /** What the task's branch holds that its base doesn't; undefined when not a repo task or unknown. */
   branchChanges(taskId: string): Promise<BranchChanges | undefined>;
   /** A done report's evidence with `check` set where it can be checked here (evidence.ts); a worker's task: unchecked. */
@@ -449,7 +449,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     harness,
     merge: (place) => mergeTaskBranch(place),
     push: (place) => pushForMove(place),
-    openPr: (place) => openDraftPr(place, { gh: opts.gh }),
+    openPr: (place, pr) => openDraftPr(place, { gh: opts.gh, ...pr }),
     changes: (place) => branchChanges(place),
     archive: (place, o) => archiveWorktree(place, core.dataDir, o),
     copyFacts: (place) => copyFacts(place, core.dataDir),
@@ -3049,12 +3049,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return critical(taskId, { ok: false, message: criticalHold ?? "" }, () => keepFolderNow(taskId));
     },
 
-    async openPr(taskId) {
+    async openPr(taskId, pr) {
       const t = get(taskId);
       const card = core.tasks.get(taskId) ?? t.card;
-      const r = await t.ops.openPr(card.place);
+      const r = await t.ops.openPr(card.place, pr);
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
-      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: pr?.ready ? "pr" : "draft_pr", ref: r.ref } });
       // A failure stays on the task, not only in a toast that fades (fresh-user QA: no origin).
       else logEvent(t, { role: "system", from: "runner", text: r.message, raw: { failed: "draft_pr" } });
       return r;

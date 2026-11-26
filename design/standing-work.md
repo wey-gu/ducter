@@ -40,6 +40,17 @@
   own note ("…100gle 分派、Backbone 生产部署及 Cloud 小时门禁") opened every wake for two days after the
   person said "only reviews". Rolling to a fresh session every N rounds was not added: D394 already starts
   each round fresh; what carried the old work was the state, now the Keep first.
+- **D598, work handed to a helper is held, or said as not taken.** A task on this home hands a helper work with
+  `agent_message` to its name, or the partner with `keep_change` `hand`: either writes the arrival at the helper's
+  address here (`bridge_msg` in, `local`, `fromTask`), never through Nowledge Mem and never behind a card (making the
+  helper was the go). It wakes the partner at once, which opens the helper's task for it (`task_open` forMessage, the
+  helper's words first in its brief, with the task that handed it) or joins the helper's task already on the same
+  work; that is when the helper has it: the item is under 手上的事, its arrival a round, and the claim and later the
+  outcome go into the task that handed it. Until then the partner's facts say handed, not taken, and it says
+  交给了，等它接手, never that the helper is on it; after `HELPER_TAKE_MS` (10 minutes) with no task on it, the
+  partner says so once and offers to run it directly. Mail through Mem written as a reply on the helper's own
+  earlier message is work handed to it too (hel: mem#11393 came back as a reply on the babysitter's #11070 outcome
+  and was read as an answer). `also` on a helper reaches every piece of work it holds, at once.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The

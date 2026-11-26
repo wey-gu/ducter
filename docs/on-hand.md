@@ -288,6 +288,8 @@ you leave Tasks and come back, it opens on the whole list again. Type what to ch
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Run now**, and, last, **End**, which asks once and ends it for good. To change one rule yourself, tap it under **How it runs**. A round never ends it: only you, or the goal you gave it.
 
+To give a helper one more piece of work, say so: "hand mem#11393 to the PR Babysitter: review it, /lgtm if it's fine". Your tasks can hand it work too, once their pull request is ready. Either way it shows up under what the helper holds as soon as one of its tasks takes it, and only then does your partner say the helper is on it; until then it says the work is handed over and waiting to be taken. If nothing takes it within ten minutes, your partner says so once and offers to do it directly. Something you add from now on ("the Babysitter owns each PR to the end") reaches the work the helper already holds, at once.
+
 ## Groups
 
 When you ask for one piece of work in several parts ("redo the sign-in page: first the form, then

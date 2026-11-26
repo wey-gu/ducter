@@ -163,7 +163,13 @@ At the top is your partner, its name and one line: where it lives and what it th
   commenting on it, pushing its own branch. Say it about one task ("get this PR to mergeable, don't
   ask me about these") and it holds for that task only (**Only in "…"**) until the task ends. When a
   task then asks about such a step, your partner answers it for you: the question reads **Went ahead,
-  as you said**, and it shows in Done for you with your words. Merging stays yours.
+  as you said**, and it shows in Done for you with your words. Merging stays yours. Tell it how your
+  coding work should end ("once it's researched, built and verified, open the PR and hand it to my PR
+  babysitter, no need to ask") and that is a row too: when a task's work is verified, it pushes its own
+  branch, opens the pull request and hands it to the helper you named, with no question. The first
+  time, one line says so with the links; after that every one is in Done for you. Work that isn't
+  verified yet gets no pull request: it says what is left. Merging, and anything on your default
+  branch, still stays yours.
 
 ### More than one partner
 

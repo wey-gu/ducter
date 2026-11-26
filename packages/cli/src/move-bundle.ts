@@ -1,4 +1,4 @@
-// D-PENDING: the local bundle and receive slice of `ducter move` (D504, design/move.md §5).
+// D621: the local bundle and receive slice of `ducter move` (D504, design/move.md §5).
 //
 // `--bundle <file>` writes one encrypted archive of what move.md says goes: a consistent SQLite
 // snapshot of the Log and devices.db (the backup API, never a live file), the small JSON files,

@@ -1,4 +1,4 @@
-// D-PENDING: a home received by `ducter move --receive` is not switched over, so it must not
+// D621: a home received by `ducter move --receive` is not switched over, so it must not
 // start as a second answering Ducter (two pollers on one chat app, two on one Bridge mailbox).
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";

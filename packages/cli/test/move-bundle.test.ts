@@ -1,4 +1,4 @@
-// D-PENDING: `ducter move --bundle` and `--receive` over temp homes. One encrypted file of what
+// D621: `ducter move --bundle` and `--receive` over temp homes. One encrypted file of what
 // moves, checked file by file and entry by entry into a fresh data folder; a wrong passphrase, a
 // changed bundle and a target that already has work are refused; the running home is only read.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";

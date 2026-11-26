@@ -147,8 +147,13 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   Provenance as in `system.md`. Each save appends `memory_noted {title, memoryId?, replyTo?}`
   on the channel after the turn's text. Clients show it as one quiet line, 记下了 · <title>
   / Noted · <title>, and the partner's words never announce it.
-- **Mem missing or down**: recall answers "not available"; the partner asks like a
-  colleague who forgot and never mentions memory. A save while Mem is installed but away waits
+- **Mem missing or down** (D590): with no Mem on the home, recall answers "not available" and the
+  partner asks like a colleague who forgot, never mentioning memory. With a Mem that is there but
+  can't be read (signed out, not answering) or memory switched off, the note says so (`recallUnavailable`,
+  from Mem's own `why`, never inferred from words): only when the person counts on something they told
+  it before does the partner say, in one short line, that it can't look back right now (signed out:
+  and where to sign in again), then asks; never "I forgot", never error text. Settings' head says the
+  same cost: **你之前跟我说的我这会儿翻不到，新让我记的也记不下**. A save while Mem is installed but away waits
   in the outbox and goes in when Mem answers (D329, below); with no Mem, nothing is saved. A cold session sees its own saves as
   `[you remembered] <title>` in the projection.
 - **Who writes (D141):** the persona's own Mem AI Identity, bound once and named on every call
@@ -358,7 +363,9 @@ each of those is one quiet line in words, and nothing to learn.
   `<partner dir>/mem-outbox.json` (0600) under a UUID-shaped key from persona, Log seq, task and words, and
   counted as remembered. Replayed on the next Mem call that works and every 5 minutes with the key as Mem's
   upsert id (`m add --id`); a key Mem refuses, once more without; 30 days, then let go. `memory_noted.waiting`
-  and `MemView.waiting`: **等 Nowledge Mem 回来就存进去**.
+  and `MemView.waiting`: **等 Nowledge Mem 回来就记下「{title}」/ “{title}” goes into Nowledge Mem once it's
+  back**, one element in place of 记下了 (D590: a wrap never splits it from its title, and it never reads
+  Noted before it is in Mem).
 - **Mem's app closed** (`bridge-link.ts` `memClosedIn`): a failed `nmem status` that is a refused connection
   to loopback is `mem_closed`; with the app on a Mac home, **打开 Nowledge Mem** (`bridge_mem_open`, `open -a`,
   then a look every 2 s for 20 s); elsewhere the line names the computer.

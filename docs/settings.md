@@ -263,7 +263,9 @@ What your partner remembers about you has its own section, **Memory**.
   and space, for when you need help. When you use agents of your own, **Your other agents reach
   {name} through it too** leads to **Agent messaging**. When Nowledge Mem's sign-in stopped
   working, it can't be reached, or it is too old, this group comes first on the page, with its one
-  button (**Sign in again**, **Check again** or **Update**), right under the line that says so.
+  button (**Sign in again**, **Check again** or **Update**), right under the line that says so. Until
+then, if you ask about something you told it before, it says it can't look back right now rather than
+acting as if it forgot.
 - **Also keep files I make in Nowledge Mem**, off until you turn it on: when a task is done, the
   reports and documents it made (PDFs, documents, sheets, slides, Markdown and text) go to a folder
   named **Ducter** in your Nowledge Mem (in your own space there, the one only you read; if Nowledge
@@ -317,8 +319,8 @@ it noted, once: after you say anything next, it moves into that reply's **Detail
 the same thing before, the line says **In place of** the old one: it replaces what it remembered
 instead of keeping both. Right after, **Don't keep this** takes it back at once, and so does just
 saying "don't remember that" (the memory is set aside in Nowledge Mem, never deleted, and anything it
-replaced comes back); later, **Forget** asks first. If Nowledge Mem is away just then, the line says **Goes into Nowledge Mem once it's
-back**, and it does, by itself.
+replaced comes back); later, **Forget** asks first. If Nowledge Mem is away just then, the line says **“…” goes into Nowledge Mem once
+it's back**, and it does, by itself.
 
 Once a week, in the first morning note of the week, one line offers to show what it noted about you
 in the last seven days. **Have a look** opens **What I learned this week**: mark a line **Right**,

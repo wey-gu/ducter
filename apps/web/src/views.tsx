@@ -880,8 +880,8 @@ function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
 }
 
 /**
- * D329: one Noted line. Taken back: "Not kept" alone. Otherwise what it noted, then (each its own
- * element, D291) the memory it took the place of, and that it waits for Nowledge Mem; Undo while the
+ * D329: one Noted line. Taken back: "Not kept" alone. Otherwise what it noted (waiting for Nowledge Mem:
+ * that it goes in once Mem is back, D590), then (each its own element, D291) the memory it took the place of; Undo while the
  * person hasn't said anything since, then Forget (which asks).
  */
 export function NotedLine({ n }: { n: { seq: number; title: string; replaced?: string; waiting?: true } }) {
@@ -894,9 +894,9 @@ export function NotedLine({ n }: { n: { seq: number; title: string; replaced?: s
     );
   return (
     <div class="proof noted-line">
-      <span class="mk">{t("memory.noted", n.title)}</span>
+      {/* D590: waiting for Mem, said with its title as one element, never split from it by a wrap. */}
+      <span class="mk">{st.waiting ? t("memory.waiting", n.title) : t("memory.noted", n.title)}</span>
       {n.replaced && <span class="nq">{t("memory.replaced", n.replaced)}</span>}
-      {st.waiting && <span class="nq">{t("memory.waiting")}</span>}
       {st.failed && <span class="nq failed">{t("memory.undo.failed")}</span>}
       {st.fresh ? (
         <button class="qlink" aria-label={spoken(A.L, t("memory.undo"), n.title)} onClick={() => A.undoNoted(n.seq)}>

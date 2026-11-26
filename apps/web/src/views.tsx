@@ -1770,7 +1770,7 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   );
 }
 
-function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
+export function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
   // D176: side by side, the conversation's own header carries the face and the places, and On hand
   // is already in view: its pane's header names it instead of going back to a conversation that is
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
@@ -2809,7 +2809,9 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   if (!task)
     return (
       <>
-        <Top back={t("nav.back")} />
+        {/* The whole screen always has its crumbs, even while the task's history is on its way:
+            a deep link used to draw a bare back bar over the empty page instead of 对话 / 任务. */}
+        {full ? <FullTop /> : <Top back={t("nav.back")} />}
         <main class="scroll">
           <div class="small">{t("task.loading")}</div>
         </main>

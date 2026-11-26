@@ -2658,6 +2658,19 @@ export function startCore(opts: CoreOptions = {}): Core {
   // "verified" (the model judges); code guards the rest: a kept pr_open go covers this task, its own
   // branch (never the base or the default branch, never --force), one PR a task, never a merge.
   const prOpenGo = (taskId: string) => standing.covers("pr_open", { taskId, ...whereOf(taskId) });
+  /**
+   * D596: the one seam for handing an opened PR to the person's helper (a Keep of theirs). The
+   * hand-over mechanism proper (a held item on the Keep and its wake at once) replaces this body;
+   * until it does, nothing here takes the PR (`taken: false`): the task hands it over by its own
+   * message, and nobody says it is handed over before the Keep has taken it.
+   */
+  const handToKeep = (_keepId: string, _item: { taskId: string; pr: string; said: string }): { taken: boolean } => ({ taken: false });
+  /** The person's Keep the task's hand_to names (as they called it), if this home has one. */
+  const keepNamed = (persona: string, name: string) => {
+    const norm = (x: string) => x.toLowerCase().replace(/[\s_-]+/g, "");
+    const n = norm(name);
+    return n ? keepsRef?.sheets(persona).find((k) => norm(k.title).includes(n) || n.includes(norm(k.title))) : undefined;
+  };
   mcp.registerWhen(
     "task",
     "open_pr",
@@ -2692,6 +2705,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!r.ok || !r.ref) return { ok: false, error: `${r.message} Nothing more was done; say it in your report.` };
       const handTo = typeof args?.hand_to === "string" ? args.hand_to.trim().slice(0, 80) : "";
       log.append({ stream: "channel", origin: "system", kind: "job_status", body: { jobId: `pr_${taskId}`, taskId, state: "done", text: `Ducter opened this task's PR under the user's word: ${r.ref}`, act: "open_pr", ref: r.ref, by: "rule", standing: s.id, said: s.text, checks } });
+      const keep = handTo ? keepNamed(card.persona ?? persona.id, handTo) : undefined;
+      const handed = keep ? handToKeep(keep.id, { taskId, pr: r.ref, said: s.text }).taken : false;
       if (standing.firstUse(s.id)) {
         const n = r.ref.match(/\/pull\/(\d+)/)?.[1];
         log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: prFirstLine(langNow(), { title: card.title, link: `[${n ? `#${n}` : r.ref}](${r.ref})`, ...(handTo ? { who: handTo } : {}) }) } });
@@ -2699,7 +2714,9 @@ export function startCore(opts: CoreOptions = {}): Core {
       return {
         ok: true,
         pr: r.ref,
-        note: `${r.message} It is in Done for you with the user's words. Now hand it to ${handTo || "the helper the user named"} with its link and what it is (agent_message, or your own Bridge tool): it goes without a card. Then report done with the PR in evidence. Never merge it.`,
+        note: handed
+          ? `${r.message} It is in Done for you with the user's words, and ${keep!.title} has taken it. Report done with the PR in evidence. Never merge it.`
+          : `${r.message} It is in Done for you with the user's words. Now hand it to ${handTo || "the helper the user named"} with its link and what it is (agent_message, or your own Bridge tool): it goes without a card. Don't say it is handed over until it answers. Then report done with the PR in evidence. Never merge it.`,
       };
     },
     (ctx) => !!ctx.taskId && tasks.get(ctx.taskId)?.place.kind === "repo" && !!prOpenGo(ctx.taskId),

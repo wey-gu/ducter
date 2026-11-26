@@ -3,8 +3,8 @@
 ## 0.1.85 - 2026-11-26
 
 <!-- whats-new
-zh: `ducter usage` 看是什么用掉了额度；设置页逐页打磨
-en: `ducter usage` shows what used your allowance; every Settings pane polished
+zh: ducter usage 看是什么用掉了额度；设置页逐页打磨
+en: ducter usage shows what used your allowance; every Settings pane polished
 -->
 
 **What tasks used**

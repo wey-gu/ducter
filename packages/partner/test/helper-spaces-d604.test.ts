@@ -142,7 +142,8 @@ describe("D604: where a helper receives, and a teammate's hand-off to it", () =>
     await t.partner.idle();
     const asked = t.fr.sessions.slice(sessions > 0 ? sessions - 1 : 0).flatMap((s) => s.inputs).join("\n");
     expect(asked).toContain('mail to it not read: from AI agent (dev team) in "dev team"');
-    expect(asked).toContain("the user chose 不理 for that sender");
+    expect(asked).toContain("it arrived at the helper's address");
+    expect(asked).toContain("not read because the user chose 不理 for that sender");
     // 恢复 in Settings: the sender isn't muted any more; what came while muted is read from Mem again.
     t.peers.muted = [];
     await t.partner.checkBridge();

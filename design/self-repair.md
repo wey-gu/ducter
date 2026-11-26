@@ -92,11 +92,11 @@ minutes); nothing for a task opened more than a day ago (a restart failing an ol
 | A retry or repair that works | Nothing. One quiet line in the task's steps, never an error: **第一次没开起来，我又开了一次 / It didn't start the first time, so I started it again** · **{computer} 上还没有这份代码，我先拉一份再开始 / {computer} didn't have the code yet, so I'm cloning it there first** · **改到 {computer} 上开始，那里有这份代码 / Starting on {computer} instead, which has the code** · **清掉 git 留下的锁，再开一次 / Cleared the lock git left behind and started again** | the opened task's steps (full depth, on demand) |
 | Handed to the partner | Nothing yet; the steps say **这样开不起来，我换个办法 / That way didn't work, so I'm finding another** (a stall: **它停下了，没说做得怎样，我来看看怎么接着做 / It stopped without saying how it went, so I'm working out how to carry on**) | the steps |
 | The partner found another way | Its ack for the new task, if any (and D395's clone line); the old task is gone from On hand | the conversation |
-| The partner asks | One line with the fix: an interruption, so it is rare by construction (D453): it spends attention only when no rung could | the conversation; the brief's 等你 (D467) |
+| The partner asks | One line with the fix: an interruption, so it is rare by construction (D453): it spends attention only when no rung could | the conversation; the brief's 待你处理 (D467) |
 
 The card's 没能开始 and its buttons (D395, D415) remain the truth while a task is failed; a
 mend that lands within the push batch is never pushed (D372's note). A failure the partner
-couldn't fix is a 等你 in the brief, with the partner's fix as the button (D467's grammar).
+couldn't fix is a 待你处理 in the brief, with the partner's fix as the button (D467's grammar).
 
 ## Waits and what a task owns (D483)
 

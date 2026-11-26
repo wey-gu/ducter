@@ -32,7 +32,7 @@ describe("every head says the state (D475)", () => {
     A.settings = { ...A.settings!, quiet: undefined } as any;
     expect(h.paneSay("notify")).toBe("有事要你定，我就发通知给你。");
     A.settings = { ...A.settings!, notify: false } as any;
-    expect(h.paneSay("notify")).toBe("通知关着：要你定的事，我放在「手头的事」里等你。");
+    expect(h.paneSay("notify")).toBe("通知关着：要你定的事，我放在「任务」里等你。");
   });
 
   test("To-do sources: what is open where, only once it was read", async () => {

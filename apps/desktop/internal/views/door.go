@@ -2,7 +2,7 @@ package views
 
 // D535: every needs-you count is a door, and On hand opens on its overview.
 //
-// A count that says "needs you" (the conversation's 「n 个等你」, a
+// A count that says "needs you" (the conversation's 「n 个待你处理」, a
 // partner's pebble in the list of partners, the line pinned over the
 // composer, the mini window's count) opens the next of its items, in 等你's
 // own order: a question of the partner's own that stands in the
@@ -183,7 +183,7 @@ func (a *App) doorRow(c *ui.Context, e ui.Element, key string) {
 }
 
 // doorCard marks a card the door opened: its edge deepens once and it
-// lifts a little, as a plan card found from On hand.
+// lifts a little, as a plan card found from Tasks.
 func (a *App) doorCard(c *ui.Context, e ui.Element, key string) {
 	t := a.T
 	if k := a.doorFound(c, e, key); k > 0 {
@@ -238,7 +238,7 @@ func (a *App) doorOutOfView(items []needItem, rows []row) bool {
 }
 
 // doorLine is the quiet line pinned over the composer while something waits
-// on the person and is out of view: 「有 n 个等你定 ›」, a tap the door.
+// on the person and is out of view: 「有 n 个待你处理 ›」, a tap the door.
 func (a *App) doorLine(c *ui.Context, rows []row) {
 	if !a.S.Welcomed {
 		return

@@ -57,7 +57,7 @@ export type TaskGroupFrame = {
 };
 
 /**
- * D454: 移走 / Remove a finished card from On hand: a task that is done or didn't work out, or a group
+ * D454: 移走 / Remove a finished card from Tasks: a task that is done or didn't work out, or a group
  * none of whose parts is still at work (what waits in line after a stopped part is dropped with it).
  * It leaves On hand on every device and stays in Past tasks; `back` puts it back (the toast's 撤销).
  * A task put away that goes back to work (再试一次, 接着做) comes back by itself. Kept in

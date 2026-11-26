@@ -81,7 +81,7 @@ Design notes:
 - `phone-use.md`: 用手机 / Use a phone, Ducter's own Android phone on a Mac (D217; a worker Mac's, D234).
 - `use-this-phone.md`: 用这台手机 / Use this phone, a task borrows the person's own Android phone (D238).
 - `computer-use.md`: 用电脑 / Use the computer, tasks in the person's Mac apps (D235).
-- `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
+- `on-hand.md`: 任务 / Tasks, the conductor surface: projects as a lens, the strip, the folds (D261).
 - `past.md`: 做过的事 / Past tasks and 一直在跑的 / Ongoing: finding, marking, continuing, pausing (D285).
 - `mentions.md`: @ and / in the composers: referring to a task, file, partner or PR; Ducter's actions, the person's skills and each agent's own commands that really reach it (D534).
 - `sessions.md`: every task open: ⌘K 找什么都行 / Find anything, where a task stopped, its steps, a new task from any step, and the partner's task_find / task_fork (D391).
@@ -154,7 +154,7 @@ Design notes:
 
 - **Vocabulary:** partners, not hierarchy. Every word translates cleanly between zh and en,
   with no concept to learn first. i18n keys from day one, and zh + en designed together.
-- **UX shape:** three zoom levels: the conversation (default), 手头的事 / On hand (overview and
+- **UX shape:** three zoom levels: the conversation (default), 任务 / Tasks (overview and
   decisions), and an opened task (conductor depth). Silence means success. Decisions carry
   defaults.
 - **Concepts are shown, not explained:** enabling a capability is game-like and visual. You see

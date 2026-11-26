@@ -63,7 +63,7 @@ A family that needs privacy from each other needs separate homes.
   partner's tasks, Keeps, groups, routines and waits, whichever partner is shown. Each row and card
   (a task's row and card, an ask's card, a Keep's sheet, a group's card, a routine) carries its
   partner's small face in its own clay once there is more than one, and another partner's own
-  questions are listed under 等你 / Needs you as **{name} 问你 / {name} asks you** with the
+  questions are listed under 待你处理 / Needs you as **{name} 问你 / {name} asks you** with the
   question; a click shows that partner, where it is answered (D312).
 - **Whose it is, never who is shown (D546).** Everything a partner owns is drawn and named as its
   owner's: a task's state face (its row, the rail, the opened task's mark at 28), a wait's and a
@@ -78,7 +78,7 @@ A family that needs privacy from each other needs separate homes.
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
   a task's title reads **小家：约牙医 / Home: Book the dentist**; a partner's own question carries
   its name as the title. The menu bar lists each other partner with something waiting:
-  **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
+  **换到小家，有 1 个待你处理 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
   needs-you notice names the partner whose things wait (D546: one owner, that one's name, a task of
   Ducter's included while another is shown; things of several, the shown one's).
 
@@ -101,9 +101,9 @@ A family that needs privacy from each other needs separate homes.
   of step with the others, and hops once when something new comes from it (never the one shown).
   The number is a clay pebble in the needs-you colours on its ledge. Reduce Motion stills it all.
 - **The number is the person's one count's (D517).** A row's number is that partner's part of what
-  On hand lists under 等你: its questions, and its tasks that ask, stopped, didn't work out or have
+  On hand lists under 待你处理: its questions, and its tasks that ask, stopped, didn't work out or have
   a PR ready to merge (until opened on that device). The rows add up to the Dock badge and On
-  hand's head; each item is under 等你 with its fix.
+  hand's head; each item is under 待你处理 with its fix.
 - **Thin or hidden (D545).** Beside the conversation (not on a phone), the bar's first control
   narrows the list to its faces and their numbers, hides it, and brings it back; each device
   remembers it. Hidden, the other partners' faces stay in the bar with what waits in them, and a
@@ -111,7 +111,7 @@ A family that needs privacy from each other needs separate homes.
 - **On a phone the list is the level above the conversation.** The app opens on the conversation
   last shown. The bar's left has **‹** and the other partners' own figures, a small stack in their
   clays (D541: a lone ‹ read as "back"), with the number of what waits in them (label
-  **所有伙伴，别处有 {n} 个等你 / All your partners, {n} need you elsewhere**); a tap or the
+  **所有伙伴，别处有 {n} 个待你处理 / All your partners, {n} need you elsewhere**); a tap or the
   leading-edge swipe goes up to the list, a row goes back down into that partner's conversation.
   Rows are a thumb tall (76); the list's bar has the places; with fewer than four, **再加一个伙伴 /
   Add a partner** sits at its foot. `#partners` opens it.
@@ -198,7 +198,7 @@ second tab. The fresh user never sees any of it.
 **Before (D309's switch).** Both partners were the same orange figure; the only difference was a
 pale disc behind the face (sand and apricot nearly the same). The others were 28-point faces after
 the counts line, their names only in a tooltip. The counts under the shown name were the person's
-total, so 「2 个等你」 under 多比 were Ducter's. Naive raters: the stone read as "the same helper,
+total, so 「2 个待你处理」 under 多比 were Ducter's. Naive raters: the stone read as "the same helper,
 maybe another instance" (2 of 3), nobody could say whose the waiting things were.
 
 **What they feel after.** 放心: who they are talking to is obvious from across the room (the figure's

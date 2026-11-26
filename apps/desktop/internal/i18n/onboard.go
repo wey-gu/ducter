@@ -43,7 +43,7 @@ var zhOnboard = Table{
 	"bg.off":                     "现在关掉窗口，Ducter 就会停下",
 	"bg.off.body":                "在后台运行被关掉了。在「系统设置 › 通用 › 登录项与扩展」里，打开 Ducter 的「允许在后台」。",
 	"bg.open":                    "打开登录项",
-	"bg.allowed.wait":            "好了。手头的事做完以后，我就转到后台去。",
+	"bg.allowed.wait":            "好了。正在做的事做完以后，我就转到后台去。",
 	"bg.allowed":                 "好了，以后关掉窗口我也在。",
 	"ask.later":                  "稍后",
 	"notify.ask":                 "需要你的时候，要我通知这台 Mac 吗？",

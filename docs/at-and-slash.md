@@ -12,7 +12,7 @@ Wherever you write to Ducter or to a task, two keys help.
 
 Type **@** and a list opens above what you're writing:
 
-- **Tasks**: the ones on hand first; type a few words to find earlier ones too.
+- **Tasks**: the current ones first; type a few words to find earlier ones too.
 - **Files**: inside a task, the files in the folder it works in.
 - **Looking after**: what Ducter looks after for you.
 - **Partners**: your other partners.

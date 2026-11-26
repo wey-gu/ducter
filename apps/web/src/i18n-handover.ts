@@ -133,7 +133,7 @@ export const handoverWords: { zh: Record<string, string>; en: Record<string, str
     "ho.set.go": "交给%[1]s这 %[2]d 个…",
     "ho.set.or": "也可以直接说怎么做",
     "ho.set.handed": "交给%s了",
-    "ho.set.see": "在手头的事里看",
+    "ho.set.see": "在任务里看",
     "ho.set.label": "找到的待办：%s",
     // the plan
     "ho.plan.title": "%s：方案",
@@ -327,7 +327,7 @@ export const handoverWords: { zh: Record<string, string>; en: Record<string, str
     "ho.set.go": "Hand these %[2]d to %[1]s…",
     "ho.set.or": "Or just say how",
     "ho.set.handed": "Handed to %s",
-    "ho.set.see": "See it in On hand",
+    "ho.set.see": "See it in Tasks",
     "ho.set.label": "To-dos found: %s",
     "ho.plan.title": "%s: the plan",
     "ho.plan.read": "Read these %[1]d and %[2]s's code",

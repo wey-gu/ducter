@@ -107,8 +107,8 @@ func TestFloatSaysOneLine(t *testing.T) {
 		want  map[i18n.Lang][]string
 		not   []string
 	}{
-		{"quiet", map[i18n.Lang][]string{i18n.ZH: {"现在没有要你定的。"}, i18n.EN: {"Nothing needs you."}}, []string{"个等你", "need you"}},
-		{"working", map[i18n.Lang][]string{i18n.ZH: {"1 个等你", "lockfile 一起提交吗？"}, i18n.EN: {"1 need you", "Commit the lockfile with it?"}}, nil},
+		{"quiet", map[i18n.Lang][]string{i18n.ZH: {"现在没有待你处理的。"}, i18n.EN: {"Nothing needs you."}}, []string{"个等你", "need you"}},
+		{"working", map[i18n.Lang][]string{i18n.ZH: {"1 个待你处理", "lockfile 一起提交吗？"}, i18n.EN: {"1 need you", "Commit the lockfile with it?"}}, nil},
 		{"wait", map[i18n.Lang][]string{i18n.ZH: {"在看「升级 bun 到 1.4.4」做到哪了…"}, i18n.EN: {"Checking how “Upgrade bun to 1.4.4” is going…"}}, nil},
 		{"reply", map[i18n.Lang][]string{i18n.ZH: {"是 apps/web 的一个快照测试"}, i18n.EN: {"It's a snapshot test in apps/web"}}, []string{"**"}},
 		{"first", map[i18n.Lang][]string{i18n.ZH: {"⌃⌥⌘空格"}, i18n.EN: {"⌃⌥⌘Space"}}, nil},
@@ -137,7 +137,7 @@ func TestFloatCountOpensOnHand(t *testing.T) {
 	app, rec, _ := floatApp(t, i18n.ZH, "working")
 	app.Route = RouteConversation
 	tt := floatTester(app, false)
-	if err := tt.Click("1 个等你"); err != nil {
+	if err := tt.Click("1 个待你处理"); err != nil {
 		t.Fatalf("no count to tap: %v; %q", err, tt.Texts())
 	}
 	tt.Frame()

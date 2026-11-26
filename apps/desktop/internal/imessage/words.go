@@ -15,7 +15,7 @@ var words = map[string][2]string{ // zh, en
 	"ask.reply": {"回「好」就%s，回「先等等」就先放着（点赞、点踩也行）。", "Reply “ok” to %s, or “wait” to hold it (a Like or Dislike works too)."},
 	"ask.app":   {"这个得在 Ducter 里定：打开 Ducter 看看。", "This one is decided in Ducter: open Ducter to see it."},
 	"ask.safe":  {"有个决定要你在 Ducter 里亲自定，这里不方便说。", "Something needs you in Ducter. It isn't something to say here."},
-	"morning":   {"夜里有 %d 个等你定，这是最新的一个：", "%d things waited overnight. Here's the newest:"},
+	"morning":   {"夜里有 %d 个待你处理，这是最新的一个：", "%d things waited overnight. Here's the newest:"},
 	"more":      {"……后面还有，在 Ducter 里看全文。", "…there's more. Open Ducter for all of it."},
 	"hidden":    {"（这里不方便发，在 Ducter 里看）", "(not for here; see it in Ducter)"},
 	"self":      {"%s：", "%s: "},

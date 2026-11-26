@@ -34,7 +34,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 
 ## Hand it work
 
-- **[On hand](on-hand.md):** every task at a glance, what each one is doing now, finding one
+- **[Tasks](on-hand.md):** every task at a glance, what each one is doing now, finding one
   fast, and acting on several at once.
 - **[@ and / when you write](at-and-slash.md):** point at a task, a file, a partner or a PR with
   @, and use Ducter's actions, your skills or an agent's own commands with /.

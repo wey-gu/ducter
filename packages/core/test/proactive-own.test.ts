@@ -118,7 +118,7 @@ test("the morning's line: a reminder it set for today, and decisions waiting ove
   await r.advance(12 * HOUR + 10 * MIN, 10 * MIN); // Tue 08:10
   const tue = r.notes().filter((e) => e.body.rung === "morning");
   expect(tue).toHaveLength(1);
-  expect(tue[0]!.body).toMatchObject({ finds: [], opening: "早。今天 15:00：提醒你交水电费。还有 1 个等你定，最早的是昨天的。" });
+  expect(tue[0]!.body).toMatchObject({ finds: [], opening: "早。今天 15:00：提醒你交水电费。还有 1 个待你处理，最早的是昨天的。" });
   expect(tue[0]!.body.quiet).toBeUndefined();
   expect(r.sent.map((m) => m.level)).toEqual(["passive"]);
   // Wed: the card still waits, but it was named once; no reminder today: a quiet morning.

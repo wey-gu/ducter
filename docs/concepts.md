@@ -32,7 +32,7 @@ be the one managing them: remembering who does what, checking on each, passing t
 them. With one partner you say what you want once. It works out the pieces, hands each one to as
 many AI agents as it needs, and brings back only what needs you.
 
-You don't lose sight of anything by it. **On hand** shows every task, and opening one shows its AI
+You don't lose sight of anything by it. **Tasks** shows every task, and opening one shows its AI
 agent, every step and every change. You can steer it in your own words, or hand it to another AI
 agent mid-way.
 
@@ -61,7 +61,7 @@ your **Go**, and **[Done for you](done-for-you.md)** lists all of it afterwards.
 | **Partner** | The one you talk to. It's called Ducter until you give it another name. |
 | **Task** | Something big enough that your partner hands it off to work on by itself. Each one gets a card. |
 | **AI agent** | The AI tool that does a task, such as Claude Code or Codex, signed in with your own account. |
-| **On hand** | Every task at a glance, and what is waiting for you. |
+| **Tasks** | Every task at a glance, and what is waiting for you. |
 | **Needs you** | A task or question that is waiting for your decision. |
 | **Waiting** | A task that is waiting for something to happen, such as "Waiting until PR #1592 passes". It looks by itself and carries on when it does. |
 | **Routine** | Work that comes back on its own: every Monday at 9, or whenever something happens. You say yes to each one once, and can pause it any time. |

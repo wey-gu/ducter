@@ -617,7 +617,7 @@ line.
   words; three LLM raters so far.
 - [ ] **Raters for D430's group words** (the stopped line naming parts by their words, **再试一次**,
   **不管它，往下做**, **后面的不做了**, **还有 {n} 个**): none yet, LLM or human.
-- [ ] **Raters for D434's counts** (app-wide, no 件: **有一个要你定。**, **{n} 个在做**, **交给{name}这 {n} 个**,
+- [ ] **Raters for D434's counts** (app-wide, no 件: **有一个待你处理。**, **{n} 个在做**, **交给{name}这 {n} 个**,
   **今天做完 {n} 个**, **每天最多 3 条**, **一个个挑**, **接着说…** on one's own line): none yet, LLM or
   human. Trigger: the next release on hel; also the partner's own free words (it may still say 件).
 - [ ] **A line that leaves its task, or binds to a to-do by itself** (research/173's part as an
@@ -936,7 +936,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       Done as D443 with Chrome's device emulation over CDP (`.shots/followups-443/`): no overflow; X
       **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator: seen as D447
       (Talk with your other agents, light and dark at Accessibility Large; a Recently row's state now wraps in its corner).
-- [x] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个等你** wraps to
+- [x] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个待你处理** wraps to
       a narrow column beside **3 项更新** and the four icons. Default: on a phone the update pill shrinks to its mark
       with the count. Trigger: the next phone-UI pass. Done as D446 (up to 600 wide; a count never breaks inside).
 
@@ -2947,7 +2947,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **A task's own timer** (`wait_for` with a time; built 2026-11-16, D267): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
 - [ ] **The shorthand guard on a task's reports and checkpoints**, not only a wait's reason (D261 (10)). Trigger: a row's line shows notes again; the rule then belongs in the task's brief.
 - [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
-- [x] **The window header's counts vs the strip** (built 2026-11-22, D467): 今天做完 is today's date on every surface, a done still being checked counts, a failure stands in 等你, yesterday's fold away.
+- [x] **The window header's counts vs the strip** (built 2026-11-22, D467): 今天做完 is today's date on every surface, a done still being checked counts, a failure stands in 待你处理, yesterday's fold away.
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
 ## On hand with character (D287)
@@ -3142,7 +3142,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **The web's cheer matches the Mac's**: it swells from rest to ~1.02 and back (D315). Waiting for the view transition to finish is still open. Trigger: the next On hand pass.
 
 ## D315: On hand after the review (2026-11-17)
-- [ ] **The conversation's header in one word order** (「1 个等你　在做 2 个」 → 「1 个等你　2 个在做」), both clients and their tests. Trigger: the next header change.
+- [ ] **The conversation's header in one word order** (「1 个待你处理　在做 2 个」 → 「1 个待你处理　2 个在做」), both clients and their tests. Trigger: the next header change.
 - [ ] **今天做完's section and the strip count the same** (a done only claimed is listed but not counted, D310). Trigger: the author sees 「今天做完 1」 over a strip without it.
 - [ ] **A demo with two computers** in `demo-onhand.ts`, so the shots show where on the one card that runs elsewhere. Trigger: the next On hand shots.
 - [ ] **On hand in front of people**: the author, then a consumer who has never heard "agent" (research/95). Trigger: D315 reviewed.
@@ -3526,7 +3526,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **The menu bar's count and the Dock badge as doors** to the first item (today they bring the window
   in front where it was). Trigger: the author reaches for the Dock badge and lands somewhere else.
-- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 等你 while On hand
+- [ ] **A door from inside On hand** (its head line, or a key such as ⌘J) stepping through 待你处理 while On hand
   is shown. Trigger: the author steps from On hand back to the conversation just to press the count.
 - [ ] **The door's step order a person's own** (tasks before the conversation's questions) if the
   conversation's questions keep the stopped tasks a few taps away. Trigger: the author says so.
@@ -3647,3 +3647,4 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **The judge's own flips** (D579): three answers and two more on a split, majority taken: 26 → 7 on the 68 most volatile scenarios (the rest never flipped). The checklist form (35) and a stronger judge on splits (17) didn't help and stay as options.
 - [x] **The judge's flips on all 308** (D579, D581): measured on all 310 of D581's transcripts, three passes of the kept judge (three answers, five on a split): it went both ways on **6** (saved-card-pasted-zh, mem-no-infer-reaction-zh, where-w6-long-zh, app-prs-known-en, todos-writeback-en, call-quiet-hours-en), $0.92. D579's estimate (under 8/308) holds.
 - [x] **AGENTS.md's D175 line** now names `--against latest` (the author's go, 2026-11-25).
+- [ ] **People read 待你处理 and 任务** (D586, research/234): the words were picked on haiku proxies only. *Trigger:* the next time two or three Chinese-speaking people try Ducter, show them the bar, the line over the composer and the 任务 page from `.shots/rename-d585/after/` and ask what each means; revisit if either reads as the person's own to-do list.

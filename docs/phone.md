@@ -7,7 +7,7 @@ order: 7
 # Your phone
 
 On your phone you can do almost everything you do on your Mac: read the conversation, write to
-your partner, answer decisions, look at **On hand**, and open a task. Mostly, though, it tells
+your partner, answer decisions, look at **Tasks**, and open a task. Mostly, though, it tells
 you when something needs you and lets you answer in one tap.
 
 One thing stays on the Mac: the changes themselves. On the phone, a finished task names them
@@ -169,20 +169,20 @@ The iPhone app runs on iPad too, from the same TestFlight link, and so does Duct
 Connect it the same way, with its own code.
 
 - **Held across** (or a 13-inch iPad held upright), the conversation stays on the left and
-  **On hand** stands beside it. Open a task there, and it opens in that place while the
+  **Tasks** stands beside it. Open a task there, and it opens in that place while the
   conversation stays where it was.
-- **The whole screen.** Tap the arrows at the right of On hand's header (or press ⌘2) and On
-  hand fills the screen as it does on a Mac: everything that needs you, what's working, what's
+- **The whole screen.** Tap the arrows at the right of Tasks' header (or press ⌘2) and Tasks
+  fills the screen as it does on a Mac: everything that needs you, what's working, what's
   waiting and what's done today, side by side, sorted by state or by project. Open a task from
-  there and it fills the screen too, with On hand kept beside it as a list on the left, so the
+  there and it fills the screen too, with Tasks kept beside it as a list on the left, so the
   next task is one tap away. The same arrows, ⌘2 again, or **Conversation** at the top
   bring you back to the two sides. On a foldable opened like a book, the two sides already are
-  the conversation and On hand; a task you open to fill the screen stands on one side of the
+  the conversation and Tasks; a task you open to fill the screen stands on one side of the
   fold, with the list on the other.
 - **Upright, or side by side with another app** in Split View or Stage Manager, Ducter is one
   column, as on a phone. Turning the iPad or resizing the window keeps what you were reading and
   typing.
-- **With a keyboard:** ⌘N starts a new task, ⌘1 shows the conversation, ⌘2 On hand, ⌘3 your
+- **With a keyboard:** ⌘N starts a new task, ⌘1 shows the conversation, ⌘2 Tasks, ⌘3 your
   devices, ⌘4 your partner, ⌘, Settings and ⌘K the box to write in. Esc goes back one level. Hold
   ⌘ to see the list. A trackpad shows what you can tap as you point at it.
 - Everything that says "this phone" says "this iPad" there; notifications and quiet hours work
@@ -226,8 +226,8 @@ other place to download from yet, so try another connection. Close the card and 
 offered again the next time you open Ducter.
 
 **On a foldable.** Open it like a book and the conversation sits on one side of the fold and
-**On hand**, or the task you open, on the other. Stand it half-open on a table and the
-conversation is above the fold, On hand below. Folded, it is one column as on any phone. Folding,
+**Tasks**, or the task you open, on the other. Stand it half-open on a table and the
+conversation is above the fold, Tasks below. Folded, it is one column as on any phone. Folding,
 unfolding and turning keep what you were reading and typing.
 
 Notifications from your Ducter in the Android app are coming soon; until then, Ducter in Chrome

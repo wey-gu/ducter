@@ -56,9 +56,9 @@ the task remembers where it came from: its app's mark and number sit on the task
 
 A to-do that already has a task opens that task instead of starting a second one.
 
-## See them on On hand
+## See them in Tasks
 
-Once a source is added, **On hand** (**手头的事**) shows your to-dos after **Done today**, under
+Once a source is added, **Tasks** (**任务**) shows your to-dos after **Done today**, under
 **Assigned to you on GitHub** (or **To-dos in** your vault, or **Your to-dos** with more than one),
 with how many are open.
 
@@ -72,7 +72,7 @@ a few to-dos and the rest.
 Before a sort, and behind **See all** after one, a few to-dos stand first: a pull request waiting for your review, an
 issue where someone mentioned you, an Obsidian to-do due in the next couple of days, and the most
 recently updated. Each says why it's there. Tap one to open it in GitHub or Obsidian, or tap **Hand to**
-your partner's name and it becomes a task right there on On hand. The task works in the copy of
+your partner's name and it becomes a task right there in Tasks. The task works in the copy of
 that repository on one of your computers (a Mac first); if none of them has it, your partner clones
 it on a computer that can read it and tells you so in one line.
 
@@ -83,7 +83,7 @@ more a page at a time.
 In **Settings › To-do sources**, the counts (how many are open, how many pull requests wait for your
 review) take you straight there.
 
-Nothing shows on On hand until you add a source.
+Nothing shows in Tasks until you add a source.
 
 ## Let your partner go through the pile
 
@@ -94,7 +94,7 @@ first), and how many can wait. If there are more than it reads in one go, it say
 looked at closely yet. It sorts again once a day, reading only what changed, or when you tap **Sort
 again** or ask it ("go through my GitHub issues").
 
-Under **See all {n}** on On hand, your partner stands beside the stack: **{n} still open**, how
+Under **See all {n}** in Tasks, your partner stands beside the stack: **{n} still open**, how
 many it cleared for you today, and one row for each group with one button (the ones already under
 way have a row of their own, so the rows add up to the count):
 
@@ -173,7 +173,7 @@ Each task is named after its own to-do (several in one task: the first, "and 1 m
 starts with the issue numbers, then a few English words for the work (such as
 `ducter/11028-embedding-one-model`), so two hand-overs never collide.
 
-**Hand these {n} to {name}** makes one group on On hand that carries them all. You can also say it in
+**Hand these {n} to {name}** makes one group in Tasks that carries them all. You can also say it in
 the conversation: "pull out everything about memory distill so we can look" shows the set there, ticked
 the same way; "just these, plus #405; check everything on haswell" hands it over with your words as the
 note. Say both at once ("hand over the distill ones, but leave the database alone"): the words about how
@@ -217,7 +217,7 @@ Everything it writes is in **[Done for you](done-for-you.md)**.
   answer, it stops after half an hour; you can continue it any time.
 - **Removed**: the task is told, and the chip on it says so.
 
-## Read On hand by where things came from
+## Read Tasks by where things came from
 
-On **[On hand](on-hand.md)**, the list beside the board shows **From** with GitHub and each vault that
+On **[Tasks](on-hand.md)**, the list beside the board shows **From** with GitHub and each vault that
 has a task. Pick one to see just those.

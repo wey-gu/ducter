@@ -62,7 +62,7 @@ language, and never "boss" or "task assigned".
 ```
 W reports question (+ default, deadline, reversible) ──► M
   ├─ M can answer from the Log / a Rule ──► steers answer in; task stays Working; user sees nothing
-  └─ M can't ──► task → 等你 / Needs you (actor M)
+  └─ M can't ──► task → 待你处理 / Needs you (actor M)
         ├─ user in the conversation ──► item appears in the living message (level 2)
         │     └─ unseen 3 min ──► push (level 3) unless quiet hours / coalesced
         ├─ user away ──► badge + push after hold; held during quiet hours (D3)
@@ -86,7 +86,7 @@ Undo (reversible only) ──► M runs the inverse action as a new step; task b
 Surfaces (same decision object, four renderings):
 - **Conversation:** a white card inside the partner's message (question · default line ·
   Go / Hold / Reply).
-- **On hand:** a wide card in the 等你 / Needs you lane, plus a tick on the forecast timeline
+- **On hand:** a wide card in the 待你处理 / Needs you lane, plus a tick on the forecast timeline
   at the deadline.
 - **Opened task:** the decision banner pinned on top [doc], with the evidence tabs below.
 - **Phone lock screen:** a push quoting the question and default line *exactly*. Tap opens
@@ -193,7 +193,7 @@ See Q1–Q4 at the end (lock-screen buttons, typing grace, Hold semantics, re-as
 - **Feels after:** read one message top to bottom in under a minute, answer two things, go.
   惊喜 at how short it is; 放心 because everything done says how Ducter knows.
 - **First time:** the first time the user returns to more than 3 items. No intro; the
-  message itself opens with one plain sentence: "你不在的时候：3 个等你，其余都有着落。/
+  message itself opens with one plain sentence: "你不在的时候：3 个待你处理，其余都有着落。/
   While you were away: 3 need you, the rest are handled." [I]
 
 ### 2. Flow and order
@@ -202,7 +202,7 @@ The living message is the last message, `open`, revised in place [doc]. While th
 away, every typed report folds into it instead of posting a new message.
 
 Order inside the message (refines `conversation.md` [I], adding the default-fired group):
-1. **等你 / Needs you**, numbered, each with its default line or `no_default_line`.
+1. **待你处理 / Needs you**, numbered, each with its default line or `no_default_line`.
 2. **按默认做了 / Went with the default**: defaults that fired while away, each with Undo.
    They are not decisions anymore, but the user would want to know first.
 3. **停下了 / Stopped**: 没成 / Didn't work, and 在等 / Waiting past its deadline, each with
@@ -261,9 +261,9 @@ report verbatim [doc].
 
 | i18n key | zh | en |
 |---|---|---|
-| `harvest.opening` | 你不在的时候：{n} 个等你，其余都有着落。 | While you were away: {n} need you, the rest are handled. |
+| `harvest.opening` | 你不在的时候：{n} 个待你处理，其余都有着落。 | While you were away: {n} need you, the rest are handled. |
 | `harvest.opening_none` | 你不在的时候都顺利，没有要你定的。 | All went fine while you were away. Nothing needs you. |
-| `harvest.group.needs_you` | 等你 | Needs you |
+| `harvest.group.needs_you` | 待你处理 | Needs you |
 | `harvest.group.defaulted` | 按默认做了 | Went with the default |
 | `harvest.group.stopped` | 停下了 | Stopped |
 | `harvest.group.done` | 做完了 | Done |
@@ -395,9 +395,9 @@ the card says so plainly (principle 14: never skip silently) [I].
 | `quiet.band_label` | 免打扰 {start}–{end} | Quiet hours {start}–{end} |
 | `quiet.held_count` | 攒着 {n} 个，{time} 给你 | {n} held until {time} |
 | `quiet.moved_deadline` | 那时你在休息，我改到 {time} 再定 | You'll be resting then, so I moved it to {time} |
-| `push.morning` | 早上好。{n} 个等你，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
+| `push.morning` | 早上好。{n} 个待你处理，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
 | `mute.menu` | 这类别告诉我了 | Don't tell me about these |
-| `mute.propose` | 以后{kind}做完了我不单独说，只记在「手头的事」里。需要你定的时候照样找你。 | From now on I won't mention it when {kind} finishes; it'll just be in On hand. I'll still come to you when you need to decide something. |
+| `mute.propose` | 以后{kind}做完了我不单独说，只记在「任务」里。需要你定的时候照样找你。 | From now on I won't mention it when {kind} finishes; it'll just be in On hand. I'll still come to you when you need to decide something. |
 | `mute.scope.this` | 只这个{thing} | Just this {thing} |
 | `mute.scope.project` | {project} 里的 | In {project} |
 | `mute.scope.all` | 所有类似的 | Everything like this |

@@ -139,8 +139,9 @@ func TestPresenceEndsWithSilentTurn(t *testing.T) {
 }
 
 // The living message, quiet (D104): no card heading, the ask due soonest
-// carries the buttons, the rest gather in one line; a failure is one
-// sentence; work under way is not listed.
+// carries the buttons; D586: the others wait behind the line over the
+// composer, never a count of their own here, and 「n 个都按默认」 stays; a
+// failure is one sentence; work under way is not listed.
 func TestLivingQuiet(t *testing.T) {
 	noRelayWait(t)
 	app, _ := iaApp(t, i18n.EN)
@@ -159,22 +160,15 @@ func TestLivingQuiet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"Rebase it?", "Rebase", "1 more waiting on you", "Go on all 2 defaults", "Bump tokio to 1.41 didn't work: 4 places don't build."} {
+	for _, want := range []string{"Rebase it?", "Rebase", "Go on all 2 defaults", "Bump tokio to 1.41 didn't work: 4 places don't build."} {
 		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	for _, not := range []string{"Change the 3 calls now?", "Review this week's PRs · Read 2", "2 need you"} {
+	for _, not := range []string{"Change the 3 calls now?", "Review this week's PRs · Read 2", "2 need you", "1 more waiting on you"} {
 		if hasText(tt, not) {
 			t.Errorf("%q shows by default: %q", not, tt.Texts())
 		}
-	}
-	if err := tt.Click("1 more waiting on you"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if !hasText(tt, "Change the 3 calls now?") || !hasText(tt, "Change them") {
-		t.Errorf("the gathered ask doesn't open: %q", tt.Texts())
 	}
 	// Details shown by default (Settings) brings back the status lines.
 	app.Local.SetDetailsShown(true)

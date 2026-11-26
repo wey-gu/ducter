@@ -113,7 +113,7 @@ export const AMBIENT_WORDS: { en: AmbientWords } & Partial<Record<LangTag, Ambie
     phase: {
       working: "在做",
       waiting: "在等",
-      needs_you: "等你",
+      needs_you: "待你处理",
       done: "做完了",
       failed: "没成",
       cancelled: "已取消",
@@ -129,7 +129,7 @@ export const AMBIENT_WORDS: { en: AmbientWords } & Partial<Record<LangTag, Ambie
     hideIos: "不在锁屏上显示",
     showAndroid: "在通知栏显示",
     hideAndroid: "不在通知栏显示",
-    note: "只显示它在做、在等还是等你，不显示内容。做完就自己收起。",
+    note: "只显示它在做、在等还是待你处理，不显示内容。做完就自己收起。",
     channel: "跟着看的任务和通话",
     channelAbout: "你选了要跟着看的任务，和正在打的电话：只显示到了哪一步。",
   },

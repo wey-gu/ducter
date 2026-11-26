@@ -279,7 +279,7 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 	t.Cleanup(func() { srv.Close() })
 	h.click("立即连接")
 	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
-	if hasText(h.tt, "Ducter 还没启动") || !hasText(h.tt, "手头") {
+	if hasText(h.tt, "Ducter 还没启动") || !hasText(h.tt, "任务") {
 		t.Errorf("still on first run: %q", h.tt.Texts())
 	}
 }

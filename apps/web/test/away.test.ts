@@ -1,4 +1,4 @@
-// D454: 移走 / Remove a finished card or group from On hand: what ⋯ offers, when a group counts as
+// D454: 移走 / Remove a finished card or group from Tasks: what ⋯ offers, when a group counts as
 // finished, the board leaving out what was removed (here at once, and as the home says), an old
 // finished task never kept from the Log, the words (no counter, no joiner), and every finished card
 // and group wired to ×, ⋯ and a swipe.

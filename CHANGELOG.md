@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.83 - 2026-11-26
+
+<!-- whats-new
+zh: 「等你」改叫「待你处理」，「手头的事」改叫「任务」
+en: On hand is now Tasks; what needs you is counted in one place
+-->
+
+**Plainer words**
+- In Chinese, what waits on you is now 「待你处理」, and the overview is 「任务」. In English, On hand
+  is now Tasks.
+
+**One count**
+- How many things need you is said in one place, above where you type, and it matches the header.
+  The conversation keeps only "Go on all n defaults" when there's a question card to go with it.
+- Question cards are a step lighter, so the one that matters stands out.
+
 ## 0.1.82 - 2026-11-26
 
 <!-- whats-new

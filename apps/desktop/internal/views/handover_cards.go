@@ -213,7 +213,7 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 	} else {
 		card.Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color)
 	}
-	// 看方案 from On hand: the card is found (its edge deepens once, it lifts a little).
+	// 看方案 from Tasks: the card is found (its edge deepens once, it lifts a little).
 	if k := a.foundAt(c, d.Seq, ""); k > 0 && !inGroup {
 		card.Border(1.5+1.5*k, t.NeedsYou.Ledge.Mix(t.NeedsYou.Ink, 0.6*k))
 		if !c.Preferences().ReduceMotion {

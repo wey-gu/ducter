@@ -113,7 +113,7 @@ export function commonest(values: string[], n = 8): string[] {
 }
 
 /**
- * D357: where a GitHub to-do handed over from On hand is done: the place whose origin is its
+ * D357: where a GitHub to-do handed over from Tasks is done: the place whose origin is its
  * repository (this computer's copy first), else a place named like the repository, else none (the
  * task clones it itself). Never asked: the person tapped one button.
  */

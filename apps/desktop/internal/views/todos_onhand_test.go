@@ -170,7 +170,7 @@ func TestTodoCountsLinkToOnHand(t *testing.T) {
 	app.Receive(todoGlanceFrame(i18n.ZH))
 	app.openTab(TabTodos)
 	todoFrames(tt, 3)
-	if err := tt.Click(spoken(app.L, "4 个 PR 等你 review", "在手头的事里看")); err != nil {
+	if err := tt.Click(spoken(app.L, "4 个 PR 等你 review", "在任务里看")); err != nil {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	if app.Route != RouteOnHand || !app.todos.fold.open || !app.todos.fold.review {

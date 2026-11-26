@@ -5,7 +5,7 @@ export const d475Words: { zh: Record<string, string>; en: Record<string, string>
   zh: {
     "say.notify.on": "有事要你定，我就发通知给你。",
     "say.notify.quiet": "有事要你定，我就发通知；免打扰的时段里不吵你。",
-    "say.notify.off": "通知关着：要你定的事，我放在「手头的事」里等你。",
+    "say.notify.off": "通知关着：要你定的事，我放在「任务」里等你。",
     "say.todos.item": "%s 有 %s 个没做完",
     "say.todos.sep": "，",
     "say.todos.n": "%s；哪个想交给我，说一声就行。",
@@ -31,7 +31,7 @@ export const d475Words: { zh: Record<string, string>; en: Record<string, string>
   en: {
     "say.notify.on": "When something needs you, I send a notification.",
     "say.notify.quiet": "When something needs you, I send a notification, never in your quiet hours.",
-    "say.notify.off": "Notifications are off: what needs you waits in On hand.",
+    "say.notify.off": "Notifications are off: what needs you waits in Tasks.",
     "say.todos.item": "%s has %s open",
     "say.todos.sep": ", ",
     "say.todos.n": "%s. Hand me any of them and I'll take it on.",

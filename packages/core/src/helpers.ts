@@ -59,11 +59,11 @@ export const HELPER_RETRY_MS = 10 * 60_000;
 /** D507: the partner's one line when a helper's address became ready or Mem refused it (D292: a table per language). */
 const SAID = {
   en: {
-    ready: "{name} is ready: your agents find it in Nowledge Mem by this name and hand it work. Each piece they hand it shows up in On hand, under its name.",
+    ready: "{name} is ready: your agents find it in Nowledge Mem by this name and hand it work. Each piece they hand it shows up in Tasks, under its name.",
     refused: "Nowledge Mem didn't take the name “{name}”, so your agents can't find it yet. Tell me another name and I'll make it again; this one can be stopped in {pane}.",
   },
   zh: {
-    ready: "{name} 好了：你的 agent 在 Nowledge Mem 里按这个名字找到它，就能把活交给它。交给它的每件活都会出现在手头的事里，挂在它名下。",
+    ready: "{name} 好了：你的 agent 在 Nowledge Mem 里按这个名字找到它，就能把活交给它。交给它的每件活都会出现在任务里，挂在它名下。",
     refused: "Nowledge Mem 没让登记「{name}」这个名字，你的 agent 现在还找不到它。换个名字跟我说一声，我重新开一个；这个可以在 {pane} 里停下。",
   },
 };

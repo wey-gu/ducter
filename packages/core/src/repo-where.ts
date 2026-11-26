@@ -1,7 +1,7 @@
 // D395: where a task on a repository works, decided by code from the repository itself (its
 // remote: owner/name, a GitHub address, a to-do's `where`), never from a path a model guessed.
 // One resolver for every way a repository task starts: the partner's task_open, a to-do handed
-// over from On hand, a hand-over of several (D385), and 再试一次 on a task that couldn't start.
+// over from Tasks, a hand-over of several (D385), and 再试一次 on a task that couldn't start.
 //
 // The order (D385's, generalized):
 //   1. a computer the person named in words (or the place's own device when the partner set one);

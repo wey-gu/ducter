@@ -24,7 +24,7 @@ func TestPaneHeadsSayTheStateD475(t *testing.T) {
 		t.Fatalf("notify: %q", got)
 	}
 	st.Notify = false
-	if got := app.paneSay(TabNotify, ""); got != "通知关着：要你定的事，我放在「手头的事」里等你。" {
+	if got := app.paneSay(TabNotify, ""); got != "通知关着：要你定的事，我放在「任务」里等你。" {
 		t.Fatalf("notify off: %q", got)
 	}
 

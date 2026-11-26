@@ -1,4 +1,4 @@
-// 添加文件夹 / Add a folder (D455), from On hand's project column: one sheet, the computer first
+// 添加文件夹 / Add a folder (D455), from Tasks's project column: one sheet, the computer first
 // (the home, each reachable computer that does its tasks; the one the latest work was on already
 // chosen), then the folder there: chosen in that computer's own folders, listed by that computer
 // through Ducter (the browser can't reach a disk, so every computer is looked through the same

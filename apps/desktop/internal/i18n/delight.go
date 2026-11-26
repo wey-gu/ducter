@@ -11,7 +11,7 @@ var zhDelight = Table{
 	"notify.pv.default": "%s内没回，我就先试它。",
 	"notify.pv.quiet":   "%s 到 %s 不响，到点一起告诉你。",
 	"notify.pv.anytime": "随时会响。",
-	"notify.pv.off":     "不弹出来：它在「手头的事」里等你。",
+	"notify.pv.off":     "不弹出来：它在「任务」里等你。",
 	// To-do sources: what the choice does, as the row's line (a standing go says itself instead).
 	"todos.what.new.tell":          "在对话里跟你说一声。",
 	"todos.what.new.take":          "直接开始做，一天最多 5 个。",
@@ -31,7 +31,7 @@ var enDelight = Table{
 	"notify.pv.default":            "No answer in %s, and I'll try it.",
 	"notify.pv.quiet":              "Silent from %s to %s; you hear it all after.",
 	"notify.pv.anytime":            "It can ring any time.",
-	"notify.pv.off":                "No pop-up: it waits for you in On hand.",
+	"notify.pv.off":                "No pop-up: it waits for you in Tasks.",
 	"todos.what.new.tell":          "A word in the conversation.",
 	"todos.what.new.take":          "They start by themselves, up to 5 a day.",
 	"todos.what.new.quiet":         "Looked at when you ask.",

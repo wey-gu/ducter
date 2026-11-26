@@ -292,7 +292,7 @@ The test renderer had passed every one of these flows; what only the real window
 | Passwords & cards, add a key | Save with the variable name empty did nothing (its placeholder **DO_TOKEN** reads like a value) | **「变量名」还没填好。** under the form |
 | Agent messaging, 改由这台收 → failed | connecting hid the page from the rail: the window jumped to Partner and the failure was never said | the page stays once opened; **没连上：…** with **再试一次** |
 | Memory, 再试一次 then Agent messaging | **刚又试了一次** followed to the other page minutes later | only on the page it was tried on |
-| On hand, no task and 571 to-dos sorted | **手头没事** while the partner said "都放在手头的事里了": the board asked for the to-dos only once it had a task | the pile, its groups and the hand-over sheet |
+| On hand, no task and 571 to-dos sorted | **手头没事** while the partner said "都放在任务里了": the board asked for the to-dos only once it had a task | the pile, its groups and the hand-over sheet |
 | ⌘K, a small app | a pencil mark | the small window mark its card and Made for you use |
 | Accounts with no source | **让 Ducter 帮你看…** under a page that says **小满能看的…** | the partner's name |
 | Add a computer, a kind chosen | title and back row the same words (pass 4's leftover) | titled by the kind: **加一台 Linux 服务器** |
@@ -411,7 +411,7 @@ The rules it leaves:
   the pane draws it and it follows every pick at once: **Notifications** opens with the notification itself
   (the partner's face, its name, **现在**, a real ask **CI 有两种修法，先试改动小的那个？**, the person's own wait
   **30 分钟内没回，我就先试它。**, and under it the quiet hours **23:00 到 08:00 不响，到点一起告诉你。**, or
-  **随时会响。**, or with notifications off the card sunk into the paper and **不弹出来：它在「手头的事」里等你。**);
+  **随时会响。**, or with notifications off the card sunk into the paper and **不弹出来：它在「任务」里等你。**);
   **This phone / This computer** has Look and sound's stage, as the Mac (web `LookPreview`); **回你用的语言**
   shows its voice, the preview's reply in the language picked (日本語 → **はい、明日の 9:00 にお知らせします。**,
   `languages.json`'s `samples`); **To-do sources'** rows say what the chosen one does in the source's terms
@@ -530,7 +530,7 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
 - **Settings opens on 概览 / Overview** (Mac: the rail's first tab, the home computer's clay; web: the head of the
   Settings list). **The brief**, On hand's form: the partner at 88 in its pose (flag, smiling, napping), one lead
   (**都好好的，我在这儿。**, **有一处要你看一眼。**, **有 n 处要你看一眼。**, first run **还差一步，我就能想事情了。**), then
-  labelled lines in its voice, each opening its pane: **等你** (each need with the button to where its fix is),
+  labelled lines in its voice, each opening its pane: **待你处理** (each need with the button to where its fix is),
   **运行在**, **想事情用**, **能看的**, **记得**, **也能找我**.
 - **What needs you, everywhere it is** (`setNeeds`, the web's twin): no agent to think with (Partner), a source
   that can't be reached (Accounts), a Mem plugin behind that can be updated from here (D466, D569) (Memory),
@@ -578,7 +578,7 @@ on the pane says "preview" or waits on a trial. Off is the switch, or `DUCTER_BR
 Who: H wants who reaches whom at a glance and what came of each exchange; C wants to know nothing can
 make the partner act without them; F sees the page only once they run an agent, and before any exchange
 meets an invitation, not an empty list. The pane now reads top-down as the others do: the partner's
-sentence (who reaches it; a one-way link in the needs-you ink, and a 等你 on Overview with **打开它的信箱**),
+sentence (who reaches it; a one-way link in the needs-you ink, and a 待你处理 on Overview with **打开它的信箱**),
 the switch, **谁能找到谁** (a picture per agent: coin, both ways drawn and said, the partner's pose, the fix
 under a link that isn't whole), **来往** (a thread per agent, each exchange with what came of it), **谁能让我做什么**
 (the rules in code and the muted), then **试试看**. Overview's **也能找我** adds the agents after the chat apps,
@@ -587,7 +587,7 @@ each part opening its pane. Full words in `bridge.md` "Who reaches whom…" and 
 D489 (the author: 「这个 bridge 是什么情况？」): **谁能找到谁** is now **你的 agent / Your agents**, a literal row
 per agent saying what it can do as what the person gets (no arrows, no red); pi and Antigravity one quiet row (D555: Antigravity its own row, pi alone in the quiet one);
 the one-way agent's offer under its row with the Space already in it (**让它收到回话**, **换一个空间**; D560: gone, an agent whose next session will hear back says so with nothing to tap, an old plugin's update is **让它也能收到我的回话**). The head
-says it in the plain ink (the pane carries no needs line; Overview's 等你 stays), and the switch's last line
+says it in the plain ink (the pane carries no needs line; Overview's 待你处理 stays), and the switch's last line
 says what the pane is for. `bridge.md` "Your agents, said as what you get…".
 
 ## Pane by pane, again (D475)
@@ -878,9 +878,9 @@ without Mem never sees the group.
 
 ## Memory: the update that can be found, Mem's asks as one quiet row, the newest preferences (D569)
 
-The author on 0.1.67, home on hel: Overview said 「等你 · Claude Code 里的 Nowledge Mem 有新版本。[去更新]」; 去更新
+The author on 0.1.67, home on hel: Overview said 「待你处理 · Claude Code 里的 Nowledge Mem 有新版本。[去更新]」; 去更新
 landed at Memory's top, and at the bottom haswell's row 「Nowledge Mem 0.7.37，有新的 0.7.38 了」 had no button
-(「更新我还是没看到，即使拉到底」). Overview also counted 「Nowledge Mem 有 4 处想请你确认」 as 等你.
+(「更新我还是没看到，即使拉到底」). Overview also counted 「Nowledge Mem 有 4 处想请你确认」 as 待你处理.
 
 - **Who:** the heavy developer with a worker (haswell) whose Claude Code is signed out there; the consumer and the
   fresh user who meet Mem's asks without knowing what Mem's graph is.

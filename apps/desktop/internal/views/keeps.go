@@ -410,7 +410,7 @@ const keepRailCols = 38
 func (a *App) keepRail(c *ui.Context) {
 	t := a.T
 	ui.Column(c.Key("keep-rail")).Width(keepRailW).Shrink(0).Gap(2).Padding(t.S5, t.S3, t.S5, t.S5).Children(func() {
-		// D535: the way back is the header's breadcrumb (对话 / 手头的事 / the
+		// D535: the way back is the header's breadcrumb (对话 / 任务 / the
 		// Keep), never a link here: the column is one list under its head.
 		a.secHead(c, "rail", a.L.T("keep.section"))
 		if a.S.OnHand == nil {

@@ -61,7 +61,7 @@ func (a *App) ongoingEsc() bool {
 	return false
 }
 
-// ongoingCount is how many things keep going, from On hand: the routines
+// ongoingCount is how many things keep going, from Tasks: the routines
 // not ended or dismissed, and the tasks with an armed wait of their own.
 func (a *App) ongoingCount() int {
 	if l := a.S.Past.Ongoing; l != nil {

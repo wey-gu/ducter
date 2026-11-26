@@ -20,7 +20,7 @@
   Tested from fixture copies of each older shape (`core/test/fixtures/keeps-old.ts`).
 - **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
   now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
-- **What waits for the person** is in 等你 once, naming the Keep; the sheet says the count.
+- **What waits for the person** is in 待你处理 once, naming the Keep; the sheet says the count.
 - **One round's ask (D540).** "让 review 的 loop 这轮先审 #551" is the partner's `keep_change`
   `next_round` (with `look_now` to start now), kept on the Keep as `next` in the person's words: the
   next round's wake carries it first and it is gone; a round under way hears it at once. It is never
@@ -51,7 +51,7 @@
   checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every
   round of a loop and every run of a routine is told its rules as they are now (`rulesFor`).
 - **D535, the way in and out.** The page lives only while On hand is shown (leaving On hand closes it; a deep
-  link opens it straight); the way back is the header's breadcrumb **对话 / 手头的事 / {the Keep}** (‹ 手头的事
+  link opens it straight); the way back is the header's breadcrumb **对话 / 任务 / {the Keep}** (‹ 任务
   beside the conversation and on a phone), never a link in the page or its rail, which is one list under the
   shared section head. `on-hand.md` "Navigation".
 - **`keep_make`** makes one at once for times on the clock (a routine, `run: fresh`) or an address
@@ -84,7 +84,7 @@ should open it lands in Settings.
 
 | Who | The moment | Before | After (D36) | How it starts |
 |---|---|---|---|---|
-| **H**, the heavy multi-agent developer (the author) | His agents hand PRs to a babysitter; a review loop runs every 45 min; he checks between two other things | 不放心 and 找不到: the babysitter opens Settings, the loop sits in another section, its PRs scatter across 在做 / 在等 / 今天做完, a round's state is only in the latest message | 放心 at a glance (each kept thing one sheet, its light on, what waits for him in 等你); 好用 one tap into one page with its items, its rounds and its rules; 顺滑 change it by talking | He already has two: on upgrade they appear under **在照看的 / Looking after**, his helper's and his loop's state carried over, with the one first-time line |
+| **H**, the heavy multi-agent developer (the author) | His agents hand PRs to a babysitter; a review loop runs every 45 min; he checks between two other things | 不放心 and 找不到: the babysitter opens Settings, the loop sits in another section, its PRs scatter across 在做 / 在等 / 今天做完, a round's state is only in the latest message | 放心 at a glance (each kept thing one sheet, its light on, what waits for him in 待你处理); 好用 one tap into one page with its items, its rounds and its rules; 顺滑 change it by talking | He already has two: on upgrade they appear under **在照看的 / Looking after**, his helper's and his loop's state carried over, with the one first-time line |
 | **C**, the consumer | "Keep an eye on the Dec 20 Tokyo fare; tell me under ¥2,000; stop when I book" | a chat promise with nothing to see; or an alarm app's "check" that only rings | 放心: a card that says when it looks, when it speaks and when it stops; 赏心悦目: a lantern lit; 惊喜: the first look done at once (¥2,340 now) | One sentence. The partner's reply and the card are the first meeting. No setup, no form |
 | **F**, the fresh user | Has never heard of a loop or an agent | — | Meets it only by asking "remind me until …" or "watch this"; plain words, no new concept | The same one sentence; the card explains itself in its four lines |
 
@@ -183,7 +183,7 @@ The other states are crisp: 已暂停, 已完成, 已停止, 已结束.
 | the page's kicker | **{name} 看守中** | **{name} is looking after** |
 | the partner's acknowledgement | **好，我来照看：…** | **Done, I'll look after it: …** |
 | life | **看守中 / 已暂停 / 已完成 / 已停止** | **On / Paused / Done / Stopped** |
-| the page's parts | **你说的 · 等你 · 手上的 · 每一轮 · 怎么做** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
+| the page's parts | **你说的 · 待你处理 · 手上的 · 每一轮 · 怎么做** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
 | its rules | **什么时候醒 · 做到什么时候 · 什么时候出声 · 上限 · 在哪儿做，谁来做 · 别的 agent 怎么找到它** | **When it wakes · Until · When it speaks · Limits · Where and who · How your agents find it** |
 | a round's outcome | **没出声 / 说了一句 / 问了你**; one under way **进行中** | **Silent / Told you / Asked you**; **Running** |
 | quiet rounds folded (D550) | **又看过 {n} 次，都没有变化，{from} 到 {to}** | **Looked {n} more times; nothing changed, {from} to {to}** |
@@ -204,7 +204,7 @@ only link to it.
 
 ### On hand, at a glance
 
-Sections by attention, as D467: **等你, 在做, 在等, 看守中, 今天做完**. Each Keep is one clay sheet in **看守中**:
+Sections by attention, as D467: **待你处理, 在做, 在等, 看守中, 今天做完**. Each Keep is one clay sheet in **看守中**:
 
 - its **lantern** (40; §8), lit while on, a beat when a round did something, dim when paused;
 - its **title** (15/700) in the person's language;
@@ -216,9 +216,9 @@ Sections by attention, as D467: **等你, 在做, 在等, 看守中, 今天做�
 - items that are tasks at work nest under it, set in by the mark's width (D507's shape): up to three, then
   **还有 {n} 个 ›**.
 
-**What waits for the person is in 等你, once.** A Keep's ask is a row in 等你 with the Keep's name among its
+**What waits for the person is in 待你处理, once.** A Keep's ask is a row in 待你处理 with the Keep's name among its
 where-facts; the Keep's sheet stays in its own section and says **1 个在等你**. It never jumps between sections
-(D507 moved the helper's sheet to the head of 等你; a thing that moves is harder to find, and the ask is what
+(D507 moved the helper's sheet to the head of 待你处理; a thing that moves is harder to find, and the ask is what
 needs the person, not the whole Keep). Counted once: the ask is the needs-you item; the sheet's fact is a fact.
 
 The partner's line at the head is unchanged; it may say **看守中的都按时** only when asked (silence is success).
@@ -232,7 +232,7 @@ the side column after the rounds.
 1. **Head**: the lantern (64), **{name} 看守中**, the title (28/800), its life as chips (**看守中**, **1 个在等你**,
    **11 月 24 日 08:47 起**, **这周接了 3 个**).
 2. **你说的 / You said**: the person's words, verbatim; editable (D533), the rules they change shown as a diff for one Go.
-3. **等你 / Waiting for you**: its asks, answered in place (the same card as in 等你).
+3. **待你处理 / Waiting for you**: its asks, answered in place (the same card as in 待你处理).
 4. A picture only when the Keep has one number that moves toward its goal (the fare: one point a morning and
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
 5. **手上的 / What it holds** (D519: a Keep in rounds holds the PRs its task keeps open, each named by its own title;
@@ -279,7 +279,7 @@ the side column after the rounds.
    the lantern lighting up once (1.6 s; none under Reduce Motion), **看守中** and its title, four lines
    (**什么时候 · 出声 · 到什么时候 · 在哪儿**, each its own row), the first round's result in the done ink
    (**第一次：现在 ¥2,340，还没到 ¥2,000**), and **打开 · 改一下 · 撤销**.
-5. The first time ever, one line under it in the partner's words (D451's pattern): **它在手头的事的「看守中」里，
+5. The first time ever, one line under it in the partner's words (D451's pattern): **它在任务的「看守中」里，
    一直亮着灯。平时不出声，有变化才说一句，要你定的时候才问你。**
 
 D114's proposal card with a Go before activation is superseded for Keeps whose rounds only read and draft:
@@ -306,7 +306,7 @@ detail of the Keep; the partner's ready line (D507) becomes the card's **Nowledg
 - **A change the person didn't ask about** (a new review request, a fare a little lower): the sheet's line
   only. The model judges which is which from the Keep's `speaks` (principle 21); code only enforces "at most
   one line a round".
-- **Something needs the person**: one ask in 等你 with its default (D394's one card per round for drafts).
+- **Something needs the person**: one ask in 待你处理 with its default (D394's one card per round for drafts).
 - **It can't keep time** (a computer asleep, out of allowance): D427/D429's health line and its one fix.
 
 ### How it ends
@@ -370,7 +370,7 @@ every view at 1400 and 390, zh and en, light and dark, plus the three marks side
 ## 10. Open questions (each with its default)
 
 1. **Make at once, or a Go first?** Default: at once with Undo for Keeps that only read and draft (§7).
-2. **Does a Keep's ask stay in 等你 or move the sheet?** Default: the ask in 等你, the sheet stays (§6).
+2. **Does a Keep's ask stay in 待你处理 or move the sheet?** Default: the ask in 待你处理, the sheet stays (§6).
 3. **One Keep or two for the review loop and 100gle's to-dos?** Default: one, two wakes, as the person said it.
 4. **The lantern or the track?** Default: the lantern, after the rendered-image round (§8).
 5. **The section's name**: 看守中 / Looking after (D525; was 在照看的). Alternative: keep 一直在跑的 / Ongoing (no relearning; read as

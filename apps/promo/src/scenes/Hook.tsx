@@ -17,7 +17,7 @@ const TILES: Tile[] = [
   { coin: "claude_code", title: "claude · review PRs", lines: ["⏺ Reviewing #1588 · read 6 files", "⏺ Reviewing #1592 · CI pending", "  Context left until auto-compact: 9%"], ask: "Post a review comment on #1590?" },
   { coin: "pi", title: "pi · dependency check", lines: ["checking 41 crates for updates", "tokio 1.47 → 1.48 (minor)", "rustls 0.23 → 0.24 (breaking)"], ask: "Upgrade rustls now or wait?" },
   { coin: "claude_code", title: "claude · site", lines: ["⏺ Bash(bun run build)", "  built 38 pages in 4.1s", "⏺ Preview ready on :4321"], ask: "Deploy to production?  1. Yes  2. No" },
-  { coin: "deepseek_harness", title: "deepseek · translate", lines: ["> docs/getting-started.md → zh", "> docs/faq.md → zh", "> 2 terms not in the glossary"], ask: "Use 手头的事 for 'On hand'?" },
+  { coin: "deepseek_harness", title: "deepseek · translate", lines: ["> docs/getting-started.md → zh", "> docs/faq.md → zh", "> 2 terms not in the glossary"], ask: "Use 任务 for 'Tasks'?" },
   { coin: "codex", title: "codex · flaky test", lines: ["• Running compaction 50 times", "• 47 passed; 3 failed", "• Proposed: wait for the flush"], ask: "Apply patch to 2 files?  (y/n)" },
   { coin: "claude_code", title: "claude · inbox", lines: ["⏺ Read 23 unread threads", "⏺ 2 need a reply this week", "⏺ Drafted 2 replies"], ask: "Send these 2 replies?  1. Yes  2. No" },
   { coin: "pi", title: "pi · weekly digest", lines: ["reading 9 open PRs", "reading 4 new issues", "#1601 duplicates #1577"], ask: "Close #1601 as a duplicate?" },

@@ -116,7 +116,7 @@ C checks refs mechanically ──► M judges against the brief's done-criteria 
   │        When it is really done: a NEW message replying to the same ask, opening with
   │        "上次说做完了，检查时发现{reason}，现在补好了。/ I said it was done, but the check
   │        found {reason}. It's fixed now."
-  └─ needs judgment ──► 等你 / Needs you "看着对吗？/ Does this look right?"  [doc D4]
+  └─ needs judgment ──► 待你处理 / Needs you "看着对吗？/ Does this look right?"  [doc D4]
   │
 Next step (at most one): here, the draft PR intent from B3/C5 ──► see G1
 ```

@@ -145,7 +145,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	noRelayWait(t)
 	h := newHarness(t, i18n.ZH)
 	s := h.app.S
-	if !hasText(h.tt, "Ducter") || !hasText(h.tt, "手头") {
+	if !hasText(h.tt, "Ducter") || !hasText(h.tt, "任务") {
 		t.Fatalf("header: %q", h.tt.Texts())
 	}
 
@@ -162,11 +162,11 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 	h.shot("conversation")
 
-	h.click("手头的事")
+	h.click("任务")
 	if h.app.Route != RouteOnHand {
 		t.Fatal("On hand did not open")
 	}
-	for _, want := range []string{"等你", "在做", "在等", "今天做完", "原则英译", "周报草稿"} {
+	for _, want := range []string{"待你处理", "在做", "在等", "今天做完", "原则英译", "周报草稿"} {
 		if !hasText(h.tt, want) {
 			t.Errorf("On hand lacks %q", want)
 		}
@@ -256,10 +256,10 @@ func TestScenarioEndToEnd(t *testing.T) {
 
 func TestEnglishRenders(t *testing.T) {
 	h := newHarness(t, i18n.EN)
-	if !hasText(h.tt, "On hand") {
+	if !hasText(h.tt, "Tasks") {
 		t.Fatalf("texts %q", h.tt.Texts())
 	}
-	h.click("On hand")
+	h.click("Tasks")
 	for _, want := range []string{"Needs you", "Working", "Waiting", "Done today"} {
 		if !hasText(h.tt, want) {
 			t.Errorf("On hand lacks %q", want)

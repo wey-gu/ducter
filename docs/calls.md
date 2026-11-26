@@ -52,7 +52,7 @@ Every call starts by saying it is an AI assistant calling for you. It never clai
 
 ## While it's on the line
 
-**On hand** shows the call: **Calling…**, then **On the call** with a clock and **Hang up**.
+**Tasks** shows the call: **Calling…**, then **On the call** with a clock and **Hang up**.
 
 If the other side asks something only you can answer ("is 7:30 all right?"), you get it at once as
 **They're asking**, with **Yes / No** or a few choices and a field to say anything else. This one
@@ -62,7 +62,7 @@ about 90 seconds, the call says you'll call back.
 ## When it's done
 
 Your partner tells you the outcome in one line, from what Tuwa reported. If Tuwa couldn't
-confirm the result, it says so. On hand keeps the call for the day: tap it for the summary, what was
+confirm the result, it says so. Tasks keeps the call for the day: tap it for the summary, what was
 agreed, what was said (when Tuwa has it), how long it took and what it cost.
 
 - **Got an automated message**: the call connected, but voicemail or a recording answered. If the
@@ -85,7 +85,7 @@ what to keep back (**Don't share**), and what to **Note down**.
 - **Call it yourself** on your phone opens the phone's dialer with the number. On a Mac, **Copy
   number** puts it on the clipboard.
 - **Done calling** when you've hung up: your partner asks how it went, in one line, and keeps your
-  answer with the call on **On hand**. You can also just tell it ("打完了，订上了").
+  answer with the call in **Tasks**. You can also just tell it ("打完了，订上了").
 - **Not now** sets the sheet aside.
 
 Ducter dials nothing and nothing is charged for a call sheet.
@@ -137,7 +137,7 @@ for a country it can't call): the number, what the call is for, **Open with**, t
   notifications. If Ducter on the phone is closed or in the background, open it and try again.
 - **Anywhere else:** **Call it yourself** hands the number to the phone app, or **Copy number**.
 - When you hang up, tap **Done calling** (or just say "打完了，周六上午可以"). Your partner asks how
-  it went in one line and keeps your answer with the call on **On hand**.
+  it went in one line and keeps your answer with the call in **Tasks**.
 
 Nothing is charged, there's no AI on the line (you're the one talking), and numbers you said not to
 call again stay blocked.
@@ -195,7 +195,7 @@ for you, the hours, the outcome as heard. A few things are different:
 - Ducter only dials, hangs up, presses keypad digits for phone menus, and reads whether a call is
   on. It never reads your messages or contacts, never opens other apps, and never answers a call.
 - Nothing is recorded. What was said is kept as text, like any call.
-- **On hand** and the card show **On a call from your phone**, with **Hang up**, on any of your
+- **Tasks** and the card show **On a call from your phone**, with **Hang up**, on any of your
   devices.
 - The phone stays plugged into that computer: calls run there.
 

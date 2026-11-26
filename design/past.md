@@ -131,7 +131,7 @@ countdown). What the person said may go without asking (D413, **不用问我的 
 posts in the round with no card, and the line says **3 份评审已发到 GitHub / 3 reviews posted to GitHub**. A review task reports each round with `review_report`; its card adds a standing line under the
 state line: **8 个请求在等你：3 个有新提交已复审，5 个没变 / 8 requests wait on you: 3 had new commits
 and are reviewed again, 5 unchanged** and **3 份评审还没发 / 3 drafted reviews not posted yet**, each its
-own element. While its round card is unanswered the card stands under **等你** (the card is the one needs-you, never counted twice) and goes back to **等下一次** once it is answered. Each draft is that PR's pre-read (`task-sources.md` §9), opened with **看草稿 / Read
+own element. While its round card is unanswered the card stands under **待你处理** (the card is the one needs-you, never counted twice) and goes back to **等下一次** once it is answered. Each draft is that PR's pre-read (`task-sources.md` §9), opened with **看草稿 / Read
 draft** from the round's card. A round after a long rest, or after its session compacted, starts in a
 fresh session from the brief and its latest progress (Codex, Claude Code).
 
@@ -139,7 +139,7 @@ A card: the picture (a drawn repeat for a routine, a clock for a task, or the pe
 name, one state line (**{cadence} · 下次 {time}**, **每 45 分钟看一次 · 下次 {time}**, **暂停到 {time}**,
 **暂停了，等你恢复**, Ducter's own reason when it paused one), and the last twelve runs as 10-pt
 pebbles in the state colours (done and it happened green, didn't work red, skipped an outline,
-looked yellow, running blue and breathing); a pebble opens its run. Sections: 等你, 正在跑,
+looked yellow, running blue and breathing); a pebble opens its run. Sections: 待你处理, 正在跑,
 **等下一次 / Up next** (soonest first), **暂停了 / Paused**. A paused card is calmer: muted ink, its
 pebble settled 2 pt; it lifts back on resume.
 

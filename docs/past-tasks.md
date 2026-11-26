@@ -6,7 +6,7 @@ order: 2.6
 
 # Past tasks and ongoing work
 
-A task you finished doesn't disappear. On hand shows what is going on now; everything you had
+A task you finished doesn't disappear. Tasks shows what is going on now; everything you had
 before stays in **做过的事 / Past tasks**, ready to find and pick up again; what it made for you is
 in **给你做的 / Made for you**. Next to them,
 **看守中 / Looking after** keeps what runs on its own: things you asked for every day or every week,
@@ -14,12 +14,12 @@ and tasks that keep looking for something.
 
 ## Opening it
 
-- At the end of On hand, tap **做过的事 ›** (or **看守中 n 个 ›**).
-- In On hand's search, when nothing there matches, tap **在做过的事里找「…」** to look for the
+- At the end of Tasks, tap **做过的事 ›** (or **看守中 n 个 ›**).
+- In Tasks' search, when nothing there matches, tap **在做过的事里找「…」** to look for the
   same words in every earlier task.
 - In the Mac app: **做过的事… / Past Tasks…** in the menu, or ⌘Y.
 - Anywhere, on the Mac or in a browser: press ⌘K (Ctrl+K), **找什么都行 / Find anything**, and type a
-  few words. It finds what is on hand, every earlier task, what Ducter made for you and your own
+  few words. It finds what is in Tasks, every earlier task, what Ducter made for you and your own
   sessions, and goes to any page. Enter opens the one under the keys, ⌘Enter carries it on. Its
   last two lines say the words to Ducter, or start a new task with them. ⌘O opens it too. On a
   wide screen, where the task under the keys stopped shows beside the list (how it ended or what
@@ -39,7 +39,7 @@ best match first, with a line saying where it matched (**你说过 / You said**,
   the field.
 - The chips under the field narrow it: **标了星的 / Starred**, a project, an agent, one of your tags,
   the computer it ran on, and how it ended (**做完了 / Done**, **没做成 / Didn't work**,
-  **取消了 / Cancelled**, **还在手头 / Still on hand**).
+  **取消了 / Cancelled**, **还在做 / Still going**).
 
 ## Where it stopped
 
@@ -110,7 +110,7 @@ it on, or starts the new one from that step. When two fit, it asks which.
 You can also just say it in the conversation. When you follow up on something Ducter just did for
 you ("那汉庭贵多少？再看看机票", "make it configurable too"), it carries on the same task: the same
 signed-in browser, the same branch and files, the same AI agent, and what it already found. The
-task shows under your new message, and On hand keeps one card for it. An earlier one works too:
+task shows under your new message, and Tasks keeps one card for it. An earlier one works too:
 "接着昨天那个 compaction 的活" / "carry on with yesterday's compaction change". Something new
 gets a task of its own; if you want a fresh start on the same thing, say so ("开个新的" / "start a
 new one"). If the next step needs another of your computers, say which ("在 MacBook 上接着"), or just ask

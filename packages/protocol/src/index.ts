@@ -1157,7 +1157,7 @@ export interface OnHand {
   asks?: PartnerAsk[];
   /** D360: groups of tasks that are one piece of work, with the members held in line (task-groups.ts). */
   groups?: TaskGroupView[];
-  /** D454: tasks the person removed from On hand (移走): a client that also builds its board from the Log leaves them out. */
+  /** D454: tasks the person removed from Tasks (移走): a client that also builds its board from the Log leaves them out. */
   away?: string[];
   /**
    * D481: every question still open at the home (the one source of truth for "open"), as of Log
@@ -1740,7 +1740,7 @@ export type ClientFrame =
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
   // D285: from, 带着它开新任务 / New task from this: the brief carries what that task found.
-  // D357: handed: the to-do was handed over from On hand (交给{name} / Hand to {name}); no place was
+  // D357: handed: the to-do was handed over from Tasks (交给{name} / Hand to {name}); no place was
   // picked, so the home finds the repository's own folder.
   | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string; item?: SourceItemRef; handed?: boolean }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
@@ -1812,7 +1812,7 @@ export type ClientFrame =
   | SourcesClientFrame
   // D360: a group of tasks that are one piece of work (task-groups.ts).
   | TaskGroupFrame
-  // D454: 移走 / Remove a finished card or group from On hand.
+  // D454: 移走 / Remove a finished card or group from Tasks.
   | OnHandAwayFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
@@ -2680,7 +2680,7 @@ export interface DeviceMemView {
  * in Ducter.app; the app's own updater does it (D72). source: run from a checkout (git pull).
  */
 export type UpdateHow = "self" | "app" | "source" | "manual"; // manual: a Ducter too old to update from here (before 0.0.4): run the installer there once
-/** 在下载 · 在核对 · 等手头的事停好 · 在重启 · 回来了 · 没更新成 */
+/** 在下载 · 在核对 · 等正在做的任务停好 · 在重启 · 回来了 · 没更新成 */
 export type UpdatePhase = "downloading" | "verifying" | "waiting" | "restarting" | "done" | "failed";
 /**
  * Why an update didn't happen. network: GitHub couldn't be reached; no_release: nothing newer is

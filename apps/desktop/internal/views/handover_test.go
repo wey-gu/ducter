@@ -462,13 +462,13 @@ func TestGroupCardPlanAndReviewTogether(t *testing.T) {
 			t.Fatalf("On hand shows %q: %s", not, all)
 		}
 	}
-	// Go from On hand.
+	// Go from Tasks.
 	if err := tt.Click("照这个做"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
 	if r, ok := lastSent[protocol.PlanAnswerReq](*sent); !ok || r.Option != "go" || r.GroupID != "g1" {
-		t.Fatalf("plan_answer from On hand: %+v", r)
+		t.Fatalf("plan_answer from Tasks: %+v", r)
 	}
 	app.S.Decisions["dplan"].Pending = ""
 	tt.Frame()

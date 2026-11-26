@@ -404,8 +404,6 @@ class AppState {
   S = new Store();
   uiLang: UiLang = savedUiLang();
   details: DetailsPref = savedDetails();
-  /** Living messages whose gathered asks the person opened (D104). */
-  moreAsks = new Set<number>();
   /** When this client sent the message it is waiting on (the Presence clock before a step). */
   thinkingSince?: number;
   /** Messages whose Details the person flipped from the default (D104). */
@@ -625,7 +623,7 @@ class AppState {
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
   /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
   onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
-  /** D357: a to-do handed over from On hand (todos.tsx): true when the answer was its. */
+  /** D357: a to-do handed over from Tasks (todos.tsx): true when the answer was its. */
   onHanded?: (f: Extract<ServerFrame, { t: "task_new_result" }>) => boolean;
   /** D345: Settings › 待办来源's 连上 GitHub in flight, and the account it just connected as (said once on GitHub's card). */
   ghTodo?: GhPanel;
@@ -1592,7 +1590,7 @@ class AppState {
   }
 
   /**
-   * D455: 添加文件夹 / Add a folder from On hand: one sheet, the computer first (the one the latest
+   * D455: 添加文件夹 / Add a folder from Tasks: one sheet, the computer first (the one the latest
    * work was on), then the folder there: chosen in that computer's own folders through Ducter (the
    * browser), cloned there, or new. The ways are the New task card's own panels.
    */
@@ -3980,7 +3978,7 @@ class AppState {
   }
 
   /**
-   * D454: 移走 / Remove a finished card (its tasks) or a group from On hand: it leaves at once, the
+   * D454: 移走 / Remove a finished card (its tasks) or a group from Tasks: it leaves at once, the
    * home keeps it off every device, and the toast's 撤销 puts it back.
    */
   putAway(o: { taskIds?: string[]; groupId?: string; name: string }) {

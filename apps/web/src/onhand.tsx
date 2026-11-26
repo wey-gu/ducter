@@ -638,7 +638,7 @@ function waitsAhead(lens: string, now = Date.now()): { first: number; quiet: num
 
 /** The partner's one sentence over the board, in its own voice and only from what is there (never a
  *  model): whether anything needs you, then what works, what waits and when the first comes back,
- *  and what got done today. "现在没有要你定的。4 个在等：最早 22:40 回来，2 个一天多没有动静；今天做完 1 个。" */
+ *  and what got done today. "现在没有待你处理的。4 个在等：最早 22:40 回来，2 个一天多没有动静；今天做完 1 个。" */
 export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): string {
   const p = SAY_MARKS[A.L.lang];
   const first = n[0] ? (n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0])) : t("onhand.say.none");

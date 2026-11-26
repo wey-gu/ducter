@@ -6,7 +6,7 @@ package i18n
 
 var zhPartners = Table{
 	"partners.title":             "伙伴们",
-	"partners.help":              "每个伙伴有自己的名字和对话，互相看不到。你的设备、账号和手头的事是大家一起用的。",
+	"partners.help":              "每个伙伴有自己的名字和对话，互相看不到。你的设备、账号和任务是大家一起用的。",
 	"partners.add":               "再加一个伙伴",
 	"partners.add.help":          "比如一个管工作、一个管家里，或者家里每人一个。",
 	"partners.add.name":          "叫它什么",
@@ -42,7 +42,7 @@ var zhPartners = Table{
 	"partners.asks.from":         "%s 问你",
 	"partners.added":             "%s 来了。",
 	"partners.switch":            "换到%s",
-	"partners.switch.asks":       "换到%s，有 %d 个等你",
+	"partners.switch.asks":       "换到%s，有 %d 个待你处理",
 	"partners.here":              "%s，正在聊",
 	"partners.you":               "你：%s",
 	"partners.empty":             "还没聊过",
@@ -50,7 +50,7 @@ var zhPartners = Table{
 	"partners.rail.thin":         "收窄伙伴栏",
 	"partners.rail.hide":         "收起伙伴栏",
 	"partners.rail.show":         "显示伙伴栏",
-	"partners.back.asks":         "所有伙伴，别处有 %d 个等你",
+	"partners.back.asks":         "所有伙伴，别处有 %d 个待你处理",
 	// D536: what each partner thinks with: its own, else the default partner's.
 	"partners.thinks.title":       "想事情用",
 	"partners.thinks.with":        "想事情用 %s",
@@ -85,7 +85,7 @@ var zhPartners = Table{
 
 var enPartners = Table{
 	"partners.title":             "Your partners",
-	"partners.help":              "Each partner has its own name and its own conversation, which the others can't see. Your devices, accounts and On hand are shared.",
+	"partners.help":              "Each partner has its own name and its own conversation, which the others can't see. Your devices, accounts and tasks are shared.",
 	"partners.add":               "Add a partner",
 	"partners.add.help":          "One for work and one for home, say, or one for each person in the family.",
 	"partners.add.name":          "Its name",

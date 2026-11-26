@@ -1,7 +1,7 @@
 // On hand at the whole screen, the rail beside a task opened there, and the header of a level at
 // the whole screen (D184, D216). Wide, the two panes stay the default; On hand, or an opened task,
 // can take the whole screen. There On hand is the one list (onhand.tsx) on a wide measure, under
-// the crumbs 对话 / 手头的事 with the counts and New task; a task opened there keeps the list
+// the crumbs 对话 / 任务 with the counts and New task; a task opened there keeps the list
 // beside it as a rail when the screen has the room. The Mac app draws the same
 // (apps/desktop/internal/views/onhand.go).
 import type { ComponentChildren } from "preact";
@@ -51,13 +51,13 @@ export function FillButton({ level }: { level: "onhand" | "task" }) {
 
 // ---------- the header at the whole screen: the Mac's crumbs ----------
 
-/** 对话 / 手头的事 [/ the task]: each crumb but the last goes there; the last is the title. */
+/** 对话 / 任务 [/ the task]: each crumb but the last goes there; the last is the title. */
 export function FullTop({ task, children }: { task?: Task; children?: ComponentChildren }) {
-  // D535: on a Keep's page the breadcrumb is the way back: 对话 / 手头的事 / the Keep.
+  // D535: on a Keep's page the breadcrumb is the way back: 对话 / 任务 / the Keep.
   const keep = !task && K.open ? (K.pages.get(K.open)?.title ?? A.S.onHand?.keeps?.find((k) => k.id === K.open)?.title ?? t("keep.section")) : "";
   const name = task ? shortTitle(title(task)) || t("task.unknown") : keep ? cutAtWord(keep, 40) : t("onhand.title");
   // D544: a bar too narrow for the trail (a book fold's half, a pane) says only the way up, as a
-  // phone's does (D535: ‹ 手头的事); the place's name is its page's own head. CSS picks one.
+  // phone's does (D535: ‹ 任务); the place's name is its page's own head. CSS picks one.
   const up = task || keep ? { label: t("onhand.title"), go: () => (keep ? closeKeep() : A.go({ name: "onhand", full: true })) } : { label: t("nav.conversation"), go: () => A.go({ name: "conv" }) };
   return (
     <header class="top crumbs">

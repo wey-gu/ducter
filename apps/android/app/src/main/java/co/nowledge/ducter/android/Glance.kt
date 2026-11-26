@@ -12,7 +12,7 @@ import androidx.core.app.NotificationManagerCompat
 /**
  * D306: at a glance on Android: one ongoing notification for a task the person chose to keep in
  * sight (在通知栏显示 / Show in notifications, in an opened task) or a call that is live. Never for
- * every task, never a count, never a sound: it only says the phase (在做 / 等你 / 通话中 …) and how
+ * every task, never a count, never a sound: it only says the phase (在做 / 待你处理 / 通话中 …) and how
  * long, and goes away by itself when it is over.
  *
  * The Android app has no push from the home yet (UnifiedPush is in todo, D181 (4)), so the page

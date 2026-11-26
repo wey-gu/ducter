@@ -104,7 +104,7 @@ func TestTaskHeadSaysEachOnce(t *testing.T) {
 	}
 	// The Tag's words in D525's register; On hand's section heads keep theirs.
 	zh := railApp(t, i18n.ZH)
-	for att, w := range map[protocol.Attention]string{protocol.Working: "进行中", protocol.NeedsYou: "等你", protocol.Blocked: "等待中", protocol.Done: "已完成", protocol.DoneClaimed: "已完成", protocol.Failed: "没完成"} {
+	for att, w := range map[protocol.Attention]string{protocol.Working: "进行中", protocol.NeedsYou: "待你处理", protocol.Blocked: "等待中", protocol.Done: "已完成", protocol.DoneClaimed: "已完成", protocol.Failed: "没完成"} {
 		if got := zh.tagLabel(att); got != w {
 			t.Errorf("%s: tag %q, want %q", att, got, w)
 		}

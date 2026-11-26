@@ -3,7 +3,7 @@
 Technically a task is an agent session (`motivation.md`), and every background session is fully
 open to the person whenever they want it. This note says how a person, or the partner on their
 behalf, finds the right earlier task, sees where it stopped, carries it on, or redoes it from one
-of its steps. It builds on 做过的事 / Past tasks (`past.md`, D285), 手头的事 / On hand (`on-hand.md`),
+of its steps. It builds on 做过的事 / Past tasks (`past.md`, D285), 任务 / Tasks (`on-hand.md`),
 continuity first (D373), carrying on outside sessions (D299, D376, D377) and the workbench
 (`workbench.md`). The audit, the field's evidence and the naming panels are in
 `research/155-sessions-open.md`. Words are the glossary's (`product-model.md`). On screen there is
@@ -95,8 +95,8 @@ superseded: the palette's own last rows say it to the partner). Mac and wide web
 card over the screen; phone: from On hand's Find, full width at the top, no key hints.
 
 - **No words:** the tasks the client knows, needs-you first, then working, then newest (up to 8),
-  then **去 / Go to**: 对话, 手头的事, 做过的事, 给你做的, 设备, 设置 with their keys.
-- **Words:** groups in order, each only when it has rows: **手头的 / On hand** (the client's own
+  then **去 / Go to**: 对话, 任务, 做过的事, 给你做的, 设备, 设置 with their keys.
+- **Words:** groups in order, each only when it has rows: **任务 / Tasks** (the client's own
   match, instant), **做过的 / Earlier** (core's Past index: every task, words in names, titles,
   tags, branches and PRs, files touched, the person's words, reports, agents and computers, time
   words; the row says where it matched), **给你做的 / Made for you** (D383), **你自己做过的 / Your
@@ -122,7 +122,7 @@ the right task.
   how it ended (at work: its newest words), +a −d and the PR, its last steps with their commits. No
   buttons: the foot holds the ways on. Its steps are asked once a row rests 140 ms. The card keeps
   one height while the words change; a wide row drops its outcome line. A task still on hand that
-  the index finds by a file, a branch or its words stands under 手头的 / On hand, with where it
+  the index finds by a file, a branch or its words stands under 任务 / Tasks, with where it
   matched. "By meaning" beyond
 words (synonyms, "the slow one") is the partner's job, in the conversation, through task_find
 plus its own judgement.

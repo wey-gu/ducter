@@ -1,12 +1,12 @@
 ---
-title: On hand
+title: Tasks
 description: See every task at a glance, by project and by what needs you, find one fast, and act on several at once, with the keyboard if you have one.
 order: 2.5
 ---
 
-# On hand
+# Tasks
 
-**On hand** (手头的事) lists everything your partner is doing for you. Open it from the button
+**Tasks** (任务) lists everything your partner is doing for you. Open it from the button
 in the conversation's header, or press ⌘2. It always opens on the whole list.
 
 ## Getting to what needs you
@@ -14,10 +14,10 @@ in the conversation's header, or press ⌘2. It always opens on the whole list.
 Wherever you see how many things need you, tap the number: "2 need you" under your partner's name,
 the small number on a partner's face, or the line **2 waiting on you ›** just above where you type
 (shown while what waits is out of sight). It takes you straight to the first one: a question your
-partner asked scrolls into view in the conversation; anything else opens On hand with that task
+partner asked scrolls into view in the conversation; anything else opens Tasks with that task
 picked out and briefly lit up. Tap again for the next one; after the last, it starts over.
 
-The way back is always at the top: **Conversation / On hand / …** on a Mac or a wide screen, **‹**
+The way back is always at the top: **Conversation / Tasks / …** on a Mac or a wide screen, **‹**
 on a phone. Esc goes back one step.
 
 ## What you see
@@ -44,7 +44,7 @@ the way to fix it right beside it:
 - it stopped without asking for anything: what your partner knows from its last words (for
   example, that its pull request was waiting on CI and nobody has looked since), and **Continue**.
 
-The number on your partner's face, on the app's icon and at the top of On hand is the same number:
+The number on your partner's face, on the app's icon and at the top of Tasks is the same number:
 everything listed under **Needs you**, and only that. A question leaves it when you answer it. A
 task that stopped, didn't work out or has a pull request ready to merge leaves it once you've opened
 it on that device; it then stands with the rest (a stopped one under **Waiting**, one that didn't
@@ -156,8 +156,8 @@ straight to a path. With a keyboard, the **up and down arrows** move, **Return**
 level and **⌘Return** adds. The button says what it will do, like **Add hawdb on Hetzner
 Server**. The new project appears in the column, ready for its first task.
 
-With one errand on hand, all of this stays out of the way: one row, and four small numbers.
-**Find a task…** appears once you have ten things on hand.
+With one errand in Tasks, all of this stays out of the way: one row, and four small numbers.
+**Find a task…** appears once you have ten things in Tasks.
 
 ## Talking to a task yourself
 
@@ -187,7 +187,7 @@ answer fold into one line you can open; what it says to you never folds away.
   in its **⋯**. **Pause** shows when you hover over a task at work. What shows on hover never
   covers the row's time. Pointing at a title shows the whole title only when the row had to
   shorten it.
-- On the full-screen On hand, **⌘-click** or **⇧-click** selects several tasks (or press **x**
+- On Tasks at full screen, **⌘-click** or **⇧-click** selects several tasks (or press **x**
   on a selected row). A bar at the bottom then offers what fits them: merge them, open draft
   PRs, pause them, or cancel them. Cancel asks you first.
 - On a wide window, opening a task keeps the list beside it, on the left, with the open task
@@ -195,7 +195,7 @@ answer fold into one line you can open; what it says to you never folds away.
   the next task and the one before, even while you're typing (on the Mac they're also in the
   View menu as **Next Task** and **Previous Task**). **j** and **k** do the same when you
   aren't typing. The open task's bar says where it is in the list (**3 / 9**), with a step to the
-  one before and after. **⌃1** to **⌃9** open the first to ninth task on hand. **⌘/** lists every
+  one before and after. **⌃1** to **⌃9** open the first to ninth task in Tasks. **⌘/** lists every
   key. **⌘⇧D** makes an open task **Compact** (your partner's picture small beside the title,
   more of the work on screen) and back. If you open the **Workbench** and the window is too narrow for all three, the
   Workbench takes the list's place until you close it. The Workbench belongs to the task you
@@ -227,7 +227,7 @@ watch on a log. Ducter shows these in the open task, just above where you type:
 - Click the heading to fold the list away; on a computer it stays the way you left it. On a
   phone the list starts folded.
 
-On hand says it too: a task at work with jobs still running shows **3 running in the
+Tasks says it too: a task at work with jobs still running shows **3 running in the
 background** in its row.
 
 ## At a glance
@@ -236,7 +236,7 @@ You don't have to open Ducter to know how things stand.
 
 - **On a Mac**, your partner sits in the menu bar as a small pebble. Its eyes look down while
   something is at work. When something needs you, a small orange dot appears beside it. It never
-  shows a number. Click it for the same one sentence On hand starts with, what needs you (answer
+  shows a number. Click it for the same one sentence Tasks starts with, what needs you (answer
   **Go** or **Hold** right there, or **Open the Task**), and **Open Ducter**. If you'd rather not
   have it, choose **Don't Show in the Menu Bar**; turn it back on in Settings › Look and sound ›
   **Show in the menu bar**.
@@ -245,7 +245,7 @@ You don't have to open Ducter to know how things stand.
   the menu bar pebble's menu or in View (if another app already uses those keys, the menu item says
   so, and the menu is the way to it). It shows your partner, one line (what it's doing while
   you wait, what it just said, or what needs you), how many things need you (click to see them in
-  On hand), and a field to say something or hold to talk. It never takes the keyboard from what
+  Tasks), and a field to say something or hold to talk. It never takes the keyboard from what
   you're typing in until you click its field. Press the same keys, click **Hide**, or press Esc in
   an empty field to put it away; it remembers where you put it. The first time you open a task's
   folder in your editor or terminal, it comes along by itself, once.
@@ -276,8 +276,8 @@ merge) is under **Needs you** instead, with its name, and the card only says how
 Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
 (each pull request with its own title and checks), every round (newest first, each in one plain line
 of what happened; **Details** shows what the task reported; the quiet ones fold into one line),
-and **How it runs**. To go back to the whole list, tap **On hand** at the top (or press Esc); when
-you leave On hand and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
+and **How it runs**. To go back to the whole list, tap **Tasks** at the top (or press Esc); when
+you leave Tasks and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.
 

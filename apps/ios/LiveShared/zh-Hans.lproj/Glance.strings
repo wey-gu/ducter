@@ -1,7 +1,7 @@
 /* D306: the Live Activity's words (packages/protocol/src/ambient.ts AMBIENT_WORDS). */
 "glance.phase.working" = "在做";
 "glance.phase.waiting" = "在等";
-"glance.phase.needs_you" = "等你";
+"glance.phase.needs_you" = "待你处理";
 "glance.phase.done" = "做完了";
 "glance.phase.failed" = "没成";
 "glance.phase.cancelled" = "已取消";

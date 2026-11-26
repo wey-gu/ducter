@@ -91,7 +91,7 @@
     <string name="glance_channel_about">你选了要跟着看的任务，和正在打的电话：只显示到了哪一步。</string>
     <string name="glance_working">在做</string>
     <string name="glance_waiting">在等</string>
-    <string name="glance_needs_you">等你</string>
+    <string name="glance_needs_you">待你处理</string>
     <string name="glance_done">做完了</string>
     <string name="glance_failed">没成</string>
     <string name="glance_cancelled">已取消</string>

@@ -38,7 +38,7 @@ func TestD309Partners(t *testing.T) {
 		t.Errorf("the other partner's own questions count here: %d", n)
 	}
 	tp := a.trayPartners()
-	if len(tp) != 1 || tp[0].Label != "换到小家，有 2 个等你" {
+	if len(tp) != 1 || tp[0].Label != "换到小家，有 2 个待你处理" {
 		t.Errorf("menu bar line: %+v", tp)
 	}
 	if a.needsWho() != "小家" {

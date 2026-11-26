@@ -35,7 +35,7 @@ the card that shows the accounts is a settings row.
 | **The cascade** watch → rules → cheap triage → partner (D97) | prose (§5.1 of Draft 3) | no | **no**: no triage, no stage-1 rules, no partner judge over finds anywhere in `packages/` (`grep triage` → 0) | no | no |
 | Watching a connection | prose | no | **partly**: an *event wait* or a routine's condition can read OpenConnector Provider Triggers (`connections.ts:811 readTrigger`, `waiters.ts` `event`), only when the user asked for a wait or a routine. **oo can't be watched at all**: `OO_NOT_WATCHABLE` (`connections.ts:383`, refused at :807) | waiters: `waiters.test.ts`, `work-over-time.test.ts` (fake triggers) | never against a live OpenConnector |
 | The attention bar (three tests) | prose | no | no | no | no |
-| At most 3 a day, batched into a morning message | prose | no | **no** for finds. What exists: the push coalescer sends **早上好。{n} 个等你。** for *decisions* left waiting over quiet hours (`push.ts:283`, `deliver` :486) | `push.test.ts` :267 | yes (decisions only) |
+| At most 3 a day, batched into a morning message | prose | no | **no** for finds. What exists: the push coalescer sends **早上好。{n} 个待你处理。** for *decisions* left waiting over quiet hours (`push.ts:283`, `deliver` :486) | `push.test.ts` :267 | yes (decisions only) |
 | Quiet hours | yes (D59) | yes | yes: `push.ts:135` (23:00–08:00 default), `inQuiet` :254; hold everything, release one push at the end | yes | yes |
 | Per-kind exception at night ("wake me for flight changes") | prose | no | no | no | no |
 | Opt-in watching at sign-in, one question with a default | prose | no | **no**: adding sends `connection_result` and a toast; the partner says nothing (`ws.ts:544–553`) | — | no |
@@ -506,7 +506,7 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
   through D159's encrypted path; previews follow the phone's own "显示预览" setting (no new
   Ducter setting). Tapping opens the note.
 - **Let be (D453):** an offer nothing came of fades at the next morning (or its date, if sooner): its
-  words stay, muted, with no button and no word about it; it never sat on 手头的事. It is not said
+  words stay, muted, with no button and no word about it; it never sat on 任务. It is not said
   again unless something changed (a later notice on it is still news). A "now" find not acted on
   quietly becomes **已跳过 / Passed** at its date, as before.
 

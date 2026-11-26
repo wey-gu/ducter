@@ -112,7 +112,7 @@ export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; 
   // Where and who from the start: the right column is never a dead "looking" state.
   askHow(true);
   A.sheet = { kind: "hand" };
-  // D498: from On hand's offer, the do group's list with the first few ticked (never all at once).
+  // D498: from Tasks's offer, the do group's list with the first few ticked (never all at once).
   if (o.pick) browse(true);
   A.changed();
 }

@@ -203,7 +203,7 @@ pleasantly surprising (the key they set on the Mac months ago just works on the 
 
 - a task calls `ask_for_key` and the variable isn't kept for it: Ducter asks the person's other
   connected computers whether they have it (a yes or no each); found, the task's card is a copy
-  card for it, and the task waits on it in **等你 / Needs you**, as for D233's key card;
+  card for it, and the task waits on it in **待你处理 / Needs you**, as for D233's key card;
 - the partner sees work on one computer needs a key the person has on another (a task's report, or
   their own words): `key_copy {env, from, to[]}` puts the card in the conversation.
 

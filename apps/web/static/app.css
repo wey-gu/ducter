@@ -123,6 +123,11 @@
   --t28: 1.75rem;
   --t34: 2.125rem;
   --lh-read: 1.55;
+  /* D586: an ask card's question (On hand's, an opened task's, a call's) in the reading face, one
+     step under D287's 20/800 heading, so a page of asks is calm and the head's sentence stands out. */
+  --ask-face: var(--font);
+  --ask-size: var(--lg);
+  --ask-weight: 600;
   --lh-voice: 1.65;
 
   /* One 4-pt spacing scale and one radius scale (same as the desktop's tokens). */
@@ -404,7 +409,6 @@ textarea {
 /* Titles and asks: 800, rounded CJK (D78), Latin tightened, CJK never. */
 .top .name,
 .living h2,
-.decision .q,
 .ask .q,
 .hello h1,
 .page-title,
@@ -1514,14 +1518,16 @@ a.task-link {
 .peerline .peer-ref {
   color: var(--ink);
 }
+/* D586: the shared ask card's question, from the tokens (the reading face, 18/600). */
 .decision .q {
-  font-size: var(--t20);
-  line-height: 1.35;
-  letter-spacing: -0.2px;
+  font-family: var(--ask-face);
+  font-size: var(--ask-size);
+  font-weight: var(--ask-weight);
+  line-height: 1.4;
+  letter-spacing: 0;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
 @media (max-width: 600px) {
-  .decision .q,
   .ask .q {
     font-size: var(--lg);
   }
@@ -23989,15 +23995,12 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
   align-self: start;
 }
 /* D544: an ask beside the conversation sits on the same inner edge as the rows (16, the section's
-   name over it), its question at the pane's heading size: a 442 column has no room for a poster. */
+   name over it); its question is the shared card's (D586). */
 .onhand-list.room-side .decision {
   padding-left: 16px;
   padding-right: 16px;
 }
-.onhand-list.room-side .decision .q {
-  font-size: var(--lg);
-  line-height: 1.35;
-}
+
 /* D544: the line that keeps a task in rounds who it is once its head is out of view: a slim clay
    strip just under the bar, on the reading column's edges; the lantern, 看守中, when the next round
    comes and which round, each its own element. It comes in with the enter motion (a 4pt drop and a

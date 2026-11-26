@@ -645,7 +645,7 @@ sees it. Visible only when:
   **登录** action on the card.
 
 **H-3: sign-in expires mid-task** (auth error; Raft rule: auth errors go to the user).
-1. Task → **等你 / Needs you**: "vps-1 上的 Claude Code 登录过期了。/ Claude Code on vps-1 is
+1. Task → **待你处理 / Needs you**: "vps-1 上的 Claude Code 登录过期了。/ Claude Code on vps-1 is
    signed out."
 2. **好，重新登录 / Go, sign in again** (opens the relayed login sheet) · **先等等** (default: the
    task waits, nothing lost) · **交给 Codex** (if available) · Reply.

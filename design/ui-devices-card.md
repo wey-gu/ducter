@@ -38,7 +38,7 @@ judgment.
 
 | # | What the author saw | Root cause |
 |---|---|---|
-| 1 | Paragraphs everywhere: the worker switch explains itself in four lines and prints `/Users/weyl/.ducter/worker.log`; **Ducter 还没验证过这个版本** under every agent; **它能为你做的：和 Ducter 说话 · 看手头的事 · 管理设备** | Every fact the system knows got a sentence, always visible. A helper that is only needed once (what the switch does) or only on failure (where the log is) is printed on every visit |
+| 1 | Paragraphs everywhere: the worker switch explains itself in four lines and prints `/Users/weyl/.ducter/worker.log`; **Ducter 还没验证过这个版本** under every agent; **它能为你做的：和 Ducter 说话 · 看任务 · 管理设备** | Every fact the system knows got a sentence, always visible. A helper that is only needed once (what the switch does) or only on failure (where the log is) is printed on every visit |
 | 2 | Name, kind line, **现在连着**, section labels, agent names, versions and warnings at nearly one weight | No hero. The card is a list of rows of 13–15pt text; the clay art lives only on the stage, not on the card |
 | 3 | **一台 Mac · 用 Ducter app 连着** and, with the switch on, **另一台电脑 · 替 Ducter 做事**, plus folded rows **Ducter app 也连着** / **命令行也连着**, each with its own ⋯ | Three ideas share the kind line: what the thing is, how it is connected, what it does. D155 folded the connections but each fold kept its own row and menu |
 | 4 | The ⋯ menu's **断开** popover covers the card; another orphan **断开** at the bottom | A floating menu inside a scrolling card, and two disconnects that mean different things (a connection, the whole computer) |

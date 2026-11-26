@@ -9,6 +9,7 @@ import { harnessName, usageShare, usageWeight } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Facts, TrayRow } from "./controls.tsx";
+import { glueTail } from "./i18n-usage.ts";
 import { modelName } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -91,5 +92,13 @@ export function UsageWhy({ harness, taskId }: { harness: string; taskId?: string
   const h = U.report?.harnesses.find((x) => x.harness === harness);
   if (!h?.top) return null;
   const name = harnessName(harness);
-  return <p class="back usage-why">{h.top.taskId === taskId ? t("usage.why.this", name, usageShare(h.top.share)) : t("usage.why", name, h.top.title, usageShare(h.top.share))}</p>;
+  const pct = usageShare(h.top.share);
+  const full = h.top.taskId === taskId ? t("usage.why.this", name, pct) : t("usage.why", name, h.top.title, pct);
+  const [before, glued] = glueTail(full, pct);
+  return (
+    <p class="back usage-why">
+      {before}
+      <span class="usage-glue">{glued}</span>
+    </p>
+  );
 }

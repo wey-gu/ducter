@@ -32,3 +32,16 @@ export const usageWords: { zh: Record<string, string>; en: Record<string, string
     "usage.why.this": "This task used the most of %s this week (%s)",
   },
 };
+
+/**
+ * The share never wraps alone onto a line of its own: it stays glued to the word (or, in Chinese,
+ * the characters) before it, as one unbreakable piece at the end of the line.
+ */
+export function glueTail(full: string, pct: string): [string, string] {
+  const i = full.lastIndexOf(pct);
+  if (i < 0) return [full, ""];
+  // A space before the bracket (English): the word before it goes along; else (Chinese) the two
+  // characters before the bracket.
+  const j = full[i - 2] === " " ? Math.max(0, full.lastIndexOf(" ", i - 3) + 1) : Math.max(0, i - 3);
+  return [full.slice(0, j), full.slice(j)];
+}

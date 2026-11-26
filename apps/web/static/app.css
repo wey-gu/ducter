@@ -25031,6 +25031,10 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+/* The share never wraps onto a line alone: glued to what comes before it. */
+.usage-glue {
+  white-space: nowrap;
+}
 @media (max-width: 599px) {
   .usage-tray .tray-main {
     min-height: 44px;

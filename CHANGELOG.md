@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.82 - 2026-11-26
+
+<!-- whats-new
+zh: 在任务里直接问它，回答就在问题下面，不再被折起来
+en: Ask a task directly, and its answer shows right under your question
+-->
+
+**Talking to a task yourself**
+- What you type in an opened task goes to its AI agent as you wrote it, and the answer shows right
+  under your question, in full, never folded into its steps.
+- A task that was done, waiting or asking you stays that way after you talk to it; it isn't sent
+  back to work or nudged to file a report.
+- Answering a task's question in the task no longer wakes your partner to answer it again in the
+  conversation.
+
 ## 0.1.81 - 2026-11-26
 
 <!-- whats-new

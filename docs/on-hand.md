@@ -159,6 +159,22 @@ Server**. The new project appears in the column, ready for its first task.
 With one errand in Tasks, all of this stays out of the way: one row, and four small numbers.
 **Find a task…** appears once you have ten things in Tasks.
 
+## Talking to a task yourself
+
+Open any task and type in the box under it: your words go to the AI agent doing that task, exactly
+as you wrote them, and its answer appears right under your message, in full. The steps it took to
+answer fold into one line you can open; what it says to you never folds away.
+
+- **While it works**, your message reaches it at its next step; under your message you see **It'll
+  see this at its next step**, then **Seen**. To wait until it's done instead, choose **After this
+  turn** from the send button's menu.
+- **When it's finished**, you can still ask it something or give it one more thing to do. A
+  question it answers leaves the task as it was: still done, still waiting for your answer, still
+  waiting on its check.
+- **Your partner stays out of it.** What you and the task say to each other stays in the task; your
+  partner doesn't repeat it in your conversation. It still tells you when the task finishes, gets
+  stuck or needs a decision from you.
+
 ## On a Mac, an iPad with a keyboard, or a browser
 
 - **j** and **k**, or the arrow keys, move through the list. **Enter** opens the selected task.

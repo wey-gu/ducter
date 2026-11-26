@@ -9,6 +9,7 @@ import type { Place } from "@ducter/protocol";
 import { cleanRel, portsSaid, langOf, type WbAnswer } from "@ducter/protocol/src/workbench.ts";
 import { confine, parseLsofListen, versionOf, wbHost, wbOp, WbFail, type WbCtx } from "../src/workbench.ts";
 import { userEditsNote } from "../src/brief.ts";
+import { DIRECT_NOTE } from "../src/direct.ts";
 
 let dir: string;
 beforeEach(() => void (dir = realpathSync(mkdtempSync(join(tmpdir(), "ducter-wb-")))));
@@ -220,12 +221,12 @@ test("through the runner: a folder task's file edited in the workbench; the task
     await waitFor(() => inputs.some((i) => i.includes("Looks good")), "second turn");
     const said = inputs.find((i) => i.includes("Looks good"))!;
     expect(said).toContain("the user edited index.html themselves");
-    expect(said).toEndWith("Looks good, carry on");
+    expect(said).toEndWith(`Looks good, carry on\n\n${DIRECT_NOTE}`);
     // Said once: the next message goes as it is.
     await Bun.sleep(30);
     await runner.send(card.taskId, "and the footer", undefined, "user");
     await waitFor(() => inputs.some((i) => i.includes("and the footer")), "third turn");
-    expect(inputs.find((i) => i.includes("and the footer"))).toBe("and the footer");
+    expect(inputs.find((i) => i.includes("and the footer"))).toBe(`and the footer\n\n${DIRECT_NOTE}`);
     // What the user typed is logged as they typed it.
     expect(core.events.some((e) => e.kind === "task_event" && (e.body as { text?: string }).text === "Looks good, carry on")).toBe(true);
   } finally {

@@ -10,6 +10,7 @@ import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { createRunner, registerTaskTools, slashOf } from "../src/index.ts";
 import { handedBack, handedOver } from "../src/brief.ts";
+import { DIRECT_NOTE } from "../src/direct.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 class FakeSession implements HarnessSession {
@@ -119,7 +120,7 @@ describe("the same agent, another model or effort: lossless", () => {
     expect(await runner.send(id, "carry on", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "sonnet", effort: "high", resumeSessionId: "claude-code-1" });
     // No seed: the session remembers everything; the person's words go as they are.
-    expect(fake.sessions[1]!.sent[0]!.text).toBe("carry on");
+    expect(fake.sessions[1]!.sent[0]!.text).toBe(`carry on\n\n${DIRECT_NOTE}`);
     expect(sys(id).find((b) => (b.raw as any)?.retuned)?.raw).toEqual({ retuned: { harness: "claude-code", model: "sonnet", effort: "high" } });
     // Another model without an effort runs at its own default (D202).
     await runner.switchBody!(id, "claude-code", "opus");
@@ -172,7 +173,7 @@ describe("another agent: condensed carry-over, or its own session back", () => {
     expect(first).toContain("Its last report (needs_input): Two fixes possible.");
     expect(first).toContain("It asked: Remove the retry? (default: remove it)");
     expect(first).toContain("The last thing it said: The retry wrapper hides the race.");
-    expect(next).toEndWith("remove it, and keep the log line");
+    expect(next).toEndWith(`remove it, and keep the log line\n\n${DIRECT_NOTE}`);
     expect(sys(id).find((b) => (b.raw as any)?.switched)?.raw).toEqual({ switched: { from: "claude-code", to: "codex", effort: "high" } });
     await runner.dispose();
   });

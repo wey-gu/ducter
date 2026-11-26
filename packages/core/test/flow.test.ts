@@ -319,3 +319,35 @@ test("D584: a routine's silent rounds stay out of the living message; one line f
     ["t1", "done"],
   ]);
 });
+
+test("D585: the person's own words in a task close its question without waking the partner; a direct progress report stays out of the living message", async () => {
+  const { triggersPartner } = await import("../src/core.ts");
+  const { log, decisions, tasks } = setup();
+  openTask(log, "t1", "Open the mailbox");
+  report(log, "t1", { state: "needs_input", summary: "Which Space?", questions: [{ id: "q", text: "Which Space?", blocking: true, default: "dev-team", reversible: true }] });
+  await tick();
+  // hel 2026-11-22: 「都有哪些 space?」 typed in the task resolved the card and woke the partner, which
+  // answered it in the conversation while the task answered it too.
+  decisions.answeredByMessage("t1", "都有哪些 space?", "user");
+  const r = kinds(log, "decision_resolved").at(-1)!;
+  expect(r.body).toMatchObject({ option: "reply", by: "user", inTask: true });
+  expect(triggersPartner(r)).toBe(false);
+  // The card is not moved: the runner sets it working as the person's turn starts (and knows where it stood).
+  await tick();
+  expect(tasks.get("t1")!.attention).toBe("needs_you");
+  // A card answered in the conversation still wakes it.
+  expect(triggersPartner({ ...r, body: { ...(r.body as Bodies["decision_resolved"]), inTask: undefined } } as never)).toBe(true);
+  // The partner's own task_send answering a question closes it as before, without inTask.
+  report(log, "t1", { state: "needs_input", summary: "Which branch?", questions: [{ id: "q2", text: "Which branch?", blocking: true, default: "main", reversible: true }] });
+  await tick();
+  decisions.answeredByMessage("t1", "main", "partner");
+  expect((kinds(log, "decision_resolved").at(-1)!.body as Bodies["decision_resolved"]).inTask).toBeUndefined();
+
+  // The answer made as a progress report in the person's own turn: on the task, not again in the living message.
+  openTask(log, "t2", "Review #551");
+  const before = kinds(log, "living_msg").length;
+  report(log, "t2", { state: "progress", summary: "Not yet: GitHub shows no review from me on #551.", direct: true });
+  await tick();
+  const items = kinds(log, "living_msg").slice(before).flatMap((e) => (e.body as Bodies["living_msg"]).items);
+  expect(items.some((i) => i.taskId === "t2")).toBe(false);
+});

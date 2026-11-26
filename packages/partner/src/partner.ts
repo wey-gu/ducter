@@ -453,7 +453,8 @@ function isTrigger(e: LogEvent): boolean {
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
+  // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
   if (e.kind === "waiter") {

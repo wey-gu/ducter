@@ -67,6 +67,11 @@ type Work struct {
 	Failed   int `json:"failed"`
 }
 
+// saidOut is what the agent said to the person in a turn they opened with
+// their own words (its words, its reports): never folded (D585, protocol's
+// stepview.ts saidOut).
+func saidOut(b *Block) bool { return b.K == "voice" || b.K == "report" }
+
 func workOf(blocks []Block) Work {
 	var w Work
 	for bi := range blocks {

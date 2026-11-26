@@ -10,6 +10,7 @@ import { afterCompaction, createOarHarnessPort, createRunner, NUDGE, PRECOMPACT_
 import { git, worktreeFor } from "../src/places.ts";
 import { askBeforeWriting } from "../src/runner.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
+import { DIRECT_NOTE } from "../src/direct.ts";
 
 // ---------- helpers ----------
 
@@ -512,7 +513,7 @@ describe("send: steer vs queue", () => {
     const first = fake.sessions[1]!.sent[0]!.text;
     expect(first).toContain("started by Codex");
     expect(first).toContain("found the failing test");
-    expect(first).toEndWith("src/a.ts");
+    expect(first).toEndWith(`src/a.ts\n\n${DIRECT_NOTE}`);
     // The transcript shows the user's words, not the seed.
     expect(taskEvents(card.taskId).filter((e) => e.role === "user").at(-1)!.text).toBe("src/a.ts");
     expect(runner.sessionId(card.taskId)).toBe("fake-2");
@@ -607,7 +608,7 @@ describe("protocol v2: logging, usage, recovery", () => {
     let loggedFirst = false;
     const orig = s.send.bind(s);
     s.send = async (text, mode) => {
-      loggedFirst = taskEvents(card.taskId).some((e) => e.role === "user" && e.text === text && e.from === "user");
+      loggedFirst = taskEvents(card.taskId).some((e) => e.role === "user" && e.text && text.startsWith(e.text) && e.from === "user");
       return orig(text, mode);
     };
     expect(await runner.send(card.taskId, "use src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
@@ -663,7 +664,7 @@ describe("protocol v2: logging, usage, recovery", () => {
     // The waiting task resumes its own session when the user answers.
     expect(await r2.send(b.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake2.specs[1]!.resumeSessionId).toBe("fake-2");
-    expect(fake2.sessions[1]!.sent).toEqual([{ text: "src/a.ts", mode: "turn" }]);
+    expect(fake2.sessions[1]!.sent).toEqual([{ text: `src/a.ts\n\n${DIRECT_NOTE}`, mode: "turn" }]);
     await r2.dispose();
   });
 });
@@ -716,7 +717,7 @@ describe("send to a parked task (live regression)", () => {
     ]);
     release();
     expect(await p).toEqual({ delivered: "prompted" });
-    expect(fake.sessions[1]!.sent).toEqual([{ text: "answer: b.ts", mode: "turn" }]);
+    expect(fake.sessions[1]!.sent).toEqual([{ text: `answer: b.ts\n\n${DIRECT_NOTE}`, mode: "turn" }]);
     expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toHaveLength(1);
     await runner.dispose();
   });
@@ -771,7 +772,7 @@ describe("interrupt (live regression)", () => {
     s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
     await waitFor(() => s.sent.length === 3, "both delivered after the stop");
     expect(s.sent[1]).toEqual({ text: expect.stringContaining("Your loan of Pixel Fold ended"), mode: "turn" });
-    expect(s.sent[2]!.text).toBe("你还在么？");
+    expect(s.sent[2]!.text).toBe(`你还在么？\n\n${DIRECT_NOTE}`);
     const said = taskEvents(card.taskId).filter((e) => e.role === "user" && e.from === "user");
     expect(said.map((e) => [e.text, e.clientId])).toEqual([["你还在么？", "c1"]]);
     expect(core.tasks.get(card.taskId)!.attention).toBe("working");
@@ -832,7 +833,7 @@ describe("idle parking (soak regression)", () => {
     expect(core.tasks.get(card.taskId)!.attention).toBe("done_claimed"); // attention is untouched
     expect(await runner.send(card.taskId, "one more thing", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]!.resumeSessionId).toBe("fake-1");
-    expect(fake.sessions[1]!.sent).toEqual([{ text: "one more thing", mode: "turn" }]);
+    expect(fake.sessions[1]!.sent).toEqual([{ text: `one more thing\n\n${DIRECT_NOTE}`, mode: "turn" }]);
     await runner.dispose();
   });
 
@@ -885,7 +886,7 @@ describe("D325: the person's held words and their steers seen", () => {
     s.busyFlag = false;
     s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
     await waitFor(() => s.sent.length === 2, "the held words as the next turn");
-    expect(s.sent[1]).toEqual({ text: "then the docs\n\nand a unit test", mode: "turn" });
+    expect(s.sent[1]).toEqual({ text: `then the docs\n\nand a unit test\n\n${DIRECT_NOTE}`, mode: "turn" });
     expect(userWords(card.taskId).map((b) => [b.text, b.clientId, (b.raw as { delivered?: string }).delivered])).toEqual([
       ["then the docs", "c1", "turn"],
       ["and a unit test", "c2", "turn"],
@@ -904,14 +905,14 @@ describe("D325: the person's held words and their steers seen", () => {
     await runner.send(card.taskId, "one", "queue", "user", "a1");
     await runner.send(card.taskId, "two", "queue", "user", "a2");
     expect(await runner.held!(card.taskId, "a2", "now")).toEqual({ delivered: "steered" });
-    expect(s.sent.at(-1)).toEqual({ text: "two", mode: "steer" });
+    expect(s.sent.at(-1)).toEqual({ text: `two\n\n${DIRECT_NOTE}`, mode: "steer" });
     // Stopped: nothing drains.
     s.busyFlag = false;
     s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
     await Bun.sleep(30);
     expect(heldOf(card.taskId)!.held.map((h) => h.id)).toEqual(["a1"]);
     expect(await runner.held!(card.taskId, "a1", "now")).toEqual({ delivered: "prompted" });
-    expect(s.sent.at(-1)).toEqual({ text: "one", mode: "turn" });
+    expect(s.sent.at(-1)).toEqual({ text: `one\n\n${DIRECT_NOTE}`, mode: "turn" });
     await runner.dispose();
   });
 
@@ -927,7 +928,7 @@ describe("D325: the person's held words and their steers seen", () => {
     await expect(runner.held!(card.taskId, "n1", "now")).rejects.toThrow(/can't take words/);
     s.busyFlag = false; // e.g. stopped: still held
     expect(await runner.send(card.taskId, "and the config", undefined, "user", "n2")).toEqual({ delivered: "prompted" });
-    expect(s.sent.at(-1)).toEqual({ text: "look at the logs\n\nand the config", mode: "turn" });
+    expect(s.sent.at(-1)).toEqual({ text: `look at the logs\n\nand the config\n\n${DIRECT_NOTE}`, mode: "turn" });
     expect(userWords(card.taskId).map((b) => b.text)).toEqual(["look at the logs", "and the config"]);
     await runner.dispose();
   });

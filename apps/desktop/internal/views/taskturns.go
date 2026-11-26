@@ -166,7 +166,11 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 	// D530: the turn's work (everything before its last words; all of it
 	// while it works) under one quiet head: folded once the turn is done,
 	// open while it works.
-	from := 0
+	// D585: a turn the person opened with their own words is a conversation
+	// with them: the fold holds its steps only; what the agent said to them
+	// (its words, a report) stays out, in order.
+	asked := tu.Prompt != nil && tu.Prompt.K == "you"
+	from, folded := 0, 0
 	if end := workEnd(tu, live); end > 0 {
 		key := fmt.Sprintf("turn:%s:%d", task.ID, tu.Seq)
 		open := a.open[key]
@@ -174,6 +178,9 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 			open = !a.open[key+":shut"]
 		}
 		w := workOf(tu.Body[:end])
+		if asked {
+			w.Messages = 0
+		}
 		if a.workHead(c, key, a.workWords(w), w.Failed, live, open) {
 			if live {
 				a.open[key+":shut"] = open
@@ -183,10 +190,16 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 		}
 		if !open {
 			from = end
+			if asked {
+				from, folded = 0, end
+			}
 		}
 	}
 	for i := from; i < len(tu.Body); i++ {
 		b := &tu.Body[i]
+		if i < folded && !saidOut(b) {
+			continue // folded: only what it said to the person shows (D585)
+		}
 		if b.K == "note" && b.Say == "retry" {
 			continue // the working line says it while it is the latest
 		}

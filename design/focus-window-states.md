@@ -60,6 +60,11 @@ partner sees it marked and sends the task back. A worker's refs are not checked 
 
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
 status"). If there is still no report, the stall rule applies.
+**The person's own turn (D585):** a turn U opened with their own words in the task's box is a
+conversation with U, answered under their words; ending with no report it is neither nudged nor a
+miss, and C puts the card back where it stood when they wrote (`done`, `done?`, `failed`,
+`blocked`, `needs-you`). A task that stood at `working` still owes its report on its own work.
+U's words closing its question (`inTask`) wake nobody and leave the card to the runner.
 C never guesses `done`. **Resting on its own wait (D394):** a turn that armed a wait of the
 task's own (`wait_for`) and ends with it still armed owes no report: it is neither nudged nor a
 miss, so a repeating round that found nothing new stays silent instead of being pushed into a

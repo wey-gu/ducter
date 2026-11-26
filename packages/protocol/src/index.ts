@@ -499,7 +499,7 @@ export interface Bodies {
   // D539: a key copied between the person's computers on their Go (names only, never a value), or
   // one removed from a computer in Settings (removed: that computer's name, by "user").
   key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -593,6 +593,9 @@ export interface Bodies {
     look?: import("./fresh-look.ts").FreshLook;
     /** D439: set by Ducter (never the task): the document it shows was checked page by page; `left` is what is still so. */
     doc?: import("./doc-bar.ts").DocCheck;
+    /** D585: set by Ducter (never the task): made in a turn the person opened with their own words in
+     *  the task. They read it there; a progress one stays out of the living message. */
+    direct?: true;
   };
   /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
   checkpoint: { taskId: string; text: string; gitRef?: string; owns?: string[] };

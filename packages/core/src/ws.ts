@@ -2392,7 +2392,11 @@ export function createWsHandler(deps: WsDeps) {
         if (!k) throw new Error("looking after is not available");
         const id = String(f.id ?? "").slice(0, 64);
         const page = k.page(id);
-        send(ws, { t: "keep_result", id, ...(page ? { keep: page } : {}) });
+        // D620: a URL a partner turned on is revealed to the page once (the plaintext is not
+        // in the Log or the sheet); a later open says it is on and offers a new one.
+        const bell = k.takeBell(id);
+        const keep = page && bell && page.bell ? { ...page, bell: { ...page.bell, url: bell.url } } : page;
+        send(ws, { t: "keep_result", id, ...(keep ? { keep } : {}) });
         return;
       }
       case "keep_change": {
@@ -2405,10 +2409,10 @@ export function createWsHandler(deps: WsDeps) {
         const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
         const at = c0.at && typeof c0.at === "object" ? (c0.at as KeepChange["at"]) : undefined;
         const change: KeepChange = Object.fromEntries(
-          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at }).filter(([, v]) => v !== undefined),
+          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at, bell: str(c0.bell) }).filter(([, v]) => v !== undefined),
         );
         const r = await k.change(kid, change, { by: "you", undo: f.undo === true }).catch((err: Error) => ({ ok: false as const, error: err.message }));
-        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
+        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(r.bell ? { bell: r.bell } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
         const page = k.page(kid);
         send(ws, { t: "keep_result", id: kid, ...(page ? { keep: page } : {}) });
         ongoingChanged();

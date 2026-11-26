@@ -338,5 +338,5 @@ export type PastServerFrame =
   // D511: a Keep's page; absent: no Keep by that id for this partner.
   | { t: "keep_result"; id: string; keep?: import("./keeps.ts").KeepPage }
   // D533: an edit's result (each field from and to, and the change that undoes it), and the rules read from edited words.
-  | { t: "keep_changed"; id: string; ok: boolean; error?: string; edits?: import("./keeps.ts").KeepEdit[]; undo?: import("./keeps.ts").KeepChange; undone?: boolean }
+  | { t: "keep_changed"; id: string; ok: boolean; error?: string; edits?: import("./keeps.ts").KeepEdit[]; undo?: import("./keeps.ts").KeepChange; undone?: boolean; bell?: import("./keeps.ts").KeepBellUrl }
   | { t: "keep_proposal"; id: string; proposal: import("./keeps.ts").KeepProposal };

@@ -13,6 +13,7 @@ import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 import { Qr } from "./phone.tsx";
 import { arrived, lendHead, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
+import { copy } from "./conv-copy.ts";
 import type { DeviceView } from "@ducter/protocol";
 import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
 import { anyInstalling, anyReady, offerable } from "./agent-setup-view.ts";
@@ -44,7 +45,9 @@ export function LendCard() {
 
 export function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | "check" }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => void navigator.clipboard?.writeText(text).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1800))).catch(() => undefined);
+  // D254's copy: the Clipboard API, then the old hidden-field way on a plain-http home (a LAN, a
+  // tunnel without a secure context): a doorbell URL is copied where the home is reached.
+  const doCopy = () => void copy(text).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 1800)));
   return (
     <div class={`lend-copy ${kind}`}>
       {kind === "line" && (
@@ -53,7 +56,7 @@ export function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | 
         </span>
       )}
       <code>{text}</code>
-      <Btn kind="secondary" size="sm" label={t(copied ? "lend.copied" : "lend.copy")} onClick={copy} />
+      <Btn kind="secondary" size="sm" label={t(copied ? "lend.copied" : "lend.copy")} onClick={doCopy} />
     </div>
   );
 }

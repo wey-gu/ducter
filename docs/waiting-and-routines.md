@@ -83,6 +83,23 @@ keeps the rules as they are. Every change, yours or your partner's, is written a
 ("You changed every 45 minutes to every hour"); undoing a change takes its line away. Its next round follows it. No change, by hand
 or in words, lets it send, pay or delete without asking you.
 
+## Ring it from outside
+
+> A CI job, a GitHub webhook or a script on another server should say "something changed, look
+> now" rather than wait for the next round.
+
+Open the Keep's page and, under **How it runs**, turn on **Doorbell**. Ducter shows a secret URL
+once, with Copy and a `curl` example. Anything that can reach your Ducter can `POST` to it; the
+request's body is ignored, and only the ring wakes the Keep for a round. A short note in the
+`X-Ducter-About` header (60 characters) is kept on that round so you know who rang; it is shown as
+the caller's words and never as an instruction. Many rings within a minute are one round, and a
+round already running absorbs them.
+
+The URL is a secret: anyone who has it can ring (nothing more). **Make a new URL** stops the old one
+at once; **Turn it off** closes it. It works wherever your Ducter is reachable — on your own network,
+or at the remote address you already use (see [From outside](phone.md#from-outside)); it does not open a new
+tunnel.
+
 ## "Remind me …" and what you said you'd do
 
 > Remind me at 3 this afternoon to pay the landlord.

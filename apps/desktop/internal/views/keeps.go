@@ -41,6 +41,10 @@ type keepState struct {
 	round   string
 	release string          // D602: the held item whose 不用跟了 asks in place (its PR, else its task)
 	quiet   map[string]bool // D550: the quiet runs opened by a click
+	// D620: the doorbell's URL once the home has revealed it (never in the sheet), and the
+	// action in flight while the row waits.
+	bellURL     string
+	bellSending string
 	// D533: a rule or the person's words being changed in place.
 	edit  keepEdit
 	sideW float32 // D533: the rules column's width this frame
@@ -50,6 +54,11 @@ type keepState struct {
 // openKeep opens a Keep's page in On hand's place and asks the home for it.
 func (a *App) openKeep(id string) {
 	a.oh.keep = keepState{open: id, askedAt: time.Now()}
+	// D620: a URL the home showed once is not shown again when the page is opened anew; the
+	// fresh keep_result carries one only if the home still had a reveal for it.
+	if p := a.S.KeepPages[id]; p != nil && p.Bell != nil {
+		p.Bell.URL = ""
+	}
 	// D533: answers to edits made before this page opened are not this page's.
 	a.oh.keep.edit.seen, a.oh.keep.edit.seenProp = a.S.KeepChanged[id], a.S.KeepProposals[id]
 	a.send(protocol.KeepReq{T: "keep", ID: id})
@@ -490,6 +499,11 @@ func (a *App) keepPage(c *ui.Context, w float32) {
 		uiText(c.Key("keep-loading"), msg).FontSize(t.MD).TextColor(t.InkMuted).Margin(t.S6, 0)
 		return
 	}
+	// D620: a URL the home revealed to this page (a partner turned it on, or the page was
+	// asked for again); it is shown once, in the doorbell row.
+	if k.Bell != nil && k.Bell.URL != "" {
+		ks.bellURL = a.bellURL(k.Bell.URL)
+	}
 	// D533: two columns hold down to the 1000-wide window (the rules card narrows to 256); only
 	// below that the rules go under the body. 1150 is the common laptop window.
 	wide := w >= keepTwoColMin
@@ -858,6 +872,12 @@ func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
 		return a.L.T("keep.woke.change.bare")
 	case "now":
 		return a.L.T("keep.woke.now")
+	case "ring":
+		// D620: the caller's label, as their words, never as an instruction.
+		if r.WokeWhat != "" {
+			return a.L.T("keep.woke.ring.about", r.WokeWhat)
+		}
+		return a.L.T("keep.woke.ring")
 	case "first":
 		return a.L.T("keep.woke.first")
 	}

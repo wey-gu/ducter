@@ -39,6 +39,13 @@ export type KeepFrom = { kind: "loop"; taskId: string } | { kind: "routine"; rou
 /** How a Keep came to be: made as one (keep_make), or carried over on start from an older record. */
 export type KeepMade = "keep_make" | "task_loop" | "routine" | "helpers.json";
 
+/** D620: a Keep's doorbell, on when this is present. The token is never here: it lives in the
+ *  home's 0600 doorbells file, and the Log holds only when it was turned on. */
+export interface KeepBell {
+  /** When this URL was made (turning it on, or the last regenerate). */
+  at: string;
+}
+
 /** One Keep as the home keeps it (`keep` on stream keep:<keepId>). */
 export interface KeepBody {
   keepId: string;
@@ -79,6 +86,8 @@ export interface KeepBody {
   /** D593: the one-off ask the round under way took from `next`: said again to that round if its
    *  context is compacted, and gone at the next wake. Never carried into a second round. */
   now?: { text: string; at: string };
+  /** D620: its doorbell (a secret URL off this home). Absent: off. The token is not here. */
+  bell?: KeepBell;
 }
 
 /** One thing a Keep holds now: a task at work on it, with the PR it owns and where that PR stands. */
@@ -98,8 +107,10 @@ export interface KeepItem {
 /** One round: one wake, what it did, and whether it spoke. Facts only; `did` is the round's own line. */
 export interface KeepRound {
   at: string;
-  /** time: its rhythm or its clock; arrival: work handed to it; change: a watched fact changed; now: the person's Look now; first: its first look; edit (D533, not a wake): the person or the partner changed it, `edit` says what. */
-  woke: "time" | "arrival" | "change" | "now" | "first" | "edit";
+  /** time: its rhythm or its clock; arrival: work handed to it; change: a watched fact changed; now: the
+   *  person's Look now; ring: a doorbell rung from outside (D620); first: its first look;
+   *  edit (D533, not a wake): the person or the partner changed it, `edit` says what. */
+  woke: "time" | "arrival" | "change" | "now" | "ring" | "first" | "edit";
   /** What woke it, in words where there are some (#11030's CI; Codex). */
   wokeWhat?: string;
   /** D560: `wokeWhat` is a condition that came true (a check's or a judged wait's words, a condition
@@ -153,6 +164,16 @@ export const KEEP_CAP_MAX = 30;
 export const KEEP_TITLE_MAX = 48;
 export const KEEP_RULE_MAX = 200;
 export const KEEP_SAID_MAX = 2000;
+/** D620: a doorbell's label (the caller's "about" header) is at most this many printable
+ *  characters; it is shown to the person, never read into the model. */
+export const BELL_ABOUT_MAX = 60;
+/** D620: rings this close together wake one round. */
+export const BELL_COALESCE_MS = 60_000;
+/** D620: a ring counts for a round this soon after it (the shared round's wake). */
+export const BELL_JOIN_MS = 2 * 60_000;
+/** D620: the most rings one Keep takes a minute; past it, 429. */
+export const BELL_RATE_MAX = 20;
+export const BELL_RATE_WINDOW_MS = 60_000;
 
 /** A Keep on On hand: one sheet under 看守中 / Looking after (the home's one model of its state). */
 export interface KeepSheet {
@@ -193,6 +214,8 @@ export interface KeepSheet {
   pausedUntil?: string;
   /** Its address in Bridge (a helper): a detail of the Keep, never its home. */
   address?: { name: string; mem: HelperMem; detail?: string; /** D604: the Spaces it receives in, by label, once read. */ spaces?: string[] };
+  /** D620: its doorbell is on (the URL is never in a sheet; only a page may reveal it once). */
+  bell?: KeepBell;
   since: string;
   endedAt?: string;
 }
@@ -222,6 +245,8 @@ export interface KeepPage extends KeepSheet {
   agent?: string;
   /** D609: every hand-off this Keep (a helper) has held, its states included: 手上的事 grouped by state. */
   handoffs?: import("./handoff.ts").HandoffLine[];
+  /** D620: its doorbell; `url` only in the one page that reveals it (never in a sheet). */
+  bell?: KeepBell & { url?: string };
 }
 
 /** What 暂停 / Pause, 恢复 / Resume, 立即运行 / Run now and 结束看守 / End (D592) do to a Keep. */
@@ -345,10 +370,19 @@ export interface KeepChange {
    *  words ("把 mem#11393 交给 Babysitter"): written to its address on this home, so one of its tasks
    *  takes it at once. Not an edit of its rules. */
   hand?: string;
+  /** D620: its doorbell: on (make one if it has none), off, or new (a fresh URL; the old one
+   *  stops working at once). One optional field; the URL is never in a tool result. */
+  bell?: "on" | "off" | "new";
+}
+
+/** D620: what a doorbell changes: the URL, only in the frame that made it (a page's own
+ *  turn-on or regenerate). Never in a sheet, a list or a partner tool's answer. */
+export interface KeepBellUrl {
+  url: string;
 }
 
 /** D533: what a change did: each field from and to, and the change that puts it back (Undo). */
-export type KeepChanged = { ok: true; keep: KeepBody; edits: KeepEdit[]; undo?: KeepChange } | { ok: false; error: string };
+export type KeepChanged = { ok: true; keep: KeepBody; edits: KeepEdit[]; undo?: KeepChange; bell?: KeepBellUrl } | { ok: false; error: string };
 
 /** D533: the rules the cheap model read from the person's edited words, shown as a diff before one Go. */
 export type KeepProposal = { ok: true; said: string; change: KeepChange; edits: KeepEdit[] } | { ok: false; said: string; error: string };
@@ -370,6 +404,15 @@ export interface KeepsApi {
   make(input: KeepMakeInput): Promise<{ ok: true; keep: KeepBody; card: KeepCard } | { ok: false; error: string }>;
   /** One path for the partner's keep_change and the person's edit on the page (D533): checked in code, recorded as a line among its rounds. */
   change(id: string, c: KeepChange, o?: { by?: "you" | "partner"; undo?: boolean }): Promise<KeepChanged>;
+  /**
+   * D620: a ring from outside, by its secret token (a hash in the home's 0600 doorbells
+   * file). It never reads a body: at most `label`, the caller's declared "about", is kept on the
+   * ring's round. `ok` also covers a ring that was coalesced, absorbed by a round under way, or
+   * ignored because the Keep isn't on; only a token that isn't one of ours is `notfound`.
+   */
+  ring(token: string, label?: string): Promise<"ok" | "notfound" | "limited">;
+  /** D620: the URL a page may reveal once (a partner turned it on), and it is spent. */
+  takeBell(id: string): KeepBellUrl | undefined;
   /** D533: the person's edited words read once by the cheap model into the rules they change (nothing applied). */
   propose(id: string, said: string): Promise<KeepProposal>;
   /** Every mechanism's record without a Keep gets one; every Keep's life follows its mechanism. */

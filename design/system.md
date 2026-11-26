@@ -336,6 +336,31 @@ changes.
   not, and Ducter says so. On a server, the account Ducter runs as is the boundary: an ordinary
   user by default, never root unless the person asks (D549).
 
+### A doorbell is a bearer URL, and it can only ring (D620)
+
+A Keep that runs a round may have a doorbell (D620): `POST /doorbell/<token>` from a CI job, a
+webhook, a cron on another server or a phone shortcut. It sits before the device gate, like a
+picture's bytes, because the caller has no device token. What it can do is one thing: wake that
+Keep's next round now. It cannot read, write, decide or reach another Keep.
+
+- **The token is the credential.** 32 random bytes, `db1_` + base64url; only its SHA-256 is kept
+  (`<dataDir>/doorbells.json`, 0600), never the Log (a task can read the Log). A page may reveal the
+  plaintext once when it is made (or once after a partner made it); Regenerate replaces the hash, so
+  the old URL stops at once; Turn off deletes it, and so does the Keep ending.
+- **The body is never read.** No `text()`, `json()` or buffer: the request's body does not exist to
+  Ducter. At most `X-Ducter-About` (60 printable characters, control and bidi characters gone) is
+  kept on the ring's round for the person, shown as the caller's words and marked untrusted; the
+  model hears only a static line ("a doorbell rang; look now"), never the label.
+- **A wrong token is a 404** with the same status, body and headers as a path that doesn't exist,
+  and every stored hash is compared (constant-time) before that answer: the URL cannot be probed by
+  timing. A valid token is rate-limited (20 a minute, 429) and coalesced (rings within a minute are
+  one round); a round under way absorbs them.
+- **No new reach.** The URL is built from the address the home already has (the primary way in the
+  reach book), else from where the client reached the home; a home with no From outside gets a URL
+  that works on its own network only, and the page says so. Nothing opens a tunnel.
+- **D61 holds.** A ring is an untrusted source asking for a wake, never for an effect: the round it
+  wakes goes through the same Go cards and the same floor as any other round.
+
 ### Who counts as local, and what that allows
 
 - **Local** means: the TCP peer is loopback, the `Host` is loopback, and no proxy header is

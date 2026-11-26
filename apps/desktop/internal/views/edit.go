@@ -34,6 +34,9 @@ type editRowOpts struct {
 	last                     bool
 	editor                   func()
 	onOpen, onSave, onCancel func()
+	// foot, when set, draws the row's own action foot in place of 保存/取消 (the doorbell's quiet
+	// actions and one primary Done).
+	foot func()
 }
 
 // editRow is a rule's row: XS 700 muted label at the text edge, its value
@@ -106,6 +109,10 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 			}
 			if o.err != "" {
 				uiText(c.Key("err"), o.err).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
+			}
+			if o.foot != nil && !o.saving {
+				o.foot()
+				return
 			}
 			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Margin(2, 0, 0, 0).Children(func() {
 				if o.saving {

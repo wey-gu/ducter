@@ -16286,7 +16286,7 @@ svg .wave.w2.on {
 .lend-steps li { counter-increment: step; display: flex; align-items: center; gap: var(--s2); font-size: var(--sm); font-weight: 700; line-height: 1.35; color: var(--ink); }
 .lend-steps li::before { content: counter(step); flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--sm); font-weight: 800; }
 .lend-copy.line { background: var(--ink); padding: var(--s2) var(--s2) var(--s2) var(--s4); }
-.lend-copy.line .prompt { flex: none; font-family: var(--mono); font-weight: 800; color: var(--accent); }
+.lend-copy.line .prompt { flex: none; align-self: flex-start; font-family: var(--mono); font-size: var(--sm); line-height: 1.5; font-weight: 800; color: var(--accent); }
 .lend-copy.line code { color: var(--bg); font-size: var(--sm); font-weight: 700; }
 .lend-copy.ghost { min-height: 64px; background: var(--surface-sunken); }
 .lend-copy.check code { font-size: var(--xs); }
@@ -22991,6 +22991,8 @@ html[data-text-size="large"] .brand-mark > svg {
   flex-wrap: wrap;
   gap: var(--s2);
 }
+/* D620: a row of its own with a quiet left and one primary on the right (the doorbell). */
+.er-acts .end { margin-left: auto; }
 .num-field {
   display: flex;
   align-items: center;

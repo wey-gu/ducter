@@ -35,6 +35,8 @@ type keepEdit struct {
 	// change's result, said under the rules.
 	seen, seenProp *protocol.KeepEditFrame
 	status         *protocol.KeepEditFrame
+	// statusFull: the last change's long line shown whole (D592: two lines, then 展开).
+	statusFull bool
 	// words: 你说的 is being edited; reading: its words went to be read;
 	// proposal: what came back.
 	words    bool
@@ -55,7 +57,7 @@ func (a *App) keepEditSync(id string) {
 				e.open = ""
 				e.words, e.proposal, e.err, e.errAt = false, nil, "", ""
 				if len(f.Edits) > 0 || f.Undone {
-					e.status = f
+					e.status, e.statusFull = f, false
 				}
 			} else {
 				e.err, e.errAt = a.L.T("keep.edit.failed", f.Error), e.saving
@@ -258,7 +260,7 @@ func (a *App) keepPickers(k *protocol.KeepPage) (where []string, whereIDs []stri
 }
 
 // keepRules is 怎么照看 / How it runs: each rule a row that opens its own
-// control in place (D533), then 暂停 ▾, 现在看一次 and 停下.
+// control in place (D533), then 暂停 ▾, 立即运行 and 结束看守 (D592).
 func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	t := a.T
 	w := a.oh.keep.sideW
@@ -536,7 +538,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 	a.keepEditStatus(c, k, w)
 }
 
-// keepEditStatus is the last change, under the rules: 改好了：… with 撤销,
+// keepEditStatus is the last change, under the rules: one sentence (two lines until 展开) with 撤销,
 // or 撤销了 once it was put back.
 func (a *App) keepEditStatus(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
@@ -548,28 +550,61 @@ func (a *App) keepEditStatus(c *ui.Context, k *protocol.KeepPage, w float32) {
 		}
 		return
 	}
-	ui.Row(c.Key("edit-status")).Width(w).Gap(t.S2).Padding(10, 16, 0, 16).AlignItems(ui.Start).Role(ui.RoleStatus).Children(func() {
-		ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			if f.Undone {
-				uiText(c.Key("u"), a.L.T("keep.edit.undone")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
-				return
+	// D592: the line, two lines at most until 展开, on the card's text edge; its actions under it
+	// on that same edge (never a 撤销 floating at the far right of a long block).
+	ui.Column(c.Key("edit-status")).Width(w).Gap(2).Padding(10, 16, 0, 16).Role(ui.RoleStatus).Children(func() {
+		if f.Undone {
+			uiText(c.Key("u"), a.L.T("keep.edit.undone")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+			return
+		}
+		long := false
+		for i, ed := range f.Edits {
+			s := keepWords(autospace(a.L.T("keep.edit.done", a.keepEditSentence("you", ed))))
+			if a.keepStatusLong(s, w-32) {
+				long = true
 			}
-			for i, ed := range f.Edits {
-				s := a.L.T("keep.edit.done", a.keepEditSentence("you", ed))
-				uiText(c.Key(fmt.Sprint("e", i)), keepWords(autospace(s))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
-			}
-		})
-		if !f.Undone && f.Undo != nil {
-			if e.saving == "undo" {
-				uiText(c.Key("saving"), a.L.T("keep.edit.saving")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
-			} else if a.quietButton(c, "undo", a.L.T("keep.edit.undo"), k.Title, true, 0) {
-				a.keepSend(k, "undo", *f.Undo, true)
+			tx := uiText(c.Key(fmt.Sprint("e", i)), s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+			if !e.statusFull {
+				tx.MaxLines(2)
 			}
 		}
+		ui.Row(c.Key("acts")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			if long {
+				label := "keep.edit.more"
+				if e.statusFull {
+					label = "keep.edit.less"
+				}
+				if a.quietButton(c, "status-more", a.L.T(label), k.Title, false, 0) {
+					e.statusFull = !e.statusFull
+				}
+			}
+			if f.Undo != nil {
+				if e.saving == "undo" {
+					uiText(c.Key("saving"), a.L.T("keep.edit.saving")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
+				} else if a.quietButton(c, "undo", a.L.T("keep.edit.undo"), k.Title, true, 0) {
+					a.keepSend(k, "undo", *f.Undo, true)
+				}
+			}
+		})
 	})
 }
 
-// keepGestures are 暂停 ▾ (or 恢复), 现在看一次 and 停下, with 停下's ask.
+// keepStatusLong says a line would take more than two lines at this width
+// (the SM size, a CJK character one em, a Latin one about half).
+func (a *App) keepStatusLong(s string, w float32) bool {
+	em := float32(a.T.SM)
+	var width float32
+	for _, r := range s {
+		if r < 0x2E80 {
+			width += em * 0.55
+		} else {
+			width += em
+		}
+	}
+	return width > 2*w
+}
+
+// keepGestures are 暂停 ▾ (or 恢复), 立即运行 and, last and apart, 结束看守 with its ask (D592).
 func (a *App) keepGestures(c *ui.Context, k *protocol.KeepPage, onlyArrives bool) {
 	t := a.T
 	ks := &a.oh.keep
@@ -600,19 +635,21 @@ func (a *App) keepGestures(c *ui.Context, k *protocol.KeepPage, onlyArrives bool
 		if k.Life == "on" && !onlyArrives && a.buttonFor(c, a.L.T("keep.look"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
 			a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "look_now"})
 		}
-		if a.buttonFor(c, a.L.T("keep.stop"), k.Title, btnSecondary, t.ControlSM, t.Surface) {
-			ks.stop = !ks.stop
+		// D592: 结束看守 ends it for good, so it is the destructive one, last, apart (D289, D583).
+		ui.Box(c.Key("gap")).Grow(1)
+		if !ks.stop && a.quietDanger(c, "keep-stop", a.L.T("keep.stop"), k.Title) {
+			ks.stop = true
 		}
 	})
 	if ks.stop {
 		ui.Column(c.Key("stop-ask")).Gap(10).Padding(12).Margin(10, 0, 0, 0).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 			uiText(c.Key("q"), a.L.T("keep.stop.ask")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-			ui.Row(c.Key("acts")).Gap(8).Children(func() {
-				if a.buttonFor(c, a.L.T("keep.stop.go"), k.Title, btnPrimary, t.ControlSM, t.SurfaceSunken) {
+			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+				if a.dangerText(c, "keep-stop-go", a.L.T("keep.stop.go"), k.Title) {
 					a.send(protocol.KeepAct{T: "keep_action", ID: k.ID, Action: "stop"})
 					ks.stop = false
 				}
-				if a.buttonFor(c, a.L.T("keep.stop.keep"), k.Title, btnSecondary, t.ControlSM, t.SurfaceSunken) {
+				if a.quietButton(c, "keep-stop-keep", a.L.T("keep.stop.keep"), k.Title, false, 0) {
 					ks.stop = false
 				}
 			})
@@ -626,11 +663,23 @@ func (a *App) keepGestures(c *ui.Context, k *protocol.KeepPage, onlyArrives bool
 func (a *App) keepSaid(c *ui.Context, k *protocol.KeepPage, w float32) {
 	t := a.T
 	e := &a.oh.keep.edit
-	ui.Column(c.Key("said")).Width(w).Gap(2).Padding(10, 14, 12, 14).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		ui.Row(c.Key("hd")).AlignItems(ui.Center).Gap(t.S2).MinHeight(28).Children(func() {
+	// D592: at rest, when the words may change, the whole well is the button (its chevron on the
+	// label line), as a rule row is; never a lone 改.
+	opens := k.CanEdit("said") && !e.words && e.proposal == nil
+	card := ui.Column(c.Key("said")).Width(w).Gap(2).Padding(10, 14, 12, 14).Radius(t.RadiusMD).Background(t.SurfaceSunken)
+	ink := t.Faint
+	if opens {
+		var clicked bool
+		if ink, clicked = a.openWell(c, card, spoken(a.L, a.L.T("keep.said.edit.about"), k.Said)); clicked {
+			e.words, e.said, e.reading, e.proposal = true, k.Said, false, nil
+			opens = false
+		}
+	}
+	card.Children(func() {
+		ui.Row(c.Key("hd")).AlignItems(ui.Center).Gap(t.S2).MinHeight(28).AccessHidden(opens).Children(func() {
 			uiText(c.Key("k"), a.L.T("keep.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Grow(1).Shrink(1).MinWidth(0)
-			if k.CanEdit("said") && !e.words && e.proposal == nil && a.quietButton(c, "edit:said", a.L.T("keep.edit"), a.L.T("keep.said.edit.about"), false, 0) {
-				e.words, e.said, e.reading, e.proposal = true, k.Said, false, nil
+			if opens {
+				a.glyph(c, 12, drawChevron(ink, false))
 			}
 		})
 		cancel := func() { e.words, e.reading, e.proposal = false, false, nil }
@@ -730,7 +779,7 @@ func (a *App) keepSaid(c *ui.Context, k *protocol.KeepPage, w float32) {
 				}
 			})
 		default:
-			uiText(c.Key("v"), keepWords(autospace(k.Said))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft)
+			uiText(c.Key("v"), keepWords(autospace(k.Said))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).AccessHidden(opens)
 		}
 	})
 }

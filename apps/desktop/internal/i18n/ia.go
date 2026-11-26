@@ -83,7 +83,7 @@ var zhIA = Table{
 
 	// The Partner page: a character sheet.
 	"partner.lives":          "在 %s 上运行",
-	"partner.rename":         "改名字",
+	"partner.rename":         "重命名",
 	"partner.rename.cancel":  "取消",
 	"partner.face.idle":      "在呢",
 	"partner.face.working":   "在做事",

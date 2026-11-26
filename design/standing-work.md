@@ -51,16 +51,16 @@
   `design/ui.md`), with its sending state and one line once the partner has the words. A Keep in rounds is its one
   task, never an item: it holds the PRs that task keeps open, each named by the PR's own title, and its question is
   the Keep's. A round shows what happened in one line to the person, read once from its report by the cheap model
-  and recorded (`keep_round`); the report stays behind 看细节. Every wake is a round (the timer is written on the
+  and recorded (`keep_round`); the report stays behind 详情. Every wake is a round (the timer is written on the
   channel; a wake with no report is a silent round). The time column (`TimeCol`) is today's clock or the day alone;
   the rail gives each title two lines cut at a word's end, rows of one height, the open one the knob.
-- **D533, changed in place.** Each rule in 怎么做 has a quiet **改 / Change** and its own control (`EditRow`
+- **D533, changed in place.** Each rule in 怎么做 is itself the button (D592: the whole row, the drawn chevron at its name's right, never a lone 改) and opens its own control (`EditRow`
   with D536's `Field`, `NumberField`, `Seg` and D510's pickers; Mac `editRow`, `lineField`, `numberField`): a
   rhythm in minutes, a clock (every day or weekdays, a time), the goal in words, when it speaks as three
   choices, a helper's cap a day (1–30, `Helper.daily`, read by the partner's start-without-asking count), where and
   who, the name in Bridge. A change applies at once with **撤销 / Undo** under the card, and stands among the
   rounds in words, **你把每 45 分钟一轮改成了每小时一轮** (`keep_edit`; an undone change leaves no line, changes
-  within ten minutes are one line with the net change). **你说的** is editable words: saving them
+  within ten minutes are one line with the net change). **你的原话** is editable words (D592: the whole well is the button): saving them
   asks the cheap model once which rules they change, shown as a diff for one Go (**照这样改**), or **只改说的话**.
   One path: the page's `keep_change` frame and the partner's `keep_change` tool are `keeps.change(id, c, { by })`,
   checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every
@@ -201,12 +201,12 @@ The other states are crisp: 已暂停, 已完成, 已停止, 已结束.
 | the page's kicker | **{name} 看守中** | **{name} is looking after** |
 | the partner's acknowledgement | **好，我来照看：…** | **Done, I'll look after it: …** |
 | life | **看守中 / 已暂停 / 已完成 / 已停止** | **On / Paused / Done / Stopped** |
-| the page's parts | **你说的 · 待你处理 · 手上的 · 每一轮 · 怎么做** | **You said · Waiting for you · What it holds · Rounds · How it runs** |
-| its rules | **什么时候醒 · 做到什么时候 · 什么时候出声 · 上限 · 在哪儿做，谁来做 · 别的 agent 怎么找到它** | **When it wakes · Until · When it speaks · Limits · Where and who · How your agents find it** |
-| a round's outcome | **没出声 / 说了一句 / 问了你**; one under way **进行中** | **Silent / Told you / Asked you**; **Running** |
+| the page's parts | **你的原话 · 待你处理 · 手上的事 · 每一轮 · 怎么做** | **In your words · Waiting for you · What it holds · Rounds · How it runs** |
+| its rules | **什么时候做 · 做到什么时候 · 什么时候告诉你 · 限制 · 在哪儿做、谁来做 · 别的 agent 怎么找到它** | **When it runs · Until · When it tells you · Limits · Where and who · How your agents find it** |
+| a round's outcome | **没打扰你 / 告诉了你 / 问了你**; one under way **正在做** | **Kept quiet / Told you / Asked you**; **Working** |
 | quiet rounds folded (D550) | **又看过 {n} 次，都没有变化，{from} 到 {to}** | **Looked {n} more times; nothing changed, {from} to {to}** |
-| the wake line on a row | **有活就接 · 下一轮 {time} · 明早 {time} · 本轮进行中** | **Takes work as it comes · Next round {time} · Tomorrow {time} · A round is running** |
-| gestures | **暂停 ▾ · 恢复 · 现在看一次 · 停下** | **Pause ▾ · Resume · Look now · Stop** |
+| the wake line on a row | **随叫随到 · 下一轮 {time} · 明早 {time} · 这一轮正在做** | **On call · Next round {time} · Tomorrow {time} · Working on a round** |
+| gestures | **暂停 ▾ · 恢复 · 立即运行 · 结束看守** (D592: last and apart, the destructive one) | **Pause ▾ · Resume · Run now · End** |
 | change by talking | **想改什么，直接说：「…」** | **Say what to change: “…”** |
 | the end | **做完了：{goal, met}。 / Done: {goal, met}.** | |
 | ended, in Past tasks | **已结束** | **Ended** |
@@ -230,7 +230,7 @@ Sections by attention, as D467: **待你处理, 在做, 在等, 看守中, 今�
   needs-you ink), its rhythm (**每 45 分钟一轮**), its goal when short (**降到 ¥2,000 以下告诉你**);
 - its **line**, the last change in one sentence (**上一轮 10:07：2 个有新提交已复审，7 个没变**; **今早 ¥2,340，比昨天低
   ¥120**); health when it isn't on time (D427's words) takes the line's place;
-- at the right, **when it wakes next**: **有活就接**, **下一轮 10:52**, **明早 8:00**, or **暂停了**;
+- at the right, **when it wakes next**: **随叫随到**, **下一轮 10:52**, **明早 8:00**, or **暂停了**;
 - items that are tasks at work nest under it, set in by the mark's width (D507's shape): up to three, then
   **还有 {n} 个 ›**.
 
@@ -249,7 +249,7 @@ the side column after the rounds.
 
 1. **Head**: the lantern (64), **{name} 看守中**, the title (28/800), its life as chips (**看守中**, **1 个在等你**,
    **11 月 24 日 08:47 起**, **这周接了 3 个**).
-2. **你说的 / You said**: the person's words, verbatim; editable (D533), the rules they change shown as a diff for one Go.
+2. **你的原话 / In your words**: the person's words, verbatim; editable (D533), the rules they change shown as a diff for one Go.
 3. **待你处理 / Waiting for you**: its asks, answered in place (the same card as in 待你处理).
 4. A picture only when the Keep has one number that moves toward its goal (the fare: one point a morning and
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
@@ -257,9 +257,9 @@ the side column after the rounds.
    the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
    approved; D508's words), **打开 PR ›**, and its task one tap away.
 6. **每一轮 / Rounds**: newest first; each round its time in the time column (today the clock, else the day alone),
-   what woke it (D560, a sentence: **#11030 有新提交** from its wait's command, a condition as it stands **PR #11070 推上回应评审的新提交**, **Codex 交过来一个活**, **到点了（每 45 分钟）**), what happened in one line
+   what woke it (D560, a sentence: **#11030 有新提交** from its wait's command, a condition as it stands **PR #11070 推上回应评审的新提交**, **Codex 交过来一个活**, **按计划（每 45 分钟一轮）**), what happened in one line
    to the person (D519: the cheap model's reading of the report, recorded once; never the report's words to Ducter),
-   and **没出声 / 说了一句 / 问了你**; **看细节 / Details** shows the report as written and the way to its task. D550:
+   and **没打扰你 / 告诉了你 / 问了你**; **详情 / Details** shows the report as written and the way to its task. D550:
    every run of two or more quiet rounds, anywhere in the list, is one row, the work head the opened task folds them
    with (D544): **又看过 3 次，都没有变化，20:55 到 22:25**; a click opens its rounds in place under it. Quiet is the
    round's structured outcome only (protocol `quietRound`, the Mac's `keepRoundQuiet`): its rhythm woke it, it ended
@@ -272,7 +272,7 @@ the side column after the rounds.
    the send stays pressed in; then the box empties and one line says **{partner} 收到了，改好会在对话里说一声。**
 8. **怎么做 / How it runs** (the side column; each rule changed in place with **改**, D533): when it wakes, until, when it speaks, limits, where and who, and
    for a Keep with an address **别的 agent 怎么找到它** (its Mem name and **已连上**; the Bridge details one more tap
-   in, never the page's subject). At its foot **暂停 ▾** (1 小时, 明天早上, 一周, 直到我恢复) and **停下** (in the
+   in, never the page's subject). At its foot **暂停 ▾** (暂停 1 小时, 暂停到明天早上, 暂停一周, 一直暂停，直到我恢复), **立即运行**, and last and apart **结束看守** (D592; in the
    failed ink, asks once).
 
 ### Phone and Mac
@@ -332,7 +332,7 @@ detail of the Keep; the partner's ready line (D507) becomes the card's **Nowledg
 - **Goal met**: the round that sees it records `goal: met` with its evidence; the Keep says one line,
   **做完了：你订了 12 月 20 日的票（东航，¥2,180）。**, its lantern goes out with a tick, it stays a day under 今天做完,
   then lives under 已结束 in Past tasks with every round.
-- **Stopped**: **停下** (asks once: **停下以后它不再醒来；已经在做的这一轮会做完。**), or "别看了" through the partner.
+- **Stopped** (shown **已结束**): **结束看守** (asks once: **结束后不再开始新的一轮，正在做的会做完。**), or "别看了" through the partner.
   An address is closed (Mem tells senders), held items' tasks finish their turn.
 - **Paused** is not an end: its wakes are held, its items' tasks rest, the time it resumes is shown.
 

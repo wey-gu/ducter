@@ -9,7 +9,7 @@ import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepChan
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
+import { Btn, Chev, DangerButton, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
@@ -622,7 +622,12 @@ function HowItRuns({ k }: { k: KeepPage }) {
               <Btn kind="secondary" size="sm" grow chev expanded={K.pause} label={t("keep.pause")} onClick={() => ((K.pause = !K.pause), (K.stop = false), A.changed())} />
             )}
             {k.life === "on" && !k.wakes.every((w) => w.kind === "arrives" || (w.kind === "changes" && !w.words)) && <Btn kind="secondary" size="sm" grow label={t("keep.look")} onClick={() => act(k.id, { action: "look_now" })} />}
-            <Btn kind="secondary" size="sm" grow class="stop" label={t("keep.stop")} onClick={() => ((K.stop = !K.stop), (K.pause = false), A.changed())} />
+            {/* D592: 结束看守 ends it for good: the destructive one, last, apart, asking in place (D289, D583). */}
+            {!K.stop && (
+              <span class="end">
+                <DangerButton quiet label={t("keep.stop")} about={k.title} onClick={() => ((K.stop = true), (K.pause = false), A.changed())} />
+              </span>
+            )}
           </div>
         )}
         {K.pause && (
@@ -638,8 +643,8 @@ function HowItRuns({ k }: { k: KeepPage }) {
           <div class="kp-stop">
             <p>{t("keep.stop.ask")}</p>
             <span class="acts">
-              <Btn kind="primary" size="sm" class="stop" label={t("keep.stop.go")} onClick={() => act(k.id, { action: "stop" })} />
-              <Btn kind="secondary" size="sm" label={t("keep.stop.keep")} onClick={() => ((K.stop = false), A.changed())} />
+              <DangerButton label={t("keep.stop.go")} about={k.title} onClick={() => act(k.id, { action: "stop" })} />
+              <Btn kind="text" size="sm" label={t("keep.stop.keep")} onClick={() => ((K.stop = false), A.changed())} />
             </span>
           </div>
         )}
@@ -651,11 +656,20 @@ function HowItRuns({ k }: { k: KeepPage }) {
 
 /** D533: the last change in one line under the card, with its Undo (once undone, one line says so). */
 function Changed({ done, id }: { done: NonNullable<typeof K.done>; id: string }) {
+  // D592: two lines at most until 展开, on the card's text edge; its actions under it on that edge.
+  const [full, setFull] = useState(false);
+  const text = done.undone ? t("keep.edit.undone") : t("keep.edit.done", done.edits.map((e) => editSentence("you", e)).join(t("keep.where.sep")));
+  const long = [...text].length > 56;
   return (
-    <p class="kp-changed" role="status">
-      <span class="w">{done.undone ? t("keep.edit.undone") : t("keep.edit.done", done.edits.map((e) => editSentence("you", e)).join(t("keep.where.sep")))}</span>
-      {!done.undone && done.undo && <Btn kind="text" size="sm" label={t("keep.edit.undo")} onClick={() => sendChange(id, done.undo!, true)} />}
-    </p>
+    <div class="kp-changed" role="status">
+      <p class={`w${long && !full ? " clamp" : ""}`}>{text}</p>
+      {(long || (!done.undone && done.undo)) && (
+        <span class="acts">
+          {long && <Btn kind="text" size="sm" label={t(full ? "keep.edit.less" : "keep.edit.more")} expanded={full} onClick={() => setFull(!full)} />}
+          {!done.undone && done.undo && <Btn kind="text" size="sm" label={t("keep.edit.undo")} onClick={() => sendChange(id, done.undo!, true)} />}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -666,15 +680,25 @@ function Changed({ done, id }: { done: NonNullable<typeof K.done>; id: string })
 function Said({ k }: { k: KeepPage }) {
   const w = K.words;
   const can = (k.editable ?? []).includes("said");
-  if (!w.open)
+  if (!w.open && !can)
     return (
       <div class="kp-said">
         <span class="er-head">
           <b>{t("keep.said")}</b>
-          {can && <Btn kind="text" size="sm" label={t("keep.edit")} about={t("keep.said.edit.about")} onClick={() => ((K.words = { open: true, draft: k.said, phase: "", proposal: undefined }), (K.edit = freshEdit()), (K.done = undefined), A.changed())} />}
         </span>
         <span>{k.said}</span>
       </div>
+    );
+  // D592: the whole well is the button, its chevron on the label line, as a rule row is; never a lone 改.
+  if (!w.open)
+    return (
+      <button type="button" class="kp-said er-well" aria-label={spoken(A.L, t("keep.said.edit.about"), k.said)} onClick={() => ((K.words = { open: true, draft: k.said, phase: "", proposal: undefined }), (K.edit = freshEdit()), (K.done = undefined), A.changed())}>
+        <span class="er-head" aria-hidden="true">
+          <b>{t("keep.said")}</b>
+          <Chev />
+        </span>
+        <span aria-hidden="true">{k.said}</span>
+      </button>
     );
   const cancel = () => ((K.words = freshWords()), A.changed());
   const read = () => {

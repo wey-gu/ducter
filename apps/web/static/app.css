@@ -22640,7 +22640,7 @@ html[data-text-size="large"] .brand-mark > svg {
   padding: 12px 0;
   border-bottom: 1px solid var(--line-soft);
 }
-.edit-row:last-of-type {
+.edit-row:not(:has(~ .edit-row)) {
   border-bottom: 0;
 }
 .er-head {
@@ -22655,15 +22655,61 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 700;
   color: var(--ink-muted);
 }
-/* 改 sits on the name's line, its word on the card's text edge, quieter than a value; 36 tall to tap. */
-.er-head .btn {
-  margin: -8px -10px -8px 0;
-  font-weight: 600;
+/* D592: a row that may change is one button (never a lone 改): the drawn chevron at the name's right,
+   faint at rest, muted under the pointer; the one row hover (D529) padding into its own negative
+   margin, so the words stay on the card's text edge and nothing moves. */
+.edit-row.er-btn {
+  position: relative;
+  width: calc(100% + 20px);
+  margin: 0 -10px;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--t-hover) ease-out;
+}
+/* Its hairline runs on the card's text edges, straight, under the rounded fill. */
+.edit-row.er-btn::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.edit-row.er-btn:not(:has(~ .edit-row))::after {
+  border-bottom: 0;
+}
+.edit-row.er-btn .chev-g {
+  flex: none;
+  color: var(--faint);
+  transition: color var(--t-hover) ease-out;
+}
+.edit-row.er-btn:hover,
+.edit-row.er-btn:focus-visible {
+  background: var(--row-hover);
+}
+.edit-row.er-btn:hover .chev-g,
+.edit-row.er-btn:focus-visible .chev-g {
   color: var(--ink-muted);
 }
-.er-head .btn:hover:not(:disabled),
-.er-head .btn:focus-visible {
-  color: var(--ink);
+.edit-row.er-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.edit-row.er-btn:active {
+  background: color-mix(in srgb, var(--surface) 10%, var(--surface-sunken));
+}
+@media (prefers-reduced-motion: reduce) {
+  .edit-row.er-btn,
+  .edit-row.er-btn .chev-g {
+    transition: none;
+  }
 }
 .edit-row .v {
   font-size: var(--sm);
@@ -22815,20 +22861,70 @@ html[data-text-size="large"] .brand-mark > svg {
   font-weight: 600;
 }
 /* The last change under the rules card, with its Undo. */
+/* D592: the last change under the card on its text edge, two lines until 展开, its actions under it. */
 .kp-changed {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s2);
-  margin: 10px 4px 0 16px;
+  flex-direction: column;
+  gap: 2px;
+  margin: 10px 16px 0;
   font-size: var(--sm);
   color: var(--ink-soft);
 }
 .kp-changed .w {
   min-width: 0;
+  margin: 0;
+  line-height: 1.5;
 }
-.kp-changed .btn {
+.kp-changed .w.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.kp-changed .acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-left: -10px;
+}
+/* D592: 你的原话 as one button: the sunken well deepens within itself under the pointer. */
+.kp-said.er-well {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  font-size: var(--sm);
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--t-hover) ease-out;
+}
+.kp-said.er-well .chev-g {
   flex: none;
+  color: var(--faint);
+  transition: color var(--t-hover) ease-out;
+}
+.kp-said.er-well:hover,
+.kp-said.er-well:focus-visible {
+  background: color-mix(in srgb, var(--sunken) 50%, var(--line-soft));
+}
+.kp-said.er-well:hover .chev-g,
+.kp-said.er-well:focus-visible .chev-g {
+  color: var(--ink-muted);
+}
+.kp-said.er-well:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.kp-rules .acts .end {
+  display: flex;
+  margin-left: auto;
+  align-self: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kp-said.er-well,
+  .kp-said.er-well .chev-g {
+    transition: none;
+  }
 }
 .kp-rd.edit .did {
   color: var(--ink-soft);
@@ -22861,11 +22957,13 @@ html[data-text-size="large"] .brand-mark > svg {
   color: var(--ink-soft);
 }
 .kp-stop p {
-  margin: 0 0 10px;
+  margin: 0 0 4px;
 }
 .kp-stop .acts {
   display: flex;
-  gap: 8px;
+  gap: 0;
+  align-items: center;
+  margin-left: -8px;
 }
 /* The other Keeps beside an opened one, at the whole screen. */
 .kp-rail {

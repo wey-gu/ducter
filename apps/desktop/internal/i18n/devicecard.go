@@ -88,7 +88,7 @@ var zhDeviceCard = Table{
 	"anywhere.off":                 "关掉",
 	"anywhere.off.note":            "关掉后，在外面就连不上 %s 了。通道和地址还留在你的 Cloudflare 账号里，随时可以再打开；不要了就在 Cloudflare 里删掉。",
 	"anywhere.off.sure":            "还是关掉",
-	"anywhere.keep":                "先不关",
+	"anywhere.keep":                "保持开启",
 	"chip.worker":                  "帮你做事",
 	"chip.notify":                  "通知",
 	"chip.notify.about":            "有事要你看的时候，这台手机会响一下。",

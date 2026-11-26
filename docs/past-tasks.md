@@ -172,7 +172,7 @@ skipped. Tap a pebble to open that run.
   comes back by itself at that time. Pausing a task that keeps looking keeps exactly what it was
   waiting for.
 - **恢复 / Resume:** back on its schedule.
-- **现在跑一次 / Run now** (or **现在就去看一次 / Check now**): once, right away, even while paused.
+- **立即运行 / Run now**: once, right away, even while paused.
 - **改时间 / Change when** (in ⋯): every day, weekdays, every week or every few hours, and the time.
 - **结束 / End** (in ⋯): it stops for good; what it did stays in Past tasks.
 

@@ -275,7 +275,7 @@ export interface OngoingHealth {
   moveTo?: { device: string; name: string };
 }
 
-/** What 暂停 / Pause, 恢复 / Resume, 现在跑一次 / Run now and 改时间 / Change when do. */
+/** What 暂停 / Pause, 恢复 / Resume, 立即运行 / Run now and 改时间 / Change when do. */
 export type OngoingAction =
   | { action: "pause"; until?: string }
   | { action: "resume" }

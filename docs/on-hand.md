@@ -267,7 +267,7 @@ the app, swipe in from the left edge. A sheet (Settings, a new task) closes when
 Ask once, in a sentence, and Ducter keeps at it: "keep an eye on the Dec 20 Tokyo fare every morning,
 tell me under ¥2,000, stop once I book", "every Monday at 9, draft my weekly report", or "make a
 helper my agents hand PRs to, and watch them until they can merge". Your partner says it in one line
-and puts a card under it: when it wakes, when it speaks, until when, and **Open**, **Change**, **Undo**.
+and puts a card under it: when it runs, when it tells you, until when, and **Open**, **Edit**, **Undo**.
 
 Each one is a card under **Looking after**. Its lantern is lit while it is on and dim while paused.
 The tasks at work on it are listed under it; one that needs you (a question, a pull request ready to
@@ -279,7 +279,7 @@ of what happened; **Details** shows what the task reported; the quiet ones fold 
 and **How it runs**. To go back to the whole list, tap **Tasks** at the top (or press Esc); when
 you leave Tasks and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
-**Look now**, and **Stop**. A round never ends it: only you, or the goal you gave it.
+**Run now**, and, last, **End**, which asks once and ends it for good. To change one rule yourself, tap it under **How it runs**. A round never ends it: only you, or the goal you gave it.
 
 ## Groups
 

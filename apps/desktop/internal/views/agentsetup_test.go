@@ -78,7 +78,7 @@ func setupSent(sent []any) []protocol.AgentSetupReq {
 	return out
 }
 
-// The lend sheet's last step: 装上哪些 AI？ with Codex and Claude Code checked;
+// The lend sheet's last step: 安装哪些 AI？ with Codex and Claude Code checked;
 // 装上 sends exactly those; the card looks again when it opens.
 func TestLendAgentsInstallAndCardLook(t *testing.T) {
 	app, sent := iaApp(t, i18n.ZH)
@@ -93,10 +93,10 @@ func TestLendAgentsInstallAndCardLook(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if _, ok := tt.Find("装上哪些 AI？"); !ok {
-		t.Fatal("no 装上哪些 AI？ on the lend sheet")
+	if _, ok := tt.Find("安装哪些 AI？"); !ok {
+		t.Fatal("no 安装哪些 AI？ on the lend sheet")
 	}
-	if err := tt.Click("装上"); err != nil {
+	if err := tt.Click("安装"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

@@ -151,7 +151,7 @@ export const phone: { zh: Record<string, string>; en: Record<string, string> } =
     "own.busy": "你的手机正在通话，Ducter 等你打完再打。",
     "own.forget": "不用我的号码打了",
     "own.forget.ask": "Ducter 会忘掉这部手机、声卡和 Key。",
-    "own.forget.go": "不用了",
+    "own.forget.go": "停止使用",
     "call.fail.too_long": "超过 17 分钟，已挂断",
     "call.waits.callee": "等对方 %s",
     "call.waits.quiet": "等你的免打扰结束",

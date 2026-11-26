@@ -40,8 +40,8 @@ var zhAbout = Table{
 	"about.rule.w.all":   "活",
 	"about.inmem":        "也记在 Nowledge Mem 里，你别的 AI 也知道",
 	"about.keep":         "记下",
-	"about.cancel":       "算了",
-	"about.edit":         "改",
+	"about.cancel":       "取消",
+	"about.edit":         "修改",
 	"about.remove":       "移除",
 	"about.removed":      "不再按「%s」放了",
 }
@@ -83,7 +83,7 @@ var enAbout = Table{
 	"about.inmem":        "Also in Nowledge Mem, so your other AIs know",
 	"about.keep":         "Keep",
 	"about.cancel":       "Cancel",
-	"about.edit":         "Change",
+	"about.edit":         "Edit",
 	"about.remove":       "Remove",
 	"about.removed":      "No longer placing by “%s”",
 }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.86 - 2026-11-26
+
+<!-- whats-new
+zh: 看守中改成整行可点；中文用词更自然，立即运行、结束看守
+en: Looking after: tap a row to change it; plainer words across the app
+-->
+
+**Looking after**
+- Each rule is a row you tap to change it, with a chevron, instead of a lone "Change".
+- Run now, and End, which asks once in place, then lets the current round finish; Pause names how long.
+- A long change under the card shows two lines, with Show all and Undo below.
+- Rounds say On schedule, Kept quiet, Told you and Working.
+
+**Words**
+- About ninety Chinese labels read as a polished app would: 修改, 保存, 取消, 重命名, 立即运行, 以后再说,
+  暂不发送, 已停止. Stop, End and Pause each mean one thing.
+
 ## 0.1.85 - 2026-11-26
 
 <!-- whats-new

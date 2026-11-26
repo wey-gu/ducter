@@ -20,12 +20,20 @@
  *     line): it can be edited or deleted, and only the PR's people see it;
  *   branch_push: push the task's own branch (its PR updates): never the base or a protected
  *     branch, never a delete, never a merge.
+ *
+ * D596: the dev flow the person described once (「做好了 PR，研究实现设计验证好之后，交给 PR baby sitter」):
+ *   pr_open: on work they asked for, once it is verified, Ducter pushes the task's own branch, opens
+ *     its PR (the same write as the opened task's Open PR, `open_pr`) and the task hands the PR to
+ *     the helper they named (their PR babysitter): never a merge, never the default or base branch,
+ *     never a force-push, never someone else's branch. It covers branch_push for that task too.
  * Never here: merging, paying, passwords and sign-ins, deleting, anything an untrusted source asked.
  */
-export type StandingAction = "pr_review" | "issue_comment" | "ci_rerun" | "pr_comment" | "branch_push";
-export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review", "issue_comment", "ci_rerun", "pr_comment", "branch_push"];
+export type StandingAction = "pr_review" | "issue_comment" | "ci_rerun" | "pr_comment" | "branch_push" | "pr_open";
+export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review", "issue_comment", "ci_rerun", "pr_comment", "branch_push", "pr_open"];
 /** D499: the steps a task's own ask can be answered under (pr_review goes through review_report). */
-export const TASK_STEP_ACTIONS: readonly StandingAction[] = ["ci_rerun", "pr_comment", "branch_push", "issue_comment"];
+export const TASK_STEP_ACTIONS: readonly StandingAction[] = ["ci_rerun", "pr_comment", "branch_push", "issue_comment", "pr_open"];
+/** D596: a kept go for one action that also covers another (opening the PR needs its branch pushed). */
+export const STANDING_COVERS: Partial<Record<StandingAction, readonly StandingAction[]>> = { pr_open: ["branch_push"] };
 
 /** D499: each step in a task's words (model-visible: the go forwarded to a task, its brief). */
 export const STEP_WORDS: Record<StandingAction, string> = {
@@ -34,13 +42,14 @@ export const STEP_WORDS: Record<StandingAction, string> = {
   ci_rerun: "rerunning its PR's checks (a /test-style comment, gh run rerun)",
   pr_comment: "commenting on the PR it opened or works on",
   branch_push: "pushing its own branch (never the base or a protected branch, never a delete or a merge)",
+  pr_open: "once its work is verified, pushing its own branch, opening its PR and handing the PR to the helper the user named (never a merge, never the base branch, never a force-push)",
 };
 
 export interface StandingView {
   id: string;
   action: StandingAction;
   /**
-   * Where it holds: these GitHub owners (orgs or users). Absent: wherever the review routine looks.
+   * Where it holds: these GitHub owners (orgs or users), or D596 repos as owner/repo. Absent: wherever the review routine looks.
    * D495: every PR the routine reviews there, a mention too (the routine reviews what the person
    * asked it to; code never narrows what they said).
    */

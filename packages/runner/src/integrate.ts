@@ -151,7 +151,14 @@ export async function pushForMove(place: Place): Promise<ActionResult> {
   return { ok: true, message: `Pushed ${p.branch} to ${host}.`, ref: p.branch };
 }
 
-export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Promise<ActionResult> {
+/** D596: a PR opened under the person's standing go: the task's own title and body, ready for review (not a draft). */
+export interface PrOptions {
+  title?: string;
+  body?: string;
+  ready?: boolean;
+}
+
+export async function openDraftPr(place: Place, opts: { gh?: string } & PrOptions = {}): Promise<ActionResult> {
   const p = repoOf(place);
   if (!p) return { ok: false, message: "This task has no branch to open a PR from." };
   const gh = opts.gh ?? "gh";
@@ -167,16 +174,22 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
   }
   const remote = await git(p.repoPath, ["remote", "get-url", "origin"]);
   if (!remote.ok) return { ok: false, message: "This repo has no origin remote to push to." };
+  // D596: only the task's own branch: never its base, never the remote's default branch.
+  const head = await git(p.repoPath, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
+  const defaultBranch = head.ok ? head.out.trim().replace(/^origin\//, "") : undefined;
+  if (p.branch === p.baseBranch || (defaultBranch && p.branch === defaultBranch)) return { ok: false, message: `${p.branch} is the repository's own branch, not this task's: nothing was pushed.` };
   const pending = await git(p.worktree!, ["status", "--porcelain", "--untracked-files=no"]);
   if (pending.out) return { ok: false, message: `The task still has uncommitted changes on ${p.branch}. Ask it to commit first.` };
+  // Never --force: a push the remote refuses stays refused, and the message says why.
   const pushed = await git(p.worktree!, ["push", "-u", "origin", p.branch!]);
   if (!pushed.ok) return { ok: false, message: `Pushing ${p.branch} failed: ${pushed.err.split("\n")[0]}` };
-  const args = [gh, "pr", "create", "--draft", "--fill", "--head", p.branch!]; // title/body from the commits
+  const title = opts.title?.trim().slice(0, 200);
+  const args = [gh, "pr", "create", ...(opts.ready ? [] : ["--draft"]), ...(title ? ["--title", title, "--body", opts.body?.trim().slice(0, 8000) || title] : ["--fill"]), "--head", p.branch!]; // else title/body from the commits
   if (p.baseBranch) args.push("--base", p.baseBranch);
   const pr = await run(args, p.worktree!);
   if (!pr.ok) return { ok: false, message: `The branch is pushed, but gh couldn't open the PR: ${pr.err.split("\n")[0]}` };
   const url = pr.out.split("\n").find((l) => /^https?:\/\//.test(l.trim()))?.trim() ?? pr.out;
-  return { ok: true, message: `Opened a draft PR for ${p.branch}.`, ref: url };
+  return { ok: true, message: `Opened a ${opts.ready ? "" : "draft "}PR for ${p.branch}.`, ref: url };
 }
 
 /**

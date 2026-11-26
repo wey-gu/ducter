@@ -443,6 +443,12 @@ const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memo
 const RECALLS_PER_TURN = 2;
 /** D490: how far back memory_add's `said` is looked for among the person's messages. */
 const HEARD_MESSAGES = 60;
+/**
+ * D596: model-visible, once per home: the dev flow is a go Ducter can now keep. The partner judges
+ * whether the user already said it (no code reads their words, principle 21).
+ */
+export const PR_OPEN_NEW =
+  "[new in Ducter: a go for the dev flow (without_asking action pr_open): once a task's work is verified, Ducter pushes its branch and opens its PR, and the task hands it to the helper the user named. If the user already said that earlier (verified dev work straight to a PR and their PR helper, no asking), keep it now with without_asking keep pr_open and their exact words, then carry on; a task that finished verified work with no PR yet: task_send it to open the PR. If they never said it, ignore this.]";
 /** Task plumbing never goes to Mem: ids, branches, worktrees, commits (a hex run with a digit). */
 const PLUMBING_RE = /\/worktrees\/|\.ducter\/|\bjob_[a-z0-9]{6,}|\bducter\/[a-z0-9][a-z0-9-]*|\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/i;
 
@@ -1912,6 +1918,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
     const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET);
     if (helpersLine) deltas.push(helpersLine);
+    // D596: said before Ducter could keep it: once per home, the first turn after the upgrade, the
+    // partner hears that the dev flow can now be kept, and judges whether the person already said it.
+    if (core.standing && !core.standing.list().some((s) => s.action === "pr_open") && core.standing.once?.("d596:pr_open")) deltas.push(PR_OPEN_NEW);
     // D480: what isn't whole about the person's own agents' mail (closed mailboxes, another Mem server), every turn while so.
     const mail = renderAgentMail(core.agentMail?.() ?? [], userLang() ?? NO_WORDS_YET);
     if (mail) deltas.push(mail);
@@ -4018,8 +4027,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         type: "object",
         properties: {
           do: { type: "string", enum: ["keep", "take_back", "answer"] },
-          action: { type: "string", enum: [...STANDING_ACTIONS], description: "pr_review: post PR reviews; issue_comment: comment on issues handed over; ci_rerun: rerun a task's PR checks (/test); pr_comment: comment on its PR; branch_push: push its own branch" },
-          owners: { type: "array", items: { type: "string" }, description: "GitHub owners, only if named" },
+          action: { type: "string", enum: [...STANDING_ACTIONS], description: "pr_review: post PR reviews; issue_comment: comment on issues handed over; ci_rerun: rerun a task's PR checks (/test); pr_comment: comment on its PR; branch_push: push its own branch; pr_open: verified dev work pushed, its PR opened and handed to their helper (babysitter)" },
+          owners: { type: "array", items: { type: "string" }, description: "GitHub owners or owner/repo, only if named" },
           task: { type: "string", description: "Only this task's id, when said about one task" },
           ask: { type: "string", description: "answer: the ask's id (ask d_…)" },
           said: { type: "string", description: "Their own words, copied exactly (answer: when no go is kept yet)" },
@@ -4059,7 +4068,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const r = standingStore.hear(key, { kind: "revoke", action, quote, ...(card ? { taskId } : {}) }, at, seq);
           return r?.revoked?.length ? { ok: true, note: "Taken back: Ducter asks before each one again. Say so in one short line." } : { ok: true, note: "Nothing was standing for that; it already asks each time." };
         }
-        const owners = Array.isArray(args?.owners) ? [...new Set(args.owners.map((x) => String(x).trim().toLowerCase().replace(/^@/, "")).filter((x) => /^[a-z0-9][\w.-]{0,38}$/.test(x)))] : [];
+        const owners = Array.isArray(args?.owners) ? [...new Set(args.owners.map((x) => String(x).trim().toLowerCase().replace(/^@/, "")).filter((x) => /^[a-z0-9][\w.-]{0,38}(?:\/[\w.-]{1,100})?$/.test(x)))] : []; // D596: owner/repo too
         const r = standingStore.hear(key, { kind: "grant", action, ...(owners.length && !card ? { orgs: owners } : {}), quote, ...(card ? { taskId, taskTitle: card.title } : {}) }, at, seq);
         const kept = r?.kept;
         if (!kept) return { ok: false, error: "Nothing was kept." };
@@ -4067,7 +4076,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return {
           ok: true,
           kept: { action, ...(kept.orgs?.length ? { owners: kept.orgs } : {}), ...(kept.taskId ? { task: kept.taskId } : {}) },
-          note: `Kept as their go${where} (Settings › Partner, Without asking): Ducter does it with no card, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后这类直接做，不再问你。想收回说一声。" No ask, no card.`,
+          note: `Kept as their go${where} (Settings › Partner, Without asking): Ducter does it with no card, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后这类直接做，不再问你。想收回说一声。" No ask, no card.${action === "pr_open" ? " A task that finished verified work with no PR yet: task_send it now to open its PR (open_pr) and hand it over; one not verified yet: say what is left. Merging stays theirs. Name their helper as they did, never translated." : ""}`,
         };
       },
     );
@@ -5629,6 +5638,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D448: a task's own way to other agents, listed only for a task Ducter carries messages for.
     const relayTool = (name: string, description: string, schema: object, handler: (args: any, ctx: { taskId?: string }) => Promise<unknown>) =>
       tools.registerWhen ? tools.registerWhen("task", name, description, schema, handler, (ctx) => relayOn(ctx.taskId)) : tools.register("task", name, description, schema, handler);
+    /** D596: the go a handover rests on: this task's PR was opened under a pr_open go still kept (taken back: the card again). */
+    const handoverGo = (taskId: string) => {
+      const opened = core.log
+        .read({ stream: "channel", kinds: ["job_status"], limit: 2000 })
+        .map((e) => e.body as Bodies["job_status"])
+        .find((b) => b.taskId === taskId && b.act === "open_pr" && b.by === "rule" && b.state === "done");
+      return opened?.standing ? core.standing?.list().find((s) => s.id === opened.standing) : undefined;
+    };
     relayTool(
       "agent_message",
       "Ask or tell one of the user's other agents something (their Codex or Claude Code in a terminal, a teammate's agent), when the work needs its answer or it must know. Ducter carries it through the user's Nowledge Mem, with this task named; the user okays a first message on a card. Its answer arrives here as a new message. Plain sentences with the background it needs; never secrets.",
@@ -5668,9 +5685,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(space ? { space } : {}), ...(spaceLabel ? { spaceLabel } : {}),
           text, head: relayHead(core.persona.name || "Ducter", card.title, text),
         };
+        // D596: the PR this task opened under the person's pr_open go, handed to one of their own agents
+        // (the helper they named): their word is the go, so no card; Done for you shows it with their words.
+        const handover = c.mine ? handoverGo(card.taskId) : undefined;
         // Mine and already okayed in this task: the person's Go opened that exchange (D418's own-agent trust).
-        if (c.mine && taskOkayed(card.taskId, c)) {
-          const st = await deliver(base, "send");
+        if (c.mine && (handover || taskOkayed(card.taskId, c))) {
+          const st = await deliver(handover ? { ...base, standing: handover.id, said: handover.text } : base, "send");
           if (st === "sent") return { ok: true, sent: true, note: "Sent. Its answer arrives here as a new message: carry on, or end your turn to wait for it (no report needed)." };
           if (st === "unknown") return { ok: true, sent: "unknown", note: "No word yet whether it went; Ducter checks and never sends it twice. Don't send it again." };
           return { ok: false, sent: false, note: "Not sent (the user was told why). Carry on without its answer where you can." };

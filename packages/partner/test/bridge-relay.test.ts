@@ -307,3 +307,31 @@ test("core forwards nothing of the card to the task (Ducter tells it what came o
   const d: Bodies["decision"] = { decisionId: "d1", taskId: "t1", question: "「x」想发给 Codex：", goLabel: "发送", defaultOption: "hold", reversible: false, relay: { who: "Codex" } };
   for (const option of ["go", "hold", "reply"] as const) expect(forwardText(d, { decisionId: "d1", option, by: "user", ...(option === "reply" ? { text: "别问了" } : {}) })).toBe("");
 });
+
+// D596: the PR a task opened under the person's pr_open go (「做好了 PR…交给 PR baby sitter」) goes to the
+// helper they named with no card, with their words (Done for you shows them); taken back, the card again.
+describe("a PR handed to the person's helper under their pr_open go", () => {
+  const WORDS = "以后我让你做开发的工作，做好了 PR，研究实现设计验证好之后，交给 PR baby sitter 哈。";
+  const keep = (fc: ReturnType<typeof setup>["fc"], kept: boolean) => {
+    const items = kept ? [{ id: "st_dev", action: "pr_open" as const, text: WORDS, createdAt: "2026-11-26T07:21:00Z" }] : [];
+    (fc.core as { standing?: unknown }).standing = { list: () => items, hear: () => undefined };
+    fc.core.log.append({ stream: "channel", origin: "system", kind: "job_status", body: { jobId: "pr_t1", taskId: "t1", state: "done", text: "opened", act: "open_pr", ref: "https://example.test/nowledge-co/mem/pull/11390", by: "rule", standing: "st_dev", said: WORDS } });
+  };
+  test("kept: sent at once, no card, with their words", async () => {
+    const s = setup("codex");
+    keep(s.fc, true);
+    const r = await s.tool({ to: "your Codex", text: "PR #11390 交给你跟进到能合并。" });
+    expect(r).toMatchObject({ ok: true, sent: true });
+    expect(s.decisions()).toHaveLength(0);
+    expect(s.w.sends).toHaveLength(1);
+    expect(s.outs().at(-1)).toMatchObject({ state: "sent", by: "task", taskId: "t1", standing: "st_dev", said: WORDS });
+  });
+  test("taken back: the first message asks on a card again", async () => {
+    const s = setup("codex");
+    keep(s.fc, false);
+    const r = await s.tool({ to: "your Codex", text: "PR #11390 交给你跟进。" });
+    expect(r.waiting).toBe("the user's OK");
+    expect(s.decisions()).toHaveLength(1);
+    expect(s.w.sends).toHaveLength(0);
+  });
+});

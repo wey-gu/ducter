@@ -498,7 +498,10 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const app = r.state === "done" ? ctx.taskApp?.(r.taskId) : undefined;
       const quiet = app ? `\n[this task keeps the user's app "${clip(app, 40)}" current: they see each round there. If this report only says a round was done or the app updated (nothing for them to decide or fix), send no message at all: end your turn without words.]` : "";
       const asked = r.state === "needs_input" ? { asks: ctx.openAsks?.(r.taskId) ?? [], goes: ctx.goesFor?.(r.taskId) ?? [] } : undefined;
-      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined, asked) + (src ? `\n${sourceLine(r.taskId, src)}` : "") + quiet;
+      // D596: a done task the user let go straight to a PR and their helper: no asking, it opens its PR.
+      const devGo = r.state === "done" ? ctx.goesFor?.(r.taskId).find((g) => g.action === "pr_open") : undefined;
+      const dev = devGo ? `\n  the user already allowed, without asking: pr_open "${clip(devGo.text, 160)}". Verified work with no PR yet: task_send it to open its PR (open_pr) and hand it over; never ask. Not verified yet: say what is left, or send it on to verify. Merging stays theirs. Their helper by the name they used, never translated.` : "";
+      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined, asked) + dev + (src ? `\n${sourceLine(r.taskId, src)}` : "") + quiet;
     }
     case "source_seen": {
       // D341: new to-dos in a source the user wants told, or taken under their standing go.

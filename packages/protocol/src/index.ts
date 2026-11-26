@@ -415,7 +415,20 @@ export interface Bodies {
   // The record answers "how did you know?".
   web_look: WebLook;
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
-  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
+  job_status: {
+    jobId: string;
+    text: string;
+    state: "running" | "done" | "failed";
+    taskId?: string;
+    act?: "merge" | "open_pr";
+    ref?: string;
+    /** D596: Ducter did it under a standing go the person said (不用问我的), not their tap: its id and their words. */
+    by?: "rule";
+    standing?: string;
+    said?: string;
+    /** D596: what the task ran that verified the work before its PR was opened (its own words, cut). */
+    checks?: string[];
+  };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
   // D426: what one message asked for, line by line, under it (asks.ts). Logged by core whenever a
   // line is added or its state changes; clients keep the latest per msgSeq, under that message.
@@ -816,6 +829,9 @@ export interface Bodies {
     sentAt?: string;
     taskId?: string;
     decisionId?: string;
+    /** D596: out, sent with no card under a standing go the person said (a PR handed to their helper): its id and their words. */
+    standing?: string;
+    said?: string;
     agent?: string;
     // The tool the sender runs in ("Claude Code"), when it has no name of its own: "an agent in Claude Code".
     host?: string;

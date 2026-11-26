@@ -190,6 +190,8 @@ type StandingView struct {
 	Text      string   `json:"text"`
 	CreatedAt string   `json:"createdAt"`
 	UsedAt    string   `json:"usedAt,omitempty"`
+	// By (D601): "tap" when kept by 以后这类直接做 / Always do this (Text is then that label).
+	By string `json:"by,omitempty"`
 }
 
 // StandingRevoke is 收回 / Take back (D413).

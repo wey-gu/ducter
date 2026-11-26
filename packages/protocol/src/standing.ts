@@ -60,4 +60,41 @@ export interface StandingView {
   seq?: number;
   /** ISO time it was first used (the one line in the conversation that lists what went). */
   usedAt?: string;
+  /**
+   * D601: kept by a tap on a card's 以后这类直接做 / Always do this (or 以后直接发 / Always post on a
+   * review round's card), not by words: `text` is then that button's label, never words put in the
+   * person's mouth, and Settings reads it as 你点了「以后这类直接做」 / You tapped "Always do this".
+   */
+  by?: "tap";
+}
+
+/**
+ * D601: a card whose Go does one of the standing actions, where a tap may keep it: the action, and
+ * where it holds (the GitHub owners of what it acts on, lower case). Set by code when the card is
+ * asked (never by a task), only on a plain ask (D499 plainAsk: never the floor, D61 GQ5) and only
+ * when the owner is known. `often` (GQ4): the person said Go to this kind in this owner twice in 14
+ * days, so the card leads with the offer; shown once per kind and owner, and not again for 30 days.
+ */
+export interface AlwaysAsk {
+  action: StandingAction;
+  where: string[];
+  often?: true;
+}
+
+/** D601 (D61 GQ4): Go's on one kind in one owner within GQ4_DAYS before the card offers to stop asking. */
+export const GQ4_GOES = 2;
+export const GQ4_DAYS = 14;
+/** D601: an offer shown (taken or not) is not shown again for this kind and owner for this long. */
+export const GQ4_QUIET_DAYS = 30;
+
+/**
+ * D601: words that put a Go out of a tap's reach whatever kind the task said it was: merging, a
+ * force push (the floor and what D499 keeps asking). Read from the card's own words, as
+ * destructiveChoice reads deleting (D340); a card it misses still keeps only the step its action
+ * names, whose audited write never merges or force-pushes.
+ */
+const NOT_STANDING = [/\bmerg(e|es|ed|ing)\b|\bforce[- ]?push|--force\b/i, /合并|合入|合进|强推|强制推送/];
+export function beyondStanding(...texts: (string | undefined)[]): boolean {
+  const all = texts.filter(Boolean).join("\n");
+  return NOT_STANDING.some((re) => re.test(all));
 }

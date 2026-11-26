@@ -25164,3 +25164,13 @@ img[src*="art/fig/sprout"] { filter: none !important; }
     letter-spacing: 0.06em;
   }
 }
+/* D601: 以后这类直接做 / Always do this, the second choice beside Go (secondary, never the lead), and
+   GQ4's offer leading the card in one line; Settings says a tapped permission as a tap with its day. */
+.dk-acts > .btn.primary + .btn.secondary { margin-inline-start: calc(var(--s2) - var(--s5)); margin-inline-end: var(--s5); max-width: 100%; }
+.dk-acts > .btn.secondary .lbl { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 599px) {
+  .dk-acts > .btn.primary + .btn.secondary { flex: 1 1 100%; margin-inline: 0; margin-top: var(--s2); min-height: 44px; }
+}
+.dk > .dk-often { font-size: var(--sm); line-height: 1.45; font-weight: 700; color: var(--ink); text-wrap: pretty; }
+.decision .dk > .dk-often { color: var(--needs-ink); }
+.trust.without small.tapped { display: flex; flex-wrap: wrap; gap: 0 var(--s2); }

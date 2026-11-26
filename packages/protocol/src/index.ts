@@ -70,7 +70,7 @@ import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
-import type { StandingAction, StandingView } from "./standing.ts";
+import type { AlwaysAsk, StandingAction, StandingView } from "./standing.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -231,6 +231,12 @@ export interface Question {
   signInWhere?: SignInWhereAsk & { hold?: string };
   /** D599: a sign-in with a one-time code on a page (gh auth login's device flow): the page, the code, until when (set by sign_in_with_code, or by the runner from the CLI's own printed lines). */
   deviceSignIn?: import("./device-signin.ts").DeviceSignInAsk;
+  /**
+   * D601: the task's own word on what its Go does when that is one of the steps a standing
+   * permission can cover (TASK_STEP_ACTIONS): the model judges the kind, code guards the rest (a
+   * plain ask, an owner known, never the floor or a merge) before the card offers Always do this.
+   */
+  step?: StandingAction;
 }
 
 /**
@@ -494,6 +500,11 @@ export interface Bodies {
     // D437: another AI read what this Go sends before the card was shown, and this is still so
     // (the person's language, one line each): 另一个 AI 看过：漏了 Windows 那一处.
     look?: { by: string; left: string[] };
+    // D601: its Go is one of the standing actions where a tap may keep it: the card shows a second
+    // choice beside Go, 以后这类直接做 / Always do this (以后直接发 / Always post on a review round's
+    // card), which does this one now and keeps a standing permission there; with often (GQ4) it leads
+    // with 这类你已经点过两次了，以后直接做？. Set by code only (never by a task, never on the floor).
+    always?: AlwaysAsk;
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
   // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
@@ -511,7 +522,7 @@ export interface Bodies {
   // D539: a key copied between the person's computers on their Go (names only, never a value), or
   // one removed from a computer in Settings (removed: that computer's name, by "user").
   key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D601: Go given with 以后这类直接做 / Always do this: `standing` is the permission the tap kept. */ always?: true; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -1465,7 +1476,7 @@ export type ClientFrame =
   // payment's fill, never logged.
   // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless
   // once; never logged, never sent back) and whether it is for this task only.
-  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
+  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean; /** D601: Go and 以后这类直接做 / Always do this (option go, on a card with `always` only). */ always?: true }
   // D382: 晚点再问我 / Ask me later: put the question off to `until` (ISO); null brings it back now
   // (现在就定 / Decide now).
   | { t: "later"; decisionId: string; until: string | null }

@@ -146,7 +146,7 @@ export interface TaskSourcesDeps {
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
   /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
-  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean; allowsComment?(ref: string): StandingView | undefined };
+  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean; allowsComment?(ref: string): StandingView | undefined; /** D601: a review round's card's Always post. */ dress?(d: Bodies["decision"]): import("@ducter/protocol").AlwaysAsk | undefined };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;
   /** Today in the person's zone (the Tasks ✅ date). */
@@ -720,7 +720,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         d.tell?.(
           src.taskId,
           r.option === "go"
-            ? `[Ducter] The person said Go: ${res.done} review${res.done === 1 ? "" : "s"} went to GitHub${res.failed ? `, ${res.failed} couldn't be posted` : ""}. Don't post them yourself. Carry on with your rounds.`
+            ? `[Ducter] The person said Go: ${res.done} review${res.done === 1 ? "" : "s"} went to GitHub${res.failed ? `, ${res.failed} couldn't be posted` : ""}. Don't post them yourself.${r.always && card.always ? ` They also tapped "Always post": from now on Ducter posts what your review_report drafts in ${card.always.where.join(", ")} without asking, and asks only for the rest; don't ask about them.` : ""} Carry on with your rounds.`
             : "[Ducter] The person held the drafted reviews: nothing was posted. They stay drafted on those pull requests; don't post them yourself.",
         );
       return;

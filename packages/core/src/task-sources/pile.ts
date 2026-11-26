@@ -149,7 +149,7 @@ export interface PileDeps {
   /** The service's one path out: a write, logged as source_write (Done for you). */
   write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }) => Promise<WriteResult>;
   /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
-  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean };
+  standing?: { allows(ref: string): StandingView | undefined; firstUse(id: string): boolean; /** D601: a review round's card's Always post. */ dress?(d: Bodies["decision"]): import("@ducter/protocol").AlwaysAsk | undefined };
   /** Open a task for a to-do and bind it (the person handed it over). */
   openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
   /** The repository's own review guide, when its folder is on this computer (a review skill, REVIEW.md). */
@@ -847,6 +847,9 @@ export function createPile(d: PileDeps): Pile {
       reversible: false,
       src: { kind: "reviews", item: items[0]!.item, taskId, items },
     };
+    // D601: 以后直接发 / Always post beside 发到 GitHub (where these PRs' owners are).
+    const always = d.standing?.dress?.(body);
+    if (always) body.always = always;
     d.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
     return body.decisionId;
   };

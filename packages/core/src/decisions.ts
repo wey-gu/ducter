@@ -1,6 +1,6 @@
 // Reports -> attention + decisions (D10). Reversible defaults auto-resolve; resolutions are
 // forwarded to the task through the onDecision hook (main.ts wires it to runner.send).
-import type { Attention, Bodies, EvidenceRef, LogEvent, Question, StandingAction } from "@ducter/protocol";
+import type { AlwaysAsk, Attention, Bodies, EvidenceRef, LogEvent, Question, StandingAction, StandingView } from "@ducter/protocol";
 import { STEP_WORDS } from "@ducter/protocol/src/standing.ts";
 import { hideMemSecrets } from "@ducter/protocol/src/mem-plugins.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -10,6 +10,7 @@ import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { laterable, laterRefusal } from "@ducter/protocol/src/later.ts";
 import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
+import { alwaysForward } from "./always.ts";
 import { codeExpired, deviceNewCodeText, deviceSaidInText, deviceSignedInText } from "@ducter/protocol/src/device-signin.ts";
 
 /** The Go of a task's question that names none, in the task's language (the card reads "好，继续", never "好，Continue"). */
@@ -19,7 +20,7 @@ export type DecisionHook = (taskId: string, text: string, resolved: Bodies["deci
 
 export interface Decisions {
   /** extra.delivered (D233): the task already has the answer; it is not forwarded. extra.msgSeq (D236): the reply message that answered it, when the answer was a reply in the conversation. */
-  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number; copied?: true }): LogEvent<"decision_resolved">;
+  decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number; copied?: true; /** D601: Go with Always do this, and the permission it kept. */ always?: true; standing?: string }): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   /** D443: a task's questions still open (oldest first), for a reply to its line under a message. */
@@ -91,6 +92,8 @@ export function plainAsk(d: Bodies["decision"]): boolean {
 }
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
+  // D601: Go with Always do this: the task goes, and hears that this kind goes without asking from now on.
+  if (r.option === "go" && r.always && d.always) return alwaysForward(d.goLabel, d.always);
   // D499: answered for the person by their own word: the task goes, and learns not to ask about it again.
   if (r.option === "go" && r.by === "said" && r.action)
     return `Go: ${d.goLabel}. Ducter answered this for the user: they already allowed ${STEP_WORDS[r.action]} ("${(r.said ?? "").slice(0, 200)}"). From now on in this task, do that without asking and say it in your report; anything else that reaches other people still asks.`;
@@ -168,6 +171,11 @@ export function createDecisions(opts: {
   rests?: (taskId: string) => boolean;
   /** D427: a task in rounds: a round's done or failed report ends the round, never the task. */
   keeps?: (taskId: string) => boolean;
+  /**
+   * D601: what a task's card carries for Always do this (always.ts dress): its second choice, or
+   * the standing permission that covers its step already (then Ducter says Go for them, D499).
+   */
+  dress?: (d: Bodies["decision"], step?: StandingAction) => { always?: AlwaysAsk; covered?: StandingView };
 }): Decisions {
   const { log, tasks } = opts;
   const clock = opts.clock ?? realClock;
@@ -289,7 +297,15 @@ export function createDecisions(opts: {
           ...(r.direct && r.state === "done" ? { direct: true as const } : {}),
         };
         if (q.reversible && hasDefault && !q.deviceSignIn) body.defaultAt = new Date(clock.now() + delay()).toISOString();
+        // D601: a step a tap may keep: its second choice; one the person already let go: Go for them.
+        const dressed = opts.dress?.(body, q.step);
+        if (dressed?.always) body.always = dressed.always;
         log.append({ stream: "channel", origin: "system", kind: "decision", body });
+        const covered = dressed?.covered;
+        if (covered && q.step)
+          later(() => {
+            if (!resolved.has(body.decisionId)) api.goOnTheirWord(body.decisionId, { said: covered.text, action: q.step!, standing: covered.id });
+          });
       }
       later(() => setAttention(r.taskId, "needs_you"));
       return;
@@ -571,6 +587,8 @@ export function createDecisions(opts: {
       if (text) body.text = hideMemSecrets(text).text;
       if (extra?.delivered) body.delivered = true;
       if (extra?.msgSeq) body.msgSeq = extra.msgSeq;
+      // D601: only a Go on a card that offered it (always.ts tap keeps the permission first).
+      if (extra?.always && option === "go" && all.get(decisionId)!.always) (body.always = true), extra.standing && (body.standing = extra.standing);
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });
     },
     later(decisionId, until) {

@@ -12,7 +12,7 @@ var zhWorkerRecords = Table{
 	"wrec.scope":   "只读每段对话的名字、文件夹、时间，和你在里面说的第一句与最后一句；不看代码和文件，密钥一律遮住。",
 	"wrec.why.on":  "%s 能读 %s 上 %s 的对话记录，你开口找的时候才读。",
 	"wrec.allow":   "读它们留下的记录",
-	"wrec.stop":    "别再看了",
+	"wrec.stop":    "不再读取",
 	"wrec.and":     "%s和%s",
 	"wrec.comma":   "、",
 	"wrec.away":    "%s 现在连不上，回来了再点。",

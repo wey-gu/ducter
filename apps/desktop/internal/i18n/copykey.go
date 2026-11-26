@@ -11,7 +11,7 @@ var zhCopyKey = Table{
 	"copykey.note":        "只给 Ducter 的任务用，不显示，不进聊天记录。",
 	"copykey.go":          "复制",
 	"copykey.retry":       "再试一次",
-	"copykey.hold":        "先不",
+	"copykey.hold":        "以后再说",
 	"copykey.copying":     "正在复制…",
 	"copykey.done":        "已复制到 %s",
 	"copykey.held":        "没有复制",

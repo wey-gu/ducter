@@ -6,7 +6,7 @@ package i18n
 var zhReply = Table{
 	"reply.action": "回复",
 	"reply.part":   "回复这段",
-	"reply.cancel": "不回复了",
+	"reply.cancel": "取消回复",
 	"reply.you":    "你",
 	"reply.copy":   "拷贝",
 	"reply.copied": "已拷贝",

@@ -724,7 +724,7 @@ export function TimeCol(p: { at: string; text: string }) {
 }
 
 /**
- * D533: a rule row changed in place (a Keep's 怎么照看): its name, a quiet 改 / Change at the name's
+ * D533, D592: a rule row changed in place (a Keep's 怎么做): at rest, when it may change, the whole row is the button with the drawn chevron at the name's
  * right while it may change, its value lines and a muted one. Open: the control in the slot under
  * the name, then 保存 / Save (primary, first, on the left) and 取消 / Cancel; Enter saves, Escape cancels. `error`
  * stands under the control in the failed ink; `busy` says the change is on its way.
@@ -742,6 +742,27 @@ export function EditRow(p: {
   onCancel: () => void;
   children?: ComponentChildren;
 }) {
+  // D592: at rest, a row that may change is one button (iOS Settings' way, never a lone 改): its name
+  // with the drawn chevron at the right, its values; the one row hover (D529); 修改「…」 for a reader.
+  if (p.editable && !p.open)
+    return (
+      <button type="button" class="edit-row er-btn" aria-label={spoken(A.L, t("keep.edit.about", p.label), ...p.values, p.muted)} onClick={p.onOpen}>
+        <span class="er-head" aria-hidden="true">
+          <span class="k">{p.label}</span>
+          <Chev />
+        </span>
+        {p.values.map((v) => (
+          <span key={v} class="v" aria-hidden="true">
+            {v}
+          </span>
+        ))}
+        {p.muted && (
+          <span class="v m" aria-hidden="true">
+            {p.muted}
+          </span>
+        )}
+      </button>
+    );
   return (
     <div
       class={`edit-row${p.open ? " open" : ""}`}
@@ -753,7 +774,6 @@ export function EditRow(p: {
     >
       <span class="er-head">
         <span class="k">{p.label}</span>
-        {p.editable && !p.open && <Btn kind="text" size="sm" label={t("keep.edit")} about={t("keep.edit.about", p.label)} onClick={p.onOpen} />}
       </span>
       {!p.open &&
         p.values.map((v) => (

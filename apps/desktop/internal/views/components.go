@@ -1230,7 +1230,10 @@ type rowGround struct {
 	tint *theme.StateColors // nil: neutral
 	own  bool               // the row's own fill is the tint's surface
 	page bool               // a row lying flat on the page's paper, no card under it
+	well bool               // D592: a sunken well that opens (a Keep's 你的原话)
 }
+
+func groundWell() rowGround { return rowGround{well: true} }
 
 func groundNeutral() rowGround                    { return rowGround{} }
 func groundPage() rowGround                       { return rowGround{page: true} }
@@ -1246,6 +1249,8 @@ func (a *App) rowHoverFill(g rowGround) (rest, hover ui.Color) {
 	switch {
 	case g.page:
 		return t.Bg, t.Sunken // the paper warms to its sunken tint
+	case g.well:
+		return t.SurfaceSunken, t.SurfaceSunken.Mix(t.LineSoft, 0.5) // the well deepens within itself
 	case g.tint != nil && g.own:
 		return g.tint.Surface, g.tint.Surface.Mix(g.tint.Ledge, 0.28)
 	case g.tint != nil && t.Dark:
@@ -1265,6 +1270,8 @@ func (a *App) rowPressFill(g rowGround) ui.Color {
 	switch {
 	case g.page:
 		return t.Sunken.Mix(t.SurfaceSunken, 0.6)
+	case g.well:
+		return t.SurfaceSunken.Mix(t.LineSoft, 0.8)
 	case g.tint != nil && g.own:
 		return g.tint.Surface.Mix(g.tint.Ledge, 0.5)
 	case g.tint != nil:

@@ -128,7 +128,7 @@ export const starts: { zh: Record<string, string>; en: Record<string, string> } 
     "newtask.gh.err.failed": "没能登录：%s",
     "newtask.gh.install.brew": "%s 上还没有 GitHub 的命令行工具 gh。用这台 Mac 的 Homebrew 装上它就行，不用管理员密码。",
     "newtask.gh.install.release": "%[1]s 上还没有 GitHub 的命令行工具 gh。Ducter 会下载 GitHub 官方的 gh，核对无误后放进自己的文件夹（%[2]s）：不用管理员权限，别处都不动。",
-    "newtask.gh.install.go": "装上 gh",
+    "newtask.gh.install.go": "安装 gh",
     "newtask.gh.installing": "正在下载 gh… %d%%",
     "newtask.gh.installing.brew": "正在用 Homebrew 装 gh，大约要一分钟…",
     "newtask.gh.err.network": "%s 连不上 GitHub。看看它的网络，再试一次。",

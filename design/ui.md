@@ -620,7 +620,7 @@ A new control is added to the set (and to this table) before it is used.
 | A list's time column (a Keep's rounds; D519): one line, tabular figures, one width (`--time-col` 76, Mac `timeColW`); today its clock, else its day (`colTime` / `i18n.ColTime`) | `timeCol` (`composer.go`) | `TimeCol` |
 | The @ and / list over a composer (D534): sections with drawn glyphs, ↑↓ Enter Tab Esc, hover and click without taking the focus, above the caret and never past the window, a sheet with 48-tall rows on a phone or under 560; and a reference in a sent message, its glyph and name on the bubble's own ink at 13% | `mentionPop`, `refChip`, `drawKind` (`mentions.go`) | `MentionPop`, `RefChip`, `KindGlyph` (`composer.tsx`) |
 | A button of the family that opens the clay menu under it (a Keep's 暂停 with its choices; D421, D519) | `menuOpener` (`composer.go`) | `Btn` with `chev` and a `Menu` |
-| A rule row changed in place (a Keep's 怎么做, D533): its name XS 700 muted with a quiet 改 / Change at its right while it may change, its value lines; open, the control in its slot, then 保存 (primary, first, on the left) and 取消; the open control takes the keys, Enter saves, Escape cancels; an error under the control in the failed ink | `editRow` (`edit.go`) | `EditRow` |
+| A rule row changed in place (a Keep's 怎么做, D533): its name XS 700 muted and its value lines; D592: while it may change the whole row is the button, the drawn chevron at the name's right (Faint, muted under the pointer), the one row hover padding into its own negative margin, its name for a reader 修改「…」 with the value (never a lone 改); open, the control in its slot, then 保存 (primary, first, on the left) and 取消; the open control takes the keys, Enter saves, Escape cancels; an error under the control in the failed ink | `editRow` (`edit.go`) | `EditRow` |
 | A whole number with its unit word after it ([45] 分钟一轮, [10] 个一天; D533): on D536's one-line field, digits only, tabular figures, 88 wide; the caller checks its range and says it in the failed ink | `numberField` (`edit.go`) | `NumberField` |
 | A task's row as a link (D578): the row's own look, an `<a href="#task=…">`, so middle-click, ⌘-click and Copy Link open it in a tab; a plain click opens it in place; On hand's ⌘-click and Shift-click still pick; Space opens it as Enter does | — (the Mac has no tabs) | `TaskLink` (`.task-link`) |
 
@@ -779,9 +779,41 @@ at 13; the buttons under both, on the words' edge (a phone: under the face). Mac
 (`asks.go`), web `.ask.notify-ask`. A question the person has to answer for work is a decision card;
 this is the app asking about itself, and says so by being smaller.
 
-**Two smaller rules from the same pass.** A quiet button at the end of a smaller line (看细节 after an
+**Two smaller rules from the same pass.** A quiet button at the end of a smaller line (详情 after an
 ask's default) sits on that line's first line, never 4 pt under it (`defaultUnder`). Links in a
 note's foot that wrap start on one left edge (`.note-foot`).
+
+### Control words and state words (D592)
+
+The author, on a Keep's page: "这个改字的 edit 按钮，太他们奇怪了。还有'现在看一次'、'停下'的表达". D212's
+rule (a control speaks like a product, the partner like a person) holds; these are the words for
+the acts that come up everywhere, so one act has one word on every surface. Checked against how
+Apple zh, WeChat, Feishu and Things say them.
+
+- **Edit is a place, not a word.** A row whose value can change is itself the button: the whole row,
+  the drawn chevron at its label's right, the one row hover (`editRow` / `EditRow`, a Keep's 你的原话
+  as its well). Where a word is needed it is **修改 / Edit**; a name is **重命名 / Rename**; the
+  commit is **保存 / Save**. Never 改, 改一下, 改好了 or 改名字 on a control.
+- **Pause and End are different acts with different words.** **暂停 / Pause** holds something that
+  will come back (its menu says how long: 暂停 1 小时, 暂停到明天早上, 暂停一周, 一直暂停，直到我恢复),
+  **恢复 / Resume** brings it back. **结束看守 / End** (a Keep, a routine: 结束) ends it for good, is
+  the destructive one, last on its line and apart, and asks in place (D289). **停止 / Stop** halts
+  something running right now (a background run, the computer or phone a task is using). Never
+  停下 on a control.
+- **Run now is 立即运行 / Run now**, for a Keep, a routine and a quiet look alike. Never 现在看一次.
+- **Cancel and not now.** A dismiss is **取消**; a not-now is **以后再说** or **暂不 + verb**
+  (暂不发送, 暂不购买, 暂不关闭); D212's 先不用 stays only as an ask's decline. Never 算了, 先不,
+  先不X or 不X了 (不登录了, 不连了, 不借了) on a control.
+- **Details is 详情.** Never 看细节. Looking at a list is 查看; 看看 is the partner's word, not a
+  button's.
+- **State words say the fact.** Under way **正在 + verb** (正在做, 正在保存…, 正在连接…; 这一轮正在做),
+  done **已 + verb** (已停止, 已结束, 已撤销), failed **没能 + verb** (没能完成, 没能保存). What woke a
+  round says it plainly (按计划（每 45 分钟一轮）, 你让它立即运行, 第一轮), and a round that said nothing
+  **没打扰你 / Kept quiet**, never 没出声. A helper that waits for work is **随叫随到 / On call**, never
+  有活就接. Never 到点了, 进行中 inside a sentence, 有新动静 or 出声.
+- **A long line under a card is two lines at most, then 展开 / Show all** (收起 / Show less), and its
+  actions (撤销) stand under it on the same text edge, never floating at the far right of a block.
+- **Install and connect are 安装 and 连接**, never 装上 or 接上.
 
 ## Platform conventions (D573)
 

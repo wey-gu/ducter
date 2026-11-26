@@ -125,7 +125,7 @@ export interface Routines {
   yours(input: YoursInput): RoutineView;
   pause(routineId: string, by: "user" | "partner" | "system", reason?: RoutineBody["pauseReason"]): boolean;
   resume(routineId: string): boolean;
-  /** D285: 现在跑一次 / Run now: one run at once, outside the schedule (active or paused; a paused one stays paused). */
+  /** D285: 立即运行 / Run now: one run at once, outside the schedule (active or paused; a paused one stays paused). */
   runNow(routineId: string): boolean;
   /** D285: 改时间 / Change when: a new time trigger for a time routine; its next firing follows it. */
   retime(routineId: string, trigger: Extract<RoutineTrigger, { kind: "time" }>): boolean;

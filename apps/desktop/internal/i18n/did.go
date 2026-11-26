@@ -97,7 +97,7 @@ var zhDid = Table{
 	// Its actions.
 	"did.open":       "打开任务",
 	"did.see":        "看结果",
-	"did.undo":       "改回去",
+	"did.undo":       "撤销",
 	"did.undo.until": "%s 前可以改回去",
 	"did.earlier":    "更早的",
 	// The empty day.

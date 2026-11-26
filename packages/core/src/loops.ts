@@ -91,7 +91,7 @@ const W = {
     asleepAny: "它的电脑睡着了或连不上。醒了会马上补跑一轮。",
     asleepMove: "{dev} 睡着了或连不上。{to} 醒着，可以先换到它上面跑；不换的话，{dev} 醒了会马上补跑一轮。",
     unknown: "还没开始。",
-    runNow: "现在跑一次",
+    runNow: "立即运行",
     move: "换到醒着的电脑上跑",
   },
   en: {

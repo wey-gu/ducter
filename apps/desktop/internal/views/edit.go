@@ -20,8 +20,8 @@ type editRowOpts struct {
 	label  string
 	values []string
 	muted  string
-	// can: a 改 / Change at the right of the label line; open: the editor
-	// stands under the label with 保存 and 取消.
+	// can: the whole row opens its editor (D592); open: the editor stands
+	// under the label with 保存 and 取消.
 	can, open bool
 	saving    bool
 	// err is said under the editor in the failed ink (a range, a refusal).
@@ -32,32 +32,61 @@ type editRowOpts struct {
 	onOpen, onSave, onCancel func()
 }
 
-// editRow is a rule's row: XS 700 muted label at the text edge, a quiet
-// 改 / Change at its right when it can change, its value lines in SM ink and
-// a muted line under them. Open, the control takes the values' place, then
-// 保存 (primary) and 取消 (text); while it is being saved 正在改… says so.
+// editRow is a rule's row: XS 700 muted label at the text edge, its value
+// lines in SM ink and a muted line under them. D592: when it can change, the
+// whole row is the button (as iOS Settings, never a lone 改): the one row
+// hover (D529) and the drawn chevron (D213) at the label line's right, Faint
+// at rest and muted under the pointer; a screen reader hears 修改「…」 and
+// the value. Open, the control takes the values' place, then 保存 (primary)
+// and 取消 (text); while it is being saved 正在保存… says so.
 func (a *App) editRow(c *ui.Context, o editRowOpts) {
 	t := a.T
 	row := ui.Column(c.Key("er:"+o.key)).Gap(2).Padding(12, 0)
 	if !o.last {
 		row.BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft)
 	}
-	row.Children(func() {
-		ui.Row(c.Key("hd")).AlignItems(ui.Center).Gap(t.S2).MinHeight(28).Children(func() {
+	head := func(chev bool, ink ui.Color) {
+		ui.Row(c.Key("hd")).AlignItems(ui.Center).Gap(t.S2).MinHeight(20).Children(func() {
 			uiText(c.Key("k"), o.label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Grow(1).Shrink(1).MinWidth(0)
-			if o.can && !o.open && a.quietButton(c, "edit:"+o.key, a.L.T("keep.edit"), a.L.T("keep.edit.about", o.about), false, 0) && o.onOpen != nil {
-				o.onOpen()
+			if chev {
+				a.glyph(c, 12, drawChevron(ink, false))
 			}
 		})
+	}
+	values := func() {
+		for j, v := range o.values {
+			uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+		}
+		if o.muted != "" {
+			uiText(c.Key("m"), o.muted).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+	}
+	row.Children(func() {
+		if !o.open && !o.can {
+			head(false, t.Faint)
+			values()
+			return
+		}
 		if !o.open {
-			for j, v := range o.values {
-				uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+			// D592: the whole row is the button; its fill pads into its own negative margin (D529).
+			b := ui.Column(c.Key("erb:"+o.key)).Gap(2).Padding(12, 10).Margin(-12, -10).Radius(t.RadiusSM).Cursor(ui.CursorPointer).
+				Role(ui.RoleButton).Label(spoken(a.L, a.L.T("keep.edit.about", o.about), strings.Join(o.values, " "), o.muted)).Focusable()
+			ink := t.Faint
+			if a.rowHover(c, b, groundNeutral(), false) {
+				ink = t.InkMuted
 			}
-			if o.muted != "" {
-				uiText(c.Key("m"), o.muted).FontSize(t.SM).TextColor(t.InkMuted)
+			b.Children(func() {
+				ui.Column(c.Key("bd")).Gap(2).AccessHidden(true).Children(func() {
+					head(true, ink)
+					values()
+				})
+			})
+			if b.Clicked() && o.onOpen != nil {
+				o.onOpen()
 			}
 			return
 		}
+		head(false, t.Faint)
 		ui.Column(c.Key("ed")).Gap(t.S2).Margin(4, 0, 0, 0).Children(func() {
 			if o.editor != nil {
 				o.editor()

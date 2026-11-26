@@ -25173,4 +25173,6 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 }
 .dk > .dk-often { font-size: var(--sm); line-height: 1.45; font-weight: 700; color: var(--ink); text-wrap: pretty; }
 .decision .dk > .dk-often { color: var(--needs-ink); }
-.trust.without small.tapped { display: flex; flex-wrap: wrap; gap: 0 var(--s2); }
+.trust.without small.tapped { display: block; }
+.trust.without small.tapped > span { display: inline; margin: 0; }
+.trust.without small.tapped > .when { margin-inline-start: var(--s2); white-space: nowrap; }

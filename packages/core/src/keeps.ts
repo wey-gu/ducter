@@ -61,6 +61,13 @@ const W = {
     // D540: the person's one-off ask for this round, first in its wake (or told now, mid-round).
     nextRound: "这一轮先做对方刚交代的：「{ask}」。做完它，再照常做这一轮。",
     nextNow: "对方刚交代，这一轮先做：「{ask}」。做完它，再接着做这一轮。",
+    // D593: what every round of a task in rounds hears first: the Keep as it stands now, verbatim.
+    standingHead: "「{title}」现在的要求（每一轮都以这里为准）：",
+    standingSaid: "对方的话：「{said}」",
+    standingUntil: "整件事做到：{until}。只有它成立、这件事从此不用再做时才报 done；报 done 这件事就彻底停了，不再有下一轮。",
+    standingNotes: "你之前的笔记、检查点、上一轮给自己记下要查的事，都只是你的笔记：和上面不一样时以上面为准，上面没要求的事不再做。",
+    standingNow: "这一轮对方交代先做（只限这一轮）：「{ask}」。",
+    alsoNow: "对方刚补充，从现在起每一轮都照这个做：「{also}」。这一轮也是。",
   },
   en: {
     arrives: "Takes work as it comes",
@@ -78,6 +85,12 @@ const W = {
     limitsLine: "Limits: {limits}.",
     nextRound: 'First this round, what the person just asked: "{ask}". Do it, then the round as usual.',
     nextNow: 'The person just asked for this round, first: "{ask}". Do it, then carry on with the round.',
+    standingHead: "What “{title}” asks now (every round goes by this):",
+    standingSaid: "The person's words: “{said}”",
+    standingUntil: "The whole thing ends when: {until}. Report done only once that holds and nothing is left to do for good: done stops it for good, with no next round.",
+    standingNotes: "Your earlier notes, checkpoints and what you noted to check last round are only your notes: where they differ from the above, the above holds, and work it doesn't ask for is not done any more.",
+    standingNow: 'First, this round only, the person asked: "{ask}".',
+    alsoNow: 'The person just added, from now on, every round: "{also}". This round too.',
   },
 };
 
@@ -95,7 +108,34 @@ export type Keeps = KeepsApi & {
   lastRound(id: string): string | undefined;
   /** D540: the one-off ask kept for this task's next round, taken (it is gone once a round has it). */
   takeNext(taskId: string): string | undefined;
+  /**
+   * D593: what every round of a task in rounds hears first, verbatim: the person's words as they are
+   * now (with what they added since), its end, when it speaks, its limits, and the ask the round
+   * under way took (`now`). Absent when the task isn't a Keep's or the Keep isn't on.
+   */
+  standingFor(taskId: string, lang?: LangTag): string | undefined;
 };
+
+/** D593: a long text's change is said as the part that changed with a few characters around it,
+ *  never both full texts ("…规则；不巡查100gle分派、部署或生产…" to "…规则；不部署或生产…"). */
+const CUT_OVER = 60;
+const CUT_AROUND = 8;
+export function cutEdit(e: KeepEdit): KeepEdit {
+  if (e.cut || !e.from || !e.to) return e;
+  const a = [...e.from];
+  const b = [...e.to];
+  if (a.length + b.length <= CUT_OVER) return e;
+  let p = 0;
+  while (p < a.length && p < b.length && a[p] === b[p]) p++;
+  let q = 0;
+  while (q < a.length - p && q < b.length - p && a[a.length - 1 - q] === b[b.length - 1 - q]) q++;
+  const s0 = Math.max(0, p - CUT_AROUND);
+  const part = (x: string[]) => {
+    const end = Math.min(x.length, x.length - q + CUT_AROUND);
+    return `${s0 > 0 ? "…" : ""}${x.slice(s0, end).join("")}${end < x.length ? "…" : ""}`;
+  };
+  return { field: e.field, from: part(a), to: part(b), cut: true };
+}
 
 /** D519: the cheap model's reading of one round: what happened, in one short line to the person in
  *  their language (never the report's own words to Ducter). */
@@ -831,7 +871,7 @@ export function createKeeps(o: {
     return out;
   }
 
-  const FIELD_OF: Record<Exclude<keyof KeepChange, "act" | "next">, KeepField> = { title: "title", until: "until", speaks: "speaks", limits: "limits", everyMinutes: "every", at: "at", said: "said", cap: "cap", where: "where", agent: "agent", address: "address" };
+  const FIELD_OF: Record<Exclude<keyof KeepChange, "act" | "next">, KeepField> = { also: "said", title: "title", until: "until", speaks: "speaks", limits: "limits", everyMinutes: "every", at: "at", said: "said", cap: "cap", where: "where", agent: "agent", address: "address" };
   const HARNESS = /^[a-z][a-z0-9-]{1,39}$/;
   const NOT_HERE: Record<KeepField, string> = {
     every: "It wakes on a clock or on arrivals, not on a rhythm.",
@@ -862,6 +902,8 @@ export function createKeeps(o: {
     if (c.address !== undefined && (!c.address.trim() || [...c.address.trim()].length > KEEP_TITLE_MAX)) return `A name is 1 to ${KEEP_TITLE_MAX} characters.`;
     for (const f of ["until", "speaks", "limits"] as const) if (c[f] !== undefined && [...c[f]!].length > KEEP_RULE_MAX) return `Keep it under ${KEEP_RULE_MAX} characters.`;
     if (c.said !== undefined && (!c.said.trim() || [...c.said].length > KEEP_SAID_MAX)) return `The words are 1 to ${KEEP_SAID_MAX} characters.`;
+    if (c.also !== undefined && !c.also.trim()) return "also: the person's words, from now on.";
+    if (c.also !== undefined && [...`${(c.said ?? k.said).trim()}\n\n${c.also.trim()}`].length > KEEP_SAID_MAX) return `What they said would pass ${KEEP_SAID_MAX} characters: ask them which earlier words to drop (they can edit them on its page).`;
     if (c.everyMinutes !== undefined && (!Number.isInteger(c.everyMinutes) || c.everyMinutes < 5 || c.everyMinutes > 7 * 24 * 60)) return "A rhythm is between 5 minutes and a week.";
     if (c.cap !== undefined && (!Number.isInteger(c.cap) || c.cap < KEEP_CAP_MIN || c.cap > KEEP_CAP_MAX)) return `It takes ${KEEP_CAP_MIN} to ${KEEP_CAP_MAX} a day.`;
     if (c.at) {
@@ -919,14 +961,18 @@ export function createKeeps(o: {
     return u;
   }
 
-  async function change(id: string, c: KeepChange, opt: { by?: "you" | "partner"; undo?: boolean } = {}): Promise<KeepChanged> {
+  async function change(id: string, c0: KeepChange, opt: { by?: "you" | "partner"; undo?: boolean } = {}): Promise<KeepChanged> {
     const k = byId.get(id);
     if (!k) return { ok: false, error: "No Keep with that id; see keep_list." };
     const f = k.from;
-    const bad = guard(k, c);
+    const bad = guard(k, c0);
     if (bad) return { ok: false, error: bad };
+    // D593: a standing instruction from now on joins the person's words, the one place every round reads first.
+    const added = c0.also?.trim();
+    const { also: _also, ...c1 } = c0;
+    const c: KeepChange = added ? { ...c1, said: `${(c1.said ?? k.said).trim()}\n\n${added}` } : c1;
     const before = nowOf(k);
-    const edits = editsOf(before, c);
+    const edits = editsOf(before, c).map((e) => (added && e.field === "said" && c1.said === undefined ? { field: "said" as const, to: added } : e));
     const hid = f.kind === "helper" ? f.helperId : "";
     // The mechanism first (its own checks may still say no); the Keep records only what took.
     if (c.everyMinutes !== undefined && f.kind === "loop" && c.everyMinutes !== before.every) {
@@ -980,6 +1026,11 @@ export function createKeeps(o: {
         if (told) put({ ...byId.get(id)!, next: undefined });
       }
     }
+    // D593: a standing instruction reaches a round under way now; a resting one hears it first at its wake.
+    if (added && f.kind === "loop" && o.tell) {
+      const card = tasks.get(f.taskId);
+      if (card && AT_WORK.has(card.attention)) await o.tell(f.taskId, fill(words(W, lang()).alsoNow, { also: added })).catch(() => false);
+    }
     // A helper's pieces of work are told its brief: it follows the person's words and rules.
     if ((c.until !== undefined || c.speaks !== undefined || c.said !== undefined || c.limits !== undefined) && hs) {
       const now = byId.get(id)!;
@@ -988,7 +1039,8 @@ export function createKeeps(o: {
     // D533: the change stands among its rounds, said as who made it and what changed (the clock in its own words once set).
     const after = nowOf(byId.get(id)!);
     const shown = edits.map((e) => (e.field === "at" && after.atWords ? { ...e, to: after.atWords } : e));
-    if (shown.length) log.append({ stream: `keep:${id}`, origin: opt.by === "you" ? "user" : "system", kind: "keep_edit", body: { keepId: id, by: opt.by ?? "partner", edits: shown, ...(opt.undo ? { undo: true } : {}) }, ...(k.persona ? { persona: k.persona } : {}) } as never);
+    // D593: a long text's change is recorded as what changed in it, never both full texts.
+    if (shown.length) log.append({ stream: `keep:${id}`, origin: opt.by === "you" ? "user" : "system", kind: "keep_edit", body: { keepId: id, by: opt.by ?? "partner", edits: shown.map(cutEdit), ...(opt.undo ? { undo: true } : {}) }, ...(k.persona ? { persona: k.persona } : {}) } as never);
     if (c.act) {
       const r = await act(id, c.act);
       if (!r.ok) return { ok: false, error: r.message ?? "That didn't take." };
@@ -1055,14 +1107,14 @@ export function createKeeps(o: {
       if (last && last.by === r.by && Date.parse(r.at) - Date.parse(last.at) <= COALESCE_MS) {
         for (const x of r.edits) {
           const was = last.edits.find((y) => y.field === x.field);
-          if (!was) last.edits.push({ ...x });
+          if (!was || x.cut || was.cut || (x.field === "said" && (x.to || was.to))) last.edits.push({ ...x });
           else if (x.field !== "said") x.to ? (was.to = x.to) : delete was.to;
         }
         last.at = r.at;
       } else rows.push({ at: r.at, by: r.by, edits: r.edits.map((x) => ({ ...x })) });
     }
     return rows
-      .map((r) => ({ ...r, edits: r.edits.filter((x) => x.field === "said" || (x.from ?? "") !== (x.to ?? "")) }))
+      .map((r) => ({ ...r, edits: r.edits.filter((x) => x.field === "said" || (x.from ?? "") !== (x.to ?? "")).map(cutEdit) }))
       .filter((r) => r.edits.length)
       .map((r) => ({ at: r.at, woke: "edit" as const, spoke: "silent" as const, state: "done" as const, edit: { by: r.by, edits: r.edits } }))
       .reverse();
@@ -1169,12 +1221,31 @@ export function createKeeps(o: {
       return r ? (r.did ?? firstLine(r.report)) : undefined;
     },
     takeNext(taskId) {
-      const k = [...byId.values()].find((x) => x.from.kind === "loop" && x.from.taskId === taskId && x.next);
-      if (!k?.next) return undefined;
-      const ask = k.next.text;
-      put({ ...k, next: undefined });
+      const k = [...byId.values()].find((x) => x.from.kind === "loop" && x.from.taskId === taskId);
+      // D593: a new round: the ask the last one took is over; the one kept for this round becomes its own.
+      if (!k || (!k.next && !k.now)) return undefined;
+      const ask = k.next?.text;
+      put({ ...k, next: undefined, now: k.next ? { text: k.next.text, at: iso(clock.now()) } : undefined });
       o.onChange?.();
       return ask;
+    },
+    standingFor(taskId, l) {
+      const id = byFrom.get(`loop:${taskId}`);
+      const k = id ? byId.get(id) : undefined;
+      if (!k || k.life !== "on") return undefined;
+      const w = words(W, l ?? lang());
+      return [
+        fill(w.standingHead, { title: k.title }),
+        fill(w.standingSaid, { said: k.said }),
+        // What really ends it is the loop's end condition (the round's done ends it only then).
+        k.until && o.loops.get(taskId)?.until ? fill(w.standingUntil, { until: k.until }) : "",
+        k.speaks ? fill(w.speaksLine, { speaks: k.speaks }) : "",
+        k.limits ? fill(w.limitsLine, { limits: k.limits }) : "",
+        k.now ? fill(w.standingNow, { ask: k.now.text }) : "",
+        w.standingNotes,
+      ]
+        .filter(Boolean)
+        .join("\n");
     },
     stop: () => (clearInterval(timer), (roundAsk = undefined), (roundQueue = []), (stopped = true)),
   };
@@ -1222,7 +1293,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "One Keep's own settings, named by that Keep (its id in [keeps] or keep_list, or its task's id): stop, pause or change one thing Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task, never rule_save. action stop (\"别跑了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set until (when it ends for good) / speaks / title in their words, cap (a helper's pieces a day), computer and agent (a [devices] name, an agent, or \"auto\"; \"以后让 Codex 来做\" is agent), address (a helper's name in Bridge). One round's ask (\"这轮先审 #551\"): next_round, with look_now to start now; never until. The person may change the same on its page. Then one line.",
+    "One Keep's own settings, named by that Keep (its id in [keeps] or keep_list, or its task's id): stop, pause or change one thing Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task, never rule_save. action stop (\"别跑了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set speaks / title in their words, cap (a helper's pieces a day), computer and agent (a [devices] name, an agent, or \"auto\"; \"以后让 Codex 来做\" is agent), address (a helper's name in Bridge). Their words, by how long they hold: this round only (\"这轮先审 #551\") is next_round (look_now starts it now); from now on (\"以后只发 /lgtm\") is also; when it all ends (\"盯到 #10932 合并\") is until, which stops it for good. Then one line.",
     {
       type: "object",
       properties: {
@@ -1230,8 +1301,9 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
         action: { type: "string", enum: ["pause", "resume", "look_now", "every", "stop"] },
         minutes: { type: "number" },
         until_iso: { type: "string", description: "pause: until when" },
-        until: { type: "string", description: "when it ends for good, their words" },
-        next_round: { type: "string", description: "one round's ask, their words" },
+        until: { type: "string" },
+        next_round: { type: "string" },
+        also: { type: "string" },
         speaks: { type: "string", description: "when it speaks, their words" },
         title: { type: "string" },
         cap: { type: "number" },
@@ -1241,7 +1313,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
       },
       required: ["id"],
     },
-    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; speaks?: string; title?: string; cap?: number; computer?: string; agent?: string; address?: string }) => {
+    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; also?: string; speaks?: string; title?: string; cap?: number; computer?: string; agent?: string; address?: string }) => {
       const k = find(String(a.id ?? ""));
       if (!k) return { ok: false, error: `nothing called ${a.id} is looked after; see keep_list` };
       const action = String(a.action ?? "");
@@ -1252,6 +1324,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
         ...(action === "every" ? { everyMinutes: Number(a.minutes) } : {}),
         ...(typeof a.until === "string" ? { until: a.until } : {}),
         ...(typeof a.next_round === "string" ? { next: a.next_round } : {}),
+        ...(typeof a.also === "string" ? { also: a.also } : {}),
         ...(typeof a.speaks === "string" ? { speaks: a.speaks } : {}),
         ...(typeof a.title === "string" ? { title: a.title } : {}),
         ...(a.cap !== undefined ? { cap: Number(a.cap) } : {}),

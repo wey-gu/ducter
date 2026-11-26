@@ -135,7 +135,8 @@ function inSentence(field: KeepField, v?: string): string {
 /** One change said in words, never an arrow (D533): 你把每 45 分钟一轮改成了每小时一轮 / You changed every 45 minutes to every hour. */
 export function editSentence(by: "you" | "partner", e: KeepEdit, persona?: string): string {
   const who = by === "you" ? t("keep.edit.you") : A.nameOf(persona);
-  if (e.field === "said") return t("keep.edit.said", who);
+  // D593: words added from now on are said as what was added; any other change to the words as a change.
+  if (e.field === "said") return e.to ? t("keep.edit.added", who, e.to) : t("keep.edit.said", who);
   const shown = ["speaks", "until", "limits", "where", "agent"].includes(e.field);
   if ((e.from || shown) && (e.to || shown)) return t("keep.edit.line", who, inSentence(e.field, e.from), inSentence(e.field, e.to));
   return e.to ? t("keep.edit.set", who, inSentence(e.field, e.to)) : t("keep.edit.cleared", who, inSentence(e.field, e.from));

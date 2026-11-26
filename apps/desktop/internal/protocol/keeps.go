@@ -65,6 +65,8 @@ type KeepEdit struct {
 	Field string `json:"field"`
 	From  string `json:"from,omitempty"`
 	To    string `json:"to,omitempty"`
+	// D593: From and To are only the part of a long text that changed.
+	Cut bool `json:"cut,omitempty"`
 }
 
 // KeepEditLine is one change: who made it (you, partner) and what changed;

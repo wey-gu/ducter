@@ -3076,6 +3076,36 @@ export const scenarios: Scenario[] = [
     rubric: "The user asks the review loop to review one PR now. The partner hands that ask to the loop's own task now: keep_change next_round naming #551 with look_now is best; a message to the loop's task reaches the same task and is fine too. Its one short Chinese line names #551 and that it is reviewed now. Writing it as the loop's goal (until), opening a new task, or asking back is wrong.",
   },
   {
+    // D593: hel 2026-11-24 06:46 UTC: "only reviews, not 100gle" went into the Keep's goal (until), and was lost.
+    id: "loop-from-now-on-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "对了，这个 loop 只需要看 review，不用看 100gle 的工作哈" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "keep_change" }], notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user narrows what the review loop does, from now on: only reviews, no 100gle work. The partner keeps it on the same loop as a standing instruction (keep_change also, in their words) and says so in one short Chinese line. Writing it as the loop's end (until) is wrong: that is when the whole thing stops. Writing it as this round's ask (next_round) is wrong: it must hold every round. Opening a task or asking back is wrong.",
+  },
+  {
+    // D593: hel 2026-11-26 03:05 UTC: the /lgtm rule went into the one-round ask and was gone after one round.
+    id: "loop-standing-rule-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "让 review 的 loop 记住：以后 Mem 这种有 prow tide 的 repo，千万别自己 merge，只发 /lgtm" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "keep_change" }], notCalled: ["task_open", "keep_make"], noAsk: true },
+    rubric: "The user gives the review loop a rule for every round from now on: on Prow/Tide repos like Mem, never merge by hand, only /lgtm. The partner keeps it on the same loop as a standing instruction (keep_change also, in their words) and says so in one short Chinese line. Putting it in next_round (this round only) or until (when it ends) is wrong. Opening a task or asking back is wrong.",
+  },
+  {
     id: "loop-status-en",
     category: "routines",
     lang: "en",

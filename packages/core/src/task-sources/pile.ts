@@ -200,6 +200,11 @@ const W = {
     newAsk1: "新来了一个评审请求：{link}「{title}」。",
     newAsk1Bare: "新来了一个评审请求：{link}。",
     newAsks: "新来了 {n} 个评审请求：{links}。",
+    // D593: a request the same round already reviewed is said as reviewed, never as waiting.
+    newDone1: "新来的评审请求 {link}「{title}」，这一轮已经评审并发到 GitHub：[看评审]({review})。",
+    newDone1Bare: "新来的评审请求 {link}，这一轮已经评审并发到 GitHub：[看评审]({review})。",
+    newDones: "新来的 {n} 个评审请求这一轮都已评审并发到 GitHub：{links}。",
+    newDoneLink: "{link}（[看评审]({review})）",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
     reviewGo: "发出",
     reviewHold: "先不发",
@@ -239,6 +244,10 @@ const W = {
     newAsk1: "A new review request: {link} “{title}”.",
     newAsk1Bare: "A new review request: {link}.",
     newAsks: "{n} new review requests: {links}.",
+    newDone1: "A new review request, {link} “{title}”, is reviewed this round and on GitHub: [the review]({review}).",
+    newDone1Bare: "A new review request, {link}, is reviewed this round and on GitHub: [the review]({review}).",
+    newDones: "{n} new review requests are reviewed this round and on GitHub: {links}.",
+    newDoneLink: "{link} ([the review]({review}))",
     reviewQ: "Send these {n} review comments on {where}{label}?",
     reviewGo: "Send",
     reviewHold: "Not now",
@@ -1165,9 +1174,17 @@ export function createPile(d: PileDeps): Pile {
       if (brought.length) {
         const w = W[d.lang()];
         const link = (p: RoundPr) => `[${p.ref.replace(/^[^/]+\//, "")}](https://github.com/${p.ref.replace("#", "/pull/")})`;
-        const one = brought.length === 1 ? brought[0]! : undefined;
-        const title = one ? (one.title ?? st.items.find((x) => x.ref === one.ref)?.title) : undefined;
-        const text = one ? fill(title ? w.newAsk1 : w.newAsk1Bare, { link: link(one), title: title ?? "" }) : fill(w.newAsks, { n: brought.length, links: brought.map(link).join(w.listSep) });
+        // D593: what the round already reviewed is said as reviewed (with the review), the rest as waiting.
+        const reviewOf = (p: RoundPr) => posted.find((x) => x.ref === p.ref)?.link;
+        const say = (ps: RoundPr[], done: boolean) => {
+          const one = ps.length === 1 ? ps[0]! : undefined;
+          const title = one ? (one.title ?? st.items.find((x) => x.ref === one.ref)?.title) : undefined;
+          if (done) return one ? fill(title ? w.newDone1 : w.newDone1Bare, { link: link(one), title: title ?? "", review: reviewOf(one) ?? "" }) : fill(w.newDones, { n: ps.length, links: ps.map((p) => fill(w.newDoneLink, { link: link(p), review: reviewOf(p) ?? "" })).join(w.listSep) });
+          return one ? fill(title ? w.newAsk1 : w.newAsk1Bare, { link: link(one), title: title ?? "" }) : fill(w.newAsks, { n: ps.length, links: ps.map(link).join(w.listSep) });
+        };
+        const reviewed = brought.filter((p) => reviewOf(p));
+        const waiting = brought.filter((p) => !reviewOf(p));
+        const text = [reviewed.length ? say(reviewed, true) : "", waiting.length ? say(waiting, false) : ""].filter(Boolean).join("\n");
         d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } } as never);
       }
       boardSubs.forEach((fn) => fn(taskId));

@@ -155,6 +155,7 @@ var zhKeep = Table{
 	"keep.edit.set":         "%s设了：%s",
 	"keep.edit.cleared":     "%s去掉了：%s",
 	"keep.edit.said":        "%s改了说的话",
+	"keep.edit.added":       "%s加了一句：%s",
 }
 
 var enKeep = Table{
@@ -306,6 +307,7 @@ var enKeep = Table{
 	"keep.edit.set":           "%s set: %s",
 	"keep.edit.cleared":       "%s removed: %s",
 	"keep.edit.said":          "%s changed the words",
+	"keep.edit.added":         "%s added: %s",
 }
 
 func init() {

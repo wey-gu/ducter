@@ -21,10 +21,25 @@
 - **Life follows the mechanism**, and the person's gestures go to it: pause (until a time), resume, look
   now, stop. A helper paused holds its address closed and keeps the Keep paused (not stopped).
 - **What waits for the person** is in 待你处理 once, naming the Keep; the sheet says the count.
-- **One round's ask (D540).** "让 review 的 loop 这轮先审 #551" is the partner's `keep_change`
-  `next_round` (with `look_now` to start now), kept on the Keep as `next` in the person's words: the
-  next round's wake carries it first and it is gone; a round under way hears it at once. It is never
-  written into `until`, which is when the Keep ends for good.
+- **Three scopes, three places (D540, D593).** What the person says about the work is one of three, and
+  the partner's `keep_change` judges which (no phrase matching): **this round only** ("这轮先审 #551") is
+  `next_round` (with `look_now` to start now), kept as `next`, taken at that round's wake into `now`
+  (said again if the round's context is compacted) and gone at the next wake; a round under way hears it at
+  once. **From now on** ("以后只发 /lgtm", "不用再看 100gle") is `also`, added to the person's words (`said`),
+  which every round reads first; a round under way hears it at once. **When it all ends** ("盯到 #10932 合并")
+  is `until`; a round that finds it holds reports done, and that stops the Keep for good. A round's ask or a
+  standing rule is never `until`.
+- **Every round hears the Keep first (D593).** A round's wake is one line naming the Keep (the transcript and
+  the keeper read it as a wake), then **「{title}」现在的要求（每一轮都以这里为准）**: the person's words
+  whole, its end (only when the loop really ends on it), when it speaks, its limits, this round's ask, and
+  that the agent's earlier notes and checkpoints are only notes (work the Keep doesn't ask for is not done any
+  more). Then the round's protocol and the person's clock, then the agent's own note from its last round, as
+  its note, then what the person allowed without asking and, for a review Keep, the review requests the to-do
+  sources saw. The same block heads the brief again after a compaction, and a fresh round's seed (D394)
+  comes after the wake, so the agent's notes never sit above the person's words. Hel showed why: the agent's
+  own note ("…100gle 分派、Backbone 生产部署及 Cloud 小时门禁") opened every wake for two days after the
+  person said "only reviews". Rolling to a fresh session every N rounds was not added: D394 already starts
+  each round fresh; what carried the old work was the state, now the Keep first.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The
@@ -49,7 +64,10 @@
   asks the cheap model once which rules they change, shown as a diff for one Go (**照这样改**), or **只改说的话**.
   One path: the page's `keep_change` frame and the partner's `keep_change` tool are `keeps.change(id, c, { by })`,
   checked in code (ranges, lengths, a field the Keep has; nothing in a change can touch D61). Once changed, every
-  round of a loop and every run of a routine is told its rules as they are now (`rulesFor`).
+  run of a routine is told its rules as they are now (`rulesFor`); a loop's round hears the whole Keep every
+  time (above). A change is said as what changed (D593 `cutEdit`: the part that differs, with a few characters
+  around it, never both full texts: **你把…看板规则；不巡查100gle分派、部署或生产。改成了…看板规则；不部署或生产。**),
+  and words added from now on as **你加了一句：…**.
 - **D535, the way in and out.** The page lives only while On hand is shown (leaving On hand closes it; a deep
   link opens it straight); the way back is the header's breadcrumb **对话 / 任务 / {the Keep}** (‹ 任务
   beside the conversation and on a phone), never a link in the page or its rail, which is one list under the

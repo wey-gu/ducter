@@ -169,6 +169,8 @@ export interface CoreApi {
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
   places?: PlacesPort;
+  /** D593: the Keep a task in rounds is, as it stands now (the person's words verbatim, its end, the round's own ask), said first again after its context is compacted; absent when it isn't one. */
+  keepNow?(taskId: string): string | undefined;
   /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
   branchAsk?(prompt: string): Promise<string>;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */

@@ -385,15 +385,20 @@ test("D429: a round's wake says it ends with progress, never done (or done only 
   b.clock.advance(45 * MIN);
   await flush();
   const text = b.woke[0]!.text;
-  expect(text).toStartWith("到时间了：「约 45 分钟后继续检查 nowledge-co 的审查请求与提及」。接着做。\n\n这是循环里的一轮");
+  // D593: its first line names the Keep, then the Keep as it stands; the task's own reason is its note after them.
+  expect(text).toStartWith("到时间了：「review nowledge-co」。接着做。\n\n「review nowledge-co」现在的要求（每一轮都以这里为准）：\n对方的话：「");
+  expect(text).toContain("这是循环里的一轮");
   expect(text).toContain("report_to_main 报 progress，不要报 done");
-  expect(wakeOf(text)).toMatchObject({ reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及", timer: true });
+  expect(text).toContain("上一轮你给自己记下要查的：「约 45 分钟后继续检查 nowledge-co 的审查请求与提及」");
+  expect(wakeOf(text)).toMatchObject({ reason: "review nowledge-co", timer: true });
   // With the person's end condition: done only once it holds.
   open(b, "ci_w", "每 30 分钟看一次 CI，直到 #10473 合并为止", "CI");
   await waitFor(b, "ci_w", 30);
   b.clock.advance(30 * MIN);
   await flush();
-  expect(b.woke.find((w) => w.taskId === "ci_w")!.text).toContain("只有「#10473 合并」已经成立时才报 done");
+  const ci = b.woke.find((w) => w.taskId === "ci_w")!.text;
+  expect(ci).toContain("整件事做到：#10473 合并。只有它成立、这件事从此不用再做时才报 done");
+  expect(ci).toContain("只有上面「整件事做到」那一条成立时才报 done");
   // A one-off wait (no rounds) hears the wake alone.
   open(b, "once", "PR 合并了告诉我", "once");
   await waitFor(b, "once", 10);

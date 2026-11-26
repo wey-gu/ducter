@@ -152,6 +152,7 @@ export const keepWords: { zh: Record<string, string>; en: Record<string, string>
     "keep.edit.set": "%s设了：%s",
     "keep.edit.cleared": "%s去掉了：%s",
     "keep.edit.said": "%s改了说的话",
+    "keep.edit.added": "%s加了一句：%s",
   },
   en: {
     "keep.section": "Looking after",
@@ -302,5 +303,6 @@ export const keepWords: { zh: Record<string, string>; en: Record<string, string>
     "keep.edit.set": "%s set: %s",
     "keep.edit.cleared": "%s removed: %s",
     "keep.edit.said": "%s changed the words",
+    "keep.edit.added": "%s added: %s",
   },
 };

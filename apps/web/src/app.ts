@@ -719,7 +719,7 @@ class AppState {
         if (s !== "connecting" && inApp() && (s === "connected" || !this.keptScreen())) tellReach(s === "connected");
         this.linkTick();
         this.changed();
-        // D-new: a socket coming back repaints an empty shell too (a page restored while it was down).
+        // D613: a socket coming back repaints an empty shell too (a page restored while it was down).
         if (s === "connected") this.ensureShellSoon();
       },
     );
@@ -730,7 +730,7 @@ class AppState {
     };
     this.conn.start();
     // D209: going to the background keeps the last screen at once (the app may not come back).
-    // D-new: coming back re-paints that last state and, when it is not all there, asks the home
+    // D613: coming back re-paints that last state and, when it is not all there, asks the home
     // again for the frames a fresh open gets; a bfcache restore is a resume too.
     if (typeof document === "object") document.addEventListener("visibilitychange", this.onVisibility);
     if (typeof addEventListener === "function") {
@@ -766,7 +766,7 @@ class AppState {
     if (typeof document !== "object" || document.visibilityState === "visible") this.resume("focus");
   };
 
-  /** D-new: the page was in the background or came back from bfcache. Draw the last known state
+  /** D613: the page was in the background or came back from bfcache. Draw the last known state
    *  first (never an empty shell), then ask the home for the same frames a fresh open gets when
    *  the state is not all there; the hello carries the cursor, so nothing is applied twice. */
   resume(why: "visible" | "pageshow" | "focus" = "visible") {
@@ -786,7 +786,7 @@ class AppState {
     this.ensureShellSoon();
   }
 
-  /** D-new: after the state has had a frame to draw, a page with no bar (iOS dropped what it drew
+  /** D613: after the state has had a frame to draw, a page with no bar (iOS dropped what it drew
    *  while suspended) is mounted again from the state it holds. */
   private ensureShellSoon() {
     setTimeout(() => {
@@ -794,7 +794,7 @@ class AppState {
     }, 0);
   }
 
-  /** D-new: what a resume should find still drawn. A missing bar, or the partners beside the
+  /** D613: what a resume should find still drawn. A missing bar, or the partners beside the
    *  conversation gone, is an empty shell. */
   private shellAlive(): boolean {
     if (typeof document !== "object") return true;
@@ -1325,7 +1325,7 @@ class AppState {
   leftOnHand?: () => void;
   /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
   upInPlace?: () => boolean;
-  /** D-new: main.tsx remounts the page from the last state when a resume finds an empty shell. */
+  /** D613: main.tsx remounts the page from the last state when a resume finds an empty shell. */
   onRepaint?: () => void;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;

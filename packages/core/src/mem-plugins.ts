@@ -257,7 +257,6 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!keepFresh) {
       for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
       for (const k of [...updated.keys()]) if (k.startsWith(`${id}:`)) updated.delete(k);
-      for (const k of [...stuck]) if (k.startsWith(`${id}:`)) stuck.delete(k);
     }
     settleOffers(id, got);
     await offers(id, got);
@@ -573,7 +572,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
         const busy = direct.has(key) || (!task && opening.has(key));
         const done = updated.get(key);
         // D597: the direct update handed to a task (said while it runs), or stuck with no task to take it.
-        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(busy ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}), ...(done && !task && !busy ? { updated: true as const } : {}), ...(task && handed.has(key) ? { handed: true as const } : {}), ...(stuck.has(key) && !task && !busy ? { stuck: true as const } : {}) } };
+        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(busy ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}), ...(done && !task && !busy ? { updated: true as const } : {}), ...(task && handed.has(key) ? { handed: true as const } : {}), ...(stuck.has(key) && m.state === "update" && !task && !busy ? { stuck: true as const } : {}) } };
       });
     },
     check,

@@ -2475,7 +2475,7 @@ export interface MemPluginView {
   updated?: true;
   /** D597: Ducter's direct update didn't take, so a task finishes it (`taskId`): said while that task runs. */
   handed?: true;
-  /** D597: the direct update didn't take and no task could pick it up: said until the next check, and 更新 stays. */
+  /** D597: the direct update didn't take and no task could pick it up: said while a newer one is still out (until the next tap), and 更新 stays. */
   stuck?: true;
   checkedAt?: string; // ISO
 }

@@ -7,15 +7,18 @@
 // card under the partner's words when one is made is here too.
 import { cutAtWord, foldRounds, noOrphan, keepBeat, type KeepCard, type KeepChange, type KeepEdit, type KeepField, type KeepItem, type KeepPage, type KeepProposal, type KeepRound, type KeepSheet, type ServerFrame } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
-import { useState } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat";
 import { A } from "./app.ts";
-import { Btn, Chev, DangerButton, EditRow, Field, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
+import { Btn, Chev, DangerButton, EditRow, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
 import { healthLine, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
+import { GConfirm } from "./set-grid.tsx";
+import { finished } from "./store.ts";
 import { Menu, MenuItem, Select } from "./menu.tsx";
 import { PartnerMark } from "./partners.tsx";
 import { SEG_MAX, taskAgents, taskComputers } from "./partner-story.tsx";
@@ -31,6 +34,8 @@ export const K = {
   pages: new Map<string, KeepPage>(),
   pause: false,
   stop: false,
+  /** D602: the held item whose 不用跟了 asks in place (its PR, else its task), or "". */
+  release: "",
   undone: new Set<string>(),
   sig: "",
   askedAt: 0,
@@ -234,6 +239,26 @@ const prNum = (pr?: string) => (pr ? pr.replace(/^.*#/, "#") : "");
 // ---------- On hand: one sheet ----------
 
 /** One Keep under 看守中: its head opens its page; its tasks at work nest under it (up to three). */
+/** D602: a held item's quiet ⋯ on On hand's sheet: 不用跟了 / Stop following asks in place on the
+ *  Keep's page; 打开任务 opens its task. */
+function ItemMore({ keepId, x }: { keepId: string; x: KeepItem }) {
+  const [open, setOpen] = useState(false);
+  const at = useRef<HTMLSpanElement>(null);
+  return (
+    <span class={`kp-hmore${open ? " open" : ""}`} ref={at}>
+      <MoreButton label={t("away.more", x.title)} open={open} onClick={() => setOpen(!open)} />
+      {open &&
+        createPortal(
+          <Menu class="pmenu" label={x.title} anchor={at} onClose={() => setOpen(false)}>
+            <MenuItem onClick={() => (setOpen(false), openKeep(keepId), (K.release = x.pr ?? x.taskId), A.changed())}>{t("keep.item.release")}</MenuItem>
+            <MenuItem onClick={() => (setOpen(false), goTask(x.taskId))}>{t("keep.item.task")}</MenuItem>
+          </Menu>,
+          document.body,
+        )}
+    </span>
+  );
+}
+
 export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }) {
   const facts = keepFacts(k);
   const line = k.run === "perItem" && !k.health ? "" : keepLine(k);
@@ -268,14 +293,17 @@ export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }
           {shown.map((x) => {
             const w = itemWords(x);
             return (
-              <button key={x.pr ?? x.taskId} class="kp-h" onClick={() => goTask(x.taskId)} title={x.title}>
-                <i class={`kp-dot ${x.at}`} aria-hidden="true" />
-                <span class="n">
-                  {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
-                  <span>{x.title}</span>
-                </span>
-                <span class={`s ${w.tone}`}>{w.text}</span>
-              </button>
+              <div key={x.pr ?? x.taskId} class="kp-hrow">
+                <button class="kp-h" onClick={() => goTask(x.taskId)} title={x.title}>
+                  <i class={`kp-dot ${x.at}`} aria-hidden="true" />
+                  <span class="n">
+                    {x.pr && !x.title.includes(prNum(x.pr)) && <b>{prNum(x.pr)}</b>}
+                    <span>{x.title}</span>
+                  </span>
+                  <span class={`s ${w.tone}`}>{w.text}</span>
+                </button>
+                <ItemMore keepId={k.id} x={x} />
+              </div>
             );
           })}
           {nested.length > shown.length && (
@@ -419,6 +447,19 @@ export function Rounds({ k }: { k: KeepPage }) {
   );
 }
 
+/** D602: 不用跟了's one line under a held item: a finished task lets its PR go (it stays open on GitHub);
+ *  one still at work is put down with it. Core's `end` does either. */
+function ReleaseAsk({ x }: { x: KeepItem }) {
+  const task = A.S.tasks.get(x.taskId);
+  const done = !!task && finished(task);
+  const ask = done ? t("keep.item.release.done", x.pr ? prNum(x.pr) : x.title) : t("keep.item.release.open", x.title.length > 40 ? cutAtWord(x.title, 40) : x.title);
+  return (
+    <div class="kp-release">
+      <GConfirm ask={ask} keep={t("task.end.keep")} go={t("keep.item.release")} about={x.title} onKeep={() => ((K.release = ""), A.changed())} onGo={() => ((K.release = ""), A.send({ t: "task_action", taskId: x.taskId, action: "end" }), A.changed())} />
+    </div>
+  );
+}
+
 function Items({ k }: { k: KeepPage }) {
   if (!k.items.length) return <p class="kp-empty">{t("keep.holding.none")}</p>;
   return (
@@ -448,7 +489,10 @@ function Items({ k }: { k: KeepPage }) {
             <span class="acts">
               {x.pr && <Btn kind="text" size="sm" label={t("keep.item.pr")} onClick={() => window.open(`https://github.com/${x.pr!.replace("#", "/pull/")}`, "_blank", "noopener")} />}
               <Btn kind="text" size="sm" label={t("keep.item.task")} onClick={() => goTask(x.taskId)} />
+              {/* D602: 不用跟了 / Stop following, asked in place under the row. */}
+              <Btn kind="text" size="sm" label={t("keep.item.release")} about={x.title} onClick={() => ((K.release = x.pr ?? x.taskId), A.changed())} />
             </span>
+            {K.release === (x.pr ?? x.taskId) && <ReleaseAsk x={x} />}
           </div>
         );
       })}

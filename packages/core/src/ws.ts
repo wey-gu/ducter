@@ -1220,7 +1220,18 @@ export function createWsHandler(deps: WsDeps) {
               // D602: 结束任务 / End task, on a finished task an open PR still holds on the board: it
               // lets each PR go (Ducter stops following it; it stays open on GitHub, closing it there is
               // the person's), so the task is done as it is and its Keep's item goes. Never a close.
-              if (card.attention !== "done" && card.attention !== "done_claimed") return result(false, "Only a finished task is ended here; Cancel task puts down one that isn't.");
+              // From a Keep's 不用跟了 on a task still open, ending it puts it down (its PR stays open).
+              if (card.attention === "dropped" || card.attention === "superseded") return result(true);
+              if (card.attention !== "done" && card.attention !== "done_claimed" && card.attention !== "failed") {
+                try {
+                  await r?.drop(f.taskId);
+                } catch (err) {
+                  console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+                }
+                const now = tasks.get(f.taskId)!;
+                if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency, "you stopped following it");
+                return result(true);
+              }
               const at = new Date().toISOString();
               const prs = prsCarried(card.prs);
               for (const p of prs) letGoPr(log, f.taskId, p.pr, "ended", at, card.persona);

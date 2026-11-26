@@ -42,9 +42,20 @@ func TestD602Shots(t *testing.T) {
 	h.tt.SetSize(1150, 900)
 	keep := os.Getenv("DUCTER_D602_KEEP")
 	if keep != "" {
+		h.app.Route = RouteOnHand
+		h.app.closeKeep()
+		settle()
+		d302Both(t, h.app, h.tt, settle, "onhand-sheet-1150", lang)
 		h.app.openKeep(keep)
 		settle()
 		d302Both(t, h.app, h.tt, settle, "keep-before-1150", lang)
+		h.app.oh.keep.release = "nowledge-co/mem#11179"
+		settle()
+		d302Both(t, h.app, h.tt, settle, "keep-release-1150", lang)
+		h.app.oh.keep.release = ""
+	}
+	if f := finishedOf(h.app.S.Task(id)); f == nil || finishedMenu(*f)[0] != "end" {
+		t.Fatalf("the card's ⋯ should offer 结束任务 first: %+v", f)
 	}
 	h.app.OpenTask(id)
 	settle()

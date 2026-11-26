@@ -25,6 +25,9 @@ type finishedCard struct {
 	// {base} and 开草稿 PR (never on the row, where they pushed the time out).
 	integrate bool
 	base      string
+	// D602: a finished task an open PR still holds: ⋯ offers 结束任务,
+	// asked in place under the opened task's meta line.
+	ends bool
 }
 
 // finishedMenu is what ⋯ offers, in order (the web's finishedMenu).
@@ -34,6 +37,9 @@ func finishedMenu(f finishedCard) []string {
 	}
 	if f.openID != "" && f.integrate {
 		return []string{"merge", "open_pr", "open", "remove"}
+	}
+	if f.openID != "" && f.ends {
+		return []string{"end", "open", "remove"}
 	}
 	if f.openID != "" {
 		return []string{"open", "remove"}
@@ -57,6 +63,7 @@ func finishedOf(task *store.Task) *finishedCard {
 			f.base = "main"
 		}
 	}
+	f.ends = endable(task)
 	return f
 }
 
@@ -146,6 +153,8 @@ func (a *App) finishedItems(c *ui.Context, m *ui.Menu, f finishedCard, withRemov
 			label = a.L.T("result.merge", f.base)
 		case "open_pr":
 			label = a.L.T("result.pr")
+		case "end":
+			label = a.L.T("task.action.end")
 		}
 		if m.Item(label).Chosen() {
 			a.runFinished(c, k, f)
@@ -159,6 +168,11 @@ func (a *App) runFinished(c *ui.Context, k string, f finishedCard) {
 		a.Retry(f.failedIDs)
 	case "why", "open":
 		if f.openID != "" {
+			a.OpenTask(f.openID)
+		}
+	case "end":
+		if f.openID != "" {
+			a.ending = f.openID
 			a.OpenTask(f.openID)
 		}
 	case "remove":

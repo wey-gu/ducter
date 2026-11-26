@@ -39,6 +39,7 @@ type keepState struct {
 	sentAt  time.Time
 	told    string
 	round   string
+	release string          // D602: the held item whose 不用跟了 asks in place (its PR, else its task)
 	quiet   map[string]bool // D550: the quiet runs opened by a click
 	// D533: a rule or the person's words being changed in place.
 	edit  keepEdit
@@ -334,7 +335,10 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 					})
 					text, ink := a.keepItemWords(x)
 					uiText(c.Key("s"), text).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(0)
+					a.keepItemMore(c, k.ID, x)
 				})
+				// D602: a right click says the same as its ⋯.
+				a.contextMenu(c, h, func(m *ui.Menu) { a.keepItemItems(m, k.ID, x) })
 				if h.Clicked() {
 					a.OpenTask(x.TaskID)
 				}
@@ -627,11 +631,44 @@ func (a *App) keepItems(c *ui.Context, k *protocol.KeepPage, w float32) {
 					uiText(c.Key("by"), a.L.T("onhand.prs.approved", strings.Join(x.Said.By, a.L.T("onhand.prs.sep")))).FontSize(t.XS).TextColor(t.InkMuted)
 				}
 			})
-			if a.buttonFor(c, a.L.T("keep.item.task"), x.Title, btnText, t.ControlSM, t.Surface) {
-				a.OpenTask(x.TaskID)
-			}
+			ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {
+				if a.buttonFor(c, a.L.T("keep.item.task"), x.Title, btnText, t.ControlSM, t.Surface) {
+					a.OpenTask(x.TaskID)
+				}
+				// D602: 不用跟了 / Stop following, asked in place under the row.
+				if a.buttonFor(c, a.L.T("keep.item.release"), x.Title, btnText, t.ControlSM, t.Surface) {
+					a.oh.keep.release = key
+				}
+			})
 		})
+		if a.oh.keep.release == key {
+			a.keepRelease(c, x, key, w)
+		}
 	}
+}
+
+// keepRelease is 不用跟了's one line under a held item (D602): a finished
+// task lets its PR go (it stays open on GitHub); one still at work is put
+// down with it. Core's end does either.
+func (a *App) keepRelease(c *ui.Context, x protocol.KeepItem, key string, w float32) {
+	ask := a.L.T("keep.item.release.open", shortTitle(x.Title))
+	if task := a.S.Task(x.TaskID); task != nil && finished(task) {
+		n := keepPRNum(x.PR)
+		if n == "" {
+			n = x.Title
+		}
+		ask = a.L.T("keep.item.release.done", n)
+	}
+	ui.Box(c.Key("rel:"+key)).Width(w).Padding(0, 16, 14, 52).Children(func() {
+		keep, goOn := a.confirmLine(c, "release:"+key, ask, a.L.T("task.end.keep"), a.L.T("keep.item.release"), x.Title)
+		if keep {
+			a.oh.keep.release = ""
+		}
+		if goOn {
+			a.oh.keep.release = ""
+			a.send(protocol.TaskAction{T: "task_action", TaskID: x.TaskID, Action: "end"})
+		}
+	})
 }
 
 func (a *App) keepRoundWoke(r protocol.KeepRound, k *protocol.KeepPage) string {
@@ -834,4 +871,31 @@ func (a *App) keepTalk(c *ui.Context, k *protocol.KeepPage, w float32) {
 			uiText(c.Key("told"), a.L.T("keep.talk.sent", a.ownerName(k.Persona))).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S5).Role(ui.RoleStatus)
 		}
 	})
+}
+
+// keepItemMore is a held item's quiet ⋯ on On hand's sheet (D602): 不用跟了
+// / Stop following asks in place on the Keep's page, and 打开任务.
+func (a *App) keepItemMore(c *ui.Context, keepID string, x protocol.KeepItem) {
+	t := a.T
+	label := a.L.T("away.more", x.Title)
+	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
+		Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
+	b.Draw(drawMore(fg))
+	a.menuButton(c, b, func(m *ui.Menu) { a.keepItemItems(m, keepID, x) })
+}
+
+// keepItemItems fills a held item's menu (D602).
+func (a *App) keepItemItems(m *ui.Menu, keepID string, x protocol.KeepItem) {
+	if m.Item(a.L.T("keep.item.release")).Chosen() {
+		key := x.TaskID
+		if x.PR != "" {
+			key = x.PR
+		}
+		a.openKeep(keepID)
+		a.oh.keep.release = key
+	}
+	if m.Item(a.L.T("keep.item.task")).Chosen() {
+		a.OpenTask(x.TaskID)
+	}
 }

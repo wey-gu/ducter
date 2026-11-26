@@ -889,8 +889,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 			}
 		})
 	})
-	// D454: a right click on a finished row says the same as its ⋯.
-	if f := finishedOf(task); f != nil && !rail {
+	// D454: a right click on a finished row says the same as its ⋯ (D602:
+	// in the sidebar's list too, where 结束任务 is the way to end one).
+	if f := finishedOf(task); f != nil {
 		a.contextMenu(c, row, func(m *ui.Menu) { a.finishedItems(c, m, *f, true) })
 	}
 	// D290: the card you open grows into the task's head, and the task

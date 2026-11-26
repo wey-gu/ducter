@@ -101,10 +101,12 @@ describe("D602: a PR let go holds nothing open", () => {
     expect(core.tasks.get(ID)!.prs?.[0]).toMatchObject({ state: "open", letGo: { why: "ended" } });
     expect(["done", "done_claimed"]).toContain(core.tasks.get(ID)!.attention);
     expect(items(core)).toEqual([]);
-    // A task still at work is put down with Cancel task, not ended here.
+    // 不用跟了 on a Keep item whose task is still at work: ending it puts it down, and its item goes.
     core.tasks.setState(ID, "working", "hot");
     ws.send(JSON.stringify({ t: "task_action", taskId: ID, action: "end" }));
     for (let i = 0; i < 200 && frames.filter((f) => f.t === "action_result").length < 2; i++) await Bun.sleep(10);
-    expect(frames.filter((f) => f.t === "action_result")[1]).toMatchObject({ action: "end", ok: false });
+    expect(frames.filter((f) => f.t === "action_result")[1]).toMatchObject({ action: "end", ok: true });
+    expect(core.tasks.get(ID)!.attention).toBe("dropped");
+    expect(items(core)).toEqual([]);
   });
 });

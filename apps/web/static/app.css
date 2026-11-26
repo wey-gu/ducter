@@ -25177,3 +25177,38 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .end-ask .g-confirm small {
   color: var(--ink);
 }
+/* D602: 不用跟了 asks in place under a held item: the shared confirm line, on the item's text column. */
+.kp-release {
+  grid-column: 2 / -1;
+}
+.kp-release .g-confirm {
+  padding: 0;
+  min-height: 0;
+}
+.kp-release .g-confirm small {
+  color: var(--ink);
+}
+/* D602: a held item on On hand's sheet: its row and a quiet ⋯ (不用跟了, 打开任务) at its end; the ⋯
+   comes in on hover or focus with a pointer, and always stands on touch. */
+.kp-hrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  border-top: 1px solid var(--line-soft);
+}
+.kp-hrow > .kp-h {
+  flex: 1;
+  min-width: 0;
+  border-top: 0;
+}
+@media (hover: hover) {
+  .kp-hmore {
+    opacity: 0;
+    transition: opacity var(--t-fast) var(--ease);
+  }
+  .kp-hrow:hover .kp-hmore,
+  .kp-hrow:focus-within .kp-hmore,
+  .kp-hmore.open {
+    opacity: 1;
+  }
+}

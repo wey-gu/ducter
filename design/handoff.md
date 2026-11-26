@@ -17,7 +17,7 @@ out by asking.
 | 11-25 | the 官网 #562 hand-off | filed as a reply to an old message, so no task picked it up | never noticed |
 | 11-26 16:31 | dev task, mem#11393 | same | the author asked "is the Babysitter on it?" |
 | 11-26 17:02 | dev task, mem#11408 | same | found while investigating |
-| 11-26 19:1x | colleague's agent, mem#11389, sent in the dev-team Space | never read: Ducter watched only the personal Space | the colleague's agent said "delivered, unread" |
+| 11-26 19:1x | colleague's agent, mem#11389, sent in the dev-team Space | read, then dropped as muted: on 11-25 the author typed a reply on that sender's card, and any answer but Go muted the sender, silently and for good (D604) | the colleague's agent said "delivered, unread" |
 | 11-26 20:20–20:36 | two dev tasks, mem-backbone#378 and mem#11441 | same as the first row; each resent 3× because nothing answered | the author asked |
 
 Meanwhile the partner said 「已交给 PR Babysitter」 for work no one had taken (11-26 15:54).
@@ -37,7 +37,7 @@ hand-off needs:
 3. **Where it lands was an accident of addressing.** A Space, a mailbox, a reply thread: each
    is a way for the work to land where nobody looks. A helper is one thing to the person, so it
    must be reachable in one way wherever it's addressed.
-4. **Silence was the failure mode.** Unread, unclaimed and stuck all looked the same as "fine"
+4. **Silence was the failure mode.** A typed reply on a sender's card even muted the sender for good, with no word to anyone (D604). Unread, unclaimed and stuck all looked the same as "fine"
    to everyone. The sender retried blindly (3×), and the partner reported success it didn't
    have.
 5. **No one could see the queue.** Neither the person nor the sender nor the partner had a
@@ -96,7 +96,7 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
 | Piece | State |
 |---|---|
 | Local hand-off without Mem, a held item, an immediate wake, "taken" only on claim, the 10-min line | D598 (in 0.1.91) |
-| Receives in every Space the helper is shared to | D604 (in review) |
+| A typed reply never mutes; a muted sender's mail is re-read on unmute; the Spaces a helper receives in are a fact | D604 (in review) |
 | 不用跟了 on a held item; release when its task ends | D602 (in review) |
 | **One key per item, merging duplicates** | to build |
 | **Declined and returned as states, said back to the sender in its Space** | to build |

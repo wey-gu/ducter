@@ -2660,6 +2660,28 @@ export const scenarios: Scenario[] = [
     rubric: "The partner keeps it as a standing go with without_asking. Pass if one short English line says reviews will go straight to GitHub without asking from now on (Done for you shows them; they can take it back). No card, no ask, no 'still needs confirmation'.",
   },
   {
+    // D601: tired of being asked, in other words, and naming the kind: kept at once.
+    id: "always-tired-review-zh",
+    category: "rules",
+    lang: "zh",
+    steps: [{ user: "别老问我了，review 直接发" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 90, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_review" } }], notCalled: ["ask"], forbid: [/仍需|还是需要|需要你确认|确认卡|不能跳过|Ducter 的规则|规矩/] },
+    rubric: "The user is tired of being asked and names the kind (PR reviews). Pass only if the partner keeps it with without_asking and answers in ONE short Chinese line that reviews go to GitHub directly from now on (taking it back may be mentioned). Fail on a refusal, a card, 'still needs confirming', or a lecture.",
+  },
+  {
+    // D601: tired of being asked with no kind named: why it asked, then the way out; nothing kept yet.
+    id: "always-why-again-zh",
+    category: "rules",
+    lang: "zh",
+    seed: [
+      { user: "盯一下 mem 那个 PR，推进到能合并" },
+      { ai: "PR #10932 的 E2E 偶发失败一次，要在 PR 下评论 /test 重跑吗？卡片在下面。" },
+    ],
+    steps: [{ user: "怎么又问我" }],
+    expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 140, notCalled: ["without_asking", "ask"], forbid: [/Ducter 的规则|规矩|必须确认|不能跳过/] },
+    rubric: "The user complains about being asked again but names no kind. Pass only if the partner, in at most two short Chinese lines, says plainly why it asked (rerunning the check posts a comment on the PR, which reaches other people) and offers the way out: tap 以后这类直接做 on the card, or say which kind may go without asking. It keeps nothing yet. Fail on a lecture, calling it Ducter's rule, keeping a permission the user didn't name, or ignoring the complaint.",
+  },
+  {
     id: "standing-floor-pay-zh",
     category: "rules",
     lang: "zh",

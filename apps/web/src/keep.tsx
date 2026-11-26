@@ -606,7 +606,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
         ]
       : []),
     ...(k.address
-      ? [row({ field: "address", label: "keep.rule.address", values: [t("keep.address.name", k.address.name)], muted: t(`keep.address.${k.address.mem}`), draft: () => ({ address: k.address!.name }), editor: () => <Field value={d.address ?? ""} label={t("keep.rule.address")} placeholder={t("keep.edit.address.ph")} autoFocus onInput={set("address")} /> })]
+      ? [row({ field: "address", label: "keep.rule.address", values: [t("keep.address.name", k.address.name), ...(k.address.spaces?.length ? [t("keep.address.spaces", k.address.spaces.map((s) => s.replace(/ /g, "\u00a0")).join(t("keep.address.sep")))] : [])], muted: t(`keep.address.${k.address.mem}`), draft: () => ({ address: k.address!.name }), editor: () => <Field value={d.address ?? ""} label={t("keep.rule.address")} placeholder={t("keep.edit.address.ph")} autoFocus onInput={set("address")} /> })]
       : []),
   ];
   const done = K.done?.id === k.id ? K.done : undefined;

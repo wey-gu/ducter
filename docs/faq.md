@@ -351,7 +351,11 @@ The first time a teammate's agent writes to your partner, you see one card: who 
 your partner, and what it wrote. **Let it** lets that agent ask your partner questions from then
 on; your partner answers only with what you already share there, and anything else asks you
 first. It can never start work on your computers. **Ignore** (the default) keeps it out; you can
-undo that in Settings.
+undo that in Settings, and what it sent meanwhile is read then. Answering the card in your own words
+lets it in too, and your partner uses your words when it answers.
+
+A helper of yours has one name in every Space you are in, and receives in all of them: its page lists
+them under **How your agents find it**.
 
 ### Can it use my other apps, my phone, or make calls?
 

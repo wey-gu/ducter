@@ -168,7 +168,11 @@ export interface BridgeClient {
    * New messages in the persona's inbox, with bodies, skipping ids the caller already has.
    * `reads`: the read status of our own sent messages, when the inbox reports it.
    */
-  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean>; stuckIn?: { code: string; space: string } }>>;
+  /**
+   * `receives` (D604): the Spaces this mailbox was read in on this check, by id and label: Mem's
+   * identity inbox lists each Space it read (`spaces[]`, `status: "observed"`), or each place read.
+   */
+  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean>; stuckIn?: { code: string; space: string }; receives?: { id: string; label: string }[] }>>;
   /**
    * The handles in the inbox, without opening any (nothing is marked read). Used once, when Bridge
    * is first on for a persona: what is already there is not a request to it (B14, D170).
@@ -1038,6 +1042,18 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       let stuckIn: { code: string; space: string } | undefined;
       let answered = false;
       let lastFail: BridgeFailure | undefined;
+      // D604: the Spaces this mailbox was read in, so the home knows (and says) where it receives.
+      const receives: { id: string; label: string }[] = [];
+      const receivesIn = async (j: any, pl: BridgePlace) => {
+        const seen = Array.isArray(j?.spaces) ? j.spaces.filter((x: any) => str(x?.status) === "observed" && str(x?.space_id)) : [];
+        if (wideNow && seen.length) {
+          if (seen.some((x: any) => !str(x?.space?.label) && !places.some((p) => p.spaceId === str(x.space_id) && p.spaceLabel) && !names.has(str(x.space_id)!))) await learnNames().catch(() => {});
+          for (const x of seen) {
+            const sp = spaceIn(x, pl);
+            if (sp.id && !receives.some((r) => r.id === sp.id)) receives.push({ id: sp.id, label: sp.label ?? sp.id });
+          }
+        } else if (pl.spaceId && !receives.some((r) => r.id === pl.spaceId)) receives.push({ id: pl.spaceId, label: pl.spaceLabel ?? pl.spaceId });
+      };
       for (const { pl, args } of await inboxes()) {
         const got = await readInbox(args, pl.context);
         if ("fail" in got) {
@@ -1053,6 +1069,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         }
         answered = true;
         stuckIn ??= stuckSpaceIn(j);
+        await receivesIn(j, pl);
         const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
         const entry = (id: string) => list.find((m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id)) === id);
         // D400: nmem 0.10.121 marks an entry it won't open (`eligible: false`, e.g. `state: "expired"`,
@@ -1141,7 +1158,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         if (rd) reads = { ...(reads ?? {}), ...rd };
       }
       if (!answered && lastFail) return lastFail;
-      return { ok: true, messages, ...(reads ? { reads } : {}), ...(stuckIn ? { stuckIn } : {}) };
+      return { ok: true, messages, ...(reads ? { reads } : {}), ...(stuckIn ? { stuckIn } : {}), ...(receives.length ? { receives } : {}) };
     },
     async inboxIds() {
       const ids: string[] = [];

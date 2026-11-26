@@ -95,6 +95,12 @@ export interface Helper {
   said?: "ready" | "refused";
   /** D533: pieces of work it starts in a day without asking, as the person set it on its Keep (absent: HELPER_DAILY). */
   daily?: number;
+  /**
+   * D604: the Spaces its mailbox was last read in, as Mem's identity inbox answered (`spaces[]` with
+   * `status: "observed"`), by id and the person's label for it. Absent: not read yet. One identity has
+   * one card in every Space the person is in, and its inbox reads them all (VERIFIED hel, nmem 0.10.123).
+   */
+  spaces?: { id: string; label: string }[];
 }
 
 /** A helper as Settings › Agent 通信 shows it. */
@@ -109,6 +115,8 @@ export interface HelperView {
   open: number;
   /** Work it took in the last 7 days. */
   week: number;
+  /** D604: the labels of the Spaces it receives in (Helper.spaces), once read. */
+  spaces?: string[];
 }
 
 /**

@@ -92,6 +92,8 @@ export interface Helpers {
   resume(id: string): Helper | undefined;
   /** The helpers whose mail the home reads now: on, address confirmed. */
   listening(): { id: string; name: string; context: string }[];
+  /** D604: the Spaces its mailbox was just read in (Mem's identity inbox); written only when they changed. */
+  setSpaces(id: string, spaces: { id: string; label: string }[]): void;
   /** Make the address of every on helper that has none yet (at start, when Mem becomes ready, every 10 min). */
   tick(): Promise<void>;
   views(count: (helperId: string) => { open: number; week: number }): HelperView[];
@@ -238,6 +240,12 @@ export function createHelpers(o: {
       return h;
     },
     listening: () => read().filter((h) => h.state === "on" && h.mem === "ready" && h.link).map((h) => ({ id: h.id, name: h.name, context: h.link!.context })),
+    setSpaces(id, spaces) {
+      const h = read().find((x) => x.id === id);
+      const clean = spaces.filter((x) => x && typeof x.id === "string" && x.id).map((x) => ({ id: x.id, label: cleanLine(x.label || x.id, 60) }));
+      if (!h || !clean.length || JSON.stringify(h.spaces ?? []) === JSON.stringify(clean)) return;
+      update(id, (x) => ({ ...x, spaces: clean }));
+    },
     tick() {
       // One at a time; a helper made meanwhile is looked at once more before it ends.
       if (running) return (again = true), running;
@@ -252,7 +260,7 @@ export function createHelpers(o: {
         } while (again);
       })().finally(() => (running = undefined)));
     },
-    views: (count) => read().map((h) => ({ id: h.id, name: h.name, about: h.about, state: h.state, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}), ...count(h.id) })),
+    views: (count) => read().map((h) => ({ id: h.id, name: h.name, about: h.about, state: h.state, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}), ...(h.spaces?.length ? { spaces: h.spaces.map((x) => x.label) } : {}), ...count(h.id) })),
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

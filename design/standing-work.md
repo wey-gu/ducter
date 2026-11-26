@@ -282,7 +282,7 @@ the side column after the rounds.
    partner changes it with one tool (`keep_change`) and says the change in one line. While the home takes the words
    the send stays pressed in; then the box empties and one line says **{partner} 收到了，改好会在对话里说一声。**
 8. **怎么做 / How it runs** (the side column; each rule changed in place with **改**, D533): when it wakes, until, when it speaks, limits, where and who, and
-   for a Keep with an address **别的 agent 怎么找到它** (its Mem name and **已连上**; the Bridge details one more tap
+   for a Keep with an address **别的 agent 怎么找到它** (its Mem name, D604 **在这些 Space 收信：{the Spaces}**, and **已连上**; the Bridge details one more tap
    in, never the page's subject). At its foot **暂停 ▾** (暂停 1 小时, 暂停到明天早上, 暂停一周, 一直暂停，直到我恢复), **立即运行**, and last and apart **结束看守** (D592; in the
    failed ink, asks once).
 

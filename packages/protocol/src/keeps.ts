@@ -192,7 +192,7 @@ export interface KeepSheet {
   week: number;
   pausedUntil?: string;
   /** Its address in Bridge (a helper): a detail of the Keep, never its home. */
-  address?: { name: string; mem: HelperMem; detail?: string };
+  address?: { name: string; mem: HelperMem; detail?: string; /** D604: the Spaces it receives in, by label, once read. */ spaces?: string[] };
   since: string;
   endedAt?: string;
 }

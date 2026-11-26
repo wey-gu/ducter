@@ -64,7 +64,7 @@ import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { pingOf } from "../../protocol/src/peer-self.ts";
-import { bridgeFor, bridgeKeyFor, createNmemBridge, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
+import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClient, type BridgeContact, type BridgeMessage, type BridgeOp, type BridgeResult } from "./bridge.ts";
 import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, helperSent, isHelperWork, localHandoff, type Helper } from "../../protocol/src/helpers.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -1918,7 +1918,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const keepsLine = renderKeeps(core.keeps?.sheets(core.persona.id) ?? []);
     if (keepsLine) deltas.push(keepsLine);
     // D494: the person's helpers and the work each has on hand, every turn while there are any.
-    const helpersLine = renderHelpers(core.helpers?.list() ?? [], (id) => helperWork(id), userLang() ?? NO_WORDS_YET, (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })));
+    const helpersLine = renderHelpers(
+      core.helpers?.list() ?? [],
+      (id) => helperWork(id),
+      userLang() ?? NO_WORDS_YET,
+      (id) => handoffs(id).filter((x) => !x.taskId && now() - x.at < DAY_MS).map((x) => ({ gist: x.m.text.replace(/^.*[：:]\n/, ""), at: new Date(x.at).toISOString(), ...(x.m.fromTask ? { fromTask: x.m.fromTask } : {}), ...(x.stalled ? { stalled: true } : {}) })),
+      (id) => helperUnread(id),
+    );
     if (helpersLine) deltas.push(helpersLine);
     // D596: said before Ducter could keep it: once per home, the first turn after the upgrade, the
     // partner hears that the dev flow can now be kept, and judges whether the person already said it.
@@ -5350,7 +5356,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const who = m.member && m.agent ? said(lang, "senderMemberAgent", { member: m.member, agent: m.agent }) : m.agent ? m.agent : m.host ? said(lang, "senderHost", { host: m.host }) : said(lang, "senderSomeone");
     const body: Bodies["decision"] = {
       decisionId: newId("d"),
-      question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: core.persona.name || "Ducter", gist }),
+      // D604: mail to one of the person's helpers names that helper (hel: 「…想找 Ducter」 for mail to the Babysitter).
+      question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: (m.helper ? core.helpers?.get(m.helper)?.name : undefined) || core.persona.name || "Ducter", gist }),
       goLabel: said(lang, "senderGo"),
       holdLabel: said(lang, "senderHold"),
       defaultOption: "hold",
@@ -5362,9 +5369,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   /**
    * 答应 / Let it: the sender's messages come through as questions from now on (D170's teammate
    * rules), and what it sent meanwhile is read now. 不理 / Ignore: it is muted, its messages logged
-   * and never read (恢复 in Settings, or "听 X 的", undoes it).
+   * and never read (恢复 in Settings, or "听 X 的", undoes it). D604: a card answered with words lets it
+   * through too (on hel the person wrote how to answer and the sender was muted): `told` rides on what it
+   * sent meanwhile, for the partner; only 不理 itself mutes.
    */
-  function letSender(from: string, go: boolean) {
+  function letSender(from: string, go: boolean, told?: string) {
     const cur = core.settings?.get().peers;
     if (!cur || !core.settings?.setPeers) return;
     if (!go) {
@@ -5379,7 +5388,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (b.direction !== "in" || b.state !== "held" || b.from !== from || read.has(b.messageId)) continue;
       read.add(b.messageId);
       const { state: _held, ...rest } = b;
-      const again = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: rest });
+      const words = told?.trim() ? redactSecrets(told.trim()).slice(0, 2000) : "";
+      const again = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { ...rest, ...(words ? { told: words } : {}) } });
       api.onTrigger(again);
     }
   }
@@ -5412,6 +5422,76 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         onError(err);
       }
     return mark;
+  }
+
+  /**
+   * D604: a message logged muted whose sender is heard again (恢复 in Settings, "听 X 的", or the repair
+   * below) and that was never logged otherwise: read again from Mem (it keeps mail 7 days), so what came
+   * while muted isn't lost. A message from before the switch went off stays as it was.
+   */
+  function mutedThenHeard(b: Bodies["bridge_msg"], peers: { reach?: string; muted: string[] } | undefined): boolean {
+    if (b.state !== "muted" || !peers || peers.reach === "off") return false;
+    const from = b.from ?? "";
+    if (peers.muted.includes(b.agent ?? from) || peers.muted.includes(from)) return false;
+    return !loggedBridge().some((e) => e.body.direction === "in" && e.body.messageId === b.messageId && e.body.state !== "muted");
+  }
+  /** D604: a teammate's agent whose card the person answered, and who isn't muted now: they let it through (Settings 恢复 after 不理). */
+  function heardAgain(from: string): boolean {
+    const peers = core.settings?.get().peers;
+    if (!peers || peers.muted.includes(from)) return false;
+    const card = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 }).find((e) => (e.body as Bodies["decision"]).sender?.from === from);
+    if (!card) return false;
+    const id = (card.body as Bodies["decision"]).decisionId;
+    return core.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 2000 }).some((e) => (e.body as Bodies["decision_resolved"]).decisionId === id && (e.body as Bodies["decision_resolved"]).by === "user");
+  }
+  /**
+   * D604, once per card: a sender card the person answered with their own words before D604 muted the
+   * sender (hel, 2026-11-25: 「你可以说一下…」 on dev team's agent; its hand-off of mem#11389 on 11-26
+   * was then logged muted and never read). Such a card is let through now, as it would be today.
+   */
+  const repairFile = join(cwd, "bridge-d604.json");
+  let repaired: Set<string> | undefined;
+  function repairReplyMutes() {
+    if (!core.settings?.setPeers) return;
+    if (!repaired) {
+      repaired = new Set();
+      if (persist)
+        try {
+          for (const id of JSON.parse(readFileSync(repairFile, "utf8"))?.done ?? []) repaired.add(String(id));
+        } catch {
+          /* first time */
+        }
+    }
+    const replies = core.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 2000 }).filter((e) => (e.body as Bodies["decision_resolved"]).option === "reply" && (e.body as Bodies["decision_resolved"]).by === "user");
+    let changed = false;
+    for (const e of replies) {
+      const b = e.body as Bodies["decision_resolved"];
+      if (repaired.has(b.decisionId)) continue;
+      const card = senderCardOf(b.decisionId);
+      if (!card) continue;
+      repaired.add(b.decisionId);
+      changed = true;
+      const peers = core.settings.get().peers;
+      if (peers?.muted.includes(card.sender!.from)) core.settings.setPeers({ muted: peers.muted.filter((x) => x !== card.sender!.from) });
+      letSender(card.sender!.from, true, b.text);
+    }
+    if (changed && persist)
+      try {
+        mkdirSync(cwd, { recursive: true });
+        writeFileSync(repairFile, JSON.stringify({ done: [...repaired] }));
+      } catch (err) {
+        onError(err);
+      }
+  }
+
+  /** D604: mail to a helper in the last 7 days that was logged muted or held and never read since. */
+  function helperUnread(id: string): { from: string; space?: string; at: string; why: "muted" | "held" }[] {
+    const evs = loggedBridge().filter((e) => e.body.direction === "in" && e.body.helper === id);
+    const read = new Set(evs.filter((e) => !e.body.state).map((e) => e.body.messageId));
+    const t = now();
+    return evs
+      .filter((e) => (e.body.state === "muted" || e.body.state === "held") && !read.has(e.body.messageId) && t - Date.parse(e.ts) < MEM_TTL_MS)
+      .map((e) => ({ from: e.body.from ?? "an agent", ...(e.body.spaceLabel ? { space: e.body.spaceLabel } : {}), at: e.ts, why: e.body.state as "muted" | "held" }));
   }
 
   /** D163: a sender over its daily quota is set aside: logged, never waking the partner. */
@@ -5601,6 +5681,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (bridgeChecking) return bridgeChecking; // one check at a time
     bridgeChecking = (async () => {
       lastCheck = now();
+      repairReplyMutes(); // D604: before the rules below are read
       const peers = core.settings?.get().peers;
       // Settings › 伙伴 谁都不行 (D205): no other agent reaches the partner, but what the user
       // sent through a card still gets its answer. So it checks only while one is outstanding.
@@ -5609,7 +5690,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await recoverOutbox().catch(onError);
       const start = await startMark();
       if (!start || closed) return 0;
-      const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in").map((e) => e.body.messageId), ...start.skip]);
+      const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in" && !mutedThenHeard(e.body, peers)).map((e) => e.body.messageId), ...start.skip]);
       const r = await bridge.check(known);
       if (!r.ok) setStuck(r.stuck ? r.code : undefined);
       if (!r.ok || closed) return 0;
@@ -5626,6 +5707,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       for (const h of core.helpers?.listening() ?? []) {
         const hr = await clientFor(h.id)?.check(known).catch(() => undefined);
         if (hr?.ok) for (const m of hr.messages) helperMail.push({ ...m, helper: h.id });
+        // D604: where it receives, as Mem's identity inbox read it just now: a fact for [helpers] and its sheet.
+        if (hr?.ok && hr.receives?.length) core.helpers?.setSpaces?.(h.id, hr.receives);
       }
       let n = 0;
       // D418: the very first message any agent sent this persona carries the one-time note (a client's
@@ -5657,7 +5740,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         // D334: a teammate's agent (not one of the person's own) the person hasn't let through yet:
         // what it sends is kept, held, and its first message is one card (答应 / 不理, default 不理).
-        if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from)) {
+        if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from) && !heardAgain(m.from)) {
           core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), ...(m.route ? { route: m.route } : {}), ...(first ? { first: true } : {}), state: "held" } });
           first = false;
           askSender(m);
@@ -6205,7 +6288,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (e.kind === "decision_resolved" && senderCardOf((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
         const from = senderCardOf(b.decisionId)!.sender!.from;
-        if (b.by === "user") letSender(from, b.option === "go");
+        // D604: only 不理 (hold) mutes; Go, or the person's own words on it, let it through.
+        if (b.by === "user") letSender(from, b.option !== "hold", b.option === "reply" ? b.text : undefined);
         return;
       }
       // D379: the ask to keep a saying as a rule: core keeps it on Go; Ducter's own bookkeeping, no partner turn.
@@ -6661,15 +6745,26 @@ export function renderAgentMail(facts: { harness: string; back: "next" | "old"; 
  * Nowledge Bridge), what it takes, whether its address works, and the work it has on hand, so mail to
  * it can join the task already on the same work. Facts only; what to do is the model's.
  */
-export function renderHelpers(hs: Helper[], work: (id: string) => { taskId: string; title: string }[], lang: LangTag = "en", waiting: (id: string) => { gist: string; at: string; fromTask?: string; stalled?: boolean }[] = () => []): string {
+export function renderHelpers(
+  hs: Helper[],
+  work: (id: string) => { taskId: string; title: string }[],
+  lang: LangTag = "en",
+  waiting: (id: string) => { gist: string; at: string; fromTask?: string; stalled?: boolean }[] = () => [],
+  unread: (id: string) => { from: string; space?: string; at: string; why: "muted" | "held" }[] = () => [],
+): string {
   if (!hs.length) return "";
+  // D604: where it receives, as Mem's identity inbox read it (one identity, one card per Space), and mail
+  // to it that came and wasn't read (a sender the person said 不理 to, or one waiting on its card).
+  const spaces = (h: Helper) => (h.spaces?.length ? `receives in ${h.spaces.length === 1 ? "the Space" : `${h.spaces.length} Spaces, every one the user is in`}: ${h.spaces.map((x) => `"${x.label}"`).join(", ")} (one address, the same in each; it replies in the Space a message came from)` : "");
+  const unreadOf = (id: string) => unread(id).slice(-3).map((x) => `from ${x.from}${x.space ? ` in "${x.space}"` : ""} at ${x.at.slice(5, 10)} ${x.at.slice(11, 16)} UTC, ${x.why === "muted" ? `not read: the user chose 不理 for that sender (listening again, "听 ${x.from} 的" with peer_rule unmute, or 恢复 in ${paneName("peers", lang)}, reads it now)` : "kept unread while its sender card waits for the user"}`);
   // D598: handed and not taken yet (no task of the helper's has it): a fact, so nobody says it is on it.
   const waits = (id: string) => waiting(id).slice(-3).map((x) => `"${clipLine(x.gist, 60)}" (${x.fromTask ? `from task ${x.fromTask}, ` : ""}handed ${x.at.slice(11, 16)} UTC, not taken by any of its tasks yet${x.stalled ? "; you offered to run it directly" : ""})`);
   const state = (h: Helper) => (h.state === "stopped" ? "stopped: its address is closed" : h.mem === "ready" ? "on, its address works" : h.mem === "refused" ? `its address was refused by Nowledge Mem (${clipLine(h.detail ?? "", 80)})` : `its address is still being made (${clipLine(h.detail ?? "waiting on Nowledge Mem", 80)})`);
   const one = (h: Helper) => {
     const w = work(h.id).slice(0, 5);
     const wt = waits(h.id);
-    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""}${wt.length ? `; handed, waiting to be taken: ${wt.join(", ")}` : ""})`;
+    const un = unreadOf(h.id);
+    return `"${h.name}" (takes: ${clipLine(h.about, 120) || "not said"}; ${state(h)}${h.state === "on" && spaces(h) ? `; ${spaces(h)}` : ""}${un.length ? `; mail to it not read: ${un.join(", ")}` : ""}${w.length ? `; on hand: ${w.map((t) => `task ${t.taskId} "${clipLine(t.title, 50)}"`).join(", ")}` : ""}${wt.length ? `; handed, waiting to be taken: ${wt.join(", ")}` : ""})`;
   };
   return `[helpers] The user's helpers, named addresses of theirs in Nowledge Bridge that their own agents hand work to: ${hs.slice(0, 6).map(one).join("; ")}. A [message to your helper …] from one of their own agents is work they already said yes to: open a task for it (its brief: the work, the sender's words) or, when it is the same work as one on hand, task_send it there; the answer goes back from the helper's address when the task is done. A helper is on a piece of work only once its task is in "on hand": before that, say it is handed over and waiting to be taken (交给了，等它接手), never that it took it or is on it, whatever a task's report says; asked about one still waiting, say so and offer to get it going (keep_change hand again, or a task for it now). It is shown in ${paneName("peers", lang)}.`;
 }

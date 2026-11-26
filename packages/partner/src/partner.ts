@@ -4074,7 +4074,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return {
           ok: true,
           kept: { action, ...(kept.orgs?.length ? { owners: kept.orgs } : {}), ...(kept.taskId ? { task: kept.taskId } : {}) },
-          note: `Kept as their go${where} (Settings › Partner, Without asking): Ducter does it with no card, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后这类直接做，不再问你。想收回说一声。" No ask, no card.${action === "pr_open" ? " A task that finished verified work with no PR yet: task_send it now to open its PR (open_pr) and hand it over; one not verified yet: say what is left. Merging stays theirs." : ""}`,
+          note: `Kept as their go${where} (Settings › Partner, Without asking): Ducter does it with no card, each one in Done for you; the D61 floor still asks. Say it back in one short line, e.g. "好，以后这类直接做，不再问你。想收回说一声。" No ask, no card.${action === "pr_open" ? " A task that finished verified work with no PR yet: task_send it now to open its PR (open_pr) and hand it over; one not verified yet: say what is left. Merging stays theirs. Name their helper as they did, never translated." : ""}`,
         };
       },
     );

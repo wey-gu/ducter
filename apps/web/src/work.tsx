@@ -17,6 +17,7 @@ const pad = (s: string) => cjkPad(A.L, s);
 const tp = (key: string, v: string) => t(key, pad(v)).trim().replace(/ ([，。；：])/g, "$1");
 import { attention, type Task } from "./store.ts";
 import { Facts } from "./controls.tsx";
+import { UsageWhy } from "./usage-week.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -393,6 +394,8 @@ export function LimitCard({ w }: { w: WaiterView }) {
         <div class="watch-words">
           <p class="rhythm">{t("limit.head", harnessName(l.harness))}</p>
           {at && <p class="back">{l.resetKnown ? t("limit.back", soonish(at)) : t("limit.back.unknown", soonish(at))}</p>}
+          {/* D591: what used most of this agent this week. */}
+          <UsageWhy harness={l.harness} {...(w.taskId ? { taskId: w.taskId } : {})} />
         </div>
       </div>
       <div class="btns">

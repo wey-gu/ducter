@@ -63,6 +63,12 @@ export function usageLines(t: T, r: UsageReport): string[] {
   out.push("", t("usage.by"));
   if (r.by.you.input || r.by.you.output) out.push(`  ${t("usage.by.you", { sum: sum(t, r.by.you) })}`);
   if (r.by.partner.input || r.by.partner.output) out.push(`  ${t("usage.by.partner", { sum: sum(t, r.by.partner) })}`);
+  // D591: what no task used: the partner's own replies and Ducter's own checks.
+  if (r.talk.turns || r.looks.turns) {
+    out.push("", t("usage.own"));
+    if (r.talk.turns) out.push(`  ${t("usage.talk", { sum: sum(t, r.talk.tokens), turns: r.talk.turns })}`);
+    if (r.looks.turns) out.push(`  ${t("usage.looks", { sum: sum(t, r.looks.tokens), turns: r.looks.turns })}`);
+  }
   out.push("", t("usage.tasks", { n: r.tasks.length }));
   for (const k of r.tasks) out.push(`  ${t("usage.task", { title: k.title, who: who(k.harness, k.model), sum: sum(t, k.tokens), turns: k.turns })}`);
   out.push("", t("usage.daily"));

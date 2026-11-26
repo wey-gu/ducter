@@ -39,12 +39,13 @@ import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
 import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
+import { registerUsageTool } from "./usage-tool.ts";
 import { recentFolders } from "./first-words.ts";
 import { createOngoing } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
-import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
+import { createHarnessAsk, createHarnessJudge, type LookUsed } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { replayProactive } from "./proactive/replay.ts";
@@ -604,6 +605,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 
   const log = openLog({ path: join(dataDir, "ducter.db"), persona: persona.id, clock });
+  // D591: every one of Ducter's own looks (judges, second looks, reads, Keep checks) says what it used.
+  const lookUsed: LookUsed = (u) => void log.append({ stream: "looks", origin: "system", kind: "look_used", body: u });
   const tasks = createRegistry(log, clock, () => settings.get().quiet?.tz ?? opts.work?.defaultZone);
   let runner: Runner | undefined;
   let partner: Partner | undefined;
@@ -1317,7 +1320,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
     changed: () => settings.bridgeChanged(),
     // D569: the partner's suggestion for each ask, on its cheap model, judged from Mem's own facts.
-    advise: opts.memAdvise ?? (process.env.NODE_ENV === "test" ? undefined : async (prompt) => (await createHarnessAsk({ harness: () => runner?.harness, pick: () => brainInUse(), dataDir, cheap: true, dir: "judge", timeoutMs: 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt)).text),
+    advise: opts.memAdvise ?? (process.env.NODE_ENV === "test" ? undefined : async (prompt) => (await createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: () => brainInUse(), dataDir, cheap: true, dir: "judge", timeoutMs: 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt)).text),
     lang: () => langNow(),
   });
   settings.setCheck(() => memCheck.get(), (id, answer) => memCheck.answer(id, answer));
@@ -1373,7 +1376,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     tasks,
     rules: () => rules.list(),
     home: () => devicesView?.harnessesNow(),
-    ask: (who, prompt) => createHarnessAsk({ harness: () => runner?.harness, pick: () => who, dataDir, cheap: false, dir: "fresh-look", timeoutMs: 120_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt),
+    ask: (who, prompt) => createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: () => who, dataDir, cheap: false, dir: "fresh-look", timeoutMs: 120_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt),
     diff: async (id) => {
       const r = runner;
       return r?.workbench ? diffFromWorkbench((req) => r.workbench!(id, req)) : undefined;
@@ -1755,6 +1758,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D300: 替你做过的 / Done for you: every outward action, read from the Log and Autofill's uses.
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
+  // D591: "这周谁用掉了我的额度" from the conversation: D588's count, with each agent's limit as last read.
+  registerUsageTool(mcp, { report: (days, tz) => usageDays(log, { now: clock.now(), days, tzOffsetMin: tz, top: 5 }), limits: (h) => accountUsage.peek(h)?.usage, zone: callZone, now: () => clock.now() });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
@@ -2866,21 +2871,21 @@ export function startCore(opts: CoreOptions = {}): Core {
       void taskGroups.pump().catch((err) => console.warn("[core] the groups' line couldn't move:", (err as Error).message));
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
       if (!opts.work?.judge)
-        work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: brainInUse, dataDir }));
+        work.setJudge(createHarnessJudge({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir }));
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
-        keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
       // Not in tests (a fake agent would take it for a task's session): they pass a fake.
       if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
-        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setRoundAsk(keepRoundAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-round", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D533: the person's edited words read once into the rules they change, shown as a diff before one Go.
       if (!opts.keeps?.rulesAsk)
-        keepsRef?.setRulesAsk(keepRulesAsk(createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-rules", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+        keepsRef?.setRulesAsk(keepRulesAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-rules", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D522: a new task's branch words, once per task, on the cheapest model (tool-less, its own folder).
       // Not in tests (a fake agent would take it for a task's session): they pass a fake or get the fallback.
       if (!opts.branchAsk && process.env.NODE_ENV !== "test") {
-        const ask = createHarnessAsk({ harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "branch-name", timeoutMs: 20_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
+        const ask = createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "branch-name", timeoutMs: 20_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
         api.branchAsk = async (prompt: string) => (await ask(prompt)).text;
       }
       // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
@@ -2889,17 +2894,17 @@ export function startCore(opts: CoreOptions = {}): Core {
       const port = () => runner?.harness;
       const pick = brainInUse;
       proactive.setModels({
-        ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
-        ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
+        ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
+        ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
         // D403: a waiting-on-you find's reply, on the cheapest capable model (tool-less, its own folder).
-        ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
         // D458: the leads past the accounts, picked once a morning on the cheapest model (tool-less, its own folder).
-        ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
         // D502: cross-source findings in shadow, once a day on the cheapest model (tool-less, its own folder).
-        ...(opts.proactive?.cross ? {} : { cross: modelCross(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "cross", timeoutMs: 120_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
+        ...(opts.proactive?.cross ? {} : { cross: modelCross(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "cross", timeoutMs: 120_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
       });
       // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
-      if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));
+      if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ onUsed: lookUsed, harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));
       // Answers that were resolved but never handed to their task before a restart (decisions.ts).
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);

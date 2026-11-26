@@ -109,6 +109,7 @@ const pileAsk = async (prompt: string): Promise<{ text: string; tokens: number }
 };
 import { seedDidDay } from "../../core/test/did-day.ts";
 import { seedMade } from "./seed-made.ts";
+import { seedUsageWeek } from "./seed-usage.ts";
 import { seedHistory } from "./seed-history.ts";
 import { realClock } from "../../core/src/clock.ts";
 import { realExec, type Exec } from "../../protocol/src/checks-run.ts";
@@ -750,6 +751,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   if (sc.did) seedDidDay(core, { zh: sc.lang.startsWith("zh") });
   // D383: what Ducter made over the last weeks (files, a PDF, a CSV, a table), at their own times.
   if (sc.made) seedMade(core as never, back, sc.lang.startsWith("zh"));
+  // D591: a week of work with its counts, at their own times.
+  if (sc.usageWeek) seedUsageWeek(core as never, back, sc.lang.startsWith("zh"));
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];

@@ -4,7 +4,7 @@
 // in it. Used only when code can't decide, and only when the data changed (waiters.ts, until.ts).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { HarnessId } from "@ducter/protocol";
+import type { HarnessId, TurnTokens, Usage } from "@ducter/protocol";
 import { HARNESSES } from "@ducter/protocol/src/harnesses.ts";
 import type { HarnessPort } from "@ducter/protocol/src/internal.ts";
 import type { Judge } from "./waiters.ts";
@@ -58,7 +58,7 @@ export function parseVerdict(text: string): { met: boolean; reason: string; prog
  * harness's smallest capable model (triage, D165 stage 2); else the model the partner thinks with
  * (the bar, stage 3).
  */
-export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; cheap: boolean; dir?: string; timeoutMs?: number; system?: string }): (prompt: string) => Promise<{ text: string; tokens: number }> {
+export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; cheap: boolean; dir?: string; timeoutMs?: number; system?: string; onUsed?: LookUsed }): (prompt: string) => Promise<{ text: string; tokens: number }> {
   const cwd = join(opts.dataDir, opts.dir ?? "judge");
   return async (prompt) => {
     const port = opts.harness();
@@ -80,12 +80,13 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
     });
     let text = "";
     let tokens = 0;
+    let used: Usage | undefined;
     const timer = setTimeout(() => void session.interrupt().catch(() => {}), opts.timeoutMs ?? 90_000);
     try {
       const reading = (async () => {
         for await (const ev of session.events()) {
           if (ev.role === "assistant" && ev.text) text += ev.text;
-          if (ev.usage) tokens = weightedTokens(ev.usage);
+          if (ev.usage) (tokens = weightedTokens(ev.usage)), (used = ev.usage);
           if (ev.turnEnd) break;
         }
       })();
@@ -96,13 +97,25 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
     } finally {
       clearTimeout(timer);
       await session.close().catch(() => {});
+      // D591: what the look used, for `ducter usage` (one fresh turn: its totals are the turn).
+      const turn = used ? (used.turn ?? (used.inputTokens !== undefined || used.outputTokens !== undefined ? { input: used.inputTokens ?? 0, output: used.outputTokens ?? 0, ...(used.cacheRead !== undefined ? { cached: used.cacheRead } : {}) } : undefined)) : undefined;
+      if (turn && (turn.input > 0 || turn.output > 0)) {
+        try {
+          opts.onUsed?.({ harness, ...(use ? { model: use } : {}), turn, what: opts.dir ?? "judge" });
+        } catch {
+          // Counting never fails a look.
+        }
+      }
     }
     // No count from the harness: a rough one (4 characters a token) so the budget still moves.
     return { text, tokens: tokens || Math.ceil((prompt.length + text.length) / 4) };
   };
 }
 
-export function createHarnessJudge(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; timeoutMs?: number }): Judge {
+/** D591: told what one of Ducter's own looks used (core logs it as `look_used`). */
+export type LookUsed = (u: { harness: string; model?: string; turn: TurnTokens; what: string }) => void;
+
+export function createHarnessJudge(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; timeoutMs?: number; onUsed?: LookUsed }): Judge {
   const ask = createHarnessAsk({ ...opts, cheap: true, timeoutMs: opts.timeoutMs ?? 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
   return async (q) => parseVerdict((await ask(judgePrompt(q))).text);
 }

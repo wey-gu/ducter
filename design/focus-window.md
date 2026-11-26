@@ -184,9 +184,17 @@ the meter's own rule, `turnTokensOf`), attributed to the task's agent and model 
 else is the partner's, routines and Keeps included), and to the person's own day (the asking
 computer's offset). Totals, by agent and model, by who, the five tasks that weigh most (cache reads
 at a tenth, as the judge budget counts them) and day by day; read only, no store of its own, no
-model call. It says what it leaves out: the partner's own turns (they never reach a task stream),
-Ducter's own looks (judges, second looks, the proactive reads) and money. The next slices are in
-`todo.md` "What tasks used".
+model call. D591 counts what D588 left out: the partner logs each turn's `turn` as `partner_session`
+`turn_used` on its own stream (the agent and model it ran on), and every one of Ducter's own looks
+(core's `createHarnessAsk` and `createHarnessJudge`: the judge, second looks, the proactive reads, a
+Keep's checks, branch names) logs `look_used` on the `looks` stream; the report keeps them apart from
+the tasks (`talk`, `looks`) and gives every part its share of the whole by weight and every agent the
+task that used most of it. Only money is left out (and turns from before D591, which logged no
+count). The same count is said where people look (D591): Settings › Overview's
+**这周的额度用在了哪儿** (`settings.md`), the limit card's line naming what used most of that agent
+(**这周 Claude Code 用得最多的是「…」（48%）**, or **…就是这个任务**), and the partner's read-only
+`usage` tool for 「这周谁用掉了我的额度」, each agent's limit windows as last read with it. What is left
+is in `todo.md` "What tasks used".
 
 ## Choosing a body (principle 14)
 

@@ -7,6 +7,7 @@ import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
+import { onUsageFrame } from "./usage-week.tsx";
 import { say } from "./set-grid.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
@@ -972,6 +973,8 @@ class AppState {
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);
+    // D591: the week's count for Overview and the limit card (usage-week.tsx).
+    if (f.t === "usage_days_result") return onUsageFrame(f);
     // D391: the find-anything field asks with its own ids (k…): its answers are its own.
     if ((f.t === "made_result" || f.t === "past_result") && f.id?.startsWith("k")) return void this.palette?.frame(f);
     if (f.t === "made_result") return onMadeFrame(f);

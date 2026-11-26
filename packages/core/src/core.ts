@@ -75,7 +75,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { isHelperWork } from "@ducter/protocol/src/helpers.ts";
+import { isHelperWork, localHandoff } from "@ducter/protocol/src/helpers.ts";
 import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
@@ -88,7 +88,7 @@ import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-re
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
-import { openStanding, type StandingStore } from "./standing.ts";
+import { openStanding, prFirstLine, type StandingStore } from "./standing.ts";
 import { takeBackAtOnce } from "./mem-takeback.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
@@ -589,6 +589,12 @@ function loadSecret(dataDir: string): string {
   return s;
 }
 
+/** D596: a GitHub clone address's owner and owner/repo, lower case (undefined: not GitHub's shape). */
+export function repoOfClone(clone: string): { owner: string; repo: string } | undefined {
+  const m = clone.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/([\w.-]+?)(?:\.git)?\/?$/);
+  return m ? { owner: m[1]!.toLowerCase(), repo: `${m[1]}/${m[2]}`.toLowerCase() } : undefined;
+}
+
 export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
   // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the key file.
@@ -679,7 +685,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D413: what the person says may go without asking (不用问我的), bounded by where the review routine
   // looks now. D495: the partner records it (without_asking); no code reads their words for it.
   // D499: a go kept for one task ends with it (listed and honoured while the task is open).
-  const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [], alive: (id) => ((a) => !!a && !["done", "done_claimed", "superseded", "dropped", "failed"].includes(a))(tasks.get(id)?.attention) });
+  // D596: a pr_open go said with no owners holds where the person's tasks work now (their repos' owners).
+  const taskOwners = (): string[] => [...new Set(tasks.list().flatMap((c) => (c.place.kind === "repo" && c.place.clone ? [repoOfClone(c.place.clone)?.owner] : [])).filter((x): x is string => !!x))];
+  const standing = openStanding({ log, dataDir, taskOwners, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [], alive: (id) => ((a) => !!a && !["done", "done_claimed", "superseded", "dropped", "failed"].includes(a))(tasks.get(id)?.attention) });
   // D444: 别记这个, said right after the partner noted something, takes it back the moment it lands.
   const takeBack = takeBackAtOnce({ log, undo: (seq) => settings.undo(seq) });
   try {
@@ -1631,21 +1639,26 @@ export function startCore(opts: CoreOptions = {}): Core {
   // ask is the step a kept permission names (the model judges); code checks the invariants: a task's
   // plain question, open, not the floor (plainAsk), a step a task's ask can go under, and a kept
   // permission covering that step for this task (kept for it, or for its repo's owner).
-  const ownerOfTask = (taskId: string): string | undefined => {
+  const ownerOfTask = (taskId: string): string | undefined => repoOfTask(taskId)?.owner;
+  /** D596: the task's GitHub repo (owner and owner/repo), from its clone, else the PR it owns. */
+  const repoOfTask = (taskId: string): { owner: string; repo?: string } | undefined => {
     const p = tasks.get(taskId)?.place;
-    const clone = p?.kind === "repo" ? p.clone : undefined;
-    const fromClone = clone?.match(/^(?:https?:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*)\/[\w.-]+?(?:\.git)?\/?$/)?.[1];
-    return (fromClone ?? work.owned.of(taskId)[0]?.split("/")[0])?.toLowerCase();
+    const fromClone = p?.kind === "repo" && p.clone ? repoOfClone(p.clone) : undefined;
+    if (fromClone) return fromClone;
+    const pr = work.owned.of(taskId)[0];
+    return pr ? { owner: pr.split("/")[0]!.toLowerCase(), repo: pr.split("#")[0]!.toLowerCase() } : undefined;
   };
+  const whereOf = (taskId: string) => ((r) => (r ? { owner: r.owner, ...(r.repo ? { repo: r.repo } : {}) } : {}))(repoOfTask(taskId));
   // D528: the person's zone for a task's brief (a server's own clock is often UTC).
   api.zone = () => zone();
   // D539: the keys a task holds, put in its session on the computer it runs on.
   api.keyCopy = { refsFor: (id) => keyCopy.refsFor(id), withKeys: (spec) => keyCopy.withKeys(spec) };
   api.goesFor = (taskId) => [
-    ...TASK_STEP_ACTIONS.flatMap((a) => {
-      const s = standing.covers(a, { taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(taskId)) });
-      return s ? [s] : [];
-    }),
+    // D596: one line per kept go (a pr_open go covers branch_push too: listed once).
+    ...[...new Map(TASK_STEP_ACTIONS.flatMap((a) => {
+      const s = standing.covers(a, { taskId, ...whereOf(taskId) });
+      return s ? [[s.id, s] as const] : [];
+    })).values()],
     // D540: a review task's brief says the person let reviews go without asking, and how they go.
     ...(isReview(taskId) ? standing.list().filter((s) => s.action === "pr_review" && !s.taskId).slice(0, 1) : []),
   ];
@@ -1661,7 +1674,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (!decisions.isPending(decisionId)) return { ok: false, error: "That question was answered already." };
     if (!plainAsk(d)) return { ok: false, error: "This one is the user's own to answer (a payment, a sign-in, a key, a tap on a phone or computer, deleting, or something another AI flagged): it stays on its card." };
     if (!TASK_STEP_ACTIONS.includes(action)) return { ok: false, error: `A task's question can go only under ${TASK_STEP_ACTIONS.join(", ")}.` };
-    const s = standing.covers(action, { taskId: d.taskId, ...((o) => (o ? { owner: o } : {}))(ownerOfTask(d.taskId)) });
+    const s = standing.covers(action, { taskId: d.taskId, ...whereOf(d.taskId) });
     if (!s) return { ok: false, error: "Nothing the user said covers that step for this task. It stays on its card: ask it as usual." };
     decisions.goOnTheirWord(decisionId, { said: s.text, action, standing: s.id });
     return { ok: true, standing: s, question: d.question };
@@ -2656,6 +2669,105 @@ export function startCore(opts: CoreOptions = {}): Core {
         : `Kept: nothing new to ask the person. ${again}${told}Now wait_for the next round and end your turn.`;
     },
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
+  );
+  // D596: 开好 PR 交给帮手 / the dev flow the person allowed once: on work they asked for, once it is
+  // verified, the task asks Ducter to push its branch and open its PR (the same write as the opened
+  // task's Open PR, ready for review), then hands the PR to the helper they named. The task judges
+  // "verified" (the model judges); code guards the rest: a kept pr_open go covers this task, its own
+  // branch (never the base or the default branch, never --force), one PR a task, never a merge.
+  const prOpenGo = (taskId: string) => standing.covers("pr_open", { taskId, ...whereOf(taskId) });
+  /**
+   * D596's one seam for handing an opened PR to the person's helper (a Keep of theirs), D598's
+   * mechanism: the PR is written at the helper's address on this home (`bridge_msg` in, `local`,
+   * `fromTask`: never through Mem, never a card), which wakes the partner at once to open the helper's
+   * task for it (or a Keep in rounds takes it as its next round's ask, started now). `taken` is true
+   * only once a task of the helper's has it (its claim logged): never at the moment it is handed, so
+   * the task and the partner say 交给了，等它接手 until the claim comes into the task.
+   */
+  const handToKeep = (keepId: string, item: { taskId: string; pr: string; said: string }): { taken: boolean; handed: boolean } => {
+    const k = keepsRef?.get(keepId);
+    if (!k || k.life !== "on") return { taken: false, handed: false };
+    const zh = langNow().startsWith("zh");
+    const title = tasks.get(item.taskId)?.title ?? "";
+    const text = zh ? `请接手 ${item.pr}：这个任务的改动已验证，按你自己的要求跟到底（独立评审，需要就修或请原任务返工，通过后按仓库流程批准）。` : `Please take ${item.pr}: this task's work is verified; own it to the end by your own rules (an independent review, fix or send rework back to the task, then approve the way the repository does).`;
+    if (k.from.kind === "helper") {
+      const helper = k.from.helperId;
+      const sent = new Set<string>();
+      for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) {
+        const b = e.body as Bodies["bridge_msg"];
+        if (b.direction === "out" && b.helper === helper && b.taskId && b.inReplyTo) sent.add(b.inReplyTo);
+      }
+      // Handed already by this task (its open_pr ran once): taken once a claim answers that hand-off.
+      const before = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).map((e) => e.body as Bodies["bridge_msg"]).filter((b) => b.direction === "in" && b.local && b.helper === helper && b.fromTask === item.taskId);
+      if (before.length) return { taken: before.some((b) => sent.has(b.messageId)), handed: true };
+      const head = zh ? `${persona.name} 的任务「${title}」：` : `${persona.name}'s task "${title}":`;
+      log.append({ ...(k.persona ? { persona: k.persona } : {}), stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper, text, from: persona.name, fromTask: item.taskId, head }) } as never);
+      return { taken: false, handed: true };
+    }
+    if (k.from.kind === "loop") {
+      void keepsRef!.change(keepId, { next: `${text}（${item.pr}）`, act: { action: "look_now" } }, { by: "partner" }).catch(() => {});
+      return { taken: false, handed: true };
+    }
+    return { taken: false, handed: false };
+  };
+  /** The person's Keep the task's hand_to names (as they called it), if this home has one. */
+  const keepNamed = (persona: string, name: string) => {
+    const norm = (x: string) => x.toLowerCase().replace(/[\s_-]+/g, "");
+    const n = norm(name);
+    return n ? keepsRef?.sheets(persona).find((k) => norm(k.title).includes(n) || n.includes(norm(k.title))) : undefined;
+  };
+  mcp.registerWhen(
+    "task",
+    "open_pr",
+    "The user let your verified work go to a PR without asking (What you may do without asking). Only once it is verified to their standard: the tests and checks the work needs ran and passed (a build, a device or browser check where it touches one); list them in checks. Ducter pushes your branch and opens the PR, ready for review. Then hand the PR to the helper they named, with its link. Not verified yet: don't call it; keep working, or report what is left. Never merge.",
+    {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "The PR's title, in the repo's language" },
+        body: { type: "string", description: "What changed and how it was verified" },
+        checks: { type: "array", items: { type: "string" }, description: "What you ran that verified it, each with its result" },
+        hand_to: { type: "string", description: "Who it goes to next, as the user named them (their PR babysitter)" },
+      },
+      required: ["title", "checks"],
+    },
+    async (args: { title?: unknown; body?: unknown; checks?: unknown; hand_to?: unknown }, ctx) => {
+      const taskId = ctx.taskId;
+      if (!taskId) throw new Error("open_pr requires a task token");
+      const card = tasks.get(taskId);
+      if (!card || card.place.kind !== "repo") return { ok: false, error: "This task has no branch of its own to open a PR from." };
+      const s = prOpenGo(taskId);
+      if (!s) return { ok: false, error: "The user hasn't said this may go without asking here. Nothing was pushed; offer it in your report." };
+      const checks = Array.isArray(args?.checks) ? args.checks.map((x) => String(x).trim().slice(0, 200)).filter(Boolean).slice(0, 12) : [];
+      if (!checks.length) return { ok: false, error: "Say what you ran that verified it (checks). Not verified yet: don't open it; keep working, or say in your report what is left." };
+      const opened = log.read({ stream: "channel", kinds: ["job_status"], limit: 2000 }).map((e) => e.body as Bodies["job_status"]).find((b) => b.taskId === taskId && b.act === "open_pr" && b.state === "done")?.ref;
+      const had = work.owned.of(taskId)[0] ?? opened;
+      if (had) return { ok: false, error: `This task already has its PR (${had}). Push updates to your branch (allowed); hand it over if you haven't.` };
+      if (!runner?.openPr) return { ok: false, error: "Opening a PR isn't available right now. Say so in your report." };
+      const title = String(args?.title ?? "").trim().slice(0, 200);
+      if (!title) return { ok: false, error: "open_pr needs a title." };
+      const body = typeof args?.body === "string" ? args.body : "";
+      const r = await runner.openPr(taskId, { title, body, ready: true });
+      if (!r.ok || !r.ref) return { ok: false, error: `${r.message} Nothing more was done; say it in your report.` };
+      const handTo = typeof args?.hand_to === "string" ? args.hand_to.trim().slice(0, 80) : "";
+      log.append({ stream: "channel", origin: "system", kind: "job_status", body: { jobId: `pr_${taskId}`, taskId, state: "done", text: `Ducter opened this task's PR under the user's word: ${r.ref}`, act: "open_pr", ref: r.ref, by: "rule", standing: s.id, said: s.text, checks } });
+      const keep = handTo ? keepNamed(card.persona ?? persona.id, handTo) : undefined;
+      const hand = keep ? handToKeep(keep.id, { taskId, pr: r.ref, said: s.text }) : { taken: false, handed: false };
+      const handed = hand.taken;
+      if (standing.firstUse(s.id)) {
+        const n = r.ref.match(/\/pull\/(\d+)/)?.[1];
+        log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: prFirstLine(langNow(), { title: card.title, link: `[${n ? `#${n}` : r.ref}](${r.ref})`, ...(handTo ? { who: handTo } : {}) }) } });
+      }
+      return {
+        ok: true,
+        pr: r.ref,
+        note: handed
+          ? `${r.message} It is in Done for you with the user's words, and ${keep!.title} has taken it. Report done with the PR in evidence. Never merge it.`
+          : hand.handed
+            ? `${r.message} It is in Done for you with the user's words. Ducter handed it to ${keep!.title} on this home: it is handed, not taken, until ${keep!.title}'s answer comes here saying one of its tasks took it; if nothing takes it in ten minutes the user hears so once, with the offer to do it directly. Don't message it again and never say it is taken over before. Report done with the PR in evidence (say it is handed over and waiting to be taken). Never merge it.`
+            : `${r.message} It is in Done for you with the user's words. Now hand it to ${handTo || "the helper the user named"} with its link and what it is (agent_message, or your own Bridge tool): it goes without a card. Don't say it is handed over until it answers. Then report done with the PR in evidence. Never merge it.`,
+      };
+    },
+    (ctx) => !!ctx.taskId && tasks.get(ctx.taskId)?.place.kind === "repo" && !!prOpenGo(ctx.taskId),
   );
   taskSourcesRef = taskSources;
   // D413: a standing permission kept: every draft that waits inside it goes now (its card shrinks or

@@ -162,6 +162,23 @@ test("D201: a branch in Chinese is pushed and handed to gh as one argument, neve
   expect((await Bun.file(argsFile).text()).trimEnd().split("\n")).toEqual(["pr", "create", "--draft", "--fill", "--head", branch, "--base", "main"]);
 });
 
+test("D596: under the person's go, a PR ready for review with the task's own title; never from the base branch, never forced", async () => {
+  const p = repoWithTaskBranch();
+  const remote = join(dir, "remote.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", remote]);
+  sh(p.repoPath, "remote", "add", "origin", remote);
+  const argsFile = join(dir, "gh-args");
+  const gh = join(dir, "gh");
+  writeFileSync(gh, `#!/bin/sh\nif [ "$1" = auth ]; then exit 0; fi\nfor a in "$@"; do printf '%s\\n' "$a"; done > '${argsFile}'\necho https://example.test/me/repo/pull/9\n`, { mode: 0o755 });
+  const r = await openDraftPr(p, { gh, title: "fix: 分页 (#11390)", body: "验证：bun test 42 passed", ready: true });
+  expect(r).toEqual({ ok: true, message: "Opened a PR for ducter/fix.", ref: "https://example.test/me/repo/pull/9" });
+  expect((await Bun.file(argsFile).text()).trimEnd().split("\n")).toEqual(["pr", "create", "--title", "fix: 分页 (#11390)", "--body", "验证：bun test 42 passed", "--head", "ducter/fix", "--base", "main"]);
+  // The base branch is never this task's to push.
+  const base = await openDraftPr({ ...p, branch: "main" }, { gh, title: "x", ready: true });
+  expect(base.ok).toBe(false);
+  expect(base.message).toContain("nothing was pushed");
+});
+
 test("branchChanges: commits ahead of the base and uncommitted work; nothing on a fresh branch", async () => {
   const p = repoWithTaskBranch();
   expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: false, files: 1, adds: 1, dels: 0 });

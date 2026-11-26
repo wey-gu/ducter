@@ -396,6 +396,14 @@ line.
   scenarios rewritten to assert the partner's `rule_save` (and a world puzzle where the saying is
   only in memory), two full eval runs, then `said.ts`, `keepSaidOnGo`'s card, `saidPick` and the
   `said` port go.
+- **D596: what is still owed.** (1) A helper on the same home (not reached through Bridge) gets the
+  PR by the task's own message only when Bridge reaches it; joining the task to the local helper
+  directly (its `helperIndex`) is not built. Trigger: a home whose babysitter is its own helper asks.
+  (2) "Verified" is the task's judgement with its checks recorded; no code reads CI or a device
+  check before the PR (CI runs on the PR, the helper watches it). Trigger: a PR opened under the go
+  that the person says wasn't ready. (3) No pre-push hook guards a task's own `git push --force`;
+  the brief says never, and Ducter's own write never forces. Trigger: one seen in a Log.
+  (4) Not on hel or the Mac yet; the first verified task there is the live check.
 - **D499: what is still owed.** A step outside the four (`ci_rerun`, `pr_comment`, `branch_push`,
   `issue_comment`), e.g. editing the PR's title or labels, still asks; widen only with a write the
   answer can stand for. A go said about a task's repo in general ("mem 的 PR 这些都别问我") is kept by

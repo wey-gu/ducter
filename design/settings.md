@@ -896,6 +896,25 @@ Left, with reasons, in D589.
 - The Mac: typing into its fields with a real keyboard (the doubling was the driver's, D408); the
   accessible text and a chat app's link walked again in the real window.
 
+## The next pass after D589 (D618)
+
+Every pane again at the web's 390 and 1000 and the Mac's 1150 and 1400, zh and en, light and dark,
+against `apps/web/demo-settings-real.ts` (`DEMO_PARTNERS=1`): `.shots/settings-r6/{before,after}`
+before/after pages, `after/crops/` the 2x crops named in the report. Five leftovers D589 listed,
+fixed on both clients where they apply, and held by geometry tests (`settings_r6_test.go`,
+`settings-r6.test.ts`):
+
+| # | Where | Found | Now |
+|---|---|---|---|
+| 1 | Passwords & cards, Mac | no state on a saved sign-in or key, where the web has dots and **已存** | the same dots after a sign-in, and the key's hint or **已存** after a key, its words on the switches' edge |
+| 2 | To-do sources, both | right-aligned choice tracks of different widths: their left edges staggered | one column per source: the widest track's width, its options sharing the extra, at 700 and up on the web; both rows start and end on one x |
+| 3 | Notifications, phone | **发现了就说**'s dropdown squeezed its explanation into a 160-ish strip | a shared 12rem floor on a row's words (about 160 of real text after English line breaks): below it the control drops under the words at the right edge, as D589's head rows do |
+| 4 | Every card's foot, both | the last quiet action's words sat inside its tap padding, 7–8 from the switches' right edge | the row takes that padding back (`quietDanger` / `dangerText` on the Mac; `--end-pad` on `.chat-foot`): the words end on the switches' edge, and D582's padding still stands |
+| 5 | Rule rows, Mac | a Space's name broke at a space; a long path wrapped at a slash | names are no-break (`wholeName`), so a list wraps only between names; a path is one line, cut in the middle (`TruncateMiddle`) |
+
+Left as before: D589's rail timing and the web's 800-tall sheet on a computer. The author's review of
+`.shots/settings-r6/` is the open item (`todo.md`).
+
 ## 记忆 › Nowledge Mem: files (D566)
 
 One row in the Nowledge Mem group, after how much Mem holds: **做好的文件也存进 Nowledge Mem / Also

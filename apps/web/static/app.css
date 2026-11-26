@@ -1537,7 +1537,7 @@ a.task-link {
   font-weight: var(--ask-weight);
   line-height: 1.4;
   letter-spacing: 0;
-  /* D-PENDING: a long path or hash in an ask's words wraps instead of running past the card. */
+  /* D618: a long path or hash in an ask's words wraps instead of running past the card. */
   overflow-wrap: anywhere;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
@@ -12458,6 +12458,10 @@ button.chip-file {
   .chat-foot .grow,
   .chat-row .grow {
     flex: 1 1 11rem;
+    /* D618: the words keep about 160 of real text before a control may stay beside them
+       (a 12rem column is where English lines stop coming out under ~160); below that it drops
+       under them, at the right edge (D589's chat-head rule, now one rule for every row). */
+    min-width: 12rem;
   }
   /* D589: a group's head row by the same rule: 连接 Tuwa beside 用 Tuwa 打 squeezed its words to a
      five-line strip on a phone. A head's switch never drops (D296). */
@@ -12467,6 +12471,7 @@ button.chip-file {
   }
   .chat-head:not(:has(> .switch.bare)) > .grow {
     flex: 1 1 11rem;
+    min-width: 12rem;
   }
 }
 
@@ -14101,6 +14106,16 @@ button.chip-file {
 /* D583: a group of actions never runs past its line: when even the group alone doesn't fit, it
    wraps inside itself, still at the right edge (a long English pair at 320). */
 .chat-row > .g-acts, .chat-foot > .g-acts { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
+/* D618: a card foot's last quiet action ends its words, not its tap padding, on the row's
+   right edge, where the switches end (D582 keeps the padding; the foot's padding takes it). */
+.btn.text { --end-pad: 12px; }
+.btn.text.sm { --end-pad: 10px; }
+.danger-text { --end-pad: 8px; }
+.chat-foot > :last-child:is(.btn.text, .danger-text),
+.chat-foot > .g-acts > :last-child:is(.btn.text, .danger-text),
+.chat-foot > .g-acts > .ask-in-place:last-child > :last-child:is(.btn.text, .danger-text) {
+  margin-right: calc(-1 * var(--end-pad));
+}
 .g-tag { flex: none; padding: 4px var(--s2); border-radius: var(--r-xs); background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--xs); font-weight: 700; white-space: nowrap; }
 .g-checks { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
 .g-checks b { font-size: var(--md); font-weight: 700; line-height: 1.5; }
@@ -14150,10 +14165,10 @@ button.chip-file {
 /* A memory line keeps its quiet action beside it on a phone: the action is short. */
 @media (max-width: 520px) {
   .mem-g .chat-row { flex-wrap: nowrap; }
-  .mem-g .chat-row .grow { flex-basis: 0; }
+  .mem-g .chat-row .grow { flex-basis: 0; min-width: 0; }
   /* D372: a rule keeps its quiet 删除 beside it, centred on the row. */
   .chat-row.one-line { flex-wrap: nowrap; }
-  .chat-row.one-line .grow { flex-basis: 0; }
+  .chat-row.one-line .grow { flex-basis: 0; min-width: 0; }
 }
 /* D443: a state row whose fix is a long button (改由这台收 / Receive here instead, 重试 with its
    note) would squeeze its words into a sliver beside it at 390: the button goes under the words. */
@@ -15457,6 +15472,36 @@ svg .wave.w2.on {
 .todo-filters .todo-filter {
   flex: 1 1 13.125rem;
   min-width: 0;
+}
+/* D618: a source's two choice rows share one column (D589's ways in): the widest track's
+   width at 700 and up, so their left edges line up; narrower, the choice drops under its words
+   at the text column's full width. */
+@media (min-width: 700px) {
+  .todo-src .chat-row > .seg {
+    flex: 0 0 21rem;
+    max-width: 100%;
+  }
+  /* Each choice keeps its words and the row fills the shared column, so the widest label
+     ("Comment and close") never forces the track to stack. */
+  .todo-src .chat-row > .seg button {
+    flex: 1 1 auto;
+  }
+}
+@media (min-width: 521px) and (max-width: 699px) {
+  /* Between a phone and the column: the words take the line, the choice under them at the card's
+     width, as the phone does; a fixed 21rem track would squeeze 160 of words here. */
+  .todo-src .chat-row {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .todo-src .chat-row > .grow {
+    flex: 1 1 11rem;
+    min-width: 10rem;
+  }
+  .todo-src .chat-row > .seg {
+    flex: 1 1 calc(100% + var(--chat-col));
+    margin-left: calc(-1 * var(--chat-col));
+  }
 }
 .todo-pick-btn {
   align-self: flex-start;
@@ -25175,7 +25220,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
-  /* D-PENDING: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
+  /* D618: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
   overflow-wrap: anywhere;
 }
 /* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
@@ -25221,7 +25266,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   font-family: var(--mono);
   font-size: 0.88em;
   font-weight: 600;
-  /* D-PENDING: a long command wraps inside its chip (the bubble's code rule says nowrap). */
+  /* D618: a long command wraps inside its chip (the bubble's code rule says nowrap). */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25269,7 +25314,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink);
   -webkit-user-select: all;
   user-select: all;
-  /* D-PENDING: a one-time code wraps in its own well; Copy keeps its place at the right. */
+  /* D618: a one-time code wraps in its own well; Copy keeps its place at the right. */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25282,7 +25327,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
-/* D-PENDING: a code block in an ask's words scrolls in its own box, never widens the card. */
+/* D618: a code block in an ask's words scrolls in its own box, never widens the card. */
 .ask-said pre,
 .decision pre,
 .partner pre {

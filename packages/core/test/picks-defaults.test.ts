@@ -1,4 +1,4 @@
-// D-PENDING: a default-hold decision settles itself at its defaultAt, even when the card is not
+// D618: a default-hold decision settles itself at its defaultAt, even when the card is not
 // reversible (the morning's picks are one; before, they stayed open for days). A newer picks offer
 // replaces the older, and a restart settles what the clock passed while the home was down, once.
 import { afterEach, expect, test } from "bun:test";

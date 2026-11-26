@@ -109,6 +109,12 @@ type settingsState struct {
 	// folders (D611): each computer's Ducter folder row: its open editor, the move in flight,
 	// the tasks that kept it from moving, and the line a move left.
 	folders map[string]*folderRowState
+	// choiceCol is the one width a group's choice controls share (D618): a column of
+	// tracks, not a ragged right edge with three left edges. 0 is each track's own width.
+	choiceCol float32
+	// trailAlign is true while a card's foot draws its actions: their text, not their padding,
+	// ends on the switches' right edge (D618; D582 keeps the padding).
+	trailAlign bool
 }
 
 type removeState struct {

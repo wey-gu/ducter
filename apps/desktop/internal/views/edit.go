@@ -61,9 +61,11 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 		for j, v := range o.values {
 			text := keepWords(autospace(v))
 			if o.mono {
-				// D611: a real path wraps inside its box; zero-width breaks after each slash let
-				// a long path with no spaces stay whole and selectable without running past the edge.
-				uiText(c.Key(fmt.Sprint("v", j)), wrapPath(text)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Selectable()
+				// D618 (D611): a real path stays one line; a long one is cut in the middle, so
+				// the folder and the file's name both show and it never runs past the row.
+				uiText(c.Key(fmt.Sprint("v", j)), text).SingleLine().TruncateMiddle().
+					MaxWidthPercent(100).Shrink(1).MinWidth(0).
+					Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Selectable()
 				continue
 			}
 			uiText(c.Key(fmt.Sprint("v", j)), text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
@@ -143,6 +145,12 @@ func (a *App) openWell(c *ui.Context, well ui.Element, label string) (ui.Color, 
 	return ink, well.Clicked()
 }
 
+// wholeName keeps a name whole in a row: its spaces are no-break, so a name
+// never wraps at one (D604's Mac leftover: a Space's name does).
+func wholeName(s string) string {
+	return strings.ReplaceAll(s, " ", "\u00a0")
+}
+
 // fieldKeys is Enter and Esc on a field: Enter keeps it, Esc puts it back.
 func fieldKeys(onEnter, onEsc func()) func(k ui.TextKey) bool {
 	return func(k ui.TextKey) bool {
@@ -186,10 +194,4 @@ func digitsOnly(s string) string {
 		}
 	}
 	return b.String()
-}
-
-// wrapPath lets a path with no spaces wrap at its slashes: zero-width spaces after each one,
-// so the real path stays whole for selection and a reader while it never runs past its box.
-func wrapPath(p string) string {
-	return strings.ReplaceAll(p, "/", "/\u200B")
 }

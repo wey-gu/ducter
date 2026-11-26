@@ -30,16 +30,12 @@ line.
 - [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
   for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
 
-<<<<<<< HEAD
-=======
 ## A helper's Spaces and a teammate's card, after D604 (`bridge.md` "Helpers")
 
 - [ ] **An unnamed sender is muted by its Space-wide label** ("AI agent (dev team)"), so 不理 to one unnamed agent
   mutes every unnamed agent in that Space. Key `peers.muted` / `peers.allowed` by Mem's `sender.agent_id` when it
   is there. Trigger: a second unnamed agent writes in a Space where one was told 不理.
-- [ ] **The Mac 别的 agent 怎么找到它 row** lets a Space's name break at a space (the web keeps each whole).
-  Trigger: the next Keep page pass on the Mac.
->>>>>>> origin/d604-helper-spaces
+
 ## A sign-in with a one-time code, after D599 (`device-signin.md`)
 
 - **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.
@@ -102,10 +98,10 @@ line.
 ## Settings, after D589 (`settings.md` "Every pane, end to end (D589)")
 
 - [ ] **The author's review of `.shots/settings-r5/`** (the five crops named in D589's report first).
+- [ ] **The author's review of `.shots/settings-r6/`** (the five fixes and their 2x crops first; D618 in
+  `decisions.md`).
 - [ ] **The Mac's rail growing 和你的其他 agent 通信 under the person.** In the shot harness the row came only from
   the third pane on. Trigger: seen in the real app (a rail row arriving while Settings is open).
-- [ ] **The Mac's sign-ins and keys say 已存 / •••••• as the web's do** (Passwords & cards). Trigger: that pane's
-  next pass.
 
 ## The site, after D558 (`site.md`, research/227)
 

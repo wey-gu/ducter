@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.89 - 2026-11-26
+
+<!-- whats-new
+zh: 更新 Mem 插件直接跑命令，不再开一整个任务
+en: Updating Nowledge Mem in an AI agent runs its own commands, not a whole task
+-->
+
+**Memory**
+- Update on an AI agent's Nowledge Mem now runs that agent's own update commands on its computer
+  and reads the version back: "Updated to 0.7.39, reopen Claude Code to use it". Only if that fails
+  does a task take over, starting from what was already tried.
+- A setup task looks only at the agent it's for; another agent's problem never holds it up.
+- A task never asks you for a Mem link, address or key; signing a computer in is in
+  Settings > Memory. A link or key pasted into a reply is hidden before it's kept.
+
 ## 0.1.88 - 2026-11-26
 
 <!-- whats-new

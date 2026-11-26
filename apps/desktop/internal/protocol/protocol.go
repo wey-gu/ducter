@@ -2535,6 +2535,10 @@ type MemPluginView struct {
 	Busy    bool `json:"busy,omitempty"`
 	Fresh   bool `json:"fresh,omitempty"`
 	Updated bool `json:"updated,omitempty"`
+	// D597: Handed: Ducter's direct update didn't take, so a task (TaskID)
+	// finishes it; Stuck: it didn't take and no task could, 更新 stays.
+	Handed bool `json:"handed,omitempty"`
+	Stuck  bool `json:"stuck,omitempty"`
 	// D466: Available: update, the newer version Mem's own `plugins check`
 	// offers (from Version to it); Versions: review "multiple", each copy's
 	// version, oldest first.

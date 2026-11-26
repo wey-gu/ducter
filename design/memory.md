@@ -603,7 +603,8 @@ on every computer, without owning it (D17):
   agent kept in `mem-plugins.json`; offline or unreadable, the last good answer stands and nothing
   is said. Only its `available_version` is read (its `installed` disagrees with inspect's for
   OpenClaw and Cursor), and **update = inspect's version below it**, on every computer (workers
-  included, no new op). It lists only Claude Code of Ducter's agents today.
+  included, no new op). It lists Claude Code and Codex of Ducter's agents (Codex since 2026-11,
+  research/238); pi's newest is read from npm (D576).
 - **The line** per installed agent in its coin detail (copy in the glossary). Installed is
   only what the check knows: every answer carries "runtime loading is not verified", which
   alone never makes a review; the check's own `review`, several copies, or an install it
@@ -619,15 +620,34 @@ on every computer, without owning it (D17):
   agent signed in needed, no tokens); the line says **正在用 Nowledge Mem 自己的命令安装…**, and when
   the check afterwards finds it, **Nowledge Mem 装好了，重开 {agent} 才用得上**. Otherwise (it didn't
   put it in, `abort` left another memory integration alone, an older worker, pi, DeepSeek Harness,
-  an update, a review) one task on that computer with that agent (else any agent signed in there),
-  with the user's own setup, origin "you": it follows https://mem.nowledge.co/SKILL.md for that host
-  only, never guesses a URL or key, asks for a connect link when Mem isn't connected there, verifies
-  with the check, and says the agent must be restarted; after a failed command its brief says what
-  the command said. **更新 / Update** and **理成一份 / Keep one** (D466) ask in place what they do
-  (更新到 {to}; only one copy left) and open the same task, its title and brief saying which: the
-  guide is for installing *and* updating; an older copy goes only by the agent's own plugin
-  commands, never by deleting files, else the task stops and reports each copy. Never by itself,
-  never in 全部更新 / Update all (that runs at night by itself; this edits the agent's own setup).
+  an update the commands below didn't take, a review) one task on that computer with that agent
+  (else any agent signed in there), with the user's own setup, origin "you": it follows
+  https://mem.nowledge.co/SKILL.md for that host only, verifies with the check, and says the agent
+  must be restarted; after a failed command its brief says what the command said. **It never asks
+  for a connect link, address, key or workspace (D597):** Ducter supplies its own Mem connection; if
+  signing Mem in on that computer is truly needed it stops, failed, and says Settings › Memory does
+  it. Of Mem's doctor it reads only the three shared lines and its own agent's row: another agent's
+  row is named in one line at the end, never fixed or waited on, and the relay's address (D393) is
+  the same Mem, not a mismatch. **理成一份 / Keep one** (D466) asks in place and opens that task: an
+  older copy goes only by the agent's own plugin commands, never by deleting files, else the task
+  stops and reports each copy. Never by itself, never in 全部更新 / Update all (that runs at night
+  by itself; this edits the agent's own setup).
+- **更新 / Update runs the agent's own commands (D597, research/238).** The same row and ask in
+  place; then Ducter itself runs, on that computer (the home directly, a worker through its
+  `mem_plugin_update` op), the plugin's documented update (harness-facts `memUpdate`): Claude Code
+  `claude plugin marketplace update nowledge-community`, `claude plugin update
+  nowledge-mem@nowledge-community`; Codex `codex plugin marketplace upgrade nowledge-community`,
+  `codex plugin add nowledge-mem@nowledge-community`, the newest copy's `scripts/install_hooks.py`;
+  pi `pi update npm:nowledge-mem-pi`. Each with a 3-minute cap, in order, stopping at the first that
+  fails; no doctor first (an update needs no Mem credential). Then inspect reads the version back:
+  at least the one out, or past the one it had, is **已更新到 0.7.39，重开 {agent} 就用上了**; else
+  one task takes over, its brief carrying every command, its exit code and its last lines (scrubbed),
+  and the line says **没能直接更新，开了个任务接着弄 / Couldn't update it directly; a task is
+  finishing it**; when no agent there can take it, **这次没更新成，可以再试一次** with 更新 again.
+  DeepSeek Harness (no documented command) and a worker from before D597 get the task as before.
+- **A Mem link or key typed into a reply is hidden (D597).** A reply to any task's ask goes through
+  `hideMemSecrets` before it is kept: Mem's connect links, `nmem_c?_` tokens and keys and an
+  `--api-key` value become `<link>`/`nmem_…`/`…`, so neither the task nor the Log ever holds one.
 - **One tap is one task (D552).** Per agent per computer one setup at a time, held at the source:
   a tap while one is opening or open gets that same task. From the tap the line reads busy
   (**正在更新到 0.7.38…**) and the button **更新中…** (the shared busy button). Work the setup task

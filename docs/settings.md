@@ -283,10 +283,15 @@ acting as if it forgot.
 - The same group also names any of your AI agents, on any of your computers, whose Nowledge Mem
   is worth a tap: **Claude Code on Mac mini**, "Nowledge Mem 0.7.34; 0.7.37 is out", with **Update**;
   or "Nowledge Mem is in twice: 0.1.10 and 0.1.53", with **Keep one**. Each asks first what it will
-  do and where, then a task on that computer follows Nowledge Mem's own guide, changing only that
-  agent's own settings. From the tap until it is done the button reads **Updating…** and the line
-  **Updating to 0.7.38…**, so a second tap starts nothing more; afterwards the line says
-  **Updated to 0.7.38; start Claude Code again to use it**. Nothing happens until you tap, and when
+  do and where. **Update** then runs that agent's own plugin update commands on that computer and
+  checks the version it reached, usually in seconds; **Keep one** (and an update those commands
+  couldn't finish) is a task on that computer, changing only that agent's own settings. From the
+  tap until it is done the button reads **Updating…** and the line **Updating to 0.7.39…**, so a
+  second tap starts nothing more; afterwards the line says **Updated to 0.7.39; start Claude Code
+  again to use it**. If the quick way didn't take, the line says **Couldn't update it directly; a
+  task is finishing it**. No task ever asks you for a Nowledge Mem link or key in a reply: Ducter
+  already has its connection, and a computer that needs signing in is signed in from this
+  page. Nothing happens until you tap, and when
   every agent is up to date there is no row at all. The agent's own detail in **Your devices**
   says the same. Any AI signed in on that computer can do the update, so the button is there even
   when that agent itself isn't signed in there. When it can't be done from here, the row says why

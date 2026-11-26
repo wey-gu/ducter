@@ -11,6 +11,9 @@
 // D466: DEMO_HEALTH=update: Claude Code's Mem plugin 0.7.34 with 0.7.37 out, Codex's in twice (0.1.10, 0.1.53)
 // D552: DEMO_HEALTH=update552: Claude Code's 0.7.34 with 0.7.38 out; 更新 opens its task after 1.5 s (the
 //   button reads 更新中… from the tap), and the task ends DEMO_DONE_MS later (default 8 s) with 0.7.38 there.
+// D597: DEMO_HEALTH=update597: Claude Code's 0.7.38 with 0.7.39 out; 更新 runs its own commands
+//   (pretended, DEMO_DIRECT: ok · fail, a task takes over · stuck, no task could · running); DEMO_TAP=1
+//   taps it as the core starts, so a picture opens in that state.
 // then open http://127.0.0.1:7864/app#settings=memory (or #settings=peers)
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -22,6 +25,7 @@ const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
 const version = want === "old" ? "0.10.116" : "0.10.118";
 const health = process.env.DEMO_HEALTH;
+const direct = process.env.DEMO_DIRECT ?? "ok";
 let ccIn = false;
 let ccVersion = "0.7.34";
 // D465: DEMO_CHECK=1 adds what Nowledge Mem would like checked (a contradiction, a learned rule) and a rule on.
@@ -106,13 +110,27 @@ const healthOpts = health
       deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, kind: async () => "server", harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true, version: "2.1.322", how: "installer" }, { harness: "codex", installed: true, loggedIn: true, version: "0.169.1", how: "npm" }] },
       memPlugins: {
         inspectLocal: async () =>
-          health === "update552"
+          health === "update552" || health === "update597"
             ? { "claude-code": { state: "installed", version: ccVersion }, codex: { state: "installed", version: "0.1.53" } }
             : health === "update"
             ? { "claude-code": { state: "installed", version: "0.7.34" }, codex: { state: "review", why: "multiple", versions: ["0.1.10", "0.1.53"] } }
             : { "claude-code": health === "plugin" && !ccIn ? { state: "absent" } : { state: "installed", version: "0.7.36" }, codex: { state: "installed", version: "0.7.36" } },
         // D466: Mem's own `plugins check` says 0.7.37 is out (DEMO_HEALTH=update).
-        ...(health === "update" ? { checkUpdates: async () => ({ "claude-code": "0.7.37" }) } : health === "update552" ? { checkUpdates: async () => ({ "claude-code": "0.7.38" }) } : {}),
+        ...(health === "update" ? { checkUpdates: async () => ({ "claude-code": "0.7.37" }) } : health === "update552" ? { checkUpdates: async () => ({ "claude-code": "0.7.38" }) } : health === "update597" ? { checkUpdates: async () => ({ "claude-code": "0.7.39" }) } : {}),
+        // D597: Claude Code's own update commands, pretended (DEMO_DIRECT: ok · fail · stuck · running).
+        ...(health === "update597"
+          ? {
+              updateLocal: async () => {
+                if (direct === "running") return new Promise<never>(() => {});
+                const steps = [{ cmd: "claude plugin marketplace update nowledge-community", code: 0, tail: "Successfully updated marketplace: nowledge-community" }];
+                if (direct === "ok") {
+                  ccVersion = "0.7.39";
+                  return { ok: true, steps: [...steps, { cmd: "claude plugin update nowledge-mem@nowledge-community", code: 0, tail: "Plugin nowledge-mem updated to 0.7.39" }] };
+                }
+                return { ok: false, steps: [...steps, { cmd: "claude plugin update nowledge-mem@nowledge-community", code: 1, tail: "Error: failed to fetch the plugin archive" }] };
+              },
+            }
+          : {}),
         everyMs: 0,
         connected: () => true,
         connectLocal: async () => (await new Promise((r) => setTimeout(r, 3000)), (ccIn = true), { code: 0, out: "{}", err: "" }),
@@ -138,7 +156,19 @@ core.setRunner(
           return { taskId } as Awaited<ReturnType<typeof stub.openTask>>;
         },
       } as typeof stub)
-    : stub,
+    : health === "update597"
+      ? ({
+          ...stub,
+          // D597: no agent can take it (stuck), or the task that takes over, still working.
+          openTask: async (i: Parameters<typeof stub.openTask>[0]) => {
+            if (direct === "stuck") throw new Error("no agent can take it");
+            const taskId = "t_memupdate";
+            core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", body: { taskId, title: i.title, project: "", place: { kind: "none" }, harness: i.harness ?? "claude-code", brief: i.brief } } as never);
+            core.tasks.setState(taskId, "working", "hot");
+            return { taskId } as Awaited<ReturnType<typeof stub.openTask>>;
+          },
+        } as typeof stub)
+      : stub,
 );
 core.setPartner({ onTrigger() {} });
 if (want !== "fresh" && want !== "sign_in") core.persona.mem = { agentId: "ducter", owned: true };
@@ -163,3 +193,5 @@ if (want !== "empty" && want !== "fresh" && want !== "sign_in")
 shift = 0;
 if (want === "newer" || want === "on" || want === "empty") void core.bridgeLink.connect();
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app#settings=memory (data: ${core.dataDir})`);
+// D597: DEMO_TAP=1: 更新 tapped as it starts (after the first check), so the page opens in that state.
+if (health === "update597" && process.env.DEMO_TAP === "1") setTimeout(() => void core.memPlugins.check().then(() => core.memPlugins.install("local", "claude-code")), 500);

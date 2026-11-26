@@ -20,7 +20,7 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export function memLine(dv: DeviceView, h: DeviceHarness) {
   const m = h.mem!;
   // The home's own word (its task, its busy, or the line moved on) ends this window's.
-  if (m.taskId || m.busy || m.updated || m.fresh || m.state === "installed") {
+  if (m.taskId || m.busy || m.updated || m.fresh || m.stuck || m.state === "installed") {
     A.memSent.delete(`${dv.id}:${h.harness}`);
     return m;
   }

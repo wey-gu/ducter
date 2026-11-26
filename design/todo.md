@@ -733,9 +733,15 @@ line.
 - [ ] **Updates for Codex, pi and DeepSeek Harness's Mem plugin (D466).** `nmem plugins check`
   lists only Claude Code of Ducter's agents (D576: pi below 0.8.20 reads update to 0.8.20 from Ducter's own table). Trigger: Mem adds them (matched by inspect's host id
   or Ducter's own, no change needed; add a fixture).
-- [ ] **A host's own plugin update command instead of a task (D466).** Faster, no tokens, like
-  D375's `nmem connect` for an install. Trigger: Mem's guide names an update command per host for
-  Ducter's agents (it does for OpenCode 2.x and Step Code today, not Claude Code, Codex or pi).
+- [x] **A host's own plugin update command instead of a task (D466).** Built as D597 from the
+  plugins' own READMEs (research/238).
+- [ ] **D597 seen live.** The direct update has run only against fake CLIs. Trigger: the next
+  Claude Code plugin release; read the row's 已更新到 and hel's Log (no task opened).
+- [ ] **Update offered with no agent signed in there (D597).** The direct update needs none, but
+  `memCant` still hides 更新 on a computer with no signed-in agent (D569). Trigger: a person meets a
+  hidden Update on a computer whose agents are all signed out.
+- [ ] **A Mem secret in an ordinary conversation message (D597 hides it in replies only).** Trigger:
+  one turns up in the Log outside a reply.
 - [ ] **Mem's skills in an agy task (D417 cut them).** Distill and handoff stay with the partner
   (`remember`). Trigger: agy loads a plugin or skills folder for one session (a flag, or OAR's
   `userConfiguration` verified for it).

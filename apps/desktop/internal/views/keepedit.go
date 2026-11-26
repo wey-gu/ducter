@@ -493,7 +493,12 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 
 			// 别的 agent 怎么找到它: its name in Bridge.
 			if k.Address != nil {
-				r := rule{key: "address", label: a.L.T("keep.rule.address"), values: []string{a.L.T("keep.address.name", k.Address.Name)}, muted: a.L.T("keep.address." + k.Address.Mem), can: k.CanEdit("address")}
+				vals := []string{a.L.T("keep.address.name", k.Address.Name)}
+				// D604: where it receives, each Space by the person's name for it.
+				if len(k.Address.Spaces) > 0 {
+					vals = append(vals, a.L.T("keep.address.spaces", strings.Join(k.Address.Spaces, a.L.T("keep.address.sep"))))
+				}
+				r := rule{key: "address", label: a.L.T("keep.rule.address"), values: vals, muted: a.L.T("keep.address." + k.Address.Mem), can: k.CanEdit("address")}
 				r.openIt = func() { e.draft = k.Address.Name }
 				r.save = func() {
 					v := strings.TrimSpace(e.draft)

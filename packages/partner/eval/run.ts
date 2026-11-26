@@ -111,6 +111,8 @@ import { seedDidDay } from "../../core/test/did-day.ts";
 import { seedMade } from "./seed-made.ts";
 import { seedUsageWeek } from "./seed-usage.ts";
 import { seedHistory } from "./seed-history.ts";
+import { localHandoff } from "../../protocol/src/helpers.ts";
+import { relayHead } from "../src/bridge-relay.ts";
 import { realClock } from "../../core/src/clock.ts";
 import { realExec, type Exec } from "../../protocol/src/checks-run.ts";
 import { prIdentity } from "../../protocol/src/owned.ts";
@@ -915,6 +917,27 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...w1, state: "fired" } });
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: "w_" + crypto.randomUUID().slice(0, 10), reason: s.loop.reason, taskId, wakes: "task", state: "armed", at: new Date(Date.now() + every).toISOString() } });
       if (!core.work.loops.get(taskId)) throw new Error("loop seed: not kept as a loop");
+    } else if ("helper" in s) {
+      // D494/D598: one of the person's helpers on this home, its address in Mem ready (as hel's babysitter).
+      const r = core.helpers.make({ name: s.helper.name, about: s.helper.about, brief: s.helper.brief });
+      if (!r.ok) throw new Error(`helper seed: ${r.error}`);
+      const file = join(dataDir, "helpers.json");
+      const j = JSON.parse(readFileSync(file, "utf8")) as { helpers: Record<string, unknown>[] };
+      j.helpers = j.helpers.map((h) => (h.id === r.helper.id ? { ...h, mem: "ready", link: { context: `${h.agentId}-on-hel`, connectionId: "conn_eval", spaceId: "personal-eval" }, ...(s.helper.spaces ? { spaces: s.helper.spaces } : {}) } : h));
+      writeFileSync(file, JSON.stringify(j, null, 2));
+    } else if ("handoff" in s) {
+      // D598: a seeded task handed work to that helper on this home, and none of its tasks took it yet.
+      const h = core.helpers.byName(s.handoff.helper);
+      if (!h) throw new Error("handoff seed: no such helper");
+      const taskId = idOf.get(s.handoff.task)!;
+      const title = core.tasks.get(taskId)?.title ?? "";
+      core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper: h.id, text: s.handoff.text, from: "Ducter", fromTask: taskId, head: relayHead("Ducter", title, s.handoff.text) }) });
+    } else if ("helperMuted" in s) {
+      // D604: mail to the helper in a Space, logged unread: its sender is muted (as hel's, after a card answered with words).
+      const h = core.helpers.byName(s.helperMuted.helper);
+      if (!h) throw new Error("helperMuted seed: no such helper");
+      core.settings.setPeers({ muted: [...core.settings.get().peers.muted, s.helperMuted.from] });
+      core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: crypto.randomUUID(), from: s.helperMuted.from, helper: h.id, space: s.helperMuted.space, spaceLabel: s.helperMuted.spaceLabel, text: "", state: "muted" } });
     } else if ("boardOffer" in s) {
       if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
     } else if ("asks" in s) {
@@ -1091,6 +1114,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
     else if ("loop" in s) lines.push(`(earlier) task "${s.loop.task}" runs in rounds, every ${s.loop.everyMin} min (it rests on "${s.loop.reason}" between them)`);
+    else if ("helper" in s) lines.push(`(earlier) the user's helper "${s.helper.name}" exists on this home (takes: ${s.helper.about}; its rule: ${s.helper.brief})`);
+    else if ("helperMuted" in s) lines.push(`(earlier) a message to "${s.helperMuted.helper}" from ${s.helperMuted.from} in "${s.helperMuted.spaceLabel}" came and was not read: the user had chosen 不理 for that sender`);
+    else if ("handoff" in s) lines.push(`(earlier) task "${s.handoff.task}" handed this to "${s.handoff.helper}" on this home, and none of the helper's tasks has taken it yet: ${s.handoff.text}`);
     else if ("board" in s) lines.push(`(earlier) Ducter made the review board for task "${s.board.task}"; it shows every PR waiting, filled from each round`);
     else if ("boardOffer" in s) lines.push(`(earlier) Ducter offered on its own card: keep task "${s.boardOffer.task}"'s rounds on a board?`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);

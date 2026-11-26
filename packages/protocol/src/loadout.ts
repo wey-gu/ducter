@@ -98,6 +98,13 @@ export interface TaskNeeds {
    * It goes to a computer with room, and waits for room rather than start where there is none.
    */
   heavy?: boolean;
+  /**
+   * D612: its job is reviewing other people's pull requests (a review routine/Keep), not fixing
+   * code. The partner judges it once at task_open from the brief, and code records it here; only a task
+   * with this gets `review_report` and the reviews board offer. A task that opens its own PR never is a
+   * review task, whatever this says (core guards it).
+   */
+  reviews?: boolean;
 }
 
 /** D251: which phone a task's work needs: undefined when it needs none; "any" for the legacy true. */

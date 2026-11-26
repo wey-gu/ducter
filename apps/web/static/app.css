@@ -1525,6 +1525,8 @@ a.task-link {
   font-weight: var(--ask-weight);
   line-height: 1.4;
   letter-spacing: 0;
+  /* D-PENDING: a long path or hash in an ask's words wraps instead of running past the card. */
+  overflow-wrap: anywhere;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
 @media (max-width: 600px) {
@@ -17863,20 +17865,28 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 @media (max-width: 640px) {
   .app-head .app-title { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.2; }
 }
-.app-changed {
+/* D603: a line under the app, where a change was asked: being made, 改好了 with 改回去, or answered
+   in the conversation. It rises in and goes by itself. */
+.app-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 6px 12px;
-  margin: 4px 28px 0;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--done-surface);
-  color: var(--done-ink);
+  margin: 4px 28px 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 4px 4px 4px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink-soft);
   font-size: var(--sm);
+  box-shadow: 0 2px 0 var(--line);
   animation: cal-rise 220ms var(--ease) both;
 }
+.app-line-words { font-weight: 700; }
+.app-line > .app-state { padding: 8px 0; }
+.app-changed { background: var(--done-surface); color: var(--done-ink); box-shadow: none; }
 .app-changed-words { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1 1 12em; }
 .app-changed-word { font-weight: 800; flex: none; }
 .app-changed-note { min-width: 0; overflow-wrap: anywhere; }
@@ -17884,7 +17894,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   flex: 1;
   min-height: 0;
   display: flex;
-  margin: 12px 28px 0;
+  margin: 12px 28px 12px;
   border-radius: var(--r-md);
   background: var(--bg);
   box-shadow: inset 0 0 0 1px var(--line);
@@ -17892,17 +17902,37 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .app-stage > .past-none { margin: auto; }
 .app-frame { flex: 1; width: 100%; height: 100%; border: 0; background: var(--bg); display: block; }
-/* D519: the ask is the conversation's composer (composer.tsx). */
-.app-foot { margin: 12px 28px 0; }
+/* D519: the ask is the conversation's composer (composer.tsx). D603: it is not there at rest; 修改,
+   ⌘L, / or 「⋯」 bring it up from the bottom edge (the room opens as it rises, D290), Esc or leaving it
+   empty puts it away. */
+.app-foot {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin: 0 28px 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: grid-template-rows 220ms var(--ease), opacity 220ms var(--ease), transform 220ms var(--ease);
+}
+.app-foot.open { grid-template-rows: 1fr; opacity: 1; transform: none; }
+.app-foot-in { min-height: 0; overflow: hidden; margin: -4px -4px 0; padding: 4px 4px 0; }
+.app-foot.open .app-foot-in { padding-bottom: 8px; }
 .app-foot .composer { margin-bottom: 0; }
-.app-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 30px 16px; font-size: var(--xs); color: var(--ink-muted); }
+.app-head .app-change { flex: none; }
 @media (max-width: 640px) {
   .app-sheet { width: 100vw; }
-  .app-changed { margin: 4px 16px 0; }
-  .app-stage { margin: 8px 0 0; border-radius: 0; box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
-  .app-foot { margin: 10px 16px 0; }
-  .app-meta { margin: 6px 18px calc(10px + var(--safe-bottom, 0px)); }
+  .app-line { margin: 4px 16px calc(8px + var(--safe-bottom, 0px)); }
+  .app-stage { margin: 8px 0 8px; border-radius: 0; box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+  .app-foot { margin: 0 16px calc(4px + var(--safe-bottom, 0px)); }
+  .app-foot.open { margin-top: 2px; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .app-foot { transition: opacity 120ms linear; transform: none; }
+  .app-line { animation: none; }
+}
+/* D603: who sees it and when it changed, at the end of its 「⋯」. */
+.app-about { display: flex; flex-direction: column; gap: 2px; font-weight: 500; word-break: keep-all; overflow-wrap: anywhere; }
+.app-line .app-changed-note { text-wrap: pretty; }
+.app-about .app-state { font-size: var(--xs); }
 
 /* An app's ask, or words about an app, in the conversation: a small line names the app. */
 .user-app { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
@@ -18078,11 +18108,10 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 /* The first time an app opens: the partner's line of what it already filled in. */
 .app-first {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 4px 8px;
   margin: 4px 28px 0;
-  padding: 9px 14px;
+  padding: 4px 4px 4px 14px;
   border-radius: 12px;
   background: var(--surface);
   color: var(--ink-soft);
@@ -18092,7 +18121,10 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .app-first-dot { align-self: center; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--needs-surface); }
 .app-first-word { font-weight: 800; color: var(--ink); flex: none; }
-.app-first-note { min-width: 0; overflow-wrap: anywhere; }
+.app-first-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* D603: one slim line; it goes after a while or at the first touch, × sooner. */
+.past-x.app-first-x { flex: none; width: 28px; min-height: 28px; font-size: 16px; background: none; }
+.past-x.app-first-x:hover { background: var(--sunken); }
 
 /* Pinned apps at the top of the conversation, beside D381's pins. */
 .pin-apps { flex: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 6px 16px 2px; }
@@ -24441,18 +24473,37 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
    the words take their own line, the whole measure, and the buttons the line under them, Stop and
    Send at the right edge; the same shape from a phone to a wide window, as on the Mac.
    Under 420 the model chip keeps its name short; under 340 the chip is its level alone (its card
-   names the model); the meter keeps its figure, so its ring never reads as a spinner (D530). */
+   names the model) and the meter its ring alone (its label carries the share; no figure to squeeze
+   the chip, issue 218). */
 .composer.tiered .words {
   flex: 1 0 100%;
   order: -1;
   padding-inline: 12px 6px;
 }
+/* The chip's content never counts when the row breaks: a zero basis lets it take the room that is
+   left and truncate its name there, instead of pushing Send onto a line under the box (issue 218). */
+.composer.tiered {
+  column-gap: var(--s2);
+}
+.composer.tiered .ctune {
+  flex: 1 1 0;
+  max-width: max-content;
+}
 .composer.tiered .stop,
 .composer.tiered .send-anchor {
   margin-left: auto;
 }
+/* Stop and Send are one pair at the edge, kept the design's 20 from each other: the row's S2 gap
+   plus S3. Send keeps the edge on its own when there is no Stop. */
 .composer.tiered .stop + .send-anchor {
-  margin-left: 16px;
+  margin-left: var(--s3);
+}
+.composer .ctune-m {
+  min-width: 0;
+  max-width: 100%;
+}
+.composer .ctune-chip {
+  max-width: min(220px, 100%);
 }
 @container composer (max-width: 420px) {
   .composer .ctune-chip .m {
@@ -24461,6 +24512,10 @@ button.ref-chip:focus-visible { outline: 2px solid currentColor; outline-offset:
 }
 @container composer (max-width: 340px) {
   .composer .ctune-chip .m {
+    display: none;
+  }
+  /* The narrowest cards drop the meter's number before its ring: a figure would squeeze the chip. */
+  .composer .ctx-btn .pct {
     display: none;
   }
 }
@@ -25053,6 +25108,8 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
+  /* D-PENDING: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
+  overflow-wrap: anywhere;
 }
 /* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
 @media (pointer: coarse) {
@@ -25077,6 +25134,8 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   margin: 0 1px;
   padding: 0 6px;
   border: 0;
@@ -25090,9 +25149,13 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-code code {
   padding: 0;
   background: none;
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--mono);
   font-size: 0.88em;
   font-weight: 600;
+  /* D-PENDING: a long command wraps inside its chip (the bubble's code rule says nowrap). */
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 .ask-code .g {
@@ -25118,6 +25181,8 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   display: flex;
   align-items: center;
   gap: var(--s3);
+  min-width: 0;
+  max-width: 100%;
   min-height: 64px;
   padding: var(--s2) var(--s2) var(--s2) var(--s4);
   border-radius: var(--r-sm);
@@ -25128,6 +25193,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   padding: 0;
   background: none;
   min-width: 0;
+  max-width: 100%;
   font-family: var(--mono);
   font-size: 1.75rem;
   font-weight: 700;
@@ -25136,15 +25202,26 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink);
   -webkit-user-select: all;
   user-select: all;
+  /* D-PENDING: a one-time code wraps in its own well; Copy keeps its place at the right. */
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 .otc .btn {
   flex: none;
+  max-width: 100%;
 }
 .otc.off code {
   color: var(--faded-ink);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
+}
+/* D-PENDING: a code block in an ask's words scrolls in its own box, never widens the card. */
+.ask-said pre,
+.decision pre,
+.partner pre {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
 }
 .dsi {
   display: flex;
@@ -25220,3 +25297,62 @@ button.fd-link,
 .fd-link .btn-chev {
   flex: none;
 }
+/* D602: 结束任务 asks in place under the opened task's meta line: the shared confirm line (GConfirm), on the
+   head's own left edge (no tile column), its question in ink. */
+.end-ask {
+  margin-top: var(--s2);
+}
+.end-ask .g-confirm {
+  padding: 0;
+  min-height: 0;
+}
+.end-ask .g-confirm small {
+  color: var(--ink);
+}
+/* D602: 不用跟了 asks in place under a held item: the shared confirm line, on the item's text column. */
+.kp-release {
+  grid-column: 2 / -1;
+}
+.kp-release .g-confirm {
+  padding: 0;
+  min-height: 0;
+}
+.kp-release .g-confirm small {
+  color: var(--ink);
+}
+/* D602: a held item on On hand's sheet: its row and a quiet ⋯ (不用跟了, 打开任务) at its end; the ⋯
+   comes in on hover or focus with a pointer, and always stands on touch. */
+.kp-hrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  border-top: 1px solid var(--line-soft);
+}
+.kp-hrow > .kp-h {
+  flex: 1;
+  min-width: 0;
+  border-top: 0;
+}
+@media (hover: hover) {
+  .kp-hmore {
+    opacity: 0;
+    transition: opacity var(--t-fast) var(--ease);
+  }
+  .kp-hrow:hover .kp-hmore,
+  .kp-hrow:focus-within .kp-hmore,
+  .kp-hmore.open {
+    opacity: 1;
+  }
+}
+/* D601: 以后这类直接做 / Always do this, the second choice beside Go (secondary, never the lead), and
+   GQ4's offer leading the card in one line; Settings says a tapped permission as a tap with its day. */
+.dk-acts > .btn.primary + .btn.secondary { margin-inline-start: calc(var(--s2) - var(--s5)); margin-inline-end: var(--s5); max-width: 100%; }
+.dk-acts > .btn.secondary .lbl { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 599px) {
+  .dk-acts > .btn.primary + .btn.secondary { flex: 1 1 100%; margin-inline: 0; margin-top: var(--s2); min-height: 44px; }
+}
+.dk > .dk-often { font-size: var(--sm); line-height: 1.45; font-weight: 700; color: var(--ink); text-wrap: pretty; }
+.decision .dk > .dk-often { color: var(--needs-ink); }
+.trust.without small.tapped { display: block; }
+.trust.without small.tapped > span { display: inline; margin: 0; }
+.trust.without small.tapped > .when { margin-inline-start: var(--s2); white-space: nowrap; }

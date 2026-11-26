@@ -186,6 +186,7 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		if a.buttonFor(c, goLabel, k.Name, btnPrimary, st.height, st.quietBg) && strings.TrimSpace(v) != "" {
 			if dd := a.S.Decisions[d.DecisionID]; dd != nil {
 				dd.Pending, dd.AnsweredAt = "go", a.Now()
+				a.decideSent = append(a.decideSent, d.DecisionID)
 			}
 			a.markRead()
 			a.send(protocol.DecideKey{T: "decide", DecisionID: d.DecisionID, Option: "go", Key: v, Once: once})

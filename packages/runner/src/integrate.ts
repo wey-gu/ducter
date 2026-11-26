@@ -6,7 +6,12 @@ import { dirname, join, resolve } from "node:path";
 import type { BranchChanges, CopyFacts, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { worktreesRootOf } from "@ducter/protocol/src/ducter-folder.ts";
+import { forkPoint } from "./fork-point.ts";
 import { git } from "./places.ts";
+
+// Kept where callers have always found it (integrate's own stats and branchChanges); the one
+// implementation lives in fork-point.ts, beside the workbench and the Mac's diff.
+export { forkPoint } from "./fork-point.ts";
 
 export interface ActionResult {
   ok: boolean;
@@ -63,21 +68,6 @@ export async function branchChanges(place: Place): Promise<BranchChanges | undef
   const commits = Number(ahead.out);
   if (!Number.isFinite(commits)) return undefined;
   return { commits, uncommitted: status.out.length > 0, ...(await diffStat(p.worktree!, p.baseBranch, fork)) };
-}
-
-/**
- * D471: where the task's work starts: the merge base with its base branch, or with the base's
- * remote-tracking branch when that is newer. A task that pulled the remote's main into its branch
- * (agents do, to work on fresh code) shares the remote's history with it; against a local main
- * left weeks behind, the old merge base counted every upstream change as the task's own (the
- * author's board read millions of lines). The newer of the two is a descendant of the other.
- */
-export async function forkPoint(worktree: string, base: string): Promise<string | undefined> {
-  const [local, remote] = await Promise.all([git(worktree, ["merge-base", base, "HEAD"]), git(worktree, ["merge-base", `origin/${base}`, "HEAD"])]);
-  const l = local.ok && local.out ? local.out : undefined;
-  const r = remote.ok && remote.out ? remote.out : undefined;
-  if (!l || !r || l === r) return l ?? r;
-  return (await git(worktree, ["merge-base", "--is-ancestor", l, r])).ok ? r : l;
 }
 
 /** D128: files, lines added and removed since the branch left its base, committed or not
@@ -151,7 +141,14 @@ export async function pushForMove(place: Place): Promise<ActionResult> {
   return { ok: true, message: `Pushed ${p.branch} to ${host}.`, ref: p.branch };
 }
 
-export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Promise<ActionResult> {
+/** D596: a PR opened under the person's standing go: the task's own title and body, ready for review (not a draft). */
+export interface PrOptions {
+  title?: string;
+  body?: string;
+  ready?: boolean;
+}
+
+export async function openDraftPr(place: Place, opts: { gh?: string } & PrOptions = {}): Promise<ActionResult> {
   const p = repoOf(place);
   if (!p) return { ok: false, message: "This task has no branch to open a PR from." };
   const gh = opts.gh ?? "gh";
@@ -167,16 +164,22 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
   }
   const remote = await git(p.repoPath, ["remote", "get-url", "origin"]);
   if (!remote.ok) return { ok: false, message: "This repo has no origin remote to push to." };
+  // D596: only the task's own branch: never its base, never the remote's default branch.
+  const head = await git(p.repoPath, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
+  const defaultBranch = head.ok ? head.out.trim().replace(/^origin\//, "") : undefined;
+  if (p.branch === p.baseBranch || (defaultBranch && p.branch === defaultBranch)) return { ok: false, message: `${p.branch} is the repository's own branch, not this task's: nothing was pushed.` };
   const pending = await git(p.worktree!, ["status", "--porcelain", "--untracked-files=no"]);
   if (pending.out) return { ok: false, message: `The task still has uncommitted changes on ${p.branch}. Ask it to commit first.` };
+  // Never --force: a push the remote refuses stays refused, and the message says why.
   const pushed = await git(p.worktree!, ["push", "-u", "origin", p.branch!]);
   if (!pushed.ok) return { ok: false, message: `Pushing ${p.branch} failed: ${pushed.err.split("\n")[0]}` };
-  const args = [gh, "pr", "create", "--draft", "--fill", "--head", p.branch!]; // title/body from the commits
+  const title = opts.title?.trim().slice(0, 200);
+  const args = [gh, "pr", "create", ...(opts.ready ? [] : ["--draft"]), ...(title ? ["--title", title, "--body", opts.body?.trim().slice(0, 8000) || title] : ["--fill"]), "--head", p.branch!]; // else title/body from the commits
   if (p.baseBranch) args.push("--base", p.baseBranch);
   const pr = await run(args, p.worktree!);
   if (!pr.ok) return { ok: false, message: `The branch is pushed, but gh couldn't open the PR: ${pr.err.split("\n")[0]}` };
   const url = pr.out.split("\n").find((l) => /^https?:\/\//.test(l.trim()))?.trim() ?? pr.out;
-  return { ok: true, message: `Opened a draft PR for ${p.branch}.`, ref: url };
+  return { ok: true, message: `Opened a ${opts.ready ? "" : "draft "}PR for ${p.branch}.`, ref: url };
 }
 
 /**

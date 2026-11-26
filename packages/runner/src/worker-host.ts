@@ -7,7 +7,7 @@
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
 import { folderInfo, realGit, type GitRun } from "@ducter/protocol/src/folder-info.ts";
-import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
+import { archiveWorktree, copyFacts, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type PrOptions } from "./integrate.ts";
 import { wbErrorOf, wbHost, type WbCall, type WbFetch } from "./workbench.ts";
 import { expandHome, planPlace, provisionPlace } from "./places.ts";
 import { branchRules } from "./branch-name.ts";
@@ -252,7 +252,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     merge: (a) => mergeTaskBranch(a.place),
     // D157: a repo task leaving this computer pushes its branch first (E3).
     push: (a) => pushForMove(a.place),
-    openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
+    openPr: (a) => openDraftPr(a.place, { gh: o.gh, ...(a.pr && typeof a.pr === "object" ? (a.pr as PrOptions) : {}) }),
     changes: (a) => branchChanges(a.place),
     archive: (a) => archiveWorktree(a.place, o.dataDir, { unstarted: a.unstarted === true }),
     // D514: read-only facts about a copy here, for the home's tidy (the removal itself is archive, checked again here).

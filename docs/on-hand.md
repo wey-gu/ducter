@@ -119,6 +119,13 @@ today**. A pull request closed without merging says **Closed without merging**.
 A task with a pull request never offers **Merge into main** or **Open draft PR**: the pull request
 holds the work.
 
+When a finished task's pull request isn't needed any more (say it's a duplicate of work that
+already merged), end the task. Tell it in its own box, "can this be closed?", and it ends itself,
+saying what becomes of each open pull request. Or open the task, choose **⋯** › **End task**, and
+confirm on the line that appears. Ducter stops following that pull request, and the task leaves
+**Waiting**. The pull request stays open on GitHub and reads **Duplicate draft, can be closed** or
+**No longer followed, can be closed**. Nothing is closed on GitHub unless you ask for that. A finished task's **⋯** on **Tasks** offers **End task** too, and a pull request a helper you set up is following has **Stop following** under **⋯** and on its page.
+
 On a wide window, a task shows on the right as it works: the one you moved to with the arrow keys,
 or else the one at work. You see what it's doing now, its last few steps in plain sentences (several quick ones as one line,
 such as "Read 3 files, ran 2 commands"), and
@@ -280,6 +287,8 @@ and **How it runs**. To go back to the whole list, tap **Tasks** at the top (or 
 you leave Tasks and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
 **Run now**, and, last, **End**, which asks once and ends it for good. To change one rule yourself, tap it under **How it runs**. A round never ends it: only you, or the goal you gave it.
+
+To give a helper one more piece of work, say so: "hand mem#11393 to the PR Babysitter: review it, /lgtm if it's fine". Your tasks can hand it work too, once their pull request is ready. Either way it shows up under what the helper holds as soon as one of its tasks takes it, and only then does your partner say the helper is on it; until then it says the work is handed over and waiting to be taken. If nothing takes it within ten minutes, your partner says so once and offers to do it directly. Something you add from now on ("the Babysitter owns each PR to the end") reaches the work the helper already holds, at once.
 
 ## Groups
 

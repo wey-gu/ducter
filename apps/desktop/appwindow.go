@@ -35,6 +35,28 @@ const appCSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsaf
 
 var appIDRe = regexp.MustCompile(`^a[0-9a-f]{1,15}$`)
 
+// The apps' open windows, by app id.
+var (
+	appWinMu   sync.Mutex
+	appWinOpen = map[string]*mygo.Window{}
+)
+
+// appWindowID is the app whose window w is, or "" (D603: the menu bar's
+// 修改这个小应用… ⌘L acts on the app window in front).
+func appWindowID(w *mygo.Window) string {
+	if w == nil {
+		return ""
+	}
+	appWinMu.Lock()
+	defer appWinMu.Unlock()
+	for id, x := range appWinOpen {
+		if x == w {
+			return id
+		}
+	}
+	return ""
+}
+
 // installApps serves the apps' scheme and opens their windows. It runs
 // before any window is made (a scheme must be registered first).
 func installApps(app *views.App) {
@@ -87,8 +109,7 @@ func installApps(app *views.App) {
 			}()
 		})
 	}
-	var mu sync.Mutex
-	open := map[string]*mygo.Window{}
+	mu, open := &appWinMu, appWinOpen
 	app.OpenAppWindow = func(id, name string) {
 		mu.Lock()
 		defer mu.Unlock()

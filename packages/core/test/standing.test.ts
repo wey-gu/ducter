@@ -79,7 +79,7 @@ function boot() {
     drop: async () => {},
   };
   core.setRunner(runner as unknown as Runner);
-  core.log.append({ stream: "task:swj3zc4w", origin: "system", kind: "task_open", body: { taskId: "swj3zc4w", title: "看 nowledge-co 的评审请求", project: "", place: { kind: "none" }, harness: "codex", brief: "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR。" } });
+  core.log.append({ stream: "task:swj3zc4w", origin: "system", kind: "task_open", body: { taskId: "swj3zc4w", title: "看 nowledge-co 的评审请求", project: "", place: { kind: "none" }, harness: "codex", brief: "每 45 分钟 review 一次 nowledge-co 里请我 review 和提到我的 PR。", needs: { reviews: true } } });
   core.tasks.setState("swj3zc4w", "working", "hot");
   return { core, gh, told, ts: core.taskSources };
 }

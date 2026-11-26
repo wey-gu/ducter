@@ -9,6 +9,37 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Ending a task held by its PR, after D602 (`focus-window.md` "How a task is shown")
+
+- **Open draft PR on a task whose work went into a PR it took over** (the origin of hel's #11179):
+  not offered when a PR it owns, open or merged, already holds the branch's head. Trigger: the
+  next duplicate draft seen on a home.
+- **A let-go PR is never read again**, so its row keeps saying 可关 after it is closed or merged
+  on GitHub. Trigger: someone asks why a closed PR still says 可关.
+- **Undo for 结束任务** (the PR is still open; today the task is talked to again). Trigger: an
+  End task the person wanted back.
+
+## Work handed to a helper, after D598 (`standing-work.md` "What is built")
+
+- [ ] **On hel:** the next PR a dev task hands to the Babysitter shows under 手上的事 with its round, the claim reaches the
+  dev task, and no stall line comes. Trigger: the first release with D598 on hel.
+- [ ] **D596's hand-off** (push, open the PR, hand it over without a card) calls `agent_message` to the helper's name
+  (or `keeps.change(id, { hand })`), never a Bridge send. Trigger: D596's branch.
+- [ ] **A piece handed and not taken yet as its own row** under 手上的事 (today it shows once a task has it; the stall
+  line covers a missed turn). Trigger: a person asks where a hand-off went inside the ten minutes.
+- [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
+  for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
+
+<<<<<<< HEAD
+=======
+## A helper's Spaces and a teammate's card, after D604 (`bridge.md` "Helpers")
+
+- [ ] **An unnamed sender is muted by its Space-wide label** ("AI agent (dev team)"), so 不理 to one unnamed agent
+  mutes every unnamed agent in that Space. Key `peers.muted` / `peers.allowed` by Mem's `sender.agent_id` when it
+  is there. Trigger: a second unnamed agent writes in a Space where one was told 不理.
+- [ ] **The Mac 别的 agent 怎么找到它 row** lets a Space's name break at a space (the web keeps each whole).
+  Trigger: the next Keep page pass on the Mac.
+>>>>>>> origin/d604-helper-spaces
 ## A sign-in with a one-time code, after D599 (`device-signin.md`)
 
 - **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.
@@ -392,6 +423,14 @@ line.
   scenarios rewritten to assert the partner's `rule_save` (and a world puzzle where the saying is
   only in memory), two full eval runs, then `said.ts`, `keepSaidOnGo`'s card, `saidPick` and the
   `said` port go.
+- **D596: what is still owed.** (1) A helper on the same home (not reached through Bridge) gets the
+  PR by the task's own message only when Bridge reaches it; joining the task to the local helper
+  directly (its `helperIndex`) is not built. Trigger: a home whose babysitter is its own helper asks.
+  (2) "Verified" is the task's judgement with its checks recorded; no code reads CI or a device
+  check before the PR (CI runs on the PR, the helper watches it). Trigger: a PR opened under the go
+  that the person says wasn't ready. (3) No pre-push hook guards a task's own `git push --force`;
+  the brief says never, and Ducter's own write never forces. Trigger: one seen in a Log.
+  (4) Not on hel or the Mac yet; the first verified task there is the live check.
 - **D499: what is still owed.** A step outside the four (`ci_rerun`, `pr_comment`, `branch_push`,
   `issue_comment`), e.g. editing the PR's title or labels, still asks; widen only with a write the
   answer can stand for. A go said about a task's repo in general ("mem 的 PR 这些都别问我") is kept by
@@ -693,6 +732,44 @@ line.
   intermediate Claude.ai credentials or session tokens". It is the person's own token on their own
   Ducter, but copied to a worker it is closer to that line. Trigger: the next key-copy change.
 
+## The four new agents, live (D600, research/239–242)
+
+None of these has run a live task or sign-in: the entries, facts, probes, cards and tests are
+built from OAR 0.124's own declarations and the reports. Each check names what would make the
+fact wrong.
+
+- [ ] **Cursor: bundle the SDK and give it a Node sidecar.** `@cursor/sdk@1.4.1` is not in this
+  build, and in-process it refuses `SessionOptions.env`; `runner/oar.ts` therefore refuses a
+  Cursor start. Bundle the SDK with OAR's subprocess/child mode (or wait for OAR's `childProcess`),
+  pin the version, and check: a task opens, a turn runs, its tools cannot read Ducter's whole
+  environment, resume works in the same folder, and `CURSOR_API_KEY` is the only env key it sees.
+- [ ] **Cursor's sign-in, live.** Its own `Cursor.auth.login()` link (not `agent login`, a different
+  credential store), the 90-day expiry, and a local-only logout that does not revoke the key. The
+  card must not offer a Cursor OAuth app (its scopes exclude signing the CLI/SDK in).
+- [ ] **Devin: install, sign in, one task.** Its own script, `devin auth login` (or
+  `WINDSURF_API_KEY`), then a task that opens, runs a turn, resumes and reaches Ducter's MCP over
+  the stdio bridge. Check whether ACP advertises `bypass`; probe images, `thought_level` and
+  `cognition.ai/midTurnPrompts`; confirm `devin auth status` says signed in after the browser
+  flow. Add a sign-out only if OAR gains one.
+- [ ] **Kimi: install, device code, one task, direct-only refusal.** The vendor script under
+  `~/.kimi-code`, `kimi login` (mainland by default; `--region global` elsewhere), the link and
+  device code on the card, a task that opens, takes a picture, reaches HTTP MCP, resumes and signs
+  out. On a live home, try a wait and a routine on it: both must refuse with Kimi's own line, and
+  `ducter usage` must not read its quota. Check the 630 s open bound and 2.6.x's stale MCP tools.
+- [ ] **OpenCode: install, sign in, one task.** Ducter's npm pin (or the v2 script), then a task
+  that opens with a native prompt and appended instructions, reaches HTTP MCP, steers, resumes and
+  compacts. Check v1 vs v2's provider sign-in; wire OAR's `createOpencodeProviderAuth` (and logout)
+  before offering the provider picker. Never a provider key in its env, never a Claude
+  subscription sign-in. Confirm `auth list --format json` is the probe's real check.
+- [ ] **Mem on the four.** Cursor's Mem plugin does not load through OAR's SDK session (Ducter's
+  `memSteps` stand in; verify `contextApp`/`threadFrom`), Devin's and OpenCode's `memUpdate`
+  commands are documented but unrun, and none of the four can turn Mem off per session. Check
+  Cursor's `nmem context --source-app cursor`, Devin's and OpenCode's live plugin commands, and
+  Kimi's plugin presence (no fact).
+- [ ] **The cards and the picker, with art.** The four show with the generic clay token until each
+  has a coin; take shots of a device card and the New task picker with each installed and signed
+  in, zh and en, both themes, before calling the visible change done.
+
 ## Antigravity, live (D416, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the
@@ -744,9 +821,9 @@ line.
 - [ ] **Mem's skills in an agy task (D417 cut them).** Distill and handoff stay with the partner
   (`remember`). Trigger: agy loads a plugin or skills folder for one session (a flag, or OAR's
   `userConfiguration` verified for it).
-- [ ] **A sign-out for the other agents** (D416 built Antigravity's, through OAR's `logout`;
-  Claude Code, Codex, pi and DeepSeek Harness have none in Ducter yet). Trigger: someone asks to
-  sign one of them out from Ducter.
+- [ ] **A sign-out for the other agents** (D416 built Antigravity's and D600 added Cursor's and
+  Kimi's, through OAR's `logout`; Claude Code, Codex, pi, DeepSeek Harness, Devin and OpenCode
+  have none in Ducter yet). Trigger: someone asks to sign one of them out from Ducter.
 - [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
   `HARNESSES["deepseek-harness"].images`.
 ## The waiting line, alive (D425, research/176)
@@ -3729,3 +3806,4 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **AGENTS.md's D175 line** now names `--against latest` (the author's go, 2026-11-25).
 - [ ] **People read 待你处理 and 任务** (D586, research/234): the words were picked on haiku proxies only. *Trigger:* the next time two or three Chinese-speaking people try Ducter, show them the bar, the line over the composer and the 任务 page from `.shots/rename-d585/after/` and ask what each means; revisit if either reads as the person's own to-do list.
 - [ ] **The rest of D592's copy rules** (D592): Mem's own panes (`memory.go`, `workermem.go`: 接上, 装上, 没弄好, 再看一次, 记得你了, 看看), the remaining 看看 buttons, and the partner's 改好了 on a small app's window were left for D590 and a later pass; a guard test that fails on 改 alone, 停下, 算了, 先不X, 不X了 or 看细节 as a control's word on both clients. *Trigger:* D590 merged, or the next copy complaint.
+- [ ] **以后这类直接做 on hel** (D601): the tap, GQ4's offer and the chat apps' third button checked with fakes only. *Trigger:* the next hel release: watch a review loop's second round and one task's push ask go by themselves after a tap, and read the Log for a card that offered it on the floor (there must be none).

@@ -23,7 +23,7 @@ import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
-import { attention, canIntegrate, cantOf, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, canIntegrate, cantOf, endable, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
@@ -920,7 +920,7 @@ export function finishedOf(task: Task): Finished | undefined {
   const integrated = !!task.card?.integrated || !!(task.acted?.ok && (task.acted.action === "merge" || task.acted.action === "open_pr"));
   // D508: a repo task with a branch and no PR offers its merge and a draft PR in ⋯.
   const integrate = !failed && p.kind === "repo" && canIntegrate(task) && !integrated && !task.acting && !hasPR(task) ? { base: p.baseBranch ?? "main" } : undefined;
-  return { name: shortTitle(title(task)) || t("task.unknown"), taskIds: [task.id], failedIds: failed ? [task.id] : [], openId: task.id, ...(integrate ? { integrate } : {}) };
+  return { name: shortTitle(title(task)) || t("task.unknown"), taskIds: [task.id], failedIds: failed ? [task.id] : [], openId: task.id, ...(integrate ? { integrate } : {}), ...(endable(task) ? { ends: true } : {}) };
 }
 
 type RowProps = { task: Task; room: Room; state?: boolean; v: string; focus: boolean; sel: boolean; opened: boolean };

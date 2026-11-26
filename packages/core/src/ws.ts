@@ -19,6 +19,8 @@ import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
 import { briefOf, placeForRepo } from "./task-sources/index.ts";
 import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
+import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
+import { letGoPr } from "@ducter/protocol/src/owned.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
 import { placeRuleText, type RulesStore } from "./rules.ts";
@@ -1023,6 +1025,13 @@ export function createWsHandler(deps: WsDeps) {
           if (!f.cvc) throw new Error("this payment needs the card's security code");
           pay.holdCvc(f.decisionId, f.cvc);
         }
+        // D601: 以后这类直接做 / Always do this: the permission kept where the card acted, and Go once.
+        if (f.always === true && f.option === "go") {
+          const r = deps.core.always?.tap(f.decisionId);
+          if (!r) throw new Error("This one is asked each time.");
+          if (!r.ok) throw new Error(r.error);
+          return;
+        }
         decisions.decide(f.decisionId, f.option, f.text);
         return;
       }
@@ -1214,6 +1223,27 @@ export function createWsHandler(deps: WsDeps) {
               }
               const now = tasks.get(f.taskId)!;
               if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
+              return result(true);
+            }
+            case "end": {
+              // D602: 结束任务 / End task, on a finished task an open PR still holds on the board: it
+              // lets each PR go (Ducter stops following it; it stays open on GitHub, closing it there is
+              // the person's), so the task is done as it is and its Keep's item goes. Never a close.
+              // From a Keep's 不用跟了 on a task still open, ending it puts it down (its PR stays open).
+              if (card.attention === "dropped" || card.attention === "superseded") return result(true);
+              if (card.attention !== "done" && card.attention !== "done_claimed" && card.attention !== "failed") {
+                try {
+                  await r?.drop(f.taskId);
+                } catch (err) {
+                  console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+                }
+                const now = tasks.get(f.taskId)!;
+                if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency, "you stopped following it");
+                return result(true);
+              }
+              const at = new Date().toISOString();
+              const prs = prsCarried(card.prs);
+              for (const p of prs) letGoPr(log, f.taskId, p.pr, "ended", at, card.persona);
               return result(true);
             }
             case "undrop": {

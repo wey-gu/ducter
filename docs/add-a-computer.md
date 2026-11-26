@@ -81,6 +81,17 @@ that has to wait or repeat goes to another AI. **Sign out** on its card signs it
 its own sign-out. Ducter only gives it a task when you name it ("让 Antigravity 来做"), or when
 nothing else can, and never a task on web pages.
 
+**Devin CLI, Kimi Code CLI and OpenCode.** These three can take tasks too, never your partner's
+own thinking. Devin and Kimi use their own installers (Ducter doesn't install them for you): once
+they are on that computer, its card shows them within seconds, and **Sign in** says the command to
+run in its terminal. OpenCode can be installed from the card; it signs in from a terminal too.
+Kimi Code and OpenCode work only when you ask: they never wait for something and carry on by
+themselves, never run on a schedule, and Ducter never checks their quota. OpenCode can use a
+provider's subscription sign-in; don't use a Claude subscription sign-in there, because Anthropic
+doesn't allow other apps to use plan credentials that way. If you're unsure, use an API key.
+**Cursor** is coming soon: it needs its SDK bundled with Ducter first, so its card says so and
+doesn't offer a sign-in.
+
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem
 your Ducter is connected to, and its own Claude Code plugin comes with them. An Antigravity task

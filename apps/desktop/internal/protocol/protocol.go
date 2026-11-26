@@ -278,6 +278,9 @@ type Decision struct {
 	Sender *SenderAsk `json:"sender,omitempty"`
 	// HoldLabel (D334): Hold's own words when the card's code names them.
 	HoldLabel string `json:"holdLabel,omitempty"`
+	// Always (D601): its Go is a standing action a tap may keep: the card
+	// shows 以后这类直接做 / Always do this beside Go; Often leads with GQ4's offer.
+	Always *AlwaysAsk `json:"always,omitempty"`
 	// Call (D189/D193): a phone call's Go card, or a question from the line.
 	Call *CallAsk `json:"call,omitempty"`
 	// Cal (D222): a calendar change (add, move, cancel, answer); its
@@ -437,6 +440,16 @@ type DecisionResolved struct {
 	Said string `json:"said,omitempty"`
 	// SignedIn (D599): a one-time-code sign-in seen through (settled, by "ended").
 	SignedIn bool `json:"signedIn,omitempty"`
+	// Always (D601): Go given with 以后这类直接做 / Always do this.
+	Always bool `json:"always,omitempty"`
+}
+
+// AlwaysAsk (D601, packages/protocol/src/standing.ts): the standing action
+// a card's Go is, where a tap keeps it, and GQ4's offer.
+type AlwaysAsk struct {
+	Action string   `json:"action"`
+	Where  []string `json:"where"`
+	Often  bool     `json:"often,omitempty"`
 }
 
 // DeviceSignInAsk (D599, packages/protocol/src/device-signin.ts): a
@@ -1248,6 +1261,8 @@ type PRSaid struct {
 	By     []string      `json:"by,omitempty"`
 	Failed []string      `json:"failed,omitempty"`
 	Checks *PRChecksSaid `json:"checks,omitempty"`
+	// Draft (D602): a duplicate that is still a draft (重复草稿).
+	Draft bool `json:"draft,omitempty"`
 }
 
 // PRChecksSaid is how many of a PR's checks passed, of how many, and how
@@ -1407,6 +1422,8 @@ type Decide struct {
 	DecisionID string `json:"decisionId"`
 	Option     string `json:"option"` // go | hold | reply
 	Text       string `json:"text,omitempty"`
+	// Always (D601): Go and 以后这类直接做 / Always do this.
+	Always bool `json:"always,omitempty"`
 }
 
 // Later (D382) puts a question off to Until (RFC 3339); a nil Until brings

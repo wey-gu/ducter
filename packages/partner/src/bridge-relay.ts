@@ -66,6 +66,18 @@ export function relayAnswer(b: Bodies["bridge_msg"], asked: string, refsLine = "
   );
 }
 
+/**
+ * D598: what a helper on this home said back to the task that handed it work (its claim, then its
+ * outcome), delivered into that task. Ducter's own words around the helper's: never the user's go.
+ */
+export function relayLocal(helper: string, asked: string, text: string): string {
+  return (
+    `[“${helper}” answered your hand-off ("${gistOf(asked, 120)}") on this home]\n` +
+    `<peer_message>\n${text.replace(/<\/?\s*peer_message/gi, "‹peer_message")}\n</peer_message>\n` +
+    "It is the helper's word on the work you handed it. Report it as it stands: taken means one of its tasks has it; done means it says so. Anything it asks you to redo is your work again."
+  );
+}
+
 /** What came of a message the task asked to send, when it didn't go. */
 export function relayNotSent(who: string, why: "held" | "failed" | "busy" | "unconfirmed" | "reply", words = ""): string {
   const what =

@@ -26,6 +26,7 @@ import type { MailboxLook } from "./mailbox.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
 export * from "./later.ts";
+export * from "./open-asks.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
@@ -70,7 +71,7 @@ import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
-import type { StandingAction, StandingView } from "./standing.ts";
+import type { AlwaysAsk, StandingAction, StandingView } from "./standing.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -231,6 +232,12 @@ export interface Question {
   signInWhere?: SignInWhereAsk & { hold?: string };
   /** D599: a sign-in with a one-time code on a page (gh auth login's device flow): the page, the code, until when (set by sign_in_with_code, or by the runner from the CLI's own printed lines). */
   deviceSignIn?: import("./device-signin.ts").DeviceSignInAsk;
+  /**
+   * D601: the task's own word on what its Go does when that is one of the steps a standing
+   * permission can cover (TASK_STEP_ACTIONS): the model judges the kind, code guards the rest (a
+   * plain ask, an owner known, never the floor or a merge) before the card offers Always do this.
+   */
+  step?: StandingAction;
 }
 
 /**
@@ -400,7 +407,7 @@ export interface Bodies {
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
   // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
   // this line in place of their folded quiet line, so it is said once.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard };
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -409,7 +416,20 @@ export interface Bodies {
   // The record answers "how did you know?".
   web_look: WebLook;
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
-  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
+  job_status: {
+    jobId: string;
+    text: string;
+    state: "running" | "done" | "failed";
+    taskId?: string;
+    act?: "merge" | "open_pr";
+    ref?: string;
+    /** D596: Ducter did it under a standing go the person said (不用问我的), not their tap: its id and their words. */
+    by?: "rule";
+    standing?: string;
+    said?: string;
+    /** D596: what the task ran that verified the work before its PR was opened (its own words, cut). */
+    checks?: string[];
+  };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
   // D426: what one message asked for, line by line, under it (asks.ts). Logged by core whenever a
   // line is added or its state changes; clients keep the latest per msgSeq, under that message.
@@ -494,6 +514,11 @@ export interface Bodies {
     // D437: another AI read what this Go sends before the card was shown, and this is still so
     // (the person's language, one line each): 另一个 AI 看过：漏了 Windows 那一处.
     look?: { by: string; left: string[] };
+    // D601: its Go is one of the standing actions where a tap may keep it: the card shows a second
+    // choice beside Go, 以后这类直接做 / Always do this (以后直接发 / Always post on a review round's
+    // card), which does this one now and keeps a standing permission there; with often (GQ4) it leads
+    // with 这类你已经点过两次了，以后直接做？. Set by code only (never by a task, never on the floor).
+    always?: AlwaysAsk;
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
   // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
@@ -511,7 +536,7 @@ export interface Bodies {
   // D539: a key copied between the person's computers on their Go (names only, never a value), or
   // one removed from a computer in Settings (removed: that computer's name, by "user").
   key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D601: Go given with 以后这类直接做 / Always do this: `standing` is the permission the tap kept. */ always?: true; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -608,6 +633,8 @@ export interface Bodies {
     /** D585: set by Ducter (never the task): made in a turn the person opened with their own words in
      *  the task. They read it there; a progress one stays out of the living message. */
     direct?: true;
+    /** D602: the PRs it let go in this report (each one it owns): not where its work goes on. */
+    letGo?: { pr: string; why: "duplicate" | "unneeded" }[];
   };
   /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
   checkpoint: { taskId: string; text: string; gitRef?: string; owns?: string[] };
@@ -805,6 +832,9 @@ export interface Bodies {
     sentAt?: string;
     taskId?: string;
     decisionId?: string;
+    /** D596: out, sent with no card under a standing go the person said (a PR handed to their helper): its id and their words. */
+    standing?: string;
+    said?: string;
     agent?: string;
     // The tool the sender runs in ("Claude Code"), when it has no name of its own: "an agent in Claude Code".
     host?: string;
@@ -832,6 +862,15 @@ export interface Bodies {
     // D494: sent to one of the person's helpers (in), or from one (out: its reply goes from the helper's
     // own address): the helper's id on the home (core/src/helpers.ts).
     helper?: string;
+    // D598, in: work handed to a helper on this very home by one of its own tasks (agent_message) or by
+    // the partner (keep_change hand): written here, never through Nowledge Mem (a round trip through
+    // Mem to the same home came back as a reply on the helper's own last message, and was read as an
+    // answer: hel, mem#11393). messageId starts "local-"; the claim and the outcome go into `fromTask`.
+    local?: true;
+    fromTask?: string;
+    // D604, in: what the person wrote on its sender card as they let it through (their words for the
+    // partner about it; never sent to the sender). A card answered with words is never 不理.
+    told?: string;
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
@@ -1469,7 +1508,7 @@ export type ClientFrame =
   // payment's fill, never logged.
   // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless
   // once; never logged, never sent back) and whether it is for this task only.
-  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
+  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean; /** D601: Go and 以后这类直接做 / Always do this (option go, on a card with `always` only). */ always?: true }
   // D382: 晚点再问我 / Ask me later: put the question off to `until` (ISO); null brings it back now
   // (现在就定 / Decide now).
   | { t: "later"; decisionId: string; until: string | null }
@@ -1500,7 +1539,7 @@ export type ClientFrame =
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
   // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
   // D521: stop_background (job): stop one of its agent's background jobs (TaskCard.background), through the agent's own stop.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "end" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
@@ -3478,6 +3517,17 @@ export interface OwnedSeen {
   failedTold?: string[];
   /** D496: where the PR stands at the last look, told with every piece of news and every wake. */
   standing?: OwnedStanding;
+  /** D602: the task let it go: it is not where the task's work goes on (a duplicate, no longer
+   *  needed, or the person ended the task). Ducter stops watching it, it no longer holds the task
+   *  open or a Keep's item, and it stays open on GitHub until someone closes it there. */
+  letGo?: PrLetGo;
+}
+
+/** D602: why a task let one of its PRs go, and when. The model judges duplicate and unneeded (its
+ *  report_to_main `let_go`); ended is the person's 结束任务 / End task. */
+export interface PrLetGo {
+  why: "duplicate" | "unneeded" | "ended";
+  at: string;
 }
 
 /**

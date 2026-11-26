@@ -11,6 +11,8 @@ plain words in the foot, and the flows walked end to end (below). D431 (`researc
 closed its follow-ups: an empty app opens on a designed first state, an app's things live in its data and
 never in its file, and the loop was walked through a real client. D562 (`research/229-apps-as-real-apps.md`)
 lets a kept app open like the rest of the person's apps (the Dock, the Home Screen) and polished the loop.
+D603 gave the app its whole window: nothing stands under it at rest, and the composer to change it is one
+gesture away (修改, ⌘L, /), below in "Changing one: by talking".
 
 ## Who and how it starts
 
@@ -91,7 +93,8 @@ words as data.
    应用」里，随时再打开。 / An app {name} made for you. It stays in Your apps; open it any time.**,
    **打开 / Open**. Never the code, never a feature list.
 6. **The first time it opens**, a line over it: **{name}先填好了 / {name} filled in** and the note
-   (「高铁和两晚酒店，来自你的预订」). Once.
+   (「高铁和两晚酒店，来自你的预订」). Once, one slim line; it goes after 8 s or at the first touch
+   inside the app (D603).
 
 ### The kit (D410)
 
@@ -173,9 +176,10 @@ The home works it out on every list, never stores it (`AppMeta.live`; `appState`
 | plain | nothing to say | **{time} 更新 / Updated {time}** | none |
 
 The tile says it under its own line; the open app says it in a strip over the app when it has a
-button or is being changed, else in the foot. The foot otherwise says **只有你看得到，每台设备上都一样。
-/ Only you can see it, and it's the same on every device.** (D422, in place of D405's sandbox
-sentence). The partner's `[apps]` line carries the old look, a broken page and a failed round, so
+button or is being changed (a change asked from inside the app is said under it, D603), else in
+「⋯」. **只有你看得到，每台设备上都一样。 / Only you can see it, and it's the same on every device.**
+(D422, in place of D405's sandbox sentence) with **{time} 更新** is 「⋯」's last line and the
+name's tooltip on the Mac, never a footer (D603). The partner's `[apps]` line carries the old look, a broken page and a failed round, so
 "fix it" and 换成新样子 have what they need.
 
 ## The first state (D431)
@@ -233,11 +237,12 @@ D410's, unchanged, with its shots. Not walked: 4 end to end with a real partner,
    writes it now (the app tool), with both feeds in its data, a bottle for its mark, 「今天 210ml，上次
    9:05」 for its line; one line and its card under it.
 2. **First open.** It opens on what it is for (today's 210ml), the feeds under it, 记一笔 folded last;
-   **{name}先填好了** with its note once, when it filled in something the person didn't type.
+   **{name}先填好了** with its note once, when it filled in something the person didn't type (D603: one
+   slim line with a small **关闭 / Close**, gone after 8 s or at the first touch inside the app).
 3. **Use.** A tap adds a feed; `ducter.set` keeps it on the home; every device with it open hears it;
    its line on the tile follows (`ducter.summary`).
-4. **Change by talking**, from the app's line or the conversation: the strip says **{name}正在弄你说的…**
-   at once; the partner changes it (edits or a new file); the open app runs again with **改好了** and the
+4. **Change by talking**, from 修改 over the app (D603) or the conversation: the line under the app (or,
+   asked elsewhere, the strip over it) says **{name}正在弄你说的…** at once; the partner changes it (edits or a new file); the open app runs again with **改好了** and the
    partner's few words; **改回去** brings the version before back (ten kept). The conversation shows the
    partner's line and the card, never the code.
 5. **A routine keeps it current** ("每天早上看一眼机票，放进这个小应用"): the partner gives it to the task
@@ -269,9 +274,19 @@ open as a card after the first save (it folds back).
 - In the conversation: "加个合计", "改成绿色". The partner sees the person's apps in an **[apps]** line
   every turn while there are any (id, name, version, when changed and opened, its data's keys; the
   newest eight); "change it" with none named means the one opened or changed last.
-- Under the app, in its sheet: **让{name}改这个小应用… / Ask {name} to change it…**. The words go to
-  the conversation as the person's own, with a small line over them: **关于「北京出差花销」 / About
-  “Beijing trip expenses”**.
+- From the app itself (D603: the composer is one gesture away, never a bar under every app). At rest
+  nothing stands under the app; the head holds **修改 / Edit** (the family's text button, D592's word)
+  beside 「⋯」. 修改, **⌘L** (the Mac's File › **修改这个小应用… / Edit This App…**), **/** outside a
+  field, 「⋯」 › **让{name}改…**, or / and ⌘L pressed inside the app's page outside its own fields (the
+  bridge posts `compose`) bring up the conversation's composer from the bottom edge, with the keys:
+  **让{name}改这个小应用… / Ask {name} to change it…**. The room opens as it rises 6 and fades in over
+  `EnterDur` (a fade alone under reduced motion); **Esc**, the focus leaving it empty, or 修改 again
+  put it away. The words go to the conversation as the person's own, with a small line over them:
+  **关于「北京出差花销」 / About “Beijing trip expenses”**, and the composer goes down into one line
+  under the app: the track and **{name}正在弄你说的…**; then **改好了** with the note and **改回去**, or
+  **{name}在对话里回你了 / {name} answered in your conversation** with **查看 / View** when the partner
+  answered in words; each goes by itself after 8 s (held while the pointer or the keys are on it).
+  A change asked elsewhere is said over the app, in D422's strip.
 - The partner changes it with edits (find and replace, each matching once) or a whole new file; the
   card says **改好了 / Changed**; an app open on any device runs again as it is now, with a green line
   **改好了** and the partner's few words of what changed, and **改回去** beside them (D562).
@@ -294,6 +309,11 @@ ducter.open({ draft: "owner/repo#n" })   // D407: that PR's draft sheet opens ov
 ducter.summary(text)       // D410: its shelf line ("2 笔，合计 ¥1,698"), said on every change, sent once it settles
 ```
 
+The bridge also tells the window around it two things the app never calls (D603): the person's first
+touch in the page (`touch`, once per page: the first-open line has been seen), and / or ⌘L pressed
+outside the app's own fields (`compose`: the composer comes up), since the page has the keys while it
+is focused.
+
 **An app's ask** goes into the conversation as the person's message *from that app* (they tapped in
 it), in a neutral bubble on the left (sunken, never the person's orange: the words are the app's), with
 **「北京出差花销」问 / “Beijing trip expenses” asks** over it; the partner sees it fenced as
@@ -312,22 +332,42 @@ days (research/166 §2); the consumer whose morning fare check says the same thi
 fresh user, who meets it only when a routine of theirs repeats. **Felt:** before, the same paragraphs
 re-read; after, one page always current on every device and a quiet conversation between rounds.
 
-- **Data only.** An app can name the task that keeps it current (`AppMeta.task`). That task gets the
+- **Data only.** An app can name the task that keeps it current (`AppMeta.task`) or the Keep whose
+  rounds fill it (`AppMeta.keep`; every task a Keep's rounds run in may write it). That task gets the
   **`app_data`** tool: `{ app, set: {key: whole JSON value, null removes} }`, at most 40 keys a call,
   the app's 500,000 characters in all, 60 writes an hour. It never touches the file; the look is the
   person's (they change it by talking, as any app). It hears once, when given the app, which keys the
-  app reads and to write once a round.
+  app reads and to write once a round (a Keep's rounds hear it in their wake).
 - **The review board reuses the review report.** **审查看板 / Review board** is Ducter's own template
   (`core/src/review-board.ts`): its one key `board` is written by the home from D394's `review_report`
   (which now also carries each PR's `title` and `ci`) and from the drafts' state, after every round,
   every Go on the round card and every draft sent from its sheet. The review task never writes it;
-  the Ongoing card's line and the board read the same state.
-- **The offer, once.** After a review task's third round, or another repeating task's third done
-  report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**, **做成看板 /
-  Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it. Go on
-  reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
+  the Ongoing card's line and the board read the same state. **It shows only its own work:** the
+  rows are the `review_report`s of the task(s) that board follows, never the global review pile.
+- **Only a review task is offered a review board.** The partner decides once, at `task_open`, by
+  reading the brief, and records it as `needs.reviews`; code never counts `review_report` calls or
+  matches words. A task whose job is fixing code (its own PR goes to the Babysitter or the hand-off)
+  never gets `review_report`, the reviews offer or a board. Code guards it: a task that opens a PR of
+  its own (`gh pr create`, read by the command's grammar) is never a review task. An existing task in
+  rounds that already has a review board keeps its review work, so a running review Keep is not cut
+  off mid-life.
+- **The offer, once, per purpose.** After a review task's third round, or another repeating task's
+  third done report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**,
+  **做成看板 / Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it.
+  Go on reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
   other reports wakes the partner, who makes the app with the `app` tool and `task`. Never asked again.
   Asked in words ("把这些做成看板"), the partner does the same; a review task with no file gets the board.
+  **One board per purpose:** with a review board already there, the offer is nothing and a second is
+  never made; asking for another review task's board adds that task's work to the one board
+  (`AppMeta.tasks`), never a second 「审查看板」. For partner-made apps, the `[apps]` line carries each
+  app's `kind`, its task/Keep and its line, and the partner judges whether the ask duplicates one:
+  it then changes or extends that app instead of making another. Code dedupes the exact kind + task.
+- **A snapshot says so.** An app about a task's or a Keep's work that is not given to it is a
+  snapshot: `AppMeta.snapshot`, the app says **截至 {time}**, and the partner's line says plainly it
+  is a snapshot, not kept current. It never promises an update nothing will make.
+- **A stopped app says so.** When the task or Keep an app follows ends, the app says **已停止更新**
+  and **截至 {time}** as two separate elements (D291, never joined), on its tile and in its window,
+  and the `[apps]` line says so to the partner.
 - **Silent rounds.** A done report with no question from a task that keeps an app wakes nobody; a
   question, a block or a failure does. D394's round card stays the one thing that asks.
 - **Where it shows.** The Ongoing card: **打开「{name}」 / Open “{name}”**. The app's sheet: **「{task}」每一轮都会更新它
@@ -347,7 +387,7 @@ re-read; after, one page always current on every device and a quiet conversation
 |---|---|
 | The policy (all clients) | `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'` (the Mac: `'self'`, its own scheme); `form-action`, `base-uri`, `frame-src`, `worker-src`, `object-src` none. In the document before anything else, and as a header. |
 | The web and the phone | the page's own policy forbids inline scripts in a `srcdoc` frame, so the home serves the app at `/app-frame/<token>` (a one-app capability, 30 minutes, minted on each open) with the policy and `sandbox allow-scripts allow-forms`: an opaque origin (no cookies, no storage, no reading the page around it), no popups, no top navigation, no modals. The page frames only its own origin (`frame-src 'self'`). The frame talks by `postMessage`; the page takes only messages from that frame, for that app. |
-| The Mac | its own window, 600 wide (D410: a native head with its tile, its name and 「⋯」, the first-open and 改好了 lines, and a foot with the line to change it, the conversation's composer since D562; the app between them): a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
+| The Mac | its own window, 600 wide (D410: a native head with its tile, its name and 「⋯」 (D603: and 修改), the first-open line, and a foot, empty at rest (D603), where the conversation's composer comes up and the change's line is said; the app between them): a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
 | The home | keys are short and printable, data is capped, asks are rate-limited, a frame token is one app's and expires; an app of another partner is never opened. |
 
 ## Open like the rest of your apps (D562)

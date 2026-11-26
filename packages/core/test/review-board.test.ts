@@ -37,8 +37,8 @@ function boot(zh = true) {
     drop: async () => {},
   };
   core.setRunner(runner as unknown as Runner);
-  const open = (taskId: string, title: string, brief: string) => {
-    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief } });
+  const open = (taskId: string, title: string, brief: string, needs?: { reviews?: boolean }) => {
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place: { kind: "none" }, harness: "codex", brief, ...(needs ? { needs } : {}) } });
     core.tasks.setState(taskId, "working", "hot");
   };
   return { core, gh, told, open, ts: core.taskSources };
@@ -76,7 +76,7 @@ test("three rounds of review_report offer a board once; Go makes the review boar
   const { core, told, open, ts } = boot();
   await ts.add("github");
   await ts.look();
-  open("trev", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。");
+  open("trev", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。", { reviews: true });
   await call(core, "trev", "review_report", round());
   await call(core, "trev", "review_report", { prs: round().prs.map((p) => ({ ...p, changed: false, notes: [] })) });
   expect(offers(core)).toHaveLength(0);
@@ -113,7 +113,7 @@ test("each round writes the board as the task saw it, and a Go on the round card
   const { core, open, ts } = boot();
   await ts.add("github");
   await ts.look();
-  open("trev", "Review my requests in nowledge-co", "Every 45 minutes, review the PRs in nowledge-co that request my review.");
+  open("trev", "Review my requests in nowledge-co", "Every 45 minutes, review the PRs in nowledge-co that request my review.", { reviews: true });
   await call(core, "trev", "review_report", round());
   const r = core.apps.list(core.persona.id);
   expect(r).toHaveLength(0);

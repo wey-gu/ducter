@@ -3,7 +3,7 @@
 // partner can't arm one for it, a routine never runs on it, and another agent's task still waits.
 import { afterEach, expect, test } from "bun:test";
 import type { Runner, TaskCard } from "@ducter/protocol";
-import { DIRECT_ONLY_WHY, HARNESSES, HARNESS_IDS, directOnly } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, directOnly, directOnlyWhy } from "@ducter/protocol";
 import { FakeClock } from "../src/clock.ts";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir, tick } from "./helpers.ts";
@@ -42,14 +42,19 @@ const open = (b: Boot, taskId: string, harness: string) => {
 };
 const armed = (b: Boot, taskId: string) => b.core.work.waiters.views().filter((w) => w.taskId === taskId && w.state === "armed");
 
-test("the registry: Antigravity alone works only when asked", () => {
-  expect(HARNESS_IDS.filter((h) => directOnly(h))).toEqual(["antigravity"]);
-  expect(HARNESSES.antigravity.directOnly).toBe(true);
+test("D594/D600: Antigravity, Kimi Code and OpenCode work only when asked", () => {
+  expect(HARNESS_IDS.filter((h) => directOnly(h))).toEqual(["antigravity", "kimi", "opencode"]);
+  for (const h of ["antigravity", "kimi", "opencode"] as const) {
+    expect(HARNESSES[h].directOnly).toBe(true);
+    // The one line names the agent and the way on, in both languages, and carries its source.
+    const why = directOnlyWhy(h)!;
+    expect(why.zh).toContain("{agent} 只在你发话时干活");
+    expect(why.en).toContain("{agent} works only when you ask");
+    expect(why.source).toMatch(/^https:\/\//);
+  }
   expect(directOnly(undefined)).toBe(false);
   expect(directOnly("not-an-agent")).toBe(false);
-  // The one line names the agent and the way on, in both languages.
-  expect(DIRECT_ONLY_WHY.zh).toContain("{agent} 只在你发话时干活");
-  expect(DIRECT_ONLY_WHY.en).toContain("{agent} works only when you ask");
+  expect(directOnlyWhy("codex")).toBeUndefined();
 });
 
 test("an Antigravity task arms no timer and no check of its own; a Codex task still does", async () => {
@@ -80,11 +85,26 @@ test("the partner can't park an Antigravity task on a wait either; the words com
   expect(armed(b, "vd8hamrb")).toEqual([]);
 });
 
-test("a routine is never set on Antigravity and never moved to it", async () => {
+test("a routine is never set on Antigravity, Kimi or OpenCode, and never moved to them", async () => {
   const b = boot();
   const daily = { kind: "time" as const, every: "day" as const, time: "09:00", zone: "world" as const, tz: "Asia/Shanghai" };
   expect(() => b.core.work.routines.yours({ name: "看一眼 Mem 的评审", trigger: daily, brief: "看一眼 Mem 的评审。", harness: "antigravity" })).toThrow("Antigravity 只在你发话时干活");
+  // D600: Kimi's own guidelines keep subscriptions to interactive use.
+  expect(() => b.core.work.routines.yours({ name: "看一眼 Mem 的评审", trigger: daily, brief: "看一眼 Mem 的评审。", harness: "kimi" })).toThrow("Kimi Code 的订阅只限个人交互使用");
+  // D600: OpenCode's subscription-OAuth route.
+  expect(() => b.core.work.routines.yours({ name: "看一眼 Mem 的评审", trigger: daily, brief: "看一眼 Mem 的评审。", harness: "opencode" })).toThrow("Anthropic");
   const v = b.core.work.routines.yours({ name: "看一眼 Mem 的评审", trigger: daily, brief: "看一眼 Mem 的评审。", harness: "codex" });
-  expect(b.core.work.routines.relocate(v.routineId, { harness: "antigravity" })).toBe(false);
+  for (const h of ["antigravity", "kimi", "opencode"] as const) expect(b.core.work.routines.relocate(v.routineId, { harness: h })).toBe(false);
   expect(b.core.work.routines.relocate(v.routineId, { harness: "claude-code" })).toBe(true);
+});
+
+test("D600: a task on Kimi can't arm a wait: the reason is Kimi's, not Google's", async () => {
+  const b = boot();
+  open(b, "km000001", "kimi");
+  await tick();
+  const r = (await b.core.mcp.call({ role: "task", taskId: "km000001" } as never, "wait_for", { reason: "四十五分钟后再看一轮 Mem 的设置页", afterMinutes: 45 })) as { ok: boolean; error?: string };
+  expect(r.ok).toBe(false);
+  expect(r.error).toContain("Kimi Code 的订阅只限个人交互使用");
+  expect(r.error).not.toContain("Google");
+  expect(armed(b, "km000001")).toEqual([]);
 });

@@ -13,7 +13,7 @@
 //     to judge (principle 21); nothing here reads meaning from words.
 import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepChanged, KeepBody, KeepCard, KeepEdit, KeepField, KeepFrom, KeepItem, KeepPage, KeepProposal, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
 import { fill, prWakeOf, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX, type PrWake } from "@ducter/protocol";
-import { HELPER_DAILY } from "@ducter/protocol/src/helpers.ts";
+import { HELPER_DAILY, helperSent, isHelperWork, localHandoff } from "@ducter/protocol/src/helpers.ts";
 import { describeTrigger, validateTimeTrigger } from "./schedule.ts";
 import { prOf, prSaid } from "@ducter/protocol/src/pr-state.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -68,6 +68,9 @@ const W = {
     standingNotes: "你之前的笔记、检查点、上一轮给自己记下要查的事，都只是你的笔记：和上面不一样时以上面为准，上面没要求的事不再做。",
     standingNow: "这一轮对方交代先做（只限这一轮）：「{ask}」。",
     alsoNow: "对方刚补充，从现在起每一轮都照这个做：「{also}」。这一轮也是。",
+    // D598: a helper's pieces of work hear a rule added from now on, once, and act on it now.
+    alsoItem: "「{title}」的要求刚加了一句，从现在起照这个做：「{also}」。按新的要求看一遍你手上这件事，现在就接着做。",
+    handFrom: "你",
   },
   en: {
     arrives: "Takes work as it comes",
@@ -91,6 +94,8 @@ const W = {
     standingNotes: "Your earlier notes, checkpoints and what you noted to check last round are only your notes: where they differ from the above, the above holds, and work it doesn't ask for is not done any more.",
     standingNow: 'First, this round only, the person asked: "{ask}".',
     alsoNow: 'The person just added, from now on, every round: "{also}". This round too.',
+    alsoItem: 'The person just added to what “{title}” asks, from now on: "{also}". Look at the work you hold again by it, and carry on now.',
+    handFrom: "you",
   },
 };
 
@@ -468,7 +473,7 @@ export function createKeeps(o: {
       // (its address until the first look read it), standing where the PR stands.
       const c = tasks.get(f.taskId);
       if (c && !GONE.has(c.attention))
-        for (const p of [...(c.prs ?? [])].filter((x) => x.state === "open").sort((a, b) => b.at.localeCompare(a.at)))
+        for (const p of [...(c.prs ?? [])].filter((x) => x.state === "open" && !x.letGo).sort((a, b) => b.at.localeCompare(a.at)))
           items.push({ taskId: c.taskId, title: p.standing?.title ?? p.pr, at: AT_WORK.has(c.attention) ? "work" : "rest", pr: p.pr, said: prSaid(p) });
     } else {
       for (const t of routineTasks(f.routineId, 12)) {
@@ -586,11 +591,13 @@ export function createKeeps(o: {
       // A helper: each piece of work handed to it is a round (its arrival), and each of its tasks' reports one more (a change on what it holds).
       const claims = new Map<string, string>();
       const ins: LogEvent[] = [];
-      for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) {
+      const mail = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 });
+      const sent = helperSent(mail); // D598: a reply on its own message is work handed to it too
+      for (const e of mail) {
         const b = e.body as Bodies["bridge_msg"];
         if (b.helper !== f.helperId) continue;
         if (b.direction === "out" && b.inReplyTo && b.taskId && !claims.has(b.inReplyTo)) claims.set(b.inReplyTo, b.taskId);
-        if (b.direction === "in" && !b.inReplyTo && (!b.state || b.state === "held")) ins.push(e);
+        if (isHelperWork(b, sent)) ins.push(e);
       }
       const seen = new Set<string>();
       for (const e of ins) {
@@ -734,7 +741,7 @@ export function createKeeps(o: {
       ...(og?.reviews ? { reviews: og.reviews } : {}),
       week,
       ...(k.pausedUntil || og?.pausedUntil ? { pausedUntil: k.pausedUntil ?? og?.pausedUntil } : {}),
-      ...(h ? { address: { name: h.name, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}) } } : {}),
+      ...(h ? { address: { name: h.name, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}), ...(h.spaces?.length ? { spaces: h.spaces.map((x) => x.label) } : {}) } } : {}),
       since: k.createdAt,
       ...(k.endedAt ? { endedAt: k.endedAt } : {}),
     };
@@ -871,7 +878,7 @@ export function createKeeps(o: {
     return out;
   }
 
-  const FIELD_OF: Record<Exclude<keyof KeepChange, "act" | "next">, KeepField> = { also: "said", title: "title", until: "until", speaks: "speaks", limits: "limits", everyMinutes: "every", at: "at", said: "said", cap: "cap", where: "where", agent: "agent", address: "address" };
+  const FIELD_OF: Record<Exclude<keyof KeepChange, "act" | "next" | "hand">, KeepField> = { also: "said", title: "title", until: "until", speaks: "speaks", limits: "limits", everyMinutes: "every", at: "at", said: "said", cap: "cap", where: "where", agent: "agent", address: "address" };
   const HARNESS = /^[a-z][a-z0-9-]{1,39}$/;
   const NOT_HERE: Record<KeepField, string> = {
     every: "It wakes on a clock or on arrivals, not on a rhythm.",
@@ -893,8 +900,8 @@ export function createKeeps(o: {
     const ed = new Set(editableOf(k));
     for (const key of Object.keys(c) as (keyof KeepChange)[]) {
       // A gesture and D540's one-off ask for a round are checked where they apply, not as a rule.
-      if (key === "act" || key === "next" || c[key] === undefined) continue;
-      const field = FIELD_OF[key as Exclude<keyof KeepChange, "act" | "next">];
+      if (key === "act" || key === "next" || key === "hand" || c[key] === undefined) continue;
+      const field = FIELD_OF[key as Exclude<keyof KeepChange, "act" | "next" | "hand">];
       if (!field) return `${String(key)} isn't something a Keep has.`;
       if (!ed.has(field)) return k.life === "done" || k.life === "stopped" ? "It has ended; nothing on it changes now." : NOT_HERE[field];
     }
@@ -965,6 +972,16 @@ export function createKeeps(o: {
     const k = byId.get(id);
     if (!k) return { ok: false, error: "No Keep with that id; see keep_list." };
     const f = k.from;
+    // D598: a piece of work handed to it: mail at its address on this home, never an edit of its rules.
+    if (c0.hand !== undefined) {
+      if (f.kind !== "helper") return { ok: false, error: f.kind === "loop" ? "It works in rounds on one task: a piece of work for its next round is next_round (look_now starts it now)." : "Each of its runs starts from its brief; open a task for this piece of work instead." };
+      const text = c0.hand.trim().slice(0, 4000);
+      if (!text) return { ok: false, error: "hand: the work, in the user's words (the PR or the thing, and what to do)." };
+      if (k.life !== "on") return { ok: false, error: k.life === "paused" ? "It is paused: resume it first (action resume), or open a task for this yourself." : "It has ended; open a task for this yourself." };
+      log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper: f.helperId, text, from: words(W, lang()).handFrom }), ...(k.persona ? { persona: k.persona } : {}) } as never);
+      o.onChange?.();
+      return { ok: true, keep: k, edits: [] };
+    }
     const bad = guard(k, c0);
     if (bad) return { ok: false, error: bad };
     // D593: a standing instruction from now on joins the person's words, the one place every round reads first.
@@ -1031,6 +1048,10 @@ export function createKeeps(o: {
       const card = tasks.get(f.taskId);
       if (card && AT_WORK.has(card.attention)) await o.tell(f.taskId, fill(words(W, lang()).alsoNow, { also: added })).catch(() => false);
     }
+    // D598: a helper's pieces of work hear it once, now, resting or not (hel: "Babysitter 负责到底" was
+    // added at 16:17 and nothing it held heard it).
+    if (added && f.kind === "helper" && o.tell)
+      for (const it of itemsOf(byId.get(id)!)) await o.tell(it.taskId, fill(words(W, lang()).alsoItem, { title: k.title, also: added })).catch(() => false);
     // A helper's pieces of work are told its brief: it follows the person's words and rules.
     if ((c.until !== undefined || c.speaks !== undefined || c.said !== undefined || c.limits !== undefined) && hs) {
       const now = byId.get(id)!;
@@ -1293,7 +1314,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
   mcp.register(
     "partner",
     "keep_change",
-    "One Keep's own settings, named by that Keep (its id in [keeps] or keep_list, or its task's id): stop, pause or change one thing Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task, never rule_save. action stop (\"别跑了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set speaks / title in their words, cap (a helper's pieces a day), computer and agent (a [devices] name, an agent, or \"auto\"; \"以后让 Codex 来做\" is agent), address (a helper's name in Bridge). Their words, by how long they hold: this round only (\"这轮先审 #551\") is next_round (look_now starts it now); from now on (\"以后只发 /lgtm\") is also; when it all ends (\"盯到 #10932 合并\") is until, which stops it for good. Then one line.",
+    "One Keep's own settings, named by that Keep (its id in [keeps] or keep_list, or its task's id): stop, pause or change one thing Ducter looks after (a loop in rounds, a routine, a watch, a helper), on the user's word; never by task_send to its task, never rule_save. action stop (\"别跑了\"), pause (until ISO, else until resumed), resume, look_now, every (minutes: \"改成每小时\" → 60); or set speaks / title in their words, cap (a helper's pieces a day), computer and agent (a [devices] name, an agent, or \"auto\"; \"以后让 Codex 来做\" is agent), address (a helper's name in Bridge). Their words, by how long they hold: this round only (\"这轮先审 #551\") is next_round (look_now starts it now); from now on (\"以后只发 /lgtm\") is also; when it all ends (\"盯到 #10932 合并\") is until, which stops it for good. A piece of work for a helper (\"把 mem#11393 交给 Babysitter\") is hand: one of its tasks takes it. Then one line.",
     {
       type: "object",
       properties: {
@@ -1310,12 +1331,19 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
         computer: { type: "string" },
         agent: { type: "string" },
         address: { type: "string" },
+        hand: { type: "string", description: "a helper: the work handed to it, the user's words" },
       },
       required: ["id"],
     },
-    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; also?: string; speaks?: string; title?: string; cap?: number; computer?: string; agent?: string; address?: string }) => {
+    async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; also?: string; speaks?: string; title?: string; cap?: number; computer?: string; agent?: string; address?: string; hand?: string }) => {
       const k = find(String(a.id ?? ""));
       if (!k) return { ok: false, error: `nothing called ${a.id} is looked after; see keep_list` };
+      // D598: handed, not taken: the line says it is handed over and waits to be taken, never that it is on it.
+      if (typeof a.hand === "string") {
+        const r = await keeps.change(k.keepId, { hand: a.hand }, { by: "partner" });
+        if (!r.ok) return { ok: false, error: r.error };
+        return { ok: true, handed: true, taken: false, tell: `Say in one line that you handed it to "${k.title}" and it is waiting to be taken (交给了，等它接手), never that it is on it yet: [helpers] says when one of its tasks took it.` };
+      }
       const action = String(a.action ?? "");
       const act: KeepAction | undefined = action === "pause" ? { action: "pause", ...(a.until_iso ? { until: String(a.until_iso) } : {}) } : action === "resume" || action === "look_now" || action === "stop" ? { action } : undefined;
       if (action && action !== "every" && !act) return { ok: false, error: "action is one of pause, resume, look_now, every, stop" };

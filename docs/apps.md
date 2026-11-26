@@ -52,6 +52,8 @@ you:
 - **Stop** a repeating task from updating it
 - **Delete** it: you're asked first, and what it keeps goes with it. **Undo** brings it back.
 
+Inside an open app, the end of its **⋯** also says who can see it and when it last changed.
+
 You can also just ask: "where are my apps?" or "open my trip expenses app". Apps are also listed in
 **Past tasks › Made for you**.
 
@@ -77,8 +79,9 @@ new version, with everything you put in. It needs your Ducter to be reachable, a
 
 ## Changing it
 
-Say what you want, in the conversation or in the line under the app ("Ask Ducter to change it…"),
-in the browser, on your phone or in the app's own window on your Mac:
+Say what you want in the conversation, or from the app itself: press **Edit** at the top of the app
+(or **⌘L**, or **/**) and a box slides up from the bottom ("Ask Ducter to change it…"). It works in the
+browser, on your phone and in the app's own window on your Mac. **Esc** puts the box away again.
 
 - "Add a total at the top"
 - "Make it green"
@@ -108,10 +111,18 @@ your partner asks once: **Keep these on a board?** Say **Make a board** and you 
 each round updates by itself, so there's nothing to read in the conversation between rounds. You can
 also just ask: "make these into a board".
 
-For pull request reviews it's the **Review board**: every pull request waiting on you, its CI, what
-the review found, and whether the draft is waiting for your Go or already posted. **Read draft** opens
-the draft itself; nothing goes to GitHub until you say Go. You'll also find it from **Past tasks ›
-Looking after**, on the review's card (**Open “Review board”**).
+A review board is only for work whose job is reviewing other people's pull requests. A task that fixes
+code and opens its own pull request is followed by the Babysitter, not a board.
+
+For pull request reviews it's the **Review board**: only the pull requests *that review* reported,
+each with its CI, what the review found, and whether the draft is waiting for your Go or already
+posted. **Read draft** opens the draft itself; nothing goes to GitHub until you say Go. You'll also
+find it from **Past tasks › Looking after**, on the review's card (**Open “Review board”**). There is
+one review board at a time: a second review joins the one you have rather than making a new one.
+
+If a board or app shows work it does not follow round by round, it is a snapshot: it says **截至** the
+time its numbers were read. When the task or Keep an app follows ends, the app says **已停止更新** and
+**截至** the last time it was updated, and promises nothing more.
 
 ## What an app can't do
 

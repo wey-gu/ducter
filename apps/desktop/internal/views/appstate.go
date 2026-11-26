@@ -33,6 +33,8 @@ func (a *App) appStateWords(m *protocol.AppMeta) (string, bool) {
 		return a.L.T("app.kept.paused", k.Title), false
 	case "kept_running":
 		return a.L.T("app.kept.running", k.Title), false
+	case "kept_ended":
+		return a.L.T("app.kept.ended"), false
 	case "old":
 		return a.L.T("app.live.old"), false
 	case "kept_next":
@@ -59,7 +61,13 @@ func (a *App) appStateAction(m *protocol.AppMeta) (string, func()) {
 	}
 	act := func(action string) func() {
 		k := m.Live.Kept
-		return func() { a.send(protocol.OngoingAct{T: "ongoing_action", Kind: k.Of.Kind, ID: k.Of.ID, Action: action}) }
+		return func() {
+			if k.Of.Kind == "keep" {
+				a.send(protocol.KeepAct{T: "keep_action", ID: k.Of.ID, Action: map[string]string{"run_now": "look_now", "resume": "resume"}[action]})
+				return
+			}
+			a.send(protocol.OngoingAct{T: "ongoing_action", Kind: k.Of.Kind, ID: k.Of.ID, Action: action})
+		}
 	}
 	switch m.StateOf() {
 	case "broke":
@@ -96,7 +104,24 @@ func (a *App) appStateLine(c *ui.Context, key string, m *protocol.AppMeta) {
 			}
 			uiText(c.Key("words"), keepWords(autospace(words))).FontSize(t.XS).FontWeight(weight).TextColor(col).MaxLines(3)
 		}
-		if s == "plain" || s == "kept_next" || s == "old" {
+		// D612: a stopped app says 已停止更新, then 截至 its last time, as two elements (D291).
+		if s == "kept_ended" {
+			at := m.Updated
+			if m.Live != nil && m.Live.Kept != nil && m.Live.Kept.Last != "" {
+				at = m.Live.Kept.Last
+			}
+			if when := a.agoLong(at); when != "" {
+				uiText(c.Key("asof"), keepWords(autospace(a.L.T("app.kept.asof", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+			}
+		}
+		// D612: a snapshot says so, with the time its numbers are from.
+		if m.Live != nil && m.Live.Snapshot != nil {
+			uiText(c.Key("snapshot"), keepWords(autospace(a.L.T("app.snapshot")))).FontSize(t.XS).FontWeight(500).TextColor(t.InkMuted)
+			if when := a.agoLong(m.Live.Snapshot.At); when != "" {
+				uiText(c.Key("snapshot-when"), keepWords(autospace(a.L.T("app.snapshot.asof", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+			}
+		}
+		if (s == "plain" || s == "kept_next" || s == "old") && (m.Live == nil || m.Live.Snapshot == nil) {
 			at := m.Updated
 			if m.Live != nil && m.Live.Kept != nil && m.Live.Kept.Last != "" {
 				at = m.Live.Kept.Last

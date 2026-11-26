@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.1.92 - 2026-11-27
+
+<!-- whats-new
+zh: 任务说一句就能结束；重复的看板和过时的数字不再出现
+en: End a task by asking; no duplicate boards, stale counts or phantom diffs
+-->
+
+**Ending things**
+- Ask a task to close and it ends, saying what happens to its open PRs. A duplicate or unneeded
+  PR stops holding the task and its helper: it reads "duplicate draft, can close".
+- End task in a task's ⋯ and right-click menu, and Stop following on a helper's item, each
+  asking once in place.
+
+**Small apps**
+- A review board is only for a task that reviews others' PRs, there's only ever one, and it shows
+  its own work. An app can follow a helper and be filled each round; a snapshot says so, and an
+  app whose task ended says it stopped updating.
+
+**Helpers and teammates**
+- Typing a reply on a sender's card no longer mutes it; a muted sender's mail is read again once
+  you let it in. Your partner knows which Spaces your helper receives in.
+
+**Fixes**
+- The needs-you count and every list agree; an offer whose default time passed settles itself.
+- A task's changes count only its own work, not upstream changes pulled into its branch.
+- A long link, path or command never runs off a question card on a phone.
+
+## 0.1.91 - 2026-11-26
+
+<!-- whats-new
+zh: 验证好的开发直接开 PR 交出去；以后这类直接做；Cursor 等四家
+en: Verified work opens its PR and is handed on; Always do this; four new AI agents
+-->
+
+**Fewer asks**
+- Say once that verified dev work can go straight to a PR and your helper, and from then on a
+  task that's done and verified pushes its branch, opens the PR and hands it on without a card.
+  Never merges.
+- A card for posting a review, commenting, rerunning CI, pushing a branch or opening a PR has a
+  second choice, Always do this: it goes now and won't ask again for that kind in that place.
+  After you've said go twice, the next card offers it. Settings lists them; take one back anytime.
+
+**Handing work to a helper**
+- Work handed to a helper on this computer lands in its hands at once and wakes it. Your partner
+  says it's handed over only once the helper takes it, and tells you if nobody has after 10 minutes.
+
+**New AI agents**
+- Cursor, Devin, Kimi Code and OpenCode can do tasks. Kimi Code and OpenCode work only when you
+  ask, as their terms require.
+
+**Apps**
+- An app's window keeps only the app: Edit (⌘L or /) brings up the box to change it.
+
+**Fixes**
+- Archiving a finished task no longer sends its "done" notification again.
+- On the Mac, a card asking for a key shows its field in the conversation too.
+- On a phone, the box under an opened task stays on one line.
+
 ## 0.1.90 - 2026-11-26
 
 <!-- whats-new

@@ -739,8 +739,8 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 				}
 			})
 		} else {
-			// D416: an agent Ducter can sign out with its own sign-out (Antigravity).
-			if h.Harness == "antigravity" {
+			// D416/D600: an agent Ducter can sign out with its own sign-out.
+			if agentCanSignOut(h.Harness) {
 				if dv.State == protocol.DeviceAwake {
 					ui.Row(c).Justify(ui.End).Children(func() {
 						if a.buttonFor(c, a.L.T("ag.signout"), name, btnText, t.ControlSM, t.Surface) {

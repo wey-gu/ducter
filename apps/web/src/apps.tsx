@@ -11,7 +11,7 @@ import { ComposerBox } from "./composer.tsx";
 import { Btn } from "./controls.tsx";
 import { keepClauses, stamp, when } from "./format.ts";
 import { url } from "./media.tsx";
-import { Menu, MenuItem, MenuSep } from "./menu.tsx";
+import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 
 /** D407: the draft sheet, set by pile.tsx (imported there, not here: app.ts loads this file early). */
 export const appHooks: { showDraft?: (ref: string, back: () => void) => void } = {};
@@ -27,7 +27,7 @@ export const AP = {
   seen: false,
   // first (D410): the partner's line of what it filled in, shown the first time it is opened.
   // focus: the line to change it is focused (the shelf's 「让…改」).
-  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string; undone?: boolean }; first?: string; focus?: boolean; undoing?: boolean; home?: boolean },
+  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string; undone?: boolean }; first?: string; focus?: boolean; undoing?: boolean; home?: boolean; compose?: boolean },
 };
 
 /** The app mark, drawn (never an emoji): a small window with a title bar and two rows. */
@@ -92,14 +92,23 @@ export function openApp(id: string, o: { focus?: boolean; home?: boolean } = {})
   const meta = AP.list.find((a) => a.id === id);
   if (AP.open?.id === id && A.sheet?.kind === "app") {
     // Already open (its own 「⋯」): only what was asked for changes.
-    if (o.focus) AP.open.focus = true;
+    if (o.focus) (AP.open.focus = true), (AP.open.compose = true);
     if (o.home) AP.open.home = true;
     return A.changed();
   }
   // D410: the first time it opens, the partner's line of what it already filled in.
-  AP.open = { id, asks: new Set(), sent: new Map(), ...(meta && !meta.opened && meta.note ? { first: meta.note } : {}), ...(o.focus ? { focus: true } : {}), ...(o.home ? { home: true } : {}) };
+  AP.open = { id, asks: new Set(), sent: new Map(), ...(meta && !meta.opened && meta.note ? { first: meta.note } : {}), ...(o.focus ? { focus: true, compose: true } : {}), ...(o.home ? { home: true } : {}) };
   A.sheet = { kind: "app", id };
   ask(id);
+  A.changed();
+}
+
+/** D603: the composer under the open app comes up, with the keys. */
+export function composeApp() {
+  const o = AP.open;
+  if (!o || o.gone) return;
+  o.compose = true;
+  o.focus = true;
   A.changed();
 }
 
@@ -182,6 +191,12 @@ function onMessage(e: MessageEvent) {
   } else if (m.t === "ask" && typeof m.ref === "string") {
     o.asks.add(m.ref);
     A.send({ t: "app_ask", id: o.id, text: String(m.text ?? ""), ref: m.ref });
+  } else if (m.t === "compose") {
+    // D603: / or ⌘L inside the app (not in one of its fields): the composer comes up.
+    composeApp();
+  } else if (m.t === "touch") {
+    // D603: the first touch in the app: the first-open line has been seen.
+    if (o.first) (o.first = undefined), A.changed();
   } else if (m.t === "summary") {
     // D410: ducter.summary: the line its shelf tile shows.
     A.send({ t: "app_summary", id: o.id, text: String(m.text ?? "").slice(0, 200) });
@@ -209,15 +224,19 @@ function sayAbout(m: AppMeta, text: string) {
 export function stateAction(m: AppMeta): { label: string; run: () => void } | undefined {
   const partner = A.defaultName() || "Ducter";
   const k = m.live?.kept;
+  const ongoing = (action: "run_now" | "resume") => {
+    if (k?.of.kind === "keep") return A.send({ t: "keep_action", id: k.of.id, action: action === "run_now" ? "look_now" : "resume" });
+    if (k) A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action });
+  };
   switch (appState(m)) {
     case "broke":
       return { label: t("app.live.fix", partner), run: () => sayAbout(m, t("app.live.fix.say", m.name, m.live?.broke?.text ?? "")) };
     case "old":
       return { label: t("app.live.renew"), run: () => sayAbout(m, t("app.live.renew.say", m.name)) };
     case "kept_failed":
-      return k ? { label: t("app.kept.retry"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "run_now" }) } : undefined;
+      return k ? { label: t("app.kept.retry"), run: () => ongoing("run_now") } : undefined;
     case "kept_paused":
-      return k ? { label: t("app.kept.resume"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "resume" }) } : undefined;
+      return k ? { label: t("app.kept.resume"), run: () => ongoing("resume") } : undefined;
     default:
       return undefined;
   }
@@ -238,6 +257,7 @@ export function StateLine({ m }: { m: AppMeta }) {
     : s === "kept_failed" ? t("app.kept.failed", k!.title)
     : s === "kept_paused" ? t("app.kept.paused", k!.title)
     : s === "kept_running" ? t("app.kept.running", k!.title)
+    : s === "kept_ended" ? t("app.kept.ended")
     : s === "old" ? t("app.live.old")
     : s === "kept_next" ? (k!.next ? t("app.kept.next", k!.title, when(A.L, k!.next)) : t("app.kept", k!.title))
     : m.task ? t("app.kept", m.task.title) : ""; // a home from before D422 sends no state: a task still keeps it
@@ -245,7 +265,14 @@ export function StateLine({ m }: { m: AppMeta }) {
     <span class={`app-state s-${s}`}>
       {s === "changing" && <span class="app-state-track" aria-hidden="true" />}
       {words && <span class="app-state-words">{words}</span>}
-      {(s === "plain" || s === "kept_next" || s === "old") && <span class="app-state-when">{t("app.updated", stamp(A.L, k?.last ?? m.updated))}</span>}
+      {s === "kept_ended" && <span class="app-state-when">{t("app.kept.asof", stamp(A.L, k?.last ?? m.updated))}</span>}
+      {m.live?.snapshot && (
+        <>
+          <span class="app-state-words">{t("app.snapshot")}</span>
+          <span class="app-state-when">{t("app.snapshot.asof", stamp(A.L, m.live.snapshot.at))}</span>
+        </>
+      )}
+      {!m.live?.snapshot && (s === "plain" || s === "kept_next" || s === "old") && <span class="app-state-when">{t("app.updated", stamp(A.L, k?.last ?? m.updated))}</span>}
     </span>
   );
 }
@@ -391,6 +418,18 @@ export function AppMenu({ m, rename, close, inSheet }: { m: AppMeta; rename: () 
       <MenuItem danger onClick={() => setAsking(true)}>
         {t("apps.m.delete")}
       </MenuItem>
+      {inSheet && (
+        // D603: who sees it and when it changed, said here, never as a footer under the app.
+        <>
+          <MenuSep />
+          <MenuHead>
+            <span class="app-about">
+              <span>{t("app.private")}</span>
+              <StateLine m={m} />
+            </span>
+          </MenuHead>
+        </>
+      )}
     </Menu>
   );
 }
@@ -422,20 +461,35 @@ function StateStrip({ m }: { m: AppMeta }) {
   );
 }
 
-/** The app's sheet: its name, the app itself, a line to ask the partner to change it. */
+/**
+ * The app's sheet: its name, 修改, 「⋯」, and the app itself. D603: the app is the point, so nothing
+ * stands under it at rest: 修改, ⌘L, / or 「⋯」 bring the composer up from the bottom edge; Esc, or
+ * leaving it empty, puts it away; a change asked is said there while it is made, then 改好了 with
+ * 改回去, and that goes by itself. Who sees it and when it changed are in 「⋯」.
+ */
 export function AppSheet({ id }: { id: string }) {
   const o = AP.open;
   const meta = AP.list.find((a) => a.id === id);
   const frame = useRef<HTMLIFrameElement>(null);
 
   const [said, setSaid] = useState("");
-  const [sent, setSent] = useState(false);
+  const [asked, setAsked] = useState(false);
+  const [replied, setReplied] = useState(false);
+  const [lineGone, setLineGone] = useState(false);
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState<string | undefined>(undefined);
+  const compose = !!o?.compose;
+  const setCompose = (on: boolean) => {
+    if (!o) return;
+    o.compose = on;
+    if (on) o.focus = true;
+    A.changed();
+  };
   useEffect(() => {
     if (!o?.focus) return;
     o.focus = false;
-    document.getElementById("app-ask")?.focus();
+    // After the foot has opened (it is inert while closed).
+    requestAnimationFrame(() => document.getElementById("app-ask")?.focus());
   });
   useEffect(() => {
     window.addEventListener("message", onMessage);
@@ -457,25 +511,66 @@ export function AppSheet({ id }: { id: string }) {
   // D562: while an app is open, this page is that app: Add to Home Screen (and the browser's own
   // Install) take its name, its icon and a link straight into it.
   useEffect(() => (meta?.home ? homeLinks(meta) : undefined), [id, meta?.home, meta?.name]);
-  // D431: the change landed (or the partner answered): its sent line gives way to what is true now.
+  // D603: the first-open line goes by itself after a while (or at the first touch in the app).
+  const first = o?.first && !o.changed ? o.first : undefined;
+  useEffect(() => {
+    if (!first) return;
+    const tm = setTimeout(() => {
+      if (AP.open?.first) (AP.open.first = undefined), A.changed();
+    }, LINE_MS);
+    return () => clearTimeout(tm);
+  }, [first]);
+  // D431: the change landed: the line under the app says so, and goes by itself.
   const landed = o?.changed?.version;
-  useEffect(() => void (landed !== undefined && setSent(false)), [landed]);
+  useEffect(() => {
+    if (landed === undefined) return;
+    setAsked(false), setReplied(false), setLineGone(false);
+  }, [landed]);
   const busy = !!meta && appState(meta) === "changing";
-  useEffect(() => void (!busy && setSent(false)), [busy]);
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    // It ended with no new version (after a moment for a late one): the partner answered in words.
+    if (wasBusy.current && !busy && asked) {
+      const tm = setTimeout(() => (setAsked(false), setReplied(true), setLineGone(false)), 1500);
+      wasBusy.current = busy;
+      return () => clearTimeout(tm);
+    }
+    wasBusy.current = busy;
+  }, [busy]);
+  const line = !compose && !asked && !lineGone ? (o?.changed ? "done" : replied ? "replied" : undefined) : undefined;
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (!line || held) return;
+    const tm = setTimeout(() => setLineGone(true), LINE_MS);
+    return () => clearTimeout(tm);
+  }, [line, held, landed, replied]);
   const keys = (e: KeyboardEvent) => {
-    if (e.key !== "Escape") return;
-    e.preventDefault(), e.stopPropagation();
-    close();
+    const tgt = e.target as HTMLElement | null;
+    const typing = !!tgt && (tgt.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tgt.tagName));
+    if (e.key === "Escape") {
+      e.preventDefault(), e.stopPropagation();
+      // One step: the composer goes first, then the app.
+      if (compose) return setCompose(false), (document.querySelector(".app-change") as HTMLElement | null)?.focus();
+      return close();
+    }
+    if (!compose && !typing && meta && !e.altKey && ((e.key === "/" && !e.metaKey && !e.ctrlKey) || (e.key.toLowerCase() === "l" && (e.metaKey || e.ctrlKey) && !e.shiftKey))) {
+      e.preventDefault();
+      setCompose(true);
+    }
   };
   const send = () => {
     const text = said.trim();
     if (!text) return;
     A.send({ t: "send", text, clientId: `p${Date.now().toString(36)}app`, app: id });
     setSaid("");
-    setSent(true);
+    setAsked(true), setReplied(false), setLineGone(true);
+    if (o) (o.changed = undefined), (o.compose = false);
+    A.changed();
   };
   const name = meta?.name ?? o?.app?.name ?? "";
   const partner = A.defaultName() || "Ducter";
+  // A change under way is said under the app where it was asked; asked elsewhere, over it.
+  const strip = meta && (stateAction(meta) || (busy && !asked));
   return (
     <>
       <div class="scrim" onClick={close} />
@@ -503,6 +598,7 @@ export function AppSheet({ id }: { id: string }) {
               <span class="app-title">{name}</span>
             )}
           </h2>
+          {meta && !o?.gone && <Btn kind="text" size="sm" class="app-change" label={t("app.edit")} about={name} expanded={compose} onClick={() => setCompose(!compose)} />}
           {meta && (
             <span class="app-more">
               <button type="button" class={`more-btn${menu ? " open" : ""}`} aria-label={t("apps.more", name)} aria-expanded={menu} onClick={() => setMenu(!menu)}>
@@ -515,26 +611,16 @@ export function AppSheet({ id }: { id: string }) {
             ×
           </button>
         </div>
-        {o?.first && !o.changed && (
-          <p class="app-first">
+        {first && (
+          <p class="app-first" role="status">
             <span class="app-first-word">{t("app.first", partner)}</span>
-            <span class="app-first-note">{o.first}</span>
+            <span class="app-first-note">{first}</span>
+            <button type="button" class="past-x app-first-x" aria-label={t("app.first.shut")} onClick={() => o && ((o.first = undefined), A.changed())}>
+              ×
+            </button>
           </p>
         )}
-        {o?.changed && (
-          // D562: the change is said where it landed, with its 改回去 beside it (the head keeps only 「⋯」,
-          // so a long name is never cut); an Undo that landed says so, never 改好了.
-          <div class="app-changed" key={o.changed.version} role="status">
-            <span class="app-changed-words">
-              <span class="app-changed-word">{t(o.changed.undone ? "app.undone" : "app.changed")}</span>
-              {!o.changed.undone && o.changed.note && <span class="app-changed-note">{o.changed.note}</span>}
-            </span>
-            {!o.changed.undone && meta?.back && (
-              <Btn kind="secondary" size="sm" label={t("app.back")} about={name} onClick={() => undoApp(id)} />
-            )}
-          </div>
-        )}
-        {meta && (stateAction(meta) || appState(meta) === "changing") && <StateStrip m={meta} />}
+        {strip && <StateStrip m={meta} />}
         <div class="app-stage">
           {o?.gone ? (
             <p class="past-none">{t("app.gone")}</p>
@@ -544,28 +630,71 @@ export function AppSheet({ id }: { id: string }) {
             <p class="past-none">{t("app.opening")}</p>
           )}
         </div>
-        <div class="app-foot">
-          {/* D519: asking from inside the app is the conversation's composer (composer.tsx). */}
-          <ComposerBox id="app-ask" value={said} onInput={(v) => (setSaid(v), setSent(false))} onSend={send} label={t("app.ask.ph", partner)} placeholder={t("app.ask.ph", partner)} sendLabel={t("app.ask.send")} />
+        <div class={`app-foot${compose ? " open" : ""}`} inert={!compose || undefined}>
+          <div class="app-foot-in">
+            {/* D519: asking from inside the app is the conversation's composer (composer.tsx). */}
+            <ComposerBox
+              id="app-ask"
+              value={said}
+              onInput={setSaid}
+              onSend={send}
+              label={t("app.ask.ph", partner)}
+              placeholder={t("app.ask.ph", partner)}
+              sendLabel={t("app.ask.send")}
+            />
+          </div>
         </div>
+        {/* Left empty, it goes away again. */}
+        {compose && <FootBlur onLeave={() => !said.trim() && setCompose(false)} />}
+        {!compose && asked && (
+          <div class="app-line" role="status">
+            <span class="app-state s-changing">
+              <span class="app-state-track" aria-hidden="true" />
+              <span class="app-state-words">{t("app.live.changing", partner)}</span>
+            </span>
+          </div>
+        )}
+        {line === "done" && o?.changed && (
+          // D562: the change is said where it landed, with its 改回去 beside it; an Undo that landed says so.
+          <div class="app-line app-changed" key={o.changed.version} role="status" onPointerEnter={() => setHeld(true)} onPointerLeave={() => setHeld(false)} onFocusIn={() => setHeld(true)} onFocusOut={() => setHeld(false)}>
+            <span class="app-changed-words">
+              <span class="app-changed-word">{t(o.changed.undone ? "app.undone" : "app.changed")}</span>
+              {!o.changed.undone && o.changed.note && <span class="app-changed-note">{o.changed.note}</span>}
+            </span>
+            {!o.changed.undone && meta?.back && <Btn kind="secondary" size="sm" label={t("app.back")} about={name} onClick={() => undoApp(id)} />}
+          </div>
+        )}
+        {line === "replied" && (
+          <div class="app-line" role="status" onPointerEnter={() => setHeld(true)} onPointerLeave={() => setHeld(false)}>
+            <span class="app-line-words">{t("app.replied", partner)}</span>
+            <Btn kind="secondary" size="sm" label={t("app.replied.see")} about={name} onClick={close} />
+          </div>
+        )}
         {o?.home && meta && <AppHomeSheet m={meta} close={() => ((o.home = false), A.changed())} />}
-        <p class="app-meta">
-          {sent && (!meta || appState(meta) !== "changing") ? (
-            <span>{t("app.ask.sent", partner)}</span>
-          ) : meta && appState(meta) === "plain" ? (
-            <>
-              <span>{t("app.private")}</span>
-              <span class="app-when">{t("app.updated", stamp(A.L, meta.updated))}</span>
-            </>
-          ) : meta && !stateAction(meta) && appState(meta) !== "changing" ? (
-            <StateLine m={meta} />
-          ) : meta ? (
-            <span>{t("app.private")}</span>
-          ) : null}
-        </p>
       </div>
     </>
   );
+}
+
+/** How long the first-open line and a change's line stay before they go by themselves. */
+const LINE_MS = 8000;
+
+/** D603: the composer left with nothing in it (the focus went elsewhere in the sheet) goes away. */
+function FootBlur({ onLeave }: { onLeave: () => void }) {
+  useEffect(() => {
+    const foot = document.querySelector(".app-foot");
+    if (!foot) return;
+    const out = (e: FocusEvent) => {
+      const to = e.relatedTarget as Node | null;
+      if (to && foot.contains(to)) return;
+      // A press on 修改 toggles it itself.
+      if (to instanceof HTMLElement && to.classList.contains("app-change")) return;
+      onLeave();
+    };
+    foot.addEventListener("focusout", out as EventListener);
+    return () => foot.removeEventListener("focusout", out as EventListener);
+  });
+  return null;
 }
 
 /** D562: a browser where a page can go on the Home Screen (never inside Ducter's own iPhone or Android app). */

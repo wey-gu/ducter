@@ -213,13 +213,20 @@ export interface CoreApi {
       seq?: number,
     ): { kept?: import("./standing.ts").StandingView; revoked?: import("./standing.ts").StandingView[] } | undefined;
     /** D499: the permission covering this step of this task, if any. */
-    covers?(action: import("./standing.ts").StandingAction, at: { taskId: string; owner?: string }): import("./standing.ts").StandingView | undefined;
+    covers?(action: import("./standing.ts").StandingAction, at: { taskId: string; owner?: string; repo?: string }): import("./standing.ts").StandingView | undefined;
+    /** D596: true the first time this key is asked on this home (kept in standing.json), then false. */
+    once?(key: string): boolean;
   };
   /**
    * D499: a task's open ask answered Go for the person under a kept permission (code checks the ask
    * is a task's plain question, not the floor, and that a kept permission covers the step there).
    */
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /**
+   * D601: 以后这类直接做 / Always do this on a card that offers it: keeps the standing permission
+   * where the card acted (by "tap") and says Go to it once.
+   */
+  always?: { tap(decisionId: string): { ok: true; standing: import("./standing.ts").StandingView } | { ok: false; error: string } };
   /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
   zone?(): string;
   /**
@@ -317,7 +324,9 @@ export interface CoreApi {
     get(id: string): import("./apps.ts").AppMeta | undefined;
     html(id: string): string | undefined;
     data(id: string): Record<string, unknown>;
-    make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: import("./apps.ts").AppTask; data?: Record<string, unknown>; summary?: string; icon?: import("./apps.ts").AppIcon }): { ok: true; app: import("./apps.ts").AppMeta; lifted?: string[] } | { ok: false; error: string };
+    make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: import("./apps.ts").AppTask; keep?: import("./apps.ts").AppTask; kind?: import("./apps.ts").AppMeta["kind"]; snapshot?: true; data?: Record<string, unknown>; summary?: string; icon?: import("./apps.ts").AppIcon }): { ok: true; app: import("./apps.ts").AppMeta; lifted?: string[] } | { ok: false; error: string };
+    /** D612: the Keep whose rounds fill it. */
+    giveKeep?(id: string, keep: import("./apps.ts").AppTask | undefined): boolean;
     /** D410: deleted on the person's word, kept a while to bring back (the card's 撤销 / Undo). */
     remove?(id: string): boolean;
     /** D410: the app's one line for its shelf tile. */
@@ -465,6 +474,8 @@ export interface HelpersApi {
   resume(id: string): import("./helpers.ts").Helper | undefined;
   /** On, with a confirmed address: whose mail the home reads now. */
   listening(): { id: string; name: string; context: string }[];
+  /** D604: the Spaces its mailbox was just read in (Mem's identity inbox); kept only when they changed. */
+  setSpaces?(id: string, spaces: { id: string; label: string }[]): void;
   onChange(fn: () => void): () => void;
 }
 
@@ -885,7 +896,8 @@ export interface Runner {
   /** D514: every working copy Ducter made, what goes when and what stays and why (`ducter worktrees`); changes nothing. */
   tidyPlan?(): Promise<import("./tidy.ts").TidyPlan>;
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
-  openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  /** D596: pr: the title, body and ready-for-review of a PR opened under the person's standing go. */
+  openPr?(taskId: string, pr?: { title?: string; body?: string; ready?: boolean }): Promise<{ ok: boolean; message: string; ref?: string }>;
   // Optional (D89): move a task to another AI agent. A running task is handed off: its session
   // closes and the new one starts from the brief, the saved progress and the task's own history
   // condensed (D282), or resumes that agent's own earlier session on the task. The same agent

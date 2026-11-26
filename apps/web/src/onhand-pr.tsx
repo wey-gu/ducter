@@ -31,6 +31,8 @@ export function prPhaseWords(s: PrSaid, base = "main"): string {
     return by.length ? t("onhand.prs.changes", by.join(t("onhand.prs.sep"))) : t("onhand.prs.changes.anon");
   }
   if (s.phase === "conflict") return t("onhand.prs.conflict", base);
+  // D602: let go as a duplicate (重复草稿，可关), never the CI it no longer waits on.
+  if (s.phase === "duplicate") return t(s.draft ? "onhand.prs.duplicate.draft" : "onhand.prs.duplicate");
   return t(`onhand.prs.${s.phase}`);
 }
 

@@ -24,6 +24,7 @@ import {
   type WbRequest,
 } from "@ducter/protocol/src/workbench.ts";
 import { rank } from "@ducter/protocol/src/mentions.ts";
+import { forkPoint } from "./fork-point.ts";
 import { git } from "./places.ts";
 import { createSims, holdsApp, type Sims } from "./sim.ts";
 
@@ -216,15 +217,19 @@ function write(ctx: WbCtx, path: string, text: unknown, base: unknown): WbAnswer
 type Repo = Extract<Place, { kind: "repo" }>;
 const asRepo = (p: Place): Repo | undefined => (p.kind === "repo" && p.baseBranch && !p.baseBranch.startsWith("-") ? p : undefined);
 
-/** Where the task's branch left its base (the base itself when it can't tell). */
-async function mergeBase(root: string, base: string): Promise<string> {
-  const mb = await git(root, ["merge-base", base, "HEAD"]);
-  return mb.ok && mb.out ? mb.out : base;
+/**
+ * D471: where the task's branch left its base (the base itself when it can't tell). The one
+ * shared answer (`fork-point.ts`): the newer of the merge bases with the local base and with
+ * `origin/<base>`, so a branch that pulled the remote's main isn't shown upstream's changes as
+ * its own. Changes, a file's diff and a file's revert all start here.
+ */
+async function forkOf(root: string, base: string): Promise<string> {
+  return (await forkPoint(root, base)) ?? base;
 }
 
 /** `git diff --numstat -z` and `--name-status -z` against the base, plus untracked files. */
 export async function repoChanges(root: string, base: string): Promise<{ files: WbChange[]; more: number }> {
-  const mb = await mergeBase(root, base);
+  const mb = await forkOf(root, base);
   const [ns, st, un] = await Promise.all([
     git(root, ["diff", "--numstat", "-M", "-z", mb, "--"]),
     git(root, ["diff", "--name-status", "-M", "-z", mb, "--"]),
@@ -306,7 +311,7 @@ export async function fileDiff(ctx: WbCtx, path: string): Promise<WbAnswer> {
   let patch = "";
   const repo = asRepo(ctx.place);
   if (repo) {
-    const mb = await mergeBase(root, repo.baseBranch!);
+    const mb = await forkOf(root, repo.baseBranch!);
     const tracked = await git(root, ["diff", "--no-color", "-M", mb, "--", clean]);
     patch = tracked.out;
     if (!patch) {
@@ -352,7 +357,7 @@ async function revertRepo(ctx: WbCtx, path: string): Promise<WbAnswer> {
   const repo = asRepo(ctx.place);
   if (!repo) throw new WbFail("unsupported");
   const { root, rel } = confine(ctx, path, { mayBeMissing: true });
-  const mb = await mergeBase(root, repo.baseBranch!);
+  const mb = await forkOf(root, repo.baseBranch!);
   const there = await git(root, ["cat-file", "-e", `${mb}:${rel}`]);
   if (there.ok) {
     const r = await git(root, ["restore", `--source=${mb}`, "--worktree", "--", rel]);

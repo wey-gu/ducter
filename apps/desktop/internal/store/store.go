@@ -1713,13 +1713,31 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 	s.Decisions[d.DecisionID] = &DecisionState{Decision: *d, Seq: ev.Seq, AskedAt: ev.TS}
 }
 
+// OpenAsk is the one predicate behind the needs-you count and every list
+// (D-PENDING): an offer (D453) never needs the person, a question put off with
+// 晚点再问我 (D382) is not open now, and neither is one whose default has come
+// due. A Go default applies only on a reversible card; a Hold default applies
+// even when it is not reversible (the morning's picks). The TypeScript side is
+// packages/protocol/src/open-asks.ts; both read fixtures/open-asks.json.
+func OpenAsk(d *DecisionState, now time.Time) bool {
+	if d == nil || d.Resolved != nil || d.Pending != "" || d.Later != "" || d.Question == "" || d.Offer {
+		return false
+	}
+	if d.DefaultAt != "" && (d.Reversible || d.DefaultOption == "hold") {
+		if at, err := time.Parse(time.RFC3339, d.DefaultAt); err == nil && !at.After(now) {
+			return false
+		}
+	}
+	return true
+}
+
 // OpenDecisions are the unresolved decisions the user has not acted on,
 // oldest first.
 func (s *Store) OpenDecisions() []*DecisionState {
 	var out []*DecisionState
+	now := time.Now()
 	for _, d := range s.Decisions {
-		// D453: an offer never needs the person: it lives in its note only.
-		if d.Resolved == nil && d.Pending == "" && d.Later == "" && d.Question != "" && !d.Offer {
+		if OpenAsk(d, now) {
 			if t := s.Tasks[d.TaskID]; t != nil && LaneOf(t.Attention()) == LaneHidden {
 				continue // its task was dropped or handed off
 			}

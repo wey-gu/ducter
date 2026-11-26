@@ -48,6 +48,13 @@ Three ways back into a task, each with one meaning:
 
 **带着它开新任务 / New task from this** (D285) stays for new work that uses what one task found.
 
+**Typing in its box (D585)** is the conductor's own way back in: the words go to that task's agent
+as typed, never to the partner; its answer stands right under them in full (only its steps fold),
+whether it was working (a steer, seen at its next step), waiting, finished or asking. A question
+answered there leaves the task as it was (a finished one stays finished, nobody is nudged for a
+report), and the partner says nothing about the exchange unless the task then reports done, stuck
+or a decision (`focus-window.md` "How a task is shown").
+
 ## 从这一步开新任务 / New task from this step
 
 The name was tested (research/155 §4): 从这一步重来 / Redo from here read as changing the original

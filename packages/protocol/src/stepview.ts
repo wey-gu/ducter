@@ -35,6 +35,12 @@ export function itemsOf(lines: Line[]): Item[] {
   return out;
 }
 
+/**
+ * D585: what the agent said to the person in a turn they opened with their own words: its words and
+ * its reports. They stay out of the turn's fold (only the steps fold), so its answer is never hidden.
+ */
+export const saidOut = (b: Block): boolean => b.k === "voice" || b.k === "report";
+
 /** What a turn's work holds (D530): its steps (thinking is no step), the words it said along the way, how many failed. */
 export interface Work {
   steps: number;

@@ -9,6 +9,19 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Talking to a task in its box, after D585 (`focus-window.md` "How a task is shown")
+
+- [ ] **A live reply, token by token.** The agent's words show when each message ends (the
+  normalizer buffers text deltas). A short-lived frame of the words so far for an opened task,
+  drawn as its live line. Trigger: a reply that takes more than a few seconds to write is watched.
+- [ ] **A done report from the person's own turn** still wakes the partner, which may say it again in
+  the conversation. Trigger: seen on a live home after D585 (the brief now asks the agent to report
+  only real state changes there).
+- [ ] **你说：… under a card closed by words in the task**: the conversation still shows them; say
+  instead that it was answered in the task. Trigger: the conversation's next pass (D584's owner).
+- [ ] **On a live home:** a colleague's conductor session (Codex, Claude Code, agy) against the new
+  brief line and note; read hel's Log afterwards for any nudge or living item from a direct turn.
+
 ## Settings read whole, after D561 (`settings.md` "Read whole (D561)")
 
 - [x] **The Mac's shared rows keep their Chinese words whole** (D564: every shared row through

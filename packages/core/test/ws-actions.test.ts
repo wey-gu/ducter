@@ -57,7 +57,7 @@ test("task_send to a needs_you task resolves its open decision as reply, without
   await c.until((f) => f.t === "sent");
   await Bun.sleep(10);
   const res = core.log.read({ kinds: ["decision_resolved"] }).map((e) => e.body as Bodies["decision_resolved"]);
-  expect(res).toEqual([{ decisionId: d.decisionId, option: "reply", text: "use b.ts", by: "user" }]);
+  expect(res).toEqual([{ decisionId: d.decisionId, option: "reply", text: "use b.ts", by: "user", inTask: true }]); // D585: wakes nobody
   expect(sent).toEqual([["t1", "use b.ts", "user"]]); // the message itself, not a forwarded copy
   expect(core.decisions.isPending(d.decisionId)).toBe(false);
   expect(core.tasks.get("t1")!.pendingDecision).toBeUndefined();

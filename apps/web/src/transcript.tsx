@@ -23,7 +23,7 @@ import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format
 import { Component, type JSX } from "preact";
 import { Btn, Chev, CodeChip, Facts, FileChip, Tag, WorkHead, type TagTone } from "./controls.tsx";
 import { composerTune } from "./composer-tune.tsx";
-import { chipText, fileKind, fileName, itemsOf, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
+import { chipText, fileKind, fileName, itemsOf, saidOut, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
 import { openFileLink } from "./fileview.tsx";
 import { SourceChip } from "./todos.tsx";
 import { escArmed } from "./esc.ts";
@@ -977,11 +977,14 @@ function TurnBody({ task, turn, live }: { task: Task; turn: Turn; live: boolean 
   if (!foldable) return <>{draw(body)}</>;
   // Done: folded until opened. While it works: open until folded.
   const open = live ? !toggled : toggled;
-  const w = workOf(head);
+  // D585: a turn the person opened with their own words is a conversation with them: the fold holds
+  // its steps only; what the agent said to them (its words, a report) stays out, in order.
+  const asked = turn.prompt?.k === "you";
+  const w = asked ? { ...workOf(head), messages: 0 } : workOf(head);
   return (
     <>
       <WorkHead words={workWords(w)} failed={w.failed} live={live} open={open} onClick={() => setToggled(!toggled)} />
-      {open && <div class="worked-body">{draw(head)}</div>}
+      {open ? <div class="worked-body">{draw(head)}</div> : asked ? draw(head.filter(saidOut)) : null}
       {draw(body.slice(head.length))}
     </>
   );

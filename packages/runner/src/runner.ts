@@ -20,6 +20,7 @@ import { wbHost, WbFail } from "./workbench.ts";
 import { userEditsNote } from "./brief.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
+import { directTurn, withDirectNote } from "./direct.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
@@ -178,6 +179,10 @@ interface TaskRt {
   restsThisTurn?: Set<string>;
   nudged: boolean;
   stallNoted: boolean;
+  /** D585: this turn was opened by the person's own words in the task; `before` is where the card stood. */
+  personTurn?: { before: Attention };
+  /** D585: where the card stood when the person's words came (send), for the turn they open. */
+  askedFrom?: Attention;
   /** D477: what the agent did, as facts for whoever judges a stop (tool calls ended, its last words). */
   toolCalls?: number;
   lastWords?: string;
@@ -380,6 +385,8 @@ const WHERE_WORDS = {
 };
 
 const FINISHED: Attention[] = ["done_claimed", "done", "failed", "dropped"];
+/** D585: where a card goes back to after the person's own turn in the task ends with no report. */
+const BACK_AFTER_ASKED = new Set<Attention>(["done", "done_claimed", "failed", "blocked", "needs_you"]);
 /** D515: how long an agent that takes no turn of its own after background work ends is left before the wake (its events settle). */
 const BG_WAKE_NOW_MS = 1500;
 
@@ -707,6 +714,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         return false;
       }
     }
+    // D585: who opened this turn. The person's own words make it a conversation with them: it owes
+    // no report, and where the card stood comes back when it ends without one (onTurnEnd).
+    if (from === "user") {
+      t.personTurn = { before: t.askedFrom ?? currentAttention(t) };
+      directTurn.start(core, t.id);
+    } else {
+      t.personTurn = undefined;
+      directTurn.end(core, t.id);
+    }
+    t.askedFrom = undefined;
     t.running = true;
     setState(t, t.compactTurn ? currentAttention(t) : "working", "hot");
     await deliver(t, text, "turn", from, logged, media);
@@ -762,11 +779,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // D135: what waits for the next turn (the save ask; the brief and progress after a
     // compaction) goes first, logged as the runner's own words. Never before a /compact (D288): it
     // has to stay the message's first word to be a command; it waits for the words after.
-    let sent = text;
+    // D585: the person's own words, exactly as typed, then one line saying who wrote them and where
+    // they read the reply (the agent's input only: the Log keeps their words alone).
+    const said = from === "user" ? withDirectNote(text) : text;
+    let sent = said;
     if (mode === "turn" && t.prefix.length && !t.compactTurn) {
       const pre = t.prefix.splice(0).join("\n\n");
       logInput(t, pre, "runner", "prefix");
-      sent = `${pre}\n\n---\n\n${text}`;
+      sent = `${pre}\n\n---\n\n${said}`;
     }
     if (!logged) logInput(t, text, from, mode, undefined, media);
     const pics = picturesFor(t, media);
@@ -1404,6 +1424,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
+    // D585: the person opened this turn with their own words in the task (read before the held words
+    // below start the next one).
+    const asked = busy ? undefined : t.personTurn;
+    if (!busy) {
+      t.personTurn = undefined;
+      directTurn.end(core, t.id);
+    }
     const rests = !busy && (t.restsThisTurn?.size ?? 0) > 0;
     if (!busy) t.restsThisTurn = undefined;
     const compactTurn = !busy && !!t.compactTurn;
@@ -1476,6 +1503,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // last background task's end asks again (onBackground).
     if (bg > 0) {
       t.bgOwed = true;
+      return;
+    }
+    // D585: a conversation with the person in the task (they asked, it answered right under their
+    // words) owes no report: never nudged ("Report status via report_to_main" made a second turn whose
+    // "I reported it to Ducter" folded the answer away, and woke the partner to say it again, hel
+    // 2026-11-22), and the card goes back to where it stood when they wrote. A task still in the middle
+    // of its own work (it stood at Working) owes its report as before.
+    if (asked && BACK_AFTER_ASKED.has(asked.before)) {
+      t.nudged = false;
+      t.stallNoted = false;
+      if (currentAttention(t) === "working") setState(t, asked.before, t.residency);
       return;
     }
     await missedReport(t);
@@ -2578,6 +2616,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const compacting = from === "user" && !media?.length && t.base.harness === "claude-code" && text.trim() === "/compact";
       t.nudged = false;
       t.stallNoted = false;
+      // D585: where the card stands before the person's words set it working (the turn they open).
+      t.askedFrom = from === "user" && !isBusy(t) ? currentAttention(t) : undefined;
       // D282: a model or effort changed during the last turn: reopen with them before this one.
       if (t.retune && t.session && !isBusy(t)) await reopenForRetune(t);
       // D394: a round of the task's own, due after its session compacted: a fresh session.

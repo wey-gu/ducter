@@ -298,7 +298,9 @@ What the window writes is what the user reads when they open the task, in one co
   `views/stepview.go`; the rows in `views/taskrows.go` and `transcript.tsx`): a turn's work
   (everything before its last words; all of it while it works) sits under one quiet head,
   **12 步，3 条消息 / 12 steps, 3 messages** with a small × and how many failed (`workOf`), the
-  shared spinner while it works; it is folded once the turn is done and open while it works (a
+  shared spinner while it works (D585: in a turn the person opened with their own words, the
+  fold holds the steps only, **4 步 / 4 steps**; the agent's words and reports to them stay out,
+  in order, `saidOut`); it is folded once the turn is done and open while it works (a
   click folds or opens it). Inside, the agent's words at their own size and one 28-tall row per
   step: a drawn mark by kind (shell, read, edit, search, web, subagent, a service's plug,
   thinking), a plain verb in 13 medium, and its object: a command or pattern in a mono chip cut
@@ -324,6 +326,15 @@ What the window writes is what the user reads when they open the task, in one co
   effort left out, the browser guard and fallback, and four kinds of failure under **出错 /
   Error** with the line as logged on hover; every other line the runner logs (session started,
   memory recalled, a retry, archiving, a restart) says nothing;
+- **the person talking to the task in its box (D585)** is a conversation with that agent, never
+  with the partner. Their words reach it as typed, then one line in its input only (`DIRECT_NOTE`,
+  `runner/src/direct.ts`: who wrote them, and that they read the reply under them; never after a
+  slash command; the Log keeps their words alone); the brief says a reply there is not a report.
+  A turn they opened (`personTurn`) that ends with no report is never nudged, and its card goes
+  back to where it stood (Done, Done · checking, Didn't work, Waiting, Needs you; a task that stood
+  at Working still owes its report). Their words closing its card are `inTask` (wakes nobody, moves
+  nothing); a report made in their turn is `direct`, and a direct progress report stays out of the
+  living message;
 - a **message the user sends** (D325) carries a receipt only when it says something: **在发… /
   Sending…** or **没送到 / Didn't get through**, and for a steer what the agent did with it.
   **Idle**, Return sends it as the next turn. **While it works**, Return steers (`task_send`

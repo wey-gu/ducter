@@ -33,7 +33,9 @@ export interface Decisions {
   /**
    * The user (or the partner) answered the task directly with a message: resolve its open
    * decisions as "reply" without forwarding (the message itself is the answer). Without this a
-   * later Go re-woke a task that had already finished (working -> done flap).
+   * later Go re-woke a task that had already finished (working -> done flap). D585: the person's
+   * own words (by "user") came in the task itself: resolved `inTask`, so they wake nobody (the
+   * partner answered "都有哪些 space?" in the conversation while the task answered it too, hel 11-22).
    */
   answeredByMessage(taskId: string, text: string, by: "user" | "partner"): void;
   /**
@@ -326,7 +328,9 @@ export function createDecisions(opts: {
     if (d.relay) return;
     const left = tasks.pendingDecisions(taskId).filter((id) => id !== r.decisionId && !resolved.has(id));
     if (left.length && left.every((id) => laterAt.has(id))) setAttention(taskId, "blocked"); // D382: only put-off ones left
-    else if (!left.length) {
+    // D585: closed by the person's words in the task: the runner sets it working as their turn starts
+    // (and back to where it stood if that turn owes nothing), so the card is not moved here.
+    else if (!left.length && !r.inTask) {
       // D233: 不给 / Don't give on a key is an answer the task carries on with, not a wait.
       if (r.option === "hold" && !d.key && !d.copyKey && !d.checkout) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting (D436: 先不买 is an answer it finishes on)
       else setAttention(taskId, "working");
@@ -529,7 +533,7 @@ export function createDecisions(opts: {
           stream: "channel",
           origin: by,
           kind: "decision_resolved",
-          body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user" },
+          body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user", ...(by === "user" ? { inTask: true as const } : {}) },
         });
       }
     },

@@ -3,6 +3,7 @@
 import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 import { prIdentity } from "@ducter/protocol/src/owned.ts";
+import { directTurn } from "./direct.ts";
 
 const SUMMARY_MAX = 600;
 const STATES = ["progress", "needs_input", "blocked", "done", "failed"] as const;
@@ -283,11 +284,13 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
   core.mcp.register(
     "task",
     "report_to_main",
-    "Report to Ducter (the user's partner): when done, failed, blocked, or needing a decision. The only way to reach the user.",
+    "Report to Ducter (the user's partner): when done, failed, blocked, or needing a decision. The only way to reach the user, except a reply to the user's own message in this task, which they read right under it.",
     reportToMainSchema,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("report_to_main requires a task token");
       const body = normalizeReport(ctx.taskId, args);
+      // D585: made in a turn the person opened with their own words in the task: they read it there.
+      if (directTurn.is(core, ctx.taskId)) body.direct = true;
       const open = core.tasks.get(ctx.taskId)?.pendingDecision;
       if (open && body.state === "done") {
         // Live (desktop run): a task reported done before the user answered its own question,

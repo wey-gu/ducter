@@ -38,7 +38,8 @@ export function itemsFor(c: TaskCard, decisions: Decisions, pending: string[]): 
     }
     case "working":
     case "queued":
-      return r?.state === "progress" ? [{ ...base, kind: "progress", text: r.summary }] : [];
+      // D585: a progress report made in a turn the person opened in the task is their answer, read there: never said again here.
+      return r?.state === "progress" && !r.direct ? [{ ...base, kind: "progress", text: r.summary }] : [];
     default:
       return [];
   }

@@ -495,7 +495,8 @@ export function triggersPartner(e: LogEvent): boolean {
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
+  // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];

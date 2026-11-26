@@ -3869,6 +3869,23 @@ class AppState {
     this.changed();
   }
 
+  /**
+   * D601: 以后这类直接做 / Always do this: Go now, and the home keeps a standing permission where the
+   * card acted. Never kept for later in the outbox: a lasting choice is made with the link up.
+   */
+  decideAlways(id: string) {
+    const d = this.S.decisions.get(id);
+    if (!d?.always) return;
+    if (!this.linkUp()) return this.askAgainLater();
+    d.pending = "go";
+    this.replyOpen.delete(id);
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go", always: true });
+    this.changed();
+  }
+
   /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
   sendLeftDraft(d: DecisionState, text: string) {
     this.replyDraft.delete(d.decisionId);

@@ -181,6 +181,9 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
   D596: the dev flow is a row too, **开发做完、验证好，直接开 PR 交给帮手 / Verified work goes straight to a PR
   and your helper**, bounded **在 {owners}** (the owners or repos named, else where the person's tasks
   work when it was said), their words under it, **收回** as every row. Shots `.shots/standing-dev/`.
+  D601: a row kept by a tap on a Go card's **以后这类直接做 / Always do this** says so in place of words,
+  **你点了「以后这类直接做」 / You tapped “Always do this”**, with its day as its own element, bounded **在 {owner}**
+  (where that card acted); **收回** as every row, and the next card of that kind asks again. Shots `.shots/always-do/`.
 - The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
 

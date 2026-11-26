@@ -222,6 +222,11 @@ export interface CoreApi {
    * is a task's plain question, not the floor, and that a kept permission covers the step there).
    */
   answerFor?(decisionId: string, action: import("./standing.ts").StandingAction): { ok: true; standing: import("./standing.ts").StandingView; question: string } | { ok: false; error: string };
+  /**
+   * D601: 以后这类直接做 / Always do this on a card that offers it: keeps the standing permission
+   * where the card acted (by "tap") and says Go to it once.
+   */
+  always?: { tap(decisionId: string): { ok: true; standing: import("./standing.ts").StandingView } | { ok: false; error: string } };
   /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
   zone?(): string;
   /**

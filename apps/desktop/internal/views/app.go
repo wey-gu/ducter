@@ -978,6 +978,20 @@ func (a *App) decideRefused() {
 	}
 }
 
+// DecideAlways (D601) is Go with 以后这类直接做 / Always do this: the home
+// keeps a standing permission where the card acted and says Go once.
+func (a *App) DecideAlways(id string) {
+	d := a.S.Decisions[id]
+	if d == nil || d.Always == nil {
+		return
+	}
+	d.Pending, d.AnsweredAt = "go", a.Now()
+	a.replyOpen[id] = false
+	a.markRead()
+	a.decideSent = append(a.decideSent, id)
+	a.send(protocol.Decide{T: "decide", DecisionID: id, Option: "go", Always: true})
+}
+
 // OpenTask shows a task at full depth, asking for its history.
 func (a *App) OpenTask(id string) {
 	a.Route, a.TaskID = RouteTask, id

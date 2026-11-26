@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
+import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, TASK_STEP_ACTIONS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 import { prIdentity } from "@ducter/protocol/src/owned.ts";
 import { directTurn } from "./direct.ts";
@@ -34,6 +34,7 @@ export const reportToMainSchema = {
           blocking: { type: "boolean" },
           default: { type: "string", description: "What you will do if nobody answers, as a short verb in the user's language (at most 6 Chinese characters or 3 English words, no full stop): it is the label of the user's Go button, e.g. 继续 / Continue, 先填描述 / Fill in the text." },
           reversible: { type: "boolean", description: "Whether the default can be undone." },
+          step: { type: "string", enum: [...TASK_STEP_ACTIONS], description: "Only when Go does exactly one of these: ci_rerun reruns your PR's checks, pr_comment comments on your PR, branch_push pushes your own branch, issue_comment comments on your issue, pr_open pushes your branch and opens your PR" },
         },
         required: ["id", "text", "blocking", "reversible"],
       },
@@ -151,6 +152,8 @@ export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
         blocking: Boolean(q?.blocking),
         default: q?.default != null ? cut(String(q.default), B.questionDefault) : undefined,
         reversible: Boolean(q?.reversible),
+        // D601: the kind of step its Go is, in the task's word; one Ducter doesn't know is dropped.
+        ...(TASK_STEP_ACTIONS.includes(q?.step) ? { step: q.step } : {}),
       }))
     : [];
   const evidence: EvidenceRef[] = Array.isArray(args?.evidence)

@@ -1021,6 +1021,13 @@ export function createWsHandler(deps: WsDeps) {
           if (!f.cvc) throw new Error("this payment needs the card's security code");
           pay.holdCvc(f.decisionId, f.cvc);
         }
+        // D601: 以后这类直接做 / Always do this: the permission kept where the card acted, and Go once.
+        if (f.always === true && f.option === "go") {
+          const r = deps.core.always?.tap(f.decisionId);
+          if (!r) throw new Error("This one is asked each time.");
+          if (!r.ok) throw new Error(r.error);
+          return;
+        }
         decisions.decide(f.decisionId, f.option, f.text);
         return;
       }

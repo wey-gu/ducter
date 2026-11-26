@@ -957,6 +957,10 @@ func (a *App) decideRowLead(c *ui.Context, d *store.DecisionState, about string,
 func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under, lead func()) {
 	t := a.T
 	id := d.DecisionID
+	// D601 (D61 GQ4): said go to this kind twice here: the offer leads, in one line.
+	if d.Always != nil && d.Always.Often && !a.replyOpen[id] {
+		uiText(c, a.L.T("always.often")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).LineHeight(1.45)
+	}
 	if a.replyOpen[id] {
 		a.replyField(c, d, about, height, bg)
 	} else {
@@ -969,6 +973,14 @@ func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, h
 				// here could only be refused by the home and hide the card.
 				if a.buttonFor(c, a.goLabel(d), about, btnPrimary, height, bg) {
 					a.Decide(id, "go", "")
+				}
+				ui.Box(c).Width(t.S2).Shrink(0)
+			}
+			// D601: 以后这类直接做 / Always do this, the second choice beside Go
+			// (secondary, never the default): Go now and from now on.
+			if d.Always != nil && lead == nil && d.Key == nil {
+				if a.buttonFor(c, a.alwaysLabel(d), about, btnSecondary, height, bg) {
+					a.DecideAlways(id)
 				}
 				ui.Box(c).Width(t.S2).Shrink(0)
 			}
@@ -1000,6 +1012,15 @@ func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, h
 	if !a.replyOpen[id] {
 		a.laterTimes(c, d, bg)
 	}
+}
+
+// alwaysLabel (D601) is the second choice's words: 以后直接发 / Always post on
+// a review round's card, else 以后这类直接做 / Always do this.
+func (a *App) alwaysLabel(d *store.DecisionState) string {
+	if d.Always != nil && d.Always.Action == "pr_review" {
+		return a.L.T("always.post")
+	}
+	return a.L.T("always.do")
 }
 
 // replyField is an ask's reply, opened from Reply… in place of its row

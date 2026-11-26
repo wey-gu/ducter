@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.95 - 2026-11-27
+
+<!-- whats-new
+zh: 替你发的 Bridge 消息标出已读；看守可以装一个门铃
+en: Read receipts on Bridge mail sent for you; a Keep can have a doorbell
+-->
+
+**Agents**
+- Messages Ducter sends to your other agents through Nowledge Bridge show Delivered, Read, or
+  how many of a Space have read them, in the conversation, Settings › Agent messages and a
+  helper's rounds. Nothing shows when the receipt isn't known.
+
+**Looking after**
+- A Keep can have a doorbell: a private address your CI, a webhook or another server can ring to
+  make it look now instead of waiting for its next round. What the caller sends is never read;
+  only a short note it names itself shows on the round. Turn it on in How it runs, or ask your
+  partner.
+
 ## 0.1.94 - 2026-11-27
 
 <!-- whats-new

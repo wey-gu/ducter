@@ -6,7 +6,12 @@ import { dirname, join, resolve } from "node:path";
 import type { BranchChanges, CopyFacts, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { worktreesRootOf } from "@ducter/protocol/src/ducter-folder.ts";
+import { forkPoint } from "./fork-point.ts";
 import { git } from "./places.ts";
+
+// Kept where callers have always found it (integrate's own stats and branchChanges); the one
+// implementation lives in fork-point.ts, beside the workbench and the Mac's diff.
+export { forkPoint } from "./fork-point.ts";
 
 export interface ActionResult {
   ok: boolean;
@@ -63,21 +68,6 @@ export async function branchChanges(place: Place): Promise<BranchChanges | undef
   const commits = Number(ahead.out);
   if (!Number.isFinite(commits)) return undefined;
   return { commits, uncommitted: status.out.length > 0, ...(await diffStat(p.worktree!, p.baseBranch, fork)) };
-}
-
-/**
- * D471: where the task's work starts: the merge base with its base branch, or with the base's
- * remote-tracking branch when that is newer. A task that pulled the remote's main into its branch
- * (agents do, to work on fresh code) shares the remote's history with it; against a local main
- * left weeks behind, the old merge base counted every upstream change as the task's own (the
- * author's board read millions of lines). The newer of the two is a descendant of the other.
- */
-export async function forkPoint(worktree: string, base: string): Promise<string | undefined> {
-  const [local, remote] = await Promise.all([git(worktree, ["merge-base", base, "HEAD"]), git(worktree, ["merge-base", `origin/${base}`, "HEAD"])]);
-  const l = local.ok && local.out ? local.out : undefined;
-  const r = remote.ok && remote.out ? remote.out : undefined;
-  if (!l || !r || l === r) return l ?? r;
-  return (await git(worktree, ["merge-base", "--is-ancestor", l, r])).ok ? r : l;
 }
 
 /** D128: files, lines added and removed since the branch left its base, committed or not

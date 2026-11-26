@@ -1,6 +1,7 @@
 // Package diff reads the changes of a task's worktree with git: tracked
-// changes against the base (the merge base with the base branch when it
-// is known, else HEAD) plus untracked files, as one unified patch.
+// changes against the fork point with the base (the newer of the merge bases
+// with the local base branch and with origin/<base>, when it is known; else
+// HEAD) plus untracked files, as one unified patch.
 package diff
 
 import (
@@ -44,6 +45,35 @@ func run(ctx context.Context, dir string, args ...string) (string, error) {
 	return out.String(), nil
 }
 
+// forkPoint is where the task's work starts (D471): the merge base with the
+// task's base branch, or with origin/<base> when that is newer. A task that
+// pulled the remote's main into its branch shares the remote's history with
+// it; against a local main left weeks behind, the old merge base counted every
+// upstream change as the task's own. The newer of the two is a descendant of
+// the other, so --is-ancestor tells them apart. Empty when neither can be
+// read.
+func forkPoint(ctx context.Context, dir, base string) string {
+	local, lerr := run(ctx, dir, "merge-base", base, "HEAD")
+	remote, rerr := run(ctx, dir, "merge-base", "origin/"+base, "HEAD")
+	l, r := strings.TrimSpace(local), strings.TrimSpace(remote)
+	if lerr != nil {
+		l = ""
+	}
+	if rerr != nil {
+		r = ""
+	}
+	if l == "" {
+		return r
+	}
+	if r == "" || l == r {
+		return l
+	}
+	if _, err := run(ctx, dir, "merge-base", "--is-ancestor", l, r); err == nil {
+		return r
+	}
+	return l
+}
+
 // Worktree returns the patch of a worktree.
 func Worktree(worktree, baseBranch string) (Result, error) {
 	if worktree == "" {
@@ -56,8 +86,8 @@ func Worktree(worktree, baseBranch string) (Result, error) {
 	defer cancel()
 	base := "HEAD"
 	if baseBranch != "" {
-		if mb, err := run(ctx, worktree, "merge-base", baseBranch, "HEAD"); err == nil && strings.TrimSpace(mb) != "" {
-			base = strings.TrimSpace(mb)
+		if fp := forkPoint(ctx, worktree, baseBranch); fp != "" {
+			base = fp
 		}
 	}
 	var b strings.Builder

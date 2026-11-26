@@ -2666,6 +2666,48 @@ export const scenarios: Scenario[] = [
     expect: { lines: 2, opens: 0, msgs: [1, 1], maxChars: 120, notCalled: ["rule_save", "without_asking"], forbid: [/Ducter 的规则|规矩/], require: [/钱|付/] },
     rubric: "Paying is on the floor: nothing can be kept (without_asking has no such action). Pass if the partner says plainly, in one or two short Chinese lines, that each payment still waits for their own Go because money can't be taken back (the real reason), without calling it an unexplained rule, without lecturing, and without opening a task.",
   },
+  // D596: the author's dev flow, said once on the Mac (2026-11-26): kept as a pr_open go, then used
+  // with no card when a task's verified work is done and has no PR yet.
+  {
+    id: "standing-dev-said-zh",
+    category: "rules",
+    lang: "zh",
+    steps: [{ user: "以后我让你做开发的工作，请都按照这个标准（不一定分配给谁），做好了 PR，研究实现设计验证好之后，交给 PR baby sitter 哈。" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_open" } }], notCalled: ["ask"], forbid: [/仍需|还是需要|需要你确认|确认卡|Ducter 的规则|规矩/] },
+    rubric: "The user says how their dev work goes from now on: researched, built and verified, then a PR handed to their PR babysitter, without asking them. Pass only if the partner keeps it as a standing go (without_asking keep pr_open) and says it back in ONE short Chinese line (e.g. 好，以后开发的活验证好就直接开 PR，交给 PR Babysitter 跟进，不再问你。), with no card, no ask, and no claim that a confirmation is still needed. Saying merging stays theirs is welcome, not required. A rule_save beside it is fine.",
+  },
+  {
+    id: "standing-dev-said-en",
+    category: "rules",
+    lang: "en",
+    steps: [{ user: "From now on, for any dev work I give you: once it's researched, built and verified, open the PR and hand it to my PR babysitter. No need to ask me first." }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_open" } }], notCalled: ["ask"], forbid: [/still need|confirm (each|every)|can't skip|Ducter's rule/i] },
+    rubric: "The partner keeps the dev flow as a standing go with without_asking (pr_open). Pass if one short English line says verified work will go straight to a PR and their PR babysitter without asking from now on (Done for you shows it; they can take it back). No card, no ask, no 'still needs confirmation'.",
+  },
+  {
+    id: "standing-dev-used-zh",
+    category: "rules",
+    lang: "zh",
+    seed: [{ task: { key: "mem", title: "修 Mem #11390", repo: "~/dev/mem", ack: "好，我去修 #11390。", state: "working", harness: "codex" } }],
+    steps: [
+      { user: "以后我让你做开发的工作，请都按照这个标准（不一定分配给谁），做好了 PR，研究实现设计验证好之后，交给 PR baby sitter 哈。" },
+      { report: { task: "mem", body: { state: "done", summary: "修好了 #11390：分页超过字节预算时也会往前走。bun test 42 项全过，搜索页的 Playwright e2e 也过了。改动已提交在任务分支上，还没推送，也没开 PR。", questions: [], evidence: [{ kind: "test", label: "bun test", ref: "42 passed" }] } } },
+    ],
+    expect: { opens: 0, maxChars: 160, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_open" } }, { tool: "task_send" }], notCalled: ["ask"], proseForbid: [/要不要|吗？|需要你确认|还是需要/] },
+    rubric: "Step 1 the user allowed verified dev work to go straight to a PR and their PR babysitter without asking (kept with without_asking pr_open). Step 2 the task reports its fix done and verified (tests and the e2e passed) with no PR yet. Pass if, at step 2, the partner asks nothing (no card, no question) and sends the task on to open its PR and hand it over (task_send), with at most one short Chinese line saying so. Fail if it asks whether to push or open the PR, says it still needs their confirmation, or claims anything was merged.",
+  },
+  {
+    id: "standing-dev-used-en",
+    category: "rules",
+    lang: "en",
+    seed: [{ task: { key: "mem", title: "Fix Mem #11390", repo: "~/dev/mem", ack: "On it: fixing #11390.", state: "working", harness: "codex" } }],
+    steps: [
+      { user: "From now on, for any dev work I give you: once it's researched, built and verified, open the PR and hand it to my PR babysitter. No need to ask me first." },
+      { report: { task: "mem", body: { state: "done", summary: "Fixed #11390: paging now moves on when a page is over the byte budget. bun test: 42 passed; the search page's Playwright e2e passed. Committed on the task branch; not pushed, no PR yet.", questions: [], evidence: [{ kind: "test", label: "bun test", ref: "42 passed" }] } } },
+    ],
+    expect: { opens: 0, maxChars: 260, called: [{ tool: "without_asking", args: { do: "keep", action: "pr_open" } }, { tool: "task_send" }], notCalled: ["ask"], proseForbid: [/should I|do you want|still need/i] },
+    rubric: "Step 1 the user allowed verified dev work to go straight to a PR and their PR babysitter without asking (kept with without_asking pr_open). Step 2 the task reports its fix done and verified with no PR yet. Pass if, at step 2, the partner asks nothing and sends the task on to open its PR and hand it over (task_send), with at most one short English line. Fail if it asks whether to push or open the PR, or claims anything was merged.",
+  },
   {
     id: "kind-retry-failed-zh",
     category: "rules",

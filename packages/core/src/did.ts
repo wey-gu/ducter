@@ -251,7 +251,9 @@ export function createDid(d: DidDeps): Did {
             if (!b.act || b.state !== "done" || !inRange(e.ts)) break;
             const c = b.taskId ? d.tasks.get(b.taskId) : undefined;
             const branch = c && c.place.kind === "repo" ? c.place.branch : undefined;
-            items.push({ id: `e${e.seq}`, kind: "changed", sub: b.act === "merge" ? "merge" : "pr", at: e.ts, ...(branch ? { to: branch } : {}), who: { by: "you", ...(b.taskId ? { taskId: b.taskId } : {}), ...(c?.title ? { title: c.title } : {}) }, go: { by: "you", at: e.ts }, ...(deviceOf(b.taskId) ? { where: deviceOf(b.taskId)! } : {}), ...(b.taskId ? { taskId: b.taskId } : {}), ...(b.act === "open_pr" && b.ref && /^https:\/\//.test(b.ref) ? { link: b.ref } : {}) });
+            // D596: a PR Ducter opened under the person's standing go: the task did it, on their words.
+            const rule = b.by === "rule";
+            items.push({ id: `e${e.seq}`, kind: "changed", sub: b.act === "merge" ? "merge" : "pr", at: e.ts, ...(branch ? { to: branch } : {}), who: rule ? who(b.taskId) : { by: "you", ...(b.taskId ? { taskId: b.taskId } : {}), ...(c?.title ? { title: c.title } : {}) }, go: rule ? { by: "said", at: e.ts, ...(b.said ? { words: b.said } : {}) } : { by: "you", at: e.ts }, ...(rule ? { via: "GitHub" } : {}), ...(deviceOf(b.taskId) ? { where: deviceOf(b.taskId)! } : {}), ...(b.taskId ? { taskId: b.taskId } : {}), ...(b.act === "open_pr" && b.ref && /^https:\/\//.test(b.ref) ? { link: b.ref } : {}) });
             break;
           }
           case "report": {
@@ -317,7 +319,8 @@ export function createDid(d: DidDeps): Did {
         if (!x.sent || !inRange(x.e.ts)) continue;
         const b = x.e.body;
         const to = b.to ?? b.agent;
-        const go = goOf(b.decisionId) ?? (b.decisionId ? undefined : { by: "before" as const });
+        // D596: a PR handed to the person's helper with no card, under their standing go: their words.
+        const go = b.said ? { by: "said" as const, at: x.e.ts, words: b.said } : (goOf(b.decisionId) ?? (b.decisionId ? undefined : { by: "before" as const }));
         items.push({ id: `e${x.e.seq}`, kind: "sent", sub: "agent", at: x.e.ts, ...(to ? { to } : {}), via: "Nowledge Bridge", ...(clip(b.text) ? { line: clip(b.text) } : {}), ...(x.unsure ? { unsure: x.unsure } : {}), who: who(b.taskId), ...(go ? { go } : {}), where: { kind: "home" }, ...(b.taskId ? { taskId: b.taskId } : {}) });
       }
 

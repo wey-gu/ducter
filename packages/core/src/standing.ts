@@ -13,10 +13,25 @@
 import { existsSync, readFileSync, renameSync, writeFileSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { STANDING_ACTIONS, type StandingAction, type StandingView } from "@ducter/protocol";
+import { STANDING_ACTIONS, STANDING_COVERS, fill, words, type LangTag, type StandingAction, type StandingView } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const STANDING_FILE = "standing.json";
+
+/**
+ * D596: the one line the first time a pr_open go is used (pushed, the PR with its link, who it goes
+ * to next); after that, silence: every one is in Done for you. A table per language (D292).
+ */
+const PR_FIRST = {
+  zh: { line: "按你说的，「{title}」验证好了，我直接推了分支、开了 PR：{link}{hand}。以后照这样做，不再一一说；都在「替你做过的」里，想收回说一声。", hand: "，接着交给 {who} 跟进" },
+  en: { line: "As you said, “{title}” is verified, so I pushed its branch and opened the PR: {link}{hand}. From now on I'll do this without a word each time; it's all in Done for you, and you can take it back any time.", hand: ", and it goes to {who} next" },
+};
+
+export function prFirstLine(lang: LangTag | undefined, v: { title: string; link: string; who?: string }): string {
+  const w = words(PR_FIRST, lang);
+  const title = [...v.title].length > 60 ? `${[...v.title].slice(0, 59).join("")}…` : v.title;
+  return fill(w.line, { title, link: v.link, hand: v.who ? fill(w.hand, { who: v.who }) : "" });
+}
 
 /** What the partner recorded about asking first (their words in quote). */
 export type StandingSaying =
@@ -30,14 +45,17 @@ export interface StandingStore {
   /**
    * D499: the permission that covers this step of this task, if any: one kept for this task, or one
    * for the action where its owners hold (owner: the task's repo owner; unbounded holds anywhere).
+   * D596: repo (owner/repo) matches a permission bounded by repos; a pr_open go covers branch_push.
    */
-  covers(action: StandingAction, at: { taskId: string; owner?: string }): StandingView | undefined;
+  covers(action: StandingAction, at: { taskId: string; owner?: string; repo?: string }): StandingView | undefined;
   /** Keep a saying (grant: kept or widened; revoke: ended), once per saying key. What changed. */
   hear(key: string, s: StandingSaying, at: string, seq?: number): { kept?: StandingView; revoked?: StandingView[] } | undefined;
   /** 收回 / Take back, by id. */
   revoke(id: string): boolean;
   /** The first use of this permission: true once (the one line in the conversation), then false. */
   firstUse(id: string): boolean;
+  /** D596: true the first time this key is asked on this home, then false (kept in the file). */
+  once(key: string): boolean;
   onChange(fn: () => void): () => void;
   /** Ongoing (D413): a grant was kept: post what waits inside it now. */
   onGrant(fn: (s: StandingView) => void): () => void;
@@ -49,9 +67,20 @@ interface File {
   items: StandingView[];
   /** Saying keys heard → what came of them (a record; D413's said:<seq> keys from before D495 stay). */
   heard: Record<string, Heard>;
+  /** D596: one-time notes already given (key → ISO time). */
+  told?: Record<string, string>;
 }
 
-export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => Date; reviewOrgs?: () => string[]; /** D499: a task still open (a permission kept for one task ends with it). */ alive?: (taskId: string) => boolean }): StandingStore {
+export function openStanding(o: {
+  log?: LogStore;
+  dataDir: string;
+  now?: () => Date;
+  reviewOrgs?: () => string[];
+  /** D499: a task still open (a permission kept for one task ends with it). */
+  alive?: (taskId: string) => boolean;
+  /** D596: the GitHub owners the person's tasks work in now: where a pr_open go holds when none were named. */
+  taskOwners?: () => string[];
+}): StandingStore {
   const now = o.now ?? (() => new Date());
   const path = join(o.dataDir, STANDING_FILE);
   let st: File = { items: [], heard: {} };
@@ -61,6 +90,7 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
       st = {
         items: Array.isArray(raw?.items) ? raw.items.filter((x: StandingView) => x && typeof x.id === "string" && STANDING_ACTIONS.includes(x.action) && typeof x.text === "string") : [],
         heard: raw?.heard && typeof raw.heard === "object" ? raw.heard : {},
+        ...(raw?.told && typeof raw.told === "object" ? { told: raw.told } : {}),
       };
     } catch (err) {
       console.warn(`[standing] ${path} is unreadable; starting with none:`, (err as Error).message);
@@ -90,12 +120,17 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
     list: () => st.items.filter(live),
     allows(action, ref) {
       const owner = ownerOf(ref);
-      return st.items.find((s) => s.action === action && !s.taskId && (!s.orgs?.length || s.orgs.includes(owner)));
+      const repo = ref.split("#")[0]!.toLowerCase();
+      return st.items.find((s) => s.action === action && !s.taskId && (!s.orgs?.length || s.orgs.includes(owner) || s.orgs.includes(repo)));
     },
     covers(action, at) {
       const owner = at.owner?.toLowerCase();
-      const mine = st.items.find((s) => s.action === action && s.taskId === at.taskId && live(s));
-      return mine ?? st.items.find((s) => s.action === action && !s.taskId && (!s.orgs?.length || (!!owner && s.orgs.includes(owner))));
+      const repo = at.repo?.toLowerCase();
+      // D596: a go for opening the PR covers pushing its branch.
+      const fits = (s: StandingView) => s.action === action || !!STANDING_COVERS[s.action]?.includes(action);
+      const holds = (s: StandingView) => !s.orgs?.length || s.orgs.some((x) => (x.includes("/") ? !!repo && x === repo : !!owner && x === owner));
+      const mine = st.items.find((s) => fits(s) && s.taskId === at.taskId && live(s));
+      return mine ?? st.items.find((s) => s.action === action && !s.taskId && holds(s)) ?? st.items.find((s) => fits(s) && !s.taskId && holds(s));
     },
     hear(key, s, at, seq) {
       if (st.heard[key]) return undefined;
@@ -113,7 +148,9 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
       // Said again: one permission per action, its words the newest; unbounded if either is.
       // D415: a comment on issues names its owners or holds wherever the person's issues are.
       // D499: one kept for a task is its own (the task bounds it; owners don't apply).
-      const orgs = s.taskId ? [] : (s.orgs ?? (s.action === "pr_review" ? (o.reviewOrgs?.() ?? []).map((x) => x.toLowerCase()) : []));
+      // D596: a pr_open go names owners or repos, else holds where the person's tasks work now.
+      const fallback = s.action === "pr_review" ? (o.reviewOrgs?.() ?? []) : s.action === "pr_open" ? (o.taskOwners?.() ?? []) : [];
+      const orgs = s.taskId ? [] : (s.orgs ?? fallback.map((x) => x.toLowerCase()));
       const had = st.items.find((x) => x.action === s.action && x.taskId === s.taskId);
       const bound = had ? (had.orgs?.length && orgs.length ? [...new Set([...had.orgs, ...orgs])] : []) : [...new Set(orgs)];
       const kept: StandingView = {
@@ -136,6 +173,12 @@ export function openStanding(o: { log?: LogStore; dataDir: string; now?: () => D
       const n = st.items.length;
       st.items = st.items.filter((x) => x.id !== id);
       if (st.items.length === n) return false;
+      changed();
+      return true;
+    },
+    once(key) {
+      if (st.told?.[key]) return false;
+      st.told = { ...st.told, [key]: now().toISOString() };
       changed();
       return true;
     },

@@ -8,7 +8,7 @@
 // classification fact Bridge mail needs (did this helper ask the question the mail answers?). The
 // store that writes the records is core/src/handoffs.ts.
 
-import type { LangTag } from "./lang.ts";
+import { words, type LangTag } from "./lang.ts";
 
 export type HandoffState = "given" | "taken" | "done" | "returned" | "declined" | "withdrawn" | "unclaimed";
 
@@ -218,13 +218,28 @@ export const HANDOFF_WORDS = {
   },
 } as const;
 
+/** The state as one word in the person's language (the same table shape as every other word). */
+const HANDOFF_STATE_WORDS: { en: Record<HandoffState, string>; zh: Record<HandoffState, string> } = {
+  en: {
+    given: "given",
+    taken: "taken",
+    done: "done",
+    returned: "returned",
+    declined: "declined",
+    withdrawn: "stopped following",
+    unclaimed: "not taken yet",
+  },
+  zh: {
+    given: "交给了",
+    taken: "接手了",
+    done: "做完了",
+    returned: "退回了",
+    declined: "接不了",
+    withdrawn: "不用跟了",
+    unclaimed: "还没人接手",
+  },
+};
+
 export function handoffStateWord(lang: LangTag, state: HandoffState): string {
-  const zh = lang === "zh" || lang.startsWith("zh-");
-  if (state === "returned") return zh ? "退回了" : "returned";
-  if (state === "declined") return zh ? "接不了" : "declined";
-  if (state === "withdrawn") return zh ? "不用跟了" : "stopped following";
-  if (state === "done") return zh ? "做完了" : "done";
-  if (state === "taken") return zh ? "接手了" : "taken";
-  if (state === "unclaimed") return zh ? "还没人接手" : "not taken yet";
-  return zh ? "交给了" : "given";
+  return words(HANDOFF_STATE_WORDS, lang)[state];
 }

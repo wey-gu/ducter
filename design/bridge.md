@@ -1516,7 +1516,7 @@ standing(pi)  = ask   能把事交给我；你让它看看，就收得到我的�
 
 ## After nmem 0.10.124: Mem's answers to our asks (D595, 2026-11-26)
 
-Evidence: `research/236` (nowledge-co/mem#11262, its PRs, read-only calls on the author's Mac with nmem
+Evidence: `research/237` (nowledge-co/mem#11262, its PRs, read-only calls on the author's Mac with nmem
 0.10.124). Of the nine asks, five shipped whole, three in part or another shape, and one (session kind) was
 answered by saying no inventory row is ever a session.
 
@@ -1540,7 +1540,7 @@ pi                           0.8.20's bridge skill                           D57
 - **No version gate in code.** Each new field is read when it is there and the older shape otherwise, so an
   nmem before 0.10.124 reads as it did; nothing assumes the installed version.
 - **Nothing a person sees changed.** 已读 / Read beside a sent message is unblocked and owed with shots (todo).
-- **Mem's side still** (a Bridge-ready note in research/236 §2's terms): a default Space for
+- **Mem's side still** (a Bridge-ready note in research/237 §2's terms): a default Space for
   `artifacts folders mk`; an error code on `--json` failures (a lapsed key reads only from stderr);
   `contact-status` answering live; a mailbox-changed line for one's own contacts on `inbox --watch`; a wait
   past 5 s; a plugin version for pi and Codex on `plugins check`.

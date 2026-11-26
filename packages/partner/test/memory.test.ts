@@ -62,6 +62,33 @@ describe("memory_search", () => {
     expect(r.note).toMatch(/carry on/i);
     expect(channel().filter((e) => e.kind === "ai_msg").length).toBe(1);
   });
+
+  // D590: memory that is there but out of reach is never "a colleague who forgot": the note says why.
+  test("Mem signed out, off or not answering: the note says it is out of reach, never forgotten", async () => {
+    const notes: Record<string, string> = {};
+    for (const down of [true, "signed_out", "off", "unreachable"] as const) {
+      let r: any;
+      const { partner, user, fc } = setup(
+        async (_i, s) => {
+          r = await fc.callTool("memory_search", { query: "周报" });
+          s.say("周报是发给哪个组来着？");
+          s.end();
+        },
+        fakeMemory([], { down }),
+      );
+      user("周报是发给哪个组来着？我之前跟你说过的。");
+      await partner.idle();
+      expect(r).toMatchObject({ ok: false, available: false });
+      notes[String(down)] = r.note;
+    }
+    expect(notes.true).toMatch(/someone who just doesn't remember/);
+    expect(notes.signed_out).toMatch(/NOT FORGOTTEN/);
+    expect(notes.signed_out).toMatch(/sign-in/);
+    expect(notes.unreachable).toMatch(/NOT FORGOTTEN/);
+    expect(notes.unreachable).not.toMatch(/timed out/); // Mem's words are data, never put in the partner's mouth
+    expect(notes.off).toMatch(/switched off/);
+    expect(notes.off).not.toMatch(/NOT FORGOTTEN|sign-in/);
+  });
 });
 
 describe("memory_add", () => {

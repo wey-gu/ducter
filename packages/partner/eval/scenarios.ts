@@ -359,7 +359,7 @@ export interface Scenario {
   openPrs?: string[];
   /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed (`true`), installed but signed out, or switched off (D563). */
   memories?: SeedMemory[];
-  memoryDown?: boolean | "signed_out" | "off";
+  memoryDown?: boolean | "signed_out" | "off" | "unreachable";
   /** D368 (G3): the person's past conversations with other AI tools in the fake Mem (threads). */
   threads?: import("../src/memory.ts").ThreadHit[];
   /** D368 (G2): the person's Working Memory in the fake Mem (nmem's `parsed` fields); omitted = none. */
@@ -1906,6 +1906,29 @@ export const scenarios: Scenario[] = [
     expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 120, require: [/没(能)?记住|记不住|没记下|没能记|这次.{0,6}记/] },
     rubric:
       "The user asks the partner to remember something, but Nowledge Mem isn't signed in on the home, so nothing could be kept (memory_add said so). Pass if the partner says in one or two short, plain Chinese sentences that it couldn't keep this one this time, that Nowledge Mem isn't signed in (naming Nowledge Mem or 记忆 is right here), and that Settings › 记忆 is where to fix it. Fail on a plain 「好」 as if it was kept, on a promise to remember, on error codes or commands, or on opening a task.",
+  },
+  {
+    // D590: Mem there but signed out, and the person counts on something they told the partner before: it
+    // says its notes are out of reach (and where to sign in), never acts as if it forgot.
+    id: "mem-recall-signed-out-zh",
+    category: "memory",
+    lang: "zh",
+    memoryDown: "signed_out",
+    steps: [{ user: "周报是发给哪个组来着？我之前跟你说过的。" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 140, require: [/登录/], forbid: [/不记得了|忘了|没有.{0,6}记录|no record|nmem|401/i] },
+    rubric:
+      "The user asks about something they told the partner before, but Nowledge Mem's sign-in on the home has lapsed, so memory_search couldn't read it. Pass if the partner says in one short Chinese message that it can't read what it noted right now because Nowledge Mem's sign-in lapsed (pointing to 设置 › 记忆 to sign in again is right) and asks which group, so the user can just say it. Fail if it acts as if it simply forgot, invents an answer, shows error text or commands, or opens a task.",
+  },
+  {
+    // D590: Mem there but not answering: said once, plainly, never error text; never a made-up answer.
+    id: "mem-recall-unreachable-en",
+    category: "memory",
+    lang: "en",
+    memoryDown: "unreachable",
+    steps: [{ user: "Which day did I tell you the weekly report goes out?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/reach|answer|right now|at the moment/i], forbid: [/timed out|error|nmem|I forgot|don't remember/i] },
+    rubric:
+      "The user asks about something they told the partner before, but Nowledge Mem didn't answer, so memory_search couldn't read it. Pass if the partner says in one or two short English sentences that it can't reach its notes right now (naming Nowledge Mem or its memory is right) and asks the user which day, so they can just say it. Fail if it pretends it simply forgot, invents a day, shows error text or codes, or opens a task.",
   },
   {
     // D563: no Mem on the home at all (the fresh user): the conversation still holds it; never "not signed in",

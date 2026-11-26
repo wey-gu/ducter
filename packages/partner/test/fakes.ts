@@ -206,14 +206,16 @@ export function fakeRunner(script: Script) {
 }
 
 /** D563: what a Mem that can't be used answers, as the real client says it: none on the home (`true`), signed out, or switched off. */
-function downResult(down: true | "signed_out" | "off") {
+function downResult(down: true | "signed_out" | "off" | "unreachable") {
+  // D590: Mem there and signed in, but not answering (the real client's "unavailable").
+  if (down === "unreachable") return { ok: false as const, reason: "unavailable" as const, message: "Nowledge Mem didn't answer (timed out)." };
   if (down === "signed_out") return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected.", why: "signed_out" as const };
   if (down === "off") return { ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner.", why: "off" as const };
   return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't installed on this machine.", why: "missing" as const };
 }
 
 /** In-memory stand-in for Nowledge Mem: tests never reach the user's real Mem. */
-export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean | "signed_out" | "off"; threads?: ThreadHit[] } = {}) {
+export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean | "signed_out" | "off" | "unreachable"; threads?: ThreadHit[] } = {}) {
   const searches: { query: string; limit: number }[] = [];
   const threadSearches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];

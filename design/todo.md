@@ -461,6 +461,15 @@ line.
   on one computer, Cloud on another). Then from what Mem reports (account or member, backend), the home's relay
   resolved to its upstream; never from API URLs.
 
+## Mem, the D590 walk's leftovers
+
+- [ ] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
+  with each note's source. Trigger: a person asks why a task knew something, or a task acts on a stale note.
+- [ ] **「你都记得我些什么？」's answer leads to the whole list**: one quiet line to Settings › Memory under it, set by a
+  mark the partner adds. Trigger: the next persona change (it needs one more line and its eval).
+- [ ] **One fix at Memory's head while Mem is signed out**: an agent plugin's update then waits under the sign-in, not
+  beside it. Trigger: D589's Settings pass lands.
+
 ## What Mem would like checked (D465, research/202)
 
 - [ ] **One live answer per kind.** On the author's Mem from the Memory page: one contradiction (Mem's
@@ -868,7 +877,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
       "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
       so the trigger stands. D595: Mem confirmed the JSON (top-level fields, integer counts; VERIFIED on 0.10.124,
-      research/236) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
+      research/237) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
@@ -891,7 +900,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] `bridge contact-status --watch` in place of re-reading `connections list` every few minutes (D595, #11292).
       Trigger: Mem's card command stops answering HTTP 400 (`cloud_agent_recipients_request_invalid`) after its
       Cloud deploy; then a read-only live check of one contact first.
-- [ ] Mem's side after D595 (research/236): a default Space for `artifacts folders mk`, an error code on `--json`
+- [ ] Mem's side after D595 (research/237): a default Space for `artifacts folders mk`, an error code on `--json`
       failures (the stderr match, D563, stays until then), a mailbox-changed line for one's own contacts, a wait past
       5 s, a pi and Codex version on `plugins check`. Trigger: Mem ships any; then drop the fallback it replaces.
 

@@ -99,10 +99,14 @@ func TestD329NotedLine(t *testing.T) {
 			if zh {
 				old = "周报周五下午发"
 			}
-			for _, w := range []string{L.T("memory.replaced", old), L.T("memory.waiting"), L.T("memory.undo")} {
+			for _, w := range []string{L.T("memory.replaced", old), L.T("memory.waiting", map[bool]string{true: "喜欢深色模式", false: "Likes dark mode"}[zh]), L.T("memory.undo")} {
 				if !hasText(tt, w) {
 					t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 				}
+			}
+			// D590: a waiting one never reads "Noted" before it is in Mem.
+			if w := L.T("memory.noted", map[bool]string{true: "喜欢深色模式", false: "Likes dark mode"}[zh]); hasText(tt, w) {
+				t.Errorf("%s: a waiting save reads %q", lang, w)
 			}
 			if hasText(tt, L.T("partner.memory.forget")) {
 				t.Errorf("%s: a fresh line offers Forget, not Undo", lang)

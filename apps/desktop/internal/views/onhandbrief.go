@@ -296,7 +296,11 @@ func (a *App) peek(c *ui.Context) {
 		if stuck {
 			now, ink = keepWords(autospace(a.stuckFix(task).clause())), t.NeedsYou.Ink
 		}
-		uiText(c.Key("now"), now).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(4).Tooltip(s.words)
+		// D584: a story that is only the state's own word (在做 / 做完了) is what the beat above
+		// already says: the status is said once.
+		if stuck || s.words != a.stateLabel(att) {
+			uiText(c.Key("now"), now).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(4).Tooltip(s.words)
+		}
 		if r := task.Report(); stuck && r != nil && strings.TrimSpace(r.Summary) != "" {
 			uiText(c.Key("said-h"), a.L.T("onhand.peek.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			uiText(c.Key("said"), keepWords(autospace(strings.TrimSpace(r.Summary)))).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(5)

@@ -1114,7 +1114,10 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // when it looks again, else nothing (the heartbeat says when it is back).
   // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
   const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
-  const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
+  // D584: a story that is only the state's own word (在做 / 做完了) is what the row's time already
+  // says (在做 3 分钟了 / 7:52 做完): the status is said once, the second line left out.
+  const bare = !stuck && !mend && s.words === stateLabel(a);
+  const line = bare ? "" : stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const roundFacts = rounds && !working ? roundsLine(rounds) : [];
   if (rounds?.everyMs) meta.push(t("og.round.every", rhythm(rounds.everyMs)));
   meta.push(...bgFact(task));
@@ -1213,7 +1216,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
               <Facts class="w" items={roundFacts} />
             </span>
           ) : (
-            (working || line) && (
+            ((working && !bare) || line) && (
               <span class={`o2${stuck ? " needs" : s.tone && !mend ? ` ${s.tone}` : ""}`}>
                 {s.mark && !stuck && <StepMark k={s.mark} />}
                 <span key={working ? words : ""} class={working ? "w say" : "w"}>

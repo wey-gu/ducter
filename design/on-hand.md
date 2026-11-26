@@ -77,7 +77,8 @@ task in {name}** where the bare ＋ stood.
    **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays the menu bar's.
    D471: nothing more under it. D467's lines (刚才, 等你 with the first two stuck tasks, 接下来) named
    tasks the rows named again, and on the author's real board the two disagreed; every task is now its
-   own row, said once.
+   own row, said once. D584: a row whose story is only the state's own word (**在做 / 做完了**, a task
+   that said nothing yet) has no second line: its time (**在做 3 分钟了 / 7:52 做完**) says it.
    **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
    classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D472's line and its
    real fix, one implementation with the task's page, `cant.tsx` / `cant.go`: **拉一份到 {computer} 上**,
@@ -195,7 +196,8 @@ From 1280 (Mac pt, web px), a clay card 360 wide beside the list sits in on a ta
 keys moved to on this board (a focus kept from a task opened before doesn't hold it), else the first
 at work, else the first in the walk. Its mark, title (16/700, up to three lines) and where, its
 heartbeat, the living line in full (a stuck task's reason, then **它最后说 / Its last words**: what it
-reported, whole), **最近几步 / Latest steps** (D498: the last six lines of `saidOf`, newest last and in
+reported, whole; D584: left out when it is only the state's own word, 在做 / 做完了, which the heartbeat
+already says), **最近几步 / Latest steps** (D498: the last six lines of `saidOf`, newest last and in
 ink; steps with no words of their own as one gist; a failed step quiet, with the small cross), a PR
 chip when done, and **打开任务 / Open the task**. Arrows and j/k move it; Enter opens;
 hovering a row doesn't move it. Round 4: its picture

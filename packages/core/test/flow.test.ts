@@ -289,3 +289,33 @@ test("a question that names no Go reads in the task's language (好，继续, ne
   await tick();
   expect((kinds(log, "decision")[0]!.body as Bodies["decision"]).goLabel).toBe("继续");
 });
+
+test("D584: a routine's silent rounds stay out of the living message; one line for its rounds that didn't work", async () => {
+  const { log, tasks } = setup();
+  const routine = (routineId: string, reports: "every" | "on_change") =>
+    log.append({ stream: `routine:${routineId}`, origin: "partner", kind: "routine", body: { routineId, name: routineId, trigger: { kind: "time", cron: "0 9 * * *" }, triggerWords: "every day 9:00", brief: "Look.", reports, effect: "read_only", budget: { monthTokens: 1 }, state: "active", createdAt: new Date(0).toISOString(), reviewAt: new Date(0).toISOString() } as never });
+  const round = (routineId: string, taskId: string) => {
+    openTask(log, taskId, taskId);
+    log.append({ stream: `routine:${routineId}`, origin: "schedule", kind: "routine_run", body: { routineId, runId: taskId, scheduledFor: new Date(0).toISOString(), state: "started", taskId } });
+  };
+  routine("ci", "on_change");
+  routine("digest", "every");
+  round("ci", "r1");
+  round("ci", "r2");
+  round("ci", "r3");
+  round("digest", "d1");
+  openTask(log, "t1", "Flaky test");
+  report(log, "r1", { state: "done", summary: "All green." });
+  report(log, "r2", { state: "failed", summary: "Gmail needs signing in." });
+  report(log, "r3", { state: "failed", summary: "Gmail needs signing in." });
+  report(log, "d1", { state: "done", summary: "The weekly note is in Notes." });
+  report(log, "t1", { state: "done", summary: "Fixed." });
+  await tick();
+  for (const id of ["r1", "r2", "r3"]) expect(tasks.get(id)!.fromRoutine?.routineId).toBe("ci");
+  const items = (kinds(log, "living_msg").at(-1)!.body as Bodies["living_msg"]).items;
+  expect(items.map((i) => [i.taskId, i.kind])).toEqual([
+    ["r3", "failed"],
+    ["d1", "done"],
+    ["t1", "done"],
+  ]);
+});

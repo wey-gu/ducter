@@ -770,6 +770,19 @@ badge, sparkle, arrow, ring or button. Consent cards (hold to talk, talk hands-f
 yet) and promises said every time (the checkout's) are not this pattern. Names and words:
 `packages/protocol/src/first-meet.ts`, `research/196`. Shots: `.shots/first-meet/`.
 
+### Asks Ducter makes of its own (D584)
+
+What Ducter itself asks at the conversation's end (to notify this computer, to connect a phone) is
+one row on the surface: the partner's face at 48 in its needs-you pose, held still; the question at
+the body's size (15) and 700, never the 20/800 of a task's question; the note under it in `ink-muted`
+at 13; the buttons under both, on the words' edge (a phone: under the face). Mac `askRow`
+(`asks.go`), web `.ask.notify-ask`. A question the person has to answer for work is a decision card;
+this is the app asking about itself, and says so by being smaller.
+
+**Two smaller rules from the same pass.** A quiet button at the end of a smaller line (看细节 after an
+ask's default) sits on that line's first line, never 4 pt under it (`defaultUnder`). Links in a
+note's foot that wrap start on one left edge (`.note-foot`).
+
 ## Platform conventions (D573)
 
 What every hand already knows is a contract (research/233). Every change a person can see is

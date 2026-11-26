@@ -63,7 +63,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
   const decisionBody = new Map<string, NonNullable<TaskCard["pendingDecision"]>>();
   const waiters = new Map<string, Bodies["waiter"] & { persona?: string }>(); // armed only
   const routineNames = new Map<string, string>();
-  const runOf = new Map<string, { routineId: string; name: string }>(); // a routine's run task
+  const routineReports = new Map<string, "every" | "on_change" | "needs_you">(); // D584: how its runs report
+  const runOf = new Map<string, { routineId: string; name: string; reports?: "every" | "on_change" | "needs_you" }>(); // a routine's run task
   // D216: each task's latest step, kept live; a card not looked up since boot reads its stream once.
   const latest = new Map<string, LogEvent<"task_event">>();
   const lookedUp = new Set<string>();
@@ -199,12 +200,14 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       case "routine": {
         const b = e.body as Bodies["routine"];
         routineNames.set(b.routineId, b.name);
+        if (b.reports) routineReports.set(b.routineId, b.reports);
         break;
       }
       case "routine_run": {
         const b = e.body as Bodies["routine_run"];
         if (!b.taskId) return;
-        const from = { routineId: b.routineId, name: routineNames.get(b.routineId) ?? "" };
+        const reports = routineReports.get(b.routineId);
+        const from = { routineId: b.routineId, name: routineNames.get(b.routineId) ?? "", ...(reports ? { reports } : {}) };
         runOf.set(b.taskId, from);
         const c = cards.get(b.taskId);
         if (c) c.fromRoutine = from;

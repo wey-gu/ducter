@@ -1052,7 +1052,9 @@ func (a *App) defaultUnder(c *ui.Context, d *store.DecisionState, ink ui.Color, 
 			uiText(c, autospace(line)).FontSize(size).TextColor(ink).LineHeight(1.45).MinWidth(0).Shrink(1)
 		}
 		if after != nil {
-			after()
+			// D584: a quiet button (28 tall, its words centred) sits on the sentence's first line,
+			// not 4pt under it: lifted by half the difference of the two heights.
+			ui.Row(c.Key("dflt-after")).Margin(min(0, (size*1.45-28)/2), 0, 0, 0).Children(after)
 		}
 	})
 }

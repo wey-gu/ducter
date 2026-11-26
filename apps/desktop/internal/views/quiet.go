@@ -549,6 +549,13 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		return
 	}
 	sort.SliceStable(waiting, func(i, j int) bool { return dueAt(waiting[i].d).Before(dueAt(waiting[j].d)) })
+	// D584: what is said comes first; the results still being put into words wait last, as one
+	// presence where the partner's words will land.
+	due := func(it protocol.LivingItem) bool {
+		task := a.S.Task(it.TaskID)
+		return task != nil && a.wordsDueIn(task) > 0
+	}
+	sort.SliceStable(news, func(i, j int) bool { return !due(news[i]) && due(news[j]) })
 	head := waiting
 	if !shown && !a.open["asks:"+itoa(e.FirstSeq)] && len(waiting) > 1 {
 		head = waiting[:1]
@@ -564,7 +571,17 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 		if away {
 			a.timeLine(c, a.L.T("living.away"), clockOf(e.Event.TS))
 		}
+		held := false // D584: several results at once share one waiting presence
 		for i, it := range news {
+			if task := a.S.Task(it.TaskID); task != nil {
+				if wait := a.wordsDueIn(task); wait > 0 {
+					if held {
+						c.After(wait + 50*time.Millisecond)
+						continue
+					}
+					held = true
+				}
+			}
 			a.news(c.Key(i), "l"+itoa(e.FirstSeq)+":"+it.TaskID, it, a.chipOwner[it.TaskID] == e.FirstSeq)
 		}
 		if len(lines) > 0 {
@@ -578,6 +595,14 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 			a.ask(c, x.d, x.it.TaskID)
 		}
 		for _, x := range head {
+			// D584: a task's question still being put into words waits behind the one presence
+			// already there, never a second figure under the first.
+			if held && openAsk(x.d) {
+				if wait := a.relayDueIn(x.d); wait > 0 {
+					c.After(wait + 50*time.Millisecond)
+					continue
+				}
+			}
 			a.ask(c, x.d, x.it.TaskID)
 		}
 		if rest > 0 || (len(head) >= 2 && defaults >= 2) {

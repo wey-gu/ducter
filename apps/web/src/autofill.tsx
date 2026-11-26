@@ -338,7 +338,7 @@ export function AutofillSettings() {
               </span>
               <span class="grow">
                 {/* D296: a list said as one, never facts joined with " · " (the Mac's afRow). */}
-                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => d.value).join(t("acct.sep")) || t("af.d.kept", kept.length) : t("af.d.add")}</b>
+                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => (d.key === "phone" ? d.value!.replace(/ /g, "\u00a0") : d.value)).join(t("acct.sep")) || t("af.d.kept", kept.length) : t("af.d.add")}</b>
                 <small>{kept.length ? (kept.some((d) => !d.value) ? t("af.d.also", kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(t("acct.sep"))) : t("af.d.edit")) : t("af.d.why")}</small>
               </span>
             </button>

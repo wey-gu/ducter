@@ -844,6 +844,32 @@ D582's leftovers, then the review D582 skipped, on every pane at Mac 1150 and we
 Rejected in review: flattening the clay (ledges, shadows, stones, the sunken picture); the slop scanner's hits
 outside Settings; labels over the open row's fields; centring the picture's labels.
 
+## Every pane, end to end (D589)
+
+The author's standing ask once more: every pane on both clients in every state, not only the filled one. The
+Mac's twelve at 1150 and 1400 (`TestD475Shots`), the web's eleven at 390 and 1000 (headless Chrome, first screen
+and full), zh and en, light and dark, each filled (`demo-settings-real.ts`, `DEMO_PARTNERS=1`), with needs and
+errors (`DEMO_NEEDS=1`) and empty (a bare demo core): `.shots/settings-r5/{before,after}`, 2x crops in
+`after/crops/`.
+
+**The walk, as the three people.** H (four partners, a server home, OOMOL down) opens Overview: three needs, each
+with its way, in one column now; Accounts says OOMOL once with 再试一次 and its rows fade; Partner's rows are one
+height. C opens Passwords & cards on a phone: their details read as three things, the number whole. F on a Mac
+with nothing set up: To-do sources offers 可以加上 (never 还能加上 over nothing); Where it runs names this Mac once.
+The partner's word after each change (D296) was walked where it exists (quiet hours, the wait, a watch switch, a
+figure, the files switch) and held.
+
+| # | Where | Found | Now |
+|---|---|---|---|
+| 1 | Overview with needs (Mac, web 1000) | **去看看 / 更新 / 更新** each right after its sentence: three x | The words take the line; the ways sit at one right edge, as the phone's |
+| 2 | Partner, the one you're talking with | **正在聊** a third line; its **改一下** alone below, off the actions' edge | **正在聊** the shared state word (`tag` on) where the others have **换到**; **改一下** after it |
+| 3 | Passwords & cards › Your details, phone | **+86 / 138 0000 0000** | A phone number never breaks at its spaces |
+| 4 | Where it runs, a home on this Mac this window didn't start | A card with only **这台 Mac**, over the map naming it again | The group shows only with something to do |
+| 5 | To-do sources, nothing added | **还能加上** over **还没有加上的** | **可以加上** |
+| 6 | Accounts, nothing connected, phone | **连接 Tuwa** squeezed **用 Tuwa 打**'s line to a five-line strip | A group's head row drops its button under its words as every row does (D468); a switch never |
+
+Left, with reasons, in D589.
+
 ## Not done
 
 - D475's own: Where it runs'

@@ -12,6 +12,7 @@ import { createPortal } from "preact/compat";
 import { A } from "./app.ts";
 import { Btn, Chev, DangerButton, EditRow, Facts, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
+import { CopyLine } from "./lend.tsx";
 import { clock, colTime, harnessName, spoken, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
@@ -46,6 +47,12 @@ export const K = {
   edit: { field: "" as KeepField | "", draft: {} as Record<string, string>, busy: false, error: "" },
   words: { open: false, draft: "", phase: "" as "" | "reading" | "read" | "saving", proposal: undefined as KeepProposal | undefined },
   done: undefined as { id: string; edits: KeepEdit[]; undo?: KeepChange; undone?: boolean } | undefined,
+  // D620: the doorbell row's own state, and the URL only this page may show (once).
+  bell: undefined as { id: string; url: string } | undefined,
+  bellOpen: false,
+  bellBusy: false,
+  bellError: "",
+  bellSending: "" as "" | "on" | "off" | "new",
 };
 
 const freshEdit = () => ({ field: "" as KeepField | "", draft: {} as Record<string, string>, busy: false, error: "" });
@@ -63,6 +70,11 @@ export function openKeep(id: string) {
   K.edit = freshEdit();
   K.words = freshWords();
   K.done = undefined;
+  K.bell = undefined;
+  K.bellOpen = false;
+  K.bellBusy = false;
+  K.bellError = "";
+  K.bellSending = "";
   A.send({ t: "keep", id });
   if (A.route.name !== "onhand") A.go(fullNow() ? { name: "onhand", full: true } : { name: "onhand" });
   else A.changed();
@@ -80,12 +92,18 @@ const goTask = (id: string) => A.go({ name: "task", id, full: fullNow() });
 export function closeKeep() {
   K.open = "";
   K.pause = K.stop = false;
+  K.bell = undefined;
+  K.bellOpen = false;
   A.changed();
 }
+
+/** D620: the home may hand the URL to the page once (a partner turned it on). */
+const bellHref = (url: string) => (url.startsWith("/") ? `${location.origin}${url}` : url);
 
 export function onKeepFrame(f: Extract<ServerFrame, { t: "keep_result" }>) {
   if (f.keep) K.pages.set(f.id, f.keep);
   else K.pages.delete(f.id);
+  if (f.keep?.bell?.url) K.bell = { id: f.id, url: bellHref(f.keep.bell.url) };
   A.changed();
 }
 
@@ -94,6 +112,18 @@ export function onKeepEdit(f: Extract<ServerFrame, { t: "keep_changed" | "keep_p
   if (f.id !== K.open) return;
   if (f.t === "keep_proposal") {
     if (K.words.phase === "reading") (K.words.phase = "read"), (K.words.proposal = f.proposal);
+  } else if (K.bellSending && f.id === K.open) {
+    // D620: the doorbell row's answer: on/new keep the row open with the URL, off closes it.
+    const was = K.bellSending;
+    K.bellSending = "";
+    K.bellBusy = false;
+    if (f.ok) {
+      K.bellError = "";
+      if (was === "off") K.bell = undefined;
+      if (f.bell) K.bell = { id: f.id, url: bellHref(f.bell.url) };
+    } else {
+      K.bellError = t("keep.edit.failed", f.error ?? "");
+    }
   } else if (f.ok) {
     K.edit = freshEdit();
     if (K.words.phase === "saving") K.words = freshWords();
@@ -353,6 +383,9 @@ function wokeWords(r: KeepRound, k: KeepPage): string {
       return r.wokeWhat ? t("keep.woke.change", r.wokeWhat) : t("keep.woke.change.bare");
     case "now":
       return t("keep.woke.now");
+    case "ring":
+      // D620: the caller's label is shown here, as their words, never as an instruction.
+      return r.wokeWhat ? t("keep.woke.ring.about", r.wokeWhat) : t("keep.woke.ring");
     case "first":
       return t("keep.woke.first");
     default:
@@ -733,10 +766,67 @@ function HowItRuns({ k }: { k: KeepPage }) {
       : []),
   ];
   const done = K.done?.id === k.id ? K.done : undefined;
+  // D620: 门铃 / Doorbell: off by default; on, the URL is shown once with Copy and curl;
+  // Regenerate and Turn off. A helper takes work at its address, so it has no rounds to ring.
+  const bellUrl = K.bell?.id === k.id ? K.bell.url : "";
+  const bellCurl = bellUrl ? `curl -X POST -H 'X-Ducter-About: CI #42' '${bellUrl}'` : "";
+  const sendBell = (action: "on" | "off" | "new") => {
+    if (K.bellBusy) return;
+    K.bellSending = action;
+    K.bellBusy = true;
+    K.bellError = "";
+    A.send({ t: "keep_change", id: k.id, change: { bell: action } });
+    A.changed();
+  };
+  // D620: Done folds the block, never a Cancel: the URL is already there, nothing to undo.
+  const foldBell = () => ((K.bellOpen = false), (K.bellError = ""), A.changed());
+  const bellFoot = (
+    <>
+      {k.bell ? (
+        <>
+          <Btn kind="text" size="sm" label={t("keep.bell.new")} disabled={K.bellBusy} onClick={() => sendBell("new")} />
+          <DangerButton quiet label={t("keep.bell.on.act")} about={k.title} onClick={() => sendBell("off")} />
+        </>
+      ) : (
+        <Btn kind="secondary" size="sm" label={t("keep.bell.off.act")} disabled={K.bellBusy} onClick={() => sendBell("on")} />
+      )}
+      <span class="end">
+        <Btn kind="primary" size="sm" label={t("keep.bell.done")} onClick={foldBell} />
+      </span>
+    </>
+  );
+  const bellRow = (
+    <EditRow
+      label={t("keep.rule.bell")}
+      values={[k.bell ? t("keep.bell.on") : t("keep.bell.off")]}
+      editable={!ended}
+      open={K.bellOpen}
+      busy={K.bellBusy}
+      error={K.bellError}
+      saveLabel={t("keep.bell.done")}
+      onOpen={() => ((K.bellOpen = true), (K.bellError = ""), A.changed())}
+      onSave={foldBell}
+      onCancel={foldBell}
+      foot={bellFoot}
+    >
+      {!k.bell && <span class="later-note">{t("keep.bell.off.what")}</span>}
+      {k.bell && bellUrl && (
+        <>
+          <CopyLine text={bellUrl} kind="check" />
+          <span class="later-note">{t("keep.bell.curl")}</span>
+          <CopyLine text={bellCurl} kind="line" />
+          <span class="later-note">{t("keep.bell.note.once")}</span>
+          <span class="later-note">{t("keep.bell.note.where")}</span>
+        </>
+      )}
+      {k.bell && !bellUrl && <span class="later-note">{t("keep.bell.hidden")}</span>}
+    </EditRow>
+  );
   return (
     <>
       <div class="kp-card kp-rules">
         {rows}
+        {!helper && bellRow}
         {!ended && (
           <div class="acts">
             {k.life === "paused" ? (

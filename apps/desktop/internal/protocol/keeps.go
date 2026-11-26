@@ -34,7 +34,7 @@ type PrWake struct {
 	What string `json:"what"`
 }
 
-// KeepRound is one wake: what woke it (time, arrival, change, now, first),
+// KeepRound is one wake: what woke it (time, arrival, change, now, ring, first),
 // what it did, and whether it spoke (silent, told, asked).
 type KeepRound struct {
 	At       string `json:"at"`
@@ -92,6 +92,13 @@ type KeepAddress struct {
 	Spaces []string `json:"spaces,omitempty"`
 }
 
+// KeepBell is a Keep's doorbell (D620): on when present, with when its
+// URL was made. The URL itself is never here; a page reveals it once.
+type KeepBell struct {
+	At  string `json:"at"`
+	URL string `json:"url,omitempty"`
+}
+
 // KeepSheet is a Keep on On hand: the home's one model of its state.
 type KeepSheet struct {
 	ID          string          `json:"id"`
@@ -116,8 +123,10 @@ type KeepSheet struct {
 	Week        int             `json:"week"`
 	PausedUntil string          `json:"pausedUntil,omitempty"`
 	Address     *KeepAddress    `json:"address,omitempty"`
-	Since       string          `json:"since"`
-	EndedAt     string          `json:"endedAt,omitempty"`
+	// D620: its doorbell (the sheet says on/off; a page may carry the URL once).
+	Bell    *KeepBell `json:"bell,omitempty"`
+	Since   string    `json:"since"`
+	EndedAt string    `json:"endedAt,omitempty"`
 }
 
 // KeepWhere is where a Keep's rounds run and who does them.
@@ -178,6 +187,8 @@ type KeepChange struct {
 	Where        string  `json:"where,omitempty"`
 	Agent        string  `json:"agent,omitempty"`
 	Address      string  `json:"address,omitempty"`
+	// D620: on, off, or new (a fresh URL; the old one stops at once).
+	Bell string `json:"bell,omitempty"`
 }
 
 // KeepChangeReq is keep_change: an edit on a Keep's page (Undo: it puts back
@@ -217,6 +228,8 @@ type KeepEditFrame struct {
 	Undo     *KeepChange   `json:"undo,omitempty"`
 	Undone   bool          `json:"undone,omitempty"`
 	Proposal *KeepProposal `json:"proposal,omitempty"`
+	// D620: the doorbell URL, only in the answer to the page that made it.
+	Bell *KeepBell `json:"bell,omitempty"`
 }
 
 func decodeKeepEdit(data []byte, f ServerFrame) (ServerFrame, error) {

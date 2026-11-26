@@ -66,6 +66,7 @@ import { registerPartnerTool } from "./partner-tool.ts";
 import { DEFAULT_PARTNER, channelOf, isOtherChannel } from "@ducter/protocol/src/partners.ts";
 import { asSeenBy, createWhose, partnerView } from "./partner-view.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
+import { handleDoorbell } from "./doorbell.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
 import { createApnsSender, createAppPushSender, http2Transport, loadApnsConfig, type ApnsSender, type ApnsTransport } from "./apns.ts";
@@ -1864,6 +1865,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
   // migration: their own records stay as they are), and whatever becomes one later is kept at once.
   const keeps = (keepsRef = createKeeps({
+    dataDir,
     log,
     tasks,
     routines: work.routines,
@@ -1873,6 +1875,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     helperTasks: () => helperIndex.tasks,
     helperWeek: (id) => helperCount(id).week,
     handoffs: () => handoffs,
+    // D620: a doorbell URL uses the address the person already reaches the home by, when one is
+    // set (the primary way); with none, the clients build it from where they reached the home.
+    homeBase: () => reachRef?.ways().find((w) => w.primary)?.url,
     // D533: a task in rounds moved on its page (another computer, another agent), as task_switch moves it.
     move: async (taskId, to) => {
       const c = tasks.get(taskId);
@@ -3036,6 +3041,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (pic) return pic;
       // D393: the Mem relay carries its own per-task key (a sandbox holds no device token).
       if (url.pathname === "/mem" || url.pathname.startsWith("/mem/")) return (await memRelayRef?.handle(req)) ?? new Response("not found", { status: 404 });
+      // D620: a Keep's doorbell (a secret URL; a body it never reads) is before the gate, like
+      // a picture's bytes: the caller is a CI job or a script with no device token.
+      const bell = await handleDoorbell(req, keeps);
+      if (bell) return bell;
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;

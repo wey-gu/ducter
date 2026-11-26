@@ -757,6 +757,8 @@ export function EditRow(p: {
   onSave: () => void;
   onCancel: () => void;
   children?: ComponentChildren;
+  /** A foot of the row's own (the doorbell's quiet actions and one primary Done): replaces 保存/取消. */
+  foot?: ComponentChildren;
 }) {
   // D592: at rest, a row that may change is one button (iOS Settings' way, never a lone 改): its name
   // with the drawn chevron at the right, its values; the one row hover (D529); 修改「…」 for a reader.
@@ -814,10 +816,14 @@ export function EditRow(p: {
               {p.error}
             </p>
           )}
-          <span class="er-acts">
-            <Btn kind="primary" size="sm" label={p.busy ? (p.busyLabel ?? t("keep.edit.saving")) : (p.saveLabel ?? t("keep.edit.save"))} disabled={p.busy} onClick={p.onSave} />
-            <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
-          </span>
+          {p.foot !== undefined ? (
+            <div class="er-acts er-foot">{p.foot}</div>
+          ) : (
+            <span class="er-acts">
+              <Btn kind="primary" size="sm" label={p.busy ? (p.busyLabel ?? t("keep.edit.saving")) : (p.saveLabel ?? t("keep.edit.save"))} disabled={p.busy} onClick={p.onSave} />
+              <Btn kind="text" size="sm" label={t("keep.edit.cancel")} onClick={p.onCancel} />
+            </span>
+          )}
         </>
       )}
     </div>

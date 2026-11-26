@@ -763,6 +763,9 @@ export interface Bodies {
   // D533: a change to a Keep, by the person on its page or by the partner (keep_change), on stream
   // keep:<keepId>: each field from and to, shown as a line among its rounds.
   keep_edit: { keepId: string } & import("./keeps.ts").KeepEditLine;
+  // D620: a doorbell rang for a Keep, on stream keep:<keepId>: when, and the caller's own short
+  // "about" label when it gave one. Never a request body: the body is never read at all.
+  keep_ring: { keepId: string; at: string; label?: string };
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).

@@ -1,6 +1,7 @@
 # Looking after (看守中): one object for work Ducter keeps on for the person
 
-> **D511: accepted; phases 1–3 of §11 built 2026-11-24.** The Keep store and the migration
+> **D511: accepted; phases 1–3 of §11 built 2026-11-24. D620 adds its doorbell (a secret URL
+> that wakes a round now), built 2026-11-27.** The Keep store and the migration
 > (`core/src/keeps.ts`, `protocol/src/keeps.ts`), On hand's 看守中 and each Keep's page on the web and the
 > Mac (`apps/web/src/keep.tsx`, `apps/desktop/internal/views/keeps.go`), and the partner's `keep_make` /
 > `keep_list` / `keep_change`. Phases 4–6 (goals and news as recorded judgments, the clay mark, live on
@@ -68,6 +69,19 @@
   record and says so back once); a row with a task keeps D602's actions. A hand-off arrival round never ends on the
   head's colon (`arrivalDid`). Both clients read the facts on the existing frames (`TaskCard.handoff`,
   `KeepPage.handoffs`); the web and Mac tests, the geometry at 390/1150, and `.shots/handoff/` cover them.
+- **D620, the doorbell.** A Keep that runs a round (a task in rounds or a routine) can be rung
+  from outside by a secret URL (`/doorbell/<token>`): a CI job, a GitHub webhook, a cron on another
+  server or a phone shortcut says "something changed, look now". The event is only a doorbell: its
+  body is never read, kept or shown to the model; at most the caller's own `X-Ducter-About` header
+  (60 printable characters) is kept on the round's line for the person, marked as the caller's words,
+  never an instruction. Many rings within a minute are one round; a round under way absorbs them; a
+  valid token is rate-limited (20 a minute); a wrong token and a path that doesn't exist are the same
+  404, with the same work done. The token is a hash in `<dataDir>/doorbells.json` (0600), never the
+  Log (a task can read the Log); a page reveals the plaintext once. Regenerate kills the old URL at
+  once; Turn off closes it, and so does the Keep ending. A helper has none: its address is how work reaches it, so it has no round
+  for a doorbell to start. The URL uses the address the home already has (its primary way, else the
+  address the client reached it at); it opens no new tunnel. It is not a hand-off (D609): it carries
+  no work and no owner, and a ring never asks for an outward act, so D61's floor is untouched.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The
@@ -184,6 +198,7 @@ only the person or its goal ends it.
 | `run` | how a round runs: `same` (one task across rounds, D394's fresh-session rule), `fresh` (a task per round, D114), `perItem` (a task per item, D494) | the partner | — |
 | `address` | optional: its Bridge name, so other agents can hand it work (D494). A detail inside the Keep, never its home | made with it | — |
 | `app` | optional: a small app it fills (D407); a second view of `items`, never a second state | the person's Go on the offer | — |
+| `bell` | optional: its doorbell (D620), a secret URL off the home; the token is never on the Keep, only in the home's 0600 file | the person, or the partner asked in words | code (a ring wakes; a wrong token is a 404) |
 | `life` | `on` (with `health`: on time, late, a computer asleep, out of allowance, D427/D429), `paused` (until a time or a resume), `done` (goal met, with evidence), `stopped` (by the person) | — | code, from the person's gesture or the recorded goal |
 
 **Life.** `on → paused → on`, `on → done` (the model recorded the goal as met; code stops every wake, keeps
@@ -304,7 +319,8 @@ the side column after the rounds.
    the send stays pressed in; then the box empties and one line says **{partner} 收到了，改好会在对话里说一声。**
 8. **怎么做 / How it runs** (the side column; each rule changed in place with **改**, D533): when it wakes, until, when it speaks, limits, where and who, and
    for a Keep with an address **别的 agent 怎么找到它** (its Mem name, D604 **在这些 Space 收信：{the Spaces}**, and **已连上**; the Bridge details one more tap
-   in, never the page's subject). At its foot **暂停 ▾** (暂停 1 小时, 暂停到明天早上, 暂停一周, 一直暂停，直到我恢复), **立即运行**, and last and apart **结束看守** (D592; in the
+   in, never the page's subject), and for a Keep that runs a round **门铃 / Doorbell** (D620): off at first; on, the URL shown once with Copy and
+   a curl example, one quiet foot with **换一个地址 / Make a new URL** and **关掉门铃 / Turn it off** (quiet danger), and **好了 / Done** as the one primary that folds it. At its foot **暂停 ▾** (暂停 1 小时, 暂停到明天早上, 暂停一周, 一直暂停，直到我恢复), **立即运行**, and last and apart **结束看守** (D592; in the
    failed ink, asks once).
 
 ### Phone and Mac

@@ -124,7 +124,7 @@ const HEL_SPACES = [
   { id: "userfiles", label: "userFiles" },
 ];
 
-const REVIEW_TASK = { key: "rev", title: "看 nowledge-co 里请我 review 的 PR", ack: "好，每 45 分钟去看一轮，审好的先给你过目再发。", state: "working" as const, harness: "codex" };
+const REVIEW_TASK = { key: "rev", title: "看 nowledge-co 里请我 review 的 PR", ack: "好，每 45 分钟去看一轮，审好的先给你过目再发。", state: "working" as const, harness: "codex", needs: { reviews: true } }; // D612: a review task is one the partner marked so at open
 
 /** D534: one thing the user picked with @ or / (the label is what the words hold after @ or /). */
 export type EvalRef = { task: string; label: string } | { skill: string; about?: string } | { action: "keep" | "remind"; label: string };

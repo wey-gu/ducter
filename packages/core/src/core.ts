@@ -2699,8 +2699,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (ownPr.has(taskId) || work.owned.of(taskId).length > 0) return false;
     const known = reviewTasks.get(taskId);
     if (known !== undefined) return known;
-    if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
     const opens = log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 20 });
+    // The partner's judgment at open stands on its own; without it, only a home with GitHub can
+    // have review work from before the field (the legacy case below).
+    if (opens.some((e) => (e.body as Bodies["task_open"]).needs?.reviews === true)) return reviewTasks.set(taskId, true), true;
+    if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
     // D612: the partner's one judgment at open, recorded on the task; never what its words look like.
     // A task in rounds that already has a review board keeps its review work from before this field
     // existed (its Keep would otherwise lose review_report mid-life); no words are read for it.

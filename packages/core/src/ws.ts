@@ -2400,6 +2400,30 @@ export function createWsHandler(deps: WsDeps) {
         ongoingChanged();
         return;
       }
+      case "handoff_take": {
+        // D616: 让它现在接 / Take it now: a fresh arrival wakes the helper's round for this record.
+        const h = deps.core.handoffs?.get(String(f.id ?? "").slice(0, 64));
+        if (!h) throw new Error("I can't find that hand-off.");
+        deps.core.handoffs?.wake(h.handoffId);
+        const keep = deps.past?.keeps?.all().find((k) => k.from.kind === "helper" && k.from.helperId === h.to.helper);
+        if (keep) {
+          const page = deps.past!.keeps!.page(keep.keepId);
+          send(ws, { t: "keep_result", id: keep.keepId, ...(page ? { keep: page } : {}) });
+        }
+        return;
+      }
+      case "handoff_withdraw": {
+        // D616: 不用跟了 / Stop following: the record is withdrawn and the sender hears it once.
+        const h = deps.core.handoffs?.get(String(f.id ?? "").slice(0, 64));
+        if (!h) throw new Error("I can't find that hand-off.");
+        await deps.core.handoffs?.withdraw(h.handoffId, { say: true });
+        const keep = deps.past?.keeps?.all().find((k) => k.from.kind === "helper" && k.from.helperId === h.to.helper);
+        if (keep) {
+          const page = deps.past!.keeps!.page(keep.keepId);
+          send(ws, { t: "keep_result", id: keep.keepId, ...(page ? { keep: page } : {}) });
+        }
+        return;
+      }
       case "keep_words": {
         // D533: edited words read once into the rules they change; nothing applies until the person's Go.
         const k = deps.past?.keeps;

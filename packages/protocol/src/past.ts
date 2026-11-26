@@ -314,6 +314,10 @@ export type PastClientFrame =
   // D533: an edit on a Keep's page (the one path the partner's keep_change takes too), and edited words to read into rules.
   | { t: "keep_change"; id: string; change: import("./keeps.ts").KeepChange; undo?: boolean }
   | { t: "keep_words"; id: string; said: string }
+  // D616: 手上的事's two actions on a hand-off nobody took: ask the helper to take it now (a fresh
+  // arrival wakes its round), or stop following it (the record is withdrawn and the sender hears once).
+  | { t: "handoff_take"; id: string }
+  | { t: "handoff_withdraw"; id: string }
   // Answered with action_result (taskId: the id, action: the action's name), then ongoing_result.
   | ({ t: "ongoing_action"; kind: "routine" | "task"; id: string } & OngoingAction);
 

@@ -53,6 +53,7 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
   states:  given → taken (by a task of the receiver) → done | returned (back to the sender, with why)
            given → unclaimed after 10 min → said to the person once
            given → declined by the receiver (out of scope) → back to the sender with why
+           given → withdrawn by the person (不用跟了) → said to the sender once
 ```
 
 **Rules. Code guards these; the model only words them.**
@@ -83,26 +84,58 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
 
 ## 4. What the person sees
 
-- **On the helper's Keep:** 手上的事 lists hand-offs by state. 等接手 (given) sits at the top
-  with who gave it and when; then 在做; then 退回了. Each row has 不用跟了 (D602).
+- **On the helper's Keep:** 手上的事 is one card. Inside it, a small section head (the shared
+  secHead) names each state that has something in it: 等接手 first, who gave it and when as two
+  separate facts; then 在做; then 退回了 and 没接, each carrying why it came back. Rows are on the
+  card's hairline. A waiting row has 让它现在接 (a fresh arrival wakes the helper's round for that
+  record) and 不用跟了 (the D602 confirm; the record is withdrawn, the sender hears once). A row
+  with a task keeps 打开任务 and 不用跟了. Nothing is drawn for an empty group.
 - **On the sending task:** one line under its last report, 「交给 PR Babysitter，等它接手」 →
   「PR Babysitter 接手了」 → its outcome. No card.
 - **In the conversation:** nothing while it goes well. One line if it's unclaimed for 10 min,
   or if it's returned.
 - **Settings › the helper:** 别的 agent 怎么找到它 lists every Space it's reachable in (D604).
 
-## 5. What already exists, and what's left
+## 5. What already exists
 
 | Piece | State |
 |---|---|
 | Local hand-off without Mem, a held item, an immediate wake, "taken" only on claim, the 10-min line | D598 (in 0.1.91) |
 | A typed reply never mutes; a muted sender's mail is re-read on unmute; the Spaces a helper receives in are a fact | D604 (in review) |
 | 不用跟了 on a held item; release when its task ends | D602 (in review) |
-| **One key per item, merging duplicates** | to build |
-| **Declined and returned as states, said back to the sender in its Space** | to build |
-| **The sending task's one line, and 手上的事 grouped by state** | to build |
-| **Bridge mail classified by our outbox (did this helper ask?), never by `inReplyTo`** | to build, replacing D598's "a reply under the helper's own old message counts as new" |
-| A replay test over hel's real 11-24→26 sequence: every row of §1 ends taken or said | to build |
+| **One key per item, merging duplicates** | built (D614): a `handoff` record in the Log, `core/src/handoffs.ts`; the four doors all call it, and a resend adds to the open record, never a second one |
+| **Declined and returned as states, said back to the sender in its Space** | built (D614): `report_to_main` `handoff` from a helper's task; a task is told by `task_send`, an agent answered in the Space its message came from (D595's route); done is the record's last step |
+| **The sending task's one line, and 手上的事 grouped by state** | built (D616): the task's one line under its last report follows the record; the helper's page draws one card grouped by state on the web and the Mac, with 让它现在接 / 不用跟了 on a waiting row and the withdrawn state said back |
+| **Bridge mail classified by our outbox (did this helper ask?), never by `inReplyTo`** | built (D614), replacing D598's "a reply under the helper's own old message counts as new": `helperQuestions` reads the messages one of the helper's tasks sent |
+| A replay test over hel's real 11-24→26 sequence: every row of §1 ends taken or said | built (D614): `packages/partner/test/handoff-d609-replay.test.ts` (the muted dev-team hand-off, the two 3× resends, the 11-25 one, and the 10-minute line) |
 
 **Alternative not taken:** keep mail, and add more heuristics for "is this work". That's the
 path that failed five times. The record makes the failure state visible by construction.
+
+### What step 2 built
+
+The record, the four doors, the states and the replay are built (D614). The record is
+`handoff` on the Log (`protocol/src/handoff.ts`), written by `core/src/handoffs.ts`: given →
+taken (only a claim by one of the receiver's tasks) → done | returned | declined, plus
+withdrawn by the person and unclaimed after ten minutes. `open_pr`'s `hand_to`, `keep_change hand`, a task's
+`agent_message` to a helper, and Bridge mail to a helper in any Space all make the same
+record; a second hand-off of the same item joins the open one. A helper's task hands work
+back through `report_to_main` `handoff: {back: "returned" | "declined", why}`, and the
+outcome is said where it came from. An untaken one is said to the person once, as D598 did.
+
+**The UI (D616).** A sender task's card carries its latest record (`TaskCard.handoff`), so its
+opened task draws one quiet line under the last report: 交给 {helper}，等它接手 → {helper} 接手了
+→ the outcome (做完了 / 退回了 / 没接 / 不用 {helper} 跟了, with the gist or why), no card. A
+helper's Keep page carries every record (`KeepPage.handoffs`), and 手上的事 is one card with a
+small section head inside it for each state that has something: 等接手 with the giver and the
+given time as two facts, 在做, 退回了, 没接. A waiting row has 让它现在接 (a fresh arrival wakes
+the helper's round for that record) and 不用跟了 (the D602 confirm; the record becomes
+withdrawn, and the sender hears once). A row with a task keeps 打开任务 and 不用跟了. A hand-off
+arrival round never ends on its head's colon: it says the clean head and the item, or just the
+item (`arrivalDid`). The records reach both clients through `on_hand` and the Keep page; the
+Mac's and web's controls are the shared ones (D161). Tests: `core/test/handoff-d609.test.ts`
+(the card and page facts, wake and withdraw), `apps/web/test/handoff-d609.test.ts` (the words
+and groups), `apps/web/test/handoff-geometry.test.ts` (390 and 1150, one card, a long title
+wraps), `apps/desktop/internal/views/handoff_d609_test.go` (both surfaces, long title at 1150,
+the waiting row's actions), and `handoff_d609_shots_test.go` (the shots). Shots:
+`.shots/handoff/` (Mac 1150 and web 390, zh, light and dark; every state and the one-card Keep).

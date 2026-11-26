@@ -124,8 +124,8 @@ describe("D598: a hand-off on this home", () => {
     await partner.idle();
     expect(inputs[0]).toContain("handed, waiting to be taken");
     expect(inputs[0]).toContain("never that it took it or is on it");
-    // A second hand-off of the same work while nothing took it: not a second piece of work.
-    expect(await agentMessage({ to: "PR Babysitter", text: "再补一句" })).toMatchObject({ ok: false, taken: false });
+    // A second hand-off of the same work while nothing took it: one record, merged (D609).
+    expect(await agentMessage({ to: "PR Babysitter", text: "再补一句" })).toMatchObject({ ok: true, handed: true, taken: false });
     clock.advance(9 * 60_000);
     await settle(40);
     expect(said().filter((x) => x.stalled)).toHaveLength(0);

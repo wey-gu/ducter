@@ -143,6 +143,8 @@ type KeepPage struct {
 	Cap      int             `json:"cap,omitempty"`
 	Device   string          `json:"device,omitempty"`
 	Agent    string          `json:"agent,omitempty"`
+	// D609: every hand-off this helper has held, its states included (手上的事 grouped by state).
+	Handoffs []HandoffLine `json:"handoffs"`
 }
 
 // CanEdit is whether the page lets the person change field in place.

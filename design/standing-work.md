@@ -48,9 +48,26 @@
   work; that is when the helper has it: the item is under 手上的事, its arrival a round, and the claim and later the
   outcome go into the task that handed it. Until then the partner's facts say handed, not taken, and it says
   交给了，等它接手, never that the helper is on it; after `HELPER_TAKE_MS` (10 minutes) with no task on it, the
-  partner says so once and offers to run it directly. Mail through Mem written as a reply on the helper's own
-  earlier message is work handed to it too (hel: mem#11393 came back as a reply on the babysitter's #11070 outcome
-  and was read as an answer). `also` on a helper reaches every piece of work it holds, at once.
+  partner says so once and offers to run it directly. `also` on a helper reaches every piece of work it holds, at once.
+- **D609, one hand-off record.** A hand-off is one `handoff` record in the Log (`protocol/src/handoff.ts`,
+  `core/src/handoffs.ts`), keyed by sender + receiver + item ref: given → taken (only a claim by one of the receiver's
+  tasks) → done | returned | declined, plus unclaimed after ten minutes, said once; a waiting one the person stops
+  following becomes withdrawn, and the sender hears it once. Every door makes the same record —
+  `open_pr`'s `hand_to`, `keep_change hand`, a task's `agent_message` to a helper, and Bridge mail to a helper in any
+  Space — and a second hand-off of the same item joins the open record (its new words in `adds`), never a second one.
+  A helper's task hands work back through `report_to_main` `handoff` (`returned`: it tried; `declined`: out of scope)
+  with why; the outcome is said where it came from: into a task by `task_send`, to another agent in the Space its
+  message came from (D595's route). Whether Bridge mail is work is read from our own outbox, never the thread: it is
+  work unless it answers a question one of the helper's own tasks asked (`helperQuestions`); a reply under its claim
+  or outcome is work (hel: mem#11393 came back under the babysitter's #11070 outcome). The records are checked by
+  `core/test/handoff-d609.test.ts`, the partner's `handoff-d609-states.test.ts`, and hel's sequence replayed in
+  `handoff-d609-replay.test.ts`. **The UI (D616):** the sending task's one line under its last report follows the
+  record (交给…，等它接手 → 接手了 → its outcome or 不用 {helper} 跟了); the helper's page draws 手上的事 as one card,
+  with a small section head inside it per state (等接手 with who gave it and when, 在做, 退回了, 没接; an empty
+  group draws nothing). A waiting row has 让它现在接 (a fresh arrival wakes its round) and 不用跟了 (withdraws the
+  record and says so back once); a row with a task keeps D602's actions. A hand-off arrival round never ends on the
+  head's colon (`arrivalDid`). Both clients read the facts on the existing frames (`TaskCard.handoff`,
+  `KeepPage.handoffs`); the web and Mac tests, the geometry at 390/1150, and `.shots/handoff/` cover them.
 - **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
   with none) has its end read once from their own words (about and brief) by the cheap model of the
   agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The

@@ -362,7 +362,8 @@ undo that in Settings, and what it sent meanwhile is read then. Answering the ca
 lets it in too, and your partner uses your words when it answers.
 
 A helper of yours has one name in every Space you are in, and receives in all of them: its page lists
-them under **How your agents find it**.
+them under **How your agents find it**. If it can't take something, its reason goes back to the agent
+that sent it, where it came from.
 
 ### Can it use my other apps, my phone, or make calls?
 

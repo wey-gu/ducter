@@ -11159,6 +11159,19 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   font-variant-numeric: tabular-nums;
 }
 
+/* D609: the sender's one line under its last report, on the transcript's reading measure. */
+.task-page > .handoff-line {
+  width: 100%;
+  min-width: 0;
+  max-width: 37.5rem;
+  margin: -8px auto 0;
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- D268: the opened task's transcript, typeset ---------- */
 /* One reading column, centered: prose at 14, 1.6 for Latin and 1.75 when it holds Chinese. */
 .task-page .turns {
@@ -22490,11 +22503,39 @@ html[data-text-size="large"] .brand-mark > svg {
   min-width: 0;
 }
 .kp-item .t {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
   font-size: var(--md);
   font-weight: 600;
   line-height: 1.4;
   color: var(--ink);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.kp-item .t > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.kp-item .t > span:only-child {
+  flex: 1 1 100%;
+}
+/* D616: one card for 手上的事, its group heads inside it (the shared secHead, set flush). */
+.kp-card > .sec-head {
+  min-height: 0;
+  margin: 0;
+  padding: 14px 16px 2px;
+}
+.kp-card > .sec-head:not(:first-child) {
+  border-top: 1px solid var(--line-soft);
+}
+.kp-handoff-facts {
+  color: var(--ink-muted);
+  font-size: var(--sm);
 }
 .kp-item .t b {
   font-weight: 700;
@@ -22503,6 +22544,8 @@ html[data-text-size="large"] .brand-mark > svg {
 .kp-item .st {
   font-size: var(--sm);
   white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .kp-item .by {
   font-size: var(--xs);

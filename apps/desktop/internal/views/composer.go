@@ -282,6 +282,19 @@ func (a *App) secHead(c *ui.Context, key, name string) {
 	})
 }
 
+// secHeadIn is the same section name inside a card (D616: 手上的事's group heads), flush with
+// the card's padding, with its hairline above every group but the first.
+func (a *App) secHeadIn(c *ui.Context, key, name string, first bool) {
+	t := a.T
+	r := ui.Row(c.Key("sec-head-in:"+key)).MinHeight(28).AlignItems(ui.Center).Padding(14, 16, 2, 16)
+	if !first {
+		r.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
+	}
+	r.Children(func() {
+		uiText(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Role(ui.RoleHeading)
+	})
+}
+
 // tagTone is a tag's tint: plain (sunken), on (done) or needs (needs you);
 // D542: the other states' own (working, waiting, failed) for a task's state.
 type tagTone int

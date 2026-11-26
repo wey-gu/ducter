@@ -77,7 +77,9 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
-import { isHelperWork, localHandoff } from "@ducter/protocol/src/helpers.ts";
+import { createHandoffs } from "./handoffs.ts";
+import { isHelperWork } from "@ducter/protocol/src/helpers.ts";
+import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
 import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
@@ -440,6 +442,8 @@ export interface Core extends CoreApi {
   memFiles: MemFiles;
   /** D391: 做过的事 / Past tasks for the partner (task_find), and 从这一步重来 / Redo from here (task_fork). */
   past: import("./past.ts").Past;
+  /** D609: a hand-off as one record with an owner, keyed by sender + receiver + item. */
+  handoffs: import("./handoffs.ts").Handoffs;
   /** D285: the person's marks on tasks (a star, a name; D514: keep the working copy). */
   marks: import("./past.ts").Marks;
   redo: import("./redo.ts").Redo;
@@ -926,15 +930,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D511: 照看 / Looking after: every routine, task in rounds and helper is a Keep (keeps.ts).
   let keepsRef: Keeps | undefined;
   let wsUp = false;
-  const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[], sent: new Set<string>() };
+  const helperIndex = { tasks: new Map<string, string>(), ins: [] as { helper: string; at: number }[], questions: new Set<string>() };
   const indexHelper = (e: LogEvent) => {
     if (e.kind !== "bridge_msg") return;
     const b = e.body as Bodies["bridge_msg"];
     if (!b.helper) return;
-    if (b.direction === "out" && b.messageId) helperIndex.sent.add(b.messageId);
     if (b.direction === "out" && b.taskId) helperIndex.tasks.set(b.taskId, b.helper);
-    // D598: a reply on the helper's own message, or a hand-off on this home, is work it took in too.
-    if (isHelperWork(b, helperIndex.sent)) helperIndex.ins.push({ helper: b.helper, at: Date.parse(e.ts) });
+    // D609: only a question one of the helper's tasks asked makes a reply an answer; a reply under
+    // any other old message (its claim, its outcome) is new work.
+    if (b.direction === "out" && b.by === "task" && b.taskId && b.messageId && helperIndex.tasks.has(b.taskId)) helperIndex.questions.add(b.messageId);
+    if (isHelperWork(b, helperIndex.questions)) helperIndex.ins.push({ helper: b.helper, at: Date.parse(e.ts) });
   };
   for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) indexHelper(e);
   log.subscribe((e) => {
@@ -1351,6 +1356,27 @@ export function startCore(opts: CoreOptions = {}): Core {
   bridgeLink.onChange(() => void helpers.tick());
   bridgeLink.onMemReady(() => void helpers.tick());
   const helperTimer = setInterval(() => void helpers.tick(), HELPER_RETRY_MS);
+  // D609: one record per hand-off item, all doors through it. The partner sets the way back to an
+  // agent in its Space; a task gets it by the runner's send.
+  const handoffs = createHandoffs({
+    log,
+    helper: (id) => helpersRef?.get(id),
+    now: () => clock.now(),
+    lang: () => langNow(),
+    taskTitle: (id) => tasks.get(id)?.title,
+    tellTask: async (taskId, text) => {
+      const c = tasks.get(taskId);
+      if (!c) return false;
+      if (["done", "failed", "dropped", "superseded"].includes(c.attention)) {
+        log.append({ persona: c.persona, stream: `task:${taskId}`, origin: "system", kind: "task_event", body: { taskId, role: "system", from: "ducter", text } });
+        return true;
+      }
+      if (!runner) return false;
+      await runner.send(taskId, text, undefined, "partner");
+      return true;
+    },
+    onChange: () => onHandChanged(),
+  });
   /** D494: a helper's work on hand (its tasks it still holds, D507) and what it took in the last 7 days, from the Log. */
   const helperCount = (id: string) => {
     const since = Date.now() - 7 * 86_400_000;
@@ -1452,7 +1478,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1833,6 +1859,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ongoing: () => ongoingRef,
     helperTasks: () => helperIndex.tasks,
     helperWeek: (id) => helperCount(id).week,
+    handoffs: () => handoffs,
     // D533: a task in rounds moved on its page (another computer, another agent), as task_switch moves it.
     move: async (taskId, to) => {
       const c = tasks.get(taskId);
@@ -1849,6 +1876,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     onChange: () => (onHandChanged(), wsUp && ws.ongoingChanged()),
     // D540: a one-off ask while a round is under way reaches it now.
     tell: (taskId, text) => (runner ? runner.send(taskId, text, undefined, "partner").then(() => true) : Promise.resolve(false)),
+    // D609: keep_change hand is one door, through the one record (never a second arrival for the same item).
+    hand: ({ helper, text }) => handoffs.giveLocal({ helper, text, fromName: langNow().startsWith("zh") ? "你" : "you", ...(persona.id ? { persona: persona.id } : {}) }),
   }));
   let keepSync = false;
   const syncKeeps = () => {
@@ -2775,18 +2804,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     const title = tasks.get(item.taskId)?.title ?? "";
     const text = fill(w.ask, { pr: item.pr });
     if (k.from.kind === "helper") {
-      const helper = k.from.helperId;
-      const sent = new Set<string>();
-      for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) {
-        const b = e.body as Bodies["bridge_msg"];
-        if (b.direction === "out" && b.helper === helper && b.taskId && b.inReplyTo) sent.add(b.inReplyTo);
-      }
-      // Handed already by this task (its open_pr ran once): taken once a claim answers that hand-off.
-      const before = log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).map((e) => e.body as Bodies["bridge_msg"]).filter((b) => b.direction === "in" && b.local && b.helper === helper && b.fromTask === item.taskId);
-      if (before.length) return { taken: before.some((b) => sent.has(b.messageId)), handed: true };
+      const helper = helpersRef?.get(k.from.helperId);
+      if (!helper) return { taken: false, handed: false };
       const head = fill(w.head, { name: persona.name, title });
-      log.append({ ...(k.persona ? { persona: k.persona } : {}), stream: "channel", origin: "peer", kind: "bridge_msg", body: localHandoff({ id: crypto.randomUUID(), helper, text, from: persona.name, fromTask: item.taskId, head }) } as never);
-      return { taken: false, handed: true };
+      const r = handoffs.giveLocal({ helper, text, fromTask: item.taskId, fromTaskTitle: title, fromName: persona.name, head, item: { kind: "pr", ref: item.pr, title: item.pr }, ...(k.persona ? { persona: k.persona } : {}) });
+      const taken = r.handoff.state === "taken" || r.handoff.state === "done";
+      return { taken, handed: true };
     }
     if (k.from.kind === "loop") {
       void keepsRef!.change(keepId, { next: `${text}（${item.pr}）`, act: { action: "look_now" } }, { by: "partner" }).catch(() => {});
@@ -3045,6 +3068,7 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   return {
     ...api,
+    handoffs,
     channelUp: (via: string) => ws.channelUp(via),
     log,
     tasks,

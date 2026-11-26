@@ -242,7 +242,10 @@ What your partner remembers about you has its own section, **Memory**.
 
 - At the top, **{name} remembers you**, how much it noted this week, and the **Remember things**
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
-  notes anything, in the conversation or in its tasks; what it noted stays.
+  notes anything, in the conversation or in its tasks; what it noted stays. When a task starts
+  with a few memories, its page says so in one quiet line under your brief, **Brought n memories**;
+  open it to see the titles, open one in **Memory**, or tap **This is wrong** to ask your partner
+  to correct it.
 - **What I know about you** groups what Nowledge Mem holds about you: **How you like things**,
   **What you decided** and **What it knows**, the newest of each first. What you told it is the usual source, so those lines
   say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You

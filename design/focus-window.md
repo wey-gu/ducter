@@ -14,6 +14,15 @@ Target about 2K tokens, in this order:
 6. **Quoted channel messages** wherever wording matters (quote them, don't summarize).
 7. **Pointers**: Log ranges, artifacts, related windows.
 
+**What memory brought in (D617, D590's leftover).** When Ducter's own recall fills a task's
+first turn with `<what_i_know>` (no Nowledge Mem plugin there, D168), the runner also records what it
+gave the task: each memory's id, its one-line title, its Space and whether it is one of the person's
+stated preferences or a search hit, never its text again. The opened task shows one muted line under
+the brief card, **带进来 {n} 条记忆 / Brought {n} memories**, unfolding into the titles; each opens
+Settings › 记忆 on that memory (Mem has no per-memory deep link), and **这条不对 / This is wrong**
+sends the partner a message naming the id, so a wrong memory can be found and fixed. Nothing shows
+when nothing was brought in.
+
 The brief gets no skills list, because windows inherit the user's harness config
 (principle 17).
 

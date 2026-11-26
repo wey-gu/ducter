@@ -506,8 +506,10 @@ line.
 
 ## Mem, the D590 walk's leftovers
 
-- [ ] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
-  with each note's source. Trigger: a person asks why a task knew something, or a task acts on a stale note.
+- [x] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
+  with each note's source. Done (D617): the runner records `recalled` on the task's stream, and the opened
+  task shows **带进来 n 条记忆 / Brought n memories** under the brief, unfolding to the titles, each opening
+  Settings › 记忆 on it, with **这条不对 / This is wrong** asking the partner to correct it.
 - [ ] **「你都记得我些什么？」's answer leads to the whole list**: one quiet line to Settings › Memory under it, set by a
   mark the partner adds. Trigger: the next persona change (it needs one more line and its eval).
 - [ ] **One fix at Memory's head while Mem is signed out**: an agent plugin's update then waits under the sign-in, not

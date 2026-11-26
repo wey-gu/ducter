@@ -13,7 +13,7 @@ import { A } from "./app.ts";
 import { Btn, Chev } from "./controls.tsx";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
-import { attention, finished, harnessOf, reportOf, resultEvidence, title, type Task } from "./store.ts";
+import { attention, endable, finished, harnessOf, reportOf, resultEvidence, title, type Task } from "./store.ts";
 import { hasCopy, InfoContent } from "./task-info.tsx";
 import { prNumber, prRef, shareText, taskLink } from "./task-words.ts";
 import { benchable, openBenchAt, tabsOf } from "./workbench.tsx";
@@ -184,6 +184,12 @@ function TaskSheet({ task, canSwitch, onClose }: { task: Task; canSwitch: boolea
         {droppable && (
           <button class="ts-row danger" onClick={then(() => A.drop(task.id))}>
             <span>{t("task.action.drop")}</span>
+          </button>
+        )}
+        {/* D600: a finished task an open PR still holds: its one line asks under the head. */}
+        {!droppable && endable(task) && (
+          <button class="ts-row" onClick={then(() => ((A.ending = task.id), A.changed()))}>
+            <span>{t("task.action.end")}</span>
           </button>
         )}
       </div>

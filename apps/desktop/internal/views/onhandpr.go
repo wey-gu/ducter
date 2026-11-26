@@ -85,6 +85,12 @@ func (a *App) prPhaseWords(s store.PRSaid, base string) string {
 			base = "main"
 		}
 		return a.L.T("onhand.prs.conflict", base)
+	case store.PRDuplicate:
+		// D600: let go as a duplicate (重复草稿，可关), never the CI it no longer waits on.
+		if s.Draft {
+			return a.L.T("onhand.prs.duplicate.draft")
+		}
+		return a.L.T("onhand.prs.duplicate")
 	}
 	return a.L.T("onhand.prs." + s.Phase)
 }

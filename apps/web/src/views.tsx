@@ -109,7 +109,7 @@ import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
-import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
+import { EndAsk, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   browsing,
@@ -2876,6 +2876,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           <div class="head-words">
             <h1 title={safe(title(task))}>{safe(cutAtWord(shortTitle(title(task)), 90)) || t("task.unknown")}</h1>
             <TaskMeta task={task} stateLabel={stateWord} onSwitch={canSwitch && !cantSwitches(task) ? () => A.openSwitch(task.id) : undefined} />
+            {/* D600: 结束任务 asks in place, one line under the meta line. */}
+            <EndAsk task={task} />
             {/* D261: what it waits for, always (its waiter, its reason, what it last reported, or
                 that it stopped without saying), then when it looks again or since when it's quiet. */}
             {a === "blocked" && <p class="waitline">{storyOf(task).words}</p>}

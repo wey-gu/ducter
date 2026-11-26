@@ -468,7 +468,7 @@ export function createKeeps(o: {
       // (its address until the first look read it), standing where the PR stands.
       const c = tasks.get(f.taskId);
       if (c && !GONE.has(c.attention))
-        for (const p of [...(c.prs ?? [])].filter((x) => x.state === "open").sort((a, b) => b.at.localeCompare(a.at)))
+        for (const p of [...(c.prs ?? [])].filter((x) => x.state === "open" && !x.letGo).sort((a, b) => b.at.localeCompare(a.at)))
           items.push({ taskId: c.taskId, title: p.standing?.title ?? p.pr, at: AT_WORK.has(c.attention) ? "work" : "rest", pr: p.pr, said: prSaid(p) });
     } else {
       for (const t of routineTasks(f.routineId, 12)) {

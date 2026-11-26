@@ -346,7 +346,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
         const c = tasks.get(taskId);
         if (!c || GONE.has(c.attention)) continue;
         for (const [pr, seen] of m) {
-          if (seen.state && seen.state !== "open") continue;
+          if ((seen.state && seen.state !== "open") || seen.letGo) continue; // D600: let go: never looked at again
           let got: { lines: string[]; next: OwnedSeen };
           try {
             got = await lookAt(taskId, pr, seen);
@@ -356,6 +356,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
             continue;
           }
           if (stopped) return;
+          if (m.get(pr)?.letGo) continue; // D600: let go while it was being read
           const others = pending.get(taskId)?.get(pr) ?? [];
           const lines = [...got.lines, ...others];
           if (!seen.head && !lines.length) {
@@ -392,6 +393,13 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   }
 
   const onEvent = (e: LogEvent) => {
+    if (e.kind === "owned_news") {
+      // D600: a PR the task (or the person, ending it) let go is never looked at again.
+      const b = e.body as Bodies["owned_news"];
+      const m = owns.get(b.taskId);
+      if (b.seen.letGo && m?.has(b.pr)) m.set(b.pr, b.seen);
+      return;
+    }
     if (e.kind === "checkpoint") {
       const b = e.body as Bodies["checkpoint"];
       fresh = false;
@@ -441,18 +449,18 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   return {
     standing: (taskId) =>
       [...(owns.get(taskId)?.entries() ?? [])]
-        .filter(([, s]) => (!s.state || s.state === "open") && s.standing)
+        .filter(([, s]) => (!s.state || s.state === "open") && !s.letGo && s.standing)
         .map(([pr, s]) => {
           const t = standingText(taskId, s.standing);
           return t ? `PR ${pr}: ${t}` : "";
         })
         .filter(Boolean)
         .join("\n\n"),
-    of: (taskId) => [...(owns.get(taskId)?.entries() ?? [])].filter(([, s]) => !s.state || s.state === "open").map(([pr]) => pr),
+    of: (taskId) => [...(owns.get(taskId)?.entries() ?? [])].filter(([, s]) => (!s.state || s.state === "open") && !s.letGo).map(([pr]) => pr),
     all: () =>
       [...owns]
         .map(([taskId, m]) => {
-          const open = [...m.entries()].filter(([, s]) => !s.state || s.state === "open");
+          const open = [...m.entries()].filter(([, s]) => (!s.state || s.state === "open") && !s.letGo);
           const said = Object.fromEntries(open.filter(([, s]) => s.standing).map(([pr, s]) => [pr, saidOf(s.standing!, s.ids)]).filter(([, t]) => t));
           return { taskId, refs: open.map(([pr]) => pr), ...(Object.keys(said).length ? { said } : {}) };
         })

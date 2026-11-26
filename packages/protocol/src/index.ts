@@ -608,6 +608,8 @@ export interface Bodies {
     /** D585: set by Ducter (never the task): made in a turn the person opened with their own words in
      *  the task. They read it there; a progress one stays out of the living message. */
     direct?: true;
+    /** D600: the PRs it let go in this report (each one it owns): not where its work goes on. */
+    letGo?: { pr: string; why: "duplicate" | "unneeded" }[];
   };
   /** D483: owns: what the task declared it owns outside ("owner/repo#123"), so news about it wakes it (core/src/owned.ts). */
   checkpoint: { taskId: string; text: string; gitRef?: string; owns?: string[] };
@@ -1496,7 +1498,7 @@ export type ClientFrame =
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
   // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
   // D521: stop_background (job): stop one of its agent's background jobs (TaskCard.background), through the agent's own stop.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "end" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in" | "stop_background"; path?: string; force?: boolean; device?: string; place?: Place; job?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
@@ -3445,6 +3447,17 @@ export interface OwnedSeen {
   failedTold?: string[];
   /** D496: where the PR stands at the last look, told with every piece of news and every wake. */
   standing?: OwnedStanding;
+  /** D600: the task let it go: it is not where the task's work goes on (a duplicate, no longer
+   *  needed, or the person ended the task). Ducter stops watching it, it no longer holds the task
+   *  open or a Keep's item, and it stays open on GitHub until someone closes it there. */
+  letGo?: PrLetGo;
+}
+
+/** D600: why a task let one of its PRs go, and when. The model judges duplicate and unneeded (its
+ *  report_to_main `let_go`); ended is the person's 结束任务 / End task. */
+export interface PrLetGo {
+  why: "duplicate" | "unneeded" | "ended";
+  at: string;
 }
 
 /**

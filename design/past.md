@@ -243,6 +243,9 @@ talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens
   same line as each attempt's step (没能开始：Hetzner Server 上没有 mem 这个文件夹), and its page
   offers the real fix first; Continue on it starts it there afresh with its brief (D415).
 - **A dropped task**: Continue brings it back (it is no longer dropped).
+- **A finished task its open PR still holds** (D600): it ends at the person's word in its box
+  (the agent lets the PR go, or drops unfinished work), or with **结束任务 / End task** in its ⋯;
+  the PR stays open on GitHub and reads 重复草稿，可关 or 不再跟了，可关.
 - **Hundreds of tasks**: the index is built from the Log on first use and kept live; a query
   reads memory only.
 

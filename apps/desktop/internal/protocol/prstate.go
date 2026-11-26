@@ -9,6 +9,15 @@ type TaskPR struct {
 	State    string         `json:"state"`
 	At       string         `json:"at"`
 	Standing *OwnedStanding `json:"standing,omitempty"`
+	// LetGo (D600): the task let it go (a duplicate, not needed, or the
+	// task was ended): it no longer holds the task open.
+	LetGo *PRLetGo `json:"letGo,omitempty"`
+}
+
+// PRLetGo (D600) is why a task let one of its PRs go, and when.
+type PRLetGo struct {
+	Why string `json:"why"`
+	At  string `json:"at"`
 }
 
 // OwnedStanding (D496) is where a PR stands, as facts read from GitHub at

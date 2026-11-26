@@ -34,10 +34,12 @@ import { CopyButton } from "./copy-button.tsx";
 import { cantClause, cantLine } from "./cant.tsx";
 import { MediaBlock } from "./media.tsx";
 import { DocLine } from "./doc-line.tsx";
-import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
+import { attention, effortOf, endable, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 import { rangeOf, topsOf } from "./vlist.ts";
 import { Menu, MenuItem } from "./menu.tsx";
+import { GConfirm } from "./set-grid.tsx";
+import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
 import { providerError, providerErrorKey } from "./task-words.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
@@ -1775,11 +1777,25 @@ export function TaskFoot({ task }: { task: Task; blocks?: Block[] }) {
   );
 }
 
-/** The task's More menu in its header (D268): Cancel task, while it can still be cancelled. */
+/** D600: 结束任务's one line, asked in place under the task's head: what ending it lets go, and Go. */
+export function EndAsk({ task }: { task: Task }) {
+  if (A.ending !== task.id || !endable(task)) return null;
+  const prs = prsCarried(task.card?.prs);
+  const ask = prs.length === 1 ? t("task.end.ask", prs[0]!.pr.replace(/^.*#/, "")) : t("task.end.ask.many", prs.length);
+  return (
+    <div class="end-ask">
+      <GConfirm ask={ask} keep={t("task.end.keep")} go={t("task.action.end")} about={title(task)} onKeep={() => ((A.ending = undefined), A.changed())} onGo={() => A.endTask(task.id)} />
+    </div>
+  );
+}
+
+/** The task's More menu in its header (D268): Cancel task, while it can still be cancelled; D600:
+ *  End task, when it is finished and an open PR still holds it. */
 export function TaskMore({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
   const a = attention(task);
   const droppable = !finished(task) && !["dropped", "superseded", "done"].includes(a);
+  const ends = endable(task);
   useEffect(() => {
     if (!open) return;
     const close = (e: Event) => !(e.target as Element)?.closest?.(".more-menu") && setOpen(false);
@@ -1788,7 +1804,7 @@ export function TaskMore({ task }: { task: Task }) {
     addEventListener("keydown", esc, true);
     return () => (removeEventListener("pointerdown", close, true), removeEventListener("keydown", esc, true));
   }, [open]);
-  if (!droppable) return null;
+  if (!droppable && !ends) return null;
   return (
     <span class="more-menu">
       <button class="plus more-btn" aria-label={t("task.more")} title={t("task.more")} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
@@ -1800,9 +1816,13 @@ export function TaskMore({ task }: { task: Task }) {
       </button>
       {open && (
         <Menu class="menu" onClose={() => setOpen(false)}>
-          <MenuItem danger onClick={() => (setOpen(false), A.drop(task.id))}>
-            {t("task.action.drop")}
-          </MenuItem>
+          {droppable ? (
+            <MenuItem danger onClick={() => (setOpen(false), A.drop(task.id))}>
+              {t("task.action.drop")}
+            </MenuItem>
+          ) : (
+            <MenuItem onClick={() => (setOpen(false), (A.ending = task.id), A.changed())}>{t("task.action.end")}</MenuItem>
+          )}
         </Menu>
       )}
     </span>

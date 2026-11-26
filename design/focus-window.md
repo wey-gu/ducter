@@ -359,7 +359,13 @@ What the window writes is what the user reads when they open the task, in one co
   the conversation and gets no fresh look (D437), since they read it as it came; one that carries
   an ask (merge it?) is its own ask card, asked in the task's words with no partner relay
   (`decision.direct`), and is still read once by another AI. A direct failure, block or question
-  goes to the partner as before;
+  goes to the partner as before; asked there to close, end or drop the task (D600), the agent ends
+  it in that turn: finished work is `done` with `let_go` for each open PR the work no longer goes on
+  in (a duplicate, not needed), unfinished work is `dropped` with its reason (accepted only in such
+  a turn; a `task_state`, never a report; the runner drops it as Cancel task does once the turn
+  ends); it says what becomes of each open PR it owns and closes one on GitHub only when their
+  words asked for exactly that. A finished task an open PR still holds has **结束任务 / End task**
+  in its ⋯, asked in place under the meta line (`GConfirm` / `confirmLine`);
 - a **message the user sends** (D325) carries a receipt only when it says something: **在发… /
   Sending…** or **没送到 / Didn't get through**, and for a steer what the agent did with it.
   **Idle**, Return sends it as the next turn. **While it works**, Return steers (`task_send`

@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import { countDoneToday, endedUnmet, prGoesOn } from "@ducter/protocol";
+import { countDoneToday, endedUnmet, prGoesOn, prsCarried } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
@@ -170,6 +170,11 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
  *  (`isDoneToday`: finished well, on today's local day; failed and missed waits are their own). */
 export function doneTodayOf(tasks: Task[], now = Date.now()): number {
   return countDoneToday(tasks.map((t) => ({ attention: attention(t), at: [t.card?.updatedAt, t.events.at(-1)?.ts].filter(Boolean).sort().at(-1), prOpen: !!prGoesOn(t.card?.prs) })), now); // D508
+}
+/** D600: a finished task an open PR still holds on the board: 结束任务 / End task lets those PRs go. */
+export function endable(t: Task): boolean {
+  const a = attention(t);
+  return (a === "done" || a === "done_claimed") && prsCarried(t.card?.prs).length > 0;
 }
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 /** D395: why it couldn't start where it was to work, and what fixes it (the latest state's, else the card's). */

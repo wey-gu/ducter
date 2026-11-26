@@ -255,7 +255,10 @@ the side column after the rounds.
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
 5. **手上的 / What it holds** (D519: a Keep in rounds holds the PRs its task keeps open, each named by its own title;
    the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
-   approved; D508's words), **打开 PR ›**, and its task one tap away.
+   approved; D508's words), **打开 PR ›**, and its task one tap away. D600: an item is released when its task
+   ends (done with no PR going on, or dropped) or when its task lets the PR go (`let_go`: a duplicate, not needed;
+   or the person's 结束任务); while its task still works, a let-go PR reads **重复草稿，可关** or **不再跟了，可关**,
+   never the CI it no longer waits on.
 6. **每一轮 / Rounds**: newest first; each round its time in the time column (today the clock, else the day alone),
    what woke it (D560, a sentence: **#11030 有新提交** from its wait's command, a condition as it stands **PR #11070 推上回应评审的新提交**, **Codex 交过来一个活**, **按计划（每 45 分钟一轮）**), what happened in one line
    to the person (D519: the cheap model's reading of the report, recorded once; never the report's words to Ducter),

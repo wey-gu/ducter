@@ -19,6 +19,8 @@ import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
 import { briefOf, placeForRepo } from "./task-sources/index.ts";
 import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
+import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
+import { letGoPr } from "@ducter/protocol/src/owned.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
 import { placeRuleText, type RulesStore } from "./rules.ts";
@@ -1212,6 +1214,16 @@ export function createWsHandler(deps: WsDeps) {
               }
               const now = tasks.get(f.taskId)!;
               if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
+              return result(true);
+            }
+            case "end": {
+              // D600: 结束任务 / End task, on a finished task an open PR still holds on the board: it
+              // lets each PR go (Ducter stops following it; it stays open on GitHub, closing it there is
+              // the person's), so the task is done as it is and its Keep's item goes. Never a close.
+              if (card.attention !== "done" && card.attention !== "done_claimed") return result(false, "Only a finished task is ended here; Cancel task puts down one that isn't.");
+              const at = new Date().toISOString();
+              const prs = prsCarried(card.prs);
+              for (const p of prs) letGoPr(log, f.taskId, p.pr, "ended", at, card.persona);
               return result(true);
             }
             case "undrop": {

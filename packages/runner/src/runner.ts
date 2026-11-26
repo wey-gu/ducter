@@ -1460,6 +1460,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if ((HARNESS_FACTS[t.spec.harness as HarnessId]?.background.value.ownTurn ?? "unknown") !== "yes") t.prefix.push(backgroundEnded(t.bgDone));
       t.bgDone = undefined;
     }
+    // D600: it put itself down at the person's word in its box (report_to_main "dropped"): its turn
+    // is over, so it is dropped as Cancel task drops it (the session closes, held words go, the
+    // copy is kept), after this turn's events settle.
+    if (!busy && !t.dropped && currentAttention(t) === "dropped") {
+      setTimeout(() => void runner.drop(t.id).catch((err) => logEvent(t, { role: "system", text: `drop failed: ${preview(String(err), 300)}` })), 0);
+      return;
+    }
     // D325: the turn is over and the person held words for after it: they are the next turn
     // (not after a Stop, a failure or a limit: held, the person says them now or changes them).
     if (!busy && !t.dropped && t.held.length && (outcome ?? "completed") === "completed" && !compactTurn && !compactsNow) {

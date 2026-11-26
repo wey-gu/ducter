@@ -1248,6 +1248,8 @@ type PRSaid struct {
 	By     []string      `json:"by,omitempty"`
 	Failed []string      `json:"failed,omitempty"`
 	Checks *PRChecksSaid `json:"checks,omitempty"`
+	// Draft (D600): a duplicate that is still a draft (重复草稿).
+	Draft bool `json:"draft,omitempty"`
 }
 
 // PRChecksSaid is how many of a PR's checks passed, of how many, and how

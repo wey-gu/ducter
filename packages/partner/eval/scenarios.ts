@@ -884,6 +884,37 @@ export const scenarios: Scenario[] = [
     rubric: "The follow-up is handed to the existing task (same repo, builds on its change), with at most one short Chinese line naming the action. No new task, no outcome claimed, no 'I'll tell you when it's done'.",
   },
   {
+    // D600 (hel 5ykh7m6y): a finished task an open duplicate draft still holds. Asked to close it,
+    // the partner hands the ask to that task (its agent ends itself and lets the draft go); it never
+    // closes the PR on GitHub itself, and never opens a new task for it.
+    id: "close-task-duplicate-zh",
+    category: "followup",
+    lang: "zh",
+    seed: [
+      { user: "接手 PR #11166 跟到能合并" },
+      {
+        task: {
+          key: "bridge",
+          title: "跟进 Bridge 试用指引 PR #11166",
+          repo: "~/dev/nowledge-mem",
+          ack: "好，我开个任务接手 #11166，跟到能合并。",
+          state: "done",
+          harness: "codex",
+          report: {
+            state: "done",
+            summary: "#11179 是 #11166 已合并内容的重复草稿，两份文档与合并提交中的版本完全一致。失败的检查源于草稿正文缺少 Issue Number 行。原交接已完成，草稿保持原状。",
+            questions: [],
+            evidence: [{ kind: "url", label: "重复草稿", ref: "https://github.com/nowledge-co/mem/pull/11179/checks" }],
+          },
+        },
+      },
+      { ai: "#11166 已经合并了；#11179 是同样内容的重复草稿，没再动它。" },
+    ],
+    steps: [{ user: "跟进 Bridge 那个任务能关了吧？一直挂在在等里" }],
+    expect: { lines: 1, opens: 0, sendTo: "bridge", maxChars: 120, noAsk: true },
+    rubric: "Hands the ask to close it to the finished Bridge task itself (task_send), in at most one short Chinese line; no new task. It doesn't claim the task or the PR is already closed, and doesn't say it closed #11179 on GitHub.",
+  },
+  {
     id: "followup-en-running",
     category: "followup",
     lang: "en",

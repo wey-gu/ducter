@@ -243,3 +243,73 @@ describe("D585: words sent while it works", () => {
     await runner.dispose();
   });
 });
+
+// D600: 「这个任务是什么情况，能关闭么」 typed in a finished task that an open duplicate draft still held
+// (hel 5ykh7m6y): the agent answered 「可以关闭」 and nothing ended. Now it ends the task itself from the
+// same turn: done, letting the duplicate go, or dropped when the work is unfinished and they asked.
+describe("D600: asked in the task to close it", () => {
+  const PR = "nowledge-co/mem#11179";
+  const owned = () =>
+    core.log.append({
+      stream: `task:${ID}`,
+      origin: "system",
+      kind: "owned_news",
+      body: { taskId: ID, pr: PR, news: [], seen: { since: "2026-11-24T16:42:46.855Z", from: "integrate", state: "open", standing: { at: "2026-11-24T16:43:29.460Z", draft: true, checks: { total: 3, passed: 2, failed: ["ci/pr-closing-references"], pending: [] } } } },
+    });
+  const letGoes = () => core.events.filter((e) => e.kind === "owned_news" && (e.body as Bodies["owned_news"]).seen.letGo).map((e) => e.body as Bodies["owned_news"]);
+
+  test("a finished task held by a duplicate draft: done again with let_go; the draft let go, never closed", async () => {
+    const { runner, inputs } = await taskThat(
+      async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => report("done", "#11179 是 #11166 已合并内容的重复草稿。"))),
+      async (t) => {
+        await t.tool("mcp__ducter__report_to_main", "{}", () =>
+          core.call("report_to_main", { state: "done", summary: "这个任务结束了：#11166 已合并。", let_go: [{ pr: "https://github.com/nowledge-co/mem/pull/11179", why: "duplicate" }] }, ID),
+        );
+        t.say("结束了。#11179 是重复草稿，我不再跟它；它在 GitHub 上还开着，你说一声我就关掉它。");
+      },
+    );
+    owned();
+    await runner.send(ID, "这个任务是什么情况，能关闭么", undefined, "user", "d600-1");
+    await waitFor(() => turnsEnded() >= 2, "its answer turn");
+    await Bun.sleep(60);
+    expect(inputs[1]).toBe(`这个任务是什么情况，能关闭么\n\n${DIRECT_NOTE}`);
+    expect(letGoes().map((b) => [b.pr, b.seen.letGo?.why])).toEqual([[PR, "duplicate"]]);
+    expect(reports().at(-1)).toMatchObject({ state: "done", direct: true, letGo: [{ pr: PR, why: "duplicate" }] });
+    expect(inputs).not.toContain(NUDGE);
+    expect(attention()).toBe("done_claimed");
+    await runner.dispose();
+  });
+
+  test("unfinished work they want stopped: dropped with its reason, its session closed after the turn", async () => {
+    const { runner } = await taskThat(
+      async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => report("blocked", "Waiting for CI."))),
+      async (t) => {
+        const said = await core.call("report_to_main", { state: "dropped", summary: "你说不用再跟了：#11179 的 CI 不再等。" }, ID);
+        await t.tool("mcp__ducter__report_to_main", "{}", () => said);
+        t.say("好，放下了。");
+      },
+    );
+    await runner.send(ID, "别跟了，关掉这个任务吧", undefined, "user", "d600-2");
+    await waitFor(() => attention() === "dropped", "dropped");
+    await waitFor(() => core.tasks.get(ID)?.residency === "parked", "its session closed");
+    const st = core.events.filter((e) => e.kind === "task_state" && (e.body as Bodies["task_state"]).attention === "dropped").map((e) => e.body as Bodies["task_state"]);
+    expect(st[0]?.reason).toBe("你说不用再跟了：#11179 的 CI 不再等。");
+    // Not a report: nobody is told what they asked for themselves.
+    expect(reports().map((r) => r.state)).toEqual(["blocked"]);
+    await runner.dispose();
+  });
+
+  test("dropped outside a turn the person opened is refused: only they put a task down unfinished", async () => {
+    let answer: unknown;
+    const { runner } = await taskThat(
+      async (t) => {
+        answer = await core.call("report_to_main", { state: "dropped", summary: "Giving up." }, ID);
+        await t.tool("mcp__ducter__report_to_main", "{}", () => report("blocked", "Waiting for CI."));
+      },
+      async (t) => t.say("ok"),
+    );
+    expect(String(answer)).toContain("Not dropped");
+    expect(attention()).toBe("blocked");
+    await runner.dispose();
+  });
+});

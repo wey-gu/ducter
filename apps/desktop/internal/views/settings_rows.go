@@ -267,6 +267,22 @@ func (a *App) confirmRow(c *ui.Context, key, ask, keep, goLabel, about string) (
 	return k, g
 }
 
+// confirmLine is confirmRow outside a settings group (D600: 结束任务 under a
+// task's head): the question, then the quiet Keep and the action in the
+// failed ink, on one line with no rule and no tile column.
+func (a *App) confirmLine(c *ui.Context, key, ask, keep, goLabel, about string) (bool, bool) {
+	t := a.T
+	var k, g bool
+	ui.Row(c.Key("confirmline:" + key)).Gap(t.S3).MinHeight(t.ControlSM).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		uiText(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0)
+		ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+			k = a.quietButton(c, "confirm-keep:"+key, keep, about, false, 0)
+			g = a.dangerText(c, "confirm-go:"+key, goLabel, about)
+		})
+	})
+	return k, g
+}
+
 // clayTile is clay art fitted in the 40 tile column; faded, a thing not
 // there yet: grey, never see-through (D374, theme.FadedClay).
 func (a *App) clayTile(c *ui.Context, art string, faded bool) func() {

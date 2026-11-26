@@ -135,6 +135,7 @@ import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
 import { createKeys } from "./saved/keys.ts";
+import { createDeviceSignIn } from "./device-signin.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { createDucterPhone, type DucterPhone, type DucterPhoneOptions } from "./android/index.ts";
 import { createHandsets } from "./handset/index.ts";
@@ -250,6 +251,8 @@ export interface CoreOptions {
   defaultDelayMs?: number;
   /** D233: how long ask_for_key waits in the call for the person (tests); default per harness. */
   keyWaitMs?: number;
+  /** D599: how often a one-time-code sign-in's status command runs (tests). */
+  deviceCheckMs?: number;
   /**
    * D539 test and eval seams: the home's shelf of kept keys, and how an op is called on a computer
    * ("local" = the home), so fake workers answer keys_has, keys_offer, keys_seal and keys_take.
@@ -387,6 +390,8 @@ export interface Core extends CoreApi {
   waiters: Waiters;
   /** Waiters, until loops and routines (D112-D114). */
   work: Work;
+  /** D599: one-time-code sign-in cards, looked at by their CLI's own check. */
+  deviceSignIn: import("./device-signin.ts").DeviceSignIn;
   /** D285, D427: 一直在跑的 / Ongoing (routines and tasks in rounds, their health). */
   ongoing: import("./ongoing.ts").Ongoing;
   push: PushStore;
@@ -1173,6 +1178,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   const keys = createKeys({ dataDir, mcp, log, decisions, store: autofill.store, tasks, copy: keyCopy, ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}) });
   autofill.keys = keys;
+  // D599: 用一次性码登录 / a sign-in with a one-time code: the card with Open and Copy, settled by the CLI's own check.
+  const deviceSignIn = createDeviceSignIn({ log, mcp, decisions, tasks, look: (spec, taskId) => work.look(spec, taskId), ...(opts.keyWaitMs !== undefined ? { waitMs: () => opts.keyWaitMs! } : {}), ...(opts.deviceCheckMs !== undefined ? { everyMs: opts.deviceCheckMs } : {}) });
   {
     const append = log.append.bind(log);
     log.append = ((input: Parameters<typeof log.append>[0]) => append({ ...input, body: keys.scrub(input.body) })) as typeof log.append;
@@ -2842,6 +2849,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     devicesView,
     waiters,
     work,
+    deviceSignIn,
     ongoing,
     push,
     pusher,
@@ -2977,6 +2985,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       autofill.stop();
       keys.stop();
       keyCopy.stop();
+      deviceSignIn.stop();
       devicesView?.stop();
       anywhere.close(); // the tunnel itself keeps running: the next Ducter adopts it (same address)
       workers.stop();

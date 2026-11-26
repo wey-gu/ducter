@@ -9,6 +9,7 @@ import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { laterable, laterRefusal } from "@ducter/protocol/src/later.ts";
 import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
+import { codeExpired, deviceNewCodeText, deviceSaidInText, deviceSignedInText } from "@ducter/protocol/src/device-signin.ts";
 
 /** The Go of a task's question that names none, in the task's language (the card reads "好，继续", never "好，Continue"). */
 const GO_PLAIN = { en: "Continue", zh: "继续", "zh-Hant": "繼續", ja: "続ける", ko: "계속" } as const;
@@ -82,7 +83,7 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
  */
 export function plainAsk(d: Bodies["decision"]): boolean {
   if (!d.taskId) return false;
-  if (d.pay || d.checkout || d.key || d.copyKey || d.signIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
+  if (d.pay || d.checkout || d.key || d.copyKey || d.signIn || d.deviceSignIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
   if (d.routineId || d.forApp || d.loop || d.board || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
   if (d.look?.left.length) return false;
   return !destructiveChoice(d.question, d.goLabel);
@@ -102,6 +103,13 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   if (d.relay) return "";
   // D233: the task got the answer in the call it was waiting in; nothing to send again.
   if (r.delivered) return "";
+  // D599: a one-time-code sign-in: signed in (Ducter's check saw it), the person's word that they
+  // approved it, or a new code asked for once it ran out; 先不用 is a wait, as any Hold.
+  if (d.deviceSignIn) {
+    if (r.signedIn) return deviceSignedInText(d.deviceSignIn.service);
+    if (r.option === "go") return codeExpired(d.deviceSignIn, Date.now()) ? deviceNewCodeText(d.deviceSignIn.service) : deviceSaidInText(d.deviceSignIn.service);
+    if (r.option === "hold") return "";
+  }
   // D238: the phone answers that one itself (handset/index.ts tells the task once it is on, or why not).
   if (d.handset) return "";
   // D539: copied to its computer (its ask_for_key now gives it at once), or not.
@@ -269,6 +277,8 @@ export function createDecisions(opts: {
           ...(q.where ? { where: q.where } : {}),
           // D505 (rev.): the card's words are its code's (Go 换过去 / Move it there, Hold 我在这里登录 / I'll sign
           // in here); unanswered it waits, no countdown (reversible, a Hold default with no time).
+          // D599: a one-time-code sign-in: no default, never on its own; Go is only the new code once it ran out.
+          ...(q.deviceSignIn ? { deviceSignIn: q.deviceSignIn, goLabel: "Get a new code", defaultOption: "hold" as const, reversible: false } : {}),
           ...(q.signInWhere ? { signInWhere: { site: q.signInWhere.site, url: q.signInWhere.url, to: q.signInWhere.to }, goLabel: q.default?.trim() || "Move it there", defaultOption: "hold" as const, reversible: true, ...(q.signInWhere.hold ? { holdLabel: q.signInWhere.hold } : {}) } : {}),
           // D238: may it use the person's own phone now: no default ever (silence never lends a phone).
           ...(q.handset ? { handset: q.handset, goLabel: "Go", defaultOption: "hold" as const } : {}),
@@ -277,7 +287,7 @@ export function createDecisions(opts: {
           // D587: a direct done's own ask: nobody relays it, its card says it.
           ...(r.direct && r.state === "done" ? { direct: true as const } : {}),
         };
-        if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
+        if (q.reversible && hasDefault && !q.deviceSignIn) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });
       }
       later(() => setAttention(r.taskId, "needs_you"));
@@ -319,7 +329,8 @@ export function createDecisions(opts: {
     const d = all.get(r.decisionId);
     if (!d) return;
     // D481: closed by what happened (its task ended): nothing to forward, no card to move.
-    if (r.by === "ended") return void silent.delete(r.decisionId);
+    // D599: a one-time-code sign-in that went through is closed by what happened too, and its task goes on.
+    if (r.by === "ended" && !r.signedIn) return void silent.delete(r.decisionId);
     // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
     // partner (decision_resolved is a trigger); nothing to forward, no card to move.
     if (!d.taskId) return;

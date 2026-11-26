@@ -870,6 +870,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.signInButtons(c, d, st) // D151: Sign in opens the live view
 		return
 	}
+	if d.DeviceSignIn != nil {
+		a.deviceSignInButtons(c, d, st) // D599: Open {service}, the code with Copy, settled by itself
+		return
+	}
 
 	if d.Phone != nil {
 		a.phoneButtons(c, d, st) // D217: a Go for one tap, or the user's turn on the phone
@@ -941,18 +945,25 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 func (a *App) decideRow(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under func()) {
 	// D493: the row and what stands under it keep one step of the scale
 	// apart (12; the Go's ledge takes 4 of it), on every surface.
-	ui.Column(c.Key("dk:" + d.DecisionID)).Gap(a.T.S3).Children(func() { a.decideRowIn(c, d, about, height, bg, after, under) })
+	ui.Column(c.Key("dk:" + d.DecisionID)).Gap(a.T.S3).Children(func() { a.decideRowIn(c, d, about, height, bg, after, under, nil) })
 }
 
-func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under func()) {
+// decideRowLead is decideRow with lead drawn where Go stands (D599: Open
+// {service} on a one-time-code sign-in, a page to open, not a Go).
+func (a *App) decideRowLead(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, lead, under func()) {
+	ui.Column(c.Key("dk:" + d.DecisionID)).Gap(a.T.S3).Children(func() { a.decideRowIn(c, d, about, height, bg, nil, under, lead) })
+}
+
+func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, height float32, bg ui.Color, after, under, lead func()) {
 	t := a.T
 	id := d.DecisionID
 	if a.replyOpen[id] {
 		a.replyField(c, d, about, height, bg)
 	} else {
 		ui.Row(c.Key("decide:" + id)).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
-			label := a.goLabel(d)
-			if a.buttonFor(c, label, about, btnPrimary, height, bg) {
+			if lead != nil {
+				lead()
+			} else if a.buttonFor(c, a.goLabel(d), about, btnPrimary, height, bg) {
 				a.Decide(id, "go", "")
 			}
 			ui.Box(c).Width(t.S2).Shrink(0)

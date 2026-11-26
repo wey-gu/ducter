@@ -8,6 +8,10 @@ import { inApp } from "./native.ts";
 import { Coin } from "./coin.tsx";
 import { spoken } from "./format.ts";
 import { Menu, MenuItem } from "./menu.tsx";
+import { askTokens } from "@ducter/protocol/src/ask-text.ts";
+import { copyAndSay } from "./conv-copy.ts";
+import { COPY_GLYPH } from "./markdown.ts";
+import { CHECK_GLYPH } from "./copy-button.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -1059,3 +1063,73 @@ export const BackGlyph = () => (
     <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
+
+/** D599: copy this text now, with the light tap; a refusal says how to pick it by hand. */
+const copyNow = (text: string, done: (ok: boolean) => void) => void copyAndSay(text, (ok) => (ok ? done(true) : (A.toast(A.L.t("dsi.copy.failed")), done(false))));
+
+/** D599: the one copy button's state: 复制 → 已复制 for a moment. */
+function useCopied(): [boolean, (text: string) => void] {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  return [
+    copied,
+    (text: string) =>
+      copyNow(text, (ok) => {
+        if (!ok) return;
+        setCopied(true);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 1600);
+      }),
+  ];
+}
+
+/**
+ * D599: a one-time code to type on another page (登录 GitHub's 8694-B656): the code large in mono on
+ * the sunken tint, selectable as a whole, and 复制 / Copy beside it that says 已复制 / Copied. `copied`
+ * lets the card's Open show it copied too; `off` is a code that ran out (faded, no Copy). The Mac's
+ * codeToCopy.
+ */
+export function CodeToCopy(p: { code: string; label: string; copied?: boolean; off?: boolean; onCopy?: () => void }) {
+  const [copied, copy] = useCopied();
+  const shown = copied || p.copied;
+  return (
+    <div class={`otc${p.off ? " off" : ""}`} role="group" aria-label={p.label}>
+      <code translate={false}>{p.code}</code>
+      {!p.off && <Btn kind="secondary" label={A.L.t(shown ? "dsi.copied" : "dsi.copy")} about={p.code} onClick={() => (copy(p.code), p.onCopy?.())} />}
+    </div>
+  );
+}
+
+/** D599: one piece of code in an ask's words: tap copies it; the drawn mark turns to the check. */
+function CopyCode({ text }: { text: string }) {
+  const [copied, copy] = useCopied();
+  return (
+    <button type="button" class={`ask-code${copied ? " done" : ""}`} aria-label={A.L.t(copied ? "dsi.copied" : "ask.copy", text)} onClick={() => copy(text)}>
+      <code translate={false}>{text}</code>
+      <span class="g" aria-hidden="true" dangerouslySetInnerHTML={{ __html: copied ? CHECK_GLYPH : COPY_GLYPH }} />
+    </button>
+  );
+}
+
+/**
+ * D599: an ask's words as the person reads them (ask-text.ts): selectable, its links real links that
+ * open in the browser (Safari on an iPhone), each code its own piece copied with one tap. The Mac's
+ * askText.
+ */
+export function AskText({ text }: { text: string }) {
+  return (
+    <span class="ask-said">
+      {askTokens(text).map((p, i) =>
+        p.kind === "link" ? (
+          <a key={i} class="ask-link" href={p.text} target="_blank" rel="noopener noreferrer">
+            {p.text}
+          </a>
+        ) : p.kind === "code" ? (
+          <CopyCode key={i} text={p.text} />
+        ) : (
+          p.text
+        ),
+      )}
+    </span>
+  );
+}

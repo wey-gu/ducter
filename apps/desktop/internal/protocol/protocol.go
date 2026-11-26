@@ -242,6 +242,10 @@ type Decision struct {
 	// Handset (D238): may this task borrow the person's own phone now (Go
 	// lends it; no default).
 	Handset *HandsetAsk `json:"handset,omitempty"`
+	// DeviceSignIn (D599): 登录 {service} with a one-time code: the page,
+	// the code, until when; Open and Copy, no Go before it runs out (then
+	// 再要一个码), settled by itself when signed in.
+	DeviceSignIn *DeviceSignInAsk `json:"deviceSignIn,omitempty"`
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
@@ -431,6 +435,18 @@ type DecisionResolved struct {
 	Posted bool `json:"posted,omitempty"`
 	// Said (D499, By "said"): Ducter said Go for the person under these words of theirs.
 	Said string `json:"said,omitempty"`
+	// SignedIn (D599): a one-time-code sign-in seen through (settled, by "ended").
+	SignedIn bool `json:"signedIn,omitempty"`
+}
+
+// DeviceSignInAsk (D599, packages/protocol/src/device-signin.ts): a
+// sign-in with a one-time code typed on a page.
+type DeviceSignInAsk struct {
+	Service string `json:"service"`
+	URL     string `json:"url"`
+	Code    string `json:"code,omitempty"`
+	Until   string `json:"until"`
+	CLI     string `json:"cli,omitempty"`
 }
 
 type ReadReceipt struct {

@@ -9,6 +9,13 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## A sign-in with a one-time code, after D599 (`device-signin.md`)
+
+- **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.
+- **Chat apps** (Telegram, Slack, WeChat) show the card's words and the generic Go. *Trigger:* the next chat-app card pass; draw Open {service} as a link button and the code as its own message to copy.
+- **The agent setup's sign-in** (D518) draws its code its own way. *Trigger:* the next Devices pass: use `codeToCopy` / `CodeToCopy` there.
+- **Sign-ins that want a code pasted back** (`claude /login`, `gcloud auth login --no-browser`) are asked for in words. *Trigger:* a task meets one: a paste field on the card, sent to the task as `ask_for_key` sends a key.
+
 ## What tasks used, after D588 (`focus-window.md` "What tasks used", research/235 #2)
 
 - [x] **The line in the apps.** Overview's 这周的额度用在了哪儿 and the limit card's line, Mac and web

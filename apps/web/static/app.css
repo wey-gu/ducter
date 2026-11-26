@@ -25040,3 +25040,127 @@ img[src*="art/fig/sprout"] { filter: none !important; }
     min-height: 44px;
   }
 }
+
+/* ---------- D599: an ask's own links and codes; 登录 {service} with a one-time code ---------- */
+/* The words stay selectable everywhere (a phone's bubbles turn selection off; an ask is not a bubble). */
+.ask-said {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
+@media (pointer: coarse) {
+  .bubble .ask-said {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+.ask-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--needs-ink);
+  overflow-wrap: anywhere;
+}
+.ask-link:hover {
+  color: var(--needs-ink);
+}
+/* A code in the words: the inline code tint, the drawn copy mark after it; one tap copies. */
+.ask-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--chip-ground);
+  color: var(--ink);
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+.ask-code code {
+  padding: 0;
+  background: none;
+  font-family: var(--mono);
+  font-size: 0.88em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ask-code .g {
+  display: inline-flex;
+  color: var(--ink-muted);
+}
+.ask-code .g svg {
+  width: 0.8em;
+  height: 0.8em;
+}
+.ask-code:hover .g {
+  color: var(--ink);
+}
+.ask-code.done .g {
+  color: var(--done-ink);
+}
+.ask-code:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The one-time code: large in mono on the paper, set into the card; Copy at its right. */
+.otc {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 64px;
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+.otc code {
+  flex: 1;
+  padding: 0;
+  background: none;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  -webkit-user-select: all;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.otc .btn {
+  flex: none;
+}
+.otc.off code {
+  color: var(--faded-ink);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.dsi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.dsi .dsi-line {
+  color: var(--ink-soft);
+}
+.dsi .dsi-live {
+  margin-top: var(--s1);
+}
+.dsi-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: auto;
+  border-radius: 50%;
+  background: var(--needs-dot);
+}
+@media (max-width: 380px) {
+  .otc code {
+    font-size: 1.5rem;
+    letter-spacing: 0.06em;
+  }
+}

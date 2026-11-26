@@ -248,6 +248,9 @@ type App struct {
 	folderConfirm map[string]*protocol.UndoConfirm
 	taskLists     map[string]*ui.ListState
 	md, mdTask    markdown.Options
+	// D599: an ask's words as Markdown, by size and weight; a code clicked in them, to copy.
+	askMd   map[askOptKey]*markdown.Options
+	askCopy string
 	mdTaskHan     markdown.Options // D268: the task's words when they hold Chinese
 	// tp is the opened task's page (D271): its transcript made once per
 	// change of its events, the locator's state, the turn being drawn.

@@ -32,6 +32,8 @@ export interface Work {
   /** D483: what tasks own outside (their PRs), watched for them. */
   owned: Owned;
   frames: WorkFrames;
+  /** D599: one check run where a task runs (its computer, its folder), as a wait's look runs it. */
+  look(spec: CheckSpec, taskId: string): Promise<CheckResult>;
   /** On hand plus what only these parts know (looks, routine views). */
   decorate(o: OnHand): OnHand;
   /** false: this event must not wake the partner (a try of an `until` loop that is still going). */
@@ -634,6 +636,7 @@ export function createWork(o: WorkOptions): Work {
     routines,
     loops,
     owned,
+    look: (spec, taskId) => check(spec, { taskId }),
     setKeepRules: (f) => void (keepRules = f),
     frames: {
       zone: (tz) => routines.setUserZone(tz),

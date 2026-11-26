@@ -207,7 +207,7 @@ export function receiptShapes(j: any): Observed {
     ops: list.length,
     fields: fieldsOf(list),
     receiptField: withField.length,
-    // D594: Mem's contract puts the fields at the top of each op (VERIFIED 0.10.124); a nested one is an older nmem's.
+    // D595: Mem's contract puts the fields at the top of each op (VERIFIED 0.10.124); a nested one is an older nmem's.
     receiptFields: fieldsOf(withField.map((o) => ("receipt_available" in o ? o : o.read_receipt && typeof o.read_receipt === "object" ? o.read_receipt : o.receipt && typeof o.receipt === "object" ? o.receipt : o))),
     read: list.filter((o) => receiptOf(o)).length,
     states: [...new Set(list.map((o) => receiptOf(o)?.state).filter(Boolean))].join(","),

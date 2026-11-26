@@ -373,7 +373,7 @@ test("Mem's facts, read: the write target, the Spaces, and where that puts a fil
   expect(whyOf({ code: 1, out: "", err: "error: Pass --space (or --parent) to choose where the folder goes." })).toEqual({ why: "no_space", message: "Pass --space (or --parent) to choose where the folder goes." });
 });
 
-// D594: nmem 0.10.124's passive `bridge setup` marks the one personal candidate Mem attests as its write
+// D595: nmem 0.10.124's passive `bridge setup` marks the one personal candidate Mem attests as its write
 // default `recommended: true` (#11283; VERIFIED read-only 2026-11-26, 8 candidates, one recommended).
 // It is taken first; an older nmem without the field reads as before (the kind).
 test("Mem's recommended personal Space is the personal one; without it, the kind", () => {

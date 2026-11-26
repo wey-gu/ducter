@@ -1440,11 +1440,11 @@ community repo and the Antigravity plugin, read-only calls on the author's Mac).
   contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone kept
   the quiet row (until D576, below), with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
 - **Read receipts: parsed, not shown yet.** An outbox or inspect op's receipt is kept on the op
-  (`BridgeOp.read`, `receiptOf`) only when Mem says one is available. D594 (below) reads it as Mem's
+  (`BridgeOp.read`, `receiptOf`) only when Mem says one is available. D595 (below) reads it as Mem's
   contract places it; showing 已读 joins 来往 later (todo).
 - **Not retired:** D334's per-Space contexts and D338's back-off (for 0.10.120), D400's 5 s clamp, D369's
   stuck line.
-- **Mem's side still:** filed as nowledge-co/mem#11262; what shipped is D594 (below).
+- **Mem's side still:** filed as nowledge-co/mem#11262; what shipped is D595 (below).
 
 ## Replies to your agents, from Mem's facts (D560, 2026-11-25)
 
@@ -1514,7 +1514,7 @@ standing(pi)  = ask   能把事交给我；你让它看看，就收得到我的�
   through the partner (D448), unchanged.
 - **Not yet:** a fact that pi heard back (todo).
 
-## After nmem 0.10.124: Mem's answers to our asks (D594, 2026-11-26)
+## After nmem 0.10.124: Mem's answers to our asks (D595, 2026-11-26)
 
 Evidence: `research/236` (nowledge-co/mem#11262, its PRs, read-only calls on the author's Mac with nmem
 0.10.124). Of the nine asks, five shipped whole, three in part or another shape, and one (session kind) was

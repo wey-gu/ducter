@@ -128,7 +128,7 @@ export interface BridgeOp {
 }
 
 /**
- * D555 (research/226), D594: whether the recipient opened what an op sent. The contract, from Mem's
+ * D555 (research/226), D595: whether the recipient opened what an op sent. The contract, from Mem's
  * Bridge owner on nowledge-co/mem#11262 (2026-11-25) and VERIFIED read-only on nmem 0.10.124
  * (2026-11-26): each `outbox.operations[]` row and `inspect`'s top-level object carry
  * `receipt_available` and `read_state` (unread | partially_read | read) at the top; with a receipt,
@@ -564,7 +564,7 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
   for (const m of list) {
     const id = str(m?.message) ?? str(m?.message_id) ?? str(m?.id);
     // nmem 0.10.118 (VERIFIED): `{message, status: "delivered"|"read", read_recipients, recipients}`.
-    // D594: `read_recipients` is an integer (Mem's contract, #11262; VERIFIED 0.10.124), read first; the
+    // D595: `read_recipients` is an integer (Mem's contract, #11262; VERIFIED 0.10.124), read first; the
     // words only when there is no count, and whole ("unread" is never a read).
     if (!id) continue;
     const n = m?.read_recipients;
@@ -1081,7 +1081,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           const b = parse(o.out);
           const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
           if (!body) continue;
-          // D594: nmem 0.10.124's `open` returns the same scoped reply argv as the entry (#11277 via #11288,
+          // D595: nmem 0.10.124's `open` returns the same scoped reply argv as the entry (#11277 via #11288,
           // VERIFIED read-only 2026-11-26): the opened message's own is taken first, the entry's for an older nmem.
           const replyArgs = memArgv(b?.reply_args_prefix, "reply") ?? listed;
           if (replyArgs) replyBy.set(id, replyArgs);

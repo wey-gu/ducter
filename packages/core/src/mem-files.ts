@@ -159,7 +159,7 @@ export interface SpaceSeen {
   label: string;
   kind: string;
   readers?: number;
-  /** D594: Mem marks it the one to offer for private use (nmem 0.10.124, #11283): an active, readable personal zone that is this credential's write default. */
+  /** D595: Mem marks it the one to offer for private use (nmem 0.10.124, #11283): an active, readable personal zone that is this credential's write default. */
   recommended?: true;
 }
 
@@ -168,7 +168,7 @@ export interface SpaceSeen {
  * `{ state, note, candidates: [{ id, label, kind, readers, write_default }] }`); it creates and
  * selects nothing. "off": no Spaces listed (a Mem with Spaces off). D575: only the personal one is
  * taken from here (kind personal, one reader), and a shared target's label and readers; its
- * write_default is no longer borrowed. D594: nmem 0.10.124 adds `recommended: true` on the one personal
+ * write_default is no longer borrowed. D595: nmem 0.10.124 adds `recommended: true` on the one personal
  * candidate Mem attests (VERIFIED read-only on this Mac, 2026-11-26: 8 candidates, one recommended).
  */
 export function spacesFrom(out: string): SpaceSeen[] | "off" {
@@ -204,7 +204,7 @@ export function placeFrom(
 ): { personal: string } | { shared: SpaceSeen; personal?: string } | "none" | "off" {
   if (target?.reason === "personal_zone") return { personal: target.id };
   const list = spaces === "off" || !spaces ? [] : spaces;
-  // D594: Mem's own `recommended` personal candidate first (0.10.124: it attests a personal zone that is
+  // D595: Mem's own `recommended` personal candidate first (0.10.124: it attests a personal zone that is
   // the write default; still offered, never chosen for anyone by Mem); an older nmem's `kind` after it.
   const mine = list.find((c) => c.recommended && c.kind === "personal") ?? list.find((c) => c.kind === "personal");
   if (target) {

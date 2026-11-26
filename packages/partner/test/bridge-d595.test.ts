@@ -1,4 +1,4 @@
-// D594: what Mem shipped for nowledge-co/mem#11262 in nmem 0.10.124, read the way Mem says it is
+// D595: what Mem shipped for nowledge-co/mem#11262 in nmem 0.10.124, read the way Mem says it is
 // (shapes VERIFIED read-only on 2026-11-26; ids and bodies made up; nothing here reaches Mem):
 //   - a receipt's fields sit at the top of an outbox op and of inspect, its counts integers; the
 //     nested `read_receipt` is an older nmem's, read only as a fallback;
@@ -13,7 +13,7 @@ import { createNmemBridge, outgoingReads, receiptOf } from "../src/bridge.ts";
 
 const AT_US = Date.parse("2026-11-26T02:00:00Z") * 1000;
 
-describe("D594: read receipts as Mem's contract says (nmem 0.10.124)", () => {
+describe("D595: read receipts as Mem's contract says (nmem 0.10.124)", () => {
   test("an outbox op's top-level fields", () => {
     // The 0.10.124 outbox row as seen live (field names and types; values made up).
     const op = { operation: "bo1:a", phase: "settled", delivery_state: "delivered", status: "read", message: "m-1", reply_to: "m-1", body_sha256: "x", receipt_available: true, read_state: "read", read_recipients: 1, recipients: 1, receipt_observed_at_us: AT_US };
@@ -46,7 +46,7 @@ describe("D594: read receipts as Mem's contract says (nmem 0.10.124)", () => {
 
 /** A stub nmem: one identity-inbox entry with Mem's argv; `open` with or without its own reply argv. */
 function stub(openHasReply: boolean) {
-  const dir = mkdtempSync(join(tmpdir(), "ducter-bridge-d594-"));
+  const dir = mkdtempSync(join(tmpdir(), "ducter-bridge-d595-"));
   const argv = (verb: string, ctx: string) => ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${ctx}`, "bridge", verb, "bm1:ref"];
   const entry = { message: "m-1", reference: "bm1:ref", space_id: "all", state: "pending", eligible: true, mine: true, read: false, in_reply_to: null, created_at_us: AT_US, open_args: argv("open", "ducter"), reply_args_prefix: argv("reply", "ducter-listed"), sender: { actor_id: "a", member: "Member m", agent: "Wey Codex Bridge", agent_id: "wey-codex-bridge" } };
   const opened = { message: "m-1", body: "Could you check the release notes?", reply_to: "m-1", in_reply_to: null, sender: entry.sender, space_id: "all", created_at_us: AT_US, outgoing: [], ...(openHasReply ? { reply_args_prefix: argv("reply", "ducter-opened") } : {}) };
@@ -71,7 +71,7 @@ console.log("{}");
   return createNmemBridge({ context: "ducter", places: [{ context: "ducter", spaceId: "personal-m", spaceLabel: "Only me", kind: "personal" }], bin, me: "m", env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "" }, retryDelaysMs: [] });
 }
 
-describe("D594: a reply goes Mem's way from the opened message (nmem 0.10.124)", () => {
+describe("D595: a reply goes Mem's way from the opened message (nmem 0.10.124)", () => {
   test("open's own reply argv is the route", async () => {
     const r = await stub(true).check(new Set());
     expect(r.ok).toBe(true);

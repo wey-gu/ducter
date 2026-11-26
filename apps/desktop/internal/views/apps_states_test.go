@@ -88,12 +88,12 @@ func TestShelfTilesSayTheirState(t *testing.T) {
 }
 
 // D422: the window of an app made before the kit says so over the app, with
-// its button; its foot says who sees it instead of the old internet line.
+// its button (D603: who sees it is in 「⋯」 and the name's tooltip, never a foot).
 func TestAppWindowSaysItsState(t *testing.T) {
 	app, _ := shelfApp(t, i18n.ZH, statesFixture(i18n.ZH), nil)
 	tt := ui.NewTesterWith(app.AppWinView(app.NewAppWin("a5b6c7")), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{unjoin(autospace(app.L.T("app.live.old"))), app.L.T("app.live.renew"), unjoin(autospace(app.L.T("app.private")))} {
+	for _, want := range []string{unjoin(autospace(app.L.T("app.live.old"))), app.L.T("app.live.renew")} {
 		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -144,7 +144,8 @@ func TestAppWindowSentLineEnds(t *testing.T) {
 	tt.Frame()
 	w.sent = true
 	tt.Frame()
-	sent := unjoin(autospace(app.L.T("app.ask.sent", "Ducter")))
+	// D603: under the app, where it was asked: it is being made.
+	sent := unjoin(autospace(app.L.T("app.live.changing", "Ducter")))
 	if !hasText(tt, sent) {
 		t.Fatalf("no %q while it is being changed: %q", sent, tt.Texts())
 	}

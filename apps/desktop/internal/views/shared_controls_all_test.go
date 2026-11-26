@@ -30,7 +30,7 @@ var defineFiles = map[string]string{
 // that may only fall as the view moves onto the set; the trigger to empty
 // the list is design/todo.md "D519: the raw controls left in older views".
 var olderViews = map[string]int{
-	"addfolder.go": 1, "apps.go": 2, "apps_shelf.go": 4, "appwin.go": 1, "autofill.go": 1, "away.go": 2, "benchlaunch.go": 1, "calendar.go": 1,
+	"addfolder.go": 1, "apps.go": 2, "apps_shelf.go": 4, "autofill.go": 1, "away.go": 2, "benchlaunch.go": 1, "calendar.go": 1,
 	"chrome.go": 2, "composertune.go": 4, "contextmeter.go": 1, "conversation.go": 2, "copy_d492.go": 1, "did.go": 2, "filecard.go": 1,
 	"fileview.go": 4, "firstrun.go": 1, "firstwords.go": 1, "float.go": 2, "follow.go": 1, "handover.go": 10, "handover_cards.go": 1,
 	"held.go": 2, "isles.go": 4, "keymap.go": 1, "lend.go": 2, "made.go": 2, "media.go": 5, "memory_pane.go": 1, "newtaskfind.go": 2,

@@ -18121,8 +18121,8 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .app-first-word { font-weight: 800; color: var(--ink); flex: none; }
 .app-first-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* D603: one slim line; it goes after a while or at the first touch, × sooner. */
-.app-first .app-first-x { flex: none; width: 28px; min-height: 28px; font-size: 16px; background: none; }
-.app-first .app-first-x:hover { background: var(--sunken); }
+.past-x.app-first-x { flex: none; width: 28px; min-height: 28px; font-size: 16px; background: none; }
+.past-x.app-first-x:hover { background: var(--sunken); }
 
 /* Pinned apps at the top of the conversation, beside D381's pins. */
 .pin-apps { flex: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 6px 16px 2px; }

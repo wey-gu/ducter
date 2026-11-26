@@ -100,6 +100,7 @@ Design notes:
 - `move.md`: moving Ducter to another computer with nothing lost: what goes, what is redone and why, what follows the new address, work under way, the Mem/Bridge handover, cut-over and the way back; `ducter move --plan` first (D504).
 - `tidy.md`: 整理工作副本 / tidying the working copies Ducter made: the keep-rules, the windows (finished 3 days, dropped 7) from hel's Log, `git worktree remove` only, the quiet line, `ducter worktrees` (D514).
 - `self-repair.md`: what fails (task starts, mid-run, finish, the partner, state), the ladder Ducter climbs by itself within budgets, the partner as the judgment rung, the person once; `ducter repairs` (D473).
+- `handoff.md`: a hand-off between agents as one record with an owner: given, taken, done, returned; one key per item; every door the same; never silent (D609).
 - `handover.md`: handing over several to-dos: one sheet with a note and a shape, a group on Go, plan first for a subject, review together (D385, built).
 - `positioning.md`: what Ducter is in one line and one paragraph, zh and en: a personal AI for builders, on your own computers or servers; the GitHub description (D414).
 - `site.md`: the website (ducter.ai): the landing page, `/download`, the docs' rendering, and what's owed (D319).

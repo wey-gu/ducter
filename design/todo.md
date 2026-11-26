@@ -686,6 +686,44 @@ line.
   intermediate Claude.ai credentials or session tokens". It is the person's own token on their own
   Ducter, but copied to a worker it is closer to that line. Trigger: the next key-copy change.
 
+## The four new agents, live (D600, research/239–242)
+
+None of these has run a live task or sign-in: the entries, facts, probes, cards and tests are
+built from OAR 0.124's own declarations and the reports. Each check names what would make the
+fact wrong.
+
+- [ ] **Cursor: bundle the SDK and give it a Node sidecar.** `@cursor/sdk@1.4.1` is not in this
+  build, and in-process it refuses `SessionOptions.env`; `runner/oar.ts` therefore refuses a
+  Cursor start. Bundle the SDK with OAR's subprocess/child mode (or wait for OAR's `childProcess`),
+  pin the version, and check: a task opens, a turn runs, its tools cannot read Ducter's whole
+  environment, resume works in the same folder, and `CURSOR_API_KEY` is the only env key it sees.
+- [ ] **Cursor's sign-in, live.** Its own `Cursor.auth.login()` link (not `agent login`, a different
+  credential store), the 90-day expiry, and a local-only logout that does not revoke the key. The
+  card must not offer a Cursor OAuth app (its scopes exclude signing the CLI/SDK in).
+- [ ] **Devin: install, sign in, one task.** Its own script, `devin auth login` (or
+  `WINDSURF_API_KEY`), then a task that opens, runs a turn, resumes and reaches Ducter's MCP over
+  the stdio bridge. Check whether ACP advertises `bypass`; probe images, `thought_level` and
+  `cognition.ai/midTurnPrompts`; confirm `devin auth status` says signed in after the browser
+  flow. Add a sign-out only if OAR gains one.
+- [ ] **Kimi: install, device code, one task, direct-only refusal.** The vendor script under
+  `~/.kimi-code`, `kimi login` (mainland by default; `--region global` elsewhere), the link and
+  device code on the card, a task that opens, takes a picture, reaches HTTP MCP, resumes and signs
+  out. On a live home, try a wait and a routine on it: both must refuse with Kimi's own line, and
+  `ducter usage` must not read its quota. Check the 630 s open bound and 2.6.x's stale MCP tools.
+- [ ] **OpenCode: install, sign in, one task.** Ducter's npm pin (or the v2 script), then a task
+  that opens with a native prompt and appended instructions, reaches HTTP MCP, steers, resumes and
+  compacts. Check v1 vs v2's provider sign-in; wire OAR's `createOpencodeProviderAuth` (and logout)
+  before offering the provider picker. Never a provider key in its env, never a Claude
+  subscription sign-in. Confirm `auth list --format json` is the probe's real check.
+- [ ] **Mem on the four.** Cursor's Mem plugin does not load through OAR's SDK session (Ducter's
+  `memSteps` stand in; verify `contextApp`/`threadFrom`), Devin's and OpenCode's `memUpdate`
+  commands are documented but unrun, and none of the four can turn Mem off per session. Check
+  Cursor's `nmem context --source-app cursor`, Devin's and OpenCode's live plugin commands, and
+  Kimi's plugin presence (no fact).
+- [ ] **The cards and the picker, with art.** The four show with the generic clay token until each
+  has a coin; take shots of a device card and the New task picker with each installed and signed
+  in, zh and en, both themes, before calling the visible change done.
+
 ## Antigravity, live (D416, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the
@@ -737,9 +775,9 @@ line.
 - [ ] **Mem's skills in an agy task (D417 cut them).** Distill and handoff stay with the partner
   (`remember`). Trigger: agy loads a plugin or skills folder for one session (a flag, or OAR's
   `userConfiguration` verified for it).
-- [ ] **A sign-out for the other agents** (D416 built Antigravity's, through OAR's `logout`;
-  Claude Code, Codex, pi and DeepSeek Harness have none in Ducter yet). Trigger: someone asks to
-  sign one of them out from Ducter.
+- [ ] **A sign-out for the other agents** (D416 built Antigravity's and D600 added Cursor's and
+  Kimi's, through OAR's `logout`; Claude Code, Codex, pi, DeepSeek Harness, Devin and OpenCode
+  have none in Ducter yet). Trigger: someone asks to sign one of them out from Ducter.
 - [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
   `HARNESSES["deepseek-harness"].images`.
 ## The waiting line, alive (D425, research/176)

@@ -1380,6 +1380,14 @@ func harnessName(h string) string {
 		return "DeepSeek Harness"
 	case "antigravity":
 		return "Antigravity"
+	case "cursor":
+		return "Cursor"
+	case "devin":
+		return "Devin CLI"
+	case "kimi":
+		return "Kimi Code CLI"
+	case "opencode":
+		return "OpenCode"
 	}
 	return h
 }
@@ -1394,6 +1402,14 @@ func harnessBadge(h string) string {
 		return "ds"
 	case "antigravity":
 		return "ag"
+	case "cursor":
+		return "cu"
+	case "devin":
+		return "dv"
+	case "kimi":
+		return "km"
+	case "opencode":
+		return "oc"
 	}
 	if len(h) >= 2 {
 		return h[:2]

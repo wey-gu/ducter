@@ -802,6 +802,162 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/antigravity/{install,update}.js; https://antigravity.google/cli/install.sh (read 2026-11-20): the manifest, its sha512, ~/.local/bin/agy, \"automatically self-updates in the background\"" },
     },
   },
+  // D600: Cursor through its own SDK, embedded by OAR 0.124 (runtimes/cursor). The SDK refuses
+  // SessionOptions.env in process, and it is not bundled in this build, so every session fails
+  // closed before its first turn; the facts below are OAR's and Cursor's, not a live Ducter run.
+  cursor: {
+    harness: "cursor",
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "the SDK runs inside Ducter's process and Cursor documents no root check (research/239)" } },
+    toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "the SDK passes tools through whichever model family the catalog selection names (research/239 §2.3)" } },
+    // Ducter reports the pinned SDK's version, never the person's CLI: `agent` is a separate product.
+    version: { command: ["agent", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
+    verified: { from: "1.4.1", to: "1.4.1" },
+    models: { value: {}, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/list-models.js: Cursor.models.list(), in the SDK's order, `default` is Auto (research/239 §2.3)" } },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window; OAR reports tokens only, never a window" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor: contextUsage {tokens:true, contextWindow:false}" } },
+    compactAtKnob: { value: { via: "none", key: "", note: "Cursor compacts by itself; the SDK exposes no setting Ducter can pass" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/index.js: no compaction knob and no compaction events" } },
+    defaultCompactAt: { value: "Cursor's own", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/index.js: manualCompaction absent" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor: no hook channel" } },
+    compactionEvents: { value: { started: false, ended: false }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor: no compaction profile" } },
+    contextReport: { value: "tokens of the last request (OAR contextUsage); no window", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/index.js sessionCapabilities.contextUsage" } },
+    toolSearch: { value: "HTTP MCP with headers, passed on create and again on resume; stdio too", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js mcpServers (stdio and http)" } },
+    resume: { value: { supported: true, how: "SDK Agent.resume by id in the same folder; the model and MCP entries are passed again" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js openCursorAgent; docs/runtimes/cursor.md" } },
+    browser: { value: "none Ducter uses (Cursor's own web tools are not named by OAR)", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor: no browser mapping" } },
+    nativeCommands: {
+      value: { discover: ["skills"], fixed: ["model", "effort"], hidden: [], how: "OAR reads .cursor/skills, .claude/skills, .codex/skills, .grok/skills and .agents/skills; it has no command, MCP-server or tool inventory for Cursor" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/skills.js; docs/runtimes/cursor.md Skill discovery" },
+    },
+    background: { value: { ownTurn: "unknown", how: "the SDK runs local runs, but OAR maps no task events for Cursor" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/index.js: no task_started mapping" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/cursor: no allowlist and no verified built-in denial; it is never a one-shot" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js: disallowedTools refused before open" } },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js: disallowedTools and clean setup refused" } },
+    readOnly: { value: { how: "not possible: tool denial and a clean setup are refused, so it never carries the partner", tools: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js: disallowedTools; docs/runtimes/cursor.md" } },
+    effort: {
+      value: { levels: ["low", "medium", "high", "max"], how: "the model's own reasoning parameter (`effort`, `reasoning`, `reasoning_effort` or a `thinking` switch), checked against its menu by OAR", perModel: true, defaultListed: true },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/cursor/model.js cursorModelSelection; docs/runtimes/cursor.md Models" },
+    },
+    memSteps: {
+      value: { contextApp: "cursor", threadFrom: "cursor", plugin: "nowledge-mem-cursor" },
+      evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/docs/integrations/cursor; research/239 §4.5: the plugin's hooks do not load through OAR's SDK session, so Ducter's Mem steps stand in (the exact contextApp is INFERRED from `nmem t sync --from cursor`)" },
+    },
+    channels: {
+      // The person's Cursor CLI is not what Ducter runs; the SDK is bundled by whoever builds Ducter,
+      // so there is no copy here for Ducter to update (research/239 §4.2).
+      value: {},
+      evidence: { kind: "INFERRED", why: "a Cursor CLI installer would install the wrong product; the SDK rides inside Ducter or its Node sidecar" },
+    },
+  },
+  // D600: Devin CLI over ACP, OAR 0.124 (runtimes/devin). Never run by Ducter yet: its facts are
+  // OAR's declarations and Devin's docs (research/240).
+  devin: {
+    harness: "devin",
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "Devin's ACP has no documented root check; OAR's runtime has none" } },
+    toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "Devin routes every model family; its CLI takes MCP tools for whichever model (research/240 §2)" } },
+    version: { command: ["devin", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
+    verified: { from: "3000.12.57", to: "3000.14.30821" },
+    models: { value: {}, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/list-models.js: it opens a throwaway ACP session and reads the `model` config option; no windows (research/240 §2.3)" } },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window; OAR reports no window for Devin" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/list-models.js: no window field" } },
+    compactAtKnob: { value: { via: "none", key: "", note: "Devin compacts by itself; /compact has no structured completion OAR can read" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/index.js manualCompaction unsupported" } },
+    defaultCompactAt: { value: "Devin's own", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/index.js: no compaction setting or events" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "DOCUMENTED", source: "Devin's hook events have PostCompaction, no PreCompact (research/240 §4)" } },
+    compactionEvents: { value: { started: false, ended: false }, evidence: { kind: "INFERRED", why: "OAR maps no compaction events for Devin (runtimes/devin/index.js)" } },
+    contextReport: { value: "not reported by OAR", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin: no contextUsage profile" } },
+    toolSearch: { value: "Ducter's MCP through its stdio bridge (the entry carries no credential; OAR refuses env/headers in this release)", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 docs/runtimes/devin.md Session MCP servers; runtimes/devin/options.js" } },
+    resume: { value: { supported: true, how: "ACP session/load (or resume when advertised) by id, only in the saved folder" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/session.js: session/load, a different cwd refused" } },
+    browser: { value: "its own web search, not a browser Ducter drives", evidence: { kind: "DOCUMENTED", source: "https://docs.devin.ai/cli team settings Enable Web Search; OAR maps no browser" } },
+    nativeCommands: {
+      value: { discover: ["skills"], skillForm: "/{name}", fixed: ["model"], hidden: [], how: "OAR reads `devin skills list --json`; its command, MCP-server and tool inventories are unsupported, so only /model is fixed" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/skills.js; docs.devin.ai skill syntax; research/240 §2" },
+    },
+    background: { value: { ownTurn: "unknown", how: "the CLI has subagents, but OAR declares no task mapping for Devin" }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/devin/index.js declares no task events (research/240 §2)" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/devin/options.js: disallowedTools refused; it is never a one-shot" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/options.js: disallowedTools refused before launch" } },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/options.js: disallowedTools and userConfiguration refused" } },
+    readOnly: { value: { how: "not possible: tool denial and leaving the person's setup out are refused, so it never carries the partner", tools: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/options.js: disallowedTools; userConfiguration" } },
+    memUpdate: {
+      value: [["devin", "plugins", "update", "nowledge-mem"]],
+      evidence: { kind: "DOCUMENTED", source: "https://github.com/nowledge-co/community: Mem's Devin plugin README gives `devin plugins install nowledge-co/community#nowledge-mem-devin-plugin` and `devin plugins update nowledge-mem` (research/240 §4)" },
+    },
+    channels: {
+      value: { installer: { mark: "file:distribution", update: ["devin", "update", "--force"], latest: "https://static.devin.ai/cli/current/manifest.json" } },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/devin/{install,update}.js: the official script's payload with a `distribution` marker, and `devin update --force`" },
+    },
+  },
+  // D600: Kimi Code CLI over ACP, OAR 0.124 (runtimes/kimi). Never run by Ducter yet: its facts are
+  // OAR's declarations and Kimi's docs (research/241).
+  kimi: {
+    harness: "kimi",
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "no root check is documented; OAR's runtime has none (research/241 §4)" } },
+    toolSchema: { value: ["openai"], evidence: { kind: "DOCUMENTED", source: "Kimi's own provider API is OpenAI-shaped (research/241 §4)" } },
+    version: { command: ["kimi", "--version"], pattern: /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/ },
+    verified: { from: "2.3.3", to: "2.6.3" },
+    models: { value: {}, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/list-models.js opens a temporary ACP session and reads its `model` config option (research/241 §2)" } },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window; OAR reads it from usage_update.size" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi: contextUsage {tokens:true, contextWindow:true}" } },
+    compactAtKnob: { value: { via: "none", key: "", note: "Kimi compacts by itself; /compact has no structured completion OAR can read" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/index.js manualCompaction unsupported" } },
+    defaultCompactAt: { value: "Kimi's own", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/index.js: no compaction setting or events" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi: no hook channel" } },
+    compactionEvents: { value: { started: false, ended: false }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/index.js: manualCompaction unsupported" } },
+    contextReport: { value: "usage_update.used / .size after each prompt (OAR contextUsage)", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/session.js; docs/runtimes/kimi.md Context" } },
+    toolSearch: { value: "HTTP MCP with headers, passed on session/new; stdio too; a running session keeps its tool list", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/index.js mcpTransports [stdio,http], mcpToolsListChanged \"none\"; docs/runtimes/kimi.md" } },
+    resume: { value: { supported: true, how: "ACP session/resume by id in the same cwd, no history replay; additionalDirectories refused on resume" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/session.js (research/241 §2)" } },
+    browser: { value: "its own WebSearch/WebFetch, plus any browser plugin the person installed", evidence: { kind: "DOCUMENTED", source: "Kimi CLI docs; OAR maps no browser (research/241 §4)" } },
+    nativeCommands: {
+      value: { discover: ["skills"], skillForm: "/skill:{name}", fixed: ["compact", "model"], hidden: [], how: "OAR reads Kimi's skill catalog (plugin skills as /skill:<plugin-id>:<name>); it has no command/MCP/tool inventory, and /effort does not exist" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/skills.js; Kimi slash-commands page (research/241 §2)" },
+    },
+    background: { value: { ownTurn: "unknown", how: "ACP carries only the main turn; a background job or subagent is not seen" }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/kimi declares no task mapping (research/241 §4)" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/kimi/options.js: disallowedTools refused; it is never a one-shot" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/options.js: disallowedTools refused before launch" } },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/options.js: disallowedTools and userConfiguration refused" } },
+    readOnly: { value: { how: "not possible: tool denial and a clean setup are refused, so it never carries the partner", tools: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/options.js: disallowedTools; userConfiguration" } },
+    effort: {
+      value: { levels: ["low", "high", "max"], how: "its `thinking` config option (`thought_level`), only on the current model; off is dropped", perModel: true, defaultListed: false },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/list-models.js; docs/runtimes/kimi.md Models (research/241 §2)" },
+    },
+    channels: {
+      value: { installer: { mark: "/.kimi-code/", update: ["kimi", "upgrade", "-y"], latest: "https://code.kimi.com/kimi-code/latest" } },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/kimi/{install,update}.js: the vendor script writes ~/.kimi-code and `kimi upgrade -y`" },
+    },
+  },
+  // D600: OpenCode over ACP, OAR 0.124 (runtimes/opencode). Never run by Ducter yet: its facts are
+  // OAR's declarations and OpenCode's docs (research/242).
+  opencode: {
+    harness: "opencode",
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "no root check is documented; OAR's runtime has none (research/242 §4.2)" } },
+    toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "OpenCode passes tools through whichever provider package is selected (research/242 §4.2)" } },
+    version: { command: ["opencode", "--version"], pattern: /(?:opencode\s+)?v?([12]\.\d+\.\d+)/ },
+    verified: { from: "2.2.7", to: "2.3.0" },
+    models: { value: {}, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/list-models.js: `opencode models --standalone` (v2) or `--verbose` (v1); id-only on v2 (research/242 §2.3)" } },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window; OAR reads usage_update.used / .size" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode: contextUsage {tokens:true, contextWindow:true}" } },
+    compactAtKnob: { value: { via: "none", key: "", note: "OpenCode's own compactor; config `compaction.buffer` is not per session" }, evidence: { kind: "DOCUMENTED", source: "https://opencode.ai/docs/compaction/; OAR maps no per-session knob (research/242 §4.2)" } },
+    defaultCompactAt: { value: "window minus max(15%, 16K); about 85% on a 200K+ window", evidence: { kind: "DOCUMENTED", source: "https://opencode.ai/docs/compaction/ (research/242 §4.2)" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode: no hook channel" } },
+    compactionEvents: { value: { started: true, ended: true }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/compaction.js (v2; v1 has none)" } },
+    contextReport: { value: "usage_update.used / .size (OAR contextUsage)", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/options.js; docs/runtimes/opencode.md" } },
+    toolSearch: { value: "HTTP MCP with headers, and stdio, on session/new, load and resume; a same-name client server replaces the configured one for that directory", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/options.js mcpTransports; docs/runtimes/opencode.md (research/242 §2.4)" } },
+    resume: { value: { supported: true, how: "ACP session/resume by id in the same cwd; v2 fork copies the whole session" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/session.js (research/242 §2.4)" } },
+    browser: { value: "its own tools and plugins; OAR maps no browser", evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode: no browser mapping (research/242 §2.4)" } },
+    nativeCommands: {
+      value: { discover: ["skills"], skillForm: "@{name}", fixed: ["compact", "model", "effort"], hidden: [], how: "OAR reads OpenCode's skill catalog (skills are not slash commands); /compact is v2's manual compaction, absent on v1" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/skills.js; https://opencode.ai/docs/skills/ (research/242 §2.4)" },
+    },
+    background: { value: { ownTurn: "unknown", how: "v2 subagents arrive as child updates, mapped to OAR tasks; whether a child's end starts a parent turn is not established" }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/attribution.js (research/242 §2.4)" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR 0.124.0 runtimes/opencode/options.js: disallowedTools refused; it is never a one-shot" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/options.js: disallowedTools refused before open" } },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/options.js: disallowedTools and userConfiguration refused" } },
+    readOnly: { value: { how: "not possible: tool denial and a clean setup are refused, so it never carries the partner", tools: [] }, evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/options.js: disallowedTools; userConfiguration" } },
+    effort: {
+      value: { levels: ["minimal", "low", "medium", "high", "xhigh", "max"], how: "the model's `effort` config option (`thought_level`, variants); the union of variant names, per model", perModel: true, defaultListed: false },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/session.js session/set_config_option; https://opencode.ai/docs/models/ (research/242 §4.2)" },
+    },
+    memUpdate: {
+      value: [["opencode", "plugin", "update", "opencode-nowledge-mem"]],
+      evidence: { kind: "DOCUMENTED", source: "research/238 and Mem's SKILL.md: install `opencode plugin add opencode-nowledge-mem`, update `opencode plugin update opencode-nowledge-mem` (2.x)" },
+    },
+    channels: {
+      value: { npm: "@opencode/cli", installer: { mark: "/.opencode/bin/", update: ["opencode", "upgrade"], latest: "https://registry.npmjs.org/@opencode/cli/latest" } },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/{install,upgrade}.js; https://opencode.ai/docs/cli/ (research/242 §4.3): the v2 script and `opencode upgrade`, with the npm package pinned instead" },
+    },
+  },
 };
 
 // ---------- the small-window settings (D135) ----------
@@ -1096,4 +1252,9 @@ export const MCP_CALL_WAIT: Record<HarnessId, Fact<number>> = {
   pi: { value: 50_000, evidence: { kind: "INFERRED", why: "OAR's MCP bridge for pi names no limit; kept under the shortest known (Codex's 60 s)" } },
   "deepseek-harness": { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
   antigravity: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+  cursor: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+  devin: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+  // D600: Kimi documents a configurable toolTimeoutMs with no default (research/241 §4).
+  kimi: { value: 25_000, evidence: { kind: "INFERRED", why: "Kimi documents toolTimeoutMs but no default; kept below the other agents' 50 s bound" } },
+  opencode: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
 };

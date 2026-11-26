@@ -5,7 +5,7 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
-import { DIRECT_ONLY_WHY, directOnly, fill, harnessName, words } from "@ducter/protocol";
+import { directOnly, directOnlyWhy, fill, harnessName, words } from "@ducter/protocol";
 import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
@@ -416,7 +416,7 @@ export function createWork(o: WorkOptions): Work {
     // D594: a task on an agent that works only when the person asks never rests on a wait that
     // wakes it by itself: the task ends its turn and reports, and the person asks again.
     const agent = taskId ? tasks.get(taskId)?.harness : undefined;
-    if (directOnly(agent)) return { ok: false, error: `${fill(words(DIRECT_ONLY_WHY, langOfText(reason)), { agent: harnessName(agent!) })} (Nothing was armed. ${ctx.role === "task" ? "End this turn with your report: say what is still to come and that the person can ask you again then." : "Say so to the person, or move the work to another agent."})` };
+    if (directOnly(agent)) return { ok: false, error: `${fill(words(directOnlyWhy(agent)!, langOfText(reason)), { agent: harnessName(agent!) })} (Nothing was armed. ${ctx.role === "task" ? "End this turn with your report: say what is still to come and that the person can ask you again then." : "Say so to the person, or move the work to another agent."})` };
     if (a.event) {
       try {
         const config = jsonArg(a.event.config, "event.config");

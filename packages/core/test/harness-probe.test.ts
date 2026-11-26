@@ -29,6 +29,10 @@ test("a machine with all four: logins read from their own commands and files", a
     // D156: a copy that answers --version says it; /bin/dsh is no channel Ducter knows.
     { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage", version: "0.2.2-rc.1", how: "unknown" },
     { harness: "antigravity", installed: false, loggedIn: false, canBePartner: false },
+    { harness: "cursor", installed: false, loggedIn: false, canBePartner: false },
+    { harness: "devin", installed: false, loggedIn: false, canBePartner: false },
+    { harness: "kimi", installed: false, loggedIn: false, canBePartner: false },
+    { harness: "opencode", installed: false, loggedIn: false, canBePartner: false },
   ]);
 });
 
@@ -56,6 +60,36 @@ test("D371: DeepSeek Harness.app's own dsh, signed in with the DeepSeek account 
   // A grant whose token is gone (signed out in the app) is not a sign-in.
   const out = await probeHarnesses({ which: (c) => (c === "dsh" ? bin : null), exec: async () => ({ code: 0, out: "0.2.2-rc.3" }), env: {}, home: "/h", dataDir: "/d", read: files({ "/h/.dsh/.credentials.yaml": "records:\n  deepseek-account-platform/device:\n    kind: plain\n    payload:\n      id: x\n" }), realpath: (p) => p, only: ["deepseek-harness"] });
   expect(out[0]!.loggedIn).toBe(false);
+});
+
+test("D600: the four new agents are read where their own installers put them, and their sign-in by presence only", async () => {
+  const rows = await probeHarnesses({
+    which: (c) => (c === "devin" || c === "kimi" || c === "opencode" || c === "agent" ? `/bin/${c}` : null),
+    exec: async (argv) =>
+      argv[1] === "--version"
+        ? { code: 0, out: argv[0]!.includes("opencode") ? "opencode 2.3.0" : argv[0]!.includes("devin") ? "3000.14.30821" : argv[0]!.includes("kimi") ? "2.6.3" : "2026.11.1" }
+        : argv[1] === "auth" && argv[2] === "status"
+          ? { code: 0, out: "Logged in (via Devin).\n  User:\n    Email: a@b.c\n" }
+          : argv[1] === "auth" && argv[2] === "list"
+            ? { code: 0, out: '{"openai":{"type":"oauth"}}' }
+            : { code: 1, out: "" },
+    env: {},
+    home: "/h",
+    dataDir: "/d",
+    read: () => undefined,
+    exists: (p) => p === "/h/.kimi-code/credentials/kimi-code.json" || p === "/h/.kimi-code/bin/kimi" || p === "/h/.opencode/bin/opencode",
+    only: ["cursor", "devin", "kimi", "opencode"],
+    cursorBundled: () => "1.4.1",
+  });
+  expect(rows).toEqual([
+    { harness: "cursor", installed: true, loggedIn: false, canBePartner: false, version: "1.4.1", how: "ducter" },
+    { harness: "devin", installed: true, loggedIn: true, canBePartner: false, billing: "plan", version: "3000.14.30821", how: "unknown" },
+    { harness: "kimi", installed: true, loggedIn: true, canBePartner: false, billing: "plan", version: "2.6.3", how: "unknown" },
+    { harness: "opencode", installed: true, loggedIn: true, canBePartner: false, billing: "usage", version: "2.3.0", how: "unknown" },
+  ]);
+  // The Kimi OAuth file is only looked for; its contents never read (read stays unused above).
+  const noSdk = await probeHarnesses({ ...({ which: () => null, exec: async () => ({ code: 1, out: "" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, exists: () => false } as const), only: ["cursor"] });
+  expect(noSdk[0]).toMatchObject({ harness: "cursor", installed: false, loggedIn: false });
 });
 
 test("versions compare with prereleases", () => {

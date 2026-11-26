@@ -175,6 +175,10 @@ type Task struct {
 	// Browser is what a browser task last looked at (task_event
 	// {role: system, raw.browser: {host, url}}), nil until one.
 	Browser *BrowserStatus
+	// Recalled is what Ducter's own recall put in front of the first turn
+	// (task_event raw {memory: "recall", recalled: [...]}), nil until one:
+	// Mem's ids, one-line titles, Spaces and how each was found (D617).
+	Recalled []protocol.RecalledMemory
 	// Phone is the person's own phone the task asked to borrow (D339: from
 	// the ask's report in its stream), nil when it never did.
 	Phone *protocol.HandsetAsk
@@ -627,6 +631,10 @@ type Store struct {
 	// never show in the conversation (its follow-ups with no card, the
 	// answers that went into it), for 最近 / Recently.
 	TaskPeers []*Entry
+	// BridgeReceipts (D619) is the latest read receipt Mem gave for a
+	// sent message, by "op:<opId>" and "msg:<messageId>": 已送达 / 已读 /
+	// 「{n}/{m} 已读」 beside the time, and nothing when none is available.
+	BridgeReceipts map[string]*protocol.BridgeReceipt
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -667,6 +675,8 @@ type Store struct {
 	NewTaskResults []protocol.ServerFrame
 	// FolderBrowse is the last folder_browse answer (D203, Find a folder…).
 	FolderBrowse *protocol.ServerFrame
+	// FolderChange is the last folder_change answer (D611), until a row takes it.
+	FolderChange *protocol.ServerFrame
 	OpenRequests []string
 }
 
@@ -952,6 +962,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "folder_browse_result":
 		fc := f
 		s.FolderBrowse = &fc
+	case "folder_change_result":
+		fc := f
+		s.FolderChange = &fc
 	case "open_task":
 		if f.TaskID != "" {
 			s.OpenRequests = append(s.OpenRequests, f.TaskID)
@@ -1310,6 +1323,20 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	if err != nil || body == nil {
 		return
 	}
+	if br, ok := body.(*protocol.BridgeRead); ok {
+		// D619: one quiet receipt for a message already shown; no line of its own.
+		if s.BridgeReceipts == nil {
+			s.BridgeReceipts = map[string]*protocol.BridgeReceipt{}
+		}
+		if br.OpID != "" {
+			s.BridgeReceipts["op:"+br.OpID] = &br.Receipt
+		}
+		if br.MessageID != "" {
+			s.BridgeReceipts["msg:"+br.MessageID] = &br.Receipt
+		}
+		s.bySeq[ev.Seq] = nil
+		return
+	}
 	if taskID := taskOf(ev, body); taskID != "" {
 		t := s.task(taskID)
 		if !t.seqs[ev.Seq] {
@@ -1638,6 +1665,45 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	}
 }
 
+// ReceiptOf is what Mem last said about who opened one sent message (D619): the receipt by
+// its op, else by its message id; nil when Mem has none (unknown, never unread).
+func (s *Store) ReceiptOf(opID, messageID string) *protocol.BridgeReceipt {
+	if opID != "" {
+		if r := s.BridgeReceipts["op:"+opID]; r != nil {
+			return r
+		}
+	}
+	if messageID != "" {
+		if r := s.BridgeReceipts["msg:"+messageID]; r != nil {
+			return r
+		}
+	}
+	return nil
+}
+
+// TaskReceipt is the receipt of the newest message a task sent through Bridge (D619), for a
+// helper's round whose task answered a sender: nil when none of its messages has one.
+func (s *Store) TaskReceipt(taskID string) *protocol.BridgeReceipt {
+	if taskID == "" {
+		return nil
+	}
+	var best *protocol.BridgeReceipt
+	var bestSeq int64
+	scan := func(es []*Entry) {
+		for _, e := range es {
+			if e.Peer == nil || e.Peer.Direction != "out" || e.Peer.TaskID != taskID || e.Event.Seq <= bestSeq {
+				continue
+			}
+			if r := s.ReceiptOf(e.Peer.OpID, e.Peer.MessageID); r != nil {
+				best, bestSeq = r, e.Event.Seq
+			}
+		}
+	}
+	scan(s.Channel)
+	scan(s.TaskPeers)
+	return best
+}
+
 // firstN is s's first n bytes (a timestamp's date).
 func firstN(s string, n int) string {
 	if len(s) < n {
@@ -1709,7 +1775,7 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 }
 
 // OpenAsk is the one predicate behind the needs-you count and every list
-// (D-PENDING): an offer (D453) never needs the person, a question put off with
+// (D608): an offer (D453) never needs the person, a question put off with
 // 晚点再问我 (D382) is not open now, and neither is one whose default has come
 // due. A Go default applies only on a reversible card; a Hold default applies
 // even when it is not reversible (the morning's picks). The TypeScript side is
@@ -1887,16 +1953,22 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	case *protocol.TaskEvent:
 		if b.Role == "system" && len(b.Raw) > 0 {
 			var raw struct {
-				Browser     *BrowserStatus `json:"browser"`
-				Kind        string         `json:"kind"`
-				Outcome     string         `json:"outcome"`
-				Compactions int            `json:"compactions"`
-				Read        []int64        `json:"read"`
+				Browser     *BrowserStatus            `json:"browser"`
+				Kind        string                    `json:"kind"`
+				Outcome     string                    `json:"outcome"`
+				Compactions int                       `json:"compactions"`
+				Read        []int64                   `json:"read"`
+				Memory      string                    `json:"memory"`
+				Recalled    []protocol.RecalledMemory `json:"recalled"`
 			}
 			if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Host != "" &&
 				(t.Browser == nil || t.Browser.Seq < ev.Seq) {
 				raw.Browser.Seq = ev.Seq
 				t.Browser = raw.Browser
+			}
+			// D617: what memory brought into the first turn, once.
+			if raw.Memory == "recall" && len(raw.Recalled) > 0 {
+				t.Recalled = raw.Recalled
 			}
 			// D325: the agent took these steers in.
 			for _, n := range raw.Read {

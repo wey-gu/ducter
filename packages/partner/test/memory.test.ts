@@ -261,9 +261,8 @@ describe("nmem client (stub binary)", () => {
     expect(s.args()).toEqual(["--json", "m", "search", "-n", "3", "--", "-像上次那样"]);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.hits[0]).toMatchObject({ title: "T", date: "2026-11-02", kind: "preference" });
+      expect(r.hits[0]).toMatchObject({ title: "T", date: "2026-11-02", kind: "preference", space: "personal-1" });
       expect(r.hits[0]!.content.length).toBeLessThanOrEqual(280);
-      expect(JSON.stringify(r.hits)).not.toContain("personal-1");
     }
   });
 

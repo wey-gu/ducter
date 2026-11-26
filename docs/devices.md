@@ -408,7 +408,8 @@ going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has
   to choose another. An AI agent you can only use on another computer shows *on MacBook*; picking
   it brings that computer along. For a folder on hel, that means the same project on the MacBook
   (the same repository, with its branch), or, when the MacBook has no copy, a folder you pick
-  there. The projects in each computer's Ducter folder (`~/ducter/projects`) are in the folder
+  there. The projects in each computer's Ducter folder (`~/Ducter/projects` on a Mac,
+  `~/ducter/projects` on Linux) are in the folder
   list; **Add a folder…** for each computer makes a new folder there, chooses one already there,
   or clones a repository onto it, from your phone too. A computer signs in to GitHub itself:
   see [How do I sign in to GitHub on my server?](faq.md#how-do-i-sign-in-to-github-on-my-server).

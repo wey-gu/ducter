@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task; D576: pi a Bridge tool from its plugin 0.8.20) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task; D576: pi a Bridge tool from its plugin 0.8.20; D619: 已送达 / 已读 beside a sent message) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once), D557 (the live trial passed; on by default; the real shapes read); still open: J-Q1–3, J-Q8 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -1446,9 +1446,9 @@ community repo and the Antigravity plugin, read-only calls on the author's Mac).
   clay coin as the tile. Mem's `plugins inspect` lists no Antigravity, so the row says yes from Mem's
   contact list (`mailbox_available`) or an exchange, else **Nowledge Mem 还没说它装没装插件**. pi alone kept
   the quiet row (until D576, below), with the same tile size as every agent row. Cursor is not an agent Ducter runs: no row.
-- **Read receipts: parsed, not shown yet.** An outbox or inspect op's receipt is kept on the op
-  (`BridgeOp.read`, `receiptOf`) only when Mem says one is available. D595 (below) reads it as Mem's
-  contract places it; showing 已读 joins 来往 later (todo).
+- **Read receipts: parsed, and shown since D619.** An outbox or inspect op's receipt is kept on
+  the op (`BridgeOp.read`, `receiptOf`) only when Mem says one is available. D595 reads it as Mem's
+  contract places it; D619 shows it beside a sent message (below).
 - **Not retired:** D334's per-Space contexts and D338's back-off (for 0.10.120), D400's 5 s clamp, D369's
   stuck line.
 - **Mem's side still:** filed as nowledge-co/mem#11262; what shipped is D595 (below).
@@ -1546,11 +1546,33 @@ pi                           0.8.20's bridge skill                           D57
 
 - **No version gate in code.** Each new field is read when it is there and the older shape otherwise, so an
   nmem before 0.10.124 reads as it did; nothing assumes the installed version.
-- **Nothing a person sees changed.** 已读 / Read beside a sent message is unblocked and owed with shots (todo).
+- **D619 changed what a person sees:** 已送达 / Delivered, 已读 / Read and 「{n}/{m} 已读」 beside
+  every message Ducter sent on their behalf, on both clients, with shots. D595 itself changed no view.
 - **Mem's side still** (a Bridge-ready note in research/237 §2's terms): a default Space for
   `artifacts folders mk`; an error code on `--json` failures (a lapsed key reads only from stderr);
   `contact-status` answering live; a mailbox-changed line for one's own contacts on `inbox --watch`; a wait
   past 5 s; a plugin version for pi and Codex on `plugins check`.
+
+## Read states beside a sent message (D619)
+
+Evidence: `research/237`; D595; the inbox check Ducter already runs.
+
+- **What is shown, and only what Mem said.** A message Ducter sent on the person's behalf
+  (`bridge_msg` out) shows its state quietly beside its time: **已送达 / Delivered** while nobody has
+  opened it (`read_recipients: 0`), **已读 / Read** once someone has, and **「{n}/{m} 已读」** in a
+  Space with several readers (`read_recipients` < `recipients`, both integers). With no receipt
+  (`receipt_available: false`, `read_state: "unknown"`, or an older nmem that gives none) nothing is
+  shown: a missing receipt is unknown, never a made-up "unread", and a missing count is never zero.
+- **Where.** Every surface that already shows a sent Bridge message: the conversation's relay line, a
+  task's `agent_message` row and the other exchanges in Settings › Agent 通信's 来往, and a helper's
+  Keep rounds whose task answered a sender. All of them read the same `bridge_read` event.
+- **Live, on the check that exists.** The inbox's `outgoing[]` snapshot (nmem 0.10.118+) is read on
+  the check Ducter already runs; a change appends one `bridge_read` event (`opId`, `messageId`,
+  `receipt`) and nothing when it is unchanged. There is no second poll. The agent's own helpers get
+  the same with their own inbox check.
+- **No version gate, no count invented.** `outgoingReceipts` reads the integers first and the status
+  words whole; `receiptOf` adds `recipients` for the outbox and inspect shapes. Every field is read
+  when present, so an older nmem shows less and never an error.
 
 ## Open questions
 

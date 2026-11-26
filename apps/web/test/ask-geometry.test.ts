@@ -1,4 +1,4 @@
-// D-PENDING: an ask's words can hold a 120-character URL, a long path, a command, a branch or a
+// D607: an ask's words can hold a 120-character URL, a long path, a command, a branch or a
 // hash. On a phone the question / confirm card must keep all of it inside the card at 320, 390 and
 // 430: prose wraps (overflow-wrap, never word-break, so Chinese keeps its own breaks), links wrap,
 // an inline code chip and the one-time code well wrap or truncate in their own box, a code block
@@ -24,7 +24,7 @@ function blocks(selector: string): string[] {
 }
 const decl = (selector: string) => blocks(selector).join(";");
 
-describe("an ask's words never run past its card (D-PENDING)", () => {
+describe("an ask's words never run past its card (D607)", () => {
   test("prose wraps anywhere a long token needs it, with no word-break rule", () => {
     for (const sel of [".ask-said", ".decision .q", ".ask-link", ".asked .ask-words"]) {
       expect({ sel, wrap: decl(sel) }).toMatchObject({ sel, wrap: expect.stringMatching(/overflow-wrap:\s*anywhere/) });

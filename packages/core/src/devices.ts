@@ -57,6 +57,8 @@ export interface DevicesOptions {
   tidied?: (device: string) => { count: number; bytes: number } | undefined;
   /** D538: the home's own look at itself (memory, cores, disk, the kernel's stops), as last taken. */
   resources?: () => import("@ducter/protocol").DeviceResources | undefined;
+  /** D204: a computer's Ducter folder and why it is there (the home's own path; a worker's chosen path). */
+  folderOf?: (device: string) => { path: string; why?: "env" | "chosen" | "data" | "default" | "fallback" } | undefined;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -418,6 +420,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
       ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.("local")),
       ...((r) => (r ? { resources: r } : {}))(o.resources?.()),
+      ...((f) => (f ? { folder: f } : {}))(o.folderOf?.("local")),
     };
     const up = o.updates?.();
     const homeUpdate = o.self ? up?.view("local", o.self.version, o.self.how) : undefined;
@@ -484,6 +487,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ...((t) => (t?.count ? { tidied: t } : {}))(o.tidied?.(d.id)),
           // D538: what it has and has free, from its own heartbeat, only while it is connected.
           ...(on && hello?.resources ? { resources: hello.resources } : {}),
+          // D204: its Ducter folder: the home's chosen path when it has one, else what the worker
+          // said in its hello. DUCTER_FOLDER there always wins (why env).
+          ...((f) => (f ? { folder: f } : {}))(hello?.folder?.why === "env" ? hello.folder : (o.folderOf?.(d.id) ?? hello?.folder)),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];

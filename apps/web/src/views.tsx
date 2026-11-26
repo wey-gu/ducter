@@ -29,7 +29,7 @@ import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, splitRefs, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTune, keepClauses, modelName, padEnd, phaseLine as phaseWords, receiptWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -109,7 +109,7 @@ import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
-import { EndAsk, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
+import { EndAsk, HandoffNote, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   browsing,
@@ -1667,9 +1667,13 @@ function PeerLine({ b, ts, seq }: { b: Bodies["bridge_msg"]; ts: string; seq?: n
   const ping = b.state === "ping" && seq !== undefined ? A.S.pings.get(seq) : undefined;
   // D444: what it handed over from Nowledge Mem, each its own element, by Mem's title.
   const refs = b.direction === "in" && !b.state ? (b.refs ?? []) : [];
+  // D619: what Mem said about the person's readers, quiet after the line; nothing when it has no receipt.
+  const receipt = b.direction === "out" && b.state === "sent" ? receiptWords(A.S.receiptOf(b), A.L) : "";
   return (
     <div class={ping || refs.length ? "peerline wrap" : "peerline"} role="status">
       <span>{peerLineText(refs.length ? { ...b, text: withRefTitles(b.text, refs) } : b, ts, n, ping)}</span>
+      {receipt && <span class="peer-sep" aria-hidden="true" />}
+      {receipt && <span class="peer-receipt">{receipt}</span>}
       {refs.filter((r) => !(r.uri && r.title && b.text.includes(r.uri))).map((r, i) => (
         <span key={i} class="peer-ref">
           {refWords(r)}
@@ -1770,7 +1774,7 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   );
 }
 
-function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
+export function Top({ back, plus, level, extra, own, up }: { back?: string; plus?: boolean; level?: string; extra?: preact.ComponentChildren; /** D484: a phone's opened task: its own actions only, the places one Back away. */ own?: boolean; /** D535: a drill-in inside the place (a Keep's page): the bar's back goes up to the place's overview. */ up?: { label: string; go: () => void } }) {
   // D176: side by side, the conversation's own header carries the face and the places, and On hand
   // is already in view: its pane's header names it instead of going back to a conversation that is
   // there. D262: every bar is one anatomy: where you are, then the place's own actions, then the
@@ -2809,7 +2813,9 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   if (!task)
     return (
       <>
-        <Top back={t("nav.back")} />
+        {/* The whole screen always has its crumbs, even while the task's history is on its way:
+            a deep link used to draw a bare back bar over the empty page instead of 对话 / 任务. */}
+        {full ? <FullTop /> : <Top back={t("nav.back")} />}
         <main class="scroll">
           <div class="small">{t("task.loading")}</div>
         </main>
@@ -2943,6 +2949,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         <TryStrip task={task} />
         <FolderChangesView task={task} />
         <WhatItDid task={task} blocks={blocks} />
+        {/* D609: the record's one line, under the last report; no card. */}
+        {task.card?.handoff && <HandoffNote h={task.card.handoff} />}
         <OutsideActs task={task} />
       </main>
       {full && <Locator task={task} scroller={scroller} />}
@@ -3682,6 +3690,12 @@ export function SettingsSheet() {
   // D311: a device's card pushed inside 你的设备 brings its own ‹ 你的设备, the one way back shown.
   const [dev, setDev] = useState<string | null>(null);
   useEffect(() => setDev(null), [page]);
+  // D611: a New task clone line opens that computer's folder row (its card in Your devices).
+  useEffect(() => {
+    if (!A.folderFocus) return;
+    setDev(`dev:${A.folderFocus}`);
+    A.folderFocus = undefined;
+  }, [page, A.folderFocus]);
   const devPushed = page === "devices" && deviceCardShown(dev);
   return (
     <Sheet label={t("settings.title")}>

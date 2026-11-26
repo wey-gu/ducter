@@ -135,6 +135,7 @@ func (a *App) turn(c *ui.Context, task *store.Task, tu *Turn, queued, live bool)
 				label = a.L.T("task.asked.you")
 			}
 			a.promptCard(c, task, p, label)
+			a.recalledLine(c, task)
 		case "partner":
 			a.promptCard(c, task, p, a.L.T("task.from.partner", a.taskName(task)))
 		case "you":
@@ -255,6 +256,54 @@ func (a *App) promptCard(c *ui.Context, task *store.Task, b *Block, label string
 				}
 			})
 		}
+	})
+}
+
+// recalledLine is D617's quiet line under the brief: what memory brought into
+// the first turn. One muted line with a chevron unfolds into the memories' titles;
+// a title opens Settings › 记忆 on that memory (Mem has no per-memory deep link),
+// and 这条不对 sends the partner a message naming its id.
+func (a *App) recalledLine(c *ui.Context, task *store.Task) {
+	t := a.T
+	notes := task.Recalled
+	if len(notes) == 0 {
+		return
+	}
+	key := "recalled:" + task.ID
+	open := a.open[key]
+	chev := 1
+	if open {
+		chev = 2
+	}
+	ui.Column(c.Key(key)).FillWidth().Gap(t.S1).Padding(0, t.S4).Children(func() {
+		if a.quietButton(c, key, a.L.T("task.recalled.line", fmt.Sprint(len(notes))), a.L.T("task.recalled.line.about"), false, chev) {
+			a.open[key] = !open
+		}
+		if !open {
+			return
+		}
+		// One grid for every row: the title takes the room and wraps; the action is one
+		// right column, muted, so the two links land on the same edge.
+		ui.Grid(c.Key(key+":list")).FillWidth().ColumnTracks(ui.Fr(1), ui.FitContent()).GapX(t.S3).GapY(t.S1).Children(func() {
+			for i, n := range notes {
+				row := fmt.Sprintf("%s:%d", key, i)
+				if n.ID != "" {
+					if a.quietLink(c, row, n.Title, a.L.T("task.recalled.open")) {
+						a.openMemory(n.ID, n.Title)
+					}
+				} else {
+					uiText(c, n.Title).FontSize(t.SM).TextColor(t.InkSoft).MinWidth(0).Shrink(1)
+				}
+				if n.ID != "" {
+					if a.quietButton(c, row+":wrong", a.L.T("task.recalled.wrong"), n.Title, false, 0) {
+						a.correctMemory(n.ID, n.Title)
+					}
+				} else {
+					// Keep the right column: a title with no id still has no action there.
+					ui.Box(c).Size(0, 0)
+				}
+			}
+		})
 	})
 }
 

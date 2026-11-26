@@ -239,6 +239,8 @@ export interface NewTaskFrames {
   clone?(device: string | undefined, address: string): Promise<Omit<Extract<ServerFrame, { t: "project_clone_result" }>, "t" | "clientId" | "device">>;
   /** D272: make a folder in that computer's Ducter folder and add it as a project. */
   newFolder?(device: string | undefined, name: string): Promise<Omit<Extract<ServerFrame, { t: "project_new_result" }>, "t" | "clientId" | "device">>;
+  /** D204: move that computer's Ducter folder to the path the person chose. */
+  changeFolder?(device: string | undefined, path: string): Promise<Omit<Extract<ServerFrame, { t: "folder_change_result" }>, "t" | "clientId" | "device">>;
   /** D272: a GitHub sign-in step on that computer (git-login.ts); wait: the end of the one in flight. */
   gitLogin?(device: string | undefined, action: "status" | "start" | "wait" | "token" | "cancel", token?: string): Promise<import("@ducter/protocol").GitLoginState>;
   /** D345: put gh on the home (each step through onState); ends signed_out when it is there, else why not. */
@@ -2110,6 +2112,18 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "project_new_result", ...cid, ...dev, ...(await deps.newTask.newFolder(device, typeof f.name === "string" ? f.name : "")) });
         return;
       }
+      case "folder_change": {
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        const dev = device ? { device } : {};
+        if (!deps.newTask?.changeFolder) return send(ws, { t: "folder_change_result", ok: false, ...cid, ...dev, reason: "failed", message: "Ducter's folder can't be changed here." });
+        const r = await deps.newTask.changeFolder(device, typeof f.path === "string" ? f.path : "");
+        send(ws, { t: "folder_change_result", ...cid, ...dev, ...r });
+        // The settings store's onChange pushes a fresh settings frame (folderPaths); On hand reads
+        // its task places again on the next snapshot.
+        if (r.ok) send(ws, { t: "on_hand", onHand: tasks.onHand() } as never);
+        return;
+      }
       case "git_login": {
         // D272: the token (action token) goes to that computer's gh and nowhere else: never logged.
         const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
@@ -2378,7 +2392,11 @@ export function createWsHandler(deps: WsDeps) {
         if (!k) throw new Error("looking after is not available");
         const id = String(f.id ?? "").slice(0, 64);
         const page = k.page(id);
-        send(ws, { t: "keep_result", id, ...(page ? { keep: page } : {}) });
+        // D620: a URL a partner turned on is revealed to the page once (the plaintext is not
+        // in the Log or the sheet); a later open says it is on and offers a new one.
+        const bell = k.takeBell(id);
+        const keep = page && bell && page.bell ? { ...page, bell: { ...page.bell, url: bell.url } } : page;
+        send(ws, { t: "keep_result", id, ...(keep ? { keep } : {}) });
         return;
       }
       case "keep_change": {
@@ -2391,13 +2409,37 @@ export function createWsHandler(deps: WsDeps) {
         const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
         const at = c0.at && typeof c0.at === "object" ? (c0.at as KeepChange["at"]) : undefined;
         const change: KeepChange = Object.fromEntries(
-          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at }).filter(([, v]) => v !== undefined),
+          Object.entries({ title: str(c0.title), until: str(c0.until), speaks: str(c0.speaks), limits: str(c0.limits), said: str(c0.said), where: str(c0.where), agent: str(c0.agent), address: str(c0.address), everyMinutes: num(c0.everyMinutes), cap: num(c0.cap), at, bell: str(c0.bell) }).filter(([, v]) => v !== undefined),
         );
         const r = await k.change(kid, change, { by: "you", undo: f.undo === true }).catch((err: Error) => ({ ok: false as const, error: err.message }));
-        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
+        send(ws, { t: "keep_changed", id: kid, ok: r.ok, ...(r.ok ? { edits: r.edits, ...(r.undo ? { undo: r.undo } : {}), ...(r.bell ? { bell: r.bell } : {}), ...(f.undo === true ? { undone: true } : {}) } : { error: r.error }) });
         const page = k.page(kid);
         send(ws, { t: "keep_result", id: kid, ...(page ? { keep: page } : {}) });
         ongoingChanged();
+        return;
+      }
+      case "handoff_take": {
+        // D616: 让它现在接 / Take it now: a fresh arrival wakes the helper's round for this record.
+        const h = deps.core.handoffs?.get(String(f.id ?? "").slice(0, 64));
+        if (!h) throw new Error("I can't find that hand-off.");
+        deps.core.handoffs?.wake(h.handoffId);
+        const keep = deps.past?.keeps?.all().find((k) => k.from.kind === "helper" && k.from.helperId === h.to.helper);
+        if (keep) {
+          const page = deps.past!.keeps!.page(keep.keepId);
+          send(ws, { t: "keep_result", id: keep.keepId, ...(page ? { keep: page } : {}) });
+        }
+        return;
+      }
+      case "handoff_withdraw": {
+        // D616: 不用跟了 / Stop following: the record is withdrawn and the sender hears it once.
+        const h = deps.core.handoffs?.get(String(f.id ?? "").slice(0, 64));
+        if (!h) throw new Error("I can't find that hand-off.");
+        await deps.core.handoffs?.withdraw(h.handoffId, { say: true });
+        const keep = deps.past?.keeps?.all().find((k) => k.from.kind === "helper" && k.from.helperId === h.to.helper);
+        if (keep) {
+          const page = deps.past!.keeps!.page(keep.keepId);
+          send(ws, { t: "keep_result", id: keep.keepId, ...(page ? { keep: page } : {}) });
+        }
         return;
       }
       case "keep_words": {

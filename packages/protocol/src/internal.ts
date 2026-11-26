@@ -271,6 +271,8 @@ export interface CoreApi {
   bridgeLink?: BridgeLinkApi;
   /** D494: 帮手 / Helpers, the person's named addresses in Bridge that this home owns (core/src/helpers.ts). */
   helpers?: HelpersApi;
+  /** D609: a hand-off as one record with an owner (core/src/handoffs.ts); absent in tests and stubs. */
+  handoffs?: import("./handoff.ts").HandoffsApi;
   /** D511: 照看 / Looking after, every Keep on the home (core/src/keeps.ts); absent in tests and stubs. */
   keeps?: import("./keeps.ts").KeepsApi;
   /**
@@ -500,6 +502,12 @@ export interface TaskMemoryNote {
   date?: string;
   /** D304: another AI tool saved it (its name, "Claude Code"); absent: the person or the partner. */
   from?: string;
+  /** D617: the Space Mem keeps it in (its exact id), as Mem answered. */
+  space?: string;
+  /** D617: Mem's unit type (preference, decision, fact, …), when it named one. */
+  kind?: string;
+  /** D617: one of the person's stated preferences (Mem's `preference` kind), else the brief's search found it. */
+  via?: "preferences" | "search";
 }
 
 /**
@@ -610,6 +618,8 @@ export interface SettingsApi {
   setPeers?(peers: Partial<PeersSettings>): void;
   /** D369: Mem said the partner's mailbox needs sorting out on Mem's side (its code), or that is over (undefined). */
   setBridgeTrouble?(t: { code: string } | undefined): void;
+  /** D204: keeps the Ducter folder the person chose for a computer (the move itself is already done there). */
+  setFolder?(device: string, path: string): void;
 }
 
 // ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------

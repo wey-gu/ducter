@@ -54,6 +54,8 @@ export interface WorkerHello {
   held?: string[];
   /** D538: what that computer has and has free (its own look), updated on each heartbeat. */
   resources?: import("@ducter/protocol").DeviceResources;
+  /** D204: its Ducter folder and why it is there (env means DUCTER_FOLDER is set there). */
+  folder?: { path: string; why?: "env" | "chosen" | "data" | "default" | "fallback" };
 }
 
 /** What the main last knew of a worker that isn't connected now. */

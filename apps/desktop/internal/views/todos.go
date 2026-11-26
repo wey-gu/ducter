@@ -271,18 +271,28 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 // todoChoices are 新的来了 / When a new one comes and 做完以后 / When it's
 // done, each a row with its segmented choice (D76) at the right edge, as
 // Notifications' 等多久再按默认做 (D432); a standing go says how it came as
-// the row's line.
+// the row's line. D618: both tracks share the wider one's width, so
+// their left edges line up as one column (D589's ways in).
 func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 	news := []string{"tell", "take", "quiet"}
 	dones := []string{"ask", "comment", "close"}
 	if s.Kind == "obsidian" {
 		dones = []string{"tick", "ask", "leave"}
 	}
-	block := func(key, title string, vals []string, cur string, prefix string, standing string, pick func(v string)) {
+	labelsFor := func(prefix string, vals []string) []string {
 		labels := make([]string, len(vals))
 		for i, v := range vals {
 			labels[i] = a.L.T(prefix + v)
 		}
+		return labels
+	}
+	newLabels, doneLabels := labelsFor("todos.new.", news), labelsFor("todos.done.", dones)
+	// One column for the group: the wider track's measure, set once for both
+	// rows; choices then draws each in it, so the right edge and the left agree.
+	prevCol := a.settings.choiceCol
+	a.settings.choiceCol = max(a.choiceNeed(c, newLabels), a.choiceNeed(c, doneLabels))
+	defer func() { a.settings.choiceCol = prevCol }()
+	block := func(key, title string, vals, labels []string, cur string, standing string, pick func(v string)) {
 		a.tileRow(c, key+":"+s.ID, nil, title, standing, func() {
 			if i := a.choices(c, key+":"+s.ID, title, labels, slices.Index(vals, cur)); i >= 0 {
 				pick(vals[i])
@@ -310,11 +320,11 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 		}
 		write = a.L.T(k)
 	}
-	block("new", a.L.T("todos.new"), news, s.WhenNew, "todos.new.", take, func(v string) {
+	block("new", a.L.T("todos.new"), news, newLabels, s.WhenNew, take, func(v string) {
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenNew = v })
 		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenNew: v})
 	})
-	block("done", a.L.T("todos.done"), dones, s.WhenDone, "todos.done.", write, func(v string) {
+	block("done", a.L.T("todos.done"), dones, doneLabels, s.WhenDone, write, func(v string) {
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenDone = v })
 		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenDone: v})
 	})

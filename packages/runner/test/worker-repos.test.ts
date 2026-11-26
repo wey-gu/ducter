@@ -36,8 +36,9 @@ function repo(path: string, o: { origin?: string; head: string; originHead?: str
 
 const host = (o: { gitSpawn?: GitSpawn } = {}) => {
   const sent: any[] = [];
-  // The worker's data folder is the default one (~/.ducter), so its Ducter folder is ~/ducter.
-  const h = createWorkerHost({ dataDir: join(home, ".ducter"), harness: {} as never, mainBase: "http://main", deviceToken: "dvc", send: (f) => sent.push(f), home, ...o });
+  // The worker's data folder is the default one (~/.ducter); Linux naming keeps its Ducter folder
+  // ~/ducter (a Mac's would be ~/Ducter, D611).
+  const h = createWorkerHost({ dataDir: join(home, ".ducter"), harness: {} as never, mainBase: "http://main", deviceToken: "dvc", send: (f) => sent.push(f), home, platform: "linux", ...o });
   const ask = async (id: number, op: string, args: object = {}) => {
     await h.handle({ t: "req", id, op, args });
     return sent.find((f) => f.id === id);
@@ -59,6 +60,7 @@ test("D204: repos: the projects in this computer's Ducter folder only, most rece
   expect(r.ok).toBe(true);
   expect(r.result).toEqual({
     folder: join(home, "ducter"),
+    why: "default",
     repos: [
       { name: "ducter", path: join(projects, "ducter"), touchedAt: new Date(3_000_000).toISOString(), remote: "github.com/wey-gu/ducter", defaultBranch: "main" },
       { name: "notes", path: join(projects, "notes"), touchedAt: new Date(2_000_000).toISOString(), defaultBranch: "master" },
@@ -69,7 +71,7 @@ test("D204: repos: the projects in this computer's Ducter folder only, most rece
 
 test("D204: repos makes nothing: with no Ducter folder yet, none and the folder it would be", async () => {
   const r = await host()(1, "repos");
-  expect(r.result).toEqual({ folder: join(home, "ducter"), repos: [] });
+  expect(r.result).toEqual({ folder: join(home, "ducter"), why: "default", repos: [] });
   expect(existsSync(join(home, "ducter"))).toBe(false);
 });
 
@@ -133,6 +135,30 @@ test("D204: clone failures are sorted into words the clients say, and leave noth
     expect(existsSync(join(home, "ducter", "projects", address.split("/")[1]!))).toBe(false);
   }
   expect((await ask(id++, "clone", { address: "a/odd" })).result.message).toBe("something else entirely");
+});
+
+test("D204: moveFolder moves the worker's Ducter folder and keeps the choice here", async () => {
+  const from = join(home, "ducter");
+  mkdirSync(join(from, "projects", "api", ".git"), { recursive: true });
+  mkdirSync(join(from, "worktrees", "api", "fix"), { recursive: true });
+  writeFileSync(join(from, "worktrees", "api", "fix", ".git"), `gitdir: ${join(from, "projects", "api", ".git", "worktrees", "fix")}\n`);
+  writeFileSync(join(from, ".ducter-folder"), "x\n");
+  const calls: string[][] = [];
+  const ask = host({ gitSpawn: async (args) => (calls.push(args), { code: 0, err: "" }) });
+  const r = await ask(1, "moveFolder", { path: join(home, "Ducter") });
+  expect(r.result).toMatchObject({ ok: true, path: join(home, "Ducter"), projects: 1, worktrees: 1 });
+  expect(existsSync(join(home, "Ducter", "projects", "api"))).toBe(true);
+  expect(calls.some((a) => a.includes("repair"))).toBe(true);
+  // The choice is kept in this computer's data folder: its next repos answer names the new path.
+  const after = await ask(2, "repos");
+  expect(after.result).toMatchObject({ folder: join(home, "Ducter"), why: "chosen" });
+});
+
+test("D204: moveFolder refuses when DUCTER_FOLDER is set here (the env wins)", async () => {
+  const all: any[] = [];
+  const h = createWorkerHost({ dataDir: join(home, ".ducter"), harness: {} as never, mainBase: "http://main", deviceToken: "dvc", send: (f) => all.push(f), home, platform: "linux", env: { DUCTER_FOLDER: join(home, "EnvDucter") } });
+  await h.handle({ t: "req", id: 1, op: "moveFolder", args: { path: join(home, "Ducter") } });
+  expect(all.find((f) => f.id === 1)).toMatchObject({ result: { ok: false, reason: "env" } });
 });
 
 test("D203: originOf reads only the origin's url", () => {

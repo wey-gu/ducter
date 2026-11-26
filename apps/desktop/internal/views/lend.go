@@ -189,7 +189,8 @@ func (a *App) lendCopy(c *ui.Context, key, text, kind string) {
 	box := ui.Row(c.Key("lend-copy:"+key)).Gap(t.S2).Padding(t.S2, t.S2, t.S2, pad).Radius(t.RadiusSM).Background(ground).AlignItems(ui.Center)
 	box.Children(func() {
 		if kind == "line" {
-			uiText(c, "$").Font(t.Mono).FontSize(t.SM).FontWeight(800).TextColor(t.Accent).AccessHidden(true)
+			// D620: a terminal's $ sits on the first line, not the middle of a wrapped curl.
+			uiText(c, "$").Font(t.Mono).FontSize(t.SM).FontWeight(800).TextColor(t.Accent).LineHeight(1.45).AlignSelf(ui.Start).AccessHidden(true)
 		}
 		tx := uiText(c, text).FontSize(t.SM).LineHeight(1.45).TextColor(ink).Grow(1).Basis(0).MinWidth(0).Selectable()
 		switch kind {

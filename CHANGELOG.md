@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.1.95 - 2026-11-27
+
+<!-- whats-new
+zh: 替你发的 Bridge 消息标出已读；看守可以装一个门铃
+en: Read receipts on Bridge mail sent for you; a Keep can have a doorbell
+-->
+
+**Agents**
+- Messages Ducter sends to your other agents through Nowledge Bridge show Delivered, Read, or
+  how many of a Space have read them, in the conversation, Settings › Agent messages and a
+  helper's rounds. Nothing shows when the receipt isn't known.
+
+**Looking after**
+- A Keep can have a doorbell: a private address your CI, a webhook or another server can ring to
+  make it look now instead of waiting for its next round. What the caller sends is never read;
+  only a short note it names itself shows on the round. Turn it on in How it runs, or ask your
+  partner.
+
+## 0.1.94 - 2026-11-27
+
+<!-- whats-new
+zh: 任务里看得到带进来的记忆，错了一下就能改；设置页再打磨
+en: See which memories a task was given and fix a wrong one; Settings polished
+-->
+
+**Memory**
+- An opened task shows which of your memories it was given, under what you asked it to do. Each
+  opens in Settings › Memory, and This is wrong asks your partner to fix it.
+
+**Settings**
+- The Mac shows saved sign-ins and keys as saved; a source's choices line up in one column; on a
+  phone a picker moves under its words when they'd be squeezed; actions at a card's foot line up
+  with its switches; names and paths no longer break in the middle.
+
+## 0.1.93 - 2026-11-27
+
+<!-- whats-new
+zh: 交出去的活有主人、有状态；Mac 上文件夹叫 ~/Ducter
+en: Handed-off work always has an owner; on a Mac the folder is ~/Ducter
+-->
+
+**Handing work to a helper**
+- A hand-off is one record, whatever door it came through, and a resend merges into it. The task
+  that handed it shows one line that follows it: handed over, taken, done, returned or not taken.
+- A helper's page groups what it holds: waiting to be taken first (with who gave it and when,
+  Take it now and Stop following), then working, then returned and not taken.
+
+**The Ducter folder**
+- On a Mac a new one is ~/Ducter. Settings › Where it runs has a row per computer to rename it or
+  choose another place; projects and working copies move with it, and git follows.
+
+**iPad**
+- The rails' top lines meet, every full-screen view has its way back (and the edge swipe), and
+  coming back to the app never shows an empty shell.
+
 ## 0.1.92 - 2026-11-27
 
 <!-- whats-new

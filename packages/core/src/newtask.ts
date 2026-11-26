@@ -5,7 +5,9 @@
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import type { AgentModels, Bodies, Candidate, CloneReason, DucterFolderView, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import type { AgentModels, Bodies, Candidate, CloneReason, DucterFolderView, FolderChangeReason, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import { ducterFolder, writeChosenFolder } from "@ducter/protocol/src/ducter-folder.ts";
+import { moveDucterFolder, underFolder, type FolderMoveResult } from "@ducter/protocol/src/folder-move.ts";
 import { cutAtWord, detect, fill, words as wordsIn } from "@ducter/protocol";
 import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -47,6 +49,8 @@ export interface NewTaskComputers {
   newFolder?(device: string, name: string, timeoutMs: number): Promise<NewFolderResult | "offline" | "old">;
   /** D272: that worker's GitHub sign-in, there (git-login.ts); "offline" / "old" as the state. */
   gitLogin?(device: string, action: GitLoginAction, token: string | undefined, timeoutMs: number): Promise<GitLoginState>;
+  /** D204: move that worker's Ducter folder (its projects/ and worktrees/) to path, there; the move is done by the worker. */
+  moveFolder?(device: string, path: string, timeoutMs: number): Promise<FolderMoveResult | "offline" | "old">;
 }
 
 export type GitLoginAction = "status" | "start" | "wait" | "token" | "cancel";
@@ -58,6 +62,8 @@ export const REPOS_KEEP_MS = 10 * 60_000;
 export interface FolderProjects {
   folder: string;
   repos: FoundRepo[];
+  /** Why that folder: env (DUCTER_FOLDER set there) can't be changed from here; chosen is the person's. */
+  why?: "env" | "chosen" | "data" | "default" | "fallback";
 }
 
 /**
@@ -68,7 +74,7 @@ export interface FolderProjects {
 export interface FoundRepos {
   get(device: string, waitMs: number): Promise<FoundRepo[]>;
   /** D204: what that computer last said of its Ducter folder (absent: not heard from yet, or away). */
-  folder(device: string): { path?: string; old?: true } | undefined;
+  folder(device: string): { path?: string; old?: true; why?: "env" | "chosen" | "data" | "default" | "fallback" } | undefined;
   /** D204: forget what that computer said (a clone there just added a project). */
   forget(device: string): void;
 }
@@ -76,17 +82,17 @@ export interface FoundRepos {
 export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () => FolderProjects; now?: () => number; keepMs?: number }): FoundRepos {
   const now = o.now ?? Date.now;
   const keep = o.keepMs ?? REPOS_KEEP_MS;
-  const kept = new Map<string, { at: number; repos: FoundRepo[]; folder?: string; old?: true }>();
+  const kept = new Map<string, { at: number; repos: FoundRepo[]; folder?: string; why?: "env" | "chosen" | "data" | "default" | "fallback"; old?: true }>();
   const asking = new Map<string, Promise<FoundRepo[]>>();
   const ask = (device: string): Promise<FoundRepo[]> => {
     const had = asking.get(device);
     if (had) return had;
     const p = (async () => {
-      let got: { repos: FoundRepo[]; folder?: string; old?: true } = { repos: [] };
+      let got: { repos: FoundRepo[]; folder?: string; why?: "env" | "chosen" | "data" | "default" | "fallback"; old?: true } = { repos: [] };
       try {
         if (isLocal(device)) {
           const h = o.home?.();
-          if (h) got = { repos: h.repos, folder: h.folder };
+          if (h) got = { repos: h.repos, folder: h.folder, ...(h.why ? { why: h.why } : {}) };
         } else {
           const r = await o.computers?.repos?.(device, 15_000);
           if (r === "offline" || !r) return [];
@@ -94,7 +100,7 @@ export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () =>
           else {
             // D203's answer was the list itself; D204's says the folder too.
             const list = Array.isArray(r) ? r : Array.isArray(r.repos) ? r.repos : [];
-            got = { repos: list.filter((x) => x && typeof x.path === "string" && x.path.startsWith("/")), ...(!Array.isArray(r) && typeof r.folder === "string" ? { folder: r.folder } : {}) };
+            got = { repos: list.filter((x) => x && typeof x.path === "string" && x.path.startsWith("/")), ...(!Array.isArray(r) && typeof r.folder === "string" ? { folder: r.folder } : {}), ...(!Array.isArray(r) && r.why ? { why: r.why } : {}) };
           }
         }
       } catch {
@@ -122,7 +128,7 @@ export function createFoundRepos(o: { computers?: NewTaskComputers; home?: () =>
     },
     folder(device) {
       const k = kept.get(device);
-      return k ? { ...(k.folder ? { path: k.folder } : {}), ...(k.old ? { old: true as const } : {}) } : undefined;
+      return k ? { ...(k.folder ? { path: k.folder } : {}), ...(k.why ? { why: k.why } : {}), ...(k.old ? { old: true as const } : {}) } : undefined;
     },
     forget(device) {
       kept.delete(device);
@@ -220,6 +226,70 @@ export async function cloneProject(
   const added = await add(r.path, isLocal(device) ? undefined : device);
   if (!added.ok) return { ok: false, reason: added.reason === "offline" ? "offline" : "failed", message: added.message ?? "The clone is there, but it couldn't be added." };
   return { ok: true, place: added.place, ...(r.existed ? { existed: true as const } : {}) };
+}
+
+/** D204: what a folder change did (or why not); the clients put it in their own language. */
+export type FolderChangeAnswer =
+  | { ok: true; device: string; from: string; path: string; projects: number; worktrees: number; repaired: number }
+  | { ok: false; device: string; from?: string; reason: FolderChangeReason; tasks?: { taskId: string; title: string }[]; message: string };
+
+/** D204: a task is "running in" a folder while it can still work there (finished ones only keep their copies). */
+const RUNNING = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
+
+/** D204: the absolute paths a place works in. */
+function placePaths(p: Place | undefined): string[] {
+  if (!p) return [];
+  if (p.kind === "repo") return [p.repoPath, ...(p.worktree ? [p.worktree] : [])];
+  if (p.kind === "folder") return [p.path];
+  return [];
+}
+
+/**
+ * D204 (the person's choice): move a computer's Ducter folder to the path they chose. Refused while
+ * a task can still work in it (said which); the move carries projects/ and worktrees/, repairs git's
+ * worktree paths, keeps the choice for that computer, and records `folder_moved` on the home so the
+ * tasks opened before it still resolve. DUCTER_FOLDER, when set there, wins and can't be changed here.
+ */
+export async function changeDucterFolder(d: Pick<NewTaskDeps, "tasks" | "dataDir" | "settings" | "log" | "computers" | "projects" | "found">, device: string | undefined, raw: string): Promise<FolderChangeAnswer> {
+  const dev = isLocal(device) ? "local" : device!;
+  const local = dev === "local";
+  const name = local ? (d.computers?.homeName() ?? "this computer") : (d.computers?.nameOf(dev) ?? dev);
+  let from = "";
+  if (local) {
+    const now = ducterFolder({ dataDir: d.dataDir });
+    if (now.why === "env") return { ok: false, device: dev, reason: "env", message: "DUCTER_FOLDER is set here, so the Ducter folder can't be changed from Settings." };
+    from = now.path;
+  } else {
+    if (!d.computers?.repos) return { ok: false, device: dev, reason: "old", message: `${name} can't say where its Ducter folder is; update Ducter there first.` };
+    const r = await d.computers.repos(dev, 15_000);
+    if (r === "offline") return { ok: false, device: dev, reason: "offline", message: `${name} can't be reached right now.` };
+    if (r === "old") return { ok: false, device: dev, reason: "old", message: `${name} runs an older Ducter that can't move its folder; update it first.` };
+    if (r.why === "env") return { ok: false, device: dev, reason: "env", message: "DUCTER_FOLDER is set on this computer, so its Ducter folder can't be changed from Settings." };
+    from = r.folder;
+  }
+  // No task may be working in the folder (or in a working copy inside it) while it moves.
+  const tasks = d.tasks
+    .list()
+    .filter((c) => RUNNING.has(c.attention) && ((("device" in c.place && c.place.device) || "local") === dev) && placePaths(c.place).some((p) => underFolder(from, p)))
+    .map((c) => ({ taskId: c.taskId, title: c.title }));
+  if (tasks.length) return { ok: false, device: dev, from, reason: "tasks_running", tasks, message: `${tasks.length === 1 ? "A task is" : `${tasks.length} tasks are`} running in ${from}. Try again when ${tasks.length === 1 ? "it is" : "they are"} done.` };
+  let r: FolderMoveResult | "offline" | "old";
+  try {
+    r = local
+      ? await moveDucterFolder({ from, to: String(raw ?? ""), dataDir: d.dataDir })
+      : await (d.computers!.moveFolder ? d.computers!.moveFolder(dev, String(raw ?? ""), 5 * 60_000) : Promise.resolve("old" as const));
+  } catch (err) {
+    return { ok: false, device: dev, from, reason: "failed", message: (err as Error).message };
+  }
+  if (r === "offline") return { ok: false, device: dev, from, reason: "offline", message: `${name} can't be reached right now.` };
+  if (r === "old") return { ok: false, device: dev, from, reason: "old", message: `${name} runs an older Ducter that can't move its folder; update it first.` };
+  if (!r.ok) return { ok: false, device: dev, from, reason: r.reason, message: r.message };
+  if (local) writeChosenFolder(d.dataDir, r.path);
+  d.settings?.setFolder?.(dev, r.path);
+  d.projects?.remap(from, r.path, dev);
+  d.found?.forget(dev);
+  d.log.append({ stream: "channel", origin: "system", kind: "folder_moved", body: { from, to: r.path, device: dev, projects: r.projects, worktrees: r.worktrees } });
+  return { ok: true, device: dev, from, path: r.path, projects: r.projects, worktrees: r.worktrees, repaired: r.repaired };
 }
 
 /**
@@ -643,7 +713,8 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
   const folders: DucterFolderView[] = [];
   for (const dev of comps) {
     const f = found.folder(dev);
-    if (f?.path || f?.old) folders.push({ device: dev, ...(f.path ? { path: f.path } : {}), ...(f.old ? { old: true as const } : {}) });
+    // why only where the person must see it: the env can't be changed here, a chosen path is theirs.
+    if (f?.path || f?.old) folders.push({ device: dev, ...(f.path ? { path: f.path } : {}), ...(f.why === "env" || f.why === "chosen" ? { why: f.why } : {}), ...(f.old ? { old: true as const } : {}) });
   }
   // D202: who could do it, every agent on every computer (one on another computer than the
   // folder's is offered there, with its own copy of the repo); and each one's models.

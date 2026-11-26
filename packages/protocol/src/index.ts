@@ -30,6 +30,7 @@ export * from "./open-asks.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
+export * from "./handoff.ts";
 export * from "./keeps.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
@@ -384,6 +385,19 @@ export interface ChatThread {
 /** D580: how much of a thread comes along: the last THREAD_MESSAGES before the words, about THREAD_CHARS in all. */
 export const THREAD_MESSAGES = 20;
 export const THREAD_CHARS = 4_000;
+
+/**
+ * D619: what Nowledge Mem last said about who opened a message Ducter sent on the person's
+ * behalf. Present only when Mem says a receipt is available: a missing one is "unknown", never
+ * "unread", and a missing count is never read as zero.
+ */
+export interface BridgeReceipt {
+  state: "read" | "partly" | "unread";
+  /** People who opened it, when Mem says (integer; 0 is a real zero). */
+  count?: number;
+  /** People it went to, when Mem says; several readers read as 2/5. */
+  total?: number;
+}
 
 export interface Bodies {
   // D206: media = the pictures the user sent with it (text may be empty then).
@@ -752,12 +766,19 @@ export interface Bodies {
   task_loop: TaskLoopBody;
   // D511: 照看 / Looking after: a Keep, one snapshot per change on stream keep:<keepId>; the latest wins.
   keep: import("./keeps.ts").KeepBody;
+  // D609: a hand-off as one record with an owner, keyed by sender + receiver + item ref. One snapshot
+  // per step (given, taken, done, returned, declined, unclaimed), on stream channel; the latest per
+  // handoffId wins, and a second hand-off of the same item merges into the open one.
+  handoff: import("./handoff.ts").HandoffBody;
   // D519: one round of a Keep in one line to the person, the cheap model's reading of its report,
   // recorded once on stream keep:<keepId> (principle 21); failed: never asked again, nothing said.
   keep_round: { keepId: string; round: string; line?: string; failed?: true };
   // D533: a change to a Keep, by the person on its page or by the partner (keep_change), on stream
   // keep:<keepId>: each field from and to, shown as a line among its rounds.
   keep_edit: { keepId: string } & import("./keeps.ts").KeepEditLine;
+  // D620: a doorbell rang for a Keep, on stream keep:<keepId>: when, and the caller's own short
+  // "about" label when it gave one. Never a request body: the body is never read at all.
+  keep_ring: { keepId: string; at: string; label?: string };
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -900,6 +921,15 @@ export interface Bodies {
     // text: its first words as Mem gave them (clipped, secrets redacted), for the partner only.
     refs?: { uri?: string; title: string; kind: "memory" | "artifact" | "thread" | "plan" | "other"; text?: string; read?: false }[];
   };
+  // D619: the latest read receipt Mem gave for one message Ducter sent on the person's behalf
+  // (bridge_msg out), read on the inbox check Ducter already runs. One per op, appended only when the
+  // receipt changed; clients keep the latest by opId/messageId and show it beside the time. Never
+  // appended when Mem has no receipt: no receipt is unknown, not unread.
+  bridge_read: {
+    opId: string;
+    messageId?: string;
+    receipt: BridgeReceipt;
+  };
   // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
   // "recut": Ducter started a fresh session from the projection because the live context grew
   // past the re-cut size (principle 4). "harness_compacted": the harness's own compactor ran
@@ -981,6 +1011,10 @@ export interface Bodies {
   // went, on which computer, how big, why. On the task's stream, origin "system". Read by Past
   // tasks (工作副本已整理), the computer's card (整理过 n 个…) and `ducter worktrees`.
   copy_tidied: import("./tidy.ts").CopyTidiedBody;
+  // The person moved a computer's Ducter folder (settings › Where it runs): the old and new
+  // absolute paths, the computer ("local" for the home), and what went with it. Place lookups apply
+  // it as a prefix mapping, so a task opened before the move still resolves to its working copy.
+  folder_moved: { from: string; to: string; device: string; projects: number; worktrees: number };
 }
 
 export interface Usage {
@@ -1070,6 +1104,19 @@ export interface HeldMsg {
   media?: MediaRef[];
 }
 
+/**
+ * D617 (D590's leftover): one memory Ducter's own recall put in front of a task's first turn.
+ * The runner records these on the task's stream (never the memory's text), and the opened task shows
+ * them under the brief. id: Mem's own id; space: Mem's exact Space id; via: whether it is one of the
+ * person's stated preferences (Mem's `preference` kind) or a hit the brief's search found.
+ */
+export interface RecalledMemory {
+  id?: string;
+  title: string;
+  space?: string;
+  via: "preferences" | "search";
+}
+
 export interface TaskCard {
   taskId: string;
   persona: string;
@@ -1143,6 +1190,8 @@ export interface TaskCard {
   helper?: { id: string; name: string };
   /** D511: the Keep (照看) this task is a round or an item of, so a row anywhere says whose it is. */
   keep?: { id: string; name: string };
+  /** D609: the latest hand-off this task gave to a helper (its one line under the last report). */
+  handoff?: import("./handoff.ts").HandoffLine;
   /** D521: the work its agent runs beside its turn (background shells, subagents, watches, jobs):
    *  every one still running and the newest finished, folded from its Log (background.ts). */
   background?: import("./background.ts").TaskBackground;
@@ -1821,6 +1870,11 @@ export type ClientFrame =
   // "local": the home) makes <Ducter folder>/projects/<name> (one folder name, never a path) and
   // the home adds it as a project, git or not. Answered with project_new_result.
   | { t: "project_new"; name: string; device?: string; clientId?: string }
+  // The person chose where this computer's Ducter folder lives (settings › Where it runs): that
+  // computer (absent or "local": the home) moves projects/ and worktrees/ there when no task is
+  // running in it, repairs git's worktree paths, and keeps the choice. Answered with
+  // folder_change_result.
+  | { t: "folder_change"; path: string; device?: string; clientId?: string }
   // D272: 在 {computer} 上登录 GitHub / Sign in to GitHub on {computer}, through that computer's own
   // GitHub CLI. status: where it stands; start: a device-flow sign-in (answered with its code and
   // link, then, when it ends, signed in with the account, or why not); token: the fallback, a token
@@ -1957,6 +2011,8 @@ export interface DucterFolderView {
   device: string;
   path?: string;
   old?: true;
+  /** Why that path (env: DUCTER_FOLDER set there, so it can't be changed from here; chosen: the person's). */
+  why?: "env" | "chosen" | "data" | "default" | "fallback";
 }
 
 /** D272: where a computer stands with GitHub (git-login.ts), in words the clients put in their own language. */
@@ -2008,6 +2064,14 @@ export interface GitLoginState {
 
 /** D204: why a clone didn't happen, in a word the clients put in their own language. */
 export type CloneReason = "invalid" | "not_found" | "no_access" | "network" | "timeout" | "offline" | "old" | "failed";
+
+/**
+ * Why a computer's Ducter folder didn't move: a task is still running in it (tasks says which),
+ * DUCTER_FOLDER is set there (the env wins), it can't be reached or its Ducter is too old, the
+ * target already holds things, it is inside the folder or the folder is inside it, it would be
+ * Ducter's own data, another move is running, or the move failed.
+ */
+export type FolderChangeReason = "tasks_running" | "env" | "offline" | "old" | "exists" | "inside" | "data" | "cross_device" | "busy" | "invalid" | "not_dir" | "failed";
 
 /**
  * D202: one model an AI agent offers on one computer, as the New task card lists it: its own
@@ -2145,6 +2209,9 @@ export type ServerFrame =
   | { t: "project_clone_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: CloneReason; message?: string }
   // D272: the folder made (or the one already there of that name: existed), as the card's place; or why not.
   | { t: "project_new_result"; ok: boolean; clientId?: string; device?: string; place?: PlaceChoice; existed?: true; reason?: "invalid" | "offline" | "old" | "failed"; message?: string }
+  // The Ducter folder moved (or why not): its old and new absolute paths, what went with it, and
+  // the tasks that kept it from moving (tasks_running; run it again when they are done).
+  | { t: "folder_change_result"; ok: boolean; clientId?: string; device?: string; from?: string; path?: string; projects?: number; worktrees?: number; repaired?: number; tasks?: { taskId: string; title: string }[]; reason?: FolderChangeReason; message?: string }
   // D272: where that computer stands with GitHub (git-login.ts): signed in as account, signed out,
   // no GitHub CLI, a sign-in waiting for code at url, or why it failed. Never a token.
   | ({ t: "git_login_state"; clientId?: string; device?: string; host: "github.com" } & GitLoginState)
@@ -2663,6 +2730,11 @@ export interface DeviceView {
    * never asked of the person. Absent from a worker before D538.
    */
   resources?: DeviceResources;
+  /**
+   * D204 (the person's choice): this computer's Ducter folder, with why it is that path. env means
+   * DUCTER_FOLDER is set there, so Settings can't move it; chosen is the path the person picked.
+   */
+  folder?: { path: string; why?: "env" | "chosen" | "data" | "default" | "fallback" };
 }
 
 /**
@@ -3106,6 +3178,12 @@ export interface Settings {
   chromeSites?: string[];
   /** D510: 新任务默认 / New tasks start: where and who every new task starts with unless its words, a rule or what it needs say otherwise. Absent (or a field absent): Ducter picks. */
   newTasks?: NewTasks;
+  /**
+   * The Ducter folder the person chose for each computer, by device id ("local" for the home).
+   * Kept on the home; the computer itself gets the path (and keeps it in its data folder), while
+   * DUCTER_FOLDER still wins there. Absent: the system's own name (~/Ducter on a Mac, ~/ducter elsewhere).
+   */
+  folderPaths?: Record<string, string>;
 }
 
 /**

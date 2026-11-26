@@ -1,4 +1,4 @@
-// D-PENDING: the web client's count and every list read the same open predicate as the home
+// D608: the web client's count and every list read the same open predicate as the home
 // (protocol's open-asks.ts). A picks offer past its time was counted while the note hid it; now
 // neither counts it. The shared fixture is also read by the protocol and the Mac.
 import { expect, test } from "bun:test";

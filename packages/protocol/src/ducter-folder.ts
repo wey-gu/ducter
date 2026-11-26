@@ -5,23 +5,33 @@
 //
 // Which folder (`ducterFolder`), in order:
 //   1. $DUCTER_FOLDER, when set (~/… allowed): exactly that.
-//   2. A Ducter with a data folder of its own (not the default ~/.ducter: a test, the soak, a
+//   2. The path the person chose for this computer (settings › Where it runs; kept in this
+//      computer's data folder as folder.json), when there is one. macOS's suggested name is
+//      ~/Ducter, every other system's ~/ducter.
+//   3. A Ducter with a data folder of its own (not the default ~/.ducter: a test, the soak, a
 //      second Ducter on one computer) keeps it inside that data folder, `<dataDir>/ducter`, so it
-//      never touches the user's ~/ducter.
-//   3. Else the first of ~/ducter, ~/ducter-work, ~/ducter-work-2 … that carries Ducter's marker
-//      (`.ducter-folder`); none does: the first that is missing, or a folder holding nothing but
-//      `projects/` and `worktrees/` (empty counts). A ~/ducter that is someone else's (a clone of
-//      the ducter repo, say: anything else in it, no marker) is never touched.
+//      never touches the user's ~/Ducter.
+//   4. Else the first of ~/Ducter, ~/Ducter-work, ~/Ducter-work-2 … on macOS (~/ducter, … elsewhere)
+//      that carries Ducter's marker (`.ducter-folder`); none does: the first that is missing, or a
+//      folder holding nothing but `projects/` and `worktrees/` (empty counts). A folder that is
+//      someone else's (a clone of the ducter repo, say: anything else in it, no marker) is never
+//      touched. macOS still finds a marked ~/ducter, so an existing folder keeps working (APFS is
+//      usually case-insensitive: ~/ducter and ~/Ducter are then the same folder).
 // Resolving reads only; `ensureDucterFolder` makes it and writes the marker on first use.
-import { existsSync, mkdirSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
 /** The file that says a folder is Ducter's. */
 export const FOLDER_MARKER = ".ducter-folder";
-/** The folder's name in the home folder, and the fallback's when that one is someone else's. */
+/** The folder's name in the home folder on every system but macOS (and inside a data folder of its own). */
 export const FOLDER_NAME = "ducter";
 export const FALLBACK_NAME = "ducter-work";
+/** macOS's own convention for a person's folders (Desktop, Documents, Downloads): an uppercase name. */
+export const MAC_FOLDER_NAME = "Ducter";
+export const MAC_FALLBACK_NAME = "Ducter-work";
+/** The file in the data folder that keeps the path the person chose for this computer. */
+export const FOLDER_CHOICE_FILE = "folder.json";
 
 /** What may be in a folder Ducter takes as its own without a marker. */
 const SHAPE = new Set(["projects", "worktrees", FOLDER_MARKER, ".DS_Store"]);
@@ -31,6 +41,10 @@ export interface DucterFolderOpts {
   /** The data folder this Ducter runs with (default ~/.ducter). */
   dataDir?: string;
   env?: Record<string, string | undefined>;
+  /** Which system's naming to use (default process.platform); tests set it. */
+  platform?: string;
+  /** The path chosen for this computer, when the caller already has it (default: this data folder's folder.json). */
+  chosen?: string;
   /** Test seam: what is on disk. */
   fs?: { exists(p: string): boolean; isDir(p: string): boolean; entries(p: string): string[] };
 }
@@ -55,8 +69,56 @@ const realFs: NonNullable<DucterFolderOpts["fs"]> = {
 
 export interface DucterFolder {
   path: string;
-  /** How it was chosen: the env, a data folder of its own, the default, or the fallback. */
-  why: "env" | "data" | "default" | "fallback";
+  /** How it was chosen: the env, the person's choice, a data folder of its own, the default, or the fallback. */
+  why: "env" | "chosen" | "data" | "default" | "fallback";
+}
+
+/** `~/…` and `~` in a folder path, against `home`; anything else as given. */
+export function expandFolderPath(raw: string, home: string): string {
+  const s = raw.trim();
+  if (s === "~") return resolve(home);
+  if (s.startsWith("~/")) return resolve(join(home, s.slice(2)));
+  return resolve(s);
+}
+
+/** The path chosen for this computer, from `<dataDir>/folder.json`; undefined with none or an unreadable file. */
+export function readChosenFolder(dataDir: string): string | undefined {
+  try {
+    const j = JSON.parse(readFileSync(join(dataDir, FOLDER_CHOICE_FILE), "utf8")) as { path?: unknown };
+    return typeof j.path === "string" && j.path.trim() ? j.path.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Keep the path chosen for this computer in its data folder (the home also keeps it in settings.json). */
+export function writeChosenFolder(dataDir: string, path: string): void {
+  mkdirSync(dataDir, { recursive: true });
+  const file = join(dataDir, FOLDER_CHOICE_FILE);
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ path }, null, 2) + "\n", { mode: 0o600 });
+  renameSync(tmp, file);
+}
+
+/**
+ * The name as the disk holds it: on a case-insensitive disk ~/Ducter and ~/ducter are one folder,
+ * and the person should see the spelling that is really there (so a lowercase one can be renamed).
+ */
+function actualCase(p: string, fs: NonNullable<DucterFolderOpts["fs"]>): string {
+  if (!fs.isDir(p)) return p;
+  const dir = dirname(p);
+  const name = basename(p);
+  const entries = fs.entries(dir);
+  const hit = entries.find((n) => n === name) ?? entries.find((n) => n.toLowerCase() === name.toLowerCase());
+  return hit ? join(dir, hit) : p;
+}
+
+/** The folder names to look for, in order: this system's, then (on macOS) a marked folder from before D611. */
+export function folderNames(platform: string = process.platform): string[] {
+  const variants = (name: string, fallback: string) => [name, fallback, ...Array.from({ length: 8 }, (_, i) => `${fallback}-${i + 2}`)];
+  const mac = platform === "darwin";
+  const names = mac ? [...variants(MAC_FOLDER_NAME, MAC_FALLBACK_NAME), ...variants(FOLDER_NAME, FALLBACK_NAME)] : variants(FOLDER_NAME, FALLBACK_NAME);
+  return [...new Set(names)];
 }
 
 /** D204: this computer's Ducter folder (read-only: nothing is made). */
@@ -65,16 +127,20 @@ export function ducterFolder(o: DucterFolderOpts = {}): DucterFolder {
   const env = o.env ?? process.env;
   const fs = o.fs ?? realFs;
   const set = env.DUCTER_FOLDER?.trim();
-  if (set) return { path: resolve(set === "~" ? home : set.startsWith("~/") ? join(home, set.slice(2)) : set), why: "env" };
+  if (set) return { path: expandFolderPath(set, home), why: "env" };
   const dataDir = resolve(o.dataDir ?? env.DUCTER_DATA_DIR ?? join(home, ".ducter"));
+  const chosen = o.chosen?.trim() || readChosenFolder(dataDir);
+  if (chosen) return { path: actualCase(expandFolderPath(chosen, home), fs), why: "chosen" };
   if (dataDir !== resolve(home, ".ducter")) return { path: join(dataDir, FOLDER_NAME), why: "data" };
-  const names = [FOLDER_NAME, FALLBACK_NAME, ...Array.from({ length: 8 }, (_, i) => `${FALLBACK_NAME}-${i + 2}`)];
-  const at = names.map((n) => join(home, n));
+  const at = folderNames(o.platform ?? process.platform).map((n) => join(home, n));
   const ours = at.find((p) => fs.isDir(p) && fs.exists(join(p, FOLDER_MARKER)));
   // Free: missing, or a folder holding nothing but what Ducter keeps there (projects/, worktrees/:
-  // the user made it by hand, or the marker was deleted).
-  const free = ours ?? at.find((p) => !fs.exists(p) || (fs.isDir(p) && fs.entries(p).every((n) => SHAPE.has(n)))) ?? at[at.length - 1]!;
-  return { path: free, why: free === at[0] ? "default" : "fallback" };
+  // the user made it by hand, or the marker was deleted). On macOS an existing folder of the old
+  // lowercase name is still Ducter's before a new one is made (its real case is kept).
+  const shaped = at.find((p) => fs.isDir(p) && fs.entries(p).every((n) => SHAPE.has(n)));
+  const mac = (o.platform ?? process.platform) === "darwin";
+  const free = ours ?? (mac ? shaped : undefined) ?? at.find((p) => !fs.exists(p) || (fs.isDir(p) && fs.entries(p).every((n) => SHAPE.has(n)))) ?? at[at.length - 1]!;
+  return { path: actualCase(free, fs), why: free === at[0] ? "default" : "fallback" };
 }
 
 /** D204: where Ducter's clones go on this computer. */

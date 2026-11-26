@@ -416,6 +416,10 @@ func (a *App) appOnThisMac(dv *protocol.DeviceView) bool {
 // own device id (worker.json), which no rename of the device or of the Mac
 // changes, else the computer it said it runs on (D187).
 func (a *App) isThisMacDevice(dv *protocol.DeviceView) bool {
+	// The home on this Mac is this Mac, whether or not a worker runs here.
+	if dv.Home && a.onThisMachine() {
+		return true
+	}
 	if a.MacWorker != nil {
 		if on, id := a.workOn(); on && id != "" && id == dv.ID {
 			return true

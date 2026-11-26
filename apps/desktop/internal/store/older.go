@@ -270,6 +270,14 @@ func (s *Store) joinOlder(sc *Store) {
 	if len(sc.TaskPeers) > 0 {
 		s.TaskPeers = append(append([]*Entry{}, sc.TaskPeers...), s.TaskPeers...)
 	}
+	for k, v := range sc.BridgeReceipts {
+		if s.BridgeReceipts == nil {
+			s.BridgeReceipts = map[string]*protocol.BridgeReceipt{}
+		}
+		if s.BridgeReceipts[k] == nil {
+			s.BridgeReceipts[k] = v
+		}
+	}
 	s.ReadUpTo = max(s.ReadUpTo, sc.ReadUpTo)
 	s.LastUserSeq = max(s.LastUserSeq, sc.LastUserSeq)
 }

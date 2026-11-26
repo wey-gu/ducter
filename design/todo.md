@@ -30,16 +30,12 @@ line.
 - [ ] **A teammate's agent handing work to a helper** still goes through its card (D494); a standing go per sender
   for a helper is not built. Trigger: a second person's agent hands the Babysitter work twice in a week.
 
-<<<<<<< HEAD
-=======
 ## A helper's Spaces and a teammate's card, after D604 (`bridge.md` "Helpers")
 
 - [ ] **An unnamed sender is muted by its Space-wide label** ("AI agent (dev team)"), so 不理 to one unnamed agent
   mutes every unnamed agent in that Space. Key `peers.muted` / `peers.allowed` by Mem's `sender.agent_id` when it
   is there. Trigger: a second unnamed agent writes in a Space where one was told 不理.
-- [ ] **The Mac 别的 agent 怎么找到它 row** lets a Space's name break at a space (the web keeps each whole).
-  Trigger: the next Keep page pass on the Mac.
->>>>>>> origin/d604-helper-spaces
+
 ## A sign-in with a one-time code, after D599 (`device-signin.md`)
 
 - **Each CLI's status command, live.** `DEVICE_CLIS`' exits and words are INFERRED from their docs. *Trigger:* the first real sign-in a task runs through the card (gh on haswell): check that gh's, then codex's, then az's status settles it.
@@ -102,10 +98,10 @@ line.
 ## Settings, after D589 (`settings.md` "Every pane, end to end (D589)")
 
 - [ ] **The author's review of `.shots/settings-r5/`** (the five crops named in D589's report first).
+- [ ] **The author's review of `.shots/settings-r6/`** (the five fixes and their 2x crops first; D618 in
+  `decisions.md`).
 - [ ] **The Mac's rail growing 和你的其他 agent 通信 under the person.** In the shot harness the row came only from
   the third pane on. Trigger: seen in the real app (a rail row arriving while Settings is open).
-- [ ] **The Mac's sign-ins and keys say 已存 / •••••• as the web's do** (Passwords & cards). Trigger: that pane's
-  next pass.
 
 ## The site, after D558 (`site.md`, research/227)
 
@@ -510,8 +506,10 @@ line.
 
 ## Mem, the D590 walk's leftovers
 
-- [ ] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
-  with each note's source. Trigger: a person asks why a task knew something, or a task acts on a stale note.
+- [x] **What a task was told from memory** (`<what_i_know>` in its first turn, D393) shown on the opened task, quietly,
+  with each note's source. Done (D617): the runner records `recalled` on the task's stream, and the opened
+  task shows **带进来 n 条记忆 / Brought n memories** under the brief, unfolding to the titles, each opening
+  Settings › 记忆 on it, with **这条不对 / This is wrong** asking the partner to correct it.
 - [ ] **「你都记得我些什么？」's answer leads to the whole list**: one quiet line to Settings › Memory under it, set by a
   mark the partner adds. Trigger: the next persona change (it needs one more line and its eval).
 - [ ] **One fix at Memory's head while Mem is signed out**: an agent plugin's update then waits under the sign-in, not
@@ -979,15 +977,11 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       on the list; `last_seen_at_ms` per connection.
 - [ ] A real `last_seen_at_ms` number (null on both of the partner's connections on 2026-11-22). Trigger: Mem fills it,
       or Mem says when it does.
-- [ ] **已读 / Read** on 来往 for a sent message. D555: Mem named the verbs (nmem 0.10.123: `outbox` and `inspect`
-      show how many recipients opened it); Ducter parses `read_receipt` (`receiptOf`, only when `receipt_available`)
-      but shows nothing until the shape is seen. Trigger: `ducter check run mem-shapes` on hel passes its `receipts`
-      step (or Mem confirms the JSON, private ask item 1); then read the outbox when the pane wants it (as D444's
-      contacts) and say **已读 / Read** beside a sent message, both clients, with shots. D557 (the 2026-11-25 live
-      pass, research/226 4.6): `send` / `reply` answers carry `outgoing[] {recipients, read_recipients, status:
-      "delivered" | "read"}` and a top `read_state: "unknown"`, with no `receipt_available`; the run read no outbox,
-      so the trigger stands. D595: Mem confirmed the JSON (top-level fields, integer counts; VERIFIED on 0.10.124,
-      research/237) and `receiptOf` reads it that way, so the trigger is met: build the line with shots.
+- [x] **已读 / Read** on 来往 for a sent message. Done as D619: **已送达 / Delivered**, **已读 / Read**
+      and **「{n}/{m} 已读」** beside every sent message's time (the conversation's relay line, a task's
+      `agent_message` row, a helper's rounds, Settings › Agent 通信's 来往), both clients and a helper's Keep,
+      live on the inbox check Ducter already runs; nothing when Mem has no receipt (D595's contract, research/237),
+      never a made-up unread. Shots `.shots/bridge-read/`.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
@@ -2388,8 +2382,9 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
       and `clone`; an older one shows "needs an update" on both cards), and a real clone from the
       phone onto the Mac (a private GitHub repo over https with the Mac's keychain, and over ssh with
       its agent): only faked git so far. Trigger: the author's next run with the Mac switched on.
-- [ ] **D204: the Ducter folder in Settings** (a field beside where it lives; today only
-      `DUCTER_FOLDER`). Trigger: the first person who wants it somewhere else and doesn't use a shell.
+- [x] **D204: the Ducter folder in Settings** — built in D611: a rule row on each computer's
+      Where it runs (web and Mac), macOS's `~/Ducter` one-tap rename, a picker or a path field, the
+      move with worktree repair and `folder_moved`; `DUCTER_FOLDER` stays read-only there.
 - [ ] **D204: clone progress** (git's own percentage in the field, from `--progress` on stderr,
       relayed by the worker). Today: a spinner and "a big repository takes a few minutes".
       Trigger: a clone that someone abandons because it looked stuck.

@@ -28,6 +28,8 @@ async function setup(c: TaskCard) {
   A.send = ((f: object) => void sent.push(f)) as typeof A.send;
   A.L = strings("zh");
   A.newTaskOptions = undefined;
+  // The suite shares one App module; another file may have asked for this task's list already.
+  (A as unknown as { modelsAskedFor: string }).modelsAskedFor = "";
   A.S.welcomed = true;
   A.S.apply({ t: "on_hand", onHand: { tasks: [c], counts: { needs_you: 0, working: 1, waiting: 0, done_today: 0 }, waiters: [] } });
   return { A, tune, sent, task: () => A.S.tasks.get("t1")! };

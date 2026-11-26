@@ -314,6 +314,10 @@ export type PastClientFrame =
   // D533: an edit on a Keep's page (the one path the partner's keep_change takes too), and edited words to read into rules.
   | { t: "keep_change"; id: string; change: import("./keeps.ts").KeepChange; undo?: boolean }
   | { t: "keep_words"; id: string; said: string }
+  // D616: 手上的事's two actions on a hand-off nobody took: ask the helper to take it now (a fresh
+  // arrival wakes its round), or stop following it (the record is withdrawn and the sender hears once).
+  | { t: "handoff_take"; id: string }
+  | { t: "handoff_withdraw"; id: string }
   // Answered with action_result (taskId: the id, action: the action's name), then ongoing_result.
   | ({ t: "ongoing_action"; kind: "routine" | "task"; id: string } & OngoingAction);
 
@@ -334,5 +338,5 @@ export type PastServerFrame =
   // D511: a Keep's page; absent: no Keep by that id for this partner.
   | { t: "keep_result"; id: string; keep?: import("./keeps.ts").KeepPage }
   // D533: an edit's result (each field from and to, and the change that undoes it), and the rules read from edited words.
-  | { t: "keep_changed"; id: string; ok: boolean; error?: string; edits?: import("./keeps.ts").KeepEdit[]; undo?: import("./keeps.ts").KeepChange; undone?: boolean }
+  | { t: "keep_changed"; id: string; ok: boolean; error?: string; edits?: import("./keeps.ts").KeepEdit[]; undo?: import("./keeps.ts").KeepChange; undone?: boolean; bell?: import("./keeps.ts").KeepBellUrl }
   | { t: "keep_proposal"; id: string; proposal: import("./keeps.ts").KeepProposal };

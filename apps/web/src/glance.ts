@@ -8,7 +8,7 @@
 // same window a fresh hello replays and more), On hand, the empty conversation's words and who
 // this device is. A revoked device, or a home whose Log started over, forgets it. D543: one per
 // partner, so a switch with the link down shows that partner's own last screen.
-import type { FirstScreen, LogEvent, OnHand } from "@ducter/protocol";
+import type { FirstScreen, LogEvent, OnHand, PartnerInfo } from "@ducter/protocol";
 import type { Me } from "./conn.ts";
 
 export const GLANCE_KEY = "ducter.glance.v1";
@@ -26,6 +26,10 @@ export interface Glance {
   headSeq: number;
   events: LogEvent[];
   onHand?: OnHand;
+  /** D513: the list of partners and the one shown, so a cold start or a process reload paints the
+   *  sidebar named before the socket's hello (the author's iPad came back to an empty sidebar). */
+  partners?: PartnerInfo[];
+  partnerShown?: string;
   first?: FirstScreen;
   me?: Me;
   savedAt: number;

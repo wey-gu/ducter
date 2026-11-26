@@ -161,9 +161,12 @@ Its tasks know you too. A task runs with your Nowledge Mem plugin, under your pa
 Nowledge Mem, so it starts with what you and your partner know and its work is kept there the
 way your own sessions are. On a computer where the plugin isn't installed for that AI agent, your
 partner gives the task the few things it remembers that fit the work, and the task can look up
-more. A task never saves memories itself; it can suggest something worth keeping, and your
-partner decides. Tasks in a browser get none of it, so a web page can't ask for it. Turn off
-**Remember things** and tasks get no memory: the plugin is switched off inside them too.
+more. The opened task says what it was given, in one quiet line under your brief: **Brought n
+memories**, which unfolds to their titles. A title opens that memory in **Memory**, and **This is
+wrong** asks your partner to correct it. Nothing shows when nothing was given. A task never saves
+memories itself; it can suggest something worth keeping, and your partner decides. Tasks in a
+browser get none of it, so a web page can't ask for it. Turn off **Remember things** and tasks get
+no memory: the plugin is switched off inside them too.
 
 **Files you keep there.** With Nowledge Mem connected, a file your partner or a task made shows
 **Save to Nowledge Mem** under it (and in the file's own view). One tap keeps it in a folder named

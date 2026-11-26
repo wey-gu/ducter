@@ -30,7 +30,7 @@ import { copy } from "./conv-copy.ts";
 import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, stamp, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
-import { canFillNow, wideNow } from "./fold.ts";
+import { canFillNow, currentSplit, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, loadGlance, saveGlance, type Glance } from "./glance.ts";
 import { gotKeys } from "./media-fresh.ts";
@@ -417,6 +417,8 @@ class AppState {
   /** D321: Settings › 记忆's search: what was asked, and what Mem found for it. */
   memQuery = "";
   memFound?: { q: string; ok: boolean; items: MemItem[] };
+  /** D617: the memory Settings › 记忆 should open on, when a task's recalled line links to one. */
+  memFocus = "";
   /** D465: the ask Nowledge Mem didn't take (it's back on the page, with a line to settle it in Mem). */
   memSettleFailed?: string;
   /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
@@ -447,6 +449,11 @@ class AppState {
   /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
   devices?: DeviceView[];
+  /** D611: each computer's Ducter folder row: its editor, the move in flight, the tasks that kept it
+   *  and the line a move left. */
+  folderRows: Record<string, { open?: boolean; busy?: boolean; cid?: string; err?: string; done?: string; tasks?: { taskId: string; title: string }[]; typed?: string }> = {};
+  /** D611: the computer whose folder row to open after a New task clone line tapped it. */
+  folderFocus?: string;
   /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   /** D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code) (names, last four, where used; never a secret). */
@@ -714,6 +721,8 @@ class AppState {
         if (s !== "connecting" && inApp() && (s === "connected" || !this.keptScreen())) tellReach(s === "connected");
         this.linkTick();
         this.changed();
+        // D613: a socket coming back repaints an empty shell too (a page restored while it was down).
+        if (s === "connected") this.ensureShellSoon();
       },
     );
     // D532: a socket refused before its welcome asks the home (main.tsx), never ends the pairing itself.
@@ -723,9 +732,78 @@ class AppState {
     };
     this.conn.start();
     // D209: going to the background keeps the last screen at once (the app may not come back).
-    if (typeof document === "object") document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && this.keepGlance(true));
-    if (typeof addEventListener === "function") addEventListener("pagehide", () => this.keepGlance(true));
+    // D613: coming back re-paints that last state and, when it is not all there, asks the home
+    // again for the frames a fresh open gets; a bfcache restore is a resume too.
+    if (typeof document === "object") document.addEventListener("visibilitychange", this.onVisibility);
+    if (typeof addEventListener === "function") {
+      addEventListener("pagehide", () => this.keepGlance(true));
+      addEventListener("pageshow", this.onPageShow);
+      addEventListener("focus", this.onFocus);
+    }
     void this.refreshPush();
+  }
+
+  /** Whether the page went to the background (so a visible turn is a resume). */
+  private away = false;
+
+  private onVisibility = () => {
+    if (typeof document !== "object") return;
+    if (document.visibilityState === "hidden") {
+      this.away = true;
+      this.keepGlance(true);
+    } else if (this.away) {
+      this.away = false;
+      this.resume("visible");
+    }
+  };
+
+  /** iOS restores a page from its back/forward cache without a visibilitychange: pageshow says so. */
+  private onPageShow = (e: PageTransitionEvent) => {
+    if (e.persisted) this.resume("pageshow");
+  };
+
+  /** A window coming to the front (a desktop browser, an iPad in Split View): repaint; one that
+   *  lost the page's state asks again. The socket proves itself on its own (conn.ts wake). */
+  private onFocus = () => {
+    if (typeof document !== "object" || document.visibilityState === "visible") this.resume("focus");
+  };
+
+  /** D613: the page was in the background or came back from bfcache. Draw the last known state
+   *  first (never an empty shell), then ask the home for the same frames a fresh open gets when
+   *  the state is not all there; the hello carries the cursor, so nothing is applied twice. */
+  resume(why: "visible" | "pageshow" | "focus" = "visible") {
+    this.changed();
+    const bare = !this.S.welcomed || !this.S.persona || !this.partners?.length || !this.S.onHand;
+    if (bare && this.glanceDevice) {
+      const g = loadGlance(this.glanceDevice, undefined, savedPartner());
+      if (g) this.restore(g);
+    }
+    if (why !== "focus" || bare) {
+      this.conn?.rehello();
+      this.conn?.probe();
+    }
+    if (bare) this.changed();
+    // The page came back with no bar at all (iOS dropped what it drew while suspended): draw the
+    // whole page again from the state it still holds. A bar that is there is left alone.
+    this.ensureShellSoon();
+  }
+
+  /** D613: after the state has had a frame to draw, a page with no bar (iOS dropped what it drew
+   *  while suspended) is mounted again from the state it holds. */
+  private ensureShellSoon() {
+    setTimeout(() => {
+      if (this.S.welcomed && !this.shellAlive()) this.onRepaint?.();
+    }, 0);
+  }
+
+  /** D613: what a resume should find still drawn. A missing bar, or the partners beside the
+   *  conversation gone, is an empty shell. */
+  private shellAlive(): boolean {
+    if (typeof document !== "object") return true;
+    const top = document.querySelector("#app .top");
+    if (!top || !top.textContent?.trim()) return false;
+    const wantsList = this.route.name === "conv" && this.manyPartners() && this.railMode !== "hidden" && !this.partnersOpen && !currentSplit() && typeof innerWidth === "number" && innerWidth >= 700;
+    return !wantsList || !!document.querySelector("#app .pane.partners .pl-row");
   }
 
   async refreshPush() {
@@ -767,6 +845,10 @@ class AppState {
     this.S.welcomed = false; // nothing is sent before the home says welcome
     this.S.apply({ t: "events", events: g.events });
     if (g.onHand) this.S.apply({ t: "on_hand", onHand: g.onHand });
+    // D513: the sidebar is named in the same first frame as the conversation; the socket's hello
+    // refreshes it, but it is never an empty column while that answer is on its way.
+    if (g.partners?.length) this.partners = g.partners;
+    if (g.partnerShown) this.partnerShown = g.partnerShown;
     if (g.first) this.S.apply({ t: "first_screen", first: g.first });
     for (const ev of g.events) {
       this.kept.set(ev.seq, ev);
@@ -795,6 +877,8 @@ class AppState {
         headSeq: this.S.headSeq,
         events,
         ...(this.S.onHand ? { onHand: this.S.onHand } : {}),
+        ...(this.partners?.length ? { partners: this.partners } : {}),
+        ...(this.partnerShown ? { partnerShown: this.partnerShown } : {}),
         ...(this.S.first ? { first: this.S.first } : {}),
         ...(this.me ? { me: this.me } : {}),
         savedAt: Date.now(),
@@ -960,6 +1044,7 @@ class AppState {
       }
       return this.changed();
     }
+    if (f.t === "folder_change_result") return this.folderChangeDone(f);
     if (f.t === "folder_browse_result") {
       const b = this.nt.browse;
       if (b && f.clientId === b.cid) (b.res = f), f.ok && f.path && ((b.path = f.path), (b.lastOk = f.path)), this.changed();
@@ -1175,6 +1260,32 @@ class AppState {
     queueMicrotask(() => document.getElementById("composer")?.focus());
   }
 
+  /**
+   * D617: open one memory the task's recalled line names. Mem has no per-memory deep link
+   * (research/136 G6), so Settings › 记忆 opens with it: the inventory row when it is there, else
+   * the search finds it by its title.
+   */
+  openMemory(id: string, title: string) {
+    if (!id) return this.openSettings("memory");
+    const known = !!this.mem?.glance?.about?.some((m) => m.id === id);
+    this.memFocus = id;
+    this.openSettings("memory");
+    if (!known && title) {
+      this.memQuery = title;
+      this.memFind(title);
+    }
+    this.changed();
+  }
+
+  /** D617: 这条不对 / This is wrong: a message to the partner naming the memory's id (its own tools correct it). */
+  correctMemory(id: string, title: string) {
+    if (!id) return;
+    this.sendWords(this.L.t("task.recalled.wrong.words", title, id));
+    this.sheet = null;
+    this.route = { name: "conv" };
+    this.changed();
+  }
+
   /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */
   askLoadout() {
     this.send({ t: "settings" });
@@ -1242,6 +1353,8 @@ class AppState {
   leftOnHand?: () => void;
   /** D535: set by keep.tsx: Esc inside On hand closes its Keep's page first (true when it did). */
   upInPlace?: () => boolean;
+  /** D613: main.tsx remounts the page from the last state when a resume finds an empty shell. */
+  onRepaint?: () => void;
   /** D511: set by keep.tsx (a Keep's page and its frames). */
   openKeep?: (id: string) => void;
   onKeepFrame?: (f: Extract<ServerFrame, { t: "keep_result" }>) => void;
@@ -1529,6 +1642,97 @@ class AppState {
   ntAddBack() {
     if (this.sheet?.kind === "addfolder") return this.closeAddFolder();
     this.nt.list = this.nt.add ? "add" : "place";
+    this.changed();
+  }
+
+  /** D611: that computer's folder row state. */
+  folderRow(device: string) {
+    return (this.folderRows[device] ??= {});
+  }
+
+  /** D611: move that computer's Ducter folder to `to`; the row says 在搬… until the answer. */
+  folderMove(device: string, to: string) {
+    const st = this.folderRow(device);
+    if (st.busy) return;
+    const path = to.trim();
+    if (!path) return void ((st.err = this.L.t("settings.folder.err.invalid")), (st.tasks = undefined), (st.done = ""), this.changed());
+    this.nextClient++;
+    st.cid = `fd${Date.now()}-${this.nextClient}`;
+    st.busy = true;
+    st.err = "";
+    st.done = "";
+    st.tasks = undefined;
+    this.send({ t: "folder_change", path, clientId: st.cid, ...(this.ntDeviceArg(device) ? { device: this.ntDeviceArg(device) } : {}) });
+    this.changed();
+  }
+
+  /** D611: the home answered a move: the new path, the tasks still working there, or why not. */
+  folderChangeDone(f: Extract<ServerFrame, { t: "folder_change_result" }>) {
+    const dev = f.device || "local";
+    const hit = Object.entries(this.folderRows).find(([, st]) => st.cid && st.cid === f.clientId);
+    const st = hit?.[1] ?? this.folderRow(dev);
+    st.cid = undefined;
+    st.busy = false;
+    if (!f.ok) {
+      st.done = "";
+      if (f.reason === "tasks_running") {
+        st.tasks = f.tasks ?? [];
+        st.err = "";
+        st.open = true;
+      } else {
+        st.tasks = undefined;
+        st.err = this.folderWhy(f);
+      }
+      return void this.changed();
+    }
+    st.tasks = undefined;
+    st.err = "";
+    st.open = false;
+    if (f.path) {
+      st.done = this.L.t("settings.folder.done", tilde(f.path), f.projects ?? 0, f.worktrees ?? 0);
+      st.typed = f.path;
+    }
+    void this.changed();
+  }
+
+  /** D611: a refused move in the person's words. */
+  folderWhy(f: Extract<ServerFrame, { t: "folder_change_result" }>): string {
+    switch (f.reason) {
+      case "env":
+        return this.L.t("settings.folder.env");
+      case "exists":
+        return this.L.t("settings.folder.err.exists");
+      case "inside":
+        return this.L.t("settings.folder.err.inside");
+      case "data":
+        return this.L.t("settings.folder.err.data");
+      case "cross_device":
+        return this.L.t("settings.folder.err.cross");
+      case "offline":
+        return this.L.t("settings.folder.err.offline");
+      case "old":
+        return this.L.t("settings.folder.err.old");
+      case "invalid":
+      case "not_dir":
+        return this.L.t("settings.folder.err.invalid");
+      case "busy":
+        return this.L.t("settings.folder.err.busy");
+    }
+    return this.L.t("settings.folder.err.failed", (f.message ?? "").replace(/[. 。]+$/, ""));
+  }
+
+  /** D611: show a computer's folder row (the home's in Where it runs, a worker's on its card). */
+  openFolderRow(device: string) {
+    const d = (this.devices ?? []).find((x) => x.id === device || x.name === device);
+    const id = d ? d.id : "local";
+    this.folderFocus = id;
+    this.sheet = { kind: "settings", page: "devices" };
+    const st = this.folderRow(id);
+    st.open = true;
+    st.err = "";
+    st.tasks = undefined;
+    st.done = "";
+    if (d?.folder) st.typed = d.folder.path;
     this.changed();
   }
 
@@ -2261,6 +2465,9 @@ class AppState {
 
   private applyPartners(f: Extract<ServerFrame, { t: "partners" }>) {
     const before = new Set((this.partners ?? []).map((p) => p.id));
+    // D513: a home always has at least its default partner. An empty snapshot (a socket answer
+    // mid-restart, a page resuming) never blanks a sidebar that already had names: keep the last.
+    if (!f.partners.length && this.partners?.length) return;
     this.partners = f.partners;
     if (this.partnersAsked) (this.partnersAsked = false), (this.partnersOpen = this.manyPartners() && !wideNow());
     // D513: back to one partner (another removed): no list stands in for the conversation.

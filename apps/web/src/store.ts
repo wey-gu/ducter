@@ -4,7 +4,7 @@
 // Pure data; tested without a DOM.
 import { countDoneToday, endedUnmet, prGoesOn, prsCarried } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, BridgeReceipt, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RecalledMemory, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { askOpen } from "@ducter/protocol/src/open-asks.ts";
@@ -133,6 +133,9 @@ export interface Task {
   /** Where a browser task's browser last was (task_event {role: system, raw.browser}); `own`:
    *  the user's own Chrome, through the AI agent's own tools (D126). */
   browser?: { host: string; own?: boolean; seq: number };
+  /** D617 (D590's leftover): what Ducter's own recall put in front of the first turn
+   *  (task_event raw {memory: "recall", recalled}); never the memories' text. */
+  recalled?: RecalledMemory[];
   /** D339: the person's own phone the task asked to borrow (the ask's report in its stream). */
   phone?: { device: string; name: string };
 }
@@ -283,6 +286,10 @@ export class Store {
    * unconfirmed, so 最近 / Recently can say one that hasn't gone, not only the ones that did.
    */
   outOps = new Map<string, { seq: number; ts: string; b: Bodies["bridge_msg"] }>();
+  /** D619: Mem's latest read receipt for a sent message, by its op and by its message id: 已送达 /
+   *  已读 / 「{n}/{m} 已读」 beside the time, and nothing when Mem has none. */
+  receipts = new Map<string, BridgeReceipt>();
+  messageReceipts = new Map<string, BridgeReceipt>();
   /** D470 round 2: replies shown as sent, by the message answered and the words. */
   sentReplies = new Set<string>();
   // D448: a task's own exchanges with another agent that never show in the conversation (its follow-ups
@@ -717,6 +724,15 @@ export class Store {
         if (about) about.revision++;
         return void this.bySeq.set(ev.seq, null);
       }
+      case "bridge_read": {
+        // D619: the latest word on a sent message's readers; it changes that line, never a new one.
+        const b = ev.body as Bodies["bridge_read"];
+        if (b.opId) this.receipts.set(b.opId, b.receipt);
+        if (b.messageId) this.messageReceipts.set(b.messageId, b.receipt);
+        for (const e of this.channel) if (e.peer && ((b.opId && e.peer.opId === b.opId) || (b.messageId && e.peer.messageId === b.messageId))) e.revision++;
+        for (const e of this.taskPeers) if ((b.opId && e.peer.opId === b.opId) || (b.messageId && e.peer.messageId === b.messageId)) e.peer = { ...e.peer };
+        return void this.bySeq.set(ev.seq, null);
+      }
       case "bridge_msg": {
         // D170: the quiet lines of the user's other agents (J-Q5's strings): a request, a reply
         // or a message that went out, and once a day a sender set aside. Steps (pending,
@@ -870,6 +886,8 @@ export class Store {
     fill(this.notes, sc.notes, (e) => added.has(e));
     fill(this.recalled, sc.recalled);
     fill(this.outOps, sc.outOps);
+    for (const [k, v] of sc.receipts) if (!this.receipts.has(k)) this.receipts.set(k, v);
+    for (const [k, v] of sc.messageReceipts) if (!this.messageReceipts.has(k)) this.messageReceipts.set(k, v);
     fill(this.pings, sc.pings);
     fill(this.pingAt, sc.pingAt);
     fill(this.asksWaiting, sc.asksWaiting);
@@ -884,6 +902,26 @@ export class Store {
     this.readUpTo = Math.max(this.readUpTo, sc.readUpTo);
     this.lastUserSeq = Math.max(this.lastUserSeq, sc.lastUserSeq);
     for (const ev of evs) if (ev.seq < this.older.from) this.older.from = ev.seq;
+  }
+
+  /** D619: what Mem last said about who opened one message Ducter sent, if anything. */
+  receiptOf(b?: { opId?: string; messageId?: string }): BridgeReceipt | undefined {
+    if (!b) return undefined;
+    return (b.opId ? this.receipts.get(b.opId) : undefined) ?? (b.messageId ? this.messageReceipts.get(b.messageId) : undefined);
+  }
+
+  /** D619: the newest sent message of a task that has a receipt, for a helper's round. */
+  receiptOfTask(taskId: string | undefined): BridgeReceipt | undefined {
+    if (!taskId) return undefined;
+    let best: BridgeReceipt | undefined;
+    let seq = -1;
+    for (const e of [...this.channel, ...this.taskPeers]) {
+      const p = e.peer;
+      if (!p || p.direction !== "out" || p.taskId !== taskId || e.ev.seq <= seq) continue;
+      const r = this.receiptOf(p);
+      if (r) (best = r), (seq = e.ev.seq);
+    }
+    return best;
   }
 
   private add(e: Entry) {
@@ -1009,6 +1047,12 @@ export class Store {
         if (Array.isArray(read)) for (const n of read) if (typeof n === "number") (t.reads ??= new Set()).add(n);
         const br = b.role === "system" ? (b.raw as { browser?: { host?: string; own?: boolean } } | undefined)?.browser : undefined;
         if (br?.host && (!t.browser || t.browser.seq < ev.seq)) t.browser = { host: br.host, ...(br.own ? { own: true } : {}), seq: ev.seq };
+        // D617: what memory brought into the first turn, once; older events have only ids.
+        const rec = b.role === "system" ? (b.raw as { memory?: string; recalled?: RecalledMemory[] } | undefined) : undefined;
+        if (rec?.memory === "recall" && Array.isArray(rec.recalled)) {
+          const notes = rec.recalled.filter((n) => !!n && typeof n.title === "string" && n.title.trim() && (n.via === "preferences" || n.via === "search"));
+          if (notes.length) t.recalled = notes;
+        }
         break;
       }
       case "report": {
@@ -1062,7 +1106,7 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      // D-PENDING: the count and every list read one predicate (protocol's open-asks.ts): an offer
+      // D608: the count and every list read one predicate (protocol's open-asks.ts): an offer
       // (D453), a question put off (D382) and one whose default is already due are not open here.
       .filter((d) => askOpen(d, { resolved: !!d.resolved, pending: d.pending, later: d.later }))
       .filter((d) => {

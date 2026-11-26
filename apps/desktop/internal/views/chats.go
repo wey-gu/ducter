@@ -303,7 +303,12 @@ func (a *App) chatFoot(c *ui.Context, key, note string, buttons func()) {
 		ui.Box(c).Width(40).Shrink(0)
 		uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if buttons != nil {
-			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				prev := a.settings.trailAlign
+				a.settings.trailAlign = true
+				buttons()
+				a.settings.trailAlign = prev
+			})
 		}
 	})
 }

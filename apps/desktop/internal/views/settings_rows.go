@@ -245,7 +245,12 @@ func (a *App) footRow(c *ui.Context, key, note string, actions func()) {
 		}
 		a.wordsThenControl(c, func() {
 			uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-		}, actions)
+		}, func() {
+			prev := a.settings.trailAlign
+			a.settings.trailAlign = true
+			actions()
+			a.settings.trailAlign = prev
+		})
 	})
 }
 
@@ -261,7 +266,10 @@ func (a *App) confirmRow(c *ui.Context, key, ask, keep, goLabel, about string) (
 		uiText(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0)
 		ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 			k = a.quietButton(c, "confirm-keep:"+key, keep, about, false, 0)
+			prev := a.settings.trailAlign
+			a.settings.trailAlign = true
 			g = a.dangerText(c, "confirm-go:"+key, goLabel, about)
+			a.settings.trailAlign = prev
 		})
 	})
 	return k, g
@@ -277,7 +285,10 @@ func (a *App) confirmLine(c *ui.Context, key, ask, keep, goLabel, about string) 
 		uiText(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0)
 		ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 			k = a.quietButton(c, "confirm-keep:"+key, keep, about, false, 0)
+			prev := a.settings.trailAlign
+			a.settings.trailAlign = true
 			g = a.dangerText(c, "confirm-go:"+key, goLabel, about)
+			a.settings.trailAlign = prev
 		})
 	})
 	return k, g
@@ -424,6 +435,11 @@ func (a *App) quietDanger(c *ui.Context, key, label, about string) bool {
 	acc := spoken(a.L, label, about) // D291, as dangerText
 	b := ui.Row(c.Key(key)).Height(t.ControlSM-4).Padding(0, t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(acc).Focusable().Shrink(0)
+	if a.settings.trailAlign {
+		// D618: in a card's foot, the words—not the tap padding—end on the switches' edge
+		// (D582: the padding stays; the row's padding takes it).
+		b.Margin(0, -t.S2, 0, t.S2)
+	}
 	ink := t.InkSoft
 	if b.Hovered() || b.Pressed() {
 		b.Background(t.Failed.Surface)

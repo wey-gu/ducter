@@ -4,7 +4,7 @@ export { buildSystemPrompt } from "./persona.ts";
 export { forPerson, redactSecrets, renderHelpers } from "./partner.ts";
 export { renderProjection, renderTrigger, renderHistoryLine, renderTasks } from "./render.ts";
 export { resolvePlace, findPaths, type PlaceFs } from "./place.ts";
-export { createNmemBridge, bridgeFromEnv, inboxIds, senderOf, contactsOf, memberOf, opOf, type BridgeClient, type BridgeMessage, type BridgeContact, type BridgeOp } from "./bridge.ts";
+export { createNmemBridge, bridgeFromEnv, inboxIds, senderOf, contactsOf, memberOf, opOf, type BridgeClient, type BridgeMessage, type BridgeContact, type BridgeOp, type OpRead } from "./bridge.ts";
 export { createNmemClient, noMemory, provenanceRef, compactHit, type MemoryClient, type MemoryHit, type MemoryAdd, type Provenance } from "./memory.ts";
 export { createSpine, memorySpineStore, type Spine, type SpineOptions, type SpineView } from "./spine/spine.ts";
 export { createHarnessWriter, writerPrompt, parseDigest, type DigestWriter, type WriterInput } from "./spine/writer.ts";

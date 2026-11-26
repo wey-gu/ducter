@@ -1,9 +1,21 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { AgentModels, DeviceHarness, DeviceUpdate, MemPluginView, ModelChoice } from "@ducter/protocol";
+import type { AgentModels, BridgeReceipt, DeviceHarness, DeviceUpdate, MemPluginView, ModelChoice } from "@ducter/protocol";
 import { MEM_CONNECT_TOOLS, undomainedName } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 import { words } from "@ducter/protocol/src/lang.ts";
+
+/** D619: how a sent message reads beside its time: 已送达 / Delivered while nobody has opened it,
+ *  已读 / Read once one has, 「{n}/{m} 已读」 in a Space with several readers. Absent: no words at all
+ *  (Mem gave no receipt, so nothing is known and "unread" is never invented). */
+export function receiptWords(r: BridgeReceipt | undefined, L: Strings): string {
+  if (!r) return "";
+  const n = r.count;
+  if (n !== undefined && n <= 0) return L.t("bridge.receipt.delivered");
+  if (n !== undefined && r.total !== undefined && r.total > 1 && n < r.total) return L.t("bridge.receipt.partly", n, r.total);
+  if (n === undefined && r.state === "unread") return L.t("bridge.receipt.delivered");
+  return L.t("bridge.receipt.read");
+}
 
 export function duration(L: Strings, ms: number): string {
   const min = Math.max(1, Math.ceil(ms / 60_000));

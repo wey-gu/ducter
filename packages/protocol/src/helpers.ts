@@ -26,28 +26,17 @@ export const LOCAL_MSG = "local-";
 type HelperMailBody = { direction: "in" | "out"; messageId: string; helper?: string; inReplyTo?: string; state?: string };
 
 /**
- * D598: the messages each helper sent (its claims and its outcomes), by id: an agent that writes again on
- * one of them is handing the helper new work, not answering something the person asked.
+ * D609: mail at a helper's address that is a piece of work handed to it: an original, a hand-off on this
+ * home, or a message written under any old message — unless it answers a question the helper itself
+ * asked. That question is a fact about our own outbox (`helperQuestions`, handoff.ts), never about
+ * whether Bridge threaded the message under something (D598's rule, replaced here: hel, mem#11393 came
+ * back under the babysitter's own outcome for #11070, which is not a question, so it is work).
+ * Not a held, muted or set-aside copy.
  */
-export function helperSent(evs: Iterable<{ body: unknown }>): Set<string> {
-  const out = new Set<string>();
-  for (const e of evs) {
-    const b = e.body as HelperMailBody;
-    if (b?.direction === "out" && b.helper && b.messageId) out.add(b.messageId);
-  }
-  return out;
-}
-
-/**
- * D598: mail at a helper's address that is a piece of work handed to it: an original, a hand-off on this
- * home, or a message written as a reply on the helper's own earlier message (hel, 2026-11-26: a task's
- * hand-off of mem#11393 went as a reply on the babysitter's last outcome, for #11070, and was read as
- * an answer, so no task took it). Not a held, muted or set-aside copy.
- */
-export function isHelperWork(b: HelperMailBody, sent: Set<string>): boolean {
+export function isHelperWork(b: HelperMailBody, questions: Set<string>): boolean {
   if (b.direction !== "in" || !b.helper) return false;
-  if (b.state && b.state !== "held") return false;
-  return !b.inReplyTo || sent.has(b.inReplyTo);
+  if (b.state) return false; // held (its sender card waits), muted, set aside, a ping, a task's answer
+  return !b.inReplyTo || !questions.has(b.inReplyTo);
 }
 
 /**

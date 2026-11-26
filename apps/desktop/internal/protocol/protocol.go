@@ -118,6 +118,7 @@ const (
 	KindMemoryNoted      = "memory_noted"
 	KindMemoryRecalled   = "memory_recalled"
 	KindBridgeMsg        = "bridge_msg"
+	KindBridgeRead       = "bridge_read"
 )
 
 type UserMsg struct {
@@ -516,6 +517,16 @@ type TaskEvent struct {
 	Thinking []string        `json:"thinking,omitempty"`
 	Usage    *Usage          `json:"usage,omitempty"` // present on turn ends
 	Raw      json.RawMessage `json:"raw,omitempty"`
+}
+
+// RecalledMemory is one memory Ducter's own recall put in front of a task's
+// first turn (D617, D590's leftover): Mem's id, its one-line title, the
+// Space it is kept in and how it was found. Never the memory's text.
+type RecalledMemory struct {
+	ID    string `json:"id,omitempty"`
+	Title string `json:"title"`
+	Space string `json:"space,omitempty"`
+	Via   string `json:"via"` // preferences | search
 }
 
 // Usage is a turn's token use.
@@ -954,6 +965,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Waiter{}
 	case KindBridgeMsg:
 		v = &BridgeMsg{}
+	case KindBridgeRead:
+		v = &BridgeRead{}
 	case KindBodySelected:
 		v = &BodySelected{}
 	case KindFinds:
@@ -1012,6 +1025,23 @@ type BridgeMsg struct {
 	// answer to it, delivered into that task.
 	By   string `json:"by,omitempty"`
 	Head string `json:"head,omitempty"`
+}
+
+// BridgeReceipt is what Nowledge Mem last said about who opened a message Ducter sent on the
+// person's behalf (D619). Present only when Mem says a receipt is available: a missing one
+// is unknown, never unread, and a missing count is never zero.
+type BridgeReceipt struct {
+	State string `json:"state"` // read | partly | unread
+	Count *int   `json:"count,omitempty"`
+	Total *int   `json:"total,omitempty"`
+}
+
+// BridgeRead is one message's latest receipt, read on the inbox check Ducter already runs
+// (D619). Clients keep the latest by OpID and MessageID and show it quietly beside the time.
+type BridgeRead struct {
+	OpID      string        `json:"opId"`
+	MessageID string        `json:"messageId,omitempty"`
+	Receipt   BridgeReceipt `json:"receipt"`
 }
 
 // BridgeRef is one thing a message handed over from Nowledge Mem (D444):
@@ -1096,6 +1126,8 @@ type TaskCard struct {
 	Helper *TaskHelper `json:"helper,omitempty"`
 	// Keep (D511): the Keep this task is a round or an item of.
 	Keep *TaskKeep `json:"keep,omitempty"`
+	// D609: the latest hand-off it gave to a helper (one line under its last report).
+	Handoff *HandoffLine `json:"handoff,omitempty"`
 	// Background (D521): the work its agent runs beside its turn, every one
 	// still running and the newest finished, folded from its Log by core.
 	Background *TaskBackground `json:"background,omitempty"`
@@ -2675,6 +2707,15 @@ type DeviceView struct {
 	// Resources is what Ducter measured on this computer itself (D538): its
 	// memory, cores, disk and the kernel's out-of-memory stops.
 	Resources *DeviceResources `json:"resources,omitempty"`
+	// Folder (D611) is this computer's Ducter folder and why it is that path:
+	// env means DUCTER_FOLDER is set there and Settings can't move it.
+	Folder *DeviceFolder `json:"folder,omitempty"`
+}
+
+// DeviceFolder is a computer's Ducter folder (D611).
+type DeviceFolder struct {
+	Path string `json:"path"`
+	Why  string `json:"why,omitempty"` // env | chosen | data | default | fallback
 }
 
 // DeviceResources is a computer's own measurements, in bytes (D538,
@@ -3171,6 +3212,15 @@ type ServerFrame struct {
 	// D204: each computer's Ducter folder (where a clone there goes) or that
 	// it is too old to say (task_new_options).
 	DucterFolders []DucterFolderView `json:"ducterFolders,omitempty"`
+	// D611: folder_change_result: the computer's new folder and why, the old
+	// path (FolderFrom), what moved (Projects, Worktrees, Repaired), and the
+	// tasks that kept it from moving (FolderTasks; Reason tasks_running).
+	Folder      *DeviceFolder `json:"folder,omitempty"`
+	FolderFrom  string        `json:"from,omitempty"`
+	FolderTasks []FolderTask  `json:"tasks,omitempty"`
+	Projects    int           `json:"projects,omitempty"`
+	Worktrees   int           `json:"worktrees,omitempty"`
+	Repaired    int           `json:"repaired,omitempty"`
 	// D204: project_clone_result: the project was already there (same origin).
 	// D272: project_new_result too (a folder of that name was there).
 	Existed bool `json:"existed,omitempty"`
@@ -3565,6 +3615,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
+		"folder_change_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "kept_keys", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
 		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result", "partner_peek":
@@ -3701,6 +3752,24 @@ type DucterFolderView struct {
 	Device string `json:"device"`
 	Path   string `json:"path,omitempty"`
 	Old    bool   `json:"old,omitempty"`
+	Why    string `json:"why,omitempty"` // env | chosen
+}
+
+// FolderChangeReq moves that computer's Ducter folder to Path (D611): projects/
+// and worktrees/ go with it, git's worktree paths are repaired, and the choice
+// is kept. Device "" is the home's own. Answered with folder_change_result.
+type FolderChangeReq struct {
+	T        string `json:"t"` // "folder_change"
+	Path     string `json:"path"`
+	Device   string `json:"device,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// FolderTask is a task still working in a folder that was asked to move
+// (folder_change_result, Reason tasks_running).
+type FolderTask struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
 }
 
 // ProjectNew makes <Ducter folder>/projects/<Name> on that computer and

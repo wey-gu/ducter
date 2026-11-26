@@ -173,7 +173,12 @@ func (a *App) cloneField(c *ui.Context) {
 		in.Focus()
 		k.focus = false
 	}
-	uiText(c.Key("nt-clone-where"), a.L.T("newtask.clone.where", into, name)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+	ui.Row(c.Key("nt-clone-where")).Padding(t.S1, t.S3).MinWidth(0).Children(func() {
+		line := a.L.T("newtask.clone.where", into, name)
+		if a.quietLink(c, "nt-clone-folder:"+k.device, line, spoken(a.L, line, a.L.T("settings.folder.row"))) {
+			a.openFolderRow(k.device) // D611: the same rule row in Settings › Where it runs
+		}
+	})
 	a.githubLine(c, k)
 	if busy {
 		ui.Row(c.Key("nt-clone-busy")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S3).Children(func() {

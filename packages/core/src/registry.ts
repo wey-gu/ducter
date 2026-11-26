@@ -1,14 +1,15 @@
 // TaskRegistry: the TaskCard projection, rebuilt from the Log and kept live by subscription.
-import type { Attention, Bodies, LogEvent, OnHand, PastMark, Residency, TaskCard } from "@ducter/protocol";
+import type { Attention, Bodies, LogEvent, OnHand, PastMark, Place, Residency, TaskCard } from "@ducter/protocol";
 import { isDoneToday } from "@ducter/protocol/src/done-today.ts";
 import { prGoesOn, prUrl, type TaskPR } from "@ducter/protocol/src/pr-state.ts";
+import { handoffLine, type HandoffBody, type HandoffLine } from "@ducter/protocol/src/handoff.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news", "folder_moved", "handoff"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
@@ -58,6 +59,8 @@ export interface CoreRegistry extends TaskRegistry {
 /** `zone` is the person's time zone for what "today" means (D310); the core's own when none. */
 export function createRegistry(log: LogStore, clock: Clock = realClock, zone: () => string | undefined = () => undefined): CoreRegistry {
   const cards = new Map<string, TaskCard>();
+  // D609: the latest hand-off each task gave, for its one line under the last report.
+  const handoffOf = new Map<string, HandoffLine>();
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
   const decisionBody = new Map<string, NonNullable<TaskCard["pendingDecision"]>>();
@@ -70,9 +73,41 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
   const lookedUp = new Set<string>();
   let decorate: (o: OnHand) => OnHand = (o) => o;
   let markOf: (persona: string, taskId: string) => PastMark | undefined = () => undefined;
+  // D204: the Ducter folder the person moved, per computer. A place opened before it still resolves
+  // through the old path (the Log is append-only; folder_moved is the mapping, not a rewrite).
+  const moves: { device: string; from: string; to: string }[] = [];
+  const devOf = (p: Place) => ("device" in p && p.device ? p.device : "local");
+  const movedPath = (path: string, device: string) => {
+    let out = path;
+    for (const m of moves) if (m.device === device && (out === m.from || out.startsWith(m.from + "/"))) out = m.to + out.slice(m.from.length);
+    return out;
+  };
+  const movedPlace = (place: Place): Place => {
+    if (place.kind === "repo") {
+      const repoPath = movedPath(place.repoPath, place.device || "local");
+      const worktree = place.worktree ? movedPath(place.worktree, place.device || "local") : undefined;
+      return repoPath === place.repoPath && worktree === place.worktree ? place : { ...place, repoPath, ...(worktree ? { worktree } : {}) };
+    }
+    if (place.kind === "folder") {
+      const path = movedPath(place.path, place.device || "local");
+      return path === place.path ? place : { ...place, path };
+    }
+    return place;
+  };
 
   const apply = (e: LogEvent) => {
     switch (e.kind) {
+      case "handoff": {
+        const b = e.body as HandoffBody;
+        if (!b?.from?.task) break;
+        const line = handoffLine(b);
+        const prev = handoffOf.get(b.from.task);
+        if (prev && prev.at > line.at) break;
+        handoffOf.set(b.from.task, line);
+        const c = cards.get(b.from.task);
+        if (c) c.handoff = line;
+        break;
+      }
       case "task_event": {
         const b = e.body as Bodies["task_event"];
         if (b.taskId && isStepEvent(b)) latest.set(b.taskId, slimStep(e)), lookedUp.add(b.taskId);
@@ -93,7 +128,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           persona: e.persona,
           title: b.title,
           project: b.project,
-          place: b.place,
+          place: movedPlace(b.place),
           harness: b.harness,
           model: b.model,
           ...(b.effort ? { effort: b.effort } : {}),
@@ -120,6 +155,18 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           // D508: and its PRs.
           ...(prev?.prs ? { prs: prev.prs } : {}),
         });
+        break;
+      }
+      // D204: a computer's Ducter folder moved: every card it holds follows, now and on every replay.
+      case "folder_moved": {
+        const b = e.body as Bodies["folder_moved"];
+        if (!b.from || !b.to || !b.device) break;
+        if (!moves.some((m) => m.device === b.device && m.from === b.from && m.to === b.to)) moves.push({ device: b.device, from: b.from, to: b.to });
+        for (const [id, c] of cards) {
+          if (devOf(c.place) !== b.device) continue;
+          const place = movedPlace(c.place);
+          if (place !== c.place) cards.set(id, { ...c, place });
+        }
         break;
       }
       // D341: the outside to-do a task is bound to, what Ducter last saw of it there, what it wrote back.
@@ -325,6 +372,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       const f = cards.get(out.from.taskId);
       if (f) out.from.title = markOf(f.persona, f.taskId)?.name ?? f.title;
     }
+    const h = handoffOf.get(out.taskId);
+    if (h) out.handoff = h;
     return out;
   };
   const latestOf = (taskId: string): LogEvent<"task_event"> | undefined => {

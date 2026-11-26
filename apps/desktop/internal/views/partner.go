@@ -233,26 +233,41 @@ func (a *App) note(c *ui.Context, text string) {
 	uiText(c, keepClauses(text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 }
 
+// choiceNeed is the width a choice track needs for its labels: the track's padding and gaps,
+// then each choice's words plus its own padding (the same measure choices stacks by).
+func (a *App) choiceNeed(c *ui.Context, labels []string) float32 {
+	t := a.T
+	need := 2*t.S1 + float32(max(0, len(labels)-1))*t.S1
+	for _, l := range labels {
+		w, _ := c.MeasureText(0, ui.Span{Text: l, Size: t.MD, Weight: 700})
+		need += w + 2*t.S4
+	}
+	return need
+}
+
 // choices is a segmented clay control (D76): a sunken track, the chosen
 // one a white surface standing on a 2-point base, in ink 700, the others
 // muted 500: a radio group. It returns the index clicked, or -1.
 func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int) int {
 	t := a.T
 	hit := -1
+	need := a.choiceNeed(c, labels)
 	// D468: when the options can't stand side by side even on a line of their
 	// own (To-do sources' three at 760 wrapped into a ragged second line inside
 	// the track), they stack, one per line, as the web's Seg does (D445).
 	stack := false
 	if avail := a.ctlAvail; avail > 0 {
-		need := 2*t.S1 + float32(len(labels)-1)*t.S1
-		for _, l := range labels {
-			w, _ := c.MeasureText(0, ui.Span{Text: l, Size: t.MD, Weight: 700})
-			need += w + 2*t.S4
-		}
 		stack = need > avail
 		if stack && a.ctlRow != nil {
 			a.ctlRow.WidthPercent(100)
 		}
+	}
+	// D618: a group whose rows are choices gives them one column: the
+	// widest track's width, so every row's left edge lines up (D589's one
+	// column for Overview's ways), never three right edges with ragged lefts.
+	fixed := !stack && a.settings.choiceCol > 0
+	if fixed && a.ctlRow != nil {
+		a.ctlRow.Width(a.settings.choiceCol).Shrink(0)
 	}
 	wrap := ui.Row(c).MaxWidthPercent(100)
 	if stack {
@@ -269,6 +284,11 @@ func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int)
 			Role(ui.RoleRadioGroup).Label(name).Shrink(1).MinWidth(0)
 		if !stack {
 			track.Wrap()
+			if fixed {
+				// The shared column is the track's width, not a preference to shrink: two
+				// rows with different word lengths still start on one left edge.
+				track.Width(a.settings.choiceCol).Shrink(0)
+			}
 		}
 		track.Children(func() {
 			for i, l := range labels {
@@ -277,6 +297,12 @@ func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int)
 					Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(l).AccessSelected(on).Focusable().Shrink(0)
 				if stack {
 					b.Justify(ui.Start)
+				} else if fixed {
+					// The shared track's extra width is shared by its options (each starts at
+					// its own words' width, never at 0), so no label is clipped and the
+					// chosen one never leaves a gap at the track's end.
+					w, _ := c.MeasureText(0, ui.Span{Text: l, Size: t.MD, Weight: 700})
+					b.Basis(w + 2*t.S4).Grow(1)
 				}
 				fg, weight := t.InkMuted, 500
 				switch {

@@ -39,7 +39,8 @@ neighbour. A project whose every task never started there (its folder missing on
 D395) is no project yet: no row; its tasks stand under All, where their fix is. All counts every task.
 
 The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
-same lens, whose head names it and goes back. The column never stands beside the rail.
+same lens, whose head names it and goes back. With one project there is no lens to name, but the head stays: **‹ 任务 / Tasks** goes back
+to the board, so the sidebar always has its bar and rule. The column never stands beside the rail.
 
 At its foot, **＋ 添加文件夹 / Add a folder** (on the phone and the narrow web, a **＋** at the end
 of the lens row) opens D455's sheet: **在哪台电脑上 / On which computer** first (chips; the

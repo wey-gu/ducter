@@ -242,7 +242,10 @@ What your partner remembers about you has its own section, **Memory**.
 
 - At the top, **{name} remembers you**, how much it noted this week, and the **Remember things**
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
-  notes anything, in the conversation or in its tasks; what it noted stays.
+  notes anything, in the conversation or in its tasks; what it noted stays. When a task starts
+  with a few memories, its page says so in one quiet line under your brief, **Brought n memories**;
+  open it to see the titles, open one in **Memory**, or tap **This is wrong** to ask your partner
+  to correct it.
 - **What I know about you** groups what Nowledge Mem holds about you: **How you like things**,
   **What you decided** and **What it knows**, the newest of each first. What you told it is the usual source, so those lines
   say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You
@@ -358,8 +361,12 @@ Your partner speaks first at the top of the page, saying how things stand now, f
 **Codex and I talk both ways; Claude Code is one step away.** When one of your agents can hand your
 partner work but your partner's answers can't get back to it yet, the same step waits for you on
 Settings' **Overview**. The picture at the top shows who they are: agents connected to Nowledge
-Mem. Then comes the one switch, **Let them reach {name}**, and under it what it gives you: they can hand {name} work and ask it things, {name} asks
-them for you, and anything that needs your call shows up in your conversation.
+Mem. Then comes the one switch, **Let them reach {name}**, and under it what it gives you: they can
+hand {name} work and ask it things, {name} asks them for you, and anything that needs your call shows
+up in your conversation. A message {name} sends one of them for you says quietly beside its time
+whether it arrived and whether it has been read: **Delivered** while nobody has opened it, **Read**
+once someone has, and **2/5 read** in a Space with several people. When Nowledge Mem has no read
+receipt for it, nothing is shown rather than a guess.
 
 **Your agents** lists each AI tool you use, one row each: its mark, its name, and what it can do with
 your partner, in plain words, with when it last came at the right:
@@ -392,12 +399,14 @@ your partner, in plain words, with when it last came at the right:
 **Your helpers** lists each helper's address, with **Open** to its page under **Tasks › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull
 request, and it watches the checks and the reviews, fixes and pushes what it may, and tells the agent
-that sent it when the work can merge. Ask your partner for one in a sentence ("make a helper my agents
+that sent it when the work can merge. If it can't take something, it says why back to that agent, where
+it came from. Ask your partner for one in a sentence ("make a helper my agents
 hand PRs to, and watch them until they can merge"). Nothing on any of your computers has to keep
 listening for it: the computer Ducter runs on receives its messages and starts the work, and your
 partner tells you once when its name is ready (or, if Nowledge Mem doesn't take the name, what to do).
-Its work shows in **Tasks**, under the helper. Each row shows what it takes, whether
-your agents can reach it yet, and how much it is working on; **Stop** closes it (work it already took still
+Its work shows in **Tasks**, under the helper: one card, 等接手 first, then 在做, then 退回了
+or 没接, each group named. Each row shows what it takes, whether your agents can reach it yet, and
+how much it is working on; **Stop** closes it (work it already took still
 finishes) and **Take work again** reopens it.
 
 Your partner listens on the computer Ducter runs on, for all your computers: a task on another

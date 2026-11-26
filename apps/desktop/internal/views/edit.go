@@ -24,12 +24,19 @@ type editRowOpts struct {
 	// under the label with 保存 and 取消.
 	can, open bool
 	saving    bool
+	// saveLabel / savingLabel name the primary action when it isn't 保存 (a path is 搬过去 / Move it).
+	saveLabel, savingLabel string
 	// err is said under the editor in the failed ink (a range, a refusal).
-	err                      string
-	about                    string
+	err   string
+	about string
+	// mono: the values are a path or a command, in the mono face (D611: a real path).
+	mono                     bool
 	last                     bool
 	editor                   func()
 	onOpen, onSave, onCancel func()
+	// foot, when set, draws the row's own action foot in place of 保存/取消 (the doorbell's quiet
+	// actions and one primary Done).
+	foot func()
 }
 
 // editRow is a rule's row: XS 700 muted label at the text edge, its value
@@ -55,7 +62,16 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 	}
 	values := func() {
 		for j, v := range o.values {
-			uiText(c.Key(fmt.Sprint("v", j)), keepWords(autospace(v))).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+			text := keepWords(autospace(v))
+			if o.mono {
+				// D618 (D611): a real path stays one line; a long one is cut in the middle, so
+				// the folder and the file's name both show and it never runs past the row.
+				uiText(c.Key(fmt.Sprint("v", j)), text).SingleLine().TruncateMiddle().
+					MaxWidthPercent(100).Shrink(1).MinWidth(0).
+					Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Selectable()
+				continue
+			}
+			uiText(c.Key(fmt.Sprint("v", j)), text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
 		}
 		if o.muted != "" {
 			uiText(c.Key("m"), o.muted).FontSize(t.SM).TextColor(t.InkMuted)
@@ -94,12 +110,24 @@ func (a *App) editRow(c *ui.Context, o editRowOpts) {
 			if o.err != "" {
 				uiText(c.Key("err"), o.err).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
 			}
+			if o.foot != nil && !o.saving {
+				o.foot()
+				return
+			}
 			ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Margin(2, 0, 0, 0).Children(func() {
 				if o.saving {
-					uiText(c.Key("saving"), a.L.T("keep.edit.saving")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus)
+					label := a.L.T("keep.edit.saving")
+					if o.savingLabel != "" {
+						label = o.savingLabel
+					}
+					uiText(c.Key("saving"), label).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus)
 					return
 				}
-				if a.buttonFor(c, a.L.T("keep.edit.save"), o.about, btnPrimary, t.ControlSM, t.Surface) && o.onSave != nil {
+				save := a.L.T("keep.edit.save")
+				if o.saveLabel != "" {
+					save = o.saveLabel
+				}
+				if a.buttonFor(c, save, o.about, btnPrimary, t.ControlSM, t.Surface) && o.onSave != nil {
 					o.onSave()
 				}
 				ui.Box(c).Width(t.S1).Shrink(0)
@@ -122,6 +150,12 @@ func (a *App) openWell(c *ui.Context, well ui.Element, label string) (ui.Color, 
 		ink = a.T.InkMuted
 	}
 	return ink, well.Clicked()
+}
+
+// wholeName keeps a name whole in a row: its spaces are no-break, so a name
+// never wraps at one (D604's Mac leftover: a Space's name does).
+func wholeName(s string) string {
+	return strings.ReplaceAll(s, " ", "\u00a0")
 }
 
 // fieldKeys is Enter and Esc on a field: Enter keeps it, Esc puts it back.

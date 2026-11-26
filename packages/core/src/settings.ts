@@ -59,6 +59,8 @@ interface SettingsFile {
   chromeSites?: string[];
   /** D510: 新任务默认 / New tasks start (where: "local" or a worker's id; agent: a harness id). */
   newTasks?: NewTasks;
+  /** D204: the Ducter folder the person chose per computer (device id; "local" for the home). */
+  folderPaths?: Record<string, string>;
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
@@ -134,6 +136,8 @@ export interface SettingsStore extends SettingsApi {
   brainChosen(): boolean;
   /** D505 (rev.): 换过去 / Move it there on a site's first sign-in card: its sign-ins go straight to the person's Chrome from now on. */
   rememberChrome(site: string): void;
+  /** D204: keeps the Ducter folder the person chose for a computer (the move itself is done before this). */
+  setFolder(device: string, path: string): void;
 }
 
 export function openSettings(opts: {
@@ -202,6 +206,7 @@ export function openSettings(opts: {
       peers: { reach: (data.peers?.reach as string) === "off" ? "off" : "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [], ...(data.peers?.allowed?.length ? { allowed: data.peers.allowed } : {}) },
       // D505 (rev.): only when there is one (Settings › 上网 lists them, each with 移除 / Remove).
       ...(data.chromeSites?.length ? { chromeSites: data.chromeSites } : {}),
+      ...(data.folderPaths && Object.keys(data.folderPaths).length ? { folderPaths: data.folderPaths } : {}),
     };
   };
   /** D170: a change to who may reach the partner, from a client or from the partner itself. */
@@ -341,6 +346,18 @@ export function openSettings(opts: {
       const had = data.chromeSites ?? [];
       if (!s || had.includes(s)) return;
       data.chromeSites = [...had, s].slice(-200);
+      save();
+      changed();
+    },
+    // D204: the chosen Ducter folder per computer. The computer itself keeps the path too (its
+    // data folder's folder.json), so a runner there finds it without the home; the env still wins.
+    setFolder(device, path) {
+      const dev = device.trim().slice(0, 64) || "local";
+      const p = path.trim();
+      if (!p) return;
+      const next = { ...(data.folderPaths ?? {}), [dev]: p };
+      if (JSON.stringify(next) === JSON.stringify(data.folderPaths ?? {})) return;
+      data.folderPaths = next;
       save();
       changed();
     },

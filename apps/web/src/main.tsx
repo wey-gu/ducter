@@ -393,6 +393,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.onLinkRetry = () => void socketRefused(true);
   A.onLinkHeard = () => void probeStanding();
   A.onLinkAgain = () => paint(<Pairing initial={{ busy: false, code: "" }} onPaired={() => location.reload()} onBack={showApp} />);
+  // D-new: a resume that finds nothing drawn draws the page again from the state it holds.
+  A.onRepaint = () => ((appMount += 1), paint(<Guard t={t}><App key={appMount} /></Guard>));
   if (glance) A.restore(glance);
   A.restoreOutbox(); // D543
   A.start(base, api, me, token);
@@ -451,9 +453,16 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
       page,
       // D513: in a conversation with more than one partner, the swipe goes up to the list of them.
       // D545: and on any width, with the list hidden, it brings the list back.
-      () => (!wideNow() || (A.route.name === "conv" && A.manyPartners() && A.railMode === "hidden")) && (A.route.name !== "conv" || (A.manyPartners() && !A.partnersOpen)) && !A.sheet && !A.viewer && !A.fileView,
+      // The whole screen is a level of its own at every width: on an iPad held across, a task or a
+      // Keep opened from Tasks has no browser edge gesture, so the page's own swipe takes it back.
+      () =>
+        !A.sheet &&
+        !A.viewer &&
+        !A.fileView &&
+        ((A.route.name !== "conv" && (!wideNow() || !!A.route.full)) || (A.route.name === "conv" && A.manyPartners() && A.railMode === "hidden" && (!wideNow() || !A.partnersOpen))),
       () => {
         if (A.route.name === "conv") return A.railMode === "hidden" && !phoneNow() ? A.setRail("") : A.showPartners();
+        if (wideNow() && A.route.full && backOne()) return;
         if (history.length > 1 && location.hash) return history.back();
         history.replaceState(null, "", location.pathname);
         A.applyRoute({ name: "conv" });
@@ -466,6 +475,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   showApp();
 }
 
+// D-new: a resume with an empty shell mounts the page again, keyed so Preact rebuilds it.
+let appMount = 0;
 function showApp() {
   // D535, D543: index.html's static boot ground never stays beside the app (paint empties the root
   // of what Preact didn't draw on the first draw, whichever draw that is).

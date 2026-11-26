@@ -27,6 +27,10 @@ func (a *App) dangerText(c *ui.Context, key, label, about string) bool {
 	acc := spoken(a.L, label, about)
 	b := ui.Row(c.Key(key)).Height(t.ControlSM-4).Padding(0, t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Label(acc).Focusable().Shrink(0)
+	if a.settings.trailAlign {
+		// D618: as quietDanger in a card's foot: the words end on the switches' edge.
+		b.Margin(0, -t.S2, 0, t.S2)
+	}
 	if b.Hovered() || b.Pressed() {
 		b.Background(t.Failed.Surface)
 	}

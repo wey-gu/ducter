@@ -1,6 +1,7 @@
 // Test fakes: an in-memory core and a scripted HarnessPort / Runner.
 import type { EventKind, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
 import { aboutHits, type MemoryAdd, type MemoryClient, type ThreadHit } from "../src/memory.ts";
+import { createHandoffs } from "../../core/src/handoffs.ts";
 import type {
   AppendInput,
   CoreApi,
@@ -79,6 +80,15 @@ export function fakeCore(clock: FakeClock, dataDir: string) {
       configFor: (role) => ({ name: "ducter", url: "http://127.0.0.1:7777/mcp", headers: { authorization: `Bearer ${typeof role === "string" ? role : role.taskId}` } }),
     },
   };
+  // D609: the one hand-off record every door in these tests goes through, over the fake Log.
+  (core as { handoffs?: unknown }).handoffs = createHandoffs({
+    log: core.log,
+    helper: (id) => (core as { helpers?: { get(id: string): never } }).helpers?.get(id),
+    now: clock.now,
+    tellTask: async () => true,
+    tellAgent: async () => true,
+    backfill: false,
+  });
   const callTool = (name: string, args: unknown) => {
     const t = tools.get(`partner:${name}`);
     if (!t) throw new Error(`no tool ${name}`);

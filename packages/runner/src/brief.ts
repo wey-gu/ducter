@@ -1,5 +1,6 @@
 // Every model-visible string the runner produces lives in this file (snapshot-tested).
-import type { DocAsk, Place, StandingAction } from "@ducter/protocol";
+import type { DocAsk, Place, RecalledMemory, StandingAction } from "@ducter/protocol";
+import type { TaskMemoryNote } from "@ducter/protocol/src/internal.ts";
 import { STEP_WORDS } from "@ducter/protocol/src/standing.ts";
 import { LANGUAGES, langName, normalizeTag, baseTag, type LangTag } from "@ducter/protocol/src/lang.ts";
 
@@ -84,10 +85,30 @@ function memorySection(b: BriefInput): string {
 export const KNOWN_MAX = { notes: 4, title: 80, content: 220, id: 40 } as const;
 const clipTo = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
+/** The notes that really go in front of the first turn: the same slice the block and its record use. */
+const knownNotes = (notes: TaskMemoryNote[]) => notes.slice(0, KNOWN_MAX.notes);
+
 /** D168: the memories in front of a task's first turn (ids so it can look closer; the brief wins). */
-export function knownTurn(notes: { id?: string; title: string; content: string; date?: string; from?: string }[], partnerName: string): string {
-  const lines = notes.slice(0, KNOWN_MAX.notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title, KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date || n.from ? ` (${[n.from ? `saved by ${clipTo(n.from, 30)}` : "", n.date ? n.date.slice(0, 10) : ""].filter(Boolean).join(", ")})` : ""}`);
+export function knownTurn(notes: TaskMemoryNote[], partnerName: string): string {
+  const lines = knownNotes(notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title.replace(/\s+/g, " ").trim(), KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date || n.from ? ` (${[n.from ? `saved by ${clipTo(n.from, 30)}` : "", n.date ? n.date.slice(0, 10) : ""].filter(Boolean).join(", ")})` : ""}`);
   return `<what_i_know>\nFrom the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}\n</what_i_know>\n\n`;
+}
+
+/**
+ * D617 (D590's leftover): what the task's first turn was given, as the task records it on its
+ * stream: Mem's id, its one-line title, the Space it is kept in, and how it was found. Never the
+ * memory's text: the block already carries that once.
+ */
+export function recalledFacts(notes: TaskMemoryNote[]): RecalledMemory[] {
+  return knownNotes(notes).map((n) => {
+    const oneLine = n.title.replace(/\s+/g, " ").trim();
+    return {
+      ...(n.id ? { id: n.id } : {}),
+      title: clipTo(oneLine, KNOWN_MAX.title),
+      ...(n.space ? { space: n.space } : {}),
+      via: n.via ?? (n.kind === "preference" ? "preferences" : "search"),
+    };
+  });
 }
 
 /** D304: at most this many of the user's other AI tools' memories named in front of a task's first turn, titles only. */

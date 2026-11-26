@@ -130,7 +130,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "signin", &x)
 				continue
 			}
-			a.afRow(c, "signin:"+x.ID, a.afMonogram(c, "signin:"+x.ID, firstNonEmpty(x.Label, x.Site)), x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
+			a.afRow(c, "signin:"+x.ID, a.afMonogram(c, "signin:"+x.ID, firstNonEmpty(x.Label, x.Site)), x.Label, x.Username, a.afUsed(x.UsedAt), "••••••", func() { a.afEdit("signin", &x) }) // D291, D618: the web's dots
 		}
 		if s.editing == "signin:new" {
 			a.afForm(c, "signin", nil)
@@ -146,7 +146,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "card", &x)
 				continue
 			}
-			a.afRow(c, "card:"+x.ID, a.afCardTile(c, "card:"+x.ID, x), x.Label, a.afCardLine(x), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
+			a.afRow(c, "card:"+x.ID, a.afCardTile(c, "card:"+x.ID, x), x.Label, a.afCardLine(x), a.afUsed(x.UsedAt), "", func() { a.afEdit("card", &x) }) // D291
 		}
 		if s.editing == "card:new" {
 			a.afForm(c, "card", nil)
@@ -195,7 +195,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				title = a.L.T("af.d.kept", n)
 			}
 		}
-		a.afRow(c, "details", a.afPebble(c, "details", drawPersonMark), title, help, "", func() {
+		a.afRow(c, "details", a.afPebble(c, "details", drawPersonMark), title, help, "", "", func() {
 			s.editing, s.sure = "details", false
 			s.details = map[string]string{}
 			for _, d := range f.SavedDetails {
@@ -237,7 +237,7 @@ func (a *App) afUsed(at string) string {
 // afRow is one saved thing (D296): its mark in the tile column, so its
 // words start on the text edge with the add row's under it; when it was
 // last used at the right edge; the whole row opens it.
-func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark string, open func()) {
+func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark, state string, open func()) {
 	t := a.T
 	a.sep(c)
 	r := ui.Row(c.Key("af-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
@@ -255,8 +255,15 @@ func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark st
 				uiText(c, help).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 			}
 		})
-		if mark != "" {
-			uiText(c, mark).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
+		if mark != "" || state != "" {
+			ui.Row(c.Key("af-marks:" + key)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				if mark != "" {
+					uiText(c, mark).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
+				}
+				if state != "" {
+					uiText(c, state).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
+				}
+			})
 		}
 	})
 	if r.Clicked() {

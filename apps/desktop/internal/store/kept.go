@@ -61,7 +61,7 @@ func moveConv(dst, src *Store) {
 	dst.Activity, dst.ActivityAt, dst.ActivityEndedAt = src.Activity, src.ActivityAt, src.ActivityEndedAt
 	dst.Recalled, dst.SetAside = src.Recalled, src.SetAside
 	dst.Pings, dst.pingAt, dst.lastPing = src.Pings, src.pingAt, src.lastPing
-	dst.OutOps, dst.TaskPeers = src.OutOps, src.TaskPeers
+	dst.OutOps, dst.TaskPeers, dst.BridgeReceipts = src.OutOps, src.TaskPeers, src.BridgeReceipts
 	// Pinned and the apps are the default conversation's (D381, D410).
 	dst.Pins, dst.PinRefused, dst.Apps, dst.AppIdeas = src.Pins, src.PinRefused, src.Apps, src.AppIdeas
 }

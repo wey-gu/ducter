@@ -214,6 +214,9 @@ export class Connection {
       addEventListener("ducterresume", this.wake);
       // D543: the window coming to the front (a desktop browser, an iPad's split view) too.
       addEventListener("focus", this.wake);
+      // D-new: iOS restores a page from its back/forward cache without a visibilitychange; the
+      // socket from before the restore may be half-open, so it proves itself like a return.
+      addEventListener("pageshow", this.onPageShow);
     }
   }
 
@@ -227,8 +230,13 @@ export class Connection {
       removeEventListener("online", this.online);
       removeEventListener("ducterresume", this.wake);
       removeEventListener("focus", this.wake);
+      removeEventListener("pageshow", this.onPageShow);
     }
   }
+
+  private onPageShow = (e: PageTransitionEvent) => {
+    if (e.persisted) this.wake();
+  };
 
   /** Coming back to the phone: reconnect now instead of waiting out the backoff. */
   private wake = () => {

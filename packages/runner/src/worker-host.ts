@@ -18,7 +18,8 @@ import { homedir } from "node:os";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readShown } from "./shown.ts";
 import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
-import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
+import { ducterFolder, writeChosenFolder } from "@ducter/protocol/src/ducter-folder.ts";
+import { moveDucterFolder } from "@ducter/protocol/src/folder-move.ts";
 import { cloneRepo, type GitSpawn } from "@ducter/protocol/src/clone.ts";
 import { answerClones } from "@ducter/protocol/src/clones.ts";
 import { newProjectFolder } from "@ducter/protocol/src/new-folder.ts";
@@ -36,6 +37,8 @@ export interface WorkerHostOptions {
   git?: GitRun;
   /** D203 test seam: this computer's home folder and disk, for the repos and browse ops. */
   home?: string;
+  /** Test seam: which system's folder naming (default process.platform). */
+  platform?: string;
   /** D455 test seam: this computer's environment, for DUCTER_FOLDER_ROOTS (default process.env). */
   env?: Record<string, string | undefined>;
   fs?: FsLike;
@@ -119,6 +122,9 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   // D455: the folders this computer lets the home look through and add (set here, never by the home).
   const roots = folderRoots(o.env ?? process.env, o.home ?? homedir());
+  // D204: this computer's Ducter folder, including the path the person chose (folder.json here).
+  const thisHome = () => o.home ?? homedir();
+  const folderNow = () => ducterFolder({ home: thisHome(), dataDir: o.dataDir, ...(o.platform ? { platform: o.platform } : {}), ...(o.env ? { env: o.env } : {}) });
   const sessions = new Map<string, HarnessSession>();
   // D157: each browser place's browser here, by task (the main reads its tool events).
   const browsers = new Map<string, BrowserSidecar>();
@@ -280,21 +286,30 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // git), so the home's New task card lists them and finds this computer's copy of a repo.
     // Read-only: nothing is made, and nothing outside the Ducter folder is looked at.
     repos: async () => {
-      const folder = ducterFolder({ home: o.home ?? homedir(), dataDir: o.dataDir }).path;
-      return { folder, repos: projectRepos(join(folder, "projects"), o.fs ?? realFs) };
+      const now = folderNow();
+      return { folder: now.path, why: now.why, repos: projectRepos(join(now.path, "projects"), o.fs ?? realFs) };
     },
     // D395: which copies of one repository this computer has (its origin must be that repository;
     // nothing else on the disk is sent), and with probe, whether its git can read it. Read-only.
     clones: async (a: { remote?: unknown; probe?: unknown }) => {
-      const home = o.home ?? homedir();
-      const folder = ducterFolder({ home, dataDir: o.dataDir }).path;
-      return answerClones(a, { home, ducterProjects: join(folder, "projects"), ...(o.fs ? { fs: o.fs } : {}), ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}) });
+      const home = thisHome();
+      return answerClones(a, { home, ducterProjects: join(folderNow().path, "projects"), ...(o.fs ? { fs: o.fs } : {}), ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}) });
     },
     // D204: 从 Git 地址加… / Add from a Git address…: clone into this computer's Ducter folder with
     // its own git sign-in. Only the address comes from the home, checked here again (clone.ts).
-    clone: (a: { address?: unknown }) => cloneRepo(a.address, { home: o.home ?? homedir(), dataDir: o.dataDir, ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}), ...(o.fs ? { repoFs: o.fs } : {}) }),
+    clone: (a: { address?: unknown }) => cloneRepo(a.address, { home: thisHome(), dataDir: o.dataDir, ...(o.platform ? { platform: o.platform } : {}), ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}), ...(o.fs ? { repoFs: o.fs } : {}) }),
     // D272: 新建一个文件夹 here: <Ducter folder>/projects/<name> (one folder name, checked here again).
-    newFolder: async (a: { name?: unknown }) => newProjectFolder(a.name, { home: o.home ?? homedir(), dataDir: o.dataDir }),
+    newFolder: async (a: { name?: unknown }) => newProjectFolder(a.name, { home: thisHome(), dataDir: o.dataDir, ...(o.platform ? { platform: o.platform } : {}) }),
+    // D204 (the person's choice): move this computer's Ducter folder, projects/ and worktrees/ with
+    // it, repairing git's worktree paths; then keep the chosen path here. The home checks that no
+    // task is running there and records the move in its Log.
+    moveFolder: async (a: { path?: unknown }) => {
+      const now = folderNow();
+      if (now.why === "env") return { ok: false as const, reason: "env" as const, message: "DUCTER_FOLDER is set on this computer, so its Ducter folder can't be changed from here." };
+      const r = await moveDucterFolder({ from: now.path, to: String(a.path ?? ""), home: thisHome(), dataDir: o.dataDir, ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}) });
+      if (r.ok) writeChosenFolder(o.dataDir, r.path);
+      return r;
+    },
     // D272: 登录 GitHub here, through this computer's own gh. The token (action token) goes to gh's stdin only.
     gitLogin: async (a: { action?: unknown; token?: unknown }) => {
       switch (a.action) {

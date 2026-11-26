@@ -299,6 +299,30 @@ func (a *App) peerAsked(messageID string) bool {
 	return false
 }
 
+// receiptText is what Mem last said about who opened a message Ducter sent on the person's
+// behalf (D619): 已送达 / Delivered while nobody has, 已读 / Read once one has, and
+// 「{n}/{m} 已读」 in a Space with several readers. Empty when Mem has no receipt: nothing is shown,
+// never a made-up "unread".
+func (a *App) receiptText(r *protocol.BridgeReceipt) string {
+	if r == nil {
+		return ""
+	}
+	n := -1
+	if r.Count != nil {
+		n = *r.Count
+	}
+	if n == 0 {
+		return a.L.T("bridge.receipt.delivered")
+	}
+	if n > 0 && r.Total != nil && *r.Total > 1 && n < *r.Total {
+		return a.L.T("bridge.receipt.partly", n, *r.Total)
+	}
+	if n < 0 && r.State == "unread" {
+		return a.L.T("bridge.receipt.delivered")
+	}
+	return a.L.T("bridge.receipt.read")
+}
+
 // peerLine draws that line, small and centred, with the agent's coin.
 func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping *store.PingGroup, ts string) {
 	t := a.T
@@ -315,6 +339,11 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping 
 		shown = &cp
 	}
 	text := a.peerLineText(shown)
+	// D619: what Mem said about the person's readers, quiet after the line.
+	receipt := ""
+	if b.Direction == "out" && b.State == "sent" {
+		receipt = a.receiptText(a.S.ReceiptOf(b.OpID, b.MessageID))
+	}
 	lines := 1
 	if b.State == "set_aside" {
 		text = capPeer(a.L.T("peer.set_aside", a.peerWhoOf(b), itoa(int64(setAside))))
@@ -331,6 +360,10 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping 
 					continue
 				}
 				uiText(c.Key(i), refWords(a, r)).FontSize(t.XS).TextColor(t.Ink).MaxLines(1)
+			}
+			if receipt != "" {
+				ui.Box(c.Key("sep")).Size(1, 10).Background(t.Line).Shrink(0)
+				uiText(c.Key("rc"), receipt).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().Shrink(0)
 			}
 		})
 	})

@@ -88,13 +88,16 @@ Coding tasks work in their own copy of your project, on their own branch (named
 first when the task is one of your issues, such as `ducter/11028-embedding-one-model`), so your own
 checkout is left alone. If your repository's contributing guide says how branches are named (a
 `feat/` prefix, say), the name follows it. The copy is a folder named after the project and the
-branch, in the Ducter folder: such as `~/ducter/worktrees/hawdb/fix-flaky-test`; on the Mac, an
-opened task shows its path over its changes.
+branch, in the Ducter folder: on a Mac such as `~/Ducter/worktrees/hawdb/fix-flaky-test`, on Linux
+such as `~/ducter/worktrees/hawdb/fix-flaky-test`; an opened task shows its path over its changes.
 
-Each computer has one **Ducter folder**, `~/ducter`, that holds what Ducter makes there for you:
-`projects` (folders it made and repositories it cloned for you) and `worktrees` (tasks' copies). If you already have a
-`~/ducter` of your own, Ducter leaves it alone and uses `~/ducter-work`. To use another place, set
-`DUCTER_FOLDER` before starting Ducter.
+Each computer has one **Ducter folder**, that holds what Ducter makes there for you: `projects`
+(folders it made and repositories it cloned for you) and `worktrees` (tasks' copies). On a Mac its
+suggested name is `~/Ducter`, like your other folders there; on Linux it is `~/ducter`. If that name
+is already someone else's, Ducter leaves it alone and uses `~/Ducter-work` (`~/ducter-work` on
+Linux). To move it, open **Settings › Where it runs**, tap **Ducter folder**, and choose a new place
+or, on a Mac, **Change it to ~/Ducter**. If you set `DUCTER_FOLDER` before starting Ducter, that
+place is used instead and can't be changed in Settings.
 
 Open a task to read it like a conversation with the agent doing it: what was asked, then what it
 said, and between its words one line for each run of steps ("Read 9 files, ran 2 commands",

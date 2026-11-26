@@ -54,10 +54,26 @@ func (a *App) keepEditSync(id string) {
 		e.seen = f
 		if e.saving != "" {
 			if f.OK {
-				e.open = ""
-				e.words, e.proposal, e.err, e.errAt = false, nil, "", ""
-				if len(f.Edits) > 0 || f.Undone {
-					e.status, e.statusFull = f, false
+				if e.saving == "bell" {
+					// D620: turning it on or making a new one keeps the row open with the URL;
+					// turning it off leaves it open, empty. The URL comes only in this frame.
+					ks := &a.oh.keep
+					switch ks.bellSending {
+					case "off":
+						ks.bellURL = ""
+					default:
+						if f.Bell != nil && f.Bell.URL != "" {
+							ks.bellURL = a.bellURL(f.Bell.URL)
+						}
+					}
+					ks.bellSending = ""
+					e.err, e.errAt = "", ""
+				} else {
+					e.open = ""
+					e.words, e.proposal, e.err, e.errAt = false, nil, "", ""
+					if len(f.Edits) > 0 || f.Undone {
+						e.status, e.statusFull = f, false
+					}
 				}
 			} else {
 				e.err, e.errAt = a.L.T("keep.edit.failed", f.Error), e.saving
@@ -78,6 +94,19 @@ func (a *App) keepSend(k *protocol.KeepPage, field string, ch protocol.KeepChang
 	e := &a.oh.keep.edit
 	e.saving, e.err, e.errAt = field, "", ""
 	a.send(protocol.KeepChangeReq{T: "keep_change", ID: k.ID, Change: ch, Undo: undo})
+}
+
+// bellURL is the home's own address for a page that was handed a relative doorbell path (the
+// home has no public way set): the address this Mac already reaches it at.
+func (a *App) bellURL(u string) string {
+	if !strings.HasPrefix(u, "/") {
+		return u
+	}
+	base := strings.TrimSuffix(a.conn.address, "/")
+	if base == "" {
+		return u
+	}
+	return base + u
 }
 
 // keepEsc closes an open editor first (Esc), before the page.
@@ -303,6 +332,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 				openIt     func()
 				editor     func()
 				save       func()
+				foot       func()
 			}
 			cancel := func() { e.open, e.err, e.errAt = "", "", "" }
 			var rules []rule
@@ -491,12 +521,68 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 				rules = append(rules, r)
 			}
 
+			// D620: 门铃 / Doorbell: off by default; on, the URL is shown once with Copy and
+			// curl; Regenerate and Turn off. A helper takes work at its address, so it has none.
+			if k.Run != "perItem" {
+				bell := rule{key: "bell", label: a.L.T("keep.rule.bell"), values: []string{a.L.T("keep.bell.off")}, can: true}
+				if k.Bell != nil {
+					bell.values = []string{a.L.T("keep.bell.on")}
+				}
+				bell.openIt = func() {}
+				bell.editor = func() {
+					note := func(key, text string) {
+						uiText(c.Key(key), text).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45))
+					}
+					if k.Bell == nil {
+						note("bell-off", a.L.T("keep.bell.off.what"))
+					} else if ks.bellURL != "" {
+						a.lendCopy(c, "bell-url", ks.bellURL, "check")
+						note("bell-curl-lb", a.L.T("keep.bell.curl"))
+						a.lendCopy(c, "bell-curl", fmt.Sprintf("curl -X POST -H 'X-Ducter-About: CI #42' '%s'", ks.bellURL), "line")
+						note("bell-note-once", a.L.T("keep.bell.note.once"))
+						note("bell-note-where", a.L.T("keep.bell.note.where"))
+					} else {
+						note("bell-hidden", a.L.T("keep.bell.hidden"))
+					}
+				}
+				// D620: one quiet foot, never a primary 关掉: Done folds; turning it off is quiet danger.
+				bell.foot = func() {
+					ui.Row(c.Key("bell-foot")).Width(a.ctlAvail).Justify(ui.SpaceBetween).AlignItems(ui.Center).Children(func() {
+						ui.Row(c.Key("bell-left")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+							if k.Bell != nil {
+								if a.buttonFor(c, a.L.T("keep.bell.new"), a.L.T("keep.bell.new"), btnText, t.ControlSM, t.Surface) {
+									ks.bellSending = "new"
+									a.keepSend(k, "bell", protocol.KeepChange{Bell: "new"}, false)
+								}
+								if a.quietDanger(c, "bell-off", a.L.T("keep.bell.on.act"), k.Title) {
+									ks.bellSending = "off"
+									a.keepSend(k, "bell", protocol.KeepChange{Bell: "off"}, false)
+								}
+							} else if a.buttonFor(c, a.L.T("keep.bell.off.act"), a.L.T("keep.bell.off.act"), btnSecondary, t.ControlSM, t.Surface) {
+								ks.bellSending = "on"
+								a.keepSend(k, "bell", protocol.KeepChange{Bell: "on"}, false)
+							}
+						})
+						if a.buttonFor(c, a.L.T("keep.bell.done"), k.Title, btnPrimary, t.ControlSM, t.Surface) {
+							e.open, e.err, e.errAt = "", "", ""
+						}
+					})
+				}
+				rules = append(rules, bell)
+			}
+
 			// 别的 agent 怎么找到它: its name in Bridge.
 			if k.Address != nil {
-				vals := []string{a.L.T("keep.address.name", k.Address.Name)}
-				// D604: where it receives, each Space by the person's name for it.
+				// D618 (D604): a name stays whole in its row; spaces inside it never break it.
+				name := wholeName(k.Address.Name)
+				vals := []string{a.L.T("keep.address.name", name)}
+				// D604: where it receives, each Space by the person's name for it, whole.
 				if len(k.Address.Spaces) > 0 {
-					vals = append(vals, a.L.T("keep.address.spaces", strings.Join(k.Address.Spaces, a.L.T("keep.address.sep"))))
+					spaces := make([]string, len(k.Address.Spaces))
+					for i, sp := range k.Address.Spaces {
+						spaces[i] = wholeName(sp)
+					}
+					vals = append(vals, a.L.T("keep.address.spaces", strings.Join(spaces, a.L.T("keep.address.sep"))))
 				}
 				r := rule{key: "address", label: a.L.T("keep.rule.address"), values: vals, muted: a.L.T("keep.address." + k.Address.Mem), can: k.CanEdit("address")}
 				r.openIt = func() { e.draft = k.Address.Name }
@@ -523,7 +609,8 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 				a.editRow(c, editRowOpts{
 					key: r.key, label: r.label, values: r.values, muted: r.muted,
 					can: r.can && k.Life != "done" && k.Life != "stopped", open: e.open == r.key, saving: e.saving == r.key,
-					err: err, about: r.label, last: i == len(rules)-1, editor: r.editor,
+					foot: r.foot,
+					err:  err, about: r.label, last: i == len(rules)-1, editor: r.editor,
 					onOpen: func() {
 						e.open, e.err, e.errAt = r.key, "", ""
 						if r.openIt != nil {

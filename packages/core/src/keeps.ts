@@ -741,7 +741,7 @@ export function createKeeps(o: {
       ...(og?.reviews ? { reviews: og.reviews } : {}),
       week,
       ...(k.pausedUntil || og?.pausedUntil ? { pausedUntil: k.pausedUntil ?? og?.pausedUntil } : {}),
-      ...(h ? { address: { name: h.name, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}) } } : {}),
+      ...(h ? { address: { name: h.name, mem: h.mem, ...(h.detail ? { detail: h.detail } : {}), ...(h.spaces?.length ? { spaces: h.spaces.map((x) => x.label) } : {}) } } : {}),
       since: k.createdAt,
       ...(k.endedAt ? { endedAt: k.endedAt } : {}),
     };

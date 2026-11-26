@@ -41,6 +41,17 @@ const helper = {
   link: { context: "ducter-helper-nowledge-mem-pr-babysitter-on-hetzner-server", connectionId: "c-demo", spaceId: SPACE },
   mem: "ready",
   said: "ready",
+  // D604: the Spaces its identity inbox read on hel (nmem 0.10.123, 2026-11-26), by the author's labels.
+  spaces: [
+    { id: SPACE, label: "Only me" },
+    { id: "all", label: "Everyone" },
+    { id: "dev-team", label: "dev team" },
+    { id: "codex", label: "Codex" },
+    { id: "nowledge-mem", label: "Nowledge Mem" },
+    { id: "nowledge-co/mem", label: "Nowledge Co/mem" },
+    { id: "default", label: "Before the team" },
+    { id: "userfiles", label: "userFiles" },
+  ],
 };
 writeFileSync(join(dataDir, "helpers.json"), JSON.stringify({ helpers: [helper] }, null, 2));
 

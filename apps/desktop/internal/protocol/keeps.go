@@ -88,6 +88,8 @@ type KeepAddress struct {
 	Name   string `json:"name"`
 	Mem    string `json:"mem"`
 	Detail string `json:"detail,omitempty"`
+	// D604: the Spaces it receives in, by label, as Mem's identity inbox last read them.
+	Spaces []string `json:"spaces,omitempty"`
 }
 
 // KeepSheet is a Keep on On hand: the home's one model of its state.

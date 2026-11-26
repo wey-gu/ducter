@@ -472,6 +472,8 @@ export interface HelpersApi {
   resume(id: string): import("./helpers.ts").Helper | undefined;
   /** On, with a confirmed address: whose mail the home reads now. */
   listening(): { id: string; name: string; context: string }[];
+  /** D604: the Spaces its mailbox was just read in (Mem's identity inbox); kept only when they changed. */
+  setSpaces?(id: string, spaces: { id: string; label: string }[]): void;
   onChange(fn: () => void): () => void;
 }
 

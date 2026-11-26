@@ -867,6 +867,9 @@ export interface Bodies {
     // answer: hel, mem#11393). messageId starts "local-"; the claim and the outcome go into `fromTask`.
     local?: true;
     fromTask?: string;
+    // D604, in: what the person wrote on its sender card as they let it through (their words for the
+    // partner about it; never sent to the sender). A card answered with words is never 不理.
+    told?: string;
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;

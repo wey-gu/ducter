@@ -2,10 +2,19 @@
 // partner is still putting into words (or a task's question it is still relaying), wait as one
 // line at the conversation's end; a message holding nothing else is not drawn until its words come.
 // The Mac's is apps/desktop/internal/views/d587_test.go.
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LogEvent } from "@ducter/protocol";
+
+// The app's one state is shared by every file in a run: leave it as found (no task or message of ours).
+afterEach(async () => {
+  const { A } = await import("../src/app.ts");
+  for (const id of ["t1", "t2", "t3"]) A.S.tasks.delete(id);
+  A.S.channel.splice(0);
+  A.S.decisions.delete("d9");
+  A.status = "connecting";
+});
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>

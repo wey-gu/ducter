@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.84 - 2026-11-26
+
+<!-- whats-new
+zh: 对话里只留一行「在看它做完的结果…」
+en: One waiting line in the conversation, however many tasks just finished
+-->
+
+**The conversation**
+- However many tasks finish while you're away, one "looking at what it did…" line shows, at the
+  end of the conversation.
+- When a task you're talking to directly says it's done, your partner doesn't repeat it in the
+  conversation; the card just turns Done. If it needs you to decide something, its question shows
+  at once in its own words.
+
 ## 0.1.83 - 2026-11-26
 
 <!-- whats-new

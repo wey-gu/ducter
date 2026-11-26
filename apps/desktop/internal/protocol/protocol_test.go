@@ -252,3 +252,18 @@ func TestNewTaskFrames(t *testing.T) {
 		t.Errorf("task_new %s", b)
 	}
 }
+
+// D611: the folder's answer carries the old/new path, what moved and the tasks still working there,
+// so the Mac's row can say 在搬…, list them, or leave the done line (the web reads the same fields).
+func TestFolderChangeResultDecodes(t *testing.T) {
+	f, err := DecodeServerFrame([]byte(`{"t":"folder_change_result","ok":false,"clientId":"fd1","device":"dev_mac","reason":"tasks_running","from":"/Users/weyl/ducter","path":"/Users/weyl/Ducter","projects":3,"worktrees":5,"repaired":8,"tasks":[{"taskId":"t1","title":"Fix CI"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.T != "folder_change_result" || f.OK || f.Reason != "tasks_running" || f.ClientID != "fd1" || f.Device != "dev_mac" || f.FolderFrom != "/Users/weyl/ducter" || f.Path != "/Users/weyl/Ducter" || f.Projects != 3 || f.Worktrees != 5 || f.Repaired != 8 {
+		t.Errorf("folder_change_result %+v", f)
+	}
+	if len(f.FolderTasks) != 1 || f.FolderTasks[0].TaskID != "t1" || f.FolderTasks[0].Title != "Fix CI" {
+		t.Errorf("folder tasks %+v", f.FolderTasks)
+	}
+}

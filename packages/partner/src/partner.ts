@@ -4141,6 +4141,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       content: h.content.length <= n ? h.content : h.content.slice(0, n - 1) + "…",
       ...(h.date ? { date: h.date } : {}),
       ...(by.from ? { from: by.from } : {}),
+      // D617: the task's record says where it is and how it was found, never the text again.
+      ...(h.space ? { space: h.space } : {}),
+      ...(h.kind ? { kind: h.kind } : {}),
+      via: h.kind === "preference" ? ("preferences" as const) : ("search" as const),
     };
   };
   core.taskMemory = {

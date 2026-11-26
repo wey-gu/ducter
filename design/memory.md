@@ -575,6 +575,14 @@ blocked feature. Copy never implies payment.
   form** (installed, review, update: D174 (6); the author's own Codex is a review), neither: it
   already gives that context, and a second recall would double it. The plugin's own Context
   Bundle size is not measured yet (harness-facts `memPlugin.contextCost: "unknown"`, todo).
+- **What the task was given, on the task (D617, D590's leftover).** The same call records
+  `recalled` on the task's stream: each note's Mem id, its one-line title, its Space (Mem's exact
+  `space_id`) and how it was found (a `preference` the person stated, or the brief's search),
+  never the note's text again. The opened task shows one muted line under 「你交给它的事」,
+  **带进来 {n} 条记忆 / Brought {n} memories**, which unfolds into the titles; a title opens
+  Settings › 记忆 on that memory (Mem has no per-memory deep link, research/136 G6), and
+  **这条不对 / This is wrong** sends the partner a message naming the memory's id, so its own
+  memory tools correct it. Nothing shows when nothing was brought in; no new partner tool.
 - **Writing:** the plugin keeps the thread; memories come only from the partner. A task
   proposes `remember` (≤ 3) in its report; the partner keeps what is durable with
   `memory_add` and the task's provenance. The brief says not to save or distill memories

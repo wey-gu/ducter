@@ -1537,7 +1537,7 @@ a.task-link {
   font-weight: var(--ask-weight);
   line-height: 1.4;
   letter-spacing: 0;
-  /* D-PENDING: a long path or hash in an ask's words wraps instead of running past the card. */
+  /* D617: a long path or hash in an ask's words wraps instead of running past the card. */
   overflow-wrap: anywhere;
 }
 /* On a phone the question is a sentence read in a card, not a title: one step down (18). */
@@ -2609,6 +2609,58 @@ a.task-link {
 .brief-foot .qlink {
   font-size: var(--xs);
   min-height: 28px;
+}
+/* D617: what memory brought in, under the brief: one muted line that unfolds.
+   The head and the rows share the brief card's text edge; the action is one right column. */
+.recalled {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding-left: 16px;
+}
+.recalled .recalled-toggle.btn {
+  min-height: 28px;
+  padding-left: 0;
+  padding-right: 0;
+  color: var(--ink-muted);
+}
+.recalled-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: baseline;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+}
+.recalled-row {
+  display: contents;
+}
+.recalled-title {
+  grid-column: 1;
+  justify-self: start;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.recalled-wrong {
+  grid-column: 2;
+  justify-self: end;
+  flex: none;
+  color: var(--ink-muted);
+}
+@media (max-width: 599px) {
+  .recalled-list {
+    column-gap: 8px;
+  }
 }
 .hidden-key {
   display: inline-flex;
@@ -25175,7 +25227,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
-  /* D-PENDING: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
+  /* D617: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
   overflow-wrap: anywhere;
 }
 /* In a bubble on a touch screen a long press is Ducter's menu (D236): the bubble's own rule holds. */
@@ -25221,7 +25273,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   font-family: var(--mono);
   font-size: 0.88em;
   font-weight: 600;
-  /* D-PENDING: a long command wraps inside its chip (the bubble's code rule says nowrap). */
+  /* D617: a long command wraps inside its chip (the bubble's code rule says nowrap). */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25269,7 +25321,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   color: var(--ink);
   -webkit-user-select: all;
   user-select: all;
-  /* D-PENDING: a one-time code wraps in its own well; Copy keeps its place at the right. */
+  /* D617: a one-time code wraps in its own well; Copy keeps its place at the right. */
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -25282,7 +25334,7 @@ img[src*="art/fig/sprout"] { filter: none !important; }
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
-/* D-PENDING: a code block in an ask's words scrolls in its own box, never widens the card. */
+/* D617: a code block in an ask's words scrolls in its own box, never widens the card. */
 .ask-said pre,
 .decision pre,
 .partner pre {

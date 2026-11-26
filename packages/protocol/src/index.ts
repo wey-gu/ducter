@@ -1079,6 +1079,19 @@ export interface HeldMsg {
   media?: MediaRef[];
 }
 
+/**
+ * D617 (D590's leftover): one memory Ducter's own recall put in front of a task's first turn.
+ * The runner records these on the task's stream (never the memory's text), and the opened task shows
+ * them under the brief. id: Mem's own id; space: Mem's exact Space id; via: whether it is one of the
+ * person's stated preferences (Mem's `preference` kind) or a hit the brief's search found.
+ */
+export interface RecalledMemory {
+  id?: string;
+  title: string;
+  space?: string;
+  via: "preferences" | "search";
+}
+
 export interface TaskCard {
   taskId: string;
   persona: string;

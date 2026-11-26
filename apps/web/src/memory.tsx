@@ -236,7 +236,13 @@ const SearchMark = () => (
  * above them. Before Mem's glance arrives, the lines it noted in the conversation stand in.
  */
 function MemAbout() {
-  const [open, setOpen] = useState("");
+  const [open, setOpen] = useState(A.memFocus);
+  // D617: a task's recalled line lands here on one memory (Settings › 记忆, no per-memory deep link).
+  useEffect(() => {
+    if (!A.memFocus) return;
+    setOpen(A.memFocus);
+    A.memFocus = "";
+  }, [A.memFocus]);
   const name = A.settings!.name;
   const g = A.mem?.glance;
   const found = A.memQuery ? A.memFound : undefined;

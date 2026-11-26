@@ -43,6 +43,7 @@ export interface MemoryHit {
   date?: string; // YYYY-MM-DD the memory was recorded
   kind?: string; // unit type: preference, decision, fact, …
   source?: string; // D304: Mem's `source`: "ducter", an AI tool ("claude-code"), the person's own ("cli", …)
+  space?: string; // D617: Mem's `space_id`, the Space it is kept in
 }
 
 /**
@@ -225,6 +226,8 @@ export function compactHit(m: any, maxChars = 280): MemoryHit {
   if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) hit.date = d;
   if (typeof m?.unit_type === "string" && m.unit_type) hit.kind = m.unit_type;
   if (typeof m?.source === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(m.source)) hit.source = m.source;
+  // D617: the Space is Mem's exact id, never a label (Ducter holds no label map here).
+  if (typeof m?.space_id === "string" && /^[A-Za-z0-9_.:-]{1,120}$/.test(m.space_id)) hit.space = m.space_id;
   return hit;
 }
 

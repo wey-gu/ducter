@@ -21,7 +21,7 @@ import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
 import { clock, day, shownDeviceName, span, spoken, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
-import { Btn, Chev, CodeChip, Facts, FileChip, Tag, WorkHead, type TagTone } from "./controls.tsx";
+import { Btn, Chev, CodeChip, Facts, FileChip, Tag, TextLink, WorkHead, type TagTone } from "./controls.tsx";
 import { composerTune } from "./composer-tune.tsx";
 import { chipText, fileKind, fileName, itemsOf, saidOut, toolAct, workOf, type Item, type Work } from "@ducter/protocol/src/stepview.ts";
 import { openFileLink } from "./fileview.tsx";
@@ -240,6 +240,33 @@ function PromptCard({ task, b, label }: { task: Task; b: Block & { text: string;
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * D617 (D590's leftover): what memory brought into this task's first turn, under the brief:
+ * one muted line that unfolds into the memories' titles (each opens Settings › Memory on it) and
+ * 这条不对 / This is wrong, which asks the partner to correct it by naming the memory's id. Nothing
+ * shows when nothing was brought in. Shared controls only.
+ */
+function RecalledLine({ task }: { task: Task }) {
+  const [open, setOpen] = useState(false);
+  const notes = task.recalled ?? [];
+  if (!notes.length) return null;
+  return (
+    <div class="recalled">
+      <Btn kind="text" size="sm" class="recalled-toggle" chev expanded={open} label={t("task.recalled.line", String(notes.length))} about={t("task.recalled.line.about")} onClick={() => setOpen(!open)} />
+      {open && (
+        <div class="recalled-list">
+          {notes.map((n, i) => (
+            <div class="recalled-row" key={n.id ?? `${i}:${n.title}`}>
+              {n.id ? <TextLink class="recalled-title" label={n.title} about={t("task.recalled.open")} onClick={() => A.openMemory(n.id!, n.title)} /> : <span class="recalled-title" dir="auto">{n.title}</span>}
+              {n.id && <Btn kind="text" size="sm" class="recalled-wrong" label={t("task.recalled.wrong")} about={n.title} onClick={() => A.correctMemory(n.id!, n.title)} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1026,6 +1053,7 @@ class TurnView extends Component<{ task: Task; turn: Turn; queued: boolean; live
           </div>
         )}
         {p?.k === "brief" && <PromptCard task={task} b={p} label={p.by === "you" ? t("task.asked.you") : t("task.asked", A.nameOf(task.card?.persona))} />}
+        {p?.k === "brief" && <RecalledLine task={task} />}
         {p?.k === "partner" && <PromptCard task={task} b={p} label={t("task.from.partner", A.nameOf(task.card?.persona))} />}
         {p?.k === "you" && <YouBubble task={task} b={p} />}
         {p?.k === "go" && (
@@ -1051,8 +1079,11 @@ export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   const own = blocks === taskBlocks(task);
   const turns = own ? taskTurns(task) : turnsOf(blocks);
   const moving = taskInTurn(task);
+  // D617: the brief's turn redraws when memory's record lands (a live task whose history
+  // already drew the brief before the runner logged it).
+  const recalled = task.recalled?.map((n) => n.id ?? n.title).join("|") ?? "";
   const view = (tu: Turn, last: boolean, seq?: number) => (
-    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}:${quietTick}`} />
+    <TurnView key={seq ?? tu.seq} seq={seq} task={task} turn={tu} queued={last && !tu.body.length} live={last && moving} version={`${A.L.lang}:${turnLast(tu)}:${tu.body.length}:${lastLive(tu)}:${task.sends.length}:${task.reads?.size ?? 0}:${working(task)}:${quietTick}:${recalled}`} />
   );
   const items: JSX.Element[] = own ? [] : turns.map((tu, i, shown) => view(tu, i === shown.length - 1));
   // D207: a receipt only when it says something: sending, it waits its turn, or it failed.

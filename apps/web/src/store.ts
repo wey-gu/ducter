@@ -4,7 +4,7 @@
 // Pure data; tested without a DOM.
 import { countDoneToday, endedUnmet, prGoesOn, prsCarried } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RecalledMemory, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { askOpen } from "@ducter/protocol/src/open-asks.ts";
@@ -133,6 +133,9 @@ export interface Task {
   /** Where a browser task's browser last was (task_event {role: system, raw.browser}); `own`:
    *  the user's own Chrome, through the AI agent's own tools (D126). */
   browser?: { host: string; own?: boolean; seq: number };
+  /** D617 (D590's leftover): what Ducter's own recall put in front of the first turn
+   *  (task_event raw {memory: "recall", recalled}); never the memories' text. */
+  recalled?: RecalledMemory[];
   /** D339: the person's own phone the task asked to borrow (the ask's report in its stream). */
   phone?: { device: string; name: string };
 }
@@ -1009,6 +1012,12 @@ export class Store {
         if (Array.isArray(read)) for (const n of read) if (typeof n === "number") (t.reads ??= new Set()).add(n);
         const br = b.role === "system" ? (b.raw as { browser?: { host?: string; own?: boolean } } | undefined)?.browser : undefined;
         if (br?.host && (!t.browser || t.browser.seq < ev.seq)) t.browser = { host: br.host, ...(br.own ? { own: true } : {}), seq: ev.seq };
+        // D617: what memory brought into the first turn, once; older events have only ids.
+        const rec = b.role === "system" ? (b.raw as { memory?: string; recalled?: RecalledMemory[] } | undefined) : undefined;
+        if (rec?.memory === "recall" && Array.isArray(rec.recalled)) {
+          const notes = rec.recalled.filter((n) => !!n && typeof n.title === "string" && n.title.trim() && (n.via === "preferences" || n.via === "search"));
+          if (notes.length) t.recalled = notes;
+        }
         break;
       }
       case "report": {
@@ -1062,7 +1071,7 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      // D-PENDING: the count and every list read one predicate (protocol's open-asks.ts): an offer
+      // D617: the count and every list read one predicate (protocol's open-asks.ts): an offer
       // (D453), a question put off (D382) and one whose default is already due are not open here.
       .filter((d) => askOpen(d, { resolved: !!d.resolved, pending: d.pending, later: d.later }))
       .filter((d) => {

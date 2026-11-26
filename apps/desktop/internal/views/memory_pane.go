@@ -151,6 +151,32 @@ func (a *App) memFind(q string) {
 	a.send(protocol.MemFind{T: "mem_find", Q: q})
 }
 
+// openMemory (D617) opens Settings › 记忆 on one memory a task's
+// recalled line names. Mem has no per-memory deep link (research/136 G6), so
+// the inventory row opens when it is there; else the search finds it by its
+// title.
+func (a *App) openMemory(id, title string) {
+	if id == "" {
+		a.openTab(TabMemory)
+		return
+	}
+	known := false
+	if m := a.S.Mem; m != nil && m.Glance != nil {
+		for _, it := range m.Glance.About {
+			if it.ID == id {
+				known = true
+				break
+			}
+		}
+	}
+	a.memPage.open = id
+	if !known && title != "" {
+		a.memPage.query, a.memPage.last = title, title
+		a.memFind(title)
+	}
+	a.openTab(TabMemory)
+}
+
 // memForget forgets one memory by Mem's id: it leaves the page at once, and
 // the partner says so in its one word under the section (D459, D296).
 func (a *App) memForget(id, title string) {

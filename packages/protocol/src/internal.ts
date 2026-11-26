@@ -502,6 +502,12 @@ export interface TaskMemoryNote {
   date?: string;
   /** D304: another AI tool saved it (its name, "Claude Code"); absent: the person or the partner. */
   from?: string;
+  /** D617: the Space Mem keeps it in (its exact id), as Mem answered. */
+  space?: string;
+  /** D617: Mem's unit type (preference, decision, fact, …), when it named one. */
+  kind?: string;
+  /** D617: one of the person's stated preferences (Mem's `preference` kind), else the brief's search found it. */
+  via?: "preferences" | "search";
 }
 
 /**

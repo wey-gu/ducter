@@ -1194,7 +1194,11 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       24 apart. A turn opens with what was said to the agent: the brief **你交给它的事 / What you
       asked** on a quiet sunken card (Surface Sunken, radius MD, no base), SM, three lines until
       **展开 / Show all**, a hidden key saying **隐藏了一段密钥 / A key is hidden** with a small
-      drawn key; your words as your bubble (the user's Go too); the partner's passed-on words
+      drawn key; under it, when the runner's own memory filled the first turn, one muted line
+      **带进来 {n} 条记忆 / Brought {n} memories** that unfolds (the shared chevron) into the
+      memories' titles, each a link to Settings › 记忆 on that memory, with **这条不对 / This is
+      wrong** in the row's quiet action column at the right (D617; nothing when nothing was
+      brought in); your words as your bubble (the user's Go too); the partner's passed-on words
       on the same sunken card under **{name} 对它说**. Pictures in a turn stay small (about 15
       rem / 240 pt). Then the agent's answer in order, items 12 apart (D268): its messages
       (D349: a checkpoint is its own note and never shows; it is **保存了进度 / Progress saved**

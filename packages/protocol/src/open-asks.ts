@@ -1,4 +1,4 @@
-// D-PENDING: one rule for "a question still waits on the person" on every surface. The home's
+// D617: one rule for "a question still waits on the person" on every surface. The home's
 // count, the conversation's cards, On hand's 等你, a partner's number and the talk screen all read
 // this predicate; the Mac mirrors it in apps/desktop/internal/store (OpenAsk) and both read
 // fixtures/open-asks.json, so the count and every list can never disagree again.

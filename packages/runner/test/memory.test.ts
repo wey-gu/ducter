@@ -47,8 +47,8 @@ function recordingPort() {
 }
 
 const NOTES: TaskMemoryNote[] = [
-  { id: "mem_a1", title: "测试统一用假时钟", content: "The user wants fake clocks in every test, never sleeps.", date: "2026-10-02" },
-  { id: "mem_b2", title: "Commit style", content: "Small commits, imperative subject lines." },
+  { id: "mem_a1", title: "测试统一用假时钟", content: "The user wants fake clocks in every test, never sleeps.", date: "2026-10-02", space: "personal-1", via: "preferences" },
+  { id: "mem_b2", title: "Commit style", content: "Small commits, imperative subject lines.", space: "team-1", via: "search" },
 ];
 
 test("no plugin on that computer: the first turn starts with what memory says matters, logged by id, not text", async () => {
@@ -68,6 +68,34 @@ test("no plugin on that computer: the first turn starts with what memory says ma
   const logged = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]).find((b) => (b.raw as any)?.memory === "recall");
   expect((logged!.raw as any).ids).toEqual(["mem_a1", "mem_b2"]);
   expect(logged!.text).not.toContain("fake clocks");
+});
+
+test("D617: the task records exactly the memories it was given (id, one-line title, Space, how found), never their text", async () => {
+  const five: TaskMemoryNote[] = [
+    { id: "m1", title: "Likes dark mode", content: "THE FULL WORDS", space: "personal-1", via: "preferences" },
+    { id: "m2", title: "Weekly report\n goes to product", content: "THE FULL WORDS", space: "team-7", via: "search" },
+    { id: "m3", title: "Uses bun", content: "THE FULL WORDS", space: "personal-1", via: "search" },
+    { title: "A note with no id", content: "THE FULL WORDS" },
+    { id: "m5", title: "Beyond the cap", content: "THE FULL WORDS" },
+  ];
+  core.taskMemory = { on: () => true, recall: async () => five };
+  const h = recordingPort();
+  const runner = createRunner(core, { harness: h.port, newId: () => "tsk2" });
+  const card = await runner.openTask({ persona: "p1", title: "Ship the thing", brief: "Ship it." });
+  await runner.whenStarted(card.taskId);
+  // The block carries four, the same four the record names; the fifth never went in.
+  expect(h.turns[0]).toContain("- [m1] Likes dark mode:");
+  expect(h.turns[0]).toContain("- [m3] Uses bun:");
+  expect(h.turns[0]).not.toContain("m5");
+  const logged = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]).find((b) => (b.raw as any)?.memory === "recall");
+  expect((logged!.raw as any).recalled).toEqual([
+    { id: "m1", title: "Likes dark mode", space: "personal-1", via: "preferences" },
+    { id: "m2", title: "Weekly report goes to product", space: "team-7", via: "search" },
+    { id: "m3", title: "Uses bun", space: "personal-1", via: "search" },
+    { title: "A note with no id", via: "search" },
+  ]);
+  expect(logged!.text).toBe("recalled 4 from memory for the brief");
+  expect(JSON.stringify(logged!.raw)).not.toContain("THE FULL WORDS");
 });
 
 test("memory off, Mem slow or nothing found: the first turn is as before and the brief says nothing about memory", async () => {

@@ -951,6 +951,16 @@ func (a *App) sendLeftDraft(d *store.DecisionState, text string) {
 	a.send(protocol.Send{T: "send", Text: text, ClientID: id, Reply: reply.want()})
 }
 
+// correctMemory (D617) asks the partner to correct one memory the task
+// brought in: the person's tap is the words, and the id is in them.
+func (a *App) correctMemory(id, title string) {
+	if id == "" {
+		return
+	}
+	a.sendWords(a.L.T("task.recalled.wrong.words", title, id))
+	a.Route = RouteConversation
+}
+
 // Decide answers a decision.
 func (a *App) Decide(id, option, text string) {
 	if d := a.S.Decisions[id]; d != nil {

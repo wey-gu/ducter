@@ -175,6 +175,10 @@ type Task struct {
 	// Browser is what a browser task last looked at (task_event
 	// {role: system, raw.browser: {host, url}}), nil until one.
 	Browser *BrowserStatus
+	// Recalled is what Ducter's own recall put in front of the first turn
+	// (task_event raw {memory: "recall", recalled: [...]}), nil until one:
+	// Mem's ids, one-line titles, Spaces and how each was found (D617).
+	Recalled []protocol.RecalledMemory
 	// Phone is the person's own phone the task asked to borrow (D339: from
 	// the ask's report in its stream), nil when it never did.
 	Phone *protocol.HandsetAsk
@@ -1714,7 +1718,7 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 }
 
 // OpenAsk is the one predicate behind the needs-you count and every list
-// (D-PENDING): an offer (D453) never needs the person, a question put off with
+// (D617): an offer (D453) never needs the person, a question put off with
 // 晚点再问我 (D382) is not open now, and neither is one whose default has come
 // due. A Go default applies only on a reversible card; a Hold default applies
 // even when it is not reversible (the morning's picks). The TypeScript side is
@@ -1892,16 +1896,22 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	case *protocol.TaskEvent:
 		if b.Role == "system" && len(b.Raw) > 0 {
 			var raw struct {
-				Browser     *BrowserStatus `json:"browser"`
-				Kind        string         `json:"kind"`
-				Outcome     string         `json:"outcome"`
-				Compactions int            `json:"compactions"`
-				Read        []int64        `json:"read"`
+				Browser     *BrowserStatus            `json:"browser"`
+				Kind        string                    `json:"kind"`
+				Outcome     string                    `json:"outcome"`
+				Compactions int                       `json:"compactions"`
+				Read        []int64                   `json:"read"`
+				Memory      string                    `json:"memory"`
+				Recalled    []protocol.RecalledMemory `json:"recalled"`
 			}
 			if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Host != "" &&
 				(t.Browser == nil || t.Browser.Seq < ev.Seq) {
 				raw.Browser.Seq = ev.Seq
 				t.Browser = raw.Browser
+			}
+			// D617: what memory brought into the first turn, once.
+			if raw.Memory == "recall" && len(raw.Recalled) > 0 {
+				t.Recalled = raw.Recalled
 			}
 			// D325: the agent took these steers in.
 			for _, n := range raw.Read {

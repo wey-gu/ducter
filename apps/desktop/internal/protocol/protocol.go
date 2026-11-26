@@ -518,6 +518,16 @@ type TaskEvent struct {
 	Raw      json.RawMessage `json:"raw,omitempty"`
 }
 
+// RecalledMemory is one memory Ducter's own recall put in front of a task's
+// first turn (D617, D590's leftover): Mem's id, its one-line title, the
+// Space it is kept in and how it was found. Never the memory's text.
+type RecalledMemory struct {
+	ID    string `json:"id,omitempty"`
+	Title string `json:"title"`
+	Space string `json:"space,omitempty"`
+	Via   string `json:"via"` // preferences | search
+}
+
 // Usage is a turn's token use.
 type Usage struct {
 	InputTokens  int64 `json:"inputTokens,omitempty"`

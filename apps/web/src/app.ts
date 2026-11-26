@@ -417,6 +417,8 @@ class AppState {
   /** D321: Settings › 记忆's search: what was asked, and what Mem found for it. */
   memQuery = "";
   memFound?: { q: string; ok: boolean; items: MemItem[] };
+  /** D617: the memory Settings › 记忆 should open on, when a task's recalled line links to one. */
+  memFocus = "";
   /** D465: the ask Nowledge Mem didn't take (it's back on the page, with a line to settle it in Mem). */
   memSettleFailed?: string;
   /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
@@ -1256,6 +1258,32 @@ class AppState {
     this.draft = words;
     this.changed();
     queueMicrotask(() => document.getElementById("composer")?.focus());
+  }
+
+  /**
+   * D617: open one memory the task's recalled line names. Mem has no per-memory deep link
+   * (research/136 G6), so Settings › 记忆 opens with it: the inventory row when it is there, else
+   * the search finds it by its title.
+   */
+  openMemory(id: string, title: string) {
+    if (!id) return this.openSettings("memory");
+    const known = !!this.mem?.glance?.about?.some((m) => m.id === id);
+    this.memFocus = id;
+    this.openSettings("memory");
+    if (!known && title) {
+      this.memQuery = title;
+      this.memFind(title);
+    }
+    this.changed();
+  }
+
+  /** D617: 这条不对 / This is wrong: a message to the partner naming the memory's id (its own tools correct it). */
+  correctMemory(id: string, title: string) {
+    if (!id) return;
+    this.sendWords(this.L.t("task.recalled.wrong.words", title, id));
+    this.sheet = null;
+    this.route = { name: "conv" };
+    this.changed();
   }
 
   /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */

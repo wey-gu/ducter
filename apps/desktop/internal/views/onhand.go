@@ -813,7 +813,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 				uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			})
 		}
-		a.askQuestion(c, keepTail(autospace(a.questionOf(d)))).MaxLines(4)
+		a.askWords(c, d, a.questionOf(d), 4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}

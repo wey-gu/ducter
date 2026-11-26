@@ -954,7 +954,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		return
 	}
 	question := a.questionOf(d)
-	a.askQuestion(c, keepTail(autospace(question)))
+	a.askWords(c, d, question, 0)
 	if d.Look != nil && d.Resolved == nil {
 		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
 	}
@@ -963,7 +963,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}
 	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
-	if d.Resolved == nil && d.SignIn == nil {
+	if d.Resolved == nil && d.SignIn == nil && d.DeviceSignIn == nil {
 		if genericAsk(d) {
 			st.under = a.defaultBelow(c, d) // D482: the default once, under the row
 			a.whereLines(c, d)

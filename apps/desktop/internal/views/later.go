@@ -110,7 +110,7 @@ func laterRefusal(until, now time.Time) string {
 // phone, a computer or a site, a key, a call, a computer to wait for), nor a
 // find's step, a one-off "keep as a rule?" or a stranger's first message.
 func laterable(d *store.DecisionState) bool {
-	return d.FindID == "" && d.Key == nil && d.CopyKey == nil && d.SignIn == nil && d.Pay == nil && d.Fill == nil && d.Phone == nil &&
+	return d.FindID == "" && d.Key == nil && d.CopyKey == nil && d.SignIn == nil && d.DeviceSignIn == nil && d.Pay == nil && d.Fill == nil && d.Phone == nil &&
 		d.Computer == nil && d.Handset == nil && d.Where == nil && d.Closing == nil && d.Call == nil && d.Saying == nil && d.Sender == nil
 }
 

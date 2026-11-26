@@ -18,6 +18,7 @@ export interface LaterableDecision {
   findId?: string;
   key?: unknown;
   signIn?: unknown;
+  deviceSignIn?: unknown;
   pay?: unknown;
   fill?: unknown;
   phone?: unknown;
@@ -37,7 +38,7 @@ export interface LaterableDecision {
  * "keep as a rule?" or a stranger's first message, whose own Hold already means "not now".
  */
 export function laterable(d: LaterableDecision): boolean {
-  return !(d.findId || d.key || d.signIn || d.pay || d.fill || d.phone || d.computer || d.handset || d.where || d.closing || d.call || d.saying || d.sender);
+  return !(d.findId || d.key || d.signIn || d.deviceSignIn || d.pay || d.fill || d.phone || d.computer || d.handset || d.where || d.closing || d.call || d.saying || d.sender);
 }
 
 export type LaterKey = "tonight" | "morning" | "monday";

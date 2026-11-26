@@ -439,7 +439,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
-		a.partnerWords(c, words)
+		a.partnerAskWords(c, d.DecisionID, words) // D599: its links and codes real
 		// D437: what another AI still found in what this Go sends.
 		if d.Look != nil && openAsk(d) {
 			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })
@@ -474,6 +474,11 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		}
 		if d.SignIn != nil && d.SignIn.Step != "" {
 			a.underBubble(c, func() { a.stepButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
+		if d.DeviceSignIn != nil {
+			// D599: Open {service}, the code with Copy, the wait; settled by itself.
+			a.underBubble(c, func() { a.deviceSignInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}
 		if d.SignIn != nil {

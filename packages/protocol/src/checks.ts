@@ -27,7 +27,17 @@ const GH_READ: string[][] = [
   ["pr", "view"], ["pr", "checks"], ["pr", "list"], ["pr", "status"], ["pr", "diff"],
   ["run", "view"], ["run", "list"], ["issue", "view"], ["issue", "list"],
   ["release", "view"], ["release", "list"], ["repo", "view"], ["workflow", "list"], ["api"],
+  // D599: whether a sign-in finished (device-signin.ts).
+  ["auth", "status"],
 ];
+/** D599: the other CLIs' own sign-in status commands, read-only (device-signin.ts DEVICE_CLIS). */
+const SIGNIN_READ: Record<string, string[]> = {
+  codex: ["login", "status"],
+  claude: ["auth", "status"],
+  az: ["account", "show"],
+  gcloud: ["auth", "list"],
+  wrangler: ["whoami"],
+};
 const GIT_READ = new Set(["ls-remote", "log", "status", "rev-parse", "describe"]);
 const PLAIN = new Set(["test", "[", "stat", "ls", "cat", "head", "tail", "wc", "grep", "dig", "host", "date", "pgrep"]);
 /**
@@ -213,6 +223,8 @@ export function validateCheck(spec: CheckSpec | undefined, ctx: CheckContext = {
   if (cmd === "nc") return parseOpts(rest, () => false).opts.some((o) => o.name === "-z") ? OK : no("nc only as a port check (-z)");
   if (cmd === "ping") return parseOpts(rest, (n) => n === "-c").opts.some((o) => o.name === "-c") ? OK : no("ping needs -c (a count)");
   if (PLAIN.has(cmd)) return OK;
+  const signin = SIGNIN_READ[cmd];
+  if (signin) return signin.every((w, i) => rest[i] === w) && rest.slice(signin.length).every((a) => a.startsWith("--")) ? OK : no(`${cmd} only as its sign-in status (${cmd} ${signin.join(" ")})`);
   return no(`${cmd} is not a command a check may run (gh, curl, git, test, stat, ls, cat, head, tail, wc, grep, nc -z, ping -c, dig, host, date, pgrep)`);
 }
 

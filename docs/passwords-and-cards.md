@@ -86,6 +86,28 @@ in its report which key it needs.
 For now this works for tasks on the computer Ducter runs on; a task on another of your computers
 says in its report which key it needs (coming soon).
 
+## Signing in with a code
+
+Some sign-ins happen on a web page: a task runs a sign-in on one of your computers, and it shows a
+page and a one-time code for you to enter there (GitHub's, for example). You get a card:
+
+> **Sign in to GitHub**
+>
+> Open GitHub's page and enter this code. I'll see when you're signed in, so no need to tell me.
+>
+> **8694-B656**  **Copy**
+
+Tap **Open GitHub**: it copies the code and opens the page in your browser (Safari on an iPhone), so
+you only paste it there and confirm. **Copy** copies the code by itself. You don't reply: once
+you've confirmed it, the card says **Signed in to GitHub** and the task carries on.
+
+A code works for about 15 minutes, and the card says how long it still has. If it runs out,
+tap **Get a new code** and the task starts the sign-in again with a fresh one. **Not now** leaves
+the task waiting.
+
+Links and codes in any question a task asks are real too: a link opens in your browser, and a
+code in it copies with one tap.
+
 ## Where it's kept
 
 Everything is kept on the computer Ducter runs on, locked. On a Mac the key is in that Mac's

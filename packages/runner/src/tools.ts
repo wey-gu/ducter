@@ -4,6 +4,7 @@ import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, type AskReport, type Attention, t
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 import { prIdentity } from "@ducter/protocol/src/owned.ts";
 import { directTurn } from "./direct.ts";
+import { DEVICE_CODE_MINUTES, deviceFlowIn } from "@ducter/protocol/src/device-signin.ts";
 
 const SUMMARY_MAX = 600;
 const STATES = ["progress", "needs_input", "blocked", "done", "failed"] as const;
@@ -160,6 +161,14 @@ export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
         // never the task's own `check`: only Ducter sets it
       }))
     : [];
+  // D599: a question that holds a known CLI's sign-in page and code gets the card's shape (Open, Copy,
+  // settled by the CLI's own check), whatever its words say; the words are not shown on that card.
+  if (state === "needs_input" && !questions.length && deviceFlowIn(summary)) questions.push({ id: "sign_in", text: summary, blocking: true, reversible: false });
+  if (state === "needs_input" || questions.some((q) => q.blocking))
+    for (const q of questions) {
+      const f = deviceFlowIn(q.text);
+      if (f) q.deviceSignIn = { service: f.service, url: f.url, ...(f.code ? { code: f.code } : {}), until: new Date(Date.now() + DEVICE_CODE_MINUTES * 60_000).toISOString(), cli: f.cli };
+    }
   const remember = normalizeRemember(args?.remember);
   // D426: its word on each of the things asked, in the brief's order.
   const asks: AskReport[] = Array.isArray(args?.asks)

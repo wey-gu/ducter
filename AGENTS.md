@@ -74,6 +74,7 @@ Design notes:
 - `where.md`: which computer a task runs on, said and changed with who (D157).
 - `workbench.md`: the opened task's workbench: changes, files, preview, screens (D214).
 - `media.md`: pictures and files both ways, the viewer, drawing (D206).
+- `device-signin.md`: 登录 {service} / Sign in with a one-time code: a task's sign-in page and code on a card with Open and Copy, seen through by the CLI's own check; every ask's links and codes real (D599).
 - `autofill.md`: saved sign-ins, cards and details, filled by reference; the Pay card (D191).
 - `errand.md`: 跑腿到付款 / an errand to the checkout: one task in Ducter's own window, a step handed over live, 去付款 / Go to checkout, the person's own tap pays (D436).
 - `calendar.md`: every calendar account as one day; the day card, change cards behind Go (D222).

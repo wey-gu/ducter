@@ -38,7 +38,8 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { GRow, Said, say, Waiting } from "./set-grid.tsx";
-import { BackGlyph, DangerButton, Notice, TaskLink } from "./controls.tsx";
+import { AskText, BackGlyph, DangerButton, Notice, TaskLink } from "./controls.tsx";
+import { DeviceSignInBody } from "./device-signin.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
@@ -337,7 +338,7 @@ function holdWords(d: DecisionState): string {
  * once, as a sentence. Reply… opens its field in place of the row, with its own 发送 / Send where Go
  * stood and 取消 / Cancel (Enter sends, Esc closes): nothing else sends while it is open.
  */
-function DecideRow({ d, about, sm, foot, dflt = true }: { d: DecisionState; about: string; sm?: boolean; foot?: ComponentChildren; dflt?: boolean }) {
+export function DecideRow({ d, about, sm, foot, dflt = true, lead }: { d: DecisionState; about: string; sm?: boolean; foot?: ComponentChildren; dflt?: boolean; lead?: ComponentChildren }) {
   const id = d.decisionId;
   const replying = A.replyOpen.has(id);
   const draft = A.replyDraft.get(id) ?? "";
@@ -380,7 +381,8 @@ function DecideRow({ d, about, sm, foot, dflt = true }: { d: DecisionState; abou
         </div>
       ) : (
         <div class="dk-acts" role="group" aria-describedby={lineId}>
-          <Btn kind="primary" size={size} label={d.asker ? d.goLabel : goLabel(d)} about={about} onClick={() => A.decide(id, "go")} />
+          {/* D599: a card whose lead is not a Go (Open {service} on a one-time-code sign-in). */}
+          {lead ?? <Btn kind="primary" size={size} label={d.asker ? d.goLabel : goLabel(d)} about={about} onClick={() => A.decide(id, "go")} />}
           {/* D493: the quiet ways wrap as one group: beside the Go, or under it with the first word's
               letters at the card's edge (never one word alone on a line, indented by its padding). */}
           <span class="dk-quiet">
@@ -420,6 +422,8 @@ function answeredWords(d: DecisionState): string {
   if (d.resolved?.posted) return t("standing.settled");
   // D481: closed while this page missed how (the home's word follows), or closed by what happened.
   if (d.elsewhere) return t("decision.resolved.elsewhere");
+  // D599: a one-time-code sign-in seen through.
+  if (d.resolved?.signedIn && d.deviceSignIn) return t("dsi.done", d.deviceSignIn.service);
   if (d.resolved?.by === "ended") return t("decision.resolved.ended");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   // D499: Ducter said Go for them, under what they said.
@@ -446,7 +450,7 @@ function LeftDraft({ d, text }: { d: DecisionState; text: string }) {
   );
 }
 
-function Resolved({ d }: { d: DecisionState }) {
+export function Resolved({ d }: { d: DecisionState }) {
   // D236: answered by a reply: its words are that bubble, not a line under the question.
   if (d.resolved?.msgSeq) return null;
   const msg = answeredWords(d);
@@ -492,6 +496,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.checkout) return <CheckoutBody d={d} />;
   if (d.signIn?.step) return <StepBody d={d} />;
   if (d.signIn) return <SignInBody d={d} />;
+  // D599: a one-time-code sign-in: Open {service}, the code with Copy, settled by itself.
+  if (d.deviceSignIn) return <DeviceSignInBody d={d} about={about} />;
   // D385: a plan card opened as a sheet or on On hand: the plan, not a generic Go.
   if (d.src?.kind === "plan") return <PlanCard d={d} bare />;
   // D217: a phone task's Go for one tap, or the user's own turn on the phone.
@@ -520,7 +526,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   return (
     <>
       {open && <LaterBack d={d} />}
-      <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
+      {/* D599: a task's own words keep their links and codes real (AskText); the card's own words are plain. */}
+      <div class="q">{wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={d.question} />}</div>
       {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
@@ -1214,10 +1221,33 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
         {(buttons || !open) && <CopyKeyBody d={d} compact />}
       </div>
     );
+  // D599: 登录 {service} with a one-time code: the partner's word, then the card (Open, the code, the wait).
+  if (d.deviceSignIn)
+    return (
+      <div ref={ref} class={`partner askq dsi-ask${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
+        <div class="bubble" dir="auto">
+          <AskText text={d.said || t("dsi.title", d.deviceSignIn.service)} />
+        </div>
+        {open && buttons && (
+          <div class="tray dk-card">
+            <DeviceSignInBody d={d} about={about} compact />
+          </div>
+        )}
+        {/* Answered, as every ask: one tiny line on the person's side (已登录 GitHub). */}
+        {!open && (
+          <div class="said" role="status">
+            {answeredWords(d)}
+          </div>
+        )}
+      </div>
+    );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
-      <div class="bubble" dir="auto">{d.said || d.question}</div>
+      {/* D599: a link or a code in the words is real. */}
+      <div class="bubble" dir="auto">
+        <AskText text={d.said || d.question} />
+      </div>
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}

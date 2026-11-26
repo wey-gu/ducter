@@ -15,6 +15,7 @@ import type { KeyResult } from "./api-keys.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
+export * from "./device-signin.ts";
 export * from "./key-copy.ts";
 import type { CopyKeyAsk } from "./key-copy.ts";
 import type { FillAsk, KeyAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
@@ -228,6 +229,8 @@ export interface Question {
   handset?: HandsetAsk;
   /** D505 (rev.): carry this sign-in to the person's own Chrome on their Mac, asked once per site (set by browser_ask_sign_in only; hold: the Hold's words, default the Go's; reversible false here, the card waits with no countdown). */
   signInWhere?: SignInWhereAsk & { hold?: string };
+  /** D599: a sign-in with a one-time code on a page (gh auth login's device flow): the page, the code, until when (set by sign_in_with_code, or by the runner from the CLI's own printed lines). */
+  deviceSignIn?: import("./device-signin.ts").DeviceSignInAsk;
 }
 
 /**
@@ -484,6 +487,10 @@ export interface Bodies {
     // through as questions, Hold (不理 / Ignore, the default) mutes it. Remembered per sender.
     sender?: { from: string; space?: string; messageId: string };
     holdLabel?: string; // D334: Hold's own words when the card's code names them (不理 / Ignore)
+    // D599: 登录 {service} / Sign in to {service} with a one-time code: Open {service} and the code with Copy;
+    // no Go before the code runs out (Ducter sees the sign-in by the CLI's own check, or the task says
+    // so), then 再要一个码 / Get a new code; settled when signed in. No default, never put off.
+    deviceSignIn?: import("./device-signin.ts").DeviceSignInAsk;
     signInWhere?: SignInWhereAsk; // D505 (rev.): 换过去 / Move it there (the person's Chrome on their Mac, remembered per site) or 我在这里登录 / I'll sign in here
     // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
     // never "don't ask next time". kind "question": a question from the line, pushed at once even
@@ -517,7 +524,7 @@ export interface Bodies {
   // D539: a key copied between the person's computers on their Go (names only, never a value), or
   // one removed from a computer in Settings (removed: that computer's name, by "user").
   key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };

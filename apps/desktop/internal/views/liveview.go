@@ -80,6 +80,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.SignIn != nil {
 		return a.L.T("signin.title", d.SignIn.Site)
 	}
+	if d.DeviceSignIn != nil {
+		return a.deviceSignInTitle(d.DeviceSignIn) // D599
+	}
 	if d.Where != nil {
 		return a.whereAskQuestion(d.Where)
 	}

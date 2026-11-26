@@ -2836,7 +2836,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment. Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {

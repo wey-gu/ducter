@@ -1023,7 +1023,7 @@ export function createKeeps(o: {
       // Mid-round (at work, not resting on its timer): it hears it now; resting, its next wake carries it.
       if (card && AT_WORK.has(card.attention)) {
         const told = await o.tell(f.taskId, fill(words(W, lang()).nextNow, { ask })).catch(() => false);
-        if (told) put({ ...byId.get(id)!, next: undefined });
+        if (told) put({ ...byId.get(id)!, next: undefined, now: { text: ask, at: iso(clock.now()) } }); // D593: the round under way has it (said again after a compaction)
       }
     }
     // D593: a standing instruction reaches a round under way now; a resting one hears it first at its wake.

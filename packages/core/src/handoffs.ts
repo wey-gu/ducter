@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { Bodies, Helper, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
-import { detect } from "@ducter/protocol/src/lang.ts";
+import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { helperQuestions, handoffItem, handoffKey, handoffStateWord, HANDOFF_TERMINAL, HANDOFF_WORDS, type HandoffBody, type HandoffFrom, type HandoffItem, type HandoffTo } from "@ducter/protocol/src/handoff.ts";
 import { HELPER_TAKE_MS, isHelperWork, localHandoff, LOCAL_MSG } from "@ducter/protocol/src/helpers.ts";
 
@@ -135,14 +135,13 @@ export function createHandoffs(o: {
   };
 
   const say = async (h: HandoffBody, state: "done" | "returned" | "declined" | "withdrawn", why: string): Promise<void> => {
-    const lang = detect(h.said)?.lang ?? (o.lang?.() as never);
-    const zh = String(lang ?? "").startsWith("zh");
-    const w = (zh ? HANDOFF_WORDS.zh : HANDOFF_WORDS.en) as (typeof HANDOFF_WORDS)["en"];
+    const lang = (detect(h.said)?.lang ?? o.lang?.()) as LangTag | undefined;
+    const w = words(HANDOFF_WORDS, lang);
     const item = h.item.title?.trim() || h.item.ref;
-    const line = `${(w as Record<string, string>)[state]!.replace("{helper}", h.to.name).replace("{item}", item)}${why ? (w as Record<string, string>).why!.replace("{why}", why) : ""}`;
+    const line = `${w[state].replace("{helper}", h.to.name).replace("{item}", item)}${why ? w.why.replace("{why}", why) : ""}`;
     if (h.from.task) {
-      const body = state === "done" ? (w as Record<string, string>).taskDone : state === "withdrawn" ? (w as Record<string, string>).taskWithdrawn : (w as Record<string, string>).taskBack;
-      const text = body.replaceAll("{helper}", h.to.name).replaceAll("{item}", item).replaceAll("{why}", why || line).replaceAll("{state}", handoffStateWord(zh ? "zh" : "en", state));
+      const body = state === "done" ? w.taskDone : state === "withdrawn" ? w.taskWithdrawn : w.taskBack;
+      const text = body.replaceAll("{helper}", h.to.name).replaceAll("{item}", item).replaceAll("{why}", why || line).replaceAll("{state}", handoffStateWord(lang ?? "en", state));
       const p = o.tellTask?.(h.from.task, text);
       if (p) await p.catch(() => false);
       return;

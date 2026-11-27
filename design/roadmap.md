@@ -56,10 +56,11 @@ heard of a subagent.
   (UnifiedPush, `todo.md`).
 - **Move your Ducter between computers.** Start on a Mac, move to a server later (and back):
   one command moves the conversation, settings, routines and accounts; the old machine keeps
-  doing tasks for its local repos. Designed (D504, `move.md`); `--plan` (read-only) and the local
-  `--bundle`/`--receive` slice are built with fakes (D621: one encrypted file, checked file
-  by file and entry by entry); the freeze, the network handover, the Mem/Bridge handover,
-  cut-over and rollback are next.
+  doing tasks for its local repos. Designed (D504, `move.md`); `--plan` (read-only), the local
+  `--bundle`/`--receive` slice and the freeze/send slice are built with fakes (D621, D627:
+  one encrypted file or one X25519 connection, checked file by file and entry by entry, a
+  one-time code and `--unfreeze`); the Mem/Bridge handover, cut-over, rollback, resumable chunks
+  and the known-worker shortcut are next.
 - **Browse and use apps on your Mac from a server-hosted Ducter.** When your Ducter lives on a
   server, tasks that need your own Chrome, sign-ins or Mac apps run on your Mac (as a helper
   computer), with the same safety rules. Built with fakes: one tap in the Mac app makes the Mac a

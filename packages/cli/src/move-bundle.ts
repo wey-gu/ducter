@@ -198,6 +198,7 @@ const NOT_CARRIED = new Set([
   "handsets.json",
   "kept-keys",
   "key-grants.json",
+  "move-frozen.json",
   "move-receiving.json",
   "own-phone.json",
   "phone",
@@ -210,7 +211,7 @@ const NOT_CARRIED = new Set([
 ]);
 
 /** Never written from a bundle: the old home's own locks, keys and transients. */
-const FORBIDDEN_IN_BUNDLE = new Set(["saved/key", "move-receiving.json"]);
+const FORBIDDEN_IN_BUNDLE = new Set(["saved/key", "move-frozen.json", "move-receiving.json"]);
 
 const isTransient = (n: string) =>
   n === ".DS_Store" ||
@@ -543,7 +544,7 @@ export async function writeBundle(i: BundleWriteInput): Promise<BundleWriteResul
       redo: i.redo,
       stays: i.stays,
       notes: i.notes,
-      notCarried: ["browser-profiles when not the same system", "saved/key", "kept-keys", "task-keys", "key-grants.json", "phone", "handsets.json", "own-phone.json", "bin", "browser", "checks", "doctor-data", "scratch", "tools", "updates", "web-look", "logs"],
+      notCarried: ["browser-profiles when not the same system", "saved/key", "move-frozen.json", "kept-keys", "task-keys", "key-grants.json", "phone", "handsets.json", "own-phone.json", "bin", "browser", "checks", "doctor-data", "scratch", "tools", "updates", "web-look", "logs"],
     };
     const manifestBytes = Buffer.from(JSON.stringify(manifest), "utf8");
     const lenBuf = Buffer.alloc(4);

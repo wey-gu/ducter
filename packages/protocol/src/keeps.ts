@@ -410,7 +410,7 @@ export interface KeepsApi {
    * ring's round. `ok` also covers a ring that was coalesced, absorbed by a round under way, or
    * ignored because the Keep isn't on; only a token that isn't one of ours is `notfound`.
    */
-  ring(token: string, label?: string): Promise<"ok" | "notfound" | "limited">;
+  ring(token: string, label?: string): Promise<"ok" | "notfound" | "limited" | "held">;
   /** D620: the URL a page may reveal once (a partner turned it on), and it is spent. */
   takeBell(id: string): KeepBellUrl | undefined;
   /** D533: the person's edited words read once by the cheap model into the rules they change (nothing applied). */

@@ -2,13 +2,15 @@
 
 > 2026-11-24, updated 2026-11-27 · **Decided (D504), first slice built: `ducter move --plan
 > [--to <computer>]`, read-only. Second slice built (D621): `ducter move --bundle <file>` and
-> `ducter move --receive <file>`, one encrypted file carried by hand, checked file by file and
-> entry by entry. Tested over fake homes (`packages/cli/test/move.test.ts`,
-> `packages/cli/test/move-bundle.test.ts`, `packages/core/test/move-receiving.test.ts`).** Still
-> owed: the freeze, the network handover (one-time code, X25519, resumable chunks), the
-> Mem/Bridge handover, cut-over, rollback, the app's row (`design/todo.md` "Moving Ducter").
-> Labels: **VERIFIED** (code read this session),
-> **DOCUMENTED** (a design note or vendor page says so), **INFERRED** (judgment).
+> `ducter move --receive <file>`, one encrypted file carried by hand. Third slice built
+> (D627): `ducter move --receive --listen` and `ducter move --to <address> --code <code>`,
+> the freeze, and the same bundle sent over one X25519 connection; `ducter move --unfreeze` is
+> the way back. Tested over fake homes on localhost (`packages/cli/test/move.test.ts`,
+> `packages/cli/test/move-bundle.test.ts`, `packages/cli/test/move-send.test.ts`,
+> `packages/core/test/move-receiving.test.ts`, `packages/core/test/move-freeze.test.ts`).** Still
+> owed: the Mem/Bridge handover, cut-over, rollback, the known-worker shortcut and resumable
+> chunks, the app's row (`design/todo.md` "Moving Ducter"). Labels: **VERIFIED** (code read this
+> session), **DOCUMENTED** (a design note or vendor page says so), **INFERRED** (judgment).
 
 The first reason Ducter exists (`motivation.md`): the author's cloud environment "had to move
 within days". A Ducter that can't leave the computer it started on repeats that trap, one level
@@ -48,7 +50,7 @@ Everything below lives in `<dataDir>` (default `~/.ducter`) unless said.
 
 | Part | Where | Moves? | How / why |
 |---|---|---|---|
-| The Log (conversation, every task, routines, decisions, waits) | `ducter.db` (+ `-wal`) | **Yes** | A consistent snapshot (`VACUUM INTO` after the freeze); verified by event count and the hash of the last event's `(seq, kind, body)` on both sides |
+| The Log (conversation, every task, routines, decisions, waits) | `ducter.db` (+ `-wal`) | **Yes** | A consistent snapshot through SQLite's backup API (after the freeze for a network send); verified by event count and the hash of the last event's `(seq, kind, body)` on both sides |
 | Partners | `persona.json` (name, `mem` identity binding), `partners.json`, `partners/<id>/` | Yes | Plain files |
 | Settings, projects, marks, ambient, outside, Mem plugins, paused, records, app offers | `settings.json`, `projects.json`, `marks.json`, … | Yes | Plain files |
 | Routines | in the Log (`routine`, `routine_run`) | Yes, with the Log | A run due during the freeze runs late on the new home (routines.ts' own `lateLine`) |
@@ -130,14 +132,23 @@ worker; their task keys stay valid because `mcp.secret` moves.
    in `--plan`'s words. Its last line promises no way back this slice has not built: the old
    computer is untouched and still the one running. No pollers, no routines, no network, no
    cut-over.
-4. **Freeze and send (next).** On the old home, after the person's Go: new turns are held (D325's
-   queue), routines stop their timers, chat apps stop polling (cursors written), new tasks queue,
-   tasks on the home reach a step end (§3); then the same bundle is taken and sent. The receive
-   and the one-time move code (D83's alphabet, 10 minutes, one use) meet: an empty Ducter makes
-   an X25519 key, and the move code authenticates the exchange, so the bundle key comes from the
-   two homes and not from a passphrase. Sent over HTTPS or the worker socket in resumable
-   chunks; the bundle on either disk is deleted after import. A computer that already does tasks
-   for this home skips the code: the request goes over its authenticated worker socket.
+4. **Freeze and send (built, D627).** On the new computer, `ducter move --receive
+   --listen` makes an ephemeral X25519 key, prints one one-time code (D83's alphabet, 10 minutes,
+   one use) with its address, and waits for exactly one sender; after its answer it stops. On the
+   old home, `ducter move --to <address> --code <code>` connects to the running core and freezes
+   it: routines, tasks in rounds, waits and Keeps hold (a held clock and a Keeps hold, never a
+   killed turn), chat apps stop polling with their cursors written, Bridge turns stay quiet, a
+   doorbell answers "moving", and a new task is refused. It then reports every running task and
+   waits for them to reach a turn end (10 minutes), asking before going on if any remain. Only
+   then does it take the same bundle as §5.2, with a random passphrase never shown, and send it
+   through the X25519 channel (AES-256-GCM under an HKDF key bound to both nonces and the code;
+   the move code is proven by HMAC, never sent). The new side writes the received bundle to a
+   0600 temp file and calls **the same `readBundle` `--receive <file>` uses**; every SHA-256, the
+   Log's count and last-event hash, the non-empty refusal and the Autofill re-lock are the same.
+   The temp bundle is deleted on both sides. The old home stays frozen and still owns everything,
+   and a `move-frozen.json` marker keeps it frozen across a restart; `ducter move --unfreeze`
+   lifts it (the way back for this slice). One request carries the whole bundle: resumable chunks,
+   and the known worker's code-free socket, are next.
 5. **Handover.** §4, then the tunnel: the old home stops cloudflared, the new home runs it with
    the same credentials (same hostname). A domain way: the plan's DNS line, checked by the
    new home's own `/.well-known/ducter-home` before it counts.
@@ -159,7 +170,8 @@ worker; their task keys stay valid because `mcp.secret` moves.
 **Zero loss, measured.** Equal Log count and last-event hash; every manifest hash; chat cursors
 continuous; one Bridge connection at the end (Mem's list); every paired device seen on the new
 home within a day, or listed. The local bundle slice already measures the first two and the
-per-file hashes on both sides; cut-over is what adds the rest.
+per-file hashes on both sides; the network send adds the same checks at the receiving end, and
+cut-over is what adds the rest.
 
 ## 6. Risks and what is not decided
 
@@ -179,8 +191,18 @@ per-file hashes on both sides; cut-over is what adds the rest.
   either way; the next slice's bundle can be made again.
 - **A bundle taken while the home runs is not a freeze** (D621): the Log and `devices.db` are
   consistent snapshots and every file is hashed before it is streamed, but a chat cursor or a
-  settings write can land between two files. The freeze comes with the network handover and is
-  what makes the whole bundle one moment.
+  settings write can land between two files. The network slice freezes first; the file slice
+  still says it does not.
+- **One request, no resume** (D627): the bundle crosses as one encrypted body. A drop
+  leaves the old home frozen on purpose (nothing is half-switched), and `--unfreeze` is the way
+  back; resumable chunks are next.
+- **The known worker's shortcut** (D627): a computer that already does tasks for the home
+  could skip the code over its authenticated worker socket (move.md's choice when both ends know
+  each other). This slice always uses the address and the code, which works for any computer;
+  the shortcut is next.
+- **A running partner turn is not counted** (D627): the wait list is tasks at work or
+  queued, not the partner's own turn. Its Bridge triggers are held, and no new task starts; a
+  partner turn already in flight finishes like a task's.
 
 ## 7. Verified
 
@@ -199,3 +221,12 @@ per-file hashes on both sides; cut-over is what adds the rest.
   written; bundling a home with its Log still open leaves every file's size and mtime unchanged
   and still receives every event; zh and en words for the sign-ins, the Mem line and "no pairing
   again". Not run on the author's real home; not tried across two real computers.
+- `packages/core/test/move-freeze.test.ts` (D627): a fake clock and runner: a routine due
+  during the freeze does not start and starts after `unfreeze`; a new task is refused with the
+  moving line and opens after; the running list names a task at work; a freeze survives a restart
+  through `move-frozen.json` until `--unfreeze`.
+- `packages/cli/test/move-send.test.ts` (D627): two temp homes on localhost, a real one-shot
+  listener and a fake core host: the send round-trips the same events, `readLog` projection and
+  files; a wrong code is refused with nothing written; a dropped connection leaves the old home
+  frozen and `--unfreeze` restores it; the listener stops after one use; a non-empty target refuses
+  before listening. Not tried across two real computers; no cut-over.

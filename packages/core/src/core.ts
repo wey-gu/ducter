@@ -10,18 +10,18 @@ import { createFreeBudget } from "./free-budget.ts";
 import { createFreshLook, diffFromWorkbench } from "./fresh-look.ts";
 import { createDocCheck } from "./doc-check.ts";
 import { createMediaStore } from "./media.ts";
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, appTasks, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL,MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, appTasks, HARNESSES, TASK_STEP_ACTIONS, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL,MEM_CONNECT_TOOLS, agentBack, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type HelperWork, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds, type MoveControl, type MoveState } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
 import { outwardOf } from "@ducter/protocol/src/outward.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
-import { realClock, type Clock } from "./clock.ts";
+import { HeldClock, realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, plainAsk, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
 import { openLog, type SqliteLog } from "./log.ts";
@@ -118,7 +118,7 @@ import { briefOf, createTaskSources, placeForRepo, type TaskSources, type TaskSo
 import { dayKey } from "./proactive/detect.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
-import { browseFolders, changeDucterFolder, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
+import { browseFolders, changeDucterFolder, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput, type NewTaskResult } from "./newtask.ts";
 import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { answerClones, remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
@@ -398,6 +398,10 @@ export interface Core extends CoreApi {
   waiters: Waiters;
   /** Waiters, until loops and routines (D112-D114). */
   work: Work;
+  /** D627: freeze this home for a move, ask how it stands, lift the freeze. */
+  move: MoveControl;
+  /** D627: the New task path (the freeze refuses it; the app and tests use it). */
+  newTask: { open(input: NewTaskInput): Promise<NewTaskResult> };
   /** D599: one-time-code sign-in cards, looked at by their CLI's own check. */
   deviceSignIn: import("./device-signin.ts").DeviceSignIn;
   /** D285, D427: 一直在跑的 / Ongoing (routines and tasks in rounds, their health). */
@@ -635,6 +639,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     console.warn(`[ducter] could not move keys to keys.env: ${(err as Error).message}`);
   }
   const clock = opts.clock ?? realClock;
+  // D627: the work's own clock, which a move freezes without touching a running turn's timers.
+  const workClock = new HeldClock(clock);
+  let frozen = false;
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 
   const log = openLog({ path: join(dataDir, "ducter.db"), persona: persona.id, clock });
@@ -728,7 +735,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     runner: () => runner,
     workers: () => workersRef,
     connections,
-    clock,
+    clock: workClock,
     persona: persona.id,
     exec: opts.work?.exec,
     minEveryMs: opts.work?.minEveryMs,
@@ -1492,7 +1499,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1575,7 +1582,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D345: gh Ducter put in its own folder is first on its PATH (its gh calls and every task's).
   useOwnTools(dataDir);
   const ghInstaller = opts.ghInstaller ?? (process.env.NODE_ENV === "test" ? { plan: () => undefined, install: async () => ({ ok: false as const, how: "release" as const, where: "", reason: "unsupported" as const, message: "not in tests" }) } : createGhInstaller({ dataDir }));
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, browseHome: opts.browseHome ?? ((p: string | undefined) => listFolders(p, homedir(), realFs, BROWSE_MAX, homeRoots.roots)), ...(opts.git ? { git: opts.git } : {}) };
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, held: () => frozen, browseHome: opts.browseHome ?? ((p: string | undefined) => listFolders(p, homedir(), realFs, BROWSE_MAX, homeRoots.roots)), ...(opts.git ? { git: opts.git } : {}) };
   // D395: where a repository task works, from the repository itself: every computer is asked
   // which clones of it it has (the home here, a worker by its clones op), the best one wins, and
   // with none anywhere it is cloned where git can read it. task_open checks its place with it first.
@@ -1907,6 +1914,45 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
+
+  // D627: freeze for a move. The work clock holds every routine/loop/wait/owned timer, Keeps
+  // holds its sweeps and doorbells, the chat apps stop polling (their cursors are written), and a
+  // new task is refused. Running turns are reported, never killed; the CLI waits for them or asks.
+  const runningTasks = () => tasks.list().filter((c) => c.attention === "working" || c.attention === "queued").map((c) => ({ taskId: c.taskId, title: c.title }));
+  const move: MoveControl = {
+    freeze() {
+      if (!frozen) {
+        frozen = true;
+        work.routines.hold();
+        workClock.hold();
+        keeps.hold();
+        channels.pause();
+        try {
+          writeFileSync(join(dataDir, "move-frozen.json"), JSON.stringify({ v: 1, at: new Date(clock.now()).toISOString() }, null, 2) + "\n", { mode: 0o600 });
+        } catch {
+          /* the freeze holds in memory even if the marker can't be written */
+        }
+      }
+      return { frozen, running: runningTasks() };
+    },
+    unfreeze() {
+      if (frozen) {
+        frozen = false;
+        work.routines.release();
+        workClock.release();
+        keeps.release();
+        void channels.resume().catch((e) => console.warn("[move] chat apps didn't start again:", (e as Error).message));
+        try {
+          rmSync(join(dataDir, "move-frozen.json"), { force: true });
+        } catch {
+          /* nothing left to remove */
+        }
+      }
+      return { frozen, running: runningTasks() };
+    },
+    status: () => ({ frozen, running: runningTasks() }),
+    frozen: () => frozen,
+  };
   // D514: what holds a task's working copy beyond its own state, for the runner's tidy.
   api.tidyHold = (taskId) =>
     holdOf(taskId, {
@@ -2066,7 +2112,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
+    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;
@@ -3124,7 +3170,13 @@ export function startCore(opts: CoreOptions = {}): Core {
   listening = port;
   void anywhere.resume().catch((e) => console.warn("[anywhere]", e));
   // D276: the chat apps connected before (their sockets and long polls) start once the home listens.
-  void channels.start();
+  // D627: a home frozen for a move stays frozen across a restart; --unfreeze is still the way back.
+  if (existsSync(join(dataDir, "move-frozen.json"))) {
+    move.freeze();
+    console.log("[ducter] frozen for a move; run: ducter move --unfreeze");
+  } else {
+    void channels.start();
+  }
   // Up and listening: an update's helper waiting on this restart knows it's this version (update.ts
   // waitHealthy), also when /health doesn't name the version to it.
   try {
@@ -3134,6 +3186,8 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   return {
     ...api,
+    move,
+    newTask,
     handoffs,
     channelUp: (via: string) => ws.channelUp(via),
     log,

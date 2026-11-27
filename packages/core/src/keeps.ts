@@ -112,6 +112,9 @@ const W = {
 export const nextRoundLine = (ask: string, l: LangTag) => fill(words(W, l).nextRound, { ask });
 
 export type Keeps = KeepsApi & {
+  /** D627: a move freezes a Keep's sweeps and doorbells; release runs the catch-up sweep. */
+  hold(): void;
+  release(): void;
   setEndAsk(a: KeepEndAsk | undefined): void;
   setRoundAsk(a: KeepRoundAsk | undefined): void;
   /** D533: the cheap model that reads edited words into the rules they change. */
@@ -777,6 +780,7 @@ export function createKeeps(o: {
   let roundQueue: { keepId: string; key: string; report: string }[] = [];
   let roundBusy = false;
   let stopped = false;
+  let held = false;
   function askRounds(k: KeepBody, rounds: Round[], most = ROUNDS_ASKED) {
     if (!roundAsk) return;
     const said = lineOf.get(k.keepId);
@@ -887,7 +891,8 @@ export function createKeeps(o: {
   // Per Keep, the last minute's rings. In memory: a restart forgets them, which only means one more
   // accepted ring. A wrong token never reaches this (it is not one of ours).
   const ringsAt = new Map<string, number[]>();
-  async function ring(token: string, label?: string): Promise<"ok" | "notfound" | "limited"> {
+  async function ring(token: string, label?: string): Promise<"ok" | "notfound" | "limited" | "held"> {
+    if (held) return "held";
     const h = sha256(String(token ?? ""));
     // Every entry is compared, and none is returned early: a wrong token costs the same as a right
     // one and gets the same 404 from the route, so the URL cannot be probed by timing.
@@ -939,6 +944,7 @@ export function createKeeps(o: {
   // ---------- the person's gestures, and the partner's verbs ----------
 
   async function act(id: string, a: KeepAction): Promise<{ ok: boolean; message?: string }> {
+    if (held && (a.action === "look_now" || a.action === "resume")) return { ok: false, message: lang().startsWith("zh") ? "Ducter 正在搬到另一台电脑，等搬完再看。" : "Ducter is moving to another computer; it will look again when it is back." };
     const k = byId.get(id);
     if (!k) return { ok: false, message: "I can't find that." };
     if ((k.life === "done" || k.life === "stopped") && a.action !== "stop") return { ok: false, message: "It has ended." };
@@ -984,6 +990,7 @@ export function createKeeps(o: {
 
   // A helper paused until a time comes back by itself (a routine's and a task's pause are Ongoing's).
   const sweep = () => {
+    if (held) return;
     for (const k of byId.values()) if (k.from.kind === "helper" && k.life === "paused" && k.pausedUntil && Date.parse(k.pausedUntil) <= clock.now()) void act(k.keepId, { action: "resume" });
   };
   const timer = setInterval(sweep, 30_000);
@@ -1498,6 +1505,13 @@ export function createKeeps(o: {
       ]
         .filter(Boolean)
         .join("\n");
+    },
+    hold: () => {
+      held = true;
+    },
+    release: () => {
+      held = false;
+      void sweep();
     },
     stop: () => (clearInterval(timer), (roundAsk = undefined), (roundQueue = []), (stopped = true)),
   };

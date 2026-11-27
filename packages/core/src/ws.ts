@@ -106,6 +106,8 @@ export interface WsDeps {
    */
   home?: { fp: string; ways(): ServerFrame & { t: "ways" }; sleeping?(device: { id: string }): void; socketsChanged?(): void };
   core: CoreApi;
+  /** D627: freeze / status / unfreeze for `ducter move`; absent in tests that don't need it. */
+  move?: import("@ducter/protocol").MoveControl;
   decisions: Decisions;
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
@@ -1966,6 +1968,20 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "usage_days_result", report: deps.usage({ ...(days !== undefined ? { days } : {}), ...(tz !== undefined ? { tzOffsetMin: tz } : {}), ...(top !== undefined ? { top } : {}) }) });
         } catch (err) {
           send(ws, { t: "usage_days_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
+      case "move_freeze":
+      case "move_status":
+      case "move_unfreeze": {
+        // D627: answered on the asking socket only; the CLI (`ducter move`) is the caller.
+        if (!deps.move) throw new Error("not available");
+        const t = f.t === "move_freeze" ? "move_freeze_result" : f.t === "move_unfreeze" ? "move_unfreeze_result" : "move_status_result";
+        try {
+          const move = f.t === "move_freeze" ? deps.move.freeze() : f.t === "move_unfreeze" ? deps.move.unfreeze() : deps.move.status();
+          send(ws, { t, move });
+        } catch (err) {
+          send(ws, { t, error: (err as Error).message.slice(0, 200) });
         }
         return;
       }

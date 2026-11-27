@@ -138,6 +138,9 @@ export interface Routines {
   ever(): RoutineView[];
   /** The user's current zone, from the latest client hello (personal routines follow it). */
   setUserZone(tz: string): void;
+  /** D627: a move freezes the clocks; release re-arms the active ones and catches up. */
+  hold(): void;
+  release(): void;
   stop(): void;
 }
 
@@ -231,6 +234,7 @@ export function createRoutines(opts: {
   let userZone = opts.defaultZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   let lastRead = 0;
   let stopped = false;
+  let held = false;
 
   const zoneOf = (r: RoutineBody) => (r.trigger.kind === "time" ? (r.trigger.zone === "personal" ? userZone : r.trigger.tz) : userZone);
   const write = (r: RoutineBody) => log.append({ stream: `routine:${r.routineId}`, origin: "schedule", kind: "routine", body: { ...r } });
@@ -501,6 +505,7 @@ export function createRoutines(opts: {
   // ---------- scheduling ----------
   /** A firing whose time has come: run it, or, during an account backoff, hold it until the next try. */
   function fire(s: State) {
+    if (held) return;
     const now = clock.now();
     const p = s.pending;
     if (p && p.at <= now) {
@@ -531,6 +536,7 @@ export function createRoutines(opts: {
 
   function arm(s: State, o: { keepWatch?: boolean } = {}) {
     clearTimers(s);
+    if (held) return;
     const r = s.r;
     if (r.state !== "active" || stopped) {
       if (s.waiterId) waiters.cancel(s.waiterId), (s.waiterId = undefined);
@@ -987,6 +993,7 @@ export function createRoutines(opts: {
       return true;
     },
     runNow(id) {
+      if (held) return false;
       const s = states.get(id);
       if (!s || (s.r.state !== "active" && s.r.state !== "paused")) return false;
       void startRun(s, clock.now());
@@ -1046,8 +1053,21 @@ export function createRoutines(opts: {
       userZone = tz;
       for (const s of states.values()) if (s.r.trigger.kind === "time" && s.r.trigger.zone === "personal") arm(s);
     },
+    hold() {
+      held = true;
+      for (const s of states.values()) clearTimers(s);
+    },
+    release() {
+      held = false;
+      for (const s of states.values()) {
+        if (s.r.state !== "active") continue;
+        catchUp(s); // a firing missed while frozen runs late, as after a restart
+        arm(s);
+      }
+    },
     stop() {
       stopped = true;
+      held = false;
       unsubscribe();
       for (const s of states.values()) {
         clearTimers(s);

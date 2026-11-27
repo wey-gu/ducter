@@ -38,6 +38,7 @@ export async function handleDoorbell(req: Request, keeps: Keeps | undefined): Pr
   if (!token || token.length > TOKEN_MAX || token.includes("/")) return notFound();
   const r = await (keeps?.ring(token, bellAbout(req.headers.get("x-ducter-about"))) ?? "notfound");
   if (r === "limited") return new Response("too many rings", { status: 429, headers: { ...noStore, "retry-after": "60" } });
+  if (r === "held") return new Response("moving", { status: 503, headers: { ...noStore, "retry-after": "60" } });
   if (r === "notfound") return notFound();
   return new Response(null, { status: 204, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 }

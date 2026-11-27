@@ -3620,6 +3620,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"folder_change_result",
+		// D627: the move answers; only the CLI asks, the app decodes them so none is dropped.
+		"move_freeze_result", "move_status_result", "move_unfreeze_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "kept_keys", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
 		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins", "keep_result", "partner_peek":

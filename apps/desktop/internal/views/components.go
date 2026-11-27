@@ -1251,6 +1251,9 @@ func (a *App) decisionAbout(d *store.DecisionState) string {
 	if t := a.S.Task(d.TaskID); t != nil && t.Title() != "" {
 		return t.Title()
 	}
+	if d.Cal != nil {
+		return a.calAsk(d.Cal) // D642: a reader hears the short ask, never the title again
+	}
 	q := []rune(d.Question)
 	if len(q) > 40 {
 		return string(q[:40]) + "…"
@@ -1407,4 +1410,64 @@ func (a *App) lineField(c *ui.Context, key, label string, v *string, placeholder
 		in.OnSubmit(submit)
 	}
 	return in
+}
+
+// ---------- the ask cards' kind marks (D642) ----------
+
+// kindMark is one drawn mark per kind of Go card: the same 20-grid family as Done for you's
+// pictures (D314), in one ink. The calendar's own mark is dateLeaf, because a date is the thing.
+func (a *App) kindMark(c *ui.Context, kind string, size float32, col ui.Color) {
+	if kind == "" {
+		return
+	}
+	a.glyph(c, size, drawAskKind(kind, col))
+}
+
+// dateLeaf is a calendar entry's date: the month on a band, the day large, the weekday under it. It is
+// a small clay tile standing on its own 2-pt base; the calendar's own colour is the band's dot, never
+// a bar. done: a drawn check; cancel: the day struck quietly; failed: a cross.
+func (a *App) dateLeaf(c *ui.Context, month, day, weekday string, color ui.Color, state string) {
+	t := a.T
+	dim := t.InkMuted
+	leaf := ui.Column(c.Key("cal-leaf")).Width(56).Shrink(0).Radius(t.RadiusSM).Background(t.SurfaceRaised).
+		Shadow(0, 2, 0, 0, t.Line).Clip().AccessHidden(true)
+	leaf.Children(func() {
+		ui.Row(c.Key("band")).Height(17).Padding(0, 5).AlignItems(ui.Center).Gap(4).Background(t.SurfaceRaised.Mix(color, 0.14)).Children(func() {
+			uiText(c, month).FontSize(t.XS - 1).FontWeight(700).TextColor(t.InkMuted).SingleLine()
+			ui.Box(c.Key("dot")).Size(5, 5).Radius(2.5).Shrink(0).Background(color)
+		})
+		ui.Column(c.Key("num")).AlignItems(ui.Center).Padding(2, 0, 3, 0).Gap(0).Children(func() {
+			d := uiText(c, day).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).LineHeight(1.15)
+			if state == "cancel" {
+				d.TextColor(dim)
+			}
+			uiText(c, weekday).FontSize(t.XS - 1).TextColor(t.InkMuted).LineHeight(1.3)
+		})
+	})
+	if state == "done" || state == "failed" || state == "cancel" {
+		leaf.Draw(func(p *ui.Painter, r ui.Rect) {
+			if state == "cancel" {
+				// The quiet strike: one fine diagonal across the day, inset from the leaf's edges and
+				// clipped to the tile below its month band (never through the band or the rounded corners).
+				p.Clip(ui.Rect{X: r.X + 2, Y: r.Y + 17, W: r.W - 4, H: r.H - 19}, t.RadiusSM-2, func() {
+					var m ui.Path
+					m.MoveTo(r.X+14, r.Y+24)
+					m.LineTo(r.X+38, r.Y+50)
+					p.StrokePath(&m, 1.5, t.InkMuted.Alpha(0.55))
+				})
+				return
+			}
+			disc, ink := t.Done.Surface, t.Done.Ink
+			if state == "failed" {
+				disc, ink = t.Failed.Surface, t.Failed.Ink
+			}
+			bx, by := r.X+r.W-13, r.Y+r.H-13
+			p.Fill(ui.Rect{X: bx, Y: by, W: 12, H: 12}, disc, 6)
+			if state == "done" {
+				drawCheck(ink)(p, ui.Rect{X: bx + 2, Y: by + 2, W: 8, H: 8})
+			} else {
+				drawCross(ink)(p, ui.Rect{X: bx + 2.5, Y: by + 2.5, W: 7, H: 7})
+			}
+		})
+	}
 }

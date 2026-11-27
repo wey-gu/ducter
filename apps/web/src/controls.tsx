@@ -12,6 +12,7 @@ import { askTokens } from "@ducter/protocol/src/ask-text.ts";
 import { copyAndSay } from "./conv-copy.ts";
 import { COPY_GLYPH } from "./markdown.ts";
 import { CHECK_GLYPH } from "./copy-button.tsx";
+import { ASK_KIND_GLYPHS, ASK_KIND_STROKE } from "@ducter/protocol/src/ask-kind.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -628,6 +629,54 @@ export function Facts(p: { items: (ComponentChildren | false | null | undefined)
   const xs = p.items.filter((x) => x !== false && x != null && x !== "");
   if (!xs.length) return null;
   return <span class={`facts${p.class ? ` ${p.class}` : ""}`}>{xs.map((x, i) => <span key={i}>{x}</span>)}</span>;
+}
+
+/** D642: one drawn mark per kind of Go card (design/ui.md "Shared controls"; the same 20-grid
+ *  family as Done for you's pictures, D314). Monochrome, stroked, never a filled tile or an emoji.
+ *  The calendar's mark is `CalLeaf` below, because a date is the thing. */
+export function KindMark(p: { kind: string; size?: number; class?: string }) {
+  return (
+    <svg class={`kind-mark${p.class ? ` ${p.class}` : ""}`} width={p.size ?? 18} height={p.size ?? 18} viewBox="0 0 20 20" aria-hidden="true">
+      <path d={ASK_KIND_GLYPHS[p.kind] ?? ASK_KIND_GLYPHS.ask!} fill="none" stroke="currentColor" stroke-width={ASK_KIND_STROKE} stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+/** D642: a calendar entry's date leaf: the month on a band, the day large, the weekday under it.
+ *  A small clay tile standing on its own 2-pt base; the calendar's own colour is the dot on the band,
+ *  never a bar. done: a drawn check; cancel: a quiet strike through the day; failed: a cross. */
+export function CalLeaf(p: { month: string; day: string; weekday: string; color?: string; state?: "open" | "done" | "failed" | "cancel"; class?: string }) {
+  const state = p.state ?? "open";
+  const style = p.color && /^#[0-9a-f]{3,8}$/i.test(p.color) ? { "--cal-color": p.color } : undefined;
+  return (
+    <span class={`cal-leaf ${state}${p.class ? ` ${p.class}` : ""}`} style={style} aria-hidden="true">
+      <span class="cal-leaf-band">
+        <span>{p.month}</span>
+        <i class="cal-leaf-dot" />
+      </span>
+      <span class="cal-leaf-day">{p.day}</span>
+      <span class="cal-leaf-wd">{p.weekday}</span>
+      {state === "done" && (
+        <span class="cal-leaf-badge done">
+          <svg width="11" height="11" viewBox="0 0 12 12">
+            <path d="M2.4 6.3l2.3 2.3 4.9-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+      )}
+      {state === "failed" && (
+        <span class="cal-leaf-badge failed">
+          <svg width="10" height="10" viewBox="0 0 12 12">
+            <path d="M3.4 3.4l5.2 5.2M8.6 3.4l-5.2 5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </span>
+      )}
+      {state === "cancel" && (
+        <svg class="cal-leaf-strike" viewBox="0 0 56 60" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="14" y1="24" x2="38" y2="50" />
+        </svg>
+      )}
+    </span>
+  );
 }
 
 /** D289: a row that opens more under it (a source's service, a setup's step): its tile, words and

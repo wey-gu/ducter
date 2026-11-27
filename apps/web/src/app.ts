@@ -4066,7 +4066,10 @@ class AppState {
     // D543: with the link down, an answer that is safe late waits in the outbox (its card shows it
     // given); one that isn't (a Go that deletes something) asks again once the link is back.
     if (!this.linkUp() && !this.safeLate(d, option)) return this.askAgainLater();
-    if (d) d.pending = option;
+    if (d) {
+      d.pending = option;
+      d.answeredAt = Date.now();
+    }
     this.outbox.put({ kind: "decide", device: this.glanceDevice || "local", decisionId: id, option, ...(text ? { text } : {}), at: Date.now() });
     this.replyOpen.delete(id);
     if (navigator.vibrate) navigator.vibrate(8);

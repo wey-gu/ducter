@@ -10,7 +10,7 @@ const swift = readFileSync(join(import.meta.dir, "../../ios/Ducter/WebShell.swif
 
 // Pictures drawn with letters in them (the clay phone miniature, the calendar badge, a glyph in a
 // fixed circle, the hidden key field) keep px: they are art, not words.
-const ART = /^\s*(\.hs-|\.cal-badge|\.chip-i|\.live-keys|\.own-mark|\.clockface|\.past-x|\.ho-words-x)/;
+const ART = /^\s*(\.hs-|\.cal-badge|\.cal-leaf|\.chip-i|\.live-keys|\.own-mark|\.clockface|\.past-x|\.ho-words-x)/;
 
 function rules(): { sel: string; body: string }[] {
   const out: { sel: string; body: string }[] = [];

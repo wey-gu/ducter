@@ -1,7 +1,7 @@
 // D222 (design/calendar.md §6): calendar times read from the ISO string's own wall clock, the
 // person's words for days, the other side's zone, and who else is on an event.
 import { describe, expect, test } from "bun:test";
-import { dateRun, dayHead, hmOf, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords } from "../src/cal-format.ts";
+import { dateRun, dayHead, hmOf, leafParts, offsetOf, otherZoneLine, peopleWords, placeTimeLine, theirSide, todayIn, whenWords } from "../src/cal-format.ts";
 
 describe("calendar words", () => {
   test("the wall clock comes from the string, not this device's zone", () => {
@@ -27,6 +27,14 @@ describe("calendar words", () => {
     expect(otherZoneLine("en", "America/Los_Angeles", "2026-11-18T14:00:00+09:00")).toBe("21:00 Nov 17 in Los Angeles");
     expect(otherZoneLine("zh", "Asia/Tokyo", "2026-11-18T14:00:00+09:00")).toBe("");
     expect(theirSide("en", "America/Los_Angeles", "2026-11-19T17:00:00+09:00")).toEqual({ when: "00:00 Thu Nov 19", city: "Los Angeles" });
+  });
+
+  test("a date leaf's three words, and the other side said as a place", () => {
+    expect(leafParts("zh", "2026-12-12T15:00:00+09:00")).toEqual({ month: "12 月", day: "12", weekday: "周六" });
+    expect(leafParts("en", "2026-12-12T15:00:00+09:00")).toEqual({ month: "DEC", day: "12", weekday: "Sat" });
+    expect(placeTimeLine("zh", "Asia/Singapore", "2026-12-12T15:00:00+09:00")).toBe("新加坡时间 周六 14:00");
+    expect(placeTimeLine("en", "Asia/Singapore", "2026-12-12T15:00:00+09:00")).toBe("14:00 Sat, Singapore time");
+    expect(placeTimeLine("zh", "Asia/Singapore", "2026-12-12T15:00:00+08:00")).toBe("");
   });
 
   test("who else is on it", () => {

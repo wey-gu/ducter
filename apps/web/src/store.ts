@@ -50,6 +50,9 @@ export type DecisionState = Bodies["decision"] & {
   askedAt?: string;
   resolved?: Bodies["decision_resolved"];
   pending?: "go" | "hold" | "reply" | "";
+  /** When the person answered here (D642): a calendar write's card knows when its wait began, so
+   *  a wait running long can say so instead of spinning for ever. */
+  answeredAt?: number;
   /** A task's question in the partner's own words (D129); the task's wording stays in question. */
   said?: string;
   /** D382: put off until this time (晚点再问我 / Ask me later); backAt: when it came back. */

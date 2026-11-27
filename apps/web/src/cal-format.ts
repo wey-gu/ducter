@@ -25,6 +25,10 @@ interface CalWords {
   dated(rel: string, date: string): string;
   city: Record<string, string>;
   otherZone(p: Parts, hm: string, city: string): string;
+  /** The other side's time said as a place: "新加坡时间 周六 15:00" / "15:00 Sat, Singapore time". */
+  placeZone(p: Parts, hm: string, city: string): string;
+  /** A date leaf's band and weekday: "12 月" / "DEC", "周六" / "Sat". */
+  leaf(p: Parts): { month: string; weekday: string };
   their(date: string, hm: string): string;
   list: string;
   andList(names: string[]): string;
@@ -193,6 +197,21 @@ export function otherZoneLine(lang: CalLang, zone: string, iso: string): string 
   return cal(lang).otherZone(p, w.hm, city);
 }
 
+/** A date leaf's three words: the month band, the day, the weekday. */
+export function leafParts(lang: CalLang, iso: string): { month: string; day: string; weekday: string } {
+  const p = parts(ymdOf(iso));
+  const w = cal(lang).leaf(p);
+  return { month: w.month, day: String(p.d), weekday: w.weekday };
+}
+
+/** The other side's time said as a place, only when its wall clock differs: "新加坡时间 周六 15:00" /
+ *  "15:00 Sat, Singapore time"; "" when the zone reads the same as the time already shown. */
+export function placeTimeLine(lang: CalLang, zone: string, iso: string): string {
+  if (!zoneDiffers(zone, iso)) return "";
+  const w = wallIn(zone, iso)!;
+  return cal(lang).placeZone(parts(w.ymd), w.hm, cityOf(lang, zone));
+}
+
 /** The other side's time on a change card, as { when, city }: "11月19日 周四 00:00" / "00:00 Thu Nov 19". */
 export function theirSide(lang: CalLang, zone: string, iso: string): { when: string; city: string } | undefined {
   if (!zoneDiffers(zone, iso)) return undefined;
@@ -226,6 +245,8 @@ const CAL: { en: CalWords; zh: CalWords } = {
     dated: (rel, date) => `${rel} ${date}`,
     city: ZH_CITY,
     otherZone: (p, hm, city) => `${city}当地 ${p.m}月${p.d}日 ${hm}`,
+    placeZone: (p, hm, city) => `${city}时间 ${ZH_WD[p.wd]} ${hm}`,
+    leaf: (p) => ({ month: `${p.m} 月`, weekday: ZH_WD[p.wd]! }),
     their: (date, hm) => `${date} ${hm}`,
     list: "、",
     andList: (names) => names.join("、"),
@@ -241,6 +262,8 @@ const CAL: { en: CalWords; zh: CalWords } = {
     dated: (rel, date) => `${rel}, ${date}`,
     city: {},
     otherZone: (p, hm, city) => `${hm} ${EN_MON[p.m - 1]} ${p.d} in ${city}`,
+    placeZone: (p, hm, city) => `${hm} ${EN_WD[p.wd]}, ${city} time`,
+    leaf: (p) => ({ month: EN_MON[p.m - 1]!.toUpperCase(), weekday: EN_WD[p.wd]! }),
     their: (date, hm) => `${hm} ${date}`,
     list: ", ",
     andList: (names) => (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names.join(", ")),

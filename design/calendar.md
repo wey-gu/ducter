@@ -161,37 +161,57 @@ column's measure, at most 560 px).
 
 ### 6.2 The change card (a decision with `cal`)
 
-The bubble says the question (**添加「和 Lina 对一下 HawDB 发布」？ / Add “…”?**, **更改「…」的
-时间？**, **取消「…」？**, **接受 / 拒绝「…」的邀请？**, **对「…」回复可能参加？**). Under it, one
-sunken block (`--sunken`, `--r-sm`, `--s3`):
+D642 (`design/decisions.md`): a calendar card looks like a calendar entry, and the question above
+it never repeats the title.
 
-1. the rail in the calendar's colour and the title;
-2. **when**: **明天 11月19日 周四 15:00–15:30 / Tomorrow, Thu Nov 19, 15:00–15:30**; a move shows
-   **原来 / Was** with the old time struck through and muted, a drawn arrow, then the new time;
-3. **the other side**, when their zone differs: **Lina 那边是 11月19日 周四 00:00（洛杉矶） /
-   That's 00:00 Thu Nov 19 for Lina (Los Angeles)**;
-4. **放在 / In** (create) or **在 / In**: the dot, **主日历 / Main calendar** or the calendar's name, ·
-   whose;
-5. **who hears**: create with guests **会发邀请给 Lina / Lina gets an invitation**; move or cancel
-   **会通知 Lina Chen、alice / Lina Chen and alice are told**; an answer **会告诉组织者 Sam Lee /
-   Sam Lee (the organizer) is told**; none **不会通知任何人 / Nobody is notified**;
-6. **a clash** in the failed ink: **那时已经有「HawDB 周会」/ “HawDB weekly” is already on then**;
-7. **线上 · 会加上视频会议链接 / Online · with a video call link** when asked.
+**The bubble** says the ask in a few words: **加到日历？ / Add to your calendar?**, **改到新的时间？ /
+Move it to the new time?**, **取消这个日程？ / Cancel this event?**, **接受邀请？ / Accept the
+invitation?**, **拒绝邀请？ / Decline the invitation?**, **回复可能参加？ / Reply maybe?**. The title
+appears once, on the card. The card's `aria-label`s use the same short ask, not the title again.
 
-Buttons (D76 order, D212 words): **回复… / Reply…** · Hold · Go. Hold is **暂不添加 / Not now**,
-**暂不更改 / Not now**, **保留日程 / Keep it** (a cancel's dismiss never reads 取消), **暂不回复 /
-Not now**. Go is the action: **添加到日历 / Add to calendar**, **更改时间 / Move it**, **取消日程
-/ Cancel event**, **接受 / Accept**, **拒绝 / Decline**, **可能参加 / Maybe**. No default line
-(there is none).
+**The card** is one sunken sheet (`--sunken`, `--r-md`, `--s4`), the bubble's width (at most the bubble measure, 38em).
+On its left a **date leaf**: a small clay tile (`--surface-raised`, a 2-pt `--line` base,
+`--r-sm`), the month on a band (`12 月 / DEC`) whose tint is the calendar's own colour at 16 % and
+whose **dot** is that colour (never a rail or bar), the day large (20/800, tabular), the weekday
+under it (`周六 / Sat`). Right of it, one column:
 
-**After Go**, the card settles in place from the run's own record (the `connection_call` with its
-decision id): **正在添加… / Adding…** (D212 progress), then **已添加到日历 / Added** with **在 Google
-日历中打开 / Open in Google Calendar** (its link), **已更改时间 / Moved**, **已取消日程 /
-Cancelled**, **已接受 / Accepted**, **已拒绝 / Declined**, **已回复可能参加 / Replied maybe**; a
-failure **没能添加 / Couldn't add** (**没能更改 / 没能取消 / 没能回复**) and one short reason in the
-failed ink. Hold settles as **没有改动 / Nothing changed**.
+1. **the title** (`--md`, 700, wraps; never clipped), once;
+2. **when** (`--sm`, 600, tabular): **12月12日 周六 15:00–15:30 / Sat, Dec 12, 15:00–15:30**; all
+   day: **全天 / all day**; a move puts **原来 / Was** with the old time struck through and muted, a
+   drawn arrow, then the new time (the arrow starts the new line when the pair wraps);
+3. **the other side**, only when its wall clock really differs from the reader's:
+   **新加坡时间 周六 14:00 / 14:00 Sat, Singapore time**. It is the place, never **对方 / for them**;
+4. **where**, when set: a drawn pin and the place (`Kong Office，12 楼东侧会议室`), `--xs` muted;
+5. **the calendar**, quiet: the 8 px dot, its name (**主日历 / Main calendar** or its own),
+   and the account (`weyl.gu`);
+6. **who hears**, only when someone does: an invitation (**会发邀请给 Lina / Lina gets an
+   invitation**), people told on a move or cancel, an organizer told on an answer. Adding a quiet
+   event of the person's own day says nothing; **不会通知任何人 / Nobody is notified** only when the
+   card is about someone else's event and no organizer is known;
+7. **a clash** in the failed ink, and **线上 / online** when a video link is added.
 
-**On hand** lists an open change card like any ask (D216), by its question.
+**States, in place:**
+- **Waiting for Go**: the card above, then the shared tray (**添加到日历 / 更改时间 / 取消日程 /
+  接受 / 拒绝 / 可能参加**, Hold as its own words), no default line.
+- **Adding**: the shared spinner and **正在添加… / Adding…**; after about 20 s a second quiet line
+  **还在处理，可能要一会儿 / Still working. This can take a while.** A wait never hangs as text alone.
+- **Added**: the leaf carries a drawn check; the line says **已添加到日历 / Added** and offers
+  **在日历中打开 / Open in calendar** when the run returned a link. A move's leaf checks; a cancel's
+  leaf is struck quietly.
+- **Failed**: a drawn cross on the leaf and **没能添加 / Couldn't add** with one short reason in the
+  failed ink. A calendar write is not reversible and core never runs one twice (a lost answer may
+  have written it), so the card does not offer **再试一次 / Try again**; it says plainly and the
+  person can ask again (the shared retry path exists for a reversible card that allows it).
+- **Held**: **没有改动 / Nothing changed**.
+- **An answer** (`respond`): the same leaf and shape; **已接受 / 已拒绝 / 已回复可能参加** and, when
+  there is one, the organizer told.
+
+**Kind marks (D642).** Every Go card carries one drawn mark at the leading edge of its words
+(the same spot in both clients): a mail, a message, a call, a card, a basket, a PR, a comment, a
+close, a page, a checklist, an alarm, a door, a key, a phone, a laptop, a plug, a shield, a loop, a
+tunnel, a pencil for a written reply, and an honest question in a ring when the home sends no
+structural kind. The calendar's own mark is the date leaf. The family, its 20-point grid and the
+inventory are in `design/ui.md` (Shared controls, D161) and the D642 entry.
 
 ### 6.3 The greeting (D149)
 

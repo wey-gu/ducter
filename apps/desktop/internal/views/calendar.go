@@ -458,90 +458,176 @@ func calKindKey(ch *protocol.CalChange) string {
 	return ch.Kind
 }
 
-// calChangeBlock is what will change, where, when, and who hears, in one
-// sunken block under the question.
+// calAsk is the bubble above a calendar card: the ask in a few words, never the title again.
+func (a *App) calAsk(ch *protocol.CalChange) string {
+	if ch.Kind == "respond" {
+		switch ch.Response {
+		case "declined":
+			return a.L.T("cal.ask.respond.declined")
+		case "tentative":
+			return a.L.T("cal.ask.respond.tentative")
+		}
+		return a.L.T("cal.ask.respond.accepted")
+	}
+	switch ch.Kind {
+	case "create", "move", "cancel":
+		return a.L.T("cal.ask." + ch.Kind)
+	}
+	return a.L.T("cal.ask.create")
+}
+
+// calPlaceLine is the other side's time said as a place, only when its wall clock really differs:
+// 新加坡时间 周六 14:00 / 14:00 Sat, Singapore time; never 对方 for an event with nobody on it.
+func (a *App) calPlaceLine(ch *protocol.CalChange, loc *time.Location) string {
+	if ch.TheirZone == "" || ch.AllDay {
+		return ""
+	}
+	zl := calLoc(ch.TheirZone)
+	at, here := calTime(ch.Start, zl), calTime(ch.Start, loc)
+	if at.IsZero() || here.IsZero() || (at.Year() == here.Year() && at.YearDay() == here.YearDay() && i18n.CalClock(at) == i18n.CalClock(here)) {
+		return ""
+	}
+	return a.L.T("cal.place.zone", a.L.ZoneCity(ch.TheirZone), i18n.CalWeekday(a.L.Lang, at), i18n.CalClock(at))
+}
+
+// calLeads reports whether anyone hears about the change: an answer always does (it is someone
+// else's event); adding or moving a quiet event of the person's own day says nothing.
+func calLeads(ch *protocol.CalChange) bool {
+	return ch.Kind == "respond" || len(ch.Notify) > 0
+}
+
+// calLeafState is the leaf's own sign after Go: a check, a cross, a quiet strike for a cancel.
+func (a *App) calLeafState(d *store.DecisionState) string {
+	opt := d.Pending
+	if d.Resolved != nil {
+		opt = d.Resolved.Option
+	}
+	if d.Cal == nil {
+		return "open"
+	}
+	call := a.S.DecisionCalls[d.DecisionID]
+	if call != nil && (call.State == "failed" || call.State == "denied") {
+		return "failed"
+	}
+	if d.Cal.Kind == "cancel" {
+		return "cancel"
+	}
+	if opt != "go" {
+		return "open"
+	}
+	if call != nil && call.State == "done" {
+		return "done"
+	}
+	return "open"
+}
+
+// calChangeBlock is one calendar entry: the date leaf, its name, when, where, the calendar, the other
+// side's time as a place, and who hears, in one sunken sheet under the short ask (D642).
 func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	ch := d.Cal
 	loc := time.Local
-	now := a.Now().In(loc)
-	indent := 3 + t.S3
 	line := func(text string, ink ui.Color) {
-		uiText(c, autospace(text)).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).MarginStart(indent)
+		uiText(c, autospace(text)).FontSize(t.XS).TextColor(ink).LineHeight(a.leading(1.45))
 	}
-	ui.Column(c.Key("calchange:"+d.DecisionID)).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).Gap(t.S1+2).Padding(t.S3, t.S4).
-		Radius(t.RadiusSM).Background(t.Sunken).Children(func() {
-		// 1. the rail in the calendar's colour, and the title.
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
-			ui.Box(c).Width(3).Radius(1.5).Background(a.calColor(ch.Color)).Shrink(0)
-			uiText(c, autospace(ch.Title)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.4)).Grow(1).MinWidth(0)
-		})
-		// 2. when; a move shows where it was, struck through, and an arrow.
-		when := a.calWhen(ch.Start, ch.End, ch.AllDay, loc)
-		if ch.Kind == "move" && ch.Was != nil {
-			ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).MarginStart(indent).Children(func() {
-				uiText(c, a.L.T("cal.change.was")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-				was := a.calWhen(ch.Was.Start, ch.Was.End, ch.AllDay, loc)
-				if ws, ns := calTime(ch.Was.Start, loc), calTime(ch.Start, loc); !ch.AllDay && sameDay(ws, ns) {
-					was = i18n.CalClock(ws) + "–" + i18n.CalClock(calTime(ch.Was.End, loc)) // the same day: the time is what moved
-				}
-				uiText(c, autospace(was)).FontSize(t.SM).TextColor(t.InkMuted).Strikethrough().FontFeatures("tnum")
-				a.glyph(c, 16, drawArrow(t.InkSoft))
-				uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
-			})
-		} else {
-			uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").MarginStart(indent)
-		}
-		// 3. the other side, when their zone differs.
-		if ch.TheirZone != "" && !ch.AllDay {
-			if zl := calLoc(ch.TheirZone); zl.String() != loc.String() {
-				s := calTime(ch.Start, zl)
-				at := fmt.Sprintf(a.L.T("cal.date.clock"), a.calDateTight(s, now), i18n.CalClock(s))
-				city := a.L.ZoneCity(ch.TheirZone)
-				if ch.TheirName != "" {
-					line(a.L.T("cal.change.their", ch.TheirName, at, city), t.InkSoft)
+	at := calTime(ch.Start, loc)
+	ui.Column(c.Key("calchange:"+d.DecisionID)).MaxWidth(t.BubbleMeasure).MaxWidthPercent(88).Padding(t.S3, t.S4).
+		Radius(t.RadiusMD).Background(t.Sunken).Children(func() {
+		ui.Row(c.Key("main")).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+			// A date is the thing: the leaf is the calendar's mark, richer than a glyph.
+			month := i18n.CalMonthBand(a.L.Lang, at)
+			if a.L.Lang == i18n.EN {
+				month = strings.ToUpper(month)
+			}
+			a.dateLeaf(c, month, fmt.Sprint(at.Day()), i18n.CalWeekday(a.L.Lang, at), a.calColor(ch.Color), a.calLeafState(d))
+			ui.Column(c.Key("body")).Grow(1).Basis(0).MinWidth(0).Gap(t.S1 - 2).Children(func() {
+				// 1. the thing's name.
+				uiText(c, autospace(ch.Title)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.4))
+				// 2. when; a move shows where it was, struck through, and an arrow.
+				when := a.calWhen(ch.Start, ch.End, ch.AllDay, loc)
+				if ch.Kind == "move" && ch.Was != nil {
+					ui.Row(c.Key("when")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+						uiText(c, a.L.T("cal.change.was")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+						was := a.calWhen(ch.Was.Start, ch.Was.End, ch.AllDay, loc)
+						if ws, ns := calTime(ch.Was.Start, loc), calTime(ch.Start, loc); !ch.AllDay && sameDay(ws, ns) {
+							was = i18n.CalClock(ws) + "–" + i18n.CalClock(calTime(ch.Was.End, loc))
+						}
+						uiText(c, autospace(was)).FontSize(t.SM).TextColor(t.InkMuted).Strikethrough().FontFeatures("tnum")
+						a.glyph(c, 16, drawArrow(t.InkSoft))
+						uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
+					})
 				} else {
-					line(a.L.T("cal.change.their.anon", at, city), t.InkSoft)
+					uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
 				}
-			}
-		}
-		// 4. which calendar, whose.
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MarginStart(indent).Wrap().Children(func() {
-			label := a.L.T("cal.change.in")
-			if ch.Kind == "create" {
-				label = a.L.T("cal.change.in.create")
-			}
-			uiText(c, label).FontSize(t.SM).TextColor(t.InkMuted)
-			ui.Box(c).Size(8, 8).Radius(4).Background(a.calColor(ch.Color)).Shrink(0)
-			cal := ch.Calendar
-			if cal == "" {
-				cal = a.L.T("cal.main")
-			}
-			uiText(c, autospace(cal)).FontSize(t.SM).TextColor(t.Ink)
-			if ch.Account != "" {
-				uiText(c, mailShort(ch.Account)).FontSize(t.SM).TextColor(t.InkMuted)
-			}
+				// 3. the other side's time, as a place, only when it differs.
+				if z := a.calPlaceLine(ch, loc); z != "" {
+					uiText(c, autospace(z)).FontSize(t.XS).TextColor(t.InkSoft)
+				}
+				// 4. where, with a drawn pin.
+				if ch.Where != "" {
+					ui.Row(c.Key("where")).Gap(5).AlignItems(ui.Center).Children(func() {
+						a.glyph(c, 12, drawPin(t.InkMuted))
+						uiText(c, autospace(ch.Where)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.45))
+					})
+				}
+				// 5. which calendar, whose: the dot and the name, quiet.
+				ui.Row(c.Key("in")).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
+					ui.Box(c.Key("dot")).Size(8, 8).Radius(4).Background(a.calColor(ch.Color)).Shrink(0)
+					cal := ch.Calendar
+					if cal == "" {
+						cal = a.L.T("cal.main")
+					}
+					uiText(c, autospace(cal)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft)
+					if ch.Account != "" {
+						uiText(c, mailShort(ch.Account)).FontSize(t.XS).TextColor(t.InkMuted)
+					}
+				})
+				// 6. who hears, only when someone does.
+				if calLeads(ch) {
+					line(a.calWhoHears(ch), t.InkMuted)
+				}
+				// 7. a clash, in the failed ink.
+				if ch.Clash != "" {
+					uiText(c, autospace(a.L.T("cal.change.clash", ch.Clash))).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45))
+				}
+				// 8. a video link when asked.
+				if ch.Kind == "create" && ch.Online {
+					line(a.L.T("cal.change.video"), t.InkMuted)
+				}
+			})
 		})
-		// 5. who hears.
-		line(a.calWhoHears(ch), t.InkSoft)
-		// 6. a clash, in the failed ink.
-		if ch.Clash != "" {
-			line(a.L.T("cal.change.clash", ch.Clash), t.Failed.Ink)
-		}
-		// 7. a video link when asked.
-		if ch.Kind == "create" && ch.Online {
-			line(a.L.T("cal.change.video"), t.InkSoft)
-		}
 	})
+}
+
+// drawPin is a place's pin: a rounded drop with its hole.
+func drawPin(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		s := min(r.W, r.H) / 12
+		var m ui.Path
+		m.MoveTo(cx, cy+4.8*s)
+		m.QuadTo(cx-4.2*s, cy+1.2*s, cx-3.5*s, cy-2.2*s)
+		m.QuadTo(cx-2.6*s, cy-4.8*s, cx, cy-4.8*s)
+		m.QuadTo(cx+2.6*s, cy-4.8*s, cx+3.5*s, cy-2.2*s)
+		m.QuadTo(cx+4.2*s, cy+1.2*s, cx, cy+4.8*s)
+		m.Close()
+		p.StrokePath(&m, 1.4*s, col)
+		var h ui.Path
+		h.Circle(cx, cy-1.1*s, 1.3*s)
+		p.FillPath(&h, col)
+	}
 }
 
 // calWhoHears says who gets an email from the calendar about it.
 func (a *App) calWhoHears(ch *protocol.CalChange) string {
-	if ch.Kind == "respond" && ch.Organizer != "" {
-		return a.L.T("cal.change.organizer", ch.Organizer)
+	if ch.Kind == "respond" {
+		if ch.Organizer != "" {
+			return a.L.T("cal.change.organizer", ch.Organizer)
+		}
+		return a.L.T("cal.change.nobody")
 	}
 	if len(ch.Notify) == 0 {
-		return a.L.T("cal.change.nobody")
+		return ""
 	}
 	key := "cal.change.told"
 	if ch.Kind == "create" {
@@ -571,8 +657,9 @@ func (a *App) calGo(d *store.DecisionState) string {
 	return firstNonEmpty(d.GoLabel, a.L.T("decision.go"))
 }
 
-// calSettled is the card settled in place after Go or Hold: from the run's
-// own record (the connection_call with this decision id).
+// calSettled is the card settled in place after Go or Hold: from the run's own record (the
+// connection_call with this decision id). The leaf carries the check; the words say what happened
+// and, after a real wait, that it is still going.
 func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	opt := d.Pending
@@ -584,34 +671,41 @@ func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 		return
 	}
 	kind := d.Cal.Kind
-	text, ink, draw := "", t.InkMuted, func(ui.Color) func(*ui.Painter, ui.Rect) { return nil }
+	text, ink := "", t.InkMuted
+	badge := ""
 	var link, why string
 	call := a.S.DecisionCalls[d.DecisionID]
 	switch {
 	case opt == "hold" || (call != nil && call.State == "held"):
-		text, draw = a.L.T("cal.held"), drawCheck
+		text = a.L.T("cal.held")
 	case call != nil && call.State == "done":
-		text, ink, draw, link = a.L.T("cal.done."+calKindKey(d.Cal)), t.Done.Ink, drawCheck, call.Link
+		text, ink, link = a.L.T("cal.done."+calKindKey(d.Cal)), t.Ink, call.Link
 	case call != nil && (call.State == "failed" || call.State == "denied"):
-		text, ink, draw, why = a.L.T("cal.failed."+kind), t.Failed.Ink, drawCross, call.Error
+		text, ink, why, badge = a.L.T("cal.failed."+kind), t.Failed.Ink, call.Error, "failed"
 	default:
-		text = a.L.T("cal.doing." + kind)
+		text, badge = a.L.T("cal.doing."+kind), "going"
 		c.After(time.Second)
 	}
-	ui.Column(c.Key("calsettled:"+d.DecisionID)).Gap(t.S1).Padding(0, 0, 0, t.S4-2).MaxWidth(t.BubbleMeasure).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			if g := draw(ink); g != nil {
-				a.glyph(c, 16, g)
+	ui.Column(c.Key("calsettled:" + d.DecisionID)).Gap(t.S1).MaxWidth(t.BubbleMeasure).Children(func() {
+		ui.Row(c.Key("line")).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
+			switch badge {
+			case "going":
+				ui.Box(c.Key("spin")).Size(14, 14).Shrink(0).Center().AccessHidden(true).Children(func() { ui.Spinner(c).Size(13, 13) })
+			case "failed":
+				a.glyph(c, 16, drawCross(t.Failed.Ink))
 			}
 			uiText(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink)
-			if link != "" {
+			if link != "" && kind != "cancel" {
 				if a.quietLink(c, "calopen:"+d.DecisionID, a.L.T("cal.open"), spoken(a.L, a.L.T("cal.open"), d.Cal.Title)) {
 					a.openLink(link)
 				}
 			}
 		})
 		if why != "" {
-			uiText(c, why).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).MaxLines(2)
+			uiText(c, why).FontSize(t.XS).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).MaxLines(2)
+		}
+		if badge == "going" && !d.AnsweredAt.IsZero() && a.Now().Sub(d.AnsweredAt) >= 20*time.Second {
+			uiText(c, a.L.T("cal.doing.long")).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
 }

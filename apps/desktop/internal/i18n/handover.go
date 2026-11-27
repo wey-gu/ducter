@@ -44,7 +44,7 @@ var zhHandover = Table{
 	"hand.none.left":                  "你说的这些，都已经交出去了。",
 	"hand.g.handed":                   "已经交出去的",
 	"hand.handed.doing":               "在做",
-	"hand.handed.waiting":             "在等",
+	"hand.handed.waiting":             "等结果",
 	"hand.handed.failed":              "没成",
 	"hand.handed.done":                "做完了",
 	"hand.handed.why":                 "看看为什么",

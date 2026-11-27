@@ -54,6 +54,7 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
            given → unclaimed after 10 min → said to the person once
            given → declined by the receiver (out of scope) → back to the sender with why
            given → withdrawn by the person (不用跟了) → said to the sender once
+           any open → settled (its PR merged or closed) → 用不着了, why merged | closed, nobody told
 ```
 
 **Rules. Code guards these; the model only words them.**
@@ -81,6 +82,13 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
   `reply_args_prefix`.
 - **Unclaimed is said once, after 10 minutes,** to the person. It comes with the choice to run
   the work directly. A hand-off is never left silent.
+- **One truth for a PR (D628).** A hand-off whose subject is a PR settles by itself when that
+  PR merges or closes: `settled`, why `merged` or `closed`, never a reminder to anyone. The fact is
+  Ducter's own owned look (`owned_news`), not a phrase in anyone's words. A task whose work was that
+  merged PR and whose only remaining waits are timers is done: its waiters are cancelled and it
+  leaves 等结果; when it wakes anyway for something else, its wake says the hand-off is over and to
+  report done, never to wait for an acknowledgement. An issue hand-off settles when GitHub says the
+  issue is closed (the usual way is the merged PR); that look runs only for an issue a helper got.
 
 ## 4. What the person sees
 
@@ -91,7 +99,7 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
   record) and 不用跟了 (the D602 confirm; the record is withdrawn, the sender hears once). A row
   with a task keeps 打开任务 and 不用跟了. Nothing is drawn for an empty group.
 - **On the sending task:** one line under its last report, 「交给 PR Babysitter，等它接手」 →
-  「PR Babysitter 接手了」 → its outcome. No card.
+  「PR Babysitter 接手了」 → its outcome, or 「用不着了：PR 已合并」 when the PR ended it. No card.
 - **In the conversation:** nothing while it goes well. One line if it's unclaimed for 10 min,
   or if it's returned.
 - **Settings › the helper:** 别的 agent 怎么找到它 lists every Space it's reachable in (D604).
@@ -108,6 +116,7 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
 | **The sending task's one line, and 手上的事 grouped by state** | built (D616): the task's one line under its last report follows the record; the helper's page draws one card grouped by state on the web and the Mac, with 让它现在接 / 不用跟了 on a waiting row and the withdrawn state said back |
 | **Bridge mail classified by our outbox (did this helper ask?), never by `inReplyTo`** | built (D614), replacing D598's "a reply under the helper's own old message counts as new": `helperQuestions` reads the messages one of the helper's tasks sent |
 | A replay test over hel's real 11-24→26 sequence: every row of §1 ends taken or said | built (D614): `packages/partner/test/handoff-d609-replay.test.ts` (the muted dev-team hand-off, the two 3× resends, the 11-25 one, and the 10-minute line) |
+| **A PR's hand-off settles when the PR merges or closes; the task that gave it is done, its timers cancelled** | built (D628): `core/src/settled-handoffs.ts`, `core/test/waits-truth.test.ts`, the `settled` state and words on both clients |
 
 **Alternative not taken:** keep mail, and add more heuristics for "is this work". That's the
 path that failed five times. The record makes the failure state visible by construction.

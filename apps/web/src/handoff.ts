@@ -22,6 +22,8 @@ export function handoffTaskWords(h: HandoffLine, L: Strings): string {
       return L.t("handoff.declined", h.to, gist);
     case "withdrawn":
       return L.t("handoff.withdrawn", h.to);
+    case "settled":
+      return L.t("handoff.settled", L.t(h.settledBy === "merged" ? "handoff.settled.merged" : "handoff.settled.closed"));
     default:
       // given and unclaimed: the unclaimed line is the person's, said once.
       return L.t("handoff.given", h.to);

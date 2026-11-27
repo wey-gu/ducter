@@ -85,11 +85,12 @@ func TestD609HandoffUI(t *testing.T) {
 			{"returned", "这个不是我接的范围：我只接 PR。", "", "handoff.returned"},
 			{"declined", "超出我接的范围。", "", "handoff.declined"},
 			{"withdrawn", "", "", "handoff.withdrawn"},
+			{"settled", "", "", "handoff.settled"},
 		} {
 			task.card = &protocol.TaskCard{TaskID: "t-sender", Title: "官网 #562", Handoff: &protocol.HandoffLine{
 				ID: "ho_" + c.state, State: c.state,
 				Item:   protocol.HandoffItem{Kind: "pr", Ref: "nowledge-co/mem#11393", Title: "修好 mem#11393 的登录跳转"},
-				Sender: "Ducter 的任务「官网」", To: "PR Babysitter", GivenAt: now, At: now, Why: c.why, Outcome: c.outcome,
+				Sender: "Ducter 的任务「官网」", To: "PR Babysitter", GivenAt: now, At: now, Why: c.why, Outcome: c.outcome, SettledBy: map[string]string{"settled": "merged"}[c.state],
 			}}
 			line := ui.NewTesterWith(func(ctx *ui.Context) { app.handoffNote(ctx, task.Task()) }, 1150, 220, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 			line.Frame()
@@ -100,6 +101,9 @@ func TestD609HandoffUI(t *testing.T) {
 			}
 			if c.key == "handoff.returned" || c.key == "handoff.declined" {
 				args = append(args, c.why)
+			}
+			if c.key == "handoff.settled" {
+				args = []any{app.L.T("handoff.settled.merged")}
 			}
 			want := app.L.T(c.key, args...)
 			if !strings.Contains(got, strings.Split(want, "\n")[0]) {

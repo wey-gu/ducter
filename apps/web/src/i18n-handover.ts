@@ -39,7 +39,7 @@ export const handoverWords: { zh: Record<string, string>; en: Record<string, str
     "ho.none.left": "你说的这些，都已经交出去了。",
     "ho.g.handed": "已经交出去的",
     "ho.handed.doing": "在做",
-    "ho.handed.waiting": "在等",
+    "ho.handed.waiting": "等结果",
     "ho.handed.failed": "没成",
     "ho.handed.done": "做完了",
     "ho.handed.why": "看看为什么",

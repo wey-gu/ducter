@@ -166,7 +166,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	if h.app.Route != RouteOnHand {
 		t.Fatal("On hand did not open")
 	}
-	for _, want := range []string{"待你处理", "在做", "在等", "今天做完", "原则英译", "周报草稿"} {
+	for _, want := range []string{"待你处理", "在做", "等结果", "今天做完", "原则英译", "周报草稿"} {
 		if !hasText(h.tt, want) {
 			t.Errorf("On hand lacks %q", want)
 		}

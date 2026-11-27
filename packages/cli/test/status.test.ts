@@ -62,14 +62,28 @@ describe("status", () => {
       card({ taskId: "b", title: "Merged already", place: repo, attention: "done", residency: "archived", lastReport: committed }),
       card({ taskId: "c", title: "Nothing to merge", place: repo, attention: "done", residency: "parked", lastReport: { ...committed, branch: { commits: 0, uncommitted: false } } }),
       card({ taskId: "d", title: "Answer only", attention: "done", residency: "parked", lastReport: committed }),
+      // D628: the PR's own state is the truth. A merged, closed or let-go PR never waits for a merge.
+      card({ taskId: "e", title: "PR already merged", place: repo, attention: "done", residency: "parked", lastReport: committed, prs: [{ pr: "o/r#1", url: "https://github.com/o/r/pull/1", state: "merged", at: "2026-11-27T03:00:00.000Z" }] }),
+      card({ taskId: "f", title: "PR closed", place: repo, attention: "done", residency: "parked", lastReport: committed, prs: [{ pr: "o/r#2", url: "https://github.com/o/r/pull/2", state: "closed", at: "2026-11-27T03:00:00.000Z" }] }),
+      card({ taskId: "g", title: "Duplicate draft let go", place: repo, attention: "done", residency: "parked", lastReport: committed, prs: [{ pr: "o/r#3", url: "https://github.com/o/r/pull/3", state: "open", at: "2026-11-27T03:00:00.000Z", letGo: { why: "duplicate", at: "2026-11-27T03:01:00.000Z" } }] }),
+      card({ taskId: "h", title: "PR still open", place: repo, attention: "done", residency: "parked", lastReport: committed, prs: [{ pr: "o/r#4", url: "https://github.com/o/r/pull/4", state: "open", at: "2026-11-27T03:00:00.000Z" }] }),
     ];
     expect(tasks.filter(toMerge).map((c) => c.taskId)).toEqual(["a"]);
     const t = translator("en", commandsFor({ port: 7798 }));
     const text = formatSnapshot({ personaName: "Ducter", url: "x", onHand: { tasks, counts: { needs_you: 0, working: 0, waiting: 0, done_today: 4 } }, decisions: [] }, t);
     expect(text).toContain("Done, waiting for you to merge (1)\n  • Fix failing tests in tinycart");
+    expect(text).not.toContain("PR already merged");
+    expect(text).not.toContain("Duplicate draft let go");
+    expect(text).not.toContain("PR still open");
     expect(text).toContain("ducter merge --port 7798 <part of its title>");
     expect(pickTask(tasks, "TINYCART").map((c) => c.taskId)).toEqual(["a"]);
     expect(pickTask(tasks, "b").map((c) => c.taskId)).toEqual(["b"]); // an id wins over a title match
+  });
+
+  test("the waiting label is 等结果 in zh, Waiting in en", () => {
+    expect(zh("status.waiting")).toBe("等结果");
+    expect(zh("tail.state.blocked")).toBe("等结果");
+    expect(en("status.waiting")).toBe("Waiting");
   });
 
   test("quiet, in zh", () => {

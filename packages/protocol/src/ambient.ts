@@ -112,7 +112,7 @@ export const AMBIENT_WORDS: { en: AmbientWords } & Partial<Record<LangTag, Ambie
   zh: {
     phase: {
       working: "在做",
-      waiting: "在等",
+      waiting: "等结果",
       needs_you: "待你处理",
       done: "做完了",
       failed: "没成",
